@@ -16,14 +16,20 @@ import androidx.compose.material.icons.rounded.DarkMode
 import androidx.compose.material.icons.rounded.Notifications
 import androidx.compose.material.icons.rounded.Security
 import androidx.compose.material.icons.rounded.TaskAlt
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -37,18 +43,16 @@ fun SettingsPanel(
     permissions: PermissionSnapshot,
     selectedThemeMode: ThemeMode,
     defaultSnooze: Int,
-    ringEnabled: Boolean,
-    vibrateEnabled: Boolean,
-    voiceEnabled: Boolean,
     onRequestNotificationPermission: () -> Unit,
     onRequestExactAlarmPermission: () -> Unit,
     onRequestFullScreenPermission: () -> Unit,
     onRequestNotificationPolicyAccess: () -> Unit,
     onRequestIgnoreBatteryOptimization: () -> Unit,
     onThemeModeChange: (ThemeMode) -> Unit,
-    onDefaultSnoozeChange: (Int) -> Unit,
-    onReminderDefaultsChange: (Boolean, Boolean, Boolean) -> Unit
+    onDefaultSnoozeChange: (Int) -> Unit
 ) {
+    var showSnoozeDialog by remember { mutableStateOf(false) }
+
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
         PrefCard("提醒权限") {
             PermissionRow(Icons.Rounded.Notifications, "通知权限", permissions.notificationGranted, "去开启", onRequestNotificationPermission)
@@ -70,41 +74,70 @@ fun SettingsPanel(
             }
         }
         PrefCard("默认延后时长") {
-            Text("以 5 分钟为间隔选择 5-60 分钟。", color = MaterialTheme.colorScheme.onSurfaceVariant)
-            SnoozePicker(defaultSnooze = defaultSnooze, onValueChange = onDefaultSnoozeChange)
+            Text("点击按钮后再选择默认延后时长，避免滑动页面时误触。", color = MaterialTheme.colorScheme.onSurfaceVariant)
+            OutlinedButton(onClick = { showSnoozeDialog = true }) {
+                Text("当前：${normalizeSnooze(defaultSnooze)} 分钟")
+            }
         }
-        PrefCard("默认提醒方式") {
-            SwitchRow("响铃", ringEnabled) { onReminderDefaultsChange(it, vibrateEnabled, voiceEnabled) }
-            SwitchRow("震动", vibrateEnabled) { onReminderDefaultsChange(ringEnabled, it, voiceEnabled) }
-            SwitchRow("语音播报", voiceEnabled) { onReminderDefaultsChange(ringEnabled, vibrateEnabled, it) }
-        }
+    }
+
+    if (showSnoozeDialog) {
+        SnoozePickerDialog(
+            defaultSnooze = defaultSnooze,
+            onDismiss = { showSnoozeDialog = false },
+            onConfirm = {
+                onDefaultSnoozeChange(it)
+                showSnoozeDialog = false
+            }
+        )
     }
 }
 
 @Composable
-private fun SnoozePicker(
+private fun SnoozePickerDialog(
     defaultSnooze: Int,
-    onValueChange: (Int) -> Unit
+    onDismiss: () -> Unit,
+    onConfirm: (Int) -> Unit
 ) {
     val values = (5..60 step 5).toList()
-    AndroidView(
-        modifier = Modifier.fillMaxWidth(),
-        factory = { context ->
-            NumberPicker(context).apply {
-                minValue = 0
-                maxValue = values.lastIndex
-                displayedValues = values.map { "$it 分钟" }.toTypedArray()
-                wrapSelectorWheel = false
-                descendantFocusability = NumberPicker.FOCUS_BLOCK_DESCENDANTS
-                value = values.indexOf(normalizeSnooze(defaultSnooze))
-                setOnValueChangedListener { _, _, newVal ->
-                    onValueChange(values[newVal])
+    var selectedMinutes by remember(defaultSnooze) { mutableIntStateOf(normalizeSnooze(defaultSnooze)) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("选择默认延后时长") },
+        text = {
+            AndroidView(
+                modifier = Modifier.fillMaxWidth(),
+                factory = { context ->
+                    NumberPicker(context).apply {
+                        minValue = 0
+                        maxValue = values.lastIndex
+                        displayedValues = values.map { "$it 分钟" }.toTypedArray()
+                        wrapSelectorWheel = false
+                        descendantFocusability = NumberPicker.FOCUS_BLOCK_DESCENDANTS
+                        value = values.indexOf(selectedMinutes)
+                        setOnValueChangedListener { _, _, newVal ->
+                            selectedMinutes = values[newVal]
+                        }
+                    }
+                },
+                update = { picker ->
+                    val targetIndex = values.indexOf(selectedMinutes)
+                    if (picker.value != targetIndex) {
+                        picker.value = targetIndex
+                    }
                 }
+            )
+        },
+        confirmButton = {
+            TextButton(onClick = { onConfirm(selectedMinutes) }) {
+                Text("确定")
             }
         },
-        update = { picker ->
-            val targetIndex = values.indexOf(normalizeSnooze(defaultSnooze))
-            if (picker.value != targetIndex) picker.value = targetIndex
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("取消")
+            }
         }
     )
 }
@@ -129,22 +162,6 @@ private fun PrefCard(
             Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
             content()
         }
-    }
-}
-
-@Composable
-private fun SwitchRow(
-    label: String,
-    checked: Boolean,
-    onCheckedChange: (Boolean) -> Unit
-) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween
-    ) {
-        Text(label, color = MaterialTheme.colorScheme.onSurface)
-        Switch(checked = checked, onCheckedChange = onCheckedChange)
     }
 }
 

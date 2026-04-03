@@ -145,16 +145,20 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    fun deleteTodo(todoItem: TodoItem) {
+        viewModelScope.launch {
+            repository.deleteTodo(todoItem.id)
+            alarmScheduler.cancel(todoItem.id)
+            reminderNotifier.cancel(todoItem.id)
+        }
+    }
+
     fun updateThemeMode(themeMode: ThemeMode) {
         settingsStore.updateThemeMode(themeMode)
     }
 
     fun updateDefaultSnooze(minutes: Int) {
         settingsStore.updateDefaultSnooze(minutes)
-    }
-
-    fun updateReminderDefaults(ringEnabled: Boolean, vibrateEnabled: Boolean, voiceEnabled: Boolean) {
-        settingsStore.updateReminderDefaults(ringEnabled, vibrateEnabled, voiceEnabled)
     }
 
     private fun dueDate(item: TodoItem): LocalDate {

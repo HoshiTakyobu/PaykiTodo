@@ -41,6 +41,7 @@ fun TodoEditorDialog(
     defaultVibrateEnabled: Boolean,
     defaultVoiceEnabled: Boolean,
     onDismiss: () -> Unit,
+    onDelete: () -> Unit,
     onConfirm: (String, String, LocalDateTime, LocalDateTime?, TodoCategory, Boolean, Boolean, Boolean) -> Unit
 ) {
     val context = LocalContext.current
@@ -48,10 +49,18 @@ fun TodoEditorDialog(
     val isHistory = initialTodo?.completed == true
     var title by remember(initialTodo?.id) { mutableStateOf(initialTodo?.title.orEmpty()) }
     var notes by remember(initialTodo?.id) { mutableStateOf(initialTodo?.notes.orEmpty()) }
-    var category by remember(initialTodo?.id) { mutableStateOf(initialTodo?.let { TodoCategory.fromKey(it.categoryKey) } ?: TodoCategory.ROUTINE) }
-    var dueAt by remember(initialTodo?.id) { mutableStateOf(initialTodo?.let { reminderAtMillisToDateTime(it.dueAtMillis) } ?: now.plusHours(2)) }
-    var reminderEnabled by remember(initialTodo?.id) { mutableStateOf(if (isHistory) false else initialTodo?.reminderEnabled ?: true) }
-    var reminderAt by remember(initialTodo?.id) { mutableStateOf(initialTodo?.reminderAtMillis?.let(::reminderAtMillisToDateTime) ?: now.plusMinutes(30)) }
+    var category by remember(initialTodo?.id) {
+        mutableStateOf(initialTodo?.let { TodoCategory.fromKey(it.categoryKey) } ?: TodoCategory.ROUTINE)
+    }
+    var dueAt by remember(initialTodo?.id) {
+        mutableStateOf(initialTodo?.let { reminderAtMillisToDateTime(it.dueAtMillis) } ?: now.plusHours(2))
+    }
+    var reminderEnabled by remember(initialTodo?.id) {
+        mutableStateOf(if (isHistory) false else initialTodo?.reminderEnabled ?: true)
+    }
+    var reminderAt by remember(initialTodo?.id) {
+        mutableStateOf(initialTodo?.reminderAtMillis?.let(::reminderAtMillisToDateTime) ?: now.plusMinutes(30))
+    }
     var ringEnabled by remember(initialTodo?.id) { mutableStateOf(initialTodo?.ringEnabled ?: defaultRingEnabled) }
     var vibrateEnabled by remember(initialTodo?.id) { mutableStateOf(initialTodo?.vibrateEnabled ?: defaultVibrateEnabled) }
     var voiceEnabled by remember(initialTodo?.id) { mutableStateOf(initialTodo?.voiceEnabled ?: defaultVoiceEnabled) }
@@ -171,8 +180,15 @@ fun TodoEditorDialog(
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("取消")
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                if (initialTodo != null) {
+                    TextButton(onClick = onDelete) {
+                        Text("删除")
+                    }
+                }
+                TextButton(onClick = onDismiss) {
+                    Text("取消")
+                }
             }
         }
     )

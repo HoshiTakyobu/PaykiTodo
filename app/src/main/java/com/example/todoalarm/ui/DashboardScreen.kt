@@ -51,11 +51,11 @@ fun DashboardScreen(
     onRequestIgnoreBatteryOptimization: () -> Unit,
     onAddTodo: suspend (String, String, java.time.LocalDateTime, java.time.LocalDateTime?, TodoCategory, Boolean, Boolean, Boolean) -> String?,
     onUpdateTodo: suspend (TodoItem, String, String, java.time.LocalDateTime, java.time.LocalDateTime?, TodoCategory, Boolean, Boolean, Boolean) -> String?,
+    onDeleteTodo: (TodoItem) -> Unit,
     onCompleteTodo: (TodoItem) -> Unit,
     onRestoreTodo: (TodoItem) -> Unit,
     onThemeModeChange: (ThemeMode) -> Unit,
-    onDefaultSnoozeChange: (Int) -> Unit,
-    onReminderDefaultsChange: (Boolean, Boolean, Boolean) -> Unit
+    onDefaultSnoozeChange: (Int) -> Unit
 ) {
     val drawerState = rememberDrawerState(DrawerValue.Closed)
     val snackbarHostState = remember { SnackbarHostState() }
@@ -119,8 +119,7 @@ fun DashboardScreen(
                     onRequestNotificationPolicyAccess = onRequestNotificationPolicyAccess,
                     onRequestIgnoreBatteryOptimization = onRequestIgnoreBatteryOptimization,
                     onThemeModeChange = onThemeModeChange,
-                    onDefaultSnoozeChange = onDefaultSnoozeChange,
-                    onReminderDefaultsChange = onReminderDefaultsChange
+                    onDefaultSnoozeChange = onDefaultSnoozeChange
                 )
             }
         }
@@ -135,6 +134,14 @@ fun DashboardScreen(
             onDismiss = {
                 editorVisible = false
                 editingTodo = null
+            },
+            onDelete = {
+                editingTodo?.let {
+                    onDeleteTodo(it)
+                    editorVisible = false
+                    editingTodo = null
+                    scope.launch { snackbarHostState.showSnackbar("任务已删除") }
+                }
             },
             onConfirm = { title, notes, dueAt, reminderAt, category, ring, vibrate, voice ->
                 scope.launch {

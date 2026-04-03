@@ -58,11 +58,11 @@ class MainActivity : ComponentActivity() {
                     onRequestIgnoreBatteryOptimization = ::requestIgnoreBatteryOptimization,
                     onAddTodo = viewModel::addTodo,
                     onUpdateTodo = viewModel::updateTodo,
+                    onDeleteTodo = viewModel::deleteTodo,
                     onCompleteTodo = viewModel::completeTodo,
                     onRestoreTodo = viewModel::restoreTodo,
                     onThemeModeChange = viewModel::updateThemeMode,
-                    onDefaultSnoozeChange = viewModel::updateDefaultSnooze,
-                    onReminderDefaultsChange = viewModel::updateReminderDefaults
+                    onDefaultSnoozeChange = viewModel::updateDefaultSnooze
                 )
             }
         }

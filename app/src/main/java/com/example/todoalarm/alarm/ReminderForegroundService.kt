@@ -4,15 +4,9 @@ import android.app.Notification
 import android.app.Service
 import android.content.Intent
 import android.content.pm.ServiceInfo
-import android.media.AudioAttributes
-import android.media.Ringtone
-import android.media.RingtoneManager
 import android.os.Build
 import android.os.IBinder
 import android.os.PowerManager
-import android.os.VibrationEffect
-import android.os.Vibrator
-import android.os.VibratorManager
 import androidx.core.content.ContextCompat
 import com.example.todoalarm.TodoApplication
 import kotlinx.coroutines.CoroutineScope
@@ -24,9 +18,13 @@ import kotlinx.coroutines.launch
 class ReminderForegroundService : Service() {
     private val serviceJob = Job()
     private val scope = CoroutineScope(Dispatchers.Main.immediate + serviceJob)
-    private var ringtone: Ringtone? = null
-    private var vibrator: Vibrator? = null
+    private lateinit var alertController: ReminderAlertController
     private var wakeLock: PowerManager.WakeLock? = null
+
+    override fun onCreate() {
+        super.onCreate()
+        alertController = ReminderAlertController(applicationContext)
+    }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         val todoId = intent?.getLongExtra(AlarmScheduler.EXTRA_TODO_ID, -1L) ?: -1L
@@ -47,7 +45,7 @@ class ReminderForegroundService : Service() {
             val notification = notifier.build(todoItem)
             startInForeground(todoId, notification)
             notifier.show(todoItem)
-            startAlert(todoItem)
+            alertController.start(todoItem)
             wakeDevice()
             triggerReminderUi(notifier, todoItem.id)
             delay(900L)
@@ -70,7 +68,7 @@ class ReminderForegroundService : Service() {
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onDestroy() {
-        stopAlert()
+        alertController.shutdown()
         wakeLock?.let {
             if (it.isHeld) {
                 it.release()
@@ -88,41 +86,6 @@ class ReminderForegroundService : Service() {
         } else {
             startForeground(id, notification)
         }
-    }
-
-    private fun startAlert(todoItem: com.example.todoalarm.data.TodoItem) {
-        stopAlert()
-        if (todoItem.ringEnabled) {
-            val uri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
-                ?: RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
-            ringtone = RingtoneManager.getRingtone(this, uri)?.apply {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-                    isLooping = true
-                }
-                audioAttributes = AudioAttributes.Builder()
-                    .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
-                    .setUsage(AudioAttributes.USAGE_ALARM)
-                    .build()
-                play()
-            }
-        }
-        if (todoItem.vibrateEnabled) {
-            val v = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                getSystemService(VibratorManager::class.java).defaultVibrator
-            } else {
-                @Suppress("DEPRECATION")
-                getSystemService(VIBRATOR_SERVICE) as Vibrator
-            }
-            vibrator = v
-            vibrator?.vibrate(VibrationEffect.createWaveform(longArrayOf(0, 800, 350), 0))
-        }
-    }
-
-    private fun stopAlert() {
-        ringtone?.stop()
-        ringtone = null
-        vibrator?.cancel()
-        vibrator = null
     }
 
     private fun triggerReminderUi(notifier: ReminderNotifier, todoId: Long) {

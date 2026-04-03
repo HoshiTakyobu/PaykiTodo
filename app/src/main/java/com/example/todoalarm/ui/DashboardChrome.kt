@@ -134,8 +134,7 @@ internal fun DashboardBody(
     onRequestNotificationPolicyAccess: () -> Unit,
     onRequestIgnoreBatteryOptimization: () -> Unit,
     onThemeModeChange: (ThemeMode) -> Unit,
-    onDefaultSnoozeChange: (Int) -> Unit,
-    onReminderDefaultsChange: (Boolean, Boolean, Boolean) -> Unit
+    onDefaultSnoozeChange: (Int) -> Unit
 ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize().padding(padding),
@@ -161,17 +160,13 @@ internal fun DashboardBody(
                     permissions = permissions,
                     selectedThemeMode = uiState.settings.themeMode,
                     defaultSnooze = uiState.settings.defaultSnoozeMinutes,
-                    ringEnabled = uiState.settings.defaultRingEnabled,
-                    vibrateEnabled = uiState.settings.defaultVibrateEnabled,
-                    voiceEnabled = uiState.settings.defaultVoiceEnabled,
                     onRequestNotificationPermission = onRequestNotificationPermission,
                     onRequestExactAlarmPermission = onRequestExactAlarmPermission,
                     onRequestFullScreenPermission = onRequestFullScreenPermission,
                     onRequestNotificationPolicyAccess = onRequestNotificationPolicyAccess,
                     onRequestIgnoreBatteryOptimization = onRequestIgnoreBatteryOptimization,
                     onThemeModeChange = onThemeModeChange,
-                    onDefaultSnoozeChange = onDefaultSnoozeChange,
-                    onReminderDefaultsChange = onReminderDefaultsChange
+                    onDefaultSnoozeChange = onDefaultSnoozeChange
                 )
             }
         }

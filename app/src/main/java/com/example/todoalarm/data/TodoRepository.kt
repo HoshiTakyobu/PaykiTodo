@@ -19,6 +19,10 @@ class TodoRepository(
         return item
     }
 
+    suspend fun deleteTodo(id: Long) {
+        todoDao.deleteById(id)
+    }
+
     suspend fun setCompleted(id: Long, completed: Boolean): TodoItem? {
         val item = todoDao.getById(id) ?: return null
         val now = System.currentTimeMillis()

@@ -3,15 +3,8 @@ package com.example.todoalarm.ui
 import android.app.KeyguardManager
 import android.app.NotificationManager
 import android.content.Intent
-import android.media.AudioAttributes
-import android.media.Ringtone
-import android.media.RingtoneManager
 import android.os.Build
 import android.os.Bundle
-import android.os.VibrationEffect
-import android.os.Vibrator
-import android.os.VibratorManager
-import android.speech.tts.TextToSpeech
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.OnBackPressedCallback
@@ -52,6 +45,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
 import com.example.todoalarm.TodoApplication
+import com.example.todoalarm.alarm.ReminderAlertController
 import com.example.todoalarm.alarm.AlarmScheduler
 import com.example.todoalarm.alarm.ReminderForegroundService
 import com.example.todoalarm.alarm.ReminderNotifier
@@ -59,15 +53,11 @@ import com.example.todoalarm.data.TodoCategory
 import com.example.todoalarm.data.TodoItem
 import com.example.todoalarm.ui.theme.TodoAlarmTheme
 import kotlinx.coroutines.launch
-import java.util.Locale
 
-class ReminderActivity : ComponentActivity(), TextToSpeech.OnInitListener {
+class ReminderActivity : ComponentActivity() {
     private val app by lazy { application as TodoApplication }
     private var todoItem by mutableStateOf<TodoItem?>(null)
-    private var ringtone: Ringtone? = null
-    private var textToSpeech: TextToSpeech? = null
-    private var vibrator: Vibrator? = null
-    private var ttsReady = false
+    private lateinit var alertController: ReminderAlertController
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -80,14 +70,7 @@ class ReminderActivity : ComponentActivity(), TextToSpeech.OnInitListener {
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() = Unit
         })
-
-        textToSpeech = TextToSpeech(this, this)
-        vibrator = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            getSystemService(VibratorManager::class.java).defaultVibrator
-        } else {
-            @Suppress("DEPRECATION")
-            getSystemService(VIBRATOR_SERVICE) as Vibrator
-        }
+        alertController = ReminderAlertController(applicationContext)
 
         loadTodo()
 
@@ -111,15 +94,8 @@ class ReminderActivity : ComponentActivity(), TextToSpeech.OnInitListener {
     }
 
     override fun onDestroy() {
-        stopAlert()
-        textToSpeech?.shutdown()
+        alertController.shutdown()
         super.onDestroy()
-    }
-
-    override fun onInit(status: Int) {
-        ttsReady = status == TextToSpeech.SUCCESS
-        textToSpeech?.language = Locale.SIMPLIFIED_CHINESE
-        todoItem?.let(::speakIfNeeded)
     }
 
     private fun loadTodo() {
@@ -137,48 +113,8 @@ class ReminderActivity : ComponentActivity(), TextToSpeech.OnInitListener {
             stopService(Intent(this@ReminderActivity, ReminderForegroundService::class.java))
             getSystemService(NotificationManager::class.java).cancel(ReminderNotifier.notificationId(todoId))
             todoItem = item
-            startAlert(item)
+            alertController.start(item)
         }
-    }
-
-    private fun startAlert(item: TodoItem) {
-        stopAlert()
-        if (item.ringEnabled) {
-            val uri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
-                ?: RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
-            ringtone = RingtoneManager.getRingtone(this, uri)?.apply {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-                    isLooping = true
-                }
-                audioAttributes = AudioAttributes.Builder()
-                    .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
-                    .setUsage(AudioAttributes.USAGE_ALARM)
-                    .build()
-                play()
-            }
-        }
-        if (item.vibrateEnabled) {
-            vibrator?.vibrate(VibrationEffect.createWaveform(longArrayOf(0, 900, 450), 0))
-        }
-        speakIfNeeded(item)
-    }
-
-    private fun speakIfNeeded(item: TodoItem) {
-        if (item.voiceEnabled && ttsReady) {
-            textToSpeech?.speak(
-                "现在需要处理的任务是，${item.title}",
-                TextToSpeech.QUEUE_FLUSH,
-                null,
-                "todo_alarm"
-            )
-        }
-    }
-
-    private fun stopAlert() {
-        ringtone?.stop()
-        ringtone = null
-        vibrator?.cancel()
-        textToSpeech?.stop()
     }
 
     private fun completeTodo() {
@@ -188,7 +124,7 @@ class ReminderActivity : ComponentActivity(), TextToSpeech.OnInitListener {
             app.alarmScheduler.cancel(item.id)
             app.reminderNotifier.cancel(item.id)
             stopService(Intent(this@ReminderActivity, ReminderForegroundService::class.java))
-            stopAlert()
+            alertController.stop()
             finish()
         }
     }
@@ -204,7 +140,7 @@ class ReminderActivity : ComponentActivity(), TextToSpeech.OnInitListener {
             }
             stopService(Intent(this@ReminderActivity, ReminderForegroundService::class.java))
             getSystemService(NotificationManager::class.java).cancel(ReminderNotifier.notificationId(item.id))
-            stopAlert()
+            alertController.stop()
             finish()
         }
     }

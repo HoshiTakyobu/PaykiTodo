@@ -11,13 +11,10 @@ interface TodoDao {
     @Query(
         """
         SELECT * FROM todo_items
-        WHERE completed = 0
-        ORDER BY dueDateEpochDay ASC,
-        CASE WHEN reminderAtMillis IS NULL THEN 1 ELSE 0 END ASC,
-        reminderAtMillis ASC
+        ORDER BY completed ASC, dueAtMillis ASC, completedAtMillis DESC, createdAtMillis DESC
         """
     )
-    fun observeActiveTodos(): Flow<List<TodoItem>>
+    fun observeTodos(): Flow<List<TodoItem>>
 
     @Query("SELECT * FROM todo_items WHERE id = :id LIMIT 1")
     suspend fun getById(id: Long): TodoItem?
@@ -40,4 +37,3 @@ interface TodoDao {
     )
     suspend fun getFutureReminderItems(now: Long): List<TodoItem>
 }
-

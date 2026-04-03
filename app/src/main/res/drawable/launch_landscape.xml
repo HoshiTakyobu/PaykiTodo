@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item>
+        <shape android:shape="rectangle">
+            <gradient
+                android:angle="270"
+                android:startColor="#F3D7B8"
+                android:centerColor="#B8D3D8"
+                android:endColor="#5D7F78" />
+        </shape>
+    </item>
+    <item android:top="40dp">
+        <shape android:shape="oval">
+            <size android:width="220dp" android:height="220dp" />
+            <solid android:color="#55FFF3D6" />
+        </shape>
+    </item>
+    <item android:gravity="bottom">
+        <vector
+            android:width="1080dp"
+            android:height="900dp"
+            android:viewportWidth="1080"
+            android:viewportHeight="900">
+            <path
+                android:fillColor="#6B8A7A"
+                android:pathData="M0,540 C120,450 230,420 340,470 C450,520 520,610 650,600 C780,590 860,480 950,470 C1010,463 1053,478 1080,500 L1080,900 L0,900 Z" />
+            <path
+                android:fillColor="#466259"
+                android:pathData="M0,610 C110,560 180,555 270,580 C360,605 440,690 560,700 C680,710 790,640 900,620 C980,606 1040,622 1080,648 L1080,900 L0,900 Z" />
+            <path
+                android:fillColor="#2A3F42"
+                android:pathData="M0,700 C110,670 230,665 330,705 C430,745 510,805 640,810 C770,815 860,760 960,740 C1010,730 1050,738 1080,750 L1080,900 L0,900 Z" />
+            <path
+                android:fillColor="#B46C4A"
+                android:pathData="M730,500 C770,455 820,438 865,462 C910,486 923,548 890,590 C857,632 802,638 760,606 C718,574 699,536 730,500 Z" />
+        </vector>
+    </item>
+</layer-list>

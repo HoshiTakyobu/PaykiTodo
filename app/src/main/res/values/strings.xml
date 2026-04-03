@@ -1,6 +1,8 @@
 <resources>
     <string name="app_name">PaykiTodo</string>
-    <string name="channel_name">待办提醒</string>
-    <string name="channel_description">用于全屏待办提醒</string>
-    <string name="notification_body">已到提醒时间，计划时间 %1$s</string>
+    <string name="channel_name_audible">PaykiTodo 强提醒</string>
+    <string name="channel_name_vibrate">PaykiTodo 震动提醒</string>
+    <string name="channel_name_silent">PaykiTodo 静默提醒</string>
+    <string name="channel_description">用于尽量接近闹钟体验的全屏待办提醒</string>
+    <string name="notification_body">DDL：%1$s</string>
 </resources>

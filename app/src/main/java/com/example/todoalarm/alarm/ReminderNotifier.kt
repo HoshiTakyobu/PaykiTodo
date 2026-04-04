@@ -24,6 +24,7 @@ class ReminderNotifier(
         val channelId = ensureChannel(todoItem)
         val fullScreenIntent = reminderPendingIntent(todoItem.id)
         val body = reminderText(todoItem)
+
         return NotificationCompat.Builder(context, channelId)
             .setSmallIcon(R.drawable.ic_stat_alarm)
             .setContentTitle("${categoryEmoji(todoItem)} ${todoItem.title}")
@@ -37,8 +38,7 @@ class ReminderNotifier(
             .setForegroundServiceBehavior(NotificationCompat.FOREGROUND_SERVICE_IMMEDIATE)
             .setFullScreenIntent(fullScreenIntent, true)
             .setContentIntent(fullScreenIntent)
-            .setVibrate(longArrayOf(0, 450, 220, 450, 220, 800))
-            .setSilent(!todoItem.ringEnabled && !todoItem.vibrateEnabled)
+            .setSilent(true)
             .build()
     }
 
@@ -70,9 +70,9 @@ class ReminderNotifier(
 
     private fun ensureChannel(todoItem: TodoItem): String {
         val channelId = when {
-            todoItem.ringEnabled -> "paykitodo_alarm_audible_v6"
-            todoItem.vibrateEnabled -> "paykitodo_alarm_vibrate_v6"
-            else -> "paykitodo_alarm_silent_v6"
+            todoItem.ringEnabled -> "paykitodo_alarm_audible_v7"
+            todoItem.vibrateEnabled -> "paykitodo_alarm_vibrate_v7"
+            else -> "paykitodo_alarm_silent_v7"
         }
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return channelId
 
@@ -82,12 +82,8 @@ class ReminderNotifier(
             false
         }
 
-        notificationManager.getNotificationChannel(channelId)?.let { existing ->
-            val soundExpected = todoItem.ringEnabled
-            if (existing.canBypassDnd() == bypassDnd && (existing.sound != null) == soundExpected) {
-                return channelId
-            }
-            notificationManager.deleteNotificationChannel(channelId)
+        notificationManager.getNotificationChannel(channelId)?.let {
+            notificationManager.deleteNotificationChannel(it.id)
         }
 
         val channel = NotificationChannel(
@@ -98,8 +94,7 @@ class ReminderNotifier(
             description = context.getString(R.string.channel_description)
             lockscreenVisibility = NotificationCompat.VISIBILITY_PUBLIC
             enableLights(true)
-            enableVibration(todoItem.vibrateEnabled || todoItem.ringEnabled)
-            vibrationPattern = longArrayOf(0, 400, 200, 400, 200, 700)
+            enableVibration(false)
             setBypassDnd(bypassDnd)
             setSound(null, null)
         }
@@ -109,7 +104,7 @@ class ReminderNotifier(
 
     private fun reminderText(todoItem: TodoItem): String {
         val due = formatLocalDateTime(reminderAtMillisToDateTime(todoItem.dueAtMillis))
-        return "⏰ DDL $due"
+        return "\u23F0 DDL $due"
     }
 
     private fun channelName(todoItem: TodoItem): String = when {
@@ -119,10 +114,10 @@ class ReminderNotifier(
     }
 
     private fun categoryEmoji(todoItem: TodoItem): String = when (TodoCategory.fromKey(todoItem.categoryKey)) {
-        TodoCategory.IMPORTANT -> "⭐"
-        TodoCategory.URGENT -> "🚨"
-        TodoCategory.FOCUS -> "🎯"
-        TodoCategory.ROUTINE -> "🌿"
+        TodoCategory.IMPORTANT -> "\u2B50"
+        TodoCategory.URGENT -> "\u26A0\uFE0F"
+        TodoCategory.FOCUS -> "\uD83C\uDFAF"
+        TodoCategory.ROUTINE -> "\uD83E\uDDFD"
     }
 
     companion object {

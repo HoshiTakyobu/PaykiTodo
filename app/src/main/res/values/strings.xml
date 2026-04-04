@@ -3,6 +3,6 @@
     <string name="channel_name_audible">PaykiTodo 强提醒</string>
     <string name="channel_name_vibrate">PaykiTodo 震动提醒</string>
     <string name="channel_name_silent">PaykiTodo 静默提醒</string>
-    <string name="channel_description">用于尽量接近闹钟体验的全屏待办提醒</string>
+    <string name="channel_description">用于任务提醒与全屏唤起</string>
     <string name="notification_body">DDL：%1$s</string>
 </resources>

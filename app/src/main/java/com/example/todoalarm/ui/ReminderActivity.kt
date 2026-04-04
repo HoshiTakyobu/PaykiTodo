@@ -10,6 +10,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -157,10 +158,11 @@ private fun ReminderScreen(
             .background(
                 Brush.verticalGradient(
                     listOf(
-                        MaterialTheme.colorScheme.primary.copy(alpha = 0.18f),
-                        MaterialTheme.colorScheme.tertiary.copy(alpha = 0.12f),
-                        MaterialTheme.colorScheme.background,
-                        MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f)
+                        MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),
+                        MaterialTheme.colorScheme.tertiary.copy(alpha = 0.16f),
+                        MaterialTheme.colorScheme.secondary.copy(alpha = 0.1f),
+                        MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.2f),
+                        MaterialTheme.colorScheme.background
                     )
                 )
             )
@@ -209,7 +211,7 @@ private fun ReminderScreen(
                 ) {
                     ReminderCategoryChip(category = category)
                     Text(
-                        text = todoItem?.title ?: "正在载入任务...",
+                        text = todoItem?.title ?: "正在加载任务...",
                         modifier = Modifier.weight(1f),
                         style = MaterialTheme.typography.headlineSmall.copy(lineHeight = 28.sp),
                         fontWeight = FontWeight.Bold,
@@ -219,11 +221,11 @@ private fun ReminderScreen(
 
                 todoItem?.let { item ->
                     ReminderMetaCard(
-                        label = "⏰ DDL",
+                        label = "\u23F0 DDL",
                         value = formatLocalDateTime(reminderAtMillisToDateTime(item.dueAtMillis)),
                         containerBrush = Brush.horizontalGradient(
                             listOf(
-                                MaterialTheme.colorScheme.primary.copy(alpha = 0.18f),
+                                MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),
                                 MaterialTheme.colorScheme.primary.copy(alpha = 0.08f)
                             )
                         ),
@@ -243,7 +245,7 @@ private fun ReminderScreen(
                             verticalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
                             Text(
-                                text = "📝 备注",
+                                text = "\uD83D\uDCDD 备注",
                                 style = MaterialTheme.typography.labelLarge,
                                 fontWeight = FontWeight.SemiBold,
                                 color = MaterialTheme.colorScheme.onSurface
@@ -345,14 +347,15 @@ private fun ReminderScreen(
 @Composable
 private fun ReminderCategoryChip(category: TodoCategory) {
     val tint = categoryReminderTint(category)
+    val darkTheme = isSystemInDarkTheme()
     Surface(
         shape = RoundedCornerShape(14.dp),
-        color = tint.copy(alpha = 0.16f)
+        color = if (darkTheme) tint.copy(alpha = 0.42f) else tint.copy(alpha = 0.16f)
     ) {
         Text(
             text = "${reminderEmoji(category)} ${category.label}",
             modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-            color = tint,
+            color = if (darkTheme) Color.White else tint,
             style = MaterialTheme.typography.labelLarge,
             fontWeight = FontWeight.SemiBold
         )
@@ -399,10 +402,10 @@ private fun ReminderMetaCard(
 }
 
 private fun reminderEmoji(category: TodoCategory): String = when (category) {
-    TodoCategory.IMPORTANT -> "⭐"
-    TodoCategory.URGENT -> "🚨"
-    TodoCategory.FOCUS -> "🎯"
-    TodoCategory.ROUTINE -> "🌿"
+    TodoCategory.IMPORTANT -> "\u2B50"
+    TodoCategory.URGENT -> "\u26A0\uFE0F"
+    TodoCategory.FOCUS -> "\uD83C\uDFAF"
+    TodoCategory.ROUTINE -> "\uD83E\uDDFD"
 }
 
 @Composable

@@ -40,6 +40,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
@@ -54,12 +55,17 @@ import java.time.LocalTime
 
 @Composable
 internal fun DashboardBackgroundBrush(): Brush {
-    return Brush.verticalGradient(
-        listOf(
-            MaterialTheme.colorScheme.background,
-            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.38f),
-            MaterialTheme.colorScheme.background
-        )
+    val colors = MaterialTheme.colorScheme
+    return Brush.linearGradient(
+        colors = listOf(
+            colors.primary.copy(alpha = 0.16f),
+            colors.tertiary.copy(alpha = 0.13f),
+            colors.secondary.copy(alpha = 0.1f),
+            colors.surfaceVariant.copy(alpha = 0.12f),
+            colors.background
+        ),
+        start = Offset.Zero,
+        end = Offset(1300f, 2100f)
     )
 }
 

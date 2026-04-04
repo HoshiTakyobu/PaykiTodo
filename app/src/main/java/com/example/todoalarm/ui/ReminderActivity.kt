@@ -54,6 +54,7 @@ import com.example.todoalarm.data.TodoCategory
 import com.example.todoalarm.data.TodoItem
 import com.example.todoalarm.ui.theme.TodoAlarmTheme
 import kotlinx.coroutines.launch
+import java.time.ZoneId
 
 class ReminderActivity : ComponentActivity() {
     private val app by lazy { application as TodoApplication }
@@ -105,8 +106,6 @@ class ReminderActivity : ComponentActivity() {
                 finish()
                 return@launch
             }
-            stopService(Intent(this@ReminderActivity, ReminderForegroundService::class.java))
-            getSystemService(NotificationManager::class.java).cancel(ReminderNotifier.notificationId(todoId))
             todoItem = item
         }
     }
@@ -126,7 +125,7 @@ class ReminderActivity : ComponentActivity() {
     private fun snooze(minutes: Int) {
         val item = todoItem ?: return
         lifecycleScope.launch {
-            val nextReminder = System.currentTimeMillis() + minutes * 60_000L
+            val nextReminder = nextMinuteAlignedReminder(minutes)
             app.alarmScheduler.cancel(item.id)
             val updated = app.repository.snoozeTodo(item.id, nextReminder)
             if (updated != null) {
@@ -137,6 +136,15 @@ class ReminderActivity : ComponentActivity() {
             getSystemService(NotificationManager::class.java).cancel(ReminderNotifier.notificationId(item.id))
             finish()
         }
+    }
+
+    private fun nextMinuteAlignedReminder(minutes: Int): Long {
+        val zoneId = ZoneId.systemDefault()
+        val nextReminder = java.time.LocalDateTime.now(zoneId)
+            .withSecond(0)
+            .withNano(0)
+            .plusMinutes(minutes.toLong())
+        return nextReminder.atZone(zoneId).toInstant().toEpochMilli()
     }
 }
 

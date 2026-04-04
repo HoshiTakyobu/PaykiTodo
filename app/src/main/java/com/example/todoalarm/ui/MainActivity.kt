@@ -2,6 +2,9 @@ package com.example.todoalarm.ui
 
 import android.Manifest
 import android.app.NotificationManager
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.ComponentName
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
@@ -9,6 +12,7 @@ import android.os.Build
 import android.os.Bundle
 import android.os.PowerManager
 import android.provider.Settings
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -19,10 +23,11 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.example.todoalarm.CrashLogger
 import com.example.todoalarm.TodoApplication
+import com.example.todoalarm.accessibility.ReminderAccessibilityService
 import com.example.todoalarm.alarm.ActiveReminderStore
 import com.example.todoalarm.alarm.AlarmScheduler
-import com.example.todoalarm.ui.ReminderActivity
 import com.example.todoalarm.ui.theme.TodoAlarmTheme
 
 data class PermissionSnapshot(
@@ -30,12 +35,17 @@ data class PermissionSnapshot(
     val exactAlarmGranted: Boolean = true,
     val fullScreenGranted: Boolean = true,
     val dndAccessGranted: Boolean = true,
-    val batteryOptimizationIgnored: Boolean = false
+    val batteryOptimizationIgnored: Boolean = false,
+    val accessibilityServiceEnabled: Boolean = false,
+    val lastCrashLog: String? = null,
+    val copyCrashLog: () -> Unit = {},
+    val clearCrashLog: () -> Unit = {}
 )
 
 class MainActivity : ComponentActivity() {
     private val viewModel: TodoViewModel by viewModels()
     private var permissions by mutableStateOf(PermissionSnapshot())
+    private var lastCrashLog by mutableStateOf<String?>(null)
     private var lastOpenedReminderId: Long = -1L
     private var lastOpenedReminderAt: Long = 0L
 
@@ -48,7 +58,12 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        lastCrashLog = CrashLogger.readLastCrash(this)
         refreshPermissions()
+
+        if (!lastCrashLog.isNullOrBlank()) {
+            Toast.makeText(this, "检测到上次异常退出，可在设置页查看崩溃日志。", Toast.LENGTH_LONG).show()
+        }
 
         setContent {
             val uiState = viewModel.uiState.collectAsStateWithLifecycle().value
@@ -61,6 +76,7 @@ class MainActivity : ComponentActivity() {
                     onRequestFullScreenPermission = ::openFullScreenSettings,
                     onRequestNotificationPolicyAccess = ::openNotificationPolicySettings,
                     onRequestIgnoreBatteryOptimization = ::requestIgnoreBatteryOptimization,
+                    onRequestAccessibilityService = ::openAccessibilitySettings,
                     onAddTodo = viewModel::addTodo,
                     onUpdateTodo = viewModel::updateTodo,
                     onDeleteTodo = viewModel::deleteTodo,
@@ -108,7 +124,11 @@ class MainActivity : ComponentActivity() {
                 powerManager.isIgnoringBatteryOptimizations(packageName)
             } else {
                 true
-            }
+            },
+            accessibilityServiceEnabled = isReminderAccessibilityEnabled(),
+            lastCrashLog = lastCrashLog,
+            copyCrashLog = ::copyCrashLog,
+            clearCrashLog = ::clearCrashLog
         )
     }
 
@@ -162,6 +182,10 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    private fun openAccessibilitySettings() {
+        startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
+    }
+
     private fun openActiveReminderIfNeeded() {
         val todoId = ActiveReminderStore.getActiveTodoId(this)
         if (todoId <= 0L) return
@@ -175,5 +199,30 @@ class MainActivity : ComponentActivity() {
                 putExtra(AlarmScheduler.EXTRA_TODO_ID, todoId)
             }
         )
+    }
+
+    private fun copyCrashLog() {
+        val crashLog = lastCrashLog ?: return
+        val clipboard = getSystemService(ClipboardManager::class.java)
+        clipboard.setPrimaryClip(ClipData.newPlainText("PaykiTodoCrashLog", crashLog))
+        Toast.makeText(this, "崩溃日志已复制。", Toast.LENGTH_SHORT).show()
+    }
+
+    private fun clearCrashLog() {
+        CrashLogger.clearLastCrash(this)
+        lastCrashLog = null
+        refreshPermissions()
+        Toast.makeText(this, "崩溃日志已清空。", Toast.LENGTH_SHORT).show()
+    }
+
+    private fun isReminderAccessibilityEnabled(): Boolean {
+        val enabledServices = Settings.Secure.getString(
+            contentResolver,
+            Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES
+        ).orEmpty()
+        if (enabledServices.isBlank()) return false
+
+        val expected = ComponentName(this, ReminderAccessibilityService::class.java).flattenToString()
+        return enabledServices.split(':').any { it.equals(expected, ignoreCase = true) }
     }
 }

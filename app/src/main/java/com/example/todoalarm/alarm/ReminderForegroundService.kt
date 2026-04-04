@@ -55,7 +55,6 @@ class ReminderForegroundService : Service() {
             registerUserPresentReceiver()
             val notification = notifier.build(todoItem)
             startInForeground(todoId, notification)
-            notifier.show(todoItem)
             alertController.start(todoItem)
             wakeDevice()
             triggerReminderUi(notifier, todoItem.id)

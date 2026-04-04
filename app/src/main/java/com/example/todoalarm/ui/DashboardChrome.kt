@@ -88,10 +88,10 @@ internal fun DashboardDrawer(current: DashboardSection, onSelect: (DashboardSect
             Surface(shape = CircleShape, color = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)) {
                 Box(Modifier.size(52.dp), contentAlignment = Alignment.Center) {
                     Image(
-                        painter = painterResource(id = R.mipmap.ic_launcher_round),
+                        painter = painterResource(id = R.drawable.ic_launcher_foreground),
                         contentDescription = "应用图标",
-                        modifier = Modifier.size(44.dp),
-                        contentScale = ContentScale.Crop
+                        modifier = Modifier.size(40.dp),
+                        contentScale = ContentScale.Fit
                     )
                 }
             }
@@ -164,6 +164,7 @@ internal fun DashboardBody(
     onRequestFullScreenPermission: () -> Unit,
     onRequestNotificationPolicyAccess: () -> Unit,
     onRequestIgnoreBatteryOptimization: () -> Unit,
+    onRequestAccessibilityService: () -> Unit,
     onThemeModeChange: (ThemeMode) -> Unit,
     onDefaultSnoozeChange: (Int) -> Unit
 ) {
@@ -208,13 +209,17 @@ internal fun DashboardBody(
                     permissions = permissions,
                     selectedThemeMode = uiState.settings.themeMode,
                     defaultSnooze = uiState.settings.defaultSnoozeMinutes,
+                    crashLog = permissions.lastCrashLog,
                     onRequestNotificationPermission = onRequestNotificationPermission,
                     onRequestExactAlarmPermission = onRequestExactAlarmPermission,
                     onRequestFullScreenPermission = onRequestFullScreenPermission,
                     onRequestNotificationPolicyAccess = onRequestNotificationPolicyAccess,
                     onRequestIgnoreBatteryOptimization = onRequestIgnoreBatteryOptimization,
+                    onRequestAccessibilityService = onRequestAccessibilityService,
                     onThemeModeChange = onThemeModeChange,
-                    onDefaultSnoozeChange = onDefaultSnoozeChange
+                    onDefaultSnoozeChange = onDefaultSnoozeChange,
+                    onCopyCrashLog = permissions.copyCrashLog,
+                    onClearCrashLog = permissions.clearCrashLog
                 )
             }
         }

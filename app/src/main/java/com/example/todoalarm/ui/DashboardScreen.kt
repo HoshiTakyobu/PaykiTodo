@@ -3,11 +3,11 @@ package com.example.todoalarm.ui
 import android.app.Activity
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.Image
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.History
 import androidx.compose.material.icons.rounded.Settings
@@ -30,9 +30,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import com.example.todoalarm.R
 import com.example.todoalarm.data.ThemeMode
@@ -57,6 +57,7 @@ fun DashboardScreen(
     onRequestFullScreenPermission: () -> Unit,
     onRequestNotificationPolicyAccess: () -> Unit,
     onRequestIgnoreBatteryOptimization: () -> Unit,
+    onRequestAccessibilityService: () -> Unit,
     onAddTodo: suspend (String, String, java.time.LocalDateTime, java.time.LocalDateTime?, TodoCategory, Boolean, Boolean, Boolean) -> String?,
     onUpdateTodo: suspend (TodoItem, String, String, java.time.LocalDateTime, java.time.LocalDateTime?, TodoCategory, Boolean, Boolean, Boolean) -> String?,
     onDeleteTodo: (TodoItem) -> Unit,
@@ -113,9 +114,7 @@ fun DashboardScreen(
             }
         }
     ) {
-        Box(
-            modifier = Modifier.fillMaxSize()
-        ) {
+        Box(modifier = Modifier.fillMaxSize()) {
             Image(
                 painter = painterResource(id = R.drawable.dashboard_bg),
                 contentDescription = null,
@@ -163,6 +162,7 @@ fun DashboardScreen(
                     onRequestFullScreenPermission = onRequestFullScreenPermission,
                     onRequestNotificationPolicyAccess = onRequestNotificationPolicyAccess,
                     onRequestIgnoreBatteryOptimization = onRequestIgnoreBatteryOptimization,
+                    onRequestAccessibilityService = onRequestAccessibilityService,
                     onThemeModeChange = onThemeModeChange,
                     onDefaultSnoozeChange = onDefaultSnoozeChange
                 )
@@ -191,21 +191,30 @@ fun DashboardScreen(
             onConfirm = { title, notes, dueAt, reminderAt, category, ring, vibrate, voice ->
                 scope.launch {
                     val current = editingTodo
-                    val error = if (current == null) {
+                    val message = if (current == null) {
                         onAddTodo(title, notes, dueAt, reminderAt, category, ring, vibrate, voice)
                     } else {
                         onUpdateTodo(current, title, notes, dueAt, reminderAt, category, ring, vibrate, voice)
                     }
-                    if (error == null) {
-                        editorVisible = false
-                        editingTodo = null
-                        Toast.makeText(
-                            context,
-                            if (current == null) "任务已创建" else "任务已更新",
-                            Toast.LENGTH_SHORT
-                        ).show()
-                    } else {
-                        Toast.makeText(context, error, Toast.LENGTH_SHORT).show()
+
+                    when {
+                        message == null -> {
+                            editorVisible = false
+                            editingTodo = null
+                            Toast.makeText(
+                                context,
+                                if (current == null) "任务已创建" else "任务已更新",
+                                Toast.LENGTH_SHORT
+                            ).show()
+                        }
+                        message.startsWith("WARN:") -> {
+                            editorVisible = false
+                            editingTodo = null
+                            Toast.makeText(context, message.removePrefix("WARN:"), Toast.LENGTH_LONG).show()
+                        }
+                        else -> {
+                            Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+                        }
                     }
                 }
             }

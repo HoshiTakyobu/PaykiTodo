@@ -9,6 +9,11 @@ import com.example.todoalarm.data.AppSettingsStore
 import com.example.todoalarm.data.TodoRepository
 
 class TodoApplication : Application() {
+    override fun onCreate() {
+        super.onCreate()
+        CrashLogger.install(this)
+    }
+
     val database: AppDatabase by lazy {
         Room.databaseBuilder(
             applicationContext,

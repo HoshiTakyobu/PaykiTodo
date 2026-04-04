@@ -84,7 +84,13 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
         )
 
         val inserted = repository.addTodo(todoItem)
-        if (inserted.reminderEnabled) alarmScheduler.schedule(inserted)
+        if (!inserted.reminderEnabled) return null
+
+        val scheduleMessage = alarmScheduler.schedule(inserted)
+        if (scheduleMessage != null) {
+            repository.updateTodo(inserted.copy(reminderEnabled = false))
+            return "WARN:任务已创建，但$scheduleMessage"
+        }
         return null
     }
 
@@ -126,7 +132,11 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
         if (updated.completed || !updated.reminderEnabled) {
             alarmScheduler.cancel(updated.id)
         } else {
-            alarmScheduler.schedule(updated)
+            val scheduleMessage = alarmScheduler.schedule(updated)
+            if (scheduleMessage != null) {
+                repository.updateTodo(updated.copy(reminderEnabled = false))
+                return "WARN:任务已更新，但$scheduleMessage"
+            }
         }
         return null
     }
@@ -143,7 +153,12 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
     fun restoreTodo(todoItem: TodoItem) {
         viewModelScope.launch {
             val restored = repository.setCompleted(todoItem.id, false)
-            if (restored?.reminderEnabled == true) alarmScheduler.schedule(restored)
+            if (restored?.reminderEnabled == true) {
+                val scheduleMessage = alarmScheduler.schedule(restored)
+                if (scheduleMessage != null) {
+                    repository.updateTodo(restored.copy(reminderEnabled = false))
+                }
+            }
         }
     }
 

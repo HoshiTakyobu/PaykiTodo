@@ -35,10 +35,11 @@ class ReminderNotifier(
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .setOngoing(true)
             .setAutoCancel(false)
+            .setOnlyAlertOnce(true)
+            .setDefaults(0)
             .setForegroundServiceBehavior(NotificationCompat.FOREGROUND_SERVICE_IMMEDIATE)
             .setFullScreenIntent(fullScreenIntent, true)
             .setContentIntent(fullScreenIntent)
-            .setSilent(true)
             .build()
     }
 
@@ -70,9 +71,9 @@ class ReminderNotifier(
 
     private fun ensureChannel(todoItem: TodoItem): String {
         val channelId = when {
-            todoItem.ringEnabled -> "paykitodo_alarm_audible_v7"
-            todoItem.vibrateEnabled -> "paykitodo_alarm_vibrate_v7"
-            else -> "paykitodo_alarm_silent_v7"
+            todoItem.ringEnabled -> "paykitodo_alarm_audible_v9"
+            todoItem.vibrateEnabled -> "paykitodo_alarm_vibrate_v9"
+            else -> "paykitodo_alarm_silent_v9"
         }
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return channelId
 
@@ -83,7 +84,7 @@ class ReminderNotifier(
         }
 
         notificationManager.getNotificationChannel(channelId)?.let {
-            notificationManager.deleteNotificationChannel(it.id)
+            return channelId
         }
 
         val channel = NotificationChannel(
@@ -95,6 +96,7 @@ class ReminderNotifier(
             lockscreenVisibility = NotificationCompat.VISIBILITY_PUBLIC
             enableLights(true)
             enableVibration(false)
+            vibrationPattern = longArrayOf(0L)
             setBypassDnd(bypassDnd)
             setSound(null, null)
         }

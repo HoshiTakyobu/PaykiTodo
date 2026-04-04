@@ -9,8 +9,11 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.Article
 import androidx.compose.material.icons.rounded.Alarm
 import androidx.compose.material.icons.rounded.DarkMode
 import androidx.compose.material.icons.rounded.Notifications
@@ -43,15 +46,20 @@ fun SettingsPanel(
     permissions: PermissionSnapshot,
     selectedThemeMode: ThemeMode,
     defaultSnooze: Int,
+    crashLog: String?,
     onRequestNotificationPermission: () -> Unit,
     onRequestExactAlarmPermission: () -> Unit,
     onRequestFullScreenPermission: () -> Unit,
     onRequestNotificationPolicyAccess: () -> Unit,
     onRequestIgnoreBatteryOptimization: () -> Unit,
+    onRequestAccessibilityService: () -> Unit,
     onThemeModeChange: (ThemeMode) -> Unit,
-    onDefaultSnoozeChange: (Int) -> Unit
+    onDefaultSnoozeChange: (Int) -> Unit,
+    onCopyCrashLog: () -> Unit,
+    onClearCrashLog: () -> Unit
 ) {
     var showSnoozeDialog by remember { mutableStateOf(false) }
+    var showCrashDialog by remember(crashLog) { mutableStateOf(false) }
 
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
         PrefCard("提醒权限") {
@@ -60,7 +68,9 @@ fun SettingsPanel(
             PermissionRow(Icons.Rounded.TaskAlt, "全屏提醒", permissions.fullScreenGranted, "去设置", onRequestFullScreenPermission)
             PermissionRow(Icons.Rounded.Security, "免打扰穿透", permissions.dndAccessGranted, "去设置", onRequestNotificationPolicyAccess)
             PermissionRow(Icons.Rounded.Alarm, "忽略电池优化", permissions.batteryOptimizationIgnored, "去设置", onRequestIgnoreBatteryOptimization)
+            PermissionRow(Icons.Rounded.Security, "辅助功能提醒", permissions.accessibilityServiceEnabled, "去设置", onRequestAccessibilityService)
         }
+
         PrefCard("显示模式") {
             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 ThemeMode.entries.forEach { mode ->
@@ -73,10 +83,27 @@ fun SettingsPanel(
                 }
             }
         }
+
         PrefCard("默认延后时长") {
             Text("点击按钮后再选择默认延后时长，避免滑动页面时误触。", color = MaterialTheme.colorScheme.onSurfaceVariant)
             OutlinedButton(onClick = { showSnoozeDialog = true }) {
                 Text("当前：${normalizeSnooze(defaultSnooze)} 分钟")
+            }
+        }
+
+        PrefCard("崩溃日志") {
+            Text(
+                text = if (crashLog.isNullOrBlank()) "当前没有记录到新的异常退出日志。" else "已记录最近一次异常退出日志，可直接查看并复制给我。",
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                OutlinedButton(onClick = { showCrashDialog = true }, enabled = !crashLog.isNullOrBlank()) {
+                    Icon(Icons.AutoMirrored.Rounded.Article, contentDescription = null)
+                    Text("查看日志")
+                }
+                OutlinedButton(onClick = onClearCrashLog, enabled = !crashLog.isNullOrBlank()) {
+                    Text("清空日志")
+                }
             }
         }
     }
@@ -89,6 +116,14 @@ fun SettingsPanel(
                 onDefaultSnoozeChange(it)
                 showSnoozeDialog = false
             }
+        )
+    }
+
+    if (showCrashDialog && !crashLog.isNullOrBlank()) {
+        CrashLogDialog(
+            crashLog = crashLog,
+            onDismiss = { showCrashDialog = false },
+            onCopy = onCopyCrashLog
         )
     }
 }
@@ -137,6 +172,38 @@ private fun SnoozePickerDialog(
         dismissButton = {
             TextButton(onClick = onDismiss) {
                 Text("取消")
+            }
+        }
+    )
+}
+
+@Composable
+private fun CrashLogDialog(
+    crashLog: String,
+    onDismiss: () -> Unit,
+    onCopy: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("最近一次崩溃日志") },
+        text = {
+            Text(
+                text = crashLog,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState()),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+        },
+        confirmButton = {
+            TextButton(onClick = onCopy) {
+                Text("复制")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("关闭")
             }
         }
     )

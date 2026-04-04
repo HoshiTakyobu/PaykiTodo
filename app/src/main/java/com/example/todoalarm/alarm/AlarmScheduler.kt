@@ -6,7 +6,6 @@ import android.content.Context
 import android.content.Intent
 import android.os.Build
 import com.example.todoalarm.data.TodoItem
-import com.example.todoalarm.ui.MainActivity
 
 class AlarmScheduler(
     private val context: Context
@@ -21,40 +20,39 @@ class AlarmScheduler(
         }
     }
 
-    fun schedule(todoItem: TodoItem) {
-        val triggerAtMillis = todoItem.reminderAtMillis ?: return
+    fun schedule(todoItem: TodoItem): String? {
+        val triggerAtMillis = todoItem.reminderAtMillis ?: return null
         if (todoItem.completed || !todoItem.reminderEnabled) {
             cancel(todoItem.id)
-            return
+            return null
         }
 
-        val alarmClockIntent = buildBroadcastIntent(todoItem.id, ACTION_ALARM_CLOCK, ALARM_CLOCK_OFFSET)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && !alarmManager.canScheduleExactAlarms()) {
+            return "系统未授予精确闹钟权限，提醒尚未启用。"
+        }
+
         val exactIntent = buildBroadcastIntent(todoItem.id, ACTION_EXACT, EXACT_OFFSET)
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-            alarmManager.setAlarmClock(
-                AlarmManager.AlarmClockInfo(triggerAtMillis, buildPreviewIntent(todoItem.id)),
-                alarmClockIntent
-            )
-        }
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            alarmManager.setExactAndAllowWhileIdle(
-                AlarmManager.RTC_WAKEUP,
-                triggerAtMillis,
-                exactIntent
-            )
-        } else {
-            alarmManager.setExact(
-                AlarmManager.RTC_WAKEUP,
-                triggerAtMillis,
-                exactIntent
-            )
+        return runCatching {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                alarmManager.setExactAndAllowWhileIdle(
+                    AlarmManager.RTC_WAKEUP,
+                    triggerAtMillis,
+                    exactIntent
+                )
+            } else {
+                alarmManager.setExact(
+                    AlarmManager.RTC_WAKEUP,
+                    triggerAtMillis,
+                    exactIntent
+                )
+            }
+        }.exceptionOrNull()?.let { throwable ->
+            cancel(todoItem.id)
+            "系统拒绝设置提醒：${throwable.javaClass.simpleName}"
         }
     }
 
     fun cancel(todoId: Long) {
-        alarmManager.cancel(buildBroadcastIntent(todoId, ACTION_ALARM_CLOCK, ALARM_CLOCK_OFFSET))
         alarmManager.cancel(buildBroadcastIntent(todoId, ACTION_EXACT, EXACT_OFFSET))
     }
 
@@ -75,26 +73,10 @@ class AlarmScheduler(
         )
     }
 
-    private fun buildPreviewIntent(todoId: Long): PendingIntent {
-        val intent = Intent(context, MainActivity::class.java).apply {
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
-            putExtra(EXTRA_TODO_ID, todoId)
-        }
-        return PendingIntent.getActivity(
-            context,
-            requestCodeFor(todoId) + PREVIEW_OFFSET,
-            intent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
-    }
-
     companion object {
         const val EXTRA_TODO_ID = "extra_todo_id"
-        private const val ACTION_ALARM_CLOCK = "com.paykitodo.app.ALARM_CLOCK"
         private const val ACTION_EXACT = "com.paykitodo.app.EXACT"
-        private const val ALARM_CLOCK_OFFSET = 0
         private const val EXACT_OFFSET = 10_000
-        private const val PREVIEW_OFFSET = 20_000
 
         fun requestCodeFor(todoId: Long): Int {
             return (todoId xor (todoId ushr 32)).toInt()

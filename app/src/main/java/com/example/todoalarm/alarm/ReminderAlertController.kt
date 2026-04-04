@@ -2,82 +2,127 @@ package com.example.todoalarm.alarm
 
 import android.content.Context
 import android.media.AudioAttributes
-import android.media.MediaPlayer
-import android.media.RingtoneManager
+import android.media.AudioFormat
+import android.media.AudioTrack
 import android.os.Build
+import android.os.Handler
+import android.os.Looper
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
-import android.speech.tts.TextToSpeech
 import com.example.todoalarm.data.TodoItem
-import java.util.Locale
+import kotlin.math.PI
+import kotlin.math.sin
 
 internal class ReminderAlertController(
     private val context: Context
-) : TextToSpeech.OnInitListener {
-    private var mediaPlayer: MediaPlayer? = null
+) {
     private var vibrator: Vibrator? = null
-    private var textToSpeech: TextToSpeech? = null
-    private var ttsReady = false
-    private var pendingSpeech: String? = null
+    private var audioTrack: AudioTrack? = null
+    private val handler = Handler(Looper.getMainLooper())
+    private var releaseRunnable: Runnable? = null
 
     fun start(todoItem: TodoItem) {
         stop()
         if (todoItem.ringEnabled) {
-            startSound()
+            playSingleMelody()
         }
         if (todoItem.vibrateEnabled) {
-            ensureVibrator().vibrate(VibrationEffect.createWaveform(longArrayOf(0, 900, 450), 0))
-        }
-        if (todoItem.voiceEnabled) {
-            val speech = "现在需要处理的任务是，${todoItem.title}"
-            pendingSpeech = speech
-            ensureTts()
-            speakPendingIfReady()
+            ensureVibrator().vibrate(VibrationEffect.createWaveform(longArrayOf(0, 260, 100, 260), -1))
         }
     }
 
     fun stop() {
-        mediaPlayer?.runCatching {
-            if (isPlaying) stop()
+        releaseRunnable?.let(handler::removeCallbacks)
+        releaseRunnable = null
+        audioTrack?.runCatching {
+            if (playState == AudioTrack.PLAYSTATE_PLAYING) {
+                stop()
+            }
         }
-        mediaPlayer?.release()
-        mediaPlayer = null
+        audioTrack?.release()
+        audioTrack = null
         vibrator?.cancel()
-        textToSpeech?.stop()
     }
 
     fun shutdown() {
         stop()
-        textToSpeech?.shutdown()
-        textToSpeech = null
-        ttsReady = false
-        pendingSpeech = null
     }
 
-    override fun onInit(status: Int) {
-        ttsReady = status == TextToSpeech.SUCCESS
-        textToSpeech?.language = Locale.SIMPLIFIED_CHINESE
-        speakPendingIfReady()
-    }
+    private fun playSingleMelody() {
+        val sampleRate = 22050
+        val melody = listOf(
+            Note(293.66, 170), // Re
+            Note(440.00, 170), // La
+            Note(392.00, 170), // Sol
+            Note(587.33, 240)  // Re (high)
+        )
+        val pcm = buildMelodyPcm(melody, sampleRate)
+        if (pcm.isEmpty()) return
 
-    private fun startSound() {
-        val uri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
-            ?: RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
-            ?: return
-
-        mediaPlayer = MediaPlayer().apply {
-            setDataSource(context, uri)
-            setAudioAttributes(
+        val minBuffer = AudioTrack.getMinBufferSize(
+            sampleRate,
+            AudioFormat.CHANNEL_OUT_MONO,
+            AudioFormat.ENCODING_PCM_16BIT
+        )
+        val bufferSize = maxOf(minBuffer, pcm.size * 2)
+        val track = AudioTrack.Builder()
+            .setAudioAttributes(
                 AudioAttributes.Builder()
-                    .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
                     .setUsage(AudioAttributes.USAGE_ALARM)
+                    .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
                     .build()
             )
-            isLooping = true
-            prepare()
-            start()
+            .setAudioFormat(
+                AudioFormat.Builder()
+                    .setSampleRate(sampleRate)
+                    .setEncoding(AudioFormat.ENCODING_PCM_16BIT)
+                    .setChannelMask(AudioFormat.CHANNEL_OUT_MONO)
+                    .build()
+            )
+            .setBufferSizeInBytes(bufferSize)
+            .setTransferMode(AudioTrack.MODE_STATIC)
+            .build()
+
+        track.write(pcm, 0, pcm.size)
+        track.play()
+        audioTrack = track
+        val durationMs = ((pcm.size * 1000L) / sampleRate) + 150L
+        releaseRunnable = Runnable { stop() }.also {
+            handler.postDelayed(it, durationMs)
         }
+    }
+
+    private fun buildMelodyPcm(melody: List<Note>, sampleRate: Int): ShortArray {
+        if (melody.isEmpty()) return shortArrayOf()
+        val gapMs = 35
+        val totalSamples = melody.sumOf { millisToSamples(it.durationMs + gapMs, sampleRate) }
+        val data = ShortArray(totalSamples)
+        var cursor = 0
+        val amplitude = 0.55
+
+        for (note in melody) {
+            val noteSamples = millisToSamples(note.durationMs, sampleRate)
+            for (i in 0 until noteSamples) {
+                val t = i / sampleRate.toDouble()
+                val envelope = when {
+                    i < noteSamples * 0.15 -> i / (noteSamples * 0.15)
+                    i > noteSamples * 0.85 -> (noteSamples - i) / (noteSamples * 0.15)
+                    else -> 1.0
+                }.coerceIn(0.0, 1.0)
+                val sample = (sin(2.0 * PI * note.frequency * t) * envelope * amplitude * Short.MAX_VALUE).toInt()
+                data[cursor++] = sample.toShort()
+            }
+            val gapSamples = millisToSamples(gapMs, sampleRate)
+            repeat(gapSamples) {
+                data[cursor++] = 0
+            }
+        }
+        return data
+    }
+
+    private fun millisToSamples(ms: Int, sampleRate: Int): Int {
+        return (ms * sampleRate / 1000.0).toInt()
     }
 
     private fun ensureVibrator(): Vibrator {
@@ -93,15 +138,8 @@ internal class ReminderAlertController(
         return created
     }
 
-    private fun ensureTts() {
-        if (textToSpeech == null) {
-            textToSpeech = TextToSpeech(context, this)
-        }
-    }
-
-    private fun speakPendingIfReady() {
-        val speech = pendingSpeech ?: return
-        if (!ttsReady) return
-        textToSpeech?.speak(speech, TextToSpeech.QUEUE_FLUSH, null, "todo_alarm")
-    }
+    private data class Note(
+        val frequency: Double,
+        val durationMs: Int
+    )
 }

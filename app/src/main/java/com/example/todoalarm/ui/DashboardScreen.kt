@@ -1,5 +1,8 @@
 package com.example.todoalarm.ui
 
+import android.app.Activity
+import android.widget.Toast
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
@@ -12,12 +15,11 @@ import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SnackbarHost
-import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -26,6 +28,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.example.todoalarm.data.ThemeMode
 import com.example.todoalarm.data.TodoCategory
@@ -58,16 +61,37 @@ fun DashboardScreen(
     onDefaultSnoozeChange: (Int) -> Unit
 ) {
     val drawerState = rememberDrawerState(DrawerValue.Closed)
-    val snackbarHostState = remember { SnackbarHostState() }
+    val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var section by rememberSaveable { mutableStateOf(DashboardSection.ACTIVE) }
     var launchVisible by rememberSaveable { mutableStateOf(true) }
     var editorVisible by remember { mutableStateOf(false) }
     var editingTodo by remember { mutableStateOf<TodoItem?>(null) }
+    var lastBackPressedAt by rememberSaveable { mutableLongStateOf(0L) }
 
     LaunchedEffect(Unit) {
         delay(1600)
         launchVisible = false
+    }
+
+    BackHandler(enabled = !launchVisible) {
+        when {
+            editorVisible -> {
+                editorVisible = false
+                editingTodo = null
+            }
+            drawerState.isOpen -> scope.launch { drawerState.close() }
+            section != DashboardSection.ACTIVE -> section = DashboardSection.ACTIVE
+            else -> {
+                val now = System.currentTimeMillis()
+                if (now - lastBackPressedAt <= 1500L) {
+                    (context as? Activity)?.finish()
+                } else {
+                    lastBackPressedAt = now
+                    Toast.makeText(context, "再按一次退出应用", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
     }
 
     if (launchVisible) {
@@ -91,7 +115,6 @@ fun DashboardScreen(
         ) {
             Scaffold(
                 containerColor = Color.Transparent,
-                snackbarHost = { SnackbarHost(snackbarHostState) },
                 topBar = { DashboardTopBar { scope.launch { drawerState.open() } } },
                 floatingActionButton = {
                     if (section == DashboardSection.ACTIVE) {
@@ -140,7 +163,7 @@ fun DashboardScreen(
                     onDeleteTodo(it)
                     editorVisible = false
                     editingTodo = null
-                    scope.launch { snackbarHostState.showSnackbar("任务已删除") }
+                    Toast.makeText(context, "任务已删除", Toast.LENGTH_SHORT).show()
                 }
             },
             onConfirm = { title, notes, dueAt, reminderAt, category, ring, vibrate, voice ->
@@ -154,9 +177,13 @@ fun DashboardScreen(
                     if (error == null) {
                         editorVisible = false
                         editingTodo = null
-                        snackbarHostState.showSnackbar(if (current == null) "任务已创建" else "任务已更新")
+                        Toast.makeText(
+                            context,
+                            if (current == null) "任务已创建" else "任务已更新",
+                            Toast.LENGTH_SHORT
+                        ).show()
                     } else {
-                        snackbarHostState.showSnackbar(error)
+                        Toast.makeText(context, error, Toast.LENGTH_SHORT).show()
                     }
                 }
             }

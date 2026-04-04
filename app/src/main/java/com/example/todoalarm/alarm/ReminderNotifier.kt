@@ -6,8 +6,6 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
-import android.media.AudioAttributes
-import android.media.RingtoneManager
 import android.os.Build
 import androidx.core.app.NotificationCompat
 import com.example.todoalarm.R
@@ -72,9 +70,9 @@ class ReminderNotifier(
 
     private fun ensureChannel(todoItem: TodoItem): String {
         val channelId = when {
-            todoItem.ringEnabled -> "paykitodo_alarm_audible_v5"
-            todoItem.vibrateEnabled -> "paykitodo_alarm_vibrate_v5"
-            else -> "paykitodo_alarm_silent_v5"
+            todoItem.ringEnabled -> "paykitodo_alarm_audible_v6"
+            todoItem.vibrateEnabled -> "paykitodo_alarm_vibrate_v6"
+            else -> "paykitodo_alarm_silent_v6"
         }
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return channelId
 
@@ -92,8 +90,6 @@ class ReminderNotifier(
             notificationManager.deleteNotificationChannel(channelId)
         }
 
-        val alarmUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
-            ?: RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
         val channel = NotificationChannel(
             channelId,
             channelName(todoItem),
@@ -105,17 +101,7 @@ class ReminderNotifier(
             enableVibration(todoItem.vibrateEnabled || todoItem.ringEnabled)
             vibrationPattern = longArrayOf(0, 400, 200, 400, 200, 700)
             setBypassDnd(bypassDnd)
-            if (todoItem.ringEnabled) {
-                setSound(
-                    alarmUri,
-                    AudioAttributes.Builder()
-                        .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
-                        .setUsage(AudioAttributes.USAGE_ALARM)
-                        .build()
-                )
-            } else {
-                setSound(null, null)
-            }
+            setSound(null, null)
         }
         notificationManager.createNotificationChannel(channel)
         return channelId

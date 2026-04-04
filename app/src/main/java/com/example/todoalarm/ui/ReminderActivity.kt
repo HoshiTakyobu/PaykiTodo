@@ -45,7 +45,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
 import com.example.todoalarm.TodoApplication
-import com.example.todoalarm.alarm.ReminderAlertController
+import com.example.todoalarm.alarm.ActiveReminderStore
 import com.example.todoalarm.alarm.AlarmScheduler
 import com.example.todoalarm.alarm.ReminderForegroundService
 import com.example.todoalarm.alarm.ReminderNotifier
@@ -57,7 +57,6 @@ import kotlinx.coroutines.launch
 class ReminderActivity : ComponentActivity() {
     private val app by lazy { application as TodoApplication }
     private var todoItem by mutableStateOf<TodoItem?>(null)
-    private lateinit var alertController: ReminderAlertController
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -70,7 +69,6 @@ class ReminderActivity : ComponentActivity() {
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() = Unit
         })
-        alertController = ReminderAlertController(applicationContext)
 
         loadTodo()
 
@@ -93,11 +91,6 @@ class ReminderActivity : ComponentActivity() {
         loadTodo()
     }
 
-    override fun onDestroy() {
-        alertController.shutdown()
-        super.onDestroy()
-    }
-
     private fun loadTodo() {
         val todoId = intent.getLongExtra(AlarmScheduler.EXTRA_TODO_ID, -1L)
         if (todoId <= 0L) {
@@ -107,13 +100,13 @@ class ReminderActivity : ComponentActivity() {
         lifecycleScope.launch {
             val item = app.repository.getTodo(todoId)
             if (item == null || item.completed) {
+                ActiveReminderStore.clearIfMatches(this@ReminderActivity, todoId)
                 finish()
                 return@launch
             }
             stopService(Intent(this@ReminderActivity, ReminderForegroundService::class.java))
             getSystemService(NotificationManager::class.java).cancel(ReminderNotifier.notificationId(todoId))
             todoItem = item
-            alertController.start(item)
         }
     }
 
@@ -123,8 +116,8 @@ class ReminderActivity : ComponentActivity() {
             app.repository.setCompleted(item.id, true)
             app.alarmScheduler.cancel(item.id)
             app.reminderNotifier.cancel(item.id)
+            ActiveReminderStore.clearIfMatches(this@ReminderActivity, item.id)
             stopService(Intent(this@ReminderActivity, ReminderForegroundService::class.java))
-            alertController.stop()
             finish()
         }
     }
@@ -138,9 +131,9 @@ class ReminderActivity : ComponentActivity() {
             if (updated != null) {
                 app.alarmScheduler.schedule(updated)
             }
+            ActiveReminderStore.clearIfMatches(this@ReminderActivity, item.id)
             stopService(Intent(this@ReminderActivity, ReminderForegroundService::class.java))
             getSystemService(NotificationManager::class.java).cancel(ReminderNotifier.notificationId(item.id))
-            alertController.stop()
             finish()
         }
     }

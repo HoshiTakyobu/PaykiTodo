@@ -4,6 +4,7 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.todoalarm.TodoApplication
+import com.example.todoalarm.alarm.ActiveReminderStore
 import com.example.todoalarm.data.AppSettings
 import com.example.todoalarm.data.ThemeMode
 import com.example.todoalarm.data.TodoCategory
@@ -135,6 +136,7 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
             repository.setCompleted(todoItem.id, true)
             alarmScheduler.cancel(todoItem.id)
             reminderNotifier.cancel(todoItem.id)
+            ActiveReminderStore.clearIfMatches(app, todoItem.id)
         }
     }
 
@@ -150,6 +152,7 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
             repository.deleteTodo(todoItem.id)
             alarmScheduler.cancel(todoItem.id)
             reminderNotifier.cancel(todoItem.id)
+            ActiveReminderStore.clearIfMatches(app, todoItem.id)
         }
     }
 

@@ -37,10 +37,12 @@ class ReminderForegroundService : Service() {
             val app = application as TodoApplication
             val todoItem = app.repository.getTodo(todoId)
             if (todoItem == null || todoItem.completed || !todoItem.reminderEnabled) {
+                ActiveReminderStore.clearIfMatches(this@ReminderForegroundService, todoId)
                 stopSelf(startId)
                 return@launch
             }
 
+            ActiveReminderStore.markActive(this@ReminderForegroundService, todoId)
             val notifier = ReminderNotifier(this@ReminderForegroundService)
             val notification = notifier.build(todoItem)
             startInForeground(todoId, notification)

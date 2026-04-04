@@ -63,7 +63,7 @@ fun TodoEditorDialog(
     }
     var ringEnabled by remember(initialTodo?.id) { mutableStateOf(initialTodo?.ringEnabled ?: defaultRingEnabled) }
     var vibrateEnabled by remember(initialTodo?.id) { mutableStateOf(initialTodo?.vibrateEnabled ?: defaultVibrateEnabled) }
-    var voiceEnabled by remember(initialTodo?.id) { mutableStateOf(initialTodo?.voiceEnabled ?: defaultVoiceEnabled) }
+    remember(initialTodo?.id) { defaultVoiceEnabled }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -156,7 +156,6 @@ fun TodoEditorDialog(
                     ) {
                         FilterChip(selected = ringEnabled, onClick = { ringEnabled = !ringEnabled }, label = { Text("响铃") })
                         FilterChip(selected = vibrateEnabled, onClick = { vibrateEnabled = !vibrateEnabled }, label = { Text("震动") })
-                        FilterChip(selected = voiceEnabled, onClick = { voiceEnabled = !voiceEnabled }, label = { Text("语音播报") })
                     }
                 }
             }
@@ -172,7 +171,7 @@ fun TodoEditorDialog(
                         category,
                         ringEnabled,
                         vibrateEnabled,
-                        voiceEnabled
+                        false
                     )
                 }
             ) {

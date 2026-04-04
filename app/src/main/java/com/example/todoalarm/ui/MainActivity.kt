@@ -20,6 +20,9 @@ import androidx.compose.runtime.setValue
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.todoalarm.TodoApplication
+import com.example.todoalarm.alarm.ActiveReminderStore
+import com.example.todoalarm.alarm.AlarmScheduler
+import com.example.todoalarm.ui.ReminderActivity
 import com.example.todoalarm.ui.theme.TodoAlarmTheme
 
 data class PermissionSnapshot(
@@ -71,6 +74,7 @@ class MainActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
         refreshPermissions()
+        openActiveReminderIfNeeded()
     }
 
     private fun refreshPermissions() {
@@ -154,5 +158,16 @@ class MainActivity : ComponentActivity() {
                 else -> startActivity(detailIntent)
             }
         }
+    }
+
+    private fun openActiveReminderIfNeeded() {
+        val todoId = ActiveReminderStore.getActiveTodoId(this)
+        if (todoId <= 0L) return
+        startActivity(
+            Intent(this, ReminderActivity::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP
+                putExtra(AlarmScheduler.EXTRA_TODO_ID, todoId)
+            }
+        )
     }
 }

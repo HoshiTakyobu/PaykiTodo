@@ -36,6 +36,8 @@ data class PermissionSnapshot(
 class MainActivity : ComponentActivity() {
     private val viewModel: TodoViewModel by viewModels()
     private var permissions by mutableStateOf(PermissionSnapshot())
+    private var lastOpenedReminderId: Long = -1L
+    private var lastOpenedReminderAt: Long = 0L
 
     private val notificationPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
@@ -163,9 +165,13 @@ class MainActivity : ComponentActivity() {
     private fun openActiveReminderIfNeeded() {
         val todoId = ActiveReminderStore.getActiveTodoId(this)
         if (todoId <= 0L) return
+        val now = System.currentTimeMillis()
+        if (todoId == lastOpenedReminderId && now - lastOpenedReminderAt < 2500L) return
+        lastOpenedReminderId = todoId
+        lastOpenedReminderAt = now
         startActivity(
             Intent(this, ReminderActivity::class.java).apply {
-                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP
+                flags = Intent.FLAG_ACTIVITY_SINGLE_TOP
                 putExtra(AlarmScheduler.EXTRA_TODO_ID, todoId)
             }
         )

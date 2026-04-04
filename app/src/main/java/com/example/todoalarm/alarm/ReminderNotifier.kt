@@ -63,7 +63,7 @@ class ReminderNotifier(
 
     private fun buildReminderIntent(todoId: Long): Intent {
         return Intent(context, ReminderActivity::class.java).apply {
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            flags = Intent.FLAG_ACTIVITY_SINGLE_TOP
             putExtra(AlarmScheduler.EXTRA_TODO_ID, todoId)
         }
     }

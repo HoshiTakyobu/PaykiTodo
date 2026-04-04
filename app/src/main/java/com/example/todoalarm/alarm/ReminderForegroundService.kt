@@ -58,10 +58,7 @@ class ReminderForegroundService : Service() {
             notifier.show(todoItem)
             alertController.start(todoItem)
             wakeDevice()
-            repeat(4) {
-                triggerReminderUi(notifier, todoItem.id)
-                delay(1200L)
-            }
+            triggerReminderUi(notifier, todoItem.id)
             delay(115_000L)
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
                 stopForeground(STOP_FOREGROUND_DETACH)
@@ -103,13 +100,6 @@ class ReminderForegroundService : Service() {
 
     private fun triggerReminderUi(notifier: ReminderNotifier, todoId: Long) {
         runCatching { notifier.reminderPendingIntent(todoId).send() }
-        runCatching {
-            startActivity(
-                notifier.createReminderIntent(todoId).apply {
-                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
-                }
-            )
-        }
     }
 
     private fun wakeDevice() {

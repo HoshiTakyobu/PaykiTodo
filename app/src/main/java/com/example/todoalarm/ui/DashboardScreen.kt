@@ -7,6 +7,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.Image
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.History
 import androidx.compose.material.icons.rounded.Settings
@@ -26,10 +27,14 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
+import com.example.todoalarm.R
 import com.example.todoalarm.data.ThemeMode
 import com.example.todoalarm.data.TodoCategory
 import com.example.todoalarm.data.TodoItem
@@ -109,10 +114,27 @@ fun DashboardScreen(
         }
     ) {
         Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(DashboardBackgroundBrush())
+            modifier = Modifier.fillMaxSize()
         ) {
+            Image(
+                painter = painterResource(id = R.drawable.dashboard_bg),
+                contentDescription = null,
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop
+            )
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(
+                        Brush.verticalGradient(
+                            listOf(
+                                Color(0x26FFFFFF),
+                                Color(0x14000000),
+                                Color(0x2B000000)
+                            )
+                        )
+                    )
+            )
             Scaffold(
                 containerColor = Color.Transparent,
                 topBar = { DashboardTopBar { scope.launch { drawerState.open() } } },

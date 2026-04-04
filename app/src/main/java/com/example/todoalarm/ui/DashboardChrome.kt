@@ -1,6 +1,7 @@
 package com.example.todoalarm.ui
 
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -44,9 +45,12 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.example.todoalarm.R
 import com.example.todoalarm.data.ThemeMode
 import com.example.todoalarm.data.TodoItem
 import com.example.todoalarm.ui.theme.PaykiGreetingFontFamily
@@ -83,7 +87,12 @@ internal fun DashboardDrawer(current: DashboardSection, onSelect: (DashboardSect
         ) {
             Surface(shape = CircleShape, color = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)) {
                 Box(Modifier.size(52.dp), contentAlignment = Alignment.Center) {
-                    Text("PT", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                    Image(
+                        painter = painterResource(id = R.mipmap.ic_launcher_round),
+                        contentDescription = "应用图标",
+                        modifier = Modifier.size(44.dp),
+                        contentScale = ContentScale.Crop
+                    )
                 }
             }
             Text(
@@ -128,7 +137,7 @@ internal fun DashboardTopBar(onMenu: () -> Unit) {
                 "PaykiTodo",
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface
+                color = Color(0xFF1F3E38)
             )
         }
     )
@@ -269,12 +278,18 @@ private fun GreetingCard() {
 
 @Composable
 internal fun SectionTitle(title: String) {
-    Text(
-        title,
-        style = MaterialTheme.typography.titleLarge,
-        fontWeight = FontWeight.SemiBold,
-        color = MaterialTheme.colorScheme.onSurface
-    )
+    Surface(
+        shape = RoundedCornerShape(14.dp),
+        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.86f)
+    ) {
+        Text(
+            title,
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.SemiBold,
+            color = MaterialTheme.colorScheme.onSurface
+        )
+    }
 }
 
 @Composable

@@ -16,7 +16,8 @@ data class AppSettings(
     val defaultSnoozeMinutes: Int = 10,
     val defaultRingEnabled: Boolean = true,
     val defaultVibrateEnabled: Boolean = true,
-    val defaultVoiceEnabled: Boolean = false
+    val defaultVoiceEnabled: Boolean = false,
+    val quoteIndex: Int = 0
 )
 
 class AppSettingsStore(context: Context) {
@@ -46,6 +47,11 @@ class AppSettingsStore(context: Context) {
         refresh()
     }
 
+    fun updateQuoteIndex(index: Int) {
+        preferences.edit().putInt(KEY_QUOTE_INDEX, index.coerceAtLeast(0)).apply()
+        refresh()
+    }
+
     private fun refresh() {
         _settings.value = readSettings()
     }
@@ -57,7 +63,8 @@ class AppSettingsStore(context: Context) {
             defaultSnoozeMinutes = preferences.getInt(KEY_DEFAULT_SNOOZE, 10).coerceIn(5, 60),
             defaultRingEnabled = preferences.getBoolean(KEY_DEFAULT_RING, true),
             defaultVibrateEnabled = preferences.getBoolean(KEY_DEFAULT_VIBRATE, true),
-            defaultVoiceEnabled = preferences.getBoolean(KEY_DEFAULT_VOICE, false)
+            defaultVoiceEnabled = preferences.getBoolean(KEY_DEFAULT_VOICE, false),
+            quoteIndex = preferences.getInt(KEY_QUOTE_INDEX, 0).coerceAtLeast(0)
         )
     }
 
@@ -68,5 +75,6 @@ class AppSettingsStore(context: Context) {
         private const val KEY_DEFAULT_RING = "default_ring_enabled"
         private const val KEY_DEFAULT_VIBRATE = "default_vibrate_enabled"
         private const val KEY_DEFAULT_VOICE = "default_voice_enabled"
+        private const val KEY_QUOTE_INDEX = "quote_index"
     }
 }

@@ -9,6 +9,8 @@ import com.example.todoalarm.data.AppSettings
 import com.example.todoalarm.data.ThemeMode
 import com.example.todoalarm.data.TodoCategory
 import com.example.todoalarm.data.TodoItem
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
@@ -23,7 +25,8 @@ data class TodoUiState(
     val upcomingItems: List<TodoItem> = emptyList(),
     val completedItems: List<TodoItem> = emptyList(),
     val overdueCount: Int = 0,
-    val settings: AppSettings = AppSettings()
+    val settings: AppSettings = AppSettings(),
+    val currentQuote: String = QuoteRepository.seedQuotes.first()
 )
 
 class TodoViewModel(application: Application) : AndroidViewModel(application) {
@@ -32,19 +35,35 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
     private val alarmScheduler = app.alarmScheduler
     private val reminderNotifier = app.reminderNotifier
     private val settingsStore = app.settingsStore
+    private val quoteRepository = app.quoteRepository
+    private val quoteFlow = MutableStateFlow(QuoteRepository.seedQuotes)
+    private var quoteRefreshJob: Job? = null
 
-    val uiState = combine(repository.observeTodos(), settingsStore.settingsFlow) { items, settings ->
+    init {
+        viewModelScope.launch {
+            val localQuotes = quoteRepository.loadQuotes()
+            if (localQuotes.isNotEmpty()) {
+                quoteFlow.value = localQuotes
+            }
+            refreshQuotesIfNeeded(force = false)
+        }
+    }
+
+    val uiState = combine(repository.observeTodos(), settingsStore.settingsFlow, quoteFlow) { items, settings, quotes ->
         val nowMillis = System.currentTimeMillis()
         val today = Instant.ofEpochMilli(nowMillis).atZone(ZoneId.systemDefault()).toLocalDate()
         val activeItems = items.filterNot { it.completed }.sortedBy { it.dueAtMillis }
         val completedItems = items.filter { it.completed }.sortedByDescending { it.completedAtMillis ?: it.createdAtMillis }
+        val availableQuotes = quotes.ifEmpty { QuoteRepository.seedQuotes }
+        val currentQuote = availableQuotes[settings.quoteIndex.mod(availableQuotes.size)]
 
         TodoUiState(
             todayItems = activeItems.filter { dueDate(it) == today },
             upcomingItems = activeItems.filter { dueDate(it) != today },
             completedItems = completedItems,
             overdueCount = activeItems.count { it.dueAtMillis < nowMillis },
-            settings = settings
+            settings = settings,
+            currentQuote = currentQuote
         )
     }.stateIn(
         scope = viewModelScope,
@@ -175,8 +194,26 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
         settingsStore.updateThemeMode(themeMode)
     }
 
+    fun showNextQuote() {
+        val availableQuotes = quoteFlow.value.ifEmpty { QuoteRepository.seedQuotes }
+        val nextIndex = (settingsStore.currentSettings().quoteIndex + 1).mod(availableQuotes.size)
+        settingsStore.updateQuoteIndex(nextIndex)
+        refreshQuotesIfNeeded(force = false)
+    }
+
     fun updateDefaultSnooze(minutes: Int) {
         settingsStore.updateDefaultSnooze(minutes)
+    }
+
+    private fun refreshQuotesIfNeeded(force: Boolean) {
+        if (quoteRefreshJob?.isActive == true) return
+        quoteRefreshJob = viewModelScope.launch {
+            quoteRepository.refreshQuotesIfNeeded(force)?.let { refreshedQuotes ->
+                if (refreshedQuotes.isNotEmpty()) {
+                    quoteFlow.value = refreshedQuotes
+                }
+            }
+        }
     }
 
     private fun dueDate(item: TodoItem): LocalDate {

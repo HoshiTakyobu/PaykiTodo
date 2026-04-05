@@ -7,6 +7,7 @@ import com.example.todoalarm.alarm.ReminderNotifier
 import com.example.todoalarm.data.AppDatabase
 import com.example.todoalarm.data.AppSettingsStore
 import com.example.todoalarm.data.TodoRepository
+import com.example.todoalarm.ui.QuoteRepository
 
 class TodoApplication : Application() {
     override fun onCreate() {
@@ -29,6 +30,10 @@ class TodoApplication : Application() {
 
     val settingsStore: AppSettingsStore by lazy {
         AppSettingsStore(applicationContext)
+    }
+
+    val quoteRepository: QuoteRepository by lazy {
+        QuoteRepository(applicationContext)
     }
 
     val alarmScheduler: AlarmScheduler by lazy {

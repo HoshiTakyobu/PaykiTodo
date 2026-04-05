@@ -79,6 +79,7 @@ class MainActivity : ComponentActivity() {
                     onCompleteTodo = viewModel::completeTodo,
                     onRestoreTodo = viewModel::restoreTodo,
                     onThemeModeChange = viewModel::updateThemeMode,
+                    onNextQuote = viewModel::showNextQuote,
                     onDefaultSnoozeChange = viewModel::updateDefaultSnooze
                 )
             }

@@ -3,6 +3,8 @@ package com.example.todoalarm.ui
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -20,20 +22,23 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.BrightnessAuto
 import androidx.compose.material.icons.rounded.DarkMode
+import androidx.compose.material.icons.rounded.History
 import androidx.compose.material.icons.rounded.LightMode
 import androidx.compose.material.icons.rounded.Menu
 import androidx.compose.material.icons.rounded.Refresh
+import androidx.compose.material.icons.rounded.Settings
+import androidx.compose.material.icons.rounded.TaskAlt
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.IconToggleButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalDrawerSheet
-import androidx.compose.material3.NavigationDrawerItem
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -41,7 +46,7 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -50,17 +55,18 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.Shadow
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.todoalarm.R
 import com.example.todoalarm.data.ThemeMode
 import com.example.todoalarm.data.TodoItem
 import com.example.todoalarm.ui.theme.PaykiGreetingFontFamily
-import java.time.LocalDate
 import java.time.LocalTime
 
 @Composable
@@ -79,6 +85,12 @@ internal fun DashboardBackgroundBrush(): Brush {
     )
 }
 
+internal enum class DashboardSection(val label: String, val icon: ImageVector) {
+    ACTIVE("待处理", Icons.Rounded.TaskAlt),
+    HISTORY("历史记录", Icons.Rounded.History),
+    SETTINGS("设置", Icons.Rounded.Settings)
+}
+
 @Composable
 internal fun DashboardDrawer(
     current: DashboardSection,
@@ -93,16 +105,16 @@ internal fun DashboardDrawer(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(horizontal = 20.dp, vertical = 24.dp),
+                .padding(horizontal = 18.dp, vertical = 24.dp),
             verticalArrangement = Arrangement.SpaceBetween
         ) {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Surface(shape = CircleShape, color = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)) {
-                    Box(Modifier.size(52.dp), contentAlignment = Alignment.Center) {
+                    Box(Modifier.size(58.dp), contentAlignment = Alignment.Center) {
                         Image(
                             painter = painterResource(id = R.drawable.ic_launcher_foreground),
                             contentDescription = "应用图标",
-                            modifier = Modifier.size(40.dp),
+                            modifier = Modifier.size(42.dp),
                             contentScale = ContentScale.Fit
                         )
                     }
@@ -114,41 +126,24 @@ internal fun DashboardDrawer(
                     color = MaterialTheme.colorScheme.onSurface
                 )
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.45f))
-                DashboardSection.entries.forEach { section ->
-                    NavigationDrawerItem(
-                        label = { Text(section.label) },
-                        selected = current == section,
-                        onClick = { onSelect(section) },
-                        icon = { Icon(section.icon, contentDescription = null) },
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
-                    )
+                Column(
+                    modifier = Modifier.padding(top = 6.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    DashboardSection.entries.forEach { section ->
+                        DrawerSectionButton(
+                            section = section,
+                            selected = current == section,
+                            onClick = { onSelect(section) }
+                        )
+                    }
                 }
             }
 
-            Row(
-                modifier = Modifier.padding(start = 8.dp, bottom = 6.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                ThemeQuickToggle(
-                    icon = Icons.Rounded.LightMode,
-                    contentDescription = "浅色模式",
-                    selected = selectedThemeMode == ThemeMode.LIGHT,
-                    onClick = { onThemeModeChange(ThemeMode.LIGHT) }
-                )
-                ThemeQuickToggle(
-                    icon = Icons.Rounded.DarkMode,
-                    contentDescription = "深色模式",
-                    selected = selectedThemeMode == ThemeMode.DARK,
-                    onClick = { onThemeModeChange(ThemeMode.DARK) }
-                )
-                ThemeQuickToggle(
-                    icon = Icons.Rounded.BrightnessAuto,
-                    contentDescription = "跟随系统",
-                    selected = selectedThemeMode == ThemeMode.SYSTEM,
-                    onClick = { onThemeModeChange(ThemeMode.SYSTEM) }
-                )
-            }
+            ThemeModeSwitcher(
+                selectedThemeMode = selectedThemeMode,
+                onThemeModeChange = onThemeModeChange
+            )
         }
     }
 }
@@ -165,11 +160,7 @@ internal fun DashboardTopBar(onMenu: () -> Unit) {
             IconButton(onClick = onMenu) {
                 Surface(shape = CircleShape, color = MaterialTheme.colorScheme.primary.copy(alpha = 0.14f)) {
                     Box(Modifier.size(36.dp), contentAlignment = Alignment.Center) {
-                        Icon(
-                            Icons.Rounded.Menu,
-                            contentDescription = "打开菜单",
-                            tint = MaterialTheme.colorScheme.primary
-                        )
+                        Icon(Icons.Rounded.Menu, contentDescription = "打开菜单", tint = MaterialTheme.colorScheme.primary)
                     }
                 }
             }
@@ -207,7 +198,7 @@ internal fun DashboardBody(
     onRequestNotificationPolicyAccess: () -> Unit,
     onRequestIgnoreBatteryOptimization: () -> Unit,
     onRequestAccessibilityService: () -> Unit,
-    onThemeModeChange: (ThemeMode) -> Unit,
+    onNextQuote: () -> Unit,
     onDefaultSnoozeChange: (Int) -> Unit
 ) {
     LazyColumn(
@@ -219,7 +210,12 @@ internal fun DashboardBody(
     ) {
         when (section) {
             DashboardSection.ACTIVE -> {
-                item { GreetingCard() }
+                item {
+                    GreetingCard(
+                        quote = uiState.currentQuote,
+                        onNextQuote = onNextQuote
+                    )
+                }
                 item { SectionTitle("今日待办") }
                 if (uiState.todayItems.isEmpty()) {
                     item { EmptyStateCard("今天还没有安排任务。") }
@@ -251,7 +247,6 @@ internal fun DashboardBody(
             DashboardSection.SETTINGS -> item {
                 SettingsPanel(
                     permissions = permissions,
-                    selectedThemeMode = uiState.settings.themeMode,
                     defaultSnooze = uiState.settings.defaultSnoozeMinutes,
                     crashLog = permissions.lastCrashLog,
                     onRequestNotificationPermission = onRequestNotificationPermission,
@@ -260,7 +255,6 @@ internal fun DashboardBody(
                     onRequestNotificationPolicyAccess = onRequestNotificationPolicyAccess,
                     onRequestIgnoreBatteryOptimization = onRequestIgnoreBatteryOptimization,
                     onRequestAccessibilityService = onRequestAccessibilityService,
-                    onThemeModeChange = onThemeModeChange,
                     onDefaultSnoozeChange = onDefaultSnoozeChange,
                     onCopyCrashLog = permissions.copyCrashLog,
                     onClearCrashLog = permissions.clearCrashLog
@@ -271,10 +265,10 @@ internal fun DashboardBody(
 }
 
 @Composable
-private fun GreetingCard() {
-    var quote by rememberSaveable { mutableStateOf(seedQuote()) }
-    var quoteIndex by rememberSaveable { mutableStateOf(quoteSeed()) }
-
+private fun GreetingCard(
+    quote: String,
+    onNextQuote: () -> Unit
+) {
     ElevatedCard(
         shape = RoundedCornerShape(28.dp),
         colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.96f))
@@ -307,17 +301,12 @@ private fun GreetingCard() {
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    quote,
+                    text = quote,
                     modifier = Modifier.weight(1f),
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-                IconButton(
-                    onClick = {
-                        quoteIndex += 1
-                        quote = DAILY_QUOTES[quoteIndex % DAILY_QUOTES.size]
-                    }
-                ) {
+                IconButton(onClick = onNextQuote) {
                     Icon(Icons.Rounded.Refresh, contentDescription = "更换短句", tint = MaterialTheme.colorScheme.primary)
                 }
             }
@@ -329,7 +318,7 @@ private fun GreetingCard() {
 internal fun SectionTitle(title: String) {
     Text(
         title,
-        modifier = Modifier.padding(horizontal = 4.dp, vertical = 4.dp),
+        modifier = Modifier.padding(horizontal = 2.dp, vertical = 2.dp),
         style = MaterialTheme.typography.titleLarge.copy(
             fontSize = 24.sp,
             shadow = Shadow(
@@ -441,6 +430,101 @@ internal fun LaunchScreen() {
     }
 }
 
+@Composable
+private fun DrawerSectionButton(
+    section: DashboardSection,
+    selected: Boolean,
+    onClick: () -> Unit
+) {
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick),
+        shape = RoundedCornerShape(18.dp),
+        color = if (selected) {
+            MaterialTheme.colorScheme.primary.copy(alpha = 0.14f)
+        } else {
+            Color.Transparent
+        }
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp, vertical = 12.dp),
+            horizontalArrangement = Arrangement.spacedBy(14.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = section.icon,
+                contentDescription = null,
+                modifier = Modifier.size(24.dp),
+                tint = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Text(
+                text = section.label,
+                style = MaterialTheme.typography.titleMedium.copy(fontSize = 19.sp),
+                fontWeight = FontWeight.Bold,
+                color = if (selected) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+}
+
+@Composable
+private fun ThemeModeSwitcher(
+    selectedThemeMode: ThemeMode,
+    onThemeModeChange: (ThemeMode) -> Unit
+) {
+    var expanded by remember { mutableStateOf(false) }
+    val systemDark = isSystemInDarkTheme()
+    val currentIcon = when (selectedThemeMode) {
+        ThemeMode.LIGHT -> Icons.Rounded.LightMode
+        ThemeMode.DARK -> Icons.Rounded.DarkMode
+        ThemeMode.SYSTEM -> if (systemDark) Icons.Rounded.DarkMode else Icons.Rounded.LightMode
+    }
+    val currentLabel = when (selectedThemeMode) {
+        ThemeMode.LIGHT -> "浅色模式"
+        ThemeMode.DARK -> "深色模式"
+        ThemeMode.SYSTEM -> "跟随系统"
+    }
+
+    Box {
+        Surface(
+            shape = CircleShape,
+            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.14f)
+        ) {
+            IconButton(onClick = { expanded = true }) {
+                Icon(
+                    imageVector = currentIcon,
+                    contentDescription = currentLabel,
+                    tint = MaterialTheme.colorScheme.primary
+                )
+            }
+        }
+        DropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false },
+            offset = DpOffset(x = 0.dp, y = (-8).dp)
+        ) {
+            ThemeMode.entries.forEach { mode ->
+                val icon = when (mode) {
+                    ThemeMode.LIGHT -> Icons.Rounded.LightMode
+                    ThemeMode.DARK -> Icons.Rounded.DarkMode
+                    ThemeMode.SYSTEM -> Icons.Rounded.BrightnessAuto
+                }
+                DropdownMenuItem(
+                    text = { Text(mode.label) },
+                    onClick = {
+                        expanded = false
+                        onThemeModeChange(mode)
+                    },
+                    leadingIcon = { Icon(icon, contentDescription = null) }
+                )
+            }
+        }
+    }
+}
+
 private fun timeGreeting(): String = when (LocalTime.now().hour) {
     in 0..4 -> "凌晨好"
     in 5..10 -> "早上好"
@@ -448,47 +532,3 @@ private fun timeGreeting(): String = when (LocalTime.now().hour) {
     in 14..17 -> "下午好"
     else -> "晚上好"
 }
-
-private fun quoteSeed(): Int = LocalDate.now().dayOfYear % DAILY_QUOTES.size
-private fun seedQuote(): String = DAILY_QUOTES[quoteSeed()]
-
-@Composable
-private fun ThemeQuickToggle(
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    contentDescription: String,
-    selected: Boolean,
-    onClick: () -> Unit
-) {
-    Surface(
-        shape = CircleShape,
-        color = if (selected) {
-            MaterialTheme.colorScheme.primary.copy(alpha = 0.16f)
-        } else {
-            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f)
-        }
-    ) {
-        IconToggleButton(
-            checked = selected,
-            onCheckedChange = { onClick() }
-        ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = contentDescription,
-                tint = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
-    }
-}
-
-private val DAILY_QUOTES = listOf(
-    "专注当下这一步，进度自然会出现。",
-    "先完成，再优化，今天就会更稳。",
-    "把最重要的一件事先做完。",
-    "少一点犹豫，多一点推进。",
-    "行动会缩小焦虑，拖延会放大焦虑。",
-    "DDL 不是压力，是方向。",
-    "不用一次做完，只要继续往前。",
-    "把任务拆小，完成感会回来。",
-    "先处理事实，再处理情绪。",
-    "持续推进，本身就是能力。"
-)

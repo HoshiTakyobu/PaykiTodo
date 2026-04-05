@@ -1,11 +1,11 @@
 package com.example.todoalarm.ui
 
+import android.graphics.Paint
 import android.widget.NumberPicker
+import android.widget.EditText
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -15,13 +15,11 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.Article
 import androidx.compose.material.icons.rounded.Alarm
-import androidx.compose.material.icons.rounded.DarkMode
 import androidx.compose.material.icons.rounded.Notifications
 import androidx.compose.material.icons.rounded.Security
 import androidx.compose.material.icons.rounded.TaskAlt
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ElevatedCard
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -35,16 +33,15 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
-import com.example.todoalarm.data.ThemeMode
 
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun SettingsPanel(
     permissions: PermissionSnapshot,
-    selectedThemeMode: ThemeMode,
     defaultSnooze: Int,
     crashLog: String?,
     onRequestNotificationPermission: () -> Unit,
@@ -53,7 +50,6 @@ fun SettingsPanel(
     onRequestNotificationPolicyAccess: () -> Unit,
     onRequestIgnoreBatteryOptimization: () -> Unit,
     onRequestAccessibilityService: () -> Unit,
-    onThemeModeChange: (ThemeMode) -> Unit,
     onDefaultSnoozeChange: (Int) -> Unit,
     onCopyCrashLog: () -> Unit,
     onClearCrashLog: () -> Unit
@@ -63,29 +59,49 @@ fun SettingsPanel(
 
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
         PrefCard("提醒权限") {
-            PermissionRow(Icons.Rounded.Notifications, "通知权限", permissions.notificationGranted, "去开启", onRequestNotificationPermission)
-            PermissionRow(Icons.Rounded.Alarm, "精确闹钟", permissions.exactAlarmGranted, "去设置", onRequestExactAlarmPermission)
-            PermissionRow(Icons.Rounded.TaskAlt, "全屏提醒", permissions.fullScreenGranted, "去设置", onRequestFullScreenPermission)
-            PermissionRow(Icons.Rounded.Security, "免打扰穿透", permissions.dndAccessGranted, "去设置", onRequestNotificationPolicyAccess)
-            PermissionRow(Icons.Rounded.Alarm, "忽略电池优化", permissions.batteryOptimizationIgnored, "去设置", onRequestIgnoreBatteryOptimization)
-            PermissionRow(Icons.Rounded.Security, "辅助功能提醒", permissions.accessibilityServiceEnabled, "去设置", onRequestAccessibilityService)
-        }
-
-        PrefCard("显示模式") {
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                ThemeMode.entries.forEach { mode ->
-                    FilterChip(
-                        selected = selectedThemeMode == mode,
-                        onClick = { onThemeModeChange(mode) },
-                        label = { Text(mode.label) },
-                        leadingIcon = { Icon(Icons.Rounded.DarkMode, contentDescription = null) }
-                    )
-                }
-            }
+            PermissionRow(
+                icon = Icons.Rounded.Notifications,
+                label = "通知权限",
+                granted = permissions.notificationGranted,
+                onClick = onRequestNotificationPermission
+            )
+            PermissionRow(
+                icon = Icons.Rounded.Alarm,
+                label = "精确闹钟",
+                granted = permissions.exactAlarmGranted,
+                onClick = onRequestExactAlarmPermission
+            )
+            PermissionRow(
+                icon = Icons.Rounded.TaskAlt,
+                label = "全屏提醒",
+                granted = permissions.fullScreenGranted,
+                onClick = onRequestFullScreenPermission
+            )
+            PermissionRow(
+                icon = Icons.Rounded.Security,
+                label = "免打扰穿透",
+                granted = permissions.dndAccessGranted,
+                onClick = onRequestNotificationPolicyAccess
+            )
+            PermissionRow(
+                icon = Icons.Rounded.Alarm,
+                label = "忽略电池优化",
+                granted = permissions.batteryOptimizationIgnored,
+                onClick = onRequestIgnoreBatteryOptimization
+            )
+            PermissionRow(
+                icon = Icons.Rounded.Security,
+                label = "辅助功能提醒",
+                granted = permissions.accessibilityServiceEnabled,
+                onClick = onRequestAccessibilityService
+            )
         }
 
         PrefCard("默认延后时长") {
-            Text("点击按钮后再选择默认延后时长，避免滑动页面时误触。", color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(
+                text = "点击按钮后再选择默认延后时长，避免上下滑动页面时误触。",
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
             OutlinedButton(onClick = { showSnoozeDialog = true }) {
                 Text("当前：${normalizeSnooze(defaultSnooze)} 分钟")
             }
@@ -93,15 +109,25 @@ fun SettingsPanel(
 
         PrefCard("崩溃日志") {
             Text(
-                text = if (crashLog.isNullOrBlank()) "当前没有记录到新的异常退出日志。" else "已记录最近一次异常退出日志，可直接查看并复制给我。",
+                text = if (crashLog.isNullOrBlank()) {
+                    "当前没有记录到新的异常退出日志。"
+                } else {
+                    "已记录最近一次异常退出日志，可直接查看并复制给我。"
+                },
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                OutlinedButton(onClick = { showCrashDialog = true }, enabled = !crashLog.isNullOrBlank()) {
+                OutlinedButton(
+                    onClick = { showCrashDialog = true },
+                    enabled = !crashLog.isNullOrBlank()
+                ) {
                     Icon(Icons.AutoMirrored.Rounded.Article, contentDescription = null)
                     Text("查看日志")
                 }
-                OutlinedButton(onClick = onClearCrashLog, enabled = !crashLog.isNullOrBlank()) {
+                OutlinedButton(
+                    onClick = onClearCrashLog,
+                    enabled = !crashLog.isNullOrBlank()
+                ) {
                     Text("清空日志")
                 }
             }
@@ -136,6 +162,7 @@ private fun SnoozePickerDialog(
 ) {
     val values = (5..60 step 5).toList()
     var selectedMinutes by remember(defaultSnooze) { mutableIntStateOf(normalizeSnooze(defaultSnooze)) }
+    val pickerTextColor = MaterialTheme.colorScheme.onSurface.toArgb()
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -151,6 +178,7 @@ private fun SnoozePickerDialog(
                         wrapSelectorWheel = false
                         descendantFocusability = NumberPicker.FOCUS_BLOCK_DESCENDANTS
                         value = values.indexOf(selectedMinutes)
+                        applyTextColor(pickerTextColor)
                         setOnValueChangedListener { _, _, newVal ->
                             selectedMinutes = values[newVal]
                         }
@@ -161,6 +189,7 @@ private fun SnoozePickerDialog(
                     if (picker.value != targetIndex) {
                         picker.value = targetIndex
                     }
+                    picker.applyTextColor(pickerTextColor)
                 }
             )
         },
@@ -214,6 +243,18 @@ private fun normalizeSnooze(minutes: Int): Int {
     return if (clamped % 5 == 0) clamped else clamped - (clamped % 5)
 }
 
+private fun NumberPicker.applyTextColor(color: Int) {
+    for (index in 0 until childCount) {
+        (getChildAt(index) as? EditText)?.setTextColor(color)
+    }
+    runCatching {
+        val field = NumberPicker::class.java.getDeclaredField("mSelectorWheelPaint")
+        field.isAccessible = true
+        (field.get(this) as? Paint)?.color = color
+    }
+    invalidate()
+}
+
 @Composable
 private fun PrefCard(
     title: String,
@@ -227,7 +268,7 @@ private fun PrefCard(
             verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
             Text(
-                title,
+                text = title,
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSurface
@@ -239,10 +280,9 @@ private fun PrefCard(
 
 @Composable
 private fun PermissionRow(
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    icon: ImageVector,
     label: String,
     granted: Boolean,
-    actionLabel: String,
     onClick: () -> Unit
 ) {
     Row(
@@ -252,14 +292,18 @@ private fun PermissionRow(
     ) {
         Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
         Column(modifier = Modifier.weight(1f)) {
-            Text(label, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
+            Text(
+                text = label,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurface
+            )
             Text(
                 text = if (granted) "当前状态：已开启" else "当前状态：未开启",
                 color = if (granted) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.tertiary
             )
         }
-        OutlinedButton(onClick = onClick, enabled = !granted) {
-            Text(if (granted) "已完成" else actionLabel)
+        OutlinedButton(onClick = onClick) {
+            Text("去设置")
         }
     }
 }

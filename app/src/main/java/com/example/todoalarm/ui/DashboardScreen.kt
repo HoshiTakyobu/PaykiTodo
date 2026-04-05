@@ -6,12 +6,7 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.History
-import androidx.compose.material.icons.rounded.Settings
-import androidx.compose.material.icons.rounded.TaskAlt
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ModalNavigationDrawer
@@ -29,7 +24,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -40,12 +34,6 @@ import com.example.todoalarm.data.TodoCategory
 import com.example.todoalarm.data.TodoItem
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-
-internal enum class DashboardSection(val label: String, val icon: ImageVector) {
-    ACTIVE("待处理", Icons.Rounded.TaskAlt),
-    HISTORY("历史记录", Icons.Rounded.History),
-    SETTINGS("设置", Icons.Rounded.Settings)
-}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -64,6 +52,7 @@ fun DashboardScreen(
     onCompleteTodo: (TodoItem) -> Unit,
     onRestoreTodo: (TodoItem) -> Unit,
     onThemeModeChange: (ThemeMode) -> Unit,
+    onNextQuote: () -> Unit,
     onDefaultSnoozeChange: (Int) -> Unit
 ) {
     val drawerState = rememberDrawerState(DrawerValue.Closed)
@@ -139,6 +128,7 @@ fun DashboardScreen(
                         )
                     )
             )
+
             Scaffold(
                 containerColor = Color.Transparent,
                 topBar = { DashboardTopBar { scope.launch { drawerState.open() } } },
@@ -168,7 +158,7 @@ fun DashboardScreen(
                     onRequestNotificationPolicyAccess = onRequestNotificationPolicyAccess,
                     onRequestIgnoreBatteryOptimization = onRequestIgnoreBatteryOptimization,
                     onRequestAccessibilityService = onRequestAccessibilityService,
-                    onThemeModeChange = onThemeModeChange,
+                    onNextQuote = onNextQuote,
                     onDefaultSnoozeChange = onDefaultSnoozeChange
                 )
             }
@@ -227,4 +217,4 @@ fun DashboardScreen(
     }
 }
 
-internal fun dashboardPadding() = PaddingValues(horizontal = 20.dp, vertical = 10.dp)
+internal fun dashboardPadding() = androidx.compose.foundation.layout.PaddingValues(horizontal = 20.dp, vertical = 10.dp)

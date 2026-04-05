@@ -18,6 +18,9 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
+import androidx.compose.material.icons.rounded.BrightnessAuto
+import androidx.compose.material.icons.rounded.DarkMode
+import androidx.compose.material.icons.rounded.LightMode
 import androidx.compose.material.icons.rounded.Menu
 import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material3.CardDefaults
@@ -27,6 +30,7 @@ import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconToggleButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalDrawerSheet
 import androidx.compose.material3.NavigationDrawerItem
@@ -45,11 +49,13 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.example.todoalarm.R
 import com.example.todoalarm.data.ThemeMode
 import com.example.todoalarm.data.TodoItem
@@ -64,7 +70,7 @@ internal fun DashboardBackgroundBrush(): Brush {
         colors = listOf(
             colors.primary.copy(alpha = 0.16f),
             colors.tertiary.copy(alpha = 0.13f),
-            colors.secondary.copy(alpha = 0.1f),
+            colors.secondary.copy(alpha = 0.10f),
             colors.surfaceVariant.copy(alpha = 0.12f),
             colors.background
         ),
@@ -74,43 +80,75 @@ internal fun DashboardBackgroundBrush(): Brush {
 }
 
 @Composable
-internal fun DashboardDrawer(current: DashboardSection, onSelect: (DashboardSection) -> Unit) {
+internal fun DashboardDrawer(
+    current: DashboardSection,
+    selectedThemeMode: ThemeMode,
+    onSelect: (DashboardSection) -> Unit,
+    onThemeModeChange: (ThemeMode) -> Unit
+) {
     ModalDrawerSheet(
         drawerContainerColor = MaterialTheme.colorScheme.surface,
         drawerShape = RoundedCornerShape(topEnd = 28.dp, bottomEnd = 28.dp)
     ) {
         Column(
             modifier = Modifier
-                .fillMaxWidth()
+                .fillMaxSize()
                 .padding(horizontal = 20.dp, vertical = 24.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
+            verticalArrangement = Arrangement.SpaceBetween
         ) {
-            Surface(shape = CircleShape, color = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)) {
-                Box(Modifier.size(52.dp), contentAlignment = Alignment.Center) {
-                    Image(
-                        painter = painterResource(id = R.drawable.ic_launcher_foreground),
-                        contentDescription = "应用图标",
-                        modifier = Modifier.size(40.dp),
-                        contentScale = ContentScale.Fit
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Surface(shape = CircleShape, color = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)) {
+                    Box(Modifier.size(52.dp), contentAlignment = Alignment.Center) {
+                        Image(
+                            painter = painterResource(id = R.drawable.ic_launcher_foreground),
+                            contentDescription = "应用图标",
+                            modifier = Modifier.size(40.dp),
+                            contentScale = ContentScale.Fit
+                        )
+                    }
+                }
+                Text(
+                    "PaykiTodo",
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.45f))
+                DashboardSection.entries.forEach { section ->
+                    NavigationDrawerItem(
+                        label = { Text(section.label) },
+                        selected = current == section,
+                        onClick = { onSelect(section) },
+                        icon = { Icon(section.icon, contentDescription = null) },
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
                     )
                 }
             }
-            Text(
-                "PaykiTodo",
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface
-            )
-            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.45f))
-        }
-        DashboardSection.entries.forEach { section ->
-            NavigationDrawerItem(
-                label = { Text(section.label) },
-                selected = current == section,
-                onClick = { onSelect(section) },
-                icon = { Icon(section.icon, contentDescription = null) },
-                modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
-            )
+
+            Row(
+                modifier = Modifier.padding(start = 8.dp, bottom = 6.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                ThemeQuickToggle(
+                    icon = Icons.Rounded.LightMode,
+                    contentDescription = "浅色模式",
+                    selected = selectedThemeMode == ThemeMode.LIGHT,
+                    onClick = { onThemeModeChange(ThemeMode.LIGHT) }
+                )
+                ThemeQuickToggle(
+                    icon = Icons.Rounded.DarkMode,
+                    contentDescription = "深色模式",
+                    selected = selectedThemeMode == ThemeMode.DARK,
+                    onClick = { onThemeModeChange(ThemeMode.DARK) }
+                )
+                ThemeQuickToggle(
+                    icon = Icons.Rounded.BrightnessAuto,
+                    contentDescription = "跟随系统",
+                    selected = selectedThemeMode == ThemeMode.SYSTEM,
+                    onClick = { onThemeModeChange(ThemeMode.SYSTEM) }
+                )
+            }
         }
     }
 }
@@ -127,7 +165,11 @@ internal fun DashboardTopBar(onMenu: () -> Unit) {
             IconButton(onClick = onMenu) {
                 Surface(shape = CircleShape, color = MaterialTheme.colorScheme.primary.copy(alpha = 0.14f)) {
                     Box(Modifier.size(36.dp), contentAlignment = Alignment.Center) {
-                        Icon(Icons.Rounded.Menu, contentDescription = "打开菜单", tint = MaterialTheme.colorScheme.primary)
+                        Icon(
+                            Icons.Rounded.Menu,
+                            contentDescription = "打开菜单",
+                            tint = MaterialTheme.colorScheme.primary
+                        )
                     }
                 }
             }
@@ -195,6 +237,7 @@ internal fun DashboardBody(
                     }
                 }
             }
+
             DashboardSection.HISTORY -> {
                 if (uiState.completedItems.isEmpty()) {
                     item { EmptyStateCard("完成后的任务会保存在这里。") }
@@ -204,6 +247,7 @@ internal fun DashboardBody(
                     }
                 }
             }
+
             DashboardSection.SETTINGS -> item {
                 SettingsPanel(
                     permissions = permissions,
@@ -283,18 +327,20 @@ private fun GreetingCard() {
 
 @Composable
 internal fun SectionTitle(title: String) {
-    Surface(
-        shape = RoundedCornerShape(14.dp),
-        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.86f)
-    ) {
-        Text(
-            title,
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.SemiBold,
-            color = MaterialTheme.colorScheme.onSurface
-        )
-    }
+    Text(
+        title,
+        modifier = Modifier.padding(horizontal = 4.dp, vertical = 4.dp),
+        style = MaterialTheme.typography.titleLarge.copy(
+            fontSize = 24.sp,
+            shadow = Shadow(
+                color = Color.Black.copy(alpha = 0.16f),
+                offset = Offset(0f, 1.5f),
+                blurRadius = 5f
+            )
+        ),
+        fontWeight = FontWeight.Bold,
+        color = MaterialTheme.colorScheme.onSurface
+    )
 }
 
 @Composable
@@ -377,7 +423,7 @@ internal fun LaunchScreen() {
 
         ElevatedCard(
             shape = RoundedCornerShape(32.dp),
-            colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.82f))
+            colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.72f))
         ) {
             Column(
                 modifier = Modifier.padding(horizontal = 32.dp, vertical = 34.dp),
@@ -388,7 +434,7 @@ internal fun LaunchScreen() {
                     style = MaterialTheme.typography.headlineLarge,
                     fontFamily = FontFamily.Cursive,
                     fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface
+                    color = Color(0xD9183538)
                 )
             }
         }
@@ -405,6 +451,34 @@ private fun timeGreeting(): String = when (LocalTime.now().hour) {
 
 private fun quoteSeed(): Int = LocalDate.now().dayOfYear % DAILY_QUOTES.size
 private fun seedQuote(): String = DAILY_QUOTES[quoteSeed()]
+
+@Composable
+private fun ThemeQuickToggle(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    contentDescription: String,
+    selected: Boolean,
+    onClick: () -> Unit
+) {
+    Surface(
+        shape = CircleShape,
+        color = if (selected) {
+            MaterialTheme.colorScheme.primary.copy(alpha = 0.16f)
+        } else {
+            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f)
+        }
+    ) {
+        IconToggleButton(
+            checked = selected,
+            onCheckedChange = { onClick() }
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = contentDescription,
+                tint = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+}
 
 private val DAILY_QUOTES = listOf(
     "专注当下这一步，进度自然会出现。",

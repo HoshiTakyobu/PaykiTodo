@@ -108,10 +108,15 @@ fun DashboardScreen(
     ModalNavigationDrawer(
         drawerState = drawerState,
         drawerContent = {
-            DashboardDrawer(current = section) { next ->
-                section = next
-                scope.launch { drawerState.close() }
-            }
+            DashboardDrawer(
+                current = section,
+                selectedThemeMode = uiState.settings.themeMode,
+                onSelect = { next ->
+                    section = next
+                    scope.launch { drawerState.close() }
+                },
+                onThemeModeChange = onThemeModeChange
+            )
         }
     ) {
         Box(modifier = Modifier.fillMaxSize()) {

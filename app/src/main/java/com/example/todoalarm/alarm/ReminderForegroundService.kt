@@ -2,16 +2,15 @@ package com.example.todoalarm.alarm
 
 import android.app.Notification
 import android.app.Service
-import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
-import android.content.IntentFilter
 import android.content.pm.ServiceInfo
 import android.os.Build
 import android.os.IBinder
 import android.os.PowerManager
 import androidx.core.content.ContextCompat
 import com.example.todoalarm.TodoApplication
+import com.example.todoalarm.accessibility.ReminderAccessibilityService
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -23,8 +22,6 @@ class ReminderForegroundService : Service() {
     private val scope = CoroutineScope(Dispatchers.Main.immediate + serviceJob)
     private lateinit var alertController: ReminderAlertController
     private var reminderNotifier: ReminderNotifier? = null
-    private var activeTodoId: Long = -1L
-    private var userPresentReceiver: BroadcastReceiver? = null
     private var wakeLock: PowerManager.WakeLock? = null
 
     override fun onCreate() {
@@ -51,13 +48,13 @@ class ReminderForegroundService : Service() {
             ActiveReminderStore.markActive(this@ReminderForegroundService, todoId)
             val notifier = ReminderNotifier(this@ReminderForegroundService)
             reminderNotifier = notifier
-            activeTodoId = todoId
-            registerUserPresentReceiver()
             val notification = notifier.build(todoItem)
             startInForeground(todoId, notification)
             alertController.start(todoItem)
             wakeDevice()
-            triggerReminderUi(notifier, todoItem.id)
+            triggerAccessibilityOverlay(todoId)
+            delay(350L)
+            triggerAccessibilityOverlay(todoId)
             delay(115_000L)
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
                 stopForeground(STOP_FOREGROUND_DETACH)
@@ -74,7 +71,6 @@ class ReminderForegroundService : Service() {
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onDestroy() {
-        unregisterUserPresentReceiver()
         alertController.shutdown()
         wakeLock?.let {
             if (it.isHeld) {
@@ -83,7 +79,6 @@ class ReminderForegroundService : Service() {
         }
         wakeLock = null
         reminderNotifier = null
-        activeTodoId = -1L
         serviceJob.cancel()
         super.onDestroy()
     }
@@ -95,10 +90,6 @@ class ReminderForegroundService : Service() {
         } else {
             startForeground(id, notification)
         }
-    }
-
-    private fun triggerReminderUi(notifier: ReminderNotifier, todoId: Long) {
-        runCatching { notifier.reminderPendingIntent(todoId).send() }
     }
 
     private fun wakeDevice() {
@@ -113,33 +104,13 @@ class ReminderForegroundService : Service() {
         }
     }
 
-    private fun registerUserPresentReceiver() {
-        unregisterUserPresentReceiver()
-        val receiver = object : BroadcastReceiver() {
-            override fun onReceive(context: Context, intent: Intent) {
-                val todoId = activeTodoId
-                val notifier = reminderNotifier
-                if (todoId <= 0L || notifier == null) return
-                triggerReminderUi(notifier, todoId)
+    private fun triggerAccessibilityOverlay(todoId: Long) {
+        sendBroadcast(
+            Intent(ReminderAccessibilityService.ACTION_TRIGGER_REMINDER_OVERLAY).apply {
+                setPackage(packageName)
+                putExtra(ReminderAccessibilityService.EXTRA_TODO_ID, todoId)
             }
-        }
-        val filter = IntentFilter().apply {
-            addAction(Intent.ACTION_USER_PRESENT)
-            addAction(Intent.ACTION_SCREEN_ON)
-        }
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            registerReceiver(receiver, filter, RECEIVER_NOT_EXPORTED)
-        } else {
-            @Suppress("DEPRECATION")
-            registerReceiver(receiver, filter)
-        }
-        userPresentReceiver = receiver
-    }
-
-    private fun unregisterUserPresentReceiver() {
-        val receiver = userPresentReceiver ?: return
-        runCatching { unregisterReceiver(receiver) }
-        userPresentReceiver = null
+        )
     }
 
     companion object {

@@ -10,13 +10,14 @@ import androidx.activity.ComponentActivity
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
@@ -24,6 +25,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.FilledTonalButton
@@ -41,6 +43,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -54,6 +57,7 @@ import com.example.todoalarm.data.TodoCategory
 import com.example.todoalarm.data.TodoItem
 import com.example.todoalarm.ui.theme.TodoAlarmTheme
 import kotlinx.coroutines.launch
+import java.time.LocalDateTime
 import java.time.ZoneId
 
 class ReminderActivity : ComponentActivity() {
@@ -103,9 +107,11 @@ class ReminderActivity : ComponentActivity() {
             val item = app.repository.getTodo(todoId)
             if (item == null || item.completed) {
                 ActiveReminderStore.clearIfMatches(this@ReminderActivity, todoId)
+                ActiveReminderStore.clearActivityHandoff(this@ReminderActivity, todoId)
                 finish()
                 return@launch
             }
+            ActiveReminderStore.clearActivityHandoff(this@ReminderActivity, todoId)
             todoItem = item
         }
     }
@@ -140,7 +146,7 @@ class ReminderActivity : ComponentActivity() {
 
     private fun nextMinuteAlignedReminder(minutes: Int): Long {
         val zoneId = ZoneId.systemDefault()
-        val nextReminder = java.time.LocalDateTime.now(zoneId)
+        val nextReminder = LocalDateTime.now(zoneId)
             .withSecond(0)
             .withNano(0)
             .plusMinutes(minutes.toLong())
@@ -157,6 +163,7 @@ private fun ReminderScreen(
 ) {
     var customMinutes by remember(defaultSnoozeMinutes) { mutableStateOf(defaultSnoozeMinutes.toString()) }
     val category = todoItem?.let { TodoCategory.fromKey(it.categoryKey) } ?: TodoCategory.ROUTINE
+    val accent = reminderAccent(category)
     val outerScroll = rememberScrollState()
     val notesScroll = rememberScrollState()
 
@@ -166,107 +173,112 @@ private fun ReminderScreen(
             .background(
                 Brush.verticalGradient(
                     listOf(
-                        MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),
-                        MaterialTheme.colorScheme.tertiary.copy(alpha = 0.16f),
-                        MaterialTheme.colorScheme.secondary.copy(alpha = 0.1f),
-                        MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.2f),
+                        accent.copy(alpha = 0.18f),
+                        MaterialTheme.colorScheme.primary.copy(alpha = 0.10f),
                         MaterialTheme.colorScheme.background
                     )
                 )
             )
-            .padding(24.dp)
-            .verticalScroll(outerScroll),
+            .verticalScroll(outerScroll)
+            .padding(horizontal = 20.dp, vertical = 28.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         Surface(
-            shape = RoundedCornerShape(22.dp),
-            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.14f)
+            shape = RoundedCornerShape(28.dp),
+            color = MaterialTheme.colorScheme.surface.copy(alpha = 0.84f)
         ) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 18.dp, vertical = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(6.dp)
+                    .padding(horizontal = 22.dp, vertical = 20.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 Text(
-                    text = "${reminderEmoji(category)} 该做这件事了",
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface
+                    text = "PaykiTodo 提醒",
+                    color = accent,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
                 )
                 Text(
-                    text = "只能完成或延后，不能直接关闭提醒。",
+                    text = "现在该做这件事了",
+                    style = MaterialTheme.typography.headlineMedium,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    textAlign = TextAlign.Center
+                )
+                Text(
+                    text = "完成、延后，或查看完整内容",
+                    style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    style = MaterialTheme.typography.bodyMedium
+                    textAlign = TextAlign.Center
                 )
             }
         }
 
         ElevatedCard(
-            colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surface),
-            modifier = Modifier.fillMaxWidth()
+            shape = RoundedCornerShape(30.dp),
+            colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surface)
         ) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(20.dp),
+                    .padding(22.dp),
                 verticalArrangement = Arrangement.spacedBy(14.dp)
             ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                Surface(
+                    shape = RoundedCornerShape(15.dp),
+                    color = accent
                 ) {
-                    ReminderCategoryChip(category = category)
                     Text(
-                        text = todoItem?.title ?: "正在加载任务...",
-                        modifier = Modifier.weight(1f),
-                        style = MaterialTheme.typography.headlineSmall.copy(lineHeight = 28.sp),
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurface
+                        text = "${categoryEmoji(category)} ${categoryLabel(category)}",
+                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
+                        color = Color.White,
+                        fontWeight = FontWeight.Bold
                     )
                 }
 
+                Text(
+                    text = todoItem?.title ?: "正在加载提醒内容...",
+                    style = MaterialTheme.typography.headlineSmall.copy(lineHeight = 30.sp),
+                    fontWeight = FontWeight.ExtraBold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+
                 todoItem?.let { item ->
                     ReminderMetaCard(
-                        label = "\u23F0 DDL",
+                        label = "⏰ DDL",
                         value = formatLocalDateTime(reminderAtMillisToDateTime(item.dueAtMillis)),
-                        containerBrush = Brush.horizontalGradient(
-                            listOf(
-                                MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),
-                                MaterialTheme.colorScheme.primary.copy(alpha = 0.08f)
-                            )
-                        ),
-                        contentColor = MaterialTheme.colorScheme.primary
+                        accent = accent
                     )
                 }
 
                 if (!todoItem?.notes.isNullOrBlank()) {
                     Surface(
-                        shape = RoundedCornerShape(20.dp),
-                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                        shape = RoundedCornerShape(24.dp),
+                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f)
                     ) {
                         Column(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(16.dp),
-                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                                .padding(18.dp),
+                            verticalArrangement = Arrangement.spacedBy(10.dp)
                         ) {
                             Text(
-                                text = "\uD83D\uDCDD 备注",
-                                style = MaterialTheme.typography.labelLarge,
-                                fontWeight = FontWeight.SemiBold,
+                                text = "📝 备注",
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.Bold,
                                 color = MaterialTheme.colorScheme.onSurface
                             )
                             Column(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .heightIn(max = 180.dp)
+                                    .heightIn(max = 220.dp)
                                     .verticalScroll(notesScroll)
                             ) {
                                 Text(
                                     text = todoItem?.notes.orEmpty(),
-                                    style = MaterialTheme.typography.bodyLarge.copy(lineHeight = 22.sp),
+                                    style = MaterialTheme.typography.bodyLarge.copy(lineHeight = 23.sp),
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
@@ -276,44 +288,8 @@ private fun ReminderScreen(
             }
         }
 
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            Button(
-                onClick = onComplete,
-                modifier = Modifier.weight(1f)
-            ) {
-                Text("我已完成")
-            }
-            FilledTonalButton(
-                onClick = { onSnooze(5) },
-                modifier = Modifier.weight(1f)
-            ) {
-                Text("延后 5 分钟")
-            }
-        }
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            FilledTonalButton(
-                onClick = { onSnooze(defaultSnoozeMinutes) },
-                modifier = Modifier.weight(1f)
-            ) {
-                Text("延后 $defaultSnoozeMinutes 分钟")
-            }
-            FilledTonalButton(
-                onClick = { onSnooze(30) },
-                modifier = Modifier.weight(1f)
-            ) {
-                Text("延后 30 分钟")
-            }
-        }
-
         Surface(
-            shape = RoundedCornerShape(22.dp),
+            shape = RoundedCornerShape(28.dp),
             color = MaterialTheme.colorScheme.surface.copy(alpha = 0.92f)
         ) {
             Column(
@@ -322,51 +298,88 @@ private fun ReminderScreen(
                     .padding(18.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                Text(
-                    text = "自定义延后",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    OutlinedTextField(
-                        value = customMinutes,
-                        onValueChange = { customMinutes = it.filter(Char::isDigit) },
-                        modifier = Modifier.weight(1f),
-                        label = { Text("分钟数") },
-                        singleLine = true
-                    )
                     Button(
-                        onClick = { onSnooze(customMinutes.toIntOrNull()?.coerceIn(1, 180) ?: defaultSnoozeMinutes) },
-                        modifier = Modifier.widthIn(min = 120.dp)
+                        onClick = onComplete,
+                        modifier = Modifier.weight(1f),
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF18794E))
                     ) {
-                        Text("确定")
+                        Text("我已完成")
+                    }
+                    FilledTonalButton(
+                        onClick = { onSnooze(5) },
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text("延后 5 分钟")
+                    }
+                }
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    FilledTonalButton(
+                        onClick = { onSnooze(defaultSnoozeMinutes) },
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text("延后 $defaultSnoozeMinutes 分钟")
+                    }
+                    FilledTonalButton(
+                        onClick = { onSnooze(30) },
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text("延后 30 分钟")
+                    }
+                }
+
+                Surface(
+                    shape = RoundedCornerShape(22.dp),
+                    color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.42f)
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Text(
+                            text = "自定义延后",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            OutlinedTextField(
+                                value = customMinutes,
+                                onValueChange = { customMinutes = it.filter(Char::isDigit) },
+                                modifier = Modifier.weight(1f),
+                                label = { Text("分钟数") },
+                                singleLine = true
+                            )
+                            Button(
+                                onClick = {
+                                    val minutes = customMinutes.toIntOrNull()?.coerceIn(1, 180)
+                                        ?: defaultSnoozeMinutes
+                                    onSnooze(minutes)
+                                },
+                                modifier = Modifier.widthIn(min = 112.dp)
+                            ) {
+                                Text("确认")
+                            }
+                        }
                     }
                 }
             }
         }
-    }
-}
 
-@Composable
-private fun ReminderCategoryChip(category: TodoCategory) {
-    val tint = categoryReminderTint(category)
-    val darkTheme = isSystemInDarkTheme()
-    Surface(
-        shape = RoundedCornerShape(14.dp),
-        color = if (darkTheme) tint.copy(alpha = 0.42f) else tint.copy(alpha = 0.16f)
-    ) {
-        Text(
-            text = "${reminderEmoji(category)} ${category.label}",
-            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-            color = if (darkTheme) Color.White else tint,
-            style = MaterialTheme.typography.labelLarge,
-            fontWeight = FontWeight.SemiBold
-        )
+        Spacer(modifier = Modifier.height(4.dp))
     }
 }
 
@@ -374,52 +387,52 @@ private fun ReminderCategoryChip(category: TodoCategory) {
 private fun ReminderMetaCard(
     label: String,
     value: String,
-    containerBrush: Brush,
-    contentColor: Color
+    accent: Color
 ) {
     Surface(
-        shape = RoundedCornerShape(18.dp),
-        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.42f)
+        shape = RoundedCornerShape(20.dp),
+        color = accent.copy(alpha = 0.10f)
     ) {
-        Box(
+        Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(containerBrush)
-                .padding(horizontal = 14.dp, vertical = 12.dp)
+                .padding(horizontal = 16.dp, vertical = 14.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = label,
-                    color = contentColor,
-                    style = MaterialTheme.typography.labelLarge,
-                    fontWeight = FontWeight.Bold
-                )
-                Text(
-                    text = value,
-                    color = contentColor,
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.SemiBold
-                )
-            }
+            Text(
+                text = label,
+                color = accent,
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.Bold
+            )
+            Text(
+                text = value,
+                color = accent,
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = FontWeight.SemiBold
+            )
         }
     }
 }
 
-private fun reminderEmoji(category: TodoCategory): String = when (category) {
-    TodoCategory.IMPORTANT -> "\u2B50"
-    TodoCategory.URGENT -> "\u26A0\uFE0F"
-    TodoCategory.FOCUS -> "\uD83C\uDFAF"
-    TodoCategory.ROUTINE -> "\uD83E\uDDFD"
+private fun categoryLabel(category: TodoCategory): String = when (category) {
+    TodoCategory.IMPORTANT -> "重要"
+    TodoCategory.URGENT -> "紧急"
+    TodoCategory.FOCUS -> "专注"
+    TodoCategory.ROUTINE -> "例行"
 }
 
-@Composable
-private fun categoryReminderTint(category: TodoCategory): Color = when (category) {
-    TodoCategory.IMPORTANT -> MaterialTheme.colorScheme.secondary
-    TodoCategory.URGENT -> MaterialTheme.colorScheme.error
-    TodoCategory.FOCUS -> MaterialTheme.colorScheme.primary
-    TodoCategory.ROUTINE -> MaterialTheme.colorScheme.tertiary
+private fun categoryEmoji(category: TodoCategory): String = when (category) {
+    TodoCategory.IMPORTANT -> "⭐"
+    TodoCategory.URGENT -> "⚠️"
+    TodoCategory.FOCUS -> "🎯"
+    TodoCategory.ROUTINE -> "🧭"
+}
+
+private fun reminderAccent(category: TodoCategory): Color = when (category) {
+    TodoCategory.IMPORTANT -> Color(0xFF8B5CF6)
+    TodoCategory.URGENT -> Color(0xFFE11D48)
+    TodoCategory.FOCUS -> Color(0xFF2563EB)
+    TodoCategory.ROUTINE -> Color(0xFF0F766E)
 }

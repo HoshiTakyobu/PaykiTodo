@@ -26,8 +26,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.todoalarm.CrashLogger
 import com.example.todoalarm.TodoApplication
 import com.example.todoalarm.accessibility.ReminderAccessibilityService
-import com.example.todoalarm.alarm.ActiveReminderStore
-import com.example.todoalarm.alarm.AlarmScheduler
 import com.example.todoalarm.ui.theme.TodoAlarmTheme
 
 data class PermissionSnapshot(
@@ -46,8 +44,6 @@ class MainActivity : ComponentActivity() {
     private val viewModel: TodoViewModel by viewModels()
     private var permissions by mutableStateOf(PermissionSnapshot())
     private var lastCrashLog by mutableStateOf<String?>(null)
-    private var lastOpenedReminderId: Long = -1L
-    private var lastOpenedReminderAt: Long = 0L
 
     private val notificationPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
@@ -92,7 +88,6 @@ class MainActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
         refreshPermissions()
-        openActiveReminderIfNeeded()
     }
 
     private fun refreshPermissions() {
@@ -184,21 +179,6 @@ class MainActivity : ComponentActivity() {
 
     private fun openAccessibilitySettings() {
         startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
-    }
-
-    private fun openActiveReminderIfNeeded() {
-        val todoId = ActiveReminderStore.getActiveTodoId(this)
-        if (todoId <= 0L) return
-        val now = System.currentTimeMillis()
-        if (todoId == lastOpenedReminderId && now - lastOpenedReminderAt < 2500L) return
-        lastOpenedReminderId = todoId
-        lastOpenedReminderAt = now
-        startActivity(
-            Intent(this, ReminderActivity::class.java).apply {
-                flags = Intent.FLAG_ACTIVITY_SINGLE_TOP
-                putExtra(AlarmScheduler.EXTRA_TODO_ID, todoId)
-            }
-        )
     }
 
     private fun copyCrashLog() {

@@ -38,7 +38,6 @@ class ReminderNotifier(
             .setOnlyAlertOnce(true)
             .setDefaults(0)
             .setForegroundServiceBehavior(NotificationCompat.FOREGROUND_SERVICE_IMMEDIATE)
-            .setFullScreenIntent(fullScreenIntent, true)
             .setContentIntent(fullScreenIntent)
             .build()
     }

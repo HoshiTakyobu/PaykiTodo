@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -23,6 +24,7 @@ import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.BrightnessAuto
 import androidx.compose.material.icons.rounded.DarkMode
 import androidx.compose.material.icons.rounded.History
+import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.LightMode
 import androidx.compose.material.icons.rounded.Menu
 import androidx.compose.material.icons.rounded.Refresh
@@ -60,6 +62,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -88,7 +91,8 @@ internal fun DashboardBackgroundBrush(): Brush {
 internal enum class DashboardSection(val label: String, val icon: ImageVector) {
     ACTIVE("待处理", Icons.Rounded.TaskAlt),
     HISTORY("历史记录", Icons.Rounded.History),
-    SETTINGS("设置", Icons.Rounded.Settings)
+    SETTINGS("设置", Icons.Rounded.Settings),
+    ABOUT("关于", Icons.Rounded.Info)
 }
 
 @Composable
@@ -260,6 +264,8 @@ internal fun DashboardBody(
                     onClearCrashLog = permissions.clearCrashLog
                 )
             }
+
+            DashboardSection.ABOUT -> item { AboutPanel() }
         }
     }
 }
@@ -348,7 +354,7 @@ internal fun EmptyStateCard(text: String) {
 
 @Composable
 internal fun LaunchScreen() {
-    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+    Box(modifier = Modifier.fillMaxSize()) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -410,23 +416,47 @@ internal fun LaunchScreen() {
                 )
         )
 
-        ElevatedCard(
-            shape = RoundedCornerShape(32.dp),
-            colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.72f))
+        Column(
+            modifier = Modifier
+                .align(Alignment.Center)
+                .fillMaxWidth(0.85f)
+                .offset(y = (-52).dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            Column(
-                modifier = Modifier.padding(horizontal = 32.dp, vertical = 34.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Text(
-                    text = "PaykiTodo",
-                    style = MaterialTheme.typography.headlineLarge,
-                    fontFamily = FontFamily.Cursive,
-                    fontWeight = FontWeight.Bold,
-                    color = Color(0xD9183538)
-                )
-            }
+            Text(
+                text = "PaykiTodo",
+                modifier = Modifier.fillMaxWidth(),
+                textAlign = TextAlign.Center,
+                style = MaterialTheme.typography.displayLarge.copy(
+                    shadow = Shadow(
+                        color = Color(0x44111D1C),
+                        offset = Offset(0f, 4f),
+                        blurRadius = 12f
+                    )
+                ),
+                fontFamily = FontFamily.Cursive,
+                fontWeight = FontWeight.Bold,
+                color = Color(0xE0183538)
+            )
+            Text(
+                text = "专属于您的高效待办助手",
+                textAlign = TextAlign.Center,
+                style = MaterialTheme.typography.titleMedium.copy(letterSpacing = 0.5.sp),
+                fontFamily = FontFamily.Cursive,
+                color = Color(0xD92D4D45)
+            )
         }
+
+        Text(
+            text = "© Copyright Hoshi Takyobu, 2026-2026",
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(bottom = 26.dp),
+            textAlign = TextAlign.Center,
+            style = MaterialTheme.typography.bodySmall,
+            color = Color(0xCC2D4D45)
+        )
     }
 }
 

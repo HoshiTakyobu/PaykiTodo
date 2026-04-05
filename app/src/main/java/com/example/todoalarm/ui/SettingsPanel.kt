@@ -1,14 +1,21 @@
 package com.example.todoalarm.ui
 
-import android.graphics.Paint
-import android.widget.NumberPicker
-import android.widget.EditText
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.snapping.rememberSnapFlingBehavior
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -26,18 +33,25 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.viewinterop.AndroidView
+import androidx.core.content.pm.PackageInfoCompat
+import kotlinx.coroutines.launch
 
 @Composable
 fun SettingsPanel(
@@ -154,44 +168,123 @@ fun SettingsPanel(
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun SnoozePickerDialog(
     defaultSnooze: Int,
     onDismiss: () -> Unit,
     onConfirm: (Int) -> Unit
 ) {
-    val values = (5..60 step 5).toList()
-    var selectedMinutes by remember(defaultSnooze) { mutableIntStateOf(normalizeSnooze(defaultSnooze)) }
-    val pickerTextColor = MaterialTheme.colorScheme.onSurface.toArgb()
+    val actualValues = remember { (5..60 step 5).toList() }
+    val displayValues = remember { listOf<Int?>(null, null) + actualValues + listOf(null, null) }
+    val initialActualIndex = actualValues.indexOf(normalizeSnooze(defaultSnooze)).coerceAtLeast(0)
+    val rowHeight = 52.dp
+    val rowHeightPx = with(LocalDensity.current) { rowHeight.roundToPx() }
+    val listState = rememberLazyListState(initialFirstVisibleItemIndex = initialActualIndex)
+    val flingBehavior = rememberSnapFlingBehavior(lazyListState = listState)
+    val scope = rememberCoroutineScope()
+
+    val selectedDisplayIndex by remember {
+        derivedStateOf {
+            val step = if (listState.firstVisibleItemScrollOffset >= rowHeightPx / 2) 1 else 0
+            (listState.firstVisibleItemIndex + 2 + step).coerceIn(2, displayValues.lastIndex - 2)
+        }
+    }
+
+    val selectedMinutes = displayValues[selectedDisplayIndex] ?: actualValues[initialActualIndex]
 
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("选择默认延后时长") },
         text = {
-            AndroidView(
-                modifier = Modifier.fillMaxWidth(),
-                factory = { context ->
-                    NumberPicker(context).apply {
-                        minValue = 0
-                        maxValue = values.lastIndex
-                        displayedValues = values.map { "$it 分钟" }.toTypedArray()
-                        wrapSelectorWheel = false
-                        descendantFocusability = NumberPicker.FOCUS_BLOCK_DESCENDANTS
-                        value = values.indexOf(selectedMinutes)
-                        applyTextColor(pickerTextColor)
-                        setOnValueChangedListener { _, _, newVal ->
-                            selectedMinutes = values[newVal]
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text(
+                    text = "上下滑动选择 5 到 60 分钟。",
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    style = MaterialTheme.typography.bodyMedium
+                )
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(rowHeight * 5)
+                ) {
+                    LazyColumn(
+                        modifier = Modifier.fillMaxWidth(),
+                        state = listState,
+                        flingBehavior = flingBehavior,
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        itemsIndexed(displayValues) { index, minutes ->
+                            val selected = index == selectedDisplayIndex
+                            val label = minutes?.let { "$it 分钟" }.orEmpty()
+
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(rowHeight)
+                                    .then(
+                                        if (minutes != null) {
+                                            Modifier.clickable {
+                                                scope.launch {
+                                                    listState.animateScrollToItem(index - 2)
+                                                }
+                                            }
+                                        } else {
+                                            Modifier
+                                        }
+                                    )
+                                    .padding(horizontal = 12.dp)
+                                    .background(
+                                        color = if (selected && minutes != null) {
+                                            MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
+                                        } else {
+                                            Color.Transparent
+                                        },
+                                        shape = RoundedCornerShape(18.dp)
+                                    ),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                if (minutes != null) {
+                                    Text(
+                                        text = label,
+                                        textAlign = TextAlign.Center,
+                                        style = if (selected) {
+                                            MaterialTheme.typography.titleMedium
+                                        } else {
+                                            MaterialTheme.typography.bodyLarge
+                                        },
+                                        fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
+                                        color = if (selected) {
+                                            MaterialTheme.colorScheme.onSurface
+                                        } else {
+                                            MaterialTheme.colorScheme.onSurfaceVariant
+                                        }
+                                    )
+                                }
+                            }
                         }
                     }
-                },
-                update = { picker ->
-                    val targetIndex = values.indexOf(selectedMinutes)
-                    if (picker.value != targetIndex) {
-                        picker.value = targetIndex
-                    }
-                    picker.applyTextColor(pickerTextColor)
+
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.Center)
+                            .fillMaxWidth()
+                            .height(rowHeight)
+                            .padding(horizontal = 12.dp)
+                            .border(
+                                width = 1.dp,
+                                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.8f),
+                                shape = RoundedCornerShape(18.dp)
+                            )
+                    )
                 }
-            )
+                Text(
+                    text = "当前选择：$selectedMinutes 分钟",
+                    color = MaterialTheme.colorScheme.primary,
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
         },
         confirmButton = {
             TextButton(onClick = { onConfirm(selectedMinutes) }) {
@@ -204,6 +297,44 @@ private fun SnoozePickerDialog(
             }
         }
     )
+
+    LaunchedEffect(initialActualIndex) {
+        listState.scrollToItem(initialActualIndex)
+    }
+}
+
+@Composable
+fun AboutPanel() {
+    val context = LocalContext.current
+    val packageInfo = remember(context) {
+        context.packageManager.getPackageInfo(context.packageName, 0)
+    }
+    val versionName = packageInfo.versionName ?: "未知"
+    val versionCode = PackageInfoCompat.getLongVersionCode(packageInfo).toString()
+
+    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        PrefCard("关于 PaykiTodo") {
+            Text(
+                text = "PaykiTodo 是一款本地单机的待办与提醒应用，当前版本重点放在强提醒、自定义待办节奏与日常自律陪伴。",
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                style = MaterialTheme.typography.bodyLarge
+            )
+        }
+
+        PrefCard("版本信息") {
+            AboutRow("应用名称", "PaykiTodo")
+            AboutRow("版本号", versionName)
+            AboutRow("内部版本", versionCode)
+            AboutRow("包名", context.packageName)
+        }
+
+        PrefCard("项目信息") {
+            AboutRow("作者", "Hoshi Takyobu")
+            AboutRow("定位", "本地单机 / 持续迭代中")
+            AboutRow("数据存储", "仅保存在当前设备")
+            AboutRow("版权", "© Copyright Hoshi Takyobu, 2026-2026")
+        }
+    }
 }
 
 @Composable
@@ -243,18 +374,6 @@ private fun normalizeSnooze(minutes: Int): Int {
     return if (clamped % 5 == 0) clamped else clamped - (clamped % 5)
 }
 
-private fun NumberPicker.applyTextColor(color: Int) {
-    for (index in 0 until childCount) {
-        (getChildAt(index) as? EditText)?.setTextColor(color)
-    }
-    runCatching {
-        val field = NumberPicker::class.java.getDeclaredField("mSelectorWheelPaint")
-        field.isAccessible = true
-        (field.get(this) as? Paint)?.color = color
-    }
-    invalidate()
-}
-
 @Composable
 private fun PrefCard(
     title: String,
@@ -275,6 +394,23 @@ private fun PrefCard(
             )
             content()
         }
+    }
+}
+
+@Composable
+private fun AboutRow(label: String, value: String) {
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelLarge,
+            fontWeight = FontWeight.SemiBold,
+            color = MaterialTheme.colorScheme.primary
+        )
+        Text(
+            text = value,
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onSurface
+        )
     }
 }
 

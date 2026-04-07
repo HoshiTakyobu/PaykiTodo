@@ -17,7 +17,9 @@ data class AppSettings(
     val defaultRingEnabled: Boolean = true,
     val defaultVibrateEnabled: Boolean = true,
     val defaultVoiceEnabled: Boolean = false,
-    val quoteIndex: Int = 0
+    val quoteIndex: Int = 0,
+    val backupDirectoryUri: String? = null,
+    val autoBackupEnabled: Boolean = false
 )
 
 class AppSettingsStore(context: Context) {
@@ -52,6 +54,30 @@ class AppSettingsStore(context: Context) {
         refresh()
     }
 
+    fun updateBackupDirectoryUri(uri: String?) {
+        preferences.edit().putString(KEY_BACKUP_DIR_URI, uri).apply()
+        refresh()
+    }
+
+    fun updateAutoBackupEnabled(enabled: Boolean) {
+        preferences.edit().putBoolean(KEY_AUTO_BACKUP_ENABLED, enabled).apply()
+        refresh()
+    }
+
+    fun replaceAll(settings: AppSettings) {
+        preferences.edit()
+            .putString(KEY_THEME_MODE, settings.themeMode.name)
+            .putInt(KEY_DEFAULT_SNOOZE, settings.defaultSnoozeMinutes)
+            .putBoolean(KEY_DEFAULT_RING, settings.defaultRingEnabled)
+            .putBoolean(KEY_DEFAULT_VIBRATE, settings.defaultVibrateEnabled)
+            .putBoolean(KEY_DEFAULT_VOICE, settings.defaultVoiceEnabled)
+            .putInt(KEY_QUOTE_INDEX, settings.quoteIndex)
+            .putString(KEY_BACKUP_DIR_URI, settings.backupDirectoryUri)
+            .putBoolean(KEY_AUTO_BACKUP_ENABLED, settings.autoBackupEnabled)
+            .apply()
+        refresh()
+    }
+
     private fun refresh() {
         _settings.value = readSettings()
     }
@@ -64,7 +90,9 @@ class AppSettingsStore(context: Context) {
             defaultRingEnabled = preferences.getBoolean(KEY_DEFAULT_RING, true),
             defaultVibrateEnabled = preferences.getBoolean(KEY_DEFAULT_VIBRATE, true),
             defaultVoiceEnabled = preferences.getBoolean(KEY_DEFAULT_VOICE, false),
-            quoteIndex = preferences.getInt(KEY_QUOTE_INDEX, 0).coerceAtLeast(0)
+            quoteIndex = preferences.getInt(KEY_QUOTE_INDEX, 0).coerceAtLeast(0),
+            backupDirectoryUri = preferences.getString(KEY_BACKUP_DIR_URI, null),
+            autoBackupEnabled = preferences.getBoolean(KEY_AUTO_BACKUP_ENABLED, false)
         )
     }
 
@@ -76,5 +104,7 @@ class AppSettingsStore(context: Context) {
         private const val KEY_DEFAULT_VIBRATE = "default_vibrate_enabled"
         private const val KEY_DEFAULT_VOICE = "default_voice_enabled"
         private const val KEY_QUOTE_INDEX = "quote_index"
+        private const val KEY_BACKUP_DIR_URI = "backup_directory_uri"
+        private const val KEY_AUTO_BACKUP_ENABLED = "auto_backup_enabled"
     }
 }

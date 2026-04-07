@@ -48,7 +48,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.todoalarm.data.TodoCategory
+import com.example.todoalarm.data.TaskGroup
 import com.example.todoalarm.data.TodoItem
 import com.example.todoalarm.ui.theme.Clay
 import com.example.todoalarm.ui.theme.Leaf
@@ -59,8 +59,10 @@ import kotlinx.coroutines.delay
 @Composable
 internal fun ActiveTodoCard(
     item: TodoItem,
+    groups: List<TaskGroup>,
     onEdit: () -> Unit,
-    onComplete: () -> Unit
+    onComplete: () -> Unit,
+    onCancel: () -> Unit
 ) {
     var completing by remember(item.id) { mutableStateOf(false) }
     var showDetails by remember(item.id) { mutableStateOf(false) }
@@ -73,7 +75,7 @@ internal fun ActiveTodoCard(
         }
     }
 
-    TodoCardShell(item = item, onClick = { showDetails = true }) {
+    TodoCardShell(item = item, groups = groups, onClick = { showDetails = true }) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.Top,
@@ -90,41 +92,62 @@ internal fun ActiveTodoCard(
             }
 
             Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                TitleRow(item = item, progress = progress)
+                TitleRow(item = item, groups = groups, progress = progress)
                 if (item.notes.isNotBlank()) {
                     Text(
                         text = item.notes,
                         style = MaterialTheme.typography.bodyMedium.copy(lineHeight = 18.sp),
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        color = if (item.missed) Color(0xFFC62828) else MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 3,
                         overflow = TextOverflow.Ellipsis
                     )
                 }
-                DeadlineMeta(formatLocalDateTime(reminderAtMillisToDateTime(item.dueAtMillis)))
-            }
-
-            IconButton(onClick = onEdit, enabled = !completing) {
-                Icon(Icons.Rounded.Edit, contentDescription = "编辑任务")
+                DeadlineMeta(
+                    value = formatLocalDateTime(reminderAtMillisToDateTime(item.dueAtMillis)),
+                    accent = if (item.missed) Color(0xFFC62828) else MaterialTheme.colorScheme.primary
+                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    if (item.isRecurring) {
+                        Text(
+                            text = "循环任务",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                        TextButton(onClick = onCancel) {
+                            Text("取消")
+                        }
+                        IconButton(onClick = onEdit, enabled = !completing) {
+                            Icon(Icons.Rounded.Edit, contentDescription = "编辑任务")
+                        }
+                    }
+                }
             }
         }
     }
 
     if (showDetails) {
-        TodoDetailsDialog(item = item, onDismiss = { showDetails = false }, showCreated = false, showCompleted = false)
+        TodoDetailsDialog(item = item, groups = groups, onDismiss = { showDetails = false }, showCreated = true, showStatusTime = false)
     }
 }
 
 @Composable
 internal fun CompletedTodoCard(
     item: TodoItem,
+    groups: List<TaskGroup>,
     onEdit: () -> Unit,
     onRestore: () -> Unit
 ) {
     var showDetails by remember(item.id) { mutableStateOf(false) }
 
-    TodoCardShell(item = item, onClick = { showDetails = true }) {
+    TodoCardShell(item = item, groups = groups, onClick = { showDetails = true }) {
         Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            TitleRow(item = item, progress = 0f)
+            TitleRow(item = item, groups = groups, progress = 0f)
             if (item.notes.isNotBlank()) {
                 Text(
                     text = item.notes,
@@ -140,19 +163,24 @@ internal fun CompletedTodoCard(
                 value = formatLocalDateTime(reminderAtMillisToDateTime(item.createdAtMillis)),
                 accent = MaterialTheme.colorScheme.secondary
             )
-            DeadlineMeta(formatLocalDateTime(reminderAtMillisToDateTime(item.dueAtMillis)))
+            DeadlineMeta(
+                value = formatLocalDateTime(reminderAtMillisToDateTime(item.dueAtMillis)),
+                accent = MaterialTheme.colorScheme.primary
+            )
             MetaLine(
-                icon = "✅",
-                label = "完成",
-                value = item.completedAtMillis?.let { formatLocalDateTime(reminderAtMillisToDateTime(it)) } ?: "未记录",
-                accent = MaterialTheme.colorScheme.tertiary
+                icon = if (item.completed) "✅" else "🚫",
+                label = if (item.completed) "完成" else "取消",
+                value = (item.completedAtMillis ?: item.canceledAtMillis)?.let {
+                    formatLocalDateTime(reminderAtMillisToDateTime(it))
+                } ?: "未记录",
+                accent = if (item.completed) MaterialTheme.colorScheme.tertiary else Color(0xFFB45309)
             )
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                CategoryChip(TodoCategory.fromKey(item.categoryKey))
+                CategoryChip(resolveTaskGroup(item, groups))
                 Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                     IconButton(onClick = onEdit) {
                         Icon(Icons.Rounded.Edit, contentDescription = "编辑历史任务")
@@ -167,13 +195,14 @@ internal fun CompletedTodoCard(
     }
 
     if (showDetails) {
-        TodoDetailsDialog(item = item, onDismiss = { showDetails = false }, showCreated = true, showCompleted = true)
+        TodoDetailsDialog(item = item, groups = groups, onDismiss = { showDetails = false }, showCreated = true, showStatusTime = true)
     }
 }
 
 @Composable
 private fun TodoCardShell(
     item: TodoItem,
+    groups: List<TaskGroup>,
     onClick: () -> Unit,
     content: @Composable () -> Unit
 ) {
@@ -191,7 +220,7 @@ private fun TodoCardShell(
                 modifier = Modifier
                     .width(8.dp)
                     .fillMaxHeight()
-                    .background(categoryColor(TodoCategory.fromKey(item.categoryKey)))
+                    .background(categoryColor(resolveTaskGroup(item, groups)))
             )
             Column(
                 modifier = Modifier
@@ -207,6 +236,7 @@ private fun TodoCardShell(
 @Composable
 private fun TitleRow(
     item: TodoItem,
+    groups: List<TaskGroup>,
     progress: Float
 ) {
     Row(
@@ -214,17 +244,22 @@ private fun TitleRow(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        CategoryChip(TodoCategory.fromKey(item.categoryKey))
-        StrikeTitle(text = item.title, progress = progress, modifier = Modifier.weight(1f))
+        CategoryChip(resolveTaskGroup(item, groups))
+        StrikeTitle(
+            text = item.title,
+            progress = progress,
+            textColor = if (item.missed) Color(0xFFC62828) else MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier.weight(1f)
+        )
     }
 }
 
 @Composable
-private fun CategoryChip(category: TodoCategory) {
-    val tint = categoryColor(category)
+private fun CategoryChip(group: ResolvedTaskGroup) {
+    val tint = categoryColor(group)
     Surface(shape = RoundedCornerShape(12.dp), color = tint.copy(alpha = 0.12f)) {
         Text(
-            text = category.label,
+            text = group.name,
             modifier = Modifier.padding(horizontal = 6.dp, vertical = 4.dp),
             color = tint,
             style = MaterialTheme.typography.labelMedium,
@@ -263,7 +298,7 @@ private fun MetaLine(
 }
 
 @Composable
-private fun DeadlineMeta(value: String) {
+private fun DeadlineMeta(value: String, accent: Color) {
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(6.dp),
@@ -271,13 +306,13 @@ private fun DeadlineMeta(value: String) {
     ) {
         Text(
             text = "⏰ DDL",
-            color = MaterialTheme.colorScheme.primary,
+            color = accent,
             fontWeight = FontWeight.Bold,
             style = MaterialTheme.typography.bodySmall
         )
         Text(
             text = value,
-            color = MaterialTheme.colorScheme.primary,
+            color = accent,
             style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
             maxLines = 1,
             overflow = TextOverflow.Ellipsis
@@ -289,6 +324,7 @@ private fun DeadlineMeta(value: String) {
 private fun StrikeTitle(
     text: String,
     progress: Float,
+    textColor: Color,
     modifier: Modifier = Modifier
 ) {
     val strikeColor = lerp(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.onSurfaceVariant, progress)
@@ -309,7 +345,7 @@ private fun StrikeTitle(
         },
         style = MaterialTheme.typography.titleMedium.copy(lineHeight = 22.sp),
         fontWeight = FontWeight.Bold,
-        color = MaterialTheme.colorScheme.onSurface,
+        color = textColor,
         maxLines = 2,
         overflow = TextOverflow.Ellipsis
     )
@@ -318,9 +354,10 @@ private fun StrikeTitle(
 @Composable
 private fun TodoDetailsDialog(
     item: TodoItem,
+    groups: List<TaskGroup>,
     onDismiss: () -> Unit,
     showCreated: Boolean,
-    showCompleted: Boolean
+    showStatusTime: Boolean
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -331,7 +368,7 @@ private fun TodoDetailsDialog(
         },
         title = {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                CategoryChip(TodoCategory.fromKey(item.categoryKey))
+                CategoryChip(resolveTaskGroup(item, groups))
                 Text(item.title, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
             }
         },
@@ -341,7 +378,7 @@ private fun TodoDetailsDialog(
                     Text(
                         text = item.notes,
                         style = MaterialTheme.typography.bodyMedium.copy(lineHeight = 18.sp),
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        color = if (item.missed) Color(0xFFC62828) else MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
                 if (showCreated) {
@@ -352,13 +389,18 @@ private fun TodoDetailsDialog(
                         accent = MaterialTheme.colorScheme.secondary
                     )
                 }
-                DeadlineMeta(formatLocalDateTime(reminderAtMillisToDateTime(item.dueAtMillis)))
-                if (showCompleted) {
+                DeadlineMeta(
+                    value = formatLocalDateTime(reminderAtMillisToDateTime(item.dueAtMillis)),
+                    accent = if (item.missed) Color(0xFFC62828) else MaterialTheme.colorScheme.primary
+                )
+                if (showStatusTime) {
                     MetaLine(
-                        icon = "✅",
-                        label = "完成",
-                        value = item.completedAtMillis?.let { formatLocalDateTime(reminderAtMillisToDateTime(it)) } ?: "未记录",
-                        accent = MaterialTheme.colorScheme.tertiary
+                        icon = if (item.completed) "✅" else "🚫",
+                        label = if (item.completed) "完成" else "取消",
+                        value = (item.completedAtMillis ?: item.canceledAtMillis)?.let {
+                            formatLocalDateTime(reminderAtMillisToDateTime(it))
+                        } ?: "未记录",
+                        accent = if (item.completed) MaterialTheme.colorScheme.tertiary else Color(0xFFB45309)
                     )
                 }
             }
@@ -387,9 +429,13 @@ private fun Firework(progress: Float) {
     }
 }
 
-private fun categoryColor(category: TodoCategory): Color = when (category) {
-    TodoCategory.IMPORTANT -> Clay
-    TodoCategory.URGENT -> Signal
-    TodoCategory.FOCUS -> Ocean
-    TodoCategory.ROUTINE -> Leaf
+private fun categoryColor(group: ResolvedTaskGroup): Color {
+    return runCatching { colorFromHex(group.colorHex) }.getOrElse {
+        when (group.name) {
+            "重要" -> Clay
+            "紧急" -> Signal
+            "专注" -> Ocean
+            else -> Leaf
+        }
+    }
 }

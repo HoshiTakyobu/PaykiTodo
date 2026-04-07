@@ -22,7 +22,7 @@ class AlarmScheduler(
 
     fun schedule(todoItem: TodoItem): String? {
         val triggerAtMillis = todoItem.reminderAtMillis ?: return null
-        if (todoItem.completed || !todoItem.reminderEnabled) {
+        if (todoItem.isHistory || !todoItem.reminderEnabled) {
             cancel(todoItem.id)
             return null
         }

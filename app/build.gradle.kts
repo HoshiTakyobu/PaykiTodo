@@ -4,8 +4,8 @@ plugins {
     id("com.google.devtools.ksp")
 }
 
-val paykiVersionName = "1.1.32"
-val paykiVersionCode = 34
+val paykiVersionName = "1.2.0"
+val paykiVersionCode = 35
 
 project.setProperty("archivesBaseName", "PaykiTodo-$paykiVersionName")
 
@@ -48,6 +48,7 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-runtime-compose:2.8.4")
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.4")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1")
+    implementation("androidx.documentfile:documentfile:1.0.1")
 
     implementation("androidx.compose.ui:ui:1.6.8")
     implementation("androidx.compose.ui:ui-tooling-preview:1.6.8")

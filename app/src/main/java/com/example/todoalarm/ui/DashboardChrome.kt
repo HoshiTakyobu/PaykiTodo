@@ -27,6 +27,9 @@ import androidx.compose.material.icons.rounded.History
 import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.LightMode
 import androidx.compose.material.icons.rounded.Menu
+import androidx.compose.material.icons.rounded.ExpandLess
+import androidx.compose.material.icons.rounded.ExpandMore
+import androidx.compose.material.icons.rounded.Folder
 import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material.icons.rounded.TaskAlt
@@ -49,6 +52,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -67,6 +71,7 @@ import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.todoalarm.R
+import com.example.todoalarm.data.TaskGroup
 import com.example.todoalarm.data.ThemeMode
 import com.example.todoalarm.data.TodoItem
 import com.example.todoalarm.ui.theme.PaykiGreetingFontFamily
@@ -89,8 +94,9 @@ internal fun DashboardBackgroundBrush(): Brush {
 }
 
 internal enum class DashboardSection(val label: String, val icon: ImageVector) {
-    ACTIVE("待处理", Icons.Rounded.TaskAlt),
+    ACTIVE("我的任务", Icons.Rounded.TaskAlt),
     HISTORY("历史记录", Icons.Rounded.History),
+    GROUPS("分组管理", Icons.Rounded.Folder),
     SETTINGS("设置", Icons.Rounded.Settings),
     ABOUT("关于", Icons.Rounded.Info)
 }
@@ -98,10 +104,15 @@ internal enum class DashboardSection(val label: String, val icon: ImageVector) {
 @Composable
 internal fun DashboardDrawer(
     current: DashboardSection,
+    groups: List<TaskGroup>,
+    selectedGroupId: Long?,
     selectedThemeMode: ThemeMode,
-    onSelect: (DashboardSection) -> Unit,
+    onSelectSection: (DashboardSection) -> Unit,
+    onSelectAllTasks: () -> Unit,
+    onSelectGroup: (Long) -> Unit,
     onThemeModeChange: (ThemeMode) -> Unit
 ) {
+    var taskExpanded by rememberSaveable { mutableStateOf(true) }
     ModalDrawerSheet(
         drawerContainerColor = MaterialTheme.colorScheme.surface,
         drawerShape = RoundedCornerShape(topEnd = 28.dp, bottomEnd = 28.dp)
@@ -134,11 +145,36 @@ internal fun DashboardDrawer(
                     modifier = Modifier.padding(top = 6.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    DashboardSection.entries.forEach { section ->
+                    DrawerExpandableHeader(
+                        title = "我的任务",
+                        selected = current == DashboardSection.ACTIVE,
+                        expanded = taskExpanded,
+                        onClick = {
+                            taskExpanded = !taskExpanded
+                            onSelectSection(DashboardSection.ACTIVE)
+                        }
+                    )
+                    if (taskExpanded) {
+                        DrawerTaskItem(
+                            label = "全部任务",
+                            selected = current == DashboardSection.ACTIVE && selectedGroupId == null,
+                            colorHex = null,
+                            onClick = onSelectAllTasks
+                        )
+                        groups.forEach { group ->
+                            DrawerTaskItem(
+                                label = group.name,
+                                selected = current == DashboardSection.ACTIVE && selectedGroupId == group.id,
+                                colorHex = group.colorHex,
+                                onClick = { onSelectGroup(group.id) }
+                            )
+                        }
+                    }
+                    DashboardSection.entries.filter { it != DashboardSection.ACTIVE }.forEach { section ->
                         DrawerSectionButton(
                             section = section,
                             selected = current == section,
-                            onClick = { onSelect(section) }
+                            onClick = { onSelectSection(section) }
                         )
                     }
                 }
@@ -196,6 +232,10 @@ internal fun DashboardBody(
     onEdit: (TodoItem) -> Unit,
     onCompleteTodo: (TodoItem) -> Unit,
     onRestoreTodo: (TodoItem) -> Unit,
+    onCancelTodo: (TodoItem) -> Unit,
+    onCreateGroup: suspend (String, String) -> String?,
+    onUpdateGroup: suspend (TaskGroup) -> String?,
+    onDeleteGroup: suspend (Long) -> String?,
     onRequestNotificationPermission: () -> Unit,
     onRequestExactAlarmPermission: () -> Unit,
     onRequestFullScreenPermission: () -> Unit,
@@ -203,8 +243,16 @@ internal fun DashboardBody(
     onRequestIgnoreBatteryOptimization: () -> Unit,
     onRequestAccessibilityService: () -> Unit,
     onNextQuote: () -> Unit,
-    onDefaultSnoozeChange: (Int) -> Unit
+    onDefaultSnoozeChange: (Int) -> Unit,
+    onPickBackupDirectory: () -> Unit,
+    onExportBackup: () -> Unit,
+    onImportBackup: () -> Unit,
+    onAutoBackupChange: (Boolean) -> Unit
 ) {
+    var missedExpanded by rememberSaveable { mutableStateOf(true) }
+    var todayExpanded by rememberSaveable { mutableStateOf(true) }
+    var upcomingExpanded by rememberSaveable(uiState.todayItems.isEmpty()) { mutableStateOf(uiState.todayItems.isEmpty()) }
+
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
@@ -220,36 +268,79 @@ internal fun DashboardBody(
                         onNextQuote = onNextQuote
                     )
                 }
-                item { SectionTitle("今日待办") }
-                if (uiState.todayItems.isEmpty()) {
-                    item { EmptyStateCard("今天还没有安排任务。") }
-                } else {
-                    items(uiState.todayItems, key = { it.id }) { item ->
-                        ActiveTodoCard(item, { onEdit(item) }, { onCompleteTodo(item) })
+
+                if (uiState.missedItems.isNotEmpty()) {
+                    item {
+                        ExpandableSectionHeader(
+                            title = "已错过",
+                            expanded = missedExpanded,
+                            onToggle = { missedExpanded = !missedExpanded }
+                        )
+                    }
+                    if (missedExpanded) {
+                        items(uiState.missedItems, key = { it.id }) { item ->
+                            ActiveTodoCard(item, uiState.groups, { onEdit(item) }, { onCompleteTodo(item) }, { onCancelTodo(item) })
+                        }
                     }
                 }
-                item { SectionTitle("计划中") }
-                if (uiState.upcomingItems.isEmpty()) {
-                    item { EmptyStateCard("后续时间暂时没有新计划。") }
-                } else {
-                    items(uiState.upcomingItems, key = { it.id }) { item ->
-                        ActiveTodoCard(item, { onEdit(item) }, { onCompleteTodo(item) })
+
+                item {
+                    ExpandableSectionHeader(
+                        title = "今日待办",
+                        expanded = todayExpanded,
+                        onToggle = { todayExpanded = !todayExpanded }
+                    )
+                }
+                if (todayExpanded) {
+                    if (uiState.todayItems.isEmpty()) {
+                        item { EmptyStateCard("今天还没有安排任务。") }
+                    } else {
+                        items(uiState.todayItems, key = { it.id }) { item ->
+                            ActiveTodoCard(item, uiState.groups, { onEdit(item) }, { onCompleteTodo(item) }, { onCancelTodo(item) })
+                        }
+                    }
+                }
+
+                item {
+                    ExpandableSectionHeader(
+                        title = "计划中",
+                        expanded = upcomingExpanded,
+                        onToggle = { upcomingExpanded = !upcomingExpanded }
+                    )
+                }
+                if (upcomingExpanded) {
+                    if (uiState.upcomingItems.isEmpty()) {
+                        item { EmptyStateCard("后续时间暂时没有新计划。") }
+                    } else {
+                        items(uiState.upcomingItems, key = { it.id }) { item ->
+                            ActiveTodoCard(item, uiState.groups, { onEdit(item) }, { onCompleteTodo(item) }, { onCancelTodo(item) })
+                        }
                     }
                 }
             }
 
             DashboardSection.HISTORY -> {
-                if (uiState.completedItems.isEmpty()) {
+                if (uiState.historyItems.isEmpty()) {
                     item { EmptyStateCard("完成后的任务会保存在这里。") }
                 } else {
-                    items(uiState.completedItems, key = { it.id }) { item ->
-                        CompletedTodoCard(item, { onEdit(item) }, { onRestoreTodo(item) })
+                    items(uiState.historyItems, key = { it.id }) { item ->
+                        CompletedTodoCard(item, uiState.groups, { onEdit(item) }, { onRestoreTodo(item) })
                     }
                 }
             }
 
+            DashboardSection.GROUPS -> item {
+                GroupManagementPanel(
+                    groups = uiState.groups,
+                    onCreateGroup = onCreateGroup,
+                    onUpdateGroup = onUpdateGroup,
+                    onDeleteGroup = onDeleteGroup
+                )
+            }
+
             DashboardSection.SETTINGS -> item {
                 SettingsPanel(
+                    settings = uiState.settings,
                     permissions = permissions,
                     defaultSnooze = uiState.settings.defaultSnoozeMinutes,
                     crashLog = permissions.lastCrashLog,
@@ -260,6 +351,10 @@ internal fun DashboardBody(
                     onRequestIgnoreBatteryOptimization = onRequestIgnoreBatteryOptimization,
                     onRequestAccessibilityService = onRequestAccessibilityService,
                     onDefaultSnoozeChange = onDefaultSnoozeChange,
+                    onPickBackupDirectory = onPickBackupDirectory,
+                    onExportBackup = onExportBackup,
+                    onImportBackup = onImportBackup,
+                    onAutoBackupChange = onAutoBackupChange,
                     onCopyCrashLog = permissions.copyCrashLog,
                     onClearCrashLog = permissions.clearCrashLog
                 )
@@ -267,6 +362,29 @@ internal fun DashboardBody(
 
             DashboardSection.ABOUT -> item { AboutPanel() }
         }
+    }
+}
+
+@Composable
+private fun ExpandableSectionHeader(
+    title: String,
+    expanded: Boolean,
+    onToggle: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onToggle)
+            .padding(horizontal = 2.dp, vertical = 2.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        SectionTitle(title)
+        Icon(
+            imageVector = if (expanded) Icons.Rounded.ExpandLess else Icons.Rounded.ExpandMore,
+            contentDescription = if (expanded) "收起$title" else "展开$title",
+            tint = MaterialTheme.colorScheme.onSurface
+        )
     }
 }
 
@@ -497,6 +615,72 @@ private fun DrawerSectionButton(
                 color = if (selected) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
+    }
+}
+
+@Composable
+private fun DrawerExpandableHeader(
+    title: String,
+    selected: Boolean,
+    expanded: Boolean,
+    onClick: () -> Unit
+) {
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick),
+        shape = RoundedCornerShape(18.dp),
+        color = if (selected) MaterialTheme.colorScheme.primary.copy(alpha = 0.14f) else Color.Transparent
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp, vertical = 12.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleMedium.copy(fontSize = 19.sp),
+                fontWeight = FontWeight.Bold,
+                color = if (selected) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Icon(
+                imageVector = if (expanded) Icons.Rounded.ExpandLess else Icons.Rounded.ExpandMore,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+}
+
+@Composable
+private fun DrawerTaskItem(
+    label: String,
+    selected: Boolean,
+    colorHex: String?,
+    onClick: () -> Unit
+) {
+    val tint = colorHex?.let(::colorFromHex) ?: MaterialTheme.colorScheme.primary
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(start = 20.dp, end = 8.dp, top = 2.dp, bottom = 2.dp),
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            modifier = Modifier
+                .size(10.dp)
+                .background(tint, CircleShape)
+        )
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodyLarge.copy(fontSize = 17.sp),
+            fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
+            color = if (selected) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant
+        )
     }
 }
 

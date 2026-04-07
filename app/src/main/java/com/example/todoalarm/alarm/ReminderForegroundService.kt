@@ -39,7 +39,7 @@ class ReminderForegroundService : Service() {
         scope.launch {
             val app = application as TodoApplication
             val todoItem = app.repository.getTodo(todoId)
-            if (todoItem == null || todoItem.completed || !todoItem.reminderEnabled) {
+            if (todoItem == null || todoItem.isHistory || !todoItem.reminderEnabled) {
                 ActiveReminderStore.clearIfMatches(this@ReminderForegroundService, todoId)
                 stopSelf(startId)
                 return@launch

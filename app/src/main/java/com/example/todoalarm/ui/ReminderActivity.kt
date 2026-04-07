@@ -11,19 +11,17 @@ import androidx.activity.OnBackPressedCallback
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CardDefaults
@@ -33,6 +31,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -53,7 +52,7 @@ import com.example.todoalarm.alarm.ActiveReminderStore
 import com.example.todoalarm.alarm.AlarmScheduler
 import com.example.todoalarm.alarm.ReminderForegroundService
 import com.example.todoalarm.alarm.ReminderNotifier
-import com.example.todoalarm.data.TodoCategory
+import com.example.todoalarm.data.RecurrenceScope
 import com.example.todoalarm.data.TodoItem
 import com.example.todoalarm.ui.theme.TodoAlarmTheme
 import kotlinx.coroutines.launch
@@ -63,6 +62,7 @@ import java.time.ZoneId
 class ReminderActivity : ComponentActivity() {
     private val app by lazy { application as TodoApplication }
     private var todoItem by mutableStateOf<TodoItem?>(null)
+    private var taskGroup by mutableStateOf<ResolvedTaskGroup?>(null)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -83,9 +83,11 @@ class ReminderActivity : ComponentActivity() {
             TodoAlarmTheme(themeMode = settings.themeMode) {
                 ReminderScreen(
                     todoItem = todoItem,
+                    taskGroup = taskGroup,
                     defaultSnoozeMinutes = settings.defaultSnoozeMinutes,
                     onComplete = ::completeTodo,
-                    onSnooze = ::snooze
+                    onSnooze = ::snooze,
+                    onCancel = ::cancelTodo
                 )
             }
         }
@@ -105,14 +107,16 @@ class ReminderActivity : ComponentActivity() {
         }
         lifecycleScope.launch {
             val item = app.repository.getTodo(todoId)
-            if (item == null || item.completed) {
+            if (item == null || item.isHistory) {
                 ActiveReminderStore.clearIfMatches(this@ReminderActivity, todoId)
                 ActiveReminderStore.clearActivityHandoff(this@ReminderActivity, todoId)
                 finish()
                 return@launch
             }
+
             ActiveReminderStore.clearActivityHandoff(this@ReminderActivity, todoId)
             todoItem = item
+            taskGroup = resolveTaskGroup(item, app.repository.getGroup(item.groupId))
         }
     }
 
@@ -120,28 +124,45 @@ class ReminderActivity : ComponentActivity() {
         val item = todoItem ?: return
         lifecycleScope.launch {
             app.repository.setCompleted(item.id, true)
-            app.alarmScheduler.cancel(item.id)
-            app.reminderNotifier.cancel(item.id)
-            ActiveReminderStore.clearIfMatches(this@ReminderActivity, item.id)
-            stopService(Intent(this@ReminderActivity, ReminderForegroundService::class.java))
-            finish()
+            clearReminderArtifacts(listOf(item))
+            closeReminder(item.id)
         }
     }
 
     private fun snooze(minutes: Int) {
         val item = todoItem ?: return
         lifecycleScope.launch {
-            val nextReminder = nextMinuteAlignedReminder(minutes)
-            app.alarmScheduler.cancel(item.id)
-            val updated = app.repository.snoozeTodo(item.id, nextReminder)
+            clearReminderArtifacts(listOf(item))
+            val updated = app.repository.snoozeTodo(item.id, nextMinuteAlignedReminder(minutes))
             if (updated != null) {
                 app.alarmScheduler.schedule(updated)
             }
-            ActiveReminderStore.clearIfMatches(this@ReminderActivity, item.id)
-            stopService(Intent(this@ReminderActivity, ReminderForegroundService::class.java))
-            getSystemService(NotificationManager::class.java).cancel(ReminderNotifier.notificationId(item.id))
-            finish()
+            closeReminder(item.id)
         }
+    }
+
+    private fun cancelTodo(scope: RecurrenceScope) {
+        val item = todoItem ?: return
+        lifecycleScope.launch {
+            val affected = app.repository.cancelTodo(item, scope)
+            clearReminderArtifacts(affected.ifEmpty { listOf(item) })
+            closeReminder(item.id)
+        }
+    }
+
+    private fun clearReminderArtifacts(items: List<TodoItem>) {
+        items.forEach { item ->
+            app.alarmScheduler.cancel(item.id)
+            app.reminderNotifier.cancel(item.id)
+            ActiveReminderStore.clearIfMatches(this, item.id)
+            ActiveReminderStore.clearActivityHandoff(this, item.id)
+        }
+    }
+
+    private fun closeReminder(todoId: Long) {
+        stopService(Intent(this, ReminderForegroundService::class.java))
+        getSystemService(NotificationManager::class.java).cancel(ReminderNotifier.notificationId(todoId))
+        finish()
     }
 
     private fun nextMinuteAlignedReminder(minutes: Int): Long {
@@ -157,13 +178,18 @@ class ReminderActivity : ComponentActivity() {
 @Composable
 private fun ReminderScreen(
     todoItem: TodoItem?,
+    taskGroup: ResolvedTaskGroup?,
     defaultSnoozeMinutes: Int,
     onComplete: () -> Unit,
-    onSnooze: (Int) -> Unit
+    onSnooze: (Int) -> Unit,
+    onCancel: (RecurrenceScope) -> Unit
 ) {
     var customMinutes by remember(defaultSnoozeMinutes) { mutableStateOf(defaultSnoozeMinutes.toString()) }
-    val category = todoItem?.let { TodoCategory.fromKey(it.categoryKey) } ?: TodoCategory.ROUTINE
-    val accent = reminderAccent(category)
+    var showCancelScopeDialog by remember(todoItem?.id) { mutableStateOf(false) }
+    val resolvedGroup = taskGroup
+        ?: todoItem?.let { resolveTaskGroup(it, emptyList()) }
+        ?: ResolvedTaskGroup(0, "例行", "#4CB782")
+    val accent = colorFromHex(resolvedGroup.colorHex)
     val outerScroll = rememberScrollState()
     val notesScroll = rememberScrollState()
 
@@ -174,7 +200,7 @@ private fun ReminderScreen(
                 Brush.verticalGradient(
                     listOf(
                         accent.copy(alpha = 0.18f),
-                        MaterialTheme.colorScheme.primary.copy(alpha = 0.10f),
+                        MaterialTheme.colorScheme.primary.copy(alpha = 0.08f),
                         MaterialTheme.colorScheme.background
                     )
                 )
@@ -185,7 +211,7 @@ private fun ReminderScreen(
     ) {
         Surface(
             shape = RoundedCornerShape(28.dp),
-            color = MaterialTheme.colorScheme.surface.copy(alpha = 0.84f)
+            color = MaterialTheme.colorScheme.surface.copy(alpha = 0.88f)
         ) {
             Column(
                 modifier = Modifier
@@ -201,14 +227,14 @@ private fun ReminderScreen(
                     fontWeight = FontWeight.Bold
                 )
                 Text(
-                    text = "现在该做这件事了",
+                    text = "现在该处理这项任务了",
                     style = MaterialTheme.typography.headlineMedium,
                     fontWeight = FontWeight.ExtraBold,
                     color = MaterialTheme.colorScheme.onSurface,
                     textAlign = TextAlign.Center
                 )
                 Text(
-                    text = "完成、延后，或查看完整内容",
+                    text = "请明确完成、延后或取消，不再保留忽略入口",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center
@@ -231,7 +257,7 @@ private fun ReminderScreen(
                     color = accent
                 ) {
                     Text(
-                        text = "${categoryEmoji(category)} ${categoryLabel(category)}",
+                        text = "${taskGroupEmoji(resolvedGroup)} ${resolvedGroup.name}",
                         modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
                         color = Color.White,
                         fontWeight = FontWeight.Bold
@@ -247,7 +273,7 @@ private fun ReminderScreen(
 
                 todoItem?.let { item ->
                     ReminderMetaCard(
-                        label = "⏰ DDL",
+                        label = "\u23F0 DDL",
                         value = formatLocalDateTime(reminderAtMillisToDateTime(item.dueAtMillis)),
                         accent = accent
                     )
@@ -265,7 +291,7 @@ private fun ReminderScreen(
                             verticalArrangement = Arrangement.spacedBy(10.dp)
                         ) {
                             Text(
-                                text = "📝 备注",
+                                text = "\uD83D\uDCDD 备注",
                                 style = MaterialTheme.typography.titleSmall,
                                 fontWeight = FontWeight.Bold,
                                 color = MaterialTheme.colorScheme.onSurface
@@ -290,7 +316,7 @@ private fun ReminderScreen(
 
         Surface(
             shape = RoundedCornerShape(28.dp),
-            color = MaterialTheme.colorScheme.surface.copy(alpha = 0.92f)
+            color = MaterialTheme.colorScheme.surface.copy(alpha = 0.94f)
         ) {
             Column(
                 modifier = Modifier
@@ -322,16 +348,22 @@ private fun ReminderScreen(
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     FilledTonalButton(
+                        onClick = {
+                            if (todoItem?.isRecurring == true) {
+                                showCancelScopeDialog = true
+                            } else {
+                                onCancel(RecurrenceScope.CURRENT)
+                            }
+                        },
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text("取消任务")
+                    }
+                    FilledTonalButton(
                         onClick = { onSnooze(defaultSnoozeMinutes) },
                         modifier = Modifier.weight(1f)
                     ) {
                         Text("延后 $defaultSnoozeMinutes 分钟")
-                    }
-                    FilledTonalButton(
-                        onClick = { onSnooze(30) },
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Text("延后 30 分钟")
                     }
                 }
 
@@ -378,8 +410,33 @@ private fun ReminderScreen(
                 }
             }
         }
+    }
 
-        Spacer(modifier = Modifier.height(4.dp))
+    if (showCancelScopeDialog) {
+        AlertDialog(
+            onDismissRequest = { showCancelScopeDialog = false },
+            title = { Text("选择取消范围") },
+            text = { Text("循环任务需要先确定取消这一次、当前及后续，还是整个系列。") },
+            confirmButton = {
+                Column {
+                    RecurrenceScope.entries.forEach { scope ->
+                        TextButton(
+                            onClick = {
+                                showCancelScopeDialog = false
+                                onCancel(scope)
+                            }
+                        ) {
+                            Text(scope.label)
+                        }
+                    }
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showCancelScopeDialog = false }) {
+                    Text("关闭")
+                }
+            }
+        )
     }
 }
 
@@ -414,25 +471,4 @@ private fun ReminderMetaCard(
             )
         }
     }
-}
-
-private fun categoryLabel(category: TodoCategory): String = when (category) {
-    TodoCategory.IMPORTANT -> "重要"
-    TodoCategory.URGENT -> "紧急"
-    TodoCategory.FOCUS -> "专注"
-    TodoCategory.ROUTINE -> "例行"
-}
-
-private fun categoryEmoji(category: TodoCategory): String = when (category) {
-    TodoCategory.IMPORTANT -> "⭐"
-    TodoCategory.URGENT -> "⚠️"
-    TodoCategory.FOCUS -> "🎯"
-    TodoCategory.ROUTINE -> "🧭"
-}
-
-private fun reminderAccent(category: TodoCategory): Color = when (category) {
-    TodoCategory.IMPORTANT -> Color(0xFF8B5CF6)
-    TodoCategory.URGENT -> Color(0xFFE11D48)
-    TodoCategory.FOCUS -> Color(0xFF2563EB)
-    TodoCategory.ROUTINE -> Color(0xFF0F766E)
 }

@@ -5,14 +5,22 @@ import androidx.room.Room
 import com.example.todoalarm.alarm.AlarmScheduler
 import com.example.todoalarm.alarm.ReminderNotifier
 import com.example.todoalarm.data.AppDatabase
+import com.example.todoalarm.data.BackupManager
 import com.example.todoalarm.data.AppSettingsStore
+import com.example.todoalarm.data.DatabaseMigrations
 import com.example.todoalarm.data.TodoRepository
 import com.example.todoalarm.ui.QuoteRepository
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 
 class TodoApplication : Application() {
     override fun onCreate() {
         super.onCreate()
         CrashLogger.install(this)
+        CoroutineScope(Dispatchers.IO).launch {
+            repository.ensureDefaultGroups()
+        }
     }
 
     val database: AppDatabase by lazy {
@@ -20,7 +28,11 @@ class TodoApplication : Application() {
             applicationContext,
             AppDatabase::class.java,
             "todo-alarm.db"
-        ).fallbackToDestructiveMigration()
+        ).addMigrations(
+            DatabaseMigrations.MIGRATION_2_3,
+            DatabaseMigrations.MIGRATION_3_4
+        )
+            .fallbackToDestructiveMigration()
             .build()
     }
 
@@ -30,6 +42,10 @@ class TodoApplication : Application() {
 
     val settingsStore: AppSettingsStore by lazy {
         AppSettingsStore(applicationContext)
+    }
+
+    val backupManager: BackupManager by lazy {
+        BackupManager(applicationContext)
     }
 
     val quoteRepository: QuoteRepository by lazy {

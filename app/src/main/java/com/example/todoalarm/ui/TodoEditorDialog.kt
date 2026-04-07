@@ -27,30 +27,38 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.example.todoalarm.data.TodoCategory
+import com.example.todoalarm.data.RecurrenceConfig
+import com.example.todoalarm.data.RecurrenceType
+import com.example.todoalarm.data.TaskGroup
+import com.example.todoalarm.data.TodoDraft
 import com.example.todoalarm.data.TodoItem
+import com.example.todoalarm.data.storageStringToWeekdays
+import java.time.DayOfWeek
+import java.time.LocalDate
 import java.time.LocalDateTime
 
 @Composable
 fun TodoEditorDialog(
     initialTodo: TodoItem?,
+    groups: List<TaskGroup>,
     defaultRingEnabled: Boolean,
     defaultVibrateEnabled: Boolean,
-    defaultVoiceEnabled: Boolean,
     onDismiss: () -> Unit,
     onDelete: () -> Unit,
-    onConfirm: (String, String, LocalDateTime, LocalDateTime?, TodoCategory, Boolean, Boolean, Boolean) -> Unit
+    onConfirm: (TodoDraft) -> Unit
 ) {
     val context = LocalContext.current
     val now = remember { LocalDateTime.now().withSecond(0).withNano(0) }
-    val isHistory = initialTodo?.completed == true
+    val isHistory = initialTodo?.isHistory == true
     var title by remember(initialTodo?.id) { mutableStateOf(initialTodo?.title.orEmpty()) }
     var notes by remember(initialTodo?.id) { mutableStateOf(initialTodo?.notes.orEmpty()) }
-    var category by remember(initialTodo?.id) {
-        mutableStateOf(initialTodo?.let { TodoCategory.fromKey(it.categoryKey) } ?: TodoCategory.ROUTINE)
+    val defaultGroupId = remember(groups) { groups.firstOrNull { it.name == "例行" }?.id ?: groups.firstOrNull()?.id ?: 0L }
+    var groupId by remember(initialTodo?.id, groups) {
+        mutableStateOf(initialTodo?.groupId?.takeIf { it > 0 } ?: defaultGroupId)
     }
     var dueAt by remember(initialTodo?.id) {
         mutableStateOf(initialTodo?.let { reminderAtMillisToDateTime(it.dueAtMillis) } ?: now.plusHours(2))
@@ -63,7 +71,22 @@ fun TodoEditorDialog(
     }
     var ringEnabled by remember(initialTodo?.id) { mutableStateOf(initialTodo?.ringEnabled ?: defaultRingEnabled) }
     var vibrateEnabled by remember(initialTodo?.id) { mutableStateOf(initialTodo?.vibrateEnabled ?: defaultVibrateEnabled) }
-    remember(initialTodo?.id) { defaultVoiceEnabled }
+    var recurringEnabled by remember(initialTodo?.id) { mutableStateOf(initialTodo?.isRecurring == true) }
+    var recurrenceType by remember(initialTodo?.id) {
+        mutableStateOf(initialTodo?.recurrenceTypeEnum ?: RecurrenceType.DAILY)
+    }
+    var weeklyDays by remember(initialTodo?.id) {
+        mutableStateOf(
+            if (initialTodo?.isRecurring == true) {
+                storageStringToWeekdays(initialTodo.recurrenceWeekdays).ifEmpty { setOf(dueAt.dayOfWeek) }
+            } else {
+                setOf(dueAt.dayOfWeek)
+            }
+        )
+    }
+    var recurrenceEndDate by remember(initialTodo?.id) {
+        mutableStateOf(initialTodo?.recurrenceEndDate ?: dueAt.toLocalDate().plusDays(90))
+    }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -77,7 +100,7 @@ fun TodoEditorDialog(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .heightIn(max = 560.dp)
+                    .heightIn(max = 620.dp)
                     .verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(14.dp)
             ) {
@@ -95,7 +118,7 @@ fun TodoEditorDialog(
                     minLines = 4
                 )
                 Text(
-                    text = "任务分类",
+                    text = "所属分组",
                     fontWeight = FontWeight.SemiBold,
                     color = MaterialTheme.colorScheme.onSurface
                 )
@@ -105,11 +128,11 @@ fun TodoEditorDialog(
                         .horizontalScroll(rememberScrollState()),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    TodoCategory.entries.forEach { item ->
+                    groups.forEach { item ->
                         FilterChip(
-                            selected = category == item,
-                            onClick = { category = item },
-                            label = { Text(item.label) }
+                            selected = groupId == item.id,
+                            onClick = { groupId = item.id },
+                            label = { Text(item.name) }
                         )
                     }
                 }
@@ -132,7 +155,7 @@ fun TodoEditorDialog(
                     ) {
                         Column {
                             Text("启用提醒", fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
-                            Text("建议比 DDL 提前一段时间。", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text("建议在 DDL 之前提醒。", color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                         Switch(
                             checked = reminderEnabled,
@@ -157,6 +180,82 @@ fun TodoEditorDialog(
                         FilterChip(selected = ringEnabled, onClick = { ringEnabled = !ringEnabled }, label = { Text("响铃") })
                         FilterChip(selected = vibrateEnabled, onClick = { vibrateEnabled = !vibrateEnabled }, label = { Text("震动") })
                     }
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Column {
+                            Text("循环任务", fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
+                            Text("开启后将按规则批量生成实例。", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                        Switch(
+                            checked = recurringEnabled,
+                            onCheckedChange = { recurringEnabled = it }
+                        )
+                    }
+                    if (recurringEnabled) {
+                        Text("循环规则", fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .horizontalScroll(rememberScrollState()),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            RecurrenceType.entries.filter { it != RecurrenceType.NONE }.forEach { type ->
+                                FilterChip(
+                                    selected = recurrenceType == type,
+                                    onClick = { recurrenceType = type },
+                                    label = { Text(type.label) }
+                                )
+                            }
+                        }
+
+                        if (recurrenceType == RecurrenceType.WEEKLY) {
+                            Text("每周周几", fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .horizontalScroll(rememberScrollState()),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                DayOfWeek.entries.forEach { day ->
+                                    FilterChip(
+                                        selected = day in weeklyDays,
+                                        onClick = {
+                                            weeklyDays = if (day in weeklyDays) {
+                                                weeklyDays - day
+                                            } else {
+                                                weeklyDays + day
+                                            }
+                                        },
+                                        label = { Text(day.shortLabel()) }
+                                    )
+                                }
+                            }
+                        }
+
+                        recurrenceHint(
+                            recurrenceType = recurrenceType,
+                            dueAt = dueAt,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+
+                        if (recurrenceType == RecurrenceType.MONTHLY_DAY && dueAt.dayOfMonth > 28) {
+                            Text(
+                                text = "（若某个月不存在 ${dueAt.dayOfMonth} 日，则自动落到该月最后一天）",
+                                color = Color(0xFFC62828),
+                                style = MaterialTheme.typography.bodySmall
+                            )
+                        }
+
+                        OutlinedButton(
+                            onClick = { showDatePicker(context, recurrenceEndDate) { recurrenceEndDate = it } },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text("循环截止日期：${recurrenceEndDate}")
+                        }
+                    }
                 }
             }
         },
@@ -164,14 +263,21 @@ fun TodoEditorDialog(
             Button(
                 onClick = {
                     onConfirm(
-                        title,
-                        notes,
-                        dueAt,
-                        if (isHistory || !reminderEnabled) null else reminderAt,
-                        category,
-                        ringEnabled,
-                        vibrateEnabled,
-                        false
+                        TodoDraft(
+                            title = title,
+                            notes = notes,
+                            dueAt = dueAt,
+                            reminderAt = if (isHistory || !reminderEnabled) null else reminderAt,
+                            groupId = groupId,
+                            ringEnabled = ringEnabled,
+                            vibrateEnabled = vibrateEnabled,
+                            recurrence = RecurrenceConfig(
+                                enabled = !isHistory && recurringEnabled,
+                                type = recurrenceType,
+                                weeklyDays = weeklyDays,
+                                endDate = recurrenceEndDate
+                            )
+                        )
                     )
                 }
             ) {
@@ -190,6 +296,29 @@ fun TodoEditorDialog(
                 }
             }
         }
+    )
+}
+
+@Composable
+private fun recurrenceHint(
+    recurrenceType: RecurrenceType,
+    dueAt: LocalDateTime,
+    modifier: Modifier = Modifier
+) {
+    val hint = when (recurrenceType) {
+        RecurrenceType.NONE -> null
+        RecurrenceType.DAILY -> "将从 ${dueAt.toLocalDate()} 起按每天 ${formatLocalDateTime(dueAt).takeLast(5)} 生成。"
+        RecurrenceType.WEEKLY -> "将按选中的周几、在 ${formatLocalDateTime(dueAt).takeLast(5)} 生成。"
+        RecurrenceType.MONTHLY_NTH_WEEKDAY -> "将按每月第 ${(dueAt.dayOfMonth - 1) / 7 + 1} 个${dueAt.dayOfWeek.shortLabel()}生成。"
+        RecurrenceType.MONTHLY_DAY -> "将按每月 ${dueAt.dayOfMonth} 日生成。"
+        RecurrenceType.YEARLY_DATE -> "将按每年 ${dueAt.monthValue} 月 ${dueAt.dayOfMonth} 日生成。"
+    } ?: return
+
+    Text(
+        text = hint,
+        modifier = modifier,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        style = MaterialTheme.typography.bodySmall
     )
 }
 
@@ -215,4 +344,30 @@ private fun showDateTimePicker(
         initialDateTime.monthValue - 1,
         initialDateTime.dayOfMonth
     ).show()
+}
+
+private fun showDatePicker(
+    context: Context,
+    initialDate: LocalDate,
+    onPicked: (LocalDate) -> Unit
+) {
+    DatePickerDialog(
+        context,
+        { _, year, month, day ->
+            onPicked(LocalDate.of(year, month + 1, day))
+        },
+        initialDate.year,
+        initialDate.monthValue - 1,
+        initialDate.dayOfMonth
+    ).show()
+}
+
+private fun DayOfWeek.shortLabel(): String = when (this) {
+    DayOfWeek.MONDAY -> "周一"
+    DayOfWeek.TUESDAY -> "周二"
+    DayOfWeek.WEDNESDAY -> "周三"
+    DayOfWeek.THURSDAY -> "周四"
+    DayOfWeek.FRIDAY -> "周五"
+    DayOfWeek.SATURDAY -> "周六"
+    DayOfWeek.SUNDAY -> "周日"
 }

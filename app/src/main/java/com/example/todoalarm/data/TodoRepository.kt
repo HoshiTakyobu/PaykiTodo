@@ -1,11 +1,20 @@
 package com.example.todoalarm.data
 
 import kotlinx.coroutines.flow.Flow
+import java.time.DayOfWeek
+import java.time.Instant
+import java.time.LocalDate
+import java.time.LocalDateTime
+import java.time.LocalTime
+import java.time.YearMonth
+import java.time.ZoneId
+import java.util.UUID
 
 class TodoRepository(
     private val todoDao: TodoDao
 ) {
     fun observeTodos(): Flow<List<TodoItem>> = todoDao.observeTodos()
+    fun observeGroups(): Flow<List<TaskGroup>> = todoDao.observeGroups()
 
     suspend fun addTodo(item: TodoItem): TodoItem {
         val id = todoDao.insert(item)
@@ -13,6 +22,24 @@ class TodoRepository(
     }
 
     suspend fun getTodo(id: Long): TodoItem? = todoDao.getById(id)
+    suspend fun getGroup(groupId: Long): TaskGroup? = todoDao.getGroupById(groupId)
+
+    suspend fun getActiveItemsForScope(
+        item: TodoItem,
+        scope: RecurrenceScope
+    ): List<TodoItem> {
+        if (!item.isRecurring || scope == RecurrenceScope.CURRENT) {
+            return listOfNotNull(todoDao.getById(item.id)).filter { it.isActive }
+        }
+        val seriesId = item.recurringSeriesId ?: return emptyList()
+        return todoDao.getActiveBySeriesId(seriesId).filter { candidate ->
+            when (scope) {
+                RecurrenceScope.CURRENT -> candidate.id == item.id
+                RecurrenceScope.CURRENT_AND_FUTURE -> candidate.dueAtMillis >= item.dueAtMillis
+                RecurrenceScope.ALL -> true
+            }
+        }
+    }
 
     suspend fun updateTodo(item: TodoItem): TodoItem {
         todoDao.update(item)
@@ -23,12 +50,102 @@ class TodoRepository(
         todoDao.deleteById(id)
     }
 
+    suspend fun createFromDraft(draft: TodoDraft): List<TodoItem> {
+        val now = System.currentTimeMillis()
+        val groupId = draft.groupId.takeIf { it > 0 } ?: defaultGroupId()
+        val generated = if (draft.recurrence.isRecurring) {
+            generateRecurringItems(
+                draft = draft.copy(groupId = groupId),
+                seriesId = UUID.randomUUID().toString(),
+                now = now
+            )
+        } else {
+            listOf(buildTaskItem(draft.copy(groupId = groupId), now = now))
+        }
+        val ids = todoDao.insertAll(generated)
+        val created = generated.zip(ids) { item, id -> item.copy(id = id) }
+        if (draft.recurrence.isRecurring) {
+            val template = buildTemplate(created.first(), draft.copy(groupId = groupId))
+            todoDao.insertTemplate(template)
+        }
+        return created
+    }
+
+    suspend fun updateFromDraft(
+        original: TodoItem,
+        draft: TodoDraft,
+        scope: RecurrenceScope = RecurrenceScope.CURRENT
+    ): List<TodoItem> {
+        val resolvedDraft = draft.copy(groupId = draft.groupId.takeIf { it > 0 } ?: original.groupId)
+        return when {
+            !original.isRecurring && resolvedDraft.recurrence.isRecurring -> {
+                convertSingleTodoToRecurring(original, resolvedDraft)
+            }
+            original.isRecurring && scope != RecurrenceScope.CURRENT -> {
+                updateRecurringSeries(original, resolvedDraft, scope)
+            }
+            else -> {
+            val updated = buildTaskItem(
+                draft = resolvedDraft,
+                now = original.createdAtMillis,
+                existing = original,
+                keepSeries = original.isRecurring
+            )
+            todoDao.update(updated)
+            listOf(updated)
+        }
+        }
+    }
+
+    suspend fun cancelTodo(
+        item: TodoItem,
+        scope: RecurrenceScope = RecurrenceScope.CURRENT
+    ): List<TodoItem> {
+        val now = System.currentTimeMillis()
+        val targets = if (item.isRecurring && scope != RecurrenceScope.CURRENT) {
+            val seriesId = item.recurringSeriesId ?: return emptyList()
+            todoDao.getActiveBySeriesId(seriesId).filter { candidate ->
+                when (scope) {
+                    RecurrenceScope.CURRENT -> candidate.id == item.id
+                    RecurrenceScope.CURRENT_AND_FUTURE -> candidate.dueAtMillis >= item.dueAtMillis
+                    RecurrenceScope.ALL -> true
+                }
+            }
+        } else {
+            listOfNotNull(todoDao.getById(item.id)).filter { it.isActive }
+        }
+
+        if (targets.isEmpty()) return emptyList()
+        val canceledItems = targets.map { target ->
+            target.copy(
+                canceled = true,
+                canceledAtMillis = now,
+                completed = false,
+                completedAtMillis = null,
+                missed = false,
+                missedAtMillis = null,
+                reminderEnabled = false
+            )
+        }
+        todoDao.updateAll(canceledItems)
+        if (item.isRecurring && scope == RecurrenceScope.ALL) {
+            item.recurringSeriesId?.let { seriesId ->
+                todoDao.deleteTemplateBySeriesId(seriesId)
+            }
+        }
+        return canceledItems
+    }
+
     suspend fun setCompleted(id: Long, completed: Boolean): TodoItem? {
         val item = todoDao.getById(id) ?: return null
         val now = System.currentTimeMillis()
         val updated = item.copy(
             completed = completed,
             completedAtMillis = if (completed) now else null,
+            canceled = false,
+            canceledAtMillis = null,
+            missed = if (completed) false else item.missed,
+            missedAtMillis = if (completed) null else item.missedAtMillis,
             reminderEnabled = if (completed) {
                 false
             } else {
@@ -41,6 +158,7 @@ class TodoRepository(
 
     suspend fun snoozeTodo(id: Long, nextReminderMillis: Long): TodoItem? {
         val item = todoDao.getById(id) ?: return null
+        if (item.isHistory) return null
         val updated = item.copy(
             reminderAtMillis = nextReminderMillis,
             reminderEnabled = true
@@ -49,7 +167,424 @@ class TodoRepository(
         return updated
     }
 
+    suspend fun markMissedTasks(now: Long = System.currentTimeMillis()): Int {
+        val candidates = todoDao.getPendingMissCandidates(now - MISSED_GRACE_PERIOD_MILLIS)
+        if (candidates.isEmpty()) return 0
+        val updated = candidates.map { item ->
+            item.copy(
+                missed = true,
+                missedAtMillis = now,
+                reminderEnabled = false
+            )
+        }
+        todoDao.updateAll(updated)
+        return updated.size
+    }
+
     suspend fun futureReminderItems(now: Long): List<TodoItem> {
         return todoDao.getFutureReminderItems(now)
+    }
+
+    suspend fun ensureDefaultGroups(): List<TaskGroup> {
+        val existing = todoDao.getAllGroups()
+        if (existing.isNotEmpty()) return existing
+        val ids = todoDao.insertGroups(DefaultTaskGroups.seed)
+        return DefaultTaskGroups.seed.zip(ids) { item, id -> item.copy(id = id) }
+    }
+
+    suspend fun createGroup(name: String, colorHex: String): TaskGroup {
+        val current = todoDao.getAllGroups()
+        val group = TaskGroup(
+            name = name.trim(),
+            colorHex = colorHex,
+            sortOrder = (current.maxOfOrNull { it.sortOrder } ?: -1) + 1,
+            isDefault = false
+        )
+        val id = todoDao.insertGroup(group)
+        return group.copy(id = id)
+    }
+
+    suspend fun updateGroup(group: TaskGroup) {
+        todoDao.updateGroup(group)
+    }
+
+    suspend fun deleteGroup(groupId: Long): Boolean {
+        if (todoDao.countTasksInGroup(groupId) > 0) return false
+        todoDao.deleteGroup(groupId)
+        return true
+    }
+
+    suspend fun getAllGroups(): List<TaskGroup> = todoDao.getAllGroups()
+
+    suspend fun exportSnapshot(settings: AppSettings): BackupSnapshot {
+        return BackupSnapshot(
+            exportedAtMillis = System.currentTimeMillis(),
+            groups = todoDao.getAllGroups(),
+            templates = todoDao.getAllRecurringTemplates(),
+            tasks = todoDao.getAllTodos(),
+            settings = settings
+        )
+    }
+
+    suspend fun importSnapshot(snapshot: BackupSnapshot) {
+        todoDao.clearTodos()
+        todoDao.clearTemplates()
+        todoDao.clearGroups()
+        if (snapshot.groups.isNotEmpty()) {
+            todoDao.insertGroups(snapshot.groups)
+        } else {
+            todoDao.insertGroups(DefaultTaskGroups.seed)
+        }
+        if (snapshot.templates.isNotEmpty()) {
+            todoDao.insertTemplates(snapshot.templates)
+        }
+        if (snapshot.tasks.isNotEmpty()) {
+            todoDao.insertAll(snapshot.tasks)
+        }
+    }
+
+    private suspend fun updateRecurringSeries(
+        original: TodoItem,
+        draft: TodoDraft,
+        scope: RecurrenceScope
+    ): List<TodoItem> {
+        val seriesId = original.recurringSeriesId ?: UUID.randomUUID().toString()
+        val template = todoDao.getTemplateBySeriesId(seriesId)
+        val activeSeries = todoDao.getActiveBySeriesId(seriesId)
+        val targets = activeSeries.filter { candidate ->
+            when (scope) {
+                RecurrenceScope.CURRENT -> candidate.id == original.id
+                RecurrenceScope.CURRENT_AND_FUTURE -> candidate.dueAtMillis >= original.dueAtMillis
+                RecurrenceScope.ALL -> true
+            }
+        }
+        if (targets.isEmpty()) return emptyList()
+
+        if (scope == RecurrenceScope.CURRENT_AND_FUTURE || scope == RecurrenceScope.ALL) {
+            todoDao.deleteByIds(targets.map { it.id })
+            val replacement = if (draft.recurrence.isRecurring) {
+                val alignedDraft = alignRecurringDraftForScope(
+                    draft = draft,
+                    scope = scope,
+                    original = original,
+                    template = template,
+                    activeSeries = activeSeries
+                )
+                generateRecurringItems(
+                    draft = alignedDraft,
+                    seriesId = seriesId,
+                    now = System.currentTimeMillis()
+                )
+            } else {
+                listOf(
+                    buildTaskItem(
+                        draft = draft.copy(groupId = draft.groupId.takeIf { it > 0 } ?: original.groupId),
+                        now = original.createdAtMillis,
+                        existing = original.copy(id = 0),
+                        keepSeries = false
+                    )
+                )
+            }
+            if (draft.recurrence.isRecurring) {
+                if (replacement.isEmpty()) {
+                    todoDao.deleteTemplateBySeriesId(seriesId)
+                    return emptyList()
+                }
+                val ids = todoDao.insertAll(replacement)
+                val updated = replacement.zip(ids) { item, id -> item.copy(id = id) }
+                todoDao.insertTemplate(buildTemplate(updated.first(), alignRecurringDraftForScope(
+                    draft = draft,
+                    scope = scope,
+                    original = original,
+                    template = template,
+                    activeSeries = activeSeries
+                )))
+                return updated
+            } else {
+                val ids = todoDao.insertAll(replacement)
+                val updated = replacement.zip(ids) { item, id -> item.copy(id = id) }
+                todoDao.deleteTemplateBySeriesId(seriesId)
+                return updated
+            }
+        }
+
+        return emptyList()
+    }
+
+    private suspend fun convertSingleTodoToRecurring(
+        original: TodoItem,
+        draft: TodoDraft
+    ): List<TodoItem> {
+        val seriesId = UUID.randomUUID().toString()
+        val generated = generateRecurringItems(
+            draft = draft,
+            seriesId = seriesId,
+            now = original.createdAtMillis
+        )
+        if (generated.isEmpty()) return emptyList()
+
+        val first = generated.first().copy(id = original.id, createdAtMillis = original.createdAtMillis)
+        todoDao.update(first)
+        val rest = generated.drop(1)
+        val createdRest = if (rest.isEmpty()) {
+            emptyList()
+        } else {
+            val ids = todoDao.insertAll(rest)
+            rest.zip(ids) { item, id -> item.copy(id = id) }
+        }
+        todoDao.insertTemplate(buildTemplate(first, alignRecurringDraftForScope(
+            draft = draft,
+            scope = RecurrenceScope.ALL,
+            original = original,
+            template = null,
+            activeSeries = listOf(first) + createdRest
+        )))
+        return listOf(first) + createdRest
+    }
+
+    private fun alignRecurringDraftForScope(
+        draft: TodoDraft,
+        scope: RecurrenceScope,
+        original: TodoItem,
+        template: RecurringTaskTemplate?,
+        activeSeries: List<TodoItem>
+    ): TodoDraft {
+        if (scope != RecurrenceScope.ALL) return draft
+
+        val baseDate = template?.startEpochDay?.let(LocalDate::ofEpochDay)
+            ?: activeSeries.minByOrNull { it.dueAtMillis }?.dueDate()
+            ?: original.dueDate()
+        val alignedDueAt = LocalDateTime.of(baseDate, draft.dueAt.toLocalTime())
+        return draft.withAlignedDateTime(alignedDueAt)
+    }
+
+    private fun TodoDraft.withAlignedDateTime(newDueAt: LocalDateTime): TodoDraft {
+        val offsetMinutes = reminderAt?.let {
+            ((dueAt.toEpochMillis() - it.toEpochMillis()) / 60_000L).toInt()
+        }
+        val newReminderAt = offsetMinutes?.let { newDueAt.minusMinutes(it.toLong()) }
+        return copy(dueAt = newDueAt, reminderAt = newReminderAt)
+    }
+
+    private fun buildTaskItem(
+        draft: TodoDraft,
+        now: Long,
+        existing: TodoItem? = null,
+        keepSeries: Boolean = false,
+        seriesId: String? = null
+    ): TodoItem {
+        val dueAtMillis = draft.dueAt.toEpochMillis()
+        val reminderAtMillis = draft.reminderAt?.toEpochMillis()
+        val offsetMinutes = reminderAtMillis?.let { ((dueAtMillis - it) / 60_000L).toInt() }
+        val dueDate = draft.dueAt.toLocalDate()
+        val recurrence = draft.recurrence
+
+        return TodoItem(
+            id = existing?.id ?: 0,
+            title = draft.title.trim(),
+            notes = draft.notes.trim(),
+            dueAtMillis = dueAtMillis,
+            reminderAtMillis = reminderAtMillis,
+            reminderEnabled = reminderAtMillis != null,
+            ringEnabled = draft.ringEnabled,
+            vibrateEnabled = draft.vibrateEnabled,
+            voiceEnabled = false,
+            groupId = draft.groupId,
+            categoryKey = existing?.categoryKey ?: TodoCategory.ROUTINE.key,
+            completed = existing?.completed == true,
+            completedAtMillis = existing?.completedAtMillis,
+            canceled = existing?.canceled == true,
+            canceledAtMillis = existing?.canceledAtMillis,
+            missed = false,
+            missedAtMillis = null,
+            recurringSeriesId = if (keepSeries) existing?.recurringSeriesId else seriesId,
+            recurrenceType = if (recurrence.isRecurring) recurrence.type.name else if (keepSeries) {
+                existing?.recurrenceType ?: RecurrenceType.NONE.name
+            } else {
+                RecurrenceType.NONE.name
+            },
+            recurrenceWeekdays = if (recurrence.isRecurring) recurrence.weeklyDays.toStorageString() else if (keepSeries) {
+                existing?.recurrenceWeekdays.orEmpty()
+            } else {
+                ""
+            },
+            recurrenceMonthlyOrdinal = if (recurrence.isRecurring && recurrence.type == RecurrenceType.MONTHLY_NTH_WEEKDAY) {
+                dueDate.nthWeekOrdinal()
+            } else if (keepSeries) {
+                existing?.recurrenceMonthlyOrdinal
+            } else {
+                null
+            },
+            recurrenceMonthlyWeekday = if (recurrence.isRecurring && recurrence.type == RecurrenceType.MONTHLY_NTH_WEEKDAY) {
+                dueDate.dayOfWeek.value
+            } else if (keepSeries) {
+                existing?.recurrenceMonthlyWeekday
+            } else {
+                null
+            },
+            recurrenceMonthlyDay = if (recurrence.isRecurring && recurrence.type == RecurrenceType.MONTHLY_DAY) {
+                dueDate.dayOfMonth
+            } else if (keepSeries) {
+                existing?.recurrenceMonthlyDay
+            } else {
+                null
+            },
+            recurrenceEndEpochDay = if (recurrence.isRecurring) recurrence.endDate?.toEpochDay() else if (keepSeries) {
+                existing?.recurrenceEndEpochDay
+            } else {
+                null
+            },
+            recurrenceAnchorDueAtMillis = if (recurrence.isRecurring) dueAtMillis else if (keepSeries) {
+                existing?.recurrenceAnchorDueAtMillis
+            } else {
+                null
+            },
+            reminderOffsetMinutes = offsetMinutes,
+            createdAtMillis = existing?.createdAtMillis ?: now
+        )
+    }
+
+    private fun buildTemplate(item: TodoItem, draft: TodoDraft): RecurringTaskTemplate {
+        val dueDate = draft.dueAt.toLocalDate()
+        return RecurringTaskTemplate(
+            id = 0,
+            seriesId = item.recurringSeriesId ?: UUID.randomUUID().toString(),
+            title = draft.title.trim(),
+            notes = draft.notes.trim(),
+            groupId = draft.groupId,
+            dueHour = draft.dueAt.hour,
+            dueMinute = draft.dueAt.minute,
+            reminderOffsetMinutes = draft.reminderAt?.let {
+                ((draft.dueAt.toEpochMillis() - it.toEpochMillis()) / 60_000L).toInt()
+            },
+            ringEnabled = draft.ringEnabled,
+            vibrateEnabled = draft.vibrateEnabled,
+            recurrenceType = draft.recurrence.type.name,
+            recurrenceWeekdays = draft.recurrence.weeklyDays.toStorageString(),
+            recurrenceMonthlyOrdinal = if (draft.recurrence.type == RecurrenceType.MONTHLY_NTH_WEEKDAY) dueDate.nthWeekOrdinal() else null,
+            recurrenceMonthlyWeekday = if (draft.recurrence.type == RecurrenceType.MONTHLY_NTH_WEEKDAY) dueDate.dayOfWeek.value else null,
+            recurrenceMonthlyDay = if (draft.recurrence.type == RecurrenceType.MONTHLY_DAY) dueDate.dayOfMonth else null,
+            recurrenceYearlyMonth = if (draft.recurrence.type == RecurrenceType.YEARLY_DATE) dueDate.monthValue else null,
+            recurrenceYearlyDay = if (draft.recurrence.type == RecurrenceType.YEARLY_DATE) dueDate.dayOfMonth else null,
+            startEpochDay = dueDate.toEpochDay(),
+            endEpochDay = draft.recurrence.endDate?.toEpochDay() ?: dueDate.toEpochDay()
+        )
+    }
+
+    private fun generateRecurringItems(
+        draft: TodoDraft,
+        seriesId: String,
+        now: Long
+    ): List<TodoItem> {
+        val config = draft.recurrence
+        if (!config.isRecurring) {
+            return listOf(buildTaskItem(draft, now = now, seriesId = null))
+        }
+
+        val dueDateTime = draft.dueAt
+        val dueDate = dueDateTime.toLocalDate()
+        val endDate = config.endDate ?: return listOf(buildTaskItem(draft, now = now, seriesId = seriesId))
+        val dueTime = dueDateTime.toLocalTime()
+        val offsetMinutes = draft.reminderAt?.let { ((draft.dueAt.toEpochMillis() - it.toEpochMillis()) / 60_000L).toInt() }
+
+        val dates = when (config.type) {
+            RecurrenceType.NONE -> listOf(dueDate)
+            RecurrenceType.DAILY -> generateDailyDates(dueDate, endDate)
+            RecurrenceType.WEEKLY -> generateWeeklyDates(dueDate, endDate, config.weeklyDays.ifEmpty { setOf(dueDate.dayOfWeek) })
+            RecurrenceType.MONTHLY_NTH_WEEKDAY -> generateNthWeekdayDates(dueDate, endDate)
+            RecurrenceType.MONTHLY_DAY -> generateMonthlyDayDates(dueDate, endDate)
+            RecurrenceType.YEARLY_DATE -> generateYearlyDates(dueDate, endDate)
+        }
+
+        return dates.map { instanceDate ->
+            val instanceDue = LocalDateTime.of(instanceDate, dueTime)
+            val instanceReminder = offsetMinutes?.let { instanceDue.minusMinutes(it.toLong()) }
+            buildTaskItem(
+                draft = draft.copy(dueAt = instanceDue, reminderAt = instanceReminder),
+                now = now,
+                seriesId = seriesId
+            )
+        }
+    }
+
+    private fun generateDailyDates(start: LocalDate, end: LocalDate): List<LocalDate> {
+        val dates = mutableListOf<LocalDate>()
+        var cursor = start
+        while (!cursor.isAfter(end)) {
+            dates += cursor
+            cursor = cursor.plusDays(1)
+        }
+        return dates
+    }
+
+    private fun generateWeeklyDates(
+        start: LocalDate,
+        end: LocalDate,
+        weekdays: Set<DayOfWeek>
+    ): List<LocalDate> {
+        val dates = mutableListOf<LocalDate>()
+        var cursor = start
+        while (!cursor.isAfter(end)) {
+            if (cursor.dayOfWeek in weekdays) {
+                dates += cursor
+            }
+            cursor = cursor.plusDays(1)
+        }
+        return dates
+    }
+
+    private fun generateNthWeekdayDates(start: LocalDate, end: LocalDate): List<LocalDate> {
+        val dates = mutableListOf<LocalDate>()
+        val ordinal = start.nthWeekOrdinal()
+        val weekday = start.dayOfWeek
+        var cursor = YearMonth.from(start)
+        val endMonth = YearMonth.from(end)
+        while (!cursor.isAfter(endMonth)) {
+            val occurrence = resolveNthWeekdayDate(cursor, ordinal, weekday)
+            if (occurrence != null && !occurrence.isBefore(start) && !occurrence.isAfter(end)) {
+                dates += occurrence
+            }
+            cursor = cursor.plusMonths(1)
+        }
+        return dates
+    }
+
+    private fun generateMonthlyDayDates(start: LocalDate, end: LocalDate): List<LocalDate> {
+        val dates = mutableListOf<LocalDate>()
+        val targetDay = start.dayOfMonth
+        var cursor = YearMonth.from(start)
+        val endMonth = YearMonth.from(end)
+        while (!cursor.isAfter(endMonth)) {
+            val occurrence = resolveMonthlyDate(cursor, targetDay)
+            if (!occurrence.isBefore(start) && !occurrence.isAfter(end)) {
+                dates += occurrence
+            }
+            cursor = cursor.plusMonths(1)
+        }
+        return dates
+    }
+
+    private fun generateYearlyDates(start: LocalDate, end: LocalDate): List<LocalDate> {
+        val dates = mutableListOf<LocalDate>()
+        var year = start.year
+        while (year <= end.year) {
+            val month = start.monthValue
+            val day = start.dayOfMonth
+            val candidate = resolveMonthlyDate(YearMonth.of(year, month), day)
+            if (!candidate.isBefore(start) && !candidate.isAfter(end)) {
+                dates += candidate
+            }
+            year += 1
+        }
+        return dates
+    }
+
+    companion object {
+        private const val MISSED_GRACE_PERIOD_MILLIS = 60_000L
+    }
+
+    private suspend fun defaultGroupId(): Long {
+        val groups = ensureDefaultGroups()
+        return groups.firstOrNull { it.name == "例行" }?.id ?: groups.firstOrNull()?.id ?: 0L
     }
 }

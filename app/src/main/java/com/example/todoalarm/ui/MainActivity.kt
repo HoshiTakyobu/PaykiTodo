@@ -6,6 +6,8 @@ import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.ComponentName
 import android.content.Intent
+import android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION
+import android.content.Intent.FLAG_GRANT_WRITE_URI_PERMISSION
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
@@ -22,11 +24,13 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.todoalarm.CrashLogger
 import com.example.todoalarm.TodoApplication
 import com.example.todoalarm.accessibility.ReminderAccessibilityService
 import com.example.todoalarm.ui.theme.TodoAlarmTheme
+import kotlinx.coroutines.launch
 
 data class PermissionSnapshot(
     val notificationGranted: Boolean = true,
@@ -49,6 +53,38 @@ class MainActivity : ComponentActivity() {
         ActivityResultContracts.RequestPermission()
     ) {
         refreshPermissions()
+    }
+
+    private val backupDirectoryLauncher = registerForActivityResult(
+        ActivityResultContracts.OpenDocumentTree()
+    ) { uri ->
+        uri ?: return@registerForActivityResult
+        contentResolver.takePersistableUriPermission(
+            uri,
+            FLAG_GRANT_READ_URI_PERMISSION or FLAG_GRANT_WRITE_URI_PERMISSION
+        )
+        viewModel.updateBackupDirectoryUri(uri.toString())
+        Toast.makeText(this, "备份目录已设置", Toast.LENGTH_SHORT).show()
+    }
+
+    private val exportBackupLauncher = registerForActivityResult(
+        ActivityResultContracts.CreateDocument("application/json")
+    ) { uri ->
+        uri ?: return@registerForActivityResult
+        lifecycleScope.launch {
+            val message = viewModel.exportBackupNow(uri) ?: "导出失败"
+            Toast.makeText(this@MainActivity, message, Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private val importBackupLauncher = registerForActivityResult(
+        ActivityResultContracts.OpenDocument()
+    ) { uri ->
+        uri ?: return@registerForActivityResult
+        lifecycleScope.launch {
+            val message = viewModel.importBackup(uri) ?: "导入失败"
+            Toast.makeText(this@MainActivity, message, Toast.LENGTH_SHORT).show()
+        }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -78,9 +114,18 @@ class MainActivity : ComponentActivity() {
                     onDeleteTodo = viewModel::deleteTodo,
                     onCompleteTodo = viewModel::completeTodo,
                     onRestoreTodo = viewModel::restoreTodo,
+                    onCancelTodo = viewModel::cancelTodo,
+                    onSelectGroup = viewModel::selectGroup,
+                    onCreateGroup = viewModel::createGroup,
+                    onUpdateGroup = viewModel::updateGroup,
+                    onDeleteGroup = viewModel::deleteGroup,
                     onThemeModeChange = viewModel::updateThemeMode,
                     onNextQuote = viewModel::showNextQuote,
-                    onDefaultSnoozeChange = viewModel::updateDefaultSnooze
+                    onDefaultSnoozeChange = viewModel::updateDefaultSnooze,
+                    onPickBackupDirectory = { backupDirectoryLauncher.launch(null) },
+                    onExportBackup = { exportBackupLauncher.launch("PaykiTodo-backup.json") },
+                    onImportBackup = { importBackupLauncher.launch(arrayOf("application/json")) },
+                    onAutoBackupChange = viewModel::updateAutoBackupEnabled
                 )
             }
         }
@@ -89,6 +134,7 @@ class MainActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
         refreshPermissions()
+        viewModel.refreshTaskStates()
     }
 
     private fun refreshPermissions() {

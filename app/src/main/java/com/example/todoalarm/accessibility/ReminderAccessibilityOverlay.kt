@@ -24,6 +24,9 @@ import com.example.todoalarm.alarm.ReminderForegroundService
 import com.example.todoalarm.alarm.ReminderNotifier
 import com.example.todoalarm.data.TodoCategory
 import com.example.todoalarm.data.TodoItem
+import com.example.todoalarm.ui.ResolvedTaskGroup
+import com.example.todoalarm.ui.resolveTaskGroup
+import com.example.todoalarm.ui.taskGroupEmoji
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -52,14 +55,17 @@ class ReminderAccessibilityOverlay(
 
         serviceScope.launch {
             val item = withContext(Dispatchers.IO) { app.repository.getTodo(todoId) }
-            if (item == null || item.completed || !item.reminderEnabled) {
+            if (item == null || item.isHistory || !item.reminderEnabled) {
                 hide(todoId)
                 ActiveReminderStore.clearIfMatches(service, todoId)
                 return@launch
             }
 
+            val resolvedGroup = withContext(Dispatchers.IO) {
+                resolveTaskGroup(item, app.repository.getGroup(item.groupId))
+            }
             hide()
-            val root = buildOverlay(item)
+            val root = buildOverlay(item, resolvedGroup)
             val params = WindowManager.LayoutParams(
                 WindowManager.LayoutParams.MATCH_PARENT,
                 WindowManager.LayoutParams.MATCH_PARENT,
@@ -94,8 +100,8 @@ class ReminderAccessibilityOverlay(
         serviceScope.cancel()
     }
 
-    private fun buildOverlay(item: TodoItem): View {
-        val accent = categoryColor(item)
+    private fun buildOverlay(item: TodoItem, group: ResolvedTaskGroup): View {
+        val accent = Color.parseColor(group.colorHex)
 
         val root = FrameLayout(service).apply {
             background = GradientDrawable(
@@ -150,7 +156,7 @@ class ReminderAccessibilityOverlay(
 
         card.addView(
             TextView(service).apply {
-                text = "${categoryEmoji(item)} ${categoryLabel(item)}"
+                text = "${taskGroupEmoji(group)} ${group.name}"
                 setTextColor(Color.WHITE)
                 setTextSize(15f)
                 typeface = Typeface.DEFAULT_BOLD

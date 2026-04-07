@@ -30,6 +30,7 @@ import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -51,10 +52,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.core.content.pm.PackageInfoCompat
+import com.example.todoalarm.data.AppSettings
 import kotlinx.coroutines.launch
 
 @Composable
 fun SettingsPanel(
+    settings: AppSettings,
     permissions: PermissionSnapshot,
     defaultSnooze: Int,
     crashLog: String?,
@@ -65,6 +68,10 @@ fun SettingsPanel(
     onRequestIgnoreBatteryOptimization: () -> Unit,
     onRequestAccessibilityService: () -> Unit,
     onDefaultSnoozeChange: (Int) -> Unit,
+    onPickBackupDirectory: () -> Unit,
+    onExportBackup: () -> Unit,
+    onImportBackup: () -> Unit,
+    onAutoBackupChange: (Boolean) -> Unit,
     onCopyCrashLog: () -> Unit,
     onClearCrashLog: () -> Unit
 ) {
@@ -118,6 +125,38 @@ fun SettingsPanel(
             )
             OutlinedButton(onClick = { showSnoozeDialog = true }) {
                 Text("当前：${normalizeSnooze(defaultSnooze)} 分钟")
+            }
+        }
+
+        PrefCard("数据与备份") {
+            Text(
+                text = permissions.lastCrashLog?.let { "可手动导入或导出 JSON，并设置自动备份目录。" }
+                    ?: "可手动导入或导出 JSON，并设置自动备份目录。",
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text("自动备份", fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
+                    Text("开启后，每次任务或分组变动都会尝试写入备份目录。", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                Switch(
+                    checked = settings.autoBackupEnabled,
+                    onCheckedChange = onAutoBackupChange
+                )
+            }
+            Text(
+                text = settings.backupDirectoryUri ?: "当前未选择备份目录",
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                style = MaterialTheme.typography.bodySmall
+            )
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                OutlinedButton(onClick = onPickBackupDirectory) { Text("选择备份目录") }
+                OutlinedButton(onClick = onExportBackup) { Text("导出 JSON") }
+                OutlinedButton(onClick = onImportBackup) { Text("导入 JSON") }
             }
         }
 

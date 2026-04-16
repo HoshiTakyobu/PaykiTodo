@@ -12,10 +12,13 @@ import com.example.todoalarm.ui.ReminderActivity
 class ReminderAccessibilityService : AccessibilityService() {
     private lateinit var overlay: ReminderAccessibilityOverlay
     private var triggerReceiver: BroadcastReceiver? = null
+    private var lastObservedPackageName: String? = null
+    private var lastObservedClassName: String? = null
 
     override fun onServiceConnected() {
         super.onServiceConnected()
         overlay = ReminderAccessibilityOverlay(this)
+        activeService = this
         registerTriggerReceiver()
         maybeLaunchReminder()
     }
@@ -28,19 +31,20 @@ class ReminderAccessibilityService : AccessibilityService() {
         ) {
             return
         }
+        lastObservedPackageName = event.packageName?.toString()
+        lastObservedClassName = event.className?.toString()
         maybeLaunchReminder(
-            sourcePackageName = event.packageName?.toString(),
-            className = event.className?.toString(),
-            eventType = event.eventType
+            sourcePackageName = lastObservedPackageName,
+            className = lastObservedClassName
         )
     }
 
     private fun maybeLaunchReminder(
+        todoIdOverride: Long? = null,
         sourcePackageName: String? = null,
-        className: String? = null,
-        eventType: Int = AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED
+        className: String? = null
     ) {
-        val todoId = ActiveReminderStore.getActiveTodoId(this)
+        val todoId = todoIdOverride ?: ActiveReminderStore.getActiveTodoId(this)
         if (todoId <= 0L) {
             overlay.hide()
             return
@@ -54,12 +58,6 @@ class ReminderAccessibilityService : AccessibilityService() {
             return
         }
 
-        if (sourcePackageName == packageName &&
-            eventType != AccessibilityEvent.TYPE_NOTIFICATION_STATE_CHANGED
-        ) {
-            return
-        }
-
         overlay.showFor(todoId)
     }
 
@@ -70,6 +68,9 @@ class ReminderAccessibilityService : AccessibilityService() {
     override fun onDestroy() {
         unregisterTriggerReceiver()
         overlay.destroy()
+        if (activeService === this) {
+            activeService = null
+        }
         super.onDestroy()
     }
 
@@ -79,7 +80,11 @@ class ReminderAccessibilityService : AccessibilityService() {
             override fun onReceive(context: android.content.Context?, intent: Intent?) {
                 val todoId = intent?.getLongExtra(EXTRA_TODO_ID, -1L) ?: -1L
                 if (todoId > 0L) {
-                    overlay.showFor(todoId)
+                    maybeLaunchReminder(
+                        todoIdOverride = todoId,
+                        sourcePackageName = lastObservedPackageName,
+                        className = lastObservedClassName
+                    )
                 }
             }
         }
@@ -102,5 +107,18 @@ class ReminderAccessibilityService : AccessibilityService() {
     companion object {
         const val ACTION_TRIGGER_REMINDER_OVERLAY = "com.paykitodo.app.TRIGGER_REMINDER_OVERLAY"
         const val EXTRA_TODO_ID = "extra_todo_id"
+
+        @Volatile
+        private var activeService: ReminderAccessibilityService? = null
+
+        fun showOverlayNow(todoId: Long): Boolean {
+            val service = activeService ?: return false
+            service.maybeLaunchReminder(
+                todoIdOverride = todoId,
+                sourcePackageName = service.lastObservedPackageName,
+                className = service.lastObservedClassName
+            )
+            return true
+        }
     }
 }

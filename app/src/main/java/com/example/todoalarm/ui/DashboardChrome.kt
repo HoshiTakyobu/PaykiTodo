@@ -8,6 +8,7 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -15,10 +16,12 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.BrightnessAuto
@@ -110,16 +113,20 @@ internal fun DashboardDrawer(
     onSelectSection: (DashboardSection) -> Unit,
     onSelectAllTasks: () -> Unit,
     onSelectGroup: (Long) -> Unit,
+    onCloseDrawer: () -> Unit,
     onThemeModeChange: (ThemeMode) -> Unit
 ) {
     var taskExpanded by rememberSaveable { mutableStateOf(true) }
     ModalDrawerSheet(
+        modifier = Modifier
+            .fillMaxHeight()
+            .widthIn(min = 280.dp, max = 336.dp),
         drawerContainerColor = MaterialTheme.colorScheme.surface,
         drawerShape = RoundedCornerShape(topEnd = 28.dp, bottomEnd = 28.dp)
     ) {
         Column(
             modifier = Modifier
-                .fillMaxSize()
+                .fillMaxHeight()
                 .padding(horizontal = 18.dp, vertical = 24.dp),
             verticalArrangement = Arrangement.SpaceBetween
         ) {
@@ -132,6 +139,20 @@ internal fun DashboardDrawer(
                             modifier = Modifier.size(42.dp),
                             contentScale = ContentScale.Fit
                         )
+                    }
+                }
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End
+                ) {
+                    Surface(shape = CircleShape, color = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)) {
+                        IconButton(onClick = onCloseDrawer) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
+                                contentDescription = "收起菜单",
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                        }
                     }
                 }
                 Text(

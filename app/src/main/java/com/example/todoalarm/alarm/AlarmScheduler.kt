@@ -6,6 +6,7 @@ import android.content.Context
 import android.content.Intent
 import android.os.Build
 import com.example.todoalarm.data.TodoItem
+import com.example.todoalarm.ui.MainActivity
 
 class AlarmScheduler(
     private val context: Context
@@ -27,13 +28,22 @@ class AlarmScheduler(
             return null
         }
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && !alarmManager.canScheduleExactAlarms()) {
+        val exactIntent = buildBroadcastIntent(todoItem.id, ACTION_EXACT, EXACT_OFFSET)
+        val canUseAlarmClock = Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP
+        if (!canUseAlarmClock &&
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
+            !alarmManager.canScheduleExactAlarms()
+        ) {
             return "系统未授予精确闹钟权限，提醒尚未启用。"
         }
 
-        val exactIntent = buildBroadcastIntent(todoItem.id, ACTION_EXACT, EXACT_OFFSET)
         return runCatching {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            if (canUseAlarmClock) {
+                alarmManager.setAlarmClock(
+                    AlarmManager.AlarmClockInfo(triggerAtMillis, buildShowIntent(todoItem.id)),
+                    exactIntent
+                )
+            } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
                 alarmManager.setExactAndAllowWhileIdle(
                     AlarmManager.RTC_WAKEUP,
                     triggerAtMillis,
@@ -63,11 +73,25 @@ class AlarmScheduler(
     ): PendingIntent {
         val intent = Intent(context, ReminderReceiver::class.java).apply {
             this.action = action
+            addFlags(Intent.FLAG_RECEIVER_FOREGROUND)
             putExtra(EXTRA_TODO_ID, todoId)
         }
         return PendingIntent.getBroadcast(
             context,
             requestCodeFor(todoId) + offset,
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+    }
+
+    private fun buildShowIntent(todoId: Long): PendingIntent {
+        val intent = Intent(context, MainActivity::class.java).apply {
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+            putExtra(EXTRA_TODO_ID, todoId)
+        }
+        return PendingIntent.getActivity(
+            context,
+            requestCodeFor(todoId),
             intent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )

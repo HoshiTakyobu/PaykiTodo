@@ -9,25 +9,30 @@ import android.content.Intent
 import android.os.Build
 import androidx.core.app.NotificationCompat
 import com.example.todoalarm.R
-import com.example.todoalarm.data.TodoCategory
 import com.example.todoalarm.data.TodoItem
+import com.example.todoalarm.ui.ResolvedTaskGroup
 import com.example.todoalarm.ui.ReminderActivity
 import com.example.todoalarm.ui.formatLocalDateTime
 import com.example.todoalarm.ui.reminderAtMillisToDateTime
+import com.example.todoalarm.ui.resolveTaskGroup
+import com.example.todoalarm.ui.taskGroupEmoji
 
 class ReminderNotifier(
     private val context: Context
 ) {
     private val notificationManager = context.getSystemService(NotificationManager::class.java)
 
-    fun build(todoItem: TodoItem): Notification {
+    fun build(
+        todoItem: TodoItem,
+        taskGroup: ResolvedTaskGroup = resolveTaskGroup(todoItem, emptyList())
+    ): Notification {
         val channelId = ensureChannel(todoItem)
         val fullScreenIntent = reminderPendingIntent(todoItem.id)
-        val body = reminderText(todoItem)
+        val body = reminderText(todoItem, taskGroup)
 
         return NotificationCompat.Builder(context, channelId)
             .setSmallIcon(R.drawable.ic_stat_alarm)
-            .setContentTitle("${categoryEmoji(todoItem)} ${todoItem.title}")
+            .setContentTitle("${taskGroupEmoji(taskGroup)} ${todoItem.title}")
             .setContentText(body)
             .setStyle(NotificationCompat.BigTextStyle().bigText(body))
             .setPriority(NotificationCompat.PRIORITY_MAX)
@@ -42,8 +47,11 @@ class ReminderNotifier(
             .build()
     }
 
-    fun show(todoItem: TodoItem) {
-        notificationManager.notify(notificationId(todoItem.id), build(todoItem))
+    fun show(
+        todoItem: TodoItem,
+        taskGroup: ResolvedTaskGroup = resolveTaskGroup(todoItem, emptyList())
+    ) {
+        notificationManager.notify(notificationId(todoItem.id), build(todoItem, taskGroup))
     }
 
     fun createReminderIntent(todoId: Long): Intent = buildReminderIntent(todoId)
@@ -103,22 +111,15 @@ class ReminderNotifier(
         return channelId
     }
 
-    private fun reminderText(todoItem: TodoItem): String {
+    private fun reminderText(todoItem: TodoItem, taskGroup: ResolvedTaskGroup): String {
         val due = formatLocalDateTime(reminderAtMillisToDateTime(todoItem.dueAtMillis))
-        return "\u23F0 DDL $due"
+        return "${taskGroup.name} · \u23F0 DDL $due"
     }
 
     private fun channelName(todoItem: TodoItem): String = when {
         todoItem.ringEnabled -> context.getString(R.string.channel_name_audible)
         todoItem.vibrateEnabled -> context.getString(R.string.channel_name_vibrate)
         else -> context.getString(R.string.channel_name_silent)
-    }
-
-    private fun categoryEmoji(todoItem: TodoItem): String = when (TodoCategory.fromKey(todoItem.categoryKey)) {
-        TodoCategory.IMPORTANT -> "\u2B50"
-        TodoCategory.URGENT -> "\u26A0\uFE0F"
-        TodoCategory.FOCUS -> "\uD83C\uDFAF"
-        TodoCategory.ROUTINE -> "\uD83E\uDDFD"
     }
 
     companion object {

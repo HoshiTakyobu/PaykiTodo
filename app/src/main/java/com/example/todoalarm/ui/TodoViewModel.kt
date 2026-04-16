@@ -1,11 +1,13 @@
 package com.example.todoalarm.ui
 
 import android.app.Application
+import android.content.Intent
 import android.net.Uri
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.todoalarm.TodoApplication
 import com.example.todoalarm.alarm.ActiveReminderStore
+import com.example.todoalarm.alarm.ReminderForegroundService
 import com.example.todoalarm.data.AppSettings
 import com.example.todoalarm.data.RecurrenceScope
 import com.example.todoalarm.data.RecurrenceType
@@ -254,11 +256,16 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
         return runCatching {
             val currentSettings = settingsStore.currentSettings()
             val currentSnapshot = repository.exportSnapshot(currentSettings)
+            val existingItems = repository.getAllTodos()
             currentSettings.backupDirectoryUri?.let { directoryUri ->
                 app.backupManager.autoBackupToDirectory(directoryUri, currentSnapshot)
             } ?: run {
                 app.backupManager.autoBackupToInternalStorage(currentSnapshot)
             }
+
+            clearReminderArtifacts(existingItems)
+            ActiveReminderStore.clear(app)
+            app.stopService(Intent(app, ReminderForegroundService::class.java))
 
             val snapshot = app.backupManager.importFromUri(sourceUri)
             repository.importSnapshot(snapshot)

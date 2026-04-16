@@ -2,31 +2,114 @@ package com.example.todoalarm.data
 
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
+import java.time.LocalDate
+import java.time.LocalTime
+import java.time.ZoneId
 
 object DatabaseMigrations {
+    val MIGRATION_1_2 = object : Migration(1, 2) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL(
+                """
+                CREATE TABLE IF NOT EXISTS `todo_items_new` (
+                    `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                    `title` TEXT NOT NULL,
+                    `notes` TEXT NOT NULL,
+                    `dueAtMillis` INTEGER NOT NULL,
+                    `reminderAtMillis` INTEGER,
+                    `reminderEnabled` INTEGER NOT NULL,
+                    `ringEnabled` INTEGER NOT NULL,
+                    `vibrateEnabled` INTEGER NOT NULL,
+                    `voiceEnabled` INTEGER NOT NULL,
+                    `categoryKey` TEXT NOT NULL,
+                    `completed` INTEGER NOT NULL,
+                    `completedAtMillis` INTEGER,
+                    `createdAtMillis` INTEGER NOT NULL
+                )
+                """.trimIndent()
+            )
+
+            db.query(
+                """
+                SELECT id, title, notes, dueDateEpochDay, reminderAtMillis, reminderEnabled,
+                       ringEnabled, vibrateEnabled, voiceEnabled, completed, createdAtMillis
+                FROM todo_items
+                """.trimIndent()
+            ).use { cursor ->
+                val idIndex = cursor.getColumnIndexOrThrow("id")
+                val titleIndex = cursor.getColumnIndexOrThrow("title")
+                val notesIndex = cursor.getColumnIndexOrThrow("notes")
+                val dueDateEpochDayIndex = cursor.getColumnIndexOrThrow("dueDateEpochDay")
+                val reminderAtMillisIndex = cursor.getColumnIndexOrThrow("reminderAtMillis")
+                val reminderEnabledIndex = cursor.getColumnIndexOrThrow("reminderEnabled")
+                val ringEnabledIndex = cursor.getColumnIndexOrThrow("ringEnabled")
+                val vibrateEnabledIndex = cursor.getColumnIndexOrThrow("vibrateEnabled")
+                val voiceEnabledIndex = cursor.getColumnIndexOrThrow("voiceEnabled")
+                val completedIndex = cursor.getColumnIndexOrThrow("completed")
+                val createdAtMillisIndex = cursor.getColumnIndexOrThrow("createdAtMillis")
+
+                while (cursor.moveToNext()) {
+                    val dueAtMillis = LocalDate.ofEpochDay(cursor.getLong(dueDateEpochDayIndex))
+                        .atTime(LocalTime.of(23, 59))
+                        .atZone(ZoneId.systemDefault())
+                        .toInstant()
+                        .toEpochMilli()
+
+                    db.execSQL(
+                        """
+                        INSERT INTO `todo_items_new` (
+                            `id`, `title`, `notes`, `dueAtMillis`, `reminderAtMillis`,
+                            `reminderEnabled`, `ringEnabled`, `vibrateEnabled`, `voiceEnabled`,
+                            `categoryKey`, `completed`, `completedAtMillis`, `createdAtMillis`
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        """.trimIndent(),
+                        arrayOf(
+                            cursor.getLong(idIndex),
+                            cursor.getString(titleIndex),
+                            cursor.getString(notesIndex),
+                            dueAtMillis,
+                            if (cursor.isNull(reminderAtMillisIndex)) null else cursor.getLong(reminderAtMillisIndex),
+                            cursor.getInt(reminderEnabledIndex),
+                            cursor.getInt(ringEnabledIndex),
+                            cursor.getInt(vibrateEnabledIndex),
+                            cursor.getInt(voiceEnabledIndex),
+                            TodoCategory.ROUTINE.key,
+                            cursor.getInt(completedIndex),
+                            null,
+                            cursor.getLong(createdAtMillisIndex)
+                        )
+                    )
+                }
+            }
+
+            db.execSQL("DROP TABLE `todo_items`")
+            db.execSQL("ALTER TABLE `todo_items_new` RENAME TO `todo_items`")
+        }
+    }
+
     val MIGRATION_2_3 = object : Migration(2, 3) {
-        override fun migrate(database: SupportSQLiteDatabase) {
-            database.execSQL("ALTER TABLE todo_items ADD COLUMN canceled INTEGER NOT NULL DEFAULT 0")
-            database.execSQL("ALTER TABLE todo_items ADD COLUMN canceledAtMillis INTEGER")
-            database.execSQL("ALTER TABLE todo_items ADD COLUMN missed INTEGER NOT NULL DEFAULT 0")
-            database.execSQL("ALTER TABLE todo_items ADD COLUMN missedAtMillis INTEGER")
-            database.execSQL("ALTER TABLE todo_items ADD COLUMN recurringSeriesId TEXT")
-            database.execSQL("ALTER TABLE todo_items ADD COLUMN recurrenceType TEXT NOT NULL DEFAULT 'NONE'")
-            database.execSQL("ALTER TABLE todo_items ADD COLUMN recurrenceWeekdays TEXT NOT NULL DEFAULT ''")
-            database.execSQL("ALTER TABLE todo_items ADD COLUMN recurrenceMonthlyOrdinal INTEGER")
-            database.execSQL("ALTER TABLE todo_items ADD COLUMN recurrenceMonthlyWeekday INTEGER")
-            database.execSQL("ALTER TABLE todo_items ADD COLUMN recurrenceMonthlyDay INTEGER")
-            database.execSQL("ALTER TABLE todo_items ADD COLUMN recurrenceEndEpochDay INTEGER")
-            database.execSQL("ALTER TABLE todo_items ADD COLUMN recurrenceAnchorDueAtMillis INTEGER")
-            database.execSQL("ALTER TABLE todo_items ADD COLUMN reminderOffsetMinutes INTEGER")
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE todo_items ADD COLUMN canceled INTEGER NOT NULL DEFAULT 0")
+            db.execSQL("ALTER TABLE todo_items ADD COLUMN canceledAtMillis INTEGER")
+            db.execSQL("ALTER TABLE todo_items ADD COLUMN missed INTEGER NOT NULL DEFAULT 0")
+            db.execSQL("ALTER TABLE todo_items ADD COLUMN missedAtMillis INTEGER")
+            db.execSQL("ALTER TABLE todo_items ADD COLUMN recurringSeriesId TEXT")
+            db.execSQL("ALTER TABLE todo_items ADD COLUMN recurrenceType TEXT NOT NULL DEFAULT 'NONE'")
+            db.execSQL("ALTER TABLE todo_items ADD COLUMN recurrenceWeekdays TEXT NOT NULL DEFAULT ''")
+            db.execSQL("ALTER TABLE todo_items ADD COLUMN recurrenceMonthlyOrdinal INTEGER")
+            db.execSQL("ALTER TABLE todo_items ADD COLUMN recurrenceMonthlyWeekday INTEGER")
+            db.execSQL("ALTER TABLE todo_items ADD COLUMN recurrenceMonthlyDay INTEGER")
+            db.execSQL("ALTER TABLE todo_items ADD COLUMN recurrenceEndEpochDay INTEGER")
+            db.execSQL("ALTER TABLE todo_items ADD COLUMN recurrenceAnchorDueAtMillis INTEGER")
+            db.execSQL("ALTER TABLE todo_items ADD COLUMN reminderOffsetMinutes INTEGER")
         }
     }
 
     val MIGRATION_3_4 = object : Migration(3, 4) {
-        override fun migrate(database: SupportSQLiteDatabase) {
-            database.execSQL("ALTER TABLE todo_items ADD COLUMN groupId INTEGER NOT NULL DEFAULT 0")
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE todo_items ADD COLUMN groupId INTEGER NOT NULL DEFAULT 0")
 
-            database.execSQL(
+            db.execSQL(
                 """
                 CREATE TABLE IF NOT EXISTS `task_groups` (
                     `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
@@ -39,7 +122,7 @@ object DatabaseMigrations {
                 """.trimIndent()
             )
 
-            database.execSQL(
+            db.execSQL(
                 """
                 CREATE TABLE IF NOT EXISTS `recurring_task_templates` (
                     `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
@@ -65,12 +148,12 @@ object DatabaseMigrations {
                 )
                 """.trimIndent()
             )
-            database.execSQL(
+            db.execSQL(
                 "CREATE UNIQUE INDEX IF NOT EXISTS `index_recurring_task_templates_seriesId` ON `recurring_task_templates` (`seriesId`)"
             )
 
             val now = System.currentTimeMillis()
-            database.execSQL(
+            db.execSQL(
                 """
                 INSERT OR IGNORE INTO task_groups (id, name, colorHex, sortOrder, isDefault, createdAtMillis)
                 VALUES
@@ -81,10 +164,10 @@ object DatabaseMigrations {
                 """.trimIndent()
             )
 
-            database.execSQL("UPDATE todo_items SET groupId = 1 WHERE categoryKey = 'important'")
-            database.execSQL("UPDATE todo_items SET groupId = 2 WHERE categoryKey = 'urgent'")
-            database.execSQL("UPDATE todo_items SET groupId = 3 WHERE categoryKey = 'focus'")
-            database.execSQL(
+            db.execSQL("UPDATE todo_items SET groupId = 1 WHERE categoryKey = 'important'")
+            db.execSQL("UPDATE todo_items SET groupId = 2 WHERE categoryKey = 'urgent'")
+            db.execSQL("UPDATE todo_items SET groupId = 3 WHERE categoryKey = 'focus'")
+            db.execSQL(
                 """
                 UPDATE todo_items
                 SET groupId = 4

@@ -11,6 +11,7 @@ import android.os.PowerManager
 import androidx.core.content.ContextCompat
 import com.example.todoalarm.TodoApplication
 import com.example.todoalarm.accessibility.ReminderAccessibilityService
+import com.example.todoalarm.ui.resolveTaskGroup
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -48,12 +49,18 @@ class ReminderForegroundService : Service() {
             ActiveReminderStore.markActive(this@ReminderForegroundService, todoId)
             val notifier = ReminderNotifier(this@ReminderForegroundService)
             reminderNotifier = notifier
-            val notification = notifier.build(todoItem)
+            val taskGroup = resolveTaskGroup(todoItem, app.repository.getGroup(todoItem.groupId))
+            val notification = notifier.build(todoItem, taskGroup)
             startInForeground(todoId, notification)
             alertController.start(todoItem)
             wakeDevice()
+            ReminderAccessibilityService.showOverlayNow(todoId)
             triggerAccessibilityOverlay(todoId)
-            delay(350L)
+            delay(200L)
+            ReminderAccessibilityService.showOverlayNow(todoId)
+            triggerAccessibilityOverlay(todoId)
+            delay(800L)
+            ReminderAccessibilityService.showOverlayNow(todoId)
             triggerAccessibilityOverlay(todoId)
             delay(115_000L)
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {

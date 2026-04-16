@@ -22,7 +22,6 @@ import com.example.todoalarm.TodoApplication
 import com.example.todoalarm.alarm.ActiveReminderStore
 import com.example.todoalarm.alarm.ReminderForegroundService
 import com.example.todoalarm.alarm.ReminderNotifier
-import com.example.todoalarm.data.TodoCategory
 import com.example.todoalarm.data.TodoItem
 import com.example.todoalarm.ui.ResolvedTaskGroup
 import com.example.todoalarm.ui.resolveTaskGroup
@@ -386,27 +385,6 @@ class ReminderAccessibilityOverlay(
     private fun dp(value: Int): Int {
         val density = service.resources.displayMetrics.density
         return (value * density).toInt()
-    }
-
-    private fun categoryLabel(item: TodoItem): String = when (TodoCategory.fromKey(item.categoryKey)) {
-        TodoCategory.IMPORTANT -> "重要"
-        TodoCategory.URGENT -> "紧急"
-        TodoCategory.FOCUS -> "专注"
-        TodoCategory.ROUTINE -> "例行"
-    }
-
-    private fun categoryEmoji(item: TodoItem): String = when (TodoCategory.fromKey(item.categoryKey)) {
-        TodoCategory.IMPORTANT -> "⭐"
-        TodoCategory.URGENT -> "⚠️"
-        TodoCategory.FOCUS -> "🎯"
-        TodoCategory.ROUTINE -> "🧭"
-    }
-
-    private fun categoryColor(item: TodoItem): Int = when (TodoCategory.fromKey(item.categoryKey)) {
-        TodoCategory.IMPORTANT -> Color.parseColor("#8B5CF6")
-        TodoCategory.URGENT -> Color.parseColor("#E11D48")
-        TodoCategory.FOCUS -> Color.parseColor("#2563EB")
-        TodoCategory.ROUTINE -> Color.parseColor("#0F766E")
     }
 
     private fun formatDateTime(epochMillis: Long): String {

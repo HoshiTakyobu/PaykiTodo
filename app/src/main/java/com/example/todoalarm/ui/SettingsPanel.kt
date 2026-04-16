@@ -37,7 +37,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -46,8 +45,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -130,8 +129,7 @@ fun SettingsPanel(
 
         PrefCard("数据与备份") {
             Text(
-                text = permissions.lastCrashLog?.let { "可手动导入或导出 JSON，并设置自动备份目录。" }
-                    ?: "可手动导入或导出 JSON，并设置自动备份目录。",
+                text = "支持手动导出、导入 JSON，并可指定自动备份目录。",
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             Row(
@@ -140,8 +138,15 @@ fun SettingsPanel(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Column(modifier = Modifier.weight(1f)) {
-                    Text("自动备份", fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
-                    Text("开启后，每次任务或分组变动都会尝试写入备份目录。", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(
+                        text = "自动备份",
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Text(
+                        text = "开启后，任务或分组发生变化时会尝试写入备份目录。",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
                 Switch(
                     checked = settings.autoBackupEnabled,
@@ -153,19 +158,34 @@ fun SettingsPanel(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 style = MaterialTheme.typography.bodySmall
             )
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                OutlinedButton(onClick = onPickBackupDirectory) { Text("选择备份目录") }
-                OutlinedButton(onClick = onExportBackup) { Text("导出 JSON") }
-                OutlinedButton(onClick = onImportBackup) { Text("导入 JSON") }
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                OutlinedButton(
+                    onClick = onPickBackupDirectory,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("选择备份目录")
+                }
+                OutlinedButton(
+                    onClick = onExportBackup,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("导出 JSON")
+                }
+                OutlinedButton(
+                    onClick = onImportBackup,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("导入 JSON")
+                }
             }
         }
 
         PrefCard("崩溃日志") {
             Text(
                 text = if (crashLog.isNullOrBlank()) {
-                    "当前没有记录到新的异常退出日志。"
+                    "当前没有新的异常退出日志。"
                 } else {
-                    "已记录最近一次异常退出日志，可直接查看并复制给我。"
+                    "已记录最近一次异常退出日志，可以直接查看并复制给我。"
                 },
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -287,11 +307,7 @@ private fun SnoozePickerDialog(
                                     Text(
                                         text = label,
                                         textAlign = TextAlign.Center,
-                                        style = if (selected) {
-                                            MaterialTheme.typography.titleMedium
-                                        } else {
-                                            MaterialTheme.typography.bodyLarge
-                                        },
+                                        style = if (selected) MaterialTheme.typography.titleMedium else MaterialTheme.typography.bodyLarge,
                                         fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
                                         color = if (selected) {
                                             MaterialTheme.colorScheme.onSurface
@@ -354,7 +370,7 @@ fun AboutPanel() {
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
         PrefCard("关于 PaykiTodo") {
             Text(
-                text = "PaykiTodo 是一款本地单机的待办与提醒应用，当前版本重点放在强提醒、自定义待办节奏与日常自律陪伴。",
+                text = "PaykiTodo 是一款本地单机的待办与提醒应用，当前重点在于强提醒、任务节奏管理和持续迭代。",
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 style = MaterialTheme.typography.bodyLarge
             )

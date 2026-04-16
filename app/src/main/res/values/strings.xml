@@ -5,6 +5,6 @@
     <string name="channel_name_silent">PaykiTodo 静默提醒</string>
     <string name="channel_description">用于任务提醒与全屏唤起</string>
     <string name="notification_body">DDL：%1$s</string>
-    <string name="accessibility_service_summary">在存在活跃提醒时，于解锁或窗口切换后优先拉起提醒页。</string>
-    <string name="accessibility_service_description">辅助无障碍用户在提醒触发后更快回到提醒界面。</string>
+    <string name="accessibility_service_summary">在提醒触发时直接覆盖显示提醒内容，并在后台、锁屏与解锁后持续兜底。</string>
+    <string name="accessibility_service_description">为依赖无障碍的用户提供更及时、更强的到点提醒与全屏覆盖能力。</string>
 </resources>

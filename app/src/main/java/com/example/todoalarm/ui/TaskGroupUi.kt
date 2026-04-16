@@ -12,6 +12,13 @@ data class ResolvedTaskGroup(
 )
 
 fun resolveTaskGroup(item: TodoItem, groups: List<TaskGroup>): ResolvedTaskGroup {
+    if (item.isEvent) {
+        return ResolvedTaskGroup(
+            id = 0,
+            name = if (item.allDay) "全天" else "日程",
+            colorHex = item.accentColorHex ?: "#4E87E1"
+        )
+    }
     val matched = groups.firstOrNull { it.id == item.groupId }
     if (matched != null) {
         return ResolvedTaskGroup(matched.id, matched.name, matched.colorHex)
@@ -44,6 +51,8 @@ fun taskGroupEmoji(group: ResolvedTaskGroup): String = when (group.name) {
     "紧急" -> "\u26A0\uFE0F"
     "专注" -> "\uD83C\uDFAF"
     "例行" -> "\uD83E\uDDFD"
+    "全天" -> "\uD83C\uDF1E"
+    "日程" -> "\uD83D\uDDD3\uFE0F"
     else -> "\uD83D\uDCC1"
 }
 

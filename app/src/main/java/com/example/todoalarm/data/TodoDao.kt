@@ -70,6 +70,7 @@ interface TodoDao {
         SELECT * FROM todo_items
         WHERE completed = 0
         AND canceled = 0
+        AND itemType = 'TODO'
         AND missed = 0
         AND dueAtMillis < :missBefore
         ORDER BY dueAtMillis ASC

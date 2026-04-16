@@ -25,6 +25,7 @@ import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.BrightnessAuto
+import androidx.compose.material.icons.rounded.CalendarMonth
 import androidx.compose.material.icons.rounded.DarkMode
 import androidx.compose.material.icons.rounded.History
 import androidx.compose.material.icons.rounded.Info
@@ -98,6 +99,7 @@ internal fun DashboardBackgroundBrush(): Brush {
 
 internal enum class DashboardSection(val label: String, val icon: ImageVector) {
     ACTIVE("我的任务", Icons.Rounded.TaskAlt),
+    CALENDAR("日历", Icons.Rounded.CalendarMonth),
     HISTORY("历史记录", Icons.Rounded.History),
     GROUPS("分组管理", Icons.Rounded.Folder),
     SETTINGS("设置", Icons.Rounded.Settings),
@@ -251,9 +253,11 @@ internal fun DashboardBody(
     uiState: TodoUiState,
     permissions: PermissionSnapshot,
     onEdit: (TodoItem) -> Unit,
+    onEditCalendarEvent: (TodoItem) -> Unit,
     onCompleteTodo: (TodoItem) -> Unit,
     onRestoreTodo: (TodoItem) -> Unit,
     onCancelTodo: (TodoItem) -> Unit,
+    onDeleteCalendarEvent: (TodoItem) -> Unit,
     onCreateGroup: suspend (String, String) -> String?,
     onUpdateGroup: suspend (TaskGroup) -> String?,
     onDeleteGroup: suspend (Long) -> String?,
@@ -337,6 +341,19 @@ internal fun DashboardBody(
                             ActiveTodoCard(item, uiState.groups, { onEdit(item) }, { onCompleteTodo(item) }, { onCancelTodo(item) })
                         }
                     }
+                }
+            }
+
+            DashboardSection.CALENDAR -> {
+                if (uiState.calendarItems.isEmpty()) {
+                    item { EmptyStateCard("暂时还没有日程，点击右下角即可新增。") }
+                }
+                item {
+                    CalendarPanel(
+                        events = uiState.calendarItems,
+                        onEditEvent = onEditCalendarEvent,
+                        onDeleteEvent = onDeleteCalendarEvent
+                    )
                 }
             }
 

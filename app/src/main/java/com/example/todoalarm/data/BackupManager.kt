@@ -87,11 +87,16 @@ private fun RecurringTaskTemplate.toJson(): JSONObject {
     return JSONObject().apply {
         put("id", id)
         put("seriesId", seriesId)
+        put("itemType", itemType)
         put("title", title)
         put("notes", notes)
+        put("location", location)
+        put("accentColorHex", accentColorHex)
+        put("allDay", allDay)
         put("groupId", groupId)
         put("dueHour", dueHour)
         put("dueMinute", dueMinute)
+        put("eventDurationMinutes", eventDurationMinutes)
         put("reminderOffsetMinutes", reminderOffsetMinutes)
         put("ringEnabled", ringEnabled)
         put("vibrateEnabled", vibrateEnabled)
@@ -111,9 +116,15 @@ private fun RecurringTaskTemplate.toJson(): JSONObject {
 private fun TodoItem.toJson(): JSONObject {
     return JSONObject().apply {
         put("id", id)
+        put("itemType", itemType)
         put("title", title)
         put("notes", notes)
         put("dueAtMillis", dueAtMillis)
+        put("startAtMillis", startAtMillis)
+        put("endAtMillis", endAtMillis)
+        put("allDay", allDay)
+        put("location", location)
+        put("accentColorHex", accentColorHex)
         put("reminderAtMillis", reminderAtMillis)
         put("reminderEnabled", reminderEnabled)
         put("ringEnabled", ringEnabled)
@@ -178,11 +189,16 @@ private fun JSONArray?.toTemplates(): List<RecurringTaskTemplate> {
                 RecurringTaskTemplate(
                     id = item.optLong("id", 0L),
                     seriesId = item.optString("seriesId"),
+                    itemType = item.optString("itemType", PlannerItemType.TODO.name),
                     title = item.optString("title"),
                     notes = item.optString("notes"),
+                    location = item.optString("location", ""),
+                    accentColorHex = item.optStringOrNull("accentColorHex"),
+                    allDay = item.optBoolean("allDay", false),
                     groupId = item.optLong("groupId", 0L),
                     dueHour = item.optInt("dueHour"),
                     dueMinute = item.optInt("dueMinute"),
+                    eventDurationMinutes = item.optIntOrNull("eventDurationMinutes"),
                     reminderOffsetMinutes = item.optIntOrNull("reminderOffsetMinutes"),
                     ringEnabled = item.optBoolean("ringEnabled", true),
                     vibrateEnabled = item.optBoolean("vibrateEnabled", true),
@@ -210,9 +226,15 @@ private fun JSONArray?.toTasks(): List<TodoItem> {
             add(
                 TodoItem(
                     id = item.optLong("id", 0L),
+                    itemType = item.optString("itemType", PlannerItemType.TODO.name),
                     title = item.optString("title"),
                     notes = item.optString("notes"),
                     dueAtMillis = item.optLong("dueAtMillis"),
+                    startAtMillis = item.optLongOrNull("startAtMillis"),
+                    endAtMillis = item.optLongOrNull("endAtMillis"),
+                    allDay = item.optBoolean("allDay", false),
+                    location = item.optString("location", ""),
+                    accentColorHex = item.optStringOrNull("accentColorHex"),
                     reminderAtMillis = item.optLongOrNull("reminderAtMillis"),
                     reminderEnabled = item.optBoolean("reminderEnabled", false),
                     ringEnabled = item.optBoolean("ringEnabled", true),

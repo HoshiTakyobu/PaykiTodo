@@ -40,8 +40,15 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 private enum class ScopeDialogMode {
-    EDIT,
-    CANCEL
+    EDIT_TODO,
+    CANCEL_TODO,
+    EDIT_EVENT,
+    DELETE_EVENT
+}
+
+private enum class EditorKind {
+    TODO,
+    CALENDAR
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -56,8 +63,11 @@ fun DashboardScreen(
     onRequestIgnoreBatteryOptimization: () -> Unit,
     onRequestAccessibilityService: () -> Unit,
     onAddTodo: suspend (TodoDraft) -> String?,
+    onAddCalendarEvent: suspend (com.example.todoalarm.data.CalendarEventDraft) -> String?,
     onUpdateTodo: suspend (TodoItem, TodoDraft, RecurrenceScope) -> String?,
+    onUpdateCalendarEvent: suspend (TodoItem, com.example.todoalarm.data.CalendarEventDraft, RecurrenceScope) -> String?,
     onDeleteTodo: (TodoItem) -> Unit,
+    onDeleteCalendarEvent: (TodoItem, RecurrenceScope) -> Unit,
     onCompleteTodo: (TodoItem) -> Unit,
     onRestoreTodo: (TodoItem) -> Unit,
     onCancelTodo: (TodoItem, RecurrenceScope) -> Unit,
@@ -79,7 +89,8 @@ fun DashboardScreen(
     var section by rememberSaveable { mutableStateOf(DashboardSection.ACTIVE) }
     var launchVisible by rememberSaveable { mutableStateOf(true) }
     var editorVisible by remember { mutableStateOf(false) }
-    var editingTodo by remember { mutableStateOf<TodoItem?>(null) }
+    var editorKind by remember { mutableStateOf(EditorKind.TODO) }
+    var editingItem by remember { mutableStateOf<TodoItem?>(null) }
     var editScope by remember { mutableStateOf(RecurrenceScope.CURRENT) }
     var scopeDialogTarget by remember { mutableStateOf<TodoItem?>(null) }
     var scopeDialogMode by remember { mutableStateOf<ScopeDialogMode?>(null) }
@@ -94,7 +105,7 @@ fun DashboardScreen(
         when {
             editorVisible -> {
                 editorVisible = false
-                editingTodo = null
+                editingItem = null
             }
             drawerState.isOpen -> scope.launch { drawerState.close() }
             section != DashboardSection.ACTIVE -> section = DashboardSection.ACTIVE
@@ -164,9 +175,14 @@ fun DashboardScreen(
                 containerColor = Color.Transparent,
                 topBar = { DashboardTopBar { scope.launch { drawerState.open() } } },
                 floatingActionButton = {
-                    if (section == DashboardSection.ACTIVE) {
+                    if (section == DashboardSection.ACTIVE || section == DashboardSection.CALENDAR) {
                         DashboardFab {
-                            editingTodo = null
+                            editingItem = null
+                            editorKind = if (section == DashboardSection.CALENDAR) {
+                                EditorKind.CALENDAR
+                            } else {
+                                EditorKind.TODO
+                            }
                             editScope = RecurrenceScope.CURRENT
                             editorVisible = true
                         }
@@ -181,9 +197,21 @@ fun DashboardScreen(
                     onEdit = { item ->
                         if (item.isRecurring && !item.isHistory) {
                             scopeDialogTarget = item
-                            scopeDialogMode = ScopeDialogMode.EDIT
+                            scopeDialogMode = ScopeDialogMode.EDIT_TODO
                         } else {
-                            editingTodo = item
+                            editorKind = EditorKind.TODO
+                            editingItem = item
+                            editScope = RecurrenceScope.CURRENT
+                            editorVisible = true
+                        }
+                    },
+                    onEditCalendarEvent = { item ->
+                        if (item.isRecurring) {
+                            scopeDialogTarget = item
+                            scopeDialogMode = ScopeDialogMode.EDIT_EVENT
+                        } else {
+                            editorKind = EditorKind.CALENDAR
+                            editingItem = item
                             editScope = RecurrenceScope.CURRENT
                             editorVisible = true
                         }
@@ -193,9 +221,17 @@ fun DashboardScreen(
                     onCancelTodo = { item ->
                         if (item.isRecurring && !item.isHistory) {
                             scopeDialogTarget = item
-                            scopeDialogMode = ScopeDialogMode.CANCEL
+                            scopeDialogMode = ScopeDialogMode.CANCEL_TODO
                         } else {
                             onCancelTodo(item, RecurrenceScope.CURRENT)
+                        }
+                    },
+                    onDeleteCalendarEvent = { item ->
+                        if (item.isRecurring) {
+                            scopeDialogTarget = item
+                            scopeDialogMode = ScopeDialogMode.DELETE_EVENT
+                        } else {
+                            onDeleteCalendarEvent(item, RecurrenceScope.CURRENT)
                         }
                     },
                     onCreateGroup = onCreateGroup,
@@ -218,27 +254,27 @@ fun DashboardScreen(
         }
     }
 
-    if (editorVisible) {
+    if (editorVisible && editorKind == EditorKind.TODO) {
         TodoEditorDialog(
-            initialTodo = editingTodo,
+            initialTodo = editingItem?.takeIf { it.isTodo },
             groups = uiState.groups,
-            defaultRingEnabled = editingTodo?.ringEnabled ?: uiState.settings.defaultRingEnabled,
-            defaultVibrateEnabled = editingTodo?.vibrateEnabled ?: uiState.settings.defaultVibrateEnabled,
+            defaultRingEnabled = editingItem?.ringEnabled ?: uiState.settings.defaultRingEnabled,
+            defaultVibrateEnabled = editingItem?.vibrateEnabled ?: uiState.settings.defaultVibrateEnabled,
             onDismiss = {
                 editorVisible = false
-                editingTodo = null
+                editingItem = null
             },
             onDelete = {
-                editingTodo?.let {
+                editingItem?.let {
                     onDeleteTodo(it)
                     editorVisible = false
-                    editingTodo = null
+                    editingItem = null
                     Toast.makeText(context, "任务已删除", Toast.LENGTH_SHORT).show()
                 }
             },
             onConfirm = { draft ->
                 scope.launch {
-                    val current = editingTodo
+                    val current = editingItem?.takeIf { it.isTodo }
                     val message = if (current == null) {
                         onAddTodo(draft)
                     } else {
@@ -247,7 +283,7 @@ fun DashboardScreen(
 
                     if (message == null) {
                         editorVisible = false
-                        editingTodo = null
+                        editingItem = null
                         Toast.makeText(
                             context,
                             if (current == null) "任务已创建" else "任务已更新",
@@ -261,21 +297,83 @@ fun DashboardScreen(
         )
     }
 
+    if (editorVisible && editorKind == EditorKind.CALENDAR) {
+        CalendarEventEditorDialog(
+            initialEvent = editingItem?.takeIf { it.isEvent },
+            defaultRingEnabled = editingItem?.ringEnabled ?: uiState.settings.defaultRingEnabled,
+            defaultVibrateEnabled = editingItem?.vibrateEnabled ?: uiState.settings.defaultVibrateEnabled,
+            onDismiss = {
+                editorVisible = false
+                editingItem = null
+            },
+            onDelete = {
+                val current = editingItem?.takeIf { it.isEvent } ?: return@CalendarEventEditorDialog
+                editorVisible = false
+                editingItem = null
+                if (current.isRecurring) {
+                    scopeDialogTarget = current
+                    scopeDialogMode = ScopeDialogMode.DELETE_EVENT
+                } else {
+                    onDeleteCalendarEvent(current, RecurrenceScope.CURRENT)
+                    Toast.makeText(context, "日程已删除", Toast.LENGTH_SHORT).show()
+                }
+            },
+            onConfirm = { draft ->
+                scope.launch {
+                    val current = editingItem?.takeIf { it.isEvent }
+                    val message = if (current == null) {
+                        onAddCalendarEvent(draft)
+                    } else {
+                        onUpdateCalendarEvent(current, draft, editScope)
+                    }
+
+                    if (message == null) {
+                        editorVisible = false
+                        editingItem = null
+                        Toast.makeText(
+                            context,
+                            if (current == null) "日程已创建" else "日程已更新",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    } else {
+                        Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+                    }
+                }
+            }
+        )
+    }
+
     scopeDialogTarget?.let { item ->
         RecurrenceScopeDialog(
-            title = if (scopeDialogMode == ScopeDialogMode.EDIT) "选择修改范围" else "选择范围",
+            title = when (scopeDialogMode) {
+                ScopeDialogMode.EDIT_TODO, ScopeDialogMode.EDIT_EVENT -> "选择修改范围"
+                ScopeDialogMode.CANCEL_TODO -> "选择取消范围"
+                ScopeDialogMode.DELETE_EVENT -> "选择删除范围"
+                null -> "选择范围"
+            },
             onDismiss = {
                 scopeDialogTarget = null
                 scopeDialogMode = null
             },
             onSelect = { selectedScope ->
                 when (scopeDialogMode) {
-                    ScopeDialogMode.EDIT -> {
+                    ScopeDialogMode.EDIT_TODO -> {
                         editScope = selectedScope
-                        editingTodo = item
+                        editorKind = EditorKind.TODO
+                        editingItem = item
                         editorVisible = true
                     }
-                    ScopeDialogMode.CANCEL -> onCancelTodo(item, selectedScope)
+                    ScopeDialogMode.EDIT_EVENT -> {
+                        editScope = selectedScope
+                        editorKind = EditorKind.CALENDAR
+                        editingItem = item
+                        editorVisible = true
+                    }
+                    ScopeDialogMode.CANCEL_TODO -> onCancelTodo(item, selectedScope)
+                    ScopeDialogMode.DELETE_EVENT -> {
+                        onDeleteCalendarEvent(item, selectedScope)
+                        Toast.makeText(context, "日程已删除", Toast.LENGTH_SHORT).show()
+                    }
                     null -> Unit
                 }
                 scopeDialogTarget = null

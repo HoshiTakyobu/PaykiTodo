@@ -9,6 +9,7 @@ import com.example.todoalarm.TodoApplication
 import com.example.todoalarm.alarm.ActiveReminderStore
 import com.example.todoalarm.alarm.ReminderForegroundService
 import com.example.todoalarm.data.AppSettings
+import com.example.todoalarm.data.CalendarEventDraft
 import com.example.todoalarm.data.RecurrenceScope
 import com.example.todoalarm.data.RecurrenceType
 import com.example.todoalarm.data.TaskGroup
@@ -34,6 +35,7 @@ data class TodoUiState(
     val todayItems: List<TodoItem> = emptyList(),
     val upcomingItems: List<TodoItem> = emptyList(),
     val historyItems: List<TodoItem> = emptyList(),
+    val calendarItems: List<TodoItem> = emptyList(),
     val settings: AppSettings = AppSettings(),
     val currentQuote: String = QuoteRepository.seedQuotes.first()
 )
@@ -81,11 +83,14 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
         } else {
             items.filter { it.groupId == selectedGroupId }
         }
-        val activeItems = filteredItems
-            .filter { it.isActive }
+        val activeTaskItems = filteredItems
+            .filter { it.isTodo && it.isActive }
             .sortedBy { it.dueAtMillis }
+        val activeCalendarItems = items
+            .filter { it.isEvent && it.isActive }
+            .sortedBy { it.startAtMillis ?: it.dueAtMillis }
         val historyItems = filteredItems
-            .filter { it.isHistory }
+            .filter { it.isTodo && it.isHistory }
             .sortedByDescending { it.completedAtMillis ?: it.canceledAtMillis ?: it.createdAtMillis }
         val availableQuotes = quotes.ifEmpty { QuoteRepository.seedQuotes }
         val currentQuote = availableQuotes[settings.quoteIndex.mod(availableQuotes.size)]
@@ -93,10 +98,11 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
         TodoUiState(
             groups = availableGroups,
             selectedGroupId = selectedGroupId,
-            missedItems = activeItems.filter { it.missed },
-            todayItems = activeItems.filter { !it.missed && dueDate(it) == today },
-            upcomingItems = activeItems.filter { !it.missed && dueDate(it).isAfter(today) },
+            missedItems = activeTaskItems.filter { it.missed },
+            todayItems = activeTaskItems.filter { !it.missed && dueDate(it) == today },
+            upcomingItems = activeTaskItems.filter { !it.missed && dueDate(it).isAfter(today) },
             historyItems = historyItems,
+            calendarItems = activeCalendarItems,
             settings = settings,
             currentQuote = currentQuote
         )
@@ -154,6 +160,43 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
         return null
     }
 
+    suspend fun addCalendarEvent(draft: CalendarEventDraft): String? {
+        validateCalendarDraft(
+            draft = draft,
+            original = null,
+            scope = RecurrenceScope.CURRENT
+        )?.let { return it }
+
+        val createdItems = repository.createCalendarEventFromDraft(draft)
+        for (item in createdItems) {
+            scheduleReminderOrDisable(item)
+        }
+        autoBackupIfEnabled()
+        return null
+    }
+
+    suspend fun updateCalendarEvent(
+        original: TodoItem,
+        draft: CalendarEventDraft,
+        scope: RecurrenceScope
+    ): String? {
+        validateCalendarDraft(
+            draft = draft,
+            original = original,
+            scope = scope
+        )?.let { return it }
+
+        val affectedItems = repository.getActiveItemsForScope(original, scope)
+        clearReminderArtifacts(affectedItems)
+
+        val updatedItems = repository.updateCalendarEventFromDraft(original, draft, scope)
+        for (item in updatedItems) {
+            scheduleReminderOrDisable(item)
+        }
+        autoBackupIfEnabled()
+        return null
+    }
+
     fun completeTodo(todoItem: TodoItem) {
         viewModelScope.launch {
             repository.setCompleted(todoItem.id, true)
@@ -192,6 +235,22 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
     fun deleteTodo(todoItem: TodoItem) {
         viewModelScope.launch {
             repository.deleteTodo(todoItem.id)
+            clearReminderArtifacts(listOf(todoItem))
+            autoBackupIfEnabled()
+        }
+    }
+
+    fun deleteCalendarEvent(todoItem: TodoItem, scope: RecurrenceScope = RecurrenceScope.CURRENT) {
+        viewModelScope.launch {
+            val deletedItems = repository.deleteCalendarEvent(todoItem, scope)
+            clearReminderArtifacts(deletedItems.ifEmpty { listOf(todoItem) })
+            autoBackupIfEnabled()
+        }
+    }
+
+    fun acknowledgeCalendarEvent(todoItem: TodoItem) {
+        viewModelScope.launch {
+            repository.acknowledgeCalendarEvent(todoItem.id)
             clearReminderArtifacts(listOf(todoItem))
             autoBackupIfEnabled()
         }
@@ -317,6 +376,46 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
             val canTerminateSeriesEarly = original?.isRecurring == true && scope != RecurrenceScope.CURRENT
             if (!canTerminateSeriesEarly && endDate.isBefore(draft.dueAt.toLocalDate())) {
                 return "循环截止日期不能早于首次任务日期"
+            }
+            if (recurrence.type == RecurrenceType.WEEKLY && recurrence.weeklyDays.isEmpty()) {
+                return "每周循环至少选择一天"
+            }
+        }
+        return null
+    }
+
+    private fun validateCalendarDraft(
+        draft: CalendarEventDraft,
+        original: TodoItem?,
+        scope: RecurrenceScope
+    ): String? {
+        if (draft.title.isBlank()) return "日程标题不能为空"
+        val now = System.currentTimeMillis()
+        val startMillis = draft.startAt.toEpochMillis()
+        val endMillis = if (draft.allDay) {
+            draft.endAt.toLocalDate().plusDays(1).atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
+        } else {
+            draft.endAt.toEpochMillis()
+        }
+        if (endMillis <= startMillis) return "结束时间必须晚于开始时间"
+        if (original == null && startMillis <= now) return "开始时间必须晚于当前时间"
+
+        val reminderMinutesBefore = draft.reminderMinutesBefore
+        if (reminderMinutesBefore != null && reminderMinutesBefore < 0) {
+            return "提醒时间不能为负数"
+        }
+        val reminderAtMillis = reminderMinutesBefore?.let { draft.reminderAnchorAt.toEpochMillis() - it * 60_000L }
+        if (original == null && reminderAtMillis != null && reminderAtMillis <= now) {
+            return "提醒时间必须晚于当前时间"
+        }
+
+        val recurrence = draft.recurrence
+        if (recurrence.enabled) {
+            if (recurrence.type == RecurrenceType.NONE) return "请选择循环规则"
+            val endDate = recurrence.endDate ?: return "请设置循环截止日期"
+            val canTerminateSeriesEarly = original?.isRecurring == true && scope != RecurrenceScope.CURRENT
+            if (!canTerminateSeriesEarly && endDate.isBefore(draft.startAt.toLocalDate())) {
+                return "循环截止日期不能早于首次日程日期"
             }
             if (recurrence.type == RecurrenceType.WEEKLY && recurrence.weeklyDays.isEmpty()) {
                 return "每周循环至少选择一天"

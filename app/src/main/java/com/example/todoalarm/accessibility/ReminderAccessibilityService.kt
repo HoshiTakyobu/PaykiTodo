@@ -6,6 +6,7 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.os.Build
 import android.view.accessibility.AccessibilityEvent
+import androidx.core.content.ContextCompat
 import com.example.todoalarm.alarm.ActiveReminderStore
 import com.example.todoalarm.ui.ReminderActivity
 
@@ -89,12 +90,7 @@ class ReminderAccessibilityService : AccessibilityService() {
             }
         }
         val filter = IntentFilter(ACTION_TRIGGER_REMINDER_OVERLAY)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            registerReceiver(receiver, filter, RECEIVER_NOT_EXPORTED)
-        } else {
-            @Suppress("DEPRECATION")
-            registerReceiver(receiver, filter)
-        }
+        ContextCompat.registerReceiver(this, receiver, filter, ContextCompat.RECEIVER_NOT_EXPORTED)
         triggerReceiver = receiver
     }
 

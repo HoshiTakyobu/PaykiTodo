@@ -9,9 +9,15 @@ import java.time.ZoneId
 @Entity(tableName = "todo_items")
 data class TodoItem(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val itemType: String = PlannerItemType.TODO.name,
     val title: String,
     val notes: String = "",
     val dueAtMillis: Long,
+    val startAtMillis: Long? = null,
+    val endAtMillis: Long? = null,
+    val allDay: Boolean = false,
+    val location: String = "",
+    val accentColorHex: String? = null,
     val reminderAtMillis: Long?,
     val reminderEnabled: Boolean,
     val ringEnabled: Boolean,
@@ -36,6 +42,15 @@ data class TodoItem(
     val reminderOffsetMinutes: Int? = null,
     val createdAtMillis: Long = System.currentTimeMillis()
 ) {
+    val itemTypeEnum: PlannerItemType
+        get() = PlannerItemType.fromStorage(itemType)
+
+    val isTodo: Boolean
+        get() = itemTypeEnum == PlannerItemType.TODO
+
+    val isEvent: Boolean
+        get() = itemTypeEnum == PlannerItemType.EVENT
+
     val isHistory: Boolean
         get() = completed || canceled
 
@@ -53,6 +68,13 @@ data class TodoItem(
 
     fun dueDate(): LocalDate {
         return Instant.ofEpochMilli(dueAtMillis)
+            .atZone(ZoneId.systemDefault())
+            .toLocalDate()
+    }
+
+    fun eventStartDate(): LocalDate? {
+        val start = startAtMillis ?: return null
+        return Instant.ofEpochMilli(start)
             .atZone(ZoneId.systemDefault())
             .toLocalDate()
     }

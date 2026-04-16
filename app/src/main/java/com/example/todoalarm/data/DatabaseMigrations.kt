@@ -176,4 +176,21 @@ object DatabaseMigrations {
             )
         }
     }
+
+    val MIGRATION_4_5 = object : Migration(4, 5) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE todo_items ADD COLUMN itemType TEXT NOT NULL DEFAULT 'TODO'")
+            db.execSQL("ALTER TABLE todo_items ADD COLUMN startAtMillis INTEGER")
+            db.execSQL("ALTER TABLE todo_items ADD COLUMN endAtMillis INTEGER")
+            db.execSQL("ALTER TABLE todo_items ADD COLUMN allDay INTEGER NOT NULL DEFAULT 0")
+            db.execSQL("ALTER TABLE todo_items ADD COLUMN location TEXT NOT NULL DEFAULT ''")
+            db.execSQL("ALTER TABLE todo_items ADD COLUMN accentColorHex TEXT")
+
+            db.execSQL("ALTER TABLE recurring_task_templates ADD COLUMN itemType TEXT NOT NULL DEFAULT 'TODO'")
+            db.execSQL("ALTER TABLE recurring_task_templates ADD COLUMN location TEXT NOT NULL DEFAULT ''")
+            db.execSQL("ALTER TABLE recurring_task_templates ADD COLUMN accentColorHex TEXT")
+            db.execSQL("ALTER TABLE recurring_task_templates ADD COLUMN allDay INTEGER NOT NULL DEFAULT 0")
+            db.execSQL("ALTER TABLE recurring_task_templates ADD COLUMN eventDurationMinutes INTEGER")
+        }
+    }
 }

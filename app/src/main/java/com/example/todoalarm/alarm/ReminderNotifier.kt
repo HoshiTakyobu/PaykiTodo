@@ -16,6 +16,10 @@ import com.example.todoalarm.ui.formatLocalDateTime
 import com.example.todoalarm.ui.reminderAtMillisToDateTime
 import com.example.todoalarm.ui.resolveTaskGroup
 import com.example.todoalarm.ui.taskGroupEmoji
+import java.time.Instant
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+import java.util.Locale
 
 class ReminderNotifier(
     private val context: Context
@@ -112,6 +116,13 @@ class ReminderNotifier(
     }
 
     private fun reminderText(todoItem: TodoItem, taskGroup: ResolvedTaskGroup): String {
+        if (todoItem.isEvent) {
+            return if (todoItem.allDay) {
+                "全天日程 · ${eventDateLabel(todoItem)}"
+            } else {
+                "日程 · ${eventTimeRangeLabel(todoItem)}"
+            }
+        }
         val due = formatLocalDateTime(reminderAtMillisToDateTime(todoItem.dueAtMillis))
         return "${taskGroup.name} · \u23F0 DDL $due"
     }
@@ -121,6 +132,35 @@ class ReminderNotifier(
         todoItem.vibrateEnabled -> context.getString(R.string.channel_name_vibrate)
         else -> context.getString(R.string.channel_name_silent)
     }
+
+    private fun eventDateLabel(todoItem: TodoItem): String {
+        val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd", Locale.CHINA)
+        val start = todoItem.startAtMillis?.let(::toLocalDateTime)
+            ?: return formatLocalDateTime(reminderAtMillisToDateTime(todoItem.dueAtMillis))
+        val endExclusive = todoItem.endAtMillis?.let(::toLocalDateTime)?.toLocalDate()?.minusDays(1)
+            ?: start.toLocalDate()
+        return if (start.toLocalDate() == endExclusive) {
+            start.toLocalDate().format(formatter)
+        } else {
+            "${start.toLocalDate().format(formatter)} - ${endExclusive.format(formatter)}"
+        }
+    }
+
+    private fun eventTimeRangeLabel(todoItem: TodoItem): String {
+        val formatter = DateTimeFormatter.ofPattern("M月d日 HH:mm", Locale.CHINA)
+        val timeFormatter = DateTimeFormatter.ofPattern("HH:mm", Locale.CHINA)
+        val start = todoItem.startAtMillis?.let(::toLocalDateTime)
+            ?: return formatLocalDateTime(reminderAtMillisToDateTime(todoItem.dueAtMillis))
+        val end = todoItem.endAtMillis?.let(::toLocalDateTime) ?: start
+        return if (start.toLocalDate() == end.toLocalDate()) {
+            "${start.format(formatter)} - ${end.format(timeFormatter)}"
+        } else {
+            "${start.format(formatter)} - ${end.format(formatter)}"
+        }
+    }
+
+    private fun toLocalDateTime(epochMillis: Long) =
+        Instant.ofEpochMilli(epochMillis).atZone(ZoneId.systemDefault()).toLocalDateTime()
 
     companion object {
         fun notificationId(todoId: Long): Int = 10_000 + AlarmScheduler.requestCodeFor(todoId)

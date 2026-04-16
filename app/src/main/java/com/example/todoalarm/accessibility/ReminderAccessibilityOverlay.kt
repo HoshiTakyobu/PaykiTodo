@@ -101,6 +101,7 @@ class ReminderAccessibilityOverlay(
 
     private fun buildOverlay(item: TodoItem, group: ResolvedTaskGroup): View {
         val accent = Color.parseColor(group.colorHex)
+        val primaryHeadline = if (item.isEvent) "这段日程快开始了" else "该做这项任务了"
 
         val root = FrameLayout(service).apply {
             background = GradientDrawable(
@@ -133,7 +134,7 @@ class ReminderAccessibilityOverlay(
 
         content.addView(
             TextView(service).apply {
-                text = "该做这项任务了"
+                text = primaryHeadline
                 setTextColor(Color.parseColor("#10243D"))
                 setTextSize(30f)
                 typeface = Typeface.DEFAULT_BOLD
@@ -181,13 +182,29 @@ class ReminderAccessibilityOverlay(
 
         card.addView(
             TextView(service).apply {
-                text = "⏰ DDL: ${formatDateTime(item.dueAtMillis)}"
+                text = if (item.isEvent) {
+                    "\uD83D\uDDD3\uFE0F ${formatEventTime(item)}"
+                } else {
+                    "⏰ DDL: ${formatDateTime(item.dueAtMillis)}"
+                }
                 setTextColor(accent)
                 setTextSize(17f)
                 typeface = Typeface.DEFAULT_BOLD
                 setPadding(0, dp(16), 0, 0)
             }
         )
+
+        if (item.isEvent && item.location.isNotBlank()) {
+            card.addView(
+                TextView(service).apply {
+                    text = "\uD83D\uDCCD 地点: ${item.location}"
+                    setTextColor(Color.parseColor("#42556E"))
+                    setTextSize(15f)
+                    typeface = Typeface.DEFAULT_BOLD
+                    setPadding(0, dp(10), 0, 0)
+                }
+            )
+        }
 
         if (item.notes.isNotBlank()) {
             card.addView(
@@ -235,8 +252,14 @@ class ReminderAccessibilityOverlay(
             setPadding(0, dp(20), 0, 0)
         }
         actionRow.addView(
-            filledButton("我已完成", Color.parseColor("#18794E")).apply {
-                setOnClickListener { completeTodo(item.id) }
+            filledButton(if (item.isEvent) "我知道了" else "我已完成", Color.parseColor("#18794E")).apply {
+                setOnClickListener {
+                    if (item.isEvent) {
+                        acknowledgeEvent(item.id)
+                    } else {
+                        completeTodo(item.id)
+                    }
+                }
             },
             weightedParams()
         )
@@ -327,6 +350,24 @@ class ReminderAccessibilityOverlay(
         }
     }
 
+    private fun acknowledgeEvent(todoId: Long) {
+        serviceScope.launch {
+            withContext(Dispatchers.IO) {
+                val item = app.repository.getTodo(todoId) ?: return@withContext
+                app.repository.acknowledgeCalendarEvent(item.id)
+                app.alarmScheduler.cancel(item.id)
+                app.reminderNotifier.cancel(item.id)
+                ActiveReminderStore.clearIfMatches(service, item.id)
+                ActiveReminderStore.clearActivityHandoff(service, item.id)
+            }
+            service.stopService(Intent(service, ReminderForegroundService::class.java))
+            service.getSystemService(NotificationManager::class.java)
+                .cancel(ReminderNotifier.notificationId(todoId))
+            hide(todoId)
+            Toast.makeText(service, "日程提醒已确认", Toast.LENGTH_SHORT).show()
+        }
+    }
+
     private fun snoozeTodo(todoId: Long, minutes: Int) {
         serviceScope.launch {
             withContext(Dispatchers.IO) {
@@ -394,4 +435,28 @@ class ReminderAccessibilityOverlay(
             .toLocalDateTime()
             .format(formatter)
     }
+
+    private fun formatEventTime(item: TodoItem): String {
+        if (item.allDay) {
+            val start = item.startAtMillis?.let(::toLocalDateTime)?.toLocalDate() ?: return "全天"
+            val endExclusive = item.endAtMillis?.let(::toLocalDateTime)?.toLocalDate()?.minusDays(1) ?: start
+            return if (start == endExclusive) {
+                "全天 · $start"
+            } else {
+                "全天 · $start - $endExclusive"
+            }
+        }
+        val start = item.startAtMillis?.let(::toLocalDateTime) ?: return formatDateTime(item.dueAtMillis)
+        val end = item.endAtMillis?.let(::toLocalDateTime) ?: start
+        val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")
+        val timeFormatter = DateTimeFormatter.ofPattern("HH:mm")
+        return if (start.toLocalDate() == end.toLocalDate()) {
+            "${start.format(formatter)} - ${end.format(timeFormatter)}"
+        } else {
+            "${start.format(formatter)} - ${end.format(formatter)}"
+        }
+    }
+
+    private fun toLocalDateTime(epochMillis: Long) =
+        Instant.ofEpochMilli(epochMillis).atZone(ZoneId.systemDefault()).toLocalDateTime()
 }

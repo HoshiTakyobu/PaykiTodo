@@ -75,10 +75,12 @@ import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.todoalarm.R
+import com.example.todoalarm.data.CalendarEventDraft
 import com.example.todoalarm.data.TaskGroup
 import com.example.todoalarm.data.ThemeMode
 import com.example.todoalarm.data.TodoItem
 import com.example.todoalarm.ui.theme.PaykiGreetingFontFamily
+import java.time.LocalDateTime
 import java.time.LocalTime
 
 @Composable
@@ -254,6 +256,7 @@ internal fun DashboardBody(
     permissions: PermissionSnapshot,
     onEdit: (TodoItem) -> Unit,
     onEditCalendarEvent: (TodoItem) -> Unit,
+    onQuickCreateCalendarEvent: (LocalDateTime, LocalDateTime) -> Unit,
     onCompleteTodo: (TodoItem) -> Unit,
     onRestoreTodo: (TodoItem) -> Unit,
     onCancelTodo: (TodoItem) -> Unit,
@@ -274,6 +277,24 @@ internal fun DashboardBody(
     onImportBackup: () -> Unit,
     onAutoBackupChange: (Boolean) -> Unit
 ) {
+    if (section == DashboardSection.CALENDAR) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+                .padding(horizontal = 8.dp, vertical = 4.dp)
+        ) {
+            CalendarPanel(
+                modifier = Modifier.fillMaxSize(),
+                events = uiState.calendarItems,
+                onQuickCreateEvent = onQuickCreateCalendarEvent,
+                onEditEvent = onEditCalendarEvent,
+                onDeleteEvent = onDeleteCalendarEvent
+            )
+        }
+        return
+    }
+
     var missedExpanded by rememberSaveable { mutableStateOf(true) }
     var todayExpanded by rememberSaveable { mutableStateOf(true) }
     var upcomingExpanded by rememberSaveable(uiState.todayItems.isEmpty()) { mutableStateOf(uiState.todayItems.isEmpty()) }
@@ -344,19 +365,6 @@ internal fun DashboardBody(
                 }
             }
 
-            DashboardSection.CALENDAR -> {
-                if (uiState.calendarItems.isEmpty()) {
-                    item { EmptyStateCard("暂时还没有日程，点击右下角即可新增。") }
-                }
-                item {
-                    CalendarPanel(
-                        events = uiState.calendarItems,
-                        onEditEvent = onEditCalendarEvent,
-                        onDeleteEvent = onDeleteCalendarEvent
-                    )
-                }
-            }
-
             DashboardSection.HISTORY -> {
                 if (uiState.historyItems.isEmpty()) {
                     item { EmptyStateCard("完成后的任务会保存在这里。") }
@@ -399,6 +407,7 @@ internal fun DashboardBody(
             }
 
             DashboardSection.ABOUT -> item { AboutPanel() }
+            DashboardSection.CALENDAR -> Unit
         }
     }
 }

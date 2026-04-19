@@ -398,7 +398,6 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
             draft.endAt.toEpochMillis()
         }
         if (endMillis <= startMillis) return "结束时间必须晚于开始时间"
-        if (original == null && startMillis <= now) return "开始时间必须晚于当前时间"
 
         val reminderMinutesBefore = draft.reminderMinutesBefore
         if (reminderMinutesBefore != null && reminderMinutesBefore < 0) {

@@ -32,12 +32,15 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import com.example.todoalarm.R
+import com.example.todoalarm.data.CalendarEventDraft
+import com.example.todoalarm.data.RecurrenceConfig
 import com.example.todoalarm.data.RecurrenceScope
 import com.example.todoalarm.data.ThemeMode
 import com.example.todoalarm.data.TodoDraft
 import com.example.todoalarm.data.TodoItem
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import java.time.LocalDateTime
 
 private enum class ScopeDialogMode {
     EDIT_TODO,
@@ -91,6 +94,7 @@ fun DashboardScreen(
     var editorVisible by remember { mutableStateOf(false) }
     var editorKind by remember { mutableStateOf(EditorKind.TODO) }
     var editingItem by remember { mutableStateOf<TodoItem?>(null) }
+    var calendarDraftSeed by remember { mutableStateOf<CalendarEventDraft?>(null) }
     var editScope by remember { mutableStateOf(RecurrenceScope.CURRENT) }
     var scopeDialogTarget by remember { mutableStateOf<TodoItem?>(null) }
     var scopeDialogMode by remember { mutableStateOf<ScopeDialogMode?>(null) }
@@ -106,6 +110,7 @@ fun DashboardScreen(
             editorVisible -> {
                 editorVisible = false
                 editingItem = null
+                calendarDraftSeed = null
             }
             drawerState.isOpen -> scope.launch { drawerState.close() }
             section != DashboardSection.ACTIVE -> section = DashboardSection.ACTIVE
@@ -151,31 +156,39 @@ fun DashboardScreen(
         }
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
-            Image(
-                painter = painterResource(id = R.drawable.dashboard_bg),
-                contentDescription = null,
-                modifier = Modifier.fillMaxSize(),
-                contentScale = ContentScale.Crop
-            )
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(
-                        Brush.verticalGradient(
-                            listOf(
-                                Color(0x26FFFFFF),
-                                Color(0x14000000),
-                                Color(0x2B000000)
+            if (section == DashboardSection.CALENDAR) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(Color(0xFFF7F8FB))
+                )
+            } else {
+                Image(
+                    painter = painterResource(id = R.drawable.dashboard_bg),
+                    contentDescription = null,
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop
+                )
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(
+                            Brush.verticalGradient(
+                                listOf(
+                                    Color(0x26FFFFFF),
+                                    Color(0x14000000),
+                                    Color(0x2B000000)
+                                )
                             )
                         )
-                    )
-            )
+                )
+            }
 
             Scaffold(
-                containerColor = Color.Transparent,
+                containerColor = if (section == DashboardSection.CALENDAR) Color(0xFFF7F8FB) else Color.Transparent,
                 topBar = { DashboardTopBar { scope.launch { drawerState.open() } } },
                 floatingActionButton = {
-                    if (section == DashboardSection.ACTIVE || section == DashboardSection.CALENDAR) {
+                    if (section == DashboardSection.ACTIVE) {
                         DashboardFab {
                             editingItem = null
                             editorKind = if (section == DashboardSection.CALENDAR) {
@@ -183,6 +196,7 @@ fun DashboardScreen(
                             } else {
                                 EditorKind.TODO
                             }
+                            calendarDraftSeed = null
                             editScope = RecurrenceScope.CURRENT
                             editorVisible = true
                         }
@@ -212,9 +226,29 @@ fun DashboardScreen(
                         } else {
                             editorKind = EditorKind.CALENDAR
                             editingItem = item
+                            calendarDraftSeed = null
                             editScope = RecurrenceScope.CURRENT
                             editorVisible = true
                         }
+                    },
+                    onQuickCreateCalendarEvent = { startAt, endAt ->
+                        editorKind = EditorKind.CALENDAR
+                        editingItem = null
+                        calendarDraftSeed = CalendarEventDraft(
+                            title = "",
+                            notes = "",
+                            location = "",
+                            startAt = startAt,
+                            endAt = endAt,
+                            allDay = false,
+                            accentColorHex = "#4E87E1",
+                            reminderMinutesBefore = 15,
+                            ringEnabled = uiState.settings.defaultRingEnabled,
+                            vibrateEnabled = uiState.settings.defaultVibrateEnabled,
+                            recurrence = RecurrenceConfig()
+                        )
+                        editScope = RecurrenceScope.CURRENT
+                        editorVisible = true
                     },
                     onCompleteTodo = onCompleteTodo,
                     onRestoreTodo = onRestoreTodo,
@@ -300,16 +334,19 @@ fun DashboardScreen(
     if (editorVisible && editorKind == EditorKind.CALENDAR) {
         CalendarEventEditorDialog(
             initialEvent = editingItem?.takeIf { it.isEvent },
+            initialDraft = calendarDraftSeed,
             defaultRingEnabled = editingItem?.ringEnabled ?: uiState.settings.defaultRingEnabled,
             defaultVibrateEnabled = editingItem?.vibrateEnabled ?: uiState.settings.defaultVibrateEnabled,
             onDismiss = {
                 editorVisible = false
                 editingItem = null
+                calendarDraftSeed = null
             },
             onDelete = {
                 val current = editingItem?.takeIf { it.isEvent } ?: return@CalendarEventEditorDialog
                 editorVisible = false
                 editingItem = null
+                calendarDraftSeed = null
                 if (current.isRecurring) {
                     scopeDialogTarget = current
                     scopeDialogMode = ScopeDialogMode.DELETE_EVENT
@@ -330,6 +367,7 @@ fun DashboardScreen(
                     if (message == null) {
                         editorVisible = false
                         editingItem = null
+                        calendarDraftSeed = null
                         Toast.makeText(
                             context,
                             if (current == null) "日程已创建" else "日程已更新",

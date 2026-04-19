@@ -1,64 +1,68 @@
 package com.example.todoalarm.ui
 
+import android.app.DatePickerDialog
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.background
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.CalendarMonth
 import androidx.compose.material.icons.rounded.ChevronLeft
 import androidx.compose.material.icons.rounded.ChevronRight
-import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.rounded.Delete
-import androidx.compose.material3.ElevatedCard
+import androidx.compose.material.icons.rounded.Edit
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.AlertDialog
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.todoalarm.data.TodoItem
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import java.time.Duration
 import java.time.Instant
 import java.time.LocalDate
@@ -70,62 +74,123 @@ import java.util.Locale
 import kotlin.math.max
 import kotlin.math.roundToInt
 
-private val CalendarPalette = listOf(
-    "#4E87E1", "#4CB782", "#FF6B4A", "#BF7B4D", "#8B5CF6", "#0F766E", "#D97706", "#E11D48"
-)
+private const val CalendarPageCount = 4001
+private const val CalendarPageAnchor = CalendarPageCount / 2
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 internal fun CalendarPanel(
+    modifier: Modifier = Modifier,
     events: List<TodoItem>,
+    onQuickCreateEvent: (LocalDateTime, LocalDateTime) -> Unit,
     onEditEvent: (TodoItem) -> Unit,
     onDeleteEvent: (TodoItem) -> Unit
 ) {
+    val context = LocalContext.current
     val today = remember { LocalDate.now() }
-    var centerEpochDay by rememberSaveable { mutableLongStateOf(today.toEpochDay()) }
+    val pagerState = rememberPagerState(
+        initialPage = CalendarPageAnchor,
+        pageCount = { CalendarPageCount }
+    )
+    val scope = rememberCoroutineScope()
     var detailsTarget by remember { mutableStateOf<TodoItem?>(null) }
-    val centerDate = LocalDate.ofEpochDay(centerEpochDay)
-    val visibleDays = remember(centerEpochDay) {
+    val centerDate = remember(today, pagerState.currentPage) {
+        today.plusDays((pagerState.currentPage - CalendarPageAnchor).toLong())
+    }
+    val visibleDays = remember(centerDate) {
         listOf(centerDate.minusDays(1), centerDate, centerDate.plusDays(1))
     }
-    val allDayEvents = remember(events, centerEpochDay) {
-        events.filter { it.allDay && overlapsVisibleDays(it, visibleDays) }.sortedBy { it.startAtMillis ?: it.dueAtMillis }
+    val allDayEvents = remember(events, visibleDays) {
+        events.filter { it.allDay && overlapsVisibleDays(it, visibleDays) }
+            .sortedBy { it.startAtMillis ?: it.dueAtMillis }
     }
-    val timedEvents = remember(events, centerEpochDay) {
-        events.filter { !it.allDay && overlapsVisibleDays(it, visibleDays) }.sortedBy { it.startAtMillis ?: it.dueAtMillis }
+    val currentMoment by produceState(initialValue = LocalDateTime.now()) {
+        while (true) {
+            delay(30_000L)
+            value = LocalDateTime.now()
+        }
     }
 
-    Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
-        ElevatedCard(shape = RoundedCornerShape(28.dp)) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 18.dp, vertical = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
+    Surface(
+        modifier = modifier,
+        color = Color(0xFFF7F8FB)
+    ) {
+        BoxWithConstraints(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 8.dp, vertical = 6.dp)
+        ) {
+            val timeAxisWidth = 54.dp
+            val rightWidth = (maxWidth - timeAxisWidth).coerceAtLeast(180.dp)
+            val dayColumnWidth = rightWidth / 3
+            val hourHeight = 72.dp
+            val boardHeight = hourHeight * 24
+            val verticalScroll = rememberScrollState()
+            val density = LocalDensity.current
+            val hourHeightPx = with(density) { hourHeight.toPx() }
+
+            LaunchedEffect(centerDate) {
+                if (currentMoment.toLocalDate() in visibleDays) {
+                    val targetHour = (currentMoment.hour - 2).coerceAtLeast(0)
+                    verticalScroll.scrollTo((targetHour * hourHeightPx).roundToInt())
+                }
+            }
+
+            Column(modifier = Modifier.fillMaxSize()) {
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 4.dp, vertical = 6.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(2.dp)
+                    ) {
                         Text(
-                            text = "日历",
+                            text = centerDate.format(DateTimeFormatter.ofPattern("MMM yyyy", Locale.ENGLISH)),
                             style = MaterialTheme.typography.headlineSmall,
-                            fontWeight = FontWeight.Bold
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.clickable {
+                                DatePickerDialog(
+                                    context,
+                                    { _, year, month, day ->
+                                        val targetDate = LocalDate.of(year, month + 1, day)
+                                        val targetPage = (CalendarPageAnchor + (targetDate.toEpochDay() - today.toEpochDay()).toInt())
+                                            .coerceIn(0, CalendarPageCount - 1)
+                                        scope.launch { pagerState.animateScrollToPage(targetPage) }
+                                    },
+                                    centerDate.year,
+                                    centerDate.monthValue - 1,
+                                    centerDate.dayOfMonth
+                                ).show()
+                            }
                         )
-                        Text(
-                            text = weekRangeLabel(visibleDays.first(), visibleDays.last()),
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+                        IconButton(
+                            onClick = {
+                                DatePickerDialog(
+                                    context,
+                                    { _, year, month, day ->
+                                        val targetDate = LocalDate.of(year, month + 1, day)
+                                        val targetPage = (CalendarPageAnchor + (targetDate.toEpochDay() - today.toEpochDay()).toInt())
+                                            .coerceIn(0, CalendarPageCount - 1)
+                                        scope.launch { pagerState.animateScrollToPage(targetPage) }
+                                    },
+                                    centerDate.year,
+                                    centerDate.monthValue - 1,
+                                    centerDate.dayOfMonth
+                                ).show()
+                            }
+                        ) {
+                            Icon(Icons.Rounded.CalendarMonth, contentDescription = "选择日期")
+                        }
                     }
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        OutlinedButton(onClick = { centerEpochDay = LocalDate.now().toEpochDay() }) {
-                            Text("今天")
-                        }
-                        IconButton(onClick = { centerEpochDay = centerDate.minusDays(1).toEpochDay() }) {
+                        IconButton(onClick = { scope.launch { pagerState.animateScrollToPage((pagerState.currentPage - 1).coerceAtLeast(0)) } }) {
                             Icon(Icons.Rounded.ChevronLeft, contentDescription = "前一天")
                         }
-                        IconButton(onClick = { centerEpochDay = centerDate.plusDays(1).toEpochDay() }) {
+                        IconButton(onClick = { scope.launch { pagerState.animateScrollToPage((pagerState.currentPage + 1).coerceAtMost(CalendarPageCount - 1)) } }) {
                             Icon(Icons.Rounded.ChevronRight, contentDescription = "后一天")
                         }
                     }
@@ -134,46 +199,93 @@ internal fun CalendarPanel(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .horizontalScroll(rememberScrollState()),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                        .padding(bottom = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
+                    Box(
+                        modifier = Modifier.width(timeAxisWidth),
+                        contentAlignment = Alignment.CenterStart
+                    ) {
+                        Text(
+                            text = timezoneShortLabel(),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            fontSize = 11.sp
+                        )
+                    }
                     visibleDays.forEach { day ->
-                        val isToday = day == LocalDate.now()
-                        Surface(
-                            shape = RoundedCornerShape(18.dp),
-                            color = if (isToday) {
-                                MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
-                            } else {
-                                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f)
-                            }
+                        val isToday = day == currentMoment.toLocalDate()
+                        Column(
+                            modifier = Modifier.width(dayColumnWidth),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(2.dp)
                         ) {
-                            Column(
-                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
-                                horizontalAlignment = Alignment.CenterHorizontally
-                            ) {
-                                Text(
-                                    text = day.dayOfWeek.shortLabel(),
-                                    color = if (isToday) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                                Text(
-                                    text = day.dayOfMonth.toString(),
-                                    style = MaterialTheme.typography.titleLarge,
-                                    fontWeight = FontWeight.Bold,
-                                    color = if (isToday) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
-                                )
-                            }
+                            Text(
+                                text = day.dayOfWeek.shortLabel(),
+                                color = if (isToday) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                                fontSize = 13.sp
+                            )
+                            Text(
+                                text = day.dayOfMonth.toString(),
+                                style = MaterialTheme.typography.headlineSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = if (isToday) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                            )
                         }
+                    }
+                }
+
+                HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.16f))
+
+                CalendarAllDayRow(
+                    visibleDays = visibleDays,
+                    allDayEvents = allDayEvents,
+                    timeAxisWidth = timeAxisWidth,
+                    dayColumnWidth = dayColumnWidth,
+                    onOpenDetails = { detailsTarget = it }
+                )
+
+                HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.16f))
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f)
+                ) {
+                    CalendarTimeAxis(
+                        width = timeAxisWidth,
+                        hourHeight = hourHeight,
+                        verticalScroll = verticalScroll
+                    )
+
+                    HorizontalPager(
+                        state = pagerState,
+                        modifier = Modifier
+                            .width(rightWidth)
+                            .fillMaxHeight()
+                    ) { page ->
+                        val pageCenterDate = today.plusDays((page - CalendarPageAnchor).toLong())
+                        val pageVisibleDays = remember(pageCenterDate) {
+                            listOf(pageCenterDate.minusDays(1), pageCenterDate, pageCenterDate.plusDays(1))
+                        }
+                        val pageTimedEvents = remember(events, pageVisibleDays) {
+                            events.filter { !it.allDay && overlapsVisibleDays(it, pageVisibleDays) }
+                                .sortedBy { it.startAtMillis ?: it.dueAtMillis }
+                        }
+                        CalendarTimedBoard(
+                            visibleDays = pageVisibleDays,
+                            timedEvents = pageTimedEvents,
+                            currentMoment = currentMoment,
+                            dayColumnWidth = dayColumnWidth,
+                            hourHeight = hourHeight,
+                            boardHeight = boardHeight,
+                            verticalScroll = verticalScroll,
+                            onOpenDetails = { detailsTarget = it },
+                            onQuickCreateEvent = onQuickCreateEvent
+                        )
                     }
                 }
             }
         }
-
-        WeekScheduleBoard(
-            visibleDays = visibleDays,
-            allDayEvents = allDayEvents,
-            timedEvents = timedEvents,
-            onOpenDetails = { detailsTarget = it }
-        )
     }
 
     detailsTarget?.let { item ->
@@ -193,195 +305,191 @@ internal fun CalendarPanel(
 }
 
 @Composable
-private fun WeekScheduleBoard(
+private fun CalendarAllDayRow(
     visibleDays: List<LocalDate>,
     allDayEvents: List<TodoItem>,
-    timedEvents: List<TodoItem>,
+    timeAxisWidth: Dp,
+    dayColumnWidth: Dp,
     onOpenDetails: (TodoItem) -> Unit
 ) {
-    val hourHeight = 72.dp
-    val timeColumnWidth = 48.dp
-    val dayColumnWidth = 112.dp
-    val boardHeight = hourHeight * 24
-    val verticalScroll = rememberScrollState()
     val density = LocalDensity.current
-    val hourHeightPx = with(density) { hourHeight.toPx() }
-    val boardHeightPx = with(density) { boardHeight.toPx() }
-    val dayColumnWidthPx = with(density) { dayColumnWidth.toPx() }
-    val outlineVariant = MaterialTheme.colorScheme.outlineVariant
+    val timeAxisWidthPx = with(density) { timeAxisWidth.roundToPx() }
+    val dayColumnWidthPx = with(density) { dayColumnWidth.roundToPx() }
+    val rowHeightPx = with(density) { 28.dp.roundToPx() }
+    val rowCount = allDayEvents.size.coerceAtLeast(1)
 
-    LaunchedEffect(visibleDays) {
-        val today = LocalDate.now()
-        if (today in visibleDays) {
-            val now = LocalTime.now()
-            val target = ((now.hour - 2).coerceAtLeast(0) * hourHeightPx).roundToInt()
-            verticalScroll.scrollTo(target)
-        }
-    }
-
-    ElevatedCard(shape = RoundedCornerShape(28.dp)) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 14.dp, vertical = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height((rowCount * 28).dp + 8.dp)
+            .padding(vertical = 4.dp)
+    ) {
+        Box(
+            modifier = Modifier.width(timeAxisWidth),
+            contentAlignment = Alignment.TopStart
         ) {
-            if (allDayEvents.isNotEmpty()) {
-                AllDayEventsStrip(
-                    visibleDays = visibleDays,
-                    events = allDayEvents,
-                    timeColumnWidth = timeColumnWidth,
-                    dayColumnWidth = dayColumnWidth,
-                    onOpenDetails = onOpenDetails
-                )
-            }
+            Text(
+                text = "全天",
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                fontSize = 12.sp
+            )
+        }
 
-            Row(
+        allDayEvents.forEachIndexed { rowIndex, item ->
+            val startDate = item.startAtMillis?.let(::millisToDate) ?: return@forEachIndexed
+            val endDateExclusive = item.endAtMillis?.let(::millisToDate)?.minusDays(1) ?: startDate
+            val startIndex = visibleDays.indexOfFirst { !it.isBefore(startDate) }.takeIf { it >= 0 } ?: 0
+            val endIndex = visibleDays.indexOfLast { !it.isAfter(endDateExclusive) }.takeIf { it >= 0 } ?: visibleDays.lastIndex
+            if (endIndex < startIndex) return@forEachIndexed
+            val tint = item.accentColorHex?.let(::colorFromHex) ?: MaterialTheme.colorScheme.primary
+
+            Surface(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .verticalScroll(verticalScroll)
+                    .offset {
+                        IntOffset(
+                            x = timeAxisWidthPx + startIndex * dayColumnWidthPx + 4,
+                            y = rowIndex * rowHeightPx
+                        )
+                    }
+                    .width((dayColumnWidth * (endIndex - startIndex + 1)) - 8.dp)
+                    .height(22.dp)
+                    .clickable { onOpenDetails(item) },
+                shape = RoundedCornerShape(8.dp),
+                color = tint.copy(alpha = 0.16f)
             ) {
-                Column(
-                    modifier = Modifier.width(timeColumnWidth),
-                    verticalArrangement = Arrangement.spacedBy(0.dp)
-                ) {
-                    repeat(24) { hour ->
-                        Box(
-                            modifier = Modifier.height(hourHeight),
-                            contentAlignment = Alignment.TopCenter
-                        ) {
-                            Text(
-                                text = "%02d:00".format(hour),
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                fontSize = 11.sp
-                            )
-                        }
-                    }
-                }
-
-                Box(
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(boardHeight)
-                ) {
-                    Canvas(modifier = Modifier.fillMaxSize()) {
-                        visibleDays.indices.forEach { index ->
-                            val left = index * dayColumnWidthPx
-                            drawLine(
-                                color = outlineVariant.copy(alpha = 0.45f),
-                                start = Offset(left, 0f),
-                                end = Offset(left, size.height)
-                            )
-                        }
-                        drawLine(
-                            color = outlineVariant.copy(alpha = 0.45f),
-                            start = Offset(size.width, 0f),
-                            end = Offset(size.width, size.height)
-                        )
-                        repeat(25) { hour ->
-                            val y = hour * hourHeightPx
-                            drawLine(
-                                color = outlineVariant.copy(alpha = if (hour % 6 == 0) 0.5f else 0.28f),
-                                start = Offset(0f, y),
-                                end = Offset(size.width, y)
-                            )
-                        }
-                    }
-
-                    visibleDays.forEachIndexed { index, day ->
-                        val dayEvents = timedEvents.filter { event ->
-                            val start = event.startAtMillis ?: return@filter false
-                            Instant.ofEpochMilli(start).atZone(ZoneId.systemDefault()).toLocalDate() == day
-                        }
-                        val placements = layoutTimedEvents(dayEvents)
-                        placements.forEach { placement ->
-                            TimedEventCard(
-                                item = placement.item,
-                                placement = placement,
-                                visibleDayIndex = index,
-                                dayColumnWidth = dayColumnWidth,
-                                hourHeight = hourHeight,
-                                onClick = { onOpenDetails(placement.item) }
-                            )
-                        }
-                    }
-
-                    if (LocalDate.now() in visibleDays) {
-                        CurrentTimeLine(
-                            visibleDays = visibleDays,
-                            dayColumnWidth = dayColumnWidth,
-                            boardHeightPx = boardHeightPx,
-                            hourHeightPx = hourHeightPx
-                        )
-                    }
-                }
+                Text(
+                    text = item.title,
+                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+                    color = tint.copy(alpha = calendarVisualAlpha(item)),
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 12.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
             }
         }
     }
 }
 
 @Composable
-private fun AllDayEventsStrip(
+private fun CalendarTimeAxis(
+    width: Dp,
+    hourHeight: Dp,
+    verticalScroll: androidx.compose.foundation.ScrollState
+) {
+    Column(
+        modifier = Modifier
+            .width(width)
+            .fillMaxHeight()
+            .verticalScroll(verticalScroll),
+        verticalArrangement = Arrangement.spacedBy(0.dp)
+    ) {
+        repeat(24) { hour ->
+            Box(
+                modifier = Modifier.height(hourHeight),
+                contentAlignment = Alignment.TopStart
+            ) {
+                Text(
+                    text = "%02d:00".format(hour),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontSize = 11.sp
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun CalendarTimedBoard(
     visibleDays: List<LocalDate>,
-    events: List<TodoItem>,
-    timeColumnWidth: Dp,
+    timedEvents: List<TodoItem>,
+    currentMoment: LocalDateTime,
     dayColumnWidth: Dp,
-    onOpenDetails: (TodoItem) -> Unit
+    hourHeight: Dp,
+    boardHeight: Dp,
+    verticalScroll: androidx.compose.foundation.ScrollState,
+    onOpenDetails: (TodoItem) -> Unit,
+    onQuickCreateEvent: (LocalDateTime, LocalDateTime) -> Unit
 ) {
     val density = LocalDensity.current
-    val timeColumnWidthPx = with(density) { timeColumnWidth.roundToPx() }
-    val dayColumnWidthPx = with(density) { dayColumnWidth.roundToPx() }
-    val rowHeightPx = with(density) { 30.dp.roundToPx() }
+    val hourHeightPx = with(density) { hourHeight.toPx() }
+    val dayColumnWidthPx = with(density) { dayColumnWidth.toPx() }
+    val boardHeightPx = with(density) { boardHeight.toPx() }
+    val outline = MaterialTheme.colorScheme.outline
 
-    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Box(modifier = Modifier.width(timeColumnWidth), contentAlignment = Alignment.Center) {
-                Text("全天", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
-            }
-            Text(
-                text = "全天日程",
-                color = MaterialTheme.colorScheme.onSurface,
-                fontWeight = FontWeight.SemiBold
-            )
-        }
+    Box(
+        modifier = Modifier
+            .fillMaxHeight()
+            .verticalScroll(verticalScroll)
+    ) {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height((events.size * 30).coerceAtLeast(36).dp)
+                .height(boardHeight)
+                .pointerInput(visibleDays) {
+                    detectTapGestures { offset ->
+                        val dayIndex = (offset.x / dayColumnWidthPx).toInt().coerceIn(0, visibleDays.lastIndex)
+                        val rawMinutes = ((offset.y / hourHeightPx) * 60f).roundToInt().coerceIn(0, 23 * 60 + 59)
+                        val snappedMinutes = ((rawMinutes + 7) / 15) * 15
+                        val safeMinutes = snappedMinutes.coerceIn(0, 23 * 60 + 45)
+                        val startAt = LocalDateTime.of(
+                            visibleDays[dayIndex],
+                            LocalTime.of(safeMinutes / 60, safeMinutes % 60)
+                        )
+                        onQuickCreateEvent(startAt, startAt.plusMinutes(30))
+                    }
+                }
         ) {
-            events.forEachIndexed { rowIndex, item ->
-                val startDate = item.startAtMillis?.let { millisToDate(it) } ?: return@forEachIndexed
-                val endDateExclusive = item.endAtMillis?.let { millisToDate(it) }?.minusDays(1) ?: startDate
-                val startIndex = visibleDays.indexOfFirst { !it.isBefore(startDate) }
-                    .takeIf { it >= 0 } ?: 0
-                val endIndex = visibleDays.indexOfLast { !it.isAfter(endDateExclusive) }
-                    .takeIf { it >= 0 } ?: visibleDays.lastIndex
-                if (endIndex < startIndex) return@forEachIndexed
-                val tint = item.accentColorHex?.let(::colorFromHex) ?: MaterialTheme.colorScheme.primary
-                Surface(
-                    modifier = Modifier
-                        .offset {
-                            IntOffset(
-                                x = timeColumnWidthPx + startIndex * dayColumnWidthPx + 4,
-                                y = rowIndex * rowHeightPx
-                            )
-                        }
-                        .width(dayColumnWidth * (endIndex - startIndex + 1) - 8.dp)
-                        .height(24.dp)
-                        .clickable { onOpenDetails(item) },
-                    shape = RoundedCornerShape(12.dp),
-                    color = tint.copy(alpha = calendarVisualAlpha(item) * 0.22f)
-                ) {
-                    Text(
-                        text = item.title,
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
-                        color = tint.copy(alpha = calendarVisualAlpha(item)),
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 12.sp,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
+            Canvas(modifier = Modifier.fillMaxSize()) {
+                visibleDays.indices.forEach { index ->
+                    val left = index * dayColumnWidthPx
+                    drawLine(
+                        color = outline.copy(alpha = 0.12f),
+                        start = Offset(left, 0f),
+                        end = Offset(left, size.height)
                     )
                 }
+                drawLine(
+                    color = outline.copy(alpha = 0.12f),
+                    start = Offset(size.width, 0f),
+                    end = Offset(size.width, size.height)
+                )
+                repeat(25) { hour ->
+                    val y = hour * hourHeightPx
+                    drawLine(
+                        color = outline.copy(alpha = 0.26f),
+                        start = Offset(0f, y),
+                        end = Offset(size.width, y)
+                    )
+                }
+            }
+
+            visibleDays.forEachIndexed { dayIndex, day ->
+                val dayEvents = timedEvents.filter { event ->
+                    val start = event.startAtMillis ?: return@filter false
+                    Instant.ofEpochMilli(start).atZone(ZoneId.systemDefault()).toLocalDate() == day
+                }
+                val placements = layoutTimedEvents(dayEvents)
+                placements.forEach { placement ->
+                    TimedEventCard(
+                        item = placement.item,
+                        placement = placement,
+                        visibleDayIndex = dayIndex,
+                        dayColumnWidth = dayColumnWidth,
+                        hourHeight = hourHeight,
+                        onClick = { onOpenDetails(placement.item) }
+                    )
+                }
+            }
+
+            if (currentMoment.toLocalDate() in visibleDays) {
+                CurrentTimeLine(
+                    visibleDays = visibleDays,
+                    currentMoment = currentMoment,
+                    dayColumnWidth = dayColumnWidth,
+                    boardHeightPx = boardHeightPx,
+                    hourHeightPx = hourHeightPx
+                )
             }
         }
     }
@@ -414,11 +522,11 @@ private fun TimedEventCard(
         modifier = Modifier
             .offset(x = leftOffset, y = topOffset)
             .width(eventWidth)
-            .height((hourHeight * (durationMinutes / 60f)).coerceAtLeast(28.dp))
+            .height((hourHeight * (durationMinutes / 60f)).coerceAtLeast(40.dp))
             .clickable(onClick = onClick)
             .alpha(alpha),
-        shape = RoundedCornerShape(16.dp),
-        color = tint.copy(alpha = 0.18f)
+        shape = RoundedCornerShape(12.dp),
+        color = tint.copy(alpha = 0.16f)
     ) {
         Column(
             modifier = Modifier
@@ -430,22 +538,16 @@ private fun TimedEventCard(
                 text = item.title,
                 fontWeight = FontWeight.Bold,
                 color = tint,
-                fontSize = 12.sp,
-                maxLines = if (durationMinutes >= 90) 2 else 1,
+                fontSize = 13.sp,
+                maxLines = 3,
                 overflow = TextOverflow.Ellipsis
-            )
-            Text(
-                text = "${shortTime(startDateTime)} - ${shortTime(endDateTime)}",
-                color = tint.copy(alpha = 0.92f),
-                fontSize = 11.sp,
-                maxLines = 1
             )
             if (item.location.isNotBlank()) {
                 Text(
                     text = item.location,
-                    color = tint.copy(alpha = 0.85f),
+                    color = tint.copy(alpha = 0.82f),
                     fontSize = 10.sp,
-                    maxLines = if (durationMinutes >= 120) 2 else 1,
+                    maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
             }
@@ -456,22 +558,22 @@ private fun TimedEventCard(
 @Composable
 private fun CurrentTimeLine(
     visibleDays: List<LocalDate>,
+    currentMoment: LocalDateTime,
     dayColumnWidth: Dp,
     boardHeightPx: Float,
     hourHeightPx: Float
 ) {
-    val now = LocalDateTime.now()
-    val minutes = now.hour * 60 + now.minute
+    val minutes = currentMoment.hour * 60 + currentMoment.minute
     val y = (minutes / 60f) * hourHeightPx
-    val todayIndex = visibleDays.indexOf(LocalDate.now())
+    val todayIndex = visibleDays.indexOf(currentMoment.toLocalDate())
     val dayWidthPx = with(LocalDensity.current) { dayColumnWidth.toPx() }
 
     Canvas(modifier = Modifier.fillMaxSize()) {
-        if (y !in 0f..boardHeightPx) return@Canvas
+        if (todayIndex < 0 || y !in 0f..boardHeightPx) return@Canvas
         val splitX = todayIndex * dayWidthPx
         if (splitX > 0f) {
             drawLine(
-                color = Color(0xFFF5A4A4),
+                color = Color(0xFFF3B2B2),
                 start = Offset(0f, y),
                 end = Offset(splitX, y),
                 strokeWidth = 3.dp.toPx(),
@@ -513,11 +615,7 @@ private fun CalendarEventDetailsDialog(
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(
-                    text = if (item.allDay) {
-                        "全天 · ${formatDateRange(item)}"
-                    } else {
-                        formatDateTimeRange(item)
-                    },
+                    text = if (item.allDay) "全天 · ${formatDateRange(item)}" else formatDateTimeRange(item),
                     color = MaterialTheme.colorScheme.primary,
                     fontWeight = FontWeight.SemiBold
                 )
@@ -590,7 +688,8 @@ private fun layoutTimedEvents(events: List<TodoItem>): List<TimedEventPlacement>
         }
 
         active = active.filterTo(mutableListOf()) { activeItem ->
-            val activeEnd = activeItem.first.endAtMillis ?: ((activeItem.first.startAtMillis ?: activeItem.first.dueAtMillis) + 30 * 60_000L)
+            val activeEnd = activeItem.first.endAtMillis
+                ?: ((activeItem.first.startAtMillis ?: activeItem.first.dueAtMillis) + 30 * 60_000L)
             activeEnd > start
         }
         val usedColumns = active.map { it.second }.toSet()
@@ -621,21 +720,12 @@ private fun millisToDate(epochMillis: Long): LocalDate {
         .toLocalDate()
 }
 
-private fun shortTime(dateTime: LocalDateTime): String {
-    return dateTime.format(DateTimeFormatter.ofPattern("HH:mm", Locale.CHINA))
-}
-
-private fun weekRangeLabel(start: LocalDate, end: LocalDate): String {
-    val formatter = DateTimeFormatter.ofPattern("yyyy年M月d日", Locale.CHINA)
-    return "${start.format(formatter)} - ${end.format(formatter)}"
-}
-
 private fun formatDateTimeRange(item: TodoItem): String {
     val start = item.startAtMillis?.let(::reminderAtMillisToDateTime) ?: return "未设置时间"
     val end = item.endAtMillis?.let(::reminderAtMillisToDateTime) ?: start
     val dateFormatter = DateTimeFormatter.ofPattern("M月d日", Locale.CHINA)
     return if (start.toLocalDate() == end.toLocalDate()) {
-        "${start.format(dateFormatter)} ${shortTime(start)} - ${shortTime(end)}"
+        "${start.format(dateFormatter)} ${formatClockTime(start)} - ${formatClockTime(end)}"
     } else {
         "${formatLocalDateTime(start)} - ${formatLocalDateTime(end)}"
     }
@@ -657,7 +747,19 @@ private fun calendarVisualAlpha(item: TodoItem): Float {
     return if (end < now) 0.45f else 1f
 }
 
-private fun LocalDate.dayOfWeekShort(): String = dayOfWeek.shortLabel()
+private fun timezoneShortLabel(): String {
+    val totalSeconds = ZoneId.systemDefault().rules.getOffset(Instant.now()).totalSeconds
+    val totalHours = totalSeconds / 3600
+    return if (totalHours >= 0) "GMT+$totalHours" else "GMT$totalHours"
+}
+
+private fun formatClockTime(dateTime: LocalDateTime): String {
+    return dateTime.format(DateTimeFormatter.ofPattern("HH:mm", Locale.CHINA))
+}
+
+private fun snapToQuarterHour(totalMinutes: Int): Int {
+    return ((totalMinutes + 7) / 15) * 15
+}
 
 private fun java.time.DayOfWeek.shortLabel(): String = when (this) {
     java.time.DayOfWeek.MONDAY -> "周一"

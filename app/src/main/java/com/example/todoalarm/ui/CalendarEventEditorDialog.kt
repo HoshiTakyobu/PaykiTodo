@@ -66,6 +66,7 @@ private val CalendarColorOptions = listOf(
 @Composable
 internal fun CalendarEventEditorDialog(
     initialEvent: TodoItem?,
+    initialDraft: CalendarEventDraft? = null,
     defaultRingEnabled: Boolean,
     defaultVibrateEnabled: Boolean,
     onDismiss: () -> Unit,
@@ -74,38 +75,45 @@ internal fun CalendarEventEditorDialog(
 ) {
     val context = LocalContext.current
     val now = remember { LocalDateTime.now().withSecond(0).withNano(0) }
+    val seedDraft = remember(initialEvent?.id, initialDraft) { if (initialEvent == null) initialDraft else null }
     var title by remember(initialEvent?.id) { mutableStateOf(initialEvent?.title.orEmpty()) }
-    var location by remember(initialEvent?.id) { mutableStateOf(initialEvent?.location.orEmpty()) }
-    var notes by remember(initialEvent?.id) { mutableStateOf(initialEvent?.notes.orEmpty()) }
-    var allDay by remember(initialEvent?.id) { mutableStateOf(initialEvent?.allDay == true) }
+    var location by remember(initialEvent?.id, seedDraft) { mutableStateOf(initialEvent?.location ?: seedDraft?.location.orEmpty()) }
+    var notes by remember(initialEvent?.id, seedDraft) { mutableStateOf(initialEvent?.notes ?: seedDraft?.notes.orEmpty()) }
+    var allDay by remember(initialEvent?.id, seedDraft) { mutableStateOf(initialEvent?.allDay ?: (seedDraft?.allDay == true)) }
     var startAt by remember(initialEvent?.id) {
-        mutableStateOf(initialEvent?.startAtMillis?.let(::reminderAtMillisToDateTime) ?: now.plusHours(2))
+        mutableStateOf(initialEvent?.startAtMillis?.let(::reminderAtMillisToDateTime) ?: seedDraft?.startAt ?: now.plusHours(2))
     }
     var endAt by remember(initialEvent?.id) {
-        mutableStateOf(initialEvent?.endAtMillis?.let(::reminderAtMillisToDateTime) ?: now.plusHours(3))
+        mutableStateOf(initialEvent?.endAtMillis?.let(::reminderAtMillisToDateTime) ?: seedDraft?.endAt ?: now.plusHours(3))
     }
-    var accentColorHex by remember(initialEvent?.id) { mutableStateOf(initialEvent?.accentColorHex ?: CalendarColorOptions.first()) }
-    var reminderEnabled by remember(initialEvent?.id) { mutableStateOf(initialEvent?.reminderAtMillis != null) }
-    var reminderMinutesBefore by remember(initialEvent?.id) {
-        mutableStateOf(existingReminderOffsetMinutes(initialEvent))
+    var accentColorHex by remember(initialEvent?.id, seedDraft) {
+        mutableStateOf(initialEvent?.accentColorHex ?: seedDraft?.accentColorHex ?: CalendarColorOptions.first())
     }
-    var ringEnabled by remember(initialEvent?.id) { mutableStateOf(initialEvent?.ringEnabled ?: defaultRingEnabled) }
-    var vibrateEnabled by remember(initialEvent?.id) { mutableStateOf(initialEvent?.vibrateEnabled ?: defaultVibrateEnabled) }
-    var recurringEnabled by remember(initialEvent?.id) { mutableStateOf(initialEvent?.isRecurring == true) }
-    var recurrenceType by remember(initialEvent?.id) {
-        mutableStateOf(initialEvent?.recurrenceTypeEnum ?: RecurrenceType.DAILY)
+    var reminderEnabled by remember(initialEvent?.id, seedDraft) {
+        mutableStateOf(initialEvent?.reminderAtMillis != null || seedDraft?.reminderMinutesBefore != null)
     }
-    var weeklyDays by remember(initialEvent?.id) {
+    var reminderMinutesBefore by remember(initialEvent?.id, seedDraft) {
+        mutableStateOf(existingReminderOffsetMinutes(initialEvent) ?: seedDraft?.reminderMinutesBefore ?: 15)
+    }
+    var ringEnabled by remember(initialEvent?.id, seedDraft) { mutableStateOf(initialEvent?.ringEnabled ?: seedDraft?.ringEnabled ?: defaultRingEnabled) }
+    var vibrateEnabled by remember(initialEvent?.id, seedDraft) { mutableStateOf(initialEvent?.vibrateEnabled ?: seedDraft?.vibrateEnabled ?: defaultVibrateEnabled) }
+    var recurringEnabled by remember(initialEvent?.id, seedDraft) { mutableStateOf(initialEvent?.isRecurring == true || seedDraft?.recurrence?.enabled == true) }
+    var recurrenceType by remember(initialEvent?.id, seedDraft) {
+        mutableStateOf(initialEvent?.recurrenceTypeEnum ?: seedDraft?.recurrence?.type ?: RecurrenceType.DAILY)
+    }
+    var weeklyDays by remember(initialEvent?.id, seedDraft) {
         mutableStateOf(
             if (initialEvent?.isRecurring == true) {
                 storageStringToWeekdays(initialEvent.recurrenceWeekdays).ifEmpty { setOf(startAt.dayOfWeek) }
+            } else if (seedDraft?.recurrence?.enabled == true) {
+                seedDraft.recurrence.weeklyDays.ifEmpty { setOf(startAt.dayOfWeek) }
             } else {
                 setOf(startAt.dayOfWeek)
             }
         )
     }
-    var recurrenceEndDate by remember(initialEvent?.id) {
-        mutableStateOf(initialEvent?.recurrenceEndDate ?: startAt.toLocalDate().plusDays(90))
+    var recurrenceEndDate by remember(initialEvent?.id, seedDraft) {
+        mutableStateOf(initialEvent?.recurrenceEndDate ?: seedDraft?.recurrence?.endDate ?: startAt.toLocalDate().plusDays(90))
     }
 
     AlertDialog(
@@ -382,9 +390,9 @@ internal fun CalendarEventEditorDialog(
     )
 }
 
-private fun existingReminderOffsetMinutes(item: TodoItem?): Int {
-    item ?: return 15
-    val reminderAt = item.reminderAtMillis ?: return 15
+private fun existingReminderOffsetMinutes(item: TodoItem?): Int? {
+    item ?: return null
+    val reminderAt = item.reminderAtMillis ?: return null
     val anchor = if (item.allDay) {
         LocalDateTime.of(
             reminderAtMillisToDateTime(item.startAtMillis ?: item.dueAtMillis).toLocalDate(),

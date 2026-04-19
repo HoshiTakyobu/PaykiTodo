@@ -124,7 +124,8 @@ internal fun DashboardDrawer(
     ModalDrawerSheet(
         modifier = Modifier
             .fillMaxHeight()
-            .widthIn(min = 280.dp, max = 336.dp),
+            .fillMaxWidth(0.5f)
+            .widthIn(min = 220.dp, max = 320.dp),
         drawerContainerColor = MaterialTheme.colorScheme.surface,
         drawerShape = RoundedCornerShape(topEnd = 28.dp, bottomEnd = 28.dp)
     ) {
@@ -135,20 +136,28 @@ internal fun DashboardDrawer(
             verticalArrangement = Arrangement.SpaceBetween
         ) {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                Surface(shape = CircleShape, color = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)) {
-                    Box(Modifier.size(58.dp), contentAlignment = Alignment.Center) {
-                        Image(
-                            painter = painterResource(id = R.drawable.ic_launcher_foreground),
-                            contentDescription = "应用图标",
-                            modifier = Modifier.size(42.dp),
-                            contentScale = ContentScale.Fit
-                        )
-                    }
-                }
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.End
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
+                    Surface(shape = CircleShape, color = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)) {
+                        Box(Modifier.size(52.dp), contentAlignment = Alignment.Center) {
+                            Image(
+                                painter = painterResource(id = R.drawable.ic_launcher_foreground),
+                                contentDescription = "应用图标",
+                                modifier = Modifier.size(38.dp),
+                                contentScale = ContentScale.Fit
+                            )
+                        }
+                    }
+                    Text(
+                        "PaykiTodo",
+                        modifier = Modifier.weight(1f),
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
                     Surface(shape = CircleShape, color = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)) {
                         IconButton(onClick = onCloseDrawer) {
                             Icon(
@@ -159,12 +168,6 @@ internal fun DashboardDrawer(
                         }
                     }
                 }
-                Text(
-                    "PaykiTodo",
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.45f))
                 Column(
                     modifier = Modifier.padding(top = 6.dp),

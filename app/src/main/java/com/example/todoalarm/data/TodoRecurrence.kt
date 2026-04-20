@@ -41,7 +41,7 @@ data class RecurrenceConfig(
 data class TodoDraft(
     val title: String,
     val notes: String,
-    val dueAt: LocalDateTime,
+    val dueAt: LocalDateTime?,
     val reminderAt: LocalDateTime?,
     val groupId: Long,
     val ringEnabled: Boolean,

@@ -4,6 +4,7 @@ import androidx.room.Entity
 import androidx.room.PrimaryKey
 import java.time.Instant
 import java.time.LocalDate
+import java.time.LocalDateTime
 import java.time.ZoneId
 
 @Entity(tableName = "todo_items")
@@ -66,10 +67,18 @@ data class TodoItem(
     val recurrenceEndDate: LocalDate?
         get() = recurrenceEndEpochDay?.let(LocalDate::ofEpochDay)
 
-    fun dueDate(): LocalDate {
+    val hasDueDate: Boolean
+        get() = hasDueDate(dueAtMillis)
+
+    fun dueDateTimeOrNull(): LocalDateTime? {
+        if (!hasDueDate) return null
         return Instant.ofEpochMilli(dueAtMillis)
             .atZone(ZoneId.systemDefault())
-            .toLocalDate()
+            .toLocalDateTime()
+    }
+
+    fun dueDate(): LocalDate {
+        return dueDateTimeOrNull()?.toLocalDate() ?: NO_DUE_DATE_FALLBACK_DATE
     }
 
     fun eventStartDate(): LocalDate? {

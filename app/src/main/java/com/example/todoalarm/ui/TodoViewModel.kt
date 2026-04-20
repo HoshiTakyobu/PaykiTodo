@@ -99,8 +99,8 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
             groups = availableGroups,
             selectedGroupId = selectedGroupId,
             missedItems = activeTaskItems.filter { it.missed },
-            todayItems = activeTaskItems.filter { !it.missed && dueDate(it) == today },
-            upcomingItems = activeTaskItems.filter { !it.missed && dueDate(it).isAfter(today) },
+            todayItems = activeTaskItems.filter { it.hasDueDate && !it.missed && dueDate(it) == today },
+            upcomingItems = activeTaskItems.filter { !it.missed && (!it.hasDueDate || dueDate(it).isAfter(today)) },
             historyItems = historyItems,
             calendarItems = activeCalendarItems,
             settings = settings,
@@ -222,8 +222,8 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
                     completedAtMillis = null,
                     canceled = false,
                     canceledAtMillis = null,
-                    missed = todoItem.dueAtMillis < now - MISSED_THRESHOLD_MILLIS,
-                    missedAtMillis = if (todoItem.dueAtMillis < now - MISSED_THRESHOLD_MILLIS) now else null,
+                    missed = todoItem.hasDueDate && todoItem.dueAtMillis < now - MISSED_THRESHOLD_MILLIS,
+                    missedAtMillis = if (todoItem.hasDueDate && todoItem.dueAtMillis < now - MISSED_THRESHOLD_MILLIS) now else null,
                     reminderEnabled = todoItem.reminderAtMillis?.let { it > now } == true
                 )
             )
@@ -356,30 +356,37 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
 
         val isHistory = original?.isHistory == true
         val now = System.currentTimeMillis()
-        val dueAtMillis = draft.dueAt.toEpochMillis()
-        if (!isHistory && original == null && dueAtMillis <= now) {
+        val dueAtMillis = draft.dueAt?.toEpochMillis()
+        if (!isHistory && original == null && dueAtMillis != null && dueAtMillis <= now) {
             return "DDL 必须晚于当前时间"
         }
 
         val reminderAtMillis = draft.reminderAt?.toEpochMillis()
+        if (draft.dueAt == null && reminderAtMillis != null) {
+            return "未设置 DDL 的任务不能启用提醒"
+        }
         if (!isHistory && original == null && reminderAtMillis != null && reminderAtMillis <= now) {
             return "提醒时间必须晚于当前时间"
         }
-        if (reminderAtMillis != null && reminderAtMillis > dueAtMillis) {
+        if (reminderAtMillis != null && dueAtMillis != null && reminderAtMillis > dueAtMillis) {
             return "提醒时间不能晚于 DDL"
         }
 
         val recurrence = draft.recurrence
         if (recurrence.enabled) {
+            val dueAt = draft.dueAt ?: return "循环任务必须设置 DDL"
             if (recurrence.type == RecurrenceType.NONE) return "请选择循环规则"
             val endDate = recurrence.endDate ?: return "请设置循环截止日期"
             val canTerminateSeriesEarly = original?.isRecurring == true && scope != RecurrenceScope.CURRENT
-            if (!canTerminateSeriesEarly && endDate.isBefore(draft.dueAt.toLocalDate())) {
+            if (!canTerminateSeriesEarly && endDate.isBefore(dueAt.toLocalDate())) {
                 return "循环截止日期不能早于首次任务日期"
             }
             if (recurrence.type == RecurrenceType.WEEKLY && recurrence.weeklyDays.isEmpty()) {
                 return "每周循环至少选择一天"
             }
+        }
+        if (original?.isRecurring == true && draft.dueAt == null) {
+            return "循环任务必须保留 DDL"
         }
         return null
     }
@@ -434,6 +441,12 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     private suspend fun scheduleReminderOrDisable(item: TodoItem) {
+        if (item.isTodo && !item.hasDueDate) {
+            if (item.reminderEnabled || item.reminderAtMillis != null) {
+                repository.updateTodo(item.copy(reminderEnabled = false, reminderAtMillis = null))
+            }
+            return
+        }
         if (!item.reminderEnabled) return
         val scheduleMessage = alarmScheduler.schedule(item)
         if (scheduleMessage != null) {
@@ -450,7 +463,7 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     private fun dueDate(item: TodoItem): LocalDate {
-        return Instant.ofEpochMilli(item.dueAtMillis).atZone(ZoneId.systemDefault()).toLocalDate()
+        return item.dueDate()
     }
 
     companion object {

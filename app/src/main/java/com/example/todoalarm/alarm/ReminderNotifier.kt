@@ -123,6 +123,9 @@ class ReminderNotifier(
                 "日程 · ${eventTimeRangeLabel(todoItem)}"
             }
         }
+        if (!todoItem.hasDueDate) {
+            return "${taskGroup.name} · 未设置 DDL"
+        }
         val due = formatLocalDateTime(reminderAtMillisToDateTime(todoItem.dueAtMillis))
         return "${taskGroup.name} · \u23F0 DDL $due"
     }

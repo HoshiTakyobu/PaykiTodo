@@ -184,8 +184,10 @@ class ReminderAccessibilityOverlay(
             TextView(service).apply {
                 text = if (item.isEvent) {
                     "\uD83D\uDDD3\uFE0F ${formatEventTime(item)}"
-                } else {
+                } else if (item.hasDueDate) {
                     "⏰ DDL: ${formatDateTime(item.dueAtMillis)}"
+                } else {
+                    "\uD83D\uDDD2 状态: 未设置 DDL"
                 }
                 setTextColor(accent)
                 setTextSize(17f)
@@ -446,7 +448,8 @@ class ReminderAccessibilityOverlay(
                 "全天 · $start - $endExclusive"
             }
         }
-        val start = item.startAtMillis?.let(::toLocalDateTime) ?: return formatDateTime(item.dueAtMillis)
+        val start = item.startAtMillis?.let(::toLocalDateTime)
+            ?: return item.dueDateTimeOrNull()?.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")) ?: "未设置时间"
         val end = item.endAtMillis?.let(::toLocalDateTime) ?: start
         val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")
         val timeFormatter = DateTimeFormatter.ofPattern("HH:mm")

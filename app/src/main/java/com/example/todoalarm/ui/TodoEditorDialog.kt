@@ -54,23 +54,41 @@ fun TodoEditorDialog(
     val context = LocalContext.current
     val now = remember { LocalDateTime.now().withSecond(0).withNano(0) }
     val isHistory = initialTodo?.isHistory == true
+    val isRecurringSeries = initialTodo?.isRecurring == true
+    val canDisableDueDate = !isRecurringSeries
+
     var title by remember(initialTodo?.id) { mutableStateOf(initialTodo?.title.orEmpty()) }
     var notes by remember(initialTodo?.id) { mutableStateOf(initialTodo?.notes.orEmpty()) }
-    val defaultGroupId = remember(groups) { groups.firstOrNull { it.name == "例行" }?.id ?: groups.firstOrNull()?.id ?: 0L }
+    val defaultGroupId = remember(groups) {
+        groups.firstOrNull { it.name == "例行" }?.id ?: groups.firstOrNull()?.id ?: 0L
+    }
     var groupId by remember(initialTodo?.id, groups) {
         mutableStateOf(initialTodo?.groupId?.takeIf { it > 0 } ?: defaultGroupId)
     }
+    var hasDueDate by remember(initialTodo?.id) {
+        mutableStateOf(initialTodo?.hasDueDate ?: true)
+    }
     var dueAt by remember(initialTodo?.id) {
-        mutableStateOf(initialTodo?.let { reminderAtMillisToDateTime(it.dueAtMillis) } ?: now.plusHours(2))
+        mutableStateOf(initialTodo?.dueDateTimeOrNull() ?: now.plusHours(2))
     }
     var reminderEnabled by remember(initialTodo?.id) {
-        mutableStateOf(if (isHistory) false else initialTodo?.reminderEnabled ?: true)
+        mutableStateOf(
+            if (isHistory || initialTodo?.hasDueDate == false) {
+                false
+            } else {
+                initialTodo?.reminderEnabled ?: true
+            }
+        )
     }
     var reminderAt by remember(initialTodo?.id) {
         mutableStateOf(initialTodo?.reminderAtMillis?.let(::reminderAtMillisToDateTime) ?: now.plusMinutes(30))
     }
-    var ringEnabled by remember(initialTodo?.id) { mutableStateOf(initialTodo?.ringEnabled ?: defaultRingEnabled) }
-    var vibrateEnabled by remember(initialTodo?.id) { mutableStateOf(initialTodo?.vibrateEnabled ?: defaultVibrateEnabled) }
+    var ringEnabled by remember(initialTodo?.id) {
+        mutableStateOf(initialTodo?.ringEnabled ?: defaultRingEnabled)
+    }
+    var vibrateEnabled by remember(initialTodo?.id) {
+        mutableStateOf(initialTodo?.vibrateEnabled ?: defaultVibrateEnabled)
+    }
     var recurringEnabled by remember(initialTodo?.id) { mutableStateOf(initialTodo?.isRecurring == true) }
     var recurrenceType by remember(initialTodo?.id) {
         mutableStateOf(initialTodo?.recurrenceTypeEnum ?: RecurrenceType.DAILY)
@@ -117,6 +135,7 @@ fun TodoEditorDialog(
                     modifier = Modifier.fillMaxWidth(),
                     minLines = 4
                 )
+
                 Text(
                     text = "所属分组",
                     fontWeight = FontWeight.SemiBold,
@@ -136,24 +155,74 @@ fun TodoEditorDialog(
                         )
                     }
                 }
-                OutlinedButton(
-                    onClick = { showDateTimePicker(context, dueAt) { dueAt = it } },
-                    modifier = Modifier.fillMaxWidth()
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Text("DDL：${formatLocalDateTime(dueAt)}")
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text("设置 DDL", fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
+                        Text(
+                            text = if (hasDueDate) {
+                                "当前任务会按截止时间排序。"
+                            } else {
+                                "未设置 DDL 的任务会排在计划中末尾。"
+                            },
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
+                    Switch(
+                        checked = hasDueDate,
+                        enabled = canDisableDueDate,
+                        onCheckedChange = { checked ->
+                            hasDueDate = checked
+                            if (!checked) {
+                                reminderEnabled = false
+                                recurringEnabled = false
+                            }
+                        }
+                    )
                 }
+
+                if (!canDisableDueDate) {
+                    Text(
+                        text = "循环任务必须保留 DDL，不能移除截止时间。",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
+
+                if (hasDueDate) {
+                    OutlinedButton(
+                        onClick = { showDateTimePicker(context, dueAt) { dueAt = it } },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("DDL：${formatLocalDateTime(dueAt)}")
+                    }
+                } else {
+                    Text(
+                        text = "当前任务不设置截止日期，也不会启用提醒或循环。",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
+
                 if (isHistory) {
                     Text(
                         text = "历史任务允许修改标题、备注、分类和 DDL，但不会重新启用提醒。",
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
-                } else {
+                }
+
+                if (!isHistory && hasDueDate) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        Column {
+                        Column(modifier = Modifier.weight(1f)) {
                             Text("启用提醒", fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
                             Text("建议在 DDL 之前提醒。", color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
@@ -162,6 +231,7 @@ fun TodoEditorDialog(
                             onCheckedChange = { reminderEnabled = it }
                         )
                     }
+
                     if (reminderEnabled) {
                         OutlinedButton(
                             onClick = { showDateTimePicker(context, reminderAt) { reminderAt = it } },
@@ -169,23 +239,32 @@ fun TodoEditorDialog(
                         ) {
                             Text("提醒时间：${formatLocalDateTime(reminderAt)}")
                         }
+                        Text("提醒方式", fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .horizontalScroll(rememberScrollState()),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            FilterChip(
+                                selected = ringEnabled,
+                                onClick = { ringEnabled = !ringEnabled },
+                                label = { Text("响铃") }
+                            )
+                            FilterChip(
+                                selected = vibrateEnabled,
+                                onClick = { vibrateEnabled = !vibrateEnabled },
+                                label = { Text("震动") }
+                            )
+                        }
                     }
-                    Text("提醒方式", fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .horizontalScroll(rememberScrollState()),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        FilterChip(selected = ringEnabled, onClick = { ringEnabled = !ringEnabled }, label = { Text("响铃") })
-                        FilterChip(selected = vibrateEnabled, onClick = { vibrateEnabled = !vibrateEnabled }, label = { Text("震动") })
-                    }
+
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        Column {
+                        Column(modifier = Modifier.weight(1f)) {
                             Text("循环任务", fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
                             Text("开启后将按规则批量生成实例。", color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
@@ -194,6 +273,7 @@ fun TodoEditorDialog(
                             onCheckedChange = { recurringEnabled = it }
                         )
                     }
+
                     if (recurringEnabled) {
                         Text("循环规则", fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
                         Row(
@@ -202,13 +282,15 @@ fun TodoEditorDialog(
                                 .horizontalScroll(rememberScrollState()),
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            RecurrenceType.entries.filter { it != RecurrenceType.NONE }.forEach { type ->
-                                FilterChip(
-                                    selected = recurrenceType == type,
-                                    onClick = { recurrenceType = type },
-                                    label = { Text(type.label) }
-                                )
-                            }
+                            RecurrenceType.entries
+                                .filter { it != RecurrenceType.NONE }
+                                .forEach { type ->
+                                    FilterChip(
+                                        selected = recurrenceType == type,
+                                        onClick = { recurrenceType = type },
+                                        label = { Text(type.label) }
+                                    )
+                                }
                         }
 
                         if (recurrenceType == RecurrenceType.WEEKLY) {
@@ -253,7 +335,7 @@ fun TodoEditorDialog(
                             onClick = { showDatePicker(context, recurrenceEndDate) { recurrenceEndDate = it } },
                             modifier = Modifier.fillMaxWidth()
                         ) {
-                            Text("循环截止日期：${recurrenceEndDate}")
+                            Text("循环截止日期：$recurrenceEndDate")
                         }
                     }
                 }
@@ -266,13 +348,13 @@ fun TodoEditorDialog(
                         TodoDraft(
                             title = title,
                             notes = notes,
-                            dueAt = dueAt,
-                            reminderAt = if (isHistory || !reminderEnabled) null else reminderAt,
+                            dueAt = dueAt.takeIf { hasDueDate },
+                            reminderAt = if (isHistory || !hasDueDate || !reminderEnabled) null else reminderAt,
                             groupId = groupId,
                             ringEnabled = ringEnabled,
                             vibrateEnabled = vibrateEnabled,
                             recurrence = RecurrenceConfig(
-                                enabled = !isHistory && recurringEnabled,
+                                enabled = !isHistory && hasDueDate && recurringEnabled,
                                 type = recurrenceType,
                                 weeklyDays = weeklyDays,
                                 endDate = recurrenceEndDate

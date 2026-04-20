@@ -300,11 +300,17 @@ private fun ReminderScreen(
 
                 todoItem?.let { item ->
                     ReminderMetaCard(
-                        label = if (item.isEvent) "\uD83D\uDDD3\uFE0F 日程" else "\u23F0 DDL",
+                        label = when {
+                            item.isEvent -> "\uD83D\uDDD3\uFE0F 日程"
+                            item.hasDueDate -> "\u23F0 DDL"
+                            else -> "\uD83D\uDDD2 状态"
+                        },
                         value = if (item.isEvent) {
                             reminderEventTimeLabel(item)
-                        } else {
+                        } else if (item.hasDueDate) {
                             formatLocalDateTime(reminderAtMillisToDateTime(item.dueAtMillis))
+                        } else {
+                            "未设置 DDL"
                         },
                         accent = accent
                     )
@@ -500,7 +506,7 @@ private fun reminderEventTimeLabel(item: TodoItem): String {
         }
     }
     val start = item.startAtMillis?.let(::reminderAtMillisToDateTime)
-        ?: return formatLocalDateTime(reminderAtMillisToDateTime(item.dueAtMillis))
+        ?: return item.dueDateTimeOrNull()?.let(::formatLocalDateTime) ?: "未设置时间"
     val end = item.endAtMillis?.let(::reminderAtMillisToDateTime) ?: start
     val dayPrefix = formatLocalDateTime(start).substringBefore(' ')
     val startTime = formatLocalDateTime(start).substringAfter(' ')

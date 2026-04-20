@@ -44,8 +44,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.todoalarm.data.TaskGroup
@@ -94,45 +97,48 @@ internal fun ActiveTodoCard(
             Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 TitleRow(item = item, groups = groups, progress = progress)
                 if (item.notes.isNotBlank()) {
-                    Text(
+                    StrikeText(
                         text = item.notes,
                         style = MaterialTheme.typography.bodyMedium.copy(lineHeight = 18.sp),
+                        progress = progress,
                         color = if (item.missed) Color(0xFFC62828) else MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 3,
                         overflow = TextOverflow.Ellipsis
                     )
                 }
-                DeadlineMeta(
-                    value = formatLocalDateTime(reminderAtMillisToDateTime(item.dueAtMillis)),
-                    accent = if (item.missed) Color(0xFFC62828) else MaterialTheme.colorScheme.primary
-                )
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    if (item.isRecurring) {
-                        Text(
-                            text = "循环任务",
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                        TextButton(onClick = onCancel) {
-                            Text("取消")
-                        }
-                        IconButton(onClick = onEdit, enabled = !completing) {
-                            Icon(Icons.Rounded.Edit, contentDescription = "编辑任务")
-                        }
-                    }
+                if (item.hasDueDate) {
+                    DeadlineMeta(
+                        value = formatLocalDateTime(reminderAtMillisToDateTime(item.dueAtMillis)),
+                        accent = if (item.missed) Color(0xFFC62828) else MaterialTheme.colorScheme.primary
+                    )
+                }
+                if (item.isRecurring) {
+                    Text(
+                        text = "循环任务",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
             }
         }
     }
 
     if (showDetails) {
-        TodoDetailsDialog(item = item, groups = groups, onDismiss = { showDetails = false }, showCreated = true, showStatusTime = false)
+        TodoDetailsDialog(
+            item = item,
+            groups = groups,
+            onDismiss = { showDetails = false },
+            showCreated = true,
+            showStatusTime = false,
+            onEdit = {
+                showDetails = false
+                onEdit()
+            },
+            onCancel = {
+                showDetails = false
+                onCancel()
+            }
+        )
     }
 }
 
@@ -163,10 +169,12 @@ internal fun CompletedTodoCard(
                 value = formatLocalDateTime(reminderAtMillisToDateTime(item.createdAtMillis)),
                 accent = MaterialTheme.colorScheme.secondary
             )
-            DeadlineMeta(
-                value = formatLocalDateTime(reminderAtMillisToDateTime(item.dueAtMillis)),
-                accent = MaterialTheme.colorScheme.primary
-            )
+            if (item.hasDueDate) {
+                DeadlineMeta(
+                    value = formatLocalDateTime(reminderAtMillisToDateTime(item.dueAtMillis)),
+                    accent = MaterialTheme.colorScheme.primary
+                )
+            }
             MetaLine(
                 icon = if (item.completed) "✅" else "🚫",
                 label = if (item.completed) "完成" else "取消",
@@ -327,24 +335,12 @@ private fun StrikeTitle(
     textColor: Color,
     modifier: Modifier = Modifier
 ) {
-    val strikeColor = lerp(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.onSurfaceVariant, progress)
-    Text(
+    StrikeText(
         text = text,
-        modifier = modifier.drawWithContent {
-            drawContent()
-            if (progress > 0f) {
-                val y = size.height * 0.58f
-                drawLine(
-                    color = strikeColor,
-                    start = Offset(0f, y),
-                    end = Offset(size.width * progress, y),
-                    strokeWidth = 3.dp.toPx(),
-                    cap = StrokeCap.Round
-                )
-            }
-        },
+        modifier = modifier,
         style = MaterialTheme.typography.titleMedium.copy(lineHeight = 22.sp),
         fontWeight = FontWeight.Bold,
+        progress = progress,
         color = textColor,
         maxLines = 2,
         overflow = TextOverflow.Ellipsis
@@ -357,15 +353,30 @@ private fun TodoDetailsDialog(
     groups: List<TaskGroup>,
     onDismiss: () -> Unit,
     showCreated: Boolean,
-    showStatusTime: Boolean
+    showStatusTime: Boolean,
+    onEdit: (() -> Unit)? = null,
+    onCancel: (() -> Unit)? = null
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
         confirmButton = {
-            TextButton(onClick = onDismiss) {
-                Text("关闭")
+            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                onCancel?.let {
+                    TextButton(onClick = it) {
+                        Text("取消")
+                    }
+                }
+                TextButton(onClick = onDismiss) {
+                    Text("关闭")
+                }
+                onEdit?.let {
+                    TextButton(onClick = it) {
+                        Text("修改")
+                    }
+                }
             }
         },
+        dismissButton = {},
         title = {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                 CategoryChip(resolveTaskGroup(item, groups))
@@ -389,10 +400,19 @@ private fun TodoDetailsDialog(
                         accent = MaterialTheme.colorScheme.secondary
                     )
                 }
-                DeadlineMeta(
-                    value = formatLocalDateTime(reminderAtMillisToDateTime(item.dueAtMillis)),
-                    accent = if (item.missed) Color(0xFFC62828) else MaterialTheme.colorScheme.primary
-                )
+                if (item.hasDueDate) {
+                    DeadlineMeta(
+                        value = formatLocalDateTime(reminderAtMillisToDateTime(item.dueAtMillis)),
+                        accent = if (item.missed) Color(0xFFC62828) else MaterialTheme.colorScheme.primary
+                    )
+                } else {
+                    MetaLine(
+                        icon = "🕊",
+                        label = "DDL",
+                        value = "未设置",
+                        accent = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
                 if (showStatusTime) {
                     MetaLine(
                         icon = if (item.completed) "✅" else "🚫",
@@ -405,6 +425,59 @@ private fun TodoDetailsDialog(
                 }
             }
         }
+    )
+}
+
+@Composable
+private fun StrikeText(
+    text: String,
+    style: TextStyle,
+    color: Color,
+    modifier: Modifier = Modifier,
+    fontWeight: FontWeight? = null,
+    progress: Float = 0f,
+    maxLines: Int = Int.MAX_VALUE,
+    overflow: TextOverflow = TextOverflow.Clip
+) {
+    var layoutResult by remember(text, style, fontWeight, maxLines, overflow) {
+        mutableStateOf<TextLayoutResult?>(null)
+    }
+    val strikeColor = lerp(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.onSurfaceVariant, progress)
+
+    Text(
+        text = text,
+        modifier = modifier.drawWithContent {
+            drawContent()
+            val layout = layoutResult ?: return@drawWithContent
+            if (progress <= 0f) return@drawWithContent
+
+            val lineCount = layout.lineCount
+            if (lineCount == 0) return@drawWithContent
+
+            repeat(lineCount) { index ->
+                val lineLength = (layout.getLineRight(index) - layout.getLineLeft(index)).coerceAtLeast(0f)
+                if (lineLength <= 0f) return@repeat
+                val lineTop = layout.getLineTop(index)
+                val lineBottom = layout.getLineBottom(index)
+                val y = lineTop + (lineBottom - lineTop) * 0.58f
+                val left = layout.getLineLeft(index)
+                val drawLength = lineLength * progress
+                drawLine(
+                    color = strikeColor,
+                    start = Offset(left, y),
+                    end = Offset(left + drawLength, y),
+                    strokeWidth = 3.dp.toPx(),
+                    cap = StrokeCap.Round
+                )
+            }
+        },
+        style = style,
+        fontWeight = fontWeight,
+        color = color,
+        maxLines = maxLines,
+        overflow = overflow,
+        onTextLayout = { layoutResult = it },
+        textAlign = TextAlign.Start
     )
 }
 

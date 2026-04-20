@@ -17,11 +17,12 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.BrightnessAuto
@@ -71,6 +72,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -99,13 +101,17 @@ internal fun DashboardBackgroundBrush(): Brush {
     )
 }
 
-internal enum class DashboardSection(val label: String, val icon: ImageVector) {
-    ACTIVE("我的任务", Icons.Rounded.TaskAlt),
-    CALENDAR("日历", Icons.Rounded.CalendarMonth),
-    HISTORY("历史记录", Icons.Rounded.History),
-    GROUPS("分组管理", Icons.Rounded.Folder),
-    SETTINGS("设置", Icons.Rounded.Settings),
-    ABOUT("关于", Icons.Rounded.Info)
+internal enum class DashboardSection(
+    val label: String,
+    val icon: ImageVector,
+    val topBarTitle: String
+) {
+    ACTIVE("我的任务", Icons.Rounded.TaskAlt, "PaykiTodo"),
+    CALENDAR("日历", Icons.Rounded.CalendarMonth, "Schedule"),
+    HISTORY("历史记录", Icons.Rounded.History, "历史记录"),
+    GROUPS("分组管理", Icons.Rounded.Folder, "分组管理"),
+    SETTINGS("设置", Icons.Rounded.Settings, "设置"),
+    ABOUT("关于", Icons.Rounded.Info, "关于")
 }
 
 @Composable
@@ -117,15 +123,14 @@ internal fun DashboardDrawer(
     onSelectSection: (DashboardSection) -> Unit,
     onSelectAllTasks: () -> Unit,
     onSelectGroup: (Long) -> Unit,
-    onCloseDrawer: () -> Unit,
     onThemeModeChange: (ThemeMode) -> Unit
 ) {
     var taskExpanded by rememberSaveable { mutableStateOf(true) }
     ModalDrawerSheet(
         modifier = Modifier
             .fillMaxHeight()
-            .fillMaxWidth(0.5f)
-            .widthIn(min = 220.dp, max = 320.dp),
+            .fillMaxWidth(0.75f)
+            .widthIn(min = 280.dp, max = 420.dp),
         drawerContainerColor = MaterialTheme.colorScheme.surface,
         drawerShape = RoundedCornerShape(topEnd = 28.dp, bottomEnd = 28.dp)
     ) {
@@ -133,9 +138,14 @@ internal fun DashboardDrawer(
             modifier = Modifier
                 .fillMaxHeight()
                 .padding(horizontal = 18.dp, vertical = 24.dp),
-            verticalArrangement = Arrangement.SpaceBetween
+            verticalArrangement = Arrangement.spacedBy(18.dp)
         ) {
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
@@ -156,17 +166,11 @@ internal fun DashboardDrawer(
                         modifier = Modifier.weight(1f),
                         style = MaterialTheme.typography.headlineSmall,
                         fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurface
+                        color = MaterialTheme.colorScheme.onSurface,
+                        maxLines = 1,
+                        softWrap = false,
+                        overflow = TextOverflow.Ellipsis
                     )
-                    Surface(shape = CircleShape, color = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)) {
-                        IconButton(onClick = onCloseDrawer) {
-                            Icon(
-                                imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
-                                contentDescription = "收起菜单",
-                                tint = MaterialTheme.colorScheme.primary
-                            )
-                        }
-                    }
                 }
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.45f))
                 Column(
@@ -208,17 +212,22 @@ internal fun DashboardDrawer(
                 }
             }
 
-            ThemeModeSwitcher(
-                selectedThemeMode = selectedThemeMode,
-                onThemeModeChange = onThemeModeChange
-            )
+            Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.CenterStart) {
+                ThemeModeSwitcher(
+                    selectedThemeMode = selectedThemeMode,
+                    onThemeModeChange = onThemeModeChange
+                )
+            }
         }
     }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-internal fun DashboardTopBar(onMenu: () -> Unit) {
+internal fun DashboardTopBar(
+    title: String,
+    onMenu: () -> Unit
+) {
     TopAppBar(
         colors = TopAppBarDefaults.topAppBarColors(
             containerColor = Color.Transparent,
@@ -235,7 +244,7 @@ internal fun DashboardTopBar(onMenu: () -> Unit) {
         },
         title = {
             Text(
-                "PaykiTodo",
+                title,
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold,
                 color = Color(0xFF1F3E38)

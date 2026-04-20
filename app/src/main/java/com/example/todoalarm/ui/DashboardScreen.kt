@@ -150,7 +150,6 @@ fun DashboardScreen(
                     section = DashboardSection.ACTIVE
                     onSelectGroup(it)
                 },
-                onCloseDrawer = { scope.launch { drawerState.close() } },
                 onThemeModeChange = onThemeModeChange
             )
         }
@@ -186,7 +185,12 @@ fun DashboardScreen(
 
             Scaffold(
                 containerColor = if (section == DashboardSection.CALENDAR) Color(0xFFF7F8FB) else Color.Transparent,
-                topBar = { DashboardTopBar { scope.launch { drawerState.open() } } },
+                topBar = {
+                    DashboardTopBar(
+                        title = section.topBarTitle,
+                        onMenu = { scope.launch { drawerState.open() } }
+                    )
+                },
                 floatingActionButton = {
                     if (section == DashboardSection.ACTIVE) {
                         DashboardFab {

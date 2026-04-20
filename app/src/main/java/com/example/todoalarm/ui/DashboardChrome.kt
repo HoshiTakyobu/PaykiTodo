@@ -247,7 +247,7 @@ internal fun DashboardTopBar(
                 title,
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold,
-                color = Color(0xFF1F3E38)
+                color = MaterialTheme.colorScheme.onSurface
             )
         }
     )

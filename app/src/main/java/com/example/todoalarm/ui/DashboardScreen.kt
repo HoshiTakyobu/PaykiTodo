@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -159,7 +160,7 @@ fun DashboardScreen(
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .background(Color(0xFFF7F8FB))
+                        .background(MaterialTheme.colorScheme.background)
                 )
             } else {
                 Image(
@@ -184,7 +185,7 @@ fun DashboardScreen(
             }
 
             Scaffold(
-                containerColor = if (section == DashboardSection.CALENDAR) Color(0xFFF7F8FB) else Color.Transparent,
+                containerColor = if (section == DashboardSection.CALENDAR) MaterialTheme.colorScheme.background else Color.Transparent,
                 topBar = {
                     DashboardTopBar(
                         title = section.topBarTitle,

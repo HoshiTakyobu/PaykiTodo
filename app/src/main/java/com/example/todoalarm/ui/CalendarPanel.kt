@@ -109,7 +109,11 @@ internal fun CalendarPanel(
             .groupBy { item -> millisToDate(item.startAtMillis ?: item.dueAtMillis) }
     }
 
-    Surface(modifier = modifier, color = Color(0xFFF7F8FB)) {
+    val calendarBackground = MaterialTheme.colorScheme.background
+    val todayHighlightColor = Color(0x334C8BF5)
+    val todayHighlightTextColor = Color(0xFF73A8FF)
+
+    Surface(modifier = modifier, color = calendarBackground) {
         BoxWithConstraints(
             modifier = Modifier
                 .fillMaxSize()
@@ -224,6 +228,8 @@ internal fun CalendarPanel(
                     visibleRange = visibleRange,
                     currentDate = currentMoment.toLocalDate(),
                     horizontalOffsetPx = clampedHorizontalOffsetPx,
+                    todayHighlightColor = todayHighlightColor,
+                    todayHighlightTextColor = todayHighlightTextColor,
                     dragModifier = Modifier.scrollable(horizontalScrollableState, Orientation.Horizontal)
                 )
                 HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.16f))
@@ -245,7 +251,13 @@ internal fun CalendarPanel(
                         .fillMaxWidth()
                         .weight(1f)
                 ) {
-                    CalendarTimeAxis(timeAxisWidth, hourHeight, verticalScroll)
+                    CalendarTimeAxis(
+                        width = timeAxisWidth,
+                        hourHeight = hourHeight,
+                        verticalScroll = verticalScroll,
+                        currentMoment = currentMoment,
+                        showCurrentTime = todayIndex in visibleRange
+                    )
                     CalendarTimedBoard(
                         modifier = Modifier
                             .width(viewportWidth)
@@ -298,6 +310,8 @@ private fun CalendarHeaderRow(
     visibleRange: IntRange,
     currentDate: LocalDate,
     horizontalOffsetPx: Float,
+    todayHighlightColor: Color,
+    todayHighlightTextColor: Color,
     dragModifier: Modifier
 ) {
     Row(
@@ -318,26 +332,37 @@ private fun CalendarHeaderRow(
             visibleRange.forEach { dayIndex ->
                 val day = days[dayIndex]
                 val isToday = day == currentDate
-                Column(
+                Box(
                     modifier = Modifier
                         .offset {
                             IntOffset(dayLeftPx(dayIndex, dayColumnWidthPx, horizontalOffsetPx), 0)
                         }
                         .width(dayColumnWidth),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(2.dp)
+                    contentAlignment = Alignment.Center
                 ) {
-                    Text(
-                        text = day.dayOfWeek.shortLabel(),
-                        color = if (isToday) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                        fontSize = 13.sp
-                    )
-                    Text(
-                        text = day.dayOfMonth.toString(),
-                        style = MaterialTheme.typography.headlineSmall,
-                        fontWeight = FontWeight.Bold,
-                        color = if (isToday) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
-                    )
+                    Surface(
+                        color = if (isToday) todayHighlightColor else Color.Transparent,
+                        shape = RoundedCornerShape(18.dp)
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 5.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(1.dp)
+                        ) {
+                            Text(
+                                text = day.dayOfWeek.shortLabel(),
+                                color = if (isToday) todayHighlightTextColor else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.92f),
+                                fontSize = 13.sp,
+                                fontWeight = if (isToday) FontWeight.SemiBold else FontWeight.Medium
+                            )
+                            Text(
+                                text = day.dayOfMonth.toString(),
+                                style = MaterialTheme.typography.headlineSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = if (isToday) todayHighlightTextColor else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.94f)
+                            )
+                        }
+                    }
                 }
             }
         }
@@ -417,25 +442,53 @@ private fun CalendarAllDaySection(
 private fun CalendarTimeAxis(
     width: Dp,
     hourHeight: Dp,
-    verticalScroll: androidx.compose.foundation.ScrollState
+    verticalScroll: androidx.compose.foundation.ScrollState,
+    currentMoment: LocalDateTime,
+    showCurrentTime: Boolean
 ) {
-    Column(
+    val markerOffset = (hourHeight * ((currentMoment.hour * 60 + currentMoment.minute) / 60f)) - 10.dp
+
+    Box(
         modifier = Modifier
             .width(width)
             .fillMaxHeight()
             .verticalScroll(verticalScroll)
     ) {
-        repeat(24) { hour ->
-            Box(
-                modifier = Modifier.height(hourHeight),
-                contentAlignment = Alignment.TopStart
-            ) {
-                Text(
-                    text = "%02d:00".format(hour),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    fontSize = 11.sp,
-                    lineHeight = 11.sp
-                )
+        Box(
+            modifier = Modifier
+                .width(width)
+                .height(hourHeight * 24)
+        ) {
+            repeat(24) { hour ->
+                Box(
+                    modifier = Modifier
+                        .offset(y = if (hour == 0) 0.dp else (hourHeight * hour) - 9.dp)
+                        .height(18.dp),
+                    contentAlignment = Alignment.CenterStart
+                ) {
+                    Text(
+                        text = "%02d:00".format(hour),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontSize = 11.sp,
+                        lineHeight = 11.sp
+                    )
+                }
+            }
+
+            if (showCurrentTime) {
+                Surface(
+                    modifier = Modifier.offset(y = if (markerOffset < 0.dp) 0.dp else markerOffset),
+                    color = Color(0xFFE53935),
+                    shape = RoundedCornerShape(10.dp)
+                ) {
+                    Text(
+                        text = formatClockTime(currentMoment),
+                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                        color = Color.White,
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
             }
         }
     }

@@ -8,6 +8,7 @@ import android.graphics.PixelFormat
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
 import android.text.InputType
+import android.util.Log
 import android.view.Gravity
 import android.view.View
 import android.view.WindowManager
@@ -20,9 +21,13 @@ import android.widget.TextView
 import android.widget.Toast
 import com.example.todoalarm.TodoApplication
 import com.example.todoalarm.alarm.ActiveReminderStore
+import com.example.todoalarm.alarm.ReminderChainLogger
 import com.example.todoalarm.alarm.ReminderForegroundService
 import com.example.todoalarm.alarm.ReminderNotifier
+import com.example.todoalarm.data.ReminderChainStage
+import com.example.todoalarm.data.ReminderChainStatus
 import com.example.todoalarm.data.TodoItem
+import com.example.todoalarm.ui.ReminderActivity
 import com.example.todoalarm.ui.ResolvedTaskGroup
 import com.example.todoalarm.ui.resolveTaskGroup
 import com.example.todoalarm.ui.taskGroupEmoji
@@ -49,7 +54,8 @@ class ReminderAccessibilityOverlay(
     private var overlayView: View? = null
     private var overlayTodoId: Long = -1L
 
-    fun showFor(todoId: Long) {
+    fun showFor(todoId: Long, ignoreActivityHandoff: Boolean = false) {
+        if (!ignoreActivityHandoff && ActiveReminderStore.isActivityHandoffPending(service, todoId)) return
         if (overlayTodoId == todoId && overlayView != null) return
 
         serviceScope.launch {
@@ -78,9 +84,24 @@ class ReminderAccessibilityOverlay(
 
             runCatching { windowManager.addView(root, params) }
                 .onSuccess {
+                    ActiveReminderStore.refreshActive(service, item.id)
+                    ActiveReminderStore.clearActivityHandoff(service, item.id)
+                    ReminderChainLogger.log(
+                        context = service,
+                        todoId = item.id,
+                        source = "ReminderAccessibilityOverlay",
+                        stage = ReminderChainStage.ACCESSIBILITY_OVERLAY,
+                        status = ReminderChainStatus.OK,
+                        reminderAtMillis = item.reminderAtMillis,
+                        message = "visible"
+                    )
                     overlayView = root
                     overlayTodoId = item.id
                     root.announceForAccessibility("到时间了，${item.title}")
+                }
+                .onFailure { error ->
+                    Log.w(TAG, "Accessibility overlay addView failed for todoId=${item.id}", error)
+                    launchReminderActivity(item.id)
                 }
         }
     }
@@ -92,6 +113,10 @@ class ReminderAccessibilityOverlay(
         }
         overlayView = null
         overlayTodoId = -1L
+    }
+
+    fun isShowing(todoId: Long? = null): Boolean {
+        return overlayView != null && (todoId == null || overlayTodoId == todoId)
     }
 
     fun destroy() {
@@ -265,55 +290,59 @@ class ReminderAccessibilityOverlay(
             },
             weightedParams()
         )
-        actionRow.addView(spaceView())
-        actionRow.addView(
-            filledButton("延后 5 分钟", Color.parseColor("#A16207")).apply {
-                setOnClickListener { snoozeTodo(item.id, 5) }
-            },
-            weightedParams()
-        )
+        if (!item.isEvent) {
+            actionRow.addView(spaceView())
+            actionRow.addView(
+                filledButton("延后 5 分钟", Color.parseColor("#A16207")).apply {
+                    setOnClickListener { snoozeTodo(item.id, 5) }
+                },
+                weightedParams()
+            )
+        }
         card.addView(actionRow)
 
-        val customRow = LinearLayout(service).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
-            setPadding(0, dp(12), 0, 0)
-        }
-        val customInput = EditText(service).apply {
-            hint = "自定义分钟"
-            inputType = InputType.TYPE_CLASS_NUMBER
-            setTextColor(Color.parseColor("#10243D"))
-            setHintTextColor(Color.parseColor("#6B7280"))
-            setTextSize(16f)
-            background = GradientDrawable().apply {
-                cornerRadius = dp(16).toFloat()
-                setColor(Color.parseColor("#FFFFFFFF"))
-                setStroke(dp(1), Color.parseColor("#C8D7EA"))
+        if (!item.isEvent) {
+            val customRow = LinearLayout(service).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.CENTER_VERTICAL
+                setPadding(0, dp(12), 0, 0)
             }
-            setPadding(dp(14), dp(12), dp(14), dp(12))
-        }
-        customRow.addView(
-            customInput,
-            LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
-        )
-        customRow.addView(spaceView())
-        customRow.addView(
-            filledButton("延后", accent).apply {
-                setOnClickListener {
-                    val minutes = customInput.text?.toString()?.trim()?.toIntOrNull()
-                    if (minutes == null || minutes !in 1..180) {
-                        Toast.makeText(service, "请输入 1 到 180 分钟", Toast.LENGTH_SHORT).show()
-                    } else {
-                        snoozeTodo(item.id, minutes)
-                    }
+            val customInput = EditText(service).apply {
+                hint = "自定义分钟"
+                inputType = InputType.TYPE_CLASS_NUMBER
+                setTextColor(Color.parseColor("#10243D"))
+                setHintTextColor(Color.parseColor("#6B7280"))
+                setTextSize(16f)
+                background = GradientDrawable().apply {
+                    cornerRadius = dp(16).toFloat()
+                    setColor(Color.parseColor("#FFFFFFFF"))
+                    setStroke(dp(1), Color.parseColor("#C8D7EA"))
                 }
-            },
-            LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.WRAP_CONTENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT
+                setPadding(dp(14), dp(12), dp(14), dp(12))
+            }
+            customRow.addView(
+                customInput,
+                LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
             )
-        )
-        card.addView(customRow)
+            customRow.addView(spaceView())
+            customRow.addView(
+                filledButton("延后", accent).apply {
+                    setOnClickListener {
+                        val minutes = customInput.text?.toString()?.trim()?.toIntOrNull()
+                        if (minutes == null || minutes !in 1..180) {
+                            Toast.makeText(service, "请输入 1 到 180 分钟", Toast.LENGTH_SHORT).show()
+                        } else {
+                            snoozeTodo(item.id, minutes)
+                        }
+                    }
+                },
+                LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT
+                )
+            )
+            card.addView(customRow)
+        }
 
         content.addView(
             card,
@@ -338,6 +367,13 @@ class ReminderAccessibilityOverlay(
         serviceScope.launch {
             withContext(Dispatchers.IO) {
                 val item = app.repository.getTodo(todoId) ?: return@withContext
+                ReminderChainLogger.log(
+                    context = service,
+                    todoId = item.id,
+                    source = "ReminderAccessibilityOverlay",
+                    stage = ReminderChainStage.USER_COMPLETE,
+                    status = ReminderChainStatus.OK
+                )
                 app.repository.setCompleted(item.id, true)
                 app.alarmScheduler.cancel(item.id)
                 app.reminderNotifier.cancel(item.id)
@@ -356,6 +392,14 @@ class ReminderAccessibilityOverlay(
         serviceScope.launch {
             withContext(Dispatchers.IO) {
                 val item = app.repository.getTodo(todoId) ?: return@withContext
+                ReminderChainLogger.log(
+                    context = service,
+                    todoId = item.id,
+                    source = "ReminderAccessibilityOverlay",
+                    stage = ReminderChainStage.USER_COMPLETE,
+                    status = ReminderChainStatus.OK,
+                    message = "event_ack"
+                )
                 app.repository.acknowledgeCalendarEvent(item.id)
                 app.alarmScheduler.cancel(item.id)
                 app.reminderNotifier.cancel(item.id)
@@ -374,6 +418,14 @@ class ReminderAccessibilityOverlay(
         serviceScope.launch {
             withContext(Dispatchers.IO) {
                 val item = app.repository.getTodo(todoId) ?: return@withContext
+                ReminderChainLogger.log(
+                    context = service,
+                    todoId = item.id,
+                    source = "ReminderAccessibilityOverlay",
+                    stage = ReminderChainStage.USER_SNOOZE,
+                    status = ReminderChainStatus.OK,
+                    message = "minutes=$minutes"
+                )
                 app.alarmScheduler.cancel(item.id)
                 val updated = app.repository.snoozeTodo(item.id, nextMinuteAlignedReminder(minutes))
                 if (updated != null) {
@@ -398,6 +450,16 @@ class ReminderAccessibilityOverlay(
             .withNano(0)
             .plusMinutes(minutes.toLong())
         return nextReminder.atZone(zoneId).toInstant().toEpochMilli()
+    }
+
+    private fun launchReminderActivity(todoId: Long) {
+        ActiveReminderStore.markActivityHandoff(service, todoId)
+        service.startActivity(
+            Intent(service, ReminderActivity::class.java).apply {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+                putExtra(com.example.todoalarm.alarm.AlarmScheduler.EXTRA_TODO_ID, todoId)
+            }
+        )
     }
 
     private fun filledButton(label: String, color: Int): Button {
@@ -462,4 +524,8 @@ class ReminderAccessibilityOverlay(
 
     private fun toLocalDateTime(epochMillis: Long) =
         Instant.ofEpochMilli(epochMillis).atZone(ZoneId.systemDefault()).toLocalDateTime()
+
+    companion object {
+        private const val TAG = "ReminderOverlay"
+    }
 }

@@ -24,6 +24,7 @@ data class TodoItem(
     val ringEnabled: Boolean,
     val vibrateEnabled: Boolean,
     val voiceEnabled: Boolean = false,
+    val reminderDeliveryMode: String = ReminderDeliveryMode.FULLSCREEN.name,
     val groupId: Long = 0,
     val categoryKey: String = TodoCategory.ROUTINE.key,
     val completed: Boolean = false,
@@ -63,6 +64,9 @@ data class TodoItem(
 
     val recurrenceTypeEnum: RecurrenceType
         get() = RecurrenceType.fromStorage(recurrenceType)
+
+    val reminderDeliveryModeEnum: ReminderDeliveryMode
+        get() = ReminderDeliveryMode.fromStorage(reminderDeliveryMode)
 
     val recurrenceEndDate: LocalDate?
         get() = recurrenceEndEpochDay?.let(LocalDate::ofEpochDay)

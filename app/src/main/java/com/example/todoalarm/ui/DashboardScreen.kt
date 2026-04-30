@@ -36,11 +36,15 @@ import com.example.todoalarm.R
 import com.example.todoalarm.data.CalendarEventDraft
 import com.example.todoalarm.data.RecurrenceConfig
 import com.example.todoalarm.data.RecurrenceScope
+import com.example.todoalarm.data.ReminderDeliveryMode
+import com.example.todoalarm.data.ScheduleTemplate
+import com.example.todoalarm.data.ScheduleTemplateType
 import com.example.todoalarm.data.ThemeMode
 import com.example.todoalarm.data.TodoDraft
 import com.example.todoalarm.data.TodoItem
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import java.time.LocalDate
 import java.time.LocalDateTime
 
 private enum class ScopeDialogMode {
@@ -68,6 +72,7 @@ fun DashboardScreen(
     onRequestAccessibilityService: () -> Unit,
     onAddTodo: suspend (TodoDraft) -> String?,
     onAddCalendarEvent: suspend (com.example.todoalarm.data.CalendarEventDraft) -> String?,
+    onImportCalendarEvents: suspend (List<CalendarEventDraft>) -> String?,
     onUpdateTodo: suspend (TodoItem, TodoDraft, RecurrenceScope) -> String?,
     onUpdateCalendarEvent: suspend (TodoItem, com.example.todoalarm.data.CalendarEventDraft, RecurrenceScope) -> String?,
     onDeleteTodo: (TodoItem) -> Unit,
@@ -82,6 +87,15 @@ fun DashboardScreen(
     onThemeModeChange: (ThemeMode) -> Unit,
     onNextQuote: () -> Unit,
     onDefaultSnoozeChange: (Int) -> Unit,
+    onDefaultCalendarReminderModeChange: (ReminderDeliveryMode) -> Unit,
+    onUseBuiltInReminderTone: () -> Unit,
+    onPickSystemReminderTone: () -> Unit,
+    onRunReminderChainTest: suspend (Int) -> String?,
+    onClearReminderDiagnostics: suspend () -> Unit,
+    onSaveWeekAsScheduleTemplate: suspend (String, String, LocalDate) -> String?,
+    onApplyScheduleTemplateToWeek: suspend (ScheduleTemplate, LocalDate) -> String?,
+    onGenerateSemesterScheduleFromTemplate: suspend (ScheduleTemplate, LocalDate, LocalDate) -> String?,
+    onDeleteScheduleTemplate: suspend (Long) -> String?,
     onPickBackupDirectory: () -> Unit,
     onExportBackup: () -> Unit,
     onImportBackup: () -> Unit,
@@ -96,6 +110,7 @@ fun DashboardScreen(
     var editorKind by remember { mutableStateOf(EditorKind.TODO) }
     var editingItem by remember { mutableStateOf<TodoItem?>(null) }
     var calendarDraftSeed by remember { mutableStateOf<CalendarEventDraft?>(null) }
+    var batchImportVisible by remember { mutableStateOf(false) }
     var editScope by remember { mutableStateOf(RecurrenceScope.CURRENT) }
     var scopeDialogTarget by remember { mutableStateOf<TodoItem?>(null) }
     var scopeDialogMode by remember { mutableStateOf<ScopeDialogMode?>(null) }
@@ -113,6 +128,7 @@ fun DashboardScreen(
                 editingItem = null
                 calendarDraftSeed = null
             }
+            batchImportVisible -> batchImportVisible = false
             drawerState.isOpen -> scope.launch { drawerState.close() }
             section != DashboardSection.ACTIVE -> section = DashboardSection.ACTIVE
             else -> {
@@ -250,6 +266,7 @@ fun DashboardScreen(
                             reminderMinutesBefore = 15,
                             ringEnabled = uiState.settings.defaultRingEnabled,
                             vibrateEnabled = uiState.settings.defaultVibrateEnabled,
+                            reminderDeliveryMode = uiState.settings.defaultCalendarReminderMode,
                             recurrence = RecurrenceConfig()
                         )
                         editScope = RecurrenceScope.CURRENT
@@ -284,13 +301,46 @@ fun DashboardScreen(
                     onRequestAccessibilityService = onRequestAccessibilityService,
                     onNextQuote = onNextQuote,
                     onDefaultSnoozeChange = onDefaultSnoozeChange,
+                    onDefaultCalendarReminderModeChange = onDefaultCalendarReminderModeChange,
+                    onUseBuiltInReminderTone = onUseBuiltInReminderTone,
+                    onPickSystemReminderTone = onPickSystemReminderTone,
+                    onRunReminderChainTest = onRunReminderChainTest,
+                    onClearReminderDiagnostics = onClearReminderDiagnostics,
+                    onSaveWeekAsScheduleTemplate = onSaveWeekAsScheduleTemplate,
+                    onApplyScheduleTemplateToWeek = onApplyScheduleTemplateToWeek,
+                    onGenerateSemesterScheduleFromTemplate = onGenerateSemesterScheduleFromTemplate,
+                    onDeleteScheduleTemplate = onDeleteScheduleTemplate,
                     onPickBackupDirectory = onPickBackupDirectory,
                     onExportBackup = onExportBackup,
                     onImportBackup = onImportBackup,
-                    onAutoBackupChange = onAutoBackupChange
+                    onAutoBackupChange = onAutoBackupChange,
+                    onOpenCalendarBatchImport = { batchImportVisible = true }
                 )
             }
         }
+    }
+
+    if (batchImportVisible) {
+        CalendarBatchImportDialog(
+            defaults = CalendarBatchImportDefaults(
+                defaultReminderMinutesBefore = 5,
+                defaultRingEnabled = true,
+                defaultVibrateEnabled = true,
+                defaultReminderDeliveryMode = ReminderDeliveryMode.NOTIFICATION
+            ),
+            onDismiss = { batchImportVisible = false },
+            onImport = { drafts ->
+                scope.launch {
+                    val message = onImportCalendarEvents(drafts)
+                    if (message == null) {
+                        batchImportVisible = false
+                        Toast.makeText(context, "已导入 ${drafts.size} 条日程", Toast.LENGTH_SHORT).show()
+                    } else {
+                        Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+                    }
+                }
+            }
+        )
     }
 
     if (editorVisible && editorKind == EditorKind.TODO) {
@@ -342,6 +392,8 @@ fun DashboardScreen(
             initialDraft = calendarDraftSeed,
             defaultRingEnabled = editingItem?.ringEnabled ?: uiState.settings.defaultRingEnabled,
             defaultVibrateEnabled = editingItem?.vibrateEnabled ?: uiState.settings.defaultVibrateEnabled,
+            defaultReminderDeliveryMode = editingItem?.reminderDeliveryModeEnum
+                ?: uiState.settings.defaultCalendarReminderMode,
             onDismiss = {
                 editorVisible = false
                 editingItem = null

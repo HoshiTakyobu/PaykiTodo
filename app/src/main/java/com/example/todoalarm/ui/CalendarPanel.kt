@@ -1,12 +1,14 @@
 package com.example.todoalarm.ui
 
 import android.app.DatePickerDialog
+import android.widget.Toast
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.rememberScrollableState
 import androidx.compose.foundation.gestures.scrollable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -23,14 +25,21 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.CalendarMonth
-import androidx.compose.material.icons.rounded.ChevronLeft
-import androidx.compose.material.icons.rounded.ChevronRight
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.Edit
+import androidx.compose.material.icons.rounded.KeyboardArrowDown
+import androidx.compose.material.icons.rounded.MoreHoriz
+import androidx.compose.material.icons.rounded.School
+import androidx.compose.material.icons.rounded.ViewWeek
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -41,6 +50,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -59,8 +70,12 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.todoalarm.data.ScheduleTemplate
+import com.example.todoalarm.data.ScheduleTemplateType
+import com.example.todoalarm.data.TaskGroup
 import com.example.todoalarm.data.TodoItem
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalDateTime
@@ -73,40 +88,72 @@ import kotlin.math.roundToInt
 
 private const val CalendarDayRange = 730
 private const val CalendarOverscanDays = 1
+private const val VisibleCalendarDayColumns = 3.0f
+
+private enum class CalendarViewMode(val label: String) {
+    TIMELINE("时间轴"),
+    WEEK("周视图"),
+    MONTH("月视图"),
+    LIST("列表")
+}
 
 @Composable
 internal fun CalendarPanel(
     modifier: Modifier = Modifier,
     events: List<TodoItem>,
+    groups: List<TaskGroup>,
+    scheduleTemplates: List<ScheduleTemplate>,
     onQuickCreateEvent: (LocalDateTime, LocalDateTime) -> Unit,
+    onCreateEventAt: (LocalDateTime, LocalDateTime) -> Unit,
     onEditEvent: (TodoItem) -> Unit,
-    onDeleteEvent: (TodoItem) -> Unit
+    onDeleteEvent: (TodoItem) -> Unit,
+    onOpenBatchImport: () -> Unit,
+    onSaveWeekAsTemplate: suspend (String, String, LocalDate) -> String?,
+    onApplyTemplateToWeek: suspend (ScheduleTemplate, LocalDate) -> String?,
+    onGenerateSemesterFromTemplate: suspend (ScheduleTemplate, LocalDate, LocalDate) -> String?,
+    onDeleteTemplate: suspend (Long) -> String?
 ) {
     val context = LocalContext.current
     val density = LocalDensity.current
-    val today = remember { LocalDate.now() }
-    val days = remember(today) { (-CalendarDayRange..CalendarDayRange).map { today.plusDays(it.toLong()) } }
+    val scope = rememberCoroutineScope()
+    val anchorDate = remember { LocalDate.now() }
+    var viewMode by rememberSaveable { mutableStateOf(CalendarViewMode.TIMELINE) }
+    val days = remember(anchorDate) { (-CalendarDayRange..CalendarDayRange).map { anchorDate.plusDays(it.toLong()) } }
     val dayIndexByDate = remember(days) { days.withIndex().associate { it.value to it.index } }
-    val todayIndex = remember(today, dayIndexByDate) { dayIndexByDate.getValue(today) }
+    val anchorDateIndex = remember(anchorDate, dayIndexByDate) { dayIndexByDate.getValue(anchorDate) }
     val verticalScroll = rememberScrollState()
     var didInitScroll by rememberSaveable { mutableStateOf(false) }
     var horizontalOffsetPx by rememberSaveable { mutableStateOf(0f) }
     var detailsTarget by remember { mutableStateOf<TodoItem?>(null) }
     var pendingDraft by remember { mutableStateOf<PendingCalendarDraft?>(null) }
+    var showTemplateManager by remember { mutableStateOf(false) }
+    var showSaveWeekTemplate by remember { mutableStateOf(false) }
+    var templateAnchorWeekStart by remember { mutableStateOf(currentWeekStart(LocalDate.now())) }
+    var showViewModeMenu by remember { mutableStateOf(false) }
+    var showActionsMenu by remember { mutableStateOf(false) }
     val currentMoment by produceState(initialValue = LocalDateTime.now()) {
         while (true) {
             delay(30_000L)
             value = LocalDateTime.now()
         }
     }
+    val currentDate = currentMoment.toLocalDate()
+    val currentDateIndex = dayIndexByDate[currentDate] ?: anchorDateIndex
 
     val allDayEvents = remember(events) {
         events.filter { it.allDay }.sortedBy { it.startAtMillis ?: it.dueAtMillis }
     }
-    val timedEventsByDay = remember(events) {
+    val timedEvents = remember(events) {
         events.filter { !it.allDay }
             .sortedBy { it.startAtMillis ?: it.dueAtMillis }
-            .groupBy { item -> millisToDate(item.startAtMillis ?: item.dueAtMillis) }
+    }
+    val timedEventSegmentsByDay = remember(timedEvents) {
+        buildTimedEventSegmentsByDay(timedEvents)
+    }
+    val timedEventPlacementsByDay = remember(timedEventSegmentsByDay) {
+        timedEventSegmentsByDay.mapValues { (_, segments) ->
+            layoutTimedEventSegments(segments)
+        }
     }
 
     val calendarBackground = MaterialTheme.colorScheme.background
@@ -119,10 +166,10 @@ internal fun CalendarPanel(
                 .fillMaxSize()
                 .padding(horizontal = 6.dp, vertical = 6.dp)
         ) {
-            val timeAxisWidth = 54.dp
+            val timeAxisWidth = 48.dp
             val viewportWidth = (maxWidth - timeAxisWidth).coerceAtLeast(180.dp)
             val viewportWidthPx = with(density) { viewportWidth.toPx() }
-            val dayColumnWidth = viewportWidth / 3
+            val dayColumnWidth = viewportWidth / VisibleCalendarDayColumns
             val dayColumnWidthPx = with(density) { dayColumnWidth.toPx() }
             val maxHorizontalOffsetPx = ((days.size * dayColumnWidthPx) - viewportWidthPx).coerceAtLeast(0f)
             val clampedHorizontalOffsetPx = horizontalOffsetPx.coerceIn(0f, maxHorizontalOffsetPx)
@@ -141,8 +188,10 @@ internal fun CalendarPanel(
             val visibleAllDayEvents = remember(allDayEvents, visibleStart, visibleEnd) {
                 allDayEvents.filter { item -> overlapsDateRange(item, visibleStart, visibleEnd) }
             }
-            val visibleTimedEventsByDay = remember(timedEventsByDay, visibleDays) {
-                visibleDays.associateWith { day -> timedEventsByDay[day].orEmpty() }
+            val visibleTimedEventPlacementsByDay = remember(timedEventPlacementsByDay, visibleDays) {
+                visibleDays.associateWith { day ->
+                    timedEventPlacementsByDay[day].orEmpty()
+                }
             }
             val horizontalScrollableState = rememberScrollableState { delta ->
                 val previous = horizontalOffsetPx
@@ -157,7 +206,7 @@ internal fun CalendarPanel(
 
             LaunchedEffect(dayColumnWidthPx, hourHeightPx, maxHorizontalOffsetPx) {
                 if (!didInitScroll) {
-                    horizontalOffsetPx = (((todayIndex - 1) * dayColumnWidthPx).coerceIn(0f, maxHorizontalOffsetPx))
+                    horizontalOffsetPx = (((anchorDateIndex - 1) * dayColumnWidthPx).coerceIn(0f, maxHorizontalOffsetPx))
                     val targetHour = (currentMoment.hour - 2).coerceAtLeast(0)
                     verticalScroll.scrollTo((targetHour * hourHeightPx).roundToInt())
                     didInitScroll = true
@@ -170,6 +219,10 @@ internal fun CalendarPanel(
                 pendingDraft = null
             }
 
+            LaunchedEffect(visibleStart) {
+                templateAnchorWeekStart = currentWeekStart(visibleStart)
+            }
+
             Column(modifier = Modifier.fillMaxSize()) {
                 Row(
                     modifier = Modifier
@@ -178,12 +231,44 @@ internal fun CalendarPanel(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(
-                            text = headerMonthDate.format(DateTimeFormatter.ofPattern("MMM yyyy", Locale.ENGLISH)),
-                            style = MaterialTheme.typography.headlineSmall,
-                            fontWeight = FontWeight.Bold,
-                            modifier = Modifier.clickable {
+                    Text(
+                        text = headerMonthDate.format(DateTimeFormatter.ofPattern("yyyy年M月", Locale.CHINA)),
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier
+                            .weight(1f)
+                            .clickable {
+                                DatePickerDialog(
+                                    context,
+                                    { _, year, month, day -> jumpToDate(LocalDate.of(year, month + 1, day)) },
+                                    headerMonthDate.year,
+                                    headerMonthDate.monthValue - 1,
+                                    headerMonthDate.dayOfMonth
+                                ).show()
+                            }
+                    )
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        CalendarHeaderActionButton(
+                            label = when (viewMode) {
+                                CalendarViewMode.TIMELINE -> "时间轴"
+                                CalendarViewMode.WEEK -> "周"
+                                CalendarViewMode.MONTH -> "月"
+                                CalendarViewMode.LIST -> "列表"
+                            },
+                            icon = Icons.Rounded.KeyboardArrowDown,
+                            onClick = { showViewModeMenu = true }
+                        )
+                        CalendarHeaderActionButton(
+                            label = "今天",
+                            onClick = { jumpToDate(currentDate) }
+                        )
+                        CalendarHeaderActionButton(
+                            icon = Icons.Rounded.CalendarMonth,
+                            contentDescription = "选择日期",
+                            onClick = {
                                 DatePickerDialog(
                                     context,
                                     { _, year, month, day -> jumpToDate(LocalDate.of(year, month + 1, day)) },
@@ -193,92 +278,163 @@ internal fun CalendarPanel(
                                 ).show()
                             }
                         )
-                        IconButton(onClick = {
-                            DatePickerDialog(
-                                context,
-                                { _, year, month, day -> jumpToDate(LocalDate.of(year, month + 1, day)) },
-                                headerMonthDate.year,
-                                headerMonthDate.monthValue - 1,
-                                headerMonthDate.dayOfMonth
-                            ).show()
-                        }) {
-                            Icon(Icons.Rounded.CalendarMonth, contentDescription = "选择日期")
+                        CalendarHeaderActionButton(
+                            icon = Icons.Rounded.Add,
+                            contentDescription = "新增日程",
+                            onClick = {
+                                val startAt = currentMoment.withSecond(0).withNano(0).plusMinutes(2)
+                                onCreateEventAt(startAt, startAt.plusMinutes(30))
+                            }
+                        )
+                        CalendarHeaderActionButton(
+                            icon = Icons.Rounded.MoreHoriz,
+                            contentDescription = "更多操作",
+                            onClick = { showActionsMenu = true }
+                        )
+
+                        DropdownMenu(
+                            expanded = showViewModeMenu,
+                            onDismissRequest = { showViewModeMenu = false }
+                        ) {
+                            CalendarViewMode.entries.forEach { mode ->
+                                DropdownMenuItem(
+                                    text = { Text(mode.label) },
+                                    onClick = {
+                                        viewMode = mode
+                                        showViewModeMenu = false
+                                    }
+                                )
+                            }
                         }
-                    }
-                    Row {
-                        IconButton(onClick = {
-                            horizontalOffsetPx = (clampedHorizontalOffsetPx - dayColumnWidthPx).coerceAtLeast(0f)
-                        }) {
-                            Icon(Icons.Rounded.ChevronLeft, contentDescription = "向前查看")
-                        }
-                        IconButton(onClick = {
-                            horizontalOffsetPx = (clampedHorizontalOffsetPx + dayColumnWidthPx).coerceAtMost(maxHorizontalOffsetPx)
-                        }) {
-                            Icon(Icons.Rounded.ChevronRight, contentDescription = "向后查看")
+
+                        DropdownMenu(
+                            expanded = showActionsMenu,
+                            onDismissRequest = { showActionsMenu = false }
+                        ) {
+                            DropdownMenuItem(
+                                text = { Text("批量导入") },
+                                onClick = {
+                                    showActionsMenu = false
+                                    onOpenBatchImport()
+                                }
+                            )
+                            DropdownMenuItem(
+                                text = { Text("周模板") },
+                                onClick = {
+                                    showActionsMenu = false
+                                    templateAnchorWeekStart = currentWeekStart(headerMonthDate)
+                                    showTemplateManager = true
+                                }
+                            )
+                            DropdownMenuItem(
+                                text = { Text("保存本周模板") },
+                                onClick = {
+                                    showActionsMenu = false
+                                    templateAnchorWeekStart = currentWeekStart(headerMonthDate)
+                                    showSaveWeekTemplate = true
+                                }
+                            )
                         }
                     }
                 }
 
-                CalendarHeaderRow(
-                    timeAxisWidth = timeAxisWidth,
-                    viewportWidth = viewportWidth,
-                    dayColumnWidth = dayColumnWidth,
-                    dayColumnWidthPx = dayColumnWidthPx,
-                    days = days,
-                    visibleRange = visibleRange,
-                    currentDate = currentMoment.toLocalDate(),
-                    horizontalOffsetPx = clampedHorizontalOffsetPx,
-                    todayHighlightColor = todayHighlightColor,
-                    todayHighlightTextColor = todayHighlightTextColor,
-                    dragModifier = Modifier.scrollable(horizontalScrollableState, Orientation.Horizontal)
-                )
-                HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.16f))
-                CalendarAllDaySection(
-                    timeAxisWidth = timeAxisWidth,
-                    viewportWidth = viewportWidth,
-                    dayColumnWidth = dayColumnWidth,
-                    dayColumnWidthPx = dayColumnWidthPx,
-                    visibleRange = visibleRange,
-                    horizontalOffsetPx = clampedHorizontalOffsetPx,
-                    events = visibleAllDayEvents,
-                    dayIndexByDate = dayIndexByDate,
-                    dragModifier = Modifier.scrollable(horizontalScrollableState, Orientation.Horizontal),
-                    onOpenDetails = { detailsTarget = it }
-                )
-                HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.16f))
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .weight(1f)
-                ) {
-                    CalendarTimeAxis(
-                        width = timeAxisWidth,
-                        hourHeight = hourHeight,
-                        verticalScroll = verticalScroll,
-                        currentMoment = currentMoment,
-                        showCurrentTime = todayIndex in visibleRange
-                    )
-                    CalendarTimedBoard(
-                        modifier = Modifier
-                            .width(viewportWidth)
-                            .scrollable(horizontalScrollableState, Orientation.Horizontal),
-                        days = days,
-                        visibleRange = visibleRange,
-                        dayColumnWidth = dayColumnWidth,
-                        dayColumnWidthPx = dayColumnWidthPx,
-                        horizontalOffsetPx = clampedHorizontalOffsetPx,
-                        boardHeight = boardHeight,
-                        hourHeight = hourHeight,
-                        hourHeightPx = hourHeightPx,
-                        verticalScroll = verticalScroll,
-                        currentMoment = currentMoment,
-                        eventsByDay = visibleTimedEventsByDay,
-                        dayIndexByDate = dayIndexByDate,
-                        pendingDraft = pendingDraft,
-                        onPendingDraftChange = { pendingDraft = it },
-                        onQuickCreateEvent = onQuickCreateEvent,
-                        onOpenDetails = { detailsTarget = it }
-                    )
+                when (viewMode) {
+                    CalendarViewMode.TIMELINE -> {
+                        CalendarHeaderRow(
+                            timeAxisWidth = timeAxisWidth,
+                            viewportWidth = viewportWidth,
+                            dayColumnWidth = dayColumnWidth,
+                            dayColumnWidthPx = dayColumnWidthPx,
+                            days = days,
+                            visibleRange = visibleRange,
+                            currentDate = currentDate,
+                            horizontalOffsetPx = clampedHorizontalOffsetPx,
+                            todayHighlightColor = todayHighlightColor,
+                            todayHighlightTextColor = todayHighlightTextColor,
+                            dragModifier = Modifier.scrollable(horizontalScrollableState, Orientation.Horizontal)
+                        )
+                        HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.16f))
+                        CalendarAllDaySection(
+                            timeAxisWidth = timeAxisWidth,
+                            viewportWidth = viewportWidth,
+                            dayColumnWidth = dayColumnWidth,
+                            dayColumnWidthPx = dayColumnWidthPx,
+                            visibleRange = visibleRange,
+                            horizontalOffsetPx = clampedHorizontalOffsetPx,
+                            events = visibleAllDayEvents,
+                            dayIndexByDate = dayIndexByDate,
+                            dragModifier = Modifier.scrollable(horizontalScrollableState, Orientation.Horizontal),
+                            onOpenDetails = { detailsTarget = it }
+                        )
+                        HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.16f))
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .weight(1f)
+                        ) {
+                            CalendarTimeAxis(
+                                width = timeAxisWidth,
+                                hourHeight = hourHeight,
+                                verticalScroll = verticalScroll,
+                                currentMoment = currentMoment,
+                                showCurrentTime = currentDateIndex in visibleRange
+                            )
+                            CalendarTimedBoard(
+                                modifier = Modifier
+                                    .width(viewportWidth)
+                                    .scrollable(horizontalScrollableState, Orientation.Horizontal),
+                                days = days,
+                                visibleRange = visibleRange,
+                                dayColumnWidth = dayColumnWidth,
+                                dayColumnWidthPx = dayColumnWidthPx,
+                                horizontalOffsetPx = clampedHorizontalOffsetPx,
+                                boardHeight = boardHeight,
+                                hourHeight = hourHeight,
+                                hourHeightPx = hourHeightPx,
+                                verticalScroll = verticalScroll,
+                                currentMoment = currentMoment,
+                                eventPlacementsByDay = visibleTimedEventPlacementsByDay,
+                                dayIndexByDate = dayIndexByDate,
+                                pendingDraft = pendingDraft,
+                                onPendingDraftChange = { pendingDraft = it },
+                                onQuickCreateEvent = onQuickCreateEvent,
+                                onOpenDetails = { detailsTarget = it },
+                                currentDayIndex = currentDateIndex
+                            )
+                        }
+                    }
+
+                    CalendarViewMode.WEEK -> {
+                        CalendarSimpleListView(
+                            title = "本周安排",
+                            items = events.filter {
+                                val startDate = it.startAtMillis?.let(::millisToDate) ?: millisToDate(it.dueAtMillis)
+                                val weekStart = currentDate.minusDays((currentDate.dayOfWeek.value - 1).toLong())
+                                val weekEnd = weekStart.plusDays(6)
+                                !startDate.isBefore(weekStart) && !startDate.isAfter(weekEnd)
+                            },
+                            onOpenDetails = { detailsTarget = it }
+                        )
+                    }
+
+                    CalendarViewMode.MONTH -> {
+                        CalendarSimpleListView(
+                            title = "本月安排",
+                            items = events.filter {
+                                val startDate = it.startAtMillis?.let(::millisToDate) ?: millisToDate(it.dueAtMillis)
+                                startDate.year == headerMonthDate.year && startDate.monthValue == headerMonthDate.monthValue
+                            },
+                            onOpenDetails = { detailsTarget = it }
+                        )
+                    }
+
+                    CalendarViewMode.LIST -> {
+                        CalendarSimpleListView(
+                            title = "全部日程",
+                            items = events.sortedBy { it.startAtMillis ?: it.dueAtMillis },
+                            onOpenDetails = { detailsTarget = it }
+                        )
+                    }
                 }
             }
         }
@@ -297,6 +453,395 @@ internal fun CalendarPanel(
                 onDeleteEvent(item)
             }
         )
+    }
+
+    if (showTemplateManager) {
+        CalendarTemplateManagerDialog(
+            templates = scheduleTemplates,
+            anchorWeekStart = templateAnchorWeekStart,
+            onDismiss = { showTemplateManager = false },
+            onApplyTemplate = onApplyTemplateToWeek,
+            onGenerateSemester = onGenerateSemesterFromTemplate,
+            onDeleteTemplate = onDeleteTemplate
+        )
+    }
+
+    if (showSaveWeekTemplate) {
+        SaveWeekTemplateDialog(
+            weekStart = templateAnchorWeekStart,
+            onDismiss = { showSaveWeekTemplate = false },
+            onSave = onSaveWeekAsTemplate
+        )
+    }
+}
+
+@Composable
+private fun CalendarSimpleListView(
+    title: String,
+    items: List<TodoItem>,
+    onOpenDetails: (TodoItem) -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(top = 12.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        Text(
+            text = title,
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier.padding(horizontal = 8.dp)
+        )
+        if (items.isEmpty()) {
+            Surface(
+                shape = RoundedCornerShape(20.dp),
+                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f)
+            ) {
+                Text(
+                    text = "当前没有日程。",
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(18.dp),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        } else {
+            items.forEach { item ->
+                Surface(
+                    modifier = Modifier.clickable { onOpenDetails(item) },
+                    shape = RoundedCornerShape(18.dp),
+                    color = (item.accentColorHex?.let(::colorFromHex) ?: MaterialTheme.colorScheme.primary).copy(alpha = 0.12f)
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(14.dp),
+                        verticalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Text(
+                            text = item.title,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Text(
+                            text = if (item.allDay) formatDateRange(item) else formatDateTimeRange(item),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                        item.location.takeIf { it.isNotBlank() }?.let {
+                            Text(
+                                text = it,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                style = MaterialTheme.typography.bodySmall
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SaveWeekTemplateDialog(
+    weekStart: LocalDate,
+    onDismiss: () -> Unit,
+    onSave: suspend (String, String, LocalDate) -> String?
+) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    var name by remember(weekStart) { mutableStateOf("第${weekStart.monthValue}月周模板 ${weekStart}") }
+    var selectedType by remember { mutableStateOf(ScheduleTemplateType.WEEKLY) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("保存本周模板") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text(
+                    text = "将 ${weekStart} 这一周内的日程保存为模板，后续可复制到任意周，或直接生成整学期循环日程。",
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                OutlinedTextField(
+                    value = name,
+                    onValueChange = { name = it },
+                    label = { Text("模板名称") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    listOf(
+                        ScheduleTemplateType.WEEKLY to "课程表模板",
+                        ScheduleTemplateType.DUTY_WEEK to "值班周模板",
+                        ScheduleTemplateType.SEMESTER to "学期模板"
+                    ).forEach { (type, label) ->
+                        CalendarHeaderActionButton(
+                            label = label,
+                            onClick = { selectedType = type }
+                        )
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = {
+                scope.launch {
+                    val message = onSave(name, selectedType, weekStart)
+                    if (message == null) {
+                        Toast.makeText(context, "模板已保存", Toast.LENGTH_SHORT).show()
+                        onDismiss()
+                    } else {
+                        Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+                    }
+                }
+            }) {
+                Text("保存")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("取消")
+            }
+        }
+    )
+}
+
+@Composable
+private fun CalendarTemplateManagerDialog(
+    templates: List<ScheduleTemplate>,
+    anchorWeekStart: LocalDate,
+    onDismiss: () -> Unit,
+    onApplyTemplate: suspend (ScheduleTemplate, LocalDate) -> String?,
+    onGenerateSemester: suspend (ScheduleTemplate, LocalDate, LocalDate) -> String?,
+    onDeleteTemplate: suspend (Long) -> String?
+) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    var applyDate by remember { mutableStateOf(anchorWeekStart) }
+    var showSemesterDialogFor by remember { mutableStateOf<ScheduleTemplate?>(null) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("周模板与学期模板") },
+        text = {
+            Column(
+                modifier = Modifier.verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                OutlinedButton(
+                    onClick = {
+                        DatePickerDialog(
+                            context,
+                            { _, year, month, day -> applyDate = LocalDate.of(year, month + 1, day) },
+                            applyDate.year,
+                            applyDate.monthValue - 1,
+                            applyDate.dayOfMonth
+                        ).show()
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("目标周起始日期：$applyDate")
+                }
+
+                if (templates.isEmpty()) {
+                    Text("当前还没有已保存的课程表或值班模板。", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                } else {
+                    templates.forEach { template ->
+                        Surface(
+                            shape = RoundedCornerShape(18.dp),
+                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.32f)
+                        ) {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(14.dp),
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Text(template.name, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+                                Text(
+                                    when (template.templateType) {
+                                        ScheduleTemplateType.DUTY_WEEK -> "值班周模板"
+                                        ScheduleTemplateType.SEMESTER -> "学期模板"
+                                        else -> "课程表周模板"
+                                    },
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    style = MaterialTheme.typography.bodySmall
+                                )
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .horizontalScroll(rememberScrollState()),
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    OutlinedButton(onClick = {
+                                        scope.launch {
+                                            val message = onApplyTemplate(template, applyDate)
+                                            if (message == null) {
+                                                Toast.makeText(context, "已复制模板到目标周", Toast.LENGTH_SHORT).show()
+                                                onDismiss()
+                                            } else {
+                                                Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+                                            }
+                                        }
+                                    }) {
+                                        Text("复制到目标周")
+                                    }
+                                    OutlinedButton(onClick = { showSemesterDialogFor = template }) {
+                                        Text("生成整学期")
+                                    }
+                                    OutlinedButton(onClick = {
+                                        scope.launch {
+                                            val message = onDeleteTemplate(template.id)
+                                            if (message == null) {
+                                                Toast.makeText(context, "模板已删除", Toast.LENGTH_SHORT).show()
+                                            } else {
+                                                Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+                                            }
+                                        }
+                                    }) {
+                                        Text("删除")
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text("关闭")
+            }
+        },
+        dismissButton = {}
+    )
+
+    showSemesterDialogFor?.let { template ->
+        SemesterGeneratorDialog(
+            template = template,
+            initialWeekStart = applyDate,
+            onDismiss = { showSemesterDialogFor = null },
+            onGenerate = onGenerateSemester
+        )
+    }
+}
+
+@Composable
+private fun SemesterGeneratorDialog(
+    template: ScheduleTemplate,
+    initialWeekStart: LocalDate,
+    onDismiss: () -> Unit,
+    onGenerate: suspend (ScheduleTemplate, LocalDate, LocalDate) -> String?
+) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    var firstWeekStart by remember(initialWeekStart) { mutableStateOf(initialWeekStart) }
+    var endDate by remember(initialWeekStart) { mutableStateOf(initialWeekStart.plusDays(112)) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("学期级循环生成") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text(
+                    text = "基于模板“${template.name}”生成整学期的每周循环日程。",
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                OutlinedButton(
+                    onClick = {
+                        DatePickerDialog(
+                            context,
+                            { _, year, month, day -> firstWeekStart = LocalDate.of(year, month + 1, day) },
+                            firstWeekStart.year,
+                            firstWeekStart.monthValue - 1,
+                            firstWeekStart.dayOfMonth
+                        ).show()
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("首周起始日期：$firstWeekStart")
+                }
+                OutlinedButton(
+                    onClick = {
+                        DatePickerDialog(
+                            context,
+                            { _, year, month, day -> endDate = LocalDate.of(year, month + 1, day) },
+                            endDate.year,
+                            endDate.monthValue - 1,
+                            endDate.dayOfMonth
+                        ).show()
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("学期结束日期：$endDate")
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = {
+                scope.launch {
+                    val message = onGenerate(template, firstWeekStart, endDate)
+                    if (message == null) {
+                        Toast.makeText(context, "已生成学期循环日程", Toast.LENGTH_SHORT).show()
+                        onDismiss()
+                    } else {
+                        Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+                    }
+                }
+            }) {
+                Text("生成")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("取消")
+            }
+        }
+    )
+}
+
+@Composable
+private fun CalendarHeaderActionButton(
+    label: String? = null,
+    icon: androidx.compose.ui.graphics.vector.ImageVector? = null,
+    contentDescription: String? = label,
+    onClick: () -> Unit
+) {
+    Surface(
+        shape = RoundedCornerShape(16.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.75f),
+        modifier = Modifier.clickable(onClick = onClick)
+    ) {
+        Row(
+            modifier = Modifier.padding(
+                horizontal = if (label == null) 10.dp else 12.dp,
+                vertical = 7.dp
+            ),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            icon?.let {
+                Icon(
+                    imageVector = it,
+                    contentDescription = contentDescription,
+                    tint = MaterialTheme.colorScheme.primary
+                )
+            }
+            label?.let {
+                Text(
+                    text = it,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
+        }
     }
 }
 
@@ -382,7 +927,7 @@ private fun CalendarAllDaySection(
     dragModifier: Modifier,
     onOpenDetails: (TodoItem) -> Unit
 ) {
-    val rowCount = events.size.coerceAtLeast(1)
+    val rowCount = events.size.coerceIn(1, 3)
     val density = LocalDensity.current
     val rowHeightPx = with(density) { 28.dp.roundToPx() }
 
@@ -402,6 +947,7 @@ private fun CalendarAllDaySection(
                 .then(dragModifier)
         ) {
             events.forEachIndexed { rowIndex, item ->
+                if (rowIndex >= rowCount) return@forEachIndexed
                 val startDate = item.startAtMillis?.let(::millisToDate) ?: return@forEachIndexed
                 val endDateInclusive = item.endAtMillis?.let(::millisToDate)?.minusDays(1) ?: startDate
                 val startIndex = (dayIndexByDate[startDate] ?: visibleRange.first).coerceAtLeast(visibleRange.first)
@@ -507,15 +1053,18 @@ private fun CalendarTimedBoard(
     hourHeightPx: Float,
     verticalScroll: androidx.compose.foundation.ScrollState,
     currentMoment: LocalDateTime,
-    eventsByDay: Map<LocalDate, List<TodoItem>>,
+    eventPlacementsByDay: Map<LocalDate, List<TimedEventPlacement>>,
     dayIndexByDate: Map<LocalDate, Int>,
     pendingDraft: PendingCalendarDraft?,
     onPendingDraftChange: (PendingCalendarDraft?) -> Unit,
     onQuickCreateEvent: (LocalDateTime, LocalDateTime) -> Unit,
-    onOpenDetails: (TodoItem) -> Unit
+    onOpenDetails: (TodoItem) -> Unit,
+    currentDayIndex: Int
 ) {
     val density = LocalDensity.current
     val outline = MaterialTheme.colorScheme.outline
+    val latestHorizontalOffsetPx by rememberUpdatedState(horizontalOffsetPx)
+    val latestPendingDraft by rememberUpdatedState(pendingDraft)
 
     Box(
         modifier = modifier
@@ -526,9 +1075,9 @@ private fun CalendarTimedBoard(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(boardHeight)
-                .pointerInput(visibleRange, horizontalOffsetPx, pendingDraft) {
+                .pointerInput(days, dayColumnWidthPx, hourHeightPx) {
                     detectTapGestures { tapOffset ->
-                        val dayIndex = ((tapOffset.x + horizontalOffsetPx) / dayColumnWidthPx)
+                        val dayIndex = ((tapOffset.x + latestHorizontalOffsetPx) / dayColumnWidthPx)
                             .toInt()
                             .coerceIn(0, days.lastIndex)
                         val rawMinutes = ((tapOffset.y / hourHeightPx) * 60f).roundToInt().coerceIn(0, 23 * 60 + 59)
@@ -539,7 +1088,7 @@ private fun CalendarTimedBoard(
                         )
                         val endAt = startAt.plusMinutes(30)
                         val nextDraft = PendingCalendarDraft(startAt, endAt)
-                        if (pendingDraft == nextDraft) {
+                        if (latestPendingDraft == nextDraft) {
                             onQuickCreateEvent(startAt, endAt)
                             onPendingDraftChange(null)
                         } else {
@@ -575,17 +1124,17 @@ private fun CalendarTimedBoard(
 
             visibleRange.forEach { dayIndex ->
                 val day = days[dayIndex]
-                val placements = layoutTimedEvents(eventsByDay[day].orEmpty())
+                val placements = eventPlacementsByDay[day].orEmpty()
                 placements.forEach { placement ->
                     TimedEventCard(
-                        item = placement.item,
+                        segment = placement.segment,
                         placement = placement,
                         dayIndex = dayIndex,
                         dayColumnWidth = dayColumnWidth,
                         dayColumnWidthPx = dayColumnWidthPx,
                         horizontalOffsetPx = horizontalOffsetPx,
                         hourHeight = hourHeight,
-                        onClick = { onOpenDetails(placement.item) }
+                        onClick = { onOpenDetails(placement.segment.item) }
                     )
                 }
             }
@@ -603,7 +1152,7 @@ private fun CalendarTimedBoard(
             }
 
             CurrentTimeLine(
-                days = days,
+                currentDayIndex = currentDayIndex,
                 currentMoment = currentMoment,
                 dayColumnWidthPx = dayColumnWidthPx,
                 horizontalOffsetPx = horizontalOffsetPx,
@@ -652,7 +1201,7 @@ private fun PendingDraftCard(
 
 @Composable
 private fun TimedEventCard(
-    item: TodoItem,
+    segment: TimedEventSegment,
     placement: TimedEventPlacement,
     dayIndex: Int,
     dayColumnWidth: Dp,
@@ -661,10 +1210,9 @@ private fun TimedEventCard(
     hourHeight: Dp,
     onClick: () -> Unit
 ) {
-    val start = item.startAtMillis ?: return
-    val end = item.endAtMillis ?: return
-    val startDateTime = reminderAtMillisToDateTime(start)
-    val endDateTime = reminderAtMillisToDateTime(end)
+    val item = segment.item
+    val startDateTime = reminderAtMillisToDateTime(segment.startMillis)
+    val endDateTime = reminderAtMillisToDateTime(segment.endMillis)
     val startMinutes = startDateTime.hour * 60 + startDateTime.minute
     val durationMinutes = java.time.Duration.between(startDateTime, endDateTime).toMinutes().coerceAtLeast(20)
     val tint = item.accentColorHex?.let(::colorFromHex) ?: MaterialTheme.colorScheme.primary
@@ -717,7 +1265,7 @@ private fun TimedEventCard(
 
 @Composable
 private fun CurrentTimeLine(
-    days: List<LocalDate>,
+    currentDayIndex: Int,
     currentMoment: LocalDateTime,
     dayColumnWidthPx: Float,
     horizontalOffsetPx: Float,
@@ -726,11 +1274,10 @@ private fun CurrentTimeLine(
 ) {
     val minutes = currentMoment.hour * 60 + currentMoment.minute
     val y = (minutes / 60f) * hourHeightPx
-    val todayIndex = days.indexOf(currentMoment.toLocalDate())
 
     Canvas(modifier = Modifier.fillMaxSize()) {
-        if (todayIndex < 0 || y !in 0f..boardHeightPx) return@Canvas
-        val splitX = todayIndex * dayColumnWidthPx - horizontalOffsetPx
+        if (currentDayIndex < 0 || y !in 0f..boardHeightPx) return@Canvas
+        val splitX = currentDayIndex * dayColumnWidthPx - horizontalOffsetPx
         val lightEnd = splitX.coerceIn(0f, size.width)
         val darkStart = splitX.coerceIn(0f, size.width)
 
@@ -822,8 +1369,14 @@ private data class PendingCalendarDraft(
     val endAt: LocalDateTime
 )
 
-private data class TimedEventPlacement(
+private data class TimedEventSegment(
     val item: TodoItem,
+    val startMillis: Long,
+    val endMillis: Long
+)
+
+private data class TimedEventPlacement(
+    val segment: TimedEventSegment,
     val columnIndex: Int,
     val columnCount: Int
 )
@@ -848,19 +1401,19 @@ private fun dayLeftPx(
     return (dayIndex * dayColumnWidthPx - horizontalOffsetPx).roundToInt()
 }
 
-private fun layoutTimedEvents(events: List<TodoItem>): List<TimedEventPlacement> {
-    if (events.isEmpty()) return emptyList()
-    val sorted = events.sortedBy { it.startAtMillis ?: it.dueAtMillis }
+private fun layoutTimedEventSegments(segments: List<TimedEventSegment>): List<TimedEventPlacement> {
+    if (segments.isEmpty()) return emptyList()
+    val sorted = segments.sortedBy { it.startMillis }
     val result = mutableListOf<TimedEventPlacement>()
-    var cluster = mutableListOf<Pair<TodoItem, Int>>()
-    var active = mutableListOf<Pair<TodoItem, Int>>()
+    var cluster = mutableListOf<Pair<TimedEventSegment, Int>>()
+    var active = mutableListOf<Pair<TimedEventSegment, Int>>()
     var clusterMaxColumns = 1
     var clusterEnd = Long.MIN_VALUE
 
     fun flushCluster() {
         if (cluster.isEmpty()) return
-        cluster.forEach { (item, column) ->
-            result += TimedEventPlacement(item, column, clusterMaxColumns)
+        cluster.forEach { (segment, column) ->
+            result += TimedEventPlacement(segment, column, clusterMaxColumns)
         }
         cluster = mutableListOf()
         active = mutableListOf()
@@ -868,25 +1421,58 @@ private fun layoutTimedEvents(events: List<TodoItem>): List<TimedEventPlacement>
         clusterEnd = Long.MIN_VALUE
     }
 
-    sorted.forEach { item ->
-        val start = item.startAtMillis ?: item.dueAtMillis
-        val end = item.endAtMillis ?: (start + 30 * 60_000L)
+    sorted.forEach { segment ->
+        val start = segment.startMillis
+        val end = segment.endMillis
         if (cluster.isNotEmpty() && start >= clusterEnd) flushCluster()
         active = active.filterTo(mutableListOf()) { activeItem ->
-            val activeEnd = activeItem.first.endAtMillis
-                ?: ((activeItem.first.startAtMillis ?: activeItem.first.dueAtMillis) + 30 * 60_000L)
-            activeEnd > start
+            activeItem.first.endMillis > start
         }
         val usedColumns = active.map { it.second }.toSet()
         var column = 0
         while (column in usedColumns) column += 1
-        cluster += item to column
-        active += item to column
+        cluster += segment to column
+        active += segment to column
         clusterMaxColumns = max(clusterMaxColumns, active.size)
         clusterEnd = max(clusterEnd, end)
     }
     flushCluster()
     return result
+}
+
+private fun buildTimedEventSegmentsByDay(events: List<TodoItem>): Map<LocalDate, List<TimedEventSegment>> {
+    if (events.isEmpty()) return emptyMap()
+    val segmentsByDay = linkedMapOf<LocalDate, MutableList<TimedEventSegment>>()
+    events.forEach { item ->
+        val itemStart = item.startAtMillis ?: item.dueAtMillis
+        val itemEnd = item.endAtMillis ?: (itemStart + 30 * 60_000L)
+        val startDate = millisToDate(itemStart)
+        val endDate = millisToDate(itemEnd - 1)
+        var dayCursor = startDate
+        while (!dayCursor.isAfter(endDate)) {
+            item.toSegmentForDay(dayCursor)?.let { segment ->
+                segmentsByDay.getOrPut(dayCursor) { mutableListOf() }.add(segment)
+            }
+            dayCursor = dayCursor.plusDays(1)
+        }
+    }
+    return segmentsByDay.mapValues { (_, segments) -> segments.sortedBy { it.startMillis } }
+}
+
+private fun TodoItem.toSegmentForDay(day: LocalDate): TimedEventSegment? {
+    val itemStart = startAtMillis ?: dueAtMillis
+    val itemEnd = endAtMillis ?: (itemStart + 30 * 60_000L)
+    val zoneId = ZoneId.systemDefault()
+    val dayStart = day.atStartOfDay(zoneId).toInstant().toEpochMilli()
+    val dayEnd = day.plusDays(1).atStartOfDay(zoneId).toInstant().toEpochMilli()
+    if (itemEnd <= dayStart || itemStart >= dayEnd) return null
+    val segmentStart = max(itemStart, dayStart)
+    val segmentEnd = max(segmentStart + 60_000L, minOf(itemEnd, dayEnd))
+    return TimedEventSegment(
+        item = this,
+        startMillis = segmentStart,
+        endMillis = segmentEnd
+    )
 }
 
 private fun overlapsDateRange(
@@ -940,6 +1526,10 @@ private fun formatClockTime(dateTime: LocalDateTime): String {
 
 private fun snapToQuarterHour(totalMinutes: Int): Int {
     return ((totalMinutes + 7) / 15) * 15
+}
+
+private fun currentWeekStart(date: LocalDate): LocalDate {
+    return date.minusDays((date.dayOfWeek.value - 1).toLong())
 }
 
 private fun java.time.DayOfWeek.shortLabel(): String = when (this) {

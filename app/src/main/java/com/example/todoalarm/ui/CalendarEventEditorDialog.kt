@@ -21,6 +21,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -29,6 +31,7 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -39,11 +42,15 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.example.todoalarm.data.CalendarEventDraft
 import com.example.todoalarm.data.RecurrenceConfig
+import com.example.todoalarm.data.ReminderDeliveryMode
+import com.example.todoalarm.data.RecurrencePreviewResult
 import com.example.todoalarm.data.RecurrenceType
 import com.example.todoalarm.data.TodoItem
+import com.example.todoalarm.data.previewCalendarRecurrence
 import com.example.todoalarm.data.storageStringToWeekdays
 import com.example.todoalarm.data.toEpochMillis
 import java.time.DayOfWeek
@@ -51,7 +58,26 @@ import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
 
-private val ReminderMinuteOptions = listOf(5, 10, 15, 30, 60, 120)
+private data class ReminderLeadTimeOption(
+    val minutes: Int,
+    val label: String
+)
+
+private enum class ReminderTimeInputMode {
+    RELATIVE,
+    ABSOLUTE
+}
+
+private val ReminderLeadTimeOptions = listOf(
+    ReminderLeadTimeOption(5, "提前 5 分钟"),
+    ReminderLeadTimeOption(10, "提前 10 分钟"),
+    ReminderLeadTimeOption(15, "提前 15 分钟"),
+    ReminderLeadTimeOption(30, "提前 30 分钟"),
+    ReminderLeadTimeOption(60, "提前 1 小时"),
+    ReminderLeadTimeOption(120, "提前 2 小时"),
+    ReminderLeadTimeOption(24 * 60, "提前 1 天"),
+    ReminderLeadTimeOption(48 * 60, "提前 2 天")
+)
 private val CalendarColorOptions = listOf(
     "#4E87E1",
     "#4CB782",
@@ -69,6 +95,7 @@ internal fun CalendarEventEditorDialog(
     initialDraft: CalendarEventDraft? = null,
     defaultRingEnabled: Boolean,
     defaultVibrateEnabled: Boolean,
+    defaultReminderDeliveryMode: ReminderDeliveryMode,
     onDismiss: () -> Unit,
     onDelete: () -> Unit,
     onConfirm: (CalendarEventDraft) -> Unit
@@ -95,8 +122,30 @@ internal fun CalendarEventEditorDialog(
     var reminderMinutesBefore by remember(initialEvent?.id, seedDraft) {
         mutableStateOf(existingReminderOffsetMinutes(initialEvent) ?: seedDraft?.reminderMinutesBefore ?: 15)
     }
+    var reminderTimeInputMode by remember(initialEvent?.id, seedDraft) {
+        mutableStateOf(ReminderTimeInputMode.RELATIVE)
+    }
+    var reminderAt by remember(initialEvent?.id, seedDraft) {
+        mutableStateOf(
+            initialEvent?.reminderAtMillis?.let(::reminderAtMillisToDateTime)
+                ?: seedDraft?.let { draft ->
+                    draft.reminderMinutesBefore?.let { minutes ->
+                        val anchor = if (draft.allDay) {
+                            LocalDateTime.of(draft.startAt.toLocalDate(), LocalTime.of(9, 0))
+                        } else {
+                            draft.startAt
+                        }
+                        anchor.minusMinutes(minutes.toLong())
+                    }
+                }
+                ?: startAt.minusMinutes(reminderMinutesBefore.toLong())
+        )
+    }
     var ringEnabled by remember(initialEvent?.id, seedDraft) { mutableStateOf(initialEvent?.ringEnabled ?: seedDraft?.ringEnabled ?: defaultRingEnabled) }
     var vibrateEnabled by remember(initialEvent?.id, seedDraft) { mutableStateOf(initialEvent?.vibrateEnabled ?: seedDraft?.vibrateEnabled ?: defaultVibrateEnabled) }
+    var reminderDeliveryMode by remember(initialEvent?.id, seedDraft) {
+        mutableStateOf(initialEvent?.reminderDeliveryModeEnum ?: seedDraft?.reminderDeliveryMode ?: defaultReminderDeliveryMode)
+    }
     var recurringEnabled by remember(initialEvent?.id, seedDraft) { mutableStateOf(initialEvent?.isRecurring == true || seedDraft?.recurrence?.enabled == true) }
     var recurrenceType by remember(initialEvent?.id, seedDraft) {
         mutableStateOf(initialEvent?.recurrenceTypeEnum ?: seedDraft?.recurrence?.type ?: RecurrenceType.DAILY)
@@ -115,6 +164,7 @@ internal fun CalendarEventEditorDialog(
     var recurrenceEndDate by remember(initialEvent?.id, seedDraft) {
         mutableStateOf(initialEvent?.recurrenceEndDate ?: seedDraft?.recurrence?.endDate ?: startAt.toLocalDate().plusDays(90))
     }
+    var recurrencePreview by remember { mutableStateOf<RecurrencePreviewResult?>(null) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -160,6 +210,17 @@ internal fun CalendarEventEditorDialog(
                         )
                     }
                     Switch(checked = allDay, onCheckedChange = { allDay = it })
+                }
+
+                LaunchedEffect(startAt, allDay, reminderEnabled, reminderMinutesBefore, reminderTimeInputMode) {
+                    if (!reminderEnabled) return@LaunchedEffect
+                    if (reminderTimeInputMode != ReminderTimeInputMode.RELATIVE) return@LaunchedEffect
+                    val anchor = if (allDay) {
+                        LocalDateTime.of(startAt.toLocalDate(), LocalTime.of(9, 0))
+                    } else {
+                        startAt
+                    }
+                    reminderAt = anchor.minusMinutes(reminderMinutesBefore.toLong())
                 }
 
                 if (allDay) {
@@ -246,20 +307,95 @@ internal fun CalendarEventEditorDialog(
                 }
 
                 if (reminderEnabled) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .horizontalScroll(rememberScrollState()),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        ReminderMinuteOptions.forEach { minutes ->
-                            FilterChip(
-                                selected = reminderMinutesBefore == minutes,
-                                onClick = { reminderMinutesBefore = minutes },
-                                label = { Text("提前 $minutes 分钟") }
-                            )
+                    var leadTimeExpanded by remember { mutableStateOf(false) }
+                    var deliveryModeExpanded by remember { mutableStateOf(false) }
+
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text(
+                            text = "提醒时间",
+                            style = MaterialTheme.typography.labelLarge,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Box(modifier = Modifier.fillMaxWidth()) {
+                            OutlinedButton(
+                                onClick = { leadTimeExpanded = true },
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Text(reminderLeadTimeLabel(reminderMinutesBefore))
+                            }
+                            DropdownMenu(
+                                expanded = leadTimeExpanded,
+                                onDismissRequest = { leadTimeExpanded = false }
+                            ) {
+                                ReminderLeadTimeOptions.forEach { option ->
+                                    DropdownMenuItem(
+                                        text = {
+                                            Text(
+                                                text = option.label,
+                                                maxLines = 1,
+                                                overflow = TextOverflow.Ellipsis
+                                            )
+                                        },
+                                        onClick = {
+                                            reminderTimeInputMode = ReminderTimeInputMode.RELATIVE
+                                            reminderMinutesBefore = option.minutes
+                                            leadTimeExpanded = false
+                                        }
+                                    )
+                                }
+                            }
+                        }
+                        OutlinedButton(
+                            onClick = {
+                                showDateTimePicker(context, reminderAt) { picked ->
+                                    reminderTimeInputMode = ReminderTimeInputMode.ABSOLUTE
+                                    reminderAt = picked
+                                    val anchor = if (allDay) {
+                                        LocalDateTime.of(startAt.toLocalDate(), LocalTime.of(9, 0))
+                                    } else {
+                                        startAt
+                                    }
+                                    reminderMinutesBefore = ((anchor.toEpochMillis() - picked.toEpochMillis()) / 60_000L)
+                                        .toInt()
+                                        .coerceAtLeast(0)
+                                }
+                            },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text("直接设置提醒时刻：${formatLocalDateTime(reminderAt)}")
                         }
                     }
+
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text(
+                            text = "提醒方式",
+                            style = MaterialTheme.typography.labelLarge,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Box(modifier = Modifier.fillMaxWidth()) {
+                            OutlinedButton(
+                                onClick = { deliveryModeExpanded = true },
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Text(reminderDeliveryMode.label)
+                            }
+                            DropdownMenu(
+                                expanded = deliveryModeExpanded,
+                                onDismissRequest = { deliveryModeExpanded = false }
+                            ) {
+                                ReminderDeliveryMode.entries.forEach { mode ->
+                                    DropdownMenuItem(
+                                        text = { Text(mode.label) },
+                                        onClick = {
+                                            reminderDeliveryMode = mode
+                                            deliveryModeExpanded = false
+                                        }
+                                    )
+                                }
+                            }
+                        }
+                    }
+
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -344,12 +480,52 @@ internal fun CalendarEventEditorDialog(
                     ) {
                         Text("循环截止日期：$recurrenceEndDate")
                     }
+                    OutlinedButton(
+                        onClick = {
+                            recurrencePreview = previewCalendarRecurrence(
+                                CalendarEventDraft(
+                                    title = title,
+                                    notes = notes,
+                                    location = location,
+                                    startAt = startAt,
+                                    endAt = endAt,
+                                    allDay = allDay,
+                                    accentColorHex = accentColorHex,
+                                    reminderMinutesBefore = if (reminderEnabled) reminderMinutesBefore else null,
+                                    ringEnabled = ringEnabled,
+                                    vibrateEnabled = vibrateEnabled,
+                                    reminderDeliveryMode = reminderDeliveryMode,
+                                    recurrence = RecurrenceConfig(
+                                        enabled = true,
+                                        type = recurrenceType,
+                                        weeklyDays = weeklyDays,
+                                        endDate = recurrenceEndDate
+                                    )
+                                )
+                            )
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("预览循环生成")
+                    }
                 }
             }
         },
         confirmButton = {
             Button(
                 onClick = {
+                    val finalReminderMinutesBefore = if (reminderEnabled) {
+                        val anchor = if (allDay) {
+                            LocalDateTime.of(startAt.toLocalDate(), LocalTime.of(9, 0))
+                        } else {
+                            startAt
+                        }
+                        ((anchor.toEpochMillis() - reminderAt.toEpochMillis()) / 60_000L)
+                            .toInt()
+                            .coerceAtLeast(0)
+                    } else {
+                        null
+                    }
                     onConfirm(
                         CalendarEventDraft(
                             title = title,
@@ -359,9 +535,10 @@ internal fun CalendarEventEditorDialog(
                             endAt = endAt,
                             allDay = allDay,
                             accentColorHex = accentColorHex,
-                            reminderMinutesBefore = if (reminderEnabled) reminderMinutesBefore else null,
+                            reminderMinutesBefore = finalReminderMinutesBefore,
                             ringEnabled = ringEnabled,
                             vibrateEnabled = vibrateEnabled,
+                            reminderDeliveryMode = reminderDeliveryMode,
                             recurrence = RecurrenceConfig(
                                 enabled = recurringEnabled,
                                 type = recurrenceType,
@@ -388,6 +565,14 @@ internal fun CalendarEventEditorDialog(
             }
         }
     )
+
+    recurrencePreview?.let { preview ->
+        RecurrencePreviewDialog(
+            title = "循环日程预览",
+            preview = preview,
+            onDismiss = { recurrencePreview = null }
+        )
+    }
 }
 
 private fun existingReminderOffsetMinutes(item: TodoItem?): Int? {
@@ -402,6 +587,14 @@ private fun existingReminderOffsetMinutes(item: TodoItem?): Int? {
         reminderAtMillisToDateTime(item.startAtMillis ?: item.dueAtMillis)
     }
     return ((anchor.toEpochMillis() - reminderAt) / 60_000L).toInt().coerceAtLeast(0)
+}
+
+private fun reminderLeadTimeLabel(minutes: Int): String {
+    return ReminderLeadTimeOptions.firstOrNull { it.minutes == minutes }?.label ?: when {
+        minutes % (24 * 60) == 0 -> "提前 ${minutes / (24 * 60)} 天"
+        minutes % 60 == 0 -> "提前 ${minutes / 60} 小时"
+        else -> "提前 $minutes 分钟"
+    }
 }
 
 private fun showDateTimePicker(

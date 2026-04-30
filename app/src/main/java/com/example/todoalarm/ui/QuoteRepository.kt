@@ -11,7 +11,6 @@ import org.json.JSONObject
 import java.io.File
 import java.net.HttpURLConnection
 import java.net.URL
-import kotlin.random.Random
 
 class QuoteRepository(context: Context) {
     private val appContext = context.applicationContext
@@ -46,41 +45,113 @@ class QuoteRepository(context: Context) {
     }
 
     private suspend fun fetchRemoteQuotes(): List<String> = supervisorScope {
-        val collected = linkedSetOf<String>()
-        repeat(MAX_REMOTE_ROUNDS) {
-            val batch = List(REMOTE_BATCH_SIZE) {
-                async(Dispatchers.IO) { fetchSingleQuote() }
-            }.awaitAll()
-            batch.filterNotNull().forEach(collected::add)
-            if (collected.size >= TARGET_REMOTE_QUOTE_COUNT) {
-                return@supervisorScope collected.toList()
-            }
-        }
-        collected.toList()
+        val fetched = listOf(
+            async(Dispatchers.IO) { fetchYulukuQuotes() },
+            async(Dispatchers.IO) { fetchGeYanQuotes() }
+        ).awaitAll().flatten()
+        normalizeQuotes(fetched)
     }
 
-    private fun fetchSingleQuote(): String? {
-        val categories = REMOTE_CATEGORIES.shuffled(Random(System.nanoTime())).take(3)
-        val query = categories.joinToString("&") { "c=$it" }
-        val url = URL("https://v1.hitokoto.cn/?$query&encode=json")
+    private fun fetchYulukuQuotes(): List<String> {
+        val discoveredArticles = YULUKU_INDEX_PAGES
+            .flatMap(::discoverYulukuArticles)
+            .distinct()
+            .take(YULUKU_DISCOVER_LIMIT)
+
+        val articleUrls = (YULUKU_CURATED_ARTICLES + discoveredArticles)
+            .distinct()
+            .take(MAX_ARTICLES_PER_SOURCE)
+
+        return articleUrls.flatMap(::extractYulukuArticleQuotes)
+    }
+
+    private fun fetchGeYanQuotes(): List<String> {
+        val discoveredArticles = GEYAN_INDEX_PAGES
+            .flatMap(::discoverGeYanArticles)
+            .distinct()
+            .take(GEYAN_DISCOVER_LIMIT)
+
+        val articleUrls = (GEYAN_CURATED_ARTICLES + discoveredArticles)
+            .distinct()
+            .take(MAX_ARTICLES_PER_SOURCE)
+
+        return articleUrls.flatMap(::extractGeYanArticleQuotes)
+    }
+
+    private fun discoverYulukuArticles(indexUrl: String): List<String> {
+        val html = fetchText(indexUrl) ?: return emptyList()
+        return YULUKU_LINK_PATTERN.findAll(html)
+            .mapNotNull { match ->
+                val title = decodeEntities(stripTags(match.groupValues[2]))
+                if (!isPreferredArticleTitle(title)) return@mapNotNull null
+                toAbsoluteUrl(indexUrl, match.groupValues[1])
+            }
+            .toList()
+    }
+
+    private fun discoverGeYanArticles(indexUrl: String): List<String> {
+        val html = fetchText(indexUrl) ?: return emptyList()
+        return GEYAN_LINK_PATTERN.findAll(html)
+            .mapNotNull { match ->
+                val title = decodeEntities(stripTags(match.groupValues[2]))
+                if (!isPreferredArticleTitle(title)) return@mapNotNull null
+                toAbsoluteUrl(indexUrl, match.groupValues[1])
+            }
+            .toList()
+    }
+
+    private fun extractYulukuArticleQuotes(articleUrl: String): List<String> {
+        val html = fetchText(articleUrl) ?: return emptyList()
+        return extractParagraphQuotes(html)
+    }
+
+    private fun extractGeYanArticleQuotes(articleUrl: String): List<String> {
+        val html = fetchText(articleUrl) ?: return emptyList()
+        return extractParagraphQuotes(html)
+    }
+
+    private fun fetchText(url: String): String? {
         return runCatching {
-            val connection = (url.openConnection() as HttpURLConnection).apply {
-                connectTimeout = 1500
-                readTimeout = 1800
+            val connection = (URL(url).openConnection() as HttpURLConnection).apply {
+                connectTimeout = 3500
+                readTimeout = 5000
                 requestMethod = "GET"
                 useCaches = false
+                setRequestProperty("User-Agent", USER_AGENT)
+                setRequestProperty("Accept-Language", "zh-CN,zh;q=0.9")
             }
-            connection.inputStream.bufferedReader().use { reader ->
-                val json = JSONObject(reader.readText())
-                sanitizeQuote(json.optString("hitokoto"))
-            }
+            connection.inputStream.bufferedReader(Charsets.UTF_8).use { it.readText() }
         }.getOrNull()
+    }
+
+    private fun extractParagraphQuotes(html: String): List<String> {
+        return PARAGRAPH_PATTERN.findAll(html)
+            .map { match -> sanitizeQuote(stripTags(match.groupValues[1])) }
+            .filter(::looksLikeQuoteLine)
+            .toList()
+    }
+
+    private fun looksLikeQuoteLine(text: String): Boolean {
+        if (text.length !in 8..56) return false
+        if (text.contains("http", ignoreCase = true)) return false
+        if (text.contains("ICP备")) return false
+        if (text.contains("Copyright", ignoreCase = true)) return false
+        if (text.any { it == '<' || it == '>' || it == '{' || it == '}' }) return false
+        return BOILERPLATE_PREFIXES.none { text.startsWith(it) }
+    }
+
+    private fun isPreferredArticleTitle(title: String): Boolean {
+        if (title.isBlank()) return false
+        return ARTICLE_TITLE_EXCLUDES.none(title::contains)
     }
 
     private fun readCache(): QuoteCache {
         if (!cacheFile.exists()) return QuoteCache()
         return runCatching {
             val json = JSONObject(cacheFile.readText())
+            if (json.optInt("version", 0) != CACHE_SCHEMA_VERSION) {
+                return@runCatching QuoteCache()
+            }
             val quotes = json.optJSONArray("quotes")
                 ?.let(::jsonArrayToList)
                 .orEmpty()
@@ -93,6 +164,7 @@ class QuoteRepository(context: Context) {
 
     private fun writeCache(cache: QuoteCache) {
         val json = JSONObject().apply {
+            put("version", CACHE_SCHEMA_VERSION)
             put("updatedAt", cache.updatedAt)
             put("quotes", JSONArray(cache.quotes))
         }
@@ -109,27 +181,134 @@ class QuoteRepository(context: Context) {
 
     private fun normalizeQuotes(input: List<String>): List<String> {
         val seen = linkedSetOf<String>()
-        input.map(::sanitizeQuote)
-            .filter { it.length in 6..56 }
+        input.asSequence()
+            .map(::sanitizeQuote)
+            .filter(::looksLikeQuoteLine)
             .forEach(seen::add)
         return seen.toList()
     }
 
     private fun sanitizeQuote(raw: String?): String {
-        return raw.orEmpty()
+        return decodeEntities(raw.orEmpty())
+            .replace(Regex("^\\s*\\d+\\s*[、.．:]\\s*"), "")
+            .replace(Regex("^\\s*[（(]\\d+[)）]\\s*"), "")
             .replace(Regex("\\s+"), " ")
-            .trim()
+            .trim(' ', '\t', '\r', '\n', '“', '”', '"')
+    }
+
+    private fun stripTags(raw: String): String {
+        return raw.replace(Regex("<[^>]+>"), " ")
+    }
+
+    private fun decodeEntities(raw: String): String {
+        return raw
+            .replace("&nbsp;", " ")
+            .replace("&#160;", " ")
+            .replace("&ldquo;", "“")
+            .replace("&rdquo;", "”")
+            .replace("&lsquo;", "‘")
+            .replace("&rsquo;", "’")
+            .replace("&mdash;", "—")
+            .replace("&hellip;", "…")
+            .replace("&quot;", "\"")
+            .replace("&amp;", "&")
+            .replace("&lt;", "<")
+            .replace("&gt;", ">")
+    }
+
+    private fun toAbsoluteUrl(baseUrl: String, href: String): String {
+        return URL(URL(baseUrl), href).toString()
     }
 
     companion object {
         private const val CACHE_FILE_NAME = "payki_quotes_cache.json"
+        private const val CACHE_SCHEMA_VERSION = 3
         private const val REFRESH_INTERVAL_MS = 12 * 60 * 60 * 1000L
         private const val MIN_CACHE_SIZE = 72
-        private const val MAX_CACHE_SIZE = 240
-        private const val TARGET_REMOTE_QUOTE_COUNT = 18
-        private const val REMOTE_BATCH_SIZE = 6
-        private const val MAX_REMOTE_ROUNDS = 3
-        private val REMOTE_CATEGORIES = listOf("d", "h", "i", "k", "l")
+        private const val MAX_CACHE_SIZE = 280
+        private const val MAX_ARTICLES_PER_SOURCE = 12
+        private const val YULUKU_DISCOVER_LIMIT = 10
+        private const val GEYAN_DISCOVER_LIMIT = 10
+        private const val USER_AGENT =
+            "Mozilla/5.0 (Linux; Android 14; PaykiTodo) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Mobile Safari/537.36"
+
+        private val PARAGRAPH_PATTERN = Regex(
+            "<p[^>]*>(.*?)</p>",
+            setOf(RegexOption.IGNORE_CASE, RegexOption.DOT_MATCHES_ALL)
+        )
+        private val YULUKU_LINK_PATTERN = Regex(
+            "<a\\s+href=\"(/lizhi/\\d+/)\"\\s+title=\"([^\"]+)\"",
+            RegexOption.IGNORE_CASE
+        )
+        private val GEYAN_LINK_PATTERN = Regex(
+            "<a\\s+href=\"(/(?:lizhimingyan|mingyanjingju)/\\d+\\.html)\"[^>]*class=\"title\"[^>]*>(.*?)</a>",
+            setOf(RegexOption.IGNORE_CASE, RegexOption.DOT_MATCHES_ALL)
+        )
+
+        private val ARTICLE_TITLE_EXCLUDES = listOf(
+            "口号",
+            "标语",
+            "宣传",
+            "小组",
+            "单位",
+            "中考",
+            "高考",
+            "个性签名",
+            "宝妈",
+            "男人",
+            "团队",
+            "押韵"
+        )
+
+        private val BOILERPLATE_PREFIXES = listOf(
+            "大家平时在寻找",
+            "今天语录库整理了",
+            "希望能让您节省时间",
+            "以下是",
+            "更多相关",
+            "上一篇",
+            "下一篇"
+        )
+
+        private val YULUKU_INDEX_PAGES = listOf(
+            "https://www.yuluku.com/lizhi/",
+            "https://www.yuluku.com/lizhi/index2/"
+        )
+
+        private val GEYAN_INDEX_PAGES = listOf(
+            "https://geyan.ip38.com/lizhimingyan/",
+            "https://geyan.ip38.com/mingyanjingju/"
+        )
+
+        private val YULUKU_CURATED_ARTICLES = listOf(
+            "https://www.yuluku.com/lizhi/2379/",
+            "https://www.yuluku.com/lizhi/2377/",
+            "https://www.yuluku.com/lizhi/2378/",
+            "https://www.yuluku.com/lizhi/2376/",
+            "https://www.yuluku.com/lizhi/2375/",
+            "https://www.yuluku.com/lizhi/2372/",
+            "https://www.yuluku.com/lizhi/2370/",
+            "https://www.yuluku.com/lizhi/2371/",
+            "https://www.yuluku.com/lizhi/2366/",
+            "https://www.yuluku.com/lizhi/2363/",
+            "https://www.yuluku.com/lizhi/2357/",
+            "https://www.yuluku.com/lizhi/2355/"
+        )
+
+        private val GEYAN_CURATED_ARTICLES = listOf(
+            "https://geyan.ip38.com/mingyanjingju/1509344864.html",
+            "https://geyan.ip38.com/mingyanjingju/1509344862.html",
+            "https://geyan.ip38.com/mingyanjingju/1509344861.html",
+            "https://geyan.ip38.com/mingyanjingju/1509344859.html",
+            "https://geyan.ip38.com/mingyanjingju/1509344858.html",
+            "https://geyan.ip38.com/mingyanjingju/1509344857.html",
+            "https://geyan.ip38.com/mingyanjingju/1509344856.html",
+            "https://geyan.ip38.com/mingyanjingju/1509344854.html",
+            "https://geyan.ip38.com/mingyanjingju/1509344853.html",
+            "https://geyan.ip38.com/lizhimingyan/1509350606.html",
+            "https://geyan.ip38.com/lizhimingyan/1509350602.html",
+            "https://geyan.ip38.com/lizhimingyan/1509350599.html"
+        )
 
         val seedQuotes: List<String> = listOf(
             "先把今天最重要的一步做出来，后面的路自然会亮。",

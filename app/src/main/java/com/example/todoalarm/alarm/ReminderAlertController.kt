@@ -3,6 +3,8 @@ package com.example.todoalarm.alarm
 import android.content.Context
 import android.media.AudioAttributes
 import android.media.MediaPlayer
+import android.media.RingtoneManager
+import android.net.Uri
 import android.os.Build
 import android.os.VibrationEffect
 import android.os.Vibrator
@@ -19,7 +21,7 @@ internal class ReminderAlertController(
     fun start(todoItem: TodoItem) {
         stop()
         if (todoItem.ringEnabled) {
-            playSingleClip()
+            playConfiguredClip()
         }
         if (todoItem.vibrateEnabled) {
             ensureVibrator().vibrate(VibrationEffect.createWaveform(longArrayOf(0, 260, 100, 260), -1))
@@ -42,7 +44,18 @@ internal class ReminderAlertController(
         stop()
     }
 
-    private fun playSingleClip() {
+    private fun playConfiguredClip() {
+        val settings = (context.applicationContext as com.example.todoalarm.TodoApplication).settingsStore.currentSettings()
+        val toneUri = settings.reminderToneUri
+        if (!toneUri.isNullOrBlank()) {
+            if (playFromUri(Uri.parse(toneUri))) {
+                return
+            }
+        }
+        playBuiltInClip()
+    }
+
+    private fun playBuiltInClip() {
         val afd = runCatching { context.resources.openRawResourceFd(R.raw.remind_vocal) }.getOrNull() ?: return
         val player = MediaPlayer()
         runCatching {
@@ -77,6 +90,44 @@ internal class ReminderAlertController(
         }.also {
             afd.close()
         }
+    }
+
+    private fun playFromUri(uri: Uri): Boolean {
+        val player = MediaPlayer()
+        return runCatching {
+            player.setAudioAttributes(
+                AudioAttributes.Builder()
+                    .setUsage(AudioAttributes.USAGE_ALARM)
+                    .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                    .build()
+            )
+            player.isLooping = false
+            player.setDataSource(context, uri)
+            player.setOnCompletionListener {
+                it.reset()
+                it.release()
+                if (mediaPlayer === it) {
+                    mediaPlayer = null
+                }
+            }
+            player.setOnErrorListener { mp, _, _ ->
+                mp.reset()
+                mp.release()
+                if (mediaPlayer === mp) {
+                    mediaPlayer = null
+                }
+                true
+            }
+            player.prepare()
+            player.start()
+            mediaPlayer = player
+        }.fold(
+            onSuccess = { true },
+            onFailure = {
+                player.release()
+                false
+            }
+        )
     }
 
     private fun ensureVibrator(): Vibrator {

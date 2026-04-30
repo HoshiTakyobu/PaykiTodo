@@ -1,6 +1,7 @@
 package com.example.todoalarm.ui
 
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -9,6 +10,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -22,14 +24,20 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.Article
 import androidx.compose.material.icons.rounded.Alarm
+import androidx.compose.material.icons.rounded.BugReport
+import androidx.compose.material.icons.rounded.LibraryMusic
 import androidx.compose.material.icons.rounded.Notifications
 import androidx.compose.material.icons.rounded.Security
 import androidx.compose.material.icons.rounded.TaskAlt
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -52,8 +60,11 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.core.content.pm.PackageInfoCompat
 import com.example.todoalarm.data.AppSettings
+import com.example.todoalarm.data.ReminderChainLog
+import com.example.todoalarm.data.ReminderDeliveryMode
 import kotlinx.coroutines.launch
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun SettingsPanel(
     settings: AppSettings,
@@ -67,6 +78,12 @@ fun SettingsPanel(
     onRequestIgnoreBatteryOptimization: () -> Unit,
     onRequestAccessibilityService: () -> Unit,
     onDefaultSnoozeChange: (Int) -> Unit,
+    onDefaultCalendarReminderModeChange: (ReminderDeliveryMode) -> Unit,
+    onUseBuiltInReminderTone: () -> Unit,
+    onPickSystemReminderTone: () -> Unit,
+    reminderChainLogs: List<ReminderChainLog>,
+    onRunReminderChainTest: suspend (Int) -> String?,
+    onClearReminderDiagnostics: suspend () -> Unit,
     onPickBackupDirectory: () -> Unit,
     onExportBackup: () -> Unit,
     onImportBackup: () -> Unit,
@@ -76,6 +93,8 @@ fun SettingsPanel(
 ) {
     var showSnoozeDialog by remember { mutableStateOf(false) }
     var showCrashDialog by remember(crashLog) { mutableStateOf(false) }
+    var showReminderTestDialog by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
 
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
         PrefCard("提醒权限") {
@@ -124,6 +143,108 @@ fun SettingsPanel(
             )
             OutlinedButton(onClick = { showSnoozeDialog = true }) {
                 Text("当前：${normalizeSnooze(defaultSnooze)} 分钟")
+            }
+        }
+
+        PrefCard("日历提醒默认方式") {
+            Text(
+                text = "新建日历日程时，默认采用这里的提醒方式。当前建议是通知栏提醒，并保留响铃和震动。",
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                CalendarReminderModeButton(
+                    label = ReminderDeliveryMode.NOTIFICATION.label,
+                    selected = settings.defaultCalendarReminderMode == ReminderDeliveryMode.NOTIFICATION,
+                    onClick = { onDefaultCalendarReminderModeChange(ReminderDeliveryMode.NOTIFICATION) }
+                )
+                CalendarReminderModeButton(
+                    label = ReminderDeliveryMode.FULLSCREEN.label,
+                    selected = settings.defaultCalendarReminderMode == ReminderDeliveryMode.FULLSCREEN,
+                    onClick = { onDefaultCalendarReminderModeChange(ReminderDeliveryMode.FULLSCREEN) }
+                )
+            }
+        }
+
+        PrefCard("提醒提示音") {
+            Text(
+                text = "当前提醒提示音可以使用内置音效，也可以从系统通知提示音中选择一个。",
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            PermissionRow(
+                icon = Icons.Rounded.LibraryMusic,
+                label = settings.reminderToneName ?: "当前：内置提醒音",
+                granted = true,
+                onClick = onPickSystemReminderTone
+            )
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                OutlinedButton(onClick = onUseBuiltInReminderTone) {
+                    Text("使用内置提醒音")
+                }
+                OutlinedButton(onClick = onPickSystemReminderTone) {
+                    Text("选择系统提示音")
+                }
+            }
+        }
+
+        PrefCard("提醒链路诊断") {
+            Text(
+                text = "可以快速创建一条测试提醒，并查看最近的提醒派发链路，减少反复等一分钟的调试成本。",
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                OutlinedButton(onClick = { showReminderTestDialog = true }) {
+                    Icon(Icons.Rounded.BugReport, contentDescription = null)
+                    Text("提醒链路测试")
+                }
+                OutlinedButton(onClick = {
+                    scope.launch { onClearReminderDiagnostics() }
+                }) {
+                    Text("清空诊断")
+                }
+            }
+            if (reminderChainLogs.isEmpty()) {
+                Text(
+                    text = "当前还没有诊断记录。",
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    style = MaterialTheme.typography.bodySmall
+                )
+            } else {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    reminderChainLogs.take(8).forEach { log ->
+                        Surface(
+                            shape = RoundedCornerShape(18.dp),
+                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f)
+                        ) {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(12.dp),
+                                verticalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                Text(
+                                    text = "${log.stage} · ${log.status}",
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                                Text(
+                                    text = "todoId=${log.todoId} · ${log.source}",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                log.message?.takeIf { it.isNotBlank() }?.let {
+                                    Text(
+                                        text = it,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }
 
@@ -224,6 +345,79 @@ fun SettingsPanel(
             onDismiss = { showCrashDialog = false },
             onCopy = onCopyCrashLog
         )
+    }
+
+    if (showReminderTestDialog) {
+        ReminderChainTestDialog(
+            onDismiss = { showReminderTestDialog = false },
+            onRun = { seconds ->
+                scope.launch {
+                    onRunReminderChainTest(seconds)
+                    showReminderTestDialog = false
+                }
+            }
+        )
+    }
+}
+
+@Composable
+private fun ReminderChainTestDialog(
+    onDismiss: () -> Unit,
+    onRun: (Int) -> Unit
+) {
+    var secondsText by remember { mutableStateOf("15") }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("提醒链路测试") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text(
+                    text = "创建一条短延迟测试任务，用于验证通知、前台服务、全屏提醒和无障碍回退链路。",
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                OutlinedTextField(
+                    value = secondsText,
+                    onValueChange = { secondsText = it.filter(Char::isDigit) },
+                    label = { Text("多少秒后提醒") },
+                    singleLine = true
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = { onRun(secondsText.toIntOrNull()?.coerceIn(5, 120) ?: 15) }) {
+                Text("开始测试")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("取消")
+            }
+        }
+    )
+}
+
+@Composable
+private fun CalendarReminderModeButton(
+    label: String,
+    selected: Boolean,
+    onClick: () -> Unit
+) {
+    Button(
+        onClick = onClick,
+        colors = ButtonDefaults.buttonColors(
+            containerColor = if (selected) {
+                MaterialTheme.colorScheme.primary
+            } else {
+                MaterialTheme.colorScheme.surfaceVariant
+            },
+            contentColor = if (selected) {
+                MaterialTheme.colorScheme.onPrimary
+            } else {
+                MaterialTheme.colorScheme.onSurface
+            }
+        )
+    ) {
+        Text(label)
     }
 }
 

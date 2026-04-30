@@ -8,6 +8,7 @@ object ActiveReminderStore {
     private const val KEY_UPDATED_AT = "updated_at"
     private const val KEY_HANDOFF_TODO_ID = "handoff_todo_id"
     private const val KEY_HANDOFF_UNTIL = "handoff_until"
+    private const val ACTIVE_SESSION_TIMEOUT_MS = 24 * 60 * 60 * 1000L
 
     fun markActive(context: Context, todoId: Long) {
         context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
@@ -18,8 +19,25 @@ object ActiveReminderStore {
     }
 
     fun getActiveTodoId(context: Context): Long {
-        return context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-            .getLong(KEY_TODO_ID, -1L)
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        val todoId = prefs.getLong(KEY_TODO_ID, -1L)
+        if (todoId <= 0L) return -1L
+
+        val updatedAt = prefs.getLong(KEY_UPDATED_AT, 0L)
+        val now = System.currentTimeMillis()
+        if (updatedAt <= 0L || now - updatedAt > ACTIVE_SESSION_TIMEOUT_MS) {
+            clear(context)
+            return -1L
+        }
+        return todoId
+    }
+
+    fun refreshActive(context: Context, todoId: Long) {
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        if (prefs.getLong(KEY_TODO_ID, -1L) != todoId) return
+        prefs.edit()
+            .putLong(KEY_UPDATED_AT, System.currentTimeMillis())
+            .apply()
     }
 
     fun clear(context: Context) {

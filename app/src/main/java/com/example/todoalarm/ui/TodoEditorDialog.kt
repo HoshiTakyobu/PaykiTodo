@@ -32,10 +32,12 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.todoalarm.data.RecurrenceConfig
+import com.example.todoalarm.data.RecurrencePreviewResult
 import com.example.todoalarm.data.RecurrenceType
 import com.example.todoalarm.data.TaskGroup
 import com.example.todoalarm.data.TodoDraft
 import com.example.todoalarm.data.TodoItem
+import com.example.todoalarm.data.previewTodoRecurrence
 import com.example.todoalarm.data.storageStringToWeekdays
 import java.time.DayOfWeek
 import java.time.LocalDate
@@ -81,7 +83,7 @@ fun TodoEditorDialog(
         )
     }
     var reminderAt by remember(initialTodo?.id) {
-        mutableStateOf(initialTodo?.reminderAtMillis?.let(::reminderAtMillisToDateTime) ?: now.plusMinutes(30))
+        mutableStateOf(initialTodo?.reminderAtMillis?.let(::reminderAtMillisToDateTime) ?: dueAt)
     }
     var ringEnabled by remember(initialTodo?.id) {
         mutableStateOf(initialTodo?.ringEnabled ?: defaultRingEnabled)
@@ -105,6 +107,7 @@ fun TodoEditorDialog(
     var recurrenceEndDate by remember(initialTodo?.id) {
         mutableStateOf(initialTodo?.recurrenceEndDate ?: dueAt.toLocalDate().plusDays(90))
     }
+    var recurrencePreview by remember { mutableStateOf<RecurrencePreviewResult?>(null) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -196,7 +199,14 @@ fun TodoEditorDialog(
 
                 if (hasDueDate) {
                     OutlinedButton(
-                        onClick = { showDateTimePicker(context, dueAt) { dueAt = it } },
+                        onClick = {
+                            showDateTimePicker(context, dueAt) { picked ->
+                                dueAt = picked
+                                if (reminderEnabled && initialTodo == null) {
+                                    reminderAt = picked
+                                }
+                            }
+                        },
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Text("DDL：${formatLocalDateTime(dueAt)}")
@@ -228,7 +238,12 @@ fun TodoEditorDialog(
                         }
                         Switch(
                             checked = reminderEnabled,
-                            onCheckedChange = { reminderEnabled = it }
+                            onCheckedChange = {
+                                reminderEnabled = it
+                                if (it && initialTodo == null) {
+                                    reminderAt = dueAt
+                                }
+                            }
                         )
                     }
 
@@ -337,6 +352,30 @@ fun TodoEditorDialog(
                         ) {
                             Text("循环截止日期：$recurrenceEndDate")
                         }
+                        OutlinedButton(
+                            onClick = {
+                                recurrencePreview = previewTodoRecurrence(
+                                    TodoDraft(
+                                        title = title,
+                                        notes = notes,
+                                        dueAt = dueAt,
+                                        reminderAt = if (reminderEnabled) reminderAt else null,
+                                        groupId = groupId,
+                                        ringEnabled = ringEnabled,
+                                        vibrateEnabled = vibrateEnabled,
+                                        recurrence = RecurrenceConfig(
+                                            enabled = true,
+                                            type = recurrenceType,
+                                            weeklyDays = weeklyDays,
+                                            endDate = recurrenceEndDate
+                                        )
+                                    )
+                                )
+                            },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text("预览循环生成")
+                        }
                     }
                 }
             }
@@ -379,6 +418,14 @@ fun TodoEditorDialog(
             }
         }
     )
+
+    recurrencePreview?.let { preview ->
+        RecurrencePreviewDialog(
+            title = "循环任务预览",
+            preview = preview,
+            onDismiss = { recurrencePreview = null }
+        )
+    }
 }
 
 @Composable

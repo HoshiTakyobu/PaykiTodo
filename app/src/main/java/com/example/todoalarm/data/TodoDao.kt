@@ -70,6 +70,32 @@ interface TodoDao {
         SELECT * FROM todo_items
         WHERE completed = 0
         AND canceled = 0
+        AND reminderEnabled = 1
+        AND reminderAtMillis IS NOT NULL
+        AND reminderAtMillis <= :now
+        ORDER BY reminderAtMillis ASC
+        """
+    )
+    suspend fun getDueReminderItems(now: Long): List<TodoItem>
+
+    @Query(
+        """
+        SELECT * FROM todo_items
+        WHERE completed = 0
+        AND canceled = 0
+        AND reminderEnabled = 1
+        AND reminderAtMillis IS NOT NULL
+        ORDER BY reminderAtMillis ASC
+        LIMIT 1
+        """
+    )
+    suspend fun getNextReminderItem(): TodoItem?
+
+    @Query(
+        """
+        SELECT * FROM todo_items
+        WHERE completed = 0
+        AND canceled = 0
         AND itemType = 'TODO'
         AND missed = 0
         AND dueAtMillis < :missBefore
@@ -131,4 +157,47 @@ interface TodoDao {
 
     @Query("DELETE FROM task_groups")
     suspend fun clearGroups()
+
+    @Query(
+        """
+        SELECT * FROM reminder_chain_logs
+        ORDER BY createdAtMillis DESC
+        LIMIT :limit
+        """
+    )
+    suspend fun getRecentReminderChainLogs(limit: Int): List<ReminderChainLog>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertReminderChainLog(log: ReminderChainLog): Long
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertReminderChainLogs(logs: List<ReminderChainLog>): List<Long>
+
+    @Query("DELETE FROM reminder_chain_logs")
+    suspend fun clearReminderChainLogs()
+
+    @Query(
+        """
+        DELETE FROM reminder_chain_logs
+        WHERE id NOT IN (
+            SELECT id FROM reminder_chain_logs ORDER BY createdAtMillis DESC LIMIT :keepCount
+        )
+        """
+    )
+    suspend fun trimReminderChainLogs(keepCount: Int)
+
+    @Query("SELECT * FROM schedule_templates ORDER BY updatedAtMillis DESC, createdAtMillis DESC")
+    suspend fun getScheduleTemplates(): List<ScheduleTemplate>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertScheduleTemplate(template: ScheduleTemplate): Long
+
+    @Update
+    suspend fun updateScheduleTemplate(template: ScheduleTemplate)
+
+    @Query("DELETE FROM schedule_templates WHERE id = :templateId")
+    suspend fun deleteScheduleTemplate(templateId: Long)
+
+    @Query("DELETE FROM schedule_templates")
+    suspend fun clearScheduleTemplates()
 }

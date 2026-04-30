@@ -12,7 +12,9 @@ import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.os.Parcelable
 import android.os.PowerManager
+import android.media.RingtoneManager
 import android.provider.Settings
 import android.widget.Toast
 import androidx.activity.ComponentActivity
@@ -29,6 +31,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.todoalarm.CrashLogger
 import com.example.todoalarm.TodoApplication
 import com.example.todoalarm.accessibility.ReminderAccessibilityService
+import com.example.todoalarm.alarm.ActiveReminderStore
+import com.example.todoalarm.alarm.AlarmScheduler
 import com.example.todoalarm.ui.theme.TodoAlarmTheme
 import kotlinx.coroutines.launch
 
@@ -48,6 +52,8 @@ class MainActivity : ComponentActivity() {
     private val viewModel: TodoViewModel by viewModels()
     private var permissions by mutableStateOf(PermissionSnapshot())
     private var lastCrashLog by mutableStateOf<String?>(null)
+    private var lastReminderRoutingTodoId: Long = -1L
+    private var lastReminderRoutingAt: Long = 0L
 
     private val notificationPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
@@ -87,15 +93,29 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    private val ringtonePickerLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        val uri = result.data?.parcelableExtraCompat(RingtoneManager.EXTRA_RINGTONE_PICKED_URI, Uri::class.java)
+        if (uri != null) {
+            val ringtone = RingtoneManager.getRingtone(this, uri)
+            val title = ringtone?.getTitle(this)
+            viewModel.updateReminderTone(uri.toString(), title)
+            Toast.makeText(this, "提醒铃声已更新", Toast.LENGTH_SHORT).show()
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         lastCrashLog = CrashLogger.readLastCrash(this)
         refreshPermissions()
 
-        if (!lastCrashLog.isNullOrBlank()) {
+        if (!CrashLogger.readPendingCrash(this).isNullOrBlank()) {
+            CrashLogger.markCrashNoticeShown(this)
             Toast.makeText(this, "检测到上次异常退出，可在设置页查看崩溃日志。", Toast.LENGTH_LONG).show()
         }
+        maybeRouteToReminder()
 
         setContent {
             val uiState = viewModel.uiState.collectAsStateWithLifecycle().value
@@ -111,6 +131,7 @@ class MainActivity : ComponentActivity() {
                     onRequestAccessibilityService = ::openAccessibilitySettings,
                     onAddTodo = viewModel::addTodo,
                     onAddCalendarEvent = viewModel::addCalendarEvent,
+                    onImportCalendarEvents = viewModel::importCalendarEvents,
                     onUpdateTodo = viewModel::updateTodo,
                     onUpdateCalendarEvent = viewModel::updateCalendarEvent,
                     onDeleteTodo = viewModel::deleteTodo,
@@ -125,6 +146,26 @@ class MainActivity : ComponentActivity() {
                     onThemeModeChange = viewModel::updateThemeMode,
                     onNextQuote = viewModel::showNextQuote,
                     onDefaultSnoozeChange = viewModel::updateDefaultSnooze,
+                    onDefaultCalendarReminderModeChange = viewModel::updateDefaultCalendarReminderMode,
+                    onUseBuiltInReminderTone = {
+                        viewModel.useBuiltInReminderTone()
+                        Toast.makeText(this, "已切换为内置提醒音", Toast.LENGTH_SHORT).show()
+                    },
+                    onPickSystemReminderTone = ::openReminderTonePicker,
+                    onRunReminderChainTest = { seconds -> viewModel.runReminderChainTest(seconds) },
+                    onClearReminderDiagnostics = { viewModel.clearReminderDiagnostics() },
+                    onSaveWeekAsScheduleTemplate = { name, type, weekStart ->
+                        viewModel.saveWeekAsScheduleTemplate(name, type, weekStart)
+                    },
+                    onApplyScheduleTemplateToWeek = { template, weekStart ->
+                        viewModel.applyScheduleTemplateToWeek(template, weekStart)
+                    },
+                    onGenerateSemesterScheduleFromTemplate = { template, firstWeekStart, endDate ->
+                        viewModel.generateSemesterScheduleFromTemplate(template, firstWeekStart, endDate)
+                    },
+                    onDeleteScheduleTemplate = { templateId ->
+                        viewModel.deleteScheduleTemplate(templateId)
+                    },
                     onPickBackupDirectory = { backupDirectoryLauncher.launch(null) },
                     onExportBackup = { exportBackupLauncher.launch("PaykiTodo-backup.json") },
                     onImportBackup = { importBackupLauncher.launch(arrayOf("application/json")) },
@@ -136,8 +177,16 @@ class MainActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
+        CrashLogger.markLaunchSuccessful(this)
         refreshPermissions()
         viewModel.refreshTaskStates()
+        maybeRouteToReminder()
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        maybeRouteToReminder()
     }
 
     private fun refreshPermissions() {
@@ -231,6 +280,18 @@ class MainActivity : ComponentActivity() {
         startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
     }
 
+    private fun openReminderTonePicker() {
+        val existingUri = viewModel.uiState.value.settings.reminderToneUri?.let(Uri::parse)
+        val intent = Intent(RingtoneManager.ACTION_RINGTONE_PICKER).apply {
+            putExtra(RingtoneManager.EXTRA_RINGTONE_TYPE, RingtoneManager.TYPE_NOTIFICATION)
+            putExtra(RingtoneManager.EXTRA_RINGTONE_TITLE, "选择通知提示音")
+            putExtra(RingtoneManager.EXTRA_RINGTONE_SHOW_DEFAULT, true)
+            putExtra(RingtoneManager.EXTRA_RINGTONE_SHOW_SILENT, false)
+            putExtra(RingtoneManager.EXTRA_RINGTONE_EXISTING_URI, existingUri)
+        }
+        ringtonePickerLauncher.launch(intent)
+    }
+
     private fun copyCrashLog() {
         val crashLog = lastCrashLog ?: return
         val clipboard = getSystemService(ClipboardManager::class.java)
@@ -254,5 +315,39 @@ class MainActivity : ComponentActivity() {
 
         val expected = ComponentName(this, ReminderAccessibilityService::class.java).flattenToString()
         return enabledServices.split(':').any { it.equals(expected, ignoreCase = true) }
+    }
+
+    private fun maybeRouteToReminder() {
+        val explicitTodoId = intent?.getLongExtra(AlarmScheduler.EXTRA_TODO_ID, -1L) ?: -1L
+        val activeTodoId = ActiveReminderStore.getActiveTodoId(this)
+        val targetTodoId = when {
+            explicitTodoId > 0L -> explicitTodoId
+            activeTodoId > 0L -> activeTodoId
+            else -> -1L
+        }
+        if (targetTodoId <= 0L) {
+            lastReminderRoutingTodoId = -1L
+            return
+        }
+
+        val now = System.currentTimeMillis()
+        if (lastReminderRoutingTodoId == targetTodoId && now - lastReminderRoutingAt < 1_500L) {
+            return
+        }
+        lastReminderRoutingTodoId = targetTodoId
+        lastReminderRoutingAt = now
+        if (explicitTodoId > 0L) {
+            setIntent(Intent(intent).apply { removeExtra(AlarmScheduler.EXTRA_TODO_ID) })
+        }
+        startActivity(ReminderActivity.createIntent(this, targetTodoId))
+    }
+
+    private fun <T : Parcelable> Intent.parcelableExtraCompat(key: String, clazz: Class<T>): T? {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            getParcelableExtra(key, clazz)
+        } else {
+            @Suppress("DEPRECATION")
+            getParcelableExtra(key)
+        }
     }
 }

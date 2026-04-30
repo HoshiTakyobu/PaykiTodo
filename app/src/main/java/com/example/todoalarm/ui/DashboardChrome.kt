@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.offset
@@ -32,6 +33,7 @@ import androidx.compose.material.icons.rounded.History
 import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.LightMode
 import androidx.compose.material.icons.rounded.Menu
+import androidx.compose.material.icons.rounded.PostAdd
 import androidx.compose.material.icons.rounded.ExpandLess
 import androidx.compose.material.icons.rounded.ExpandMore
 import androidx.compose.material.icons.rounded.Folder
@@ -78,10 +80,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.todoalarm.R
 import com.example.todoalarm.data.CalendarEventDraft
+import com.example.todoalarm.data.ReminderDeliveryMode
+import com.example.todoalarm.data.ScheduleTemplate
 import com.example.todoalarm.data.TaskGroup
 import com.example.todoalarm.data.ThemeMode
 import com.example.todoalarm.data.TodoItem
 import com.example.todoalarm.ui.theme.PaykiGreetingFontFamily
+import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
 
@@ -154,7 +159,7 @@ internal fun DashboardDrawer(
                     Surface(shape = CircleShape, color = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)) {
                         Box(Modifier.size(52.dp), contentAlignment = Alignment.Center) {
                             Image(
-                                painter = painterResource(id = R.drawable.ic_launcher_foreground),
+                                painter = painterResource(id = R.drawable.ic_launcher_art),
                                 contentDescription = "应用图标",
                                 modifier = Modifier.size(38.dp),
                                 contentScale = ContentScale.Fit
@@ -226,7 +231,8 @@ internal fun DashboardDrawer(
 @Composable
 internal fun DashboardTopBar(
     title: String,
-    onMenu: () -> Unit
+    onMenu: () -> Unit,
+    actions: @Composable RowScope.() -> Unit = {}
 ) {
     TopAppBar(
         colors = TopAppBarDefaults.topAppBarColors(
@@ -249,8 +255,40 @@ internal fun DashboardTopBar(
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSurface
             )
-        }
+        },
+        actions = actions
     )
+}
+
+@Composable
+internal fun TopBarActionPill(
+    label: String,
+    onClick: () -> Unit
+) {
+    Surface(
+        modifier = Modifier.clickable(onClick = onClick),
+        shape = RoundedCornerShape(16.dp),
+        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = Icons.Rounded.PostAdd,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(18.dp)
+            )
+            Text(
+                text = label,
+                color = MaterialTheme.colorScheme.primary,
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.Bold
+            )
+        }
+    }
 }
 
 @Composable
@@ -284,10 +322,20 @@ internal fun DashboardBody(
     onRequestAccessibilityService: () -> Unit,
     onNextQuote: () -> Unit,
     onDefaultSnoozeChange: (Int) -> Unit,
+    onDefaultCalendarReminderModeChange: (ReminderDeliveryMode) -> Unit,
+    onUseBuiltInReminderTone: () -> Unit,
+    onPickSystemReminderTone: () -> Unit,
+    onRunReminderChainTest: suspend (Int) -> String?,
+    onClearReminderDiagnostics: suspend () -> Unit,
+    onSaveWeekAsScheduleTemplate: suspend (String, String, LocalDate) -> String?,
+    onApplyScheduleTemplateToWeek: suspend (ScheduleTemplate, LocalDate) -> String?,
+    onGenerateSemesterScheduleFromTemplate: suspend (ScheduleTemplate, LocalDate, LocalDate) -> String?,
+    onDeleteScheduleTemplate: suspend (Long) -> String?,
     onPickBackupDirectory: () -> Unit,
     onExportBackup: () -> Unit,
     onImportBackup: () -> Unit,
-    onAutoBackupChange: (Boolean) -> Unit
+    onAutoBackupChange: (Boolean) -> Unit,
+    onOpenCalendarBatchImport: () -> Unit
 ) {
     if (section == DashboardSection.CALENDAR) {
         Box(
@@ -299,9 +347,17 @@ internal fun DashboardBody(
             CalendarPanel(
                 modifier = Modifier.fillMaxSize(),
                 events = uiState.calendarItems,
+                groups = uiState.groups,
+                scheduleTemplates = uiState.scheduleTemplates,
                 onQuickCreateEvent = onQuickCreateCalendarEvent,
+                onCreateEventAt = onQuickCreateCalendarEvent,
                 onEditEvent = onEditCalendarEvent,
-                onDeleteEvent = onDeleteCalendarEvent
+                onDeleteEvent = onDeleteCalendarEvent,
+                onOpenBatchImport = onOpenCalendarBatchImport,
+                onSaveWeekAsTemplate = onSaveWeekAsScheduleTemplate,
+                onApplyTemplateToWeek = onApplyScheduleTemplateToWeek,
+                onGenerateSemesterFromTemplate = onGenerateSemesterScheduleFromTemplate,
+                onDeleteTemplate = onDeleteScheduleTemplate
             )
         }
         return
@@ -409,6 +465,12 @@ internal fun DashboardBody(
                     onRequestIgnoreBatteryOptimization = onRequestIgnoreBatteryOptimization,
                     onRequestAccessibilityService = onRequestAccessibilityService,
                     onDefaultSnoozeChange = onDefaultSnoozeChange,
+                    onDefaultCalendarReminderModeChange = onDefaultCalendarReminderModeChange,
+                    onUseBuiltInReminderTone = onUseBuiltInReminderTone,
+                    onPickSystemReminderTone = onPickSystemReminderTone,
+                    reminderChainLogs = uiState.reminderChainLogs,
+                    onRunReminderChainTest = onRunReminderChainTest,
+                    onClearReminderDiagnostics = onClearReminderDiagnostics,
                     onPickBackupDirectory = onPickBackupDirectory,
                     onExportBackup = onExportBackup,
                     onImportBackup = onImportBackup,

@@ -7,15 +7,28 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.todoalarm.TodoApplication
 import com.example.todoalarm.alarm.ActiveReminderStore
+import com.example.todoalarm.alarm.ReminderChainLogger
+import com.example.todoalarm.alarm.ReminderDispatchTracker
 import com.example.todoalarm.alarm.ReminderForegroundService
 import com.example.todoalarm.data.AppSettings
 import com.example.todoalarm.data.CalendarEventDraft
 import com.example.todoalarm.data.RecurrenceScope
 import com.example.todoalarm.data.RecurrenceType
+import com.example.todoalarm.data.ReminderChainLog
+import com.example.todoalarm.data.ReminderChainStage
+import com.example.todoalarm.data.ReminderChainStatus
+import com.example.todoalarm.data.ReminderDeliveryMode
+import com.example.todoalarm.data.ScheduleTemplate
 import com.example.todoalarm.data.TaskGroup
 import com.example.todoalarm.data.ThemeMode
 import com.example.todoalarm.data.TodoDraft
 import com.example.todoalarm.data.TodoItem
+import com.example.todoalarm.data.RecurrenceConfig
+import com.example.todoalarm.data.buildScheduleTemplatePayload
+import com.example.todoalarm.data.parseScheduleTemplatePayload
+import com.example.todoalarm.data.toDraftsForWeek
+import com.example.todoalarm.data.toJsonString
+import com.example.todoalarm.data.toWeeklyRecurringDrafts
 import com.example.todoalarm.data.toEpochMillis
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -36,6 +49,8 @@ data class TodoUiState(
     val upcomingItems: List<TodoItem> = emptyList(),
     val historyItems: List<TodoItem> = emptyList(),
     val calendarItems: List<TodoItem> = emptyList(),
+    val reminderChainLogs: List<ReminderChainLog> = emptyList(),
+    val scheduleTemplates: List<ScheduleTemplate> = emptyList(),
     val settings: AppSettings = AppSettings(),
     val currentQuote: String = QuoteRepository.seedQuotes.first()
 )
@@ -63,7 +78,8 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             while (true) {
                 repository.markMissedTasks()
-                delay(15_000L)
+                dispatchDueReminders()
+                delay(nextReminderPollDelayMillis())
             }
         }
     }
@@ -103,6 +119,8 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
             upcomingItems = activeTaskItems.filter { !it.missed && (!it.hasDueDate || dueDate(it).isAfter(today)) },
             historyItems = historyItems,
             calendarItems = activeCalendarItems,
+            reminderChainLogs = repository.getRecentReminderChainLogs(),
+            scheduleTemplates = repository.getScheduleTemplates(),
             settings = settings,
             currentQuote = currentQuote
         )
@@ -170,6 +188,29 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
         val createdItems = repository.createCalendarEventFromDraft(draft)
         for (item in createdItems) {
             scheduleReminderOrDisable(item)
+        }
+        autoBackupIfEnabled()
+        return null
+    }
+
+    suspend fun importCalendarEvents(drafts: List<CalendarEventDraft>): String? {
+        if (drafts.isEmpty()) return "没有可导入的日程"
+
+        drafts.forEachIndexed { index, draft ->
+            validateCalendarDraft(
+                draft = draft,
+                original = null,
+                scope = RecurrenceScope.CURRENT
+            )?.let { error ->
+                return "第 ${index + 1} 条：$error"
+            }
+        }
+
+        drafts.forEach { draft ->
+            val createdItems = repository.createCalendarEventFromDraft(draft)
+            for (item in createdItems) {
+                scheduleReminderOrDisable(item)
+            }
         }
         autoBackupIfEnabled()
         return null
@@ -271,6 +312,18 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
         settingsStore.updateDefaultSnooze(minutes)
     }
 
+    fun updateDefaultCalendarReminderMode(mode: ReminderDeliveryMode) {
+        settingsStore.updateDefaultCalendarReminderMode(mode)
+    }
+
+    fun updateReminderTone(uri: String, name: String?) {
+        settingsStore.updateReminderTone(uri, name)
+    }
+
+    fun useBuiltInReminderTone() {
+        settingsStore.useBuiltInReminderTone()
+    }
+
     suspend fun createGroup(name: String, colorHex: String): String? {
         if (name.isBlank()) return "分组名称不能为空"
         repository.createGroup(name, colorHex)
@@ -301,6 +354,101 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
 
     fun updateAutoBackupEnabled(enabled: Boolean) {
         settingsStore.updateAutoBackupEnabled(enabled)
+    }
+
+    suspend fun runReminderChainTest(delaySeconds: Int = 15): String? {
+        val triggerAt = System.currentTimeMillis() + delaySeconds.coerceIn(5, 120) * 1000L
+        val dueAt = triggerAt + 60_000L
+        val groups = repository.getAllGroups().ifEmpty { repository.ensureDefaultGroups() }
+        val created = repository.createFromDraft(
+            TodoDraft(
+                title = "提醒链路测试",
+                notes = "这是一条用于验证提醒派发链路的测试任务。",
+                dueAt = Instant.ofEpochMilli(dueAt).atZone(ZoneId.systemDefault()).toLocalDateTime(),
+                reminderAt = Instant.ofEpochMilli(triggerAt).atZone(ZoneId.systemDefault()).toLocalDateTime(),
+                groupId = groups.firstOrNull { it.name == "例行" }?.id ?: groups.firstOrNull()?.id ?: 0L,
+                ringEnabled = true,
+                vibrateEnabled = true,
+                recurrence = RecurrenceConfig()
+            )
+        ).firstOrNull() ?: return "测试提醒创建失败"
+
+        ReminderChainLogger.log(
+            context = app,
+            todoId = created.id,
+            source = "TodoViewModel",
+            stage = ReminderChainStage.TEST_CREATED,
+            status = ReminderChainStatus.OK,
+            reminderAtMillis = created.reminderAtMillis,
+            message = "delaySeconds=$delaySeconds"
+        )
+        scheduleReminderOrDisable(created)
+        return null
+    }
+
+    suspend fun clearReminderDiagnostics() {
+        repository.clearReminderChainLogs()
+    }
+
+    suspend fun saveWeekAsScheduleTemplate(
+        templateName: String,
+        templateType: String,
+        weekStart: LocalDate
+    ): String? {
+        if (templateName.isBlank()) return "模板名称不能为空"
+        val groups = repository.getAllGroups().ifEmpty { repository.ensureDefaultGroups() }
+        val weekEvents = repository.getAllTodos()
+            .filter { it.isEvent && it.isActive }
+            .filter { overlapsWeek(it, weekStart) }
+        if (weekEvents.isEmpty()) return "当前这一周没有可保存的日程"
+
+        val payload = buildScheduleTemplatePayload(
+            weekStart = weekStart,
+            items = weekEvents,
+            groupsById = groups.associateBy { it.id }
+        )
+        repository.upsertScheduleTemplate(
+            ScheduleTemplate(
+                name = templateName.trim(),
+                templateType = templateType,
+                payloadJson = payload.toJsonString(),
+                accentColorHex = weekEvents.firstOrNull()?.accentColorHex
+            )
+        )
+        autoBackupIfEnabled()
+        return null
+    }
+
+    suspend fun applyScheduleTemplateToWeek(
+        template: ScheduleTemplate,
+        targetWeekStart: LocalDate
+    ): String? {
+        val payload = runCatching { parseScheduleTemplatePayload(template.payloadJson) }
+            .getOrElse { return it.message ?: "模板解析失败" }
+        val drafts = payload.toDraftsForWeek(targetWeekStart)
+        if (drafts.isEmpty()) return "模板中没有可复制的日程"
+        return importCalendarEvents(drafts)
+    }
+
+    suspend fun generateSemesterScheduleFromTemplate(
+        template: ScheduleTemplate,
+        firstWeekStart: LocalDate,
+        recurrenceEndDate: LocalDate
+    ): String? {
+        if (recurrenceEndDate.isBefore(firstWeekStart)) {
+            return "学期结束日期不能早于起始周"
+        }
+        val payload = runCatching { parseScheduleTemplatePayload(template.payloadJson) }
+            .getOrElse { return it.message ?: "模板解析失败" }
+        val drafts = payload.toWeeklyRecurringDrafts(firstWeekStart, recurrenceEndDate)
+        if (drafts.isEmpty()) return "模板中没有可生成的日程"
+        return importCalendarEvents(drafts)
+    }
+
+    suspend fun deleteScheduleTemplate(templateId: Long): String? {
+        repository.deleteScheduleTemplate(templateId)
+        autoBackupIfEnabled()
+        return null
     }
 
     suspend fun exportBackupNow(targetUri: Uri): String? {
@@ -411,7 +559,7 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
             return "提醒时间不能为负数"
         }
         val reminderAtMillis = reminderMinutesBefore?.let { draft.reminderAnchorAt.toEpochMillis() - it * 60_000L }
-        if (original == null && reminderAtMillis != null && reminderAtMillis <= now) {
+        if (reminderAtMillis != null && reminderAtMillis <= now) {
             return "提醒时间必须晚于当前时间"
         }
 
@@ -443,14 +591,46 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
     private suspend fun scheduleReminderOrDisable(item: TodoItem) {
         if (item.isTodo && !item.hasDueDate) {
             if (item.reminderEnabled || item.reminderAtMillis != null) {
+                ReminderDispatchTracker.clear(app, item.id)
                 repository.updateTodo(item.copy(reminderEnabled = false, reminderAtMillis = null))
             }
             return
         }
         if (!item.reminderEnabled) return
+        ReminderDispatchTracker.clear(app, item.id)
         val scheduleMessage = alarmScheduler.schedule(item)
         if (scheduleMessage != null) {
             repository.updateTodo(item.copy(reminderEnabled = false))
+        }
+    }
+
+    private suspend fun dispatchDueReminders() {
+        val now = System.currentTimeMillis()
+        repository.dueReminderItems(now).forEach { item ->
+            val reminderAtMillis = item.reminderAtMillis ?: return@forEach
+            if (ReminderDispatchTracker.wasDispatched(app, item.id, reminderAtMillis)) return@forEach
+            ReminderDispatchTracker.markDispatched(app, item.id, now)
+            ReminderChainLogger.log(
+                context = app,
+                todoId = item.id,
+                source = "TodoViewModel",
+                stage = ReminderChainStage.POLL_DISPATCH,
+                status = ReminderChainStatus.INFO,
+                reminderAtMillis = reminderAtMillis
+            )
+            ReminderForegroundService.start(app, item.id)
+        }
+    }
+
+    private suspend fun nextReminderPollDelayMillis(): Long {
+        val now = System.currentTimeMillis()
+        val nextReminderAt = repository.nextReminderItem()?.reminderAtMillis ?: return 15_000L
+        val untilNext = nextReminderAt - now
+        return when {
+            untilNext <= 1_500L -> 1_000L
+            untilNext <= 10_000L -> 2_000L
+            untilNext <= 60_000L -> 5_000L
+            else -> 15_000L
         }
     }
 
@@ -458,12 +638,22 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
         items.forEach { item ->
             alarmScheduler.cancel(item.id)
             reminderNotifier.cancel(item.id)
+            ReminderDispatchTracker.clear(app, item.id)
             ActiveReminderStore.clearIfMatches(app, item.id)
         }
     }
 
     private fun dueDate(item: TodoItem): LocalDate {
         return item.dueDate()
+    }
+
+    private fun overlapsWeek(item: TodoItem, weekStart: LocalDate): Boolean {
+        val startMillis = item.startAtMillis ?: item.dueAtMillis
+        val endMillis = item.endAtMillis ?: startMillis
+        val eventStart = Instant.ofEpochMilli(startMillis).atZone(ZoneId.systemDefault()).toLocalDate()
+        val eventEnd = Instant.ofEpochMilli(endMillis).atZone(ZoneId.systemDefault()).toLocalDate()
+        val weekEnd = weekStart.plusDays(6)
+        return !eventEnd.isBefore(weekStart) && !eventStart.isAfter(weekEnd)
     }
 
     companion object {

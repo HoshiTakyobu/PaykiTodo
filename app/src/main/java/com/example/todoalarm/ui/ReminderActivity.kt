@@ -2,6 +2,7 @@ package com.example.todoalarm.ui
 
 import android.app.KeyguardManager
 import android.app.NotificationManager
+import android.content.Context
 import android.content.Intent
 import android.os.Build
 import android.os.Bundle
@@ -50,8 +51,11 @@ import androidx.lifecycle.lifecycleScope
 import com.example.todoalarm.TodoApplication
 import com.example.todoalarm.alarm.ActiveReminderStore
 import com.example.todoalarm.alarm.AlarmScheduler
+import com.example.todoalarm.alarm.ReminderChainLogger
 import com.example.todoalarm.alarm.ReminderForegroundService
 import com.example.todoalarm.alarm.ReminderNotifier
+import com.example.todoalarm.data.ReminderChainStage
+import com.example.todoalarm.data.ReminderChainStatus
 import com.example.todoalarm.data.RecurrenceScope
 import com.example.todoalarm.data.TodoItem
 import com.example.todoalarm.ui.theme.TodoAlarmTheme
@@ -108,6 +112,21 @@ class ReminderActivity : ComponentActivity() {
         loadTodo()
     }
 
+    override fun onResume() {
+        super.onResume()
+        todoItem?.let {
+            ActiveReminderStore.refreshActive(this, it.id)
+            ReminderChainLogger.log(
+                context = this,
+                todoId = it.id,
+                source = "ReminderActivity",
+                stage = ReminderChainStage.REMINDER_ACTIVITY_RESUME,
+                status = ReminderChainStatus.OK,
+                reminderAtMillis = it.reminderAtMillis
+            )
+        }
+    }
+
     private fun loadTodo() {
         val todoId = intent.getLongExtra(AlarmScheduler.EXTRA_TODO_ID, -1L)
         if (todoId <= 0L) {
@@ -124,6 +143,7 @@ class ReminderActivity : ComponentActivity() {
             }
 
             ActiveReminderStore.clearActivityHandoff(this@ReminderActivity, todoId)
+            ActiveReminderStore.refreshActive(this@ReminderActivity, todoId)
             todoItem = item
             taskGroup = resolveTaskGroup(item, app.repository.getGroup(item.groupId))
         }
@@ -132,6 +152,13 @@ class ReminderActivity : ComponentActivity() {
     private fun completeTodo() {
         val item = todoItem ?: return
         lifecycleScope.launch {
+            ReminderChainLogger.log(
+                context = this@ReminderActivity,
+                todoId = item.id,
+                source = "ReminderActivity",
+                stage = ReminderChainStage.USER_COMPLETE,
+                status = ReminderChainStatus.OK
+            )
             app.repository.setCompleted(item.id, true)
             clearReminderArtifacts(listOf(item))
             closeReminder(item.id)
@@ -141,6 +168,14 @@ class ReminderActivity : ComponentActivity() {
     private fun acknowledgeEvent() {
         val item = todoItem ?: return
         lifecycleScope.launch {
+            ReminderChainLogger.log(
+                context = this@ReminderActivity,
+                todoId = item.id,
+                source = "ReminderActivity",
+                stage = ReminderChainStage.USER_COMPLETE,
+                status = ReminderChainStatus.OK,
+                message = "event_ack"
+            )
             app.repository.acknowledgeCalendarEvent(item.id)
             clearReminderArtifacts(listOf(item))
             closeReminder(item.id)
@@ -150,6 +185,14 @@ class ReminderActivity : ComponentActivity() {
     private fun snooze(minutes: Int) {
         val item = todoItem ?: return
         lifecycleScope.launch {
+            ReminderChainLogger.log(
+                context = this@ReminderActivity,
+                todoId = item.id,
+                source = "ReminderActivity",
+                stage = ReminderChainStage.USER_SNOOZE,
+                status = ReminderChainStatus.OK,
+                message = "minutes=$minutes"
+            )
             clearReminderArtifacts(listOf(item))
             val updated = app.repository.snoozeTodo(item.id, nextMinuteAlignedReminder(minutes))
             if (updated != null) {
@@ -162,6 +205,14 @@ class ReminderActivity : ComponentActivity() {
     private fun cancelTodo(scope: RecurrenceScope) {
         val item = todoItem ?: return
         lifecycleScope.launch {
+            ReminderChainLogger.log(
+                context = this@ReminderActivity,
+                todoId = item.id,
+                source = "ReminderActivity",
+                stage = ReminderChainStage.USER_CANCEL,
+                status = ReminderChainStatus.OK,
+                message = scope.name
+            )
             val affected = app.repository.cancelTodo(item, scope)
             clearReminderArtifacts(affected.ifEmpty { listOf(item) })
             closeReminder(item.id)
@@ -191,6 +242,19 @@ class ReminderActivity : ComponentActivity() {
             .plusMinutes(minutes.toLong())
         return nextReminder.atZone(zoneId).toInstant().toEpochMilli()
     }
+
+    companion object {
+        fun createIntent(context: Context, todoId: Long): Intent {
+            return Intent(context, ReminderActivity::class.java).apply {
+                addFlags(
+                    Intent.FLAG_ACTIVITY_NEW_TASK or
+                        Intent.FLAG_ACTIVITY_SINGLE_TOP or
+                        Intent.FLAG_ACTIVITY_CLEAR_TOP
+                )
+                putExtra(AlarmScheduler.EXTRA_TODO_ID, todoId)
+            }
+        }
+    }
 }
 
 @Composable
@@ -214,7 +278,7 @@ private fun ReminderScreen(
     val isEvent = todoItem?.isEvent == true
     val titleHeadline = if (isEvent) "这段日程快开始了" else "现在该处理这项任务了"
     val subHeadline = if (isEvent) {
-        "你可以确认已知，或再延后一次提醒"
+        "提醒到了，确认即可。"
     } else {
         "请明确完成、延后或取消，不再保留忽略入口"
     }
@@ -301,7 +365,7 @@ private fun ReminderScreen(
                 todoItem?.let { item ->
                     ReminderMetaCard(
                         label = when {
-                            item.isEvent -> "\uD83D\uDDD3\uFE0F 日程"
+                            item.isEvent -> "⏰ 时间"
                             item.hasDueDate -> "\u23F0 DDL"
                             else -> "\uD83D\uDDD2 状态"
                         },
@@ -379,19 +443,21 @@ private fun ReminderScreen(
                     ) {
                         Text(primaryActionText)
                     }
-                    FilledTonalButton(
-                        onClick = { onSnooze(5) },
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Text("延后 5 分钟")
+                    if (!isEvent) {
+                        FilledTonalButton(
+                            onClick = { onSnooze(5) },
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Text("延后 5 分钟")
+                        }
                     }
                 }
 
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    if (!isEvent) {
+                if (!isEvent) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
                         FilledTonalButton(
                             onClick = {
                                 if (todoItem?.isRecurring == true) {
@@ -410,53 +476,48 @@ private fun ReminderScreen(
                         ) {
                             Text("延后 $defaultSnoozeMinutes 分钟")
                         }
-                    } else {
-                        FilledTonalButton(
-                            onClick = { onSnooze(defaultSnoozeMinutes) },
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Text("延后 $defaultSnoozeMinutes 分钟")
-                        }
                     }
                 }
 
-                Surface(
-                    shape = RoundedCornerShape(22.dp),
-                    color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.42f)
-                ) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                if (!isEvent) {
+                    Surface(
+                        shape = RoundedCornerShape(22.dp),
+                        color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.42f)
                     ) {
-                        Text(
-                            text = "自定义延后",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(12.dp),
-                            verticalAlignment = Alignment.CenterVertically
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
-                            OutlinedTextField(
-                                value = customMinutes,
-                                onValueChange = { customMinutes = it.filter(Char::isDigit) },
-                                modifier = Modifier.weight(1f),
-                                label = { Text("分钟数") },
-                                singleLine = true
+                            Text(
+                                text = "自定义延后",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurface
                             )
-                            Button(
-                                onClick = {
-                                    val minutes = customMinutes.toIntOrNull()?.coerceIn(1, 180)
-                                        ?: defaultSnoozeMinutes
-                                    onSnooze(minutes)
-                                },
-                                modifier = Modifier.widthIn(min = 112.dp)
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Text("确认")
+                                OutlinedTextField(
+                                    value = customMinutes,
+                                    onValueChange = { customMinutes = it.filter(Char::isDigit) },
+                                    modifier = Modifier.weight(1f),
+                                    label = { Text("分钟数") },
+                                    singleLine = true
+                                )
+                                Button(
+                                    onClick = {
+                                        val minutes = customMinutes.toIntOrNull()?.coerceIn(1, 180)
+                                            ?: defaultSnoozeMinutes
+                                        onSnooze(minutes)
+                                    },
+                                    modifier = Modifier.widthIn(min = 112.dp)
+                                ) {
+                                    Text("确认")
+                                }
                             }
                         }
                     }
@@ -500,9 +561,9 @@ private fun reminderEventTimeLabel(item: TodoItem): String {
         val endExclusive = item.endAtMillis?.let(::reminderAtMillisToDateTime)?.toLocalDate()?.minusDays(1)
             ?: start
         return if (start == endExclusive) {
-            "全天 · $start"
+            "全天\n$start"
         } else {
-            "全天 · $start - $endExclusive"
+            "全天\n$start - $endExclusive"
         }
     }
     val start = item.startAtMillis?.let(::reminderAtMillisToDateTime)
@@ -512,9 +573,9 @@ private fun reminderEventTimeLabel(item: TodoItem): String {
     val startTime = formatLocalDateTime(start).substringAfter(' ')
     val endTime = formatLocalDateTime(end).substringAfter(' ')
     return if (start.toLocalDate() == end.toLocalDate()) {
-        "$dayPrefix $startTime - $endTime"
+        "$dayPrefix\n$startTime - $endTime"
     } else {
-        "${formatLocalDateTime(start)} - ${formatLocalDateTime(end)}"
+        "${formatLocalDateTime(start)}\n${formatLocalDateTime(end)}"
     }
 }
 

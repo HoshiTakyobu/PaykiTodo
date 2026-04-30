@@ -28,7 +28,8 @@ class ReminderNotifier(
 
     fun build(
         todoItem: TodoItem,
-        taskGroup: ResolvedTaskGroup = resolveTaskGroup(todoItem, emptyList())
+        taskGroup: ResolvedTaskGroup = resolveTaskGroup(todoItem, emptyList()),
+        requestFullscreen: Boolean = false
     ): Notification {
         val channelId = ensureChannel(todoItem)
         val fullScreenIntent = reminderPendingIntent(todoItem.id)
@@ -48,6 +49,11 @@ class ReminderNotifier(
             .setDefaults(0)
             .setForegroundServiceBehavior(NotificationCompat.FOREGROUND_SERVICE_IMMEDIATE)
             .setContentIntent(fullScreenIntent)
+            .apply {
+                if (requestFullscreen) {
+                    setFullScreenIntent(fullScreenIntent, true)
+                }
+            }
             .build()
     }
 
@@ -74,10 +80,7 @@ class ReminderNotifier(
     }
 
     private fun buildReminderIntent(todoId: Long): Intent {
-        return Intent(context, ReminderActivity::class.java).apply {
-            flags = Intent.FLAG_ACTIVITY_SINGLE_TOP
-            putExtra(AlarmScheduler.EXTRA_TODO_ID, todoId)
-        }
+        return ReminderActivity.createIntent(context, todoId)
     }
 
     private fun ensureChannel(todoItem: TodoItem): String {

@@ -83,19 +83,21 @@ class TodoRepository(
 
     suspend fun createCalendarEventFromDraft(draft: CalendarEventDraft): List<TodoItem> {
         val now = System.currentTimeMillis()
+        val resolvedGroupId = resolveCalendarGroupId(draft)
+        val resolvedDraft = draft.copy(groupId = resolvedGroupId)
         val generated = if (draft.recurrence.isRecurring) {
             generateRecurringEventItems(
-                draft = draft,
+                draft = resolvedDraft,
                 seriesId = UUID.randomUUID().toString(),
                 now = now
             )
         } else {
-            listOf(buildCalendarEventItem(draft, now = now))
+            listOf(buildCalendarEventItem(resolvedDraft, now = now))
         }
         val ids = todoDao.insertAll(generated)
         val created = generated.zip(ids) { item, id -> item.copy(id = id) }
-        if (draft.recurrence.isRecurring) {
-            todoDao.insertTemplate(buildCalendarTemplate(created.first(), draft))
+        if (resolvedDraft.recurrence.isRecurring) {
+            todoDao.insertTemplate(buildCalendarTemplate(created.first(), resolvedDraft))
         }
         return created
     }
@@ -232,6 +234,14 @@ class TodoRepository(
         return todoDao.getFutureReminderItems(now)
     }
 
+    suspend fun dueReminderItems(now: Long): List<TodoItem> {
+        return todoDao.getDueReminderItems(now)
+    }
+
+    suspend fun nextReminderItem(): TodoItem? {
+        return todoDao.getNextReminderItem()
+    }
+
     suspend fun ensureDefaultGroups(): List<TaskGroup> {
         val existing = todoDao.getAllGroups()
         if (existing.isNotEmpty()) return existing
@@ -266,16 +276,22 @@ class TodoRepository(
         draft: CalendarEventDraft,
         scope: RecurrenceScope = RecurrenceScope.CURRENT
     ): List<TodoItem> {
+        val resolvedGroupId = when {
+            draft.groupId > 0 -> draft.groupId
+            draft.groupName.isNotBlank() -> resolveGroupIdByNameOrCreate(draft.groupName)
+            else -> original.groupId
+        }
+        val resolvedDraft = draft.copy(groupId = resolvedGroupId)
         return when {
-            !original.isRecurring && draft.recurrence.isRecurring -> {
-                convertSingleEventToRecurring(original, draft)
+            !original.isRecurring && resolvedDraft.recurrence.isRecurring -> {
+                convertSingleEventToRecurring(original, resolvedDraft)
             }
             original.isRecurring && scope != RecurrenceScope.CURRENT -> {
-                updateRecurringCalendarSeries(original, draft, scope)
+                updateRecurringCalendarSeries(original, resolvedDraft, scope)
             }
             else -> {
                 val updated = buildCalendarEventItem(
-                    draft = draft,
+                    draft = resolvedDraft,
                     now = original.createdAtMillis,
                     existing = original,
                     keepSeries = original.isRecurring
@@ -327,12 +343,38 @@ class TodoRepository(
 
     suspend fun getAllGroups(): List<TaskGroup> = todoDao.getAllGroups()
 
+    suspend fun getRecentReminderChainLogs(limit: Int = 80): List<ReminderChainLog> {
+        return todoDao.getRecentReminderChainLogs(limit)
+    }
+
+    suspend fun addReminderChainLog(log: ReminderChainLog) {
+        todoDao.insertReminderChainLog(log)
+        todoDao.trimReminderChainLogs(400)
+    }
+
+    suspend fun clearReminderChainLogs() {
+        todoDao.clearReminderChainLogs()
+    }
+
+    suspend fun getScheduleTemplates(): List<ScheduleTemplate> = todoDao.getScheduleTemplates()
+
+    suspend fun upsertScheduleTemplate(template: ScheduleTemplate): ScheduleTemplate {
+        val id = todoDao.insertScheduleTemplate(template.copy(updatedAtMillis = System.currentTimeMillis()))
+        return template.copy(id = id)
+    }
+
+    suspend fun deleteScheduleTemplate(templateId: Long) {
+        todoDao.deleteScheduleTemplate(templateId)
+    }
+
     suspend fun exportSnapshot(settings: AppSettings): BackupSnapshot {
         return BackupSnapshot(
             exportedAtMillis = System.currentTimeMillis(),
             groups = todoDao.getAllGroups(),
             templates = todoDao.getAllRecurringTemplates(),
             tasks = todoDao.getAllTodos(),
+            reminderChainLogs = todoDao.getRecentReminderChainLogs(400),
+            scheduleTemplates = todoDao.getScheduleTemplates(),
             settings = settings
         )
     }
@@ -341,6 +383,8 @@ class TodoRepository(
         todoDao.clearTodos()
         todoDao.clearTemplates()
         todoDao.clearGroups()
+        todoDao.clearReminderChainLogs()
+        todoDao.clearScheduleTemplates()
         if (snapshot.groups.isNotEmpty()) {
             todoDao.insertGroups(snapshot.groups)
         } else {
@@ -351,6 +395,12 @@ class TodoRepository(
         }
         if (snapshot.tasks.isNotEmpty()) {
             todoDao.insertAll(snapshot.tasks)
+        }
+        if (snapshot.reminderChainLogs.isNotEmpty()) {
+            todoDao.insertReminderChainLogs(snapshot.reminderChainLogs)
+        }
+        snapshot.scheduleTemplates.forEach { template ->
+            todoDao.insertScheduleTemplate(template)
         }
     }
 
@@ -372,7 +422,17 @@ class TodoRepository(
         if (targets.isEmpty()) return emptyList()
 
         return when (scope) {
-            RecurrenceScope.CURRENT -> emptyList()
+            RecurrenceScope.CURRENT -> {
+                val current = targets.first()
+                val updated = buildTaskItem(
+                    draft = draft.copy(groupId = draft.groupId.takeIf { it > 0 } ?: current.groupId),
+                    now = current.createdAtMillis,
+                    existing = current,
+                    keepSeries = false
+                )
+                todoDao.update(updated)
+                listOf(updated)
+            }
             RecurrenceScope.ALL -> replaceRecurringTargets(
                 original = original,
                 draft = alignRecurringDraftForAll(draft, activeSeries, original),
@@ -441,7 +501,17 @@ class TodoRepository(
         if (targets.isEmpty()) return emptyList()
 
         return when (scope) {
-            RecurrenceScope.CURRENT -> emptyList()
+            RecurrenceScope.CURRENT -> {
+                val current = targets.first()
+                val updated = buildCalendarEventItem(
+                    draft = draft,
+                    now = current.createdAtMillis,
+                    existing = current,
+                    keepSeries = false
+                )
+                todoDao.update(updated)
+                listOf(updated)
+            }
             RecurrenceScope.ALL -> replaceRecurringCalendarTargets(
                 original = original,
                 draft = alignRecurringCalendarDraftForAll(draft, seriesItems, original),
@@ -696,6 +766,7 @@ class TodoRepository(
             ringEnabled = draft.ringEnabled,
             vibrateEnabled = draft.vibrateEnabled,
             voiceEnabled = false,
+            reminderDeliveryMode = ReminderDeliveryMode.FULLSCREEN.name,
             groupId = draft.groupId,
             categoryKey = existing?.categoryKey ?: TodoCategory.ROUTINE.key,
             completed = existing?.completed == true,
@@ -783,7 +854,8 @@ class TodoRepository(
             ringEnabled = draft.ringEnabled,
             vibrateEnabled = draft.vibrateEnabled,
             voiceEnabled = false,
-            groupId = 0L,
+            reminderDeliveryMode = draft.reminderDeliveryMode.name,
+            groupId = draft.groupId,
             categoryKey = TodoCategory.ROUTINE.key,
             completed = false,
             completedAtMillis = null,
@@ -859,6 +931,7 @@ class TodoRepository(
             },
             ringEnabled = draft.ringEnabled,
             vibrateEnabled = draft.vibrateEnabled,
+            reminderDeliveryMode = ReminderDeliveryMode.FULLSCREEN.name,
             recurrenceType = draft.recurrence.type.name,
             recurrenceWeekdays = draft.recurrence.weeklyDays.toStorageString(),
             recurrenceMonthlyOrdinal = if (draft.recurrence.type == RecurrenceType.MONTHLY_NTH_WEEKDAY) dueDate.nthWeekOrdinal() else null,
@@ -882,13 +955,14 @@ class TodoRepository(
             location = draft.location.trim(),
             accentColorHex = draft.accentColorHex,
             allDay = draft.allDay,
-            groupId = 0L,
+            groupId = draft.groupId,
             dueHour = draft.startAt.hour,
             dueMinute = draft.startAt.minute,
             eventDurationMinutes = Duration.between(draft.startAt, draft.endAt).toMinutes().coerceAtLeast(30).toInt(),
             reminderOffsetMinutes = draft.reminderMinutesBefore,
             ringEnabled = draft.ringEnabled,
             vibrateEnabled = draft.vibrateEnabled,
+            reminderDeliveryMode = draft.reminderDeliveryMode.name,
             recurrenceType = draft.recurrence.type.name,
             recurrenceWeekdays = draft.recurrence.weeklyDays.toStorageString(),
             recurrenceMonthlyOrdinal = if (draft.recurrence.type == RecurrenceType.MONTHLY_NTH_WEEKDAY) startDate.nthWeekOrdinal() else null,
@@ -1051,6 +1125,23 @@ class TodoRepository(
     private suspend fun defaultGroupId(): Long {
         val groups = ensureDefaultGroups()
         return groups.firstOrNull { it.name == "例行" }?.id ?: groups.firstOrNull()?.id ?: 0L
+    }
+
+    private suspend fun resolveCalendarGroupId(draft: CalendarEventDraft): Long {
+        return when {
+            draft.groupId > 0 -> draft.groupId
+            draft.groupName.isNotBlank() -> resolveGroupIdByNameOrCreate(draft.groupName)
+            else -> defaultGroupId()
+        }
+    }
+
+    private suspend fun resolveGroupIdByNameOrCreate(groupName: String): Long {
+        val normalized = groupName.trim()
+        if (normalized.isBlank()) return defaultGroupId()
+        val groups = ensureDefaultGroups()
+        val existing = groups.firstOrNull { it.name.equals(normalized, ignoreCase = true) }
+        if (existing != null) return existing.id
+        return createGroup(normalized, "#4E87E1").id
     }
 
     private fun reminderAnchorMillis(draft: CalendarEventDraft): Long {

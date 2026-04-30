@@ -14,7 +14,10 @@ data class CalendarEventDraft(
     val reminderMinutesBefore: Int?,
     val ringEnabled: Boolean,
     val vibrateEnabled: Boolean,
-    val recurrence: RecurrenceConfig = RecurrenceConfig()
+    val reminderDeliveryMode: ReminderDeliveryMode = ReminderDeliveryMode.NOTIFICATION,
+    val recurrence: RecurrenceConfig = RecurrenceConfig(),
+    val groupId: Long = 0,
+    val groupName: String = ""
 ) {
     val reminderAnchorAt: LocalDateTime
         get() = if (allDay) {

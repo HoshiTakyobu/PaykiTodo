@@ -163,47 +163,25 @@ internal fun CompletedTodoCard(
                     overflow = TextOverflow.Ellipsis
                 )
             }
-            MetaLine(
-                icon = "🗓",
-                label = "创建",
-                value = formatLocalDateTime(reminderAtMillisToDateTime(item.createdAtMillis)),
-                accent = MaterialTheme.colorScheme.secondary
-            )
-            if (item.hasDueDate) {
-                DeadlineMeta(
-                    value = formatLocalDateTime(reminderAtMillisToDateTime(item.dueAtMillis)),
-                    accent = MaterialTheme.colorScheme.primary
-                )
-            }
-            MetaLine(
-                icon = if (item.completed) "✅" else "🚫",
-                label = if (item.completed) "完成" else "取消",
-                value = (item.completedAtMillis ?: item.canceledAtMillis)?.let {
-                    formatLocalDateTime(reminderAtMillisToDateTime(it))
-                } ?: "未记录",
-                accent = if (item.completed) MaterialTheme.colorScheme.tertiary else Color(0xFFB45309)
-            )
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                CategoryChip(resolveTaskGroup(item, groups))
-                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                    IconButton(onClick = onEdit) {
-                        Icon(Icons.Rounded.Edit, contentDescription = "编辑历史任务")
-                    }
-                    OutlinedButton(onClick = onRestore) {
-                        Icon(Icons.AutoMirrored.Rounded.Undo, contentDescription = null, modifier = Modifier.size(16.dp))
-                        Text("恢复")
-                    }
-                }
-            }
         }
     }
 
     if (showDetails) {
-        TodoDetailsDialog(item = item, groups = groups, onDismiss = { showDetails = false }, showCreated = true, showStatusTime = true)
+        TodoDetailsDialog(
+            item = item,
+            groups = groups,
+            onDismiss = { showDetails = false },
+            showCreated = true,
+            showStatusTime = true,
+            onEdit = {
+                showDetails = false
+                onEdit()
+            },
+            onRestore = {
+                showDetails = false
+                onRestore()
+            }
+        )
     }
 }
 
@@ -355,7 +333,8 @@ private fun TodoDetailsDialog(
     showCreated: Boolean,
     showStatusTime: Boolean,
     onEdit: (() -> Unit)? = null,
-    onCancel: (() -> Unit)? = null
+    onCancel: (() -> Unit)? = null,
+    onRestore: (() -> Unit)? = null
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -368,6 +347,11 @@ private fun TodoDetailsDialog(
                 }
                 TextButton(onClick = onDismiss) {
                     Text("关闭")
+                }
+                onRestore?.let {
+                    TextButton(onClick = it) {
+                        Text("恢复")
+                    }
                 }
                 onEdit?.let {
                     TextButton(onClick = it) {

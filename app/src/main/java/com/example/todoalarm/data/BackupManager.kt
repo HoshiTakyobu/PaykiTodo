@@ -56,6 +56,8 @@ private fun BackupSnapshot.toJson(): JSONObject {
         put("groups", JSONArray(groups.map { it.toJson() }))
         put("templates", JSONArray(templates.map { it.toJson() }))
         put("tasks", JSONArray(tasks.map { it.toJson() }))
+        put("reminderChainLogs", JSONArray(reminderChainLogs.map { it.toJson() }))
+        put("scheduleTemplates", JSONArray(scheduleTemplates.map { it.toJson() }))
     }
 }
 
@@ -66,6 +68,9 @@ private fun AppSettings.toJson(): JSONObject {
         put("defaultRingEnabled", defaultRingEnabled)
         put("defaultVibrateEnabled", defaultVibrateEnabled)
         put("defaultVoiceEnabled", defaultVoiceEnabled)
+        put("defaultCalendarReminderMode", defaultCalendarReminderMode.name)
+        put("reminderToneUri", reminderToneUri)
+        put("reminderToneName", reminderToneName)
         put("quoteIndex", quoteIndex)
         put("backupDirectoryUri", backupDirectoryUri)
         put("autoBackupEnabled", autoBackupEnabled)
@@ -100,6 +105,7 @@ private fun RecurringTaskTemplate.toJson(): JSONObject {
         put("reminderOffsetMinutes", reminderOffsetMinutes)
         put("ringEnabled", ringEnabled)
         put("vibrateEnabled", vibrateEnabled)
+        put("reminderDeliveryMode", reminderDeliveryMode)
         put("recurrenceType", recurrenceType)
         put("recurrenceWeekdays", recurrenceWeekdays)
         put("recurrenceMonthlyOrdinal", recurrenceMonthlyOrdinal)
@@ -130,6 +136,7 @@ private fun TodoItem.toJson(): JSONObject {
         put("ringEnabled", ringEnabled)
         put("vibrateEnabled", vibrateEnabled)
         put("voiceEnabled", voiceEnabled)
+        put("reminderDeliveryMode", reminderDeliveryMode)
         put("groupId", groupId)
         put("categoryKey", categoryKey)
         put("completed", completed)
@@ -151,12 +158,40 @@ private fun TodoItem.toJson(): JSONObject {
     }
 }
 
+private fun ReminderChainLog.toJson(): JSONObject {
+    return JSONObject().apply {
+        put("id", id)
+        put("todoId", todoId)
+        put("chainKey", chainKey)
+        put("source", source)
+        put("stage", stage)
+        put("status", status)
+        put("message", message)
+        put("reminderAtMillis", reminderAtMillis)
+        put("createdAtMillis", createdAtMillis)
+    }
+}
+
+private fun ScheduleTemplate.toJson(): JSONObject {
+    return JSONObject().apply {
+        put("id", id)
+        put("name", name)
+        put("templateType", templateType)
+        put("payloadJson", payloadJson)
+        put("accentColorHex", accentColorHex)
+        put("createdAtMillis", createdAtMillis)
+        put("updatedAtMillis", updatedAtMillis)
+    }
+}
+
 private fun backupSnapshotFromJson(json: JSONObject): BackupSnapshot {
     return BackupSnapshot(
         exportedAtMillis = json.optLong("exportedAtMillis", System.currentTimeMillis()),
         groups = json.optJSONArray("groups").toGroups(),
         templates = json.optJSONArray("templates").toTemplates(),
         tasks = json.optJSONArray("tasks").toTasks(),
+        reminderChainLogs = json.optJSONArray("reminderChainLogs").toReminderChainLogs(),
+        scheduleTemplates = json.optJSONArray("scheduleTemplates").toScheduleTemplates(),
         settings = json.optJSONObject("settings").toSettings()
     )
 }
@@ -202,6 +237,7 @@ private fun JSONArray?.toTemplates(): List<RecurringTaskTemplate> {
                     reminderOffsetMinutes = item.optIntOrNull("reminderOffsetMinutes"),
                     ringEnabled = item.optBoolean("ringEnabled", true),
                     vibrateEnabled = item.optBoolean("vibrateEnabled", true),
+                    reminderDeliveryMode = item.optString("reminderDeliveryMode", ReminderDeliveryMode.FULLSCREEN.name),
                     recurrenceType = item.optString("recurrenceType"),
                     recurrenceWeekdays = item.optString("recurrenceWeekdays"),
                     recurrenceMonthlyOrdinal = item.optIntOrNull("recurrenceMonthlyOrdinal"),
@@ -240,6 +276,7 @@ private fun JSONArray?.toTasks(): List<TodoItem> {
                     ringEnabled = item.optBoolean("ringEnabled", true),
                     vibrateEnabled = item.optBoolean("vibrateEnabled", true),
                     voiceEnabled = item.optBoolean("voiceEnabled", false),
+                    reminderDeliveryMode = item.optString("reminderDeliveryMode", ReminderDeliveryMode.FULLSCREEN.name),
                     groupId = item.optLong("groupId", 0L),
                     categoryKey = item.optString("categoryKey", TodoCategory.ROUTINE.key),
                     completed = item.optBoolean("completed", false),
@@ -264,6 +301,48 @@ private fun JSONArray?.toTasks(): List<TodoItem> {
     }
 }
 
+private fun JSONArray?.toReminderChainLogs(): List<ReminderChainLog> {
+    if (this == null) return emptyList()
+    return buildList(length()) {
+        for (index in 0 until length()) {
+            val item = optJSONObject(index) ?: continue
+            add(
+                ReminderChainLog(
+                    id = item.optLong("id", 0L),
+                    todoId = item.optLong("todoId", 0L),
+                    chainKey = item.optString("chainKey"),
+                    source = item.optString("source"),
+                    stage = item.optString("stage"),
+                    status = item.optString("status"),
+                    message = item.optStringOrNull("message"),
+                    reminderAtMillis = item.optLongOrNull("reminderAtMillis"),
+                    createdAtMillis = item.optLong("createdAtMillis", System.currentTimeMillis())
+                )
+            )
+        }
+    }
+}
+
+private fun JSONArray?.toScheduleTemplates(): List<ScheduleTemplate> {
+    if (this == null) return emptyList()
+    return buildList(length()) {
+        for (index in 0 until length()) {
+            val item = optJSONObject(index) ?: continue
+            add(
+                ScheduleTemplate(
+                    id = item.optLong("id", 0L),
+                    name = item.optString("name"),
+                    templateType = item.optString("templateType"),
+                    payloadJson = item.optString("payloadJson"),
+                    accentColorHex = item.optStringOrNull("accentColorHex"),
+                    createdAtMillis = item.optLong("createdAtMillis", System.currentTimeMillis()),
+                    updatedAtMillis = item.optLong("updatedAtMillis", System.currentTimeMillis())
+                )
+            )
+        }
+    }
+}
+
 private fun JSONObject?.toSettings(): AppSettings {
     if (this == null) return AppSettings()
     return AppSettings(
@@ -272,6 +351,11 @@ private fun JSONObject?.toSettings(): AppSettings {
         defaultRingEnabled = optBoolean("defaultRingEnabled", true),
         defaultVibrateEnabled = optBoolean("defaultVibrateEnabled", true),
         defaultVoiceEnabled = optBoolean("defaultVoiceEnabled", false),
+        defaultCalendarReminderMode = ReminderDeliveryMode.fromStorage(
+            optString("defaultCalendarReminderMode", ReminderDeliveryMode.NOTIFICATION.name)
+        ),
+        reminderToneUri = optStringOrNull("reminderToneUri"),
+        reminderToneName = optStringOrNull("reminderToneName"),
         quoteIndex = optInt("quoteIndex", 0),
         backupDirectoryUri = optStringOrNull("backupDirectoryUri"),
         autoBackupEnabled = optBoolean("autoBackupEnabled", false)

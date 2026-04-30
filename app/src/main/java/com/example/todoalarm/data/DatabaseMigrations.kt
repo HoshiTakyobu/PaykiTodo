@@ -193,4 +193,49 @@ object DatabaseMigrations {
             db.execSQL("ALTER TABLE recurring_task_templates ADD COLUMN eventDurationMinutes INTEGER")
         }
     }
+
+    val MIGRATION_5_6 = object : Migration(5, 6) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE todo_items ADD COLUMN reminderDeliveryMode TEXT NOT NULL DEFAULT 'FULLSCREEN'")
+            db.execSQL("ALTER TABLE recurring_task_templates ADD COLUMN reminderDeliveryMode TEXT NOT NULL DEFAULT 'FULLSCREEN'")
+        }
+    }
+
+    val MIGRATION_6_7 = object : Migration(6, 7) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL(
+                """
+                CREATE TABLE IF NOT EXISTS `reminder_chain_logs` (
+                    `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                    `todoId` INTEGER NOT NULL,
+                    `chainKey` TEXT NOT NULL,
+                    `source` TEXT NOT NULL,
+                    `stage` TEXT NOT NULL,
+                    `status` TEXT NOT NULL,
+                    `message` TEXT,
+                    `reminderAtMillis` INTEGER,
+                    `createdAtMillis` INTEGER NOT NULL
+                )
+                """.trimIndent()
+            )
+            db.execSQL("CREATE INDEX IF NOT EXISTS `index_reminder_chain_logs_createdAtMillis` ON `reminder_chain_logs` (`createdAtMillis`)")
+            db.execSQL("CREATE INDEX IF NOT EXISTS `index_reminder_chain_logs_todoId_createdAtMillis` ON `reminder_chain_logs` (`todoId`, `createdAtMillis`)")
+            db.execSQL("CREATE INDEX IF NOT EXISTS `index_reminder_chain_logs_chainKey` ON `reminder_chain_logs` (`chainKey`)")
+
+            db.execSQL(
+                """
+                CREATE TABLE IF NOT EXISTS `schedule_templates` (
+                    `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                    `name` TEXT NOT NULL,
+                    `templateType` TEXT NOT NULL,
+                    `payloadJson` TEXT NOT NULL,
+                    `accentColorHex` TEXT,
+                    `createdAtMillis` INTEGER NOT NULL,
+                    `updatedAtMillis` INTEGER NOT NULL
+                )
+                """.trimIndent()
+            )
+            db.execSQL("CREATE INDEX IF NOT EXISTS `index_schedule_templates_templateType_updatedAtMillis` ON `schedule_templates` (`templateType`, `updatedAtMillis`)")
+        }
+    }
 }

@@ -41,6 +41,11 @@
             </intent-filter>
         </activity>
 
+        <activity
+            android:name=".ui.WikiActivity"
+            android:exported="false"
+            android:theme="@style/Theme.TodoAlarm" />
+
         <service
             android:name=".alarm.ReminderForegroundService"
             android:exported="false"

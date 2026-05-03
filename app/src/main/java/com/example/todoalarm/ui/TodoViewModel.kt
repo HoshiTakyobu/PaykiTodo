@@ -21,6 +21,7 @@ import com.example.todoalarm.data.ReminderDeliveryMode
 import com.example.todoalarm.data.ScheduleTemplate
 import com.example.todoalarm.data.TaskGroup
 import com.example.todoalarm.data.ThemeMode
+import com.example.todoalarm.data.WeekStartMode
 import com.example.todoalarm.data.TodoDraft
 import com.example.todoalarm.data.TodoItem
 import com.example.todoalarm.data.RecurrenceConfig
@@ -299,6 +300,10 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
 
     fun updateThemeMode(themeMode: ThemeMode) {
         settingsStore.updateThemeMode(themeMode)
+    }
+
+    fun updateWeekStartMode(weekStartMode: WeekStartMode) {
+        settingsStore.updateWeekStartMode(weekStartMode)
     }
 
     fun showNextQuote() {

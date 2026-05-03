@@ -85,6 +85,7 @@ import com.example.todoalarm.data.ScheduleTemplate
 import com.example.todoalarm.data.TaskGroup
 import com.example.todoalarm.data.ThemeMode
 import com.example.todoalarm.data.TodoItem
+import com.example.todoalarm.data.WeekStartMode
 import com.example.todoalarm.ui.theme.PaykiGreetingFontFamily
 import java.time.LocalDate
 import java.time.LocalDateTime
@@ -320,11 +321,13 @@ internal fun DashboardBody(
     onRequestNotificationPolicyAccess: () -> Unit,
     onRequestIgnoreBatteryOptimization: () -> Unit,
     onRequestAccessibilityService: () -> Unit,
+    onWeekStartModeChange: (WeekStartMode) -> Unit,
     onNextQuote: () -> Unit,
     onDefaultSnoozeChange: (Int) -> Unit,
     onDefaultCalendarReminderModeChange: (ReminderDeliveryMode) -> Unit,
     onUseBuiltInReminderTone: () -> Unit,
     onPickSystemReminderTone: () -> Unit,
+    onOpenWiki: () -> Unit,
     onRunReminderChainTest: suspend (Int) -> String?,
     onClearReminderDiagnostics: suspend () -> Unit,
     onSaveWeekAsScheduleTemplate: suspend (String, String, LocalDate) -> String?,
@@ -348,6 +351,7 @@ internal fun DashboardBody(
                 modifier = Modifier.fillMaxSize(),
                 events = uiState.calendarItems,
                 groups = uiState.groups,
+                weekStartMode = uiState.settings.weekStartMode,
                 scheduleTemplates = uiState.scheduleTemplates,
                 onQuickCreateEvent = onQuickCreateCalendarEvent,
                 onCreateEventAt = onQuickCreateCalendarEvent,
@@ -464,10 +468,12 @@ internal fun DashboardBody(
                     onRequestNotificationPolicyAccess = onRequestNotificationPolicyAccess,
                     onRequestIgnoreBatteryOptimization = onRequestIgnoreBatteryOptimization,
                     onRequestAccessibilityService = onRequestAccessibilityService,
+                    onWeekStartModeChange = onWeekStartModeChange,
                     onDefaultSnoozeChange = onDefaultSnoozeChange,
                     onDefaultCalendarReminderModeChange = onDefaultCalendarReminderModeChange,
                     onUseBuiltInReminderTone = onUseBuiltInReminderTone,
                     onPickSystemReminderTone = onPickSystemReminderTone,
+                    onOpenWiki = onOpenWiki,
                     reminderChainLogs = uiState.reminderChainLogs,
                     onRunReminderChainTest = onRunReminderChainTest,
                     onClearReminderDiagnostics = onClearReminderDiagnostics,
@@ -480,7 +486,7 @@ internal fun DashboardBody(
                 )
             }
 
-            DashboardSection.ABOUT -> item { AboutPanel() }
+            DashboardSection.ABOUT -> item { AboutPanel(onOpenWiki = onOpenWiki) }
             DashboardSection.CALENDAR -> Unit
         }
     }

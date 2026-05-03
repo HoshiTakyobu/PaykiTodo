@@ -101,7 +101,7 @@ class MainActivity : ComponentActivity() {
             val ringtone = RingtoneManager.getRingtone(this, uri)
             val title = ringtone?.getTitle(this)
             viewModel.updateReminderTone(uri.toString(), title)
-            Toast.makeText(this, "提醒铃声已更新", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "提醒提示音已更新", Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -144,6 +144,7 @@ class MainActivity : ComponentActivity() {
                     onUpdateGroup = viewModel::updateGroup,
                     onDeleteGroup = viewModel::deleteGroup,
                     onThemeModeChange = viewModel::updateThemeMode,
+                    onWeekStartModeChange = viewModel::updateWeekStartMode,
                     onNextQuote = viewModel::showNextQuote,
                     onDefaultSnoozeChange = viewModel::updateDefaultSnooze,
                     onDefaultCalendarReminderModeChange = viewModel::updateDefaultCalendarReminderMode,
@@ -152,6 +153,7 @@ class MainActivity : ComponentActivity() {
                         Toast.makeText(this, "已切换为内置提醒音", Toast.LENGTH_SHORT).show()
                     },
                     onPickSystemReminderTone = ::openReminderTonePicker,
+                    onOpenWiki = ::openInAppWiki,
                     onRunReminderChainTest = { seconds -> viewModel.runReminderChainTest(seconds) },
                     onClearReminderDiagnostics = { viewModel.clearReminderDiagnostics() },
                     onSaveWeekAsScheduleTemplate = { name, type, weekStart ->
@@ -290,6 +292,10 @@ class MainActivity : ComponentActivity() {
             putExtra(RingtoneManager.EXTRA_RINGTONE_EXISTING_URI, existingUri)
         }
         ringtonePickerLauncher.launch(intent)
+    }
+
+    private fun openInAppWiki() {
+        startActivity(Intent(this, WikiActivity::class.java))
     }
 
     private fun copyCrashLog() {

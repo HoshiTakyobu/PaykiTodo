@@ -11,8 +11,14 @@ enum class ThemeMode(val label: String) {
     DARK("深色")
 }
 
+enum class WeekStartMode(val label: String) {
+    MONDAY("周一开始"),
+    SUNDAY("周日开始")
+}
+
 data class AppSettings(
     val themeMode: ThemeMode = ThemeMode.SYSTEM,
+    val weekStartMode: WeekStartMode = WeekStartMode.MONDAY,
     val defaultSnoozeMinutes: Int = 10,
     val defaultRingEnabled: Boolean = true,
     val defaultVibrateEnabled: Boolean = true,
@@ -35,6 +41,11 @@ class AppSettingsStore(context: Context) {
 
     fun updateThemeMode(themeMode: ThemeMode) {
         preferences.edit().putString(KEY_THEME_MODE, themeMode.name).apply()
+        refresh()
+    }
+
+    fun updateWeekStartMode(weekStartMode: WeekStartMode) {
+        preferences.edit().putString(KEY_WEEK_START_MODE, weekStartMode.name).apply()
         refresh()
     }
 
@@ -91,6 +102,7 @@ class AppSettingsStore(context: Context) {
     fun replaceAll(settings: AppSettings) {
         preferences.edit()
             .putString(KEY_THEME_MODE, settings.themeMode.name)
+            .putString(KEY_WEEK_START_MODE, settings.weekStartMode.name)
             .putInt(KEY_DEFAULT_SNOOZE, settings.defaultSnoozeMinutes)
             .putBoolean(KEY_DEFAULT_RING, settings.defaultRingEnabled)
             .putBoolean(KEY_DEFAULT_VIBRATE, settings.defaultVibrateEnabled)
@@ -111,8 +123,10 @@ class AppSettingsStore(context: Context) {
 
     private fun readSettings(): AppSettings {
         val themeName = preferences.getString(KEY_THEME_MODE, ThemeMode.SYSTEM.name)
+        val weekStartName = preferences.getString(KEY_WEEK_START_MODE, WeekStartMode.MONDAY.name)
         return AppSettings(
             themeMode = ThemeMode.entries.firstOrNull { it.name == themeName } ?: ThemeMode.SYSTEM,
+            weekStartMode = WeekStartMode.entries.firstOrNull { it.name == weekStartName } ?: WeekStartMode.MONDAY,
             defaultSnoozeMinutes = preferences.getInt(KEY_DEFAULT_SNOOZE, 10).coerceIn(5, 60),
             defaultRingEnabled = preferences.getBoolean(KEY_DEFAULT_RING, true),
             defaultVibrateEnabled = preferences.getBoolean(KEY_DEFAULT_VIBRATE, true),
@@ -131,6 +145,7 @@ class AppSettingsStore(context: Context) {
     companion object {
         private const val PREFS_NAME = "payki_todo_settings"
         private const val KEY_THEME_MODE = "theme_mode"
+        private const val KEY_WEEK_START_MODE = "week_start_mode"
         private const val KEY_DEFAULT_SNOOZE = "default_snooze_minutes"
         private const val KEY_DEFAULT_RING = "default_ring_enabled"
         private const val KEY_DEFAULT_VIBRATE = "default_vibrate_enabled"

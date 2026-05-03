@@ -1,0 +1,642 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>PaykiTodo 使用说明</title>
+  <style>
+    :root {
+      --bg: #f3ede2;
+      --bg-2: #ebe1d0;
+      --panel: rgba(255, 251, 244, 0.94);
+      --panel-strong: #fffdf9;
+      --line-soft: rgba(122, 98, 58, 0.14);
+      --text: #21322d;
+      --muted: #61716a;
+      --accent: #2f6e5f;
+      --accent-soft: rgba(47, 110, 95, 0.10);
+      --warn: #b84d36;
+      --warn-soft: rgba(184, 77, 54, 0.10);
+      --shadow: 0 16px 40px rgba(69, 53, 22, 0.08);
+    }
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0;
+      min-height: 100%;
+      color: var(--text);
+      background: radial-gradient(circle at top left, rgba(255, 245, 215, 0.78), transparent 34%), linear-gradient(180deg, var(--bg) 0%, var(--bg-2) 100%);
+      font: 15px/1.72 "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    }
+    .layout { display: grid; grid-template-columns: 292px minmax(0, 1fr); min-height: 100vh; }
+    aside {
+      position: sticky; top: 0; height: 100vh; overflow: auto;
+      padding: 20px 16px 28px; border-right: 1px solid var(--line-soft);
+      background: rgba(255, 252, 247, 0.84); backdrop-filter: blur(18px);
+    }
+    main { min-width: 0; padding: 24px 24px 44px; }
+    .brand { padding: 14px 14px 16px; border-radius: 18px; background: linear-gradient(135deg, rgba(47,110,95,0.13), rgba(47,110,95,0.04)); border: 1px solid var(--line-soft); box-shadow: 0 10px 28px rgba(69, 53, 22, 0.06); margin-bottom: 18px; }
+    .brand h1 { margin: 0; font-size: 24px; }
+    .brand p { margin: 8px 0 0; color: var(--muted); font-size: 13px; }
+    .nav-group-title { margin: 18px 8px 8px; font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+    .nav { display: flex; flex-direction: column; gap: 4px; }
+    .nav a { display: block; text-decoration: none; padding: 11px 12px; border-radius: 14px; color: var(--text); }
+    .nav a:hover, .nav a.active { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+    .article { display: none; background: var(--panel); border: 1px solid var(--line-soft); border-radius: 28px; box-shadow: var(--shadow); padding: 28px 28px 34px; }
+    .article.active { display: block; }
+    h1, h2, h3 { margin: 0 0 12px; line-height: 1.28; }
+    h1 { font-size: 31px; }
+    h2 { font-size: 23px; margin-top: 28px; }
+    h3 { font-size: 18px; margin-top: 18px; }
+    p { margin: 0 0 12px; }
+    ul, ol { margin: 0 0 14px; padding-left: 22px; }
+    li { margin-bottom: 8px; }
+    code { padding: 2px 7px; border-radius: 8px; background: rgba(47,110,95,0.08); color: var(--accent); font-family: Consolas, "Cascadia Mono", monospace; font-size: 0.95em; }
+    .meta { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 16px; }
+    .chip { display: inline-flex; align-items: center; padding: 7px 11px; border-radius: 999px; background: rgba(47,110,95,0.08); color: var(--accent); font-size: 13px; font-weight: 600; }
+    .callout { margin: 16px 0; padding: 14px 16px; border-radius: 0 14px 14px 0; border-left: 4px solid var(--accent); background: rgba(47,110,95,0.07); color: var(--muted); }
+    .callout.warn { border-left-color: var(--warn); background: var(--warn-soft); color: #7d4236; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; margin: 16px 0 18px; }
+    .card { border-radius: 18px; background: var(--panel-strong); border: 1px solid var(--line-soft); padding: 16px; }
+    .card h3 { margin-top: 0; margin-bottom: 10px; font-size: 16px; }
+    .table { width: 100%; border-collapse: collapse; margin: 14px 0 18px; border: 1px solid var(--line-soft); background: var(--panel-strong); }
+    .table th, .table td { text-align: left; vertical-align: top; padding: 12px 14px; border-bottom: 1px solid var(--line-soft); }
+    .table tr:last-child td { border-bottom: none; }
+    .table th { background: rgba(47,110,95,0.06); font-size: 13px; font-weight: 700; color: var(--accent); }
+    .steps { counter-reset: step; list-style: none; padding-left: 0; }
+    .steps li { position: relative; padding-left: 44px; min-height: 30px; margin-bottom: 14px; }
+    .steps li::before { counter-increment: step; content: counter(step); position: absolute; left: 0; top: 0; width: 28px; height: 28px; border-radius: 999px; background: var(--accent); color: #fff; font-size: 13px; font-weight: 700; display: flex; align-items: center; justify-content: center; }
+    .code-card { margin: 14px 0 18px; border-radius: 18px; border: 1px solid var(--line-soft); background: rgba(245, 241, 233, 0.96); overflow: hidden; }
+    .code-card .label { padding: 10px 14px; font-size: 13px; font-weight: 700; color: var(--accent); background: rgba(47,110,95,0.07); border-bottom: 1px solid var(--line-soft); }
+    .code-card pre { margin: 0; padding: 14px; white-space: pre-wrap; word-break: break-word; font: 13px/1.7 Consolas, "Cascadia Mono", monospace; }
+    @media (max-width: 920px) {
+      .layout { grid-template-columns: 1fr; }
+      aside { position: static; height: auto; border-right: none; border-bottom: 1px solid var(--line-soft); }
+      main { padding: 16px 14px 26px; }
+      .nav { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+      .article { padding: 20px 18px 24px; }
+      h1 { font-size: 27px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="layout">
+    <aside>
+      <div class="brand">
+        <h1>PaykiTodo Wiki</h1>
+        <p>版本 1.5.1.7。本地内置说明，按实际使用路径解释功能，不只是罗列能力。</p>
+      </div>
+      <div class="nav-group-title">开始使用</div>
+      <nav class="nav" id="nav">
+        <a href="#overview" class="active">总览与阅读方式</a>
+        <a href="#quick-start">第一次上手</a>
+        <div class="nav-group-title">主界面</div>
+        <a href="#drawer">抽屉菜单与导航</a>
+        <a href="#home">首页与待办列表</a>
+        <a href="#todo-editor">创建与编辑待办</a>
+        <a href="#todo-ops">待办预览、完成、取消、恢复</a>
+        <a href="#groups">分组管理</a>
+        <a href="#history">历史记录</a>
+        <div class="nav-group-title">提醒</div>
+        <a href="#reminder-screen">全屏提醒界面</a>
+        <a href="#reminder-settings">提醒权限、诊断与提示音</a>
+        <div class="nav-group-title">日历</div>
+        <a href="#calendar-overview">日历界面总览</a>
+        <a href="#calendar-views">四种视图</a>
+        <a href="#calendar-editor">创建与编辑日程</a>
+        <a href="#calendar-more">更多按钮、周模板、学期生成</a>
+        <a href="#batch-import">批量导入语法</a>
+        <div class="nav-group-title">数据与排障</div>
+        <a href="#backup">备份与恢复</a>
+        <a href="#crash">崩溃日志与常见排查</a>
+        <a href="#faq">常见问题</a>
+      </nav>
+    </aside>
+    <main>
+      <section id="overview" class="article active">
+        <h1>PaykiTodo 使用说明</h1>
+        <div class="meta">
+          <span class="chip">待办</span>
+          <span class="chip">强提醒</span>
+          <span class="chip">日历</span>
+          <span class="chip">批量导入</span>
+          <span class="chip">模板与备份</span>
+        </div>
+        <p>这份说明的目标不是告诉你“软件大概能做什么”，而是告诉你“某个按钮点进去到底怎么用、会发生什么、遇到什么边界情况是正常的”。如果你对软件中的某个操作有疑惑，应该能在左侧目录里找到对应入口。</p>
+        <div class="callout">推荐阅读顺序：<code>第一次上手</code> → <code>首页与待办列表</code> → <code>全屏提醒界面</code> → <code>日历界面总览</code> → <code>批量导入语法</code> → <code>提醒权限、诊断与提示音</code>。</div>
+        <div class="grid">
+          <div class="card"><h3>待办系统</h3><p>适合做需要强提醒、需要全屏弹出、需要完成/取消/延后的事情。</p></div>
+          <div class="card"><h3>日历系统</h3><p>适合课程表、值班表、全天日程、跨天安排和时间轴规划。</p></div>
+          <div class="card"><h3>诊断与备份</h3><p>提醒链路测试、崩溃日志、导出 JSON、自动备份都在软件内。</p></div>
+        </div>
+        <h2>当前版本最重要的交互原则</h2>
+        <ul>
+          <li>活动态只有三种：<code>已错过</code>、<code>今日待办</code>、<code>计划中</code>。其中 <code>已错过</code> 仍然是活动态，不算历史态。</li>
+          <li>真正进入历史记录的只有两种状态：<code>已完成</code> 和 <code>已取消</code>。</li>
+          <li>无 DDL 的待办可以存在，但它不会启用提醒，也不会启用循环。</li>
+          <li>循环任务/循环日程在编辑、取消、删除时，常常会先要求你选择影响范围。</li>
+          <li>提醒到点后的主目标是让你明确操作，不再保留“忽略一下先关掉”的入口。</li>
+        </ul>
+      </section>
+      <section id="quick-start" class="article">
+        <h1>第一次上手</h1>
+        <p>如果你刚装好软件，建议先按下面的顺序做一轮完整配置。这样后续测试提醒时不会被系统权限或后台限制误伤。</p>
+        <ol class="steps">
+          <li>进入 <code>设置 → 提醒权限</code>，把通知、精确闹钟、全屏提醒、免打扰穿透、忽略电池优化、辅助功能提醒都检查一遍。</li>
+          <li>进入 <code>设置 → 提醒链路诊断</code>，先跑一次短延迟测试，确认通知、前台服务、全屏页、锁屏显示链路至少能通。</li>
+          <li>进入 <code>设置 → 提示音</code>，如果你不想用内置音，改成系统通知提示音。</li>
+          <li>回到首页，先建一条有 DDL、带提醒的普通待办，再建一条无 DDL 的随手任务，对比两种行为差异。</li>
+          <li>打开日历，先手动创建一个普通日程，再试一次批量导入，熟悉两种录入方式。</li>
+          <li>最后到 <code>设置 → 数据与备份</code> 里选一个备份目录，避免后续卸载应用导致本地数据直接丢失。</li>
+        </ol>
+        <div class="callout warn">PaykiTodo 目前仍然是本地单机优先。卸载应用会清掉应用私有目录里的数据库、设置和语录缓存。要保数据，必须主动备份或导出。</div>
+      </section>
+      <section id="drawer" class="article">
+        <h1>抽屉菜单与导航</h1>
+        <p>点左上角三道杠会打开抽屉菜单。抽屉不是全屏覆盖，而是一个左侧面板，主要用于切换模块和筛选分组。</p>
+        <h2>顶部区域</h2>
+        <ul>
+          <li>最上方显示软件图标和 <code>PaykiTodo</code> 名字。</li>
+          <li>底部有显示模式切换按钮。点击后会弹出 <code>浅色</code>、<code>深色</code>、<code>跟随系统</code> 三种模式。</li>
+          <li>如果当前是 <code>跟随系统</code>，图标会根据系统当前明暗显示为太阳或月亮。</li>
+        </ul>
+        <h2>菜单结构</h2>
+        <table class="table">
+          <tr><th>入口</th><th>作用</th></tr>
+          <tr><td><code>我的任务</code></td><td>可展开。展开后先看到 <code>全部任务</code>，再看到所有分组筛选项。</td></tr>
+          <tr><td><code>日历</code></td><td>进入时间轴/周视图/月视图/列表视图所在的日历模块。</td></tr>
+          <tr><td><code>历史记录</code></td><td>查看已完成和已取消的任务。</td></tr>
+          <tr><td><code>分组管理</code></td><td>新建、改名、改颜色、删除自定义分组。</td></tr>
+          <tr><td><code>设置</code></td><td>目录式设置页。大部分调试与权限项都在这里。</td></tr>
+          <tr><td><code>关于</code></td><td>版本号、内部版本、包名、项目信息和说明入口。</td></tr>
+        </table>
+        <h2>分组筛选是怎么生效的</h2>
+        <ul>
+          <li>在 <code>我的任务</code> 下点击某个分组后，首页仍然保持 <code>已错过 / 今日待办 / 计划中</code> 这三个板块。</li>
+          <li>变化的是内容过滤：只显示当前分组内的任务。</li>
+          <li>点击 <code>全部任务</code> 则取消过滤。</li>
+        </ul>
+      </section>
+      <section id="home" class="article">
+        <h1>首页与待办列表</h1>
+        <p>首页是 PaykiTodo 的待办主战场。它保留语录、分区、预览卡片和直接勾选完成的能力。</p>
+        <div class="grid">
+          <div class="card"><h3>语录卡片</h3><p>顶部显示一句本地缓存语录。右侧刷新按钮可以切到下一条，退出后会记住你停留的位置。</p></div>
+          <div class="card"><h3>已错过</h3><p>显示第一天及以前已过 DDL 但未完成、未取消的任务。默认展开；如果没有错过任务则自动隐藏。</p></div>
+          <div class="card"><h3>今日待办</h3><p>显示今天应处理的任务。默认展开。</p></div>
+          <div class="card"><h3>计划中</h3><p>显示未来任务，以及无 DDL 任务。默认只有在今日待办为空时才会自动展开。</p></div>
+        </div>
+        <h2>任务排序规则</h2>
+        <ul>
+          <li><code>已错过</code>：按时间从早到晚排。</li>
+          <li><code>今日待办</code>：按今天内的时间从近到远排。</li>
+          <li><code>计划中</code>：先未来有 DDL 的任务，再无 DDL 的任务。无 DDL 会排在计划中末尾。</li>
+        </ul>
+        <h2>任务卡片怎么看</h2>
+        <ul>
+          <li>左侧竖条颜色来自任务所属分组。</li>
+          <li>标题前的小标签显示分组名。</li>
+          <li>有备注时，卡片会直接展示备注摘要。</li>
+          <li>有 DDL 时，会显示 <code>⏰ DDL</code>。</li>
+          <li>循环任务会额外显示 <code>循环任务</code> 字样。</li>
+          <li>错过任务的标题、备注、DDL 会偏红，便于快速识别。</li>
+        </ul>
+        <h2>快速完成</h2>
+        <p>点卡片最左侧复选框即可完成任务。完成时会有划线和烟花过渡动画，然后任务会移动到历史记录。</p>
+      </section>
+      <section id="todo-editor" class="article">
+        <h1>创建与编辑待办</h1>
+        <p>首页右下角的加号默认用于新增待办。编辑时则从任务卡片预览窗里的 <code>修改</code> 按钮进入。</p>
+        <h2>普通待办字段</h2>
+        <table class="table">
+          <tr><th>字段</th><th>说明</th></tr>
+          <tr><td>标题</td><td>必填。卡片和提醒页都会优先展示标题。</td></tr>
+          <tr><td>备注</td><td>可为空。首页卡片最多展示摘要，完整内容在预览和提醒页查看。</td></tr>
+          <tr><td>所属分组</td><td>决定颜色、标签和筛选归属。</td></tr>
+          <tr><td>设置 DDL</td><td>打开后才有截止日期和提醒逻辑；关闭则变成无 DDL 任务。</td></tr>
+          <tr><td>启用提醒</td><td>只有有 DDL 的活动任务才能启用。</td></tr>
+          <tr><td>提醒时间</td><td>可直接选具体日期时间。</td></tr>
+          <tr><td>响铃 / 震动</td><td>两者独立开关，按你的选择触发。</td></tr>
+        </table>
+        <h2>无 DDL 任务</h2>
+        <ul>
+          <li>把 <code>设置 DDL</code> 关掉即可创建无截止日期任务。</li>
+          <li>无 DDL 任务会排在 <code>计划中</code> 末尾。</li>
+          <li>无 DDL 任务不会启用提醒，也不会启用循环。</li>
+        </ul>
+        <h2>循环任务开关</h2>
+        <p>任务层面不额外区分“任务类型”，而是通过 <code>循环任务</code> 开关决定当前待办是否按循环方式生成多个实例。</p>
+        <h3>目前支持的循环规则</h3>
+        <ul>
+          <li><code>每天</code></li>
+          <li><code>每周的周几</code>，支持多选</li>
+          <li><code>每月的第几个星期几</code></li>
+          <li><code>每月的 D 日</code></li>
+          <li><code>每年的 M 月 D 日</code></li>
+        </ul>
+        <h3>循环截止日期</h3>
+        <ul>
+          <li>循环任务必须设置截止日期。</li>
+          <li>默认值是首个任务日期后的 90 天。</li>
+          <li>可以手动修改。</li>
+        </ul>
+        <h3>每月 D 日的特殊规则</h3>
+        <ul>
+          <li>如果你选的是 29、30、31 这类日期，而某个月没有这一天，则自动落到该月最后一天。</li>
+          <li>例如选择每月 31 日，到了 4 月会生成在 4 月 30 日。</li>
+          <li>编辑器下方会显示一行红色小字提示这个规则。</li>
+        </ul>
+        <h2>预览循环生成</h2>
+        <p>点 <code>预览循环生成</code> 可以先看这个循环配置大概会生成多少条实例，以及前几条的实际落点。建议你在课表、吃药、值班这种重要循环项上先预览再保存。</p>
+        <h2>编辑循环任务时的范围选择</h2>
+        <p>如果你修改的是仍处于活动态的循环任务，系统会先弹出“选择修改范围”。</p>
+        <table class="table">
+          <tr><th>范围</th><th>含义</th></tr>
+          <tr><td><code>当前事件</code></td><td>只改当前这一条实例。</td></tr>
+          <tr><td><code>当前事件和此后所有事件</code></td><td>从当前实例开始，当前和未来一起改。</td></tr>
+          <tr><td><code>所有事件</code></td><td>整个系列全部改。</td></tr>
+        </table>
+      </section>
+      <section id="todo-ops" class="article">
+        <h1>待办预览、完成、取消、恢复</h1>
+        <p>点击任务卡片主体会打开预览窗。很多不适合直接暴露在列表里的按钮，现在都放在预览窗里了。</p>
+        <h2>活动任务预览窗</h2>
+        <ul>
+          <li>显示分组、标题、备注、创建时间、DDL。</li>
+          <li>底部按钮一般是 <code>取消</code>、<code>关闭</code>、<code>修改</code>。</li>
+          <li>如果是循环任务，点 <code>取消</code> 或 <code>修改</code> 前通常会先要求选择范围。</li>
+        </ul>
+        <h2>取消任务</h2>
+        <ul>
+          <li>取消后任务会停止提醒，并进入历史记录。</li>
+          <li>一次性任务通常直接取消当前这条。</li>
+          <li>循环任务会先要求选择作用范围。</li>
+        </ul>
+        <h2>历史任务预览窗</h2>
+        <ul>
+          <li>历史列表中的卡片只显示分组、标题、备注，保持界面简洁。</li>
+          <li>更多细节例如创建时间、DDL、完成/取消时间，放在预览窗里查看。</li>
+          <li>历史预览窗里可以看到 <code>恢复</code> 和 <code>修改</code>。</li>
+        </ul>
+        <h2>恢复任务</h2>
+        <p>历史记录中的任务可以通过 <code>恢复</code> 回到活动态。恢复后是否继续参与提醒，要看当前任务本身的时间条件和状态，而不是无条件重新响铃。</p>
+        <h2>错过任务是怎么产生的</h2>
+        <ul>
+          <li>任务过了 DDL 后，如果在短缓冲窗口内仍未完成、未取消、未改期，它会进入 <code>已错过</code>。</li>
+          <li>进入 <code>已错过</code> 后仍然是活动态，不会直接丢去历史。</li>
+          <li>你仍然可以点开它进行修改、完成或取消。</li>
+        </ul>
+      </section>
+      <section id="groups" class="article">
+        <h1>分组管理</h1>
+        <p>分组既是视觉颜色来源，也是筛选维度。默认分组和自定义分组都在这里管理。</p>
+        <h2>你能做什么</h2>
+        <ul>
+          <li>新建分组</li>
+          <li>修改分组名称</li>
+          <li>修改分组颜色</li>
+          <li>删除自定义分组</li>
+        </ul>
+        <h2>不能直接删除的情况</h2>
+        <ul>
+          <li>默认分组不能直接删。</li>
+          <li>仍被活动任务使用的分组不能直接删，需要先迁移或清空相关任务。</li>
+        </ul>
+      </section>
+      <section id="history" class="article">
+        <h1>历史记录</h1>
+        <p>历史记录只保留真正结束的事项，不承接仍待你处理的错过任务。</p>
+        <table class="table">
+          <tr><th>会进入历史记录的状态</th><th>不会进入历史记录的状态</th></tr>
+          <tr><td><code>已完成</code></td><td><code>已错过</code></td></tr>
+          <tr><td><code>已取消</code></td><td><code>今日待办</code></td></tr>
+        </table>
+        <h2>列表为什么这么简化</h2>
+        <p>历史记录列表现在只直接展示分组名、标题、备注，是为了避免一条记录上同时塞进三个时间、两个按钮导致界面太乱。详细信息放在点击后的预览窗里查看。</p>
+      </section>
+      <section id="reminder-screen" class="article">
+        <h1>全屏提醒界面</h1>
+        <p>当待办或日程到点后，如果触发的是全屏提醒模式，你会看到一个独立的全屏界面，而不是仅靠通知栏轻飘飘地提醒一下。</p>
+        <h2>这个界面的目标</h2>
+        <ul>
+          <li>尽量在锁屏、后台、解锁后都把界面拉到前台。</li>
+          <li>不允许简单按返回键就关掉提醒页。</li>
+          <li>要求你明确作出一个动作，而不是继续拖延。</li>
+        </ul>
+        <h2>待办提醒会出现哪些按钮</h2>
+        <ul>
+          <li><code>我已完成</code></li>
+          <li><code>延后 5 分钟</code></li>
+          <li><code>取消任务</code></li>
+          <li><code>延后 X 分钟</code>，X 来自设置里的默认延后时长</li>
+          <li><code>自定义延后</code>，可直接输入分钟数确认</li>
+        </ul>
+        <h2>日程提醒和待办提醒的区别</h2>
+        <ul>
+          <li>日程提醒的主按钮是 <code>我知道了</code>。</li>
+          <li>日程提醒不需要“继续延后再等你做”的那套逻辑，所以不会和待办完全一样。</li>
+          <li>日程会尽量把 <code>日期</code> 和 <code>时间段</code> 直观显示出来。</li>
+        </ul>
+        <h2>延后时间的对齐规则</h2>
+        <p>延后不是简单的“当前时间 + N 分钟 + 保留秒数”，而是按分钟对齐。也就是你在任意秒数点下延后后，新的提醒时刻会把秒和毫秒清零。</p>
+        <div class="callout">例如现在是 <code>11:05:38</code>，你点 <code>延后 1 分钟</code>，预期时刻应该是 <code>11:06:00</code>，而不是 <code>11:06:38</code>。</div>
+        <h2>循环任务在提醒页取消时的范围选择</h2>
+        <p>如果当前提醒对应的是循环任务，按 <code>取消任务</code> 后会先弹出范围选择：</p>
+        <ul>
+          <li><code>当前事件</code></li>
+          <li><code>当前事件和此后所有事件</code></li>
+          <li><code>所有事件</code></li>
+        </ul>
+      </section>
+      <section id="reminder-settings" class="article">
+        <h1>提醒权限、诊断与提示音</h1>
+        <h2>设置页目录现在怎么看</h2>
+        <p>设置首页现在是目录式的，不再把所有内容堆成一个超长滚动页。你会看到三个大组：</p>
+        <ul>
+          <li><code>提醒与权限</code></li>
+          <li><code>日历与声音</code></li>
+          <li><code>数据与帮助</code></li>
+        </ul>
+        <h2>提醒权限</h2>
+        <p>进入 <code>设置 → 提醒权限</code> 后，会看到每项权限的当前状态，以及右侧的 <code>去设置</code> 按钮。</p>
+        <table class="table">
+          <tr><th>权限</th><th>用途</th></tr>
+          <tr><td>通知权限</td><td>允许发通知和前台服务通知。</td></tr>
+          <tr><td>精确闹钟</td><td>让系统在更准确的时间派发提醒。</td></tr>
+          <tr><td>全屏提醒</td><td>允许使用系统支持的全屏提醒链路。</td></tr>
+          <tr><td>免打扰穿透</td><td>在你的系统支持且已授权时，减少提醒被静音策略压掉的概率。</td></tr>
+          <tr><td>忽略电池优化</td><td>减少后台派发被 ROM 杀掉的风险。</td></tr>
+          <tr><td>辅助功能提醒</td><td>作为额外兜底链路，提高回到提醒页的机会。</td></tr>
+        </table>
+        <h2>提醒链路诊断</h2>
+        <ul>
+          <li>进入 <code>设置 → 提醒链路诊断</code>。</li>
+          <li>点 <code>提醒链路测试</code>，输入多少秒后提醒。</li>
+          <li>测试任务会短延迟创建，用来快速验证通知、前台服务、全屏页和无障碍兜底链路。</li>
+          <li>下方最近诊断记录会显示每个阶段的状态，便于定位到底卡在哪一步。</li>
+          <li>点 <code>清空诊断</code> 可以重置这一页的链路记录。</li>
+        </ul>
+        <h2>日历与提醒</h2>
+        <p>这里主要放影响全局默认行为的选项。</p>
+        <table class="table">
+          <tr><th>设置项</th><th>作用</th></tr>
+          <tr><td>默认延后时长</td><td>影响全屏待办提醒界面里的默认延后按钮。</td></tr>
+          <tr><td>日历周起始日</td><td>影响周视图和按周计算时，一周是从周一还是周日开始。</td></tr>
+          <tr><td>日历提醒默认方式</td><td>新建日历日程时默认是通知栏提醒还是全屏界面提醒。</td></tr>
+        </table>
+        <h2>提示音</h2>
+        <ul>
+          <li>提醒真正播放时仍然走闹钟音量通道，这是为了保证强提醒的可听性。</li>
+          <li>但你选择的声音来源，可以改成系统里的通知提示音。</li>
+          <li><code>使用内置提醒音</code>：恢复软件自带音效。</li>
+          <li><code>选择系统提示音</code>：打开系统铃声选择器，读取通知提示音列表。</li>
+        </ul>
+        <div class="callout">也就是说：<strong>音量走闹钟</strong>，但<strong>音色来源可选通知提示音</strong>。这两件事不是一回事。</div>
+      </section>
+      <section id="calendar-overview" class="article">
+        <h1>日历界面总览</h1>
+        <p>日历模块是用来承接课程表、值班表、时间轴规划和跨天/全天安排的，不只是把待办换个壳。</p>
+        <h2>顶部一排控件分别是什么</h2>
+        <table class="table">
+          <tr><th>控件</th><th>作用</th></tr>
+          <tr><td>年份月份标题</td><td>显示当前中心日期所在月份。点击标题可直接调出日期选择器。</td></tr>
+          <tr><td><code>时间轴 / 周视图 / 月视图 / 列表</code></td><td>视图模式切换按钮，点开是下拉菜单。</td></tr>
+          <tr><td><code>今天</code></td><td>回到今天所在日期。</td></tr>
+          <tr><td>日历图标</td><td>打开日期选择器，直接跳到某一天。</td></tr>
+          <tr><td>加号</td><td>新增一条日程。</td></tr>
+          <tr><td><code>…</code></td><td>打开批量导入、周模板、保存本周模板。</td></tr>
+        </table>
+        <h2>时间轴界面的总体结构</h2>
+        <ul>
+          <li>最左侧固定为时间轴。</li>
+          <li>上方先显示日期头。</li>
+          <li>日期头下方是全天栏。</li>
+          <li>最下面的大区域才是按小时划分的时间网格。</li>
+          <li>红线表示当前时间；今天的日期会高亮。</li>
+        </ul>
+      </section>
+      <section id="calendar-views" class="article">
+        <h1>四种视图</h1>
+        <h2>1. 时间轴</h2>
+        <ul>
+          <li>最适合查看一天内的排布、持续时长和时间冲突。</li>
+          <li>全天日程显示在时间网格上方的全天栏。</li>
+          <li>跨天日程会按跨越的日期拆分到对应天中显示，不会只落在第一天。</li>
+          <li>空白时间段点击一次会出现预添加块，再点一次才真正进入创建面板。</li>
+          <li>预添加块会自动吸附到最接近的 15 分钟刻度，并默认持续 30 分钟左右的初始长度。</li>
+        </ul>
+        <h2>2. 周视图</h2>
+        <ul>
+          <li>适合快速扫一周内的安排。</li>
+          <li>周视图的“这一周”是受 <code>设置 → 日历与提醒 → 日历周起始日</code> 控制的。</li>
+          <li>如果你习惯从周日开始看一周，可以在那里切换。</li>
+        </ul>
+        <h2>3. 月视图</h2>
+        <ul>
+          <li>适合看某个月内有哪些安排，但不强调小时级布局。</li>
+          <li>会按当前中心月份筛出该月的日程。</li>
+        </ul>
+        <h2>4. 列表</h2>
+        <ul>
+          <li>按时间顺序直接列出全部日程。</li>
+          <li>适合做总检查、找一条很久之后的安排，或在时间轴太密的时候快速扫一遍。</li>
+        </ul>
+      </section>
+      <section id="calendar-editor" class="article">
+        <h1>创建与编辑日程</h1>
+        <p>日程编辑器比待办多了地点、颜色、全天、开始/结束时间和提醒派发方式。</p>
+        <h2>基本字段</h2>
+        <table class="table">
+          <tr><th>字段</th><th>说明</th></tr>
+          <tr><td>日程标题</td><td>主显示内容。时间轴卡片优先保标题，空间足够时再展示地点。</td></tr>
+          <tr><td>地点</td><td>显示在日程卡片副标题和提醒页地点行。</td></tr>
+          <tr><td>备注</td><td>详情页和提醒页会显示。</td></tr>
+          <tr><td>全天日程</td><td>开启后显示在全天栏，不占小时网格。</td></tr>
+          <tr><td>开始时间 / 结束时间</td><td>普通日程按时间显示；跨天时结束日期可晚于开始日期。</td></tr>
+          <tr><td>颜色</td><td>影响日程块主色。</td></tr>
+        </table>
+        <h2>提醒设置</h2>
+        <ul>
+          <li>先打开 <code>提醒</code> 开关。</li>
+          <li><code>提醒时间</code> 默认使用提前量下拉菜单，例如提前 5 分钟、15 分钟、1 小时、1 天、2 天。</li>
+          <li>也可以直接点 <code>直接设置提醒时刻</code>，手动指定某个绝对时间。</li>
+          <li><code>提醒方式</code> 可选 <code>通知栏提醒</code> 或 <code>全屏界面提醒</code>。</li>
+          <li><code>响铃</code> 与 <code>震动</code> 可分开控制。</li>
+        </ul>
+        <h2>全天日程的提醒基准</h2>
+        <p>全天日程没有具体开始时分时，系统默认按当天 <code>09:00</code> 作为提醒计算锚点。因此你设“提前 1 天”时，实际会相对这一天的 09:00 来推算。</p>
+      </section>
+      <section id="calendar-more" class="article">
+        <h1>更多按钮、周模板、学期生成</h1>
+        <p>日历右上角的 <code>…</code> 不是杂项垃圾桶，它主要承接高效率录入功能。</p>
+        <h2>批量导入</h2>
+        <p>适合一次性导入课程表、值班表、活动列表。详细语法放在下一个章节单独说明。</p>
+        <h2>周模板</h2>
+        <ul>
+          <li>用于管理已经保存的周模板或学期模板。</li>
+          <li>你可以把模板复制到某一周。</li>
+          <li>也可以基于模板直接生成整学期循环日程。</li>
+          <li>模板不需要你每次从零重新录课表。</li>
+        </ul>
+        <h2>保存本周模板</h2>
+        <ul>
+          <li>把当前可见周内的日程保存为模板。</li>
+          <li>保存时可命名，并标记模板类型，例如课程表模板、值班周模板、学期模板。</li>
+        </ul>
+      </section>
+      <section id="batch-import" class="article">
+        <h1>批量导入语法</h1>
+        <p>如果你经常拿到一整学期课表、某周值班安排，或者想快速规划某天的时间，批量导入会比手动点格子高效很多。</p>
+        <h2>入口在哪里</h2>
+        <ul>
+          <li>日历页右上角点 <code>…</code></li>
+          <li>选择 <code>批量导入</code></li>
+          <li>进入导入窗后，可直接粘贴文本，也可先点 <code>载入示例</code></li>
+          <li>右上角问号和窗口内的 <code>查看 Wiki</code> 都能打开语法帮助</li>
+        </ul>
+        <h2>最小可用语法</h2>
+        <div class="code-card"><div class="label">示例</div><pre>2026-04-27: 10:20-11:55, 辅导员助理值班, @MB-B1-412; 12:30-14:00, 午休</pre></div>
+        <ul>
+          <li>第一条必须带日期。</li>
+          <li>同一天后续条目可以省略日期。</li>
+          <li>条目之间可以用英文分号 <code>;</code>，也可以直接换行。</li>
+          <li>最少需要 <code>时间段, 标题</code> 这两个字段。</li>
+        </ul>
+        <h2>字段顺序</h2>
+        <p>推荐顺序如下：</p>
+        <div class="code-card"><div class="label">推荐顺序</div><pre>[日期:] 时间段, 标题, 地点, 循环规则, 循环截止日期, 扩展字段</pre></div>
+        <h2>时间段写法</h2>
+        <table class="table">
+          <tr><th>写法</th><th>含义</th></tr>
+          <tr><td><code>10:20-11:55</code></td><td>普通同日时间段</td></tr>
+          <tr><td><code>22:30-次日01:00</code></td><td>跨天日程</td></tr>
+          <tr><td><code>全天</code></td><td>全天日程</td></tr>
+        </table>
+        <h2>地点前面的 @ 现在怎么处理</h2>
+        <p><code>@</code> 不再被当作语法标记，而是普通字符串的一部分。也就是说，<code>@品学楼C506</code> 会原样当作地点文字保存下来。如果你想让地点前面带 @，直接写就行。</p>
+        <h2>如果内容里有逗号或分号怎么办</h2>
+        <p>请用双引号包起来。</p>
+        <div class="code-card"><div class="label">示例</div><pre>2026-03-02: 19:30-21:55, "【课】二胡演奏基础", "@品学楼,C506"</pre></div>
+        <h2>循环规则写法</h2>
+        <table class="table">
+          <tr><th>写法</th><th>含义</th></tr>
+          <tr><td><code>Daily</code></td><td>每天</td></tr>
+          <tr><td><code>Weekly</code></td><td>按当前日期对应星期每周循环</td></tr>
+          <tr><td><code>Weekly[Mon,Wed,Fri]</code></td><td>每周一、三、五循环</td></tr>
+          <tr><td><code>MonthlyDay</code></td><td>每月同一日</td></tr>
+          <tr><td><code>MonthlyNthWeekday</code></td><td>每月第 N 个星期 X</td></tr>
+          <tr><td><code>Yearly</code></td><td>每年同月同日</td></tr>
+        </table>
+        <div class="code-card"><div class="label">示例</div><pre>2026-03-02: 19:30-21:55, 【课】二胡演奏基础, @品学楼C506, Weekly, 2026-05-12
+09:00-10:05, 【课】辅导员助理值班, @MB-B1-412, Weekly, 2026-06-15</pre></div>
+        <h2>提醒扩展字段</h2>
+        <p>可选扩展字段用 <code>键=值</code> 的形式书写。</p>
+        <table class="table">
+          <tr><th>字段</th><th>示例</th><th>作用</th></tr>
+          <tr><td><code>Note</code></td><td><code>Note="刷题 2 套"</code></td><td>备注</td></tr>
+          <tr><td><code>Remind</code></td><td><code>Remind=30m</code></td><td>提前 30 分钟提醒，也支持 <code>1h</code>、<code>2d</code>、<code>off</code></td></tr>
+          <tr><td><code>Mode</code></td><td><code>Mode=Notification</code></td><td>通知栏提醒或全屏提醒</td></tr>
+          <tr><td><code>Ring</code></td><td><code>Ring=On</code></td><td>是否响铃</td></tr>
+          <tr><td><code>Vibrate</code></td><td><code>Vibrate=Off</code></td><td>是否震动</td></tr>
+          <tr><td><code>Color</code></td><td><code>Color=#4E87E1</code></td><td>日程主色</td></tr>
+          <tr><td><code>Group</code></td><td><code>Group=课程</code></td><td>导入时写入分组名，供后续映射</td></tr>
+        </table>
+        <h2>默认规则</h2>
+        <ul>
+          <li>不写循环规则：按单次日程处理。</li>
+          <li>写了循环规则但不写截止日期：默认截止到起始日期后 90 天。</li>
+          <li>批量导入默认提醒是：<code>提前 5 分钟 + 通知栏提醒 + 响铃开启 + 震动开启</code>。</li>
+        </ul>
+        <h2>导入前建议先做什么</h2>
+        <ol class="steps">
+          <li>先点 <code>解析预览</code>，确认成功条数和报错条数。</li>
+          <li>检查预览卡片里的时间、地点、循环标签和提醒方式。</li>
+          <li>确认无误后再点 <code>一键导入</code>。</li>
+        </ol>
+      </section>
+      <section id="backup" class="article">
+        <h1>备份与恢复</h1>
+        <p>PaykiTodo 当前不是云同步产品，所以备份是你避免数据丢失的第一道保险。</p>
+        <h2>入口</h2>
+        <p>进入 <code>设置 → 数据与备份</code>。</p>
+        <h2>你会看到哪些按钮</h2>
+        <table class="table">
+          <tr><th>按钮</th><th>作用</th></tr>
+          <tr><td><code>选择备份目录</code></td><td>选择自动备份写入的位置。</td></tr>
+          <tr><td><code>导出 JSON</code></td><td>手动导出当前所有数据。</td></tr>
+          <tr><td><code>导入 JSON</code></td><td>从以前导出的 JSON 恢复数据。</td></tr>
+          <tr><td><code>自动备份</code> 开关</td><td>开启后，任务、模板或分组发生变动时会尝试写入备份目录。</td></tr>
+        </table>
+        <h2>备份里包含什么</h2>
+        <ul>
+          <li>任务实例</li>
+          <li>循环模板</li>
+          <li>分组</li>
+          <li>提醒链路诊断日志</li>
+          <li>周模板 / 学期模板</li>
+          <li>业务设置，例如主题模式、周起始日、默认延后时长、提醒音来源等</li>
+        </ul>
+        <h2>导入会怎样</h2>
+        <p>导入目前更偏“整库恢复”思路，而不是复杂合并。也就是说，如果你准备从一个旧 JSON 恢复，请先确认现有数据是否已经另外导出保存。</p>
+      </section>
+      <section id="crash" class="article">
+        <h1>崩溃日志与常见排查</h1>
+        <p>软件现在只会在检测到真正的上次异常退出时，才提示你去设置页查看崩溃日志。</p>
+        <h2>怎么看崩溃日志</h2>
+        <ol class="steps">
+          <li>进入 <code>设置 → 崩溃日志</code>。</li>
+          <li>如果有新日志，可以点 <code>查看日志</code>。</li>
+          <li>点 <code>复制</code> 就能把文本拷出来给我分析。</li>
+          <li>确认没用了以后，可以点 <code>清空日志</code>。</li>
+        </ol>
+        <h2>提醒不稳定时先看哪里</h2>
+        <ul>
+          <li>先看 <code>设置 → 提醒权限</code> 是否齐全。</li>
+          <li>再看 <code>设置 → 提醒链路诊断</code> 的最近记录。</li>
+          <li>如果是直接闪退，再去看 <code>崩溃日志</code>。</li>
+        </ul>
+        <div class="callout warn">Android 各家 ROM 在锁屏、后台、电池优化、通知栏、全屏 Intent、辅助功能上的行为差异很大。权限全开并不代表所有机型都百分之百等价，但这是最基本的起点。</div>
+      </section>
+      <section id="faq" class="article">
+        <h1>常见问题</h1>
+        <h2>1. 为什么我创建了无 DDL 任务，却没有提醒？</h2>
+        <p>这是预期行为。无 DDL 任务只是一个不带截止时间的待办记录，不启用提醒，也不启用循环。</p>
+        <h2>2. 为什么错过任务不在历史里？</h2>
+        <p>因为 <code>已错过</code> 仍然是活动态。设计上是希望你还能处理它，而不是让它在历史里默默躺尸。</p>
+        <h2>3. 为什么批量导入第一条必须带日期？</h2>
+        <p>因为后续省略日期的条目会继承上一条的日期。没有第一条日期，就无法推断后面的归属日。</p>
+        <h2>4. 为什么日程提醒既能选系统通知提示音，又说走闹钟音量？</h2>
+        <p>声音文件来源和音量通道是两回事。PaykiTodo 当前保持“音量走闹钟通道”，同时允许你从系统通知提示音列表中挑一个更适合作为提醒声的音色。</p>
+        <h2>5. 为什么循环任务编辑前会多一步范围选择？</h2>
+        <p>因为不先确认你是只改当前一条，还是要影响未来整个系列，系统没法安全地修改循环数据。</p>
+        <h2>6. 如果我换手机，电脑现在能直接看到我手机上的待办吗？</h2>
+        <p>不能直接看到。当前版本还是本地单机模式，不会自动把手机数据库同步到电脑。你需要主动导出 JSON，或者把自动备份目录放到一个可同步的位置。</p>
+        <h2>7. 为什么提醒到点后最好不要只盯着通知栏？</h2>
+        <p>因为真正强提醒的主链路是全屏界面、前台服务和诊断兜底链路的组合。通知栏只是其中一层，不是全部。</p>
+      </section>
+    </main>
+  </div>
+  <script>
+    const links = Array.from(document.querySelectorAll('.nav a'));
+    const articles = Array.from(document.querySelectorAll('.article'));
+    function activate(hash) {
+      const normalized = (hash || '#overview').replace('#', '');
+      links.forEach((link) => {
+        link.classList.toggle('active', link.getAttribute('href') === '#' + normalized);
+      });
+      articles.forEach((article) => {
+        article.classList.toggle('active', article.id === normalized);
+      });
+    }
+    links.forEach((link) => {
+      link.addEventListener('click', (event) => {
+        event.preventDefault();
+        const hash = link.getAttribute('href');
+        history.replaceState(null, '', hash);
+        activate(hash);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      });
+    });
+    activate(location.hash);
+  </script>
+</body>
+</html>

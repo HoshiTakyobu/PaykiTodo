@@ -64,6 +64,7 @@ private fun BackupSnapshot.toJson(): JSONObject {
 private fun AppSettings.toJson(): JSONObject {
     return JSONObject().apply {
         put("themeMode", themeMode.name)
+        put("weekStartMode", weekStartMode.name)
         put("defaultSnoozeMinutes", defaultSnoozeMinutes)
         put("defaultRingEnabled", defaultRingEnabled)
         put("defaultVibrateEnabled", defaultVibrateEnabled)
@@ -347,6 +348,7 @@ private fun JSONObject?.toSettings(): AppSettings {
     if (this == null) return AppSettings()
     return AppSettings(
         themeMode = ThemeMode.entries.firstOrNull { it.name == optString("themeMode") } ?: ThemeMode.SYSTEM,
+        weekStartMode = WeekStartMode.entries.firstOrNull { it.name == optString("weekStartMode") } ?: WeekStartMode.MONDAY,
         defaultSnoozeMinutes = optInt("defaultSnoozeMinutes", 10),
         defaultRingEnabled = optBoolean("defaultRingEnabled", true),
         defaultVibrateEnabled = optBoolean("defaultVibrateEnabled", true),

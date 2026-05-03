@@ -20,6 +20,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -74,6 +76,7 @@ import com.example.todoalarm.data.ScheduleTemplate
 import com.example.todoalarm.data.ScheduleTemplateType
 import com.example.todoalarm.data.TaskGroup
 import com.example.todoalarm.data.TodoItem
+import com.example.todoalarm.data.WeekStartMode
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.time.Instant
@@ -102,6 +105,7 @@ internal fun CalendarPanel(
     modifier: Modifier = Modifier,
     events: List<TodoItem>,
     groups: List<TaskGroup>,
+    weekStartMode: WeekStartMode,
     scheduleTemplates: List<ScheduleTemplate>,
     onQuickCreateEvent: (LocalDateTime, LocalDateTime) -> Unit,
     onCreateEventAt: (LocalDateTime, LocalDateTime) -> Unit,
@@ -115,7 +119,6 @@ internal fun CalendarPanel(
 ) {
     val context = LocalContext.current
     val density = LocalDensity.current
-    val scope = rememberCoroutineScope()
     val anchorDate = remember { LocalDate.now() }
     var viewMode by rememberSaveable { mutableStateOf(CalendarViewMode.TIMELINE) }
     val days = remember(anchorDate) { (-CalendarDayRange..CalendarDayRange).map { anchorDate.plusDays(it.toLong()) } }
@@ -176,7 +179,9 @@ internal fun CalendarPanel(
             val visibleRange = remember(clampedHorizontalOffsetPx, dayColumnWidthPx, viewportWidthPx, days.size) {
                 calculateVisibleDayRange(days.size, dayColumnWidthPx, viewportWidthPx, clampedHorizontalOffsetPx)
             }
-            val visibleDays = remember(days, visibleRange) { days.slice(visibleRange) }
+            val visibleDays = remember(days, visibleRange.first, visibleRange.last) {
+                days.subList(visibleRange.first, visibleRange.last + 1)
+            }
             val visibleStart = days[visibleRange.first]
             val visibleEnd = days[visibleRange.last]
             val hourHeight = 72.dp
@@ -188,9 +193,9 @@ internal fun CalendarPanel(
             val visibleAllDayEvents = remember(allDayEvents, visibleStart, visibleEnd) {
                 allDayEvents.filter { item -> overlapsDateRange(item, visibleStart, visibleEnd) }
             }
-            val visibleTimedEventPlacementsByDay = remember(timedEventPlacementsByDay, visibleDays) {
-                visibleDays.associateWith { day ->
-                    timedEventPlacementsByDay[day].orEmpty()
+            val visibleTimedEventPlacements = remember(timedEventPlacementsByDay, visibleDays) {
+                visibleDays.flatMap { day ->
+                    timedEventPlacementsByDay[day].orEmpty().map { placement -> day to placement }
                 }
             }
             val horizontalScrollableState = rememberScrollableState { delta ->
@@ -224,47 +229,55 @@ internal fun CalendarPanel(
             }
 
             Column(modifier = Modifier.fillMaxSize()) {
-                Row(
+                Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 4.dp, vertical = 6.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+                        .padding(horizontal = 4.dp, vertical = 4.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     Text(
                         text = headerMonthDate.format(DateTimeFormatter.ofPattern("yyyy年M月", Locale.CHINA)),
-                        style = MaterialTheme.typography.headlineSmall,
+                        style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold,
-                        modifier = Modifier
-                            .weight(1f)
-                            .clickable {
-                                DatePickerDialog(
-                                    context,
-                                    { _, year, month, day -> jumpToDate(LocalDate.of(year, month + 1, day)) },
-                                    headerMonthDate.year,
-                                    headerMonthDate.monthValue - 1,
-                                    headerMonthDate.dayOfMonth
-                                ).show()
-                            }
+                        modifier = Modifier.clickable {
+                            DatePickerDialog(
+                                context,
+                                { _, year, month, day -> jumpToDate(LocalDate.of(year, month + 1, day)) },
+                                headerMonthDate.year,
+                                headerMonthDate.monthValue - 1,
+                                headerMonthDate.dayOfMonth
+                            ).show()
+                        },
+                        maxLines = 1,
+                        softWrap = false,
+                        overflow = TextOverflow.Ellipsis
                     )
                     Row(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        CalendarHeaderActionButton(
-                            label = when (viewMode) {
-                                CalendarViewMode.TIMELINE -> "时间轴"
-                                CalendarViewMode.WEEK -> "周"
-                                CalendarViewMode.MONTH -> "月"
-                                CalendarViewMode.LIST -> "列表"
-                            },
-                            icon = Icons.Rounded.KeyboardArrowDown,
-                            onClick = { showViewModeMenu = true }
-                        )
-                        CalendarHeaderActionButton(
-                            label = "今天",
-                            onClick = { jumpToDate(currentDate) }
-                        )
+                        Box(modifier = Modifier.wrapContentSize(Alignment.TopStart)) {
+                            CalendarHeaderActionButton(
+                                label = viewMode.label,
+                                icon = Icons.Rounded.KeyboardArrowDown,
+                                onClick = { showViewModeMenu = true }
+                            )
+                            DropdownMenu(
+                                expanded = showViewModeMenu,
+                                onDismissRequest = { showViewModeMenu = false }
+                            ) {
+                                CalendarViewMode.entries.forEach { mode ->
+                                    DropdownMenuItem(
+                                        text = { Text(mode.label) },
+                                        onClick = {
+                                            viewMode = mode
+                                            showViewModeMenu = false
+                                        }
+                                    )
+                                }
+                            }
+                        }
+                        CalendarHeaderActionButton(label = "今天", onClick = { jumpToDate(currentDate) })
                         CalendarHeaderActionButton(
                             icon = Icons.Rounded.CalendarMonth,
                             contentDescription = "选择日期",
@@ -286,54 +299,40 @@ internal fun CalendarPanel(
                                 onCreateEventAt(startAt, startAt.plusMinutes(30))
                             }
                         )
-                        CalendarHeaderActionButton(
-                            icon = Icons.Rounded.MoreHoriz,
-                            contentDescription = "更多操作",
-                            onClick = { showActionsMenu = true }
-                        )
-
-                        DropdownMenu(
-                            expanded = showViewModeMenu,
-                            onDismissRequest = { showViewModeMenu = false }
-                        ) {
-                            CalendarViewMode.entries.forEach { mode ->
+                        Box(modifier = Modifier.wrapContentSize(Alignment.TopEnd)) {
+                            CalendarHeaderActionButton(
+                                icon = Icons.Rounded.MoreHoriz,
+                                contentDescription = "更多操作",
+                                onClick = { showActionsMenu = true }
+                            )
+                            DropdownMenu(
+                                expanded = showActionsMenu,
+                                onDismissRequest = { showActionsMenu = false }
+                            ) {
                                 DropdownMenuItem(
-                                    text = { Text(mode.label) },
+                                    text = { Text("批量导入") },
                                     onClick = {
-                                        viewMode = mode
-                                        showViewModeMenu = false
+                                        showActionsMenu = false
+                                        onOpenBatchImport()
+                                    }
+                                )
+                                DropdownMenuItem(
+                                    text = { Text("周模板") },
+                                    onClick = {
+                                        showActionsMenu = false
+                                        templateAnchorWeekStart = currentWeekStart(headerMonthDate)
+                                        showTemplateManager = true
+                                    }
+                                )
+                                DropdownMenuItem(
+                                    text = { Text("保存本周模板") },
+                                    onClick = {
+                                        showActionsMenu = false
+                                        templateAnchorWeekStart = currentWeekStart(headerMonthDate)
+                                        showSaveWeekTemplate = true
                                     }
                                 )
                             }
-                        }
-
-                        DropdownMenu(
-                            expanded = showActionsMenu,
-                            onDismissRequest = { showActionsMenu = false }
-                        ) {
-                            DropdownMenuItem(
-                                text = { Text("批量导入") },
-                                onClick = {
-                                    showActionsMenu = false
-                                    onOpenBatchImport()
-                                }
-                            )
-                            DropdownMenuItem(
-                                text = { Text("周模板") },
-                                onClick = {
-                                    showActionsMenu = false
-                                    templateAnchorWeekStart = currentWeekStart(headerMonthDate)
-                                    showTemplateManager = true
-                                }
-                            )
-                            DropdownMenuItem(
-                                text = { Text("保存本周模板") },
-                                onClick = {
-                                    showActionsMenu = false
-                                    templateAnchorWeekStart = currentWeekStart(headerMonthDate)
-                                    showSaveWeekTemplate = true
-                                }
-                            )
                         }
                     }
                 }
@@ -393,7 +392,7 @@ internal fun CalendarPanel(
                                 hourHeightPx = hourHeightPx,
                                 verticalScroll = verticalScroll,
                                 currentMoment = currentMoment,
-                                eventPlacementsByDay = visibleTimedEventPlacementsByDay,
+                                visibleEventPlacements = visibleTimedEventPlacements,
                                 dayIndexByDate = dayIndexByDate,
                                 pendingDraft = pendingDraft,
                                 onPendingDraftChange = { pendingDraft = it },
@@ -407,9 +406,10 @@ internal fun CalendarPanel(
                     CalendarViewMode.WEEK -> {
                         CalendarSimpleListView(
                             title = "本周安排",
+                            subtitle = weekRangeLabel(currentDate, weekStartMode),
                             items = events.filter {
                                 val startDate = it.startAtMillis?.let(::millisToDate) ?: millisToDate(it.dueAtMillis)
-                                val weekStart = currentDate.minusDays((currentDate.dayOfWeek.value - 1).toLong())
+                                val weekStart = startOfWeek(currentDate, weekStartMode)
                                 val weekEnd = weekStart.plusDays(6)
                                 !startDate.isBefore(weekStart) && !startDate.isAfter(weekEnd)
                             },
@@ -478,6 +478,7 @@ internal fun CalendarPanel(
 @Composable
 private fun CalendarSimpleListView(
     title: String,
+    subtitle: String? = null,
     items: List<TodoItem>,
     onOpenDetails: (TodoItem) -> Unit
 ) {
@@ -495,6 +496,14 @@ private fun CalendarSimpleListView(
             color = MaterialTheme.colorScheme.onSurface,
             modifier = Modifier.padding(horizontal = 8.dp)
         )
+        subtitle?.let {
+            Text(
+                text = it,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(horizontal = 8.dp)
+            )
+        }
         if (items.isEmpty()) {
             Surface(
                 shape = RoundedCornerShape(20.dp),
@@ -815,17 +824,17 @@ private fun CalendarHeaderActionButton(
     onClick: () -> Unit
 ) {
     Surface(
-        shape = RoundedCornerShape(16.dp),
+        shape = RoundedCornerShape(14.dp),
         color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.75f),
         modifier = Modifier.clickable(onClick = onClick)
     ) {
         Row(
             modifier = Modifier.padding(
-                horizontal = if (label == null) 10.dp else 12.dp,
-                vertical = 7.dp
+                horizontal = if (label == null) 9.dp else 10.dp,
+                vertical = 6.dp
             ),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(6.dp)
+            horizontalArrangement = Arrangement.spacedBy(4.dp)
         ) {
             icon?.let {
                 Icon(
@@ -838,7 +847,10 @@ private fun CalendarHeaderActionButton(
                 Text(
                     text = it,
                     color = MaterialTheme.colorScheme.onSurface,
-                    fontWeight = FontWeight.SemiBold
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1,
+                    softWrap = false,
+                    overflow = TextOverflow.Ellipsis
                 )
             }
         }
@@ -1053,7 +1065,7 @@ private fun CalendarTimedBoard(
     hourHeightPx: Float,
     verticalScroll: androidx.compose.foundation.ScrollState,
     currentMoment: LocalDateTime,
-    eventPlacementsByDay: Map<LocalDate, List<TimedEventPlacement>>,
+    visibleEventPlacements: List<Pair<LocalDate, TimedEventPlacement>>,
     dayIndexByDate: Map<LocalDate, Int>,
     pendingDraft: PendingCalendarDraft?,
     onPendingDraftChange: (PendingCalendarDraft?) -> Unit,
@@ -1122,10 +1134,8 @@ private fun CalendarTimedBoard(
                 }
             }
 
-            visibleRange.forEach { dayIndex ->
-                val day = days[dayIndex]
-                val placements = eventPlacementsByDay[day].orEmpty()
-                placements.forEach { placement ->
+            visibleEventPlacements.forEach { (day, placement) ->
+                val dayIndex = dayIndexByDate[day] ?: return@forEach
                     TimedEventCard(
                         segment = placement.segment,
                         placement = placement,
@@ -1136,7 +1146,6 @@ private fun CalendarTimedBoard(
                         hourHeight = hourHeight,
                         onClick = { onOpenDetails(placement.segment.item) }
                     )
-                }
             }
 
             pendingDraft?.let { draft ->
@@ -1219,45 +1228,60 @@ private fun TimedEventCard(
     val alpha = calendarVisualAlpha(item)
     val topOffset = hourHeight * (startMinutes / 60f)
     val eventWidth = (dayColumnWidth / placement.columnCount) - 8.dp
+    val eventHeight = (hourHeight * (durationMinutes / 60f)).coerceAtLeast(48.dp)
     val baseLeft = with(LocalDensity.current) { dayLeftPx(dayIndex, dayColumnWidthPx, horizontalOffsetPx).toDp() }
     val leftOffset = baseLeft +
         (dayColumnWidth / placement.columnCount) * placement.columnIndex +
         4.dp
+    val showLocation = durationMinutes >= 90 || eventWidth >= 132.dp
+    val titleMaxLines = if (showLocation) 4 else 6
 
     Surface(
         modifier = Modifier
             .offset(x = leftOffset, y = topOffset)
             .width(eventWidth)
-            .height((hourHeight * (durationMinutes / 60f)).coerceAtLeast(42.dp))
+            .height(eventHeight)
             .clickable(onClick = onClick)
             .alpha(alpha),
         shape = RoundedCornerShape(12.dp),
-        color = tint.copy(alpha = 0.16f)
+        color = tint.copy(alpha = 0.14f)
     ) {
-        Column(
+        Row(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(horizontal = 8.dp, vertical = 5.dp),
-            verticalArrangement = Arrangement.spacedBy(0.dp)
+                .padding(horizontal = 6.dp, vertical = 6.dp),
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
         ) {
-            Text(
-                text = item.title,
-                fontWeight = FontWeight.Bold,
-                color = tint,
-                fontSize = 13.sp,
-                lineHeight = 13.sp,
-                maxLines = 3,
-                overflow = TextOverflow.Ellipsis
-            )
-            if (item.location.isNotBlank()) {
+            Surface(
+                modifier = Modifier
+                    .fillMaxHeight()
+                    .width(3.dp),
+                shape = RoundedCornerShape(999.dp),
+                color = tint.copy(alpha = 0.95f)
+            ) {}
+            Column(
+                modifier = Modifier.fillMaxSize(),
+                verticalArrangement = Arrangement.spacedBy(2.dp)
+            ) {
                 Text(
-                    text = item.location,
-                    color = tint.copy(alpha = 0.82f),
-                    fontSize = 10.sp,
-                    lineHeight = 10.sp,
-                    maxLines = 1,
+                    text = item.title,
+                    fontWeight = FontWeight.Bold,
+                    color = tint.copy(alpha = 0.98f),
+                    fontSize = 13.sp,
+                    lineHeight = 14.sp,
+                    maxLines = titleMaxLines,
                     overflow = TextOverflow.Ellipsis
                 )
+                if (showLocation && item.location.isNotBlank()) {
+                    Text(
+                        text = item.location,
+                        color = tint.copy(alpha = 0.78f),
+                        fontSize = 10.sp,
+                        lineHeight = 11.sp,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
             }
         }
     }
@@ -1530,6 +1554,30 @@ private fun snapToQuarterHour(totalMinutes: Int): Int {
 
 private fun currentWeekStart(date: LocalDate): LocalDate {
     return date.minusDays((date.dayOfWeek.value - 1).toLong())
+}
+
+private fun startOfWeek(date: LocalDate, weekStartMode: WeekStartMode): LocalDate {
+    val desired = when (weekStartMode) {
+        WeekStartMode.MONDAY -> java.time.DayOfWeek.MONDAY
+        WeekStartMode.SUNDAY -> java.time.DayOfWeek.SUNDAY
+    }
+    var cursor = date
+    while (cursor.dayOfWeek != desired) {
+        cursor = cursor.minusDays(1)
+    }
+    return cursor
+}
+
+private fun weekRangeLabel(date: LocalDate, weekStartMode: WeekStartMode): String {
+    val start = startOfWeek(date, weekStartMode)
+    val end = start.plusDays(6)
+    return buildString {
+        append(if (weekStartMode == WeekStartMode.MONDAY) "周一到周日" else "周日到周六")
+        append(" · ")
+        append(start.format(DateTimeFormatter.ofPattern("M月d日", Locale.CHINA)))
+        append(" - ")
+        append(end.format(DateTimeFormatter.ofPattern("M月d日", Locale.CHINA)))
+    }
 }
 
 private fun java.time.DayOfWeek.shortLabel(): String = when (this) {

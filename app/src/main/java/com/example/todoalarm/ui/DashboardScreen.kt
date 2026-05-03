@@ -42,6 +42,7 @@ import com.example.todoalarm.data.ScheduleTemplateType
 import com.example.todoalarm.data.ThemeMode
 import com.example.todoalarm.data.TodoDraft
 import com.example.todoalarm.data.TodoItem
+import com.example.todoalarm.data.WeekStartMode
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.time.LocalDate
@@ -85,11 +86,13 @@ fun DashboardScreen(
     onUpdateGroup: suspend (com.example.todoalarm.data.TaskGroup) -> String?,
     onDeleteGroup: suspend (Long) -> String?,
     onThemeModeChange: (ThemeMode) -> Unit,
+    onWeekStartModeChange: (WeekStartMode) -> Unit,
     onNextQuote: () -> Unit,
     onDefaultSnoozeChange: (Int) -> Unit,
     onDefaultCalendarReminderModeChange: (ReminderDeliveryMode) -> Unit,
     onUseBuiltInReminderTone: () -> Unit,
     onPickSystemReminderTone: () -> Unit,
+    onOpenWiki: () -> Unit,
     onRunReminderChainTest: suspend (Int) -> String?,
     onClearReminderDiagnostics: suspend () -> Unit,
     onSaveWeekAsScheduleTemplate: suspend (String, String, LocalDate) -> String?,
@@ -299,11 +302,13 @@ fun DashboardScreen(
                     onRequestNotificationPolicyAccess = onRequestNotificationPolicyAccess,
                     onRequestIgnoreBatteryOptimization = onRequestIgnoreBatteryOptimization,
                     onRequestAccessibilityService = onRequestAccessibilityService,
+                    onWeekStartModeChange = onWeekStartModeChange,
                     onNextQuote = onNextQuote,
                     onDefaultSnoozeChange = onDefaultSnoozeChange,
                     onDefaultCalendarReminderModeChange = onDefaultCalendarReminderModeChange,
                     onUseBuiltInReminderTone = onUseBuiltInReminderTone,
                     onPickSystemReminderTone = onPickSystemReminderTone,
+                    onOpenWiki = onOpenWiki,
                     onRunReminderChainTest = onRunReminderChainTest,
                     onClearReminderDiagnostics = onClearReminderDiagnostics,
                     onSaveWeekAsScheduleTemplate = onSaveWeekAsScheduleTemplate,

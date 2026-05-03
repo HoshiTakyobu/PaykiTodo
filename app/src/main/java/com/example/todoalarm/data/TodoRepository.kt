@@ -55,7 +55,7 @@ class TodoRepository(
     suspend fun acknowledgeCalendarEvent(id: Long): TodoItem? {
         val item = todoDao.getById(id) ?: return null
         if (!item.isEvent) return item
-        val updated = item.copy(reminderEnabled = false)
+        val updated = item.copy(reminderEnabled = false, reminderAtMillis = null)
         todoDao.update(updated)
         return updated
     }
@@ -198,7 +198,7 @@ class TodoRepository(
             reminderEnabled = if (completed) {
                 false
             } else {
-                item.reminderAtMillis?.let { it > now } == true
+                item.reminderTriggerTimesMillis().any { it > now }
             }
         )
         todoDao.update(updated)
@@ -231,15 +231,22 @@ class TodoRepository(
     }
 
     suspend fun futureReminderItems(now: Long): List<TodoItem> {
-        return todoDao.getFutureReminderItems(now)
+        return todoDao.getActiveReminderItems().filter { item ->
+            item.reminderTriggerTimesMillis().any { it >= now }
+        }
     }
 
     suspend fun dueReminderItems(now: Long): List<TodoItem> {
-        return todoDao.getDueReminderItems(now)
+        return todoDao.getActiveReminderItems().filter { item ->
+            item.reminderTriggerTimesMillis().any { it <= now }
+        }
     }
 
     suspend fun nextReminderItem(): TodoItem? {
-        return todoDao.getNextReminderItem()
+        return todoDao.getActiveReminderItems()
+            .mapNotNull { item -> item.reminderTriggerTimesMillis().filter { it >= System.currentTimeMillis() }.minOrNull()?.let { trigger -> item to trigger } }
+            .minByOrNull { it.second }
+            ?.first
     }
 
     suspend fun ensureDefaultGroups(): List<TaskGroup> {
@@ -747,6 +754,7 @@ class TodoRepository(
         val dueAtMillis = draft.dueAt?.toEpochMillis() ?: NO_DUE_DATE_MILLIS
         val reminderAtMillis = if (draft.dueAt == null) null else draft.reminderAt?.toEpochMillis()
         val offsetMinutes = reminderAtMillis?.let { ((dueAtMillis - it) / 60_000L).toInt() }
+        val reminderOffsetsCsv = offsetMinutes?.toString().orEmpty()
         val dueDate = draft.dueAt?.toLocalDate()
         val recurrence = draft.recurrence
 
@@ -762,6 +770,7 @@ class TodoRepository(
             location = "",
             accentColorHex = null,
             reminderAtMillis = reminderAtMillis,
+            reminderOffsetsCsv = reminderOffsetsCsv,
             reminderEnabled = reminderAtMillis != null,
             ringEnabled = draft.ringEnabled,
             vibrateEnabled = draft.vibrateEnabled,
@@ -831,10 +840,10 @@ class TodoRepository(
     ): TodoItem {
         val eventStartAtMillis = eventDisplayStartMillis(draft)
         val eventEndAtMillis = eventDisplayEndMillis(draft)
-        val reminderAtMillis = draft.reminderMinutesBefore?.let { minutes ->
-            reminderAnchorMillis(draft) - minutes * 60_000L
-        }
+        val normalizedOffsets = draft.normalizedReminderOffsetsMinutes
+        val reminderAtMillis = draft.reminderTriggerTimesMillis().minOrNull()
         val offsetMinutes = reminderAtMillis?.let { ((eventStartAtMillis - it) / 60_000L).toInt() }
+        val reminderOffsetsCsv = encodeReminderOffsets(normalizedOffsets, draft.reminderMinutesBefore)
         val recurrence = draft.recurrence
         val startDate = draft.startAt.toLocalDate()
 
@@ -850,7 +859,8 @@ class TodoRepository(
             location = draft.location.trim(),
             accentColorHex = draft.accentColorHex,
             reminderAtMillis = reminderAtMillis,
-            reminderEnabled = reminderAtMillis != null,
+            reminderOffsetsCsv = reminderOffsetsCsv,
+            reminderEnabled = normalizedOffsets.isNotEmpty(),
             ringEnabled = draft.ringEnabled,
             vibrateEnabled = draft.vibrateEnabled,
             voiceEnabled = false,
@@ -929,6 +939,10 @@ class TodoRepository(
             reminderOffsetMinutes = draft.reminderAt?.let {
                 ((dueAt.toEpochMillis() - it.toEpochMillis()) / 60_000L).toInt()
             },
+            reminderOffsetsCsv = draft.reminderAt?.let {
+                val offset = ((dueAt.toEpochMillis() - it.toEpochMillis()) / 60_000L).toInt()
+                encodeReminderOffsets(listOf(offset), offset)
+            }.orEmpty(),
             ringEnabled = draft.ringEnabled,
             vibrateEnabled = draft.vibrateEnabled,
             reminderDeliveryMode = ReminderDeliveryMode.FULLSCREEN.name,
@@ -960,6 +974,7 @@ class TodoRepository(
             dueMinute = draft.startAt.minute,
             eventDurationMinutes = Duration.between(draft.startAt, draft.endAt).toMinutes().coerceAtLeast(30).toInt(),
             reminderOffsetMinutes = draft.reminderMinutesBefore,
+            reminderOffsetsCsv = encodeReminderOffsets(draft.normalizedReminderOffsetsMinutes, draft.reminderMinutesBefore),
             ringEnabled = draft.ringEnabled,
             vibrateEnabled = draft.vibrateEnabled,
             reminderDeliveryMode = draft.reminderDeliveryMode.name,

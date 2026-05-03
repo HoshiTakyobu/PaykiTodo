@@ -52,6 +52,7 @@ class BackupManager(
 private fun BackupSnapshot.toJson(): JSONObject {
     return JSONObject().apply {
         put("exportedAtMillis", exportedAtMillis)
+        put("snapshotVersion", pendingQuoteVersion)
         put("settings", settings.toJson())
         put("groups", JSONArray(groups.map { it.toJson() }))
         put("templates", JSONArray(templates.map { it.toJson() }))
@@ -104,6 +105,7 @@ private fun RecurringTaskTemplate.toJson(): JSONObject {
         put("dueMinute", dueMinute)
         put("eventDurationMinutes", eventDurationMinutes)
         put("reminderOffsetMinutes", reminderOffsetMinutes)
+        put("reminderOffsetsCsv", reminderOffsetsCsv)
         put("ringEnabled", ringEnabled)
         put("vibrateEnabled", vibrateEnabled)
         put("reminderDeliveryMode", reminderDeliveryMode)
@@ -133,6 +135,7 @@ private fun TodoItem.toJson(): JSONObject {
         put("location", location)
         put("accentColorHex", accentColorHex)
         put("reminderAtMillis", reminderAtMillis)
+        put("reminderOffsetsCsv", reminderOffsetsCsv)
         put("reminderEnabled", reminderEnabled)
         put("ringEnabled", ringEnabled)
         put("vibrateEnabled", vibrateEnabled)
@@ -188,6 +191,7 @@ private fun ScheduleTemplate.toJson(): JSONObject {
 private fun backupSnapshotFromJson(json: JSONObject): BackupSnapshot {
     return BackupSnapshot(
         exportedAtMillis = json.optLong("exportedAtMillis", System.currentTimeMillis()),
+        pendingQuoteVersion = json.optInt("snapshotVersion", 1),
         groups = json.optJSONArray("groups").toGroups(),
         templates = json.optJSONArray("templates").toTemplates(),
         tasks = json.optJSONArray("tasks").toTasks(),
@@ -236,6 +240,7 @@ private fun JSONArray?.toTemplates(): List<RecurringTaskTemplate> {
                     dueMinute = item.optInt("dueMinute"),
                     eventDurationMinutes = item.optIntOrNull("eventDurationMinutes"),
                     reminderOffsetMinutes = item.optIntOrNull("reminderOffsetMinutes"),
+                    reminderOffsetsCsv = item.optString("reminderOffsetsCsv", item.optIntOrNull("reminderOffsetMinutes")?.toString().orEmpty()),
                     ringEnabled = item.optBoolean("ringEnabled", true),
                     vibrateEnabled = item.optBoolean("vibrateEnabled", true),
                     reminderDeliveryMode = item.optString("reminderDeliveryMode", ReminderDeliveryMode.FULLSCREEN.name),
@@ -273,6 +278,7 @@ private fun JSONArray?.toTasks(): List<TodoItem> {
                     location = item.optString("location", ""),
                     accentColorHex = item.optStringOrNull("accentColorHex"),
                     reminderAtMillis = item.optLongOrNull("reminderAtMillis"),
+                    reminderOffsetsCsv = item.optString("reminderOffsetsCsv", item.optIntOrNull("reminderOffsetMinutes")?.toString().orEmpty()),
                     reminderEnabled = item.optBoolean("reminderEnabled", false),
                     ringEnabled = item.optBoolean("ringEnabled", true),
                     vibrateEnabled = item.optBoolean("vibrateEnabled", true),

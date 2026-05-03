@@ -69,7 +69,7 @@ class ReminderNotifier(
     fun reminderPendingIntent(todoId: Long): PendingIntent {
         return PendingIntent.getActivity(
             context,
-            AlarmScheduler.requestCodeFor(todoId),
+            AlarmScheduler.requestCodeFor(todoId, 0L),
             buildReminderIntent(todoId),
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
@@ -169,6 +169,6 @@ class ReminderNotifier(
         Instant.ofEpochMilli(epochMillis).atZone(ZoneId.systemDefault()).toLocalDateTime()
 
     companion object {
-        fun notificationId(todoId: Long): Int = 10_000 + AlarmScheduler.requestCodeFor(todoId)
+        fun notificationId(todoId: Long): Int = 10_000 + AlarmScheduler.requestCodeFor(todoId, 0L)
     }
 }

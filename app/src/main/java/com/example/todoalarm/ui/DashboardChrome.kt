@@ -367,6 +367,44 @@ internal fun DashboardBody(
         return
     }
 
+    if (section == DashboardSection.SETTINGS) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+                .padding(horizontal = 20.dp, vertical = 10.dp)
+        ) {
+            SettingsPanel(
+                settings = uiState.settings,
+                permissions = permissions,
+                defaultSnooze = uiState.settings.defaultSnoozeMinutes,
+                crashLog = permissions.lastCrashLog,
+                onRequestNotificationPermission = onRequestNotificationPermission,
+                onRequestExactAlarmPermission = onRequestExactAlarmPermission,
+                onRequestFullScreenPermission = onRequestFullScreenPermission,
+                onRequestNotificationPolicyAccess = onRequestNotificationPolicyAccess,
+                onRequestIgnoreBatteryOptimization = onRequestIgnoreBatteryOptimization,
+                onRequestAccessibilityService = onRequestAccessibilityService,
+                onWeekStartModeChange = onWeekStartModeChange,
+                onDefaultSnoozeChange = onDefaultSnoozeChange,
+                onDefaultCalendarReminderModeChange = onDefaultCalendarReminderModeChange,
+                onUseBuiltInReminderTone = onUseBuiltInReminderTone,
+                onPickSystemReminderTone = onPickSystemReminderTone,
+                onOpenWiki = onOpenWiki,
+                reminderChainLogs = uiState.reminderChainLogs,
+                onRunReminderChainTest = onRunReminderChainTest,
+                onClearReminderDiagnostics = onClearReminderDiagnostics,
+                onPickBackupDirectory = onPickBackupDirectory,
+                onExportBackup = onExportBackup,
+                onImportBackup = onImportBackup,
+                onAutoBackupChange = onAutoBackupChange,
+                onCopyCrashLog = permissions.copyCrashLog,
+                onClearCrashLog = permissions.clearCrashLog
+            )
+        }
+        return
+    }
+
     var missedExpanded by rememberSaveable { mutableStateOf(true) }
     var todayExpanded by rememberSaveable { mutableStateOf(true) }
     var upcomingExpanded by rememberSaveable(uiState.todayItems.isEmpty()) { mutableStateOf(uiState.todayItems.isEmpty()) }
@@ -455,39 +493,9 @@ internal fun DashboardBody(
                     onDeleteGroup = onDeleteGroup
                 )
             }
-
-            DashboardSection.SETTINGS -> item {
-                SettingsPanel(
-                    settings = uiState.settings,
-                    permissions = permissions,
-                    defaultSnooze = uiState.settings.defaultSnoozeMinutes,
-                    crashLog = permissions.lastCrashLog,
-                    onRequestNotificationPermission = onRequestNotificationPermission,
-                    onRequestExactAlarmPermission = onRequestExactAlarmPermission,
-                    onRequestFullScreenPermission = onRequestFullScreenPermission,
-                    onRequestNotificationPolicyAccess = onRequestNotificationPolicyAccess,
-                    onRequestIgnoreBatteryOptimization = onRequestIgnoreBatteryOptimization,
-                    onRequestAccessibilityService = onRequestAccessibilityService,
-                    onWeekStartModeChange = onWeekStartModeChange,
-                    onDefaultSnoozeChange = onDefaultSnoozeChange,
-                    onDefaultCalendarReminderModeChange = onDefaultCalendarReminderModeChange,
-                    onUseBuiltInReminderTone = onUseBuiltInReminderTone,
-                    onPickSystemReminderTone = onPickSystemReminderTone,
-                    onOpenWiki = onOpenWiki,
-                    reminderChainLogs = uiState.reminderChainLogs,
-                    onRunReminderChainTest = onRunReminderChainTest,
-                    onClearReminderDiagnostics = onClearReminderDiagnostics,
-                    onPickBackupDirectory = onPickBackupDirectory,
-                    onExportBackup = onExportBackup,
-                    onImportBackup = onImportBackup,
-                    onAutoBackupChange = onAutoBackupChange,
-                    onCopyCrashLog = permissions.copyCrashLog,
-                    onClearCrashLog = permissions.clearCrashLog
-                )
-            }
-
             DashboardSection.ABOUT -> item { AboutPanel(onOpenWiki = onOpenWiki) }
             DashboardSection.CALENDAR -> Unit
+            DashboardSection.SETTINGS -> Unit
         }
     }
 }

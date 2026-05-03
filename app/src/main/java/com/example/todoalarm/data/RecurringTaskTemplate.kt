@@ -22,6 +22,7 @@ data class RecurringTaskTemplate(
     val dueMinute: Int,
     val eventDurationMinutes: Int? = null,
     val reminderOffsetMinutes: Int? = null,
+    val reminderOffsetsCsv: String = "",
     val ringEnabled: Boolean,
     val vibrateEnabled: Boolean,
     val reminderDeliveryMode: String = ReminderDeliveryMode.FULLSCREEN.name,
@@ -35,4 +36,7 @@ data class RecurringTaskTemplate(
     val startEpochDay: Long,
     val endEpochDay: Long,
     val createdAtMillis: Long = System.currentTimeMillis()
-)
+) {
+    val configuredReminderOffsetsMinutes: List<Int>
+        get() = decodeReminderOffsets(reminderOffsetsCsv, reminderOffsetMinutes)
+}

@@ -20,6 +20,7 @@ data class TodoItem(
     val location: String = "",
     val accentColorHex: String? = null,
     val reminderAtMillis: Long?,
+    val reminderOffsetsCsv: String = "",
     val reminderEnabled: Boolean,
     val ringEnabled: Boolean,
     val vibrateEnabled: Boolean,
@@ -67,6 +68,9 @@ data class TodoItem(
 
     val reminderDeliveryModeEnum: ReminderDeliveryMode
         get() = ReminderDeliveryMode.fromStorage(reminderDeliveryMode)
+
+    val configuredReminderOffsetsMinutes: List<Int>
+        get() = decodeReminderOffsets(reminderOffsetsCsv, reminderOffsetMinutes)
 
     val recurrenceEndDate: LocalDate?
         get() = recurrenceEndEpochDay?.let(LocalDate::ofEpochDay)

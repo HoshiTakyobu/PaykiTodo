@@ -238,4 +238,13 @@ object DatabaseMigrations {
             db.execSQL("CREATE INDEX IF NOT EXISTS `index_schedule_templates_templateType_updatedAtMillis` ON `schedule_templates` (`templateType`, `updatedAtMillis`)")
         }
     }
+
+    val MIGRATION_7_8 = object : Migration(7, 8) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE todo_items ADD COLUMN reminderOffsetsCsv TEXT NOT NULL DEFAULT ''")
+            db.execSQL("ALTER TABLE recurring_task_templates ADD COLUMN reminderOffsetsCsv TEXT NOT NULL DEFAULT ''")
+            db.execSQL("UPDATE todo_items SET reminderOffsetsCsv = CAST(reminderOffsetMinutes AS TEXT) WHERE reminderOffsetMinutes IS NOT NULL AND reminderOffsetsCsv = ''")
+            db.execSQL("UPDATE recurring_task_templates SET reminderOffsetsCsv = CAST(reminderOffsetMinutes AS TEXT) WHERE reminderOffsetMinutes IS NOT NULL AND reminderOffsetsCsv = ''")
+        }
+    }
 }

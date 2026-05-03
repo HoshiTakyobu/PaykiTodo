@@ -58,38 +58,14 @@ interface TodoDao {
         WHERE completed = 0
         AND canceled = 0
         AND reminderEnabled = 1
-        AND reminderAtMillis IS NOT NULL
-        AND reminderAtMillis >= :now
-        ORDER BY reminderAtMillis ASC
+        AND (
+            reminderAtMillis IS NOT NULL
+            OR reminderOffsetsCsv != ''
+        )
+        ORDER BY dueAtMillis ASC, createdAtMillis ASC
         """
     )
-    suspend fun getFutureReminderItems(now: Long): List<TodoItem>
-
-    @Query(
-        """
-        SELECT * FROM todo_items
-        WHERE completed = 0
-        AND canceled = 0
-        AND reminderEnabled = 1
-        AND reminderAtMillis IS NOT NULL
-        AND reminderAtMillis <= :now
-        ORDER BY reminderAtMillis ASC
-        """
-    )
-    suspend fun getDueReminderItems(now: Long): List<TodoItem>
-
-    @Query(
-        """
-        SELECT * FROM todo_items
-        WHERE completed = 0
-        AND canceled = 0
-        AND reminderEnabled = 1
-        AND reminderAtMillis IS NOT NULL
-        ORDER BY reminderAtMillis ASC
-        LIMIT 1
-        """
-    )
-    suspend fun getNextReminderItem(): TodoItem?
+    suspend fun getActiveReminderItems(): List<TodoItem>
 
     @Query(
         """

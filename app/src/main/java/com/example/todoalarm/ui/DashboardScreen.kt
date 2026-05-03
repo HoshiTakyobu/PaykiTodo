@@ -267,6 +267,7 @@ fun DashboardScreen(
                             allDay = false,
                             accentColorHex = "#4E87E1",
                             reminderMinutesBefore = 15,
+                            reminderOffsetsMinutes = listOf(15),
                             ringEnabled = uiState.settings.defaultRingEnabled,
                             vibrateEnabled = uiState.settings.defaultVibrateEnabled,
                             reminderDeliveryMode = uiState.settings.defaultCalendarReminderMode,

@@ -11,7 +11,8 @@ data class CalendarEventDraft(
     val endAt: LocalDateTime,
     val allDay: Boolean,
     val accentColorHex: String,
-    val reminderMinutesBefore: Int?,
+    val reminderMinutesBefore: Int? = null,
+    val reminderOffsetsMinutes: List<Int> = reminderMinutesBefore?.let { listOf(it) } ?: emptyList(),
     val ringEnabled: Boolean,
     val vibrateEnabled: Boolean,
     val reminderDeliveryMode: ReminderDeliveryMode = ReminderDeliveryMode.NOTIFICATION,
@@ -19,6 +20,9 @@ data class CalendarEventDraft(
     val groupId: Long = 0,
     val groupName: String = ""
 ) {
+    val normalizedReminderOffsetsMinutes: List<Int>
+        get() = normalizeReminderOffsets(reminderOffsetsMinutes, reminderMinutesBefore)
+
     val reminderAnchorAt: LocalDateTime
         get() = if (allDay) {
             LocalDateTime.of(startAt.toLocalDate(), java.time.LocalTime.of(9, 0))

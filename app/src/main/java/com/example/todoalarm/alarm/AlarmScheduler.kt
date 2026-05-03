@@ -5,6 +5,7 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.os.Build
+import com.example.todoalarm.data.reminderTriggerTimesMillis
 import com.example.todoalarm.data.TodoItem
 import com.example.todoalarm.data.ReminderChainStage
 import com.example.todoalarm.data.ReminderChainStatus
@@ -24,7 +25,8 @@ class AlarmScheduler(
     }
 
     fun schedule(todoItem: TodoItem): String? {
-        val triggerAtMillis = todoItem.reminderAtMillis ?: return null
+        val triggerTimes = todoItem.reminderTriggerTimesMillis()
+        val triggerAtMillis = triggerTimes.minOrNull() ?: return null
         ReminderChainLogger.log(
             context = context,
             todoId = todoItem.id,
@@ -40,8 +42,6 @@ class AlarmScheduler(
         }
 
         cancel(todoItem.id)
-        val exactIntent = buildBroadcastIntent(todoItem.id, triggerAtMillis, ACTION_EXACT, EXACT_OFFSET)
-        val backupIntent = buildBroadcastIntent(todoItem.id, triggerAtMillis, ACTION_BACKUP, BACKUP_OFFSET)
         val canUseAlarmClock = Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP
         val canUseExactBackup = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             alarmManager.canScheduleExactAlarms()
@@ -53,32 +53,37 @@ class AlarmScheduler(
         }
 
         return runCatching {
-            if (canUseAlarmClock) {
-                alarmManager.setAlarmClock(
-                    AlarmManager.AlarmClockInfo(triggerAtMillis, buildShowIntent(todoItem.id)),
-                    exactIntent
-                )
-            } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                alarmManager.setExactAndAllowWhileIdle(
-                    AlarmManager.RTC_WAKEUP,
-                    triggerAtMillis,
-                    exactIntent
-                )
-            } else {
-                alarmManager.setExact(
-                    AlarmManager.RTC_WAKEUP,
-                    triggerAtMillis,
-                    exactIntent
-                )
-            }
+            triggerTimes.forEach { scheduledAt ->
+                val exactIntent = buildBroadcastIntent(todoItem.id, scheduledAt, ACTION_EXACT, EXACT_OFFSET)
+                val backupIntent = buildBroadcastIntent(todoItem.id, scheduledAt, ACTION_BACKUP, BACKUP_OFFSET)
+                if (canUseAlarmClock) {
+                    alarmManager.setAlarmClock(
+                        AlarmManager.AlarmClockInfo(scheduledAt, buildShowIntent(todoItem.id)),
+                        exactIntent
+                    )
+                } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                    alarmManager.setExactAndAllowWhileIdle(
+                        AlarmManager.RTC_WAKEUP,
+                        scheduledAt,
+                        exactIntent
+                    )
+                } else {
+                    alarmManager.setExact(
+                        AlarmManager.RTC_WAKEUP,
+                        scheduledAt,
+                        exactIntent
+                    )
+                }
 
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && canUseExactBackup) {
-                alarmManager.setExactAndAllowWhileIdle(
-                    AlarmManager.RTC_WAKEUP,
-                    triggerAtMillis + BACKUP_DELAY_MILLIS,
-                    backupIntent
-                )
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && canUseExactBackup) {
+                    alarmManager.setExactAndAllowWhileIdle(
+                        AlarmManager.RTC_WAKEUP,
+                        scheduledAt + BACKUP_DELAY_MILLIS,
+                        backupIntent
+                    )
+                }
             }
+            persistScheduledTimes(todoItem.id, triggerTimes)
             ReminderChainLogger.log(
                 context = context,
                 todoId = todoItem.id,
@@ -104,8 +109,16 @@ class AlarmScheduler(
     }
 
     fun cancel(todoId: Long) {
-        alarmManager.cancel(buildBroadcastIntent(todoId, null, ACTION_EXACT, EXACT_OFFSET))
-        alarmManager.cancel(buildBroadcastIntent(todoId, null, ACTION_BACKUP, BACKUP_OFFSET))
+        alarmManager.cancel(buildBroadcastIntent(todoId, 0L, ACTION_EXACT, EXACT_OFFSET))
+        alarmManager.cancel(buildBroadcastIntent(todoId, 0L, ACTION_BACKUP, BACKUP_OFFSET))
+        val prefs = context.getSharedPreferences(SCHEDULE_PREFS, Context.MODE_PRIVATE)
+        val scheduledTimes = prefs.getStringSet(scheduledSetKey(todoId), emptySet()).orEmpty()
+            .mapNotNull { it.toLongOrNull() }
+        scheduledTimes.forEach { scheduledAt ->
+            alarmManager.cancel(buildBroadcastIntent(todoId, scheduledAt, ACTION_EXACT, EXACT_OFFSET))
+            alarmManager.cancel(buildBroadcastIntent(todoId, scheduledAt, ACTION_BACKUP, BACKUP_OFFSET))
+        }
+        prefs.edit().remove(scheduledSetKey(todoId)).apply()
     }
 
     private fun buildBroadcastIntent(
@@ -122,7 +135,7 @@ class AlarmScheduler(
         }
         return PendingIntent.getBroadcast(
             context,
-            requestCodeFor(todoId) + offset,
+            requestCodeFor(todoId, reminderAtMillis ?: 0L) + offset,
             intent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
@@ -135,10 +148,17 @@ class AlarmScheduler(
         }
         return PendingIntent.getActivity(
             context,
-            requestCodeFor(todoId),
+            requestCodeFor(todoId, 0L),
             intent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
+    }
+
+    private fun persistScheduledTimes(todoId: Long, triggerTimes: List<Long>) {
+        context.getSharedPreferences(SCHEDULE_PREFS, Context.MODE_PRIVATE)
+            .edit()
+            .putStringSet(scheduledSetKey(todoId), triggerTimes.map { it.toString() }.toSet())
+            .apply()
     }
 
     companion object {
@@ -149,9 +169,13 @@ class AlarmScheduler(
         private const val EXACT_OFFSET = 10_000
         private const val BACKUP_OFFSET = 20_000
         private const val BACKUP_DELAY_MILLIS = 2_000L
+        private const val SCHEDULE_PREFS = "paykitodo_scheduled_reminders"
 
-        fun requestCodeFor(todoId: Long): Int {
-            return (todoId xor (todoId ushr 32)).toInt()
+        fun requestCodeFor(todoId: Long, reminderAtMillis: Long): Int {
+            val folded = todoId xor reminderAtMillis xor (reminderAtMillis ushr 32)
+            return (folded xor (folded ushr 32)).toInt()
         }
+
+        private fun scheduledSetKey(todoId: Long): String = "scheduled_$todoId"
     }
 }

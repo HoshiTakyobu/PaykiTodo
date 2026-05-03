@@ -7,18 +7,22 @@ object ReminderDispatchTracker {
 
     fun wasDispatched(context: Context, todoId: Long, reminderAtMillis: Long): Boolean {
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        return prefs.getLong(key(todoId), 0L) >= reminderAtMillis
+        return prefs.getBoolean(key(todoId, reminderAtMillis), false)
     }
 
     fun markDispatched(context: Context, todoId: Long, dispatchedAtMillis: Long = System.currentTimeMillis()) {
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        prefs.edit().putLong(key(todoId), dispatchedAtMillis).apply()
+        prefs.edit().putBoolean(key(todoId, dispatchedAtMillis), true).apply()
     }
 
     fun clear(context: Context, todoId: Long) {
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        prefs.edit().remove(key(todoId)).apply()
+        val keys = prefs.all.keys.filter { it.startsWith("todo_${todoId}@") || it == legacyKey(todoId) }
+        prefs.edit().apply {
+            keys.forEach(::remove)
+        }.apply()
     }
 
-    private fun key(todoId: Long): String = "todo_$todoId"
+    private fun key(todoId: Long, reminderAtMillis: Long): String = "todo_${todoId}@${reminderAtMillis}"
+    private fun legacyKey(todoId: Long): String = "todo_$todoId"
 }

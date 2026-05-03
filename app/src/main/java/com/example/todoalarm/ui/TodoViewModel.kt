@@ -27,6 +27,7 @@ import com.example.todoalarm.data.TodoItem
 import com.example.todoalarm.data.RecurrenceConfig
 import com.example.todoalarm.data.buildScheduleTemplatePayload
 import com.example.todoalarm.data.parseScheduleTemplatePayload
+import com.example.todoalarm.data.reminderTriggerTimesMillis
 import com.example.todoalarm.data.toDraftsForWeek
 import com.example.todoalarm.data.toJsonString
 import com.example.todoalarm.data.toWeeklyRecurringDrafts
@@ -266,7 +267,7 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
                     canceledAtMillis = null,
                     missed = todoItem.hasDueDate && todoItem.dueAtMillis < now - MISSED_THRESHOLD_MILLIS,
                     missedAtMillis = if (todoItem.hasDueDate && todoItem.dueAtMillis < now - MISSED_THRESHOLD_MILLIS) now else null,
-                    reminderEnabled = todoItem.reminderAtMillis?.let { it > now } == true
+                    reminderEnabled = todoItem.reminderTriggerTimesMillis().any { it > now }
                 )
             )
             scheduleReminderOrDisable(restored)
@@ -384,7 +385,7 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
             source = "TodoViewModel",
             stage = ReminderChainStage.TEST_CREATED,
             status = ReminderChainStatus.OK,
-            reminderAtMillis = created.reminderAtMillis,
+            reminderAtMillis = created.reminderTriggerTimesMillis().minOrNull(),
             message = "delaySeconds=$delaySeconds"
         )
         scheduleReminderOrDisable(created)
@@ -559,12 +560,12 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
         }
         if (endMillis <= startMillis) return "结束时间必须晚于开始时间"
 
-        val reminderMinutesBefore = draft.reminderMinutesBefore
-        if (reminderMinutesBefore != null && reminderMinutesBefore < 0) {
+        val reminderMinutesBefore = draft.normalizedReminderOffsetsMinutes
+        if (reminderMinutesBefore.any { it < 0 }) {
             return "提醒时间不能为负数"
         }
-        val reminderAtMillis = reminderMinutesBefore?.let { draft.reminderAnchorAt.toEpochMillis() - it * 60_000L }
-        if (reminderAtMillis != null && reminderAtMillis <= now) {
+        val reminderAtMillis = draft.reminderTriggerTimesMillis()
+        if (reminderAtMillis.any { it <= now }) {
             return "提醒时间必须晚于当前时间"
         }
 
@@ -597,7 +598,7 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
         if (item.isTodo && !item.hasDueDate) {
             if (item.reminderEnabled || item.reminderAtMillis != null) {
                 ReminderDispatchTracker.clear(app, item.id)
-                repository.updateTodo(item.copy(reminderEnabled = false, reminderAtMillis = null))
+                repository.updateTodo(item.copy(reminderEnabled = false, reminderAtMillis = null, reminderOffsetsCsv = ""))
             }
             return
         }
@@ -612,9 +613,10 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
     private suspend fun dispatchDueReminders() {
         val now = System.currentTimeMillis()
         repository.dueReminderItems(now).forEach { item ->
-            val reminderAtMillis = item.reminderAtMillis ?: return@forEach
-            if (ReminderDispatchTracker.wasDispatched(app, item.id, reminderAtMillis)) return@forEach
-            ReminderDispatchTracker.markDispatched(app, item.id, now)
+            val reminderAtMillis = item.reminderTriggerTimesMillis()
+                .firstOrNull { it <= now && !ReminderDispatchTracker.wasDispatched(app, item.id, it) }
+                ?: return@forEach
+            ReminderDispatchTracker.markDispatched(app, item.id, reminderAtMillis)
             ReminderChainLogger.log(
                 context = app,
                 todoId = item.id,
@@ -629,7 +631,8 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
 
     private suspend fun nextReminderPollDelayMillis(): Long {
         val now = System.currentTimeMillis()
-        val nextReminderAt = repository.nextReminderItem()?.reminderAtMillis ?: return 15_000L
+        val nextReminderAt = repository.nextReminderItem()?.reminderTriggerTimesMillis()?.filter { it >= now }?.minOrNull()
+            ?: return 15_000L
         val untilNext = nextReminderAt - now
         return when {
             untilNext <= 1_500L -> 1_000L

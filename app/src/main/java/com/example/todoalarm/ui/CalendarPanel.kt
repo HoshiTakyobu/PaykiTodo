@@ -61,7 +61,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
@@ -1185,23 +1187,45 @@ private fun PendingDraftCard(
     val startMinutes = draft.startAt.hour * 60 + draft.startAt.minute
     val durationMinutes = 30L
     val topOffset = hourHeight * (startMinutes / 60f)
+    val accent = Color(0xFF4C8BF5)
 
-    Surface(
+    Box(
         modifier = Modifier
             .offset(
                 x = with(LocalDensity.current) { dayLeftPx(dayIndex, dayColumnWidthPx, horizontalOffsetPx).toDp() } + 4.dp,
                 y = topOffset
             )
             .width(dayColumnWidth - 8.dp)
-            .height((hourHeight * (durationMinutes / 60f)).coerceAtLeast(42.dp))
-            .clickable(onClick = onClick),
-        shape = RoundedCornerShape(12.dp),
-        color = Color(0x264C8BF5)
+            .height(hourHeight * (durationMinutes / 60f))
+            .clickable(onClick = onClick)
     ) {
+        Canvas(modifier = Modifier.matchParentSize()) {
+            val strokeWidth = 2.dp.toPx()
+            val radius = 14.dp.toPx()
+            drawRoundRect(
+                color = accent.copy(alpha = 0.10f),
+                cornerRadius = androidx.compose.ui.geometry.CornerRadius(radius, radius)
+            )
+            drawRoundRect(
+                color = accent,
+                cornerRadius = androidx.compose.ui.geometry.CornerRadius(radius, radius),
+                style = Stroke(width = strokeWidth)
+            )
+
+            val circleRadiusOuter = 7.dp.toPx()
+            val circleRadiusInner = 4.dp.toPx()
+            val topCenter = Offset(size.width - 18.dp.toPx(), circleRadiusOuter + 4.dp.toPx())
+            val bottomCenter = Offset(18.dp.toPx(), size.height - circleRadiusOuter - 4.dp.toPx())
+
+            drawCircle(color = accent.copy(alpha = 0.16f), radius = circleRadiusOuter, center = topCenter)
+            drawCircle(color = accent, radius = circleRadiusInner, center = topCenter)
+            drawCircle(color = accent.copy(alpha = 0.16f), radius = circleRadiusOuter, center = bottomCenter)
+            drawCircle(color = accent, radius = circleRadiusInner, center = bottomCenter)
+        }
         Text(
             text = "新日程",
-            modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
-            color = Color(0xFF3C6FE0),
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 7.dp),
+            color = accent,
             fontWeight = FontWeight.SemiBold,
             fontSize = 13.sp
         )

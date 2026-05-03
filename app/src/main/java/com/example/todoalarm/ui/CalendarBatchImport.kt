@@ -9,20 +9,26 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.HelpOutline
+import androidx.compose.material.icons.automirrored.rounded.PlaylistAdd
+import androidx.compose.material.icons.rounded.ContentPaste
+import androidx.compose.material.icons.rounded.KeyboardArrowDown
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -94,6 +100,7 @@ internal fun CalendarBatchImportDialog(
     var selectedFormat by remember { mutableStateOf(CalendarImportFormat.AUTO) }
     var parseResult by remember { mutableStateOf<CalendarBatchImportParseResult?>(null) }
     var showHelp by remember { mutableStateOf(false) }
+    var formatExpanded by remember { mutableStateOf(false) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -173,47 +180,78 @@ internal fun CalendarBatchImportDialog(
                     minLines = 8
                 )
 
-                FlowRow(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                Surface(
+                    shape = RoundedCornerShape(20.dp),
+                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.26f)
                 ) {
-                    CalendarImportFormat.entries.forEach { format ->
-                        AssistChip(
-                            onClick = {
-                                selectedFormat = format
-                                parseResult = null
-                            },
-                            label = { Text(format.label) }
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(14.dp),
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Text(
+                            text = "导入设置",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold
                         )
-                    }
-                }
-
-                FlowRow(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    AssistChip(
-                        onClick = {
-                            input = CalendarBatchImportSampleText
-                            parseResult = null
-                        },
-                        label = { Text("载入示例") }
-                    )
-                    AssistChip(
-                        onClick = {
-                            val clipboard = context.getSystemService(ClipboardManager::class.java)
-                            val pasted = clipboard?.primaryClip?.getItemAt(0)?.coerceToText(context)?.toString().orEmpty()
-                            if (pasted.isNotBlank()) {
-                                input = pasted
-                                parseResult = null
+                        Box(modifier = Modifier.fillMaxWidth()) {
+                            OutlinedButton(
+                                onClick = { formatExpanded = true },
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text("格式：${selectedFormat.label}")
+                                    Icon(Icons.Rounded.KeyboardArrowDown, contentDescription = null)
+                                }
                             }
-                        },
-                        label = { Text("粘贴剪贴板") }
-                    )
-                    AssistChip(
-                        onClick = { showHelp = true },
-                        label = { Text("查看 Wiki") }
-                    )
+                            DropdownMenu(
+                                expanded = formatExpanded,
+                                onDismissRequest = { formatExpanded = false }
+                            ) {
+                                CalendarImportFormat.entries.forEach { format ->
+                                    DropdownMenuItem(
+                                        text = { Text(format.label) },
+                                        onClick = {
+                                            selectedFormat = format
+                                            parseResult = null
+                                            formatExpanded = false
+                                        }
+                                    )
+                                }
+                            }
+                        }
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            OutlinedButton(
+                                onClick = {
+                                    input = CalendarBatchImportSampleText
+                                    parseResult = null
+                                },
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Icon(Icons.AutoMirrored.Rounded.PlaylistAdd, contentDescription = null)
+                                Text("载入示例")
+                            }
+                            OutlinedButton(
+                                onClick = {
+                                    val clipboard = context.getSystemService(ClipboardManager::class.java)
+                                    val pasted = clipboard?.primaryClip?.getItemAt(0)?.coerceToText(context)?.toString().orEmpty()
+                                    if (pasted.isNotBlank()) {
+                                        input = pasted
+                                        parseResult = null
+                                    }
+                                },
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Icon(Icons.Rounded.ContentPaste, contentDescription = null)
+                                Text("粘贴")
+                            }
+                        }
+                    }
                 }
 
                 parseResult?.let { result ->
@@ -360,11 +398,11 @@ private fun BatchImportPreviewCard(preview: CalendarBatchImportPreviewItem) {
                     }
                 )
                 ImportTag(
-                    label = draft.reminderMinutesBefore?.let {
+                    label = draft.normalizedReminderOffsetsMinutes.firstOrNull()?.let {
                         "提醒 ${reminderLeadTimeText(it)}"
                     } ?: "不提醒"
                 )
-                if (draft.reminderMinutesBefore != null) {
+                if (draft.normalizedReminderOffsetsMinutes.isNotEmpty()) {
                     ImportTag(label = draft.reminderDeliveryMode.label)
                 }
             }
@@ -693,6 +731,7 @@ internal object CalendarBatchImportParser {
                 allDay = timeRange.allDay,
                 accentColorHex = accentColorHex,
                 reminderMinutesBefore = reminderMinutesBefore,
+                reminderOffsetsMinutes = reminderMinutesBefore?.let { listOf(it) }.orEmpty(),
                 ringEnabled = ringEnabled,
                 vibrateEnabled = vibrateEnabled,
                 reminderDeliveryMode = mode,
@@ -967,6 +1006,7 @@ internal object CalendarBatchImportHub {
             allDay = allDay,
             accentColorHex = row["color"]?.takeIf { it.matches(Regex("^#[0-9A-Fa-f]{6}$")) } ?: defaults.defaultAccentColorHex,
             reminderMinutesBefore = row["remind"]?.let { parseReminderCell(it) } ?: defaults.defaultReminderMinutesBefore,
+            reminderOffsetsMinutes = listOfNotNull(row["remind"]?.let { parseReminderCell(it) } ?: defaults.defaultReminderMinutesBefore),
             ringEnabled = row["ring"]?.let { parseOnOff(it) } ?: defaults.defaultRingEnabled,
             vibrateEnabled = row["vibrate"]?.let { parseOnOff(it) } ?: defaults.defaultVibrateEnabled,
             reminderDeliveryMode = row["mode"]?.let { parseModeCell(it) } ?: defaults.defaultReminderDeliveryMode,
@@ -1041,6 +1081,7 @@ internal object CalendarBatchImportHub {
             allDay = allDay,
             accentColorHex = defaults.defaultAccentColorHex,
             reminderMinutesBefore = defaults.defaultReminderMinutesBefore,
+            reminderOffsetsMinutes = listOfNotNull(defaults.defaultReminderMinutesBefore),
             ringEnabled = defaults.defaultRingEnabled,
             vibrateEnabled = defaults.defaultVibrateEnabled,
             reminderDeliveryMode = defaults.defaultReminderDeliveryMode,

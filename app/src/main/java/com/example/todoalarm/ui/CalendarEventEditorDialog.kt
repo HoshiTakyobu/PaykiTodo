@@ -7,9 +7,11 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -18,6 +20,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -27,6 +30,7 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -50,6 +54,7 @@ import com.example.todoalarm.data.ReminderDeliveryMode
 import com.example.todoalarm.data.RecurrencePreviewResult
 import com.example.todoalarm.data.RecurrenceType
 import com.example.todoalarm.data.TodoItem
+import com.example.todoalarm.data.normalizeReminderOffsets
 import com.example.todoalarm.data.previewCalendarRecurrence
 import com.example.todoalarm.data.storageStringToWeekdays
 import com.example.todoalarm.data.toEpochMillis
@@ -62,11 +67,6 @@ private data class ReminderLeadTimeOption(
     val minutes: Int,
     val label: String
 )
-
-private enum class ReminderTimeInputMode {
-    RELATIVE,
-    ABSOLUTE
-}
 
 private val ReminderLeadTimeOptions = listOf(
     ReminderLeadTimeOption(5, "提前 5 分钟"),
@@ -89,6 +89,7 @@ private val CalendarColorOptions = listOf(
     "#E11D48"
 )
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 internal fun CalendarEventEditorDialog(
     initialEvent: TodoItem?,
@@ -117,19 +118,20 @@ internal fun CalendarEventEditorDialog(
         mutableStateOf(initialEvent?.accentColorHex ?: seedDraft?.accentColorHex ?: CalendarColorOptions.first())
     }
     var reminderEnabled by remember(initialEvent?.id, seedDraft) {
-        mutableStateOf(initialEvent?.reminderAtMillis != null || seedDraft?.reminderMinutesBefore != null)
+        mutableStateOf(initialEvent?.reminderEnabled == true || seedDraft?.normalizedReminderOffsetsMinutes?.isNotEmpty() == true)
     }
-    var reminderMinutesBefore by remember(initialEvent?.id, seedDraft) {
-        mutableStateOf(existingReminderOffsetMinutes(initialEvent) ?: seedDraft?.reminderMinutesBefore ?: 15)
-    }
-    var reminderTimeInputMode by remember(initialEvent?.id, seedDraft) {
-        mutableStateOf(ReminderTimeInputMode.RELATIVE)
+    var reminderOffsetsMinutes by remember(initialEvent?.id, seedDraft) {
+        mutableStateOf(
+            initialEvent?.configuredReminderOffsetsMinutes?.takeIf { it.isNotEmpty() }
+                ?: seedDraft?.normalizedReminderOffsetsMinutes?.takeIf { it.isNotEmpty() }
+                ?: listOf(15)
+        )
     }
     var reminderAt by remember(initialEvent?.id, seedDraft) {
         mutableStateOf(
             initialEvent?.reminderAtMillis?.let(::reminderAtMillisToDateTime)
                 ?: seedDraft?.let { draft ->
-                    draft.reminderMinutesBefore?.let { minutes ->
+                    draft.normalizedReminderOffsetsMinutes.firstOrNull()?.let { minutes ->
                         val anchor = if (draft.allDay) {
                             LocalDateTime.of(draft.startAt.toLocalDate(), LocalTime.of(9, 0))
                         } else {
@@ -138,7 +140,7 @@ internal fun CalendarEventEditorDialog(
                         anchor.minusMinutes(minutes.toLong())
                     }
                 }
-                ?: startAt.minusMinutes(reminderMinutesBefore.toLong())
+                ?: startAt.minusMinutes((reminderOffsetsMinutes.firstOrNull() ?: 15).toLong())
         )
     }
     var ringEnabled by remember(initialEvent?.id, seedDraft) { mutableStateOf(initialEvent?.ringEnabled ?: seedDraft?.ringEnabled ?: defaultRingEnabled) }
@@ -210,17 +212,6 @@ internal fun CalendarEventEditorDialog(
                         )
                     }
                     Switch(checked = allDay, onCheckedChange = { allDay = it })
-                }
-
-                LaunchedEffect(startAt, allDay, reminderEnabled, reminderMinutesBefore, reminderTimeInputMode) {
-                    if (!reminderEnabled) return@LaunchedEffect
-                    if (reminderTimeInputMode != ReminderTimeInputMode.RELATIVE) return@LaunchedEffect
-                    val anchor = if (allDay) {
-                        LocalDateTime.of(startAt.toLocalDate(), LocalTime.of(9, 0))
-                    } else {
-                        startAt
-                    }
-                    reminderAt = anchor.minusMinutes(reminderMinutesBefore.toLong())
                 }
 
                 if (allDay) {
@@ -307,7 +298,6 @@ internal fun CalendarEventEditorDialog(
                 }
 
                 if (reminderEnabled) {
-                    var leadTimeExpanded by remember { mutableStateOf(false) }
                     var deliveryModeExpanded by remember { mutableStateOf(false) }
 
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -316,53 +306,47 @@ internal fun CalendarEventEditorDialog(
                             style = MaterialTheme.typography.labelLarge,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
-                        Box(modifier = Modifier.fillMaxWidth()) {
-                            OutlinedButton(
-                                onClick = { leadTimeExpanded = true },
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                Text(reminderLeadTimeLabel(reminderMinutesBefore))
-                            }
-                            DropdownMenu(
-                                expanded = leadTimeExpanded,
-                                onDismissRequest = { leadTimeExpanded = false }
-                            ) {
-                                ReminderLeadTimeOptions.forEach { option ->
-                                    DropdownMenuItem(
-                                        text = {
-                                            Text(
-                                                text = option.label,
-                                                maxLines = 1,
-                                                overflow = TextOverflow.Ellipsis
-                                            )
-                                        },
-                                        onClick = {
-                                            reminderTimeInputMode = ReminderTimeInputMode.RELATIVE
-                                            reminderMinutesBefore = option.minutes
-                                            leadTimeExpanded = false
-                                        }
-                                    )
-                                }
-                            }
-                        }
-                        OutlinedButton(
-                            onClick = {
-                                showDateTimePicker(context, reminderAt) { picked ->
-                                    reminderTimeInputMode = ReminderTimeInputMode.ABSOLUTE
-                                    reminderAt = picked
-                                    val anchor = if (allDay) {
-                                        LocalDateTime.of(startAt.toLocalDate(), LocalTime.of(9, 0))
-                                    } else {
-                                        startAt
-                                    }
-                                    reminderMinutesBefore = ((anchor.toEpochMillis() - picked.toEpochMillis()) / 60_000L)
-                                        .toInt()
-                                        .coerceAtLeast(0)
-                                }
-                            },
-                            modifier = Modifier.fillMaxWidth()
+                        FlowRow(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            Text("直接设置提醒时刻：${formatLocalDateTime(reminderAt)}")
+                            ReminderLeadTimeOptions.forEach { option ->
+                                val selected = option.minutes in reminderOffsetsMinutes
+                                FilterChip(
+                                    selected = selected,
+                                    onClick = {
+                                        reminderOffsetsMinutes = normalizeReminderOffsets(
+                                            if (selected) reminderOffsetsMinutes - option.minutes else reminderOffsetsMinutes + option.minutes
+                                        )
+                                    },
+                                    label = { Text(option.label) }
+                                )
+                            }
+                            FilterChip(
+                                selected = false,
+                                onClick = {
+                                    showDateTimePicker(context, reminderAt) { picked ->
+                                        reminderAt = picked
+                                        val anchor = if (allDay) {
+                                            LocalDateTime.of(startAt.toLocalDate(), LocalTime.of(9, 0))
+                                        } else {
+                                            startAt
+                                        }
+                                        val offset = ((anchor.toEpochMillis() - picked.toEpochMillis()) / 60_000L)
+                                            .toInt()
+                                            .coerceAtLeast(0)
+                                        reminderOffsetsMinutes = normalizeReminderOffsets(reminderOffsetsMinutes + offset)
+                                    }
+                                },
+                                label = { Text("自定义") }
+                            )
+                        }
+                        if (reminderOffsetsMinutes.isNotEmpty()) {
+                            Text(
+                                text = "已选：" + reminderOffsetsMinutes.sortedDescending().joinToString("、") { reminderLeadTimeLabel(it) },
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.primary
+                            )
                         }
                     }
 
@@ -482,6 +466,7 @@ internal fun CalendarEventEditorDialog(
                     }
                     OutlinedButton(
                         onClick = {
+                            val normalizedOffsets = if (reminderEnabled) normalizeReminderOffsets(reminderOffsetsMinutes) else emptyList()
                             recurrencePreview = previewCalendarRecurrence(
                                 CalendarEventDraft(
                                     title = title,
@@ -491,7 +476,8 @@ internal fun CalendarEventEditorDialog(
                                     endAt = endAt,
                                     allDay = allDay,
                                     accentColorHex = accentColorHex,
-                                    reminderMinutesBefore = if (reminderEnabled) reminderMinutesBefore else null,
+                                    reminderMinutesBefore = normalizedOffsets.minOrNull(),
+                                    reminderOffsetsMinutes = normalizedOffsets,
                                     ringEnabled = ringEnabled,
                                     vibrateEnabled = vibrateEnabled,
                                     reminderDeliveryMode = reminderDeliveryMode,
@@ -514,18 +500,7 @@ internal fun CalendarEventEditorDialog(
         confirmButton = {
             Button(
                 onClick = {
-                    val finalReminderMinutesBefore = if (reminderEnabled) {
-                        val anchor = if (allDay) {
-                            LocalDateTime.of(startAt.toLocalDate(), LocalTime.of(9, 0))
-                        } else {
-                            startAt
-                        }
-                        ((anchor.toEpochMillis() - reminderAt.toEpochMillis()) / 60_000L)
-                            .toInt()
-                            .coerceAtLeast(0)
-                    } else {
-                        null
-                    }
+                    val normalizedOffsets = if (reminderEnabled) normalizeReminderOffsets(reminderOffsetsMinutes) else emptyList()
                     onConfirm(
                         CalendarEventDraft(
                             title = title,
@@ -535,7 +510,8 @@ internal fun CalendarEventEditorDialog(
                             endAt = endAt,
                             allDay = allDay,
                             accentColorHex = accentColorHex,
-                            reminderMinutesBefore = finalReminderMinutesBefore,
+                            reminderMinutesBefore = normalizedOffsets.minOrNull(),
+                            reminderOffsetsMinutes = normalizedOffsets,
                             ringEnabled = ringEnabled,
                             vibrateEnabled = vibrateEnabled,
                             reminderDeliveryMode = reminderDeliveryMode,
@@ -573,20 +549,6 @@ internal fun CalendarEventEditorDialog(
             onDismiss = { recurrencePreview = null }
         )
     }
-}
-
-private fun existingReminderOffsetMinutes(item: TodoItem?): Int? {
-    item ?: return null
-    val reminderAt = item.reminderAtMillis ?: return null
-    val anchor = if (item.allDay) {
-        LocalDateTime.of(
-            reminderAtMillisToDateTime(item.startAtMillis ?: item.dueAtMillis).toLocalDate(),
-            LocalTime.of(9, 0)
-        )
-    } else {
-        reminderAtMillisToDateTime(item.startAtMillis ?: item.dueAtMillis)
-    }
-    return ((anchor.toEpochMillis() - reminderAt) / 60_000L).toInt().coerceAtLeast(0)
 }
 
 private fun reminderLeadTimeLabel(minutes: Int): String {

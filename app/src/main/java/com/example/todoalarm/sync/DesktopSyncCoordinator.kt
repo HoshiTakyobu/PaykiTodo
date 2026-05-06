@@ -25,8 +25,6 @@ import java.net.NetworkInterface
 import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.LocalDateTime
-import java.time.ZoneId
-import java.time.format.DateTimeFormatter
 import java.util.Collections
 
 class DesktopSyncCoordinator(
@@ -134,7 +132,8 @@ class DesktopSyncCoordinator(
         val groupId = resolveGroupId(json)
         val dueAt = json.optStringOrNull("dueAt")?.let(LocalDateTime::parse)
         val reminderAt = json.optStringOrNull("reminderAt")?.let(LocalDateTime::parse)
-        val draft = TodoDraft(
+        val recurrence = parseRecurrence(json.optJSONObject("recurrence"), dueAt?.toLocalDate())
+        val draft = sanitizeTodoDraft(
             title = json.optString("title").trim(),
             notes = json.optString("notes").trim(),
             dueAt = dueAt,
@@ -142,7 +141,7 @@ class DesktopSyncCoordinator(
             groupId = groupId,
             ringEnabled = json.optBoolean("ringEnabled", true),
             vibrateEnabled = json.optBoolean("vibrateEnabled", true),
-            recurrence = parseRecurrence(json.optJSONObject("recurrence"), dueAt?.toLocalDate())
+            recurrence = recurrence
         )
         require(draft.title.isNotBlank()) { "标题不能为空" }
         val created = runBlocking { app.repository.createFromDraft(draft) }
@@ -156,7 +155,8 @@ class DesktopSyncCoordinator(
         val startAt = LocalDateTime.parse(json.getString("startAt"))
         val endAt = LocalDateTime.parse(json.getString("endAt"))
         val reminderOffsets = json.optJSONArray("reminderOffsetsMinutes")?.toIntList().orEmpty()
-        val draft = CalendarEventDraft(
+        val recurrence = parseRecurrence(json.optJSONObject("recurrence"), startAt.toLocalDate())
+        val draft = sanitizeEventDraft(
             title = json.optString("title").trim(),
             notes = json.optString("notes").trim(),
             location = json.optString("location").trim(),
@@ -164,12 +164,11 @@ class DesktopSyncCoordinator(
             endAt = endAt,
             allDay = json.optBoolean("allDay", false),
             accentColorHex = json.optString("accentColorHex", "#4E87E1"),
-            reminderMinutesBefore = reminderOffsets.firstOrNull(),
             reminderOffsetsMinutes = reminderOffsets,
             ringEnabled = json.optBoolean("ringEnabled", true),
             vibrateEnabled = json.optBoolean("vibrateEnabled", true),
             reminderDeliveryMode = com.example.todoalarm.data.ReminderDeliveryMode.fromStorage(json.optString("reminderDeliveryMode")),
-            recurrence = parseRecurrence(json.optJSONObject("recurrence"), startAt.toLocalDate()),
+            recurrence = recurrence,
             groupId = groupId
         )
         require(draft.title.isNotBlank()) { "日程标题不能为空" }
@@ -240,6 +239,73 @@ class DesktopSyncCoordinator(
                 weekdays
             },
             endDate = endDate
+        )
+    }
+
+    private fun sanitizeTodoDraft(
+        title: String,
+        notes: String,
+        dueAt: LocalDateTime?,
+        reminderAt: LocalDateTime?,
+        groupId: Long,
+        ringEnabled: Boolean,
+        vibrateEnabled: Boolean,
+        recurrence: RecurrenceConfig
+    ): TodoDraft {
+        val now = LocalDateTime.now()
+        val reminder = reminderAt?.takeIf { candidate ->
+            dueAt != null && dueAt.isAfter(now) && candidate.isAfter(now) && !candidate.isAfter(dueAt)
+        }
+        return TodoDraft(
+            title = title,
+            notes = notes,
+            dueAt = dueAt,
+            reminderAt = reminder,
+            groupId = groupId,
+            ringEnabled = ringEnabled,
+            vibrateEnabled = vibrateEnabled,
+            recurrence = recurrence
+        )
+    }
+
+    private fun sanitizeEventDraft(
+        title: String,
+        notes: String,
+        location: String,
+        startAt: LocalDateTime,
+        endAt: LocalDateTime,
+        allDay: Boolean,
+        accentColorHex: String,
+        reminderOffsetsMinutes: List<Int>,
+        ringEnabled: Boolean,
+        vibrateEnabled: Boolean,
+        reminderDeliveryMode: com.example.todoalarm.data.ReminderDeliveryMode,
+        recurrence: RecurrenceConfig,
+        groupId: Long
+    ): CalendarEventDraft {
+        val baseDraft = CalendarEventDraft(
+            title = title,
+            notes = notes,
+            location = location,
+            startAt = startAt,
+            endAt = endAt,
+            allDay = allDay,
+            accentColorHex = accentColorHex,
+            reminderMinutesBefore = reminderOffsetsMinutes.firstOrNull(),
+            reminderOffsetsMinutes = reminderOffsetsMinutes,
+            ringEnabled = ringEnabled,
+            vibrateEnabled = vibrateEnabled,
+            reminderDeliveryMode = reminderDeliveryMode,
+            recurrence = recurrence,
+            groupId = groupId
+        )
+        val now = System.currentTimeMillis()
+        val validOffsets = baseDraft.normalizedReminderOffsetsMinutes.filter { minutes ->
+            baseDraft.reminderAnchorAt.minusMinutes(minutes.toLong()).atZone(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli() > now
+        }
+        return baseDraft.copy(
+            reminderMinutesBefore = validOffsets.firstOrNull(),
+            reminderOffsetsMinutes = validOffsets
         )
     }
 

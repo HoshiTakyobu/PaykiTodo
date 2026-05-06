@@ -18,7 +18,7 @@ class DesktopSyncService : Service() {
         super.onCreate()
         ensureChannel()
         val notification = NotificationCompat.Builder(this, CHANNEL_ID)
-            .setSmallIcon(R.drawable.ic_stat_alarm)
+            .setSmallIcon(R.drawable.ic_stat_payki_todo)
             .setContentTitle("PaykiTodo 电脑同步已运行")
             .setContentText("同局域网电脑可通过浏览器连接此手机，直接编辑待办与日程。")
             .setOngoing(true)

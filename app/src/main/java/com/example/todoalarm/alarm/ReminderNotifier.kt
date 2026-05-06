@@ -36,7 +36,7 @@ class ReminderNotifier(
         val body = reminderText(todoItem, taskGroup)
 
         return NotificationCompat.Builder(context, channelId)
-            .setSmallIcon(R.drawable.ic_stat_alarm)
+            .setSmallIcon(R.drawable.ic_stat_payki_todo)
             .setContentTitle("${taskGroupEmoji(taskGroup)} ${todoItem.title}")
             .setContentText(body)
             .setStyle(NotificationCompat.BigTextStyle().bigText(body))

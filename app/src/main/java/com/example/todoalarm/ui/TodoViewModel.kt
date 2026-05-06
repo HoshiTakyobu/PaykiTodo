@@ -32,6 +32,8 @@ import com.example.todoalarm.data.toDraftsForWeek
 import com.example.todoalarm.data.toJsonString
 import com.example.todoalarm.data.toWeeklyRecurringDrafts
 import com.example.todoalarm.data.toEpochMillis
+import com.example.todoalarm.sync.DesktopSyncStatus
+import com.example.todoalarm.sync.DesktopSyncService
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -54,7 +56,14 @@ data class TodoUiState(
     val reminderChainLogs: List<ReminderChainLog> = emptyList(),
     val scheduleTemplates: List<ScheduleTemplate> = emptyList(),
     val settings: AppSettings = AppSettings(),
-    val currentQuote: String = QuoteRepository.seedQuotes.first()
+    val currentQuote: String = QuoteRepository.seedQuotes.first(),
+    val desktopSyncStatus: DesktopSyncStatus = DesktopSyncStatus(
+        enabled = false,
+        running = false,
+        port = 18765,
+        token = "",
+        ipAddresses = emptyList()
+    )
 )
 
 class TodoViewModel(application: Application) : AndroidViewModel(application) {
@@ -124,7 +133,8 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
             reminderChainLogs = repository.getRecentReminderChainLogs(),
             scheduleTemplates = repository.getScheduleTemplates(),
             settings = settings,
-            currentQuote = currentQuote
+            currentQuote = currentQuote,
+            desktopSyncStatus = app.desktopSyncCoordinator.status()
         )
     }.stateIn(
         scope = viewModelScope,
@@ -320,6 +330,23 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
 
     fun updateDefaultCalendarReminderMode(mode: ReminderDeliveryMode) {
         settingsStore.updateDefaultCalendarReminderMode(mode)
+    }
+
+    fun updateDesktopSyncEnabled(enabled: Boolean) {
+        settingsStore.updateDesktopSyncEnabled(enabled)
+        if (enabled) {
+            DesktopSyncService.start(app)
+        } else {
+            app.stopService(Intent(app, DesktopSyncService::class.java))
+            app.desktopSyncCoordinator.stop()
+        }
+    }
+
+    fun rotateDesktopSyncToken() {
+        settingsStore.rotateDesktopSyncToken()
+        if (settingsStore.currentSettings().desktopSyncEnabled) {
+            app.desktopSyncCoordinator.ensureRunning()
+        }
     }
 
     fun updateReminderTone(uri: String, name: String?) {

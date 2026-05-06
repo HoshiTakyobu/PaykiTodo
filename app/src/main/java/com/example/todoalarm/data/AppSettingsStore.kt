@@ -28,7 +28,9 @@ data class AppSettings(
     val reminderToneName: String? = null,
     val quoteIndex: Int = 0,
     val backupDirectoryUri: String? = null,
-    val autoBackupEnabled: Boolean = false
+    val autoBackupEnabled: Boolean = false,
+    val desktopSyncEnabled: Boolean = false,
+    val desktopSyncToken: String = ""
 )
 
 class AppSettingsStore(context: Context) {
@@ -99,6 +101,18 @@ class AppSettingsStore(context: Context) {
         refresh()
     }
 
+    fun updateDesktopSyncEnabled(enabled: Boolean) {
+        preferences.edit().putBoolean(KEY_DESKTOP_SYNC_ENABLED, enabled).apply()
+        refresh()
+    }
+
+    fun rotateDesktopSyncToken(): String {
+        val token = generateDesktopSyncToken()
+        preferences.edit().putString(KEY_DESKTOP_SYNC_TOKEN, token).apply()
+        refresh()
+        return token
+    }
+
     fun replaceAll(settings: AppSettings) {
         preferences.edit()
             .putString(KEY_THEME_MODE, settings.themeMode.name)
@@ -113,6 +127,8 @@ class AppSettingsStore(context: Context) {
             .putInt(KEY_QUOTE_INDEX, settings.quoteIndex)
             .putString(KEY_BACKUP_DIR_URI, settings.backupDirectoryUri)
             .putBoolean(KEY_AUTO_BACKUP_ENABLED, settings.autoBackupEnabled)
+            .putBoolean(KEY_DESKTOP_SYNC_ENABLED, settings.desktopSyncEnabled)
+            .putString(KEY_DESKTOP_SYNC_TOKEN, settings.desktopSyncToken)
             .apply()
         refresh()
     }
@@ -124,6 +140,9 @@ class AppSettingsStore(context: Context) {
     private fun readSettings(): AppSettings {
         val themeName = preferences.getString(KEY_THEME_MODE, ThemeMode.SYSTEM.name)
         val weekStartName = preferences.getString(KEY_WEEK_START_MODE, WeekStartMode.MONDAY.name)
+        val syncToken = preferences.getString(KEY_DESKTOP_SYNC_TOKEN, null)
+            ?.takeIf { it.isNotBlank() }
+            ?: generateAndPersistDesktopSyncToken()
         return AppSettings(
             themeMode = ThemeMode.entries.firstOrNull { it.name == themeName } ?: ThemeMode.SYSTEM,
             weekStartMode = WeekStartMode.entries.firstOrNull { it.name == weekStartName } ?: WeekStartMode.MONDAY,
@@ -138,8 +157,25 @@ class AppSettingsStore(context: Context) {
             reminderToneName = preferences.getString(KEY_REMINDER_TONE_NAME, null),
             quoteIndex = preferences.getInt(KEY_QUOTE_INDEX, 0).coerceAtLeast(0),
             backupDirectoryUri = preferences.getString(KEY_BACKUP_DIR_URI, null),
-            autoBackupEnabled = preferences.getBoolean(KEY_AUTO_BACKUP_ENABLED, false)
+            autoBackupEnabled = preferences.getBoolean(KEY_AUTO_BACKUP_ENABLED, false),
+            desktopSyncEnabled = preferences.getBoolean(KEY_DESKTOP_SYNC_ENABLED, false),
+            desktopSyncToken = syncToken
         )
+    }
+
+    private fun generateAndPersistDesktopSyncToken(): String {
+        val token = generateDesktopSyncToken()
+        preferences.edit().putString(KEY_DESKTOP_SYNC_TOKEN, token).apply()
+        return token
+    }
+
+    private fun generateDesktopSyncToken(): String {
+        val alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
+        return buildString(10) {
+            repeat(10) {
+                append(alphabet.random())
+            }
+        }
     }
 
     companion object {
@@ -156,5 +192,7 @@ class AppSettingsStore(context: Context) {
         private const val KEY_QUOTE_INDEX = "quote_index"
         private const val KEY_BACKUP_DIR_URI = "backup_directory_uri"
         private const val KEY_AUTO_BACKUP_ENABLED = "auto_backup_enabled"
+        private const val KEY_DESKTOP_SYNC_ENABLED = "desktop_sync_enabled"
+        private const val KEY_DESKTOP_SYNC_TOKEN = "desktop_sync_token"
     }
 }

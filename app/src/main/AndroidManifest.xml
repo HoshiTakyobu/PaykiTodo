@@ -56,6 +56,15 @@
         </service>
 
         <service
+            android:name=".sync.DesktopSyncService"
+            android:exported="false"
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="paykitodo_desktop_sync_console" />
+        </service>
+
+        <service
             android:name=".accessibility.ReminderAccessibilityService"
             android:exported="false"
             android:label="@string/app_name"

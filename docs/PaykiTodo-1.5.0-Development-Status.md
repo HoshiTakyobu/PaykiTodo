@@ -1,6 +1,24 @@
-# PaykiTodo 1.5.0 Development Status
+# PaykiTodo 1.6.0 Development Status
 
 ## Completed In This Round
+
+### Desktop Sync
+
+- Added a phone-side LAN desktop sync console.
+- Added a lightweight in-app HTTP server.
+- Added a desktop web UI served directly by the phone app.
+- Added settings-side desktop sync entry with enable switch, LAN addresses, and access token.
+- Added a foreground service to keep the sync console alive when enabled.
+- Added reboot recovery for the desktop sync service.
+- Added first-pass desktop-side operations:
+  - list todos
+  - list calendar events
+  - create simple todo items
+  - create simple calendar events
+  - complete todo items
+  - cancel todo items
+  - delete calendar events
+- Reused the existing Room database, reminder scheduling, and auto-backup flows.
 
 ### Reminder Reliability
 
@@ -62,7 +80,7 @@
 
 - `assembleDebug` succeeds when `JAVA_HOME` points to Android Studio bundled `jbr`.
 - Current debug APK output:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.5.0-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.6.0-debug.apk`
 
 ## Environment Note
 

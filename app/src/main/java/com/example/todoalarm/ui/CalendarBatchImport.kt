@@ -308,11 +308,8 @@ internal fun CalendarBatchImportDialog(
             }
         },
         confirmButton = {
-            FlowRow(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                TextButton(
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedButton(
                     onClick = {
                         parseResult = CalendarBatchImportHub.parse(input, defaults, selectedFormat)
                     }
@@ -329,7 +326,7 @@ internal fun CalendarBatchImportDialog(
                         }
                     }
                 ) {
-                    Text("一键导入")
+                    Text("导入日程")
                 }
             }
         },
@@ -405,6 +402,13 @@ private fun BatchImportPreviewCard(preview: CalendarBatchImportPreviewItem) {
                 if (draft.normalizedReminderOffsetsMinutes.isNotEmpty()) {
                     ImportTag(label = draft.reminderDeliveryMode.label)
                 }
+            }
+            if (draft.normalizedReminderOffsetsMinutes.size > 1) {
+                Text(
+                    text = "多提醒：" + draft.normalizedReminderOffsetsMinutes.joinToString("、") { reminderLeadTimeText(it) },
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
             if (draft.notes.isNotBlank()) {
                 Surface(

@@ -148,6 +148,8 @@ class MainActivity : ComponentActivity() {
                     onNextQuote = viewModel::showNextQuote,
                     onDefaultSnoozeChange = viewModel::updateDefaultSnooze,
                     onDefaultCalendarReminderModeChange = viewModel::updateDefaultCalendarReminderMode,
+                    onDesktopSyncEnabledChange = viewModel::updateDesktopSyncEnabled,
+                    onRotateDesktopSyncToken = viewModel::rotateDesktopSyncToken,
                     onUseBuiltInReminderTone = {
                         viewModel.useBuiltInReminderTone()
                         Toast.makeText(this, "已切换为内置提醒音", Toast.LENGTH_SHORT).show()

@@ -3,9 +3,12 @@ package com.example.todoalarm.ui
 import android.app.DatePickerDialog
 import android.widget.Toast
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.gestures.rememberScrollableState
 import androidx.compose.foundation.gestures.scrollable
 import androidx.compose.foundation.horizontalScroll
@@ -54,6 +57,7 @@ import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -79,6 +83,8 @@ import com.example.todoalarm.data.ScheduleTemplateType
 import com.example.todoalarm.data.TaskGroup
 import com.example.todoalarm.data.TodoItem
 import com.example.todoalarm.data.WeekStartMode
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.time.Instant
@@ -96,10 +102,10 @@ private const val CalendarOverscanDays = 1
 private const val VisibleCalendarDayColumns = 3.0f
 
 private enum class CalendarViewMode(val label: String) {
-    TIMELINE("时间轴"),
-    WEEK("周视图"),
+    THREE_DAY("三日视图"),
+    DAY("单日视图"),
     MONTH("月视图"),
-    LIST("列表")
+    AGENDA("列表视图")
 }
 
 @Composable
@@ -122,7 +128,9 @@ internal fun CalendarPanel(
     val context = LocalContext.current
     val density = LocalDensity.current
     val anchorDate = remember { LocalDate.now() }
-    var viewMode by rememberSaveable { mutableStateOf(CalendarViewMode.TIMELINE) }
+    var selectedDateEpochDay by rememberSaveable { mutableStateOf(anchorDate.toEpochDay()) }
+    val selectedDate = remember(selectedDateEpochDay) { LocalDate.ofEpochDay(selectedDateEpochDay) }
+    var viewMode by rememberSaveable { mutableStateOf(CalendarViewMode.THREE_DAY) }
     val days = remember(anchorDate) { (-CalendarDayRange..CalendarDayRange).map { anchorDate.plusDays(it.toLong()) } }
     val dayIndexByDate = remember(days) { days.withIndex().associate { it.value to it.index } }
     val anchorDateIndex = remember(anchorDate, dayIndexByDate) { dayIndexByDate.getValue(anchorDate) }
@@ -136,6 +144,11 @@ internal fun CalendarPanel(
     var templateAnchorWeekStart by remember { mutableStateOf(currentWeekStart(LocalDate.now())) }
     var showViewModeMenu by remember { mutableStateOf(false) }
     var showActionsMenu by remember { mutableStateOf(false) }
+    var monthSwipeDirection by remember { mutableStateOf(0L) }
+    var agendaSwipeDirection by remember { mutableStateOf(0L) }
+    var monthVerticalDirection by remember { mutableStateOf(0L) }
+    var agendaVerticalDirection by remember { mutableStateOf(0L) }
+    var agendaRefreshing by remember { mutableStateOf(false) }
     val currentMoment by produceState(initialValue = LocalDateTime.now()) {
         while (true) {
             delay(30_000L)
@@ -171,27 +184,40 @@ internal fun CalendarPanel(
                 .fillMaxSize()
                 .padding(horizontal = 6.dp, vertical = 6.dp)
         ) {
+            val timelineDayColumns = when (viewMode) {
+                CalendarViewMode.DAY -> 1f
+                CalendarViewMode.THREE_DAY -> 3f
+                else -> 3f
+            }
             val timeAxisWidth = 48.dp
             val viewportWidth = (maxWidth - timeAxisWidth).coerceAtLeast(180.dp)
             val viewportWidthPx = with(density) { viewportWidth.toPx() }
-            val dayColumnWidth = viewportWidth / VisibleCalendarDayColumns
+            val dayColumnWidth = viewportWidth / timelineDayColumns
             val dayColumnWidthPx = with(density) { dayColumnWidth.toPx() }
             val maxHorizontalOffsetPx = ((days.size * dayColumnWidthPx) - viewportWidthPx).coerceAtLeast(0f)
-            val clampedHorizontalOffsetPx = horizontalOffsetPx.coerceIn(0f, maxHorizontalOffsetPx)
-            val visibleRange = remember(clampedHorizontalOffsetPx, dayColumnWidthPx, viewportWidthPx, days.size) {
-                calculateVisibleDayRange(days.size, dayColumnWidthPx, viewportWidthPx, clampedHorizontalOffsetPx)
+            val selectedIndex = (dayIndexByDate[selectedDate] ?: anchorDateIndex).coerceIn(0, days.lastIndex)
+            val timelineMode = viewMode == CalendarViewMode.THREE_DAY || viewMode == CalendarViewMode.DAY
+            val effectiveHorizontalOffsetPx = when {
+                viewMode == CalendarViewMode.THREE_DAY -> horizontalOffsetPx.coerceIn(0f, maxHorizontalOffsetPx)
+                viewMode == CalendarViewMode.DAY -> (selectedIndex * dayColumnWidthPx).coerceIn(0f, maxHorizontalOffsetPx)
+                else -> horizontalOffsetPx
             }
-            val visibleDays = remember(days, visibleRange.first, visibleRange.last) {
-                days.subList(visibleRange.first, visibleRange.last + 1)
+            val visibleRange = when {
+                viewMode == CalendarViewMode.THREE_DAY -> calculateVisibleDayRange(days.size, dayColumnWidthPx, viewportWidthPx, effectiveHorizontalOffsetPx)
+                viewMode == CalendarViewMode.DAY -> selectedIndex..selectedIndex
+                else -> selectedIndex..(selectedIndex + 2).coerceAtMost(days.lastIndex)
             }
+            val visibleDays = remember(days, visibleRange) { days.subList(visibleRange.first, visibleRange.last + 1) }
             val visibleStart = days[visibleRange.first]
             val visibleEnd = days[visibleRange.last]
+            val timelineHorizontalOffsetPx = effectiveHorizontalOffsetPx
             val hourHeight = 72.dp
             val boardHeight = hourHeight * 24
             val hourHeightPx = with(density) { hourHeight.toPx() }
-            val centerDayIndex = (((clampedHorizontalOffsetPx + viewportWidthPx / 2f) / dayColumnWidthPx).toInt())
-                .coerceIn(0, days.lastIndex)
-            val headerMonthDate = days[centerDayIndex]
+            val headerMonthDate = when (viewMode) {
+                CalendarViewMode.MONTH -> selectedDate.withDayOfMonth(1)
+                else -> selectedDate
+            }
             val visibleAllDayEvents = remember(allDayEvents, visibleStart, visibleEnd) {
                 allDayEvents.filter { item -> overlapsDateRange(item, visibleStart, visibleEnd) }
             }
@@ -201,241 +227,252 @@ internal fun CalendarPanel(
                 }
             }
             val horizontalScrollableState = rememberScrollableState { delta ->
+                if (viewMode != CalendarViewMode.THREE_DAY) return@rememberScrollableState 0f
                 val previous = horizontalOffsetPx
                 horizontalOffsetPx = (horizontalOffsetPx - delta).coerceIn(0f, maxHorizontalOffsetPx)
                 previous - horizontalOffsetPx
             }
 
-            fun jumpToDate(targetDate: LocalDate) {
-                val targetIndex = dayIndexByDate[targetDate] ?: return
-                horizontalOffsetPx = (targetIndex * dayColumnWidthPx).coerceIn(0f, maxHorizontalOffsetPx)
-            }
-
-            LaunchedEffect(dayColumnWidthPx, hourHeightPx, maxHorizontalOffsetPx) {
-                if (!didInitScroll) {
-                    horizontalOffsetPx = (((anchorDateIndex - 1) * dayColumnWidthPx).coerceIn(0f, maxHorizontalOffsetPx))
-                    val targetHour = (currentMoment.hour - 2).coerceAtLeast(0)
-                    verticalScroll.scrollTo((targetHour * hourHeightPx).roundToInt())
-                    didInitScroll = true
-                } else if (horizontalOffsetPx > maxHorizontalOffsetPx) {
-                    horizontalOffsetPx = maxHorizontalOffsetPx
-                }
-            }
-
-            LaunchedEffect(clampedHorizontalOffsetPx, verticalScroll.value) {
+            fun selectDate(targetDate: LocalDate) {
+                selectedDateEpochDay = targetDate.toEpochDay()
                 pendingDraft = null
             }
 
-            LaunchedEffect(visibleStart) {
-                templateAnchorWeekStart = currentWeekStart(visibleStart)
+            fun shiftViewBy(daysDelta: Long) {
+                selectDate(selectedDate.plusDays(daysDelta))
+            }
+
+            fun openDatePicker() {
+                DatePickerDialog(
+                    context,
+                    { _, year, month, day -> selectDate(LocalDate.of(year, month + 1, day)) },
+                    selectedDate.year,
+                    selectedDate.monthValue - 1,
+                    selectedDate.dayOfMonth
+                ).show()
+            }
+
+            LaunchedEffect(hourHeightPx) {
+                if (!didInitScroll) {
+                    val targetHour = (currentMoment.hour - 2).coerceAtLeast(0)
+                    verticalScroll.scrollTo((targetHour * hourHeightPx).roundToInt())
+                    horizontalOffsetPx = (((anchorDateIndex - 1) * dayColumnWidthPx).coerceIn(0f, maxHorizontalOffsetPx))
+                    didInitScroll = true
+                }
+            }
+
+            LaunchedEffect(selectedDate) {
+                templateAnchorWeekStart = currentWeekStart(selectedDate)
+            }
+
+            LaunchedEffect(viewMode, selectedDate, dayColumnWidthPx, maxHorizontalOffsetPx) {
+                if (viewMode == CalendarViewMode.DAY) {
+                    horizontalOffsetPx = (selectedIndex * dayColumnWidthPx).coerceIn(0f, maxHorizontalOffsetPx)
+                }
+            }
+
+            LaunchedEffect(viewMode, effectiveHorizontalOffsetPx, dayColumnWidthPx) {
+                if (viewMode == CalendarViewMode.THREE_DAY) {
+                    val centerIndex = (((effectiveHorizontalOffsetPx + viewportWidthPx / 2f) / dayColumnWidthPx).toInt())
+                        .coerceIn(0, days.lastIndex)
+                    val centeredDate = days[centerIndex]
+                    if (centeredDate != selectedDate) {
+                        selectedDateEpochDay = centeredDate.toEpochDay()
+                    }
+                }
+            }
+
+            LaunchedEffect(agendaRefreshing, selectedDate) {
+                if (agendaRefreshing) {
+                    delay(280L)
+                    agendaRefreshing = false
+                }
             }
 
             Column(modifier = Modifier.fillMaxSize()) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 4.dp, vertical = 4.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Text(
-                        text = headerMonthDate.format(DateTimeFormatter.ofPattern("yyyy年M月", Locale.CHINA)),
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.clickable {
-                            DatePickerDialog(
-                                context,
-                                { _, year, month, day -> jumpToDate(LocalDate.of(year, month + 1, day)) },
-                                headerMonthDate.year,
-                                headerMonthDate.monthValue - 1,
-                                headerMonthDate.dayOfMonth
-                            ).show()
-                        },
-                        maxLines = 1,
-                        softWrap = false,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(6.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Box(modifier = Modifier.wrapContentSize(Alignment.TopStart)) {
-                            CalendarHeaderActionButton(
-                                label = viewMode.label,
-                                icon = Icons.Rounded.KeyboardArrowDown,
-                                onClick = { showViewModeMenu = true }
-                            )
-                            DropdownMenu(
-                                expanded = showViewModeMenu,
-                                onDismissRequest = { showViewModeMenu = false }
-                            ) {
-                                CalendarViewMode.entries.forEach { mode ->
-                                    DropdownMenuItem(
-                                        text = { Text(mode.label) },
-                                        onClick = {
-                                            viewMode = mode
-                                            showViewModeMenu = false
+                CalendarBrowserHeader(
+                    titleMonth = headerMonthDate,
+                    viewMode = viewMode,
+                    onPickDate = ::openDatePicker,
+                    onToday = { selectDate(currentDate) },
+                    onChangeView = {
+                        viewMode = it
+                        showViewModeMenu = false
+                    },
+                    onOpenViewMenu = { showViewModeMenu = true },
+                    showViewModeMenu = showViewModeMenu,
+                    onOpenActions = { showActionsMenu = true },
+                    showActionsMenu = showActionsMenu,
+                    onDismissActions = { showActionsMenu = false },
+                    onQuickCreate = {
+                        showActionsMenu = false
+                        val startAt = currentMoment.withSecond(0).withNano(0).plusMinutes(2)
+                        onCreateEventAt(startAt, startAt.plusMinutes(30))
+                    },
+                    onOpenBatchImport = {
+                        showActionsMenu = false
+                        onOpenBatchImport()
+                    },
+                    onOpenTemplateManager = {
+                        showActionsMenu = false
+                        templateAnchorWeekStart = currentWeekStart(selectedDate)
+                        showTemplateManager = true
+                    },
+                    onSaveWeekTemplate = {
+                        showActionsMenu = false
+                        templateAnchorWeekStart = currentWeekStart(selectedDate)
+                        showSaveWeekTemplate = true
+                    }
+                )
+
+                when (viewMode) {
+                    CalendarViewMode.MONTH -> {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .pointerInput(selectedDate) {
+                                    detectVerticalDragGestures(
+                                        onDragEnd = {
+                                            val next = selectedDate.withDayOfMonth(1)
+                                            selectDate(next.plusMonths(monthVerticalDirection).withDayOfMonth(1))
+                                            monthVerticalDirection = 0L
                                         }
+                                    ) { _, dragAmount ->
+                                        monthVerticalDirection = when {
+                                            dragAmount < -6f -> 1L
+                                            dragAmount > 6f -> -1L
+                                            else -> monthVerticalDirection
+                                        }
+                                    }
+                                }
+                        ) {
+                            CalendarMonthGridView(
+                                monthDate = selectedDate.withDayOfMonth(1),
+                                selectedDate = selectedDate,
+                                weekStartMode = weekStartMode,
+                                events = events,
+                                onSelectDate = ::selectDate,
+                                onOpenDetails = { detailsTarget = it }
+                            )
+                        }
+                    }
+
+                    CalendarViewMode.THREE_DAY,
+                    CalendarViewMode.DAY -> {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .then(
+                                    if (viewMode == CalendarViewMode.THREE_DAY) {
+                                        Modifier.scrollable(horizontalScrollableState, Orientation.Horizontal)
+                                    } else {
+                                        Modifier
+                                    }
+                                )
+                        ) {
+                            Column(modifier = Modifier.fillMaxSize()) {
+                                CalendarHeaderRow(
+                                    timeAxisWidth = timeAxisWidth,
+                                    viewportWidth = viewportWidth,
+                                    dayColumnWidth = dayColumnWidth,
+                                    dayColumnWidthPx = dayColumnWidthPx,
+                                    days = days,
+                                    visibleRange = visibleRange,
+                                    currentDate = currentDate,
+                                    horizontalOffsetPx = timelineHorizontalOffsetPx,
+                                    todayHighlightColor = todayHighlightColor,
+                                    todayHighlightTextColor = todayHighlightTextColor,
+                                    dragModifier = Modifier
+                                )
+                                HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.16f))
+                                CalendarAllDaySection(
+                                    timeAxisWidth = timeAxisWidth,
+                                    viewportWidth = viewportWidth,
+                                    dayColumnWidth = dayColumnWidth,
+                                    dayColumnWidthPx = dayColumnWidthPx,
+                                    visibleRange = visibleRange,
+                                    horizontalOffsetPx = timelineHorizontalOffsetPx,
+                                    events = visibleAllDayEvents,
+                                    dayIndexByDate = dayIndexByDate,
+                                    dragModifier = Modifier,
+                                    onOpenDetails = { detailsTarget = it }
+                                )
+                                HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.16f))
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .weight(1f)
+                                ) {
+                                    CalendarTimeAxis(
+                                        width = timeAxisWidth,
+                                        hourHeight = hourHeight,
+                                        verticalScroll = verticalScroll,
+                                        currentMoment = currentMoment,
+                                        showCurrentTime = currentDateIndex in visibleRange
+                                    )
+                                    CalendarTimedBoard(
+                                        modifier = Modifier
+                                            .width(viewportWidth),
+                                        days = days,
+                                        visibleRange = visibleRange,
+                                        dayColumnWidth = dayColumnWidth,
+                                        dayColumnWidthPx = dayColumnWidthPx,
+                                        horizontalOffsetPx = timelineHorizontalOffsetPx,
+                                        boardHeight = boardHeight,
+                                        hourHeight = hourHeight,
+                                        hourHeightPx = hourHeightPx,
+                                        verticalScroll = verticalScroll,
+                                        currentMoment = currentMoment,
+                                        visibleEventPlacements = visibleTimedEventPlacements,
+                                        dayIndexByDate = dayIndexByDate,
+                                        pendingDraft = pendingDraft,
+                                        onPendingDraftChange = { pendingDraft = it },
+                                        onQuickCreateEvent = onQuickCreateEvent,
+                                        onOpenDetails = { detailsTarget = it },
+                                        currentDayIndex = currentDateIndex
                                     )
                                 }
                             }
                         }
-                        CalendarHeaderActionButton(label = "今天", onClick = { jumpToDate(currentDate) })
-                        CalendarHeaderActionButton(
-                            icon = Icons.Rounded.CalendarMonth,
-                            contentDescription = "选择日期",
-                            onClick = {
-                                DatePickerDialog(
-                                    context,
-                                    { _, year, month, day -> jumpToDate(LocalDate.of(year, month + 1, day)) },
-                                    headerMonthDate.year,
-                                    headerMonthDate.monthValue - 1,
-                                    headerMonthDate.dayOfMonth
-                                ).show()
-                            }
-                        )
-                        CalendarHeaderActionButton(
-                            icon = Icons.Rounded.Add,
-                            contentDescription = "新增日程",
-                            onClick = {
-                                val startAt = currentMoment.withSecond(0).withNano(0).plusMinutes(2)
-                                onCreateEventAt(startAt, startAt.plusMinutes(30))
-                            }
-                        )
-                        Box(modifier = Modifier.wrapContentSize(Alignment.TopEnd)) {
-                            CalendarHeaderActionButton(
-                                icon = Icons.Rounded.MoreHoriz,
-                                contentDescription = "更多操作",
-                                onClick = { showActionsMenu = true }
-                            )
-                            DropdownMenu(
-                                expanded = showActionsMenu,
-                                onDismissRequest = { showActionsMenu = false }
-                            ) {
-                                DropdownMenuItem(
-                                    text = { Text("批量导入") },
-                                    onClick = {
-                                        showActionsMenu = false
-                                        onOpenBatchImport()
-                                    }
-                                )
-                                DropdownMenuItem(
-                                    text = { Text("周模板") },
-                                    onClick = {
-                                        showActionsMenu = false
-                                        templateAnchorWeekStart = currentWeekStart(headerMonthDate)
-                                        showTemplateManager = true
-                                    }
-                                )
-                                DropdownMenuItem(
-                                    text = { Text("保存本周模板") },
-                                    onClick = {
-                                        showActionsMenu = false
-                                        templateAnchorWeekStart = currentWeekStart(headerMonthDate)
-                                        showSaveWeekTemplate = true
-                                    }
-                                )
-                            }
-                        }
                     }
-                }
 
-                when (viewMode) {
-                    CalendarViewMode.TIMELINE -> {
-                        CalendarHeaderRow(
-                            timeAxisWidth = timeAxisWidth,
-                            viewportWidth = viewportWidth,
-                            dayColumnWidth = dayColumnWidth,
-                            dayColumnWidthPx = dayColumnWidthPx,
-                            days = days,
-                            visibleRange = visibleRange,
-                            currentDate = currentDate,
-                            horizontalOffsetPx = clampedHorizontalOffsetPx,
-                            todayHighlightColor = todayHighlightColor,
-                            todayHighlightTextColor = todayHighlightTextColor,
-                            dragModifier = Modifier.scrollable(horizontalScrollableState, Orientation.Horizontal)
-                        )
-                        HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.16f))
-                        CalendarAllDaySection(
-                            timeAxisWidth = timeAxisWidth,
-                            viewportWidth = viewportWidth,
-                            dayColumnWidth = dayColumnWidth,
-                            dayColumnWidthPx = dayColumnWidthPx,
-                            visibleRange = visibleRange,
-                            horizontalOffsetPx = clampedHorizontalOffsetPx,
-                            events = visibleAllDayEvents,
-                            dayIndexByDate = dayIndexByDate,
-                            dragModifier = Modifier.scrollable(horizontalScrollableState, Orientation.Horizontal),
-                            onOpenDetails = { detailsTarget = it }
-                        )
-                        HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.16f))
-                        Row(
+                    CalendarViewMode.AGENDA -> {
+                        Box(
                             modifier = Modifier
-                                .fillMaxWidth()
-                                .weight(1f)
+                                .fillMaxSize()
+                                .pointerInput(selectedDate) {
+                                    detectVerticalDragGestures(
+                                        onDragEnd = {
+                                            when (agendaVerticalDirection) {
+                                                1L -> {
+                                                    agendaRefreshing = true
+                                                    shiftViewBy(7)
+                                                }
+                                                -1L -> {
+                                                    agendaRefreshing = true
+                                                    shiftViewBy(-7)
+                                                }
+                                            }
+                                            agendaVerticalDirection = 0L
+                                        }
+                                    ) { _, dragAmount ->
+                                        agendaVerticalDirection = when {
+                                            dragAmount < -6f -> 1L
+                                            dragAmount > 6f -> -1L
+                                            else -> agendaVerticalDirection
+                                        }
+                                    }
+                                }
                         ) {
-                            CalendarTimeAxis(
-                                width = timeAxisWidth,
-                                hourHeight = hourHeight,
-                                verticalScroll = verticalScroll,
-                                currentMoment = currentMoment,
-                                showCurrentTime = currentDateIndex in visibleRange
-                            )
-                            CalendarTimedBoard(
-                                modifier = Modifier
-                                    .width(viewportWidth)
-                                    .scrollable(horizontalScrollableState, Orientation.Horizontal),
-                                days = days,
-                                visibleRange = visibleRange,
-                                dayColumnWidth = dayColumnWidth,
-                                dayColumnWidthPx = dayColumnWidthPx,
-                                horizontalOffsetPx = clampedHorizontalOffsetPx,
-                                boardHeight = boardHeight,
-                                hourHeight = hourHeight,
-                                hourHeightPx = hourHeightPx,
-                                verticalScroll = verticalScroll,
-                                currentMoment = currentMoment,
-                                visibleEventPlacements = visibleTimedEventPlacements,
-                                dayIndexByDate = dayIndexByDate,
-                                pendingDraft = pendingDraft,
-                                onPendingDraftChange = { pendingDraft = it },
-                                onQuickCreateEvent = onQuickCreateEvent,
-                                onOpenDetails = { detailsTarget = it },
-                                currentDayIndex = currentDateIndex
+                            CalendarAgendaView(
+                                selectedDate = selectedDate,
+                                weekStartMode = weekStartMode,
+                                events = events,
+                                agendaRefreshing = agendaRefreshing,
+                                onSelectDate = ::selectDate,
+                                onOpenDetails = { detailsTarget = it }
                             )
                         }
-                    }
-
-                    CalendarViewMode.WEEK -> {
-                        CalendarSimpleListView(
-                            title = "本周安排",
-                            subtitle = weekRangeLabel(currentDate, weekStartMode),
-                            items = events.filter {
-                                val startDate = it.startAtMillis?.let(::millisToDate) ?: millisToDate(it.dueAtMillis)
-                                val weekStart = startOfWeek(currentDate, weekStartMode)
-                                val weekEnd = weekStart.plusDays(6)
-                                !startDate.isBefore(weekStart) && !startDate.isAfter(weekEnd)
-                            },
-                            onOpenDetails = { detailsTarget = it }
-                        )
-                    }
-
-                    CalendarViewMode.MONTH -> {
-                        CalendarSimpleListView(
-                            title = "本月安排",
-                            items = events.filter {
-                                val startDate = it.startAtMillis?.let(::millisToDate) ?: millisToDate(it.dueAtMillis)
-                                startDate.year == headerMonthDate.year && startDate.monthValue == headerMonthDate.monthValue
-                            },
-                            onOpenDetails = { detailsTarget = it }
-                        )
-                    }
-
-                    CalendarViewMode.LIST -> {
-                        CalendarSimpleListView(
-                            title = "全部日程",
-                            items = events.sortedBy { it.startAtMillis ?: it.dueAtMillis },
-                            onOpenDetails = { detailsTarget = it }
-                        )
                     }
                 }
             }
@@ -478,78 +515,422 @@ internal fun CalendarPanel(
 }
 
 @Composable
-private fun CalendarSimpleListView(
-    title: String,
-    subtitle: String? = null,
-    items: List<TodoItem>,
-    onOpenDetails: (TodoItem) -> Unit
+private fun CalendarBrowserHeader(
+    titleMonth: LocalDate,
+    viewMode: CalendarViewMode,
+    onPickDate: () -> Unit,
+    onToday: () -> Unit,
+    onChangeView: (CalendarViewMode) -> Unit,
+    onOpenViewMenu: () -> Unit,
+    showViewModeMenu: Boolean,
+    onOpenActions: () -> Unit,
+    showActionsMenu: Boolean,
+    onDismissActions: () -> Unit,
+    onQuickCreate: () -> Unit,
+    onOpenBatchImport: () -> Unit,
+    onOpenTemplateManager: () -> Unit,
+    onSaveWeekTemplate: () -> Unit
 ) {
     Column(
         modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(top = 12.dp),
+            .fillMaxWidth()
+            .padding(horizontal = 4.dp, vertical = 6.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
-        Text(
-            text = title,
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onSurface,
-            modifier = Modifier.padding(horizontal = 8.dp)
-        )
-        subtitle?.let {
-            Text(
-                text = it,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(horizontal = 8.dp)
-            )
-        }
-        if (items.isEmpty()) {
-            Surface(
-                shape = RoundedCornerShape(20.dp),
-                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f)
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Row(
+                modifier = Modifier
+                    .weight(1f)
+                    .clickable(onClick = onPickDate),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
             ) {
                 Text(
-                    text = "当前没有日程。",
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(18.dp),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    text = titleMonth.format(DateTimeFormatter.ofPattern("yyyy年M月", Locale.CHINA)),
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
-            }
-        } else {
-            items.forEach { item ->
                 Surface(
-                    modifier = Modifier.clickable { onOpenDetails(item) },
-                    shape = RoundedCornerShape(18.dp),
-                    color = (item.accentColorHex?.let(::colorFromHex) ?: MaterialTheme.colorScheme.primary).copy(alpha = 0.12f)
+                    shape = RoundedCornerShape(999.dp),
+                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.9f)
                 ) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(14.dp),
-                        verticalArrangement = Arrangement.spacedBy(6.dp)
+                    Icon(
+                        imageVector = Icons.Rounded.KeyboardArrowDown,
+                        contentDescription = "选择日期",
+                        modifier = Modifier.padding(2.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                CalendarHeaderActionButton(label = "今天", onClick = onToday)
+                Box {
+                    CalendarHeaderActionButton(
+                        icon = Icons.Rounded.ViewWeek,
+                        contentDescription = "切换视图",
+                        onClick = onOpenViewMenu
+                    )
+                    DropdownMenu(
+                        expanded = showViewModeMenu,
+                        onDismissRequest = { onChangeView(viewMode) }
                     ) {
-                        Text(
-                            text = item.title,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
-                        Text(
-                            text = if (item.allDay) formatDateRange(item) else formatDateTimeRange(item),
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            style = MaterialTheme.typography.bodySmall
-                        )
-                        item.location.takeIf { it.isNotBlank() }?.let {
-                            Text(
-                                text = it,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                style = MaterialTheme.typography.bodySmall
+                        CalendarViewMode.entries.forEach { mode ->
+                            DropdownMenuItem(
+                                text = { Text(mode.label) },
+                                onClick = { onChangeView(mode) }
                             )
                         }
                     }
+                }
+                Box {
+                    CalendarHeaderActionButton(
+                        icon = Icons.Rounded.MoreHoriz,
+                        contentDescription = "更多操作",
+                        onClick = onOpenActions
+                    )
+                    DropdownMenu(
+                        expanded = showActionsMenu,
+                        onDismissRequest = onDismissActions
+                    ) {
+                        DropdownMenuItem(text = { Text("快速新建") }, onClick = onQuickCreate)
+                        DropdownMenuItem(text = { Text("批量导入") }, onClick = onOpenBatchImport)
+                        DropdownMenuItem(text = { Text("周模板") }, onClick = onOpenTemplateManager)
+                        DropdownMenuItem(text = { Text("保存本周模板") }, onClick = onSaveWeekTemplate)
+                    }
+                }
+            }
+        }
+
+        Surface(
+            shape = RoundedCornerShape(16.dp),
+            color = MaterialTheme.colorScheme.surface.copy(alpha = 0.94f),
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.24f))
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 12.dp, vertical = 10.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = viewMode.label,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontWeight = FontWeight.SemiBold
+                )
+                Box {
+                    CalendarHeaderActionButton(
+                        label = "切换",
+                        icon = Icons.Rounded.KeyboardArrowDown,
+                        onClick = onOpenViewMenu
+                    )
+                    DropdownMenu(
+                        expanded = showViewModeMenu,
+                        onDismissRequest = { onChangeView(viewMode) }
+                    ) {
+                        CalendarViewMode.entries.forEach { mode ->
+                            DropdownMenuItem(
+                                text = { Text(mode.label) },
+                                onClick = { onChangeView(mode) }
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun CalendarMonthGridView(
+    monthDate: LocalDate,
+    selectedDate: LocalDate,
+    weekStartMode: WeekStartMode,
+    events: List<TodoItem>,
+    onSelectDate: (LocalDate) -> Unit,
+    onOpenDetails: (TodoItem) -> Unit
+) {
+    val monthStart = monthDate.withDayOfMonth(1)
+    val monthEnd = monthDate.withDayOfMonth(monthDate.lengthOfMonth())
+    val gridStart = startOfWeek(monthStart, weekStartMode)
+    val gridEnd = startOfWeek(monthEnd, weekStartMode).plusDays(6)
+    val gridDays = remember(monthStart, gridEnd) {
+        generateSequence(gridStart) { current ->
+            current.plusDays(1).takeIf { !it.isAfter(gridEnd) }
+        }.toList()
+    }
+    val rows = remember(gridDays) { gridDays.chunked(7) }
+    val weekdayLabels = weekdayLabels(weekStartMode)
+    val eventsByDate = remember(events) { buildEventsByDate(events) }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState()),
+        verticalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 6.dp),
+            horizontalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            weekdayLabels.forEach { label ->
+                Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
+                    Text(label, color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.SemiBold, fontSize = 12.sp)
+                }
+            }
+        }
+
+        rows.forEach { week ->
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                week.forEach { date ->
+                    val isCurrentMonth = date.month == monthDate.month
+                    val isSelected = date == selectedDate
+                    val dayEvents = eventsByDate[date].orEmpty().take(4)
+                    Surface(
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(112.dp)
+                            .clickable { onSelectDate(date) },
+                        shape = RoundedCornerShape(14.dp),
+                        color = if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.10f) else MaterialTheme.colorScheme.surface.copy(alpha = 0.88f),
+                        border = BorderStroke(1.dp, if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.22f) else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.14f))
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(horizontal = 6.dp, vertical = 6.dp),
+                            verticalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            Box(
+                                modifier = Modifier.fillMaxWidth(),
+                                contentAlignment = Alignment.TopEnd
+                            ) {
+                                Surface(
+                                    shape = RoundedCornerShape(999.dp),
+                                    color = if (isSelected) Color(0xFF2F6CFF) else Color.Transparent
+                                ) {
+                                    Text(
+                                        text = date.dayOfMonth.toString(),
+                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+                                        color = when {
+                                            isSelected -> Color.White
+                                            isCurrentMonth -> MaterialTheme.colorScheme.onSurface
+                                            else -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.55f)
+                                        },
+                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.SemiBold,
+                                        fontSize = 12.sp
+                                    )
+                                }
+                            }
+
+                            Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                                dayEvents.forEach { item ->
+                                    MiniMonthEventChip(item = item, onClick = { onOpenDetails(item) })
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun MiniMonthEventChip(
+    item: TodoItem,
+    onClick: () -> Unit
+) {
+    val tint = item.accentColorHex?.let(::colorFromHex) ?: MaterialTheme.colorScheme.primary
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick),
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Surface(
+            modifier = Modifier
+                .width(2.dp)
+                .height(14.dp),
+            shape = RoundedCornerShape(999.dp),
+            color = tint
+        ) {}
+        Text(
+            text = item.title,
+            color = tint.copy(alpha = calendarVisualAlpha(item)),
+            fontSize = 10.sp,
+            lineHeight = 10.sp,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
+    }
+}
+
+@Composable
+private fun CalendarAgendaView(
+    selectedDate: LocalDate,
+    weekStartMode: WeekStartMode,
+    events: List<TodoItem>,
+    agendaRefreshing: Boolean,
+    onSelectDate: (LocalDate) -> Unit,
+    onOpenDetails: (TodoItem) -> Unit
+) {
+    val weekStart = startOfWeek(selectedDate, weekStartMode)
+    val weekDays = (0..6).map { weekStart.plusDays(it.toLong()) }
+    val grouped = remember(events) {
+        buildEventsByDate(events)
+    }
+    val agendaDates = remember(weekStart) { weekDays }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState()),
+        verticalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        if (agendaRefreshing) {
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp),
+                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.08f)
+            ) {
+                Text(
+                    text = "正在载入下一周...",
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.SemiBold,
+                    fontSize = 12.sp
+                )
+            }
+        }
+
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 6.dp),
+            horizontalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            weekDays.forEach { date ->
+                val isSelected = date == selectedDate
+                Surface(
+                    modifier = Modifier
+                        .weight(1f)
+                        .clickable { onSelectDate(date) },
+                    shape = RoundedCornerShape(14.dp),
+                    color = if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.14f) else Color.Transparent
+                ) {
+                    Column(
+                        modifier = Modifier.padding(vertical = 8.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(2.dp)
+                    ) {
+                        Text(date.dayOfWeek.shortLabel(), fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(
+                            date.dayOfMonth.toString(),
+                            fontWeight = FontWeight.Bold,
+                            color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+                }
+            }
+        }
+
+        Text(
+            text = weekRangeLabel(selectedDate, weekStartMode),
+            modifier = Modifier.padding(horizontal = 10.dp),
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            fontWeight = FontWeight.SemiBold
+        )
+
+        agendaDates.forEach { date ->
+            val dayEvents = grouped[date].orEmpty()
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                verticalAlignment = Alignment.Top
+            ) {
+                Column(
+                    modifier = Modifier.width(54.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(2.dp)
+                ) {
+                    Text(date.dayOfWeek.shortLabel(), color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Medium)
+                    Text(date.dayOfMonth.toString(), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+                }
+                Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    if (dayEvents.isEmpty()) {
+                        Surface(
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(16.dp),
+                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.18f)
+                        ) {
+                            Text(
+                                text = "本日暂无日程",
+                                modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    } else {
+                        dayEvents.forEach { item ->
+                            AgendaEventCard(item = item, onClick = { onOpenDetails(item) })
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun AgendaEventCard(
+    item: TodoItem,
+    onClick: () -> Unit
+) {
+    val tint = item.accentColorHex?.let(::colorFromHex) ?: MaterialTheme.colorScheme.primary
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick),
+        shape = RoundedCornerShape(18.dp),
+        color = tint.copy(alpha = 0.14f)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 10.dp, vertical = 10.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.Top
+        ) {
+            Surface(
+                modifier = Modifier
+                    .width(3.dp)
+                    .height(42.dp),
+                shape = RoundedCornerShape(999.dp),
+                color = tint.copy(alpha = 0.95f)
+            ) {}
+            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                Text(item.title, fontWeight = FontWeight.Bold, color = tint.copy(alpha = 0.98f), maxLines = 2, overflow = TextOverflow.Ellipsis)
+                Text(
+                    if (item.allDay) "全天" else timeRangeLabel(item),
+                    color = tint.copy(alpha = 0.84f),
+                    fontSize = 12.sp
+                )
+                item.location.takeIf { it.isNotBlank() }?.let {
+                    Text(it, color = tint.copy(alpha = 0.78f), fontSize = 12.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
                 }
             }
         }
@@ -948,11 +1329,11 @@ private fun CalendarAllDaySection(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .height((rowCount * 28).dp + 10.dp)
-            .padding(vertical = 4.dp)
+            .height((rowCount * 30).dp + 14.dp)
+            .padding(vertical = 6.dp)
     ) {
         Box(modifier = Modifier.width(timeAxisWidth), contentAlignment = Alignment.TopStart) {
-            Text(text = "全天", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
+            Text(text = "全天", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
         }
         Box(
             modifier = Modifier
@@ -978,20 +1359,33 @@ private fun CalendarAllDaySection(
                             )
                         }
                         .width((dayColumnWidth * (endIndex - startIndex + 1)) - 8.dp)
-                        .height(22.dp)
+                        .height(24.dp)
                         .clickable { onOpenDetails(item) },
-                    shape = RoundedCornerShape(8.dp),
-                    color = tint.copy(alpha = 0.16f)
+                    shape = RoundedCornerShape(10.dp),
+                    color = tint.copy(alpha = 0.14f),
+                    border = BorderStroke(1.dp, tint.copy(alpha = 0.24f))
                 ) {
-                    Text(
-                        text = item.title,
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
-                        color = tint.copy(alpha = calendarVisualAlpha(item)),
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 12.sp,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
+                    Row(
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Surface(
+                            modifier = Modifier
+                                .fillMaxHeight()
+                                .width(3.dp),
+                            shape = RoundedCornerShape(999.dp),
+                            color = tint.copy(alpha = 0.95f)
+                        ) {}
+                        Text(
+                            text = item.title,
+                            color = tint.copy(alpha = calendarVisualAlpha(item)),
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 12.sp,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
                 }
             }
         }
@@ -1211,16 +1605,6 @@ private fun PendingDraftCard(
                 cornerRadius = androidx.compose.ui.geometry.CornerRadius(radius, radius),
                 style = Stroke(width = strokeWidth)
             )
-
-            val circleRadiusOuter = 7.dp.toPx()
-            val circleRadiusInner = 4.dp.toPx()
-            val topCenter = Offset(size.width - 18.dp.toPx(), circleRadiusOuter + 4.dp.toPx())
-            val bottomCenter = Offset(18.dp.toPx(), size.height - circleRadiusOuter - 4.dp.toPx())
-
-            drawCircle(color = accent.copy(alpha = 0.16f), radius = circleRadiusOuter, center = topCenter)
-            drawCircle(color = accent, radius = circleRadiusInner, center = topCenter)
-            drawCircle(color = accent.copy(alpha = 0.16f), radius = circleRadiusOuter, center = bottomCenter)
-            drawCircle(color = accent, radius = circleRadiusInner, center = bottomCenter)
         }
         Text(
             text = "新日程",
@@ -1257,8 +1641,18 @@ private fun TimedEventCard(
     val leftOffset = baseLeft +
         (dayColumnWidth / placement.columnCount) * placement.columnIndex +
         4.dp
-    val showLocation = durationMinutes >= 90 || eventWidth >= 132.dp
-    val titleMaxLines = if (showLocation) 4 else 6
+    val showLocation = durationMinutes >= 70 || eventHeight >= 72.dp || eventWidth >= 126.dp
+    val titleMaxLines = when {
+        eventHeight >= 144.dp -> 6
+        eventHeight >= 108.dp -> 5
+        showLocation -> 4
+        else -> 5
+    }
+    val locationMaxLines = when {
+        eventHeight >= 132.dp -> 3
+        eventHeight >= 84.dp -> 2
+        else -> 1
+    }
 
     Surface(
         modifier = Modifier
@@ -1273,26 +1667,26 @@ private fun TimedEventCard(
         Row(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(horizontal = 6.dp, vertical = 6.dp),
-            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                .padding(horizontal = 7.dp, vertical = 6.dp),
+            horizontalArrangement = Arrangement.spacedBy(7.dp)
         ) {
             Surface(
                 modifier = Modifier
                     .fillMaxHeight()
-                    .width(3.dp),
+                    .width(4.dp),
                 shape = RoundedCornerShape(999.dp),
                 color = tint.copy(alpha = 0.95f)
             ) {}
             Column(
                 modifier = Modifier.fillMaxSize(),
-                verticalArrangement = Arrangement.spacedBy(2.dp)
+                verticalArrangement = Arrangement.spacedBy(if (showLocation) 3.dp else 2.dp)
             ) {
                 Text(
                     text = item.title,
                     fontWeight = FontWeight.Bold,
                     color = tint.copy(alpha = 0.98f),
-                    fontSize = 13.sp,
-                    lineHeight = 14.sp,
+                    fontSize = 12.sp,
+                    lineHeight = 13.sp,
                     maxLines = titleMaxLines,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -1302,7 +1696,7 @@ private fun TimedEventCard(
                         color = tint.copy(alpha = 0.78f),
                         fontSize = 10.sp,
                         lineHeight = 11.sp,
-                        maxLines = 2,
+                        maxLines = locationMaxLines,
                         overflow = TextOverflow.Ellipsis
                     )
                 }
@@ -1367,28 +1761,50 @@ private fun CalendarEventDetailsDialog(
     androidx.compose.material3.AlertDialog(
         onDismissRequest = onDismiss,
         title = {
-            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text(item.title, fontWeight = FontWeight.Bold)
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(item.title, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleLarge)
                 item.location.takeIf { it.isNotBlank() }?.let {
-                    Text(it, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp)
+                    Text(it, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 14.sp)
                 }
             }
         },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(
-                    text = if (item.allDay) "全天 · ${formatDateRange(item)}" else formatDateTimeRange(item),
-                    color = MaterialTheme.colorScheme.primary,
-                    fontWeight = FontWeight.SemiBold
-                )
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Surface(
+                    shape = RoundedCornerShape(18.dp),
+                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.10f)
+                ) {
+                    Text(
+                        text = if (item.allDay) "全天 · ${formatDateRange(item)}" else formatDateTimeRange(item),
+                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+                        color = MaterialTheme.colorScheme.primary,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
                 if (item.notes.isNotBlank()) {
-                    Text(text = item.notes, color = MaterialTheme.colorScheme.onSurfaceVariant, lineHeight = 18.sp)
+                    Surface(
+                        shape = RoundedCornerShape(18.dp),
+                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.34f)
+                    ) {
+                        Text(
+                            text = item.notes,
+                            modifier = Modifier.padding(14.dp),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            lineHeight = 19.sp
+                        )
+                    }
                 }
                 item.reminderAtMillis?.let {
-                    Text(
-                        text = "提醒：${formatLocalDateTime(reminderAtMillisToDateTime(it))}",
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                    Surface(
+                        shape = RoundedCornerShape(16.dp),
+                        color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.28f)
+                    ) {
+                        Text(
+                            text = "提醒：${formatLocalDateTime(reminderAtMillisToDateTime(it))}",
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 }
             }
         },
@@ -1574,6 +1990,35 @@ private fun formatClockTime(dateTime: LocalDateTime): String {
 
 private fun snapToQuarterHour(totalMinutes: Int): Int {
     return ((totalMinutes + 7) / 15) * 15
+}
+
+private fun weekdayLabels(weekStartMode: WeekStartMode): List<String> {
+    return when (weekStartMode) {
+        WeekStartMode.MONDAY -> listOf("一", "二", "三", "四", "五", "六", "日")
+        WeekStartMode.SUNDAY -> listOf("日", "一", "二", "三", "四", "五", "六")
+    }
+}
+
+private fun buildEventsByDate(events: List<TodoItem>): Map<LocalDate, List<TodoItem>> {
+    if (events.isEmpty()) return emptyMap()
+    val bucket = linkedMapOf<LocalDate, MutableList<TodoItem>>()
+    events.sortedBy { it.startAtMillis ?: it.dueAtMillis }.forEach { item ->
+        val startMillis = item.startAtMillis ?: item.dueAtMillis
+        val endMillis = item.endAtMillis ?: startMillis
+        var cursor = millisToDate(startMillis)
+        val inclusiveEnd = millisToDate(if (item.allDay) endMillis - 1 else endMillis)
+        while (!cursor.isAfter(inclusiveEnd)) {
+            bucket.getOrPut(cursor) { mutableListOf() }.add(item)
+            cursor = cursor.plusDays(1)
+        }
+    }
+    return bucket
+}
+
+private fun timeRangeLabel(item: TodoItem): String {
+    val start = item.startAtMillis?.let(::reminderAtMillisToDateTime) ?: return "未设置时间"
+    val end = item.endAtMillis?.let(::reminderAtMillisToDateTime) ?: start
+    return "${formatClockTime(start)} - ${formatClockTime(end)}"
 }
 
 private fun currentWeekStart(date: LocalDate): LocalDate {

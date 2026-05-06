@@ -116,8 +116,7 @@ internal enum class DashboardSection(
     CALENDAR("日历", Icons.Rounded.CalendarMonth, "Schedule"),
     HISTORY("历史记录", Icons.Rounded.History, "历史记录"),
     GROUPS("分组管理", Icons.Rounded.Folder, "分组管理"),
-    SETTINGS("设置", Icons.Rounded.Settings, "设置"),
-    ABOUT("关于", Icons.Rounded.Info, "关于")
+    SETTINGS("设置", Icons.Rounded.Settings, "设置")
 }
 
 @Composable
@@ -325,6 +324,8 @@ internal fun DashboardBody(
     onNextQuote: () -> Unit,
     onDefaultSnoozeChange: (Int) -> Unit,
     onDefaultCalendarReminderModeChange: (ReminderDeliveryMode) -> Unit,
+    onDesktopSyncEnabledChange: (Boolean) -> Unit,
+    onRotateDesktopSyncToken: () -> Unit,
     onUseBuiltInReminderTone: () -> Unit,
     onPickSystemReminderTone: () -> Unit,
     onOpenWiki: () -> Unit,
@@ -388,9 +389,12 @@ internal fun DashboardBody(
                 onWeekStartModeChange = onWeekStartModeChange,
                 onDefaultSnoozeChange = onDefaultSnoozeChange,
                 onDefaultCalendarReminderModeChange = onDefaultCalendarReminderModeChange,
+                onDesktopSyncEnabledChange = onDesktopSyncEnabledChange,
+                onRotateDesktopSyncToken = onRotateDesktopSyncToken,
                 onUseBuiltInReminderTone = onUseBuiltInReminderTone,
                 onPickSystemReminderTone = onPickSystemReminderTone,
                 onOpenWiki = onOpenWiki,
+                desktopSyncStatus = uiState.desktopSyncStatus,
                 reminderChainLogs = uiState.reminderChainLogs,
                 onRunReminderChainTest = onRunReminderChainTest,
                 onClearReminderDiagnostics = onClearReminderDiagnostics,
@@ -428,7 +432,7 @@ internal fun DashboardBody(
                 if (uiState.missedItems.isNotEmpty()) {
                     item {
                         ExpandableSectionHeader(
-                            title = "已错过",
+                            title = "已错过（${uiState.missedItems.size}）",
                             expanded = missedExpanded,
                             onToggle = { missedExpanded = !missedExpanded }
                         )
@@ -442,7 +446,7 @@ internal fun DashboardBody(
 
                 item {
                     ExpandableSectionHeader(
-                        title = "今日待办",
+                        title = "今日待办（${uiState.todayItems.size}）",
                         expanded = todayExpanded,
                         onToggle = { todayExpanded = !todayExpanded }
                     )
@@ -459,7 +463,7 @@ internal fun DashboardBody(
 
                 item {
                     ExpandableSectionHeader(
-                        title = "计划中",
+                        title = "计划中（${uiState.upcomingItems.size}）",
                         expanded = upcomingExpanded,
                         onToggle = { upcomingExpanded = !upcomingExpanded }
                     )
@@ -493,7 +497,6 @@ internal fun DashboardBody(
                     onDeleteGroup = onDeleteGroup
                 )
             }
-            DashboardSection.ABOUT -> item { AboutPanel(onOpenWiki = onOpenWiki) }
             DashboardSection.CALENDAR -> Unit
             DashboardSection.SETTINGS -> Unit
         }

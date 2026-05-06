@@ -236,9 +236,10 @@ class TodoRepository(
         }
     }
 
-    suspend fun dueReminderItems(now: Long): List<TodoItem> {
+    suspend fun dueReminderItems(now: Long, graceWindowMillis: Long = 2 * 60_000L): List<TodoItem> {
+        val earliestAllowed = now - graceWindowMillis
         return todoDao.getActiveReminderItems().filter { item ->
-            item.reminderTriggerTimesMillis().any { it <= now }
+            item.reminderTriggerTimesMillis().any { it in earliestAllowed..now }
         }
     }
 

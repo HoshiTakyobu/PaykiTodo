@@ -9,6 +9,8 @@ import com.example.todoalarm.data.BackupManager
 import com.example.todoalarm.data.AppSettingsStore
 import com.example.todoalarm.data.DatabaseMigrations
 import com.example.todoalarm.data.TodoRepository
+import com.example.todoalarm.sync.DesktopSyncCoordinator
+import com.example.todoalarm.sync.DesktopSyncService
 import com.example.todoalarm.ui.QuoteRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -20,6 +22,9 @@ class TodoApplication : Application() {
         CrashLogger.install(this)
         CoroutineScope(Dispatchers.IO).launch {
             repository.ensureDefaultGroups()
+            if (settingsStore.currentSettings().desktopSyncEnabled) {
+                DesktopSyncService.start(applicationContext)
+            }
         }
     }
 
@@ -54,6 +59,14 @@ class TodoApplication : Application() {
 
     val quoteRepository: QuoteRepository by lazy {
         QuoteRepository(applicationContext)
+    }
+
+    val desktopSyncCoordinator: DesktopSyncCoordinator by lazy {
+        DesktopSyncCoordinator(
+            context = applicationContext,
+            app = this,
+            settingsStore = settingsStore
+        )
     }
 
     val alarmScheduler: AlarmScheduler by lazy {

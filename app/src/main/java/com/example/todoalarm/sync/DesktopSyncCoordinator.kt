@@ -1,0 +1,319 @@
+package com.example.todoalarm.sync
+
+import android.content.Context
+import com.example.todoalarm.TodoApplication
+import com.example.todoalarm.alarm.ActiveReminderStore
+import com.example.todoalarm.alarm.ReminderDispatchTracker
+import com.example.todoalarm.alarm.ReminderForegroundService
+import com.example.todoalarm.data.AppSettingsStore
+import com.example.todoalarm.data.CalendarEventDraft
+import com.example.todoalarm.data.RecurrenceConfig
+import com.example.todoalarm.data.RecurrenceScope
+import com.example.todoalarm.data.RecurrenceType
+import com.example.todoalarm.data.TodoDraft
+import com.example.todoalarm.data.TodoItem
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
+import org.json.JSONArray
+import org.json.JSONObject
+import java.net.Inet4Address
+import java.net.NetworkInterface
+import java.time.DayOfWeek
+import java.time.LocalDate
+import java.time.LocalDateTime
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+import java.util.Collections
+
+class DesktopSyncCoordinator(
+    private val context: Context,
+    private val app: TodoApplication,
+    private val settingsStore: AppSettingsStore
+) {
+    private var server: DesktopSyncServer? = null
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val port = 18765
+
+    fun ensureRunning() {
+        if (!settingsStore.currentSettings().desktopSyncEnabled) {
+            stop()
+            return
+        }
+        if (server != null) return
+        server = DesktopSyncServer(port = port) { method, path, body, headers ->
+            handleRequest(method, path, body, headers)
+        }.also { it.start() }
+    }
+
+    fun stop() {
+        server?.stop()
+        server = null
+    }
+
+    fun shutdown() {
+        stop()
+        scope.cancel()
+    }
+
+    fun status(): DesktopSyncStatus {
+        return settingsStore.currentSettings().toDesktopSyncStatus(
+            running = server != null,
+            port = port,
+            ipAddresses = currentIpv4Addresses()
+        )
+    }
+
+    private fun handleRequest(
+        method: String,
+        path: String,
+        body: String,
+        headers: Map<String, String>
+    ): DesktopSyncServer.Response {
+        if (path == "/" || path == "/index.html") {
+            return DesktopSyncServer.Response.html(DesktopSyncWebAssets.indexHtml())
+        }
+        if (path == "/app.js") {
+            return DesktopSyncServer.Response.js(DesktopSyncWebAssets.appJs())
+        }
+        if (path == "/app.css") {
+            return DesktopSyncServer.Response.css(DesktopSyncWebAssets.appCss())
+        }
+
+        if (!authorize(headers)) {
+            return DesktopSyncServer.Response.json(JSONObject().put("error", "未授权，请填写手机端显示的访问密钥。"), 401)
+        }
+
+        return runCatching {
+            when {
+                method == "GET" && path == "/api/status" -> DesktopSyncServer.Response.json(status().toJson())
+                method == "GET" && path == "/api/snapshot" -> DesktopSyncServer.Response.json(buildSnapshot().toJson(buildGroupsMap()))
+                method == "POST" && path == "/api/todos" -> DesktopSyncServer.Response.json(createTodo(JSONObject(body)))
+                method == "POST" && path == "/api/events" -> DesktopSyncServer.Response.json(createEvent(JSONObject(body)))
+                method == "POST" && path.matches(Regex("/api/items/\\d+/complete")) -> DesktopSyncServer.Response.json(markCompleted(path))
+                method == "POST" && path.matches(Regex("/api/items/\\d+/cancel")) -> DesktopSyncServer.Response.json(cancelItem(path))
+                method == "DELETE" && path.matches(Regex("/api/items/\\d+")) -> DesktopSyncServer.Response.json(deleteItem(path))
+                else -> DesktopSyncServer.Response.json(JSONObject().put("error", "未找到接口"), 404)
+            }
+        }.getOrElse { throwable ->
+            DesktopSyncServer.Response.json(
+                JSONObject()
+                    .put("error", throwable.message ?: throwable.javaClass.simpleName)
+                    .put("type", throwable.javaClass.simpleName),
+                500
+            )
+        }
+    }
+
+    private fun authorize(headers: Map<String, String>): Boolean {
+        val expected = settingsStore.currentSettings().desktopSyncToken
+        val provided = headers.entries.firstOrNull { it.key.equals("X-Payki-Token", ignoreCase = true) }?.value
+            ?: headers.entries.firstOrNull { it.key.equals("Authorization", ignoreCase = true) }?.value?.removePrefix("Bearer ")
+        return expected.isNotBlank() && provided == expected
+    }
+
+    private fun buildSnapshot(): DesktopSyncSnapshot {
+        val groups = runBlocking { app.repository.getAllGroups().ifEmpty { app.repository.ensureDefaultGroups() } }
+        val items = runBlocking { app.repository.getAllTodos() }
+        return DesktopSyncSnapshot(
+            generatedAtMillis = System.currentTimeMillis(),
+            groups = groups,
+            todos = items.filter { it.isTodo }.sortedBy { it.dueAtMillis },
+            events = items.filter { it.isEvent }.sortedBy { it.startAtMillis ?: it.dueAtMillis }
+        )
+    }
+
+    private fun buildGroupsMap(): Map<Long, com.example.todoalarm.data.TaskGroup> {
+        return runBlocking { app.repository.getAllGroups().ifEmpty { app.repository.ensureDefaultGroups() } }.associateBy { it.id }
+    }
+
+    private fun createTodo(json: JSONObject): JSONObject {
+        val groupId = resolveGroupId(json)
+        val dueAt = json.optStringOrNull("dueAt")?.let(LocalDateTime::parse)
+        val reminderAt = json.optStringOrNull("reminderAt")?.let(LocalDateTime::parse)
+        val draft = TodoDraft(
+            title = json.optString("title").trim(),
+            notes = json.optString("notes").trim(),
+            dueAt = dueAt,
+            reminderAt = reminderAt,
+            groupId = groupId,
+            ringEnabled = json.optBoolean("ringEnabled", true),
+            vibrateEnabled = json.optBoolean("vibrateEnabled", true),
+            recurrence = parseRecurrence(json.optJSONObject("recurrence"), dueAt?.toLocalDate())
+        )
+        require(draft.title.isNotBlank()) { "标题不能为空" }
+        val created = runBlocking { app.repository.createFromDraft(draft) }
+        created.forEach(::scheduleReminderOrDisable)
+        autoBackupIfNeeded()
+        return JSONObject().put("created", created.size)
+    }
+
+    private fun createEvent(json: JSONObject): JSONObject {
+        val groupId = resolveGroupId(json)
+        val startAt = LocalDateTime.parse(json.getString("startAt"))
+        val endAt = LocalDateTime.parse(json.getString("endAt"))
+        val reminderOffsets = json.optJSONArray("reminderOffsetsMinutes")?.toIntList().orEmpty()
+        val draft = CalendarEventDraft(
+            title = json.optString("title").trim(),
+            notes = json.optString("notes").trim(),
+            location = json.optString("location").trim(),
+            startAt = startAt,
+            endAt = endAt,
+            allDay = json.optBoolean("allDay", false),
+            accentColorHex = json.optString("accentColorHex", "#4E87E1"),
+            reminderMinutesBefore = reminderOffsets.firstOrNull(),
+            reminderOffsetsMinutes = reminderOffsets,
+            ringEnabled = json.optBoolean("ringEnabled", true),
+            vibrateEnabled = json.optBoolean("vibrateEnabled", true),
+            reminderDeliveryMode = com.example.todoalarm.data.ReminderDeliveryMode.fromStorage(json.optString("reminderDeliveryMode")),
+            recurrence = parseRecurrence(json.optJSONObject("recurrence"), startAt.toLocalDate()),
+            groupId = groupId
+        )
+        require(draft.title.isNotBlank()) { "日程标题不能为空" }
+        val created = runBlocking { app.repository.createCalendarEventFromDraft(draft) }
+        created.forEach(::scheduleReminderOrDisable)
+        autoBackupIfNeeded()
+        return JSONObject().put("created", created.size)
+    }
+
+    private fun markCompleted(path: String): JSONObject {
+        val id = path.substringAfter("/api/items/").substringBefore('/').toLong()
+        val updated = runBlocking { app.repository.setCompleted(id, true) }
+        updated?.let { clearReminderArtifacts(listOf(it)) }
+        autoBackupIfNeeded()
+        return JSONObject().put("ok", updated != null)
+    }
+
+    private fun cancelItem(path: String): JSONObject {
+        val id = path.substringAfter("/api/items/").substringBefore('/').toLong()
+        val item = runBlocking { app.repository.getTodo(id) } ?: return JSONObject().put("ok", false)
+        val canceled = if (item.isEvent) {
+            runBlocking { app.repository.deleteCalendarEvent(item, RecurrenceScope.CURRENT) }
+        } else {
+            runBlocking { app.repository.cancelTodo(item, RecurrenceScope.CURRENT) }
+        }
+        clearReminderArtifacts(canceled.ifEmpty { listOf(item) })
+        autoBackupIfNeeded()
+        return JSONObject().put("ok", true)
+    }
+
+    private fun deleteItem(path: String): JSONObject {
+        val id = path.substringAfter("/api/items/").toLong()
+        val item = runBlocking { app.repository.getTodo(id) } ?: return JSONObject().put("ok", false)
+        if (item.isEvent) {
+            runBlocking { app.repository.deleteCalendarEvent(item, RecurrenceScope.CURRENT) }
+        } else {
+            runBlocking { app.repository.deleteTodo(id) }
+        }
+        clearReminderArtifacts(listOf(item))
+        autoBackupIfNeeded()
+        return JSONObject().put("ok", true)
+    }
+
+    private fun resolveGroupId(json: JSONObject): Long {
+        val groups = runBlocking { app.repository.getAllGroups().ifEmpty { app.repository.ensureDefaultGroups() } }
+        val groupId = json.optLong("groupId", 0L)
+        if (groupId > 0 && groups.any { it.id == groupId }) return groupId
+        val requestedName = json.optString("groupName").trim()
+        if (requestedName.isNotBlank()) {
+            val existing = groups.firstOrNull { it.name == requestedName }
+            if (existing != null) return existing.id
+            return runBlocking { app.repository.createGroup(requestedName, json.optString("groupColorHex", "#4E87E1")).id }
+        }
+        return groups.firstOrNull { it.name == "例行" }?.id ?: groups.firstOrNull()?.id ?: 0L
+    }
+
+    private fun parseRecurrence(json: JSONObject?, anchorDate: LocalDate?): RecurrenceConfig {
+        if (json == null || !json.optBoolean("enabled", false)) return RecurrenceConfig()
+        val type = RecurrenceType.fromStorage(json.optString("type"))
+        val weekdays = json.optJSONArray("weeklyDays")?.toWeekdays().orEmpty()
+        val endDate = json.optStringOrNull("endDate")?.let(LocalDate::parse)
+        return RecurrenceConfig(
+            enabled = type != RecurrenceType.NONE,
+            type = type,
+            weeklyDays = if (weekdays.isEmpty() && anchorDate != null && type == RecurrenceType.WEEKLY) {
+                setOf(anchorDate.dayOfWeek)
+            } else {
+                weekdays
+            },
+            endDate = endDate
+        )
+    }
+
+    private fun scheduleReminderOrDisable(item: TodoItem) {
+        if (item.isTodo && !item.hasDueDate) {
+            if (item.reminderEnabled || item.reminderAtMillis != null) {
+                ReminderDispatchTracker.clear(context, item.id)
+                runBlocking { app.repository.updateTodo(item.copy(reminderEnabled = false, reminderAtMillis = null, reminderOffsetsCsv = "")) }
+            }
+            return
+        }
+        if (!item.reminderEnabled) return
+        ReminderDispatchTracker.clear(context, item.id)
+        val message = app.alarmScheduler.schedule(item)
+        if (message != null) {
+            runBlocking { app.repository.updateTodo(item.copy(reminderEnabled = false)) }
+        }
+    }
+
+    private fun clearReminderArtifacts(items: List<TodoItem>) {
+        items.forEach { item ->
+            app.alarmScheduler.cancel(item.id)
+            app.reminderNotifier.cancel(item.id)
+            ReminderDispatchTracker.clear(context, item.id)
+            ActiveReminderStore.clearIfMatches(context, item.id)
+        }
+        context.stopService(android.content.Intent(context, ReminderForegroundService::class.java))
+    }
+
+    private fun autoBackupIfNeeded() {
+        val settings = settingsStore.currentSettings()
+        if (!settings.autoBackupEnabled) return
+        val directoryUri = settings.backupDirectoryUri ?: return
+        scope.launch {
+            runCatching {
+                val snapshot = app.repository.exportSnapshot(settings)
+                app.backupManager.autoBackupToDirectory(directoryUri, snapshot)
+            }
+        }
+    }
+
+    private fun currentIpv4Addresses(): List<String> {
+        return runCatching {
+            Collections.list(NetworkInterface.getNetworkInterfaces())
+                .filter { it.isUp && !it.isLoopback }
+                .flatMap { network -> Collections.list(network.inetAddresses) }
+                .filterIsInstance<Inet4Address>()
+                .filterNot { it.isLoopbackAddress }
+                .map { it.hostAddress ?: "" }
+                .filter { it.isNotBlank() }
+                .distinct()
+                .sorted()
+        }.getOrDefault(emptyList())
+    }
+}
+
+private fun JSONObject.optStringOrNull(key: String): String? {
+    if (isNull(key)) return null
+    return optString(key).takeIf { it.isNotBlank() }
+}
+
+private fun JSONArray.toIntList(): List<Int> {
+    return buildList(length()) {
+        for (index in 0 until length()) {
+            add(optInt(index))
+        }
+    }
+}
+
+private fun JSONArray.toWeekdays(): Set<DayOfWeek> {
+    return buildSet(length()) {
+        for (index in 0 until length()) {
+            val value = optInt(index)
+            runCatching { DayOfWeek.of(value) }.getOrNull()?.let(::add)
+        }
+    }
+}

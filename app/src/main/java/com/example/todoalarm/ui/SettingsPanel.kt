@@ -34,6 +34,7 @@ import androidx.compose.material.icons.rounded.Folder
 import androidx.compose.material.icons.rounded.LibraryMusic
 import androidx.compose.material.icons.rounded.ManageSearch
 import androidx.compose.material.icons.rounded.Notifications
+import androidx.compose.material.icons.rounded.Computer
 import androidx.compose.material.icons.rounded.Security
 import androidx.compose.material.icons.rounded.Storage
 import androidx.compose.material.icons.rounded.TaskAlt
@@ -72,6 +73,7 @@ import com.example.todoalarm.data.AppSettings
 import com.example.todoalarm.data.ReminderChainLog
 import com.example.todoalarm.data.ReminderDeliveryMode
 import com.example.todoalarm.data.WeekStartMode
+import com.example.todoalarm.sync.DesktopSyncStatus
 import kotlinx.coroutines.launch
 
 private enum class SettingsSection {
@@ -79,9 +81,11 @@ private enum class SettingsSection {
     CALENDAR,
     TONE,
     HELP,
+    ABOUT,
     DIAGNOSTICS,
     BACKUP,
-    CRASH
+    CRASH,
+    DESKTOP_SYNC
 }
 
 @OptIn(ExperimentalLayoutApi::class)
@@ -100,9 +104,12 @@ fun SettingsPanel(
     onWeekStartModeChange: (WeekStartMode) -> Unit,
     onDefaultSnoozeChange: (Int) -> Unit,
     onDefaultCalendarReminderModeChange: (ReminderDeliveryMode) -> Unit,
+    onDesktopSyncEnabledChange: (Boolean) -> Unit,
+    onRotateDesktopSyncToken: () -> Unit,
     onUseBuiltInReminderTone: () -> Unit,
     onPickSystemReminderTone: () -> Unit,
     onOpenWiki: () -> Unit,
+    desktopSyncStatus: DesktopSyncStatus,
     reminderChainLogs: List<ReminderChainLog>,
     onRunReminderChainTest: suspend (Int) -> String?,
     onClearReminderDiagnostics: suspend () -> Unit,
@@ -187,7 +194,7 @@ fun SettingsPanel(
         item {
             SettingsCategoryHeader(
                 title = "数据与帮助",
-                summary = "查看完整使用说明，处理备份恢复，也能在这里查看真实崩溃日志。"
+                summary = "使用说明、关于、备份恢复和崩溃日志都放在这里。"
             )
         }
         item {
@@ -200,10 +207,28 @@ fun SettingsPanel(
                 )
                 SettingsMenuDivider()
                 SettingsMenuItem(
+                    icon = Icons.Rounded.Folder,
+                    title = "关于",
+                    summary = "版本号、包名、作者、版权与项目定位",
+                    onClick = { selectedSection = SettingsSection.ABOUT }
+                )
+                SettingsMenuDivider()
+                SettingsMenuItem(
                     icon = Icons.Rounded.Storage,
                     title = "数据与备份",
                     summary = "导出、导入 JSON，自动备份目录与自动备份",
                     onClick = { selectedSection = SettingsSection.BACKUP }
+                )
+                SettingsMenuDivider()
+                SettingsMenuItem(
+                    icon = Icons.Rounded.Computer,
+                    title = "电脑同步",
+                    summary = if (desktopSyncStatus.running) {
+                        "已运行，电脑可通过浏览器连接手机"
+                    } else {
+                        "局域网浏览器控制台，可直接改手机里的待办和日程"
+                    },
+                    onClick = { selectedSection = SettingsSection.DESKTOP_SYNC }
                 )
                 SettingsMenuDivider()
                 SettingsMenuItem(
@@ -274,6 +299,10 @@ fun SettingsPanel(
             }
         }
 
+        SettingsSection.ABOUT -> SettingsSectionDialog("关于 PaykiTodo", { selectedSection = null }) {
+            AboutPanel(onOpenWiki = onOpenWiki)
+        }
+
         SettingsSection.DIAGNOSTICS -> SettingsSectionDialog("提醒链路诊断", { selectedSection = null }) {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text("可以快速创建一条测试提醒，并查看最近的提醒派发链路，减少反复等待一分钟的调试成本。", color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -321,6 +350,38 @@ fun SettingsPanel(
                     OutlinedButton(onClick = onPickBackupDirectory, modifier = Modifier.fillMaxWidth()) { Text("选择备份目录") }
                     OutlinedButton(onClick = onExportBackup, modifier = Modifier.fillMaxWidth()) { Text("导出 JSON") }
                     OutlinedButton(onClick = onImportBackup, modifier = Modifier.fillMaxWidth()) { Text("导入 JSON") }
+                }
+            }
+        }
+
+        SettingsSection.DESKTOP_SYNC -> SettingsSectionDialog("电脑同步", { selectedSection = null }) {
+            Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                Text("开启后，手机会在局域网里启动一个网页控制台。电脑和手机连同一个网络时，电脑浏览器就能直接添加、完成、取消和删除待办与日程。", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text("启用电脑同步", fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
+                        Text(if (desktopSyncStatus.running) "当前服务正在运行" else "当前服务未运行", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                    Switch(checked = settings.desktopSyncEnabled, onCheckedChange = onDesktopSyncEnabledChange)
+                }
+                Text("访问密钥：${settings.desktopSyncToken}", fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
+                OutlinedButton(onClick = onRotateDesktopSyncToken) { Text("重新生成访问密钥") }
+                Text("可访问地址", fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
+                if (desktopSyncStatus.ipAddresses.isEmpty()) {
+                    Text("当前未检测到可用的局域网 IPv4 地址。请确认手机已连 Wi‑Fi。", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                } else {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        desktopSyncStatus.ipAddresses.forEach { ip ->
+                            Surface(shape = RoundedCornerShape(16.dp), color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f)) {
+                                Text(
+                                    text = "http://$ip:${desktopSyncStatus.port}",
+                                    modifier = Modifier.fillMaxWidth().padding(12.dp),
+                                    color = MaterialTheme.colorScheme.onSurface,
+                                    style = MaterialTheme.typography.bodyMedium
+                                )
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -680,12 +741,12 @@ private fun SettingsCategoryHeader(
             text = title,
             style = MaterialTheme.typography.labelLarge,
             fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.primary
+            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.92f)
         )
         Text(
             text = summary,
             style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
+            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.96f)
         )
     }
 }

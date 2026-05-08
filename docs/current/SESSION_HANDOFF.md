@@ -6,22 +6,23 @@ Long-running Codex sessions can become unreliable. This file exists so a new ses
 
 ## Current Handoff Summary
 
-- The project is currently at code version `1.6.11` / `versionCode 83`
-- The repository has been consolidated to a committed `1.6.11` baseline
+- The project is currently at code version `1.6.12` / `versionCode 84`
+- The repository has been consolidated to a committed `1.6.12` baseline
 - The current task is not to rediscover product history, but to continue the active iteration safely
-- Repository inspection shows the three old `1.6.9` carry-over items are already present in the current `1.6.11` worktree:
+- Repository inspection shows the three old `1.6.9` carry-over items are already present in the current `1.6.12` worktree:
   - current-time text is back on the left time axis
   - launcher and notification icon chains are switched to the current PaykiTodo resources
   - release-signing template doc exists
 - Minimal verification in this round passed:
   - `./gradlew.bat assembleDebug`
-  - latest debug APK path: `app/build/outputs/apk/debug/PaykiTodo-1.6.11-debug.apk`
+  - latest debug APK path: `app/build/outputs/apk/debug/PaykiTodo-1.6.12-debug.apk`
 - Latest repair in this round:
-  - reduced install-surface launcher icon oversizing by restoring safer foreground inset and solid background color
-  - removed Compose-side use of `ic_payki_mark` in launch screen and drawer in favor of direct raster art loading
+  - replaced the launcher adaptive foreground from a full raster composition to a dedicated safe-zone vector logo
+  - aligned the monochrome launcher icon to the same PaykiTodo logo silhouette
+  - kept launch screen and drawer on direct raster art loading to avoid Compose-side drawable loading risk
 - Current hot area is therefore minimal verification, version/doc alignment, board/dashboard polish, calendar polish, and documentation cleanup
-- Current icon-side decision in code: `launcher_background` has been restored to a solid light background for safer install / launcher presentation
-- The current `1.6.11` baseline also includes board / background work in the same release line:
+- Current icon-side decision in code: launcher foreground now stays inside a mask-safe vector live area instead of relying on raster-art inset tuning
+- The current `1.6.12` baseline also includes board / background work in the same release line:
   - daily board is the default home section
   - board can summarize today's todos and near-term schedule
   - light / dark dashboard background resources are present
@@ -29,7 +30,7 @@ Long-running Codex sessions can become unreliable. This file exists so a new ses
 
 ## Smallest Safe Next Step
 
-Do not re-decompose `E:\下载\icon.png` unless the current resource chain proves insufficient.
+Do not re-decompose `E:\下载\icon.png` unless the current in-repo vector launcher chain proves insufficient.
 
 The smallest safe next step after this round is:
 

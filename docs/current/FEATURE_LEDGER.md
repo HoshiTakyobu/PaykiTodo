@@ -45,8 +45,8 @@ This file tracks the product at a practical level for new coding sessions.
 
 ### Packaging / Identity
 
-- adaptive launcher icon XML now points to the current PaykiTodo mark resources
-- monochrome themed launcher icon resource exists in the current worktree
+- adaptive launcher icon now uses a dedicated safe-zone PaykiTodo vector foreground instead of reusing the full raster art as the foreground layer
+- monochrome themed launcher icon now follows the same PaykiTodo logo silhouette as the colored launcher icon
 - release-signing information template exists under `docs/PaykiTodo-Release-Signing-Template.md`
 
 ### Data / Backup / Diagnostics

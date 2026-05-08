@@ -7,13 +7,13 @@
 - Package name: `com.paykitodo.app`
 - Target platform: Android 14 / API 34
 - Current version in code:
-  - `versionName = "1.6.11"`
-  - `versionCode = 83`
+  - `versionName = "1.6.12"`
+  - `versionCode = 84`
 
 ## Current Build Facts
 
 - Existing debug APK output seen in the repo:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.6.11-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.6.12-debug.apk`
 - Minimal verification completed in the current round:
   - `./gradlew.bat assembleDebug` succeeded
 - Current build environment expectation:
@@ -22,13 +22,15 @@
 
 ## Current Worktree Reality
 
-The repository has been consolidated to a committed `1.6.11` baseline after the icon, board, handoff, and launch-fix round.
+The repository has been consolidated to a committed `1.6.12` baseline after the launcher icon safe-zone repair round.
 
 The most important current baseline facts are:
 
-- the version bump to `1.6.11 / 83` is already in code
-- the late `1.6.9` carry-over items are already included in this baseline
-- the daily board / background visual refresh is also included in this baseline
+- the version bump to `1.6.12 / 84` is already in code
+- the late `1.6.9` carry-over items remain included in this baseline
+- the daily board / background visual refresh remains included in this baseline
+- the launcher adaptive icon foreground is no longer a full opaque raster art file
+- launcher foreground and monochrome layers now use a dedicated safe-zone vector logo for mask-compatible cropping
 - future sessions should use `git status` to detect any new local divergence instead of assuming the worktree is dirty
 
 Recent checked-but-not-yet-fully-device-verified UI changes also include:
@@ -36,25 +38,25 @@ Recent checked-but-not-yet-fully-device-verified UI changes also include:
 - daily board as the default landing section
 - separate `dashboard_bg_light.jpg` and `dashboard_bg_dark.jpg` resources
 - launch screen and drawer icon visual refresh
-- launcher foreground inset and background color were adjusted again to avoid install-surface icon oversizing
+- launcher foreground resource chain was rewritten so adaptive icon cropping no longer depends on the full raster art
 - launch screen and drawer now use the raster launcher art directly to avoid Compose-side drawable loading risk
 
 ## Repository-Verified Carry-Over Status
 
-Direct inspection of the current worktree shows the three late `1.6.9` carry-over items are already structurally present in the current `1.6.11` baseline:
+Direct inspection of the current worktree shows the three late `1.6.9` carry-over items are already structurally present in the current `1.6.12` baseline:
 
 - the calendar current-time text is rendered on the left time axis, while the red current-time line remains inside the schedule grid
 - the adaptive launcher icon chain is switched to the current PaykiTodo mark resources
 - both reminder and desktop-sync notifications use `ic_stat_payki_todo`
 - the release-signing template document exists at `docs/PaykiTodo-Release-Signing-Template.md`
 
-The smallest remaining uncertainty in this area is not missing wiring, but final device-side verification and whether `launcher_background` should stay transparent.
+The smallest remaining uncertainty in this area is no longer the resource wiring itself, but final device-side confirmation across install surface, launcher, and themed-icon surfaces.
 
 ## Documentation Health
 
 Current repo documentation is mixed:
 
-- `README.md`, `TODO.md`, and `CHANGELOG.md` are aligned to `1.6.11`, but should still be kept in sync as future changes land
+- `README.md`, `TODO.md`, and `CHANGELOG.md` are aligned to `1.6.12`, but should still be kept in sync as future changes land
 - many files under `docs/` are historical snapshots for earlier versions such as `1.4.9`, `1.5.0`, and `1.6.1`
 - older versioned docs should not be treated as the live project baseline unless explicitly referenced by the current docs
 
@@ -62,7 +64,7 @@ Current repo documentation is mixed:
 
 1. New sessions may over-trust old versioned docs and misunderstand the current scope
 2. Long-lived chat sessions can become unreliable, so repository docs must carry the shared state
-3. Device-side verification still matters even when the resource and code wiring look structurally complete
+3. Device-side verification still matters even after the launcher foreground was converted to a safe-zone vector logo
 
 ## How A New Session Should Start
 

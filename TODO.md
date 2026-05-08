@@ -5,7 +5,7 @@
 ### In Progress
 
 - Verify the current launcher and notification icon surfaces on real Android UI instead of regenerating icon assets unnecessarily
-- Keep `README.md`, `CHANGELOG.md`, and current-state docs aligned with version `1.6.10`
+- Keep `README.md`, `CHANGELOG.md`, and current-state docs aligned with version `1.6.11`
 - Continue board / dashboard and calendar polish without regressing the current interaction model
 - Improve repo-native handoff so new sessions do not depend on long chat history
 

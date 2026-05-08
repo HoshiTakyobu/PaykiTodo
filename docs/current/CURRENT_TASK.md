@@ -2,7 +2,7 @@
 
 ## Active Development Focus
 
-The current round has already been consolidated into a committed `1.6.10` baseline. The next work should start from repository facts rather than from broken chat memory.
+The current round has already been consolidated into a committed `1.6.11` baseline. The next work should start from repository facts rather than from broken chat memory.
 
 Primary active focus areas:
 

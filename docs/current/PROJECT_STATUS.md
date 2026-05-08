@@ -7,13 +7,13 @@
 - Package name: `com.paykitodo.app`
 - Target platform: Android 14 / API 34
 - Current version in code:
-  - `versionName = "1.6.10"`
-  - `versionCode = 82`
+  - `versionName = "1.6.11"`
+  - `versionCode = 83`
 
 ## Current Build Facts
 
 - Existing debug APK output seen in the repo:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.6.10-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.6.11-debug.apk`
 - Minimal verification completed in the current round:
   - `./gradlew.bat assembleDebug` succeeded
 - Current build environment expectation:
@@ -22,11 +22,11 @@
 
 ## Current Worktree Reality
 
-The repository has been consolidated to a committed `1.6.10` baseline after the icon, board, and handoff refresh round.
+The repository has been consolidated to a committed `1.6.11` baseline after the icon, board, handoff, and launch-fix round.
 
 The most important current baseline facts are:
 
-- the version bump to `1.6.10 / 82` is already in code
+- the version bump to `1.6.11 / 83` is already in code
 - the late `1.6.9` carry-over items are already included in this baseline
 - the daily board / background visual refresh is also included in this baseline
 - future sessions should use `git status` to detect any new local divergence instead of assuming the worktree is dirty
@@ -41,7 +41,7 @@ Recent checked-but-not-yet-fully-device-verified UI changes also include:
 
 ## Repository-Verified Carry-Over Status
 
-Direct inspection of the current worktree shows the three late `1.6.9` carry-over items are already structurally present in the current `1.6.10` baseline:
+Direct inspection of the current worktree shows the three late `1.6.9` carry-over items are already structurally present in the current `1.6.11` baseline:
 
 - the calendar current-time text is rendered on the left time axis, while the red current-time line remains inside the schedule grid
 - the adaptive launcher icon chain is switched to the current PaykiTodo mark resources
@@ -54,7 +54,7 @@ The smallest remaining uncertainty in this area is not missing wiring, but final
 
 Current repo documentation is mixed:
 
-- `README.md`, `TODO.md`, and `CHANGELOG.md` are aligned to `1.6.10`, but should still be kept in sync as future changes land
+- `README.md`, `TODO.md`, and `CHANGELOG.md` are aligned to `1.6.11`, but should still be kept in sync as future changes land
 - many files under `docs/` are historical snapshots for earlier versions such as `1.4.9`, `1.5.0`, and `1.6.1`
 - older versioned docs should not be treated as the live project baseline unless explicitly referenced by the current docs
 

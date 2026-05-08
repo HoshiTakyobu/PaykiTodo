@@ -22,15 +22,20 @@
 
 ## Current Worktree Reality
 
-The repository currently contains uncommitted work. New sessions must assume the user is already mid-iteration.
+The repository has been consolidated to a committed `1.6.10` baseline after the icon, board, and handoff refresh round.
 
-Major active edit areas right now include:
+The most important current baseline facts are:
 
-- dashboard / board UI
-- calendar UI refinements
-- launcher icon and notification icon resources
-- version bump work
-- docs that are partially refreshed but not fully synchronized
+- the version bump to `1.6.10 / 82` is already in code
+- the late `1.6.9` carry-over items are already included in this baseline
+- the daily board / background visual refresh is also included in this baseline
+- future sessions should use `git status` to detect any new local divergence instead of assuming the worktree is dirty
+
+Recent checked-but-not-yet-fully-device-verified UI changes also include:
+
+- daily board as the default landing section
+- separate `dashboard_bg_light.jpg` and `dashboard_bg_dark.jpg` resources
+- launch screen and drawer icon visual refresh
 
 ## Repository-Verified Carry-Over Status
 
@@ -47,7 +52,7 @@ The smallest remaining uncertainty in this area is not missing wiring, but final
 
 Current repo documentation is mixed:
 
-- `README.md`, `TODO.md`, and `CHANGELOG.md` are aligned to `1.6.10`, but should still be kept in sync as the worktree evolves
+- `README.md`, `TODO.md`, and `CHANGELOG.md` are aligned to `1.6.10`, but should still be kept in sync as future changes land
 - many files under `docs/` are historical snapshots for earlier versions such as `1.4.9`, `1.5.0`, and `1.6.1`
 - older versioned docs should not be treated as the live project baseline unless explicitly referenced by the current docs
 
@@ -55,7 +60,7 @@ Current repo documentation is mixed:
 
 1. New sessions may over-trust old versioned docs and misunderstand the current scope
 2. Long-lived chat sessions can become unreliable, so repository docs must carry the shared state
-3. The current worktree is already modified, so agents must not revert unrelated changes
+3. Device-side verification still matters even when the resource and code wiring look structurally complete
 
 ## How A New Session Should Start
 

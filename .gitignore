@@ -1,3 +1,4 @@
+# Gradle / IDE
 .gradle/
 .gradle-user-home/
 build/
@@ -5,5 +6,19 @@ local.properties
 *.iml
 .idea/
 captures/
+
+# Local-only study / maintenance notes
 LOCAL_STUDY_PLAN.md
+00_先看这里_Codex维护PaykiTodo.md
+
+# Local media overrides
 Remind_Vocal.mp3
+
+# Release signing secrets and local release materials
+keystore.properties
+release/*.jks
+release/*.keystore
+release/*.p12
+release/*.pem
+release/*.der
+release/*.key

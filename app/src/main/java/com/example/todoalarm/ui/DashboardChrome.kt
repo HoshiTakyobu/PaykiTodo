@@ -36,10 +36,12 @@ import androidx.compose.material.icons.rounded.Menu
 import androidx.compose.material.icons.rounded.PostAdd
 import androidx.compose.material.icons.rounded.ExpandLess
 import androidx.compose.material.icons.rounded.ExpandMore
+import androidx.compose.material.icons.rounded.ChevronRight
 import androidx.compose.material.icons.rounded.Folder
 import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material.icons.rounded.TaskAlt
+import androidx.compose.material.icons.rounded.ViewAgenda
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -63,11 +65,13 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.Shadow
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
@@ -90,6 +94,8 @@ import com.example.todoalarm.ui.theme.PaykiGreetingFontFamily
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
+import java.time.format.DateTimeFormatter
+import java.util.Locale
 
 @Composable
 internal fun DashboardBackgroundBrush(): Brush {
@@ -112,7 +118,8 @@ internal enum class DashboardSection(
     val icon: ImageVector,
     val topBarTitle: String
 ) {
-    ACTIVE("我的任务", Icons.Rounded.TaskAlt, "PaykiTodo"),
+    BOARD("每日看板", Icons.Rounded.ViewAgenda, "今日看板"),
+    ACTIVE("我的任务", Icons.Rounded.TaskAlt, "我的任务"),
     CALENDAR("日历", Icons.Rounded.CalendarMonth, "Schedule"),
     HISTORY("历史记录", Icons.Rounded.History, "历史记录"),
     GROUPS("分组管理", Icons.Rounded.Folder, "分组管理"),
@@ -159,7 +166,7 @@ internal fun DashboardDrawer(
                     Surface(shape = CircleShape, color = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)) {
                         Box(Modifier.size(52.dp), contentAlignment = Alignment.Center) {
                             Image(
-                                painter = painterResource(id = R.drawable.ic_launcher_art),
+                                painter = painterResource(id = R.drawable.ic_payki_mark),
                                 contentDescription = "应用图标",
                                 modifier = Modifier.size(38.dp),
                                 contentScale = ContentScale.Fit
@@ -182,7 +189,13 @@ internal fun DashboardDrawer(
                     modifier = Modifier.padding(top = 6.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
+                    DrawerSectionButton(
+                        section = DashboardSection.BOARD,
+                        selected = current == DashboardSection.BOARD,
+                        onClick = { onSelectSection(DashboardSection.BOARD) }
+                    )
                     DrawerExpandableHeader(
+                        icon = Icons.Rounded.TaskAlt,
                         title = "我的任务",
                         selected = current == DashboardSection.ACTIVE,
                         expanded = taskExpanded,
@@ -207,7 +220,7 @@ internal fun DashboardDrawer(
                             )
                         }
                     }
-                    DashboardSection.entries.filter { it != DashboardSection.ACTIVE }.forEach { section ->
+                    DashboardSection.entries.filter { it != DashboardSection.ACTIVE && it != DashboardSection.BOARD }.forEach { section ->
                         DrawerSectionButton(
                             section = section,
                             selected = current == section,
@@ -241,9 +254,9 @@ internal fun DashboardTopBar(
         ),
         navigationIcon = {
             IconButton(onClick = onMenu) {
-                Surface(shape = CircleShape, color = MaterialTheme.colorScheme.primary.copy(alpha = 0.14f)) {
+                Surface(shape = CircleShape, color = MaterialTheme.colorScheme.surface.copy(alpha = 0.78f)) {
                     Box(Modifier.size(36.dp), contentAlignment = Alignment.Center) {
-                        Icon(Icons.Rounded.Menu, contentDescription = "打开菜单", tint = MaterialTheme.colorScheme.primary)
+                        Icon(Icons.Rounded.Menu, contentDescription = "打开菜单", tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.95f))
                     }
                 }
             }
@@ -251,7 +264,13 @@ internal fun DashboardTopBar(
         title = {
             Text(
                 title,
-                style = MaterialTheme.typography.titleLarge,
+                style = MaterialTheme.typography.titleLarge.copy(
+                    shadow = Shadow(
+                        color = Color.Black.copy(alpha = 0.22f),
+                        offset = Offset(0f, 2f),
+                        blurRadius = 7f
+                    )
+                ),
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSurface
             )
@@ -412,6 +431,16 @@ internal fun DashboardBody(
     var missedExpanded by rememberSaveable { mutableStateOf(true) }
     var todayExpanded by rememberSaveable { mutableStateOf(true) }
     var upcomingExpanded by rememberSaveable(uiState.todayItems.isEmpty()) { mutableStateOf(uiState.todayItems.isEmpty()) }
+    val boardDate = LocalDate.now()
+    val todayScheduleItems = remember(uiState.calendarItems, boardDate) {
+        uiState.calendarItems.filter { boardEventOverlapsDay(it, boardDate) }
+            .sortedBy { it.startAtMillis ?: it.dueAtMillis }
+    }
+    val tomorrowScheduleItems = remember(uiState.calendarItems, boardDate) {
+        val tomorrow = boardDate.plusDays(1)
+        uiState.calendarItems.filter { boardEventOverlapsDay(it, tomorrow) }
+            .sortedBy { it.startAtMillis ?: it.dueAtMillis }
+    }
 
     LazyColumn(
         modifier = Modifier
@@ -421,14 +450,39 @@ internal fun DashboardBody(
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
         when (section) {
-            DashboardSection.ACTIVE -> {
+            DashboardSection.BOARD -> {
                 item {
-                    GreetingCard(
+                    CompactGreetingCard(
                         quote = uiState.currentQuote,
                         onNextQuote = onNextQuote
                     )
                 }
 
+                item {
+                    BoardBlockTitle("今日待办（${uiState.todayItems.size}）")
+                }
+                if (uiState.todayItems.isEmpty()) {
+                    item { EmptyStateCard("今天还没有安排任务。") }
+                } else {
+                    items(uiState.todayItems, key = { it.id }) { item ->
+                        ActiveTodoCard(item, uiState.groups, { onEdit(item) }, { onCompleteTodo(item) }, { onCancelTodo(item) })
+                    }
+                }
+
+                item {
+                    BoardBlockTitle("今日日程（${todayScheduleItems.size}）")
+                }
+                item {
+                    TodayScheduleBoardCard(
+                        today = boardDate,
+                        todayEvents = todayScheduleItems,
+                        tomorrowEvents = tomorrowScheduleItems,
+                        onOpenEvent = onEditCalendarEvent
+                    )
+                }
+            }
+
+            DashboardSection.ACTIVE -> {
                 if (uiState.missedItems.isNotEmpty()) {
                     item {
                         ExpandableSectionHeader(
@@ -577,6 +631,222 @@ private fun GreetingCard(
 }
 
 @Composable
+private fun CompactGreetingCard(
+    quote: String,
+    onNextQuote: () -> Unit
+) {
+    var collapsed by rememberSaveable { mutableStateOf(false) }
+    ElevatedCard(
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f))
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(
+                    Brush.horizontalGradient(
+                        listOf(
+                            MaterialTheme.colorScheme.primary.copy(alpha = 0.14f),
+                            MaterialTheme.colorScheme.tertiary.copy(alpha = 0.10f),
+                            MaterialTheme.colorScheme.surface
+                        )
+                    )
+                )
+                .padding(horizontal = 18.dp, vertical = 16.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                Text(
+                    text = "${timeGreeting()}，Payki",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    fontFamily = PaykiGreetingFontFamily,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                if (!collapsed) {
+                    Text(
+                        text = quote,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        overflow = TextOverflow.Visible
+                    )
+                }
+            }
+            IconButton(onClick = { collapsed = !collapsed }) {
+                Icon(
+                    Icons.Rounded.ChevronRight,
+                    contentDescription = if (collapsed) "展开欢迎语" else "折叠欢迎语",
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier
+                        .size(22.dp)
+                        .graphicsLayer { rotationZ = if (collapsed) 90f else 180f }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun BoardBlockTitle(title: String) {
+    Text(
+        text = title,
+        style = MaterialTheme.typography.titleLarge.copy(
+            fontSize = 22.sp,
+            shadow = Shadow(
+                color = Color.Black.copy(alpha = 0.14f),
+                offset = Offset(0f, 1.5f),
+                blurRadius = 4f
+            )
+        ),
+        fontWeight = FontWeight.Bold,
+        color = MaterialTheme.colorScheme.onSurface
+    )
+}
+
+@Composable
+private fun TodayScheduleBoardCard(
+    today: LocalDate,
+    todayEvents: List<TodoItem>,
+    tomorrowEvents: List<TodoItem>,
+    onOpenEvent: (TodoItem) -> Unit
+) {
+    ElevatedCard(
+        shape = RoundedCornerShape(28.dp),
+        colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.96f))
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 18.dp, vertical = 18.dp),
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
+            verticalAlignment = Alignment.Top
+        ) {
+            Column(
+                modifier = Modifier.widthIn(min = 54.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                Text(
+                    text = boardMonthLabel(today),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.SemiBold
+                )
+                Text(
+                    text = boardWeekdayLabel(today),
+                    color = Color(0xFF5A92FF),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    text = today.dayOfMonth.toString(),
+                    style = MaterialTheme.typography.displayLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+            }
+
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                if (todayEvents.isEmpty()) {
+                    Surface(
+                        shape = RoundedCornerShape(18.dp),
+                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.22f)
+                    ) {
+                        Text(
+                            text = "今天暂无日程",
+                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            style = MaterialTheme.typography.bodyLarge
+                        )
+                    }
+                } else {
+                    todayEvents.forEach { item ->
+                        BoardScheduleEventRow(item = item, onClick = { onOpenEvent(item) })
+                    }
+                }
+
+                if (tomorrowEvents.isNotEmpty()) {
+                    Text(
+                        text = "明天",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    tomorrowEvents.take(2).forEach { item ->
+                        BoardScheduleEventRow(item = item, onClick = { onOpenEvent(item) })
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun BoardScheduleEventRow(
+    item: TodoItem,
+    onClick: () -> Unit
+) {
+    val tint = item.accentColorHex?.let(::colorFromHex) ?: MaterialTheme.colorScheme.primary
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick),
+        verticalArrangement = Arrangement.spacedBy(0.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            verticalAlignment = Alignment.Top
+        ) {
+            Surface(
+                modifier = Modifier
+                    .padding(top = 4.dp)
+                    .size(width = 5.dp, height = 64.dp),
+                shape = RoundedCornerShape(999.dp),
+                color = tint.copy(alpha = 0.96f)
+            ) {}
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(2.dp)
+            ) {
+                Text(
+                    text = item.title,
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Text(
+                    text = boardEventSecondaryText(item),
+                    color = MaterialTheme.colorScheme.onSurface,
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Medium,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                item.location.takeIf { it.isNotBlank() }?.let {
+                    Text(
+                        text = it,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        style = MaterialTheme.typography.bodyLarge,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
 internal fun SectionTitle(title: String) {
     Text(
         title,
@@ -617,18 +887,25 @@ internal fun LaunchScreen() {
                 .background(
                     Brush.verticalGradient(
                         listOf(
-                            Color(0xFFF2D9BB),
-                            Color(0xFFBCD4D7),
-                            Color(0xFF607E77)
+                            Color(0xFFF5E6C6),
+                            Color(0xFFD0EBF2),
+                            Color(0xFF7FA5A7)
                         )
                     )
                 )
         )
         Canvas(modifier = Modifier.fillMaxSize()) {
             drawCircle(
-                color = Color(0x55FFF1D9),
+                color = Color(0x55FFF6E5),
                 radius = size.minDimension * 0.16f,
                 center = center.copy(y = size.height * 0.23f)
+            )
+
+            drawCircle(
+                color = Color(0x1AFFFFFF),
+                radius = size.minDimension * 0.12f,
+                center = center.copy(y = size.height * 0.23f),
+                style = Stroke(width = 4.dp.toPx())
             )
 
             val mountainBack = Path().apply {
@@ -639,7 +916,7 @@ internal fun LaunchScreen() {
                 lineTo(0f, size.height)
                 close()
             }
-            drawPath(mountainBack, color = Color(0x886B8A7A))
+            drawPath(mountainBack, color = Color(0x7078A6AC))
 
             val mountainMid = Path().apply {
                 moveTo(0f, size.height * 0.72f)
@@ -649,7 +926,7 @@ internal fun LaunchScreen() {
                 lineTo(0f, size.height)
                 close()
             }
-            drawPath(mountainMid, color = Color(0xAA466259))
+            drawPath(mountainMid, color = Color(0x9C5F8B90))
 
             val mountainFront = Path().apply {
                 moveTo(0f, size.height * 0.8f)
@@ -659,7 +936,7 @@ internal fun LaunchScreen() {
                 lineTo(0f, size.height)
                 close()
             }
-            drawPath(mountainFront, color = Color(0xFF2A3F42))
+            drawPath(mountainFront, color = Color(0xFF355258))
         }
 
         Box(
@@ -667,7 +944,7 @@ internal fun LaunchScreen() {
                 .fillMaxSize()
                 .background(
                     Brush.verticalGradient(
-                        listOf(Color(0x220C1F24), Color(0x5521372E), Color(0x330A1114))
+                        listOf(Color(0x12091920), Color(0x2A17313B), Color(0x18061115))
                     )
                 )
         )
@@ -680,6 +957,14 @@ internal fun LaunchScreen() {
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
+            Image(
+                painter = painterResource(id = R.drawable.ic_payki_mark),
+                contentDescription = "应用图标",
+                modifier = Modifier
+                    .size(84.dp)
+                    .padding(bottom = 8.dp),
+                contentScale = ContentScale.Fit
+            )
             Text(
                 text = "PaykiTodo",
                 modifier = Modifier.fillMaxWidth(),
@@ -693,14 +978,14 @@ internal fun LaunchScreen() {
                 ),
                 fontFamily = FontFamily.Cursive,
                 fontWeight = FontWeight.Bold,
-                color = Color(0xE0183538)
+                color = Color(0xFF274B54)
             )
             Text(
                 text = "专属于您的高效待办助手",
                 textAlign = TextAlign.Center,
                 style = MaterialTheme.typography.titleMedium.copy(letterSpacing = 0.5.sp),
                 fontFamily = FontFamily.Cursive,
-                color = Color(0xD92D4D45)
+                color = Color(0xFF4A6670)
             )
         }
 
@@ -711,7 +996,7 @@ internal fun LaunchScreen() {
                 .padding(bottom = 26.dp),
             textAlign = TextAlign.Center,
             style = MaterialTheme.typography.bodySmall,
-            color = Color(0xCC2D4D45)
+            color = Color(0xAA43616A)
         )
     }
 }
@@ -758,6 +1043,7 @@ private fun DrawerSectionButton(
 
 @Composable
 private fun DrawerExpandableHeader(
+    icon: ImageVector,
     title: String,
     selected: Boolean,
     expanded: Boolean,
@@ -777,12 +1063,23 @@ private fun DrawerExpandableHeader(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.titleMedium.copy(fontSize = 19.sp),
-                fontWeight = FontWeight.Bold,
-                color = if (selected) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant
-            )
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(14.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    modifier = Modifier.size(24.dp),
+                    tint = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleMedium.copy(fontSize = 19.sp),
+                    fontWeight = FontWeight.Bold,
+                    color = if (selected) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
             Icon(
                 imageVector = if (expanded) Icons.Rounded.ExpandLess else Icons.Rounded.ExpandMore,
                 contentDescription = null,
@@ -883,4 +1180,40 @@ private fun timeGreeting(): String = when (LocalTime.now().hour) {
     in 11..13 -> "中午好"
     in 14..17 -> "下午好"
     else -> "晚上好"
+}
+
+private fun boardEventOverlapsDay(item: TodoItem, date: LocalDate): Boolean {
+    val start = item.startAtMillis?.let(::reminderAtMillisToDateTime)?.toLocalDate() ?: return false
+    val end = if (item.allDay) {
+        item.endAtMillis?.let(::reminderAtMillisToDateTime)?.toLocalDate()?.minusDays(1) ?: start
+    } else {
+        item.endAtMillis?.let(::reminderAtMillisToDateTime)?.toLocalDate() ?: start
+    }
+    return !date.isBefore(start) && !date.isAfter(end)
+}
+
+private fun boardEventSecondaryText(item: TodoItem): String {
+    return if (item.allDay) {
+        "全天"
+    } else {
+        val start = item.startAtMillis?.let(::reminderAtMillisToDateTime) ?: return "未设置时间"
+        val end = item.endAtMillis?.let(::reminderAtMillisToDateTime) ?: start
+        "${boardClockTime(start)} - ${boardClockTime(end)}"
+    }
+}
+
+private fun boardWeekdayLabel(date: LocalDate): String = when (date.dayOfWeek.value) {
+    1 -> "周一"
+    2 -> "周二"
+    3 -> "周三"
+    4 -> "周四"
+    5 -> "周五"
+    6 -> "周六"
+    else -> "周日"
+}
+
+private fun boardMonthLabel(date: LocalDate): String = "${date.monthValue}月"
+
+private fun boardClockTime(dateTime: LocalDateTime): String {
+    return dateTime.format(DateTimeFormatter.ofPattern("HH:mm", Locale.CHINA))
 }

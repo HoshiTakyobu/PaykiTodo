@@ -13,6 +13,14 @@ This file tracks the product at a practical level for new coding sessions.
 - recurring task support
 - grouped task filtering
 - three-zone home logic: overdue / today / upcoming
+- board-style daily overview entry exists and can show today's todos directly
+
+### Board / Dashboard
+
+- dedicated daily board entry exists in the drawer and is the default home section
+- board view can show today's todos and today's / tomorrow's schedule summary together
+- board greeting card supports compact collapse / expand behavior
+- board background now uses separate light and dark image resources
 
 ### Calendar System
 
@@ -57,7 +65,7 @@ This file tracks the product at a practical level for new coding sessions.
 
 ## Implemented But Still Being Polished
 
-- board / dashboard experience
+- board / dashboard experience details and readability tuning
 - calendar interaction polish
 - final launcher / themed icon / notification icon surface verification on device
 - default snooze picker behavior and feel

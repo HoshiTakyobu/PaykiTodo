@@ -2,14 +2,14 @@
 
 ## Active Development Focus
 
-The current round is not a greenfield feature sprint. It is a mid-iteration continuation on top of an already modified worktree.
+The current round has already been consolidated into a committed `1.6.10` baseline. The next work should start from repository facts rather than from broken chat memory.
 
 Primary active focus areas:
 
 1. Verify the already-switched icon resource chain cleanly on real Android surfaces
-2. Keep version metadata and docs aligned with the actual code state
+2. Verify the new board / dashboard visuals in both light and dark themes
 3. Continue the board / dashboard and calendar polish without regressing existing flows
-4. Improve repo-native handoff so future sessions do not depend on long chat history
+4. Keep version metadata and docs aligned with the actual code state
 
 ## Immediate Practical Next Steps
 
@@ -18,8 +18,9 @@ When a new session takes over, it should usually do these in order:
 1. verify current icon resource chain
 2. verify notification icon usage chain
 3. verify current version number and APK naming
-4. inspect the currently modified UI files before editing anything
-5. decide the smallest safe next change
+4. verify board background readability in both theme modes
+5. inspect the next target files before editing anything
+6. decide the smallest safe next change
 
 ## Repository-Verified Notes
 

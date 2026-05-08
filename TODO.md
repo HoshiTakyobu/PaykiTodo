@@ -37,6 +37,8 @@
 
 - Switched the adaptive launcher icon chain to the current PaykiTodo mark resources
 - Switched reminder and desktop-sync notifications to `ic_stat_payki_todo`
+- Added the daily board default entry and the today / tomorrow schedule summary block
+- Split dashboard background art into light and dark resources and refreshed launch / drawer visuals
 - Added the release-signing template document under `docs/`
 - Added repo-native new-session bootstrap docs under `docs/current/`
 - Added repository-level `AGENTS.md` so new sessions know what to read first

@@ -5,6 +5,7 @@ import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.AlertDialog
@@ -109,7 +110,7 @@ fun DashboardScreen(
     val drawerState = rememberDrawerState(DrawerValue.Closed)
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
-    var section by rememberSaveable { mutableStateOf(DashboardSection.ACTIVE) }
+    var section by rememberSaveable { mutableStateOf(DashboardSection.BOARD) }
     var launchVisible by rememberSaveable { mutableStateOf(true) }
     var editorVisible by remember { mutableStateOf(false) }
     var editorKind by remember { mutableStateOf(EditorKind.TODO) }
@@ -120,10 +121,20 @@ fun DashboardScreen(
     var scopeDialogTarget by remember { mutableStateOf<TodoItem?>(null) }
     var scopeDialogMode by remember { mutableStateOf<ScopeDialogMode?>(null) }
     var lastBackPressedAt by rememberSaveable { mutableLongStateOf(0L) }
+    var boardVisited by rememberSaveable { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
         delay(1600)
         launchVisible = false
+    }
+
+    LaunchedEffect(section) {
+        if (section == DashboardSection.BOARD && boardVisited) {
+            onNextQuote()
+        }
+        if (section == DashboardSection.BOARD) {
+            boardVisited = true
+        }
     }
 
     BackHandler(enabled = !launchVisible) {
@@ -135,7 +146,7 @@ fun DashboardScreen(
             }
             batchImportVisible -> batchImportVisible = false
             drawerState.isOpen -> scope.launch { drawerState.close() }
-            section != DashboardSection.ACTIVE -> section = DashboardSection.ACTIVE
+            section != DashboardSection.BOARD -> section = DashboardSection.BOARD
             else -> {
                 val now = System.currentTimeMillis()
                 if (now - lastBackPressedAt <= 1500L) {
@@ -177,6 +188,8 @@ fun DashboardScreen(
         }
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
+            val darkMode = uiState.settings.themeMode == ThemeMode.DARK ||
+                (uiState.settings.themeMode == ThemeMode.SYSTEM && isSystemInDarkTheme())
             if (section == DashboardSection.CALENDAR) {
                 Box(
                     modifier = Modifier
@@ -185,7 +198,7 @@ fun DashboardScreen(
                 )
             } else {
                 Image(
-                    painter = painterResource(id = R.drawable.dashboard_bg),
+                    painter = painterResource(id = if (darkMode) R.drawable.dashboard_bg_dark else R.drawable.dashboard_bg_light),
                     contentDescription = null,
                     modifier = Modifier.fillMaxSize(),
                     contentScale = ContentScale.Crop
@@ -196,9 +209,9 @@ fun DashboardScreen(
                         .background(
                             Brush.verticalGradient(
                                 listOf(
-                                    Color(0x26FFFFFF),
-                                    Color(0x14000000),
-                                    Color(0x2B000000)
+                                    if (darkMode) Color(0x3A081723) else Color(0x0FFFFFFF),
+                                    if (darkMode) Color(0x240B1822) else Color(0x06000000),
+                                    if (darkMode) Color(0x16040B10) else Color(0x12000000)
                                 )
                             )
                         )
@@ -214,7 +227,7 @@ fun DashboardScreen(
                     )
                 },
                 floatingActionButton = {
-                    if (section == DashboardSection.ACTIVE) {
+                    if (section == DashboardSection.ACTIVE || section == DashboardSection.BOARD) {
                         DashboardFab {
                             editingItem = null
                             editorKind = if (section == DashboardSection.CALENDAR) {

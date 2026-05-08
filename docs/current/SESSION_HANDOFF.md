@@ -7,7 +7,7 @@ Long-running Codex sessions can become unreliable. This file exists so a new ses
 ## Current Handoff Summary
 
 - The project is currently at code version `1.6.10` / `versionCode 82`
-- There are uncommitted changes already in progress
+- The repository has been consolidated to a committed `1.6.10` baseline
 - The current task is not to rediscover product history, but to continue the active iteration safely
 - Repository inspection shows the three old `1.6.9` carry-over items are already present in the current `1.6.10` worktree:
   - current-time text is back on the left time axis
@@ -18,6 +18,11 @@ Long-running Codex sessions can become unreliable. This file exists so a new ses
   - latest debug APK path: `app/build/outputs/apk/debug/PaykiTodo-1.6.10-debug.apk`
 - Current hot area is therefore minimal verification, version/doc alignment, board/dashboard polish, calendar polish, and documentation cleanup
 - Open icon-side decision: `launcher_background` is currently transparent and may still need a final visual choice
+- The current `1.6.10` baseline also includes board / background work in the same release line:
+  - daily board is the default home section
+  - board can summarize today's todos and near-term schedule
+  - light / dark dashboard background resources are present
+  - launch screen and drawer icon visuals were refreshed
 
 ## Smallest Safe Next Step
 

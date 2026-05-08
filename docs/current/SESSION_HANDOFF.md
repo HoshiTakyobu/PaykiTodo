@@ -16,8 +16,11 @@ Long-running Codex sessions can become unreliable. This file exists so a new ses
 - Minimal verification in this round passed:
   - `./gradlew.bat assembleDebug`
   - latest debug APK path: `app/build/outputs/apk/debug/PaykiTodo-1.6.10-debug.apk`
+- Latest repair in this round:
+  - reduced install-surface launcher icon oversizing by restoring safer foreground inset and solid background color
+  - removed Compose-side use of `ic_payki_mark` in launch screen and drawer in favor of direct raster art loading
 - Current hot area is therefore minimal verification, version/doc alignment, board/dashboard polish, calendar polish, and documentation cleanup
-- Open icon-side decision: `launcher_background` is currently transparent and may still need a final visual choice
+- Current icon-side decision in code: `launcher_background` has been restored to a solid light background for safer install / launcher presentation
 - The current `1.6.10` baseline also includes board / background work in the same release line:
   - daily board is the default home section
   - board can summarize today's todos and near-term schedule
@@ -31,8 +34,8 @@ Do not re-decompose `E:\下载\icon.png` unless the current resource chain prove
 The smallest safe next step after this round is:
 
 1. device-side validation of install icon / launcher icon / monochrome themed icon / notification small icon
-2. device-side check that the calendar current-time label behavior matches the user's expectation
-3. decide whether `launcher_background` should remain transparent
+2. confirm the app no longer crashes on launch after the board / launch-screen icon loading adjustment
+3. device-side check that the calendar current-time label behavior matches the user's expectation
 
 ## Required Reading For A New Session
 

@@ -166,7 +166,7 @@ internal fun DashboardDrawer(
                     Surface(shape = CircleShape, color = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)) {
                         Box(Modifier.size(52.dp), contentAlignment = Alignment.Center) {
                             Image(
-                                painter = painterResource(id = R.drawable.ic_payki_mark),
+                                painter = painterResource(id = R.drawable.ic_launcher_art),
                                 contentDescription = "应用图标",
                                 modifier = Modifier.size(38.dp),
                                 contentScale = ContentScale.Fit
@@ -958,7 +958,7 @@ internal fun LaunchScreen() {
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             Image(
-                painter = painterResource(id = R.drawable.ic_payki_mark),
+                painter = painterResource(id = R.drawable.ic_launcher_art),
                 contentDescription = "应用图标",
                 modifier = Modifier
                     .size(84.dp)

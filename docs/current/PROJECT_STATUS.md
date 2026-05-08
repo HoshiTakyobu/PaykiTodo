@@ -36,6 +36,8 @@ Recent checked-but-not-yet-fully-device-verified UI changes also include:
 - daily board as the default landing section
 - separate `dashboard_bg_light.jpg` and `dashboard_bg_dark.jpg` resources
 - launch screen and drawer icon visual refresh
+- launcher foreground inset and background color were adjusted again to avoid install-surface icon oversizing
+- launch screen and drawer now use the raster launcher art directly to avoid Compose-side drawable loading risk
 
 ## Repository-Verified Carry-Over Status
 

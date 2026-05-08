@@ -6,16 +6,16 @@ Long-running Codex sessions can become unreliable. This file exists so a new ses
 
 ## Current Handoff Summary
 
-- The project is currently at code version `1.6.9` / `versionCode 81`
+- The project is currently at code version `1.6.10` / `versionCode 82`
 - There are uncommitted changes already in progress
 - The current task is not to rediscover product history, but to continue the active iteration safely
-- Repository inspection shows the three old `1.6.9` carry-over items are already present in the worktree:
+- Repository inspection shows the three old `1.6.9` carry-over items are already present in the current `1.6.10` worktree:
   - current-time text is back on the left time axis
   - launcher and notification icon chains are switched to the current PaykiTodo resources
   - release-signing template doc exists
 - Minimal verification in this round passed:
   - `./gradlew.bat assembleDebug`
-  - latest debug APK path: `app/build/outputs/apk/debug/PaykiTodo-1.6.9-debug.apk`
+  - latest debug APK path: `app/build/outputs/apk/debug/PaykiTodo-1.6.10-debug.apk`
 - Current hot area is therefore minimal verification, version/doc alignment, board/dashboard polish, calendar polish, and documentation cleanup
 - Open icon-side decision: `launcher_background` is currently transparent and may still need a final visual choice
 

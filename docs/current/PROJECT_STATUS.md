@@ -7,13 +7,13 @@
 - Package name: `com.paykitodo.app`
 - Target platform: Android 14 / API 34
 - Current version in code:
-  - `versionName = "1.6.9"`
-  - `versionCode = 81`
+  - `versionName = "1.6.10"`
+  - `versionCode = 82`
 
 ## Current Build Facts
 
 - Existing debug APK output seen in the repo:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.6.9-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.6.10-debug.apk`
 - Minimal verification completed in the current round:
   - `./gradlew.bat assembleDebug` succeeded
 - Current build environment expectation:
@@ -34,7 +34,7 @@ Major active edit areas right now include:
 
 ## Repository-Verified Carry-Over Status
 
-Direct inspection of the current worktree shows the three late `1.6.9` carry-over items are already structurally present:
+Direct inspection of the current worktree shows the three late `1.6.9` carry-over items are already structurally present in the current `1.6.10` baseline:
 
 - the calendar current-time text is rendered on the left time axis, while the red current-time line remains inside the schedule grid
 - the adaptive launcher icon chain is switched to the current PaykiTodo mark resources
@@ -47,7 +47,7 @@ The smallest remaining uncertainty in this area is not missing wiring, but final
 
 Current repo documentation is mixed:
 
-- `README.md`, `TODO.md`, and `CHANGELOG.md` are useful but partially stale in version references
+- `README.md`, `TODO.md`, and `CHANGELOG.md` are aligned to `1.6.10`, but should still be kept in sync as the worktree evolves
 - many files under `docs/` are historical snapshots for earlier versions such as `1.4.9`, `1.5.0`, and `1.6.1`
 - older versioned docs should not be treated as the live project baseline unless explicitly referenced by the current docs
 

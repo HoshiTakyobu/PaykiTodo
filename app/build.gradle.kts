@@ -4,8 +4,8 @@ plugins {
     id("com.google.devtools.ksp")
 }
 
-val paykiVersionName = "1.6.1"
-val paykiVersionCode = 73
+val paykiVersionName = "1.6.9"
+val paykiVersionCode = 81
 
 project.setProperty("archivesBaseName", "PaykiTodo-$paykiVersionName")
 
@@ -63,3 +63,4 @@ dependencies {
     debugImplementation("androidx.compose.ui:ui-tooling:1.6.8")
     debugImplementation("androidx.compose.ui:ui-test-manifest:1.6.8")
 }
+

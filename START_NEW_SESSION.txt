@@ -1,0 +1,32 @@
+Read repository files before doing any coding.
+
+Working directory:
+G:\Workspace\Project\PaykiTodo
+
+Read in this order:
+1. AGENTS.md
+2. docs/current/PROJECT_INTENT.md
+3. docs/current/PROJECT_STATUS.md
+4. docs/current/FEATURE_LEDGER.md
+5. docs/current/CURRENT_TASK.md
+6. docs/current/SESSION_HANDOFF.md
+7. docs/current/PAYKITODO_SESSION_LEDGER.md
+8. docs/current/SESSION_WORKFLOW_MANUAL.md
+9. README.md
+10. TODO.md
+11. CHANGELOG.md
+
+Then inspect:
+12. git status
+
+Rules:
+1. Treat repository files as the source of truth.
+2. Do not rely on old chat memory when it conflicts with files.
+3. Do not scan the whole G:\Workspace.
+4. Do not revert unrelated user changes.
+5. If you change code, behavior, versioning, or task status, update the relevant repository docs in the same round.
+6. Before finishing the round, update `docs/current/SESSION_HANDOFF.md` and any other stale current docs affected by your work.
+7. Before editing, output:
+   - project background summary
+   - current repo state summary
+   - smallest next step

@@ -1,36 +1,43 @@
 # TODO
 
-## 当前阶段重点
+## Current Iteration
 
-- 继续提升提醒在不同厂商系统中的稳定性，重点关注后台、锁屏、解锁回前台等场景
-- 继续优化“默认延后时长”滚动选择器的流畅度
-- 继续收紧提醒页、设置页和抽屉菜单的细节体验
-- 扩展电脑同步网页控制台，补充分组选择、循环项创建、更多字段编辑
+### In Progress
 
-## 核心提醒链路
+- Verify the current launcher and notification icon surfaces on real Android UI instead of regenerating icon assets unnecessarily
+- Bring `README.md`, `CHANGELOG.md`, and current-state docs into version `1.6.9` alignment
+- Continue board / dashboard and calendar polish without regressing the current interaction model
+- Improve repo-native handoff so new sessions do not depend on long chat history
 
-- 复测前台、后台、锁屏三种场景下的到点提醒表现
-- 继续观察不同权限组合下的提醒触发差异
-- 继续减少提醒页与通知之间的冗余跳转
-- 继续降低不同 ROM 对提醒拉起的兼容性波动
+### Needs Verification
 
-## 界面与交互
+- The current icon resource chain should be verified on actual device surfaces:
+  - install prompt icon
+  - launcher icon
+  - monochrome themed icon
+  - notification bar small icon
+- The current time label behavior in calendar views should be verified against the user's intended behavior
+- The current board / dashboard readability should be checked in both light and dark themes
+- The final choice for `launcher_background` should be confirmed after visual inspection
 
-- 打磨默认延后时长选择器的手感与性能
-- 继续优化提醒页的视觉层次与信息密度
-- 继续完善历史记录页的信息排版
-- 视需要补充更多适合本项目气质的启动页与关于页细节
+## Mid-Term Follow-Ups
 
-## 工程与发布
+- Continue improving reminder reliability across foreground / background / lock-screen scenarios
+- Expand the LAN desktop sync console with richer operations and better field coverage
+- Clean up release signing and release build workflow for future stable publishing
+- Keep historical docs usable while making current docs the default entry point
 
-- 在关键版本节点保持及时 `commit / push / tag`
-- 逐步补充更清晰的更新记录与发布说明
-- 视后续需要再决定是否整理 release 构建与签名流程
+## Documentation Discipline
 
-## 近期已完成
+- Update `docs/current/*` whenever active direction or known status changes
+- Keep `CHANGELOG.md` focused on released or release-like milestones
+- Use `docs/current/SESSION_HANDOFF.md` to describe the current narrow takeover state
 
-- 文档整体刷新，README / TODO / 学习计划已同步到当前版本
-- 抽屉菜单新增“关于”页，并展示版本信息与项目信息
-- 启动页新增副标题与版权信息
-- 默认延后时长选择器已从旧方案切换到可控实现，先保证可读性
-- 新增 1.6.0 电脑同步第一版，支持局域网网页控制台直连手机数据
+## Done Recently
+
+- Switched the adaptive launcher icon chain to the current PaykiTodo mark resources
+- Switched reminder and desktop-sync notifications to `ic_stat_payki_todo`
+- Added the release-signing template document under `docs/`
+- Added repo-native new-session bootstrap docs under `docs/current/`
+- Added repository-level `AGENTS.md` so new sessions know what to read first
+- Preserved historical docs while marking them as non-baseline through current entry files

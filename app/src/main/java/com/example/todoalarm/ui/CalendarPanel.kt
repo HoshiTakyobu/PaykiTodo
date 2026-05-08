@@ -477,8 +477,7 @@ internal fun CalendarPanel(
                                         width = timeAxisWidth,
                                         hourHeight = hourHeight,
                                         verticalScroll = verticalScroll,
-                                        currentMoment = currentMoment,
-                                        showCurrentTime = currentDateIndex in visibleRange
+                                        currentMoment = currentMoment
                                     )
                                     CalendarTimedBoard(
                                         modifier = Modifier
@@ -1543,8 +1542,7 @@ private fun CalendarTimeAxis(
     width: Dp,
     hourHeight: Dp,
     verticalScroll: androidx.compose.foundation.ScrollState,
-    currentMoment: LocalDateTime,
-    showCurrentTime: Boolean
+    currentMoment: LocalDateTime
 ) {
     val currentMinutes = currentMoment.hour * 60 + currentMoment.minute
     val currentTimeOffset = hourHeight * (currentMinutes / 60f)
@@ -1578,24 +1576,22 @@ private fun CalendarTimeAxis(
                 }
             }
 
-            if (showCurrentTime) {
-                Surface(
+            Surface(
+                modifier = Modifier
+                    .offset(x = 0.dp, y = currentTimeOffset - 12.dp),
+                color = Color(0xFFE53935),
+                shape = RoundedCornerShape(10.dp)
+            ) {
+                Text(
+                    text = formatClockTime(currentMoment),
                     modifier = Modifier
-                        .offset(x = 0.dp, y = currentTimeOffset - 12.dp),
-                    color = Color(0xFFE53935),
-                    shape = RoundedCornerShape(10.dp)
-                ) {
-                    Text(
-                        text = formatClockTime(currentMoment),
-                        modifier = Modifier
-                            .padding(horizontal = 6.dp, vertical = 3.dp),
-                        color = Color.White,
-                        fontSize = 10.sp,
-                        fontWeight = FontWeight.Bold,
-                        textAlign = TextAlign.Start,
-                        maxLines = 1
-                    )
-                }
+                        .padding(horizontal = 6.dp, vertical = 3.dp),
+                    color = Color.White,
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.Bold,
+                    textAlign = TextAlign.Start,
+                    maxLines = 1
+                )
             }
         }
     }
@@ -1874,7 +1870,22 @@ private fun CurrentTimeLine(
     Box(modifier = Modifier.fillMaxSize()) {
         Canvas(modifier = Modifier.fillMaxSize()) {
             if (currentDayIndex < 0 || y !in 0f..boardHeightPx) return@Canvas
-            if (splitX !in 0f..size.width) return@Canvas
+
+            val strokeWidth = 3.dp.toPx()
+            val markerRadius = 6.dp.toPx()
+            val isCurrentDayVisible = splitX in 0f..size.width
+
+            if (!isCurrentDayVisible) {
+                drawLine(
+                    color = Color(0xFFE53935),
+                    start = Offset(0f, y),
+                    end = Offset(size.width, y),
+                    strokeWidth = strokeWidth,
+                    cap = StrokeCap.Round
+                )
+                return@Canvas
+            }
+
             val lightEnd = splitX.coerceIn(0f, size.width)
             val darkStart = splitX.coerceIn(0f, size.width)
 
@@ -1883,7 +1894,7 @@ private fun CurrentTimeLine(
                     color = Color(0xFFF3B2B2),
                     start = Offset(0f, y),
                     end = Offset(lightEnd, y),
-                    strokeWidth = 3.dp.toPx(),
+                    strokeWidth = strokeWidth,
                     cap = StrokeCap.Round
                 )
             }
@@ -1892,17 +1903,15 @@ private fun CurrentTimeLine(
                     color = Color(0xFFE53935),
                     start = Offset(darkStart, y),
                     end = Offset(size.width, y),
-                    strokeWidth = 3.dp.toPx(),
+                    strokeWidth = strokeWidth,
                     cap = StrokeCap.Round
                 )
             }
-            if (splitX in 0f..size.width) {
-                drawCircle(
-                    color = Color(0xFFD32F2F),
-                    radius = 6.dp.toPx(),
-                    center = Offset(splitX, y)
-                )
-            }
+            drawCircle(
+                color = Color(0xFFD32F2F),
+                radius = markerRadius,
+                center = Offset(splitX, y)
+            )
         }
     }
 }

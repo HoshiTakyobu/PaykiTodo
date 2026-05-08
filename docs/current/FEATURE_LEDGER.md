@@ -30,7 +30,7 @@ This file tracks the product at a practical level for new coding sessions.
 - event location / notes / color / reminder settings
 - text-based batch import support
 - week-template and semester-generation related capabilities exist in the codebase and docs history
-- current-time label is wired on the left time axis while the red current-time line remains in the schedule area
+- current-time label is wired on the left time axis and remains visible even when today is off-screen, while the red current-time line remains in the schedule area and also stays visible
 
 ### Reminder System
 

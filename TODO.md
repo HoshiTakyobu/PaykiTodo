@@ -5,7 +5,7 @@
 ### In Progress
 
 - Verify the current launcher and notification icon surfaces on real Android UI after the safe-zone vector icon switch
-- Keep `README.md`, `CHANGELOG.md`, and current-state docs aligned with version `1.6.12`
+- Keep `README.md`, `CHANGELOG.md`, and current-state docs aligned with version `1.6.13`
 - Continue board / dashboard and calendar polish without regressing the current interaction model
 - Improve repo-native handoff so new sessions do not depend on long chat history
 
@@ -16,7 +16,7 @@
   - launcher icon
   - monochrome themed icon
   - notification bar small icon
-- The current time label behavior in calendar views should be verified against the user's intended behavior
+- The current time label and red-line behavior in calendar views should be verified against the user's intended behavior
 - The current board / dashboard readability should be checked in both light and dark themes
 
 ## Mid-Term Follow-Ups
@@ -36,6 +36,7 @@
 
 - Switched the adaptive launcher icon chain to the current PaykiTodo mark resources
 - Replaced the launcher foreground with a safe-zone vector logo so adaptive masks no longer crop the full raster composition
+- Fixed the calendar current-time label and red line so they remain visible even when the current day is off-screen
 - Switched reminder and desktop-sync notifications to `ic_stat_payki_todo`
 - Added the daily board default entry and the today / tomorrow schedule summary block
 - Split dashboard background art into light and dark resources and refreshed launch / drawer visuals

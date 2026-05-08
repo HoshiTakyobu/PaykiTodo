@@ -6,23 +6,23 @@ Long-running Codex sessions can become unreliable. This file exists so a new ses
 
 ## Current Handoff Summary
 
-- The project is currently at code version `1.6.12` / `versionCode 84`
-- The repository has been consolidated to a committed `1.6.12` baseline
+- The project is currently at code version `1.6.13` / `versionCode 85`
+- The repository has been consolidated to a committed `1.6.13` baseline
 - The current task is not to rediscover product history, but to continue the active iteration safely
-- Repository inspection shows the three old `1.6.9` carry-over items are already present in the current `1.6.12` worktree:
+- Repository inspection shows the three old `1.6.9` carry-over items are already present in the current `1.6.13` worktree:
   - current-time text is back on the left time axis
   - launcher and notification icon chains are switched to the current PaykiTodo resources
   - release-signing template doc exists
 - Minimal verification in this round passed:
   - `./gradlew.bat assembleDebug`
-  - latest debug APK path: `app/build/outputs/apk/debug/PaykiTodo-1.6.12-debug.apk`
+  - latest debug APK path: `app/build/outputs/apk/debug/PaykiTodo-1.6.13-debug.apk`
 - Latest repair in this round:
-  - replaced the launcher adaptive foreground from a full raster composition to a dedicated safe-zone vector logo
-  - aligned the monochrome launcher icon to the same PaykiTodo logo silhouette
-  - kept launch screen and drawer on direct raster art loading to avoid Compose-side drawable loading risk
+  - removed the date-visibility gate that hid the left current-time label when today scrolled off-screen
+  - changed the schedule-grid current-time line so it still draws when the today column is outside the current viewport
+  - preserved the existing split-marker style when the today column is actually visible
 - Current hot area is therefore minimal verification, version/doc alignment, board/dashboard polish, calendar polish, and documentation cleanup
 - Current icon-side decision in code: launcher foreground now stays inside a mask-safe vector live area instead of relying on raster-art inset tuning
-- The current `1.6.12` baseline also includes board / background work in the same release line:
+- The current `1.6.13` baseline also includes board / background work in the same release line:
   - daily board is the default home section
   - board can summarize today's todos and near-term schedule
   - light / dark dashboard background resources are present
@@ -34,9 +34,9 @@ Do not re-decompose `E:\下载\icon.png` unless the current in-repo vector launc
 
 The smallest safe next step after this round is:
 
-1. device-side validation of install icon / launcher icon / monochrome themed icon / notification small icon
-2. confirm the app no longer crashes on launch after the board / launch-screen icon loading adjustment
-3. device-side check that the calendar current-time label behavior matches the user's expectation
+1. device-side check that the calendar current-time label and red-line behavior now remain visible after swiping away from today
+2. device-side validation of install icon / launcher icon / monochrome themed icon / notification small icon
+3. confirm the app no longer crashes on launch after the board / launch-screen icon loading adjustment
 
 ## Required Reading For A New Session
 

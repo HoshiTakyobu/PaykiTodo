@@ -2,25 +2,27 @@
 
 ## Active Development Focus
 
-The current round has already been consolidated into a committed `1.6.12` baseline. The next work should start from repository facts rather than from broken chat memory.
+The current round has already been consolidated into a committed `1.6.13` baseline. The next work should start from repository facts rather than from broken chat memory.
 
 Primary active focus areas:
 
-1. Verify the new safe-zone launcher icon on real Android install / desktop / themed-icon surfaces
-2. Verify the new board / dashboard visuals in both light and dark themes
-3. Continue the board / dashboard and calendar polish without regressing existing flows
-4. Keep version metadata and docs aligned with the actual code state
+1. Verify the calendar current-time label and red-line behavior on real device after the persistence fix
+2. Verify the new safe-zone launcher icon on real Android install / desktop / themed-icon surfaces
+3. Verify the new board / dashboard visuals in both light and dark themes
+4. Continue the board / dashboard and calendar polish without regressing existing flows
+5. Keep version metadata and docs aligned with the actual code state
 
 ## Immediate Practical Next Steps
 
 When a new session takes over, it should usually do these in order:
 
-1. verify current launcher icon resource chain on device
-2. verify notification icon usage chain
-3. verify current version number and APK naming
-4. verify board background readability in both theme modes
-5. inspect the next target files before editing anything
-6. decide the smallest safe next change
+1. verify current-time label / red-line persistence on device
+2. verify current launcher icon resource chain on device
+3. verify notification icon usage chain
+4. verify current version number and APK naming
+5. verify board background readability in both theme modes
+6. inspect the next target files before editing anything
+7. decide the smallest safe next change
 
 ## Repository-Verified Notes
 

@@ -171,8 +171,8 @@ class AppSettingsStore(context: Context) {
 
     private fun generateDesktopSyncToken(): String {
         val alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
-        return buildString(10) {
-            repeat(10) {
+        return buildString(4) {
+            repeat(4) {
                 append(alphabet.random())
             }
         }

@@ -20,8 +20,11 @@ object DesktopSyncWebAssets {
                 </div>
                 <div class="sidebar-card">
                   <label>访问密钥</label>
-                  <input id="token" type="password" placeholder="输入手机里显示的密钥" />
-                  <button id="connect">连接手机</button>
+                  <p class="sidebar-tip">输入手机设置页里显示的 4 位访问密钥后，再连接这台手机。</p>
+                  <div class="connect-stack">
+                    <input id="token" type="password" maxlength="4" placeholder="例如 A7K3" />
+                    <button id="connect">连接手机</button>
+                  </div>
                   <div id="status" class="muted status">尚未连接</div>
                 </div>
                 <div class="sidebar-card">
@@ -285,6 +288,8 @@ object DesktopSyncWebAssets {
           box-shadow: none;
         }
         .sidebar-card label { display: block; margin-bottom: 8px; font-size: 13px; font-weight: 700; color: rgba(255,255,255,.92); }
+        .sidebar-tip { margin: 0 0 12px; font-size: 12px; line-height: 1.55; color: rgba(255,255,255,.72); }
+        .connect-stack { display: flex; flex-direction: column; gap: 12px; }
         .sidebar-card input,
         .sidebar-card button,
         .modal-sheet input,
@@ -312,7 +317,7 @@ object DesktopSyncWebAssets {
         }
         .tab-btn { margin-bottom: 10px; text-align: left; background: rgba(255,255,255,.04); color: #fff; border-color: rgba(255,255,255,.12); }
         .tab-btn.active { background: rgba(53,104,212,.9); border-color: transparent; }
-        .status { margin-top: 10px; font-size: 13px; }
+        .status { margin-top: 12px; font-size: 13px; line-height: 1.5; }
         .content { padding: 18px 18px 24px; min-width: 0; }
         .topbar {
           position: sticky;
@@ -392,8 +397,9 @@ object DesktopSyncWebAssets {
         .hour-row { position: absolute; left: 0; right: 0; height: var(--hour-height); border-top: 1px solid rgba(188,201,217,.9); }
         .half-row { position: absolute; left: 0; right: 0; border-top: 1px dashed rgba(188,201,217,.4); }
         .event-card { position: absolute; left: 8px; right: 8px; min-height: 34px; border-radius: 18px; padding: 10px 12px; border-left: 4px solid var(--accent, var(--primary)); background: rgba(255,255,255,.95); box-shadow: 0 10px 24px rgba(40,57,88,.08); overflow: hidden; }
-        .current-line { position: absolute; left: 0; right: 0; height: 2px; background: #dc2626; }
-        .current-line::before { content: ""; position: absolute; left: -6px; top: -5px; width: 12px; height: 12px; border-radius: 50%; background: #dc2626; }
+        .current-line { position: absolute; left: 0; right: 0; height: 2px; background: rgba(229,57,53,.88); }
+        .current-line.past { background: rgba(229,57,53,.42); }
+        .hour-current-chip { position: absolute; left: 0; transform: translateY(-12px); padding: 3px 6px; border-radius: 10px; background: #e53935; color: #fff; font-size: 10px; font-weight: 800; line-height: 1; white-space: nowrap; }
         .modal-backdrop { position: fixed; inset: 0; background: rgba(12,20,31,.45); display: flex; align-items: center; justify-content: center; padding: 24px; z-index: 100; }
         .modal-backdrop.hidden { display: none; }
         .modal-sheet { width: min(760px, 100%); max-height: calc(100vh - 48px); overflow: auto; border-radius: 26px; background: rgba(255,255,255,.98); border: 1px solid rgba(255,255,255,.72); box-shadow: 0 28px 70px rgba(15,24,39,.22); padding: 20px; }
@@ -701,6 +707,9 @@ object DesktopSyncWebAssets {
           for (let hour = 0; hour < 24; hour += 1) {
             html += '<div class="hour-label">' + String(hour).padStart(2, '0') + ':00</div>';
           }
+          const now = new Date();
+          const top = EVENT_HEADER_HEIGHT + ((now.getHours() * 60 + now.getMinutes()) / 60 * HOUR_HEIGHT);
+          html += '<div class="hour-current-chip" style="top:' + top + 'px">' + escapeHtml(formatTimeLabel(now.getTime())) + '</div>';
           return html;
         }
 
@@ -714,16 +723,16 @@ object DesktopSyncWebAssets {
         }
 
         function renderCurrentLine(key) {
-          if (key !== dayKey(new Date())) return '';
           const now = new Date();
+          const todayKey = dayKey(now);
           const top = (now.getHours() * 60 + now.getMinutes()) / 60 * HOUR_HEIGHT;
-          return '<div class="current-line" style="top:' + top + 'px"></div>';
+          return '<div class="current-line ' + (key < todayKey ? 'past' : '') + '" style="top:' + top + 'px"></div>';
         }
 
         function visibleEventDayCount() {
           const width = Math.max(0, els.boardScroll?.clientWidth || 0);
-          if (!width) return 5;
-          return Math.max(1, Math.min(10, Math.floor(width / 160)));
+          if (!width) return 7;
+          return Math.max(1, Math.min(10, Math.max(7, Math.floor(width / 128))));
         }
 
         function getVisibleEventKeys() {
@@ -1050,6 +1059,11 @@ object DesktopSyncWebAssets {
         }
 
         document.getElementById('connect').onclick = () => connect().catch(err => els.status.textContent = err.message);
+        els.token.addEventListener('keydown', event => {
+          if (event.key !== 'Enter') return;
+          event.preventDefault();
+          connect().catch(err => els.status.textContent = err.message);
+        });
         document.getElementById('refresh').onclick = () => loadSnapshot().catch(err => els.status.textContent = err.message);
         window.addEventListener('resize', () => {
           if (state.currentTab === 'events' && state.snapshot) renderEvents();
@@ -1177,6 +1191,13 @@ object DesktopSyncWebAssets {
           closeModal('event-modal');
           await loadSnapshot();
         };
+
+        document.addEventListener('click', event => {
+          const dayHeader = event.target.closest?.('[data-day]');
+          if (!dayHeader) return;
+          state.selectedEventDay = dayHeader.dataset.day;
+          renderEvents();
+        });
 
         bindDigitInputs();
         syncTopbar();

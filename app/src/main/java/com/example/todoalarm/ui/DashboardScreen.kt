@@ -174,14 +174,17 @@ fun DashboardScreen(
                 selectedThemeMode = uiState.settings.themeMode,
                 onSelectSection = { next ->
                     section = next
+                    scope.launch { drawerState.close() }
                 },
                 onSelectAllTasks = {
                     section = DashboardSection.ACTIVE
                     onSelectGroup(null)
+                    scope.launch { drawerState.close() }
                 },
                 onSelectGroup = {
                     section = DashboardSection.ACTIVE
                     onSelectGroup(it)
+                    scope.launch { drawerState.close() }
                 },
                 onThemeModeChange = onThemeModeChange
             )

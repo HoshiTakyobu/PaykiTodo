@@ -1,34 +1,4 @@
 <?xml version="1.0" encoding="utf-8"?>
-<vector xmlns:android="http://schemas.android.com/apk/res/android"
-    android:width="24dp"
-    android:height="24dp"
-    android:viewportWidth="24"
-    android:viewportHeight="24">
-    <path
-        android:fillColor="#00000000"
-        android:pathData="M0,0h24v24h-24z" />
-    <path
-        android:fillColor="#FFFFFFFF"
-        android:pathData="M12,2.4m-1.4,0a1.4,1.4 0,1 1,2.8 0a1.4,1.4 0,1 1,-2.8 0" />
-    <path
-        android:fillColor="#00000000"
-        android:pathData="M4.6,6.4c0,-1 0.8,-1.8 1.8,-1.8h4.2c0.8,0 1.5,0.3 2,0.9v10.3c-0.7,-0.5 -1.6,-0.7 -2.6,-0.7H6.4c-1,0 -1.8,0.8 -1.8,1.8z"
-        android:strokeColor="#FFFFFFFF"
-        android:strokeLineCap="round"
-        android:strokeLineJoin="round"
-        android:strokeWidth="1.8" />
-    <path
-        android:fillColor="#00000000"
-        android:pathData="M19.4,6.4c0,-1 -0.8,-1.8 -1.8,-1.8h-4.2c-0.8,0 -1.5,0.3 -2,0.9v10.3c0.7,-0.5 1.6,-0.7 2.6,-0.7h3.6c1,0 1.8,0.8 1.8,1.8z"
-        android:strokeColor="#FFFFFFFF"
-        android:strokeLineCap="round"
-        android:strokeLineJoin="round"
-        android:strokeWidth="1.8" />
-    <path
-        android:fillColor="#00000000"
-        android:pathData="M8.3,17.1l2.1,2.1l5,-5"
-        android:strokeColor="#FFFFFFFF"
-        android:strokeLineCap="round"
-        android:strokeLineJoin="round"
-        android:strokeWidth="2.2" />
-</vector>
+<bitmap xmlns:android="http://schemas.android.com/apk/res/android"
+    android:gravity="center"
+    android:src="@drawable/ic_launcher_art" />

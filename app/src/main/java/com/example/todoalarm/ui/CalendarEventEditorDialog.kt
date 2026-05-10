@@ -1,7 +1,6 @@
 package com.example.todoalarm.ui
 
 import android.app.DatePickerDialog
-import android.app.TimePickerDialog
 import android.content.Context
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -177,6 +176,7 @@ internal fun CalendarEventEditorDialog(
     var showReminderPicker by remember { mutableStateOf(false) }
     var showReminderDeliveryPicker by remember { mutableStateOf(false) }
     var showRecurrencePicker by remember { mutableStateOf(false) }
+    var activeDateTimeTarget by remember { mutableStateOf<CalendarDateTimeTarget?>(null) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -270,12 +270,7 @@ internal fun CalendarEventEditorDialog(
                                 label = "开始",
                                 dateTime = startAt,
                                 onClick = {
-                                    showDateTimePicker(context, startAt) { picked ->
-                                        startAt = picked
-                                        if (!picked.isBefore(endAt)) {
-                                            endAt = picked.plusMinutes(30)
-                                        }
-                                    }
+                                    activeDateTimeTarget = CalendarDateTimeTarget.StartAt
                                 }
                             )
                             EditorMiddlePill(
@@ -287,12 +282,7 @@ internal fun CalendarEventEditorDialog(
                                 label = "结束",
                                 dateTime = endAt,
                                 onClick = {
-                                    showDateTimePicker(context, endAt) { picked ->
-                                        endAt = picked
-                                        if (!picked.isAfter(startAt)) {
-                                            startAt = picked.minusMinutes(30)
-                                        }
-                                    }
+                                    activeDateTimeTarget = CalendarDateTimeTarget.EndAt
                                 }
                             )
                         }
@@ -598,6 +588,38 @@ internal fun CalendarEventEditorDialog(
         )
     }
 
+    activeDateTimeTarget?.let { target ->
+        WheelDateTimePickerDialog(
+            title = when (target) {
+                CalendarDateTimeTarget.StartAt -> "选择开始时间"
+                CalendarDateTimeTarget.EndAt -> "选择结束时间"
+            },
+            initialDateTime = when (target) {
+                CalendarDateTimeTarget.StartAt -> startAt
+                CalendarDateTimeTarget.EndAt -> endAt
+            },
+            onDismiss = { activeDateTimeTarget = null },
+            onConfirm = { picked ->
+                when (target) {
+                    CalendarDateTimeTarget.StartAt -> {
+                        startAt = picked
+                        if (!picked.isBefore(endAt)) {
+                            endAt = picked.plusMinutes(30)
+                        }
+                    }
+
+                    CalendarDateTimeTarget.EndAt -> {
+                        endAt = picked
+                        if (!picked.isAfter(startAt)) {
+                            startAt = picked.minusMinutes(30)
+                        }
+                    }
+                }
+                activeDateTimeTarget = null
+            }
+        )
+    }
+
     if (showReminderDeliveryPicker) {
         SingleChoiceListDialog(
             title = "选择提醒方式",
@@ -764,8 +786,8 @@ private fun ReminderSelectionDialog(
     onPickedCustomTime: (LocalDateTime) -> Unit,
     onConfirm: (List<Int>) -> Unit
 ) {
-    val context = LocalContext.current
     var workingSelection by remember(selectedOffsets) { mutableStateOf(selectedOffsets) }
+    var showCustomPicker by remember { mutableStateOf(false) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -797,11 +819,7 @@ private fun ReminderSelectionDialog(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clickable {
-                            showDateTimePicker(context, customReminderAt) { picked ->
-                                onPickedCustomTime(picked)
-                                val offset = ((anchorDateTime.toEpochMillis() - picked.toEpochMillis()) / 60_000L).toInt().coerceAtLeast(0)
-                                workingSelection = normalizeReminderOffsets(workingSelection + offset)
-                            }
+                            showCustomPicker = true
                         }
                         .padding(vertical = 12.dp),
                     verticalAlignment = Alignment.CenterVertically,
@@ -822,6 +840,25 @@ private fun ReminderSelectionDialog(
             TextButton(onClick = onDismiss) { Text("取消") }
         }
     )
+
+    if (showCustomPicker) {
+        WheelDateTimePickerDialog(
+            title = "选择自定义提醒时间",
+            initialDateTime = customReminderAt,
+            onDismiss = { showCustomPicker = false },
+            onConfirm = { picked ->
+                onPickedCustomTime(picked)
+                val offset = ((anchorDateTime.toEpochMillis() - picked.toEpochMillis()) / 60_000L).toInt().coerceAtLeast(0)
+                workingSelection = normalizeReminderOffsets(workingSelection + offset)
+                showCustomPicker = false
+            }
+        )
+    }
+}
+
+private enum class CalendarDateTimeTarget {
+    StartAt,
+    EndAt
 }
 
 @OptIn(ExperimentalLayoutApi::class)
@@ -1097,30 +1134,6 @@ private fun formatEditorDateLine(date: LocalDate): String {
 
 private fun formatClockTime(dateTime: LocalDateTime): String {
     return dateTime.format(DateTimeFormatter.ofPattern("HH:mm", Locale.CHINA))
-}
-
-private fun showDateTimePicker(
-    context: Context,
-    initialDateTime: LocalDateTime,
-    onPicked: (LocalDateTime) -> Unit
-) {
-    DatePickerDialog(
-        context,
-        { _, year, month, day ->
-            TimePickerDialog(
-                context,
-                { _, hour, minute ->
-                    onPicked(LocalDateTime.of(year, month + 1, day, hour, minute))
-                },
-                initialDateTime.hour,
-                initialDateTime.minute,
-                true
-            ).show()
-        },
-        initialDateTime.year,
-        initialDateTime.monthValue - 1,
-        initialDateTime.dayOfMonth
-    ).show()
 }
 
 private fun showDatePicker(

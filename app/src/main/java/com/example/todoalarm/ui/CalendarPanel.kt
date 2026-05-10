@@ -1040,18 +1040,19 @@ private fun AgendaEventCard(
                     item.title,
                     fontWeight = FontWeight.Bold,
                     color = tint.copy(alpha = 0.98f),
-                    fontSize = 17.sp,
-                    lineHeight = 19.sp,
+                    fontSize = 18.sp,
+                    lineHeight = 20.sp,
                     maxLines = 3,
                     overflow = TextOverflow.Ellipsis
                 )
                 Text(
                     if (item.allDay) "全天" else timeRangeLabel(item),
                     color = tint.copy(alpha = 0.84f),
-                    fontSize = 12.sp
+                    fontSize = 13.sp,
+                    lineHeight = 15.sp
                 )
                 item.location.takeIf { it.isNotBlank() }?.let {
-                    Text(it, color = tint.copy(alpha = 0.78f), fontSize = 12.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                    Text(it, color = tint.copy(alpha = 0.78f), fontSize = 13.sp, lineHeight = 15.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
                 }
             }
         }
@@ -1526,7 +1527,8 @@ private fun CalendarAllDaySection(
                             text = item.title,
                             color = tint.copy(alpha = calendarVisualAlpha(item)),
                             fontWeight = FontWeight.Bold,
-                            fontSize = 12.sp,
+                            fontSize = 13.sp,
+                            lineHeight = 14.sp,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
@@ -1834,8 +1836,8 @@ private fun TimedEventCard(
                     text = item.title,
                     fontWeight = FontWeight.Bold,
                     color = tint.copy(alpha = 0.98f),
-                    fontSize = 12.sp,
-                    lineHeight = 12.sp,
+                    fontSize = 13.sp,
+                    lineHeight = 14.sp,
                     maxLines = titleMaxLines,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -1843,8 +1845,8 @@ private fun TimedEventCard(
                     Text(
                         text = item.location,
                         color = tint.copy(alpha = 0.78f),
-                        fontSize = 10.sp,
-                        lineHeight = 10.sp,
+                        fontSize = 11.sp,
+                        lineHeight = 12.sp,
                         maxLines = locationMaxLines,
                         overflow = TextOverflow.Ellipsis
                     )

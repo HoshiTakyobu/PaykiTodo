@@ -1,7 +1,6 @@
 package com.example.todoalarm.ui
 
 import android.app.DatePickerDialog
-import android.app.TimePickerDialog
 import android.content.Context
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
@@ -122,6 +121,7 @@ fun TodoEditorDialog(
     }
     var recurrencePreview by remember { mutableStateOf<RecurrencePreviewResult?>(null) }
     var showGroupPicker by remember { mutableStateOf(false) }
+    var activeDateTimeTarget by remember { mutableStateOf<TodoDateTimeTarget?>(null) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -201,12 +201,7 @@ fun TodoEditorDialog(
                             label = "DDL",
                             dateTime = dueAt,
                             onClick = {
-                                showDateTimePicker(context, dueAt) { picked ->
-                                    dueAt = picked
-                                    if (reminderEnabled && initialTodo == null) {
-                                        reminderAt = picked
-                                    }
-                                }
+                                activeDateTimeTarget = TodoDateTimeTarget.DueAt
                             }
                         )
                     }
@@ -287,7 +282,7 @@ fun TodoEditorDialog(
                             TodoSelectionRow(
                                 title = "提醒时间",
                                 value = formatLocalDateTime(reminderAt),
-                                onClick = { showDateTimePicker(context, reminderAt) { reminderAt = it } }
+                                onClick = { activeDateTimeTarget = TodoDateTimeTarget.ReminderAt }
                             )
                             Row(
                                 modifier = Modifier
@@ -482,6 +477,40 @@ fun TodoEditorDialog(
             dismissButton = {}
         )
     }
+
+    activeDateTimeTarget?.let { target ->
+        WheelDateTimePickerDialog(
+            title = when (target) {
+                TodoDateTimeTarget.DueAt -> "选择 DDL"
+                TodoDateTimeTarget.ReminderAt -> "选择提醒时间"
+            },
+            initialDateTime = when (target) {
+                TodoDateTimeTarget.DueAt -> dueAt
+                TodoDateTimeTarget.ReminderAt -> reminderAt
+            },
+            onDismiss = { activeDateTimeTarget = null },
+            onConfirm = { picked ->
+                when (target) {
+                    TodoDateTimeTarget.DueAt -> {
+                        dueAt = picked
+                        if (reminderEnabled && initialTodo == null) {
+                            reminderAt = picked
+                        }
+                    }
+
+                    TodoDateTimeTarget.ReminderAt -> {
+                        reminderAt = picked
+                    }
+                }
+                activeDateTimeTarget = null
+            }
+        )
+    }
+}
+
+private enum class TodoDateTimeTarget {
+    DueAt,
+    ReminderAt
 }
 
 @Composable
@@ -626,30 +655,6 @@ private fun todoEditorDateLine(date: LocalDate): String {
     val nowYear = LocalDate.now().year
     val pattern = if (date.year == nowYear) "M月d日" else "yyyy年M月d日"
     return date.format(DateTimeFormatter.ofPattern(pattern, Locale.CHINA)) + " · " + date.dayOfWeek.shortLabel()
-}
-
-private fun showDateTimePicker(
-    context: Context,
-    initialDateTime: LocalDateTime,
-    onPicked: (LocalDateTime) -> Unit
-) {
-    DatePickerDialog(
-        context,
-        { _, year, month, day ->
-            TimePickerDialog(
-                context,
-                { _, hour, minute ->
-                    onPicked(LocalDateTime.of(year, month + 1, day, hour, minute))
-                },
-                initialDateTime.hour,
-                initialDateTime.minute,
-                true
-            ).show()
-        },
-        initialDateTime.year,
-        initialDateTime.monthValue - 1,
-        initialDateTime.dayOfMonth
-    ).show()
 }
 
 private fun showDatePicker(

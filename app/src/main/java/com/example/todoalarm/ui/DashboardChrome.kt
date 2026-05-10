@@ -311,13 +311,6 @@ internal fun TopBarActionPill(
 }
 
 @Composable
-internal fun DashboardFab(onClick: () -> Unit) {
-    FloatingActionButton(onClick = onClick) {
-        Icon(Icons.Rounded.Add, contentDescription = "新增任务")
-    }
-}
-
-@Composable
 internal fun DashboardBody(
     section: DashboardSection,
     padding: PaddingValues,
@@ -733,18 +726,18 @@ private fun TodayScheduleBoardCard(
                 Text(
                     text = boardMonthLabel(today),
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    style = MaterialTheme.typography.bodyMedium,
+                    style = MaterialTheme.typography.bodySmall,
                     fontWeight = FontWeight.SemiBold
                 )
                 Text(
                     text = boardWeekdayLabel(today),
                     color = Color(0xFF5A92FF),
-                    style = MaterialTheme.typography.bodyLarge,
+                    style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.Bold
                 )
                 Text(
                     text = today.dayOfMonth.toString(),
-                    style = MaterialTheme.typography.displayMedium,
+                    style = MaterialTheme.typography.headlineLarge,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface
                 )
@@ -818,7 +811,7 @@ private fun BoardScheduleEventRow(
             ) {
                 Text(
                     text = item.title,
-                    style = MaterialTheme.typography.titleLarge,
+                    style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface,
                     maxLines = 2,
@@ -827,7 +820,7 @@ private fun BoardScheduleEventRow(
                 Text(
                     text = boardEventSecondaryText(item),
                     color = MaterialTheme.colorScheme.onSurface,
-                    style = MaterialTheme.typography.titleMedium,
+                    style = MaterialTheme.typography.bodyLarge,
                     fontWeight = FontWeight.Medium,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
@@ -836,7 +829,7 @@ private fun BoardScheduleEventRow(
                     Text(
                         text = it,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        style = MaterialTheme.typography.bodyMedium,
+                        style = MaterialTheme.typography.bodySmall,
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis
                     )

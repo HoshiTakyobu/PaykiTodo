@@ -227,8 +227,8 @@ fun DashboardScreen(
                     )
                 },
                 floatingActionButton = {
-                    if (section == DashboardSection.ACTIVE || section == DashboardSection.BOARD) {
-                        DashboardFab {
+                    if (section == DashboardSection.ACTIVE) {
+                        androidx.compose.material3.FloatingActionButton(onClick = {
                             editingItem = null
                             editorKind = if (section == DashboardSection.CALENDAR) {
                                 EditorKind.CALENDAR
@@ -238,6 +238,8 @@ fun DashboardScreen(
                             calendarDraftSeed = null
                             editScope = RecurrenceScope.CURRENT
                             editorVisible = true
+                        }) {
+                            androidx.compose.material3.Text("+")
                         }
                     }
                 }

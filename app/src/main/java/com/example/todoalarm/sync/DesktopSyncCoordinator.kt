@@ -91,6 +91,7 @@ class DesktopSyncCoordinator(
                 method == "GET" && path == "/api/snapshot" -> DesktopSyncServer.Response.json(buildSnapshot().toJson(buildGroupsMap()))
                 method == "POST" && path == "/api/todos" -> DesktopSyncServer.Response.json(createTodo(JSONObject(body)))
                 method == "POST" && path == "/api/events" -> DesktopSyncServer.Response.json(createEvent(JSONObject(body)))
+                method == "PUT" && path.matches(Regex("/api/events/\\d+")) -> DesktopSyncServer.Response.json(updateEvent(path, JSONObject(body)))
                 method == "POST" && path.matches(Regex("/api/items/\\d+/complete")) -> DesktopSyncServer.Response.json(markCompleted(path))
                 method == "POST" && path.matches(Regex("/api/items/\\d+/cancel")) -> DesktopSyncServer.Response.json(cancelItem(path))
                 method == "DELETE" && path.matches(Regex("/api/items/\\d+")) -> DesktopSyncServer.Response.json(deleteItem(path))
@@ -178,6 +179,37 @@ class DesktopSyncCoordinator(
         return JSONObject().put("created", created.size)
     }
 
+    private fun updateEvent(path: String, json: JSONObject): JSONObject {
+        val id = path.substringAfter("/api/events/").toLong()
+        val original = runBlocking { app.repository.getTodo(id) } ?: return JSONObject().put("ok", false)
+        require(original.isEvent) { "仅支持更新日程" }
+
+        val groupId = resolveGroupId(json)
+        val startAt = LocalDateTime.parse(json.getString("startAt"))
+        val endAt = LocalDateTime.parse(json.getString("endAt"))
+        val reminderOffsets = json.optJSONArray("reminderOffsetsMinutes")?.toIntList().orEmpty()
+        val recurrence = parseRecurrence(json.optJSONObject("recurrence"), startAt.toLocalDate())
+        val draft = sanitizeEventDraft(
+            title = json.optString("title").trim(),
+            notes = json.optString("notes").trim(),
+            location = json.optString("location").trim(),
+            startAt = startAt,
+            endAt = endAt,
+            allDay = json.optBoolean("allDay", false),
+            accentColorHex = json.optString("accentColorHex", original.accentColorHex?.ifBlank { "#4E87E1" } ?: "#4E87E1"),
+            reminderOffsetsMinutes = reminderOffsets,
+            ringEnabled = json.optBoolean("ringEnabled", true),
+            vibrateEnabled = json.optBoolean("vibrateEnabled", true),
+            reminderDeliveryMode = com.example.todoalarm.data.ReminderDeliveryMode.fromStorage(json.optString("reminderDeliveryMode")),
+            recurrence = recurrence,
+            groupId = groupId
+        )
+        require(draft.title.isNotBlank()) { "日程标题不能为空" }
+        val updated = runBlocking { app.repository.updateCalendarEventFromDraft(original, draft, RecurrenceScope.CURRENT) }
+        updated.forEach(::scheduleReminderOrDisable)
+        autoBackupIfNeeded()
+        return JSONObject().put("ok", updated.isNotEmpty())
+    }
     private fun markCompleted(path: String): JSONObject {
         val id = path.substringAfter("/api/items/").substringBefore('/').toLong()
         val updated = runBlocking { app.repository.setCompleted(id, true) }

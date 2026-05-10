@@ -67,6 +67,7 @@ private fun TodoItem.toDesktopJson(group: TaskGroup?): JSONObject {
         put("missed", missed)
         put("allDay", allDay)
         put("isRecurring", isRecurring)
+        put("recurringSeriesId", recurringSeriesId)
         put("hasDueDate", hasDueDate)
         put("dueAtMillis", dueAtMillis)
         put("startAtMillis", startAtMillis)
@@ -84,6 +85,12 @@ private fun TodoItem.toDesktopJson(group: TaskGroup?): JSONObject {
         put("vibrateEnabled", vibrateEnabled)
         put("reminderDeliveryMode", reminderDeliveryMode)
         put("accentColorHex", accentColorHex)
+        put("recurrenceType", recurrenceType)
+        put("recurrenceWeekdays", recurrenceWeekdays)
+        put("recurrenceMonthlyOrdinal", recurrenceMonthlyOrdinal)
+        put("recurrenceMonthlyWeekday", recurrenceMonthlyWeekday)
+        put("recurrenceMonthlyDay", recurrenceMonthlyDay)
+        put("recurrenceEndDate", recurrenceEndDate?.toString())
     }
 }
 

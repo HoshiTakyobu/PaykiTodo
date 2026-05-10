@@ -60,7 +60,7 @@ object DesktopSyncWebAssets {
                 <div class="card-panel day-strip-panel">
                   <div class="panel-head">
                     <h2>日期轴</h2>
-                    <p class="muted">选择一天，在下方查看该日的全天日程和时间轴。</p>
+                    <p class="muted">选择一个基准日，下方会按窗口宽度自适配展示多天日程。</p>
                   </div>
                   <div id="event-day-strip" class="day-strip"></div>
                 </div>
@@ -76,6 +76,7 @@ object DesktopSyncWebAssets {
                   <section class="schedule-board-shell">
                     <div id="hour-axis" class="hour-axis"></div>
                     <div id="board-scroll" class="board-scroll">
+                      <div id="event-day-headers" class="event-day-headers"></div>
                       <div id="event-timeline" class="event-timeline"></div>
                     </div>
                   </section>
@@ -117,8 +118,8 @@ object DesktopSyncWebAssets {
             <div class="modal-sheet wide-sheet">
               <div class="modal-head">
                 <div>
-                  <h2>新增日程</h2>
-                  <p class="muted">日程编辑先集中在弹层，主体区域优先展示时间轴。</p>
+                  <h2 id="event-modal-title">新增日程</h2>
+                  <p id="event-modal-subtitle" class="muted">日程编辑先集中在弹层，主体区域优先展示时间轴。</p>
                 </div>
                 <button class="ghost mini" data-close-modal="event-modal">关闭</button>
               </div>
@@ -141,7 +142,7 @@ object DesktopSyncWebAssets {
                 <div><label>每周循环的周几（逗号分隔，例如 1,3,5）</label><input id="event-weekdays" placeholder="1,3,5" /></div>
                 <div class="span-2 switch-row"><label><input id="event-ring" type="checkbox" checked /> 铃声</label><label><input id="event-vibrate" type="checkbox" checked /> 震动</label></div>
               </div>
-              <div class="modal-actions"><button id="create-event">创建日程</button></div>
+              <div class="modal-actions"><button id="delete-event" class="danger hidden">删除日程</button><button id="save-event">创建日程</button></div>
             </div>
           </div>
           <script src="/app.js"></script>
@@ -286,8 +287,8 @@ object DesktopSyncWebAssets {
         .actions .danger { background: var(--danger); }
         .actions .success { background: var(--success); }
         .empty-state { padding: 16px 18px; border-radius: 18px; border: 1px dashed var(--line-strong); color: var(--muted); background: rgba(255,255,255,.58); }
-        .day-strip { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 4px; }
-        .day-pill { flex: 0 0 auto; min-width: 116px; padding: 14px 16px; border-radius: 18px; border: 1px solid rgba(211,220,230,.94); background: rgba(255,255,255,.9); color: var(--text); text-align: left; }
+        .day-strip { display: grid; grid-template-columns: repeat(auto-fit, minmax(108px, 1fr)); gap: 10px; padding-bottom: 4px; }
+        .day-pill { min-width: 108px; padding: 14px 16px; border-radius: 18px; border: 1px solid rgba(211,220,230,.94); background: rgba(255,255,255,.9); color: var(--text); text-align: left; }
         .day-pill.active { background: rgba(53,104,212,.96); color: #fff; border-color: transparent; box-shadow: 0 12px 26px rgba(53,104,212,.24); }
         .day-pill-weekday { font-size: 12px; opacity: .82; }
         .day-pill-date { margin-top: 4px; font-size: 20px; font-weight: 800; }
@@ -296,17 +297,30 @@ object DesktopSyncWebAssets {
         .schedule-date-title { font-size: 22px; font-weight: 800; margin-bottom: 6px; }
         .all-day-section { border-radius: 20px; border: 1px solid rgba(211,220,230,.9); background: rgba(255,255,255,.66); padding: 14px; }
         .slot-title { font-size: 13px; font-weight: 800; color: var(--muted); margin-bottom: 10px; }
-        .all-day-list { display: flex; flex-direction: column; gap: 10px; }
+        .all-day-list { display: grid; grid-template-columns: repeat(var(--day-count, 1), minmax(0, 1fr)); gap: 12px; align-items: start; }
+        .all-day-day { min-width: 0; display: flex; flex-direction: column; gap: 8px; }
+        .all-day-day-label { font-size: 13px; font-weight: 800; color: #314154; padding: 0 2px; }
         .all-day-card { padding: 12px 14px; border-radius: 16px; border-left: 4px solid var(--accent, var(--primary)); background: rgba(255,255,255,.92); box-shadow: 0 8px 18px rgba(39,56,88,.05); }
         .all-day-card-title, .event-card-title { font-size: 16px; font-weight: 800; margin-bottom: 4px; }
+        .all-day-empty { padding: 10px 12px; border-radius: 14px; background: rgba(98,114,133,.08); color: var(--muted); font-size: 13px; }
         .schedule-board-shell { display: grid; grid-template-columns: 84px minmax(0, 1fr); gap: 14px; align-items: start; min-width: 0; }
         .hour-axis { position: sticky; top: 126px; }
+        .hour-axis-spacer { height: 58px; }
         .hour-label { height: var(--hour-height); display: flex; align-items: flex-start; justify-content: flex-end; font-size: 12px; font-weight: 700; color: var(--muted); }
-        .board-scroll { min-width: 0; overflow: auto; border-radius: 22px; border: 1px solid rgba(211,220,230,.92); background: rgba(255,255,255,.72); padding: 0 10px 0 0; }
-        .event-timeline { position: relative; min-width: 720px; height: calc(var(--hour-height) * 24); border-left: 1px solid rgba(185,200,218,.9); margin-left: 10px; }
+        .board-scroll { min-width: 0; overflow-y: auto; overflow-x: hidden; border-radius: 22px; border: 1px solid rgba(211,220,230,.92); background: rgba(255,255,255,.72); }
+        .event-day-headers { position: sticky; top: 0; z-index: 3; display: grid; grid-template-columns: repeat(var(--day-count, 1), minmax(0, 1fr)); background: rgba(255,255,255,.94); border-bottom: 1px solid rgba(211,220,230,.92); }
+        .event-day-header { min-width: 0; padding: 12px 10px; text-align: left; background: transparent; border: 0; border-left: 1px solid rgba(185,200,218,.9); cursor: pointer; }
+        .event-day-header:last-child { border-right: 1px solid rgba(185,200,218,.9); }
+        .event-day-header.today { background: rgba(53,104,212,.06); }
+        .event-day-header.selected { background: rgba(53,104,212,.12); }
+        .event-day-header-date { font-size: 14px; font-weight: 800; color: #243446; }
+        .event-day-header-meta { margin-top: 4px; font-size: 12px; color: var(--muted); }
+        .event-timeline { position: relative; width: 100%; min-width: 0; height: calc(var(--hour-height) * 24); display: grid; grid-template-columns: repeat(var(--day-count, 1), minmax(0, 1fr)); }
+        .event-day-column { position: relative; min-width: 0; height: 100%; border-left: 1px solid rgba(185,200,218,.9); }
+        .event-day-column:last-child { border-right: 1px solid rgba(185,200,218,.9); }
         .hour-row { position: absolute; left: 0; right: 0; height: var(--hour-height); border-top: 1px solid rgba(188,201,217,.9); }
         .half-row { position: absolute; left: 0; right: 0; border-top: 1px dashed rgba(188,201,217,.4); }
-        .event-card { position: absolute; left: 18px; right: 18px; min-height: 34px; border-radius: 18px; padding: 12px 14px; border-left: 4px solid var(--accent, var(--primary)); background: rgba(255,255,255,.95); box-shadow: 0 10px 24px rgba(40,57,88,.08); overflow: hidden; }
+        .event-card { position: absolute; left: 8px; right: 8px; min-height: 34px; border-radius: 18px; padding: 10px 12px; border-left: 4px solid var(--accent, var(--primary)); background: rgba(255,255,255,.95); box-shadow: 0 10px 24px rgba(40,57,88,.08); overflow: hidden; }
         .current-line { position: absolute; left: 0; right: 0; height: 2px; background: #dc2626; }
         .current-line::before { content: ""; position: absolute; left: -6px; top: -5px; width: 12px; height: 12px; border-radius: 50%; background: #dc2626; }
         .modal-backdrop { position: fixed; inset: 0; background: rgba(12,20,31,.45); display: flex; align-items: center; justify-content: center; padding: 24px; z-index: 100; }
@@ -331,13 +345,14 @@ object DesktopSyncWebAssets {
         @media (max-width: 840px) {
           .toolbar-row, .form-grid { display: flex; flex-wrap: wrap; }
           .schedule-board-shell, .timeline-item { grid-template-columns: 1fr; }
-          .event-timeline { min-width: 100%; }
+          .day-strip { grid-template-columns: repeat(auto-fit, minmax(96px, 1fr)); }
         }
       """.trimIndent()
 
     fun appJs(): String = """
         const HOUR_HEIGHT = 64;
-        const state = { token: '', snapshot: null, currentTab: 'todos', selectedEventDay: dayKey(new Date()) };
+        const EVENT_HEADER_HEIGHT = 58;
+        const state = { token: '', snapshot: null, currentTab: 'todos', selectedEventDay: dayKey(new Date()), editingEventId: null };
 
         const els = {
           token: document.getElementById('token'),
@@ -350,6 +365,7 @@ object DesktopSyncWebAssets {
           eventSelectedSubtitle: document.getElementById('event-selected-subtitle'),
           allDayList: document.getElementById('all-day-list'),
           hourAxis: document.getElementById('hour-axis'),
+          eventDayHeaders: document.getElementById('event-day-headers'),
           eventTimeline: document.getElementById('event-timeline'),
           snapshotMeta: document.getElementById('snapshot-meta'),
           panelTitle: document.getElementById('panel-title'),
@@ -412,6 +428,11 @@ object DesktopSyncWebAssets {
 
         function formatFullDateLabel(date) {
           return date.getFullYear() + '年' + (date.getMonth() + 1) + '月' + date.getDate() + '日 ' + formatWeekday(date);
+        }
+
+        function formatCompactDateLabel(key) {
+          const date = dateFromKey(key);
+          return (date.getMonth() + 1) + '月' + date.getDate() + '日';
         }
 
         function activeTodos() {
@@ -542,7 +563,7 @@ object DesktopSyncWebAssets {
         }
 
         function renderHourAxis() {
-          let html = '';
+          let html = '<div class="hour-axis-spacer"></div>';
           for (let hour = 0; hour < 24; hour += 1) {
             html += '<div class="hour-label">' + String(hour).padStart(2, '0') + ':00</div>';
           }
@@ -565,17 +586,67 @@ object DesktopSyncWebAssets {
           return '<div class="current-line" style="top:' + top + 'px"></div>';
         }
 
+        function visibleEventDayCount(totalDays) {
+          if (!totalDays) return 1;
+          const width = Math.max(0, els.boardScroll?.clientWidth || 0);
+          if (!width) return Math.min(7, totalDays);
+          return Math.max(1, Math.min(7, totalDays, Math.floor(width / 140)));
+        }
+
+        function getVisibleEventKeys(keys) {
+          if (!keys.length) return [state.selectedEventDay];
+          const count = visibleEventDayCount(keys.length);
+          const selectedIndex = Math.max(0, keys.indexOf(state.selectedEventDay));
+          const centeredStart = selectedIndex - Math.floor((count - 1) / 2);
+          const maxStart = Math.max(0, keys.length - count);
+          const start = Math.min(maxStart, Math.max(0, centeredStart));
+          return keys.slice(start, start + count);
+        }
+
+        function renderEventDayHeader(key, items) {
+          const classes = ['event-day-header'];
+          if (key === dayKey(new Date())) classes.push('today');
+          if (key === state.selectedEventDay) classes.push('selected');
+          return ''
+            + '<button class="' + classes.join(' ') + '" data-day="' + key + '">'
+            +   '<div class="event-day-header-date">' + escapeHtml(formatCompactDateLabel(key) + ' ' + formatWeekday(dateFromKey(key))) + '</div>'
+            +   '<div class="event-day-header-meta">' + items.length + ' 项</div>'
+            + '</button>';
+        }
+
+        function renderAllDayDay(key, items) {
+          return ''
+            + '<div class="all-day-day">'
+            +   '<div class="all-day-day-label">' + escapeHtml(formatCompactDateLabel(key) + ' ' + formatWeekday(dateFromKey(key))) + '</div>'
+            +   (items.length ? items.map(renderAllDayCard).join('') : '<div class="all-day-empty">本日没有全天日程。</div>')
+            + '</div>';
+        }
+
+        function renderEventDayColumn(key, timed) {
+          return ''
+            + '<div class="event-day-column">'
+            +   renderHourGrid()
+            +   renderCurrentLine(key)
+            +   timed.map(renderEventCard).join('')
+            + '</div>';
+        }
+
+        function renderVisibleRangeTitle(keys) {
+          if (!keys.length) return formatFullDateLabel(dateFromKey(state.selectedEventDay));
+          if (keys.length === 1) return formatFullDateLabel(dateFromKey(keys[0]));
+          return formatCompactDateLabel(keys[0]) + ' - ' + formatCompactDateLabel(keys[keys.length - 1]);
+        }
+
         function renderEventCard(segment) {
           const item = segment.item;
           const accent = item.accentColorHex || item.groupColorHex || '#4e87e1';
           const meta = [item.groupName || '未分组', item.location || '', item.isRecurring ? '循环' : ''].filter(Boolean).join(' · ');
           return ''
-            + '<article class="event-card" style="--accent:' + accent + ';top:' + segment.top + 'px;height:' + segment.height + 'px">'
+            + '<article class="event-card" data-event-id="' + item.id + '" style="--accent:' + accent + ';top:' + segment.top + 'px;height:' + segment.height + 'px">'
             +   '<div class="event-card-title">' + escapeHtml(item.title) + '</div>'
             +   '<div class="event-card-meta">' + escapeHtml(segment.startLabel) + ' - ' + escapeHtml(segment.endLabel) + '</div>'
             +   '<div class="event-card-meta">' + escapeHtml(meta || '定时日程') + '</div>'
             +   (item.notes ? '<div class="event-card-notes">' + escapeHtml(item.notes) + '</div>' : '')
-            +   '<div class="actions"><button data-action="cancel" data-id="' + item.id + '" class="danger">删除</button></div>'
             + '</article>';
         }
 
@@ -657,38 +728,59 @@ object DesktopSyncWebAssets {
             }
           });
           const keys = Array.from(dayMap.keys()).sort();
-          const selected = (dayMap.get(state.selectedEventDay) || []).slice().sort((a, b) => eventStart(a) - eventStart(b));
-          const allDay = selected.filter(item => item.allDay);
-          const timed = selected.filter(item => !item.allDay).map(item => buildEventSegment(item, state.selectedEventDay));
+          const visibleKeys = getVisibleEventKeys(keys);
+          const visibleDays = visibleKeys.map(key => {
+            const items = (dayMap.get(key) || []).slice().sort((a, b) => eventStart(a) - eventStart(b));
+            return {
+              key: key,
+              items: items,
+              allDay: items.filter(item => item.allDay),
+              timed: items.filter(item => !item.allDay).map(item => buildEventSegment(item, key))
+            };
+          });
+          const totalAllDay = visibleDays.reduce((sum, day) => sum + day.allDay.length, 0);
+          const totalTimed = visibleDays.reduce((sum, day) => sum + day.timed.length, 0);
           els.eventSummary.innerHTML = [
             renderSummaryCard('活动日程', events.length),
             renderSummaryCard('可切换日期', keys.length),
-            renderSummaryCard('全天日程', allDay.length),
-            renderSummaryCard('当天定时日程', timed.length)
+            renderSummaryCard('当前视图', visibleKeys.length + ' 天'),
+            renderSummaryCard('当前全天', totalAllDay),
+            renderSummaryCard('当前定时', totalTimed)
           ].join('');
           els.eventDayStrip.innerHTML = keys.length
             ? keys.map(key => renderDayPill(key, (dayMap.get(key) || []).length)).join('')
             : '<div class="empty-state">当前没有活动日程。创建后会在这里按日期排开。</div>';
+          els.eventDayHeaders.style.setProperty('--day-count', String(visibleKeys.length || 1));
+          els.eventTimeline.style.setProperty('--day-count', String(visibleKeys.length || 1));
+          els.allDayList.style.setProperty('--day-count', String(visibleKeys.length || 1));
+          els.eventDayHeaders.innerHTML = visibleDays.map(day => renderEventDayHeader(day.key, day.items)).join('');
           document.querySelectorAll('[data-day]').forEach(node => {
             node.onclick = () => {
               state.selectedEventDay = node.dataset.day;
               renderEvents();
             };
           });
-          const selectedDate = dateFromKey(state.selectedEventDay);
-          els.eventSelectedDate.textContent = formatFullDateLabel(selectedDate);
-          els.eventSelectedSubtitle.textContent = selected.length ? ('全天 ' + allDay.length + ' 项，定时 ' + timed.length + ' 项') : '本日暂无日程';
-          els.allDayList.innerHTML = allDay.length ? allDay.map(renderAllDayCard).join('') : '<div class="empty-state">本日没有全天日程。</div>';
+          els.eventSelectedDate.textContent = renderVisibleRangeTitle(visibleKeys);
+          els.eventSelectedSubtitle.textContent = '基准日：' + formatCompactDateLabel(state.selectedEventDay) + ' · 全天 ' + totalAllDay + ' 项，定时 ' + totalTimed + ' 项';
+          els.allDayList.innerHTML = visibleDays.map(day => renderAllDayDay(day.key, day.allDay)).join('');
           els.hourAxis.innerHTML = renderHourAxis();
-          els.eventTimeline.innerHTML = renderHourGrid() + renderCurrentLine(state.selectedEventDay) + timed.map(renderEventCard).join('');
+          els.eventTimeline.innerHTML = visibleDays.map(day => renderEventDayColumn(day.key, day.timed)).join('');
           if (els.boardScroll) {
-            if (state.selectedEventDay === dayKey(new Date())) {
+            if (visibleKeys.includes(dayKey(new Date()))) {
               const nowDate = new Date();
-              els.boardScroll.scrollTop = Math.max(0, ((nowDate.getHours() * 60 + nowDate.getMinutes()) / 60 * HOUR_HEIGHT) - 180);
+              els.boardScroll.scrollTop = Math.max(0, EVENT_HEADER_HEIGHT + ((nowDate.getHours() * 60 + nowDate.getMinutes()) / 60 * HOUR_HEIGHT) - 180);
             } else {
-              els.boardScroll.scrollTop = timed.length ? Math.max(0, timed[0].top - 80) : 0;
+              const firstTimed = visibleDays.flatMap(day => day.timed).sort((a, b) => a.top - b.top)[0];
+              els.boardScroll.scrollTop = firstTimed ? Math.max(0, EVENT_HEADER_HEIGHT + firstTimed.top - 80) : 0;
             }
           }
+          document.querySelectorAll('[data-event-id]').forEach(node => {
+            node.onclick = () => {
+              const id = Number(node.dataset.eventId);
+              const eventItem = (state.snapshot?.events || []).find(item => item.id === id);
+              if (eventItem) openEventEditor(eventItem);
+            };
+          });
           bindActions();
         }
 
@@ -735,6 +827,11 @@ object DesktopSyncWebAssets {
         }
 
         function clearEventForm() {
+          state.editingEventId = null;
+          document.getElementById('event-modal-title').textContent = '新增日程';
+          document.getElementById('event-modal-subtitle').textContent = '日程编辑先集中在弹层，主体区域优先展示时间轴。';
+          document.getElementById('save-event').textContent = '创建日程';
+          document.getElementById('delete-event').classList.add('hidden');
           document.getElementById('event-title').value = '';
           document.getElementById('event-location').value = '';
           document.getElementById('event-notes').value = '';
@@ -747,6 +844,42 @@ object DesktopSyncWebAssets {
           document.getElementById('event-weekdays').value = '';
           document.getElementById('event-ring').checked = true;
           document.getElementById('event-vibrate').checked = true;
+        }
+
+        function formatDateTimeLocalValue(millis) {
+          if (!millis) return '';
+          const date = new Date(millis);
+          const year = date.getFullYear();
+          const month = String(date.getMonth() + 1).padStart(2, '0');
+          const day = String(date.getDate()).padStart(2, '0');
+          const hour = String(date.getHours()).padStart(2, '0');
+          const minute = String(date.getMinutes()).padStart(2, '0');
+          return year + '-' + month + '-' + day + 'T' + hour + ':' + minute;
+        }
+
+        function recurrenceTypeValue(item) {
+          return item.isRecurring ? (item.recurrenceType || 'NONE') : 'NONE';
+        }
+
+        function openEventEditor(item) {
+          state.editingEventId = item.id;
+          document.getElementById('event-modal-title').textContent = '编辑日程';
+          document.getElementById('event-modal-subtitle').textContent = '点击已有日程后可直接修改或删除。';
+          document.getElementById('save-event').textContent = '保存修改';
+          document.getElementById('delete-event').classList.remove('hidden');
+          document.getElementById('event-title').value = item.title || '';
+          document.getElementById('event-location').value = item.location || '';
+          document.getElementById('event-notes').value = item.notes || '';
+          document.getElementById('event-start').value = formatDateTimeLocalValue(item.startAtMillis);
+          document.getElementById('event-end').value = formatDateTimeLocalValue(item.endAtMillis || item.startAtMillis);
+          document.getElementById('event-reminder-mode').value = item.reminderDeliveryMode || 'NOTIFICATION';
+          document.getElementById('event-reminder-offsets').value = (item.reminderOffsetsMinutes || []).join(',');
+          document.getElementById('event-recurrence-type').value = recurrenceTypeValue(item);
+          document.getElementById('event-recurrence-end').value = item.recurrenceEndDate || '';
+          document.getElementById('event-weekdays').value = (item.recurrenceWeekdays || []).join(',');
+          document.getElementById('event-ring').checked = item.ringEnabled !== false;
+          document.getElementById('event-vibrate').checked = item.vibrateEnabled !== false;
+          openModal('event-modal');
         }
 
         function openModal(id) {
@@ -781,6 +914,9 @@ object DesktopSyncWebAssets {
 
         document.getElementById('connect').onclick = () => connect().catch(err => els.status.textContent = err.message);
         document.getElementById('refresh').onclick = () => loadSnapshot().catch(err => els.status.textContent = err.message);
+        window.addEventListener('resize', () => {
+          if (state.currentTab === 'events' && state.snapshot) renderEvents();
+        });
         document.getElementById('jump-today').onclick = () => {
           if (state.currentTab === 'events') {
             state.selectedEventDay = dayKey(new Date());
@@ -789,7 +925,10 @@ object DesktopSyncWebAssets {
             document.getElementById('todo-section-today')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
           }
         };
-        els.openCreate.onclick = () => openModal(state.currentTab === 'todos' ? 'todo-modal' : 'event-modal');
+        els.openCreate.onclick = () => {
+          if (state.currentTab === 'events') clearEventForm();
+          openModal(state.currentTab === 'todos' ? 'todo-modal' : 'event-modal');
+        };
         document.querySelectorAll('[data-tab]').forEach(node => {
           node.onclick = () => {
             state.currentTab = node.dataset.tab;
@@ -834,26 +973,42 @@ object DesktopSyncWebAssets {
           await loadSnapshot();
         };
 
-        document.getElementById('create-event').onclick = async () => {
-          await api('/api/events', {
-            method: 'POST',
-            body: JSON.stringify({
-              title: document.getElementById('event-title').value,
-              location: document.getElementById('event-location').value,
-              notes: document.getElementById('event-notes').value,
-              startAt: document.getElementById('event-start').value,
-              endAt: document.getElementById('event-end').value,
-              reminderOffsetsMinutes: parseIntList(document.getElementById('event-reminder-offsets').value),
-              ringEnabled: document.getElementById('event-ring').checked,
-              vibrateEnabled: document.getElementById('event-vibrate').checked,
-              reminderDeliveryMode: document.getElementById('event-reminder-mode').value,
-              recurrence: recurrencePayload(
-                document.getElementById('event-recurrence-type').value,
-                document.getElementById('event-recurrence-end').value,
-                document.getElementById('event-weekdays').value
-              )
-            })
-          });
+        document.getElementById('save-event').onclick = async () => {
+          const payload = {
+            title: document.getElementById('event-title').value,
+            location: document.getElementById('event-location').value,
+            notes: document.getElementById('event-notes').value,
+            startAt: document.getElementById('event-start').value,
+            endAt: document.getElementById('event-end').value,
+            reminderOffsetsMinutes: parseIntList(document.getElementById('event-reminder-offsets').value),
+            ringEnabled: document.getElementById('event-ring').checked,
+            vibrateEnabled: document.getElementById('event-vibrate').checked,
+            reminderDeliveryMode: document.getElementById('event-reminder-mode').value,
+            recurrence: recurrencePayload(
+              document.getElementById('event-recurrence-type').value,
+              document.getElementById('event-recurrence-end').value,
+              document.getElementById('event-weekdays').value
+            )
+          };
+          if (state.editingEventId) {
+            await api(`/api/events/${'$'}{state.editingEventId}`, {
+              method: 'PUT',
+              body: JSON.stringify(payload)
+            });
+          } else {
+            await api('/api/events', {
+              method: 'POST',
+              body: JSON.stringify(payload)
+            });
+          }
+          clearEventForm();
+          closeModal('event-modal');
+          await loadSnapshot();
+        };
+
+        document.getElementById('delete-event').onclick = async () => {
+          if (!state.editingEventId) return;
+          await api(`/api/items/${'$'}{state.editingEventId}`, { method: 'DELETE' });
           clearEventForm();
           closeModal('event-modal');
           await loadSnapshot();

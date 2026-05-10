@@ -224,7 +224,7 @@ internal fun CalendarEventEditorDialog(
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
                         ) {
                             EditorDateSelectorCard(
                                 modifier = Modifier.weight(1f),
@@ -240,7 +240,7 @@ internal fun CalendarEventEditorDialog(
                                 }
                             )
                             EditorMiddlePill(
-                                modifier = Modifier.width(72.dp),
+                                modifier = Modifier.width(60.dp),
                                 label = formatAllDaySpan(startAt.toLocalDate(), endAt.toLocalDate())
                             )
                             EditorDateSelectorCard(
@@ -274,7 +274,7 @@ internal fun CalendarEventEditorDialog(
                                 }
                             )
                             EditorMiddlePill(
-                                modifier = Modifier.width(64.dp),
+                                modifier = Modifier.width(48.dp),
                                 label = formatTimedSpan(startAt, endAt)
                             )
                             EditorDateTimeSelectorCard(
@@ -679,7 +679,7 @@ private fun EditorBlock(
         ) {
             Text(
                 text = title,
-                style = MaterialTheme.typography.titleSmall,
+                style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSurface
             )
@@ -944,24 +944,27 @@ private fun EditorDateTimeSelectorCard(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 12.dp, vertical = 10.dp),
+                .padding(horizontal = 8.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(3.dp)
         ) {
             Text(
                 text = label,
-                style = MaterialTheme.typography.labelMedium,
+                style = MaterialTheme.typography.labelLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 fontWeight = FontWeight.Medium
             )
             Text(
                 text = formatClockTime(dateTime),
-                style = MaterialTheme.typography.headlineMedium,
+                style = MaterialTheme.typography.titleLarge,
+                maxLines = 1,
+                softWrap = false,
+                overflow = TextOverflow.Clip,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSurface
             )
             Text(
                 text = formatEditorDateLine(dateTime.toLocalDate()),
-                style = MaterialTheme.typography.bodySmall,
+                style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
@@ -989,12 +992,12 @@ private fun EditorDateSelectorCard(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 14.dp, vertical = 12.dp),
+                .padding(horizontal = 16.dp, vertical = 10.dp),
             verticalArrangement = Arrangement.spacedBy(3.dp)
         ) {
             Text(
                 text = label,
-                style = MaterialTheme.typography.labelMedium,
+                style = MaterialTheme.typography.titleSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 fontWeight = FontWeight.Medium
             )
@@ -1006,7 +1009,7 @@ private fun EditorDateSelectorCard(
             )
             Text(
                 text = date.dayOfWeek.shortLabel(),
-                style = MaterialTheme.typography.bodySmall,
+                style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
@@ -1024,19 +1027,19 @@ private fun EditorMiddlePill(
         color = MaterialTheme.colorScheme.primary.copy(alpha = 0.10f)
     ) {
         Column(
-            modifier = Modifier.padding(horizontal = 10.dp, vertical = 10.dp),
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 12.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(2.dp)
         ) {
             Text(
                 text = "至",
-                style = MaterialTheme.typography.labelMedium,
+                style = MaterialTheme.typography.titleSmall,
                 color = MaterialTheme.colorScheme.primary,
                 fontWeight = FontWeight.SemiBold
             )
             Text(
                 text = label,
-                style = MaterialTheme.typography.bodySmall,
+                style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.primary,
                 fontWeight = FontWeight.Bold,
                 maxLines = 1,

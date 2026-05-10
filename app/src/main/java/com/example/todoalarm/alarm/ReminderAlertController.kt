@@ -1,8 +1,10 @@
 package com.example.todoalarm.alarm
 
 import android.content.Context
+import android.media.AudioManager
 import android.media.AudioAttributes
 import android.media.MediaPlayer
+import android.media.Ringtone
 import android.media.RingtoneManager
 import android.net.Uri
 import android.os.Build
@@ -17,6 +19,7 @@ internal class ReminderAlertController(
 ) {
     private var vibrator: Vibrator? = null
     private var mediaPlayer: MediaPlayer? = null
+    private var ringtone: Ringtone? = null
 
     fun start(todoItem: TodoItem) {
         stop()
@@ -29,6 +32,10 @@ internal class ReminderAlertController(
     }
 
     fun stop() {
+        ringtone?.runCatching {
+            if (isPlaying) stop()
+        }
+        ringtone = null
         mediaPlayer?.runCatching {
             if (isPlaying) {
                 stop()
@@ -48,11 +55,22 @@ internal class ReminderAlertController(
         val settings = (context.applicationContext as com.example.todoalarm.TodoApplication).settingsStore.currentSettings()
         val toneUri = settings.reminderToneUri
         if (!toneUri.isNullOrBlank()) {
-            if (playFromUri(Uri.parse(toneUri))) {
+            if (playRingtoneFromUri(Uri.parse(toneUri)) || playFromUri(Uri.parse(toneUri))) {
                 return
             }
         }
         playBuiltInClip()
+    }
+
+    private fun playRingtoneFromUri(uri: Uri): Boolean {
+        return runCatching {
+            val target = RingtoneManager.getRingtone(context, uri) ?: return false
+            @Suppress("DEPRECATION")
+            target.streamType = AudioManager.STREAM_ALARM
+            target.play()
+            ringtone = target
+            true
+        }.getOrDefault(false)
     }
 
     private fun playBuiltInClip() {

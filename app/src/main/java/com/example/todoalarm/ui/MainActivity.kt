@@ -14,7 +14,11 @@ import android.os.Build
 import android.os.Bundle
 import android.os.Parcelable
 import android.os.PowerManager
+import android.media.AudioManager
 import android.media.RingtoneManager
+import android.media.Ringtone
+import android.media.AudioAttributes
+import android.media.MediaPlayer
 import android.provider.Settings
 import android.widget.Toast
 import androidx.activity.ComponentActivity
@@ -35,6 +39,8 @@ import com.example.todoalarm.alarm.ActiveReminderStore
 import com.example.todoalarm.alarm.AlarmScheduler
 import com.example.todoalarm.ui.theme.TodoAlarmTheme
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 
 data class PermissionSnapshot(
     val notificationGranted: Boolean = true,
@@ -54,6 +60,9 @@ class MainActivity : ComponentActivity() {
     private var lastCrashLog by mutableStateOf<String?>(null)
     private var lastReminderRoutingTodoId: Long = -1L
     private var lastReminderRoutingAt: Long = 0L
+    private var previewPlayer: MediaPlayer? = null
+    private var previewRingtone: Ringtone? = null
+    private var previewStopJob: Job? = null
 
     private val notificationPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
@@ -101,8 +110,24 @@ class MainActivity : ComponentActivity() {
             val ringtone = RingtoneManager.getRingtone(this, uri)
             val title = ringtone?.getTitle(this)
             viewModel.updateReminderTone(uri.toString(), title)
+            previewReminderToneOnAlarmStream(uri)
             Toast.makeText(this, "提醒提示音已更新", Toast.LENGTH_SHORT).show()
         }
+    }
+
+    override fun onDestroy() {
+        previewStopJob?.cancel()
+        previewRingtone?.runCatching {
+            if (isPlaying) stop()
+        }
+        previewRingtone = null
+        previewPlayer?.runCatching {
+            if (isPlaying) stop()
+            reset()
+            release()
+        }
+        previewPlayer = null
+        super.onDestroy()
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -298,6 +323,78 @@ class MainActivity : ComponentActivity() {
 
     private fun openInAppWiki() {
         startActivity(Intent(this, WikiActivity::class.java))
+    }
+
+    private fun previewReminderToneOnAlarmStream(uri: Uri) {
+        previewStopJob?.cancel()
+        previewRingtone?.runCatching {
+            if (isPlaying) stop()
+        }
+        previewRingtone = null
+        previewPlayer?.runCatching {
+            if (isPlaying) stop()
+            reset()
+            release()
+        }
+        previewPlayer = null
+
+        val ringtone = runCatching { RingtoneManager.getRingtone(this, uri) }.getOrNull()
+        if (ringtone != null) {
+            runCatching {
+                @Suppress("DEPRECATION")
+                ringtone.streamType = AudioManager.STREAM_ALARM
+                ringtone.play()
+                previewRingtone = ringtone
+                previewStopJob = lifecycleScope.launch {
+                    delay(4_000L)
+                    if (previewRingtone === ringtone) {
+                        runCatching { if (ringtone.isPlaying) ringtone.stop() }
+                        previewRingtone = null
+                    }
+                }
+            }.onSuccess {
+                return
+            }
+        }
+
+        val player = MediaPlayer()
+        runCatching {
+            player.setAudioAttributes(
+                AudioAttributes.Builder()
+                    .setUsage(AudioAttributes.USAGE_ALARM)
+                    .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                    .build()
+            )
+            player.isLooping = false
+            player.setDataSource(this, uri)
+            player.setOnCompletionListener {
+                it.reset()
+                it.release()
+                if (previewPlayer === it) previewPlayer = null
+            }
+            player.setOnErrorListener { mp, _, _ ->
+                mp.reset()
+                mp.release()
+                if (previewPlayer === mp) previewPlayer = null
+                true
+            }
+            player.prepare()
+            player.start()
+            previewPlayer = player
+            previewStopJob = lifecycleScope.launch {
+                delay(4_000L)
+                if (previewPlayer === player) {
+                    runCatching {
+                        if (player.isPlaying) player.stop()
+                        player.reset()
+                        player.release()
+                    }
+                    previewPlayer = null
+                }
+            }
+        }.onFailure {
+            player.release()
+        }
     }
 
     private fun copyCrashLog() {

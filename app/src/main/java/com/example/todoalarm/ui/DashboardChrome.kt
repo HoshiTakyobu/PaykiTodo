@@ -7,11 +7,14 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.offset
@@ -873,7 +876,13 @@ internal fun EmptyStateCard(text: String) {
 
 @Composable
 internal fun LaunchScreen() {
-    Box(modifier = Modifier.fillMaxSize()) {
+    BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+        val iconSize = 92.dp
+        val sunCenterY = maxHeight * 0.23f
+        val iconTop = sunCenterY - (iconSize / 2)
+        val titleTop = sunCenterY + (iconSize / 2) + 18.dp
+
+        Box(modifier = Modifier.fillMaxSize()) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -944,20 +953,12 @@ internal fun LaunchScreen() {
 
         Column(
             modifier = Modifier
-                .align(Alignment.Center)
+                .align(Alignment.TopCenter)
                 .fillMaxWidth(0.85f)
-                .offset(y = (-52).dp),
+                .offset(y = titleTop),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            Image(
-                painter = painterResource(id = R.drawable.ic_launcher_art),
-                contentDescription = "应用图标",
-                modifier = Modifier
-                    .size(84.dp)
-                    .padding(bottom = 8.dp),
-                contentScale = ContentScale.Fit
-            )
             Text(
                 text = "PaykiTodo",
                 modifier = Modifier.fillMaxWidth(),
@@ -982,6 +983,16 @@ internal fun LaunchScreen() {
             )
         }
 
+        Image(
+            painter = painterResource(id = R.drawable.ic_launcher_art),
+            contentDescription = "应用图标",
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .offset(y = iconTop)
+                .size(iconSize),
+            contentScale = ContentScale.Fit
+        )
+
         Text(
             text = "© Copyright Hoshi Takyobu, 2026-2026",
             modifier = Modifier
@@ -991,6 +1002,7 @@ internal fun LaunchScreen() {
             style = MaterialTheme.typography.bodySmall,
             color = Color(0xAA43616A)
         )
+    }
     }
 }
 

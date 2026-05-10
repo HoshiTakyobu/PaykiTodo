@@ -56,18 +56,21 @@ object DesktopSyncWebAssets {
               </section>
 
               <section id="events-panel" class="tab">
-                <div id="event-summary" class="summary-grid"></div>
-                <div class="card-panel day-strip-panel">
-                  <div class="panel-head">
-                    <h2>日期轴</h2>
-                    <p class="muted">选择一个基准日，下方会按窗口宽度自适配展示多天日程。</p>
-                  </div>
-                  <div id="event-day-strip" class="day-strip"></div>
-                </div>
                 <div class="card-panel schedule-panel">
-                  <div class="schedule-head">
-                    <div id="event-selected-date" class="schedule-date-title">今天</div>
-                    <div id="event-selected-subtitle" class="muted">暂无日程</div>
+                  <div class="schedule-head schedule-toolbar">
+                    <div>
+                      <div id="event-selected-date" class="schedule-date-title">今天</div>
+                      <div id="event-selected-subtitle" class="muted">可查看任意日期，并按窗口宽度展示多天日程。</div>
+                    </div>
+                    <div class="schedule-toolbar-actions">
+                      <button id="event-prev-day" class="ghost mini">前一天</button>
+                      <button id="event-next-day" class="ghost mini">后一天</button>
+                      <div class="inline-picker">
+                        <label for="event-anchor-date">查看起始日期</label>
+                        <input id="event-anchor-date" type="date" />
+                      </div>
+                      <button id="apply-event-day" class="ghost mini">跳转</button>
+                    </div>
                   </div>
                   <section class="all-day-section">
                     <div class="slot-title">全天</div>
@@ -97,8 +100,44 @@ object DesktopSyncWebAssets {
               <div class="form-grid">
                 <div class="span-2"><label>标题</label><input id="todo-title" placeholder="标题" /></div>
                 <div class="span-2"><label>备注</label><textarea id="todo-notes" placeholder="备注"></textarea></div>
-                <div><label>DDL</label><input id="todo-due" type="datetime-local" /></div>
-                <div><label>提醒时间</label><input id="todo-reminder" type="datetime-local" /></div>
+                <div>
+                  <label>DDL</label>
+                  <div class="date-time-field">
+                    <div class="date-time-row">
+                      <input id="todo-due-year" class="digit-input year-input" type="text" inputmode="numeric" maxlength="4" data-maxlength="4" data-next="todo-due-month" placeholder="2026" />
+                      <span class="segment-separator">/</span>
+                      <input id="todo-due-month" class="digit-input mini-input" type="text" inputmode="numeric" maxlength="2" data-maxlength="2" data-pad="2" data-next="todo-due-day" placeholder="05" />
+                      <span class="segment-separator">/</span>
+                      <input id="todo-due-day" class="digit-input mini-input" type="text" inputmode="numeric" maxlength="2" data-maxlength="2" data-pad="2" data-next="todo-due-hour" placeholder="10" />
+                    </div>
+                    <div class="date-time-row compact-row">
+                      <input id="todo-due-hour" class="digit-input mini-input" type="text" inputmode="numeric" maxlength="2" data-maxlength="2" data-pad="2" data-next="todo-due-minute" placeholder="09" />
+                      <span class="segment-separator">:</span>
+                      <input id="todo-due-minute" class="digit-input mini-input" type="text" inputmode="numeric" maxlength="2" data-maxlength="2" data-pad="2" placeholder="30" />
+                    </div>
+                  </div>
+                </div>
+                <div>
+                  <label>提醒时间</label>
+                  <div class="date-time-field">
+                    <div class="date-time-row">
+                      <input id="todo-reminder-year" class="digit-input year-input" type="text" inputmode="numeric" maxlength="4" data-maxlength="4" data-next="todo-reminder-month" placeholder="2026" />
+                      <span class="segment-separator">/</span>
+                      <input id="todo-reminder-month" class="digit-input mini-input" type="text" inputmode="numeric" maxlength="2" data-maxlength="2" data-pad="2" data-next="todo-reminder-day" placeholder="05" />
+                      <span class="segment-separator">/</span>
+                      <input id="todo-reminder-day" class="digit-input mini-input" type="text" inputmode="numeric" maxlength="2" data-maxlength="2" data-pad="2" data-next="todo-reminder-hour" placeholder="10" />
+                    </div>
+                    <div class="date-time-row compact-row">
+                      <input id="todo-reminder-hour" class="digit-input mini-input" type="text" inputmode="numeric" maxlength="2" data-maxlength="2" data-pad="2" data-next="todo-reminder-minute" placeholder="09" />
+                      <span class="segment-separator">:</span>
+                      <input id="todo-reminder-minute" class="digit-input mini-input" type="text" inputmode="numeric" maxlength="2" data-maxlength="2" data-pad="2" placeholder="25" />
+                    </div>
+                  </div>
+                </div>
+                <div>
+                  <label>分组</label>
+                  <select id="todo-group"></select>
+                </div>
                 <div>
                   <label>循环</label>
                   <select id="todo-recurrence-type">
@@ -125,11 +164,45 @@ object DesktopSyncWebAssets {
               </div>
               <div class="form-grid">
                 <div class="span-2"><label>标题</label><input id="event-title" placeholder="标题" /></div>
+                <div><label>分组</label><select id="event-group"></select></div>
+                <div><label>日程颜色</label><input id="event-color" type="color" value="#4e87e1" /></div>
                 <div><label>地点</label><input id="event-location" placeholder="地点" /></div>
                 <div><label>提醒方式</label><select id="event-reminder-mode"><option value="NOTIFICATION">通知栏提醒</option><option value="FULLSCREEN">全屏提醒</option></select></div>
                 <div class="span-2"><label>备注</label><textarea id="event-notes" placeholder="备注"></textarea></div>
-                <div><label>开始</label><input id="event-start" type="datetime-local" /></div>
-                <div><label>结束</label><input id="event-end" type="datetime-local" /></div>
+                <div>
+                  <label>开始</label>
+                  <div class="date-time-field">
+                    <div class="date-time-row">
+                      <input id="event-start-year" class="digit-input year-input" type="text" inputmode="numeric" maxlength="4" data-maxlength="4" data-next="event-start-month" placeholder="2026" />
+                      <span class="segment-separator">/</span>
+                      <input id="event-start-month" class="digit-input mini-input" type="text" inputmode="numeric" maxlength="2" data-maxlength="2" data-pad="2" data-next="event-start-day" placeholder="05" />
+                      <span class="segment-separator">/</span>
+                      <input id="event-start-day" class="digit-input mini-input" type="text" inputmode="numeric" maxlength="2" data-maxlength="2" data-pad="2" data-next="event-start-hour" placeholder="10" />
+                    </div>
+                    <div class="date-time-row compact-row">
+                      <input id="event-start-hour" class="digit-input mini-input" type="text" inputmode="numeric" maxlength="2" data-maxlength="2" data-pad="2" data-next="event-start-minute" placeholder="09" />
+                      <span class="segment-separator">:</span>
+                      <input id="event-start-minute" class="digit-input mini-input" type="text" inputmode="numeric" maxlength="2" data-maxlength="2" data-pad="2" placeholder="30" />
+                    </div>
+                  </div>
+                </div>
+                <div>
+                  <label>结束</label>
+                  <div class="date-time-field">
+                    <div class="date-time-row">
+                      <input id="event-end-year" class="digit-input year-input" type="text" inputmode="numeric" maxlength="4" data-maxlength="4" data-next="event-end-month" placeholder="2026" />
+                      <span class="segment-separator">/</span>
+                      <input id="event-end-month" class="digit-input mini-input" type="text" inputmode="numeric" maxlength="2" data-maxlength="2" data-pad="2" data-next="event-end-day" placeholder="05" />
+                      <span class="segment-separator">/</span>
+                      <input id="event-end-day" class="digit-input mini-input" type="text" inputmode="numeric" maxlength="2" data-maxlength="2" data-pad="2" data-next="event-end-hour" placeholder="10" />
+                    </div>
+                    <div class="date-time-row compact-row">
+                      <input id="event-end-hour" class="digit-input mini-input" type="text" inputmode="numeric" maxlength="2" data-maxlength="2" data-pad="2" data-next="event-end-minute" placeholder="10" />
+                      <span class="segment-separator">:</span>
+                      <input id="event-end-minute" class="digit-input mini-input" type="text" inputmode="numeric" maxlength="2" data-maxlength="2" data-pad="2" placeholder="00" />
+                    </div>
+                  </div>
+                </div>
                 <div><label>提醒时间点（分钟，逗号分隔，例如 5,15,60）</label><input id="event-reminder-offsets" placeholder="5,15" /></div>
                 <div>
                   <label>循环</label>
@@ -140,7 +213,7 @@ object DesktopSyncWebAssets {
                 </div>
                 <div><label>循环截止日期</label><input id="event-recurrence-end" type="date" /></div>
                 <div><label>每周循环的周几（逗号分隔，例如 1,3,5）</label><input id="event-weekdays" placeholder="1,3,5" /></div>
-                <div class="span-2 switch-row"><label><input id="event-ring" type="checkbox" checked /> 铃声</label><label><input id="event-vibrate" type="checkbox" checked /> 震动</label></div>
+                <div class="span-2 switch-row"><label><input id="event-all-day" type="checkbox" /> 全天</label><label><input id="event-ring" type="checkbox" checked /> 铃声</label><label><input id="event-vibrate" type="checkbox" checked /> 震动</label></div>
               </div>
               <div class="modal-actions"><button id="delete-event" class="danger hidden">删除日程</button><button id="save-event">创建日程</button></div>
             </div>
@@ -262,7 +335,7 @@ object DesktopSyncWebAssets {
         .summary-value { font-size: 26px; font-weight: 800; }
         .tab { display: none; }
         .tab.active { display: block; }
-        .timeline-panel, .day-strip-panel, .schedule-panel { padding: 18px; }
+        .timeline-panel, .schedule-panel { padding: 18px; }
         .panel-head { margin-bottom: 16px; }
         .timeline-root { display: flex; flex-direction: column; gap: 18px; }
         .timeline-section { position: relative; padding-left: 18px; }
@@ -287,13 +360,11 @@ object DesktopSyncWebAssets {
         .actions .danger { background: var(--danger); }
         .actions .success { background: var(--success); }
         .empty-state { padding: 16px 18px; border-radius: 18px; border: 1px dashed var(--line-strong); color: var(--muted); background: rgba(255,255,255,.58); }
-        .day-strip { display: grid; grid-template-columns: repeat(auto-fit, minmax(108px, 1fr)); gap: 10px; padding-bottom: 4px; }
-        .day-pill { min-width: 108px; padding: 14px 16px; border-radius: 18px; border: 1px solid rgba(211,220,230,.94); background: rgba(255,255,255,.9); color: var(--text); text-align: left; }
-        .day-pill.active { background: rgba(53,104,212,.96); color: #fff; border-color: transparent; box-shadow: 0 12px 26px rgba(53,104,212,.24); }
-        .day-pill-weekday { font-size: 12px; opacity: .82; }
-        .day-pill-date { margin-top: 4px; font-size: 20px; font-weight: 800; }
-        .day-pill-meta { margin-top: 4px; font-size: 12px; opacity: .8; }
         .schedule-panel { display: flex; flex-direction: column; gap: 18px; }
+        .schedule-toolbar { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+        .schedule-toolbar-actions { display: flex; align-items: flex-end; gap: 10px; flex-wrap: wrap; }
+        .inline-picker { display: flex; flex-direction: column; gap: 6px; min-width: 170px; }
+        .inline-picker label { font-size: 12px; font-weight: 700; color: var(--muted); }
         .schedule-date-title { font-size: 22px; font-weight: 800; margin-bottom: 6px; }
         .all-day-section { border-radius: 20px; border: 1px solid rgba(211,220,230,.9); background: rgba(255,255,255,.66); padding: 14px; }
         .slot-title { font-size: 13px; font-weight: 800; color: var(--muted); margin-bottom: 10px; }
@@ -316,7 +387,7 @@ object DesktopSyncWebAssets {
         .event-day-header-date { font-size: 14px; font-weight: 800; color: #243446; }
         .event-day-header-meta { margin-top: 4px; font-size: 12px; color: var(--muted); }
         .event-timeline { position: relative; width: 100%; min-width: 0; height: calc(var(--hour-height) * 24); display: grid; grid-template-columns: repeat(var(--day-count, 1), minmax(0, 1fr)); }
-        .event-day-column { position: relative; min-width: 0; height: 100%; border-left: 1px solid rgba(185,200,218,.9); }
+        .event-day-column { position: relative; min-width: 0; height: 100%; border-left: 1px solid rgba(185,200,218,.9); cursor: crosshair; }
         .event-day-column:last-child { border-right: 1px solid rgba(185,200,218,.9); }
         .hour-row { position: absolute; left: 0; right: 0; height: var(--hour-height); border-top: 1px solid rgba(188,201,217,.9); }
         .half-row { position: absolute; left: 0; right: 0; border-top: 1px dashed rgba(188,201,217,.4); }
@@ -333,6 +404,13 @@ object DesktopSyncWebAssets {
         .form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
         .span-2 { grid-column: 1 / -1; }
         .modal-sheet label { display: block; margin-bottom: 8px; font-size: 13px; font-weight: 800; color: #314154; }
+        .date-time-field { display: flex; flex-direction: column; gap: 8px; }
+        .date-time-row { display: flex; align-items: center; gap: 8px; flex-wrap: nowrap; }
+        .compact-row { justify-content: flex-start; }
+        .digit-input { text-align: center; letter-spacing: .02em; font-variant-numeric: tabular-nums; }
+        .year-input { width: 96px !important; min-width: 96px; }
+        .mini-input { width: 64px !important; min-width: 64px; }
+        .segment-separator { color: var(--muted); font-weight: 800; }
         .modal-sheet textarea { min-height: 86px; resize: vertical; }
         .switch-row { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
         .switch-row label { display: inline-flex; align-items: center; gap: 8px; margin: 0; }
@@ -345,22 +423,24 @@ object DesktopSyncWebAssets {
         @media (max-width: 840px) {
           .toolbar-row, .form-grid { display: flex; flex-wrap: wrap; }
           .schedule-board-shell, .timeline-item { grid-template-columns: 1fr; }
-          .day-strip { grid-template-columns: repeat(auto-fit, minmax(96px, 1fr)); }
+          .schedule-toolbar, .schedule-toolbar-actions { align-items: stretch; }
+          .date-time-row { flex-wrap: wrap; }
         }
       """.trimIndent()
 
     fun appJs(): String = """
         const HOUR_HEIGHT = 64;
         const EVENT_HEADER_HEIGHT = 58;
-        const state = { token: '', snapshot: null, currentTab: 'todos', selectedEventDay: dayKey(new Date()), editingEventId: null };
+        const FIFTEEN_MINUTES = 15 * 60 * 1000;
+        const THIRTY_MINUTES = 30 * 60 * 1000;
+        const DEFAULT_EVENT_COLOR = '#4e87e1';
+        const state = { token: '', snapshot: null, currentTab: 'todos', selectedEventDay: dayKey(new Date()), editingEventId: null, pendingEventSeed: null };
 
         const els = {
           token: document.getElementById('token'),
           status: document.getElementById('status'),
           todoSummary: document.getElementById('todo-summary'),
-          eventSummary: document.getElementById('event-summary'),
           todoTimeline: document.getElementById('todo-timeline'),
-          eventDayStrip: document.getElementById('event-day-strip'),
           eventSelectedDate: document.getElementById('event-selected-date'),
           eventSelectedSubtitle: document.getElementById('event-selected-subtitle'),
           allDayList: document.getElementById('all-day-list'),
@@ -371,7 +451,11 @@ object DesktopSyncWebAssets {
           panelTitle: document.getElementById('panel-title'),
           viewCaption: document.getElementById('view-caption'),
           openCreate: document.getElementById('open-create'),
-          boardScroll: document.getElementById('board-scroll')
+          boardScroll: document.getElementById('board-scroll'),
+          eventAnchorDate: document.getElementById('event-anchor-date'),
+          eventPrevDay: document.getElementById('event-prev-day'),
+          eventNextDay: document.getElementById('event-next-day'),
+          applyEventDay: document.getElementById('apply-event-day')
         };
 
         function headers() {
@@ -405,6 +489,12 @@ object DesktopSyncWebAssets {
           return dateFromKey(key).getTime();
         }
 
+        function addDays(key, delta) {
+          const date = dateFromKey(key);
+          date.setDate(date.getDate() + delta);
+          return dayKey(date);
+        }
+
         function formatWeekday(date) {
           return ['周日', '周一', '周二', '周三', '周四', '周五', '周六'][date.getDay()];
         }
@@ -433,6 +523,60 @@ object DesktopSyncWebAssets {
         function formatCompactDateLabel(key) {
           const date = dateFromKey(key);
           return (date.getMonth() + 1) + '月' + date.getDate() + '日';
+        }
+
+        function groupOptionsHtml(selectedId) {
+          const groups = state.snapshot?.groups || [];
+          return groups.map(group => '<option value="' + group.id + '"' + (Number(selectedId) === Number(group.id) ? ' selected' : '') + '>' + escapeHtml(group.name) + '</option>').join('');
+        }
+
+        function fillGroupSelect(selectId, selectedId) {
+          const node = document.getElementById(selectId);
+          if (!node) return;
+          node.innerHTML = groupOptionsHtml(selectedId);
+          if (!node.value && node.options.length) node.value = node.options[0].value;
+        }
+
+        function toDateTimeLocalParts(value) {
+          if (!value) return null;
+          const match = String(value).match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/);
+          if (!match) return null;
+          return { year: match[1], month: match[2], day: match[3], hour: match[4], minute: match[5] };
+        }
+
+        function readDateTimeValue(prefix) {
+          const year = document.getElementById(prefix + '-year')?.value.trim() || '';
+          const month = document.getElementById(prefix + '-month')?.value.trim() || '';
+          const day = document.getElementById(prefix + '-day')?.value.trim() || '';
+          const hour = document.getElementById(prefix + '-hour')?.value.trim() || '';
+          const minute = document.getElementById(prefix + '-minute')?.value.trim() || '';
+          if (!year && !month && !day && !hour && !minute) return null;
+          if (year.length !== 4 || month.length < 1 || day.length < 1 || hour.length < 1 || minute.length < 1) {
+            throw new Error('请完整填写 ' + prefix + ' 对应的日期和时间');
+          }
+          const mm = month.padStart(2, '0');
+          const dd = day.padStart(2, '0');
+          const hh = hour.padStart(2, '0');
+          const min = minute.padStart(2, '0');
+          return year + '-' + mm + '-' + dd + 'T' + hh + ':' + min;
+        }
+
+        function writeDateTimeValue(prefix, value) {
+          const parts = toDateTimeLocalParts(value);
+          ['year', 'month', 'day', 'hour', 'minute'].forEach(key => {
+            const node = document.getElementById(prefix + '-' + key);
+            if (node) node.value = parts ? parts[key] : '';
+          });
+        }
+
+        function setEventSeed(startMillis, endMillis) {
+          state.pendingEventSeed = { startMillis, endMillis };
+          writeDateTimeValue('event-start', formatDateTimeLocalValue(startMillis));
+          writeDateTimeValue('event-end', formatDateTimeLocalValue(endMillis));
+        }
+
+        function snapToQuarterHour(millis) {
+          return Math.round(millis / FIFTEEN_MINUTES) * FIFTEEN_MINUTES;
         }
 
         function activeTodos() {
@@ -526,16 +670,6 @@ object DesktopSyncWebAssets {
             + '</section>';
         }
 
-        function renderDayPill(key, count) {
-          const date = dateFromKey(key);
-          return ''
-            + '<button class="day-pill ' + (key === state.selectedEventDay ? 'active' : '') + '" data-day="' + key + '">'
-            +   '<div class="day-pill-weekday">' + escapeHtml(formatWeekday(date)) + '</div>'
-            +   '<div class="day-pill-date">' + (date.getMonth() + 1) + '/' + date.getDate() + '</div>'
-            +   '<div class="day-pill-meta">' + count + ' 项</div>'
-            + '</button>';
-        }
-
         function renderAllDayCard(item) {
           const accent = item.groupColorHex || item.accentColorHex || '#4e87e1';
           const meta = [item.groupName || '未分组', item.location || '', item.isRecurring ? '循环' : ''].filter(Boolean).join(' · ');
@@ -586,21 +720,15 @@ object DesktopSyncWebAssets {
           return '<div class="current-line" style="top:' + top + 'px"></div>';
         }
 
-        function visibleEventDayCount(totalDays) {
-          if (!totalDays) return 1;
+        function visibleEventDayCount() {
           const width = Math.max(0, els.boardScroll?.clientWidth || 0);
-          if (!width) return Math.min(7, totalDays);
-          return Math.max(1, Math.min(7, totalDays, Math.floor(width / 140)));
+          if (!width) return 5;
+          return Math.max(1, Math.min(10, Math.floor(width / 160)));
         }
 
-        function getVisibleEventKeys(keys) {
-          if (!keys.length) return [state.selectedEventDay];
-          const count = visibleEventDayCount(keys.length);
-          const selectedIndex = Math.max(0, keys.indexOf(state.selectedEventDay));
-          const centeredStart = selectedIndex - Math.floor((count - 1) / 2);
-          const maxStart = Math.max(0, keys.length - count);
-          const start = Math.min(maxStart, Math.max(0, centeredStart));
-          return keys.slice(start, start + count);
+        function getVisibleEventKeys() {
+          const count = visibleEventDayCount();
+          return Array.from({ length: count }, (_, index) => addDays(state.selectedEventDay, index));
         }
 
         function renderEventDayHeader(key, items) {
@@ -624,7 +752,7 @@ object DesktopSyncWebAssets {
 
         function renderEventDayColumn(key, timed) {
           return ''
-            + '<div class="event-day-column">'
+            + '<div class="event-day-column" data-column-day="' + key + '">'
             +   renderHourGrid()
             +   renderCurrentLine(key)
             +   timed.map(renderEventCard).join('')
@@ -659,19 +787,7 @@ object DesktopSyncWebAssets {
         }
 
         function ensureSelectedEventDay() {
-          const keys = new Set([dayKey(new Date())]);
-          activeEvents().forEach(item => {
-            let cursor = new Date(eventStart(item));
-            cursor.setHours(0, 0, 0, 0);
-            const last = new Date(Math.max(eventStart(item), eventEnd(item) - 1));
-            last.setHours(0, 0, 0, 0);
-            while (cursor.getTime() <= last.getTime()) {
-              keys.add(dayKey(cursor));
-              cursor.setDate(cursor.getDate() + 1);
-            }
-          });
-          const list = Array.from(keys).sort();
-          if (!list.includes(state.selectedEventDay)) state.selectedEventDay = list[0] || dayKey(new Date());
+          if (!state.selectedEventDay) state.selectedEventDay = dayKey(new Date());
         }
 
         async function connect() {
@@ -713,7 +829,6 @@ object DesktopSyncWebAssets {
         function renderEvents() {
           const events = activeEvents().slice().sort((a, b) => eventStart(a) - eventStart(b));
           const dayMap = new Map();
-          dayMap.set(dayKey(new Date()), []);
           events.forEach(item => {
             let cursor = new Date(eventStart(item));
             cursor.setHours(0, 0, 0, 0);
@@ -727,8 +842,7 @@ object DesktopSyncWebAssets {
               cursor.setDate(cursor.getDate() + 1);
             }
           });
-          const keys = Array.from(dayMap.keys()).sort();
-          const visibleKeys = getVisibleEventKeys(keys);
+          const visibleKeys = getVisibleEventKeys();
           const visibleDays = visibleKeys.map(key => {
             const items = (dayMap.get(key) || []).slice().sort((a, b) => eventStart(a) - eventStart(b));
             return {
@@ -740,28 +854,13 @@ object DesktopSyncWebAssets {
           });
           const totalAllDay = visibleDays.reduce((sum, day) => sum + day.allDay.length, 0);
           const totalTimed = visibleDays.reduce((sum, day) => sum + day.timed.length, 0);
-          els.eventSummary.innerHTML = [
-            renderSummaryCard('活动日程', events.length),
-            renderSummaryCard('可切换日期', keys.length),
-            renderSummaryCard('当前视图', visibleKeys.length + ' 天'),
-            renderSummaryCard('当前全天', totalAllDay),
-            renderSummaryCard('当前定时', totalTimed)
-          ].join('');
-          els.eventDayStrip.innerHTML = keys.length
-            ? keys.map(key => renderDayPill(key, (dayMap.get(key) || []).length)).join('')
-            : '<div class="empty-state">当前没有活动日程。创建后会在这里按日期排开。</div>';
           els.eventDayHeaders.style.setProperty('--day-count', String(visibleKeys.length || 1));
           els.eventTimeline.style.setProperty('--day-count', String(visibleKeys.length || 1));
           els.allDayList.style.setProperty('--day-count', String(visibleKeys.length || 1));
           els.eventDayHeaders.innerHTML = visibleDays.map(day => renderEventDayHeader(day.key, day.items)).join('');
-          document.querySelectorAll('[data-day]').forEach(node => {
-            node.onclick = () => {
-              state.selectedEventDay = node.dataset.day;
-              renderEvents();
-            };
-          });
+          if (els.eventAnchorDate) els.eventAnchorDate.value = state.selectedEventDay;
           els.eventSelectedDate.textContent = renderVisibleRangeTitle(visibleKeys);
-          els.eventSelectedSubtitle.textContent = '基准日：' + formatCompactDateLabel(state.selectedEventDay) + ' · 全天 ' + totalAllDay + ' 项，定时 ' + totalTimed + ' 项';
+          els.eventSelectedSubtitle.textContent = '起始日：' + formatCompactDateLabel(state.selectedEventDay) + ' · 连续 ' + visibleKeys.length + ' 天 · 全天 ' + totalAllDay + ' 项，定时 ' + totalTimed + ' 项';
           els.allDayList.innerHTML = visibleDays.map(day => renderAllDayDay(day.key, day.allDay)).join('');
           els.hourAxis.innerHTML = renderHourAxis();
           els.eventTimeline.innerHTML = visibleDays.map(day => renderEventDayColumn(day.key, day.timed)).join('');
@@ -779,6 +878,20 @@ object DesktopSyncWebAssets {
               const id = Number(node.dataset.eventId);
               const eventItem = (state.snapshot?.events || []).find(item => item.id === id);
               if (eventItem) openEventEditor(eventItem);
+            };
+          });
+          document.querySelectorAll('[data-column-day]').forEach(node => {
+            node.onclick = event => {
+              if (event.target.closest('[data-event-id]')) return;
+              const rect = node.getBoundingClientRect();
+              const relativeY = Math.max(0, Math.min(rect.height, event.clientY - rect.top));
+              const minutes = Math.round((relativeY / HOUR_HEIGHT) * 4) * 15;
+              const baseMillis = dayStartMillis(node.dataset.columnDay) + minutes * 60 * 1000;
+              const startMillis = snapToQuarterHour(baseMillis);
+              const endMillis = startMillis + THIRTY_MINUTES;
+              clearEventForm();
+              setEventSeed(startMillis, endMillis);
+              openModal('event-modal');
             };
           });
           bindActions();
@@ -815,10 +928,11 @@ object DesktopSyncWebAssets {
         }
 
         function clearTodoForm() {
+          fillGroupSelect('todo-group');
           document.getElementById('todo-title').value = '';
           document.getElementById('todo-notes').value = '';
-          document.getElementById('todo-due').value = '';
-          document.getElementById('todo-reminder').value = '';
+          writeDateTimeValue('todo-due', '');
+          writeDateTimeValue('todo-reminder', '');
           document.getElementById('todo-recurrence-type').value = 'NONE';
           document.getElementById('todo-recurrence-end').value = '';
           document.getElementById('todo-weekdays').value = '';
@@ -828,20 +942,24 @@ object DesktopSyncWebAssets {
 
         function clearEventForm() {
           state.editingEventId = null;
+          state.pendingEventSeed = null;
+          fillGroupSelect('event-group');
           document.getElementById('event-modal-title').textContent = '新增日程';
           document.getElementById('event-modal-subtitle').textContent = '日程编辑先集中在弹层，主体区域优先展示时间轴。';
           document.getElementById('save-event').textContent = '创建日程';
           document.getElementById('delete-event').classList.add('hidden');
           document.getElementById('event-title').value = '';
+          document.getElementById('event-color').value = DEFAULT_EVENT_COLOR;
           document.getElementById('event-location').value = '';
           document.getElementById('event-notes').value = '';
-          document.getElementById('event-start').value = '';
-          document.getElementById('event-end').value = '';
+          writeDateTimeValue('event-start', '');
+          writeDateTimeValue('event-end', '');
           document.getElementById('event-reminder-mode').value = 'NOTIFICATION';
           document.getElementById('event-reminder-offsets').value = '';
           document.getElementById('event-recurrence-type').value = 'NONE';
           document.getElementById('event-recurrence-end').value = '';
           document.getElementById('event-weekdays').value = '';
+          document.getElementById('event-all-day').checked = false;
           document.getElementById('event-ring').checked = true;
           document.getElementById('event-vibrate').checked = true;
         }
@@ -863,23 +981,42 @@ object DesktopSyncWebAssets {
 
         function openEventEditor(item) {
           state.editingEventId = item.id;
+          state.pendingEventSeed = null;
+          fillGroupSelect('event-group', item.groupId);
           document.getElementById('event-modal-title').textContent = '编辑日程';
           document.getElementById('event-modal-subtitle').textContent = '点击已有日程后可直接修改或删除。';
           document.getElementById('save-event').textContent = '保存修改';
           document.getElementById('delete-event').classList.remove('hidden');
           document.getElementById('event-title').value = item.title || '';
+          document.getElementById('event-color').value = item.accentColorHex || item.groupColorHex || DEFAULT_EVENT_COLOR;
           document.getElementById('event-location').value = item.location || '';
           document.getElementById('event-notes').value = item.notes || '';
-          document.getElementById('event-start').value = formatDateTimeLocalValue(item.startAtMillis);
-          document.getElementById('event-end').value = formatDateTimeLocalValue(item.endAtMillis || item.startAtMillis);
+          writeDateTimeValue('event-start', formatDateTimeLocalValue(item.startAtMillis));
+          writeDateTimeValue('event-end', formatDateTimeLocalValue(item.endAtMillis || item.startAtMillis));
           document.getElementById('event-reminder-mode').value = item.reminderDeliveryMode || 'NOTIFICATION';
           document.getElementById('event-reminder-offsets').value = (item.reminderOffsetsMinutes || []).join(',');
           document.getElementById('event-recurrence-type').value = recurrenceTypeValue(item);
           document.getElementById('event-recurrence-end').value = item.recurrenceEndDate || '';
           document.getElementById('event-weekdays').value = (item.recurrenceWeekdays || []).join(',');
+          document.getElementById('event-all-day').checked = item.allDay === true;
           document.getElementById('event-ring').checked = item.ringEnabled !== false;
           document.getElementById('event-vibrate').checked = item.vibrateEnabled !== false;
           openModal('event-modal');
+        }
+
+        function bindDigitInputs() {
+          document.querySelectorAll('.digit-input').forEach(node => {
+            node.addEventListener('input', () => {
+              const digitsOnly = node.value.replace(/\D+/g, '').slice(0, Number(node.dataset.maxlength || node.maxLength || 4));
+              node.value = digitsOnly;
+              if (digitsOnly.length >= Number(node.dataset.maxlength || node.maxLength || 4) && node.dataset.next) {
+                document.getElementById(node.dataset.next)?.focus();
+              }
+            });
+            node.addEventListener('blur', () => {
+              if (node.dataset.pad && node.value) node.value = node.value.padStart(Number(node.dataset.pad), '0');
+            });
+          });
         }
 
         function openModal(id) {
@@ -925,8 +1062,27 @@ object DesktopSyncWebAssets {
             document.getElementById('todo-section-today')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
           }
         };
+        els.eventPrevDay.onclick = () => {
+          state.selectedEventDay = addDays(state.selectedEventDay, -1);
+          renderEvents();
+        };
+        els.eventNextDay.onclick = () => {
+          state.selectedEventDay = addDays(state.selectedEventDay, 1);
+          renderEvents();
+        };
+        els.applyEventDay.onclick = () => {
+          if (!els.eventAnchorDate.value) return;
+          state.selectedEventDay = els.eventAnchorDate.value;
+          renderEvents();
+        };
         els.openCreate.onclick = () => {
-          if (state.currentTab === 'events') clearEventForm();
+          if (state.currentTab === 'events') {
+            clearEventForm();
+            const start = snapToQuarterHour(Date.now() + THIRTY_MINUTES);
+            setEventSeed(start, start + THIRTY_MINUTES);
+          } else {
+            clearTodoForm();
+          }
           openModal(state.currentTab === 'todos' ? 'todo-modal' : 'event-modal');
         };
         document.querySelectorAll('[data-tab]').forEach(node => {
@@ -952,13 +1108,16 @@ object DesktopSyncWebAssets {
         });
 
         document.getElementById('create-todo').onclick = async () => {
+          const dueAt = readDateTimeValue('todo-due');
+          const reminderAt = readDateTimeValue('todo-reminder');
           await api('/api/todos', {
             method: 'POST',
             body: JSON.stringify({
               title: document.getElementById('todo-title').value,
               notes: document.getElementById('todo-notes').value,
-              dueAt: document.getElementById('todo-due').value || null,
-              reminderAt: document.getElementById('todo-reminder').value || null,
+              dueAt: dueAt,
+              reminderAt: reminderAt,
+              groupId: Number(document.getElementById('todo-group').value || 0),
               ringEnabled: document.getElementById('todo-ring').checked,
               vibrateEnabled: document.getElementById('todo-vibrate').checked,
               recurrence: recurrencePayload(
@@ -974,12 +1133,17 @@ object DesktopSyncWebAssets {
         };
 
         document.getElementById('save-event').onclick = async () => {
+          const startAt = readDateTimeValue('event-start');
+          const endAt = readDateTimeValue('event-end');
           const payload = {
             title: document.getElementById('event-title').value,
+            groupId: Number(document.getElementById('event-group').value || 0),
             location: document.getElementById('event-location').value,
             notes: document.getElementById('event-notes').value,
-            startAt: document.getElementById('event-start').value,
-            endAt: document.getElementById('event-end').value,
+            startAt: startAt,
+            endAt: endAt,
+            allDay: document.getElementById('event-all-day').checked,
+            accentColorHex: document.getElementById('event-color').value || DEFAULT_EVENT_COLOR,
             reminderOffsetsMinutes: parseIntList(document.getElementById('event-reminder-offsets').value),
             ringEnabled: document.getElementById('event-ring').checked,
             vibrateEnabled: document.getElementById('event-vibrate').checked,
@@ -1014,6 +1178,7 @@ object DesktopSyncWebAssets {
           await loadSnapshot();
         };
 
+        bindDigitInputs();
         syncTopbar();
       """.trimIndent()
 }

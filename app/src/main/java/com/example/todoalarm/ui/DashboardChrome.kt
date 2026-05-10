@@ -136,6 +136,7 @@ internal fun DashboardDrawer(
     selectedGroupId: Long?,
     selectedThemeMode: ThemeMode,
     onSelectSection: (DashboardSection) -> Unit,
+    onActivateTasksSection: () -> Unit,
     onSelectAllTasks: () -> Unit,
     onSelectGroup: (Long) -> Unit,
     onThemeModeChange: (ThemeMode) -> Unit
@@ -204,7 +205,7 @@ internal fun DashboardDrawer(
                         expanded = taskExpanded,
                         onClick = {
                             taskExpanded = !taskExpanded
-                            onSelectSection(DashboardSection.ACTIVE)
+                            onActivateTasksSection()
                         }
                     )
                     if (taskExpanded) {

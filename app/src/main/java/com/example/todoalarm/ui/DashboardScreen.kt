@@ -111,6 +111,7 @@ fun DashboardScreen(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var section by rememberSaveable { mutableStateOf(DashboardSection.BOARD) }
+    var reopenDrawerAfterThemeChange by rememberSaveable { mutableStateOf(false) }
     var launchVisible by rememberSaveable { mutableStateOf(true) }
     var editorVisible by remember { mutableStateOf(false) }
     var editorKind by remember { mutableStateOf(EditorKind.TODO) }
@@ -134,6 +135,15 @@ fun DashboardScreen(
         }
         if (section == DashboardSection.BOARD) {
             boardVisited = true
+        }
+    }
+
+    LaunchedEffect(uiState.settings.themeMode, reopenDrawerAfterThemeChange) {
+        if (reopenDrawerAfterThemeChange) {
+            if (!drawerState.isOpen) {
+                drawerState.open()
+            }
+            reopenDrawerAfterThemeChange = false
         }
     }
 
@@ -173,20 +183,32 @@ fun DashboardScreen(
                 selectedGroupId = uiState.selectedGroupId,
                 selectedThemeMode = uiState.settings.themeMode,
                 onSelectSection = { next ->
-                    section = next
-                    scope.launch { drawerState.close() }
+                    scope.launch {
+                        drawerState.close()
+                        section = next
+                    }
+                },
+                onActivateTasksSection = {
+                    section = DashboardSection.ACTIVE
                 },
                 onSelectAllTasks = {
-                    section = DashboardSection.ACTIVE
-                    onSelectGroup(null)
-                    scope.launch { drawerState.close() }
+                    scope.launch {
+                        drawerState.close()
+                        section = DashboardSection.ACTIVE
+                        onSelectGroup(null)
+                    }
                 },
                 onSelectGroup = {
-                    section = DashboardSection.ACTIVE
-                    onSelectGroup(it)
-                    scope.launch { drawerState.close() }
+                    scope.launch {
+                        drawerState.close()
+                        section = DashboardSection.ACTIVE
+                        onSelectGroup(it)
+                    }
                 },
-                onThemeModeChange = onThemeModeChange
+                onThemeModeChange = { mode ->
+                    reopenDrawerAfterThemeChange = drawerState.isOpen
+                    onThemeModeChange(mode)
+                },
             )
         }
     ) {

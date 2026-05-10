@@ -1710,6 +1710,7 @@ private fun CalendarTimedBoard(
             CurrentTimeLine(
                 currentDayIndex = currentDayIndex,
                 currentMoment = currentMoment,
+                visibleRange = visibleRange,
                 dayColumnWidthPx = dayColumnWidthPx,
                 horizontalOffsetPx = horizontalOffsetPx,
                 boardHeightPx = with(density) { boardHeight.toPx() },
@@ -1860,6 +1861,7 @@ private fun TimedEventCard(
 private fun CurrentTimeLine(
     currentDayIndex: Int,
     currentMoment: LocalDateTime,
+    visibleRange: IntRange,
     dayColumnWidthPx: Float,
     horizontalOffsetPx: Float,
     boardHeightPx: Float,
@@ -1878,8 +1880,13 @@ private fun CurrentTimeLine(
             val isCurrentDayVisible = splitX in 0f..size.width
 
             if (!isCurrentDayVisible) {
+                val lineColor = if (visibleRange.last < currentDayIndex) {
+                    Color(0xFFF3B2B2)
+                } else {
+                    Color(0xFFE53935)
+                }
                 drawLine(
-                    color = Color(0xFFE53935),
+                    color = lineColor,
                     start = Offset(0f, y),
                     end = Offset(size.width, y),
                     strokeWidth = strokeWidth,

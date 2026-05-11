@@ -4,8 +4,8 @@
 
 ### In Progress
 
-- Verify version `1.6.39` on device after dashboard entry cleanup and board schedule-row alignment
-- Keep `README.md`, `CHANGELOG.md`, and current-state docs aligned with version `1.6.39`
+- Verify version `1.6.40` on device after fixing todo batch DDL same-day time parsing
+- Keep `README.md`, `CHANGELOG.md`, and current-state docs aligned with version `1.6.40`
 - Continue board / dashboard and calendar polish without regressing the current interaction model
 - Improve repo-native handoff so new sessions do not depend on long chat history
 
@@ -32,7 +32,7 @@
 - Desktop web all-day events spanning multiple days should render as one horizontal continuous bar
 - Launcher icon should use the picture-based `ic_launcher_art` adaptive foreground, not the old vector mark
 - Todo and calendar reminder input should accept comma-separated mixed reminder specs and block invalid values
-- Todo batch import should parse line-based `|` separated entries and import multiple todos correctly
+- Todo batch import should parse lightweight comma rows, including same-day DDL like `16:30,写报告,5`
 - Daily board should not show add / batch-add buttons; it is a read-only board surface
 - My Tasks should show only the todo batch-import entry beside the bottom-right `+` button
 - Calendar batch-import should remain available from the calendar surface
@@ -56,6 +56,10 @@
 
 ## Done Recently
 
+- Bumped the app to `1.6.40` / `versionCode 112`
+- Fixed todo batch-import DDL parsing so `16:30` means today 16:30
+- Made todo batch-import DDL parsing accept Chinese colon input such as `16：30`
+- Updated todo batch-import help text and Wiki examples for same-day DDL input
 - Bumped the app to `1.6.39` / `versionCode 111`
 - Removed batch-add buttons from the daily board so the board stays read-only
 - Moved My Tasks batch todo import to the bottom-right FAB area beside the new-todo button

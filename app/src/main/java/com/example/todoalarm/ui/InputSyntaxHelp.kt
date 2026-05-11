@@ -120,6 +120,7 @@ internal fun inputSyntaxHelpLines(topic: InputSyntaxHelpTopic): List<String> {
         InputSyntaxHelpTopic.TodoBatch -> listOf(
             "每行一条待办，字段顺序固定。",
             "格式是：DDL时间,任务名称,提醒时间。",
+            "DDL 可写 HH:mm，表示今天的对应时刻；中文冒号会自动按英文冒号处理。",
             "提醒时间可省略；默认使用默认分组、响铃和震动设置。",
             "待办批量添加为了好手输，一行只支持一个提醒时间。"
         )
@@ -141,7 +142,7 @@ internal fun inputSyntaxHelpLines(topic: InputSyntaxHelpTopic): List<String> {
 internal fun inputSyntaxHelpExample(topic: InputSyntaxHelpTopic): String {
     return when (topic) {
         InputSyntaxHelpTopic.Reminder -> "5,15,16:30,05-10 15:00,2026-05-10 14:30"
-        InputSyntaxHelpTopic.TodoBatch -> "2026-05-12 18:00,写报告,5\n05-13 09:30,给老师发消息,09:00\n无DDL,整理 Obsidian 待办"
+        InputSyntaxHelpTopic.TodoBatch -> "16:30,写报告,5\n05-13 09:30,给老师发消息,09:00\n无DDL,整理 Obsidian 待办"
         InputSyntaxHelpTopic.CalendarBatch -> "2026-04-27: 10:20-11:55, 辅导员助理值班, @MB-B1-412, Remind=5;\n12:30-14:00, 午休"
         InputSyntaxHelpTopic.Snooze -> "5\n16:30\n05-10 15:00"
     }

@@ -10,6 +10,7 @@ This file tracks the product at a practical level for new coding sessions.
 - title / notes / group / deadline / multi-reminder fields
 - no-deadline todos
 - lightweight comma-based todo batch import with preview validation
+- todo batch-import DDL supports same-day clock input such as `16:30` / `16：30`
 - My Tasks exposes todo batch import beside the bottom-right new-todo button instead of as a top content row
 - complete / cancel / restore flows
 - active todo preview now uses the same bottom-sheet visual language as calendar event preview

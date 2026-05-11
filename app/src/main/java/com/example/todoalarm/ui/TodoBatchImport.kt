@@ -142,10 +142,10 @@ internal fun TodoBatchImportDialog(
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text("格式：DDL时间,任务名称,提醒时间")
-                    Text("DDL 支持：2026-05-12 18:00、05-12 18:00、无DDL。")
+                    Text("DDL 支持：16:30、2026-05-12 18:00、05-12 18:00、无DDL；16:30 表示今天 16:30。")
                     Text("提醒时间只写一个：5、16:30、05-10 15:00、2026-05-10 14:30。")
                     Text("如果提醒时刻晚于 DDL，或提醒已经过去，该行会被判定为非法。")
-                    Text("示例：2026-05-12 18:00,写报告,5")
+                    Text("示例：16:30,写报告,5")
                 }
             },
             confirmButton = { TextButton(onClick = { showHelp = false }) { Text("知道了") } }
@@ -274,9 +274,18 @@ private object TodoBatchImportParser {
 }
 
 private fun parseTodoDueAt(raw: String): LocalDateTime? {
-    val token = raw.trim()
+    val token = raw.trim().replace('：', ':')
     if (token.isNoDueToken()) return null
     val now = LocalDateTime.now()
+    ClockTimeTokenRegex.matchEntire(token)?.let { match ->
+        return safeDateTime(
+            year = now.year,
+            month = now.monthValue,
+            day = now.dayOfMonth,
+            hour = match.groupValues[1].toInt(),
+            minute = match.groupValues[2].toInt()
+        )
+    }
     DateTimeTokenRegex.matchEntire(token)?.let { match ->
         return safeDateTime(
             year = match.groupValues[1].toInt(),
@@ -303,6 +312,7 @@ private fun String.isNoDueToken(): Boolean {
     return normalized == "无ddl" || normalized == "无 ddl" || normalized == "无截止" || normalized == "no due" || normalized == "-"
 }
 
+private val ClockTimeTokenRegex = Regex("""^(\d{1,2}):(\d{2})$""")
 private val MonthDayTimeTokenRegex = Regex("""^(\d{1,2})-(\d{1,2})\s+(\d{1,2}):(\d{2})$""")
 private val DateTimeTokenRegex = Regex("""^(\d{4})-(\d{1,2})-(\d{1,2})\s+(\d{1,2}):(\d{2})$""")
 
@@ -316,7 +326,7 @@ private fun safeDateTime(year: Int, month: Int, day: Int, hour: Int, minute: Int
 }
 
 private val TodoBatchImportSampleText = """
-2026-05-12 18:00,写报告,5
+16:30,写报告,5
 05-13 09:30,给老师发消息,09:00
 无DDL,整理 Obsidian 待办
 """.trimIndent()

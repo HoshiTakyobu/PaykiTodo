@@ -7,13 +7,13 @@
 - Package name: `com.paykitodo.app`
 - Target platform: Android 14 / API 34
 - Current version in code:
-  - `versionName = "1.6.39"`
-  - `versionCode = 111`
+  - `versionName = "1.6.40"`
+  - `versionCode = 112`
 
 ## Current Build Facts
 
 - Latest debug APK output:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.6.39-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.6.40-debug.apk`
 - Minimal verification completed in the latest code round:
   - `./gradlew assembleDebug` succeeded with Android Studio bundled `jbr`
 - Current build environment expectation:
@@ -22,11 +22,11 @@
 
 ## Current Worktree Reality
 
-The repository is now at `1.6.39` after cleaning up dashboard batch-entry placement and aligning daily-board schedule rows.
+The repository is now at `1.6.40` after fixing todo batch-import DDL parsing for same-day clock input.
 
 Most important current baseline facts:
 
-- version metadata is `1.6.39 / 111`
+- version metadata is `1.6.40 / 112`
 - launcher adaptive icon foreground now directly uses picture resource `@drawable/ic_launcher_art`
 - old vector mark launcher resources have been deleted so the launcher cannot fall back to them again
 - picture launcher art has been reprocessed to an opaque pure-white background with smaller centered content
@@ -35,6 +35,7 @@ Most important current baseline facts:
 - invalid reminder entries turn the field/error text red and disable the save button
 - normal todos now use `reminderOffsetsCsv` for multi-reminder storage and scheduling, not only the single `reminderAtMillis` field
 - todo batch import uses the lightweight comma syntax `DDL时间,任务名称,提醒时间` and defaults group / ring / vibrate settings
+- todo batch-import DDL accepts `HH:mm` as today's time and also accepts Chinese colon input such as `16：30`
 - calendar batch import `Remind=` fields use the same reminder-time parser as the editors
 - full-screen and accessibility reminder custom snooze inputs accept minutes or a concrete future time
 - reminder / batch / custom snooze input surfaces have nearby question-mark syntax help buttons
@@ -53,7 +54,7 @@ Recent code inspection and build verification cover:
 - `ReminderOffsetCodec.kt`: todo reminder trigger calculation reads configured offsets
 - `TodoRepository.kt`: todo items and recurring templates persist multiple reminder offsets
 - `TodoEditorDialog.kt` and `CalendarEventEditorDialog.kt`: shared input syntax, validation message, save disabling
-- `TodoBatchImport.kt`: lightweight comma-based todo batch parser/dialog and syntax help
+- `TodoBatchImport.kt`: lightweight comma-based todo batch parser/dialog, including same-day DDL time parsing
 - `ReminderActivity.kt` and `ReminderAccessibilityOverlay.kt`: custom snooze input uses shared time parsing
 - `InputSyntaxHelp.kt`: shared question-mark help button and syntax help dialog
 - `app/src/main/assets/wiki/index.html`: current input syntax documentation
@@ -61,7 +62,7 @@ Recent code inspection and build verification cover:
 
 ## Documentation Health
 
-Current docs have been synchronized for `1.6.39`:
+Current docs have been synchronized for `1.6.40`:
 
 - `README.md`
 - `CHANGELOG.md`

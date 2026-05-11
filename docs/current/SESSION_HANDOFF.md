@@ -6,40 +6,38 @@ Long-running Codex sessions can become unreliable. This file exists so a new ses
 
 ## Current Handoff Summary
 
-- The project is currently at code version `1.6.39` / `versionCode 111`
-- Latest debug APK path: `app/build/outputs/apk/debug/PaykiTodo-1.6.39-debug.apk`
+- The project is currently at code version `1.6.40` / `versionCode 112`
+- Latest debug APK path: `app/build/outputs/apk/debug/PaykiTodo-1.6.40-debug.apk`
 - Minimal verification passed:
   - `./gradlew assembleDebug` using Android Studio bundled `jbr`
-- Latest feature round fixed Daily Board and My Tasks entry placement:
+- Latest feature round fixed todo batch-import DDL parsing:
+  1. `16:30` in the DDL field now resolves to today 16:30.
+  2. `16：30` with a Chinese colon is normalized and accepted.
+  3. `05-13 09:30`, `2026-05-12 18:00`, and `无DDL` remain supported.
+  4. Same-day times that have already passed still fail the existing future-DDL validation.
+  5. Todo batch-import help text, shared input help, and Wiki examples now document the same-day DDL form.
+
+Previous feature round fixed Daily Board and My Tasks entry placement:
   1. Daily Board no longer shows add / batch-add buttons; it is treated as a read-only board surface.
   2. My Tasks no longer shows the old top double-button row.
   3. My Tasks now exposes only `批量待办` beside the bottom-right `+` new-todo button.
   4. Calendar batch import remains on the calendar surface.
   5. Daily-board schedule event color strips now use intrinsic row height and fill the right-side text block height.
 
-Previous feature round fixed the picture-based launcher icon art:
-  1. `ic_launcher.xml` and `ic_launcher_round.xml` still use `@drawable/ic_launcher_art` as foreground
-  2. `ic_launcher_art`, `ic_launcher_art_v2`, and `ic_launcher_art_dark` are opaque pure-white-background PNGs
-  3. icon content was scaled down and centered to avoid over-full desktop rendering
-  4. launcher adaptive background is pure white
-  5. device-side verification should reinstall the APK and clear launcher cache if Android still shows a stale icon
-
 Previous feature round addressed reminder input, batch import, custom snooze parsing, and syntax discoverability:
   1. Todo and calendar editors now share a comma-separated reminder input syntax
   2. Supported reminder tokens include relative minutes, same-day `HH:mm`, current-year `MM-DD HH:mm`, and full `YYYY-MM-DD HH:mm`
-  3. Reminder entries later than DDL / event start, malformed entries, and new-item past reminders are rejected in the editor UI
-  4. Normal todos now persist and schedule multiple reminder offsets through `reminderOffsetsCsv`
-  5. Todo batch import now uses lightweight comma rows: `DDL时间,任务名称,提醒时间`
-  6. Calendar batch `Remind=` and custom snooze inputs reuse the same reminder-time parser
-  7. Question-mark help buttons now sit beside key input fields and open syntax examples
-  8. In-app Wiki is updated for current reminder / batch / snooze syntax
+  3. Normal todos now persist and schedule multiple reminder offsets through `reminderOffsetsCsv`
+  4. Todo batch import uses lightweight comma rows: `DDL时间,任务名称,提醒时间`
+  5. Calendar batch `Remind=` and custom snooze inputs reuse the same reminder-time parser
+  6. Question-mark help buttons sit beside key input fields and open syntax examples
 
 ## Files Most Relevant To The Latest Round
 
 - `app/build.gradle.kts`
-- `app/src/main/java/com/example/todoalarm/ui/DashboardScreen.kt`
-- `app/src/main/java/com/example/todoalarm/ui/DashboardChrome.kt`
-- `app/src/main/java/com/example/todoalarm/ui/CalendarPanel.kt`
+- `app/src/main/java/com/example/todoalarm/ui/TodoBatchImport.kt`
+- `app/src/main/java/com/example/todoalarm/ui/InputSyntaxHelp.kt`
+- `app/src/main/assets/wiki/index.html`
 - `README.md`
 - `CHANGELOG.md`
 - `TODO.md`
@@ -64,23 +62,25 @@ Shared reminder input examples:
 Todo batch-import syntax uses lightweight comma rows:
 
 ```text
-2026-05-12 18:00,写报告,5
+16:30,写报告,5
 05-13 09:30,给老师发消息,09:00
 无DDL,整理 Obsidian 待办
 ```
 
-Todo batch rows intentionally default group / ring / vibrate and accept only one reminder token to keep hand input fast.
+- The first DDL field can be `HH:mm`; it means today at that time.
+- A Chinese colon is accepted in the DDL field, so `16：30` is treated like `16:30`.
+- Todo batch rows intentionally default group / ring / vibrate and accept only one reminder token to keep hand input fast.
 
 ## Smallest Safe Next Step
 
 The next session should device-test the current APK rather than immediately refactor:
 
-1. Install `PaykiTodo-1.6.39-debug.apk`
-2. Open Daily Board and confirm no add / batch-add buttons are visible
-3. Confirm each Daily Board schedule row's color strip height matches the event text block
-4. Open My Tasks and confirm `批量待办` is beside the bottom-right `+` button
-5. Open Calendar and confirm calendar batch import remains available there
-6. Verify the existing reminder input, todo batch import, calendar batch import, and Wiki help still work
+1. Install `PaykiTodo-1.6.40-debug.apk`
+2. Open My Tasks -> `批量待办`
+3. Test `16:30,写报告,5` while 16:30 is still in the future
+4. Test `16：30,写报告,5`
+5. Test a same-day time that has already passed and verify it is rejected
+6. Verify previous Daily Board / My Tasks entry placement from 1.6.39 still looks correct
 
 ## Required Reading For A New Session
 

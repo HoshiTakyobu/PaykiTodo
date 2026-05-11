@@ -40,6 +40,7 @@ import com.example.todoalarm.data.RecurrenceScope
 import com.example.todoalarm.data.ReminderDeliveryMode
 import com.example.todoalarm.data.ScheduleTemplate
 import com.example.todoalarm.data.ScheduleTemplateType
+import com.example.todoalarm.data.storageStringToWeekdays
 import com.example.todoalarm.data.ThemeMode
 import com.example.todoalarm.data.TodoDraft
 import com.example.todoalarm.data.TodoItem
@@ -66,6 +67,8 @@ private enum class EditorKind {
 fun DashboardScreen(
     uiState: TodoUiState,
     permissions: PermissionSnapshot,
+    launchRoute: DashboardLaunchRoute? = null,
+    launchRouteSerial: Int = 0,
     onRequestNotificationPermission: () -> Unit,
     onRequestExactAlarmPermission: () -> Unit,
     onRequestFullScreenPermission: () -> Unit,
@@ -123,6 +126,12 @@ fun DashboardScreen(
     var scopeDialogMode by remember { mutableStateOf<ScopeDialogMode?>(null) }
     var lastBackPressedAt by rememberSaveable { mutableLongStateOf(0L) }
     var boardVisited by rememberSaveable { mutableStateOf(false) }
+
+    LaunchedEffect(launchRouteSerial) {
+        if (launchRoute?.settingsSectionKey != null) {
+            section = DashboardSection.SETTINGS
+        }
+    }
 
     LaunchedEffect(Unit) {
         delay(1600)
@@ -184,8 +193,8 @@ fun DashboardScreen(
                 selectedThemeMode = uiState.settings.themeMode,
                 onSelectSection = { next ->
                     scope.launch {
-                        drawerState.close()
                         section = next
+                        drawerState.close()
                     }
                 },
                 onActivateTasksSection = {
@@ -193,16 +202,16 @@ fun DashboardScreen(
                 },
                 onSelectAllTasks = {
                     scope.launch {
-                        drawerState.close()
                         section = DashboardSection.ACTIVE
                         onSelectGroup(null)
+                        drawerState.close()
                     }
                 },
                 onSelectGroup = {
                     scope.launch {
-                        drawerState.close()
                         section = DashboardSection.ACTIVE
                         onSelectGroup(it)
+                        drawerState.close()
                     }
                 },
                 onThemeModeChange = { mode ->
@@ -271,6 +280,8 @@ fun DashboardScreen(
             ) { padding ->
                 DashboardBody(
                     section = section,
+                    settingsInitialSectionKey = launchRoute?.settingsSectionKey,
+                    settingsInitialSectionSerial = launchRouteSerial,
                     padding = padding,
                     uiState = uiState,
                     permissions = permissions,
@@ -318,6 +329,43 @@ fun DashboardScreen(
                         editScope = RecurrenceScope.CURRENT
                         editorVisible = true
                     },
+                    onMoveCalendarEvent = { item, startAt, endAt ->
+                        scope.launch {
+                            val recurrence = if (item.isRecurring) {
+                                RecurrenceConfig(
+                                    enabled = true,
+                                    type = item.recurrenceTypeEnum,
+                                    weeklyDays = storageStringToWeekdays(item.recurrenceWeekdays),
+                                    endDate = item.recurrenceEndDate
+                                )
+                            } else {
+                                RecurrenceConfig()
+                            }
+                            val draft = CalendarEventDraft(
+                                title = item.title,
+                                notes = item.notes,
+                                location = item.location,
+                                startAt = startAt,
+                                endAt = endAt,
+                                allDay = item.allDay,
+                                accentColorHex = item.accentColorHex ?: "#4E87E1",
+                                reminderMinutesBefore = item.configuredReminderOffsetsMinutes.minOrNull(),
+                                reminderOffsetsMinutes = item.configuredReminderOffsetsMinutes,
+                                ringEnabled = item.ringEnabled,
+                                vibrateEnabled = item.vibrateEnabled,
+                                reminderDeliveryMode = item.reminderDeliveryModeEnum,
+                                recurrence = recurrence,
+                                groupId = item.groupId
+                            )
+                            val targetScope = if (item.isRecurring) RecurrenceScope.CURRENT_AND_FUTURE else RecurrenceScope.CURRENT
+                            val message = onUpdateCalendarEvent(item, draft, targetScope)
+                            Toast.makeText(
+                                context,
+                                message ?: if (item.isRecurring) "已调整本次及后续日程" else "日程已移动",
+                                Toast.LENGTH_SHORT
+                            ).show()
+                        }
+                    },
                     onCompleteTodo = onCompleteTodo,
                     onRestoreTodo = onRestoreTodo,
                     onCancelTodo = { item ->
@@ -327,6 +375,10 @@ fun DashboardScreen(
                         } else {
                             onCancelTodo(item, RecurrenceScope.CURRENT)
                         }
+                    },
+                    onDeleteTodo = { item ->
+                        onDeleteTodo(item)
+                        Toast.makeText(context, "任务已删除", Toast.LENGTH_SHORT).show()
                     },
                     onDeleteCalendarEvent = { item ->
                         if (item.isRecurring) {
@@ -403,14 +455,6 @@ fun DashboardScreen(
                 editorVisible = false
                 editingItem = null
             },
-            onDelete = {
-                editingItem?.let {
-                    onDeleteTodo(it)
-                    editorVisible = false
-                    editingItem = null
-                    Toast.makeText(context, "任务已删除", Toast.LENGTH_SHORT).show()
-                }
-            },
             onConfirm = { draft ->
                 scope.launch {
                     val current = editingItem?.takeIf { it.isTodo }
@@ -448,19 +492,6 @@ fun DashboardScreen(
                 editorVisible = false
                 editingItem = null
                 calendarDraftSeed = null
-            },
-            onDelete = {
-                val current = editingItem?.takeIf { it.isEvent } ?: return@CalendarEventEditorDialog
-                editorVisible = false
-                editingItem = null
-                calendarDraftSeed = null
-                if (current.isRecurring) {
-                    scopeDialogTarget = current
-                    scopeDialogMode = ScopeDialogMode.DELETE_EVENT
-                } else {
-                    onDeleteCalendarEvent(current, RecurrenceScope.CURRENT)
-                    Toast.makeText(context, "日程已删除", Toast.LENGTH_SHORT).show()
-                }
             },
             onConfirm = { draft ->
                 scope.launch {

@@ -3,6 +3,7 @@ package com.example.todoalarm.sync
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
+import android.app.PendingIntent
 import android.app.Service
 import android.content.Context
 import android.content.Intent
@@ -12,15 +13,29 @@ import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
 import com.example.todoalarm.R
 import com.example.todoalarm.TodoApplication
+import com.example.todoalarm.ui.MainActivity
 
 class DesktopSyncService : Service() {
     override fun onCreate() {
         super.onCreate()
         ensureChannel()
+        val contentIntent = PendingIntent.getActivity(
+            this,
+            0,
+            Intent(this, MainActivity::class.java).apply {
+                addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+                putExtra(
+                    MainActivity.EXTRA_OPEN_SETTINGS_SECTION,
+                    MainActivity.SETTINGS_SECTION_DESKTOP_SYNC
+                )
+            },
+            PendingIntent.FLAG_UPDATE_CURRENT or immutableFlag()
+        )
         val notification = NotificationCompat.Builder(this, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_stat_payki_todo)
             .setContentTitle("PaykiTodo 电脑同步已运行")
             .setContentText("同局域网电脑可通过浏览器连接此手机，直接编辑待办与日程。")
+            .setContentIntent(contentIntent)
             .setOngoing(true)
             .build()
         startForeground(NOTIFICATION_ID, notification)
@@ -63,5 +78,9 @@ class DesktopSyncService : Service() {
         fun start(context: Context) {
             ContextCompat.startForegroundService(context, Intent(context, DesktopSyncService::class.java))
         }
+    }
+
+    private fun immutableFlag(): Int {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) PendingIntent.FLAG_IMMUTABLE else 0
     }
 }

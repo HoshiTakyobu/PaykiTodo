@@ -135,6 +135,7 @@ private fun GroupEditorDialog(
     var name by remember(initial?.id) { mutableStateOf(initial?.name.orEmpty()) }
     var colorHex by remember(initial?.id) { mutableStateOf(initial?.colorHex ?: GroupColorPalette.first()) }
     var message by remember { mutableStateOf<String?>(null) }
+    var showDeleteConfirm by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
 
     AlertDialog(
@@ -186,14 +187,7 @@ private fun GroupEditorDialog(
             Row {
                 if (initial != null && onDelete != null && !initial.isDefault) {
                     TextButton(onClick = {
-                        scope.launch {
-                            val result = onDelete()
-                            if (result == null) {
-                                onDismiss()
-                            } else {
-                                message = result
-                            }
-                        }
+                        showDeleteConfirm = true
                     }) {
                         Text("删除")
                     }
@@ -204,4 +198,25 @@ private fun GroupEditorDialog(
             }
         }
     )
+
+    if (showDeleteConfirm && initial != null && onDelete != null) {
+        PaykiDecisionBottomSheet(
+            title = "删除分组",
+            message = "确定删除“${initial.name}”吗？删除后无法恢复。",
+            confirmLabel = "删除",
+            confirmLabelColor = MaterialTheme.colorScheme.error,
+            onDismiss = { showDeleteConfirm = false },
+            onConfirm = {
+                scope.launch {
+                    showDeleteConfirm = false
+                    val result = onDelete()
+                    if (result == null) {
+                        onDismiss()
+                    } else {
+                        message = result
+                    }
+                }
+            }
+        )
+    }
 }

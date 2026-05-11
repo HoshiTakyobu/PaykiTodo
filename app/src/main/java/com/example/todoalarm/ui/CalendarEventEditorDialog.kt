@@ -104,7 +104,6 @@ internal fun CalendarEventEditorDialog(
     defaultVibrateEnabled: Boolean,
     defaultReminderDeliveryMode: ReminderDeliveryMode,
     onDismiss: () -> Unit,
-    onDelete: () -> Unit,
     onConfirm: (CalendarEventDraft) -> Unit
 ) {
     val context = LocalContext.current
@@ -178,26 +177,37 @@ internal fun CalendarEventEditorDialog(
     var showRecurrencePicker by remember { mutableStateOf(false) }
     var activeDateTimeTarget by remember { mutableStateOf<CalendarDateTimeTarget?>(null) }
 
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = {
-            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text(if (initialEvent == null) "新增日程" else "编辑日程", fontWeight = FontWeight.Bold)
-                Text(
-                    text = "主题、时间、重复、地点、描述、提醒与颜色都在这里完成设置。",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+    EditorBottomSheet(
+        title = if (initialEvent == null) "新增日程" else "编辑日程",
+        subtitle = "主题、时间、重复、地点、描述、提醒与颜色都在这里完成设置。",
+        confirmLabel = if (initialEvent == null) "创建" else "保存",
+        onDismiss = onDismiss,
+        onConfirm = {
+            val normalizedOffsets = if (reminderEnabled) normalizeReminderOffsets(reminderOffsetsMinutes) else emptyList()
+            onConfirm(
+                CalendarEventDraft(
+                    title = title,
+                    notes = notes,
+                    location = location,
+                    startAt = startAt,
+                    endAt = endAt,
+                    allDay = allDay,
+                    accentColorHex = accentColorHex,
+                    reminderMinutesBefore = normalizedOffsets.minOrNull(),
+                    reminderOffsetsMinutes = normalizedOffsets,
+                    ringEnabled = ringEnabled,
+                    vibrateEnabled = vibrateEnabled,
+                    reminderDeliveryMode = reminderDeliveryMode,
+                    recurrence = RecurrenceConfig(
+                        enabled = recurringEnabled,
+                        type = recurrenceType,
+                        weeklyDays = weeklyDays,
+                        endDate = recurrenceEndDate
+                    )
                 )
-            }
-        },
-        text = {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .heightIn(max = 640.dp)
-                    .verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
+            )
+        }
+    ) {
                 EditorBlock(title = "主题") {
                     OutlinedTextField(
                         value = title,
@@ -240,7 +250,7 @@ internal fun CalendarEventEditorDialog(
                                 }
                             )
                             EditorMiddlePill(
-                                modifier = Modifier.width(60.dp),
+                                modifier = Modifier.width(86.dp),
                                 label = formatAllDaySpan(startAt.toLocalDate(), endAt.toLocalDate())
                             )
                             EditorDateSelectorCard(
@@ -274,7 +284,7 @@ internal fun CalendarEventEditorDialog(
                                 }
                             )
                             EditorMiddlePill(
-                                modifier = Modifier.width(48.dp),
+                                modifier = Modifier.width(92.dp),
                                 label = formatTimedSpan(startAt, endAt)
                             )
                             EditorDateTimeSelectorCard(
@@ -514,52 +524,7 @@ internal fun CalendarEventEditorDialog(
                         }
                     }
                 }
-            }
-        },
-        confirmButton = {
-            Button(
-                onClick = {
-                    val normalizedOffsets = if (reminderEnabled) normalizeReminderOffsets(reminderOffsetsMinutes) else emptyList()
-                    onConfirm(
-                        CalendarEventDraft(
-                            title = title,
-                            notes = notes,
-                            location = location,
-                            startAt = startAt,
-                            endAt = endAt,
-                            allDay = allDay,
-                            accentColorHex = accentColorHex,
-                            reminderMinutesBefore = normalizedOffsets.minOrNull(),
-                            reminderOffsetsMinutes = normalizedOffsets,
-                            ringEnabled = ringEnabled,
-                            vibrateEnabled = vibrateEnabled,
-                            reminderDeliveryMode = reminderDeliveryMode,
-                            recurrence = RecurrenceConfig(
-                                enabled = recurringEnabled,
-                                type = recurrenceType,
-                                weeklyDays = weeklyDays,
-                                endDate = recurrenceEndDate
-                            )
-                        )
-                    )
-                }
-            ) {
-                Text(if (initialEvent == null) "创建日程" else "保存修改")
-            }
-        },
-        dismissButton = {
-            Row {
-                if (initialEvent != null) {
-                    TextButton(onClick = onDelete) {
-                        Text("删除")
-                    }
-                }
-                TextButton(onClick = onDismiss) {
-                    Text("取消")
-                }
-            }
-        }
-    )
+    }
 
     recurrencePreview?.let { preview ->
         RecurrencePreviewDialog(

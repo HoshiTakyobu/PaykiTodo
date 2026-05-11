@@ -95,6 +95,8 @@ fun SettingsPanel(
     permissions: PermissionSnapshot,
     defaultSnooze: Int,
     crashLog: String?,
+    initialSectionKey: String? = null,
+    initialSectionSerial: Int = 0,
     onRequestNotificationPermission: () -> Unit,
     onRequestExactAlarmPermission: () -> Unit,
     onRequestFullScreenPermission: () -> Unit,
@@ -126,27 +128,18 @@ fun SettingsPanel(
     var selectedSection by remember { mutableStateOf<SettingsSection?>(null) }
     val scope = rememberCoroutineScope()
 
-    LazyColumn(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-        item {
-            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text(
-                    text = "设置目录",
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-                Text(
-                    text = "先从上面的目录进入二级面板，再修改具体选项。这样不会把所有调试项一次性堆在一个超长页面里。",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
+    LaunchedEffect(initialSectionSerial) {
+        selectedSection = when (initialSectionKey) {
+            MainActivity.SETTINGS_SECTION_DESKTOP_SYNC -> SettingsSection.DESKTOP_SYNC
+            else -> selectedSection
         }
+    }
 
+    LazyColumn(verticalArrangement = Arrangement.spacedBy(16.dp)) {
         item {
             SettingsCategoryHeader(
                 title = "提醒与权限",
-                summary = "优先保证通知、全屏、辅助功能和提醒链路诊断是通的。"
+                summary = null
             )
         }
         item {
@@ -170,7 +163,7 @@ fun SettingsPanel(
         item {
             SettingsCategoryHeader(
                 title = "日历与声音",
-                summary = "调整默认延后、周起始日、日历提醒方式和提示音来源。"
+                summary = null
             )
         }
         item {
@@ -194,7 +187,7 @@ fun SettingsPanel(
         item {
             SettingsCategoryHeader(
                 title = "数据与帮助",
-                summary = "使用说明、关于、备份恢复和崩溃日志都放在这里。"
+                summary = null
             )
         }
         item {
@@ -202,39 +195,35 @@ fun SettingsPanel(
                 SettingsMenuItem(
                     icon = Icons.Rounded.ManageSearch,
                     title = "使用说明",
-                    summary = "主界面、日历、批量导入、模板、提醒测试、备份都在这里写明",
+                    summary = null,
                     onClick = { selectedSection = SettingsSection.HELP }
                 )
                 SettingsMenuDivider()
                 SettingsMenuItem(
                     icon = Icons.Rounded.Folder,
                     title = "关于",
-                    summary = "版本号、包名、作者、版权与项目定位",
+                    summary = null,
                     onClick = { selectedSection = SettingsSection.ABOUT }
                 )
                 SettingsMenuDivider()
                 SettingsMenuItem(
                     icon = Icons.Rounded.Storage,
                     title = "数据与备份",
-                    summary = "导出、导入 JSON，自动备份目录与自动备份",
+                    summary = null,
                     onClick = { selectedSection = SettingsSection.BACKUP }
                 )
                 SettingsMenuDivider()
                 SettingsMenuItem(
                     icon = Icons.Rounded.Computer,
                     title = "电脑同步",
-                    summary = if (desktopSyncStatus.running) {
-                        "已运行，电脑可通过浏览器连接手机"
-                    } else {
-                        "局域网浏览器控制台，可直接改手机里的待办和日程"
-                    },
+                    summary = null,
                     onClick = { selectedSection = SettingsSection.DESKTOP_SYNC }
                 )
                 SettingsMenuDivider()
                 SettingsMenuItem(
                     icon = Icons.AutoMirrored.Rounded.Article,
                     title = "崩溃日志",
-                    summary = if (crashLog.isNullOrBlank()) "当前没有新的崩溃日志" else "最近一次异常退出日志已记录",
+                    summary = null,
                     onClick = { selectedSection = SettingsSection.CRASH }
                 )
             }
@@ -256,12 +245,10 @@ fun SettingsPanel(
         SettingsSection.CALENDAR -> SettingsSectionDialog("日历与提醒", { selectedSection = null }) {
             Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
                 Text("默认延后时长", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
-                Text("点击按钮后再选择默认延后时长，避免上下滑动页面时误触。", color = MaterialTheme.colorScheme.onSurfaceVariant)
                 OutlinedButton(onClick = { showSnoozeDialog = true }) { Text("当前：${normalizeSnooze(defaultSnooze)} 分钟") }
 
                 Spacer(modifier = Modifier.height(4.dp))
                 Text("日历周起始日", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
-                Text("周视图和按周筛选时，按这里设置的一周起始日计算。默认是周一开始。", color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     CalendarReminderModeButton(WeekStartMode.MONDAY.label, settings.weekStartMode == WeekStartMode.MONDAY) { onWeekStartModeChange(WeekStartMode.MONDAY) }
                     CalendarReminderModeButton(WeekStartMode.SUNDAY.label, settings.weekStartMode == WeekStartMode.SUNDAY) { onWeekStartModeChange(WeekStartMode.SUNDAY) }
@@ -269,7 +256,6 @@ fun SettingsPanel(
 
                 Spacer(modifier = Modifier.height(4.dp))
                 Text("日历提醒默认方式", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
-                Text("新建日历日程时，默认采用这里的提醒方式。当前建议是通知栏提醒，并保留响铃和震动。", color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     CalendarReminderModeButton(ReminderDeliveryMode.NOTIFICATION.label, settings.defaultCalendarReminderMode == ReminderDeliveryMode.NOTIFICATION) {
                         onDefaultCalendarReminderModeChange(ReminderDeliveryMode.NOTIFICATION)
@@ -283,7 +269,6 @@ fun SettingsPanel(
 
         SettingsSection.TONE -> SettingsSectionDialog("提示音", { selectedSection = null }) {
             Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
-                Text("当前提醒真正播放时仍走闹钟音量通道，但提示音来源可以从系统通知提示音中选择。", color = MaterialTheme.colorScheme.onSurfaceVariant)
                 PermissionRow(Icons.Rounded.LibraryMusic, settings.reminderToneName ?: "当前：内置提醒音", true, onPickSystemReminderTone)
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     OutlinedButton(onClick = onUseBuiltInReminderTone) { Text("使用内置提醒音") }
@@ -294,7 +279,6 @@ fun SettingsPanel(
 
         SettingsSection.HELP -> SettingsSectionDialog("使用说明", { selectedSection = null }) {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text("内置说明会把主界面、待办编辑、历史记录、日历视图、批量导入、周模板、提醒链路测试、备份和崩溃日志等真实功能逐项解释清楚。", color = MaterialTheme.colorScheme.onSurfaceVariant)
                 OutlinedButton(onClick = onOpenWiki) { Text("打开使用说明") }
             }
         }
@@ -305,7 +289,6 @@ fun SettingsPanel(
 
         SettingsSection.DIAGNOSTICS -> SettingsSectionDialog("提醒链路诊断", { selectedSection = null }) {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text("可以快速创建一条测试提醒，并查看最近的提醒派发链路，减少反复等待一分钟的调试成本。", color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     OutlinedButton(onClick = { showReminderTestDialog = true }) {
                         Icon(Icons.Rounded.BugReport, contentDescription = null)
@@ -337,11 +320,9 @@ fun SettingsPanel(
 
         SettingsSection.BACKUP -> SettingsSectionDialog("数据与备份", { selectedSection = null }) {
             Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
-                Text("支持手动导出、导入 JSON，并可指定自动备份目录。", color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                     Column(modifier = Modifier.weight(1f)) {
                         Text("自动备份", fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
-                        Text("开启后，任务或分组发生变化时会尝试写入备份目录。", color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                     Switch(checked = settings.autoBackupEnabled, onCheckedChange = onAutoBackupChange)
                 }
@@ -356,7 +337,6 @@ fun SettingsPanel(
 
         SettingsSection.DESKTOP_SYNC -> SettingsSectionDialog("电脑同步", { selectedSection = null }) {
             Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
-                Text("开启后，手机会在局域网里启动一个网页控制台。电脑和手机连同一个网络时，电脑浏览器就能直接添加、完成、取消和删除待办与日程。", color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                     Column(modifier = Modifier.weight(1f)) {
                         Text("启用电脑同步", fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
@@ -388,10 +368,6 @@ fun SettingsPanel(
 
         SettingsSection.CRASH -> SettingsSectionDialog("崩溃日志", { selectedSection = null }) {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text(
-                    if (crashLog.isNullOrBlank()) "当前没有新的异常退出日志。" else "已记录最近一次异常退出日志，可以直接查看并复制给我。",
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     OutlinedButton(onClick = { showCrashDialog = true }, enabled = !crashLog.isNullOrBlank()) {
                         Icon(Icons.AutoMirrored.Rounded.Article, contentDescription = null)
@@ -734,7 +710,7 @@ private fun SettingsMenuCard(content: @Composable ColumnScope.() -> Unit) {
 @Composable
 private fun SettingsCategoryHeader(
     title: String,
-    summary: String
+    summary: String?
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
         Text(
@@ -743,11 +719,13 @@ private fun SettingsCategoryHeader(
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.primary.copy(alpha = 0.92f)
         )
-        Text(
-            text = summary,
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.96f)
-        )
+        summary?.takeIf { it.isNotBlank() }?.let {
+            Text(
+                text = it,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.96f)
+            )
+        }
     }
 }
 
@@ -763,7 +741,7 @@ private fun SettingsMenuDivider() {
 private fun SettingsMenuItem(
     icon: ImageVector,
     title: String,
-    summary: String,
+    summary: String?,
     onClick: () -> Unit
 ) {
     Row(
@@ -785,7 +763,9 @@ private fun SettingsMenuItem(
         }
         Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Text(title, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
-            Text(summary, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            summary?.takeIf { it.isNotBlank() }?.let {
+                Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
         }
         Icon(
             Icons.AutoMirrored.Rounded.KeyboardArrowRight,

@@ -63,6 +63,8 @@ class MainActivity : ComponentActivity() {
     private var previewPlayer: MediaPlayer? = null
     private var previewRingtone: Ringtone? = null
     private var previewStopJob: Job? = null
+    private var launchRoute by mutableStateOf<DashboardLaunchRoute?>(null)
+    private var launchRouteSerial by mutableStateOf(0)
 
     private val notificationPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
@@ -141,6 +143,7 @@ class MainActivity : ComponentActivity() {
             Toast.makeText(this, "检测到上次异常退出，可在设置页查看崩溃日志。", Toast.LENGTH_LONG).show()
         }
         maybeRouteToReminder()
+        consumeDashboardLaunchRoute(intent)
 
         setContent {
             val uiState = viewModel.uiState.collectAsStateWithLifecycle().value
@@ -148,6 +151,8 @@ class MainActivity : ComponentActivity() {
                 DashboardScreen(
                     uiState = uiState,
                     permissions = permissions,
+                    launchRoute = launchRoute,
+                    launchRouteSerial = launchRouteSerial,
                     onRequestNotificationPermission = ::requestNotificationPermission,
                     onRequestExactAlarmPermission = ::openExactAlarmSettings,
                     onRequestFullScreenPermission = ::openFullScreenSettings,
@@ -216,6 +221,14 @@ class MainActivity : ComponentActivity() {
         super.onNewIntent(intent)
         setIntent(intent)
         maybeRouteToReminder()
+        consumeDashboardLaunchRoute(intent)
+    }
+
+    private fun consumeDashboardLaunchRoute(intent: Intent?) {
+        val target = intent?.getStringExtra(EXTRA_OPEN_SETTINGS_SECTION) ?: return
+        launchRoute = DashboardLaunchRoute(settingsSectionKey = target)
+        launchRouteSerial += 1
+        intent.removeExtra(EXTRA_OPEN_SETTINGS_SECTION)
     }
 
     private fun refreshPermissions() {
@@ -455,4 +468,13 @@ class MainActivity : ComponentActivity() {
             getParcelableExtra(key)
         }
     }
+
+    companion object {
+        const val EXTRA_OPEN_SETTINGS_SECTION = "com.example.todoalarm.OPEN_SETTINGS_SECTION"
+        const val SETTINGS_SECTION_DESKTOP_SYNC = "desktop_sync"
+    }
 }
+
+data class DashboardLaunchRoute(
+    val settingsSectionKey: String? = null
+)

@@ -684,7 +684,7 @@ object DesktopSyncWebAssets {
             +   '<div class="all-day-card-title">' + escapeHtml(item.title) + '</div>'
             +   '<div class="all-day-card-meta">' + escapeHtml(meta || '全天日程') + '</div>'
             +   (item.notes ? '<div class="all-day-card-meta">' + escapeHtml(item.notes) + '</div>' : '')
-            +   '<div class="actions"><button data-action="cancel" data-id="' + item.id + '" class="danger">删除</button></div>'
+            +   '<div class="actions"><button data-action="delete" data-id="' + item.id + '" class="danger">删除</button></div>'
             + '</article>';
         }
 
@@ -1051,6 +1051,7 @@ object DesktopSyncWebAssets {
               } else if (node.dataset.action === 'cancel') {
                 await api(`/api/items/${'$'}{id}/cancel`, { method: 'POST' });
               } else {
+                if (!confirm('确定删除这个项目吗？删除后无法恢复。')) return;
                 await api(`/api/items/${'$'}{id}`, { method: 'DELETE' });
               }
               await loadSnapshot();
@@ -1186,6 +1187,7 @@ object DesktopSyncWebAssets {
 
         document.getElementById('delete-event').onclick = async () => {
           if (!state.editingEventId) return;
+          if (!confirm('确定删除这个日程吗？删除后无法恢复。')) return;
           await api(`/api/items/${'$'}{state.editingEventId}`, { method: 'DELETE' });
           clearEventForm();
           closeModal('event-modal');

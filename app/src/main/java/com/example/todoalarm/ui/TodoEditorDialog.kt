@@ -62,7 +62,6 @@ fun TodoEditorDialog(
     defaultRingEnabled: Boolean,
     defaultVibrateEnabled: Boolean,
     onDismiss: () -> Unit,
-    onDelete: () -> Unit,
     onConfirm: (TodoDraft) -> Unit
 ) {
     val context = LocalContext.current
@@ -123,30 +122,31 @@ fun TodoEditorDialog(
     var showGroupPicker by remember { mutableStateOf(false) }
     var activeDateTimeTarget by remember { mutableStateOf<TodoDateTimeTarget?>(null) }
 
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = {
-            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text(
-                    text = if (initialTodo == null) "新增任务" else "编辑任务",
-                    color = MaterialTheme.colorScheme.onSurface,
-                    fontWeight = FontWeight.Bold
+    EditorBottomSheet(
+        title = if (initialTodo == null) "新增任务" else "编辑任务",
+        subtitle = "标题、DDL、提醒、循环、分组与备注都集中在这里。",
+        confirmLabel = if (initialTodo == null) "创建" else "保存",
+        onDismiss = onDismiss,
+        onConfirm = {
+            onConfirm(
+                TodoDraft(
+                    title = title,
+                    notes = notes,
+                    dueAt = dueAt.takeIf { hasDueDate },
+                    reminderAt = if (isHistory || !hasDueDate || !reminderEnabled) null else reminderAt,
+                    groupId = groupId,
+                    ringEnabled = ringEnabled,
+                    vibrateEnabled = vibrateEnabled,
+                    recurrence = RecurrenceConfig(
+                        enabled = !isHistory && hasDueDate && recurringEnabled,
+                        type = recurrenceType,
+                        weeklyDays = weeklyDays,
+                        endDate = recurrenceEndDate
+                    )
                 )
-                Text(
-                    text = "标题、DDL、提醒、循环、分组与备注都集中在这里。",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-        },
-        text = {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .heightIn(max = 620.dp)
-                    .verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
+            )
+        }
+    ) {
                 TodoEditorBlock(title = "标题") {
                     OutlinedTextField(
                         value = title,
@@ -404,46 +404,7 @@ fun TodoEditorDialog(
                         }
                     }
                 }
-            }
-        },
-        confirmButton = {
-            Button(
-                onClick = {
-                    onConfirm(
-                        TodoDraft(
-                            title = title,
-                            notes = notes,
-                            dueAt = dueAt.takeIf { hasDueDate },
-                            reminderAt = if (isHistory || !hasDueDate || !reminderEnabled) null else reminderAt,
-                            groupId = groupId,
-                            ringEnabled = ringEnabled,
-                            vibrateEnabled = vibrateEnabled,
-                            recurrence = RecurrenceConfig(
-                                enabled = !isHistory && hasDueDate && recurringEnabled,
-                                type = recurrenceType,
-                                weeklyDays = weeklyDays,
-                                endDate = recurrenceEndDate
-                            )
-                        )
-                    )
-                }
-            ) {
-                Text(if (initialTodo == null) "创建任务" else "保存修改")
-            }
-        },
-        dismissButton = {
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                if (initialTodo != null) {
-                    TextButton(onClick = onDelete) {
-                        Text("删除")
-                    }
-                }
-                TextButton(onClick = onDismiss) {
-                    Text("取消")
-                }
-            }
-        }
-    )
+    }
 
     recurrencePreview?.let { preview ->
         RecurrencePreviewDialog(

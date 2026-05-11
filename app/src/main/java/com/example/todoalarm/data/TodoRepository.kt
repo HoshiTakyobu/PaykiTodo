@@ -55,7 +55,7 @@ class TodoRepository(
     suspend fun acknowledgeCalendarEvent(id: Long): TodoItem? {
         val item = todoDao.getById(id) ?: return null
         if (!item.isEvent) return item
-        val updated = item.copy(reminderEnabled = false, reminderAtMillis = null)
+        val updated = item.copy(reminderEnabled = false)
         todoDao.update(updated)
         return updated
     }

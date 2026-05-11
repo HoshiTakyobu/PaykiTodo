@@ -317,15 +317,19 @@ internal fun TopBarActionPill(
 @Composable
 internal fun DashboardBody(
     section: DashboardSection,
+    settingsInitialSectionKey: String? = null,
+    settingsInitialSectionSerial: Int = 0,
     padding: PaddingValues,
     uiState: TodoUiState,
     permissions: PermissionSnapshot,
     onEdit: (TodoItem) -> Unit,
     onEditCalendarEvent: (TodoItem) -> Unit,
     onQuickCreateCalendarEvent: (LocalDateTime, LocalDateTime) -> Unit,
+    onMoveCalendarEvent: (TodoItem, LocalDateTime, LocalDateTime) -> Unit,
     onCompleteTodo: (TodoItem) -> Unit,
     onRestoreTodo: (TodoItem) -> Unit,
     onCancelTodo: (TodoItem) -> Unit,
+    onDeleteTodo: (TodoItem) -> Unit,
     onDeleteCalendarEvent: (TodoItem) -> Unit,
     onCreateGroup: suspend (String, String) -> String?,
     onUpdateGroup: suspend (TaskGroup) -> String?,
@@ -373,6 +377,7 @@ internal fun DashboardBody(
                 onQuickCreateEvent = onQuickCreateCalendarEvent,
                 onCreateEventAt = onQuickCreateCalendarEvent,
                 onEditEvent = onEditCalendarEvent,
+                onMoveEvent = onMoveCalendarEvent,
                 onDeleteEvent = onDeleteCalendarEvent,
                 onOpenBatchImport = onOpenCalendarBatchImport,
                 onSaveWeekAsTemplate = onSaveWeekAsScheduleTemplate,
@@ -396,6 +401,8 @@ internal fun DashboardBody(
                 permissions = permissions,
                 defaultSnooze = uiState.settings.defaultSnoozeMinutes,
                 crashLog = permissions.lastCrashLog,
+                initialSectionKey = settingsInitialSectionKey,
+                initialSectionSerial = settingsInitialSectionSerial,
                 onRequestNotificationPermission = onRequestNotificationPermission,
                 onRequestExactAlarmPermission = onRequestExactAlarmPermission,
                 onRequestFullScreenPermission = onRequestFullScreenPermission,
@@ -462,7 +469,7 @@ internal fun DashboardBody(
                     item { EmptyStateCard("今天还没有安排任务。") }
                 } else {
                     items(uiState.todayItems, key = { it.id }) { item ->
-                        ActiveTodoCard(item, uiState.groups, { onEdit(item) }, { onCompleteTodo(item) }, { onCancelTodo(item) })
+                        ActiveTodoCard(item, uiState.groups, { onEdit(item) }, { onCompleteTodo(item) }, { onCancelTodo(item) }, { onDeleteTodo(item) })
                     }
                 }
 
@@ -490,7 +497,7 @@ internal fun DashboardBody(
                     }
                     if (missedExpanded) {
                         items(uiState.missedItems, key = { it.id }) { item ->
-                            ActiveTodoCard(item, uiState.groups, { onEdit(item) }, { onCompleteTodo(item) }, { onCancelTodo(item) })
+                            ActiveTodoCard(item, uiState.groups, { onEdit(item) }, { onCompleteTodo(item) }, { onCancelTodo(item) }, { onDeleteTodo(item) })
                         }
                     }
                 }
@@ -507,7 +514,7 @@ internal fun DashboardBody(
                         item { EmptyStateCard("今天还没有安排任务。") }
                     } else {
                         items(uiState.todayItems, key = { it.id }) { item ->
-                            ActiveTodoCard(item, uiState.groups, { onEdit(item) }, { onCompleteTodo(item) }, { onCancelTodo(item) })
+                            ActiveTodoCard(item, uiState.groups, { onEdit(item) }, { onCompleteTodo(item) }, { onCancelTodo(item) }, { onDeleteTodo(item) })
                         }
                     }
                 }
@@ -524,7 +531,7 @@ internal fun DashboardBody(
                         item { EmptyStateCard("后续时间暂时没有新计划。") }
                     } else {
                         items(uiState.upcomingItems, key = { it.id }) { item ->
-                            ActiveTodoCard(item, uiState.groups, { onEdit(item) }, { onCompleteTodo(item) }, { onCancelTodo(item) })
+                            ActiveTodoCard(item, uiState.groups, { onEdit(item) }, { onCompleteTodo(item) }, { onCancelTodo(item) }, { onDeleteTodo(item) })
                         }
                     }
                 }

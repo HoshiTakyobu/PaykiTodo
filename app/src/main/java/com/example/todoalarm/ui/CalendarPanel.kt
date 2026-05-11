@@ -2,12 +2,15 @@ package com.example.todoalarm.ui
 
 import android.app.DatePickerDialog
 import android.widget.Toast
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.gestures.rememberScrollableState
 import androidx.compose.foundation.gestures.scrollable
@@ -34,8 +37,11 @@ import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.CalendarMonth
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.Edit
+import androidx.compose.material.icons.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
 import androidx.compose.material.icons.rounded.MoreHoriz
+import androidx.compose.material.icons.rounded.NotificationsNone
+import androidx.compose.material.icons.rounded.Place
 import androidx.compose.material.icons.rounded.School
 import androidx.compose.material.icons.rounded.ViewAgenda
 import androidx.compose.material.icons.rounded.ViewDay
@@ -43,6 +49,7 @@ import androidx.compose.material.icons.rounded.ViewWeek
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.HorizontalDivider
@@ -60,20 +67,26 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -94,6 +107,7 @@ import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
+import java.time.Duration
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
@@ -121,6 +135,7 @@ internal fun CalendarPanel(
     onQuickCreateEvent: (LocalDateTime, LocalDateTime) -> Unit,
     onCreateEventAt: (LocalDateTime, LocalDateTime) -> Unit,
     onEditEvent: (TodoItem) -> Unit,
+    onMoveEvent: (TodoItem, LocalDateTime, LocalDateTime) -> Unit,
     onDeleteEvent: (TodoItem) -> Unit,
     onOpenBatchImport: () -> Unit,
     onSaveWeekAsTemplate: suspend (String, String, LocalDate) -> String?,
@@ -142,11 +157,13 @@ internal fun CalendarPanel(
     var horizontalOffsetPx by rememberSaveable { mutableStateOf(0f) }
     var detailsTarget by remember { mutableStateOf<TodoItem?>(null) }
     var pendingDraft by remember { mutableStateOf<PendingCalendarDraft?>(null) }
+    var draggingEvent by remember { mutableStateOf<DraggingCalendarEvent?>(null) }
     var showTemplateManager by remember { mutableStateOf(false) }
     var showSaveWeekTemplate by remember { mutableStateOf(false) }
     var templateAnchorWeekStart by remember { mutableStateOf(currentWeekStart(LocalDate.now())) }
     var showViewModeMenu by remember { mutableStateOf(false) }
     var showActionsMenu by remember { mutableStateOf(false) }
+    var pendingDeleteTarget by remember { mutableStateOf<TodoItem?>(null) }
     var monthVerticalDirection by remember { mutableStateOf(0L) }
     var agendaVerticalDirection by remember { mutableStateOf(0L) }
     var agendaRefreshing by remember { mutableStateOf(false) }
@@ -498,6 +515,9 @@ internal fun CalendarPanel(
                                         onPendingDraftChange = { pendingDraft = it },
                                         onQuickCreateEvent = onQuickCreateEvent,
                                         onOpenDetails = { detailsTarget = it },
+                                        onMoveEvent = { item, startAt, endAt ->
+                                            draggingEvent = DraggingCalendarEvent(item, startAt, endAt)
+                                        },
                                         currentDayIndex = currentDateIndex
                                     )
                                 }
@@ -564,6 +584,33 @@ internal fun CalendarPanel(
             },
             onDelete = {
                 detailsTarget = null
+                pendingDeleteTarget = item
+            }
+        )
+    }
+    draggingEvent?.let { dragging ->
+        PaykiDecisionBottomSheet(
+            title = "移动日程",
+            message = "将“${dragging.item.title}”移动到 ${formatLocalDateTime(dragging.startAt)} - ${formatLocalDateTime(dragging.endAt)}？",
+            confirmLabel = "确定",
+            confirmLabelColor = MaterialTheme.colorScheme.primary,
+            onDismiss = { draggingEvent = null },
+            onConfirm = {
+                onMoveEvent(dragging.item, dragging.startAt, dragging.endAt)
+                draggingEvent = null
+            }
+        )
+    }
+
+    pendingDeleteTarget?.let { item ->
+        PaykiDecisionBottomSheet(
+            title = "删除日程",
+            message = "确定删除“${item.title}”吗？删除后无法恢复。",
+            confirmLabel = "删除",
+            confirmLabelColor = Color(0xFFD14343),
+            onDismiss = { pendingDeleteTarget = null },
+            onConfirm = {
+                pendingDeleteTarget = null
                 onDeleteEvent(item)
             }
         )
@@ -821,7 +868,10 @@ private fun CalendarMonthGridView(
 
                             Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
                                 dayEvents.forEach { item ->
-                                    MiniMonthEventChip(item = item, onClick = { onOpenDetails(item) })
+                                    MiniMonthEventChip(
+                                        item = item,
+                                        onClick = { onOpenDetails(item) }
+                                    )
                                 }
                             }
                         }
@@ -833,6 +883,7 @@ private fun CalendarMonthGridView(
 }
 
 @Composable
+@OptIn(ExperimentalFoundationApi::class)
 private fun MiniMonthEventChip(
     item: TodoItem,
     onClick: () -> Unit
@@ -999,7 +1050,10 @@ private fun CalendarAgendaView(
                         }
                     } else {
                         dayEvents.forEach { item ->
-                            AgendaEventCard(item = item, onClick = { onOpenDetails(item) })
+                            AgendaEventCard(
+                                item = item,
+                                onClick = { onOpenDetails(item) }
+                            )
                         }
                     }
                 }
@@ -1009,6 +1063,7 @@ private fun CalendarAgendaView(
 }
 
 @Composable
+@OptIn(ExperimentalFoundationApi::class)
 private fun AgendaEventCard(
     item: TodoItem,
     onClick: () -> Unit
@@ -1140,6 +1195,7 @@ private fun CalendarTemplateManagerDialog(
     val scope = rememberCoroutineScope()
     var applyDate by remember { mutableStateOf(anchorWeekStart) }
     var showSemesterDialogFor by remember { mutableStateOf<ScheduleTemplate?>(null) }
+    var pendingDeleteTemplate by remember { mutableStateOf<ScheduleTemplate?>(null) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -1210,16 +1266,7 @@ private fun CalendarTemplateManagerDialog(
                                     OutlinedButton(onClick = { showSemesterDialogFor = template }) {
                                         Text("生成整学期")
                                     }
-                                    OutlinedButton(onClick = {
-                                        scope.launch {
-                                            val message = onDeleteTemplate(template.id)
-                                            if (message == null) {
-                                                Toast.makeText(context, "模板已删除", Toast.LENGTH_SHORT).show()
-                                            } else {
-                                                Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
-                                            }
-                                        }
-                                    }) {
+                                    OutlinedButton(onClick = { pendingDeleteTemplate = template }) {
                                         Text("删除")
                                     }
                                 }
@@ -1243,6 +1290,27 @@ private fun CalendarTemplateManagerDialog(
             initialWeekStart = applyDate,
             onDismiss = { showSemesterDialogFor = null },
             onGenerate = onGenerateSemester
+        )
+    }
+
+    pendingDeleteTemplate?.let { template ->
+        PaykiDecisionBottomSheet(
+            title = "删除模板",
+            message = "确定删除“${template.name}”吗？删除后无法恢复。",
+            confirmLabel = "删除",
+            confirmLabelColor = Color(0xFFD14343),
+            onDismiss = { pendingDeleteTemplate = null },
+            onConfirm = {
+                scope.launch {
+                    pendingDeleteTemplate = null
+                    val message = onDeleteTemplate(template.id)
+                    if (message == null) {
+                        Toast.makeText(context, "模板已删除", Toast.LENGTH_SHORT).show()
+                    } else {
+                        Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+                    }
+                }
+            }
         )
     }
 }
@@ -1456,6 +1524,7 @@ private fun CalendarHeaderRow(
 }
 
 @Composable
+@OptIn(ExperimentalFoundationApi::class)
 private fun CalendarAllDaySection(
     timeAxisWidth: Dp,
     viewportWidth: Dp,
@@ -1506,7 +1575,7 @@ private fun CalendarAllDaySection(
                         }
                         .width((dayColumnWidth * (endIndex - startIndex + 1)) - 8.dp)
                         .height(24.dp)
-                        .clickable { onOpenDetails(item) },
+                        .clickable(onClick = { onOpenDetails(item) }),
                     shape = RoundedCornerShape(10.dp),
                     color = tint.copy(alpha = 0.14f),
                     border = BorderStroke(1.dp, tint.copy(alpha = 0.24f))
@@ -1618,6 +1687,7 @@ private fun CalendarTimedBoard(
     onPendingDraftChange: (PendingCalendarDraft?) -> Unit,
     onQuickCreateEvent: (LocalDateTime, LocalDateTime) -> Unit,
     onOpenDetails: (TodoItem) -> Unit,
+    onMoveEvent: (TodoItem, LocalDateTime, LocalDateTime) -> Unit,
     currentDayIndex: Int
 ) {
     val density = LocalDensity.current
@@ -1691,7 +1761,9 @@ private fun CalendarTimedBoard(
                         dayColumnWidthPx = dayColumnWidthPx,
                         horizontalOffsetPx = horizontalOffsetPx,
                         hourHeight = hourHeight,
-                        onClick = { onOpenDetails(placement.segment.item) }
+                        viewportStartDate = days[visibleRange.first],
+                        onClick = { onOpenDetails(placement.segment.item) },
+                        onMove = onMoveEvent
                     )
             }
 
@@ -1769,6 +1841,7 @@ private fun PendingDraftCard(
 }
 
 @Composable
+@OptIn(ExperimentalFoundationApi::class)
 private fun TimedEventCard(
     segment: TimedEventSegment,
     placement: TimedEventPlacement,
@@ -1777,7 +1850,9 @@ private fun TimedEventCard(
     dayColumnWidthPx: Float,
     horizontalOffsetPx: Float,
     hourHeight: Dp,
-    onClick: () -> Unit
+    viewportStartDate: LocalDate,
+    onClick: () -> Unit,
+    onMove: (TodoItem, LocalDateTime, LocalDateTime) -> Unit
 ) {
     val item = segment.item
     val startDateTime = reminderAtMillisToDateTime(segment.startMillis)
@@ -1789,10 +1864,15 @@ private fun TimedEventCard(
     val topOffset = hourHeight * (startMinutes / 60f)
     val eventWidth = (dayColumnWidth / placement.columnCount) - 8.dp
     val eventHeight = (hourHeight * (durationMinutes / 60f)).coerceAtLeast(48.dp)
+    val duration = Duration.between(startDateTime, endDateTime)
     val baseLeft = with(LocalDensity.current) { dayLeftPx(dayIndex, dayColumnWidthPx, horizontalOffsetPx).toDp() }
     val leftOffset = baseLeft +
         (dayColumnWidth / placement.columnCount) * placement.columnIndex +
         4.dp
+    val haptic = LocalHapticFeedback.current
+    val density = LocalDensity.current
+    var dragTranslationX by remember(item.id) { mutableFloatStateOf(0f) }
+    var dragTranslationY by remember(item.id) { mutableFloatStateOf(0f) }
     val showLocation = durationMinutes >= 60 || eventHeight >= 64.dp || eventWidth >= 118.dp
     val titleMaxLines = when {
         eventHeight >= 144.dp -> 6
@@ -1811,6 +1891,40 @@ private fun TimedEventCard(
             .offset(x = leftOffset, y = topOffset)
             .width(eventWidth)
             .height(eventHeight)
+            .graphicsLayer {
+                translationX = dragTranslationX
+                translationY = dragTranslationY
+            }
+            .pointerInput(item.id, dayColumnWidthPx, hourHeight) {
+                detectDragGesturesAfterLongPress(
+                    onDragStart = {
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                    },
+                    onDragEnd = {
+                        val movedDaySteps = (dragTranslationX / dayColumnWidthPx).roundToInt()
+                        val movedMinutes = snapToQuarterHour(
+                            ((dragTranslationY / with(density) { hourHeight.toPx() }) * 60f).roundToInt()
+                        )
+                        val newStart = startDateTime
+                            .plusDays(movedDaySteps.toLong())
+                            .plusMinutes(movedMinutes.toLong())
+                        val newEnd = newStart.plus(duration)
+                        dragTranslationX = 0f
+                        dragTranslationY = 0f
+                        if (newStart != startDateTime || newEnd != endDateTime) {
+                            onMove(item, newStart, newEnd)
+                        }
+                    },
+                    onDragCancel = {
+                        dragTranslationX = 0f
+                        dragTranslationY = 0f
+                    }
+                ) { change, dragAmount ->
+                    change.consume()
+                    dragTranslationX += dragAmount.x
+                    dragTranslationY += dragAmount.y
+                }
+            }
             .clickable(onClick = onClick)
             .alpha(alpha),
         shape = RoundedCornerShape(14.dp),
@@ -1932,77 +2046,172 @@ private fun CalendarEventDetailsDialog(
     onEdit: () -> Unit,
     onDelete: () -> Unit
 ) {
-    androidx.compose.material3.AlertDialog(
-        onDismissRequest = onDismiss,
-        title = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(item.title, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleLarge)
-                item.location.takeIf { it.isNotBlank() }?.let {
-                    Text(it, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 14.sp)
+    val tint = item.accentColorHex?.let(::colorFromHex) ?: MaterialTheme.colorScheme.primary
+    PaykiBottomSheet(
+        onDismiss = onDismiss,
+        showDragHandle = false,
+        containerColor = MaterialTheme.colorScheme.surface,
+        topBar = {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 6.dp, vertical = 0.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                IconButton(onClick = onDismiss) {
+                    Icon(Icons.Rounded.ArrowBack, contentDescription = "返回", tint = MaterialTheme.colorScheme.onSurface)
+                }
+                Row(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
+                    IconButton(onClick = onDelete) {
+                        Icon(Icons.Rounded.Delete, contentDescription = "删除", tint = Color(0xFFD14343))
+                    }
+                    IconButton(onClick = onEdit) {
+                        Icon(Icons.Rounded.Edit, contentDescription = "编辑", tint = MaterialTheme.colorScheme.onSurface)
+                    }
                 }
             }
         },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 18.dp, vertical = 8.dp)
+    ) {
+        Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.Top) {
                 Surface(
-                    shape = RoundedCornerShape(18.dp),
-                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.10f)
-                ) {
+                    modifier = Modifier
+                        .padding(top = 6.dp)
+                        .size(20.dp),
+                    shape = RoundedCornerShape(7.dp),
+                    color = tint
+                ) {}
+                Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(7.dp)) {
                     Text(
-                        text = if (item.allDay) "全天 · ${formatDateRange(item)}" else formatDateTimeRange(item),
-                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
-                        color = MaterialTheme.colorScheme.primary,
+                        text = item.title,
+                        color = tint,
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        text = if (item.allDay) formatDateRange(item) else formatDateTimeRangeWithoutTimezone(item),
+                        color = MaterialTheme.colorScheme.onSurface,
+                        style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.SemiBold
                     )
-                }
-                if (item.notes.isNotBlank()) {
-                    Surface(
-                        shape = RoundedCornerShape(18.dp),
-                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.34f)
-                    ) {
+                    recurrencePreviewLine(item)?.let {
                         Text(
-                            text = item.notes,
-                            modifier = Modifier.padding(14.dp),
+                            text = it,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            lineHeight = 19.sp
-                        )
-                    }
-                }
-                item.reminderAtMillis?.let {
-                    Surface(
-                        shape = RoundedCornerShape(16.dp),
-                        color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.28f)
-                    ) {
-                        Text(
-                            text = "提醒：${formatLocalDateTime(reminderAtMillisToDateTime(it))}",
-                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            style = MaterialTheme.typography.bodyLarge
                         )
                     }
                 }
             }
-        },
-        confirmButton = {
-            Row {
-                TextButton(onClick = onEdit) {
-                    Icon(Icons.Rounded.Edit, contentDescription = null)
-                    Text("编辑")
-                }
-                TextButton(onClick = onDelete) {
-                    Icon(Icons.Rounded.Delete, contentDescription = null)
-                    Text("删除")
-                }
+
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.22f))
+
+            item.location.takeIf { it.isNotBlank() }?.let {
+                EventInfoRow(
+                    icon = { Icon(Icons.Rounded.Place, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant) },
+                    text = it
+                )
             }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("关闭")
+
+            eventReminderSummary(item)?.let {
+                EventInfoRow(
+                    icon = { Icon(Icons.Rounded.NotificationsNone, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant) },
+                    text = it
+                )
+            }
+
+            item.notes.takeIf { it.isNotBlank() }?.let {
+                Surface(
+                    shape = RoundedCornerShape(18.dp),
+                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = if (MaterialTheme.colorScheme.surface.luminance() > 0.5f) 0.34f else 0.48f)
+                ) {
+                    Text(
+                        text = it,
+                        modifier = Modifier.padding(14.dp),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        lineHeight = 20.sp
+                    )
+                }
             }
         }
-    )
+    }
+}
+
+@Composable
+private fun EventInfoRow(
+    icon: @Composable () -> Unit,
+    text: String
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalAlignment = Alignment.Top
+    ) {
+        Box(modifier = Modifier.padding(top = 2.dp)) { icon() }
+        Text(
+            text = text,
+            modifier = Modifier.weight(1f),
+            color = MaterialTheme.colorScheme.onSurface,
+            style = MaterialTheme.typography.bodyLarge
+        )
+    }
+}
+
+private fun recurrencePreviewLine(item: TodoItem): String? {
+    if (!item.isRecurring) return null
+    val start = item.startAtMillis?.let(::reminderAtMillisToDateTime) ?: return null
+    val endDate = item.recurrenceEndDate ?: return null
+    return when (item.recurrenceTypeEnum) {
+        com.example.todoalarm.data.RecurrenceType.DAILY -> "每天重复，截止到${endDate.year}年${endDate.monthValue}月${endDate.dayOfMonth}日"
+        com.example.todoalarm.data.RecurrenceType.WEEKLY -> {
+            val labels = com.example.todoalarm.data.storageStringToWeekdays(item.recurrenceWeekdays)
+                .sortedBy { it.value }
+                .joinToString("、") { it.shortLabel() }
+            "每周的${labels}重复，截止到${endDate.year}年${endDate.monthValue}月${endDate.dayOfMonth}日"
+        }
+        com.example.todoalarm.data.RecurrenceType.MONTHLY_NTH_WEEKDAY -> "每月重复，截止到${endDate.year}年${endDate.monthValue}月${endDate.dayOfMonth}日"
+        com.example.todoalarm.data.RecurrenceType.MONTHLY_DAY -> "每月${start.dayOfMonth}日重复，截止到${endDate.year}年${endDate.monthValue}月${endDate.dayOfMonth}日"
+        com.example.todoalarm.data.RecurrenceType.YEARLY_DATE -> "每年${start.monthValue}月${start.dayOfMonth}日重复，截止到${endDate.year}年${endDate.monthValue}月${endDate.dayOfMonth}日"
+        com.example.todoalarm.data.RecurrenceType.NONE -> null
+    }
+}
+
+private fun eventReminderSummary(item: TodoItem): String? {
+    val offsets = item.configuredReminderOffsetsMinutes
+    if (offsets.isNotEmpty()) {
+        return offsets.sortedDescending().joinToString("、") { reminderOffsetLabel(it) }
+    }
+    val reminderAt = item.reminderAtMillis?.let(::reminderAtMillisToDateTime) ?: return null
+    return "提醒时间：${formatLocalDateTime(reminderAt)}"
+}
+
+private fun reminderOffsetLabel(minutes: Int): String {
+    return when {
+        minutes % (24 * 60) == 0 -> "提前${minutes / (24 * 60)}天"
+        minutes % 60 == 0 -> "提前${minutes / 60}小时"
+        else -> "提前${minutes}分钟"
+    }
+}
+
+private fun formatDateTimeRangeWithoutTimezone(item: TodoItem): String {
+    val start = item.startAtMillis?.let(::reminderAtMillisToDateTime) ?: return "未设置时间"
+    val end = item.endAtMillis?.let(::reminderAtMillisToDateTime) ?: start
+    return if (start.toLocalDate() == end.toLocalDate()) {
+        "${start.monthValue}月${start.dayOfMonth}日 ${formatClockTime(start)} - ${formatClockTime(end)}"
+    } else {
+        "${start.monthValue}月${start.dayOfMonth}日 ${formatClockTime(start)} - ${end.monthValue}月${end.dayOfMonth}日 ${formatClockTime(end)}"
+    }
 }
 
 private data class PendingCalendarDraft(
+    val startAt: LocalDateTime,
+    val endAt: LocalDateTime
+)
+
+private data class DraggingCalendarEvent(
+    val item: TodoItem,
     val startAt: LocalDateTime,
     val endAt: LocalDateTime
 )
@@ -2232,3 +2441,5 @@ private fun java.time.DayOfWeek.shortLabel(): String = when (this) {
     java.time.DayOfWeek.SATURDAY -> "周六"
     java.time.DayOfWeek.SUNDAY -> "周日"
 }
+
+

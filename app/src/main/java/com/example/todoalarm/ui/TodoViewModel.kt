@@ -625,7 +625,7 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
         if (item.isTodo && !item.hasDueDate) {
             if (item.reminderEnabled || item.reminderAtMillis != null) {
                 ReminderDispatchTracker.clear(app, item.id)
-                repository.updateTodo(item.copy(reminderEnabled = false, reminderAtMillis = null, reminderOffsetsCsv = ""))
+                repository.updateTodo(item.copy(reminderEnabled = false, reminderAtMillis = null))
             }
             return
         }

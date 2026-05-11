@@ -1,8 +1,10 @@
 package com.example.todoalarm.ui
 
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -18,11 +20,13 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.Undo
+import androidx.compose.material.icons.rounded.ArrowBack
+import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Edit
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ElevatedCard
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -37,6 +41,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Offset
@@ -44,6 +49,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -60,15 +66,19 @@ import com.example.todoalarm.ui.theme.Signal
 import kotlinx.coroutines.delay
 
 @Composable
+@OptIn(ExperimentalFoundationApi::class)
 internal fun ActiveTodoCard(
     item: TodoItem,
     groups: List<TaskGroup>,
     onEdit: () -> Unit,
     onComplete: () -> Unit,
-    onCancel: () -> Unit
+    onCancel: () -> Unit,
+    onDelete: () -> Unit
 ) {
     var completing by remember(item.id) { mutableStateOf(false) }
     var showDetails by remember(item.id) { mutableStateOf(false) }
+    var showDeleteConfirm by remember(item.id) { mutableStateOf(false) }
+    val haptic = LocalHapticFeedback.current
     val progress by animateFloatAsState(targetValue = if (completing) 1f else 0f, label = "complete_progress")
 
     LaunchedEffect(completing) {
@@ -78,7 +88,13 @@ internal fun ActiveTodoCard(
         }
     }
 
-    TodoCardShell(item = item, groups = groups, onClick = { showDetails = true }) {
+    TodoCardShell(
+        item = item,
+        groups = groups,
+        onClick = { showDetails = true },
+        onLongClick = null,
+        contentClickable = false
+    ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.Top,
@@ -94,7 +110,18 @@ internal fun ActiveTodoCard(
                 Firework(progress)
             }
 
-            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .combinedClickable(
+                        onClick = { showDetails = true },
+                        onLongClick = {
+                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                            showDeleteConfirm = true
+                        }
+                    ),
+                verticalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
                 TitleRow(item = item, groups = groups, progress = progress)
                 if (item.notes.isNotBlank()) {
                     StrikeText(
@@ -137,6 +164,20 @@ internal fun ActiveTodoCard(
             onCancel = {
                 showDetails = false
                 onCancel()
+            }
+        )
+    }
+
+    if (showDeleteConfirm) {
+        PaykiDecisionBottomSheet(
+            title = "删除任务",
+            message = "确定删除“${item.title}”？删除后无法恢复。",
+            confirmLabel = "删除",
+            confirmLabelColor = Color(0xFFD14343),
+            onDismiss = { showDeleteConfirm = false },
+            onConfirm = {
+                showDeleteConfirm = false
+                onDelete()
             }
         )
     }
@@ -186,10 +227,13 @@ internal fun CompletedTodoCard(
 }
 
 @Composable
+@OptIn(ExperimentalFoundationApi::class)
 private fun TodoCardShell(
     item: TodoItem,
     groups: List<TaskGroup>,
     onClick: () -> Unit,
+    onLongClick: (() -> Unit)? = null,
+    contentClickable: Boolean = true,
     content: @Composable () -> Unit
 ) {
     ElevatedCard(
@@ -200,7 +244,6 @@ private fun TodoCardShell(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(IntrinsicSize.Min)
-                .clickable(onClick = onClick)
         ) {
             Box(
                 modifier = Modifier
@@ -211,6 +254,16 @@ private fun TodoCardShell(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .then(
+                        if (contentClickable) {
+                            Modifier.combinedClickable(
+                                onClick = onClick,
+                                onLongClick = onLongClick
+                            )
+                        } else {
+                            Modifier
+                        }
+                    )
                     .padding(horizontal = 12.dp, vertical = 14.dp)
             ) {
                 content()
@@ -336,80 +389,125 @@ private fun TodoDetailsDialog(
     onCancel: (() -> Unit)? = null,
     onRestore: (() -> Unit)? = null
 ) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        confirmButton = {
-            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                onCancel?.let {
-                    TextButton(onClick = it) {
-                        Text("取消")
+    val group = resolveTaskGroup(item, groups)
+    val tint = if (item.missed) Color(0xFFC62828) else categoryColor(group)
+
+    PaykiBottomSheet(
+        onDismiss = onDismiss,
+        showDragHandle = false,
+        topBar = {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 6.dp, vertical = 0.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                IconButton(onClick = onDismiss) {
+                    Icon(Icons.Rounded.ArrowBack, contentDescription = "返回", tint = MaterialTheme.colorScheme.onSurface)
+                }
+                Row(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
+                    onCancel?.let {
+                        IconButton(onClick = it) {
+                            Icon(Icons.Rounded.Close, contentDescription = "取消任务", tint = Color(0xFFD14343))
+                        }
                     }
-                }
-                TextButton(onClick = onDismiss) {
-                    Text("关闭")
-                }
-                onRestore?.let {
-                    TextButton(onClick = it) {
-                        Text("恢复")
+                    onRestore?.let {
+                        IconButton(onClick = it) {
+                            Icon(Icons.AutoMirrored.Rounded.Undo, contentDescription = "恢复", tint = MaterialTheme.colorScheme.primary)
+                        }
                     }
-                }
-                onEdit?.let {
-                    TextButton(onClick = it) {
-                        Text("修改")
+                    onEdit?.let {
+                        IconButton(onClick = it) {
+                            Icon(Icons.Rounded.Edit, contentDescription = "修改", tint = MaterialTheme.colorScheme.onSurface)
+                        }
                     }
                 }
             }
         },
-        dismissButton = {},
-        title = {
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                CategoryChip(resolveTaskGroup(item, groups))
-                Text(item.title, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
-            }
-        },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                if (item.notes.isNotBlank()) {
+        contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 18.dp, vertical = 8.dp)
+    ) {
+        Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.Top) {
+                Surface(
+                    modifier = Modifier
+                        .padding(top = 6.dp)
+                        .size(20.dp),
+                    shape = RoundedCornerShape(7.dp),
+                    color = tint
+                ) {}
+                Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(7.dp)) {
                     Text(
-                        text = item.notes,
-                        style = MaterialTheme.typography.bodyMedium.copy(lineHeight = 18.sp),
-                        color = if (item.missed) Color(0xFFC62828) else MaterialTheme.colorScheme.onSurfaceVariant
+                        text = item.title,
+                        color = tint,
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        text = group.name,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        style = MaterialTheme.typography.bodyLarge
                     )
                 }
-                if (showCreated) {
-                    MetaLine(
-                        icon = "🗓",
-                        label = "创建",
-                        value = formatLocalDateTime(reminderAtMillisToDateTime(item.createdAtMillis)),
-                        accent = MaterialTheme.colorScheme.secondary
+            }
+
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.22f))
+
+            item.notes.takeIf { it.isNotBlank() }?.let {
+                Surface(
+                    shape = RoundedCornerShape(18.dp),
+                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.34f)
+                ) {
+                    Text(
+                        text = it,
+                        modifier = Modifier.padding(14.dp),
+                        color = if (item.missed) Color(0xFFC62828) else MaterialTheme.colorScheme.onSurfaceVariant,
+                        lineHeight = 20.sp
                     )
                 }
-                if (item.hasDueDate) {
-                    DeadlineMeta(
-                        value = formatLocalDateTime(reminderAtMillisToDateTime(item.dueAtMillis)),
-                        accent = if (item.missed) Color(0xFFC62828) else MaterialTheme.colorScheme.primary
-                    )
-                } else {
-                    MetaLine(
-                        icon = "🕊",
-                        label = "DDL",
-                        value = "未设置",
-                        accent = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-                if (showStatusTime) {
-                    MetaLine(
-                        icon = if (item.completed) "✅" else "🚫",
-                        label = if (item.completed) "完成" else "取消",
-                        value = (item.completedAtMillis ?: item.canceledAtMillis)?.let {
-                            formatLocalDateTime(reminderAtMillisToDateTime(it))
-                        } ?: "未记录",
-                        accent = if (item.completed) MaterialTheme.colorScheme.tertiary else Color(0xFFB45309)
-                    )
-                }
+            }
+
+            if (item.hasDueDate) {
+                TodoInfoRow(label = "DDL", value = formatLocalDateTime(reminderAtMillisToDateTime(item.dueAtMillis)))
+            } else {
+                TodoInfoRow(label = "DDL", value = "未设置")
+            }
+            if (showCreated) {
+                TodoInfoRow(label = "创建", value = formatLocalDateTime(reminderAtMillisToDateTime(item.createdAtMillis)))
+            }
+            if (showStatusTime) {
+                TodoInfoRow(
+                    label = if (item.completed) "完成" else "取消",
+                    value = (item.completedAtMillis ?: item.canceledAtMillis)?.let {
+                        formatLocalDateTime(reminderAtMillisToDateTime(it))
+                    } ?: "未记录"
+                )
             }
         }
-    )
+    }
+}
+
+@Composable
+private fun TodoInfoRow(label: String, value: String) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalAlignment = Alignment.Top
+    ) {
+        Text(
+            text = label,
+            modifier = Modifier.width(52.dp),
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.SemiBold
+        )
+        Text(
+            text = value,
+            modifier = Modifier.weight(1f),
+            color = MaterialTheme.colorScheme.onSurface,
+            style = MaterialTheme.typography.bodyLarge
+        )
+    }
 }
 
 @Composable

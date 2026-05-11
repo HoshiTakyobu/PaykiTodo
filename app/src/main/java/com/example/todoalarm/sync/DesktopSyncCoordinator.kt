@@ -345,7 +345,7 @@ class DesktopSyncCoordinator(
         if (item.isTodo && !item.hasDueDate) {
             if (item.reminderEnabled || item.reminderAtMillis != null) {
                 ReminderDispatchTracker.clear(context, item.id)
-                runBlocking { app.repository.updateTodo(item.copy(reminderEnabled = false, reminderAtMillis = null, reminderOffsetsCsv = "")) }
+                runBlocking { app.repository.updateTodo(item.copy(reminderEnabled = false, reminderAtMillis = null)) }
             }
             return
         }

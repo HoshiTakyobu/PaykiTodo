@@ -57,9 +57,9 @@ This file tracks the product at a practical level for new coding sessions.
 
 ### Packaging / Identity
 
-- adaptive launcher icon now uses a dedicated safe-zone PaykiTodo vector foreground instead of reusing the full raster art as the foreground layer
-- adaptive launcher foreground is wired to `ic_payki_mark`; raster launcher art is kept for in-app launch / drawer surfaces
-- monochrome themed launcher icon now follows the same PaykiTodo logo silhouette as the colored launcher icon
+- adaptive launcher icon foreground is wired directly to the picture resource `ic_launcher_art`
+- old vector mark launcher resources have been removed to prevent accidentally reverting to the wrong icon
+- raster launcher art is also used by in-app launch / drawer surfaces
 - release-signing information template exists under `docs/PaykiTodo-Release-Signing-Template.md`
 
 ### Data / Backup / Diagnostics

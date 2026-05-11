@@ -7,13 +7,13 @@
 - Package name: `com.paykitodo.app`
 - Target platform: Android 14 / API 34
 - Current version in code:
-  - `versionName = "1.6.36"`
-  - `versionCode = 108`
+  - `versionName = "1.6.37"`
+  - `versionCode = 109`
 
 ## Current Build Facts
 
 - Latest debug APK output:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.6.36-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.6.37-debug.apk`
 - Minimal verification completed in the latest code round:
   - `./gradlew assembleDebug` succeeded with Android Studio bundled `jbr`
 - Current build environment expectation:
@@ -22,11 +22,13 @@
 
 ## Current Worktree Reality
 
-The repository is now at `1.6.36` after adding input syntax help buttons and updating the in-app Wiki.
+The repository is now at `1.6.37` after restoring the picture-based launcher icon chain.
 
 Most important current baseline facts:
 
-- version metadata is `1.6.36 / 108`
+- version metadata is `1.6.37 / 109`
+- launcher adaptive icon foreground now directly uses picture resource `@drawable/ic_launcher_art`
+- old vector mark launcher resources have been deleted so the launcher cannot fall back to them again
 - todo and calendar editors share a comma-separated reminder input syntax
 - reminder input accepts examples such as `5,15,16:30,05-10 15:00,2026-05-10 14:30`
 - invalid reminder entries turn the field/error text red and disable the save button
@@ -56,7 +58,7 @@ Recent code inspection and build verification cover:
 
 ## Documentation Health
 
-Current docs have been synchronized for `1.6.36`:
+Current docs have been synchronized for `1.6.37`:
 
 - `README.md`
 - `CHANGELOG.md`

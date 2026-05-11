@@ -1,5 +1,12 @@
 # Changelog
 
+## v1.6.37
+
+- 修复启动器图标被误接回旧矢量 mark 的问题
+- 启动器普通图标和圆形图标的 adaptive icon 前景重新改为图片版 `ic_launcher_art`
+- 删除旧的 `ic_payki_mark` / `ic_payki_mark_monochrome` / `ic_launcher_foreground` / `ic_launcher_monochrome` 资源，避免后续再次误用
+- 版本号升级到 `1.6.37` / `versionCode 109`
+
 ## v1.6.36
 
 - 待办提醒、日程提醒、待办批量、日程批量和自定义延后输入框旁新增圆形问号帮助按钮

@@ -4,8 +4,8 @@
 
 ### In Progress
 
-- Verify version `1.6.36` on device after adding input help buttons and Wiki updates
-- Keep `README.md`, `CHANGELOG.md`, and current-state docs aligned with version `1.6.36`
+- Verify version `1.6.37` on device after restoring the picture-based launcher icon chain
+- Keep `README.md`, `CHANGELOG.md`, and current-state docs aligned with version `1.6.37`
 - Continue board / dashboard and calendar polish without regressing the current interaction model
 - Improve repo-native handoff so new sessions do not depend on long chat history
 
@@ -30,7 +30,7 @@
 - Wiki sidebar links should switch sections inside the in-app Wiki WebView
 - Settings -> 使用说明 should open Wiki directly, and Settings -> 提示音 should open the system notification-tone picker directly
 - Desktop web all-day events spanning multiple days should render as one horizontal continuous bar
-- Launcher icon should use the safe-zone PaykiTodo vector foreground rather than the old full bitmap foreground
+- Launcher icon should use the picture-based `ic_launcher_art` adaptive foreground, not the old vector mark
 - Todo and calendar reminder input should accept comma-separated mixed reminder specs and block invalid values
 - Todo batch import should parse line-based `|` separated entries and import multiple todos correctly
 - Standalone batch buttons should be visible from daily board / active todo / calendar surfaces
@@ -54,6 +54,9 @@
 
 ## Done Recently
 
+- Bumped the app to `1.6.37` / `versionCode 109`
+- Restored launcher adaptive icon foreground to the picture-based `ic_launcher_art`
+- Removed old vector mark launcher resources so they cannot be reused accidentally
 - Bumped the app to `1.6.36` / `versionCode 108`
 - Added question-mark syntax help buttons beside key reminder, batch-import, and custom-snooze inputs
 - Updated in-app Wiki for unified reminder syntax, lightweight todo batch syntax, calendar batch `Remind=`, and custom snooze input
@@ -70,7 +73,7 @@
 - Fixed in-app Wiki navigation by enabling JavaScript only for the local asset page
 - Changed Settings help and tone rows to direct actions instead of nested subpanels
 - Rendered multi-day all-day events as continuous horizontal bars in the desktop web console
-- Reconnected the adaptive launcher foreground to the safe-zone PaykiTodo vector mark
+- Historical note: launcher foreground was once reconnected to a safe-zone vector mark, but this was reverted in 1.6.37; current launcher foreground uses picture resource `ic_launcher_art`
 - Bumped the app to `1.6.32` / `versionCode 104`
 - Added missed active todos back into the daily board todo block
 - Reworked the shared delete confirmation bottom sheet into a refined dangerous-action UI

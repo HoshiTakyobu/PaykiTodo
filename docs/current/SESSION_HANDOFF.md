@@ -6,11 +6,16 @@ Long-running Codex sessions can become unreliable. This file exists so a new ses
 
 ## Current Handoff Summary
 
-- The project is currently at code version `1.6.36` / `versionCode 108`
-- Latest debug APK path: `app/build/outputs/apk/debug/PaykiTodo-1.6.36-debug.apk`
+- The project is currently at code version `1.6.37` / `versionCode 109`
+- Latest debug APK path: `app/build/outputs/apk/debug/PaykiTodo-1.6.37-debug.apk`
 - Minimal verification passed:
   - `./gradlew assembleDebug` using Android Studio bundled `jbr`
-- Latest feature round addressed reminder input, batch import, custom snooze parsing, and syntax discoverability:
+- Latest feature round restored the launcher icon chain:
+  1. `ic_launcher.xml` and `ic_launcher_round.xml` now use `@drawable/ic_launcher_art` as foreground
+  2. old vector mark launcher resources were deleted
+  3. device-side verification should reinstall the APK and clear launcher cache if Android still shows a stale icon
+
+Previous feature round addressed reminder input, batch import, custom snooze parsing, and syntax discoverability:
   1. Todo and calendar editors now share a comma-separated reminder input syntax
   2. Supported reminder tokens include relative minutes, same-day `HH:mm`, current-year `MM-DD HH:mm`, and full `YYYY-MM-DD HH:mm`
   3. Reminder entries later than DDL / event start, malformed entries, and new-item past reminders are rejected in the editor UI
@@ -70,7 +75,7 @@ Todo batch rows intentionally default group / ring / vibrate and accept only one
 
 The next session should device-test the current APK rather than immediately refactor:
 
-1. Install `PaykiTodo-1.6.36-debug.apk`
+1. Install `PaykiTodo-1.6.37-debug.apk`
 2. Verify todo reminder input accepts multiple valid entries and blocks invalid entries
 3. Verify calendar reminder input does the same for timed and all-day events
 4. Verify a todo with `5,15` schedules and fires both reminder points

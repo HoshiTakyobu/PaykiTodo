@@ -1,6 +1,7 @@
 package com.example.todoalarm.ui
 
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -63,12 +64,15 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -94,6 +98,7 @@ import com.example.todoalarm.data.ThemeMode
 import com.example.todoalarm.data.TodoItem
 import com.example.todoalarm.data.WeekStartMode
 import com.example.todoalarm.ui.theme.PaykiGreetingFontFamily
+import kotlinx.coroutines.delay
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
@@ -435,9 +440,15 @@ internal fun DashboardBody(
     var missedExpanded by rememberSaveable { mutableStateOf(true) }
     var todayExpanded by rememberSaveable { mutableStateOf(true) }
     var upcomingExpanded by rememberSaveable(uiState.todayItems.isEmpty()) { mutableStateOf(uiState.todayItems.isEmpty()) }
-    val boardDate = LocalDate.now()
-    val todayScheduleItems = remember(uiState.calendarItems, boardDate) {
-        uiState.calendarItems.filter { boardEventOverlapsDay(it, boardDate) }
+    val boardMoment by produceState(initialValue = LocalDateTime.now()) {
+        while (true) {
+            delay(30_000L)
+            value = LocalDateTime.now()
+        }
+    }
+    val boardDate = boardMoment.toLocalDate()
+    val todayScheduleItems = remember(uiState.calendarItems, boardDate, boardMoment) {
+        uiState.calendarItems.filter { boardEventVisibleForToday(it, boardDate, boardMoment) }
             .sortedBy { it.startAtMillis ?: it.dueAtMillis }
     }
     val tomorrowScheduleItems = remember(uiState.calendarItems, boardDate) {
@@ -479,6 +490,7 @@ internal fun DashboardBody(
                 item {
                     TodayScheduleBoardCard(
                         today = boardDate,
+                        now = boardMoment,
                         todayEvents = todayScheduleItems,
                         tomorrowEvents = tomorrowScheduleItems,
                         onOpenEvent = onEditCalendarEvent
@@ -714,6 +726,7 @@ private fun BoardBlockTitle(title: String) {
 @Composable
 private fun TodayScheduleBoardCard(
     today: LocalDate,
+    now: LocalDateTime,
     todayEvents: List<TodoItem>,
     tomorrowEvents: List<TodoItem>,
     onOpenEvent: (TodoItem) -> Unit
@@ -772,7 +785,11 @@ private fun TodayScheduleBoardCard(
                     }
                 } else {
                     todayEvents.forEach { item ->
-                        BoardScheduleEventRow(item = item, onClick = { onOpenEvent(item) })
+                        BoardScheduleEventRow(
+                            item = item,
+                            now = now,
+                            onClick = { onOpenEvent(item) }
+                        )
                     }
                 }
 
@@ -784,7 +801,7 @@ private fun TodayScheduleBoardCard(
                         fontWeight = FontWeight.SemiBold
                     )
                     tomorrowEvents.take(2).forEach { item ->
-                        BoardScheduleEventRow(item = item, onClick = { onOpenEvent(item) })
+                        BoardScheduleEventRow(item = item, now = null, onClick = { onOpenEvent(item) })
                     }
                 }
             }
@@ -795,55 +812,86 @@ private fun TodayScheduleBoardCard(
 @Composable
 private fun BoardScheduleEventRow(
     item: TodoItem,
+    now: LocalDateTime?,
     onClick: () -> Unit
 ) {
     val tint = item.accentColorHex?.let(::colorFromHex) ?: MaterialTheme.colorScheme.primary
+    val inProgress = now?.let { boardEventInProgress(item, it) } == true
+    val gold = Color(0xFFFFC94A)
+    val rowShape = RoundedCornerShape(18.dp)
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick),
+            .drawBehind {
+                if (!inProgress) return@drawBehind
+                val glowColor = gold.copy(alpha = 0.26f)
+                drawRoundRect(
+                    color = glowColor,
+                    topLeft = Offset(-4.dp.toPx(), -3.dp.toPx()),
+                    size = androidx.compose.ui.geometry.Size(size.width + 8.dp.toPx(), size.height + 6.dp.toPx()),
+                    cornerRadius = CornerRadius(22.dp.toPx(), 22.dp.toPx())
+                )
+            }
+            .then(
+                if (inProgress) {
+                    Modifier.background(gold.copy(alpha = 0.08f), rowShape)
+                } else {
+                    Modifier
+                }
+            )
+            .clickable(onClick = onClick)
+            .padding(horizontal = if (inProgress) 10.dp else 0.dp, vertical = if (inProgress) 8.dp else 0.dp),
         verticalArrangement = Arrangement.spacedBy(0.dp)
     ) {
-        Row(
+        Surface(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
-            verticalAlignment = Alignment.Top
+            shape = rowShape,
+            color = Color.Transparent,
+            border = if (inProgress) BorderStroke(1.4.dp, gold.copy(alpha = 0.92f)) else null
         ) {
-            Surface(
+            Row(
                 modifier = Modifier
-                    .padding(top = 4.dp)
-                    .size(width = 5.dp, height = 64.dp),
-                shape = RoundedCornerShape(999.dp),
-                color = tint.copy(alpha = 0.96f)
-            ) {}
-            Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(2.dp)
+                    .fillMaxWidth()
+                    .padding(if (inProgress) 8.dp else 0.dp),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                verticalAlignment = Alignment.Top
             ) {
-                Text(
-                    text = item.title,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis
-                )
-                Text(
-                    text = boardEventSecondaryText(item),
-                    color = MaterialTheme.colorScheme.onSurface,
-                    style = MaterialTheme.typography.bodyLarge,
-                    fontWeight = FontWeight.Medium,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-                item.location.takeIf { it.isNotBlank() }?.let {
+                Surface(
+                    modifier = Modifier
+                        .padding(top = 4.dp)
+                        .size(width = 5.dp, height = 64.dp),
+                    shape = RoundedCornerShape(999.dp),
+                    color = if (inProgress) gold else tint.copy(alpha = 0.96f)
+                ) {}
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(2.dp)
+                ) {
                     Text(
-                        text = it,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        style = MaterialTheme.typography.bodySmall,
+                        text = item.title,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = if (inProgress) gold else MaterialTheme.colorScheme.onSurface,
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis
                     )
+                    Text(
+                        text = boardEventSecondaryText(item),
+                        color = MaterialTheme.colorScheme.onSurface,
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = FontWeight.Medium,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    item.location.takeIf { it.isNotBlank() }?.let {
+                        Text(
+                            text = it,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            style = MaterialTheme.typography.bodySmall,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
                 }
             }
         }
@@ -1203,6 +1251,22 @@ private fun boardEventOverlapsDay(item: TodoItem, date: LocalDate): Boolean {
         item.endAtMillis?.let(::reminderAtMillisToDateTime)?.toLocalDate() ?: start
     }
     return !date.isBefore(start) && !date.isAfter(end)
+}
+
+private fun boardEventVisibleForToday(item: TodoItem, today: LocalDate, now: LocalDateTime): Boolean {
+    if (!boardEventOverlapsDay(item, today)) return false
+    if (item.allDay) return true
+    val end = item.endAtMillis?.let(::reminderAtMillisToDateTime)
+        ?: item.startAtMillis?.let(::reminderAtMillisToDateTime)
+        ?: return false
+    return end.isAfter(now)
+}
+
+private fun boardEventInProgress(item: TodoItem, now: LocalDateTime): Boolean {
+    val start = item.startAtMillis?.let(::reminderAtMillisToDateTime) ?: return false
+    if (item.allDay) return boardEventOverlapsDay(item, now.toLocalDate())
+    val end = item.endAtMillis?.let(::reminderAtMillisToDateTime) ?: start
+    return !now.isBefore(start) && now.isBefore(end)
 }
 
 private fun boardEventSecondaryText(item: TodoItem): String {

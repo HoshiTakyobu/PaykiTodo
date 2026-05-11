@@ -347,6 +347,11 @@ internal fun CalendarPanel(
                 }
             }
 
+            fun openDetails(item: TodoItem) {
+                pendingDraft = null
+                detailsTarget = item
+            }
+
             Column(modifier = Modifier.fillMaxSize()) {
                 CalendarBrowserHeader(
                     titleMonth = headerMonthDate,
@@ -422,7 +427,7 @@ internal fun CalendarPanel(
                                 events = events,
                                 onSelectDate = ::selectDate,
                                 onOpenThreeDayAt = ::openThreeDayFromDate,
-                                onOpenDetails = { detailsTarget = it }
+                                onOpenDetails = ::openDetails
                             )
                         }
                     }
@@ -482,7 +487,7 @@ internal fun CalendarPanel(
                                     events = visibleAllDayEvents,
                                     dayIndexByDate = dayIndexByDate,
                                     dragModifier = Modifier,
-                                    onOpenDetails = { detailsTarget = it }
+                                    onOpenDetails = ::openDetails
                                 )
                                 HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.16f))
                                 Row(
@@ -514,7 +519,7 @@ internal fun CalendarPanel(
                                         pendingDraft = pendingDraft,
                                         onPendingDraftChange = { pendingDraft = it },
                                         onQuickCreateEvent = onQuickCreateEvent,
-                                        onOpenDetails = { detailsTarget = it },
+                                        onOpenDetails = ::openDetails,
                                         onMoveEvent = { item, startAt, endAt ->
                                             draggingEvent = DraggingCalendarEvent(item, startAt, endAt)
                                         },
@@ -565,7 +570,7 @@ internal fun CalendarPanel(
                                 agendaRefreshing = agendaRefreshing,
                                 onSelectDate = ::selectDate,
                                 onShiftWeek = ::shiftViewBy,
-                                onOpenDetails = { detailsTarget = it }
+                                onOpenDetails = ::openDetails
                             )
                         }
                     }
@@ -1705,25 +1710,30 @@ private fun CalendarTimedBoard(
                 .fillMaxWidth()
                 .height(boardHeight)
                 .pointerInput(days, dayColumnWidthPx, hourHeightPx) {
-                    detectTapGestures { tapOffset ->
-                        val dayIndex = ((tapOffset.x + latestHorizontalOffsetPx) / dayColumnWidthPx)
-                            .toInt()
-                            .coerceIn(0, days.lastIndex)
-                        val rawMinutes = ((tapOffset.y / hourHeightPx) * 60f).roundToInt().coerceIn(0, 23 * 60 + 59)
-                        val snappedMinutes = snapToQuarterHour(rawMinutes).coerceIn(0, 23 * 60 + 45)
-                        val startAt = LocalDateTime.of(
-                            days[dayIndex],
-                            LocalTime.of(snappedMinutes / 60, snappedMinutes % 60)
-                        )
-                        val endAt = startAt.plusMinutes(30)
-                        val nextDraft = PendingCalendarDraft(startAt, endAt)
-                        if (latestPendingDraft == nextDraft) {
-                            onQuickCreateEvent(startAt, endAt)
+                    detectTapGestures(
+                        onLongPress = {
                             onPendingDraftChange(null)
-                        } else {
-                            onPendingDraftChange(nextDraft)
+                        },
+                        onTap = { tapOffset ->
+                            val dayIndex = ((tapOffset.x + latestHorizontalOffsetPx) / dayColumnWidthPx)
+                                .toInt()
+                                .coerceIn(0, days.lastIndex)
+                            val rawMinutes = ((tapOffset.y / hourHeightPx) * 60f).roundToInt().coerceIn(0, 23 * 60 + 59)
+                            val snappedMinutes = snapToQuarterHour(rawMinutes).coerceIn(0, 23 * 60 + 45)
+                            val startAt = LocalDateTime.of(
+                                days[dayIndex],
+                                LocalTime.of(snappedMinutes / 60, snappedMinutes % 60)
+                            )
+                            val endAt = startAt.plusMinutes(30)
+                            val nextDraft = PendingCalendarDraft(startAt, endAt)
+                            if (latestPendingDraft == nextDraft) {
+                                onQuickCreateEvent(startAt, endAt)
+                                onPendingDraftChange(null)
+                            } else {
+                                onPendingDraftChange(nextDraft)
+                            }
                         }
-                    }
+                    )
                 }
         ) {
             Canvas(modifier = Modifier.fillMaxSize()) {

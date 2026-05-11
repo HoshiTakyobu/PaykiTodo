@@ -6,44 +6,54 @@ Long-running Codex sessions can become unreliable. This file exists so a new ses
 
 ## Current Handoff Summary
 
-- The project is currently at code version `1.6.30` / `versionCode 102`
-- The repository has been committed and pushed to `origin/main`
-- Latest code commit before this doc synchronization: `2d13b04` (`修复待办预览与同步通知跳转`)
-- Latest debug APK path: `app/build/outputs/apk/debug/PaykiTodo-1.6.30-debug.apk`
+- The project is currently at code version `1.6.31` / `versionCode 103`
+- Latest debug APK path: `app/build/outputs/apk/debug/PaykiTodo-1.6.31-debug.apk`
 - Minimal verification passed:
   - `./gradlew assembleDebug`
-- The latest completed repair round addressed four user-facing issues:
-  1. Daily-board todo preview now uses the unified bottom-sheet style and should not mark the todo complete when backing out of preview
-  2. User-visible delete buttons now require confirmation in the phone UI paths touched this round and in the desktop web console delete paths
-  3. Calendar event reminder acknowledgement preserves configured reminder offsets so previews still show reminder setup after all reminders fire
-  4. The desktop-sync foreground notification can be tapped to open the in-app Settings -> Desktop Sync panel
+- Latest local repair round addressed daily-board and calendar pending-draft behavior:
+  1. Daily board no longer shows today's timed events after their end time
+  2. Daily board highlights currently running events with a gold outline and subtle glow
+  3. Calendar timeline pending new-event card can be canceled by long-pressing blank timeline space
+  4. Opening an existing event clears the pending new-event card
+- The previous `1.6.30` round remains included:
+  1. Daily-board todo preview uses unified bottom-sheet style and should not mark items complete when backing out
+  2. User-visible delete buttons require confirmation in the touched phone UI paths and desktop web console delete paths
+  3. Calendar event reminder acknowledgement preserves configured reminder offsets
+  4. Desktop-sync foreground notification opens Settings -> Desktop Sync
 
 ## Files Most Relevant To The Latest Round
 
 - `app/build.gradle.kts`
-- `app/src/main/java/com/example/todoalarm/ui/TodoCards.kt`
-- `app/src/main/java/com/example/todoalarm/ui/CalendarPanel.kt`
-- `app/src/main/java/com/example/todoalarm/ui/GroupManagementPanel.kt`
-- `app/src/main/java/com/example/todoalarm/data/TodoRepository.kt`
-- `app/src/main/java/com/example/todoalarm/ui/TodoViewModel.kt`
-- `app/src/main/java/com/example/todoalarm/sync/DesktopSyncCoordinator.kt`
-- `app/src/main/java/com/example/todoalarm/sync/DesktopSyncService.kt`
-- `app/src/main/java/com/example/todoalarm/sync/DesktopSyncWebAssets.kt`
-- `app/src/main/java/com/example/todoalarm/ui/MainActivity.kt`
-- `app/src/main/java/com/example/todoalarm/ui/DashboardScreen.kt`
 - `app/src/main/java/com/example/todoalarm/ui/DashboardChrome.kt`
-- `app/src/main/java/com/example/todoalarm/ui/SettingsPanel.kt`
-- `app/src/main/java/com/example/todoalarm/ui/EditorBottomSheet.kt`
+- `app/src/main/java/com/example/todoalarm/ui/CalendarPanel.kt`
+- `README.md`
+- `CHANGELOG.md`
+- `TODO.md`
+- `docs/current/PROJECT_STATUS.md`
+- `docs/current/FEATURE_LEDGER.md`
+- `docs/current/CURRENT_TASK.md`
+
+## UI Consistency Note
+
+As of this baseline, simple preview and editor surfaces are mostly aligned around the shared bottom-sheet language:
+
+- todo preview uses `PaykiBottomSheet`
+- calendar event preview uses `PaykiBottomSheet`
+- todo editor uses `EditorBottomSheet`
+- calendar event editor uses `EditorBottomSheet`
+
+They are not byte-for-byte identical because todo and calendar event fields differ, but the main interaction and visual container language is unified. Some secondary dialogs still use `AlertDialog`, for example batch import help, recurrence previews, and wheel picker dialogs.
 
 ## Smallest Safe Next Step
 
-The next session should not start by rewriting architecture. The smallest safe next step is device verification:
+The next session should device-test rather than immediately refactor:
 
-1. Install `PaykiTodo-1.6.30-debug.apk`
-2. In daily board, tap a current todo body, close preview, verify it is not completed
-3. Delete a todo / event / group / schedule template and verify confirmation appears first
-4. Enable desktop sync, tap the persistent notification, verify it opens Settings -> Desktop Sync
-5. Trigger or acknowledge an event reminder, reopen event preview, verify reminder offsets are still shown
+1. Install `PaykiTodo-1.6.31-debug.apk`
+2. Verify finished timed events disappear from the daily board after end time
+3. Verify currently running board events have the gold highlight
+4. Verify calendar pending new-event card can be canceled by long-pressing blank timeline space
+5. Verify opening an existing event clears any pending new-event card
+6. Regression-test todo preview / delete confirmations / desktop-sync notification route from `1.6.30`
 
 ## Required Reading For A New Session
 

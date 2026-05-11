@@ -4,8 +4,8 @@
 
 ### In Progress
 
-- Verify version `1.6.30` on device after the preview / delete-confirmation / desktop-sync notification repair round
-- Keep `README.md`, `CHANGELOG.md`, and current-state docs aligned with version `1.6.30`
+- Verify version `1.6.31` on device after the daily-board schedule and calendar pending-draft repair round
+- Keep `README.md`, `CHANGELOG.md`, and current-state docs aligned with version `1.6.31`
 - Continue board / dashboard and calendar polish without regressing the current interaction model
 - Improve repo-native handoff so new sessions do not depend on long chat history
 
@@ -22,6 +22,9 @@
 - Delete actions should show confirmation before deleting on both phone UI and desktop web console
 - After an event reminder fires, the event preview should still show the configured reminder offsets
 - Tapping the desktop-sync foreground notification should open Settings -> Desktop Sync
+- Finished daily-board events should disappear after their end time
+- Currently running daily-board events should show the gold outline / glow treatment
+- Calendar pending event draft should be cancelable by long-pressing blank timeline space, and should clear when opening an existing event
 
 ## Mid-Term Follow-Ups
 
@@ -38,6 +41,10 @@
 
 ## Done Recently
 
+- Bumped the app to `1.6.31` / `versionCode 103`
+- Fixed daily-board schedule filtering so finished timed events are hidden
+- Added gold outline and glow treatment for currently running events on the daily board
+- Added clear/cancel behavior for calendar timeline pending event drafts
 - Bumped the app to `1.6.30` / `versionCode 102`
 - Reworked active todo preview into the shared bottom-sheet visual language and split preview click from completion checkbox
 - Added delete confirmation coverage for schedule templates, group deletion, calendar event deletion, active todo deletion, and desktop web delete buttons

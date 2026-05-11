@@ -21,6 +21,8 @@ This file tracks the product at a practical level for new coding sessions.
 
 - dedicated daily board entry exists in the drawer and is the default home section
 - board view can show today's todos and today's / tomorrow's schedule summary together
+- board today's schedule hides timed events after they have ended
+- board currently running events can be visually highlighted with a gold outline and subtle glow
 - board greeting card supports compact collapse / expand behavior
 - board background now uses separate light and dark image resources
 
@@ -31,6 +33,7 @@ This file tracks the product at a practical level for new coding sessions.
 - normal events, all-day events, and recurring events
 - event location / notes / color / reminder settings
 - event preview keeps showing configured reminder offsets after reminder acknowledgement
+- timeline pending event draft can be canceled by long-pressing blank timeline space and is cleared when opening an existing event
 - text-based batch import support
 - week-template and semester-generation related capabilities exist in the codebase and docs history
 - current-time label is wired on the left time axis and remains visible even when today is off-screen, while the red current-time line remains in the schedule area and also stays visible

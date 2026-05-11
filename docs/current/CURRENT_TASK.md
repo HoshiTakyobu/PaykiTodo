@@ -2,14 +2,14 @@
 
 ## Active Development Focus
 
-The current round has been consolidated into a committed and pushed `1.6.30` baseline. The next work should start from repository facts rather than old chat memory.
+The current round has produced a `1.6.31` baseline. The next work should start from repository facts rather than old chat memory.
 
 Primary active focus areas:
 
-1. Device-test the daily-board todo preview fix: tapping a todo body should open preview and must not complete it
-2. Device-test destructive action confirmations across phone UI and desktop web console
-3. Device-test calendar reminder preview preservation after all reminders for an event have fired
-4. Device-test the desktop-sync foreground notification click route into Settings -> Desktop Sync
+1. Device-test daily-board schedule filtering: finished timed events should no longer appear in today's schedule
+2. Device-test running-event highlight: currently running board events should show a gold outline / glow
+3. Device-test calendar pending draft behavior: long-press blank timeline space should cancel the pending "new event" state, and opening an existing event should clear it
+4. Regression-test the `1.6.30` fixes: todo preview should not complete items, destructive actions should confirm, desktop-sync notification should route correctly
 5. Continue board / dashboard and calendar polish without regressing existing flows
 6. Keep version metadata and docs aligned with the actual code state
 
@@ -19,24 +19,23 @@ When a new session takes over, it should usually do these in order:
 
 1. run `git status --short --branch`
 2. verify current version number and APK naming
-3. if testing on device, install `app/build/outputs/apk/debug/PaykiTodo-1.6.30-debug.apk`
-4. test tapping an active todo in the daily board and pressing back from preview
-5. test delete confirmations for todo, calendar event, group, schedule template, and desktop web item deletion
-6. test desktop-sync notification click routing while desktop sync is enabled
-7. test event reminder acknowledgement and then reopen event preview to verify configured reminder offsets remain visible
+3. if testing on device, install `app/build/outputs/apk/debug/PaykiTodo-1.6.31-debug.apk`
+4. create a today event that has already ended and verify it does not appear on the daily board
+5. create a currently running today event and verify the gold outline / glow appears
+6. tap a blank calendar time slot to show the pending new-event card, then long-press blank time-axis space to cancel it
+7. tap a blank calendar time slot, then open an existing event and verify the pending card disappears
+8. decide the next smallest UI polish item based on device observations
 
 ## Repository-Verified Notes
 
-The current code baseline includes these specific 1.6.30 changes:
+The current code baseline includes these specific 1.6.31 changes:
 
-1. `TodoCards.kt` active todo card body and checkbox are separate interaction targets
-2. active todo preview uses `PaykiBottomSheet`
-3. `CalendarPanel.kt` has delete confirmation for calendar events and schedule templates
-4. `GroupManagementPanel.kt` has delete confirmation for groups
-5. `DesktopSyncWebAssets.kt` confirms web delete actions before sending DELETE
-6. `TodoRepository.acknowledgeCalendarEvent()` preserves configured reminder offsets
-7. `DesktopSyncService` notification includes a `PendingIntent` into `MainActivity`
-8. `MainActivity` / `DashboardScreen` / `SettingsPanel` route that intent to the desktop sync settings panel
+1. `DashboardChrome.kt` computes `boardMoment` and filters today's schedule through `boardEventVisibleForToday`
+2. `DashboardChrome.kt` highlights currently running board events through `boardEventInProgress`
+3. `CalendarPanel.kt` clears pending drafts when opening existing event details
+4. `CalendarPanel.kt` cancels pending drafts on long-press over blank timeline space
+5. `app/build.gradle.kts` is bumped to `1.6.31 / 103`
+6. `./gradlew assembleDebug` has succeeded for this version
 
 ## What Not To Do Immediately
 
@@ -49,6 +48,6 @@ The current code baseline includes these specific 1.6.30 changes:
 
 ## Current External Dependency
 
-No external file is needed for the current 1.6.30 verification task.
+No external file is needed for the current 1.6.31 verification task.
 
 If future work touches icon generation or adaptation, verify the intended in-repo resource chain before reprocessing any external image.

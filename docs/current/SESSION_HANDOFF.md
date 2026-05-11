@@ -6,29 +6,32 @@ Long-running Codex sessions can become unreliable. This file exists so a new ses
 
 ## Current Handoff Summary
 
-- The project is currently at code version `1.6.32` / `versionCode 104`
-- Latest debug APK path: `app/build/outputs/apk/debug/PaykiTodo-1.6.32-debug.apk`
+- The project is currently at code version `1.6.33` / `versionCode 105`
+- Latest debug APK path: `app/build/outputs/apk/debug/PaykiTodo-1.6.33-debug.apk`
 - Minimal verification passed:
   - `./gradlew assembleDebug`
-- Latest repair round addressed daily-board missed todos and delete confirmation polish:
-  1. Daily-board todo block now includes missed active todos as well as today's normal todos
-  2. Shared phone-side delete confirmation is now a refined dangerous-action bottom sheet with red icon, irreversible-action text, message card, red confirm button, and cancel button
-- The previous `1.6.31` round remains included:
+- Latest repair round addressed Wiki navigation, settings direct actions, desktop all-day rendering, and launcher foreground wiring:
+  1. In-app Wiki sidebar navigation now works because local WebView JavaScript is enabled
+  2. Settings -> 使用说明 opens the Wiki directly
+  3. Settings -> 提示音 opens the system notification-tone picker directly
+  4. Desktop web all-day events spanning multiple days render as one horizontal continuous bar
+  5. Adaptive launcher icon foreground points to the safe-zone vector `ic_payki_mark` instead of the full raster launcher art
+- Previous `1.6.32` round remains included:
+  1. Daily-board todo block includes missed active todos as well as today's normal todos
+  2. Shared phone-side delete confirmation is a refined dangerous-action bottom sheet
+- Previous `1.6.31` round remains included:
   1. Daily board no longer shows today's timed events after their end time
   2. Daily board highlights currently running events with a gold outline and subtle glow
   3. Calendar timeline pending new-event card can be canceled by long-pressing blank timeline space
   4. Opening an existing event clears the pending new-event card
-- The earlier `1.6.30` round remains included:
-  1. Daily-board todo preview uses unified bottom-sheet style and should not mark items complete when backing out
-  2. User-visible delete buttons require confirmation in the touched phone UI paths and desktop web console delete paths
-  3. Calendar event reminder acknowledgement preserves configured reminder offsets
-  4. Desktop-sync foreground notification opens Settings -> Desktop Sync
 
 ## Files Most Relevant To The Latest Round
 
 - `app/build.gradle.kts`
-- `app/src/main/java/com/example/todoalarm/ui/DashboardChrome.kt`
-- `app/src/main/java/com/example/todoalarm/ui/EditorBottomSheet.kt`
+- `app/src/main/java/com/example/todoalarm/ui/WikiActivity.kt`
+- `app/src/main/java/com/example/todoalarm/ui/SettingsPanel.kt`
+- `app/src/main/java/com/example/todoalarm/sync/DesktopSyncWebAssets.kt`
+- `app/src/main/res/drawable/ic_launcher_foreground.xml`
 - `README.md`
 - `CHANGELOG.md`
 - `TODO.md`
@@ -36,28 +39,27 @@ Long-running Codex sessions can become unreliable. This file exists so a new ses
 - `docs/current/FEATURE_LEDGER.md`
 - `docs/current/CURRENT_TASK.md`
 
-## UI Consistency Note
+## Icon Chain Note
 
-As of this baseline, simple preview and editor surfaces are mostly aligned around the shared bottom-sheet language:
+Current launcher icon chain:
 
-- todo preview uses `PaykiBottomSheet`
-- calendar event preview uses `PaykiBottomSheet`
-- todo editor uses `EditorBottomSheet`
-- calendar event editor uses `EditorBottomSheet`
-- delete confirmations use the refined shared `PaykiDecisionBottomSheet`
+- Manifest icon: `@mipmap/ic_launcher`
+- Adaptive icon foreground: `@drawable/ic_launcher_foreground`
+- `ic_launcher_foreground`: inset wrapper around `@drawable/ic_payki_mark`
+- In-app launch / drawer art can still use `@drawable/ic_launcher_art`
 
-They are not byte-for-byte identical because todo and calendar event fields differ, but the main interaction and visual container language is unified. Some secondary dialogs still use `AlertDialog`, for example batch import help, recurrence previews, and wheel picker dialogs.
+If the phone still shows an old icon after installing the latest APK, suspect launcher cache or an old installed package before changing resources again.
 
 ## Smallest Safe Next Step
 
 The next session should device-test rather than immediately refactor:
 
-1. Install `PaykiTodo-1.6.32-debug.apk`
-2. Verify missed active todos appear in the daily-board todo block
-3. Verify delete confirmation sheet appearance on todo / event / group / schedule-template deletion
-4. Regression-test finished timed events disappearing from the daily board after end time
-5. Regression-test currently running board events with the gold highlight
-6. Regression-test calendar pending new-event cancel behavior
+1. Install `PaykiTodo-1.6.33-debug.apk`
+2. Verify the launcher icon after reinstall / launcher cache refresh
+3. Verify Wiki sidebar links switch pages in the in-app Wiki
+4. Verify Settings 使用说明 and 提示音 rows directly open target screens
+5. Verify desktop web multi-day all-day events render as continuous bars
+6. Regression-test daily board missed todos, delete confirmation, and calendar pending-draft cancel behavior
 
 ## Required Reading For A New Session
 

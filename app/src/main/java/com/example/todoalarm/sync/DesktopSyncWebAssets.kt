@@ -373,10 +373,12 @@ object DesktopSyncWebAssets {
         .schedule-date-title { font-size: 22px; font-weight: 800; margin-bottom: 6px; }
         .all-day-section { border-radius: 20px; border: 1px solid rgba(211,220,230,.9); background: rgba(255,255,255,.66); padding: 14px; }
         .slot-title { font-size: 13px; font-weight: 800; color: var(--muted); margin-bottom: 10px; }
-        .all-day-list { display: grid; grid-template-columns: repeat(var(--day-count, 1), minmax(0, 1fr)); gap: 12px; align-items: start; }
+        .all-day-list { display: grid; grid-template-columns: repeat(var(--day-count, 1), minmax(0, 1fr)); gap: 8px 12px; align-items: stretch; }
+        .all-day-row { display: contents; }
         .all-day-day { min-width: 0; display: flex; flex-direction: column; gap: 8px; }
         .all-day-day-label { font-size: 13px; font-weight: 800; color: #314154; padding: 0 2px; }
-        .all-day-card { padding: 12px 14px; border-radius: 16px; border-left: 4px solid var(--accent, var(--primary)); background: rgba(255,255,255,.92); box-shadow: 0 8px 18px rgba(39,56,88,.05); }
+        .all-day-card { min-width: 0; padding: 12px 14px; border-radius: 16px; border-left: 4px solid var(--accent, var(--primary)); background: rgba(255,255,255,.92); box-shadow: 0 8px 18px rgba(39,56,88,.05); }
+        .all-day-card.spanning { border-left-width: 5px; border-right: 1px solid rgba(211,220,230,.92); }
         .all-day-card-title, .event-card-title { font-size: 16px; font-weight: 800; margin-bottom: 4px; }
         .all-day-empty { padding: 10px 12px; border-radius: 14px; background: rgba(98,114,133,.08); color: var(--muted); font-size: 13px; }
         .schedule-board-shell { display: grid; grid-template-columns: 84px minmax(0, 1fr); gap: 14px; align-items: start; min-width: 0; }
@@ -676,16 +678,28 @@ object DesktopSyncWebAssets {
             + '</section>';
         }
 
-        function renderAllDayCard(item) {
+        function renderAllDayCard(item, span = null) {
           const accent = item.groupColorHex || item.accentColorHex || '#4e87e1';
           const meta = [item.groupName || '未分组', item.location || '', item.isRecurring ? '循环' : ''].filter(Boolean).join(' · ');
+          const style = '--accent:' + accent + (span ? ';grid-column:' + span.start + ' / span ' + span.length : '');
           return ''
-            + '<article class="all-day-card" style="--accent:' + accent + '">'
+            + '<article class="all-day-card' + (span ? ' spanning' : '') + '" style="' + style + '">'
             +   '<div class="all-day-card-title">' + escapeHtml(item.title) + '</div>'
             +   '<div class="all-day-card-meta">' + escapeHtml(meta || '全天日程') + '</div>'
             +   (item.notes ? '<div class="all-day-card-meta">' + escapeHtml(item.notes) + '</div>' : '')
             +   '<div class="actions"><button data-action="delete" data-id="' + item.id + '" class="danger">删除</button></div>'
             + '</article>';
+        }
+
+        function allDaySpanForVisibleKeys(item, visibleKeys) {
+          const visibleStart = dayStartMillis(visibleKeys[0]);
+          const visibleEnd = dayStartMillis(visibleKeys[visibleKeys.length - 1]) + 24 * 60 * 60 * 1000;
+          const start = Math.max(eventStart(item), visibleStart);
+          const end = Math.min(eventEnd(item), visibleEnd);
+          if (end <= start) return null;
+          const startIndex = Math.max(0, Math.floor((start - visibleStart) / (24 * 60 * 60 * 1000)));
+          const inclusiveEndIndex = Math.min(visibleKeys.length - 1, Math.floor((end - 1 - visibleStart) / (24 * 60 * 60 * 1000)));
+          return { start: startIndex + 1, length: Math.max(1, inclusiveEndIndex - startIndex + 1) };
         }
 
         function buildEventSegment(item, key) {
@@ -757,6 +771,20 @@ object DesktopSyncWebAssets {
             +   '<div class="all-day-day-label">' + escapeHtml(formatCompactDateLabel(key) + ' ' + formatWeekday(dateFromKey(key))) + '</div>'
             +   (items.length ? items.map(renderAllDayCard).join('') : '<div class="all-day-empty">本日没有全天日程。</div>')
             + '</div>';
+        }
+
+        function renderAllDayBoard(visibleKeys, allDayEvents) {
+          const header = '<div class="all-day-row">' + visibleKeys.map(key =>
+            '<div class="all-day-day-label">' + escapeHtml(formatCompactDateLabel(key) + ' ' + formatWeekday(dateFromKey(key))) + '</div>'
+          ).join('') + '</div>';
+          if (!allDayEvents.length) {
+            return header + '<div class="all-day-empty" style="grid-column:1 / span ' + Math.max(1, visibleKeys.length) + '">当前可见日期没有全天日程。</div>';
+          }
+          const cards = allDayEvents.map(item => {
+            const span = allDaySpanForVisibleKeys(item, visibleKeys);
+            return span ? renderAllDayCard(item, span) : '';
+          }).join('');
+          return header + cards;
         }
 
         function renderEventDayColumn(key, timed) {
@@ -863,14 +891,17 @@ object DesktopSyncWebAssets {
           });
           const totalAllDay = visibleDays.reduce((sum, day) => sum + day.allDay.length, 0);
           const totalTimed = visibleDays.reduce((sum, day) => sum + day.timed.length, 0);
+          const visibleAllDayEvents = events
+            .filter(item => item.allDay && allDaySpanForVisibleKeys(item, visibleKeys))
+            .sort((a, b) => eventStart(a) - eventStart(b));
           els.eventDayHeaders.style.setProperty('--day-count', String(visibleKeys.length || 1));
           els.eventTimeline.style.setProperty('--day-count', String(visibleKeys.length || 1));
           els.allDayList.style.setProperty('--day-count', String(visibleKeys.length || 1));
           els.eventDayHeaders.innerHTML = visibleDays.map(day => renderEventDayHeader(day.key, day.items)).join('');
           if (els.eventAnchorDate) els.eventAnchorDate.value = state.selectedEventDay;
           els.eventSelectedDate.textContent = renderVisibleRangeTitle(visibleKeys);
-          els.eventSelectedSubtitle.textContent = '起始日：' + formatCompactDateLabel(state.selectedEventDay) + ' · 连续 ' + visibleKeys.length + ' 天 · 全天 ' + totalAllDay + ' 项，定时 ' + totalTimed + ' 项';
-          els.allDayList.innerHTML = visibleDays.map(day => renderAllDayDay(day.key, day.allDay)).join('');
+          els.eventSelectedSubtitle.textContent = '起始日：' + formatCompactDateLabel(state.selectedEventDay) + ' · 连续 ' + visibleKeys.length + ' 天 · 全天 ' + visibleAllDayEvents.length + ' 项，定时 ' + totalTimed + ' 项';
+          els.allDayList.innerHTML = renderAllDayBoard(visibleKeys, visibleAllDayEvents);
           els.hourAxis.innerHTML = renderHourAxis();
           els.eventTimeline.innerHTML = visibleDays.map(day => renderEventDayColumn(day.key, day.timed)).join('');
           if (els.boardScroll) {

@@ -54,6 +54,7 @@ This file tracks the product at a practical level for new coding sessions.
 ### Packaging / Identity
 
 - adaptive launcher icon now uses a dedicated safe-zone PaykiTodo vector foreground instead of reusing the full raster art as the foreground layer
+- adaptive launcher foreground is wired to `ic_payki_mark`; raster launcher art is kept for in-app launch / drawer surfaces
 - monochrome themed launcher icon now follows the same PaykiTodo logo silhouette as the colored launcher icon
 - release-signing information template exists under `docs/PaykiTodo-Release-Signing-Template.md`
 
@@ -64,6 +65,7 @@ This file tracks the product at a practical level for new coding sessions.
 - auto-backup related support
 - crash log viewing / copying
 - in-app wiki assets
+- in-app Wiki sidebar navigation works through local WebView JavaScript
 
 ### Desktop / LAN Assistance
 
@@ -72,6 +74,7 @@ This file tracks the product at a practical level for new coding sessions.
 - browser can perform limited data operations against the phone-side dataset
 - desktop-sync foreground notification can be tapped to open the in-app Settings -> Desktop Sync panel
 - desktop web destructive delete actions require confirmation before DELETE requests are sent
+- desktop web all-day events can span multiple visible days as one continuous horizontal bar
 
 ### Destructive Action Safety
 

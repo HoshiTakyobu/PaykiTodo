@@ -4,8 +4,8 @@
 
 ### In Progress
 
-- Verify version `1.6.32` on device after the daily-board missed-todo and delete-confirmation repair round
-- Keep `README.md`, `CHANGELOG.md`, and current-state docs aligned with version `1.6.32`
+- Verify version `1.6.33` on device after the Wiki / settings direct-jump / desktop all-day / launcher icon repair round
+- Keep `README.md`, `CHANGELOG.md`, and current-state docs aligned with version `1.6.33`
 - Continue board / dashboard and calendar polish without regressing the current interaction model
 - Improve repo-native handoff so new sessions do not depend on long chat history
 
@@ -27,6 +27,10 @@
 - Calendar pending event draft should be cancelable by long-pressing blank timeline space, and should clear when opening an existing event
 - Missed active todos should appear in the daily board todo block
 - Delete confirmation sheets should show the refined dangerous-action UI on phone-side delete paths
+- Wiki sidebar links should switch sections inside the in-app Wiki WebView
+- Settings -> 使用说明 should open Wiki directly, and Settings -> 提示音 should open the system notification-tone picker directly
+- Desktop web all-day events spanning multiple days should render as one horizontal continuous bar
+- Launcher icon should use the safe-zone PaykiTodo vector foreground rather than the old full bitmap foreground
 
 ## Mid-Term Follow-Ups
 
@@ -43,6 +47,11 @@
 
 ## Done Recently
 
+- Bumped the app to `1.6.33` / `versionCode 105`
+- Fixed in-app Wiki navigation by enabling JavaScript only for the local asset page
+- Changed Settings help and tone rows to direct actions instead of nested subpanels
+- Rendered multi-day all-day events as continuous horizontal bars in the desktop web console
+- Reconnected the adaptive launcher foreground to the safe-zone PaykiTodo vector mark
 - Bumped the app to `1.6.32` / `versionCode 104`
 - Added missed active todos back into the daily board todo block
 - Reworked the shared delete confirmation bottom sheet into a refined dangerous-action UI

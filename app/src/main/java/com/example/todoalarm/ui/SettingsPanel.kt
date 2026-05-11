@@ -179,7 +179,7 @@ fun SettingsPanel(
                     icon = Icons.Rounded.LibraryMusic,
                     title = "提示音",
                     summary = settings.reminderToneName ?: "当前使用内置提醒音",
-                    onClick = { selectedSection = SettingsSection.TONE }
+                    onClick = onPickSystemReminderTone
                 )
             }
         }
@@ -196,7 +196,7 @@ fun SettingsPanel(
                     icon = Icons.Rounded.ManageSearch,
                     title = "使用说明",
                     summary = null,
-                    onClick = { selectedSection = SettingsSection.HELP }
+                    onClick = onOpenWiki
                 )
                 SettingsMenuDivider()
                 SettingsMenuItem(

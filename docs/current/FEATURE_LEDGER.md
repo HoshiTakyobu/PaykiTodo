@@ -60,6 +60,7 @@ This file tracks the product at a practical level for new coding sessions.
 - adaptive launcher icon foreground is wired directly to the picture resource `ic_launcher_art`
 - old vector mark launcher resources have been removed to prevent accidentally reverting to the wrong icon
 - raster launcher art is also used by in-app launch / drawer surfaces
+- picture launcher art is opaque pure white and scaled down inside the 512px canvas to reduce desktop mask crowding
 - release-signing information template exists under `docs/PaykiTodo-Release-Signing-Template.md`
 
 ### Data / Backup / Diagnostics

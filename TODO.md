@@ -4,8 +4,8 @@
 
 ### In Progress
 
-- Verify version `1.6.37` on device after restoring the picture-based launcher icon chain
-- Keep `README.md`, `CHANGELOG.md`, and current-state docs aligned with version `1.6.37`
+- Verify version `1.6.38` on device after resizing the picture-based launcher icon and forcing pure-white icon background
+- Keep `README.md`, `CHANGELOG.md`, and current-state docs aligned with version `1.6.38`
 - Continue board / dashboard and calendar polish without regressing the current interaction model
 - Improve repo-native handoff so new sessions do not depend on long chat history
 
@@ -54,6 +54,9 @@
 
 ## Done Recently
 
+- Bumped the app to `1.6.38` / `versionCode 110`
+- Reprocessed picture-based launcher icon art with pure-white opaque background and smaller centered content
+- Changed launcher adaptive background color to pure white
 - Bumped the app to `1.6.37` / `versionCode 109`
 - Restored launcher adaptive icon foreground to the picture-based `ic_launcher_art`
 - Removed old vector mark launcher resources so they cannot be reused accidentally

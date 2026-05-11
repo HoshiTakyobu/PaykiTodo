@@ -2,7 +2,7 @@
 
 ## Active Development Focus
 
-The current round has produced a `1.6.37` baseline. The implemented focus was restoring the picture-based launcher icon chain.
+The current round has produced a `1.6.38` baseline. The implemented focus was fixing picture-based launcher icon scale and white background.
 
 Primary verification focus areas:
 
@@ -20,7 +20,7 @@ Primary verification focus areas:
 
 When testing on a device, use:
 
-1. install `app/build/outputs/apk/debug/PaykiTodo-1.6.37-debug.apk`
+1. install `app/build/outputs/apk/debug/PaykiTodo-1.6.38-debug.apk`
 2. create a todo with DDL in the future and reminder input `5,15`
 3. create a calendar event and test `5,15,HH:mm` where `HH:mm` is before the event start
 4. verify an illegal value later than DDL / event start turns the input red and disables save
@@ -44,8 +44,9 @@ The current code baseline includes these specific `1.6.34` changes:
 9. `InputSyntaxHelp.kt` adds a shared syntax help button/dialog
 10. `app/src/main/assets/wiki/index.html` documents the current input syntax
 11. launcher adaptive icons now use `@drawable/ic_launcher_art` and the old vector mark resources are deleted
-12. `app/build.gradle.kts` is bumped to `1.6.37 / 109`
-13. `./gradlew assembleDebug` has succeeded for this version
+12. launcher picture art is reprocessed with pure-white opaque background and smaller centered content
+13. `app/build.gradle.kts` is bumped to `1.6.38 / 110`
+14. `./gradlew assembleDebug` has succeeded for this version
 
 ## What Not To Do Immediately
 
@@ -58,4 +59,4 @@ The current code baseline includes these specific `1.6.34` changes:
 
 ## Current External Dependency
 
-No external file is needed for the current `1.6.37` verification task.
+No external file is needed for the current `1.6.38` verification task.

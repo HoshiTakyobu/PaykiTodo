@@ -1,5 +1,12 @@
 # Changelog
 
+## v1.6.38
+
+- 重新处理图片版应用图标：整体图案内缩到安全区域，避免桌面 adaptive mask 裁切得过满
+- 将 `ic_launcher_art` / `ic_launcher_art_v2` / `ic_launcher_art_dark` 合成为不透明纯白背景，P 内圈等透明区域也落成白色
+- 启动器 adaptive icon 背景色改为纯白 `#FFFFFF`
+- 版本号升级到 `1.6.38` / `versionCode 110`
+
 ## v1.6.37
 
 - 修复启动器图标被误接回旧矢量 mark 的问题

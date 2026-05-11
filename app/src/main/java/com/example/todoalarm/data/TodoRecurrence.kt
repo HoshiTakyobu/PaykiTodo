@@ -46,8 +46,19 @@ data class TodoDraft(
     val groupId: Long,
     val ringEnabled: Boolean,
     val vibrateEnabled: Boolean,
-    val recurrence: RecurrenceConfig = RecurrenceConfig()
-)
+    val recurrence: RecurrenceConfig = RecurrenceConfig(),
+    val reminderOffsetsMinutes: List<Int> = emptyList()
+) {
+    val normalizedReminderOffsetsMinutes: List<Int>
+        get() {
+            val fallback = if (dueAt != null && reminderAt != null) {
+                ((dueAt.toEpochMillis() - reminderAt.toEpochMillis()) / 60_000L).toInt()
+            } else {
+                null
+            }
+            return normalizeReminderOffsets(reminderOffsetsMinutes, fallback)
+        }
+}
 
 fun Set<DayOfWeek>.toStorageString(): String {
     return map { it.value }

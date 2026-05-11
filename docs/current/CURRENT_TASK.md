@@ -2,39 +2,41 @@
 
 ## Active Development Focus
 
-The current round has produced a `1.6.33` baseline. The next work should start from repository facts rather than old chat memory.
+The current round has produced a `1.6.34` baseline. The implemented focus was reminder-time input and batch-import accessibility.
 
-Primary active focus areas:
+Primary verification focus areas:
 
-1. Device-test launcher icon behavior after reconnecting adaptive foreground to the safe-zone vector mark
-2. Device-test in-app Wiki sidebar navigation across multiple chapters
-3. Device-test Settings -> 使用说明 and Settings -> 提示音 direct actions
-4. Desktop-test multi-day all-day events in the browser console; they should render as one continuous horizontal bar
-5. Continue board / dashboard and calendar polish without regressing existing flows
-6. Keep version metadata and docs aligned with the actual code state
+1. Todo editor reminder input accepts mixed entries such as `5,15,16:30,05-10 15:00,2026-05-10 14:30`
+2. Calendar editor reminder input accepts the same syntax for timed events and all-day events
+3. Invalid reminder entries show an error state and disable the save button
+4. A normal todo with multiple future reminders schedules more than one trigger time
+5. Todo batch import can import multiple `|` separated rows and blocks invalid rows
+6. Batch buttons are visible from daily board / active todo surfaces and the calendar header
 
 ## Immediate Practical Next Steps
 
-When a new session takes over, it should usually do these in order:
+When testing on a device, use:
 
-1. run `git status --short --branch`
-2. verify current version number and APK naming
-3. if testing on device, install `app/build/outputs/apk/debug/PaykiTodo-1.6.33-debug.apk`
-4. if launcher icon still looks stale, clear launcher cache or reinstall cleanly before assuming the resource chain is wrong
-5. open Wiki and click several sidebar entries besides 总览与阅读方式
-6. tap Settings -> 使用说明 and Settings -> 提示音 and verify they direct-open the target screens
-7. open desktop web console with a multi-day all-day event and verify it spans visible days horizontally
+1. install `app/build/outputs/apk/debug/PaykiTodo-1.6.34-debug.apk`
+2. create a todo with DDL in the future and reminder input `5,15`
+3. create a calendar event and test `5,15,HH:mm` where `HH:mm` is before the event start
+4. verify an illegal value later than DDL / event start turns the input red and disables save
+5. open daily board or 我的任务 and test `批量添加待办`
+6. open 日历 and test the standalone `批量` button
 
 ## Repository-Verified Notes
 
-The current code baseline includes these specific 1.6.33 changes:
+The current code baseline includes these specific `1.6.34` changes:
 
-1. `WikiActivity.kt` enables JavaScript for the bundled local Wiki and disables file cross-origin access
-2. `SettingsPanel.kt` routes 使用说明 directly to `onOpenWiki` and 提示音 directly to `onPickSystemReminderTone`
-3. `DesktopSyncWebAssets.kt` renders all-day events as spanning cards across visible days
-4. `ic_launcher_foreground.xml` points to `@drawable/ic_payki_mark` instead of `@drawable/ic_launcher_art`
-5. `app/build.gradle.kts` is bumped to `1.6.33 / 105`
-6. `./gradlew assembleDebug` has succeeded for this version
+1. `ReminderInputParser.kt` implements the shared comma-separated reminder syntax
+2. `TodoDraft` now carries `reminderOffsetsMinutes` while preserving single-reminder compatibility
+3. `TodoItem.reminderTriggerTimesMillis()` uses todo offset lists when present
+4. `TodoRepository` persists normal todo reminder offsets to `reminderOffsetsCsv`
+5. `TodoEditorDialog` and `CalendarEventEditorDialog` use the new text input and save-button validation
+6. `TodoBatchImport.kt` adds a todo batch-import dialog and parser
+7. `DashboardChrome.kt` and `CalendarPanel.kt` expose standalone batch buttons
+8. `app/build.gradle.kts` is bumped to `1.6.34 / 106`
+9. `./gradlew assembleDebug` has succeeded for this version
 
 ## What Not To Do Immediately
 
@@ -43,10 +45,8 @@ The current code baseline includes these specific 1.6.33 changes:
 - do not scan the whole workspace outside this repo
 - do not revert unrelated user edits
 - do not change JDK setup; use Android Studio bundled `jbr`
-- do not assume device behavior is fixed until the user actually tests it
+- do not assume reminder behavior is fully verified until the user tests on device
 
 ## Current External Dependency
 
-No external file is needed for the current 1.6.33 verification task.
-
-If future work touches icon generation or adaptation, verify the intended in-repo resource chain before reprocessing any external image.
+No external file is needed for the current `1.6.34` verification task.

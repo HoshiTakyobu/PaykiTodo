@@ -228,6 +228,29 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
         return null
     }
 
+    suspend fun importTodos(drafts: List<TodoDraft>): String? {
+        if (drafts.isEmpty()) return "没有可导入的待办"
+
+        drafts.forEachIndexed { index, draft ->
+            validateDraft(
+                draft = draft,
+                original = null,
+                scope = RecurrenceScope.CURRENT
+            )?.let { error ->
+                return "第 ${index + 1} 条：$error"
+            }
+        }
+
+        drafts.forEach { draft ->
+            val createdItems = repository.createFromDraft(draft)
+            for (item in createdItems) {
+                scheduleReminderOrDisable(item)
+            }
+        }
+        autoBackupIfEnabled()
+        return null
+    }
+
     suspend fun updateCalendarEvent(
         original: TodoItem,
         draft: CalendarEventDraft,
@@ -542,14 +565,20 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
             return "DDL 必须晚于当前时间"
         }
 
-        val reminderAtMillis = draft.reminderAt?.toEpochMillis()
-        if (draft.dueAt == null && reminderAtMillis != null) {
+        val reminderTriggerMillis = if (draft.dueAt == null) {
+            emptyList()
+        } else {
+            draft.normalizedReminderOffsetsMinutes
+                .map { requireNotNull(dueAtMillis) - it * 60_000L }
+                .distinct()
+        }
+        if (draft.dueAt == null && draft.normalizedReminderOffsetsMinutes.isNotEmpty()) {
             return "未设置 DDL 的任务不能启用提醒"
         }
-        if (!isHistory && original == null && reminderAtMillis != null && reminderAtMillis <= now) {
+        if (!isHistory && original == null && reminderTriggerMillis.any { it <= now }) {
             return "提醒时间必须晚于当前时间"
         }
-        if (reminderAtMillis != null && dueAtMillis != null && reminderAtMillis > dueAtMillis) {
+        if (reminderTriggerMillis.any { it > (dueAtMillis ?: Long.MAX_VALUE) }) {
             return "提醒时间不能晚于 DDL"
         }
 

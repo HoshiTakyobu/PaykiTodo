@@ -7,8 +7,9 @@ This file tracks the product at a practical level for new coding sessions.
 ### Task / Todo System
 
 - create, edit, delete todo items
-- title / notes / group / deadline / reminder fields
+- title / notes / group / deadline / multi-reminder fields
 - no-deadline todos
+- text-based todo batch import with preview validation
 - complete / cancel / restore flows
 - active todo preview now uses the same bottom-sheet visual language as calendar event preview
 - active todo card body opens preview; completion is isolated to the checkbox to avoid accidental completion
@@ -33,6 +34,7 @@ This file tracks the product at a practical level for new coding sessions.
 - day / multi-day / month / agenda style views exist in code, with ongoing refinement
 - normal events, all-day events, and recurring events
 - event location / notes / color / reminder settings
+- calendar reminder editing accepts the same comma-separated multi-reminder syntax as todos
 - event preview keeps showing configured reminder offsets after reminder acknowledgement
 - timeline pending event draft can be canceled by long-pressing blank timeline space and is cleared when opening an existing event
 - text-based batch import support
@@ -42,6 +44,7 @@ This file tracks the product at a practical level for new coding sessions.
 ### Reminder System
 
 - `AlarmManager` based scheduling
+- todos and calendar events can store and schedule multiple configured reminder offsets
 - notification reminder path
 - full-screen reminder path
 - foreground service and fallback chain work

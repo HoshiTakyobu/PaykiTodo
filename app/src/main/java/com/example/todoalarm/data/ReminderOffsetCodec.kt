@@ -36,7 +36,16 @@ internal fun CalendarEventDraft.reminderTriggerTimesMillis(): List<Long> {
 
 internal fun TodoItem.reminderTriggerTimesMillis(): List<Long> {
     if (!reminderEnabled) return emptyList()
-    if (!isEvent) return listOfNotNull(reminderAtMillis)
+    if (!isEvent) {
+        val offsets = configuredReminderOffsetsMinutes
+        if (hasDueDate && offsets.isNotEmpty()) {
+            return offsets
+                .map { dueAtMillis - it * 60_000L }
+                .distinct()
+                .sorted()
+        }
+        return listOfNotNull(reminderAtMillis)
+    }
     val anchorMillis = eventReminderAnchorMillis()
     return configuredReminderOffsetsMinutes
         .map { anchorMillis - it * 60_000L }

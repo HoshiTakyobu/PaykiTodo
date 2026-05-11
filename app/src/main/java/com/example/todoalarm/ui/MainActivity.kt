@@ -161,6 +161,7 @@ class MainActivity : ComponentActivity() {
                     onRequestAccessibilityService = ::openAccessibilitySettings,
                     onAddTodo = viewModel::addTodo,
                     onAddCalendarEvent = viewModel::addCalendarEvent,
+                    onImportTodos = viewModel::importTodos,
                     onImportCalendarEvents = viewModel::importCalendarEvents,
                     onUpdateTodo = viewModel::updateTodo,
                     onUpdateCalendarEvent = viewModel::updateCalendarEvent,

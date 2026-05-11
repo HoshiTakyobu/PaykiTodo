@@ -57,6 +57,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalDrawerSheet
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -364,6 +365,7 @@ internal fun DashboardBody(
     onExportBackup: () -> Unit,
     onImportBackup: () -> Unit,
     onAutoBackupChange: (Boolean) -> Unit,
+    onOpenTodoBatchImport: () -> Unit,
     onOpenCalendarBatchImport: () -> Unit
 ) {
     if (section == DashboardSection.CALENDAR) {
@@ -482,6 +484,13 @@ internal fun DashboardBody(
                 }
 
                 item {
+                    DashboardQuickActionRow(
+                        onOpenTodoBatchImport = onOpenTodoBatchImport,
+                        onOpenCalendarBatchImport = onOpenCalendarBatchImport
+                    )
+                }
+
+                item {
                     BoardBlockTitle("今日待办（${boardTodoItems.size}）")
                 }
                 if (boardTodoItems.isEmpty()) {
@@ -507,6 +516,13 @@ internal fun DashboardBody(
             }
 
             DashboardSection.ACTIVE -> {
+                item {
+                    DashboardQuickActionRow(
+                        onOpenTodoBatchImport = onOpenTodoBatchImport,
+                        onOpenCalendarBatchImport = onOpenCalendarBatchImport
+                    )
+                }
+
                 if (uiState.missedItems.isNotEmpty()) {
                     item {
                         ExpandableSectionHeader(
@@ -578,6 +594,26 @@ internal fun DashboardBody(
             DashboardSection.CALENDAR -> Unit
             DashboardSection.SETTINGS -> Unit
         }
+    }
+}
+
+@Composable
+private fun DashboardQuickActionRow(
+    onOpenTodoBatchImport: () -> Unit,
+    onOpenCalendarBatchImport: () -> Unit
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        OutlinedButton(
+            onClick = onOpenTodoBatchImport,
+            modifier = Modifier.weight(1f)
+        ) { Text("批量添加待办") }
+        OutlinedButton(
+            onClick = onOpenCalendarBatchImport,
+            modifier = Modifier.weight(1f)
+        ) { Text("批量添加日程") }
     }
 }
 

@@ -132,6 +132,13 @@ internal fun CalendarEventEditorDialog(
                 ?: listOf(15)
         )
     }
+    var reminderInput by remember(initialEvent?.id, seedDraft) {
+        mutableStateOf(
+            (initialEvent?.configuredReminderOffsetsMinutes?.takeIf { it.isNotEmpty() }
+                ?: seedDraft?.normalizedReminderOffsetsMinutes?.takeIf { it.isNotEmpty() }
+                ?: listOf(15)).joinToString(",")
+        )
+    }
     var reminderAt by remember(initialEvent?.id, seedDraft) {
         mutableStateOf(
             initialEvent?.reminderAtMillis?.let(::reminderAtMillisToDateTime)
@@ -176,14 +183,29 @@ internal fun CalendarEventEditorDialog(
     var showReminderDeliveryPicker by remember { mutableStateOf(false) }
     var showRecurrencePicker by remember { mutableStateOf(false) }
     var activeDateTimeTarget by remember { mutableStateOf<CalendarDateTimeTarget?>(null) }
+    val reminderAnchor = if (allDay) LocalDateTime.of(startAt.toLocalDate(), LocalTime.of(9, 0)) else startAt
+    val reminderValidation = remember(reminderInput, reminderAnchor, reminderEnabled, initialEvent?.id) {
+        if (!reminderEnabled) {
+            ReminderInputValidation(isValid = true)
+        } else {
+            parseReminderInput(
+                raw = reminderInput,
+                anchor = reminderAnchor,
+                requireFuture = initialEvent == null
+            )
+        }
+    }
+    val eventEndValid = if (allDay) !endAt.toLocalDate().isBefore(startAt.toLocalDate()) else endAt.isAfter(startAt)
+    val confirmEnabled = title.isNotBlank() && eventEndValid && (!reminderEnabled || reminderValidation.isValid)
 
     EditorBottomSheet(
         title = if (initialEvent == null) "新增日程" else "编辑日程",
         subtitle = "主题、时间、重复、地点、描述、提醒与颜色都在这里完成设置。",
         confirmLabel = if (initialEvent == null) "创建" else "保存",
+        confirmEnabled = confirmEnabled,
         onDismiss = onDismiss,
         onConfirm = {
-            val normalizedOffsets = if (reminderEnabled) normalizeReminderOffsets(reminderOffsetsMinutes) else emptyList()
+            val normalizedOffsets = if (reminderEnabled && reminderValidation.isValid) reminderValidation.offsetsMinutes else emptyList()
             onConfirm(
                 CalendarEventDraft(
                     title = title,
@@ -355,11 +377,9 @@ internal fun CalendarEventEditorDialog(
                                 verticalArrangement = Arrangement.spacedBy(3.dp)
                             ) {
                                 Text(
-                                    text = if (reminderOffsetsMinutes.isEmpty()) "尚未选择提醒时点" else reminderOffsetsMinutes
-                                        .sortedDescending()
-                                        .joinToString("、") { reminderLeadTimeLabel(it) },
+                                    text = if (reminderValidation.isValid) reminderValidation.message else "输入存在非法项",
                                     fontWeight = FontWeight.SemiBold,
-                                    color = MaterialTheme.colorScheme.onSurface
+                                    color = if (reminderValidation.isValid) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.error
                                 )
                                 Text(
                                     text = buildReminderMetaLabel(
@@ -373,10 +393,34 @@ internal fun CalendarEventEditorDialog(
                             }
                         }
 
-                        EditorSelectionRow(
-                            title = "提醒时间",
-                            value = reminderSelectionSummary(reminderOffsetsMinutes),
-                            onClick = { showReminderPicker = true }
+                        if (!reminderValidation.isValid) {
+                            Text(
+                                text = "非法输入：${reminderValidation.message}",
+                                color = MaterialTheme.colorScheme.error,
+                                style = MaterialTheme.typography.bodySmall,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        }
+                        OutlinedTextField(
+                            value = reminderInput,
+                            onValueChange = {
+                                reminderInput = it
+                                reminderOffsetsMinutes = parseReminderInput(
+                                    raw = it,
+                                    anchor = reminderAnchor,
+                                    requireFuture = initialEvent == null
+                                ).offsetsMinutes
+                            },
+                            label = { Text("提醒时间") },
+                            placeholder = { Text("5,15,16:30,05-10 15:00,2026-05-10 14:30") },
+                            isError = !reminderValidation.isValid,
+                            supportingText = {
+                                Text("数字=提前分钟；HH:mm=当天时刻；MM-DD HH:mm=当年；YYYY-MM-DD HH:mm=完整时刻。用英文逗号分隔。")
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                            singleLine = false,
+                            minLines = 1,
+                            maxLines = 3
                         )
                         EditorSelectionRow(
                             title = "提醒方式",
@@ -468,7 +512,7 @@ internal fun CalendarEventEditorDialog(
                         }
                         OutlinedButton(
                             onClick = {
-                                val normalizedOffsets = if (reminderEnabled) normalizeReminderOffsets(reminderOffsetsMinutes) else emptyList()
+                                val normalizedOffsets = if (reminderEnabled && reminderValidation.isValid) reminderValidation.offsetsMinutes else emptyList()
                                 recurrencePreview = previewCalendarRecurrence(
                                     CalendarEventDraft(
                                         title = title,

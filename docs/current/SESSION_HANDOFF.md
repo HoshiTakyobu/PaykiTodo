@@ -6,32 +6,32 @@ Long-running Codex sessions can become unreliable. This file exists so a new ses
 
 ## Current Handoff Summary
 
-- The project is currently at code version `1.6.33` / `versionCode 105`
-- Latest debug APK path: `app/build/outputs/apk/debug/PaykiTodo-1.6.33-debug.apk`
+- The project is currently at code version `1.6.34` / `versionCode 106`
+- Latest debug APK path: `app/build/outputs/apk/debug/PaykiTodo-1.6.34-debug.apk`
 - Minimal verification passed:
-  - `./gradlew assembleDebug`
-- Latest repair round addressed Wiki navigation, settings direct actions, desktop all-day rendering, and launcher foreground wiring:
-  1. In-app Wiki sidebar navigation now works because local WebView JavaScript is enabled
-  2. Settings -> 使用说明 opens the Wiki directly
-  3. Settings -> 提示音 opens the system notification-tone picker directly
-  4. Desktop web all-day events spanning multiple days render as one horizontal continuous bar
-  5. Adaptive launcher icon foreground points to the safe-zone vector `ic_payki_mark` instead of the full raster launcher art
-- Previous `1.6.32` round remains included:
-  1. Daily-board todo block includes missed active todos as well as today's normal todos
-  2. Shared phone-side delete confirmation is a refined dangerous-action bottom sheet
-- Previous `1.6.31` round remains included:
-  1. Daily board no longer shows today's timed events after their end time
-  2. Daily board highlights currently running events with a gold outline and subtle glow
-  3. Calendar timeline pending new-event card can be canceled by long-pressing blank timeline space
-  4. Opening an existing event clears the pending new-event card
+  - `./gradlew assembleDebug` using Android Studio bundled `jbr`
+- Latest feature round addressed reminder input and batch import:
+  1. Todo and calendar editors now share a comma-separated reminder input syntax
+  2. Supported reminder tokens include relative minutes, same-day `HH:mm`, current-year `MM-DD HH:mm`, and full `YYYY-MM-DD HH:mm`
+  3. Reminder entries later than DDL / event start, malformed entries, and new-item past reminders are rejected in the editor UI
+  4. Normal todos now persist and schedule multiple reminder offsets through `reminderOffsetsCsv`
+  5. Todo batch import exists with `|` separated rows and preview validation
+  6. Batch-add buttons are visible on daily board / active todo surfaces and in the calendar header
 
 ## Files Most Relevant To The Latest Round
 
 - `app/build.gradle.kts`
-- `app/src/main/java/com/example/todoalarm/ui/WikiActivity.kt`
-- `app/src/main/java/com/example/todoalarm/ui/SettingsPanel.kt`
-- `app/src/main/java/com/example/todoalarm/sync/DesktopSyncWebAssets.kt`
-- `app/src/main/res/drawable/ic_launcher_foreground.xml`
+- `app/src/main/java/com/example/todoalarm/ui/ReminderInputParser.kt`
+- `app/src/main/java/com/example/todoalarm/ui/TodoBatchImport.kt`
+- `app/src/main/java/com/example/todoalarm/ui/TodoEditorDialog.kt`
+- `app/src/main/java/com/example/todoalarm/ui/CalendarEventEditorDialog.kt`
+- `app/src/main/java/com/example/todoalarm/data/TodoRecurrence.kt`
+- `app/src/main/java/com/example/todoalarm/data/ReminderOffsetCodec.kt`
+- `app/src/main/java/com/example/todoalarm/data/TodoRepository.kt`
+- `app/src/main/java/com/example/todoalarm/ui/TodoViewModel.kt`
+- `app/src/main/java/com/example/todoalarm/ui/DashboardScreen.kt`
+- `app/src/main/java/com/example/todoalarm/ui/DashboardChrome.kt`
+- `app/src/main/java/com/example/todoalarm/ui/CalendarPanel.kt`
 - `README.md`
 - `CHANGELOG.md`
 - `TODO.md`
@@ -39,27 +39,37 @@ Long-running Codex sessions can become unreliable. This file exists so a new ses
 - `docs/current/FEATURE_LEDGER.md`
 - `docs/current/CURRENT_TASK.md`
 
-## Icon Chain Note
+## Reminder Syntax Note
 
-Current launcher icon chain:
+Shared reminder input examples:
 
-- Manifest icon: `@mipmap/ic_launcher`
-- Adaptive icon foreground: `@drawable/ic_launcher_foreground`
-- `ic_launcher_foreground`: inset wrapper around `@drawable/ic_payki_mark`
-- In-app launch / drawer art can still use `@drawable/ic_launcher_art`
+```text
+5,15,16:30,05-10 15:00,2026-05-10 14:30
+```
 
-If the phone still shows an old icon after installing the latest APK, suspect launcher cache or an old installed package before changing resources again.
+- `5` / `15`: remind 5 or 15 minutes before DDL / event start
+- `16:30`: remind at 16:30 on the DDL / event-start date
+- `05-10 15:00`: remind at that date-time in the current year
+- `2026-05-10 14:30`: remind at the full date-time
+- All tokens are separated by English commas
+
+Todo batch-import syntax uses `|` between fields so the reminder comma syntax remains unambiguous:
+
+```text
+2026-05-12 18:00 | 写报告 | 交初稿 | Remind=5,15,16:30 | Group=学习
+无DDL | 整理 Obsidian 待办 | 不设置截止时间
+```
 
 ## Smallest Safe Next Step
 
-The next session should device-test rather than immediately refactor:
+The next session should device-test the current APK rather than immediately refactor:
 
-1. Install `PaykiTodo-1.6.33-debug.apk`
-2. Verify the launcher icon after reinstall / launcher cache refresh
-3. Verify Wiki sidebar links switch pages in the in-app Wiki
-4. Verify Settings 使用说明 and 提示音 rows directly open target screens
-5. Verify desktop web multi-day all-day events render as continuous bars
-6. Regression-test daily board missed todos, delete confirmation, and calendar pending-draft cancel behavior
+1. Install `PaykiTodo-1.6.34-debug.apk`
+2. Verify todo reminder input accepts multiple valid entries and blocks invalid entries
+3. Verify calendar reminder input does the same for timed and all-day events
+4. Verify a todo with `5,15` schedules and fires both reminder points
+5. Verify `批量添加待办` parses valid rows and reports invalid rows
+6. Verify standalone batch buttons are visible and not hidden only in overflow menus
 
 ## Required Reading For A New Session
 

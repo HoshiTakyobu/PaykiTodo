@@ -737,10 +737,8 @@ class TodoRepository(
     }
 
     private fun TodoDraft.withAlignedDateTime(newDueAt: LocalDateTime): TodoDraft {
-        val currentDueAt = requireNotNull(dueAt) { "Recurring todo requires DDL" }
-        val offsetMinutes = reminderAt?.let {
-            ((currentDueAt.toEpochMillis() - it.toEpochMillis()) / 60_000L).toInt()
-        }
+        requireNotNull(dueAt) { "Recurring todo requires DDL" }
+        val offsetMinutes = normalizedReminderOffsetsMinutes.firstOrNull()
         val newReminderAt = offsetMinutes?.let { newDueAt.minusMinutes(it.toLong()) }
         return copy(dueAt = newDueAt, reminderAt = newReminderAt)
     }
@@ -753,9 +751,12 @@ class TodoRepository(
         seriesId: String? = null
     ): TodoItem {
         val dueAtMillis = draft.dueAt?.toEpochMillis() ?: NO_DUE_DATE_MILLIS
-        val reminderAtMillis = if (draft.dueAt == null) null else draft.reminderAt?.toEpochMillis()
-        val offsetMinutes = reminderAtMillis?.let { ((dueAtMillis - it) / 60_000L).toInt() }
-        val reminderOffsetsCsv = offsetMinutes?.toString().orEmpty()
+        val normalizedOffsets = if (draft.dueAt == null) emptyList() else draft.normalizedReminderOffsetsMinutes
+        val reminderAtMillis = if (draft.dueAt == null) null else normalizedOffsets
+            .map { dueAtMillis - it * 60_000L }
+            .minOrNull()
+        val offsetMinutes = normalizedOffsets.firstOrNull()
+        val reminderOffsetsCsv = encodeReminderOffsets(normalizedOffsets)
         val dueDate = draft.dueAt?.toLocalDate()
         val recurrence = draft.recurrence
 
@@ -772,7 +773,7 @@ class TodoRepository(
             accentColorHex = null,
             reminderAtMillis = reminderAtMillis,
             reminderOffsetsCsv = reminderOffsetsCsv,
-            reminderEnabled = reminderAtMillis != null,
+            reminderEnabled = normalizedOffsets.isNotEmpty(),
             ringEnabled = draft.ringEnabled,
             vibrateEnabled = draft.vibrateEnabled,
             voiceEnabled = false,
@@ -924,6 +925,7 @@ class TodoRepository(
     private fun buildTemplate(item: TodoItem, draft: TodoDraft): RecurringTaskTemplate {
         val dueAt = requireNotNull(draft.dueAt) { "Recurring todo requires DDL" }
         val dueDate = dueAt.toLocalDate()
+        val normalizedOffsets = draft.normalizedReminderOffsetsMinutes
         return RecurringTaskTemplate(
             id = 0,
             seriesId = item.recurringSeriesId ?: UUID.randomUUID().toString(),
@@ -937,13 +939,8 @@ class TodoRepository(
             dueHour = dueAt.hour,
             dueMinute = dueAt.minute,
             eventDurationMinutes = null,
-            reminderOffsetMinutes = draft.reminderAt?.let {
-                ((dueAt.toEpochMillis() - it.toEpochMillis()) / 60_000L).toInt()
-            },
-            reminderOffsetsCsv = draft.reminderAt?.let {
-                val offset = ((dueAt.toEpochMillis() - it.toEpochMillis()) / 60_000L).toInt()
-                encodeReminderOffsets(listOf(offset), offset)
-            }.orEmpty(),
+            reminderOffsetMinutes = normalizedOffsets.firstOrNull(),
+            reminderOffsetsCsv = encodeReminderOffsets(normalizedOffsets),
             ringEnabled = draft.ringEnabled,
             vibrateEnabled = draft.vibrateEnabled,
             reminderDeliveryMode = ReminderDeliveryMode.FULLSCREEN.name,
@@ -1005,7 +1002,7 @@ class TodoRepository(
         val dueDate = dueDateTime.toLocalDate()
         val endDate = config.endDate ?: return listOf(buildTaskItem(draft, now = now, seriesId = seriesId))
         val dueTime = dueDateTime.toLocalTime()
-        val offsetMinutes = draft.reminderAt?.let { ((dueDateTime.toEpochMillis() - it.toEpochMillis()) / 60_000L).toInt() }
+        val offsetMinutes = draft.normalizedReminderOffsetsMinutes.firstOrNull()
 
         val dates = when (config.type) {
             RecurrenceType.NONE -> listOf(dueDate)

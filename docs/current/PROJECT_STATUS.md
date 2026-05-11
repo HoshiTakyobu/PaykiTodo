@@ -7,53 +7,49 @@
 - Package name: `com.paykitodo.app`
 - Target platform: Android 14 / API 34
 - Current version in code:
-  - `versionName = "1.6.33"`
-  - `versionCode = 105`
+  - `versionName = "1.6.34"`
+  - `versionCode = 106`
 
 ## Current Build Facts
 
 - Latest debug APK output:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.6.33-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.6.34-debug.apk`
 - Minimal verification completed in the latest code round:
-  - `./gradlew assembleDebug` succeeded
+  - `./gradlew assembleDebug` succeeded with Android Studio bundled `jbr`
 - Current build environment expectation:
   - prefer Android Studio bundled `jbr`
   - avoid random system Java overrides when building this repo
 
 ## Current Worktree Reality
 
-The repository is now at `1.6.33` baseline after the Wiki / settings direct-jump / desktop all-day / launcher icon repair round.
+The repository is now at `1.6.34` after the reminder-input and batch-import round.
 
 Most important current baseline facts:
 
-- version metadata is `1.6.33 / 105`
-- in-app Wiki WebView enables JavaScript for the local asset page, so sidebar chapter buttons can switch content
-- Settings -> 使用说明 opens the in-app Wiki directly
-- Settings -> 提示音 opens the system notification-tone picker directly
-- desktop web console renders multi-day all-day events as one horizontal continuous bar across visible days
-- adaptive launcher icon foreground is reconnected to the safe-zone PaykiTodo vector mark, not the full raster launcher art
-- daily-board todo block includes missed active todos as well as today's normal todos
-- shared phone-side delete confirmation uses a refined dangerous-action bottom sheet with red icon, irreversible-action text, message card, red confirm button, and cancel button
-- daily-board timed events that have already ended are filtered out of the today's schedule block
-- currently running daily-board events are highlighted with a gold outline and subtle glow
-- calendar timeline pending event drafts can be canceled by long-pressing blank timeline space
-- opening an existing calendar event clears any pending event draft behind it
+- version metadata is `1.6.34 / 106`
+- todo and calendar editors share a comma-separated reminder input syntax
+- reminder input accepts examples such as `5,15,16:30,05-10 15:00,2026-05-10 14:30`
+- invalid reminder entries turn the field/error text red and disable the save button
+- normal todos now use `reminderOffsetsCsv` for multi-reminder storage and scheduling, not only the single `reminderAtMillis` field
+- todo batch import exists with a line-based `|` separated syntax and preview validation
+- daily board / active task surfaces expose standalone batch buttons for todos and calendar events
+- calendar header exposes a standalone `批量` button; batch import is no longer hidden only inside the more menu
 
 ## Recent Checked Areas
 
 Recent code inspection and build verification cover:
 
-- `WikiActivity.kt`: local Wiki JavaScript navigation enabled with file-cross-origin access disabled
-- `SettingsPanel.kt`: help and tone rows changed from subpanels to direct actions
-- `DesktopSyncWebAssets.kt`: multi-day all-day event rendering as spanning horizontal cards
-- `ic_launcher_foreground.xml`: adaptive launcher foreground points to `ic_payki_mark`
-- `DashboardChrome.kt`: daily-board missed todo inclusion, schedule filtering, and running-event gold highlight
-- `EditorBottomSheet.kt`: refined shared dangerous-action delete confirmation UI
-- `CalendarPanel.kt`: timeline pending-draft cancel / clear behavior
+- `ReminderInputParser.kt`: shared parser for minutes, same-day times, current-year date-times, and full date-times
+- `TodoRecurrence.kt`: `TodoDraft` carries normalized reminder offsets while keeping backward compatibility with `reminderAt`
+- `ReminderOffsetCodec.kt`: todo reminder trigger calculation reads configured offsets
+- `TodoRepository.kt`: todo items and recurring templates persist multiple reminder offsets
+- `TodoEditorDialog.kt` and `CalendarEventEditorDialog.kt`: shared input syntax, validation message, save disabling
+- `TodoBatchImport.kt`: todo batch parser/dialog and syntax help
+- `DashboardScreen.kt`, `DashboardChrome.kt`, `CalendarPanel.kt`: visible batch-import entry points
 
 ## Documentation Health
 
-Current docs have been synchronized for `1.6.33`:
+Current docs have been synchronized for `1.6.34`:
 
 - `README.md`
 - `CHANGELOG.md`
@@ -67,10 +63,10 @@ Older versioned docs under `docs/` remain historical references and should not b
 
 ## Current Risk Areas
 
-1. Device-side verification is required for the launcher icon surface because Android launchers can cache icons aggressively
-2. Wiki sidebar navigation should be tested inside the app WebView, not only in a desktop browser
-3. Settings direct actions should be tested for 使用说明 and 提示音 rows
-4. Desktop web all-day spanning behavior should be tested with a real multi-day all-day event
+1. Device-side verification is required for the new reminder input UX, especially invalid-value red state and disabled save behavior
+2. Todo multi-reminder scheduling should be tested with at least two future reminders on one todo
+3. Todo batch import should be tested with valid rows, unknown group names, no-DDL rows, and illegal reminder rows
+4. Calendar event reminder input should be tested for all-day and timed events
 5. Long-running chat sessions can become unreliable, so repository docs must carry state
 
 ## How A New Session Should Start

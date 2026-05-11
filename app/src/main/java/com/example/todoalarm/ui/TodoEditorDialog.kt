@@ -96,6 +96,9 @@ fun TodoEditorDialog(
     var reminderAt by remember(initialTodo?.id) {
         mutableStateOf(initialTodo?.reminderAtMillis?.let(::reminderAtMillisToDateTime) ?: dueAt)
     }
+    var reminderInput by remember(initialTodo?.id) {
+        mutableStateOf(initialTodo?.configuredReminderOffsetsMinutes?.takeIf { it.isNotEmpty() }?.joinToString(",") ?: "5")
+    }
     var ringEnabled by remember(initialTodo?.id) {
         mutableStateOf(initialTodo?.ringEnabled ?: defaultRingEnabled)
     }
@@ -121,19 +124,42 @@ fun TodoEditorDialog(
     var recurrencePreview by remember { mutableStateOf<RecurrencePreviewResult?>(null) }
     var showGroupPicker by remember { mutableStateOf(false) }
     var activeDateTimeTarget by remember { mutableStateOf<TodoDateTimeTarget?>(null) }
+    val reminderValidation = remember(reminderInput, dueAt, reminderEnabled, hasDueDate, isHistory, initialTodo?.id) {
+        if (!reminderEnabled || !hasDueDate || isHistory) {
+            ReminderInputValidation(isValid = true)
+        } else {
+            parseReminderInput(
+                raw = reminderInput,
+                anchor = dueAt,
+                requireFuture = initialTodo == null
+            )
+        }
+    }
+    val confirmEnabled = title.isNotBlank() && (!reminderEnabled || !hasDueDate || isHistory || reminderValidation.isValid)
 
     EditorBottomSheet(
         title = if (initialTodo == null) "新增任务" else "编辑任务",
         subtitle = "标题、DDL、提醒、循环、分组与备注都集中在这里。",
         confirmLabel = if (initialTodo == null) "创建" else "保存",
+        confirmEnabled = confirmEnabled,
         onDismiss = onDismiss,
         onConfirm = {
+            val parsedReminderTimes = if (isHistory || !hasDueDate || !reminderEnabled || !reminderValidation.isValid) {
+                emptyList()
+            } else {
+                reminderValidation.triggerTimes
+            }
+            val parsedReminderOffsets = if (isHistory || !hasDueDate || !reminderEnabled || !reminderValidation.isValid) {
+                emptyList()
+            } else {
+                reminderValidation.offsetsMinutes
+            }
             onConfirm(
                 TodoDraft(
                     title = title,
                     notes = notes,
                     dueAt = dueAt.takeIf { hasDueDate },
-                    reminderAt = if (isHistory || !hasDueDate || !reminderEnabled) null else reminderAt,
+                    reminderAt = parsedReminderTimes.minOrNull(),
                     groupId = groupId,
                     ringEnabled = ringEnabled,
                     vibrateEnabled = vibrateEnabled,
@@ -142,7 +168,8 @@ fun TodoEditorDialog(
                         type = recurrenceType,
                         weeklyDays = weeklyDays,
                         endDate = recurrenceEndDate
-                    )
+                    ),
+                    reminderOffsetsMinutes = parsedReminderOffsets
                 )
             )
         }
@@ -258,6 +285,7 @@ fun TodoEditorDialog(
                                     reminderEnabled = it
                                     if (it && initialTodo == null) {
                                         reminderAt = dueAt
+                                        if (reminderInput.isBlank()) reminderInput = "5"
                                     }
                                 },
                                 thumbContent = null
@@ -275,14 +303,35 @@ fun TodoEditorDialog(
                                         .padding(horizontal = 14.dp, vertical = 12.dp),
                                     verticalArrangement = Arrangement.spacedBy(3.dp)
                                 ) {
-                                    Text("提醒时刻", fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
-                                    Text(formatLocalDateTime(reminderAt), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    Text("提醒时间", fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
+                                    Text(
+                                        text = if (reminderValidation.isValid) reminderValidation.message else "输入存在非法项",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = if (reminderValidation.isValid) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.error
+                                    )
                                 }
                             }
-                            TodoSelectionRow(
-                                title = "提醒时间",
-                                value = formatLocalDateTime(reminderAt),
-                                onClick = { activeDateTimeTarget = TodoDateTimeTarget.ReminderAt }
+                            if (!reminderValidation.isValid) {
+                                Text(
+                                    text = "非法输入：${reminderValidation.message}",
+                                    color = MaterialTheme.colorScheme.error,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                            }
+                            OutlinedTextField(
+                                value = reminderInput,
+                                onValueChange = { reminderInput = it },
+                                label = { Text("提醒时间") },
+                                placeholder = { Text("5,15,16:30,05-10 15:00,2026-05-10 14:30") },
+                                isError = !reminderValidation.isValid,
+                                supportingText = {
+                                    Text("数字=提前分钟；HH:mm=当天时刻；MM-DD HH:mm=当年；YYYY-MM-DD HH:mm=完整时刻。用英文逗号分隔。")
+                                },
+                                modifier = Modifier.fillMaxWidth(),
+                                singleLine = false,
+                                minLines = 1,
+                                maxLines = 3
                             )
                             Row(
                                 modifier = Modifier
@@ -384,7 +433,7 @@ fun TodoEditorDialog(
                                             title = title,
                                             notes = notes,
                                             dueAt = dueAt,
-                                            reminderAt = if (reminderEnabled) reminderAt else null,
+                                            reminderAt = if (reminderEnabled && reminderValidation.isValid) reminderValidation.triggerTimes.minOrNull() else null,
                                             groupId = groupId,
                                             ringEnabled = ringEnabled,
                                             vibrateEnabled = vibrateEnabled,
@@ -393,7 +442,8 @@ fun TodoEditorDialog(
                                                 type = recurrenceType,
                                                 weeklyDays = weeklyDays,
                                                 endDate = recurrenceEndDate
-                                            )
+                                            ),
+                                            reminderOffsetsMinutes = if (reminderEnabled && reminderValidation.isValid) reminderValidation.offsetsMinutes else emptyList()
                                         )
                                     )
                                 },

@@ -4,8 +4,8 @@
 
 ### In Progress
 
-- Verify version `1.6.33` on device after the Wiki / settings direct-jump / desktop all-day / launcher icon repair round
-- Keep `README.md`, `CHANGELOG.md`, and current-state docs aligned with version `1.6.33`
+- Verify version `1.6.34` on device after the multi-reminder input and todo batch-import round
+- Keep `README.md`, `CHANGELOG.md`, and current-state docs aligned with version `1.6.34`
 - Continue board / dashboard and calendar polish without regressing the current interaction model
 - Improve repo-native handoff so new sessions do not depend on long chat history
 
@@ -31,6 +31,9 @@
 - Settings -> 使用说明 should open Wiki directly, and Settings -> 提示音 should open the system notification-tone picker directly
 - Desktop web all-day events spanning multiple days should render as one horizontal continuous bar
 - Launcher icon should use the safe-zone PaykiTodo vector foreground rather than the old full bitmap foreground
+- Todo and calendar reminder input should accept comma-separated mixed reminder specs and block invalid values
+- Todo batch import should parse line-based `|` separated entries and import multiple todos correctly
+- Standalone batch buttons should be visible from daily board / active todo / calendar surfaces
 
 ## Mid-Term Follow-Ups
 
@@ -47,6 +50,11 @@
 
 ## Done Recently
 
+- Bumped the app to `1.6.34` / `versionCode 106`
+- Unified todo and calendar reminder editing around one comma-separated text input syntax
+- Connected normal todos to the multi-reminder offset storage and scheduling path
+- Added todo batch import with line-based syntax and preview validation
+- Exposed batch-add buttons instead of hiding them only inside folded menus
 - Bumped the app to `1.6.33` / `versionCode 105`
 - Fixed in-app Wiki navigation by enabling JavaScript only for the local asset page
 - Changed Settings help and tone rows to direct actions instead of nested subpanels

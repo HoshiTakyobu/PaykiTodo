@@ -77,6 +77,7 @@ fun DashboardScreen(
     onRequestAccessibilityService: () -> Unit,
     onAddTodo: suspend (TodoDraft) -> String?,
     onAddCalendarEvent: suspend (com.example.todoalarm.data.CalendarEventDraft) -> String?,
+    onImportTodos: suspend (List<TodoDraft>) -> String?,
     onImportCalendarEvents: suspend (List<CalendarEventDraft>) -> String?,
     onUpdateTodo: suspend (TodoItem, TodoDraft, RecurrenceScope) -> String?,
     onUpdateCalendarEvent: suspend (TodoItem, com.example.todoalarm.data.CalendarEventDraft, RecurrenceScope) -> String?,
@@ -120,6 +121,7 @@ fun DashboardScreen(
     var editorKind by remember { mutableStateOf(EditorKind.TODO) }
     var editingItem by remember { mutableStateOf<TodoItem?>(null) }
     var calendarDraftSeed by remember { mutableStateOf<CalendarEventDraft?>(null) }
+    var todoBatchImportVisible by remember { mutableStateOf(false) }
     var batchImportVisible by remember { mutableStateOf(false) }
     var editScope by remember { mutableStateOf(RecurrenceScope.CURRENT) }
     var scopeDialogTarget by remember { mutableStateOf<TodoItem?>(null) }
@@ -163,6 +165,7 @@ fun DashboardScreen(
                 editingItem = null
                 calendarDraftSeed = null
             }
+            todoBatchImportVisible -> todoBatchImportVisible = false
             batchImportVisible -> batchImportVisible = false
             drawerState.isOpen -> scope.launch { drawerState.close() }
             section != DashboardSection.BOARD -> section = DashboardSection.BOARD
@@ -416,10 +419,34 @@ fun DashboardScreen(
                     onExportBackup = onExportBackup,
                     onImportBackup = onImportBackup,
                     onAutoBackupChange = onAutoBackupChange,
+                    onOpenTodoBatchImport = { todoBatchImportVisible = true },
                     onOpenCalendarBatchImport = { batchImportVisible = true }
                 )
             }
         }
+    }
+
+    if (todoBatchImportVisible) {
+        TodoBatchImportDialog(
+            groups = uiState.groups,
+            defaults = TodoBatchImportDefaults(
+                defaultGroupId = uiState.groups.firstOrNull { it.name == "例行" }?.id ?: uiState.groups.firstOrNull()?.id ?: 0L,
+                defaultRingEnabled = uiState.settings.defaultRingEnabled,
+                defaultVibrateEnabled = uiState.settings.defaultVibrateEnabled
+            ),
+            onDismiss = { todoBatchImportVisible = false },
+            onImport = { drafts ->
+                scope.launch {
+                    val message = onImportTodos(drafts)
+                    if (message == null) {
+                        todoBatchImportVisible = false
+                        Toast.makeText(context, "已导入 ${drafts.size} 条待办", Toast.LENGTH_SHORT).show()
+                    } else {
+                        Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+                    }
+                }
+            }
+        )
     }
 
     if (batchImportVisible) {

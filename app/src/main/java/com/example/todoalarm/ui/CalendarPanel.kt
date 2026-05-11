@@ -707,6 +707,7 @@ private fun CalendarBrowserHeader(
 
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                 CalendarHeaderActionButton(label = "今天", onClick = onToday)
+                CalendarHeaderActionButton(label = "批量", onClick = onOpenBatchImport)
                 Box {
                     CalendarMenuActionButton(
                         icon = viewIcon,
@@ -736,7 +737,6 @@ private fun CalendarBrowserHeader(
                         onDismissRequest = onDismissActions
                     ) {
                         DropdownMenuItem(text = { Text("快速新建") }, onClick = onQuickCreate)
-                        DropdownMenuItem(text = { Text("批量导入") }, onClick = onOpenBatchImport)
                         DropdownMenuItem(text = { Text("周模板") }, onClick = onOpenTemplateManager)
                         DropdownMenuItem(text = { Text("保存本周模板") }, onClick = onSaveWeekTemplate)
                     }

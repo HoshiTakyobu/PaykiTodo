@@ -4,8 +4,8 @@
 
 ### In Progress
 
-- Verify version `1.6.38` on device after resizing the picture-based launcher icon and forcing pure-white icon background
-- Keep `README.md`, `CHANGELOG.md`, and current-state docs aligned with version `1.6.38`
+- Verify version `1.6.39` on device after dashboard entry cleanup and board schedule-row alignment
+- Keep `README.md`, `CHANGELOG.md`, and current-state docs aligned with version `1.6.39`
 - Continue board / dashboard and calendar polish without regressing the current interaction model
 - Improve repo-native handoff so new sessions do not depend on long chat history
 
@@ -33,7 +33,9 @@
 - Launcher icon should use the picture-based `ic_launcher_art` adaptive foreground, not the old vector mark
 - Todo and calendar reminder input should accept comma-separated mixed reminder specs and block invalid values
 - Todo batch import should parse line-based `|` separated entries and import multiple todos correctly
-- Standalone batch buttons should be visible from daily board / active todo / calendar surfaces
+- Daily board should not show add / batch-add buttons; it is a read-only board surface
+- My Tasks should show only the todo batch-import entry beside the bottom-right `+` button
+- Calendar batch-import should remain available from the calendar surface
 - Todo batch import should use the lightweight `DDL,任务名称,提醒时间` syntax without requiring `|` or key-value fields
 - Full-screen and accessibility snooze custom input should accept minutes or a concrete future time
 - Input help question-mark buttons should open the correct syntax help beside reminder, batch, and snooze fields
@@ -54,6 +56,10 @@
 
 ## Done Recently
 
+- Bumped the app to `1.6.39` / `versionCode 111`
+- Removed batch-add buttons from the daily board so the board stays read-only
+- Moved My Tasks batch todo import to the bottom-right FAB area beside the new-todo button
+- Matched daily-board schedule event color-strip height to the right-side text block height
 - Bumped the app to `1.6.38` / `versionCode 110`
 - Reprocessed picture-based launcher icon art with pure-white opaque background and smaller centered content
 - Changed launcher adaptive background color to pure white

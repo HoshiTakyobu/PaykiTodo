@@ -6,11 +6,18 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.Row
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.PostAdd
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExtendedFloatingActionButton
+import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.Scaffold
@@ -27,6 +34,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
@@ -265,18 +273,24 @@ fun DashboardScreen(
                 },
                 floatingActionButton = {
                     if (section == DashboardSection.ACTIVE) {
-                        androidx.compose.material3.FloatingActionButton(onClick = {
-                            editingItem = null
-                            editorKind = if (section == DashboardSection.CALENDAR) {
-                                EditorKind.CALENDAR
-                            } else {
-                                EditorKind.TODO
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            ExtendedFloatingActionButton(
+                                onClick = { todoBatchImportVisible = true },
+                                icon = { Icon(Icons.Rounded.PostAdd, contentDescription = null) },
+                                text = { Text("批量待办") }
+                            )
+                            FloatingActionButton(onClick = {
+                                editingItem = null
+                                editorKind = EditorKind.TODO
+                                calendarDraftSeed = null
+                                editScope = RecurrenceScope.CURRENT
+                                editorVisible = true
+                            }) {
+                                Text("+")
                             }
-                            calendarDraftSeed = null
-                            editScope = RecurrenceScope.CURRENT
-                            editorVisible = true
-                        }) {
-                            androidx.compose.material3.Text("+")
                         }
                     }
                 }
@@ -419,7 +433,6 @@ fun DashboardScreen(
                     onExportBackup = onExportBackup,
                     onImportBackup = onImportBackup,
                     onAutoBackupChange = onAutoBackupChange,
-                    onOpenTodoBatchImport = { todoBatchImportVisible = true },
                     onOpenCalendarBatchImport = { batchImportVisible = true }
                 )
             }

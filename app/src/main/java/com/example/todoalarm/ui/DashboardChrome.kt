@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
@@ -21,6 +22,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -29,7 +31,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.BrightnessAuto
 import androidx.compose.material.icons.rounded.CalendarMonth
 import androidx.compose.material.icons.rounded.DarkMode
@@ -51,13 +52,11 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalDrawerSheet
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -365,7 +364,6 @@ internal fun DashboardBody(
     onExportBackup: () -> Unit,
     onImportBackup: () -> Unit,
     onAutoBackupChange: (Boolean) -> Unit,
-    onOpenTodoBatchImport: () -> Unit,
     onOpenCalendarBatchImport: () -> Unit
 ) {
     if (section == DashboardSection.CALENDAR) {
@@ -484,13 +482,6 @@ internal fun DashboardBody(
                 }
 
                 item {
-                    DashboardQuickActionRow(
-                        onOpenTodoBatchImport = onOpenTodoBatchImport,
-                        onOpenCalendarBatchImport = onOpenCalendarBatchImport
-                    )
-                }
-
-                item {
                     BoardBlockTitle("今日待办（${boardTodoItems.size}）")
                 }
                 if (boardTodoItems.isEmpty()) {
@@ -516,13 +507,6 @@ internal fun DashboardBody(
             }
 
             DashboardSection.ACTIVE -> {
-                item {
-                    DashboardQuickActionRow(
-                        onOpenTodoBatchImport = onOpenTodoBatchImport,
-                        onOpenCalendarBatchImport = onOpenCalendarBatchImport
-                    )
-                }
-
                 if (uiState.missedItems.isNotEmpty()) {
                     item {
                         ExpandableSectionHeader(
@@ -594,26 +578,6 @@ internal fun DashboardBody(
             DashboardSection.CALENDAR -> Unit
             DashboardSection.SETTINGS -> Unit
         }
-    }
-}
-
-@Composable
-private fun DashboardQuickActionRow(
-    onOpenTodoBatchImport: () -> Unit,
-    onOpenCalendarBatchImport: () -> Unit
-) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(10.dp)
-    ) {
-        OutlinedButton(
-            onClick = onOpenTodoBatchImport,
-            modifier = Modifier.weight(1f)
-        ) { Text("批量添加待办") }
-        OutlinedButton(
-            onClick = onOpenCalendarBatchImport,
-            modifier = Modifier.weight(1f)
-        ) { Text("批量添加日程") }
     }
 }
 
@@ -896,17 +860,20 @@ private fun BoardScheduleEventRow(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .height(IntrinsicSize.Min)
                     .padding(if (inProgress) 8.dp else 0.dp),
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
                 verticalAlignment = Alignment.Top
             ) {
-                Surface(
+                Box(
                     modifier = Modifier
-                        .padding(top = 4.dp)
-                        .size(width = 5.dp, height = 64.dp),
-                    shape = RoundedCornerShape(999.dp),
-                    color = if (inProgress) gold else tint.copy(alpha = 0.96f)
-                ) {}
+                        .width(5.dp)
+                        .fillMaxHeight()
+                        .background(
+                            color = if (inProgress) gold else tint.copy(alpha = 0.96f),
+                            shape = RoundedCornerShape(999.dp)
+                        )
+                )
                 Column(
                     modifier = Modifier.weight(1f),
                     verticalArrangement = Arrangement.spacedBy(2.dp)

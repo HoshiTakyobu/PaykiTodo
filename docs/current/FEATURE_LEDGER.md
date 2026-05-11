@@ -10,6 +10,7 @@ This file tracks the product at a practical level for new coding sessions.
 - title / notes / group / deadline / multi-reminder fields
 - no-deadline todos
 - lightweight comma-based todo batch import with preview validation
+- My Tasks exposes todo batch import beside the bottom-right new-todo button instead of as a top content row
 - complete / cancel / restore flows
 - active todo preview now uses the same bottom-sheet visual language as calendar event preview
 - active todo card body opens preview; completion is isolated to the checkbox to avoid accidental completion
@@ -27,6 +28,8 @@ This file tracks the product at a practical level for new coding sessions.
 - board currently running events can be visually highlighted with a gold outline and subtle glow
 - board greeting card supports compact collapse / expand behavior
 - board background now uses separate light and dark image resources
+- board schedule rows align the left color strip to the measured height of the event text block
+- board surface intentionally does not expose add / batch-add buttons
 
 ### Calendar System
 

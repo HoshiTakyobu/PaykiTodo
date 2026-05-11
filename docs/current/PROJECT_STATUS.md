@@ -7,13 +7,13 @@
 - Package name: `com.paykitodo.app`
 - Target platform: Android 14 / API 34
 - Current version in code:
-  - `versionName = "1.6.38"`
-  - `versionCode = 110`
+  - `versionName = "1.6.39"`
+  - `versionCode = 111`
 
 ## Current Build Facts
 
 - Latest debug APK output:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.6.38-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.6.39-debug.apk`
 - Minimal verification completed in the latest code round:
   - `./gradlew assembleDebug` succeeded with Android Studio bundled `jbr`
 - Current build environment expectation:
@@ -22,11 +22,11 @@
 
 ## Current Worktree Reality
 
-The repository is now at `1.6.38` after resizing the picture-based launcher icon and forcing a pure-white icon background.
+The repository is now at `1.6.39` after cleaning up dashboard batch-entry placement and aligning daily-board schedule rows.
 
 Most important current baseline facts:
 
-- version metadata is `1.6.38 / 110`
+- version metadata is `1.6.39 / 111`
 - launcher adaptive icon foreground now directly uses picture resource `@drawable/ic_launcher_art`
 - old vector mark launcher resources have been deleted so the launcher cannot fall back to them again
 - picture launcher art has been reprocessed to an opaque pure-white background with smaller centered content
@@ -39,8 +39,10 @@ Most important current baseline facts:
 - full-screen and accessibility reminder custom snooze inputs accept minutes or a concrete future time
 - reminder / batch / custom snooze input surfaces have nearby question-mark syntax help buttons
 - in-app Wiki has been updated to describe current reminder syntax, todo batch syntax, calendar batch `Remind=`, and custom snooze behavior
-- daily board / active task surfaces expose standalone batch buttons for todos and calendar events
-- calendar header exposes a standalone `批量` button; batch import is no longer hidden only inside the more menu
+- daily board no longer exposes add / batch-add controls; it is a read-only board surface
+- active task surface exposes only todo batch import beside the bottom-right new-todo button
+- calendar header exposes a standalone `批量` button; calendar batch import remains on the calendar surface
+- daily-board schedule event color strips now match the right-side text block height
 
 ## Recent Checked Areas
 
@@ -55,11 +57,11 @@ Recent code inspection and build verification cover:
 - `ReminderActivity.kt` and `ReminderAccessibilityOverlay.kt`: custom snooze input uses shared time parsing
 - `InputSyntaxHelp.kt`: shared question-mark help button and syntax help dialog
 - `app/src/main/assets/wiki/index.html`: current input syntax documentation
-- `DashboardScreen.kt`, `DashboardChrome.kt`, `CalendarPanel.kt`: visible batch-import entry points
+- `DashboardScreen.kt`, `DashboardChrome.kt`, `CalendarPanel.kt`: dashboard and calendar batch-import entry placement
 
 ## Documentation Health
 
-Current docs have been synchronized for `1.6.38`:
+Current docs have been synchronized for `1.6.39`:
 
 - `README.md`
 - `CHANGELOG.md`

@@ -7,13 +7,13 @@
 - Package name: `com.paykitodo.app`
 - Target platform: Android 14 / API 34
 - Current version in code:
-  - `versionName = "1.6.31"`
-  - `versionCode = 103`
+  - `versionName = "1.6.32"`
+  - `versionCode = 104`
 
 ## Current Build Facts
 
 - Latest debug APK output:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.6.31-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.6.32-debug.apk`
 - Minimal verification completed in the latest code round:
   - `./gradlew assembleDebug` succeeded
 - Current build environment expectation:
@@ -22,18 +22,19 @@
 
 ## Current Worktree Reality
 
-The repository is now at committed and tagged `1.6.31` baseline after the daily-board schedule and calendar pending-draft repair round.
+The repository is now at `1.6.32` baseline after the daily-board missed-todo and delete-confirmation repair round.
 
 Most important current baseline facts:
 
-- version metadata is `1.6.31 / 103`
+- version metadata is `1.6.32 / 104`
+- daily-board todo block now includes missed active todos as well as today's normal todos
+- shared phone-side delete confirmation uses a refined dangerous-action bottom sheet with red icon, irreversible-action text, message card, red confirm button, and cancel button
 - daily-board timed events that have already ended are filtered out of the today's schedule block
 - currently running daily-board events are highlighted with a gold outline and subtle glow
 - calendar timeline pending event drafts can be canceled by long-pressing blank timeline space
 - opening an existing calendar event clears any pending event draft behind it
 - active todo preview uses the shared bottom-sheet visual language instead of the old alert-style dialog
 - active todo completion is tied to the checkbox area; tapping the card body opens preview and should not complete the item
-- delete actions that are user-visible destructive operations require confirmation in the phone UI and desktop web console paths touched recently
 - calendar event reminder acknowledgement preserves configured reminder offsets so the event preview can still show the reminder setup after all reminders have fired
 - the desktop sync foreground notification has a content intent that opens the app directly into Settings -> Desktop Sync
 - the daily board remains the default landing section
@@ -42,17 +43,18 @@ Most important current baseline facts:
 
 Recent code inspection and build verification cover:
 
-- `DashboardChrome.kt`: daily-board schedule filtering and running-event gold highlight
+- `DashboardChrome.kt`: daily-board missed todo inclusion, schedule filtering, and running-event gold highlight
+- `EditorBottomSheet.kt`: refined shared dangerous-action delete confirmation UI
 - `CalendarPanel.kt`: timeline pending-draft cancel / clear behavior
 - `TodoCards.kt`: active todo preview and completion-click split
-- `GroupManagementPanel.kt`: group deletion confirmation
+- `GroupManagementPanel.kt`: group deletion confirmation through shared component
 - `TodoRepository.kt`, `TodoViewModel.kt`, `DesktopSyncCoordinator.kt`: reminder configuration preservation after acknowledgement / scheduling changes
 - `DesktopSyncService.kt`, `MainActivity.kt`, `DashboardScreen.kt`, `DashboardChrome.kt`, `SettingsPanel.kt`: foreground notification route into desktop sync settings
 - `DesktopSyncWebAssets.kt`: desktop web delete confirmation and event delete semantics
 
 ## Documentation Health
 
-Current docs have been synchronized for `1.6.31`:
+Current docs have been synchronized for `1.6.32`:
 
 - `README.md`
 - `CHANGELOG.md`
@@ -66,10 +68,10 @@ Older versioned docs under `docs/` remain historical references and should not b
 
 ## Current Risk Areas
 
-1. Device-side verification is still required for daily-board finished-event filtering and running-event highlight
-2. Calendar pending draft cancel behavior should be checked in the real time-axis UI
-3. Todo preview no-miscompletion and destructive confirmation should continue to be regression-tested
-4. Desktop-sync notification click routing should be checked while the foreground service is running
+1. Device-side verification is still required for daily-board missed todo inclusion
+2. The refined delete confirmation sheet should be checked on todo, event, group, and template deletion paths
+3. Device-side verification is still required for daily-board finished-event filtering and running-event highlight
+4. Calendar pending draft cancel behavior should be checked in the real time-axis UI
 5. Long-running chat sessions can become unreliable, so repository docs must carry state
 
 ## How A New Session Should Start

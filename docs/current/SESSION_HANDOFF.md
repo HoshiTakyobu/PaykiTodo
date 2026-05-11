@@ -6,16 +6,19 @@ Long-running Codex sessions can become unreliable. This file exists so a new ses
 
 ## Current Handoff Summary
 
-- The project is currently at code version `1.6.31` / `versionCode 103`
-- Latest debug APK path: `app/build/outputs/apk/debug/PaykiTodo-1.6.31-debug.apk`
+- The project is currently at code version `1.6.32` / `versionCode 104`
+- Latest debug APK path: `app/build/outputs/apk/debug/PaykiTodo-1.6.32-debug.apk`
 - Minimal verification passed:
   - `./gradlew assembleDebug`
-- Latest local repair round addressed daily-board and calendar pending-draft behavior:
+- Latest repair round addressed daily-board missed todos and delete confirmation polish:
+  1. Daily-board todo block now includes missed active todos as well as today's normal todos
+  2. Shared phone-side delete confirmation is now a refined dangerous-action bottom sheet with red icon, irreversible-action text, message card, red confirm button, and cancel button
+- The previous `1.6.31` round remains included:
   1. Daily board no longer shows today's timed events after their end time
   2. Daily board highlights currently running events with a gold outline and subtle glow
   3. Calendar timeline pending new-event card can be canceled by long-pressing blank timeline space
   4. Opening an existing event clears the pending new-event card
-- The previous `1.6.30` round remains included:
+- The earlier `1.6.30` round remains included:
   1. Daily-board todo preview uses unified bottom-sheet style and should not mark items complete when backing out
   2. User-visible delete buttons require confirmation in the touched phone UI paths and desktop web console delete paths
   3. Calendar event reminder acknowledgement preserves configured reminder offsets
@@ -25,7 +28,7 @@ Long-running Codex sessions can become unreliable. This file exists so a new ses
 
 - `app/build.gradle.kts`
 - `app/src/main/java/com/example/todoalarm/ui/DashboardChrome.kt`
-- `app/src/main/java/com/example/todoalarm/ui/CalendarPanel.kt`
+- `app/src/main/java/com/example/todoalarm/ui/EditorBottomSheet.kt`
 - `README.md`
 - `CHANGELOG.md`
 - `TODO.md`
@@ -41,6 +44,7 @@ As of this baseline, simple preview and editor surfaces are mostly aligned aroun
 - calendar event preview uses `PaykiBottomSheet`
 - todo editor uses `EditorBottomSheet`
 - calendar event editor uses `EditorBottomSheet`
+- delete confirmations use the refined shared `PaykiDecisionBottomSheet`
 
 They are not byte-for-byte identical because todo and calendar event fields differ, but the main interaction and visual container language is unified. Some secondary dialogs still use `AlertDialog`, for example batch import help, recurrence previews, and wheel picker dialogs.
 
@@ -48,12 +52,12 @@ They are not byte-for-byte identical because todo and calendar event fields diff
 
 The next session should device-test rather than immediately refactor:
 
-1. Install `PaykiTodo-1.6.31-debug.apk`
-2. Verify finished timed events disappear from the daily board after end time
-3. Verify currently running board events have the gold highlight
-4. Verify calendar pending new-event card can be canceled by long-pressing blank timeline space
-5. Verify opening an existing event clears any pending new-event card
-6. Regression-test todo preview / delete confirmations / desktop-sync notification route from `1.6.30`
+1. Install `PaykiTodo-1.6.32-debug.apk`
+2. Verify missed active todos appear in the daily-board todo block
+3. Verify delete confirmation sheet appearance on todo / event / group / schedule-template deletion
+4. Regression-test finished timed events disappearing from the daily board after end time
+5. Regression-test currently running board events with the gold highlight
+6. Regression-test calendar pending new-event cancel behavior
 
 ## Required Reading For A New Session
 

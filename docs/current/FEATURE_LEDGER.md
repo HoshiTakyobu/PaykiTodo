@@ -20,6 +20,7 @@ This file tracks the product at a practical level for new coding sessions.
 ### Board / Dashboard
 
 - dedicated daily board entry exists in the drawer and is the default home section
+- board todo block includes missed active todos and today's normal todos
 - board view can show today's todos and today's / tomorrow's schedule summary together
 - board today's schedule hides timed events after they have ended
 - board currently running events can be visually highlighted with a gold outline and subtle glow
@@ -79,6 +80,7 @@ This file tracks the product at a practical level for new coding sessions.
 - schedule-template deletion asks for confirmation
 - group deletion asks for confirmation
 - desktop web delete buttons ask for browser confirmation
+- phone-side delete confirmations share a refined dangerous-action bottom sheet with red icon, message card, and red confirm button
 
 ## Implemented But Still Being Polished
 

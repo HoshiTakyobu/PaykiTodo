@@ -447,6 +447,14 @@ internal fun DashboardBody(
         }
     }
     val boardDate = boardMoment.toLocalDate()
+    val boardTodoItems = remember(uiState.missedItems, uiState.todayItems) {
+        (uiState.missedItems + uiState.todayItems)
+            .distinctBy { it.id }
+            .sortedWith(
+                compareByDescending<TodoItem> { it.missed }
+                    .thenBy { it.dueAtMillis }
+            )
+    }
     val todayScheduleItems = remember(uiState.calendarItems, boardDate, boardMoment) {
         uiState.calendarItems.filter { boardEventVisibleForToday(it, boardDate, boardMoment) }
             .sortedBy { it.startAtMillis ?: it.dueAtMillis }
@@ -474,12 +482,12 @@ internal fun DashboardBody(
                 }
 
                 item {
-                    BoardBlockTitle("今日待办（${uiState.todayItems.size}）")
+                    BoardBlockTitle("今日待办（${boardTodoItems.size}）")
                 }
-                if (uiState.todayItems.isEmpty()) {
+                if (boardTodoItems.isEmpty()) {
                     item { EmptyStateCard("今天还没有安排任务。") }
                 } else {
-                    items(uiState.todayItems, key = { it.id }) { item ->
+                    items(boardTodoItems, key = { it.id }) { item ->
                         ActiveTodoCard(item, uiState.groups, { onEdit(item) }, { onCompleteTodo(item) }, { onCancelTodo(item) }, { onDeleteTodo(item) })
                     }
                 }

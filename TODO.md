@@ -4,8 +4,8 @@
 
 ### In Progress
 
-- Verify version `1.6.31` on device after the daily-board schedule and calendar pending-draft repair round
-- Keep `README.md`, `CHANGELOG.md`, and current-state docs aligned with version `1.6.31`
+- Verify version `1.6.32` on device after the daily-board missed-todo and delete-confirmation repair round
+- Keep `README.md`, `CHANGELOG.md`, and current-state docs aligned with version `1.6.32`
 - Continue board / dashboard and calendar polish without regressing the current interaction model
 - Improve repo-native handoff so new sessions do not depend on long chat history
 
@@ -25,6 +25,8 @@
 - Finished daily-board events should disappear after their end time
 - Currently running daily-board events should show the gold outline / glow treatment
 - Calendar pending event draft should be cancelable by long-pressing blank timeline space, and should clear when opening an existing event
+- Missed active todos should appear in the daily board todo block
+- Delete confirmation sheets should show the refined dangerous-action UI on phone-side delete paths
 
 ## Mid-Term Follow-Ups
 
@@ -41,6 +43,9 @@
 
 ## Done Recently
 
+- Bumped the app to `1.6.32` / `versionCode 104`
+- Added missed active todos back into the daily board todo block
+- Reworked the shared delete confirmation bottom sheet into a refined dangerous-action UI
 - Bumped the app to `1.6.31` / `versionCode 103`
 - Fixed daily-board schedule filtering so finished timed events are hidden
 - Added gold outline and glow treatment for currently running events on the daily board

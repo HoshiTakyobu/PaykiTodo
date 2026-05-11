@@ -269,6 +269,7 @@ private fun ReminderScreen(
 ) {
     var customMinutes by remember(defaultSnoozeMinutes) { mutableStateOf(defaultSnoozeMinutes.toString()) }
     val customSnoozeValidation = remember(customMinutes) { parseSnoozeInput(customMinutes) }
+    var helpTopic by remember { mutableStateOf<InputSyntaxHelpTopic?>(null) }
     var showCancelScopeDialog by remember(todoItem?.id) { mutableStateOf(false) }
     val resolvedGroup = taskGroup
         ?: todoItem?.let { resolveTaskGroup(it, emptyList()) }
@@ -506,7 +507,15 @@ private fun ReminderScreen(
                                     value = customMinutes,
                                     onValueChange = { customMinutes = it },
                                     modifier = Modifier.weight(1f),
-                                    label = { Text("延后时间") },
+                                    label = {
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            Text("延后时间")
+                                            InputSyntaxHelpIconButton(
+                                                topic = InputSyntaxHelpTopic.Snooze,
+                                                onClick = { helpTopic = InputSyntaxHelpTopic.Snooze }
+                                            )
+                                        }
+                                    },
                                     placeholder = { Text("5 或 16:30") },
                                     isError = !customSnoozeValidation.isValid,
                                     supportingText = {
@@ -556,6 +565,10 @@ private fun ReminderScreen(
                 }
             }
         )
+    }
+
+    helpTopic?.let { topic ->
+        InputSyntaxHelpDialog(topic = topic, onDismiss = { helpTopic = null })
     }
 }
 

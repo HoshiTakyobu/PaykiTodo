@@ -70,6 +70,12 @@ This file tracks the product at a practical level for new coding sessions.
 - crash log viewing / copying
 - in-app wiki assets
 - in-app Wiki sidebar navigation works through local WebView JavaScript
+- in-app Wiki documents current reminder, batch-import, and snooze input syntax
+
+### Input Help
+
+- reminder, batch-import, and custom-snooze input fields expose nearby question-mark syntax help
+- shared input-help dialog explains valid examples and invalid-value behavior
 
 ### Desktop / LAN Assistance
 

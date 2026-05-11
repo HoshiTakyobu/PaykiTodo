@@ -29,7 +29,11 @@ import com.example.todoalarm.data.ReminderChainStatus
 import com.example.todoalarm.data.TodoItem
 import com.example.todoalarm.ui.ReminderActivity
 import com.example.todoalarm.ui.ResolvedTaskGroup
+import com.example.todoalarm.ui.inputSyntaxHelpExample
+import com.example.todoalarm.ui.inputSyntaxHelpLines
+import com.example.todoalarm.ui.inputSyntaxHelpTitle
 import com.example.todoalarm.ui.parseSnoozeInput
+import com.example.todoalarm.ui.InputSyntaxHelpTopic
 import com.example.todoalarm.ui.resolveTaskGroup
 import com.example.todoalarm.ui.taskGroupEmoji
 import kotlinx.coroutines.CoroutineScope
@@ -324,6 +328,20 @@ class ReminderAccessibilityOverlay(
             customRow.addView(
                 customInput,
                 LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+            )
+            customRow.addView(spaceView())
+            customRow.addView(
+                filledButton("?", Color.parseColor("#4E87E1")).apply {
+                    setOnClickListener {
+                        val topic = InputSyntaxHelpTopic.Snooze
+                        val message = inputSyntaxHelpLines(topic).joinToString("\n") + "\n\n示例：\n" + inputSyntaxHelpExample(topic)
+                        Toast.makeText(service, "${inputSyntaxHelpTitle(topic)}\n$message", Toast.LENGTH_LONG).show()
+                    }
+                },
+                LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT
+                )
             )
             customRow.addView(spaceView())
             customRow.addView(

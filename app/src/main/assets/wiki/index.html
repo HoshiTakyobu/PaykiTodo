@@ -83,7 +83,7 @@
     <aside>
       <div class="brand">
         <h1>PaykiTodo Wiki</h1>
-        <p>版本 1.6.0。本地内置说明，按实际使用路径解释功能，不只是罗列能力。</p>
+        <p>版本 1.6.36。本地内置说明，按实际使用路径解释功能，不只是罗列能力。</p>
       </div>
       <div class="nav-group-title">开始使用</div>
       <nav class="nav" id="nav">
@@ -150,6 +150,18 @@
           <li>最后到 <code>设置 → 数据与备份</code> 里选一个备份目录，避免后续卸载应用导致本地数据直接丢失。</li>
         </ol>
         <div class="callout warn">PaykiTodo 目前仍然是本地单机优先。卸载应用会清掉应用私有目录里的数据库、设置和语录缓存。要保数据，必须主动备份或导出。</div>
+        <h2>输入框旁边的问号是什么</h2>
+        <p>提醒时间、批量导入、自定义延后等输入框旁边会出现一个圆圈里的问号。点一下会弹出当前输入框的语法说明和示例，不需要你记住所有规则。</p>
+        <h2>提醒时间统一写法</h2>
+        <table class="table">
+          <tr><th>写法</th><th>含义</th></tr>
+          <tr><td><code>5</code></td><td>提前 5 分钟提醒。</td></tr>
+          <tr><td><code>5,15</code></td><td>提前 5 分钟和 15 分钟分别提醒。编辑待办/日程时可多选。</td></tr>
+          <tr><td><code>16:30</code></td><td>DDL 或日程开始当天的 16:30。</td></tr>
+          <tr><td><code>05-10 15:00</code></td><td>当年 5 月 10 日 15:00。</td></tr>
+          <tr><td><code>2026-05-10 14:30</code></td><td>完整日期时间。</td></tr>
+        </table>
+        <div class="callout">如果任一提醒时间晚于 DDL / 日程开始时间，或新建时已经过去，输入框会标红，保存按钮会禁用。</div>
       </section>
       <section id="drawer" class="article">
         <h1>抽屉菜单与导航</h1>
@@ -215,7 +227,7 @@
           <tr><td>所属分组</td><td>决定颜色、标签和筛选归属。</td></tr>
           <tr><td>设置 DDL</td><td>打开后才有截止日期和提醒逻辑；关闭则变成无 DDL 任务。</td></tr>
           <tr><td>启用提醒</td><td>只有有 DDL 的活动任务才能启用。</td></tr>
-          <tr><td>提醒时间</td><td>可直接选具体日期时间。</td></tr>
+          <tr><td>提醒时间</td><td>使用输入框填写。可写提前分钟、当天时刻、当年日期时间或完整日期时间；输入框旁边的圆形问号会显示示例。</td></tr>
           <tr><td>响铃 / 震动</td><td>两者独立开关，按你的选择触发。</td></tr>
         </table>
         <h2>无 DDL 任务</h2>
@@ -377,7 +389,7 @@
           <li><code>延后 5 分钟</code></li>
           <li><code>取消任务</code></li>
           <li><code>延后 X 分钟</code>，X 来自设置里的默认延后时长</li>
-          <li><code>自定义延后</code>，可直接输入分钟数确认</li>
+          <li><code>自定义延后</code>，可输入分钟数，也可输入未来具体时刻，例如 <code>16:30</code>。</li>
         </ul>
         <h2>日程提醒和待办提醒的区别</h2>
         <ul>
@@ -452,7 +464,8 @@
           <tr><td><code>今天</code></td><td>回到今天所在日期。</td></tr>
           <tr><td>日历图标</td><td>打开日期选择器，直接跳到某一天。</td></tr>
           <tr><td>加号</td><td>新增一条日程。</td></tr>
-          <tr><td><code>…</code></td><td>打开批量导入、周模板、保存本周模板。</td></tr>
+          <tr><td><code>批量</code></td><td>打开日程批量导入。这个入口现在单独露出，不再只藏在更多菜单里。</td></tr>
+          <tr><td><code>…</code></td><td>打开快速新建、周模板、保存本周模板等操作。</td></tr>
         </table>
         <h2>时间轴界面的总体结构</h2>
         <ul>
@@ -506,8 +519,8 @@
         <h2>提醒设置</h2>
         <ul>
           <li>先打开 <code>提醒</code> 开关。</li>
-          <li><code>提醒时间</code> 默认使用提前量下拉菜单，例如提前 5 分钟、15 分钟、1 小时、1 天、2 天。</li>
-          <li>也可以直接点 <code>直接设置提醒时刻</code>，手动指定某个绝对时间。</li>
+          <li><code>提醒时间</code> 使用输入框填写，输入框旁边的圆形问号会显示写法说明。</li>
+          <li>可写 <code>5,15</code> 这类提前分钟，也可写 <code>16:30</code>、<code>05-10 15:00</code>、<code>2026-05-10 14:30</code> 这类具体时刻。</li>
           <li><code>提醒方式</code> 可选 <code>通知栏提醒</code> 或 <code>全屏界面提醒</code>。</li>
           <li><code>响铃</code> 与 <code>震动</code> 可分开控制。</li>
         </ul>
@@ -537,10 +550,21 @@
         <p>如果你经常拿到一整学期课表、某周值班安排，或者想快速规划某天的时间，批量导入会比手动点格子高效很多。</p>
         <h2>入口在哪里</h2>
         <ul>
-          <li>日历页右上角点 <code>…</code></li>
-          <li>选择 <code>批量导入</code></li>
+          <li>日历页顶部点独立的 <code>批量</code> 按钮。</li>
           <li>进入导入窗后，可直接粘贴文本，也可先点 <code>载入示例</code></li>
-          <li>右上角问号和窗口内的 <code>查看 Wiki</code> 都能打开语法帮助</li>
+          <li>输入框旁边的圆形问号会显示当前语法提示。</li>
+        </ul>
+        <h2>待办批量添加</h2>
+        <p>每日看板和我的任务页有 <code>批量添加待办</code>。它是为了快速手输，所以语法比日程更轻。</p>
+        <div class="code-card"><div class="label">待办格式</div><pre>DDL时间,任务名称,提醒时间</pre></div>
+        <div class="code-card"><div class="label">示例</div><pre>2026-05-12 18:00,写报告,5
+05-13 09:30,给老师发消息,09:00
+无DDL,整理 Obsidian 待办</pre></div>
+        <ul>
+          <li>提醒时间可省略。</li>
+          <li>为了手输简单，一行待办只支持一个提醒时间。</li>
+          <li>默认使用默认分组、默认响铃和默认震动设置。</li>
+          <li><code>无DDL</code> 的待办不能设置提醒。</li>
         </ul>
         <h2>最小可用语法</h2>
         <div class="code-card"><div class="label">示例</div><pre>2026-04-27: 10:20-11:55, 辅导员助理值班, @MB-B1-412; 12:30-14:00, 午休</pre></div>
@@ -582,7 +606,7 @@
         <table class="table">
           <tr><th>字段</th><th>示例</th><th>作用</th></tr>
           <tr><td><code>Note</code></td><td><code>Note="刷题 2 套"</code></td><td>备注</td></tr>
-          <tr><td><code>Remind</code></td><td><code>Remind=30m</code></td><td>提前 30 分钟提醒，也支持 <code>1h</code>、<code>2d</code>、<code>off</code></td></tr>
+          <tr><td><code>Remind</code></td><td><code>Remind=5</code> / <code>Remind=16:30</code></td><td>提醒时间。支持提前分钟、当天时刻、当年日期时间、完整日期时间；<code>off</code> 表示不提醒。</td></tr>
           <tr><td><code>Mode</code></td><td><code>Mode=Notification</code></td><td>通知栏提醒或全屏提醒</td></tr>
           <tr><td><code>Ring</code></td><td><code>Ring=On</code></td><td>是否响铃</td></tr>
           <tr><td><code>Vibrate</code></td><td><code>Vibrate=Off</code></td><td>是否震动</td></tr>
@@ -594,6 +618,7 @@
           <li>不写循环规则：按单次日程处理。</li>
           <li>写了循环规则但不写截止日期：默认截止到起始日期后 90 天。</li>
           <li>批量导入默认提醒是：<code>提前 5 分钟 + 通知栏提醒 + 响铃开启 + 震动开启</code>。</li>
+          <li>日程批量导入的 <code>Remind=</code> 支持和编辑界面相同的提醒时间写法。</li>
         </ul>
         <h2>导入前建议先做什么</h2>
         <ol class="steps">

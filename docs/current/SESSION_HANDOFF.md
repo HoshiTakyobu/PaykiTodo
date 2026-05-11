@@ -6,11 +6,11 @@ Long-running Codex sessions can become unreliable. This file exists so a new ses
 
 ## Current Handoff Summary
 
-- The project is currently at code version `1.6.35` / `versionCode 107`
-- Latest debug APK path: `app/build/outputs/apk/debug/PaykiTodo-1.6.35-debug.apk`
+- The project is currently at code version `1.6.36` / `versionCode 108`
+- Latest debug APK path: `app/build/outputs/apk/debug/PaykiTodo-1.6.36-debug.apk`
 - Minimal verification passed:
   - `./gradlew assembleDebug` using Android Studio bundled `jbr`
-- Latest feature round addressed reminder input, batch import, and custom snooze parsing:
+- Latest feature round addressed reminder input, batch import, custom snooze parsing, and syntax discoverability:
   1. Todo and calendar editors now share a comma-separated reminder input syntax
   2. Supported reminder tokens include relative minutes, same-day `HH:mm`, current-year `MM-DD HH:mm`, and full `YYYY-MM-DD HH:mm`
   3. Reminder entries later than DDL / event start, malformed entries, and new-item past reminders are rejected in the editor UI
@@ -18,6 +18,8 @@ Long-running Codex sessions can become unreliable. This file exists so a new ses
   5. Todo batch import now uses lightweight comma rows: `DDL时间,任务名称,提醒时间`
   6. Batch-add buttons are visible on daily board / active todo surfaces and in the calendar header
   7. Calendar batch `Remind=` and custom snooze inputs reuse the same reminder-time parser
+  8. Question-mark help buttons now sit beside key input fields and open syntax examples
+  9. In-app Wiki is updated for current reminder / batch / snooze syntax
 
 ## Files Most Relevant To The Latest Round
 
@@ -68,13 +70,14 @@ Todo batch rows intentionally default group / ring / vibrate and accept only one
 
 The next session should device-test the current APK rather than immediately refactor:
 
-1. Install `PaykiTodo-1.6.35-debug.apk`
+1. Install `PaykiTodo-1.6.36-debug.apk`
 2. Verify todo reminder input accepts multiple valid entries and blocks invalid entries
 3. Verify calendar reminder input does the same for timed and all-day events
 4. Verify a todo with `5,15` schedules and fires both reminder points
 5. Verify `批量添加待办` parses comma rows and reports invalid rows
 6. Verify standalone batch buttons are visible and not hidden only in overflow menus
 7. Verify custom snooze input accepts both minutes and a future clock time
+8. Verify input question-mark buttons show the right help content and Wiki remains navigable
 
 ## Required Reading For A New Session
 

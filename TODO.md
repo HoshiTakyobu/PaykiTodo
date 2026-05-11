@@ -4,8 +4,8 @@
 
 ### In Progress
 
-- Verify version `1.6.35` on device after simplifying todo batch import and shared reminder-time parsing
-- Keep `README.md`, `CHANGELOG.md`, and current-state docs aligned with version `1.6.35`
+- Verify version `1.6.36` on device after adding input help buttons and Wiki updates
+- Keep `README.md`, `CHANGELOG.md`, and current-state docs aligned with version `1.6.36`
 - Continue board / dashboard and calendar polish without regressing the current interaction model
 - Improve repo-native handoff so new sessions do not depend on long chat history
 
@@ -36,6 +36,8 @@
 - Standalone batch buttons should be visible from daily board / active todo / calendar surfaces
 - Todo batch import should use the lightweight `DDL,任务名称,提醒时间` syntax without requiring `|` or key-value fields
 - Full-screen and accessibility snooze custom input should accept minutes or a concrete future time
+- Input help question-mark buttons should open the correct syntax help beside reminder, batch, and snooze fields
+- In-app Wiki should describe the current 1.6.36 input syntax accurately
 
 ## Mid-Term Follow-Ups
 
@@ -52,6 +54,9 @@
 
 ## Done Recently
 
+- Bumped the app to `1.6.36` / `versionCode 108`
+- Added question-mark syntax help buttons beside key reminder, batch-import, and custom-snooze inputs
+- Updated in-app Wiki for unified reminder syntax, lightweight todo batch syntax, calendar batch `Remind=`, and custom snooze input
 - Bumped the app to `1.6.35` / `versionCode 107`
 - Simplified todo batch import to comma-ordered `DDL,任务名称,提醒时间`
 - Reused the shared reminder parser for calendar batch `Remind=` fields

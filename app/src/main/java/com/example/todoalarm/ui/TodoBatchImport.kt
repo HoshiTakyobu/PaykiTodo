@@ -58,6 +58,7 @@ internal fun TodoBatchImportDialog(
     var input by remember { mutableStateOf(TodoBatchImportSampleText) }
     var parseResult by remember { mutableStateOf(TodoBatchImportParser.parse(input, defaults)) }
     var showHelp by remember { mutableStateOf(false) }
+    var helpTopic by remember { mutableStateOf<InputSyntaxHelpTopic?>(null) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -81,7 +82,15 @@ internal fun TodoBatchImportDialog(
                         input = it
                         parseResult = TodoBatchImportParser.parse(it, defaults)
                     },
-                    label = { Text("待办文本") },
+                    label = {
+                        Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                            Text("待办文本")
+                            InputSyntaxHelpIconButton(
+                                topic = InputSyntaxHelpTopic.TodoBatch,
+                                onClick = { helpTopic = InputSyntaxHelpTopic.TodoBatch }
+                            )
+                        }
+                    },
                     modifier = Modifier.fillMaxWidth(),
                     minLines = 8,
                     maxLines = 14
@@ -141,6 +150,10 @@ internal fun TodoBatchImportDialog(
             },
             confirmButton = { TextButton(onClick = { showHelp = false }) { Text("知道了") } }
         )
+    }
+
+    helpTopic?.let { topic ->
+        InputSyntaxHelpDialog(topic = topic, onDismiss = { helpTopic = null })
     }
 }
 

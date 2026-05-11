@@ -100,6 +100,7 @@ internal fun CalendarBatchImportDialog(
     var selectedFormat by remember { mutableStateOf(CalendarImportFormat.AUTO) }
     var parseResult by remember { mutableStateOf<CalendarBatchImportParseResult?>(null) }
     var showHelp by remember { mutableStateOf(false) }
+    var helpTopic by remember { mutableStateOf<InputSyntaxHelpTopic?>(null) }
     var formatExpanded by remember { mutableStateOf(false) }
 
     AlertDialog(
@@ -169,7 +170,15 @@ internal fun CalendarBatchImportDialog(
                     modifier = Modifier
                         .fillMaxWidth()
                         .heightIn(min = 220.dp),
-                    label = { Text("输入语法文本") },
+                    label = {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text("输入语法文本")
+                            InputSyntaxHelpIconButton(
+                                topic = InputSyntaxHelpTopic.CalendarBatch,
+                                onClick = { helpTopic = InputSyntaxHelpTopic.CalendarBatch }
+                            )
+                        }
+                    },
                     placeholder = {
                         Text(
                             text = "2026-03-02: 19:30-21:55, 【课】二胡演奏基础, @品学楼C506, Weekly, 2026-05-12",
@@ -339,6 +348,9 @@ internal fun CalendarBatchImportDialog(
 
     if (showHelp) {
         CalendarBatchImportHelpDialog(onDismiss = { showHelp = false })
+    }
+    helpTopic?.let { topic ->
+        InputSyntaxHelpDialog(topic = topic, onDismiss = { helpTopic = null })
     }
 }
 

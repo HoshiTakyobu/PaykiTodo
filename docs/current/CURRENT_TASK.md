@@ -2,7 +2,7 @@
 
 ## Active Development Focus
 
-The current round has produced a `1.6.35` baseline. The implemented focus was simplifying todo batch input and reusing reminder-time parsing for batch import / snooze surfaces.
+The current round has produced a `1.6.36` baseline. The implemented focus was adding discoverable input syntax help and updating the in-app Wiki.
 
 Primary verification focus areas:
 
@@ -13,18 +13,21 @@ Primary verification focus areas:
 5. Todo batch import can import multiple comma-separated rows and blocks invalid rows
 6. Batch buttons are visible from daily board / active todo surfaces and the calendar header
 7. Full-screen and accessibility reminder custom snooze inputs accept minutes or concrete future times
+8. Question-mark help buttons open the correct syntax help beside reminder, batch, and snooze fields
+9. In-app Wiki describes the current 1.6.36 input syntax rather than older menu / picker behavior
 
 ## Immediate Practical Next Steps
 
 When testing on a device, use:
 
-1. install `app/build/outputs/apk/debug/PaykiTodo-1.6.35-debug.apk`
+1. install `app/build/outputs/apk/debug/PaykiTodo-1.6.36-debug.apk`
 2. create a todo with DDL in the future and reminder input `5,15`
 3. create a calendar event and test `5,15,HH:mm` where `HH:mm` is before the event start
 4. verify an illegal value later than DDL / event start turns the input red and disables save
 5. open daily board or 我的任务 and test `批量添加待办` with `2026-05-12 18:00,写报告,5`
 6. open 日历 and test the standalone `批量` button
 7. trigger a reminder and test custom snooze input with `5` and a future `HH:mm`
+8. tap the question-mark buttons next to these inputs and verify the displayed examples match the current syntax
 
 ## Repository-Verified Notes
 
@@ -38,8 +41,10 @@ The current code baseline includes these specific `1.6.34` changes:
 6. `TodoBatchImport.kt` uses lightweight `DDL时间,任务名称,提醒时间` todo batch syntax
 7. `DashboardChrome.kt` and `CalendarPanel.kt` expose standalone batch buttons
 8. Calendar batch `Remind=` and custom snooze inputs reuse the shared reminder-time parser
-9. `app/build.gradle.kts` is bumped to `1.6.35 / 107`
-10. `./gradlew assembleDebug` has succeeded for this version
+9. `InputSyntaxHelp.kt` adds a shared syntax help button/dialog
+10. `app/src/main/assets/wiki/index.html` documents the current input syntax
+11. `app/build.gradle.kts` is bumped to `1.6.36 / 108`
+12. `./gradlew assembleDebug` has succeeded for this version
 
 ## What Not To Do Immediately
 
@@ -52,4 +57,4 @@ The current code baseline includes these specific `1.6.34` changes:
 
 ## Current External Dependency
 
-No external file is needed for the current `1.6.35` verification task.
+No external file is needed for the current `1.6.36` verification task.

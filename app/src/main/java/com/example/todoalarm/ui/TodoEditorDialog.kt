@@ -123,6 +123,7 @@ fun TodoEditorDialog(
     }
     var recurrencePreview by remember { mutableStateOf<RecurrencePreviewResult?>(null) }
     var showGroupPicker by remember { mutableStateOf(false) }
+    var helpTopic by remember { mutableStateOf<InputSyntaxHelpTopic?>(null) }
     var activeDateTimeTarget by remember { mutableStateOf<TodoDateTimeTarget?>(null) }
     val reminderValidation = remember(reminderInput, dueAt, reminderEnabled, hasDueDate, isHistory, initialTodo?.id) {
         if (!reminderEnabled || !hasDueDate || isHistory) {
@@ -322,7 +323,15 @@ fun TodoEditorDialog(
                             OutlinedTextField(
                                 value = reminderInput,
                                 onValueChange = { reminderInput = it },
-                                label = { Text("提醒时间") },
+                                label = {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Text("提醒时间")
+                                        InputSyntaxHelpIconButton(
+                                            topic = InputSyntaxHelpTopic.Reminder,
+                                            onClick = { helpTopic = InputSyntaxHelpTopic.Reminder }
+                                        )
+                                    }
+                                },
                                 placeholder = { Text("5,15,16:30,05-10 15:00,2026-05-10 14:30") },
                                 isError = !reminderValidation.isValid,
                                 supportingText = {
@@ -487,6 +496,10 @@ fun TodoEditorDialog(
             },
             dismissButton = {}
         )
+    }
+
+    helpTopic?.let { topic ->
+        InputSyntaxHelpDialog(topic = topic, onDismiss = { helpTopic = null })
     }
 
     activeDateTimeTarget?.let { target ->

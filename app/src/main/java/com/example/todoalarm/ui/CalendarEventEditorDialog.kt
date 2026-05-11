@@ -182,6 +182,7 @@ internal fun CalendarEventEditorDialog(
     var showReminderPicker by remember { mutableStateOf(false) }
     var showReminderDeliveryPicker by remember { mutableStateOf(false) }
     var showRecurrencePicker by remember { mutableStateOf(false) }
+    var helpTopic by remember { mutableStateOf<InputSyntaxHelpTopic?>(null) }
     var activeDateTimeTarget by remember { mutableStateOf<CalendarDateTimeTarget?>(null) }
     val reminderAnchor = if (allDay) LocalDateTime.of(startAt.toLocalDate(), LocalTime.of(9, 0)) else startAt
     val reminderValidation = remember(reminderInput, reminderAnchor, reminderEnabled, initialEvent?.id) {
@@ -411,7 +412,15 @@ internal fun CalendarEventEditorDialog(
                                     requireFuture = initialEvent == null
                                 ).offsetsMinutes
                             },
-                            label = { Text("提醒时间") },
+                            label = {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Text("提醒时间")
+                                    InputSyntaxHelpIconButton(
+                                        topic = InputSyntaxHelpTopic.Reminder,
+                                        onClick = { helpTopic = InputSyntaxHelpTopic.Reminder }
+                                    )
+                                }
+                            },
                             placeholder = { Text("5,15,16:30,05-10 15:00,2026-05-10 14:30") },
                             isError = !reminderValidation.isValid,
                             supportingText = {
@@ -595,6 +604,10 @@ internal fun CalendarEventEditorDialog(
                 showReminderPicker = false
             }
         )
+    }
+
+    helpTopic?.let { topic ->
+        InputSyntaxHelpDialog(topic = topic, onDismiss = { helpTopic = null })
     }
 
     activeDateTimeTarget?.let { target ->

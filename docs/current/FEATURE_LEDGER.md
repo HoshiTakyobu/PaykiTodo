@@ -10,6 +10,8 @@ This file tracks the product at a practical level for new coding sessions.
 - title / notes / group / deadline / reminder fields
 - no-deadline todos
 - complete / cancel / restore flows
+- active todo preview now uses the same bottom-sheet visual language as calendar event preview
+- active todo card body opens preview; completion is isolated to the checkbox to avoid accidental completion
 - recurring task support
 - grouped task filtering
 - three-zone home logic: overdue / today / upcoming
@@ -28,6 +30,7 @@ This file tracks the product at a practical level for new coding sessions.
 - day / multi-day / month / agenda style views exist in code, with ongoing refinement
 - normal events, all-day events, and recurring events
 - event location / notes / color / reminder settings
+- event preview keeps showing configured reminder offsets after reminder acknowledgement
 - text-based batch import support
 - week-template and semester-generation related capabilities exist in the codebase and docs history
 - current-time label is wired on the left time axis and remains visible even when today is off-screen, while the red current-time line remains in the schedule area and also stays visible
@@ -42,6 +45,7 @@ This file tracks the product at a practical level for new coding sessions.
 - accessibility fallback path
 - reminder diagnostics and settings-side tooling exist
 - reminder and desktop-sync foreground notifications both use the dedicated `ic_stat_payki_todo` small icon resource
+- calendar event acknowledgement preserves the configured reminder offsets instead of clearing the event's reminder setup
 
 ### Packaging / Identity
 
@@ -62,6 +66,16 @@ This file tracks the product at a practical level for new coding sessions.
 - LAN browser-based desktop sync console exists
 - phone-side HTTP serving model exists
 - browser can perform limited data operations against the phone-side dataset
+- desktop-sync foreground notification can be tapped to open the in-app Settings -> Desktop Sync panel
+- desktop web destructive delete actions require confirmation before DELETE requests are sent
+
+### Destructive Action Safety
+
+- active todo deletion asks for confirmation
+- calendar event deletion asks for confirmation
+- schedule-template deletion asks for confirmation
+- group deletion asks for confirmation
+- desktop web delete buttons ask for browser confirmation
 
 ## Implemented But Still Being Polished
 
@@ -70,6 +84,7 @@ This file tracks the product at a practical level for new coding sessions.
 - final launcher / themed icon / notification icon surface verification on device
 - default snooze picker behavior and feel
 - visual consistency across settings / drawer / launch screen / board
+- final device-side validation for the 1.6.30 todo preview and desktop-sync notification route
 
 ## Pending / Ongoing Direction
 

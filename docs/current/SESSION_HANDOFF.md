@@ -6,37 +6,44 @@ Long-running Codex sessions can become unreliable. This file exists so a new ses
 
 ## Current Handoff Summary
 
-- The project is currently at code version `1.6.13` / `versionCode 85`
-- The repository has been consolidated to a committed `1.6.13` baseline
-- The current task is not to rediscover product history, but to continue the active iteration safely
-- Repository inspection shows the three old `1.6.9` carry-over items are already present in the current `1.6.13` worktree:
-  - current-time text is back on the left time axis
-  - launcher and notification icon chains are switched to the current PaykiTodo resources
-  - release-signing template doc exists
-- Minimal verification in this round passed:
-  - `./gradlew.bat assembleDebug`
-  - latest debug APK path: `app/build/outputs/apk/debug/PaykiTodo-1.6.13-debug.apk`
-- Latest repair in this round:
-  - removed the date-visibility gate that hid the left current-time label when today scrolled off-screen
-  - changed the schedule-grid current-time line so it still draws when the today column is outside the current viewport
-  - preserved the existing split-marker style when the today column is actually visible
-- Current hot area is therefore minimal verification, version/doc alignment, board/dashboard polish, calendar polish, and documentation cleanup
-- Current icon-side decision in code: launcher foreground now stays inside a mask-safe vector live area instead of relying on raster-art inset tuning
-- The current `1.6.13` baseline also includes board / background work in the same release line:
-  - daily board is the default home section
-  - board can summarize today's todos and near-term schedule
-  - light / dark dashboard background resources are present
-  - launch screen and drawer icon visuals were refreshed
+- The project is currently at code version `1.6.30` / `versionCode 102`
+- The repository has been committed and pushed to `origin/main`
+- Latest code commit before this doc synchronization: `2d13b04` (`修复待办预览与同步通知跳转`)
+- Latest debug APK path: `app/build/outputs/apk/debug/PaykiTodo-1.6.30-debug.apk`
+- Minimal verification passed:
+  - `./gradlew assembleDebug`
+- The latest completed repair round addressed four user-facing issues:
+  1. Daily-board todo preview now uses the unified bottom-sheet style and should not mark the todo complete when backing out of preview
+  2. User-visible delete buttons now require confirmation in the phone UI paths touched this round and in the desktop web console delete paths
+  3. Calendar event reminder acknowledgement preserves configured reminder offsets so previews still show reminder setup after all reminders fire
+  4. The desktop-sync foreground notification can be tapped to open the in-app Settings -> Desktop Sync panel
+
+## Files Most Relevant To The Latest Round
+
+- `app/build.gradle.kts`
+- `app/src/main/java/com/example/todoalarm/ui/TodoCards.kt`
+- `app/src/main/java/com/example/todoalarm/ui/CalendarPanel.kt`
+- `app/src/main/java/com/example/todoalarm/ui/GroupManagementPanel.kt`
+- `app/src/main/java/com/example/todoalarm/data/TodoRepository.kt`
+- `app/src/main/java/com/example/todoalarm/ui/TodoViewModel.kt`
+- `app/src/main/java/com/example/todoalarm/sync/DesktopSyncCoordinator.kt`
+- `app/src/main/java/com/example/todoalarm/sync/DesktopSyncService.kt`
+- `app/src/main/java/com/example/todoalarm/sync/DesktopSyncWebAssets.kt`
+- `app/src/main/java/com/example/todoalarm/ui/MainActivity.kt`
+- `app/src/main/java/com/example/todoalarm/ui/DashboardScreen.kt`
+- `app/src/main/java/com/example/todoalarm/ui/DashboardChrome.kt`
+- `app/src/main/java/com/example/todoalarm/ui/SettingsPanel.kt`
+- `app/src/main/java/com/example/todoalarm/ui/EditorBottomSheet.kt`
 
 ## Smallest Safe Next Step
 
-Do not re-decompose `E:\下载\icon.png` unless the current in-repo vector launcher chain proves insufficient.
+The next session should not start by rewriting architecture. The smallest safe next step is device verification:
 
-The smallest safe next step after this round is:
-
-1. device-side check that the calendar current-time label and red-line behavior now remain visible after swiping away from today
-2. device-side validation of install icon / launcher icon / monochrome themed icon / notification small icon
-3. confirm the app no longer crashes on launch after the board / launch-screen icon loading adjustment
+1. Install `PaykiTodo-1.6.30-debug.apk`
+2. In daily board, tap a current todo body, close preview, verify it is not completed
+3. Delete a todo / event / group / schedule template and verify confirmation appears first
+4. Enable desktop sync, tap the persistent notification, verify it opens Settings -> Desktop Sync
+5. Trigger or acknowledge an event reminder, reopen event preview, verify reminder offsets are still shown
 
 ## Required Reading For A New Session
 

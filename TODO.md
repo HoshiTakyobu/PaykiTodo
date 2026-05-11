@@ -4,8 +4,8 @@
 
 ### In Progress
 
-- Verify the current launcher and notification icon surfaces on real Android UI after the safe-zone vector icon switch
-- Keep `README.md`, `CHANGELOG.md`, and current-state docs aligned with version `1.6.13`
+- Verify version `1.6.30` on device after the preview / delete-confirmation / desktop-sync notification repair round
+- Keep `README.md`, `CHANGELOG.md`, and current-state docs aligned with version `1.6.30`
 - Continue board / dashboard and calendar polish without regressing the current interaction model
 - Improve repo-native handoff so new sessions do not depend on long chat history
 
@@ -18,6 +18,10 @@
   - notification bar small icon
 - The current time label and red-line behavior in calendar views should be verified against the user's intended behavior
 - The current board / dashboard readability should be checked in both light and dark themes
+- Tapping a todo in the daily board should open the new bottom-sheet preview and must not mark it completed unless the checkbox is used
+- Delete actions should show confirmation before deleting on both phone UI and desktop web console
+- After an event reminder fires, the event preview should still show the configured reminder offsets
+- Tapping the desktop-sync foreground notification should open Settings -> Desktop Sync
 
 ## Mid-Term Follow-Ups
 
@@ -34,6 +38,11 @@
 
 ## Done Recently
 
+- Bumped the app to `1.6.30` / `versionCode 102`
+- Reworked active todo preview into the shared bottom-sheet visual language and split preview click from completion checkbox
+- Added delete confirmation coverage for schedule templates, group deletion, calendar event deletion, active todo deletion, and desktop web delete buttons
+- Preserved calendar event reminder configuration after a reminder has fired
+- Added foreground desktop-sync notification click routing into the in-app desktop sync settings section
 - Switched the adaptive launcher icon chain to the current PaykiTodo mark resources
 - Replaced the launcher foreground with a safe-zone vector logo so adaptive masks no longer crop the full raster composition
 - Fixed the calendar current-time label and red line so they remain visible even when the current day is off-screen

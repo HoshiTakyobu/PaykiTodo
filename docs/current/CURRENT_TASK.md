@@ -2,50 +2,53 @@
 
 ## Active Development Focus
 
-The current round has already been consolidated into a committed `1.6.13` baseline. The next work should start from repository facts rather than from broken chat memory.
+The current round has been consolidated into a committed and pushed `1.6.30` baseline. The next work should start from repository facts rather than old chat memory.
 
 Primary active focus areas:
 
-1. Verify the calendar current-time label and red-line behavior on real device after the persistence fix
-2. Verify the new safe-zone launcher icon on real Android install / desktop / themed-icon surfaces
-3. Verify the new board / dashboard visuals in both light and dark themes
-4. Continue the board / dashboard and calendar polish without regressing existing flows
-5. Keep version metadata and docs aligned with the actual code state
+1. Device-test the daily-board todo preview fix: tapping a todo body should open preview and must not complete it
+2. Device-test destructive action confirmations across phone UI and desktop web console
+3. Device-test calendar reminder preview preservation after all reminders for an event have fired
+4. Device-test the desktop-sync foreground notification click route into Settings -> Desktop Sync
+5. Continue board / dashboard and calendar polish without regressing existing flows
+6. Keep version metadata and docs aligned with the actual code state
 
 ## Immediate Practical Next Steps
 
 When a new session takes over, it should usually do these in order:
 
-1. verify current-time label / red-line persistence on device
-2. verify current launcher icon resource chain on device
-3. verify notification icon usage chain
-4. verify current version number and APK naming
-5. verify board background readability in both theme modes
-6. inspect the next target files before editing anything
-7. decide the smallest safe next change
+1. run `git status --short --branch`
+2. verify current version number and APK naming
+3. if testing on device, install `app/build/outputs/apk/debug/PaykiTodo-1.6.30-debug.apk`
+4. test tapping an active todo in the daily board and pressing back from preview
+5. test delete confirmations for todo, calendar event, group, schedule template, and desktop web item deletion
+6. test desktop-sync notification click routing while desktop sync is enabled
+7. test event reminder acknowledgement and then reopen event preview to verify configured reminder offsets remain visible
 
 ## Repository-Verified Notes
 
-The current worktree already shows these old `1.6.9` carry-over items in place:
+The current code baseline includes these specific 1.6.30 changes:
 
-1. current-time text is back on the left time axis in calendar
-2. launcher and notification icon references are switched to the intended resource chain
-3. release-signing template doc already exists in `docs/`
-
-That means the smallest safe next step is usually device verification and doc synchronization, not re-decomposing an external icon file.
+1. `TodoCards.kt` active todo card body and checkbox are separate interaction targets
+2. active todo preview uses `PaykiBottomSheet`
+3. `CalendarPanel.kt` has delete confirmation for calendar events and schedule templates
+4. `GroupManagementPanel.kt` has delete confirmation for groups
+5. `DesktopSyncWebAssets.kt` confirms web delete actions before sending DELETE
+6. `TodoRepository.acknowledgeCalendarEvent()` preserves configured reminder offsets
+7. `DesktopSyncService` notification includes a `PendingIntent` into `MainActivity`
+8. `MainActivity` / `DashboardScreen` / `SettingsPanel` route that intent to the desktop sync settings panel
 
 ## What Not To Do Immediately
 
 - do not re-plan the whole app from scratch
 - do not use very old version docs as the current source of truth
 - do not scan the whole workspace outside this repo
-- do not revert unrelated uncommitted work
-- do not reprocess `E:\下载\icon.png` unless the current in-repo safe-zone vector chain is proven insufficient
+- do not revert unrelated user edits
+- do not change JDK setup; use Android Studio bundled `jbr`
+- do not assume device behavior is fixed until the user actually tests it
 
 ## Current External Dependency
 
-There is an external image that may still matter to the icon task:
+No external file is needed for the current 1.6.30 verification task.
 
-- `E:\下载\icon.png`
-
-If the current task touches icon generation or adaptation, verify whether that file is still part of the intended workflow before editing resources further.
+If future work touches icon generation or adaptation, verify the intended in-repo resource chain before reprocessing any external image.

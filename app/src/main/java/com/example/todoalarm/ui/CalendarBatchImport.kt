@@ -659,7 +659,7 @@ internal object CalendarBatchImportParser {
         var recurrenceSpecified = false
         var weeklyDays = emptySet<DayOfWeek>()
         var recurrenceEndDate: LocalDate? = null
-        var reminderMinutesBefore: Int? = defaults.defaultReminderMinutesBefore
+        var reminderOffsetsMinutes: List<Int> = listOf(defaults.defaultReminderMinutesBefore)
         var mode = defaults.defaultReminderDeliveryMode
         var ringEnabled = defaults.defaultRingEnabled
         var vibrateEnabled = defaults.defaultVibrateEnabled
@@ -678,7 +678,7 @@ internal object CalendarBatchImportParser {
                     when (key.lowercase(Locale.ROOT)) {
                         "note" -> notes = decodeToken(value)
                         "remind" -> {
-                            reminderMinutesBefore = parseReminderValue(value)
+                            reminderOffsetsMinutes = parseBatchReminderOffsets(value, timeRange.reminderAnchor)
                         }
                         "mode" -> {
                             mode = parseReminderMode(value)
@@ -734,8 +734,8 @@ internal object CalendarBatchImportParser {
                 endAt = timeRange.endAt,
                 allDay = timeRange.allDay,
                 accentColorHex = accentColorHex,
-                reminderMinutesBefore = reminderMinutesBefore,
-                reminderOffsetsMinutes = reminderMinutesBefore?.let { listOf(it) }.orEmpty(),
+                reminderMinutesBefore = reminderOffsetsMinutes.firstOrNull(),
+                reminderOffsetsMinutes = reminderOffsetsMinutes,
                 ringEnabled = ringEnabled,
                 vibrateEnabled = vibrateEnabled,
                 reminderDeliveryMode = mode,
@@ -834,6 +834,14 @@ internal object CalendarBatchImportParser {
         }
     }
 
+    private fun parseBatchReminderOffsets(value: String, anchor: LocalDateTime): List<Int> {
+        val normalized = value.trim()
+        if (normalized.equals("off", ignoreCase = true) || normalized == "不提醒") return emptyList()
+        val parsed = parseReminderInput(normalized, anchor)
+        if (!parsed.isValid) error(parsed.message)
+        return parsed.offsetsMinutes
+    }
+
     private fun parseReminderMode(value: String): ReminderDeliveryMode {
         return when (value.trim().lowercase(Locale.ROOT)) {
             "notification", "通知栏", "通知栏提醒" -> ReminderDeliveryMode.NOTIFICATION
@@ -909,7 +917,10 @@ internal object CalendarBatchImportParser {
         val startAt: LocalDateTime,
         val endAt: LocalDateTime,
         val allDay: Boolean
-    )
+    ) {
+        val reminderAnchor: LocalDateTime
+            get() = if (allDay) LocalDateTime.of(startAt.toLocalDate(), LocalTime.of(9, 0)) else startAt
+    }
 
     private data class ParsedRecurrenceRule(
         val type: RecurrenceType,
@@ -1001,6 +1012,9 @@ internal object CalendarBatchImportHub {
             if (rawEnd.isAfter(startAt)) rawEnd else rawEnd.plusDays(1)
         }
         val recurrence = parseRecurrenceFromRow(row, date)
+        val reminderAnchor = if (allDay) LocalDateTime.of(startAt.toLocalDate(), LocalTime.of(9, 0)) else startAt
+        val reminderOffsets = row["remind"]?.let { parseReminderCell(it, reminderAnchor) }
+            ?: listOf(defaults.defaultReminderMinutesBefore)
         return CalendarEventDraft(
             title = title,
             notes = row["notes"].orEmpty(),
@@ -1009,8 +1023,8 @@ internal object CalendarBatchImportHub {
             endAt = endAt,
             allDay = allDay,
             accentColorHex = row["color"]?.takeIf { it.matches(Regex("^#[0-9A-Fa-f]{6}$")) } ?: defaults.defaultAccentColorHex,
-            reminderMinutesBefore = row["remind"]?.let { parseReminderCell(it) } ?: defaults.defaultReminderMinutesBefore,
-            reminderOffsetsMinutes = listOfNotNull(row["remind"]?.let { parseReminderCell(it) } ?: defaults.defaultReminderMinutesBefore),
+            reminderMinutesBefore = reminderOffsets.firstOrNull(),
+            reminderOffsetsMinutes = reminderOffsets,
             ringEnabled = row["ring"]?.let { parseOnOff(it) } ?: defaults.defaultRingEnabled,
             vibrateEnabled = row["vibrate"]?.let { parseOnOff(it) } ?: defaults.defaultVibrateEnabled,
             reminderDeliveryMode = row["mode"]?.let { parseModeCell(it) } ?: defaults.defaultReminderDeliveryMode,
@@ -1136,19 +1150,12 @@ internal object CalendarBatchImportHub {
         return LocalTime.of(parts[0].toInt(), parts[1].toInt())
     }
 
-    private fun parseReminderCell(value: String): Int? {
+    private fun parseReminderCell(value: String, anchor: LocalDateTime): List<Int> {
         val normalized = value.trim()
-        if (normalized.equals("off", ignoreCase = true)) return null
-        val match = Regex("^\\s*(\\d+)\\s*(m|min|mins|minute|minutes|分钟|h|hour|hours|小时|d|day|days|天)\\s*$")
-            .matchEntire(normalized)
-            ?: error("Remind 格式错误：$value")
-        val amount = match.groupValues[1].toIntOrNull() ?: error("Remind 数值错误：$value")
-        return when (match.groupValues[2].lowercase(Locale.ROOT)) {
-            "m", "min", "mins", "minute", "minutes", "分钟" -> amount
-            "h", "hour", "hours", "小时" -> amount * 60
-            "d", "day", "days", "天" -> amount * 24 * 60
-            else -> error("不支持的提醒单位：${match.groupValues[2]}")
-        }
+        if (normalized.equals("off", ignoreCase = true) || normalized == "不提醒") return emptyList()
+        val parsed = parseReminderInput(normalized, anchor)
+        if (!parsed.isValid) error(parsed.message)
+        return parsed.offsetsMinutes
     }
 
     private fun parseModeCell(value: String): ReminderDeliveryMode {

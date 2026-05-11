@@ -6,17 +6,18 @@ Long-running Codex sessions can become unreliable. This file exists so a new ses
 
 ## Current Handoff Summary
 
-- The project is currently at code version `1.6.34` / `versionCode 106`
-- Latest debug APK path: `app/build/outputs/apk/debug/PaykiTodo-1.6.34-debug.apk`
+- The project is currently at code version `1.6.35` / `versionCode 107`
+- Latest debug APK path: `app/build/outputs/apk/debug/PaykiTodo-1.6.35-debug.apk`
 - Minimal verification passed:
   - `./gradlew assembleDebug` using Android Studio bundled `jbr`
-- Latest feature round addressed reminder input and batch import:
+- Latest feature round addressed reminder input, batch import, and custom snooze parsing:
   1. Todo and calendar editors now share a comma-separated reminder input syntax
   2. Supported reminder tokens include relative minutes, same-day `HH:mm`, current-year `MM-DD HH:mm`, and full `YYYY-MM-DD HH:mm`
   3. Reminder entries later than DDL / event start, malformed entries, and new-item past reminders are rejected in the editor UI
   4. Normal todos now persist and schedule multiple reminder offsets through `reminderOffsetsCsv`
-  5. Todo batch import exists with `|` separated rows and preview validation
+  5. Todo batch import now uses lightweight comma rows: `DDL时间,任务名称,提醒时间`
   6. Batch-add buttons are visible on daily board / active todo surfaces and in the calendar header
+  7. Calendar batch `Remind=` and custom snooze inputs reuse the same reminder-time parser
 
 ## Files Most Relevant To The Latest Round
 
@@ -56,20 +57,24 @@ Shared reminder input examples:
 Todo batch-import syntax uses `|` between fields so the reminder comma syntax remains unambiguous:
 
 ```text
-2026-05-12 18:00 | 写报告 | 交初稿 | Remind=5,15,16:30 | Group=学习
-无DDL | 整理 Obsidian 待办 | 不设置截止时间
+2026-05-12 18:00,写报告,5
+05-13 09:30,给老师发消息,09:00
+无DDL,整理 Obsidian 待办
 ```
+
+Todo batch rows intentionally default group / ring / vibrate and accept only one reminder token to keep hand input fast.
 
 ## Smallest Safe Next Step
 
 The next session should device-test the current APK rather than immediately refactor:
 
-1. Install `PaykiTodo-1.6.34-debug.apk`
+1. Install `PaykiTodo-1.6.35-debug.apk`
 2. Verify todo reminder input accepts multiple valid entries and blocks invalid entries
 3. Verify calendar reminder input does the same for timed and all-day events
 4. Verify a todo with `5,15` schedules and fires both reminder points
-5. Verify `批量添加待办` parses valid rows and reports invalid rows
+5. Verify `批量添加待办` parses comma rows and reports invalid rows
 6. Verify standalone batch buttons are visible and not hidden only in overflow menus
+7. Verify custom snooze input accepts both minutes and a future clock time
 
 ## Required Reading For A New Session
 

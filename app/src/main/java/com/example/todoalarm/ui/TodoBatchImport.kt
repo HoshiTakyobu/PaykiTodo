@@ -56,7 +56,7 @@ internal fun TodoBatchImportDialog(
     onImport: (List<TodoDraft>) -> Unit
 ) {
     var input by remember { mutableStateOf(TodoBatchImportSampleText) }
-    var parseResult by remember { mutableStateOf(TodoBatchImportParser.parse(input, groups, defaults)) }
+    var parseResult by remember { mutableStateOf(TodoBatchImportParser.parse(input, defaults)) }
     var showHelp by remember { mutableStateOf(false) }
 
     AlertDialog(
@@ -71,7 +71,7 @@ internal fun TodoBatchImportDialog(
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 Text(
-                    text = "每行一条待办，字段用 | 分隔；提醒时间内部继续用英文逗号分隔。",
+                    text = "每行一条待办：DDL时间,任务名称,提醒时间。默认使用当前默认分组、响铃和震动设置。",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -79,7 +79,7 @@ internal fun TodoBatchImportDialog(
                     value = input,
                     onValueChange = {
                         input = it
-                        parseResult = TodoBatchImportParser.parse(it, groups, defaults)
+                        parseResult = TodoBatchImportParser.parse(it, defaults)
                     },
                     label = { Text("待办文本") },
                     modifier = Modifier.fillMaxWidth(),
@@ -90,7 +90,7 @@ internal fun TodoBatchImportDialog(
                     OutlinedButton(onClick = { showHelp = true }) { Text("语法说明") }
                     OutlinedButton(onClick = {
                         input = TodoBatchImportSampleText
-                        parseResult = TodoBatchImportParser.parse(input, groups, defaults)
+                        parseResult = TodoBatchImportParser.parse(input, defaults)
                     }) { Text("填入示例") }
                 }
                 if (parseResult.errors.isNotEmpty()) {
@@ -132,11 +132,11 @@ internal fun TodoBatchImportDialog(
             title = { Text("待办批量导入语法", fontWeight = FontWeight.Bold) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("格式：DDL | 标题 | 备注可选 | Remind=提醒 | Group=分组 | Ring=true | Vibrate=true")
+                    Text("格式：DDL时间,任务名称,提醒时间")
                     Text("DDL 支持：2026-05-12 18:00、05-12 18:00、无DDL。")
-                    Text("Remind 与单条编辑一致：5,15,16:30,05-10 15:00,2026-05-10 14:30。")
+                    Text("提醒时间只写一个：5、16:30、05-10 15:00、2026-05-10 14:30。")
                     Text("如果提醒时刻晚于 DDL，或提醒已经过去，该行会被判定为非法。")
-                    Text("示例：2026-05-12 18:00 | 写报告 | 交初稿 | Remind=5,15 | Group=学习")
+                    Text("示例：2026-05-12 18:00,写报告,5")
                 }
             },
             confirmButton = { TextButton(onClick = { showHelp = false }) { Text("知道了") } }
@@ -177,21 +177,22 @@ private fun TodoBatchPreviewCard(preview: TodoBatchPreviewItem, groups: List<Tas
 private object TodoBatchImportParser {
     fun parse(
         input: String,
-        groups: List<TaskGroup>,
         defaults: TodoBatchImportDefaults
     ): TodoBatchParseResult {
         val previews = mutableListOf<TodoBatchPreviewItem>()
         val errors = mutableListOf<String>()
-        val groupByName = groups.associateBy { it.name.trim() }
-
         input.lineSequence().forEachIndexed { index, rawLine ->
             val lineNumber = index + 1
             val line = rawLine.trim()
             if (line.isBlank() || line.startsWith("#")) return@forEachIndexed
 
-            val parts = line.split('|').map { it.trim() }
+            val parts = line.split(',').map { it.trim() }
             if (parts.size < 2) {
-                errors += "第 $lineNumber 行：至少需要 DDL 和标题，用 | 分隔。"
+                errors += "第 $lineNumber 行：至少需要 DDL时间 和 任务名称，用英文逗号分隔。"
+                return@forEachIndexed
+            }
+            if (parts.size > 3) {
+                errors += "第 $lineNumber 行：待办批量导入只支持 DDL时间,任务名称,一个提醒时间；提醒时间里不要再写逗号。"
                 return@forEachIndexed
             }
 
@@ -211,7 +212,6 @@ private object TodoBatchImportParser {
                 return@forEachIndexed
             }
 
-            var notes = ""
             var groupId = defaults.defaultGroupId
             var ringEnabled = defaults.defaultRingEnabled
             var vibrateEnabled = defaults.defaultVibrateEnabled
@@ -219,45 +219,20 @@ private object TodoBatchImportParser {
             var reminderAt: LocalDateTime? = null
             var reminderSummary = ""
 
-            parts.drop(2).forEach { token ->
-                val keyValue = token.split('=', limit = 2)
-                if (keyValue.size == 2) {
-                    val key = keyValue[0].trim().lowercase()
-                    val value = keyValue[1].trim()
-                    when (key) {
-                        "remind", "reminder", "提醒" -> {
-                            if (dueAt == null) {
-                                errors += "第 $lineNumber 行：无 DDL 的待办不能设置提醒。"
-                            } else {
-                                val parsedReminder = parseReminderInput(value, dueAt)
-                                if (!parsedReminder.isValid) {
-                                    errors += "第 $lineNumber 行：${parsedReminder.message}"
-                                } else {
-                                    reminderOffsets = parsedReminder.offsetsMinutes
-                                    reminderAt = parsedReminder.triggerTimes.minOrNull()
-                                    reminderSummary = parsedReminder.message
-                                }
-                            }
-                        }
-
-                        "group", "分组" -> {
-                            val group = groupByName[value]
-                            if (group == null) {
-                                errors += "第 $lineNumber 行：找不到分组“$value”。"
-                            } else {
-                                groupId = group.id
-                            }
-                        }
-
-                        "ring", "响铃" -> ringEnabled = value.toBooleanLike(defaults.defaultRingEnabled)
-                        "vibrate", "震动" -> vibrateEnabled = value.toBooleanLike(defaults.defaultVibrateEnabled)
-                        "note", "notes", "备注" -> notes = value
-                        else -> errors += "第 $lineNumber 行：无法识别字段“${keyValue[0]}”。"
-                    }
-                } else if (notes.isBlank()) {
-                    notes = token
+            parts.getOrNull(2)?.takeIf { it.isNotBlank() }?.let { reminderToken ->
+                if (dueAt == null) {
+                    errors += "第 $lineNumber 行：无 DDL 的待办不能设置提醒。"
                 } else {
-                    notes += "\n$token"
+                    val parsedReminder = parseReminderInput(reminderToken, dueAt)
+                    if (!parsedReminder.isValid) {
+                        errors += "第 $lineNumber 行：${parsedReminder.message}"
+                    } else if (parsedReminder.offsetsMinutes.size != 1) {
+                        errors += "第 $lineNumber 行：待办批量导入一次只写一个提醒时间。"
+                    } else {
+                        reminderOffsets = parsedReminder.offsetsMinutes
+                        reminderAt = parsedReminder.triggerTimes.minOrNull()
+                        reminderSummary = parsedReminder.message
+                    }
                 }
             }
 
@@ -265,7 +240,7 @@ private object TodoBatchImportParser {
                 lineNumber = lineNumber,
                 draft = TodoDraft(
                     title = title,
-                    notes = notes,
+                    notes = "",
                     dueAt = dueAt,
                     reminderAt = reminderAt,
                     groupId = groupId,
@@ -315,14 +290,6 @@ private fun String.isNoDueToken(): Boolean {
     return normalized == "无ddl" || normalized == "无 ddl" || normalized == "无截止" || normalized == "no due" || normalized == "-"
 }
 
-private fun String.toBooleanLike(defaultValue: Boolean): Boolean {
-    return when (trim().lowercase()) {
-        "true", "1", "yes", "y", "是", "开", "开启" -> true
-        "false", "0", "no", "n", "否", "关", "关闭" -> false
-        else -> defaultValue
-    }
-}
-
 private val MonthDayTimeTokenRegex = Regex("""^(\d{1,2})-(\d{1,2})\s+(\d{1,2}):(\d{2})$""")
 private val DateTimeTokenRegex = Regex("""^(\d{4})-(\d{1,2})-(\d{1,2})\s+(\d{1,2}):(\d{2})$""")
 
@@ -336,7 +303,7 @@ private fun safeDateTime(year: Int, month: Int, day: Int, hour: Int, minute: Int
 }
 
 private val TodoBatchImportSampleText = """
-2026-05-12 18:00 | 写报告 | 交初稿 | Remind=5,15,16:30 | Group=学习
-05-13 09:30 | 给老师发消息 | 确认材料 | Remind=10 | Ring=true | Vibrate=true
-无DDL | 整理 Obsidian 待办 | 不设置截止时间
+2026-05-12 18:00,写报告,5
+05-13 09:30,给老师发消息,09:00
+无DDL,整理 Obsidian 待办
 """.trimIndent()

@@ -268,6 +268,7 @@ private fun ReminderScreen(
     onCancel: (RecurrenceScope) -> Unit
 ) {
     var customMinutes by remember(defaultSnoozeMinutes) { mutableStateOf(defaultSnoozeMinutes.toString()) }
+    val customSnoozeValidation = remember(customMinutes) { parseSnoozeInput(customMinutes) }
     var showCancelScopeDialog by remember(todoItem?.id) { mutableStateOf(false) }
     val resolvedGroup = taskGroup
         ?: todoItem?.let { resolveTaskGroup(it, emptyList()) }
@@ -503,16 +504,20 @@ private fun ReminderScreen(
                             ) {
                                 OutlinedTextField(
                                     value = customMinutes,
-                                    onValueChange = { customMinutes = it.filter(Char::isDigit) },
+                                    onValueChange = { customMinutes = it },
                                     modifier = Modifier.weight(1f),
-                                    label = { Text("分钟数") },
+                                    label = { Text("延后时间") },
+                                    placeholder = { Text("5 或 16:30") },
+                                    isError = !customSnoozeValidation.isValid,
+                                    supportingText = {
+                                        Text(if (customSnoozeValidation.isValid) customSnoozeValidation.message else customSnoozeValidation.message)
+                                    },
                                     singleLine = true
                                 )
                                 Button(
+                                    enabled = customSnoozeValidation.isValid,
                                     onClick = {
-                                        val minutes = customMinutes.toIntOrNull()?.coerceIn(1, 180)
-                                            ?: defaultSnoozeMinutes
-                                        onSnooze(minutes)
+                                        onSnooze(customSnoozeValidation.minutes)
                                     },
                                     modifier = Modifier.widthIn(min = 112.dp)
                                 ) {

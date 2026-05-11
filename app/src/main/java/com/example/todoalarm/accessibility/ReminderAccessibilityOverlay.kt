@@ -29,6 +29,7 @@ import com.example.todoalarm.data.ReminderChainStatus
 import com.example.todoalarm.data.TodoItem
 import com.example.todoalarm.ui.ReminderActivity
 import com.example.todoalarm.ui.ResolvedTaskGroup
+import com.example.todoalarm.ui.parseSnoozeInput
 import com.example.todoalarm.ui.resolveTaskGroup
 import com.example.todoalarm.ui.taskGroupEmoji
 import kotlinx.coroutines.CoroutineScope
@@ -308,8 +309,8 @@ class ReminderAccessibilityOverlay(
                 setPadding(0, dp(12), 0, 0)
             }
             val customInput = EditText(service).apply {
-                hint = "自定义分钟"
-                inputType = InputType.TYPE_CLASS_NUMBER
+                hint = "5 或 16:30"
+                inputType = InputType.TYPE_CLASS_TEXT
                 setTextColor(Color.parseColor("#10243D"))
                 setHintTextColor(Color.parseColor("#6B7280"))
                 setTextSize(16f)
@@ -328,11 +329,11 @@ class ReminderAccessibilityOverlay(
             customRow.addView(
                 filledButton("延后", accent).apply {
                     setOnClickListener {
-                        val minutes = customInput.text?.toString()?.trim()?.toIntOrNull()
-                        if (minutes == null || minutes !in 1..180) {
-                            Toast.makeText(service, "请输入 1 到 180 分钟", Toast.LENGTH_SHORT).show()
+                        val parsed = parseSnoozeInput(customInput.text?.toString().orEmpty())
+                        if (!parsed.isValid) {
+                            Toast.makeText(service, parsed.message, Toast.LENGTH_SHORT).show()
                         } else {
-                            snoozeTodo(item.id, minutes)
+                            snoozeTodo(item.id, parsed.minutes)
                         }
                     }
                 },

@@ -4,8 +4,8 @@
 
 ### In Progress
 
-- Verify version `1.6.34` on device after the multi-reminder input and todo batch-import round
-- Keep `README.md`, `CHANGELOG.md`, and current-state docs aligned with version `1.6.34`
+- Verify version `1.6.35` on device after simplifying todo batch import and shared reminder-time parsing
+- Keep `README.md`, `CHANGELOG.md`, and current-state docs aligned with version `1.6.35`
 - Continue board / dashboard and calendar polish without regressing the current interaction model
 - Improve repo-native handoff so new sessions do not depend on long chat history
 
@@ -34,6 +34,8 @@
 - Todo and calendar reminder input should accept comma-separated mixed reminder specs and block invalid values
 - Todo batch import should parse line-based `|` separated entries and import multiple todos correctly
 - Standalone batch buttons should be visible from daily board / active todo / calendar surfaces
+- Todo batch import should use the lightweight `DDL,任务名称,提醒时间` syntax without requiring `|` or key-value fields
+- Full-screen and accessibility snooze custom input should accept minutes or a concrete future time
 
 ## Mid-Term Follow-Ups
 
@@ -50,6 +52,10 @@
 
 ## Done Recently
 
+- Bumped the app to `1.6.35` / `versionCode 107`
+- Simplified todo batch import to comma-ordered `DDL,任务名称,提醒时间`
+- Reused the shared reminder parser for calendar batch `Remind=` fields
+- Reused the shared time parser for custom snooze input on full-screen and accessibility reminder surfaces
 - Bumped the app to `1.6.34` / `versionCode 106`
 - Unified todo and calendar reminder editing around one comma-separated text input syntax
 - Connected normal todos to the multi-reminder offset storage and scheduling path

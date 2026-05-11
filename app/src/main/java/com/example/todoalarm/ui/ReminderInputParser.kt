@@ -12,6 +12,12 @@ internal data class ReminderInputValidation(
     val message: String = ""
 )
 
+internal data class SnoozeInputValidation(
+    val isValid: Boolean,
+    val minutes: Int = 0,
+    val message: String = ""
+)
+
 private val TimeTokenRegex = Regex("""^(\d{1,2}):(\d{2})$""")
 private val MonthDayTimeTokenRegex = Regex("""^(\d{1,2})-(\d{1,2})\s+(\d{1,2}):(\d{2})$""")
 private val DateTimeTokenRegex = Regex("""^(\d{4})-(\d{1,2})-(\d{1,2})\s+(\d{1,2}):(\d{2})$""")
@@ -112,6 +118,67 @@ internal fun reminderInputLeadTimeLabel(minutes: Int): String {
         minutes % 60 == 0 -> "提前 ${minutes / 60} 小时"
         else -> "提前 ${minutes} 分钟"
     }
+}
+
+internal fun parseSnoozeInput(
+    raw: String,
+    now: LocalDateTime = LocalDateTime.now().withSecond(0).withNano(0),
+    maxMinutes: Int = 180
+): SnoozeInputValidation {
+    val token = raw.trim()
+    if (token.isBlank()) {
+        return SnoozeInputValidation(false, message = "请输入延后分钟或具体时刻。")
+    }
+
+    val target = when {
+        token.all { it.isDigit() } -> {
+            val minutes = token.toIntOrNull()
+                ?: return SnoozeInputValidation(false, message = "延后分钟数无效。")
+            if (minutes !in 1..maxMinutes) {
+                return SnoozeInputValidation(false, message = "请输入 1 到 $maxMinutes 分钟，或一个未来时刻。")
+            }
+            return SnoozeInputValidation(true, minutes = minutes, message = "延后 $minutes 分钟")
+        }
+
+        TimeTokenRegex.matches(token) -> {
+            val match = requireNotNull(TimeTokenRegex.matchEntire(token))
+            safeDateTime(now.year, now.monthValue, now.dayOfMonth, match.groupValues[1].toInt(), match.groupValues[2].toInt())
+                ?: return SnoozeInputValidation(false, message = "时刻格式无效。")
+        }
+
+        MonthDayTimeTokenRegex.matches(token) -> {
+            val match = requireNotNull(MonthDayTimeTokenRegex.matchEntire(token))
+            safeDateTime(
+                year = now.year,
+                month = match.groupValues[1].toInt(),
+                day = match.groupValues[2].toInt(),
+                hour = match.groupValues[3].toInt(),
+                minute = match.groupValues[4].toInt()
+            ) ?: return SnoozeInputValidation(false, message = "日期时间格式无效。")
+        }
+
+        DateTimeTokenRegex.matches(token) -> {
+            val match = requireNotNull(DateTimeTokenRegex.matchEntire(token))
+            safeDateTime(
+                year = match.groupValues[1].toInt(),
+                month = match.groupValues[2].toInt(),
+                day = match.groupValues[3].toInt(),
+                hour = match.groupValues[4].toInt(),
+                minute = match.groupValues[5].toInt()
+            ) ?: return SnoozeInputValidation(false, message = "日期时间格式无效。")
+        }
+
+        else -> return SnoozeInputValidation(false, message = "示例：5、16:30、05-10 15:00、2026-05-10 14:30。")
+    }
+
+    if (!target.isAfter(now)) {
+        return SnoozeInputValidation(false, message = "延后目标时间必须晚于当前时间。")
+    }
+    val minutes = Duration.between(now, target).toMinutes().toInt().coerceAtLeast(1)
+    if (minutes > maxMinutes) {
+        return SnoozeInputValidation(false, message = "延后时长不能超过 $maxMinutes 分钟。")
+    }
+    return SnoozeInputValidation(true, minutes = minutes, message = "延后 $minutes 分钟")
 }
 
 private fun safeDateTime(year: Int, month: Int, day: Int, hour: Int, minute: Int): LocalDateTime? {

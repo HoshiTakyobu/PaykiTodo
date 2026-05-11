@@ -9,7 +9,7 @@ This file tracks the product at a practical level for new coding sessions.
 - create, edit, delete todo items
 - title / notes / group / deadline / multi-reminder fields
 - no-deadline todos
-- text-based todo batch import with preview validation
+- lightweight comma-based todo batch import with preview validation
 - complete / cancel / restore flows
 - active todo preview now uses the same bottom-sheet visual language as calendar event preview
 - active todo card body opens preview; completion is isolated to the checkbox to avoid accidental completion
@@ -45,6 +45,7 @@ This file tracks the product at a practical level for new coding sessions.
 
 - `AlarmManager` based scheduling
 - todos and calendar events can store and schedule multiple configured reminder offsets
+- custom snooze input can parse either minutes or a concrete future time
 - notification reminder path
 - full-screen reminder path
 - foreground service and fallback chain work

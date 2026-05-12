@@ -73,6 +73,11 @@ private fun AppSettings.toJson(): JSONObject {
         put("defaultCalendarReminderMode", defaultCalendarReminderMode.name)
         put("reminderToneUri", reminderToneUri)
         put("reminderToneName", reminderToneName)
+        put("reminderAudioChannel", reminderAudioChannel.name)
+        put("reminderInternalVolumePercent", reminderInternalVolumePercent)
+        put("reminderBoostSystemVolume", reminderBoostSystemVolume)
+        put("reminderBoostVolumePercent", reminderBoostVolumePercent)
+        put("workQuietModeEnabled", workQuietModeEnabled)
         put("quoteIndex", quoteIndex)
         put("backupDirectoryUri", backupDirectoryUri)
         put("autoBackupEnabled", autoBackupEnabled)
@@ -364,6 +369,11 @@ private fun JSONObject?.toSettings(): AppSettings {
         ),
         reminderToneUri = optStringOrNull("reminderToneUri"),
         reminderToneName = optStringOrNull("reminderToneName"),
+        reminderAudioChannel = ReminderAudioChannel.fromStorage(optString("reminderAudioChannel", ReminderAudioChannel.ALARM.name)),
+        reminderInternalVolumePercent = optInt("reminderInternalVolumePercent", 80),
+        reminderBoostSystemVolume = optBoolean("reminderBoostSystemVolume", false),
+        reminderBoostVolumePercent = optInt("reminderBoostVolumePercent", 50),
+        workQuietModeEnabled = optBoolean("workQuietModeEnabled", false),
         quoteIndex = optInt("quoteIndex", 0),
         backupDirectoryUri = optStringOrNull("backupDirectoryUri"),
         autoBackupEnabled = optBoolean("autoBackupEnabled", false)

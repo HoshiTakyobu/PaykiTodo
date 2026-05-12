@@ -46,6 +46,7 @@ import com.example.todoalarm.data.CalendarEventDraft
 import com.example.todoalarm.data.RecurrenceConfig
 import com.example.todoalarm.data.RecurrenceScope
 import com.example.todoalarm.data.ReminderDeliveryMode
+import com.example.todoalarm.data.ReminderAudioChannel
 import com.example.todoalarm.data.ScheduleTemplate
 import com.example.todoalarm.data.ScheduleTemplateType
 import com.example.todoalarm.data.storageStringToWeekdays
@@ -103,6 +104,7 @@ fun DashboardScreen(
     onNextQuote: () -> Unit,
     onDefaultSnoozeChange: (Int) -> Unit,
     onDefaultCalendarReminderModeChange: (ReminderDeliveryMode) -> Unit,
+    onReminderAudioStrategyChange: (ReminderAudioChannel, Int, Boolean, Int, Boolean) -> Unit,
     onDesktopSyncEnabledChange: (Boolean) -> Unit,
     onRotateDesktopSyncToken: () -> Unit,
     onUseBuiltInReminderTone: () -> Unit,
@@ -136,6 +138,8 @@ fun DashboardScreen(
     var scopeDialogMode by remember { mutableStateOf<ScopeDialogMode?>(null) }
     var lastBackPressedAt by rememberSaveable { mutableLongStateOf(0L) }
     var boardVisited by rememberSaveable { mutableStateOf(false) }
+    val defaultReminderRing = if (uiState.settings.workQuietModeEnabled) false else uiState.settings.defaultRingEnabled
+    val defaultReminderVibrate = if (uiState.settings.workQuietModeEnabled) true else uiState.settings.defaultVibrateEnabled
 
     LaunchedEffect(launchRouteSerial) {
         if (launchRoute?.settingsSectionKey != null) {
@@ -338,8 +342,8 @@ fun DashboardScreen(
                             accentColorHex = "#4E87E1",
                             reminderMinutesBefore = 15,
                             reminderOffsetsMinutes = listOf(15),
-                            ringEnabled = uiState.settings.defaultRingEnabled,
-                            vibrateEnabled = uiState.settings.defaultVibrateEnabled,
+                            ringEnabled = defaultReminderRing,
+                            vibrateEnabled = defaultReminderVibrate,
                             reminderDeliveryMode = uiState.settings.defaultCalendarReminderMode,
                             recurrence = RecurrenceConfig()
                         )
@@ -418,6 +422,7 @@ fun DashboardScreen(
                     onNextQuote = onNextQuote,
                     onDefaultSnoozeChange = onDefaultSnoozeChange,
                     onDefaultCalendarReminderModeChange = onDefaultCalendarReminderModeChange,
+                    onReminderAudioStrategyChange = onReminderAudioStrategyChange,
                     onDesktopSyncEnabledChange = onDesktopSyncEnabledChange,
                     onRotateDesktopSyncToken = onRotateDesktopSyncToken,
                     onUseBuiltInReminderTone = onUseBuiltInReminderTone,
@@ -444,8 +449,8 @@ fun DashboardScreen(
             groups = uiState.groups,
             defaults = TodoBatchImportDefaults(
                 defaultGroupId = uiState.groups.firstOrNull { it.name == "例行" }?.id ?: uiState.groups.firstOrNull()?.id ?: 0L,
-                defaultRingEnabled = uiState.settings.defaultRingEnabled,
-                defaultVibrateEnabled = uiState.settings.defaultVibrateEnabled
+                defaultRingEnabled = defaultReminderRing,
+                defaultVibrateEnabled = defaultReminderVibrate
             ),
             onDismiss = { todoBatchImportVisible = false },
             onImport = { drafts ->
@@ -466,8 +471,8 @@ fun DashboardScreen(
         CalendarBatchImportDialog(
             defaults = CalendarBatchImportDefaults(
                 defaultReminderMinutesBefore = 5,
-                defaultRingEnabled = true,
-                defaultVibrateEnabled = true,
+                defaultRingEnabled = defaultReminderRing,
+                defaultVibrateEnabled = defaultReminderVibrate,
                 defaultReminderDeliveryMode = ReminderDeliveryMode.NOTIFICATION
             ),
             onDismiss = { batchImportVisible = false },
@@ -489,8 +494,8 @@ fun DashboardScreen(
         TodoEditorDialog(
             initialTodo = editingItem?.takeIf { it.isTodo },
             groups = uiState.groups,
-            defaultRingEnabled = editingItem?.ringEnabled ?: uiState.settings.defaultRingEnabled,
-            defaultVibrateEnabled = editingItem?.vibrateEnabled ?: uiState.settings.defaultVibrateEnabled,
+            defaultRingEnabled = editingItem?.ringEnabled ?: defaultReminderRing,
+            defaultVibrateEnabled = editingItem?.vibrateEnabled ?: defaultReminderVibrate,
             onDismiss = {
                 editorVisible = false
                 editingItem = null
@@ -524,8 +529,8 @@ fun DashboardScreen(
         CalendarEventEditorDialog(
             initialEvent = editingItem?.takeIf { it.isEvent },
             initialDraft = calendarDraftSeed,
-            defaultRingEnabled = editingItem?.ringEnabled ?: uiState.settings.defaultRingEnabled,
-            defaultVibrateEnabled = editingItem?.vibrateEnabled ?: uiState.settings.defaultVibrateEnabled,
+            defaultRingEnabled = editingItem?.ringEnabled ?: defaultReminderRing,
+            defaultVibrateEnabled = editingItem?.vibrateEnabled ?: defaultReminderVibrate,
             defaultReminderDeliveryMode = editingItem?.reminderDeliveryModeEnum
                 ?: uiState.settings.defaultCalendarReminderMode,
             onDismiss = {

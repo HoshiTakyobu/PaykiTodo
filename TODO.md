@@ -4,8 +4,8 @@
 
 ### In Progress
 
-- Verify version `1.6.46` on device after Wiki layout, board empty-state, and drawer icon refinements
-- Keep `README.md`, `CHANGELOG.md`, and current-state docs aligned with version `1.6.46`
+- Verify version `1.6.47` on device after reminder audio strategy and settings-page restructuring
+- Keep `README.md`, `CHANGELOG.md`, and current-state docs aligned with version `1.6.47`
 - Continue board / dashboard and calendar polish without regressing the current interaction model
 - Improve repo-native handoff so new sessions do not depend on long chat history
 
@@ -51,6 +51,9 @@
 - In-app Wiki should keep a left navigation / right article layout on phone-sized screens
 - Daily board should show a separate completion message when today's schedule existed but all events have ended
 - Drawer header icon should stay visually circular and not expose a white rounded-rectangle launcher background
+- Reminder audio strategy should be device-tested for alarm / accessibility / notification / media channels
+- Temporary system-channel volume boost should be tested carefully because it changes global stream volume and then restores it
+- Work / class quiet mode should be tested for silent strong-vibration behavior and full-screen fallback
 
 ## Mid-Term Follow-Ups
 
@@ -68,6 +71,11 @@
 
 ## Done Recently
 
+- Bumped the app to `1.6.47` / `versionCode 119`
+- Added reminder playback-channel selection and PaykiTodo internal reminder volume
+- Added optional temporary system-channel volume boost with restore behavior
+- Added work / class quiet mode for no-sound strong-vibration reminders and stronger full-screen fallback
+- Reorganized Settings into common and advanced sections
 - Bumped the app to `1.6.46` / `versionCode 118`
 - Changed in-app Wiki responsive layout to preserve left navigation and right article content on narrow screens
 - Added daily-board copy for days where today's schedule has all ended

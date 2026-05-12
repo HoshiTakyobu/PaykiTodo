@@ -86,7 +86,9 @@ class ReminderForegroundService : Service() {
                 message = "mode=${todoItem.reminderDeliveryMode}"
             )
 
-            val useFullscreenReminder = !todoItem.isEvent ||
+            val settings = app.settingsStore.currentSettings()
+            val useFullscreenReminder = settings.workQuietModeEnabled ||
+                !todoItem.isEvent ||
                 todoItem.reminderDeliveryModeEnum == ReminderDeliveryMode.FULLSCREEN
             if (useFullscreenReminder) {
                 ActiveReminderStore.markActive(this@ReminderForegroundService, todoId)

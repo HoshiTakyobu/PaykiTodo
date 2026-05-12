@@ -355,6 +355,22 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
         settingsStore.updateDefaultCalendarReminderMode(mode)
     }
 
+    fun updateReminderAudioStrategy(
+        channel: com.example.todoalarm.data.ReminderAudioChannel,
+        internalVolumePercent: Int,
+        boostSystemVolume: Boolean,
+        boostVolumePercent: Int,
+        workQuietModeEnabled: Boolean
+    ) {
+        settingsStore.updateReminderAudioStrategy(
+            channel = channel,
+            internalVolumePercent = internalVolumePercent,
+            boostSystemVolume = boostSystemVolume,
+            boostVolumePercent = boostVolumePercent,
+            workQuietModeEnabled = workQuietModeEnabled
+        )
+    }
+
     fun updateDesktopSyncEnabled(enabled: Boolean) {
         settingsStore.updateDesktopSyncEnabled(enabled)
         if (enabled) {

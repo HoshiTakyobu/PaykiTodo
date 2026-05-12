@@ -16,6 +16,19 @@ enum class WeekStartMode(val label: String) {
     SUNDAY("周日开始")
 }
 
+enum class ReminderAudioChannel(val label: String) {
+    ALARM("闹钟通道"),
+    ACCESSIBILITY("无障碍辅助通道"),
+    NOTIFICATION("通知通道"),
+    MEDIA("媒体通道");
+
+    companion object {
+        fun fromStorage(value: String?): ReminderAudioChannel {
+            return entries.firstOrNull { it.name == value } ?: ALARM
+        }
+    }
+}
+
 data class AppSettings(
     val themeMode: ThemeMode = ThemeMode.SYSTEM,
     val weekStartMode: WeekStartMode = WeekStartMode.MONDAY,
@@ -26,6 +39,11 @@ data class AppSettings(
     val defaultCalendarReminderMode: ReminderDeliveryMode = ReminderDeliveryMode.NOTIFICATION,
     val reminderToneUri: String? = null,
     val reminderToneName: String? = null,
+    val reminderAudioChannel: ReminderAudioChannel = ReminderAudioChannel.ALARM,
+    val reminderInternalVolumePercent: Int = 80,
+    val reminderBoostSystemVolume: Boolean = false,
+    val reminderBoostVolumePercent: Int = 50,
+    val workQuietModeEnabled: Boolean = false,
     val quoteIndex: Int = 0,
     val backupDirectoryUri: String? = null,
     val autoBackupEnabled: Boolean = false,
@@ -86,6 +104,23 @@ class AppSettingsStore(context: Context) {
         refresh()
     }
 
+    fun updateReminderAudioStrategy(
+        channel: ReminderAudioChannel,
+        internalVolumePercent: Int,
+        boostSystemVolume: Boolean,
+        boostVolumePercent: Int,
+        workQuietModeEnabled: Boolean
+    ) {
+        preferences.edit()
+            .putString(KEY_REMINDER_AUDIO_CHANNEL, channel.name)
+            .putInt(KEY_REMINDER_INTERNAL_VOLUME, internalVolumePercent.coerceIn(0, 100))
+            .putBoolean(KEY_REMINDER_BOOST_SYSTEM_VOLUME, boostSystemVolume)
+            .putInt(KEY_REMINDER_BOOST_VOLUME_PERCENT, boostVolumePercent.coerceIn(0, 100))
+            .putBoolean(KEY_WORK_QUIET_MODE, workQuietModeEnabled)
+            .apply()
+        refresh()
+    }
+
     fun updateQuoteIndex(index: Int) {
         preferences.edit().putInt(KEY_QUOTE_INDEX, index.coerceAtLeast(0)).apply()
         refresh()
@@ -124,6 +159,11 @@ class AppSettingsStore(context: Context) {
             .putString(KEY_DEFAULT_CALENDAR_REMINDER_MODE, settings.defaultCalendarReminderMode.name)
             .putString(KEY_REMINDER_TONE_URI, settings.reminderToneUri)
             .putString(KEY_REMINDER_TONE_NAME, settings.reminderToneName)
+            .putString(KEY_REMINDER_AUDIO_CHANNEL, settings.reminderAudioChannel.name)
+            .putInt(KEY_REMINDER_INTERNAL_VOLUME, settings.reminderInternalVolumePercent.coerceIn(0, 100))
+            .putBoolean(KEY_REMINDER_BOOST_SYSTEM_VOLUME, settings.reminderBoostSystemVolume)
+            .putInt(KEY_REMINDER_BOOST_VOLUME_PERCENT, settings.reminderBoostVolumePercent.coerceIn(0, 100))
+            .putBoolean(KEY_WORK_QUIET_MODE, settings.workQuietModeEnabled)
             .putInt(KEY_QUOTE_INDEX, settings.quoteIndex)
             .putString(KEY_BACKUP_DIR_URI, settings.backupDirectoryUri)
             .putBoolean(KEY_AUTO_BACKUP_ENABLED, settings.autoBackupEnabled)
@@ -155,6 +195,11 @@ class AppSettingsStore(context: Context) {
             ),
             reminderToneUri = preferences.getString(KEY_REMINDER_TONE_URI, null),
             reminderToneName = preferences.getString(KEY_REMINDER_TONE_NAME, null),
+            reminderAudioChannel = ReminderAudioChannel.fromStorage(preferences.getString(KEY_REMINDER_AUDIO_CHANNEL, null)),
+            reminderInternalVolumePercent = preferences.getInt(KEY_REMINDER_INTERNAL_VOLUME, 80).coerceIn(0, 100),
+            reminderBoostSystemVolume = preferences.getBoolean(KEY_REMINDER_BOOST_SYSTEM_VOLUME, false),
+            reminderBoostVolumePercent = preferences.getInt(KEY_REMINDER_BOOST_VOLUME_PERCENT, 50).coerceIn(0, 100),
+            workQuietModeEnabled = preferences.getBoolean(KEY_WORK_QUIET_MODE, false),
             quoteIndex = preferences.getInt(KEY_QUOTE_INDEX, 0).coerceAtLeast(0),
             backupDirectoryUri = preferences.getString(KEY_BACKUP_DIR_URI, null),
             autoBackupEnabled = preferences.getBoolean(KEY_AUTO_BACKUP_ENABLED, false),
@@ -189,6 +234,11 @@ class AppSettingsStore(context: Context) {
         private const val KEY_DEFAULT_CALENDAR_REMINDER_MODE = "default_calendar_reminder_mode"
         private const val KEY_REMINDER_TONE_URI = "reminder_tone_uri"
         private const val KEY_REMINDER_TONE_NAME = "reminder_tone_name"
+        private const val KEY_REMINDER_AUDIO_CHANNEL = "reminder_audio_channel"
+        private const val KEY_REMINDER_INTERNAL_VOLUME = "reminder_internal_volume_percent"
+        private const val KEY_REMINDER_BOOST_SYSTEM_VOLUME = "reminder_boost_system_volume"
+        private const val KEY_REMINDER_BOOST_VOLUME_PERCENT = "reminder_boost_volume_percent"
+        private const val KEY_WORK_QUIET_MODE = "work_quiet_mode_enabled"
         private const val KEY_QUOTE_INDEX = "quote_index"
         private const val KEY_BACKUP_DIR_URI = "backup_directory_uri"
         private const val KEY_AUTO_BACKUP_ENABLED = "auto_backup_enabled"

@@ -91,6 +91,7 @@ import androidx.compose.ui.unit.sp
 import com.example.todoalarm.R
 import com.example.todoalarm.data.CalendarEventDraft
 import com.example.todoalarm.data.ReminderDeliveryMode
+import com.example.todoalarm.data.ReminderAudioChannel
 import com.example.todoalarm.data.ScheduleTemplate
 import com.example.todoalarm.data.TaskGroup
 import com.example.todoalarm.data.ThemeMode
@@ -350,6 +351,7 @@ internal fun DashboardBody(
     onNextQuote: () -> Unit,
     onDefaultSnoozeChange: (Int) -> Unit,
     onDefaultCalendarReminderModeChange: (ReminderDeliveryMode) -> Unit,
+    onReminderAudioStrategyChange: (ReminderAudioChannel, Int, Boolean, Int, Boolean) -> Unit,
     onDesktopSyncEnabledChange: (Boolean) -> Unit,
     onRotateDesktopSyncToken: () -> Unit,
     onUseBuiltInReminderTone: () -> Unit,
@@ -418,6 +420,7 @@ internal fun DashboardBody(
                 onWeekStartModeChange = onWeekStartModeChange,
                 onDefaultSnoozeChange = onDefaultSnoozeChange,
                 onDefaultCalendarReminderModeChange = onDefaultCalendarReminderModeChange,
+                onReminderAudioStrategyChange = onReminderAudioStrategyChange,
                 onDesktopSyncEnabledChange = onDesktopSyncEnabledChange,
                 onRotateDesktopSyncToken = onRotateDesktopSyncToken,
                 onUseBuiltInReminderTone = onUseBuiltInReminderTone,

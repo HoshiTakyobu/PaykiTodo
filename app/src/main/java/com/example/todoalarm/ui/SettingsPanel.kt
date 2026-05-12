@@ -38,6 +38,8 @@ import androidx.compose.material.icons.rounded.Computer
 import androidx.compose.material.icons.rounded.Security
 import androidx.compose.material.icons.rounded.Storage
 import androidx.compose.material.icons.rounded.TaskAlt
+import androidx.compose.material.icons.rounded.Tune
+import androidx.compose.material.icons.rounded.VolumeUp
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -70,6 +72,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.core.content.pm.PackageInfoCompat
 import com.example.todoalarm.data.AppSettings
+import com.example.todoalarm.data.ReminderAudioChannel
 import com.example.todoalarm.data.ReminderChainLog
 import com.example.todoalarm.data.ReminderDeliveryMode
 import com.example.todoalarm.data.WeekStartMode
@@ -78,6 +81,7 @@ import kotlinx.coroutines.launch
 
 private enum class SettingsSection {
     PERMISSIONS,
+    SOUND_STRATEGY,
     CALENDAR,
     TONE,
     HELP,
@@ -106,6 +110,7 @@ fun SettingsPanel(
     onWeekStartModeChange: (WeekStartMode) -> Unit,
     onDefaultSnoozeChange: (Int) -> Unit,
     onDefaultCalendarReminderModeChange: (ReminderDeliveryMode) -> Unit,
+    onReminderAudioStrategyChange: (ReminderAudioChannel, Int, Boolean, Int, Boolean) -> Unit,
     onDesktopSyncEnabledChange: (Boolean) -> Unit,
     onRotateDesktopSyncToken: () -> Unit,
     onUseBuiltInReminderTone: () -> Unit,
@@ -138,7 +143,7 @@ fun SettingsPanel(
     LazyColumn(verticalArrangement = Arrangement.spacedBy(16.dp)) {
         item {
             SettingsCategoryHeader(
-                title = "提醒与权限",
+                title = "常用设置",
                 summary = null
             )
         }
@@ -152,27 +157,10 @@ fun SettingsPanel(
                 )
                 SettingsMenuDivider()
                 SettingsMenuItem(
-                    icon = Icons.Rounded.BugReport,
-                    title = "提醒链路诊断",
-                    summary = if (reminderChainLogs.isEmpty()) "当前没有诊断记录" else "最近 ${reminderChainLogs.size} 条诊断记录",
-                    onClick = { selectedSection = SettingsSection.DIAGNOSTICS }
-                )
-            }
-        }
-
-        item {
-            SettingsCategoryHeader(
-                title = "日历与声音",
-                summary = null
-            )
-        }
-        item {
-            SettingsMenuCard {
-                SettingsMenuItem(
-                    icon = Icons.Rounded.CalendarMonth,
-                    title = "日历与提醒",
-                    summary = "默认延后时长、周起始日、日历默认提醒方式",
-                    onClick = { selectedSection = SettingsSection.CALENDAR }
+                    icon = Icons.Rounded.VolumeUp,
+                    title = "提醒声音策略",
+                    summary = "${settings.reminderAudioChannel.label} · App 内部音量 ${settings.reminderInternalVolumePercent}%",
+                    onClick = { selectedSection = SettingsSection.SOUND_STRATEGY }
                 )
                 SettingsMenuDivider()
                 SettingsMenuItem(
@@ -181,17 +169,14 @@ fun SettingsPanel(
                     summary = settings.reminderToneName ?: "当前使用内置提醒音",
                     onClick = onPickSystemReminderTone
                 )
-            }
-        }
-
-        item {
-            SettingsCategoryHeader(
-                title = "数据与帮助",
-                summary = null
-            )
-        }
-        item {
-            SettingsMenuCard {
+                SettingsMenuDivider()
+                SettingsMenuItem(
+                    icon = Icons.Rounded.CalendarMonth,
+                    title = "日历与提醒",
+                    summary = "默认延后时长、周起始日、日历默认提醒方式",
+                    onClick = { selectedSection = SettingsSection.CALENDAR }
+                )
+                SettingsMenuDivider()
                 SettingsMenuItem(
                     icon = Icons.Rounded.ManageSearch,
                     title = "使用说明",
@@ -204,6 +189,23 @@ fun SettingsPanel(
                     title = "关于",
                     summary = null,
                     onClick = { selectedSection = SettingsSection.ABOUT }
+                )
+            }
+        }
+
+        item {
+            SettingsCategoryHeader(
+                title = "高级设置",
+                summary = null
+            )
+        }
+        item {
+            SettingsMenuCard {
+                SettingsMenuItem(
+                    icon = Icons.Rounded.BugReport,
+                    title = "提醒链路诊断",
+                    summary = if (reminderChainLogs.isEmpty()) "当前没有诊断记录" else "最近 ${reminderChainLogs.size} 条诊断记录",
+                    onClick = { selectedSection = SettingsSection.DIAGNOSTICS }
                 )
                 SettingsMenuDivider()
                 SettingsMenuItem(
@@ -240,6 +242,13 @@ fun SettingsPanel(
                 PermissionRow(Icons.Rounded.Alarm, "忽略电池优化", permissions.batteryOptimizationIgnored, onRequestIgnoreBatteryOptimization)
                 PermissionRow(Icons.Rounded.Security, "辅助功能提醒", permissions.accessibilityServiceEnabled, onRequestAccessibilityService)
             }
+        }
+
+        SettingsSection.SOUND_STRATEGY -> SettingsSectionDialog("提醒声音策略", { selectedSection = null }) {
+            ReminderAudioStrategyPanel(
+                settings = settings,
+                onChange = onReminderAudioStrategyChange
+            )
         }
 
         SettingsSection.CALENDAR -> SettingsSectionDialog("日历与提醒", { selectedSection = null }) {
@@ -449,6 +458,111 @@ private fun ReminderChainTestDialog(
             }
         }
     )
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun ReminderAudioStrategyPanel(
+    settings: AppSettings,
+    onChange: (ReminderAudioChannel, Int, Boolean, Int, Boolean) -> Unit
+) {
+    fun commit(
+        channel: ReminderAudioChannel = settings.reminderAudioChannel,
+        internalVolume: Int = settings.reminderInternalVolumePercent,
+        boostSystemVolume: Boolean = settings.reminderBoostSystemVolume,
+        boostVolume: Int = settings.reminderBoostVolumePercent,
+        quietMode: Boolean = settings.workQuietModeEnabled
+    ) {
+        onChange(channel, internalVolume.coerceIn(0, 100), boostSystemVolume, boostVolume.coerceIn(0, 100), quietMode)
+    }
+
+    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        Text(
+            text = "Android 不允许普通应用新增系统级 PaykiTodo 独立音量。这里提供的是 PaykiTodo 内部音量和播放通道策略。",
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            style = MaterialTheme.typography.bodyMedium
+        )
+
+        Text("播放通道", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            ReminderAudioChannel.entries.forEach { channel ->
+                CalendarReminderModeButton(channel.label, settings.reminderAudioChannel == channel) {
+                    commit(channel = channel)
+                }
+            }
+        }
+
+        PercentSettingRow(
+            title = "PaykiTodo 内部音量",
+            summary = "只影响 PaykiTodo 自己播放提醒音的音量，不会改变系统音量滑块。",
+            value = settings.reminderInternalVolumePercent,
+            onChange = { commit(internalVolume = it) }
+        )
+
+        Surface(shape = RoundedCornerShape(18.dp), color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.26f)) {
+            Column(modifier = Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                    Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text("课堂 / 上班模式", fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
+                        Text(
+                            "开启后提醒默认不外放声音，改用更强震动，并让日程提醒也走全屏 / 无障碍兜底链路。",
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
+                    Switch(checked = settings.workQuietModeEnabled, onCheckedChange = { commit(quietMode = it) })
+                }
+            }
+        }
+
+        Surface(shape = RoundedCornerShape(18.dp), color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.28f)) {
+            Column(modifier = Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                    Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text("提醒时临时提升系统通道音量", fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
+                        Text(
+                            "高级选项。会临时修改所选系统通道的全局音量，播放结束或提醒结束后尽量恢复原值。默认关闭。",
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
+                    Switch(checked = settings.reminderBoostSystemVolume, onCheckedChange = { commit(boostSystemVolume = it) })
+                }
+                PercentSettingRow(
+                    title = "临时提升目标",
+                    summary = "例如通知通道静音时，可在提醒期间尝试提升到 50%，随后恢复。",
+                    value = settings.reminderBoostVolumePercent,
+                    enabled = settings.reminderBoostSystemVolume,
+                    onChange = { commit(boostVolume = it) }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun PercentSettingRow(
+    title: String,
+    summary: String,
+    value: Int,
+    enabled: Boolean = true,
+    onChange: (Int) -> Unit
+) {
+    Surface(shape = RoundedCornerShape(18.dp), color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = if (enabled) 0.26f else 0.12f)) {
+        Column(modifier = Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text(title, fontWeight = FontWeight.SemiBold, color = if (enabled) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(summary, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+                }
+                Text("${value.coerceIn(0, 100)}%", fontWeight = FontWeight.Bold, color = if (enabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                OutlinedButton(enabled = enabled, onClick = { onChange((value - 10).coerceIn(0, 100)) }) { Text("-10") }
+                OutlinedButton(enabled = enabled, onClick = { onChange((value + 10).coerceIn(0, 100)) }) { Text("+10") }
+            }
+        }
+    }
 }
 
 @Composable

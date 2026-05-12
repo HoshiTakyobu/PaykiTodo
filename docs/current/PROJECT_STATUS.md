@@ -7,13 +7,13 @@
 - Package name: `com.paykitodo.app`
 - Target platform: Android 14 / API 34
 - Current version in code:
-  - `versionName = "1.6.46"`
-  - `versionCode = 118`
+  - `versionName = "1.6.47"`
+  - `versionCode = 119`
 
 ## Current Build Facts
 
 - Latest debug APK output:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.6.46-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.6.47-debug.apk`
 - Minimal verification completed in the latest code round:
   - `./gradlew assembleDebug` succeeded with Android Studio bundled `jbr`
 - Current build environment expectation:
@@ -22,11 +22,11 @@
 
 ## Current Worktree Reality
 
-The repository is now at `1.6.46` after refining the in-app Wiki layout, daily-board schedule empty state, and drawer header icon presentation.
+The repository is now at `1.6.47` after adding reminder audio strategy controls and restructuring Settings into common / advanced sections.
 
 Most important current baseline facts:
 
-- version metadata is `1.6.46 / 118`
+- version metadata is `1.6.47 / 119`
 - launcher adaptive icon foreground now directly uses picture resource `@drawable/ic_launcher_art`
 - old vector mark launcher resources have been deleted so the launcher cannot fall back to them again
 - picture launcher art has been reprocessed to an opaque pure-white background with smaller centered content
@@ -60,6 +60,11 @@ Most important current baseline facts:
 - in-app Wiki now preserves a left navigation / right article layout on phone-sized screens instead of stacking the navigation above the article
 - daily board distinguishes between no schedule today and all of today's schedule already finished
 - drawer header app icon is clipped to the circular header surface and enlarged to avoid showing the white rounded-rectangle launcher background
+- reminder playback can now use alarm, accessibility, notification, or media audio channels
+- PaykiTodo has an internal reminder-volume percentage for self-played alert audio
+- an advanced temporary system-channel volume boost can raise the selected global stream during reminder playback and then restore it; it is off by default
+- work / class quiet mode disables reminder sound by default, strengthens vibration, and routes calendar reminders into the full-screen / accessibility fallback chain
+- Settings is now split into common settings and advanced settings instead of mixed categories such as calendar and sound
 
 ## Recent Checked Areas
 
@@ -78,7 +83,7 @@ Recent code inspection and build verification cover:
 
 ## Documentation Health
 
-Current docs have been synchronized for `1.6.46`:
+Current docs have been synchronized for `1.6.47`:
 
 - `README.md`
 - `CHANGELOG.md`

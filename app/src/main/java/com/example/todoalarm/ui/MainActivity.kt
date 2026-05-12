@@ -37,6 +37,7 @@ import com.example.todoalarm.TodoApplication
 import com.example.todoalarm.accessibility.ReminderAccessibilityService
 import com.example.todoalarm.alarm.ActiveReminderStore
 import com.example.todoalarm.alarm.AlarmScheduler
+import com.example.todoalarm.data.ReminderAudioChannel
 import com.example.todoalarm.ui.theme.TodoAlarmTheme
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.Job
@@ -179,6 +180,7 @@ class MainActivity : ComponentActivity() {
                     onNextQuote = viewModel::showNextQuote,
                     onDefaultSnoozeChange = viewModel::updateDefaultSnooze,
                     onDefaultCalendarReminderModeChange = viewModel::updateDefaultCalendarReminderMode,
+                    onReminderAudioStrategyChange = viewModel::updateReminderAudioStrategy,
                     onDesktopSyncEnabledChange = viewModel::updateDesktopSyncEnabled,
                     onRotateDesktopSyncToken = viewModel::rotateDesktopSyncToken,
                     onUseBuiltInReminderTone = {
@@ -340,6 +342,9 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun previewReminderToneOnAlarmStream(uri: Uri) {
+        val settings = viewModel.uiState.value.settings
+        val channel = settings.reminderAudioChannel
+        val volume = settings.reminderInternalVolumePercent.coerceIn(0, 100) / 100f
         previewStopJob?.cancel()
         previewRingtone?.runCatching {
             if (isPlaying) stop()
@@ -356,7 +361,10 @@ class MainActivity : ComponentActivity() {
         if (ringtone != null) {
             runCatching {
                 @Suppress("DEPRECATION")
-                ringtone.streamType = AudioManager.STREAM_ALARM
+                ringtone.streamType = audioStreamFor(channel)
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                    ringtone.volume = volume
+                }
                 ringtone.play()
                 previewRingtone = ringtone
                 previewStopJob = lifecycleScope.launch {
@@ -374,13 +382,11 @@ class MainActivity : ComponentActivity() {
         val player = MediaPlayer()
         runCatching {
             player.setAudioAttributes(
-                AudioAttributes.Builder()
-                    .setUsage(AudioAttributes.USAGE_ALARM)
-                    .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
-                    .build()
+                audioAttributesFor(channel)
             )
             player.isLooping = false
             player.setDataSource(this, uri)
+            player.setVolume(volume, volume)
             player.setOnCompletionListener {
                 it.reset()
                 it.release()
@@ -408,6 +414,30 @@ class MainActivity : ComponentActivity() {
             }
         }.onFailure {
             player.release()
+        }
+    }
+
+    private fun audioAttributesFor(channel: ReminderAudioChannel): AudioAttributes {
+        return AudioAttributes.Builder()
+            .setUsage(
+                when (channel) {
+                    ReminderAudioChannel.ALARM -> AudioAttributes.USAGE_ALARM
+                    ReminderAudioChannel.ACCESSIBILITY -> AudioAttributes.USAGE_ASSISTANCE_ACCESSIBILITY
+                    ReminderAudioChannel.NOTIFICATION -> AudioAttributes.USAGE_NOTIFICATION
+                    ReminderAudioChannel.MEDIA -> AudioAttributes.USAGE_MEDIA
+                }
+            )
+            .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+            .build()
+    }
+
+    private fun audioStreamFor(channel: ReminderAudioChannel): Int {
+        @Suppress("DEPRECATION")
+        return when (channel) {
+            ReminderAudioChannel.ALARM -> AudioManager.STREAM_ALARM
+            ReminderAudioChannel.ACCESSIBILITY -> AudioManager.STREAM_ACCESSIBILITY
+            ReminderAudioChannel.NOTIFICATION -> AudioManager.STREAM_NOTIFICATION
+            ReminderAudioChannel.MEDIA -> AudioManager.STREAM_MUSIC
         }
     }
 

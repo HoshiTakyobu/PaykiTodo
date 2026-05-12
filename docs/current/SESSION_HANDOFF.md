@@ -6,24 +6,26 @@ Long-running Codex sessions can become unreliable. This file exists so a new ses
 
 ## Current Handoff Summary
 
-- The project is currently at code version `1.6.43` / `versionCode 115`
-- Latest debug APK path: `app/build/outputs/apk/debug/PaykiTodo-1.6.43-debug.apk`
-- Latest feature round improved desktop web editing parity:
+- The project is currently at code version `1.6.44` / `versionCode 116`
+- Latest debug APK path: `app/build/outputs/apk/debug/PaykiTodo-1.6.44-debug.apk`
+- Latest feature round refined the desktop web UI after desktop editing parity:
+  1. Desktop todo and event editor modals use a bottom-sheet-like structure.
+  2. Modal headers now use left cancel, centered title/subtitle, and right save action.
+  3. Editor fields are card-styled so the page feels less like a raw admin form.
+  4. Todo timeline / all-day / timed event cards have lighter action buttons, denser spacing, and clearer accent borders.
+  5. Create-mode delete buttons are hidden by the shared `.hidden` rule.
+  6. Opening an editor focuses the title field instead of the cancel button.
+
+Previous feature round (`1.6.43`) added desktop web todo editing and explicit event edit entry points:
   1. Desktop sync has `PUT /api/todos/{id}` for existing todo edits.
   2. Desktop todo cards include an explicit `编辑` action.
   3. The desktop todo modal supports edit mode, save, and delete.
   4. Editable todo fields include title, notes, DDL, reminder time, group, recurrence, ring, and vibration.
   5. Timed event and all-day event cards include explicit `编辑` actions.
 
-Previous feature round fixed launch-screen icon and snooze / DDL behavior:
-  1. Launch screen uses transparent `ic_launcher_art_transparent`.
-  2. Custom snooze no longer has a 180-minute cap.
-  3. Snoozing a todo later than its current DDL moves the DDL and pins the next reminder to that target.
-
 ## Files Most Relevant To The Latest Round
 
 - `app/build.gradle.kts`
-- `app/src/main/java/com/example/todoalarm/sync/DesktopSyncCoordinator.kt`
 - `app/src/main/java/com/example/todoalarm/sync/DesktopSyncWebAssets.kt`
 - `README.md`
 - `CHANGELOG.md`
@@ -34,12 +36,13 @@ Previous feature round fixed launch-screen icon and snooze / DDL behavior:
 
 ## Current Verification Focus
 
-1. Install `PaykiTodo-1.6.43-debug.apk`
+1. Install `PaykiTodo-1.6.44-debug.apk`
 2. Enable desktop sync and connect from a computer browser
-3. Edit an existing todo from the desktop page and change DDL / reminder time
-4. Verify the phone shows the updated todo and reminder timing
+3. Edit an existing todo and confirm the new sheet-style editor opens with fields prefilled
+4. Create a new todo and verify the delete button is not visible in create mode
 5. Edit a timed event and an all-day event from explicit `编辑` buttons
-6. Verify desktop delete buttons still show browser confirmation before destructive actions
+6. Resize the browser window and verify the modal remains usable on a narrow viewport
+7. Verify desktop delete buttons still show browser confirmation before destructive actions
 
 ## Required Reading For A New Session
 

@@ -7,13 +7,13 @@
 - Package name: `com.paykitodo.app`
 - Target platform: Android 14 / API 34
 - Current version in code:
-  - `versionName = "1.6.43"`
-  - `versionCode = 115`
+  - `versionName = "1.6.44"`
+  - `versionCode = 116`
 
 ## Current Build Facts
 
 - Latest debug APK output:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.6.43-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.6.44-debug.apk`
 - Minimal verification completed in the latest code round:
   - `./gradlew assembleDebug` succeeded with Android Studio bundled `jbr`
 - Current build environment expectation:
@@ -22,11 +22,11 @@
 
 ## Current Worktree Reality
 
-The repository is now at `1.6.43` after adding desktop web todo editing and explicit event edit entry points.
+The repository is now at `1.6.44` after refining the desktop web editor UI and card visual language.
 
 Most important current baseline facts:
 
-- version metadata is `1.6.43 / 115`
+- version metadata is `1.6.44 / 116`
 - launcher adaptive icon foreground now directly uses picture resource `@drawable/ic_launcher_art`
 - old vector mark launcher resources have been deleted so the launcher cannot fall back to them again
 - picture launcher art has been reprocessed to an opaque pure-white background with smaller centered content
@@ -51,6 +51,9 @@ Most important current baseline facts:
 - launch screen uses transparent `ic_launcher_art_transparent`; launcher / install icons still use the white-background adaptive icon art
 - desktop web can edit existing todos, including DDL, reminder time, group, recurrence, ring, and vibration
 - desktop web timed and all-day event cards expose explicit edit buttons; event editing keeps the existing event editor flow
+- desktop web todo / event editors now use a bottom-sheet-like header with cancel / centered title / save actions
+- desktop web editor fields are grouped into card-like surfaces, and timeline / event card actions use lighter pill buttons
+- desktop web create-mode destructive buttons are hidden by a shared `.hidden` rule rather than only the modal backdrop rule
 
 ## Recent Checked Areas
 
@@ -65,11 +68,11 @@ Recent code inspection and build verification cover:
 - `ReminderActivity.kt`, `ReminderAccessibilityOverlay.kt`, `ReminderInputParser.kt`, `TodoRepository.kt`: custom snooze parsing and DDL update behavior
 - `InputSyntaxHelp.kt`: shared question-mark help button and syntax help dialog
 - `app/src/main/assets/wiki/index.html`: current input syntax documentation
-- `DesktopSyncCoordinator.kt`, `DesktopSyncWebAssets.kt`: desktop web todo editing endpoint, modal behavior, and explicit event edit buttons
+- `DesktopSyncCoordinator.kt`, `DesktopSyncWebAssets.kt`: desktop web todo editing endpoint, modal behavior, explicit event edit buttons, and refined desktop web editor UI
 
 ## Documentation Health
 
-Current docs have been synchronized for `1.6.43`:
+Current docs have been synchronized for `1.6.44`:
 
 - `README.md`
 - `CHANGELOG.md`

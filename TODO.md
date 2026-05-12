@@ -4,8 +4,8 @@
 
 ### In Progress
 
-- Verify version `1.6.43` on device / desktop browser after desktop sync editing improvements
-- Keep `README.md`, `CHANGELOG.md`, and current-state docs aligned with version `1.6.43`
+- Verify version `1.6.44` on device / desktop browser after desktop sync Web UI refinement
+- Keep `README.md`, `CHANGELOG.md`, and current-state docs aligned with version `1.6.44`
 - Continue board / dashboard and calendar polish without regressing the current interaction model
 - Improve repo-native handoff so new sessions do not depend on long chat history
 
@@ -34,6 +34,7 @@
 - Desktop web all-day events spanning multiple days should render as one horizontal continuous bar
 - Desktop web should allow editing existing todos with DDL, reminder, group, recurrence, ring, and vibration fields
 - Desktop web should expose explicit edit buttons on timed and all-day event cards
+- Desktop web todo / event editors should feel close to the phone-side bottom-sheet visual language and remain usable on narrow browser windows
 - Launcher icon should use the picture-based `ic_launcher_art` adaptive foreground, not the old vector mark
 - Todo and calendar reminder input should accept comma-separated mixed reminder specs and block invalid values
 - Todo batch import should parse lightweight comma rows, including same-day DDL like `16:30,写报告,5`
@@ -62,6 +63,10 @@
 
 ## Done Recently
 
+- Bumped the app to `1.6.44` / `versionCode 116`
+- Refined the desktop web todo / event editor into a bottom-sheet-like layout with cancel/title/save header
+- Card-styled desktop web editor fields and lightened timeline/event action buttons
+- Fixed hidden destructive buttons in desktop web create mode
 - Bumped the app to `1.6.43` / `versionCode 115`
 - Added desktop web editing for existing todos, including DDL, reminder, group, recurrence, ring, and vibration fields
 - Added a desktop sync `PUT /api/todos/{id}` endpoint and reminder rescheduling after todo edits

@@ -93,15 +93,18 @@ object DesktopSyncWebAssets {
 
           <div id="todo-modal" class="modal-backdrop hidden">
             <div class="modal-sheet">
+              <div class="modal-handle"></div>
               <div class="modal-head">
-                <div>
+                <button class="sheet-text-button" data-close-modal="todo-modal">取消</button>
+                <div class="modal-title-block">
                   <h2 id="todo-modal-title">新增待办</h2>
-                  <p id="todo-modal-subtitle" class="muted">表单先收进弹层，主界面优先展示时间轴。</p>
+                  <p id="todo-modal-subtitle" class="muted">编辑 DDL、提醒、循环与提醒方式。</p>
                 </div>
-                <button class="ghost mini" data-close-modal="todo-modal">关闭</button>
+                <button id="create-todo" class="sheet-primary-action">创建待办</button>
               </div>
-              <div class="form-grid">
-                <div class="span-2"><label>标题</label><input id="todo-title" placeholder="标题" /></div>
+              <div class="editor-body">
+              <div class="form-grid editor-grid">
+                <div class="span-2"><label>标题</label><input id="todo-title" class="primary-editor-field" placeholder="标题" /></div>
                 <div class="span-2"><label>备注</label><textarea id="todo-notes" placeholder="备注"></textarea></div>
                 <div>
                   <label>DDL</label>
@@ -152,21 +155,25 @@ object DesktopSyncWebAssets {
                 <div class="span-2"><label>每周循环的周几（逗号分隔，例如 1,3,5）</label><input id="todo-weekdays" placeholder="1,3,5" /></div>
                 <div class="span-2 switch-row"><label><input id="todo-ring" type="checkbox" checked /> 铃声</label><label><input id="todo-vibrate" type="checkbox" checked /> 震动</label></div>
               </div>
-              <div class="modal-actions"><button id="delete-todo" class="danger hidden">删除待办</button><button id="create-todo">创建待办</button></div>
+              </div>
+              <div class="modal-actions destructive-row"><button id="delete-todo" class="danger hidden">删除待办</button></div>
             </div>
           </div>
 
           <div id="event-modal" class="modal-backdrop hidden">
             <div class="modal-sheet wide-sheet">
+              <div class="modal-handle"></div>
               <div class="modal-head">
-                <div>
+                <button class="sheet-text-button" data-close-modal="event-modal">取消</button>
+                <div class="modal-title-block">
                   <h2 id="event-modal-title">新增日程</h2>
-                  <p id="event-modal-subtitle" class="muted">日程编辑先集中在弹层，主体区域优先展示时间轴。</p>
+                  <p id="event-modal-subtitle" class="muted">编辑起止时间、地点、颜色、循环与提醒。</p>
                 </div>
-                <button class="ghost mini" data-close-modal="event-modal">关闭</button>
+                <button id="save-event" class="sheet-primary-action">创建日程</button>
               </div>
-              <div class="form-grid">
-                <div class="span-2"><label>标题</label><input id="event-title" placeholder="标题" /></div>
+              <div class="editor-body">
+              <div class="form-grid editor-grid">
+                <div class="span-2"><label>标题</label><input id="event-title" class="primary-editor-field" placeholder="标题" /></div>
                 <div><label>分组</label><select id="event-group"></select></div>
                 <div><label>日程颜色</label><input id="event-color" type="color" value="#4e87e1" /></div>
                 <div><label>地点</label><input id="event-location" placeholder="地点" /></div>
@@ -218,7 +225,8 @@ object DesktopSyncWebAssets {
                 <div><label>每周循环的周几（逗号分隔，例如 1,3,5）</label><input id="event-weekdays" placeholder="1,3,5" /></div>
                 <div class="span-2 switch-row"><label><input id="event-all-day" type="checkbox" /> 全天</label><label><input id="event-ring" type="checkbox" checked /> 铃声</label><label><input id="event-vibrate" type="checkbox" checked /> 震动</label></div>
               </div>
-              <div class="modal-actions"><button id="delete-event" class="danger hidden">删除日程</button><button id="save-event">创建日程</button></div>
+              </div>
+              <div class="modal-actions destructive-row"><button id="delete-event" class="danger hidden">删除日程</button></div>
             </div>
           </div>
           <script src="/app.js"></script>
@@ -340,6 +348,7 @@ object DesktopSyncWebAssets {
         .summary-value { font-size: 26px; font-weight: 800; }
         .tab { display: none; }
         .tab.active { display: block; }
+        .hidden { display: none !important; }
         .timeline-panel, .schedule-panel { padding: 18px; }
         .panel-head { margin-bottom: 16px; }
         .timeline-root { display: flex; flex-direction: column; gap: 18px; }
@@ -353,17 +362,18 @@ object DesktopSyncWebAssets {
         .timeline-item::before { content: ""; position: absolute; left: -13px; top: 14px; width: 10px; height: 10px; border-radius: 50%; background: var(--accent, var(--primary)); box-shadow: 0 0 0 5px rgba(53,104,212,.12); }
         .timeline-time { font-size: 18px; font-weight: 800; line-height: 1.1; }
         .timeline-subtime { margin-top: 4px; font-size: 12px; color: var(--muted); }
-        .timeline-card { min-width: 0; border-radius: 20px; border: 1px solid rgba(211,220,230,.92); background: rgba(255,255,255,.9); box-shadow: 0 10px 26px rgba(46,64,98,.06); padding: 14px 16px; }
-        .timeline-card-title-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 6px; }
-        .timeline-card-title { font-size: 18px; font-weight: 800; line-height: 1.35; word-break: break-word; }
-        .pill { flex-shrink: 0; display: inline-flex; align-items: center; padding: 6px 10px; border-radius: 999px; font-size: 12px; font-weight: 700; color: var(--muted); background: rgba(98,114,133,.1); }
-        .timeline-card-meta, .timeline-card-notes, .all-day-card-meta, .event-card-meta, .event-card-notes { font-size: 13px; color: var(--muted); line-height: 1.6; white-space: pre-wrap; word-break: break-word; }
-        .timeline-card-notes, .event-card-notes { margin-top: 6px; color: #405063; }
-        .actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
-        .actions button { width: auto; min-width: 76px; padding: 9px 12px; border-radius: 12px; }
-        .actions .secondary { background: #6b7280; }
-        .actions .danger { background: var(--danger); }
-        .actions .success { background: var(--success); }
+        .timeline-card { min-width: 0; border-radius: 22px; border: 1px solid rgba(211,220,230,.9); border-left: 5px solid var(--accent, var(--primary)); background: rgba(255,255,255,.92); box-shadow: 0 10px 26px rgba(46,64,98,.06); padding: 13px 14px 13px 16px; transition: transform .16s ease, box-shadow .16s ease, border-color .16s ease; }
+        .timeline-card:hover, .all-day-card:hover, .event-card:hover { transform: translateY(-1px); box-shadow: 0 16px 32px rgba(46,64,98,.11); }
+        .timeline-card-title-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 5px; }
+        .timeline-card-title { font-size: 18px; font-weight: 850; line-height: 1.32; word-break: break-word; }
+        .pill { flex-shrink: 0; display: inline-flex; align-items: center; padding: 5px 9px; border-radius: 999px; font-size: 12px; font-weight: 800; color: #36506f; background: rgba(53,104,212,.1); }
+        .timeline-card-meta, .timeline-card-notes, .all-day-card-meta, .event-card-meta, .event-card-notes { font-size: 13px; color: var(--muted); line-height: 1.48; white-space: pre-wrap; word-break: break-word; }
+        .timeline-card-notes, .event-card-notes { margin-top: 5px; color: #405063; }
+        .actions { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 10px; }
+        .actions button { width: auto; min-width: 64px; padding: 7px 10px; border-radius: 999px; font-size: 12px; border: 1px solid transparent; }
+        .actions .secondary { background: rgba(53,104,212,.1); color: #214fbb; border-color: rgba(53,104,212,.18); }
+        .actions .danger { background: rgba(214,60,60,.1); color: #b52727; border-color: rgba(214,60,60,.18); }
+        .actions .success { background: rgba(29,143,90,.12); color: #117549; border-color: rgba(29,143,90,.2); }
         .empty-state { padding: 16px 18px; border-radius: 18px; border: 1px dashed var(--line-strong); color: var(--muted); background: rgba(255,255,255,.58); }
         .schedule-panel { display: flex; flex-direction: column; gap: 18px; }
         .schedule-toolbar { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
@@ -377,9 +387,9 @@ object DesktopSyncWebAssets {
         .all-day-row { display: contents; }
         .all-day-day { min-width: 0; display: flex; flex-direction: column; gap: 8px; }
         .all-day-day-label { font-size: 13px; font-weight: 800; color: #314154; padding: 0 2px; }
-        .all-day-card { min-width: 0; padding: 12px 14px; border-radius: 16px; border-left: 4px solid var(--accent, var(--primary)); background: rgba(255,255,255,.92); box-shadow: 0 8px 18px rgba(39,56,88,.05); }
+        .all-day-card { min-width: 0; padding: 12px 14px; border-radius: 17px; border: 1px solid rgba(211,220,230,.88); border-left: 5px solid var(--accent, var(--primary)); background: rgba(255,255,255,.93); box-shadow: 0 8px 18px rgba(39,56,88,.05); transition: transform .16s ease, box-shadow .16s ease; }
         .all-day-card.spanning { border-left-width: 5px; border-right: 1px solid rgba(211,220,230,.92); }
-        .all-day-card-title, .event-card-title { font-size: 16px; font-weight: 800; margin-bottom: 4px; }
+        .all-day-card-title, .event-card-title { font-size: 16px; font-weight: 850; line-height: 1.28; margin-bottom: 4px; }
         .all-day-empty { padding: 10px 12px; border-radius: 14px; background: rgba(98,114,133,.08); color: var(--muted); font-size: 13px; }
         .schedule-board-shell { display: grid; grid-template-columns: 84px minmax(0, 1fr); gap: 14px; align-items: start; min-width: 0; }
         .hour-axis { position: sticky; top: 126px; }
@@ -398,30 +408,48 @@ object DesktopSyncWebAssets {
         .event-day-column:last-child { border-right: 1px solid rgba(185,200,218,.9); }
         .hour-row { position: absolute; left: 0; right: 0; height: var(--hour-height); border-top: 1px solid rgba(188,201,217,.9); }
         .half-row { position: absolute; left: 0; right: 0; border-top: 1px dashed rgba(188,201,217,.4); }
-        .event-card { position: absolute; left: 8px; right: 8px; min-height: 34px; border-radius: 18px; padding: 10px 12px; border-left: 4px solid var(--accent, var(--primary)); background: rgba(255,255,255,.95); box-shadow: 0 10px 24px rgba(40,57,88,.08); overflow: hidden; }
+        .event-card { position: absolute; left: 7px; right: 7px; min-height: 34px; border-radius: 17px; padding: 8px 10px 8px 12px; border: 1px solid rgba(211,220,230,.9); border-left: 5px solid var(--accent, var(--primary)); background: rgba(255,255,255,.96); box-shadow: 0 10px 22px rgba(40,57,88,.08); overflow: hidden; transition: transform .16s ease, box-shadow .16s ease; }
+        .event-card .event-card-meta, .event-card .event-card-notes { font-size: 12px; line-height: 1.35; }
+        .event-card .actions { margin-top: 6px; gap: 5px; }
+        .event-card .actions button { min-width: 42px; padding: 4px 8px; font-size: 11px; }
         .current-line { position: absolute; left: 0; right: 0; height: 2px; background: rgba(229,57,53,.88); }
         .current-line.past { background: rgba(229,57,53,.42); }
         .hour-current-chip { position: absolute; left: 0; transform: translateY(-12px); padding: 3px 6px; border-radius: 10px; background: #e53935; color: #fff; font-size: 10px; font-weight: 800; line-height: 1; white-space: nowrap; }
-        .modal-backdrop { position: fixed; inset: 0; background: rgba(12,20,31,.45); display: flex; align-items: center; justify-content: center; padding: 24px; z-index: 100; }
+        .modal-backdrop { position: fixed; inset: 0; background: rgba(12,20,31,.46); display: flex; align-items: center; justify-content: center; padding: 28px; z-index: 100; backdrop-filter: blur(10px); }
         .modal-backdrop.hidden { display: none; }
-        .modal-sheet { width: min(760px, 100%); max-height: calc(100vh - 48px); overflow: auto; border-radius: 26px; background: rgba(255,255,255,.98); border: 1px solid rgba(255,255,255,.72); box-shadow: 0 28px 70px rgba(15,24,39,.22); padding: 20px; }
-        .wide-sheet { width: min(900px, 100%); }
-        .modal-head, .modal-actions { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
-        .modal-head { margin-bottom: 16px; }
-        .modal-actions { margin-top: 18px; justify-content: flex-end; }
-        .form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+        .modal-sheet { width: min(820px, 100%); max-height: min(86vh, 860px); overflow: hidden; display: flex; flex-direction: column; border-radius: 30px; background: linear-gradient(180deg, rgba(255,255,255,.99), rgba(247,250,255,.98)); border: 1px solid rgba(255,255,255,.76); box-shadow: 0 30px 86px rgba(15,24,39,.28); padding: 10px 18px 18px; }
+        .modal-backdrop:not(.hidden) .modal-sheet { animation: sheet-enter .18s ease-out; }
+        @keyframes sheet-enter { from { opacity: .72; transform: translateY(18px) scale(.985); } to { opacity: 1; transform: translateY(0) scale(1); } }
+        .wide-sheet { width: min(960px, 100%); }
+        .modal-handle { width: 54px; height: 5px; border-radius: 999px; background: rgba(98,114,133,.28); margin: 4px auto 10px; flex-shrink: 0; }
+        .modal-head { position: sticky; top: 0; z-index: 2; display: grid; grid-template-columns: 96px minmax(0, 1fr) 120px; align-items: center; gap: 12px; padding: 8px 0 14px; background: linear-gradient(180deg, rgba(255,255,255,.99), rgba(255,255,255,.94)); border-bottom: 1px solid rgba(215,224,234,.72); }
+        .modal-title-block { text-align: center; min-width: 0; }
+        .modal-title-block h2 { font-size: 21px; font-weight: 900; letter-spacing: -.02em; }
+        .modal-title-block .muted { margin-top: 4px; font-size: 12px; line-height: 1.35; }
+        .sheet-text-button, .sheet-primary-action { width: auto !important; min-width: 0; border-radius: 999px !important; padding: 9px 13px !important; font-size: 14px; }
+        .sheet-text-button { background: rgba(98,114,133,.1) !important; color: #405063 !important; border: 1px solid rgba(98,114,133,.14) !important; }
+        .sheet-primary-action { background: linear-gradient(135deg, #3568d4, #4e87e1) !important; color: #fff !important; border: 0 !important; box-shadow: 0 8px 18px rgba(53,104,212,.22); }
+        .editor-body { overflow: auto; padding: 16px 2px 2px; }
+        .modal-actions { display: flex; align-items: center; gap: 12px; margin-top: 12px; }
+        .destructive-row { justify-content: flex-start; border-top: 1px solid rgba(215,224,234,.72); padding-top: 12px; }
+        .destructive-row button { width: auto !important; min-width: 112px; border-radius: 999px; padding: 10px 14px; }
+        .destructive-row .danger { background: rgba(214,60,60,.1) !important; color: #b52727 !important; border: 1px solid rgba(214,60,60,.2) !important; }
+        .form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+        .editor-grid > div { min-width: 0; border-radius: 20px; background: rgba(255,255,255,.82); border: 1px solid rgba(215,224,234,.82); padding: 12px; box-shadow: 0 8px 20px rgba(46,64,98,.045); }
         .span-2 { grid-column: 1 / -1; }
-        .modal-sheet label { display: block; margin-bottom: 8px; font-size: 13px; font-weight: 800; color: #314154; }
+        .modal-sheet label { display: block; margin-bottom: 8px; font-size: 14px; font-weight: 900; color: #243446; }
+        .modal-sheet input:focus, .modal-sheet textarea:focus, .modal-sheet select:focus { outline: 2px solid rgba(53,104,212,.2); border-color: rgba(53,104,212,.42); box-shadow: 0 0 0 4px rgba(53,104,212,.08); }
+        .primary-editor-field { font-size: 20px !important; font-weight: 850; padding: 14px 16px !important; }
         .date-time-field { display: flex; flex-direction: column; gap: 8px; }
-        .date-time-row { display: flex; align-items: center; gap: 8px; flex-wrap: nowrap; }
+        .date-time-row { display: flex; align-items: center; gap: 7px; flex-wrap: nowrap; }
         .compact-row { justify-content: flex-start; }
-        .digit-input { text-align: center; letter-spacing: .02em; font-variant-numeric: tabular-nums; }
-        .year-input { width: 96px !important; min-width: 96px; }
-        .mini-input { width: 64px !important; min-width: 64px; }
+        .digit-input { text-align: center; letter-spacing: .02em; font-variant-numeric: tabular-nums; padding: 10px 8px !important; }
+        .year-input { width: 88px !important; min-width: 88px; }
+        .mini-input { width: 58px !important; min-width: 58px; }
         .segment-separator { color: var(--muted); font-weight: 800; }
-        .modal-sheet textarea { min-height: 86px; resize: vertical; }
-        .switch-row { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
-        .switch-row label { display: inline-flex; align-items: center; gap: 8px; margin: 0; }
+        .modal-sheet textarea { min-height: 82px; resize: vertical; }
+        .switch-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+        .switch-row label { display: inline-flex; align-items: center; gap: 8px; margin: 0; padding: 9px 12px; border-radius: 999px; background: rgba(53,104,212,.08); color: #2f4c78; }
         .switch-row input { width: auto; margin: 0; }
         @media (max-width: 1080px) {
           .shell { grid-template-columns: 1fr; }
@@ -433,6 +461,15 @@ object DesktopSyncWebAssets {
           .schedule-board-shell, .timeline-item { grid-template-columns: 1fr; }
           .schedule-toolbar, .schedule-toolbar-actions { align-items: stretch; }
           .date-time-row { flex-wrap: wrap; }
+          .modal-backdrop { align-items: flex-end; padding: 12px; }
+          .modal-sheet { width: 100%; max-height: 92vh; border-radius: 28px 28px 18px 18px; padding: 8px 14px 14px; }
+          .modal-head { grid-template-columns: 68px minmax(0, 1fr) 88px; gap: 8px; }
+          .modal-title-block h2 { font-size: 18px; }
+          .modal-title-block .muted { display: none; }
+          .sheet-text-button, .sheet-primary-action { padding: 8px 10px !important; font-size: 13px; }
+          .editor-grid > div { flex: 1 1 100%; }
+          .year-input { width: 82px !important; min-width: 82px; }
+          .mini-input { width: 54px !important; min-width: 54px; }
         }
       """.trimIndent()
 
@@ -972,7 +1009,7 @@ object DesktopSyncWebAssets {
           state.editingTodoId = null;
           fillGroupSelect('todo-group');
           document.getElementById('todo-modal-title').textContent = '新增待办';
-          document.getElementById('todo-modal-subtitle').textContent = '表单先收进弹层，主界面优先展示时间轴。';
+          document.getElementById('todo-modal-subtitle').textContent = '编辑 DDL、提醒、循环与提醒方式。';
           document.getElementById('create-todo').textContent = '创建待办';
           document.getElementById('delete-todo').classList.add('hidden');
           document.getElementById('todo-title').value = '';
@@ -990,7 +1027,7 @@ object DesktopSyncWebAssets {
           state.editingTodoId = item.id;
           fillGroupSelect('todo-group', item.groupId);
           document.getElementById('todo-modal-title').textContent = '编辑待办';
-          document.getElementById('todo-modal-subtitle').textContent = '电脑端可修改标题、备注、DDL、提醒、分组、循环、铃声和震动。';
+          document.getElementById('todo-modal-subtitle').textContent = '可修改标题、备注、DDL、提醒、分组、循环、铃声和震动。';
           document.getElementById('create-todo').textContent = '保存修改';
           document.getElementById('delete-todo').classList.remove('hidden');
           document.getElementById('todo-title').value = item.title || '';
@@ -1014,7 +1051,7 @@ object DesktopSyncWebAssets {
           state.pendingEventSeed = null;
           fillGroupSelect('event-group');
           document.getElementById('event-modal-title').textContent = '新增日程';
-          document.getElementById('event-modal-subtitle').textContent = '日程编辑先集中在弹层，主体区域优先展示时间轴。';
+          document.getElementById('event-modal-subtitle').textContent = '编辑起止时间、地点、颜色、循环与提醒。';
           document.getElementById('save-event').textContent = '创建日程';
           document.getElementById('delete-event').classList.add('hidden');
           document.getElementById('event-title').value = '';
@@ -1053,7 +1090,7 @@ object DesktopSyncWebAssets {
           state.pendingEventSeed = null;
           fillGroupSelect('event-group', item.groupId);
           document.getElementById('event-modal-title').textContent = '编辑日程';
-          document.getElementById('event-modal-subtitle').textContent = '点击已有日程后可直接修改或删除。';
+          document.getElementById('event-modal-subtitle').textContent = '可修改起止时间、地点、颜色、循环与提醒。';
           document.getElementById('save-event').textContent = '保存修改';
           document.getElementById('delete-event').classList.remove('hidden');
           document.getElementById('event-title').value = item.title || '';
@@ -1092,7 +1129,7 @@ object DesktopSyncWebAssets {
           const node = document.getElementById(id);
           if (!node) return;
           node.classList.remove('hidden');
-          const focusTarget = node.querySelector('input, textarea, select, button');
+          const focusTarget = node.querySelector('.primary-editor-field') || node.querySelector('input, textarea, select, button');
           if (focusTarget) focusTarget.focus();
         }
 

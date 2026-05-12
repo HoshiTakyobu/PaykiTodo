@@ -4,8 +4,8 @@
 
 ### In Progress
 
-- Verify version `1.6.44` on device / desktop browser after desktop sync Web UI refinement
-- Keep `README.md`, `CHANGELOG.md`, and current-state docs aligned with version `1.6.44`
+- Verify version `1.6.45` on device / desktop browser after desktop Web asset directory refactor
+- Keep `README.md`, `CHANGELOG.md`, and current-state docs aligned with version `1.6.45`
 - Continue board / dashboard and calendar polish without regressing the current interaction model
 - Improve repo-native handoff so new sessions do not depend on long chat history
 
@@ -35,6 +35,7 @@
 - Desktop web should allow editing existing todos with DDL, reminder, group, recurrence, ring, and vibration fields
 - Desktop web should expose explicit edit buttons on timed and all-day event cards
 - Desktop web todo / event editors should feel close to the phone-side bottom-sheet visual language and remain usable on narrow browser windows
+- Desktop web static resources should remain under `app/src/main/assets/desktop-web/` rather than being reintroduced as large Kotlin strings
 - Launcher icon should use the picture-based `ic_launcher_art` adaptive foreground, not the old vector mark
 - Todo and calendar reminder input should accept comma-separated mixed reminder specs and block invalid values
 - Todo batch import should parse lightweight comma rows, including same-day DDL like `16:30,写报告,5`
@@ -52,6 +53,7 @@
 
 - Continue improving reminder reliability across foreground / background / lock-screen scenarios
 - Expand the LAN desktop sync console with richer operations and better field coverage
+- If the desktop UI grows much larger, consider a separate `desktop-web/` source/build directory whose output is copied into `app/src/main/assets/desktop-web/`
 - Clean up release signing and release build workflow for future stable publishing
 - Keep historical docs usable while making current docs the default entry point
 
@@ -63,6 +65,10 @@
 
 ## Done Recently
 
+- Bumped the app to `1.6.45` / `versionCode 117`
+- Split desktop Web UI resources into `app/src/main/assets/desktop-web/`
+- Replaced the large Kotlin-embedded HTML/CSS/JS body with a small asset loader and fallback page
+- Added current architecture documentation for the desktop Web UI packaging model and future direction
 - Bumped the app to `1.6.44` / `versionCode 116`
 - Refined the desktop web todo / event editor into a bottom-sheet-like layout with cancel/title/save header
 - Card-styled desktop web editor fields and lightened timeline/event action buttons

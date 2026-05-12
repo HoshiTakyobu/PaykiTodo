@@ -73,13 +73,13 @@ class DesktopSyncCoordinator(
         headers: Map<String, String>
     ): DesktopSyncServer.Response {
         if (path == "/" || path == "/index.html") {
-            return DesktopSyncServer.Response.html(DesktopSyncWebAssets.indexHtml())
+            return DesktopSyncServer.Response.html(DesktopSyncWebAssets.indexHtml(context))
         }
         if (path == "/app.js") {
-            return DesktopSyncServer.Response.js(DesktopSyncWebAssets.appJs())
+            return DesktopSyncServer.Response.js(DesktopSyncWebAssets.appJs(context))
         }
         if (path == "/app.css") {
-            return DesktopSyncServer.Response.css(DesktopSyncWebAssets.appCss())
+            return DesktopSyncServer.Response.css(DesktopSyncWebAssets.appCss(context))
         }
 
         if (!authorize(headers)) {

@@ -1,5 +1,13 @@
 # Changelog
 
+## v1.6.45
+
+- 将电脑端 Web UI 从 `DesktopSyncWebAssets.kt` 的 Kotlin 大字符串拆分到 `app/src/main/assets/desktop-web/`
+- `DesktopSyncWebAssets.kt` 改为轻量 assets 读取器，并保留资源加载失败时的最小 fallback 页面
+- `DesktopSyncCoordinator` 继续由手机端局域网服务提供 `/index.html`、`/app.css`、`/app.js`，但资源来源改为 APK assets
+- 新增 `docs/current/DESKTOP_WEB_ARCHITECTURE.md`，说明电脑端 UI 为什么会随 APK 打包、当前架构边界和未来重构建议
+- 版本号升级到 `1.6.45` / `versionCode 117`
+
 ## v1.6.44
 
 - 精修电脑端网页控制台的待办 / 日程编辑弹窗，改为更接近手机端底部弹窗的结构：顶部左侧取消、居中标题、右侧保存

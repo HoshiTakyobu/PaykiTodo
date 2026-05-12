@@ -6,27 +6,29 @@ Long-running Codex sessions can become unreliable. This file exists so a new ses
 
 ## Current Handoff Summary
 
-- The project is currently at code version `1.6.44` / `versionCode 116`
-- Latest debug APK path: `app/build/outputs/apk/debug/PaykiTodo-1.6.44-debug.apk`
-- Latest feature round refined the desktop web UI after desktop editing parity:
+- The project is currently at code version `1.6.45` / `versionCode 117`
+- Latest debug APK path: `app/build/outputs/apk/debug/PaykiTodo-1.6.45-debug.apk`
+- Latest feature round cleaned up desktop Web UI resource structure:
+  1. Desktop HTML / CSS / JS moved to `app/src/main/assets/desktop-web/`.
+  2. `DesktopSyncWebAssets.kt` is now only an Android asset loader plus fallback page.
+  3. `DesktopSyncCoordinator.kt` still serves the same browser routes but reads the files from APK assets.
+  4. `docs/current/DESKTOP_WEB_ARCHITECTURE.md` explains why the APK contains desktop UI files and how this should evolve later.
+
+Previous feature round (`1.6.44`) refined the desktop web UI after desktop editing parity:
   1. Desktop todo and event editor modals use a bottom-sheet-like structure.
-  2. Modal headers now use left cancel, centered title/subtitle, and right save action.
+  2. Modal headers use left cancel, centered title/subtitle, and right save action.
   3. Editor fields are card-styled so the page feels less like a raw admin form.
   4. Todo timeline / all-day / timed event cards have lighter action buttons, denser spacing, and clearer accent borders.
-  5. Create-mode delete buttons are hidden by the shared `.hidden` rule.
-  6. Opening an editor focuses the title field instead of the cancel button.
-
-Previous feature round (`1.6.43`) added desktop web todo editing and explicit event edit entry points:
-  1. Desktop sync has `PUT /api/todos/{id}` for existing todo edits.
-  2. Desktop todo cards include an explicit `编辑` action.
-  3. The desktop todo modal supports edit mode, save, and delete.
-  4. Editable todo fields include title, notes, DDL, reminder time, group, recurrence, ring, and vibration.
-  5. Timed event and all-day event cards include explicit `编辑` actions.
 
 ## Files Most Relevant To The Latest Round
 
 - `app/build.gradle.kts`
+- `app/src/main/java/com/example/todoalarm/sync/DesktopSyncCoordinator.kt`
 - `app/src/main/java/com/example/todoalarm/sync/DesktopSyncWebAssets.kt`
+- `app/src/main/assets/desktop-web/index.html`
+- `app/src/main/assets/desktop-web/app.css`
+- `app/src/main/assets/desktop-web/app.js`
+- `docs/current/DESKTOP_WEB_ARCHITECTURE.md`
 - `README.md`
 - `CHANGELOG.md`
 - `TODO.md`
@@ -36,13 +38,11 @@ Previous feature round (`1.6.43`) added desktop web todo editing and explicit ev
 
 ## Current Verification Focus
 
-1. Install `PaykiTodo-1.6.44-debug.apk`
+1. Install `PaykiTodo-1.6.45-debug.apk`
 2. Enable desktop sync and connect from a computer browser
-3. Edit an existing todo and confirm the new sheet-style editor opens with fields prefilled
-4. Create a new todo and verify the delete button is not visible in create mode
-5. Edit a timed event and an all-day event from explicit `编辑` buttons
-6. Resize the browser window and verify the modal remains usable on a narrow viewport
-7. Verify desktop delete buttons still show browser confirmation before destructive actions
+3. Verify the desktop page loads normally, including CSS and JS
+4. Edit an existing todo and an existing event to confirm the asset move did not break API calls
+5. If browser UI fails to load, inspect `app/src/main/assets/desktop-web/` and `DesktopSyncWebAssets.kt` first
 
 ## Required Reading For A New Session
 
@@ -51,7 +51,8 @@ Previous feature round (`1.6.43`) added desktop web todo editing and explicit ev
 3. `docs/current/PROJECT_STATUS.md`
 4. `docs/current/FEATURE_LEDGER.md`
 5. `docs/current/CURRENT_TASK.md`
-6. `docs/current/PAYKITODO_SESSION_LEDGER.md`
+6. `docs/current/DESKTOP_WEB_ARCHITECTURE.md`
+7. `docs/current/PAYKITODO_SESSION_LEDGER.md`
 
 ## Update Rule
 

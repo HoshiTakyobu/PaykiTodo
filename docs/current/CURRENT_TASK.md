@@ -2,39 +2,44 @@
 
 ## Active Development Focus
 
-The current round has produced a `1.6.44` baseline. The implemented focus was desktop Web UI refinement after the `1.6.43` desktop editing parity work.
+The current round has produced a `1.6.45` baseline. The implemented focus was desktop Web resource structure cleanup and documentation.
 
 Completed in this round:
 
-1. Desktop web todo and event editor modals now use a bottom-sheet-like structure.
-2. Editor headers use left cancel, centered title / subtitle, and right save action to better match the phone-side visual direction.
-3. Editor fields are grouped into card-like surfaces instead of feeling like a raw admin form.
-4. Todo timeline, all-day event, and timed event cards now use lighter borders, less heavy action buttons, and denser spacing.
-5. The shared `.hidden` CSS rule now hides destructive buttons in create mode, instead of only hiding modal backdrops.
+1. Desktop Web HTML / CSS / JS were moved out of `DesktopSyncWebAssets.kt`.
+2. The files now live under `app/src/main/assets/desktop-web/`:
+   - `index.html`
+   - `app.css`
+   - `app.js`
+3. `DesktopSyncWebAssets.kt` is now a small asset loader with a minimal fallback page.
+4. `DesktopSyncCoordinator` still serves `/`, `/index.html`, `/app.css`, and `/app.js`, but now reads from APK assets.
+5. `docs/current/DESKTOP_WEB_ARCHITECTURE.md` documents why the APK contains the desktop UI, why this is expected, and how to evolve the structure later.
 
 ## Immediate Practical Next Steps
 
 When testing, use:
 
-1. install `app/build/outputs/apk/debug/PaykiTodo-1.6.44-debug.apk`
-2. enable desktop sync on the phone and open the LAN web page from a computer browser
-3. connect with the 4-character access key
-4. open an existing todo with `编辑` and verify the editor looks like the refined sheet layout
-5. open a timed event and an all-day event with `编辑` and verify the same visual language is used
-6. create a new todo / event and verify destructive delete buttons are not shown in create mode
-7. narrow the browser window and verify the sheet falls back to a bottom-aligned layout without breaking fields
+1. install `app/build/outputs/apk/debug/PaykiTodo-1.6.45-debug.apk`
+2. enable desktop sync on the phone
+3. connect from a computer browser with the 4-character access key
+4. verify `/`, `/app.css`, and `/app.js` load normally from the phone
+5. verify the desktop UI still shows the refined `1.6.44` editor visual style
+6. create / edit one todo and one event to confirm API calls still work after the asset move
 
 ## Repository-Verified Notes
 
-The current code baseline includes these specific `1.6.44` changes:
+The current code baseline includes these specific `1.6.45` changes:
 
-1. `app/build.gradle.kts` is bumped to `1.6.44 / 116`.
-2. `DesktopSyncWebAssets.kt` adds modal handles, sheet-style headers, card-styled editor field containers, and lighter timeline / event action styles.
-3. `openModal()` now focuses the primary editor title field first rather than the cancel button.
-4. A global `.hidden` rule prevents create-mode delete buttons from leaking into the UI.
+1. `app/build.gradle.kts` is bumped to `1.6.45 / 117`.
+2. `app/src/main/assets/desktop-web/` contains the desktop browser UI resources.
+3. `DesktopSyncWebAssets.kt` reads those assets through `Context.assets`.
+4. `DesktopSyncCoordinator.kt` calls `DesktopSyncWebAssets.indexHtml(context)`, `appCss(context)`, and `appJs(context)`.
+5. The old Kotlin raw-string desktop UI body has been removed.
 
 ## What Not To Do Immediately
 
+- do not reintroduce large desktop HTML / CSS / JS strings into Kotlin
+- do not split the desktop Web UI into an independently hosted site unless there is a concrete product reason
 - do not claim the desktop Web UI is fully identical to the Android Compose UI
 - do not expand backend scope unless a concrete UI parity gap requires it
 - do not re-plan the whole app from scratch
@@ -45,4 +50,4 @@ The current code baseline includes these specific `1.6.44` changes:
 
 ## Current External Dependency
 
-No external file is needed for the current `1.6.44` verification task.
+No external file is needed for the current `1.6.45` verification task.

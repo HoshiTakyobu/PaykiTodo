@@ -1,0 +1,230 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>PaykiTodo Desktop Sync</title>
+  <link rel="stylesheet" href="/app.css" />
+</head>
+<body>
+  <div class="shell">
+    <aside class="sidebar">
+      <div class="sidebar-inner">
+        <div class="brand-block">
+          <h1>PaykiTodo</h1>
+          <p class="muted">电脑端时间轴控制台</p>
+        </div>
+        <div class="sidebar-card">
+          <label>访问密钥</label>
+          <p class="sidebar-tip">输入手机设置页里显示的 4 位访问密钥后，再连接这台手机。</p>
+          <div class="connect-stack">
+            <input id="token" type="password" maxlength="4" placeholder="例如 A7K3" />
+            <button id="connect">连接手机</button>
+          </div>
+          <div id="status" class="muted status">尚未连接</div>
+        </div>
+        <div class="sidebar-card">
+          <button class="ghost tab-btn active" data-tab="todos">待办时间轴</button>
+          <button class="ghost tab-btn" data-tab="events">日程时间轴</button>
+        </div>
+      </div>
+    </aside>
+    <main class="content">
+      <div class="topbar card-panel">
+        <div>
+          <div id="view-caption" class="eyebrow">桌面端时间轴模式</div>
+          <div id="panel-title" class="title">待办时间轴</div>
+          <div id="snapshot-meta" class="muted">连接后即可读取手机端当前数据</div>
+        </div>
+        <div class="toolbar-row">
+          <button id="jump-today" class="ghost mini">今天</button>
+          <button id="refresh" class="ghost mini">刷新</button>
+          <button id="open-create" class="mini">新增待办</button>
+        </div>
+      </div>
+
+      <section id="todos-panel" class="tab active">
+        <div id="todo-summary" class="summary-grid"></div>
+        <div class="card-panel timeline-panel">
+          <div class="panel-head">
+            <h2>待办主时间轴</h2>
+            <p class="muted">按已错过、今日、计划中、无 DDL、历史记录分区展示。</p>
+          </div>
+          <div id="todo-timeline" class="timeline-root"></div>
+        </div>
+      </section>
+
+      <section id="events-panel" class="tab">
+        <div class="card-panel schedule-panel">
+          <div class="schedule-head schedule-toolbar">
+            <div>
+              <div id="event-selected-date" class="schedule-date-title">今天</div>
+              <div id="event-selected-subtitle" class="muted">可查看任意日期，并按窗口宽度展示多天日程。</div>
+            </div>
+            <div class="schedule-toolbar-actions">
+              <button id="event-prev-day" class="ghost mini">前一天</button>
+              <button id="event-next-day" class="ghost mini">后一天</button>
+              <div class="inline-picker">
+                <label for="event-anchor-date">查看起始日期</label>
+                <input id="event-anchor-date" type="date" />
+              </div>
+              <button id="apply-event-day" class="ghost mini">跳转</button>
+            </div>
+          </div>
+          <section class="all-day-section">
+            <div class="slot-title">全天</div>
+            <div id="all-day-list" class="all-day-list"></div>
+          </section>
+          <section class="schedule-board-shell">
+            <div id="hour-axis" class="hour-axis"></div>
+            <div id="board-scroll" class="board-scroll">
+              <div id="event-day-headers" class="event-day-headers"></div>
+              <div id="event-timeline" class="event-timeline"></div>
+            </div>
+          </section>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <div id="todo-modal" class="modal-backdrop hidden">
+    <div class="modal-sheet">
+      <div class="modal-handle"></div>
+      <div class="modal-head">
+        <button class="sheet-text-button" data-close-modal="todo-modal">取消</button>
+        <div class="modal-title-block">
+          <h2 id="todo-modal-title">新增待办</h2>
+          <p id="todo-modal-subtitle" class="muted">编辑 DDL、提醒、循环与提醒方式。</p>
+        </div>
+        <button id="create-todo" class="sheet-primary-action">创建待办</button>
+      </div>
+      <div class="editor-body">
+      <div class="form-grid editor-grid">
+        <div class="span-2"><label>标题</label><input id="todo-title" class="primary-editor-field" placeholder="标题" /></div>
+        <div class="span-2"><label>备注</label><textarea id="todo-notes" placeholder="备注"></textarea></div>
+        <div>
+          <label>DDL</label>
+          <div class="date-time-field">
+            <div class="date-time-row">
+              <input id="todo-due-year" class="digit-input year-input" type="text" inputmode="numeric" maxlength="4" data-maxlength="4" data-next="todo-due-month" placeholder="2026" />
+              <span class="segment-separator">/</span>
+              <input id="todo-due-month" class="digit-input mini-input" type="text" inputmode="numeric" maxlength="2" data-maxlength="2" data-pad="2" data-next="todo-due-day" placeholder="05" />
+              <span class="segment-separator">/</span>
+              <input id="todo-due-day" class="digit-input mini-input" type="text" inputmode="numeric" maxlength="2" data-maxlength="2" data-pad="2" data-next="todo-due-hour" placeholder="10" />
+            </div>
+            <div class="date-time-row compact-row">
+              <input id="todo-due-hour" class="digit-input mini-input" type="text" inputmode="numeric" maxlength="2" data-maxlength="2" data-pad="2" data-next="todo-due-minute" placeholder="09" />
+              <span class="segment-separator">:</span>
+              <input id="todo-due-minute" class="digit-input mini-input" type="text" inputmode="numeric" maxlength="2" data-maxlength="2" data-pad="2" placeholder="30" />
+            </div>
+          </div>
+        </div>
+        <div>
+          <label>提醒时间</label>
+          <div class="date-time-field">
+            <div class="date-time-row">
+              <input id="todo-reminder-year" class="digit-input year-input" type="text" inputmode="numeric" maxlength="4" data-maxlength="4" data-next="todo-reminder-month" placeholder="2026" />
+              <span class="segment-separator">/</span>
+              <input id="todo-reminder-month" class="digit-input mini-input" type="text" inputmode="numeric" maxlength="2" data-maxlength="2" data-pad="2" data-next="todo-reminder-day" placeholder="05" />
+              <span class="segment-separator">/</span>
+              <input id="todo-reminder-day" class="digit-input mini-input" type="text" inputmode="numeric" maxlength="2" data-maxlength="2" data-pad="2" data-next="todo-reminder-hour" placeholder="10" />
+            </div>
+            <div class="date-time-row compact-row">
+              <input id="todo-reminder-hour" class="digit-input mini-input" type="text" inputmode="numeric" maxlength="2" data-maxlength="2" data-pad="2" data-next="todo-reminder-minute" placeholder="09" />
+              <span class="segment-separator">:</span>
+              <input id="todo-reminder-minute" class="digit-input mini-input" type="text" inputmode="numeric" maxlength="2" data-maxlength="2" data-pad="2" placeholder="25" />
+            </div>
+          </div>
+        </div>
+        <div>
+          <label>分组</label>
+          <select id="todo-group"></select>
+        </div>
+        <div>
+          <label>循环</label>
+          <select id="todo-recurrence-type">
+            <option value="NONE">不重复</option><option value="DAILY">每天</option><option value="WEEKLY">每周</option>
+            <option value="MONTHLY_NTH_WEEKDAY">每月第几个星期几</option><option value="MONTHLY_DAY">每月D日</option><option value="YEARLY_DATE">每年M月D日</option>
+          </select>
+        </div>
+        <div><label>循环截止日期</label><input id="todo-recurrence-end" type="date" /></div>
+        <div class="span-2"><label>每周循环的周几（逗号分隔，例如 1,3,5）</label><input id="todo-weekdays" placeholder="1,3,5" /></div>
+        <div class="span-2 switch-row"><label><input id="todo-ring" type="checkbox" checked /> 铃声</label><label><input id="todo-vibrate" type="checkbox" checked /> 震动</label></div>
+      </div>
+      </div>
+      <div class="modal-actions destructive-row"><button id="delete-todo" class="danger hidden">删除待办</button></div>
+    </div>
+  </div>
+
+  <div id="event-modal" class="modal-backdrop hidden">
+    <div class="modal-sheet wide-sheet">
+      <div class="modal-handle"></div>
+      <div class="modal-head">
+        <button class="sheet-text-button" data-close-modal="event-modal">取消</button>
+        <div class="modal-title-block">
+          <h2 id="event-modal-title">新增日程</h2>
+          <p id="event-modal-subtitle" class="muted">编辑起止时间、地点、颜色、循环与提醒。</p>
+        </div>
+        <button id="save-event" class="sheet-primary-action">创建日程</button>
+      </div>
+      <div class="editor-body">
+      <div class="form-grid editor-grid">
+        <div class="span-2"><label>标题</label><input id="event-title" class="primary-editor-field" placeholder="标题" /></div>
+        <div><label>分组</label><select id="event-group"></select></div>
+        <div><label>日程颜色</label><input id="event-color" type="color" value="#4e87e1" /></div>
+        <div><label>地点</label><input id="event-location" placeholder="地点" /></div>
+        <div><label>提醒方式</label><select id="event-reminder-mode"><option value="NOTIFICATION">通知栏提醒</option><option value="FULLSCREEN">全屏提醒</option></select></div>
+        <div class="span-2"><label>备注</label><textarea id="event-notes" placeholder="备注"></textarea></div>
+        <div>
+          <label>开始</label>
+          <div class="date-time-field">
+            <div class="date-time-row">
+              <input id="event-start-year" class="digit-input year-input" type="text" inputmode="numeric" maxlength="4" data-maxlength="4" data-next="event-start-month" placeholder="2026" />
+              <span class="segment-separator">/</span>
+              <input id="event-start-month" class="digit-input mini-input" type="text" inputmode="numeric" maxlength="2" data-maxlength="2" data-pad="2" data-next="event-start-day" placeholder="05" />
+              <span class="segment-separator">/</span>
+              <input id="event-start-day" class="digit-input mini-input" type="text" inputmode="numeric" maxlength="2" data-maxlength="2" data-pad="2" data-next="event-start-hour" placeholder="10" />
+            </div>
+            <div class="date-time-row compact-row">
+              <input id="event-start-hour" class="digit-input mini-input" type="text" inputmode="numeric" maxlength="2" data-maxlength="2" data-pad="2" data-next="event-start-minute" placeholder="09" />
+              <span class="segment-separator">:</span>
+              <input id="event-start-minute" class="digit-input mini-input" type="text" inputmode="numeric" maxlength="2" data-maxlength="2" data-pad="2" placeholder="30" />
+            </div>
+          </div>
+        </div>
+        <div>
+          <label>结束</label>
+          <div class="date-time-field">
+            <div class="date-time-row">
+              <input id="event-end-year" class="digit-input year-input" type="text" inputmode="numeric" maxlength="4" data-maxlength="4" data-next="event-end-month" placeholder="2026" />
+              <span class="segment-separator">/</span>
+              <input id="event-end-month" class="digit-input mini-input" type="text" inputmode="numeric" maxlength="2" data-maxlength="2" data-pad="2" data-next="event-end-day" placeholder="05" />
+              <span class="segment-separator">/</span>
+              <input id="event-end-day" class="digit-input mini-input" type="text" inputmode="numeric" maxlength="2" data-maxlength="2" data-pad="2" data-next="event-end-hour" placeholder="10" />
+            </div>
+            <div class="date-time-row compact-row">
+              <input id="event-end-hour" class="digit-input mini-input" type="text" inputmode="numeric" maxlength="2" data-maxlength="2" data-pad="2" data-next="event-end-minute" placeholder="10" />
+              <span class="segment-separator">:</span>
+              <input id="event-end-minute" class="digit-input mini-input" type="text" inputmode="numeric" maxlength="2" data-maxlength="2" data-pad="2" placeholder="00" />
+            </div>
+          </div>
+        </div>
+        <div><label>提醒时间点（分钟，逗号分隔，例如 5,15,60）</label><input id="event-reminder-offsets" placeholder="5,15" /></div>
+        <div>
+          <label>循环</label>
+          <select id="event-recurrence-type">
+            <option value="NONE">不重复</option><option value="DAILY">每天</option><option value="WEEKLY">每周</option>
+            <option value="MONTHLY_NTH_WEEKDAY">每月第几个星期几</option><option value="MONTHLY_DAY">每月D日</option><option value="YEARLY_DATE">每年M月D日</option>
+          </select>
+        </div>
+        <div><label>循环截止日期</label><input id="event-recurrence-end" type="date" /></div>
+        <div><label>每周循环的周几（逗号分隔，例如 1,3,5）</label><input id="event-weekdays" placeholder="1,3,5" /></div>
+        <div class="span-2 switch-row"><label><input id="event-all-day" type="checkbox" /> 全天</label><label><input id="event-ring" type="checkbox" checked /> 铃声</label><label><input id="event-vibrate" type="checkbox" checked /> 震动</label></div>
+      </div>
+      </div>
+      <div class="modal-actions destructive-row"><button id="delete-event" class="danger hidden">删除日程</button></div>
+    </div>
+  </div>
+  <script src="/app.js"></script>
+</body>
+</html>

@@ -2,46 +2,44 @@
 
 ## Active Development Focus
 
-The current round has produced a `1.6.42` baseline. The implemented focus was launch-screen icon cleanup and reminder snooze behavior:
+The current round has produced a `1.6.43` baseline. The implemented focus was narrowing the desktop/mobile feature gap for editing:
 
-1. The launch screen now uses a transparent logo asset so the central white square no longer covers the background sun circle.
-2. Launcher / install icons still use the existing white-background adaptive icon art, avoiding launcher regression.
-3. Custom snooze input no longer has a 180-minute cap; the target only needs to be in the future.
-4. When a todo snooze target is later than the current DDL, the todo DDL is moved to that target time.
-5. Snoozed todos pin the next reminder to the target time by storing a zero-minute reminder offset.
+1. Desktop web now has a `PUT /api/todos/{id}` endpoint for editing existing todos.
+2. Desktop web todo cards expose an explicit `编辑` action.
+3. The todo modal now switches between create and edit mode and can save or delete an existing todo.
+4. Existing todos can be edited from desktop web for title, notes, DDL, reminder time, group, recurrence, ring, and vibration.
+5. Timed and all-day event cards expose explicit `编辑` actions while keeping the existing event editor.
 
 ## Immediate Practical Next Steps
 
-When testing on a device, use:
+When testing, use:
 
-1. install `app/build/outputs/apk/debug/PaykiTodo-1.6.42-debug.apk`
-2. start the app and verify the launch-screen logo has no white square background
-3. trigger a todo reminder and enter a custom snooze more than 180 minutes away, for example `18:00`
-4. confirm the custom snooze input accepts the value if it is in the future
-5. confirm the todo DDL moves to the snooze target when the target is later than the old DDL
-6. confirm the next reminder is scheduled at the target time
+1. install `app/build/outputs/apk/debug/PaykiTodo-1.6.43-debug.apk`
+2. enable desktop sync on the phone and open the LAN web page from a computer
+3. create or choose an existing todo and click `编辑`
+4. change DDL and reminder time, save, then verify the phone reflects the change and reminder is rescheduled
+5. click edit on a timed event and an all-day event and verify the event editor opens with fields prefilled
+6. verify delete from the todo edit modal still asks for confirmation
 
 ## Repository-Verified Notes
 
-The current code baseline includes these specific `1.6.42` changes:
+The current code baseline includes these specific `1.6.43` changes:
 
-1. `ic_launcher_art_transparent.png` was added under `drawable-nodpi` for launch-screen use.
-2. `LaunchScreen` in `DashboardChrome.kt` uses `R.drawable.ic_launcher_art_transparent`.
-3. `ReminderInputParser.parseSnoozeInput` no longer accepts a `maxMinutes` cap and no longer rejects values over 180 minutes.
-4. `TodoRepository.snoozeTodo` updates DDL when the snooze target is later than the current DDL and sets reminder offset to zero for todo snoozes.
-5. `ReminderActivity`, `InputSyntaxHelp`, and the Wiki now explain the new snooze / DDL behavior.
-6. `app/build.gradle.kts` is bumped to `1.6.42 / 114`.
-7. `./gradlew assembleDebug` has succeeded for this version using Android Studio bundled `jbr`.
+1. `DesktopSyncCoordinator.kt` routes `PUT /api/todos/{id}` to the new todo update flow.
+2. The desktop todo update flow reuses repository draft update logic and clears/reschedules reminder artifacts.
+3. `DesktopSyncWebAssets.kt` tracks `editingTodoId` and switches the todo modal title/button/delete visibility by mode.
+4. Todo cards now render an `编辑` button; event cards and all-day event cards also render explicit `编辑` buttons.
+5. `app/build.gradle.kts` is bumped to `1.6.43 / 115`.
 
 ## What Not To Do Immediately
 
+- do not claim desktop UI is fully identical to the phone UI yet
 - do not re-plan the whole app from scratch
 - do not use very old version docs as the current source of truth
 - do not scan the whole workspace outside this repo
 - do not revert unrelated user edits
 - do not change JDK setup; use Android Studio bundled `jbr`
-- do not assume device UI polish is fully verified until the user tests on device
 
 ## Current External Dependency
 
-No external file is needed for the current `1.6.42` verification task.
+No external file is needed for the current `1.6.43` verification task.

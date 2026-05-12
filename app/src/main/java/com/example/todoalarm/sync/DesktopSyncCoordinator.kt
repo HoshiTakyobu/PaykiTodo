@@ -12,6 +12,7 @@ import com.example.todoalarm.data.RecurrenceScope
 import com.example.todoalarm.data.RecurrenceType
 import com.example.todoalarm.data.TodoDraft
 import com.example.todoalarm.data.TodoItem
+import com.example.todoalarm.data.reminderTriggerTimesMillis
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -90,6 +91,7 @@ class DesktopSyncCoordinator(
                 method == "GET" && path == "/api/status" -> DesktopSyncServer.Response.json(status().toJson())
                 method == "GET" && path == "/api/snapshot" -> DesktopSyncServer.Response.json(buildSnapshot().toJson(buildGroupsMap()))
                 method == "POST" && path == "/api/todos" -> DesktopSyncServer.Response.json(createTodo(JSONObject(body)))
+                method == "PUT" && path.matches(Regex("/api/todos/\\d+")) -> DesktopSyncServer.Response.json(updateTodo(path, JSONObject(body)))
                 method == "POST" && path == "/api/events" -> DesktopSyncServer.Response.json(createEvent(JSONObject(body)))
                 method == "PUT" && path.matches(Regex("/api/events/\\d+")) -> DesktopSyncServer.Response.json(updateEvent(path, JSONObject(body)))
                 method == "POST" && path.matches(Regex("/api/items/\\d+/complete")) -> DesktopSyncServer.Response.json(markCompleted(path))
@@ -149,6 +151,35 @@ class DesktopSyncCoordinator(
         created.forEach(::scheduleReminderOrDisable)
         autoBackupIfNeeded()
         return JSONObject().put("created", created.size)
+    }
+
+    private fun updateTodo(path: String, json: JSONObject): JSONObject {
+        val id = path.substringAfter("/api/todos/").toLong()
+        val original = runBlocking { app.repository.getTodo(id) } ?: return JSONObject().put("ok", false)
+        require(original.isTodo) { "仅支持更新待办" }
+
+        val groupId = resolveGroupId(json)
+        val dueAt = json.optStringOrNull("dueAt")?.let(LocalDateTime::parse)
+        val reminderAt = json.optStringOrNull("reminderAt")?.let(LocalDateTime::parse)
+        val recurrence = parseRecurrence(json.optJSONObject("recurrence"), dueAt?.toLocalDate())
+        val draft = sanitizeTodoDraft(
+            title = json.optString("title").trim(),
+            notes = json.optString("notes").trim(),
+            dueAt = dueAt,
+            reminderAt = reminderAt,
+            groupId = groupId,
+            ringEnabled = json.optBoolean("ringEnabled", original.ringEnabled),
+            vibrateEnabled = json.optBoolean("vibrateEnabled", original.vibrateEnabled),
+            recurrence = recurrence
+        )
+        require(draft.title.isNotBlank()) { "标题不能为空" }
+        validateTodoDraft(draft = draft, original = original)?.let { error(it) }
+        val affected = runBlocking { app.repository.getActiveItemsForScope(original, RecurrenceScope.CURRENT) }
+        clearReminderArtifacts(affected.ifEmpty { listOf(original) })
+        val updated = runBlocking { app.repository.updateFromDraft(original, draft, RecurrenceScope.CURRENT) }
+        updated.forEach(::scheduleReminderOrDisable)
+        autoBackupIfNeeded()
+        return JSONObject().put("ok", updated.isNotEmpty())
     }
 
     private fun createEvent(json: JSONObject): JSONObject {
@@ -298,6 +329,53 @@ class DesktopSyncCoordinator(
             vibrateEnabled = vibrateEnabled,
             recurrence = recurrence
         )
+    }
+
+    private fun validateTodoDraft(draft: TodoDraft, original: TodoItem?): String? {
+        if (draft.title.isBlank()) return "标题不能为空"
+        val now = System.currentTimeMillis()
+        val isHistory = original?.isHistory == true
+        val dueAtMillis = draft.dueAt?.atZone(java.time.ZoneId.systemDefault())?.toInstant()?.toEpochMilli()
+        if (!isHistory && original == null && dueAtMillis != null && dueAtMillis <= now) {
+            return "DDL 必须晚于当前时间"
+        }
+        if (draft.dueAt == null && draft.normalizedReminderOffsetsMinutes.isNotEmpty()) {
+            return "未设置 DDL 的任务不能启用提醒"
+        }
+        val triggerTimes = if (draft.dueAt == null) {
+            emptyList()
+        } else {
+            val probe = TodoItem(
+                id = original?.id ?: 0,
+                title = draft.title,
+                notes = draft.notes,
+                dueAtMillis = dueAtMillis ?: 0L,
+                reminderAtMillis = draft.reminderAt?.atZone(java.time.ZoneId.systemDefault())?.toInstant()?.toEpochMilli(),
+                reminderOffsetsCsv = draft.normalizedReminderOffsetsMinutes.joinToString(","),
+                reminderEnabled = draft.normalizedReminderOffsetsMinutes.isNotEmpty(),
+                ringEnabled = draft.ringEnabled,
+                vibrateEnabled = draft.vibrateEnabled,
+                groupId = draft.groupId
+            )
+            probe.reminderTriggerTimesMillis()
+        }
+        if (!isHistory && original == null && triggerTimes.any { it <= now }) {
+            return "提醒时间必须晚于当前时间"
+        }
+        if (triggerTimes.any { it > (dueAtMillis ?: Long.MAX_VALUE) }) {
+            return "提醒时间不能晚于 DDL"
+        }
+        if (draft.recurrence.enabled) {
+            val dueAt = draft.dueAt ?: return "循环任务必须设置 DDL"
+            if (draft.recurrence.type == RecurrenceType.NONE) return "请选择循环规则"
+            val endDate = draft.recurrence.endDate ?: return "请设置循环截止日期"
+            if (endDate.isBefore(dueAt.toLocalDate())) return "循环截止日期不能早于首次任务日期"
+            if (draft.recurrence.type == RecurrenceType.WEEKLY && draft.recurrence.weeklyDays.isEmpty()) return "每周循环至少选择一天"
+        }
+        if (original?.isRecurring == true && draft.dueAt == null) {
+            return "循环任务必须保留 DDL"
+        }
+        return null
     }
 
     private fun sanitizeEventDraft(

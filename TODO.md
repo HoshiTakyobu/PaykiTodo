@@ -4,8 +4,8 @@
 
 ### In Progress
 
-- Verify version `1.6.42` on device after launch icon transparency and snooze/DDL changes
-- Keep `README.md`, `CHANGELOG.md`, and current-state docs aligned with version `1.6.42`
+- Verify version `1.6.43` on device / desktop browser after desktop sync editing improvements
+- Keep `README.md`, `CHANGELOG.md`, and current-state docs aligned with version `1.6.43`
 - Continue board / dashboard and calendar polish without regressing the current interaction model
 - Improve repo-native handoff so new sessions do not depend on long chat history
 
@@ -32,6 +32,8 @@
 - Wiki sidebar links should switch sections inside the in-app Wiki WebView
 - Settings -> 使用说明 should open Wiki directly, and Settings -> 提示音 should open the system notification-tone picker directly
 - Desktop web all-day events spanning multiple days should render as one horizontal continuous bar
+- Desktop web should allow editing existing todos with DDL, reminder, group, recurrence, ring, and vibration fields
+- Desktop web should expose explicit edit buttons on timed and all-day event cards
 - Launcher icon should use the picture-based `ic_launcher_art` adaptive foreground, not the old vector mark
 - Todo and calendar reminder input should accept comma-separated mixed reminder specs and block invalid values
 - Todo batch import should parse lightweight comma rows, including same-day DDL like `16:30,写报告,5`
@@ -60,6 +62,10 @@
 
 ## Done Recently
 
+- Bumped the app to `1.6.43` / `versionCode 115`
+- Added desktop web editing for existing todos, including DDL, reminder, group, recurrence, ring, and vibration fields
+- Added a desktop sync `PUT /api/todos/{id}` endpoint and reminder rescheduling after todo edits
+- Added explicit desktop web edit buttons for timed and all-day events
 - Bumped the app to `1.6.42` / `versionCode 114`
 - Added a transparent launch-screen logo asset and switched only the launch screen to it
 - Removed the 180-minute cap from custom snooze input

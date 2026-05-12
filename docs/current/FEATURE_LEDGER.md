@@ -91,6 +91,8 @@ This file tracks the product at a practical level for new coding sessions.
 - LAN browser-based desktop sync console exists
 - phone-side HTTP serving model exists
 - browser can perform limited data operations against the phone-side dataset
+- desktop web can edit existing todos with title, notes, DDL, reminder, group, recurrence, ring, and vibration fields
+- desktop web exposes explicit edit buttons for timed and all-day events
 - desktop-sync foreground notification can be tapped to open the in-app Settings -> Desktop Sync panel
 - desktop web destructive delete actions require confirmation before DELETE requests are sent
 - desktop web all-day events can span multiple visible days as one continuous horizontal bar

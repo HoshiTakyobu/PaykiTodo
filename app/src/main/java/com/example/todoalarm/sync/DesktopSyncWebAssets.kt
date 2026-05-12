@@ -95,8 +95,8 @@ object DesktopSyncWebAssets {
             <div class="modal-sheet">
               <div class="modal-head">
                 <div>
-                  <h2>新增待办</h2>
-                  <p class="muted">表单先收进弹层，主界面优先展示时间轴。</p>
+                  <h2 id="todo-modal-title">新增待办</h2>
+                  <p id="todo-modal-subtitle" class="muted">表单先收进弹层，主界面优先展示时间轴。</p>
                 </div>
                 <button class="ghost mini" data-close-modal="todo-modal">关闭</button>
               </div>
@@ -152,7 +152,7 @@ object DesktopSyncWebAssets {
                 <div class="span-2"><label>每周循环的周几（逗号分隔，例如 1,3,5）</label><input id="todo-weekdays" placeholder="1,3,5" /></div>
                 <div class="span-2 switch-row"><label><input id="todo-ring" type="checkbox" checked /> 铃声</label><label><input id="todo-vibrate" type="checkbox" checked /> 震动</label></div>
               </div>
-              <div class="modal-actions"><button id="create-todo">创建待办</button></div>
+              <div class="modal-actions"><button id="delete-todo" class="danger hidden">删除待办</button><button id="create-todo">创建待办</button></div>
             </div>
           </div>
 
@@ -442,7 +442,7 @@ object DesktopSyncWebAssets {
         const FIFTEEN_MINUTES = 15 * 60 * 1000;
         const THIRTY_MINUTES = 30 * 60 * 1000;
         const DEFAULT_EVENT_COLOR = '#4e87e1';
-        const state = { token: '', snapshot: null, currentTab: 'todos', selectedEventDay: dayKey(new Date()), editingEventId: null, pendingEventSeed: null };
+        const state = { token: '', snapshot: null, currentTab: 'todos', selectedEventDay: dayKey(new Date()), editingTodoId: null, editingEventId: null, pendingEventSeed: null };
 
         const els = {
           token: document.getElementById('token'),
@@ -645,7 +645,7 @@ object DesktopSyncWebAssets {
           const meta = [item.groupName || '未分组', item.location || '', item.isRecurring ? '循环' : ''].filter(Boolean).join(' · ');
           const actionHtml = (item.completed || item.canceled)
             ? '<button data-action="delete" data-id="' + item.id + '" class="secondary">删除</button>'
-            : '<button data-action="complete" data-id="' + item.id + '" class="success">完成</button><button data-action="cancel" data-id="' + item.id + '" class="danger">取消</button>';
+            : '<button data-action="edit-todo" data-id="' + item.id + '" class="secondary">编辑</button><button data-action="complete" data-id="' + item.id + '" class="success">完成</button><button data-action="cancel" data-id="' + item.id + '" class="danger">取消</button>';
           return ''
             + '<article class="timeline-item" style="--accent:' + accent + '">'
             +   '<div class="timeline-marker">'
@@ -683,11 +683,11 @@ object DesktopSyncWebAssets {
           const meta = [item.groupName || '未分组', item.location || '', item.isRecurring ? '循环' : ''].filter(Boolean).join(' · ');
           const style = '--accent:' + accent + (span ? ';grid-column:' + span.start + ' / span ' + span.length : '');
           return ''
-            + '<article class="all-day-card' + (span ? ' spanning' : '') + '" style="' + style + '">'
+            + '<article class="all-day-card' + (span ? ' spanning' : '') + '" data-event-id="' + item.id + '" style="' + style + '">'
             +   '<div class="all-day-card-title">' + escapeHtml(item.title) + '</div>'
             +   '<div class="all-day-card-meta">' + escapeHtml(meta || '全天日程') + '</div>'
             +   (item.notes ? '<div class="all-day-card-meta">' + escapeHtml(item.notes) + '</div>' : '')
-            +   '<div class="actions"><button data-action="delete" data-id="' + item.id + '" class="danger">删除</button></div>'
+            +   '<div class="actions"><button data-action="edit-event" data-id="' + item.id + '" class="secondary">编辑</button><button data-action="delete" data-id="' + item.id + '" class="danger">删除</button></div>'
             + '</article>';
         }
 
@@ -812,6 +812,7 @@ object DesktopSyncWebAssets {
             +   '<div class="event-card-meta">' + escapeHtml(segment.startLabel) + ' - ' + escapeHtml(segment.endLabel) + '</div>'
             +   '<div class="event-card-meta">' + escapeHtml(meta || '定时日程') + '</div>'
             +   (item.notes ? '<div class="event-card-notes">' + escapeHtml(item.notes) + '</div>' : '')
+            +   '<div class="actions"><button data-action="edit-event" data-id="' + item.id + '" class="secondary">编辑</button><button data-action="delete" data-id="' + item.id + '" class="danger">删除</button></div>'
             + '</article>';
         }
 
@@ -968,7 +969,12 @@ object DesktopSyncWebAssets {
         }
 
         function clearTodoForm() {
+          state.editingTodoId = null;
           fillGroupSelect('todo-group');
+          document.getElementById('todo-modal-title').textContent = '新增待办';
+          document.getElementById('todo-modal-subtitle').textContent = '表单先收进弹层，主界面优先展示时间轴。';
+          document.getElementById('create-todo').textContent = '创建待办';
+          document.getElementById('delete-todo').classList.add('hidden');
           document.getElementById('todo-title').value = '';
           document.getElementById('todo-notes').value = '';
           writeDateTimeValue('todo-due', '');
@@ -978,6 +984,29 @@ object DesktopSyncWebAssets {
           document.getElementById('todo-weekdays').value = '';
           document.getElementById('todo-ring').checked = true;
           document.getElementById('todo-vibrate').checked = true;
+        }
+
+        function openTodoEditor(item) {
+          state.editingTodoId = item.id;
+          fillGroupSelect('todo-group', item.groupId);
+          document.getElementById('todo-modal-title').textContent = '编辑待办';
+          document.getElementById('todo-modal-subtitle').textContent = '电脑端可修改标题、备注、DDL、提醒、分组、循环、铃声和震动。';
+          document.getElementById('create-todo').textContent = '保存修改';
+          document.getElementById('delete-todo').classList.remove('hidden');
+          document.getElementById('todo-title').value = item.title || '';
+          document.getElementById('todo-notes').value = item.notes || '';
+          writeDateTimeValue('todo-due', item.hasDueDate ? formatDateTimeLocalValue(item.dueAtMillis) : '');
+          const reminderOffsets = item.reminderOffsetsMinutes || [];
+          const reminderMillis = reminderOffsets.length && item.hasDueDate
+            ? item.dueAtMillis - reminderOffsets[0] * 60 * 1000
+            : item.reminderAtMillis;
+          writeDateTimeValue('todo-reminder', reminderMillis ? formatDateTimeLocalValue(reminderMillis) : '');
+          document.getElementById('todo-recurrence-type').value = recurrenceTypeValue(item);
+          document.getElementById('todo-recurrence-end').value = item.recurrenceEndDate || '';
+          document.getElementById('todo-weekdays').value = (item.recurrenceWeekdays || []).join(',');
+          document.getElementById('todo-ring').checked = item.ringEnabled !== false;
+          document.getElementById('todo-vibrate').checked = item.vibrateEnabled !== false;
+          openModal('todo-modal');
         }
 
         function clearEventForm() {
@@ -1075,9 +1104,18 @@ object DesktopSyncWebAssets {
 
         function bindActions() {
           document.querySelectorAll('[data-action]').forEach(node => {
-            node.onclick = async () => {
+            node.onclick = async event => {
+              event.stopPropagation();
               const id = node.dataset.id;
-              if (node.dataset.action === 'complete') {
+              if (node.dataset.action === 'edit-todo') {
+                const todoItem = (state.snapshot?.todos || []).find(item => Number(item.id) === Number(id));
+                if (todoItem) openTodoEditor(todoItem);
+                return;
+              } else if (node.dataset.action === 'edit-event') {
+                const eventItem = (state.snapshot?.events || []).find(item => Number(item.id) === Number(id));
+                if (eventItem) openEventEditor(eventItem);
+                return;
+              } else if (node.dataset.action === 'complete') {
                 await api(`/api/items/${'$'}{id}/complete`, { method: 'POST' });
               } else if (node.dataset.action === 'cancel') {
                 await api(`/api/items/${'$'}{id}/cancel`, { method: 'POST' });
@@ -1156,23 +1194,40 @@ object DesktopSyncWebAssets {
         document.getElementById('create-todo').onclick = async () => {
           const dueAt = readDateTimeValue('todo-due');
           const reminderAt = readDateTimeValue('todo-reminder');
-          await api('/api/todos', {
-            method: 'POST',
-            body: JSON.stringify({
-              title: document.getElementById('todo-title').value,
-              notes: document.getElementById('todo-notes').value,
-              dueAt: dueAt,
-              reminderAt: reminderAt,
-              groupId: Number(document.getElementById('todo-group').value || 0),
-              ringEnabled: document.getElementById('todo-ring').checked,
-              vibrateEnabled: document.getElementById('todo-vibrate').checked,
-              recurrence: recurrencePayload(
-                document.getElementById('todo-recurrence-type').value,
-                document.getElementById('todo-recurrence-end').value,
-                document.getElementById('todo-weekdays').value
-              )
-            })
-          });
+          const payload = {
+            title: document.getElementById('todo-title').value,
+            notes: document.getElementById('todo-notes').value,
+            dueAt: dueAt,
+            reminderAt: reminderAt,
+            groupId: Number(document.getElementById('todo-group').value || 0),
+            ringEnabled: document.getElementById('todo-ring').checked,
+            vibrateEnabled: document.getElementById('todo-vibrate').checked,
+            recurrence: recurrencePayload(
+              document.getElementById('todo-recurrence-type').value,
+              document.getElementById('todo-recurrence-end').value,
+              document.getElementById('todo-weekdays').value
+            )
+          };
+          if (state.editingTodoId) {
+            await api(`/api/todos/${'$'}{state.editingTodoId}`, {
+              method: 'PUT',
+              body: JSON.stringify(payload)
+            });
+          } else {
+            await api('/api/todos', {
+              method: 'POST',
+              body: JSON.stringify(payload)
+            });
+          }
+          clearTodoForm();
+          closeModal('todo-modal');
+          await loadSnapshot();
+        };
+
+        document.getElementById('delete-todo').onclick = async () => {
+          if (!state.editingTodoId) return;
+          if (!confirm('确定删除这个待办吗？删除后无法恢复。')) return;
+          await api(`/api/items/${'$'}{state.editingTodoId}`, { method: 'DELETE' });
           clearTodoForm();
           closeModal('todo-modal');
           await loadSnapshot();

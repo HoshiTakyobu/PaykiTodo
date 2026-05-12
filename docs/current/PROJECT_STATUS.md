@@ -7,13 +7,13 @@
 - Package name: `com.paykitodo.app`
 - Target platform: Android 14 / API 34
 - Current version in code:
-  - `versionName = "1.6.42"`
-  - `versionCode = 114`
+  - `versionName = "1.6.43"`
+  - `versionCode = 115`
 
 ## Current Build Facts
 
 - Latest debug APK output:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.6.42-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.6.43-debug.apk`
 - Minimal verification completed in the latest code round:
   - `./gradlew assembleDebug` succeeded with Android Studio bundled `jbr`
 - Current build environment expectation:
@@ -22,11 +22,11 @@
 
 ## Current Worktree Reality
 
-The repository is now at `1.6.42` after fixing launch-screen icon transparency and custom snooze / DDL behavior.
+The repository is now at `1.6.43` after adding desktop web todo editing and explicit event edit entry points.
 
 Most important current baseline facts:
 
-- version metadata is `1.6.42 / 114`
+- version metadata is `1.6.43 / 115`
 - launcher adaptive icon foreground now directly uses picture resource `@drawable/ic_launcher_art`
 - old vector mark launcher resources have been deleted so the launcher cannot fall back to them again
 - picture launcher art has been reprocessed to an opaque pure-white background with smaller centered content
@@ -49,6 +49,8 @@ Most important current baseline facts:
 - daily-board in-progress and normal schedule rows share the same left color-bar column
 - normal daily-board schedule rows have a thin same-color border; in-progress rows use a gold border plus very subtle inner highlight rather than a large yellow overlay
 - launch screen uses transparent `ic_launcher_art_transparent`; launcher / install icons still use the white-background adaptive icon art
+- desktop web can edit existing todos, including DDL, reminder time, group, recurrence, ring, and vibration
+- desktop web timed and all-day event cards expose explicit edit buttons; event editing keeps the existing event editor flow
 
 ## Recent Checked Areas
 
@@ -63,11 +65,11 @@ Recent code inspection and build verification cover:
 - `ReminderActivity.kt`, `ReminderAccessibilityOverlay.kt`, `ReminderInputParser.kt`, `TodoRepository.kt`: custom snooze parsing and DDL update behavior
 - `InputSyntaxHelp.kt`: shared question-mark help button and syntax help dialog
 - `app/src/main/assets/wiki/index.html`: current input syntax documentation
-- `DashboardChrome.kt`: launch screen transparent logo reference and daily-board schedule styling
+- `DesktopSyncCoordinator.kt`, `DesktopSyncWebAssets.kt`: desktop web todo editing endpoint, modal behavior, and explicit event edit buttons
 
 ## Documentation Health
 
-Current docs have been synchronized for `1.6.42`:
+Current docs have been synchronized for `1.6.43`:
 
 - `README.md`
 - `CHANGELOG.md`

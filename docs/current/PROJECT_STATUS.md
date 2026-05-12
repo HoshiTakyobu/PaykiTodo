@@ -7,13 +7,13 @@
 - Package name: `com.paykitodo.app`
 - Target platform: Android 14 / API 34
 - Current version in code:
-  - `versionName = "1.6.47"`
-  - `versionCode = 119`
+  - `versionName = "1.6.48"`
+  - `versionCode = 120`
 
 ## Current Build Facts
 
 - Latest debug APK output:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.6.47-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.6.48-debug.apk`
 - Minimal verification completed in the latest code round:
   - `./gradlew assembleDebug` succeeded with Android Studio bundled `jbr`
 - Current build environment expectation:
@@ -22,11 +22,11 @@
 
 ## Current Worktree Reality
 
-The repository is now at `1.6.47` after adding reminder audio strategy controls and restructuring Settings into common / advanced sections.
+The repository is now at `1.6.48` after compacting reminder audio strategy controls and correcting work-mode reminder behavior.
 
 Most important current baseline facts:
 
-- version metadata is `1.6.47 / 119`
+- version metadata is `1.6.48 / 120`
 - launcher adaptive icon foreground now directly uses picture resource `@drawable/ic_launcher_art`
 - old vector mark launcher resources have been deleted so the launcher cannot fall back to them again
 - picture launcher art has been reprocessed to an opaque pure-white background with smaller centered content
@@ -63,8 +63,9 @@ Most important current baseline facts:
 - reminder playback can now use alarm, accessibility, notification, or media audio channels
 - PaykiTodo has an internal reminder-volume percentage for self-played alert audio
 - an advanced temporary system-channel volume boost can raise the selected global stream during reminder playback and then restore it; it is off by default
-- work / class quiet mode disables reminder sound by default, strengthens vibration, and routes calendar reminders into the full-screen / accessibility fallback chain
-- Settings is now split into common settings and advanced settings instead of mixed categories such as calendar and sound
+- work mode keeps ringing enabled, strengthens vibration, and routes calendar reminders into the full-screen / accessibility fallback chain
+- Settings is split into common settings and advanced settings; desktop sync is common, while diagnostics / backup / crash logs are advanced maintenance surfaces
+- enum-like Settings choices use compact dropdown rows instead of large button groups; percentage values use a slider plus numeric input
 
 ## Recent Checked Areas
 
@@ -83,7 +84,7 @@ Recent code inspection and build verification cover:
 
 ## Documentation Health
 
-Current docs have been synchronized for `1.6.47`:
+Current docs have been synchronized for `1.6.48`:
 
 - `README.md`
 - `CHANGELOG.md`

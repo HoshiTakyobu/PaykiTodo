@@ -2,7 +2,6 @@ package com.example.todoalarm.ui
 
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -11,13 +10,13 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -28,8 +27,10 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.Article
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.rounded.Alarm
+import androidx.compose.material.icons.rounded.ArrowDropDown
 import androidx.compose.material.icons.rounded.BugReport
 import androidx.compose.material.icons.rounded.CalendarMonth
+import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Folder
 import androidx.compose.material.icons.rounded.LibraryMusic
 import androidx.compose.material.icons.rounded.ManageSearch
@@ -41,14 +42,15 @@ import androidx.compose.material.icons.rounded.TaskAlt
 import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.material.icons.rounded.VolumeUp
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -68,6 +70,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.core.content.pm.PackageInfoCompat
@@ -78,6 +81,7 @@ import com.example.todoalarm.data.ReminderDeliveryMode
 import com.example.todoalarm.data.WeekStartMode
 import com.example.todoalarm.sync.DesktopSyncStatus
 import kotlinx.coroutines.launch
+import kotlin.math.roundToInt
 
 private enum class SettingsSection {
     PERMISSIONS,
@@ -92,7 +96,6 @@ private enum class SettingsSection {
     DESKTOP_SYNC
 }
 
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun SettingsPanel(
     settings: AppSettings,
@@ -185,6 +188,13 @@ fun SettingsPanel(
                 )
                 SettingsMenuDivider()
                 SettingsMenuItem(
+                    icon = Icons.Rounded.Computer,
+                    title = "电脑同步",
+                    summary = if (desktopSyncStatus.running) "正在运行" else "局域网网页端控制台",
+                    onClick = { selectedSection = SettingsSection.DESKTOP_SYNC }
+                )
+                SettingsMenuDivider()
+                SettingsMenuItem(
                     icon = Icons.Rounded.Folder,
                     title = "关于",
                     summary = null,
@@ -213,13 +223,6 @@ fun SettingsPanel(
                     title = "数据与备份",
                     summary = null,
                     onClick = { selectedSection = SettingsSection.BACKUP }
-                )
-                SettingsMenuDivider()
-                SettingsMenuItem(
-                    icon = Icons.Rounded.Computer,
-                    title = "电脑同步",
-                    summary = null,
-                    onClick = { selectedSection = SettingsSection.DESKTOP_SYNC }
                 )
                 SettingsMenuDivider()
                 SettingsMenuItem(
@@ -257,34 +260,24 @@ fun SettingsPanel(
                 OutlinedButton(onClick = { showSnoozeDialog = true }) { Text("当前：${normalizeSnooze(defaultSnooze)} 分钟") }
 
                 Spacer(modifier = Modifier.height(4.dp))
-                Text("日历周起始日", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
-                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    CalendarReminderModeButton(WeekStartMode.MONDAY.label, settings.weekStartMode == WeekStartMode.MONDAY) { onWeekStartModeChange(WeekStartMode.MONDAY) }
-                    CalendarReminderModeButton(WeekStartMode.SUNDAY.label, settings.weekStartMode == WeekStartMode.SUNDAY) { onWeekStartModeChange(WeekStartMode.SUNDAY) }
-                }
+                CompactDropdownSetting(
+                    title = "日历周起始日",
+                    value = settings.weekStartMode.label,
+                    options = WeekStartMode.entries.map { it.label },
+                    onSelect = { label -> WeekStartMode.entries.firstOrNull { it.label == label }?.let(onWeekStartModeChange) }
+                )
 
                 Spacer(modifier = Modifier.height(4.dp))
-                Text("日历提醒默认方式", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
-                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    CalendarReminderModeButton(ReminderDeliveryMode.NOTIFICATION.label, settings.defaultCalendarReminderMode == ReminderDeliveryMode.NOTIFICATION) {
-                        onDefaultCalendarReminderModeChange(ReminderDeliveryMode.NOTIFICATION)
-                    }
-                    CalendarReminderModeButton(ReminderDeliveryMode.FULLSCREEN.label, settings.defaultCalendarReminderMode == ReminderDeliveryMode.FULLSCREEN) {
-                        onDefaultCalendarReminderModeChange(ReminderDeliveryMode.FULLSCREEN)
-                    }
-                }
+                CompactDropdownSetting(
+                    title = "日历提醒默认方式",
+                    value = settings.defaultCalendarReminderMode.label,
+                    options = ReminderDeliveryMode.entries.map { it.label },
+                    onSelect = { label -> ReminderDeliveryMode.entries.firstOrNull { it.label == label }?.let(onDefaultCalendarReminderModeChange) }
+                )
             }
         }
 
-        SettingsSection.TONE -> SettingsSectionDialog("提示音", { selectedSection = null }) {
-            Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
-                PermissionRow(Icons.Rounded.LibraryMusic, settings.reminderToneName ?: "当前：内置提醒音", true, onPickSystemReminderTone)
-                FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    OutlinedButton(onClick = onUseBuiltInReminderTone) { Text("使用内置提醒音") }
-                    OutlinedButton(onClick = onPickSystemReminderTone) { Text("选择系统提示音") }
-                }
-            }
-        }
+        SettingsSection.TONE -> Unit
 
         SettingsSection.HELP -> SettingsSectionDialog("使用说明", { selectedSection = null }) {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -460,7 +453,6 @@ private fun ReminderChainTestDialog(
     )
 }
 
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun ReminderAudioStrategyPanel(
     settings: AppSettings,
@@ -483,14 +475,12 @@ private fun ReminderAudioStrategyPanel(
             style = MaterialTheme.typography.bodyMedium
         )
 
-        Text("播放通道", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
-        FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            ReminderAudioChannel.entries.forEach { channel ->
-                CalendarReminderModeButton(channel.label, settings.reminderAudioChannel == channel) {
-                    commit(channel = channel)
-                }
-            }
-        }
+        CompactDropdownSetting(
+            title = "播放通道",
+            value = settings.reminderAudioChannel.label,
+            options = ReminderAudioChannel.entries.map { it.label },
+            onSelect = { label -> ReminderAudioChannel.entries.firstOrNull { it.label == label }?.let { commit(channel = it) } }
+        )
 
         PercentSettingRow(
             title = "PaykiTodo 内部音量",
@@ -503,9 +493,9 @@ private fun ReminderAudioStrategyPanel(
             Column(modifier = Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                     Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Text("课堂 / 上班模式", fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
+                        Text("工作模式", fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
                         Text(
-                            "开启后提醒默认不外放声音，改用更强震动，并让日程提醒也走全屏 / 无障碍兜底链路。",
+                            "开启后不降低响铃强度，同时使用更强震动，并让日程提醒也走全屏 / 无障碍兜底链路。",
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             style = MaterialTheme.typography.bodySmall
                         )
@@ -521,7 +511,7 @@ private fun ReminderAudioStrategyPanel(
                     Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         Text("提醒时临时提升系统通道音量", fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
                         Text(
-                            "高级选项。会临时修改所选系统通道的全局音量，播放结束或提醒结束后尽量恢复原值。默认关闭。",
+                            "会临时修改所选系统通道的全局音量，播放结束或提醒结束后尽量恢复原值。默认关闭。",
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             style = MaterialTheme.typography.bodySmall
                         )
@@ -548,6 +538,13 @@ private fun PercentSettingRow(
     enabled: Boolean = true,
     onChange: (Int) -> Unit
 ) {
+    var textValue by remember(value) { mutableStateOf(value.coerceIn(0, 100).toString()) }
+    fun commitPercent(raw: Int) {
+        val normalized = raw.coerceIn(0, 100)
+        textValue = normalized.toString()
+        onChange(normalized)
+    }
+
     Surface(shape = RoundedCornerShape(18.dp), color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = if (enabled) 0.26f else 0.12f)) {
         Column(modifier = Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
@@ -555,38 +552,90 @@ private fun PercentSettingRow(
                     Text(title, fontWeight = FontWeight.SemiBold, color = if (enabled) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant)
                     Text(summary, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
                 }
-                Text("${value.coerceIn(0, 100)}%", fontWeight = FontWeight.Bold, color = if (enabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant)
             }
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                OutlinedButton(enabled = enabled, onClick = { onChange((value - 10).coerceIn(0, 100)) }) { Text("-10") }
-                OutlinedButton(enabled = enabled, onClick = { onChange((value + 10).coerceIn(0, 100)) }) { Text("+10") }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Slider(
+                    value = value.coerceIn(0, 100).toFloat(),
+                    onValueChange = { commitPercent(it.roundToInt()) },
+                    valueRange = 0f..100f,
+                    steps = 99,
+                    enabled = enabled,
+                    modifier = Modifier.weight(1f)
+                )
+                OutlinedTextField(
+                    value = textValue,
+                    onValueChange = { raw ->
+                        val filtered = raw.filter(Char::isDigit).take(3)
+                        textValue = filtered
+                        filtered.toIntOrNull()?.let { commitPercent(it) }
+                    },
+                    enabled = enabled,
+                    singleLine = true,
+                    suffix = { Text("%") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    modifier = Modifier.weight(0.42f)
+                )
             }
         }
     }
 }
 
 @Composable
-private fun CalendarReminderModeButton(
-    label: String,
-    selected: Boolean,
-    onClick: () -> Unit
+private fun CompactDropdownSetting(
+    title: String,
+    value: String,
+    options: List<String>,
+    onSelect: (String) -> Unit,
+    summary: String? = null
 ) {
-    Button(
-        onClick = onClick,
-        colors = ButtonDefaults.buttonColors(
-            containerColor = if (selected) {
-                MaterialTheme.colorScheme.primary
-            } else {
-                MaterialTheme.colorScheme.surfaceVariant
-            },
-            contentColor = if (selected) {
-                MaterialTheme.colorScheme.onPrimary
-            } else {
-                MaterialTheme.colorScheme.onSurface
-            }
-        )
+    var expanded by remember { mutableStateOf(false) }
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(18.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.26f)
     ) {
-        Text(label)
+        Box {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { expanded = true }
+                    .padding(horizontal = 14.dp, vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                    Text(title, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
+                    summary?.takeIf { it.isNotBlank() }?.let {
+                        Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                }
+                Text(value, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                Icon(Icons.Rounded.ArrowDropDown, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            DropdownMenu(
+                expanded = expanded,
+                onDismissRequest = { expanded = false }
+            ) {
+                options.forEach { option ->
+                    DropdownMenuItem(
+                        text = { Text(option) },
+                        trailingIcon = {
+                            if (option == value) {
+                                Icon(Icons.Rounded.Check, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                            }
+                        },
+                        onClick = {
+                            onSelect(option)
+                            expanded = false
+                        }
+                    )
+                }
+            }
+        }
     }
 }
 

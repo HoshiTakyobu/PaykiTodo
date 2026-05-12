@@ -138,7 +138,7 @@ fun DashboardScreen(
     var scopeDialogMode by remember { mutableStateOf<ScopeDialogMode?>(null) }
     var lastBackPressedAt by rememberSaveable { mutableLongStateOf(0L) }
     var boardVisited by rememberSaveable { mutableStateOf(false) }
-    val defaultReminderRing = if (uiState.settings.workQuietModeEnabled) false else uiState.settings.defaultRingEnabled
+    val defaultReminderRing = uiState.settings.defaultRingEnabled
     val defaultReminderVibrate = if (uiState.settings.workQuietModeEnabled) true else uiState.settings.defaultVibrateEnabled
 
     LaunchedEffect(launchRouteSerial) {

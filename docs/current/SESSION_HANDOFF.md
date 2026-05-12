@@ -6,43 +6,39 @@ Long-running Codex sessions can become unreliable. This file exists so a new ses
 
 ## Current Handoff Summary
 
-- The project is currently at code version `1.6.47` / `versionCode 119`
-- Latest debug APK path: `app/build/outputs/apk/debug/PaykiTodo-1.6.47-debug.apk`
-- Latest feature round added reminder audio strategy and Settings restructuring:
-  1. Reminder playback channel can be alarm, accessibility, notification, or media.
-  2. PaykiTodo internal reminder volume percentage is stored and applied to self-played audio.
-  3. Optional temporary system-channel volume boost can raise the selected global stream during playback, then restore it. It is off by default.
-  4. Work / class quiet mode suppresses sound by default, strengthens vibration, and forces calendar reminders into full-screen / accessibility fallback.
-  5. Settings is split into common and advanced sections.
-  6. Wiki explains the new audio strategy and the Android limitation around true per-app system volume.
+- The project is currently at code version `1.6.48` / `versionCode 120`
+- Latest debug APK path after build should be `app/build/outputs/apk/debug/PaykiTodo-1.6.48-debug.apk`
+- Latest feature round refined Settings and reminder audio behavior:
+  1. Reminder playback channel is selected through a compact dropdown row rather than a button group.
+  2. PaykiTodo internal volume uses a 0-100 slider plus numeric input.
+  3. Temporary system-channel boost target uses the same slider + numeric input pattern.
+  4. Calendar week-start and default calendar reminder mode are compact dropdown rows.
+  5. 工作模式 keeps ring enabled, strengthens vibration, and keeps calendar reminders on the full-screen / accessibility fallback chain.
+  6. Desktop sync is back in common Settings; diagnostics / backup / crash logs remain advanced maintenance surfaces.
+  7. `docs/current/UI_DESIGN_RULES.md` records the project rule against large button-group option UIs.
 
-Previous feature round (`1.6.46`) refined Wiki, daily board, and drawer header visuals:
-  1. In-app Wiki keeps a left menu / right article layout on phone-sized screens.
-  2. Daily board distinguishes no schedule today from all of today's schedule already finished.
-  3. Drawer header app icon is clipped into the circular header surface and enlarged.
+Previous feature round (`1.6.47`) added the underlying reminder-audio strategy settings and playback support.
 
 ## Files Most Relevant To The Latest Round
 
 - `app/build.gradle.kts`
-- `app/src/main/java/com/example/todoalarm/data/AppSettingsStore.kt`
-- `app/src/main/java/com/example/todoalarm/data/BackupManager.kt`
-- `app/src/main/java/com/example/todoalarm/alarm/ReminderAlertController.kt`
-- `app/src/main/java/com/example/todoalarm/alarm/ReminderForegroundService.kt`
 - `app/src/main/java/com/example/todoalarm/ui/SettingsPanel.kt`
 - `app/src/main/java/com/example/todoalarm/ui/DashboardScreen.kt`
-- `app/src/main/java/com/example/todoalarm/ui/DashboardChrome.kt`
-- `app/src/main/java/com/example/todoalarm/ui/MainActivity.kt`
+- `app/src/main/java/com/example/todoalarm/alarm/ReminderAlertController.kt`
+- `app/src/main/java/com/example/todoalarm/alarm/ReminderForegroundService.kt`
 - `app/src/main/assets/wiki/index.html`
+- `docs/current/UI_DESIGN_RULES.md`
 
 ## Current Verification Focus
 
-1. Install `PaykiTodo-1.6.47-debug.apk`
+1. Install `PaykiTodo-1.6.48-debug.apk`
 2. Open Settings -> 提醒声音策略
-3. Verify playback channel choices are visible and persistent
-4. Verify internal volume affects reminder / preview loudness
-5. Verify quiet mode suppresses reminder sound and uses stronger vibration
-6. Verify temporary volume boost restores the original system stream volume after the reminder ends
-7. Verify the Settings common / advanced split is clearer than the previous mixed categories
+3. Verify there is no wrapped playback-channel button group
+4. Verify internal volume and temporary boost target use slider + numeric input
+5. Verify 工作模式 does not suppress ringing for reminders with ringing enabled
+6. Verify 工作模式 still uses stronger vibration and calendar full-screen / accessibility fallback
+7. Open Settings -> 日历与提醒 and verify week-start / default reminder mode dropdowns
+8. Verify desktop sync appears under common Settings rather than advanced maintenance settings
 
 ## Required Reading For A New Session
 
@@ -51,8 +47,9 @@ Previous feature round (`1.6.46`) refined Wiki, daily board, and drawer header v
 3. `docs/current/PROJECT_STATUS.md`
 4. `docs/current/FEATURE_LEDGER.md`
 5. `docs/current/CURRENT_TASK.md`
-6. `docs/current/DESKTOP_WEB_ARCHITECTURE.md`
-7. `docs/current/PAYKITODO_SESSION_LEDGER.md`
+6. `docs/current/UI_DESIGN_RULES.md`
+7. `docs/current/DESKTOP_WEB_ARCHITECTURE.md`
+8. `docs/current/PAYKITODO_SESSION_LEDGER.md`
 
 ## Update Rule
 

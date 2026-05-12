@@ -13,6 +13,7 @@ Before making edits, read these files in order:
 5. `docs/current/SESSION_HANDOFF.md`
 6. `docs/current/PAYKITODO_SESSION_LEDGER.md`
 7. `docs/current/SESSION_WORKFLOW_MANUAL.md`
+8. `docs/current/UI_DESIGN_RULES.md`
 
 Then read only the code files directly relevant to the current task.
 

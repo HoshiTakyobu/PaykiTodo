@@ -28,7 +28,7 @@ internal class ReminderAlertController(
     fun start(todoItem: TodoItem) {
         stop()
         val settings = currentSettings()
-        if (todoItem.ringEnabled && !settings.workQuietModeEnabled) {
+        if (todoItem.ringEnabled) {
             playConfiguredClip()
         }
         if (todoItem.vibrateEnabled) {

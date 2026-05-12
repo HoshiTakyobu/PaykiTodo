@@ -95,3 +95,10 @@ When reconstructing PaykiTodo state, use this priority order:
 2. `docs/current/*`
 3. this session ledger
 4. older versioned docs only as historical reference
+
+## Recent Repository-Native Updates
+
+- `1.6.48` refined Settings reminder-audio UI by replacing large option button groups with compact dropdown rows.
+- `1.6.48` changed percent controls for reminder audio from `±10%` buttons to a 0-100 slider plus numeric input.
+- `1.6.48` clarified that 工作模式 is not silent mode: it keeps ringing when enabled, strengthens vibration, and keeps calendar reminders on the full-screen / accessibility fallback chain.
+- `docs/current/UI_DESIGN_RULES.md` now records the project rule against using button-group option UIs for ordinary enum settings.

@@ -4,8 +4,8 @@
 
 ### In Progress
 
-- Verify version `1.6.47` on device after reminder audio strategy and settings-page restructuring
-- Keep `README.md`, `CHANGELOG.md`, and current-state docs aligned with version `1.6.47`
+- Verify version `1.6.48` on device after reminder audio strategy UI compaction and work-mode behavior correction
+- Keep `README.md`, `CHANGELOG.md`, and current-state docs aligned with version `1.6.48`
 - Continue board / dashboard and calendar polish without regressing the current interaction model
 - Improve repo-native handoff so new sessions do not depend on long chat history
 
@@ -53,7 +53,7 @@
 - Drawer header icon should stay visually circular and not expose a white rounded-rectangle launcher background
 - Reminder audio strategy should be device-tested for alarm / accessibility / notification / media channels
 - Temporary system-channel volume boost should be tested carefully because it changes global stream volume and then restores it
-- Work / class quiet mode should be tested for silent strong-vibration behavior and full-screen fallback
+- Work mode should be tested for retained ringing, stronger vibration, and full-screen / accessibility fallback
 
 ## Mid-Term Follow-Ups
 
@@ -71,10 +71,15 @@
 
 ## Done Recently
 
+- Bumped the app to `1.6.48` / `versionCode 120`
+- Replaced Settings button-group choices with compact dropdown rows for reminder channel, calendar week start, and default calendar reminder mode
+- Replaced percent `±10` controls with a 0-100 slider plus numeric input
+- Renamed work / class quiet mode to work mode and changed it to retain ringing while strengthening vibration and fallback delivery
+- Moved desktop sync back to common Settings and documented the no-button-group UI rule
 - Bumped the app to `1.6.47` / `versionCode 119`
 - Added reminder playback-channel selection and PaykiTodo internal reminder volume
 - Added optional temporary system-channel volume boost with restore behavior
-- Added work / class quiet mode for no-sound strong-vibration reminders and stronger full-screen fallback
+- Added work / class quiet mode for strong-vibration reminders and stronger full-screen fallback
 - Reorganized Settings into common and advanced sections
 - Bumped the app to `1.6.46` / `versionCode 118`
 - Changed in-app Wiki responsive layout to preserve left navigation and right article content on narrow screens

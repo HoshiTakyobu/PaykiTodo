@@ -65,7 +65,7 @@ This file tracks the product at a practical level for new coding sessions.
 - reminder playback can now select alarm, accessibility, notification, or media audio channels
 - PaykiTodo now tracks an internal reminder-volume percentage for self-played alert audio
 - an advanced temporary system-channel volume boost can raise the selected stream during reminder playback and restore the original volume afterward
-- work / class quiet mode can suppress reminder sound, strengthen vibration, and push calendar reminders into the full-screen / accessibility fallback chain
+- work mode keeps ringing enabled, strengthens vibration, and pushes calendar reminders into the full-screen / accessibility fallback chain
 
 ### Packaging / Identity
 
@@ -104,7 +104,7 @@ This file tracks the product at a practical level for new coding sessions.
 - desktop web editor fields are card-styled, and timeline / event card buttons are lighter and less form-like
 - desktop Web UI resources are separated under `app/src/main/assets/desktop-web/`, while Android sync service code stays in `sync/`
 - desktop Web packaging / future extraction guidance is documented in `docs/current/DESKTOP_WEB_ARCHITECTURE.md`
-- Settings is split into common settings and advanced settings instead of mixing calendar, sound, diagnostics, backup, and sync controls in one category group
+- Settings is split into common settings and advanced settings; compact dropdown rows replace large button groups for enum-like choices
 - desktop-sync foreground notification can be tapped to open the in-app Settings -> Desktop Sync panel
 - desktop web destructive delete actions require confirmation before DELETE requests are sent
 - desktop web all-day events can span multiple visible days as one continuous horizontal bar

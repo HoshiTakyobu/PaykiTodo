@@ -34,7 +34,7 @@ Advanced settings should be reserved for diagnostic or maintenance surfaces such
 Work mode is a quiet strong-reminder mode. Its intent is to avoid outward sound in classroom / work scenarios while still making reminders harder to miss:
 
 - suppress outward reminder sound by default
-- strengthen vibration
+- force the stronger vibration pattern, even if the individual item disabled vibration
 - keep calendar reminders on the full-screen / accessibility fallback chain
 
 Do not change work mode into a normal ringing mode unless the product requirement changes explicitly.

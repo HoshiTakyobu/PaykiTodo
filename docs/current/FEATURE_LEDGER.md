@@ -65,7 +65,7 @@ This file tracks the product at a practical level for new coding sessions.
 - reminder playback can now select alarm, accessibility, notification, or media audio channels
 - PaykiTodo now tracks an internal reminder-volume percentage for self-played alert audio
 - an advanced temporary system-channel volume boost can raise the selected stream during reminder playback and restore the original volume afterward
-- work mode suppresses outward reminder sound by default, strengthens vibration, and pushes calendar reminders into the full-screen / accessibility fallback chain
+- work mode suppresses outward reminder sound by default, forces stronger vibration even when an individual item disabled vibration, and pushes calendar reminders into the full-screen / accessibility fallback chain
 
 ### Packaging / Identity
 

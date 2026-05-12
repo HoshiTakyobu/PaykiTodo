@@ -31,7 +31,8 @@ internal class ReminderAlertController(
         if (todoItem.ringEnabled && !settings.workQuietModeEnabled) {
             playConfiguredClip()
         }
-        if (todoItem.vibrateEnabled) {
+        val shouldVibrate = todoItem.vibrateEnabled || settings.workQuietModeEnabled
+        if (shouldVibrate) {
             val pattern = if (settings.workQuietModeEnabled) {
                 longArrayOf(0, 420, 90, 420, 90, 620)
             } else {

@@ -208,9 +208,19 @@ class TodoRepository(
     suspend fun snoozeTodo(id: Long, nextReminderMillis: Long): TodoItem? {
         val item = todoDao.getById(id) ?: return null
         if (item.isHistory) return null
+        val updatedDueAtMillis = if (item.isTodo && item.hasDueDate && nextReminderMillis > item.dueAtMillis) {
+            nextReminderMillis
+        } else {
+            item.dueAtMillis
+        }
         val updated = item.copy(
+            dueAtMillis = updatedDueAtMillis,
             reminderAtMillis = nextReminderMillis,
-            reminderEnabled = true
+            reminderOffsetsCsv = if (item.isTodo && item.hasDueDate) "0" else item.reminderOffsetsCsv,
+            reminderEnabled = true,
+            reminderOffsetMinutes = if (item.isTodo && item.hasDueDate) 0 else item.reminderOffsetMinutes,
+            missed = false,
+            missedAtMillis = null
         )
         todoDao.update(updated)
         return updated

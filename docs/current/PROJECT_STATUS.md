@@ -7,13 +7,13 @@
 - Package name: `com.paykitodo.app`
 - Target platform: Android 14 / API 34
 - Current version in code:
-  - `versionName = "1.6.41"`
-  - `versionCode = 113`
+  - `versionName = "1.6.42"`
+  - `versionCode = 114`
 
 ## Current Build Facts
 
 - Latest debug APK output:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.6.41-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.6.42-debug.apk`
 - Minimal verification completed in the latest code round:
   - `./gradlew assembleDebug` succeeded with Android Studio bundled `jbr`
 - Current build environment expectation:
@@ -22,11 +22,11 @@
 
 ## Current Worktree Reality
 
-The repository is now at `1.6.41` after refining daily-board schedule card alignment and highlight styling.
+The repository is now at `1.6.42` after fixing launch-screen icon transparency and custom snooze / DDL behavior.
 
 Most important current baseline facts:
 
-- version metadata is `1.6.41 / 113`
+- version metadata is `1.6.42 / 114`
 - launcher adaptive icon foreground now directly uses picture resource `@drawable/ic_launcher_art`
 - old vector mark launcher resources have been deleted so the launcher cannot fall back to them again
 - picture launcher art has been reprocessed to an opaque pure-white background with smaller centered content
@@ -38,6 +38,8 @@ Most important current baseline facts:
 - todo batch-import DDL accepts `HH:mm` as today's time and also accepts Chinese colon input such as `16：30`
 - calendar batch import `Remind=` fields use the same reminder-time parser as the editors
 - full-screen and accessibility reminder custom snooze inputs accept minutes or a concrete future time
+- custom snooze no longer has a 180-minute cap; the target only has to be in the future
+- todo snooze moves the todo DDL when the snooze target is later than the current DDL, and pins the next reminder to that target
 - reminder / batch / custom snooze input surfaces have nearby question-mark syntax help buttons
 - in-app Wiki has been updated to describe current reminder syntax, todo batch syntax, calendar batch `Remind=`, and custom snooze behavior
 - daily board no longer exposes add / batch-add controls; it is a read-only board surface
@@ -46,6 +48,7 @@ Most important current baseline facts:
 - daily-board schedule event color strips now match the right-side text block height
 - daily-board in-progress and normal schedule rows share the same left color-bar column
 - normal daily-board schedule rows have a thin same-color border; in-progress rows use a gold border plus very subtle inner highlight rather than a large yellow overlay
+- launch screen uses transparent `ic_launcher_art_transparent`; launcher / install icons still use the white-background adaptive icon art
 
 ## Recent Checked Areas
 
@@ -57,14 +60,14 @@ Recent code inspection and build verification cover:
 - `TodoRepository.kt`: todo items and recurring templates persist multiple reminder offsets
 - `TodoEditorDialog.kt` and `CalendarEventEditorDialog.kt`: shared input syntax, validation message, save disabling
 - `TodoBatchImport.kt`: lightweight comma-based todo batch parser/dialog, including same-day DDL time parsing
-- `ReminderActivity.kt` and `ReminderAccessibilityOverlay.kt`: custom snooze input uses shared time parsing
+- `ReminderActivity.kt`, `ReminderAccessibilityOverlay.kt`, `ReminderInputParser.kt`, `TodoRepository.kt`: custom snooze parsing and DDL update behavior
 - `InputSyntaxHelp.kt`: shared question-mark help button and syntax help dialog
 - `app/src/main/assets/wiki/index.html`: current input syntax documentation
-- `DashboardChrome.kt`: daily-board schedule card row layout, color strip alignment, borders, and in-progress highlight styling
+- `DashboardChrome.kt`: launch screen transparent logo reference and daily-board schedule styling
 
 ## Documentation Health
 
-Current docs have been synchronized for `1.6.41`:
+Current docs have been synchronized for `1.6.42`:
 
 - `README.md`
 - `CHANGELOG.md`

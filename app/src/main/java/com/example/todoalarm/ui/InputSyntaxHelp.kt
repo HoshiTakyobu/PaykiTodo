@@ -134,7 +134,7 @@ internal fun inputSyntaxHelpLines(topic: InputSyntaxHelpTopic): List<String> {
             "可以输入延后分钟数，也可以直接输入未来时刻。",
             "HH:mm 表示今天的具体时刻。",
             "MM-DD HH:mm 表示当年的日期时间；YYYY-MM-DD HH:mm 表示完整日期时间。",
-            "目标时间必须晚于当前时间，且最多延后 180 分钟。"
+            "目标时间必须晚于当前时间；若目标晚于当前 DDL，会同步把 DDL 改到目标时间。"
         )
     }
 }

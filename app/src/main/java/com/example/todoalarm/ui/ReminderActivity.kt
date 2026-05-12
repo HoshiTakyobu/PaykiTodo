@@ -493,10 +493,15 @@ private fun ReminderScreen(
                             verticalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
                             Text(
-                                text = "自定义延后",
+                                text = "自定义延后 / 改 DDL",
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold,
                                 color = MaterialTheme.colorScheme.onSurface
+                            )
+                            Text(
+                                text = "确认后会把下一次提醒设到目标时间；若目标晚于当前 DDL，会同步把 DDL 改到该时间。",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                             Row(
                                 modifier = Modifier.fillMaxWidth(),

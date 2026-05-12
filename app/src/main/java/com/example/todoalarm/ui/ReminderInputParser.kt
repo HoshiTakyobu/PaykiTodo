@@ -122,10 +122,9 @@ internal fun reminderInputLeadTimeLabel(minutes: Int): String {
 
 internal fun parseSnoozeInput(
     raw: String,
-    now: LocalDateTime = LocalDateTime.now().withSecond(0).withNano(0),
-    maxMinutes: Int = 180
+    now: LocalDateTime = LocalDateTime.now().withSecond(0).withNano(0)
 ): SnoozeInputValidation {
-    val token = raw.trim()
+    val token = raw.trim().replace('：', ':')
     if (token.isBlank()) {
         return SnoozeInputValidation(false, message = "请输入延后分钟或具体时刻。")
     }
@@ -134,8 +133,8 @@ internal fun parseSnoozeInput(
         token.all { it.isDigit() } -> {
             val minutes = token.toIntOrNull()
                 ?: return SnoozeInputValidation(false, message = "延后分钟数无效。")
-            if (minutes !in 1..maxMinutes) {
-                return SnoozeInputValidation(false, message = "请输入 1 到 $maxMinutes 分钟，或一个未来时刻。")
+            if (minutes < 1) {
+                return SnoozeInputValidation(false, message = "延后分钟数必须大于 0。")
             }
             return SnoozeInputValidation(true, minutes = minutes, message = "延后 $minutes 分钟")
         }
@@ -175,9 +174,6 @@ internal fun parseSnoozeInput(
         return SnoozeInputValidation(false, message = "延后目标时间必须晚于当前时间。")
     }
     val minutes = Duration.between(now, target).toMinutes().toInt().coerceAtLeast(1)
-    if (minutes > maxMinutes) {
-        return SnoozeInputValidation(false, message = "延后时长不能超过 $maxMinutes 分钟。")
-    }
     return SnoozeInputValidation(true, minutes = minutes, message = "延后 $minutes 分钟")
 }
 

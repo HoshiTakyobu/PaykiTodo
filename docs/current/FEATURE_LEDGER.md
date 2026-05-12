@@ -52,6 +52,7 @@ This file tracks the product at a practical level for new coding sessions.
 - `AlarmManager` based scheduling
 - todos and calendar events can store and schedule multiple configured reminder offsets
 - custom snooze input can parse either minutes or a concrete future time
+- custom snooze has no 180-minute cap and moves a todo's DDL when the snooze target is later than the current DDL
 - notification reminder path
 - full-screen reminder path
 - foreground service and fallback chain work
@@ -66,6 +67,7 @@ This file tracks the product at a practical level for new coding sessions.
 - adaptive launcher icon foreground is wired directly to the picture resource `ic_launcher_art`
 - old vector mark launcher resources have been removed to prevent accidentally reverting to the wrong icon
 - raster launcher art is also used by in-app launch / drawer surfaces
+- launch screen uses a transparent-logo variant so the mountain / sun background remains visible behind the logo
 - picture launcher art is opaque pure white and scaled down inside the 512px canvas to reduce desktop mask crowding
 - release-signing information template exists under `docs/PaykiTodo-Release-Signing-Template.md`
 

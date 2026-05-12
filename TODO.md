@@ -4,8 +4,8 @@
 
 ### In Progress
 
-- Verify version `1.6.41` on device after daily-board schedule card visual alignment fixes
-- Keep `README.md`, `CHANGELOG.md`, and current-state docs aligned with version `1.6.41`
+- Verify version `1.6.42` on device after launch icon transparency and snooze/DDL changes
+- Keep `README.md`, `CHANGELOG.md`, and current-state docs aligned with version `1.6.42`
 - Continue board / dashboard and calendar polish without regressing the current interaction model
 - Improve repo-native handoff so new sessions do not depend on long chat history
 
@@ -40,6 +40,8 @@
 - Calendar batch-import should remain available from the calendar surface
 - Todo batch import should use the lightweight `DDL,任务名称,提醒时间` syntax without requiring `|` or key-value fields
 - Full-screen and accessibility snooze custom input should accept minutes or a concrete future time
+- Custom snooze should accept long delays beyond 180 minutes and update todo DDL when the snooze target is later than the current DDL
+- Launch screen icon should use the transparent logo asset without a white square background
 - Input help question-mark buttons should open the correct syntax help beside reminder, batch, and snooze fields
 - In-app Wiki should describe the current 1.6.36 input syntax accurately
 
@@ -58,6 +60,10 @@
 
 ## Done Recently
 
+- Bumped the app to `1.6.42` / `versionCode 114`
+- Added a transparent launch-screen logo asset and switched only the launch screen to it
+- Removed the 180-minute cap from custom snooze input
+- Updated todo snooze so a snooze target later than the current DDL also moves the todo DDL to that target
 - Bumped the app to `1.6.41` / `versionCode 113`
 - Unified daily-board schedule row left color-bar alignment across in-progress and normal events
 - Added thin same-color borders to normal daily-board schedule rows

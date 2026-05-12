@@ -1035,7 +1035,7 @@ internal fun LaunchScreen() {
         }
 
         Image(
-            painter = painterResource(id = R.drawable.ic_launcher_art),
+            painter = painterResource(id = R.drawable.ic_launcher_art_transparent),
             contentDescription = "应用图标",
             modifier = Modifier
                 .align(Alignment.TopCenter)

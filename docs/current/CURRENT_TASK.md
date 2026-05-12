@@ -2,34 +2,36 @@
 
 ## Active Development Focus
 
-The current round has produced a `1.6.41` baseline. The implemented focus was refining Daily Board schedule-row visuals:
+The current round has produced a `1.6.42` baseline. The implemented focus was launch-screen icon cleanup and reminder snooze behavior:
 
-1. In-progress and normal schedule rows now use the same card structure and padding.
-2. The left vertical color bars align to the same column across gold and blue/normal events.
-3. Normal schedule rows now have a thin border using the same color as the left bar.
-4. In-progress rows no longer use a large yellow overlay; they use a gold border plus a very subtle inner highlight so the text stays readable.
+1. The launch screen now uses a transparent logo asset so the central white square no longer covers the background sun circle.
+2. Launcher / install icons still use the existing white-background adaptive icon art, avoiding launcher regression.
+3. Custom snooze input no longer has a 180-minute cap; the target only needs to be in the future.
+4. When a todo snooze target is later than the current DDL, the todo DDL is moved to that target time.
+5. Snoozed todos pin the next reminder to the target time by storing a zero-minute reminder offset.
 
 ## Immediate Practical Next Steps
 
 When testing on a device, use:
 
-1. install `app/build/outputs/apk/debug/PaykiTodo-1.6.41-debug.apk`
-2. open 每日看板 with at least one in-progress and one upcoming schedule item
-3. verify the gold left bar and the blue/normal left bar align in the same vertical column
-4. verify normal schedule rows show a full thin border, not a clipped side arc
-5. verify the in-progress row text remains readable and is not covered by a broad yellow glow
-6. verify the previous todo batch DDL fix still works with `16:30,写报告,5`
+1. install `app/build/outputs/apk/debug/PaykiTodo-1.6.42-debug.apk`
+2. start the app and verify the launch-screen logo has no white square background
+3. trigger a todo reminder and enter a custom snooze more than 180 minutes away, for example `18:00`
+4. confirm the custom snooze input accepts the value if it is in the future
+5. confirm the todo DDL moves to the snooze target when the target is later than the old DDL
+6. confirm the next reminder is scheduled at the target time
 
 ## Repository-Verified Notes
 
-The current code baseline includes these specific `1.6.41` changes:
+The current code baseline includes these specific `1.6.42` changes:
 
-1. `BoardScheduleEventRow` now uses one `Surface` card structure for both in-progress and normal schedule rows.
-2. The left strip fills the measured row content height and shares the same horizontal position for all row states.
-3. Normal rows use a subtle same-color border.
-4. In-progress rows use a gold border and very low-alpha inner surface highlight instead of an external glow overlay.
-5. `app/build.gradle.kts` is bumped to `1.6.41 / 113`.
-6. `./gradlew assembleDebug` has succeeded for this version using Android Studio bundled `jbr`.
+1. `ic_launcher_art_transparent.png` was added under `drawable-nodpi` for launch-screen use.
+2. `LaunchScreen` in `DashboardChrome.kt` uses `R.drawable.ic_launcher_art_transparent`.
+3. `ReminderInputParser.parseSnoozeInput` no longer accepts a `maxMinutes` cap and no longer rejects values over 180 minutes.
+4. `TodoRepository.snoozeTodo` updates DDL when the snooze target is later than the current DDL and sets reminder offset to zero for todo snoozes.
+5. `ReminderActivity`, `InputSyntaxHelp`, and the Wiki now explain the new snooze / DDL behavior.
+6. `app/build.gradle.kts` is bumped to `1.6.42 / 114`.
+7. `./gradlew assembleDebug` has succeeded for this version using Android Studio bundled `jbr`.
 
 ## What Not To Do Immediately
 
@@ -42,4 +44,4 @@ The current code baseline includes these specific `1.6.41` changes:
 
 ## Current External Dependency
 
-No external file is needed for the current `1.6.41` verification task.
+No external file is needed for the current `1.6.42` verification task.

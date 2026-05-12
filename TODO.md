@@ -4,8 +4,8 @@
 
 ### In Progress
 
-- Verify version `1.6.40` on device after fixing todo batch DDL same-day time parsing
-- Keep `README.md`, `CHANGELOG.md`, and current-state docs aligned with version `1.6.40`
+- Verify version `1.6.41` on device after daily-board schedule card visual alignment fixes
+- Keep `README.md`, `CHANGELOG.md`, and current-state docs aligned with version `1.6.41`
 - Continue board / dashboard and calendar polish without regressing the current interaction model
 - Improve repo-native handoff so new sessions do not depend on long chat history
 
@@ -24,6 +24,8 @@
 - Tapping the desktop-sync foreground notification should open Settings -> Desktop Sync
 - Finished daily-board events should disappear after their end time
 - Currently running daily-board events should show the gold outline / glow treatment
+- Daily-board schedule rows should keep the left color bars aligned across in-progress and normal events
+- Normal daily-board schedule rows should show a thin same-color border instead of only a clipped side arc
 - Calendar pending event draft should be cancelable by long-pressing blank timeline space, and should clear when opening an existing event
 - Missed active todos should appear in the daily board todo block
 - Delete confirmation sheets should show the refined dangerous-action UI on phone-side delete paths
@@ -56,6 +58,10 @@
 
 ## Done Recently
 
+- Bumped the app to `1.6.41` / `versionCode 113`
+- Unified daily-board schedule row left color-bar alignment across in-progress and normal events
+- Added thin same-color borders to normal daily-board schedule rows
+- Reduced in-progress schedule highlight to a border plus subtle inner glow instead of a large yellow overlay
 - Bumped the app to `1.6.40` / `versionCode 112`
 - Fixed todo batch-import DDL parsing so `16:30` means today 16:30
 - Made todo batch-import DDL parsing accept Chinese colon input such as `16：30`

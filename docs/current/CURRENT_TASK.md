@@ -2,33 +2,33 @@
 
 ## Active Development Focus
 
-The current round has produced a `1.6.40` baseline. The implemented focus was fixing todo batch-import DDL input:
+The current round has produced a `1.6.41` baseline. The implemented focus was refining Daily Board schedule-row visuals:
 
-1. `16:30` in the DDL field now means today 16:30.
-2. `16：30` with a Chinese colon is normalized and accepted the same way.
-3. Existing complete date-time formats still work: `05-13 09:30` and `2026-05-12 18:00`.
-4. If the resolved same-day DDL is not later than the current time, the existing `DDL 必须晚于当前时间` validation still blocks it.
+1. In-progress and normal schedule rows now use the same card structure and padding.
+2. The left vertical color bars align to the same column across gold and blue/normal events.
+3. Normal schedule rows now have a thin border using the same color as the left bar.
+4. In-progress rows no longer use a large yellow overlay; they use a gold border plus a very subtle inner highlight so the text stays readable.
 
 ## Immediate Practical Next Steps
 
 When testing on a device, use:
 
-1. install `app/build/outputs/apk/debug/PaykiTodo-1.6.40-debug.apk`
-2. open 我的任务 -> `批量待办`
-3. enter `16:30,写报告,5` when 16:30 is still in the future and verify it previews/imports successfully
-4. enter `16：30,写报告,5` and verify the Chinese colon variant also works
-5. enter a same-day time that has already passed and verify the row is rejected as a past DDL
-6. verify `05-13 09:30,给老师发消息,09:00` and `无DDL,整理 Obsidian 待办` still behave as before
+1. install `app/build/outputs/apk/debug/PaykiTodo-1.6.41-debug.apk`
+2. open 每日看板 with at least one in-progress and one upcoming schedule item
+3. verify the gold left bar and the blue/normal left bar align in the same vertical column
+4. verify normal schedule rows show a full thin border, not a clipped side arc
+5. verify the in-progress row text remains readable and is not covered by a broad yellow glow
+6. verify the previous todo batch DDL fix still works with `16:30,写报告,5`
 
 ## Repository-Verified Notes
 
-The current code baseline includes these specific `1.6.40` changes:
+The current code baseline includes these specific `1.6.41` changes:
 
-1. `TodoBatchImport.kt` normalizes Chinese colon to English colon before DDL parsing.
-2. `TodoBatchImport.kt` added an `HH:mm` DDL regex that resolves to today's date.
-3. Todo batch-import dialog help and default sample now show `16:30` as a valid DDL.
-4. `InputSyntaxHelp.kt` and the in-app Wiki document same-day DDL input.
-5. `app/build.gradle.kts` is bumped to `1.6.40 / 112`.
+1. `BoardScheduleEventRow` now uses one `Surface` card structure for both in-progress and normal schedule rows.
+2. The left strip fills the measured row content height and shares the same horizontal position for all row states.
+3. Normal rows use a subtle same-color border.
+4. In-progress rows use a gold border and very low-alpha inner surface highlight instead of an external glow overlay.
+5. `app/build.gradle.kts` is bumped to `1.6.41 / 113`.
 6. `./gradlew assembleDebug` has succeeded for this version using Android Studio bundled `jbr`.
 
 ## What Not To Do Immediately
@@ -42,4 +42,4 @@ The current code baseline includes these specific `1.6.40` changes:
 
 ## Current External Dependency
 
-No external file is needed for the current `1.6.40` verification task.
+No external file is needed for the current `1.6.41` verification task.

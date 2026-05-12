@@ -70,15 +70,13 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
@@ -827,41 +825,27 @@ private fun BoardScheduleEventRow(
     val inProgress = now?.let { boardEventInProgress(item, it) } == true
     val gold = Color(0xFFFFC94A)
     val rowShape = RoundedCornerShape(18.dp)
-    Column(
+    val rowColor = if (inProgress) gold else tint
+    Surface(
         modifier = Modifier
             .fillMaxWidth()
-            .drawBehind {
-                if (!inProgress) return@drawBehind
-                val glowColor = gold.copy(alpha = 0.26f)
-                drawRoundRect(
-                    color = glowColor,
-                    topLeft = Offset(-4.dp.toPx(), -3.dp.toPx()),
-                    size = androidx.compose.ui.geometry.Size(size.width + 8.dp.toPx(), size.height + 6.dp.toPx()),
-                    cornerRadius = CornerRadius(22.dp.toPx(), 22.dp.toPx())
-                )
-            }
-            .then(
-                if (inProgress) {
-                    Modifier.background(gold.copy(alpha = 0.08f), rowShape)
-                } else {
-                    Modifier
-                }
-            )
-            .clickable(onClick = onClick)
-            .padding(horizontal = if (inProgress) 10.dp else 0.dp, vertical = if (inProgress) 8.dp else 0.dp),
-        verticalArrangement = Arrangement.spacedBy(0.dp)
+            .clickable(onClick = onClick),
+        shape = rowShape,
+        color = rowColor.copy(alpha = if (inProgress) 0.08f else 0.035f),
+        border = BorderStroke(if (inProgress) 1.4.dp else 0.8.dp, rowColor.copy(alpha = if (inProgress) 0.92f else 0.62f))
     ) {
         Surface(
-            modifier = Modifier.fillMaxWidth(),
-            shape = rowShape,
-            color = Color.Transparent,
-            border = if (inProgress) BorderStroke(1.4.dp, gold.copy(alpha = 0.92f)) else null
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(7.dp),
+            shape = RoundedCornerShape(14.dp),
+            color = if (inProgress) rowColor.copy(alpha = 0.025f) else Color.Transparent
         ) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(IntrinsicSize.Min)
-                    .padding(if (inProgress) 8.dp else 0.dp),
+                    .padding(horizontal = 8.dp, vertical = 8.dp),
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
                 verticalAlignment = Alignment.Top
             ) {
@@ -870,7 +854,7 @@ private fun BoardScheduleEventRow(
                         .width(5.dp)
                         .fillMaxHeight()
                         .background(
-                            color = if (inProgress) gold else tint.copy(alpha = 0.96f),
+                            color = rowColor.copy(alpha = 0.96f),
                             shape = RoundedCornerShape(999.dp)
                         )
                 )

@@ -30,6 +30,8 @@ This file tracks the product at a practical level for new coding sessions.
 - board greeting card supports compact collapse / expand behavior
 - board background now uses separate light and dark image resources
 - board schedule rows align the left color strip to the measured height of the event text block
+- board schedule rows keep normal and in-progress color strips in one aligned column
+- normal board schedule rows use a same-color thin border, while in-progress rows use a gold border with only subtle inner highlight
 - board surface intentionally does not expose add / batch-add buttons
 
 ### Calendar System

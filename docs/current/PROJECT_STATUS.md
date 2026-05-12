@@ -7,13 +7,13 @@
 - Package name: `com.paykitodo.app`
 - Target platform: Android 14 / API 34
 - Current version in code:
-  - `versionName = "1.6.40"`
-  - `versionCode = 112`
+  - `versionName = "1.6.41"`
+  - `versionCode = 113`
 
 ## Current Build Facts
 
 - Latest debug APK output:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.6.40-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.6.41-debug.apk`
 - Minimal verification completed in the latest code round:
   - `./gradlew assembleDebug` succeeded with Android Studio bundled `jbr`
 - Current build environment expectation:
@@ -22,11 +22,11 @@
 
 ## Current Worktree Reality
 
-The repository is now at `1.6.40` after fixing todo batch-import DDL parsing for same-day clock input.
+The repository is now at `1.6.41` after refining daily-board schedule card alignment and highlight styling.
 
 Most important current baseline facts:
 
-- version metadata is `1.6.40 / 112`
+- version metadata is `1.6.41 / 113`
 - launcher adaptive icon foreground now directly uses picture resource `@drawable/ic_launcher_art`
 - old vector mark launcher resources have been deleted so the launcher cannot fall back to them again
 - picture launcher art has been reprocessed to an opaque pure-white background with smaller centered content
@@ -44,6 +44,8 @@ Most important current baseline facts:
 - active task surface exposes only todo batch import beside the bottom-right new-todo button
 - calendar header exposes a standalone `批量` button; calendar batch import remains on the calendar surface
 - daily-board schedule event color strips now match the right-side text block height
+- daily-board in-progress and normal schedule rows share the same left color-bar column
+- normal daily-board schedule rows have a thin same-color border; in-progress rows use a gold border plus very subtle inner highlight rather than a large yellow overlay
 
 ## Recent Checked Areas
 
@@ -58,11 +60,11 @@ Recent code inspection and build verification cover:
 - `ReminderActivity.kt` and `ReminderAccessibilityOverlay.kt`: custom snooze input uses shared time parsing
 - `InputSyntaxHelp.kt`: shared question-mark help button and syntax help dialog
 - `app/src/main/assets/wiki/index.html`: current input syntax documentation
-- `DashboardScreen.kt`, `DashboardChrome.kt`, `CalendarPanel.kt`: dashboard and calendar batch-import entry placement
+- `DashboardChrome.kt`: daily-board schedule card row layout, color strip alignment, borders, and in-progress highlight styling
 
 ## Documentation Health
 
-Current docs have been synchronized for `1.6.40`:
+Current docs have been synchronized for `1.6.41`:
 
 - `README.md`
 - `CHANGELOG.md`

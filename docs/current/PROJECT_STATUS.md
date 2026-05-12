@@ -7,13 +7,13 @@
 - Package name: `com.paykitodo.app`
 - Target platform: Android 14 / API 34
 - Current version in code:
-  - `versionName = "1.6.45"`
-  - `versionCode = 117`
+  - `versionName = "1.6.46"`
+  - `versionCode = 118`
 
 ## Current Build Facts
 
 - Latest debug APK output:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.6.45-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.6.46-debug.apk`
 - Minimal verification completed in the latest code round:
   - `./gradlew assembleDebug` succeeded with Android Studio bundled `jbr`
 - Current build environment expectation:
@@ -22,11 +22,11 @@
 
 ## Current Worktree Reality
 
-The repository is now at `1.6.45` after splitting desktop Web UI assets out of Kotlin raw strings and documenting the architecture.
+The repository is now at `1.6.46` after refining the in-app Wiki layout, daily-board schedule empty state, and drawer header icon presentation.
 
 Most important current baseline facts:
 
-- version metadata is `1.6.45 / 117`
+- version metadata is `1.6.46 / 118`
 - launcher adaptive icon foreground now directly uses picture resource `@drawable/ic_launcher_art`
 - old vector mark launcher resources have been deleted so the launcher cannot fall back to them again
 - picture launcher art has been reprocessed to an opaque pure-white background with smaller centered content
@@ -57,6 +57,9 @@ Most important current baseline facts:
 - desktop Web HTML / CSS / JS now live under `app/src/main/assets/desktop-web/` instead of inside large Kotlin raw strings
 - `DesktopSyncWebAssets.kt` is now a small asset loader with a minimal fallback page
 - `docs/current/DESKTOP_WEB_ARCHITECTURE.md` documents why the APK contains desktop UI assets and how to evolve that structure later
+- in-app Wiki now preserves a left navigation / right article layout on phone-sized screens instead of stacking the navigation above the article
+- daily board distinguishes between no schedule today and all of today's schedule already finished
+- drawer header app icon is clipped to the circular header surface and enlarged to avoid showing the white rounded-rectangle launcher background
 
 ## Recent Checked Areas
 
@@ -75,7 +78,7 @@ Recent code inspection and build verification cover:
 
 ## Documentation Health
 
-Current docs have been synchronized for `1.6.45`:
+Current docs have been synchronized for `1.6.46`:
 
 - `README.md`
 - `CHANGELOG.md`

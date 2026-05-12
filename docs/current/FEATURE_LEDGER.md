@@ -32,6 +32,7 @@ This file tracks the product at a practical level for new coding sessions.
 - board schedule rows align the left color strip to the measured height of the event text block
 - board schedule rows keep normal and in-progress color strips in one aligned column
 - normal board schedule rows use a same-color thin border, while in-progress rows use a gold border with only subtle inner highlight
+- daily board shows a distinct completion message when today's schedule existed but all events have already ended
 - board surface intentionally does not expose add / batch-add buttons
 
 ### Calendar System
@@ -67,6 +68,7 @@ This file tracks the product at a practical level for new coding sessions.
 - adaptive launcher icon foreground is wired directly to the picture resource `ic_launcher_art`
 - old vector mark launcher resources have been removed to prevent accidentally reverting to the wrong icon
 - raster launcher art is also used by in-app launch / drawer surfaces
+- drawer header icon is clipped into its circular header surface to avoid exposing the launcher icon's white rounded-rectangle background
 - launch screen uses a transparent-logo variant so the mountain / sun background remains visible behind the logo
 - picture launcher art is opaque pure white and scaled down inside the 512px canvas to reduce desktop mask crowding
 - release-signing information template exists under `docs/PaykiTodo-Release-Signing-Template.md`
@@ -79,6 +81,7 @@ This file tracks the product at a practical level for new coding sessions.
 - crash log viewing / copying
 - in-app wiki assets
 - in-app Wiki sidebar navigation works through local WebView JavaScript
+- in-app Wiki keeps a left menu / right article layout on phone-sized screens instead of stacking all section buttons above the content
 - in-app Wiki documents current reminder, batch-import, and snooze input syntax
 
 ### Input Help

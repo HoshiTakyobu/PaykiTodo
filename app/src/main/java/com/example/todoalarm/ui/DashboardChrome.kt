@@ -70,6 +70,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -175,8 +176,10 @@ internal fun DashboardDrawer(
                             Image(
                                 painter = painterResource(id = R.drawable.ic_launcher_art),
                                 contentDescription = "应用图标",
-                                modifier = Modifier.size(38.dp),
-                                contentScale = ContentScale.Fit
+                                modifier = Modifier
+                                    .size(52.dp)
+                                    .clip(CircleShape),
+                                contentScale = ContentScale.Crop
                             )
                         }
                     }
@@ -453,9 +456,12 @@ internal fun DashboardBody(
                     .thenBy { it.dueAtMillis }
             )
     }
-    val todayScheduleItems = remember(uiState.calendarItems, boardDate, boardMoment) {
-        uiState.calendarItems.filter { boardEventVisibleForToday(it, boardDate, boardMoment) }
+    val allTodayScheduleItems = remember(uiState.calendarItems, boardDate) {
+        uiState.calendarItems.filter { boardEventOverlapsDay(it, boardDate) }
             .sortedBy { it.startAtMillis ?: it.dueAtMillis }
+    }
+    val todayScheduleItems = remember(allTodayScheduleItems, boardMoment) {
+        allTodayScheduleItems.filter { boardEventVisibleForToday(it, boardDate, boardMoment) }
     }
     val tomorrowScheduleItems = remember(uiState.calendarItems, boardDate) {
         val tomorrow = boardDate.plusDays(1)
@@ -491,12 +497,13 @@ internal fun DashboardBody(
                 }
 
                 item {
-                    BoardBlockTitle("今日日程（${todayScheduleItems.size}）")
+                    BoardBlockTitle("今日日程（${allTodayScheduleItems.size}）")
                 }
                 item {
                     TodayScheduleBoardCard(
                         today = boardDate,
                         now = boardMoment,
+                        hasTodayEvents = allTodayScheduleItems.isNotEmpty(),
                         todayEvents = todayScheduleItems,
                         tomorrowEvents = tomorrowScheduleItems,
                         onOpenEvent = onEditCalendarEvent
@@ -733,6 +740,7 @@ private fun BoardBlockTitle(title: String) {
 private fun TodayScheduleBoardCard(
     today: LocalDate,
     now: LocalDateTime,
+    hasTodayEvents: Boolean,
     todayEvents: List<TodoItem>,
     tomorrowEvents: List<TodoItem>,
     onOpenEvent: (TodoItem) -> Unit
@@ -780,12 +788,13 @@ private fun TodayScheduleBoardCard(
                 if (todayEvents.isEmpty()) {
                     Surface(
                         shape = RoundedCornerShape(18.dp),
-                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.22f)
+                        color = if (hasTodayEvents) Color(0xFFFFC94A).copy(alpha = 0.12f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.22f),
+                        border = if (hasTodayEvents) BorderStroke(0.8.dp, Color(0xFFFFC94A).copy(alpha = 0.46f)) else null
                     ) {
                         Text(
-                            text = "今天暂无日程",
+                            text = if (hasTodayEvents) "太棒了！今天的日程都结束了~" else "今天暂无日程",
                             modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            color = if (hasTodayEvents) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
                             style = MaterialTheme.typography.bodyLarge
                         )
                     }

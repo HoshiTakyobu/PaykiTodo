@@ -2,52 +2,47 @@
 
 ## Active Development Focus
 
-The current round has produced a `1.6.45` baseline. The implemented focus was desktop Web resource structure cleanup and documentation.
+The current round has produced a `1.6.46` baseline. The implemented focus was UI refinement for the in-app Wiki, daily board schedule state, and drawer header icon.
 
 Completed in this round:
 
-1. Desktop Web HTML / CSS / JS were moved out of `DesktopSyncWebAssets.kt`.
-2. The files now live under `app/src/main/assets/desktop-web/`:
-   - `index.html`
-   - `app.css`
-   - `app.js`
-3. `DesktopSyncWebAssets.kt` is now a small asset loader with a minimal fallback page.
-4. `DesktopSyncCoordinator` still serves `/`, `/index.html`, `/app.css`, and `/app.js`, but now reads from APK assets.
-5. `docs/current/DESKTOP_WEB_ARCHITECTURE.md` documents why the APK contains the desktop UI, why this is expected, and how to evolve the structure later.
+1. In-app Wiki now keeps a left navigation / right article layout even on phone-sized screens.
+2. Wiki responsive CSS no longer stacks all navigation buttons above the article content.
+3. Daily board now distinguishes between no schedule today and today's schedule existing but already finished.
+4. Daily board schedule title count uses all events that overlap today, not only events still visible after the current time.
+5. Drawer header app icon is enlarged and clipped into the circular header surface to reduce the white rounded-rectangle launcher background effect.
 
 ## Immediate Practical Next Steps
 
 When testing, use:
 
-1. install `app/build/outputs/apk/debug/PaykiTodo-1.6.45-debug.apk`
-2. enable desktop sync on the phone
-3. connect from a computer browser with the 4-character access key
-4. verify `/`, `/app.css`, and `/app.js` load normally from the phone
-5. verify the desktop UI still shows the refined `1.6.44` editor visual style
-6. create / edit one todo and one event to confirm API calls still work after the asset move
+1. install `app/build/outputs/apk/debug/PaykiTodo-1.6.46-debug.apk`
+2. open Settings -> 使用说明 and verify the Wiki shows a left menu and right article content
+3. tap different Wiki sections and verify the right article changes without needing to scroll below a large button block
+4. open Daily Board on a day with no schedule and verify it still says `今天暂无日程`
+5. open Daily Board after all of today's events have ended and verify it says `太棒了！今天的日程都结束了~`
+6. open the app drawer in dark mode and verify the header icon appears circular rather than a white rounded rectangle inside a circle
 
 ## Repository-Verified Notes
 
-The current code baseline includes these specific `1.6.45` changes:
+The current code baseline includes these specific `1.6.46` changes:
 
-1. `app/build.gradle.kts` is bumped to `1.6.45 / 117`.
-2. `app/src/main/assets/desktop-web/` contains the desktop browser UI resources.
-3. `DesktopSyncWebAssets.kt` reads those assets through `Context.assets`.
-4. `DesktopSyncCoordinator.kt` calls `DesktopSyncWebAssets.indexHtml(context)`, `appCss(context)`, and `appJs(context)`.
-5. The old Kotlin raw-string desktop UI body has been removed.
+1. `app/build.gradle.kts` is bumped to `1.6.46 / 118`.
+2. `app/src/main/assets/wiki/index.html` keeps a left navigation column in narrow layouts.
+3. `DashboardChrome.kt` computes `allTodayScheduleItems` separately from currently visible schedule rows.
+4. `TodayScheduleBoardCard` receives `hasTodayEvents` and changes the empty-state text accordingly.
+5. The drawer header image uses `clip(CircleShape)` and `ContentScale.Crop` inside the circular surface.
 
 ## What Not To Do Immediately
 
-- do not reintroduce large desktop HTML / CSS / JS strings into Kotlin
-- do not split the desktop Web UI into an independently hosted site unless there is a concrete product reason
-- do not claim the desktop Web UI is fully identical to the Android Compose UI
-- do not expand backend scope unless a concrete UI parity gap requires it
-- do not re-plan the whole app from scratch
-- do not use very old version docs as the current source of truth
+- do not replace the Wiki with a separate browser launch; it should remain in-app
+- do not regress the 1.6.45 desktop Web asset split back into Kotlin raw strings
+- do not reintroduce stacked top button layout for Wiki on phone WebView unless there is a tested reason
+- do not claim all visual polish is complete without device-side checking
 - do not scan the whole workspace outside this repo
 - do not revert unrelated user edits
 - do not change JDK setup; use Android Studio bundled `jbr`
 
 ## Current External Dependency
 
-No external file is needed for the current `1.6.45` verification task.
+No external file is needed for the current `1.6.46` verification task.

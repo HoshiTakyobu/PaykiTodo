@@ -4,8 +4,8 @@
 
 ### In Progress
 
-- Verify version `1.6.45` on device / desktop browser after desktop Web asset directory refactor
-- Keep `README.md`, `CHANGELOG.md`, and current-state docs aligned with version `1.6.45`
+- Verify version `1.6.46` on device after Wiki layout, board empty-state, and drawer icon refinements
+- Keep `README.md`, `CHANGELOG.md`, and current-state docs aligned with version `1.6.46`
 - Continue board / dashboard and calendar polish without regressing the current interaction model
 - Improve repo-native handoff so new sessions do not depend on long chat history
 
@@ -48,6 +48,9 @@
 - Launch screen icon should use the transparent logo asset without a white square background
 - Input help question-mark buttons should open the correct syntax help beside reminder, batch, and snooze fields
 - In-app Wiki should describe the current 1.6.36 input syntax accurately
+- In-app Wiki should keep a left navigation / right article layout on phone-sized screens
+- Daily board should show a separate completion message when today's schedule existed but all events have ended
+- Drawer header icon should stay visually circular and not expose a white rounded-rectangle launcher background
 
 ## Mid-Term Follow-Ups
 
@@ -65,6 +68,10 @@
 
 ## Done Recently
 
+- Bumped the app to `1.6.46` / `versionCode 118`
+- Changed in-app Wiki responsive layout to preserve left navigation and right article content on narrow screens
+- Added daily-board copy for days where today's schedule has all ended
+- Cropped and enlarged the drawer header app icon inside the circular header surface
 - Bumped the app to `1.6.45` / `versionCode 117`
 - Split desktop Web UI resources into `app/src/main/assets/desktop-web/`
 - Replaced the large Kotlin-embedded HTML/CSS/JS body with a small asset loader and fallback page

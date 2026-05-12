@@ -27,13 +27,14 @@
       background: radial-gradient(circle at top left, rgba(255, 245, 215, 0.78), transparent 34%), linear-gradient(180deg, var(--bg) 0%, var(--bg-2) 100%);
       font: 15px/1.72 "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
     }
-    .layout { display: grid; grid-template-columns: 292px minmax(0, 1fr); min-height: 100vh; }
+    .layout { display: grid; grid-template-columns: minmax(220px, 292px) minmax(0, 1fr); min-height: 100vh; }
     aside {
       position: sticky; top: 0; height: 100vh; overflow: auto;
       padding: 20px 16px 28px; border-right: 1px solid var(--line-soft);
       background: rgba(255, 252, 247, 0.84); backdrop-filter: blur(18px);
     }
     main { min-width: 0; padding: 24px 24px 44px; }
+    .article { max-width: 980px; margin: 0 auto; }
     .brand { padding: 14px 14px 16px; border-radius: 18px; background: linear-gradient(135deg, rgba(47,110,95,0.13), rgba(47,110,95,0.04)); border: 1px solid var(--line-soft); box-shadow: 0 10px 28px rgba(69, 53, 22, 0.06); margin-bottom: 18px; }
     .brand h1 { margin: 0; font-size: 24px; }
     .brand p { margin: 8px 0 0; color: var(--muted); font-size: 13px; }
@@ -58,23 +59,34 @@
     .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; margin: 16px 0 18px; }
     .card { border-radius: 18px; background: var(--panel-strong); border: 1px solid var(--line-soft); padding: 16px; }
     .card h3 { margin-top: 0; margin-bottom: 10px; font-size: 16px; }
-    .table { width: 100%; border-collapse: collapse; margin: 14px 0 18px; border: 1px solid var(--line-soft); background: var(--panel-strong); }
+    .table { width: 100%; border-collapse: collapse; margin: 14px 0 18px; border: 1px solid var(--line-soft); background: var(--panel-strong); overflow-x: auto; display: block; }
     .table th, .table td { text-align: left; vertical-align: top; padding: 12px 14px; border-bottom: 1px solid var(--line-soft); }
     .table tr:last-child td { border-bottom: none; }
     .table th { background: rgba(47,110,95,0.06); font-size: 13px; font-weight: 700; color: var(--accent); }
     .steps { counter-reset: step; list-style: none; padding-left: 0; }
     .steps li { position: relative; padding-left: 44px; min-height: 30px; margin-bottom: 14px; }
     .steps li::before { counter-increment: step; content: counter(step); position: absolute; left: 0; top: 0; width: 28px; height: 28px; border-radius: 999px; background: var(--accent); color: #fff; font-size: 13px; font-weight: 700; display: flex; align-items: center; justify-content: center; }
-    .code-card { margin: 14px 0 18px; border-radius: 18px; border: 1px solid var(--line-soft); background: rgba(245, 241, 233, 0.96); overflow: hidden; }
+    .code-card { margin: 14px 0 18px; border-radius: 18px; border: 1px solid var(--line-soft); background: rgba(245, 241, 233, 0.96); overflow: auto; }
     .code-card .label { padding: 10px 14px; font-size: 13px; font-weight: 700; color: var(--accent); background: rgba(47,110,95,0.07); border-bottom: 1px solid var(--line-soft); }
     .code-card pre { margin: 0; padding: 14px; white-space: pre-wrap; word-break: break-word; font: 13px/1.7 Consolas, "Cascadia Mono", monospace; }
     @media (max-width: 920px) {
-      .layout { grid-template-columns: 1fr; }
-      aside { position: static; height: auto; border-right: none; border-bottom: 1px solid var(--line-soft); }
-      main { padding: 16px 14px 26px; }
-      .nav { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
-      .article { padding: 20px 18px 24px; }
+      .layout { grid-template-columns: 132px minmax(0, 1fr); }
+      aside { padding: 12px 8px 16px; }
+      main { padding: 12px 10px 24px; }
+      .brand { padding: 10px 8px; margin-bottom: 10px; border-radius: 16px; }
+      .brand h1 { font-size: 15px; }
+      .brand p { display: none; }
+      .nav-group-title { margin: 12px 6px 6px; font-size: 10px; letter-spacing: 0.04em; }
+      .nav a { padding: 9px 8px; border-radius: 12px; font-size: 12px; line-height: 1.25; }
+      .article { padding: 20px 16px 24px; border-radius: 22px; }
       h1 { font-size: 27px; }
+    }
+    @media (max-width: 520px) {
+      .layout { grid-template-columns: 112px minmax(0, 1fr); }
+      aside { padding-inline: 6px; }
+      .nav a { font-size: 11px; padding: 8px 7px; }
+      main { padding-inline: 8px; }
+      .article { padding: 18px 14px 22px; }
     }
   </style>
 </head>
@@ -83,7 +95,7 @@
     <aside>
       <div class="brand">
         <h1>PaykiTodo Wiki</h1>
-        <p>版本 1.6.36。本地内置说明，按实际使用路径解释功能，不只是罗列能力。</p>
+        <p>版本 1.6.46。本地内置说明，按实际使用路径解释功能，不只是罗列能力。</p>
       </div>
       <div class="nav-group-title">开始使用</div>
       <nav class="nav" id="nav">

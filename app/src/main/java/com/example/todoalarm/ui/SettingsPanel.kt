@@ -495,7 +495,7 @@ private fun ReminderAudioStrategyPanel(
                     Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         Text("工作模式", fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
                         Text(
-                            "开启后不降低响铃强度，同时使用更强震动，并让日程提醒也走全屏 / 无障碍兜底链路。",
+                            "开启后默认不外放声音，改用更强震动，并让日程提醒也走全屏 / 无障碍兜底链路。",
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             style = MaterialTheme.typography.bodySmall
                         )

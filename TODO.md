@@ -4,8 +4,8 @@
 
 ### In Progress
 
-- Verify version `1.6.48` on device after reminder audio strategy UI compaction and work-mode behavior correction
-- Keep `README.md`, `CHANGELOG.md`, and current-state docs aligned with version `1.6.48`
+- Verify version `1.6.49` on device after restoring work-mode silent strong-vibration behavior
+- Keep `README.md`, `CHANGELOG.md`, and current-state docs aligned with version `1.6.49`
 - Continue board / dashboard and calendar polish without regressing the current interaction model
 - Improve repo-native handoff so new sessions do not depend on long chat history
 
@@ -53,7 +53,7 @@
 - Drawer header icon should stay visually circular and not expose a white rounded-rectangle launcher background
 - Reminder audio strategy should be device-tested for alarm / accessibility / notification / media channels
 - Temporary system-channel volume boost should be tested carefully because it changes global stream volume and then restores it
-- Work mode should be tested for retained ringing, stronger vibration, and full-screen / accessibility fallback
+- Work mode should be tested for suppressed outward sound, stronger vibration, and full-screen / accessibility fallback
 
 ## Mid-Term Follow-Ups
 
@@ -71,6 +71,9 @@
 
 ## Done Recently
 
+- Bumped the app to `1.6.49` / `versionCode 121`
+- Restored work mode to silent strong-vibration behavior while preserving full-screen / accessibility fallback
+- Updated the UI rules document so work mode is recorded as a quiet strong-reminder mode
 - Bumped the app to `1.6.48` / `versionCode 120`
 - Replaced Settings button-group choices with compact dropdown rows for reminder channel, calendar week start, and default calendar reminder mode
 - Replaced percent `±10` controls with a 0-100 slider plus numeric input

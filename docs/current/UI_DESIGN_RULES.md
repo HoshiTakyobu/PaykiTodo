@@ -31,10 +31,16 @@ Advanced settings should be reserved for diagnostic or maintenance surfaces such
 
 ## 3. Reminder sound strategy wording
 
-Work mode is not a silent mode. Its intent is to keep reminders strong while making them harder to miss:
+Work mode is a quiet strong-reminder mode. Its intent is to avoid outward sound in classroom / work scenarios while still making reminders harder to miss:
 
-- retain ringing when the item has ringing enabled
+- suppress outward reminder sound by default
 - strengthen vibration
 - keep calendar reminders on the full-screen / accessibility fallback chain
 
-Do not reword or reimplement work mode as “silent classroom mode” unless the product requirement changes explicitly.
+Do not change work mode into a normal ringing mode unless the product requirement changes explicitly.
+
+## 4. Git commit message style
+
+Commit messages should be specific enough to reconstruct what changed without opening the diff.
+
+Use a concise Chinese subject plus a multi-line Chinese body when the change affects behavior, UI, versioning, or docs. The body should mention the concrete behavior changes, not only the version number.

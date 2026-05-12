@@ -6,39 +6,34 @@ Long-running Codex sessions can become unreliable. This file exists so a new ses
 
 ## Current Handoff Summary
 
-- The project is currently at code version `1.6.48` / `versionCode 120`
-- Latest debug APK path after build should be `app/build/outputs/apk/debug/PaykiTodo-1.6.48-debug.apk`
-- Latest feature round refined Settings and reminder audio behavior:
-  1. Reminder playback channel is selected through a compact dropdown row rather than a button group.
-  2. PaykiTodo internal volume uses a 0-100 slider plus numeric input.
-  3. Temporary system-channel boost target uses the same slider + numeric input pattern.
-  4. Calendar week-start and default calendar reminder mode are compact dropdown rows.
-  5. 工作模式 keeps ring enabled, strengthens vibration, and keeps calendar reminders on the full-screen / accessibility fallback chain.
-  6. Desktop sync is back in common Settings; diagnostics / backup / crash logs remain advanced maintenance surfaces.
-  7. `docs/current/UI_DESIGN_RULES.md` records the project rule against large button-group option UIs.
+- The project is currently at code version `1.6.49` / `versionCode 121`
+- Latest debug APK path after build should be `app/build/outputs/apk/debug/PaykiTodo-1.6.49-debug.apk`
+- Latest feature round restored work-mode semantics while keeping the compact Settings UI:
+  1. 工作模式 is a quiet strong-reminder mode: sound is suppressed by default, vibration is strengthened, and calendar reminders stay on full-screen / accessibility fallback.
+  2. New reminder defaults again disable ringing when work mode is enabled.
+  3. Reminder playback channel remains a compact dropdown row rather than a button group.
+  4. PaykiTodo internal volume and temporary system-channel boost target remain 0-100 slider + numeric input controls.
+  5. Calendar week-start and default calendar reminder mode remain compact dropdown rows.
+  6. `docs/current/UI_DESIGN_RULES.md` now records both the no-large-button-group UI rule and the expected detailed Chinese commit-message style.
 
-Previous feature round (`1.6.47`) added the underlying reminder-audio strategy settings and playback support.
+Previous feature round (`1.6.48`) introduced the compact Settings controls and moved desktop sync back into common Settings.
 
 ## Files Most Relevant To The Latest Round
 
 - `app/build.gradle.kts`
-- `app/src/main/java/com/example/todoalarm/ui/SettingsPanel.kt`
-- `app/src/main/java/com/example/todoalarm/ui/DashboardScreen.kt`
 - `app/src/main/java/com/example/todoalarm/alarm/ReminderAlertController.kt`
-- `app/src/main/java/com/example/todoalarm/alarm/ReminderForegroundService.kt`
+- `app/src/main/java/com/example/todoalarm/ui/DashboardScreen.kt`
+- `app/src/main/java/com/example/todoalarm/ui/SettingsPanel.kt`
 - `app/src/main/assets/wiki/index.html`
 - `docs/current/UI_DESIGN_RULES.md`
 
 ## Current Verification Focus
 
-1. Install `PaykiTodo-1.6.48-debug.apk`
+1. Install `PaykiTodo-1.6.49-debug.apk`
 2. Open Settings -> 提醒声音策略
-3. Verify there is no wrapped playback-channel button group
-4. Verify internal volume and temporary boost target use slider + numeric input
-5. Verify 工作模式 does not suppress ringing for reminders with ringing enabled
-6. Verify 工作模式 still uses stronger vibration and calendar full-screen / accessibility fallback
-7. Open Settings -> 日历与提醒 and verify week-start / default reminder mode dropdowns
-8. Verify desktop sync appears under common Settings rather than advanced maintenance settings
+3. Verify 工作模式 suppresses outward sound and strengthens vibration
+4. Verify 工作模式 still forces calendar reminders through full-screen / accessibility fallback
+5. Verify compact dropdown / slider controls from `1.6.48` were not regressed back to large button groups
 
 ## Required Reading For A New Session
 

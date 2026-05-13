@@ -6,14 +6,14 @@ Long-running Codex sessions can become unreliable. This file exists so a new ses
 
 ## Current Handoff Summary
 
-- The project is currently at code version `1.6.79` / `versionCode 151`.
-- Latest debug APK path after build: `app/build/outputs/apk/debug/PaykiTodo-1.6.79-debug.apk`.
+- The project is currently at code version `1.6.80` / `versionCode 152`.
+- Latest debug APK path after build: `app/build/outputs/apk/debug/PaykiTodo-1.6.80-debug.apk`.
 - Latest build command used Android Studio bundled JBR and succeeded:
   - `./gradlew.bat assembleDebug`
 - Desktop web event cards now open preview first; editing is launched from the preview sheet.
 - Lunar support includes display labels, yearly same-lunar-date recurrence, and event lunar start/end picking for all-day and timed events. Do not claim todo lunar wheel support is complete.
 
-## Latest Fixes In 1.6.79
+## Latest Fixes In 1.6.80
 
 1. Desktop web existing event cards open the event preview sheet first, aligning events with the phone-side and desktop-todo preview model.
 2. Event preview `编辑` still opens the editor and saving continues through the existing `PUT /api/events/{id}` update path.
@@ -24,7 +24,8 @@ Long-running Codex sessions can become unreliable. This file exists so a new ses
 7. Calendar event editor all-day section no longer shows redundant helper copy; it keeps only the switch and concrete date/lunar controls.
 8. Timed event start/end rows now also support compact lunar date picking while preserving time of day.
 9. Desktop timed event cards now expose role/button semantics, keyboard focus, and an aria label for the preview path.
-10. `1.6.79` was built successfully with Android Studio bundled JBR.
+10. In-app Wiki desktop-sync instructions now mention the explicit `显示连接地址` step and current preview/edit support.
+11. `1.6.80` was built successfully with Android Studio bundled JBR.
 
 ## Files Most Relevant To The Latest Round
 
@@ -40,7 +41,7 @@ Long-running Codex sessions can become unreliable. This file exists so a new ses
 
 ## Current Verification Focus
 
-1. Install `PaykiTodo-1.6.79-debug.apk`.
+1. Install `PaykiTodo-1.6.80-debug.apk`.
 2. Refresh desktop web and verify existing event click opens preview, `编辑` opens editor, and save updates the existing event.
 3. Disable desktop sync and verify Settings shows no access address.
 4. Check event lunar start/end selection on device for both all-day and timed events.

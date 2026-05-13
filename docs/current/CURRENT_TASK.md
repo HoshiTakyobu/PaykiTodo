@@ -2,7 +2,7 @@
 
 ## Active Development Focus
 
-The current round has produced a `1.6.79` build. It continues the user-requested desktop/web, daily-board, calendar-header, and lunar-calendar repair pass while keeping the repository buildable.
+The current round has produced a `1.6.80` build. It continues the user-requested desktop/web, daily-board, calendar-header, and lunar-calendar repair pass while keeping the repository buildable.
 
 Completed in this round:
 
@@ -12,18 +12,19 @@ Completed in this round:
 4. Calendar event editing now has compact `农历开始` / `农历结束` date picking for both all-day and timed events. Timed events preserve the original clock time while replacing the date.
 5. Calendar header month title no longer uses hard clipping; it uses a slightly smaller title style and can wrap/ellipsis under tight width or large font scale.
 6. Daily-board schedule rows keep normal events borderless and move the left color strip closer to the block edge; only currently running rows keep the gold highlight.
-7. Version was bumped to `1.6.79` / `versionCode 151`.
+7. Version was bumped to `1.6.80` / `versionCode 152`.
 8. Settings-side desktop-sync status now has an explicit ViewModel refresh tick after enabling/disabling sync or rotating the key, reducing stale access-address display after state changes.
 9. Calendar event editor removed redundant all-day explanatory copy while preserving the switch and lunar start/end actions.
 10. Timed event start/end rows now also expose lunar date picking and preserve the original time of day.
 11. Desktop timed event cards now expose button semantics, keyboard focus, and an aria label so keyboard open-preview behavior is reachable.
-12. `./gradlew.bat assembleDebug` succeeded with Android Studio bundled `jbr`.
+12. In-app Wiki desktop-sync instructions now match the current address-expansion and preview/edit desktop web behavior.
+13. `./gradlew.bat assembleDebug` succeeded with Android Studio bundled `jbr`.
 
 ## Immediate Practical Next Steps
 
 When testing, use:
 
-1. install `app/build/outputs/apk/debug/PaykiTodo-1.6.79-debug.apk`
+1. install `app/build/outputs/apk/debug/PaykiTodo-1.6.80-debug.apk`
 2. refresh the desktop browser page after installing the APK
 3. verify clicking an existing desktop event opens the event preview, then `编辑` opens the editor and save updates the existing event
 4. verify Settings -> 电脑同步 shows no address when desktop sync is disabled and only shows addresses after explicitly expanding while running
@@ -40,4 +41,4 @@ When testing, use:
 
 ## Current External Dependency
 
-No external file is needed for the current `1.6.79` verification task.
+No external file is needed for the current `1.6.80` verification task.

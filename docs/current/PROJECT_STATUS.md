@@ -7,13 +7,13 @@
 - Package name: `com.paykitodo.app`
 - Target platform: Android 14 / API 34
 - Current version in code:
-  - `versionName = "1.6.73"`
-  - `versionCode = 145`
+  - `versionName = "1.6.74"`
+  - `versionCode = 146`
 
 ## Current Build Facts
 
 - Latest debug APK output:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.6.73-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.6.74-debug.apk`
 - Minimal verification completed in the latest code round:
   - `./gradlew assembleDebug` succeeded with Android Studio bundled `jbr`
 - Current build environment expectation:
@@ -22,11 +22,11 @@
 
 ## Current Worktree Reality
 
-The repository is now at `1.6.73`. It includes the desktop web editor crash fix, UI-copy cleanup, desktop web no-DDL todo editing support, in-app desktop delete confirmations, desktop-sync service self-stop protection, dynamic desktop-web resource versioning, a smaller calendar recomposition pass, desktop todo preview sheets plus direct desktop event editing, desktop mixed reminder syntax for todos/events, and lunar-label display in calendar views, minimal yearly same-lunar-date recurrence, and the latest desktop event direct-edit/status/UI polish.
+The repository is now at `1.6.74`. It includes the desktop web editor crash fix, UI-copy cleanup, desktop web no-DDL todo editing support, in-app desktop delete confirmations, desktop-sync service self-stop protection, dynamic desktop-web resource versioning, a smaller calendar recomposition pass, desktop todo preview sheets plus direct desktop event editing, desktop mixed reminder syntax for todos/events, and lunar-label display in calendar views, minimal yearly same-lunar-date recurrence, and the latest desktop event direct-edit/status/UI polish.
 
 Most important current baseline facts:
 
-- version metadata is `1.6.73 / 145`
+- version metadata is `1.6.74 / 146`
 - launcher adaptive icon foreground now directly uses picture resource `@drawable/ic_launcher_art`
 - old vector mark launcher resources have been deleted so the launcher cannot fall back to them again
 - picture launcher art has been reprocessed to an opaque pure-white background with smaller centered content
@@ -107,7 +107,7 @@ Recent code inspection and build verification cover:
 
 ## Documentation Health
 
-Current docs have been synchronized for `1.6.73`:
+Current docs have been synchronized for `1.6.74`:
 
 - `README.md`
 - `CHANGELOG.md`

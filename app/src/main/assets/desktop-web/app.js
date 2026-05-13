@@ -654,6 +654,36 @@ function closeModal(id) {
   node.classList.add('hidden');
 }
 
+function confirmDanger(title, message, confirmLabel = '删除') {
+  return new Promise(resolve => {
+    const modal = document.getElementById('confirm-modal');
+    const titleNode = document.getElementById('confirm-title');
+    const messageNode = document.getElementById('confirm-message');
+    const cancelButton = document.getElementById('confirm-cancel');
+    const okButton = document.getElementById('confirm-ok');
+    if (!modal || !cancelButton || !okButton) {
+      resolve(false);
+      return;
+    }
+    titleNode.textContent = title;
+    messageNode.textContent = message;
+    okButton.textContent = confirmLabel;
+    const cleanup = result => {
+      modal.classList.add('hidden');
+      cancelButton.onclick = null;
+      okButton.onclick = null;
+      modal.onclick = null;
+      resolve(result);
+    };
+    cancelButton.onclick = () => cleanup(false);
+    okButton.onclick = () => cleanup(true);
+    modal.onclick = event => {
+      if (event.target === modal) cleanup(false);
+    };
+    modal.classList.remove('hidden');
+    cancelButton.focus();
+  });
+}
 function bindActions() {
   document.querySelectorAll('[data-action]').forEach(node => {
     node.onclick = async event => {
@@ -668,7 +698,7 @@ function bindActions() {
       } else if (node.dataset.action === 'cancel') {
         await api(`/api/items/${id}/cancel`, { method: 'POST' });
       } else {
-        if (!confirm('确定删除这个项目吗？删除后无法恢复。')) return;
+        if (!await confirmDanger('确认删除项目', '删除后无法恢复。')) return;
         await api(`/api/items/${id}`, { method: 'DELETE' });
       }
       await loadSnapshot();
@@ -787,7 +817,7 @@ document.getElementById('create-todo').onclick = async () => {
 
 document.getElementById('delete-todo').onclick = async () => {
   if (!state.editingTodoId) return;
-  if (!confirm('确定删除这个待办吗？删除后无法恢复。')) return;
+  if (!await confirmDanger('确认删除待办', '删除后无法恢复。')) return;
   await api(`/api/items/${state.editingTodoId}`, { method: 'DELETE' });
   clearTodoForm();
   closeModal('todo-modal');
@@ -834,7 +864,7 @@ document.getElementById('save-event').onclick = async () => {
 
 document.getElementById('delete-event').onclick = async () => {
   if (!state.editingEventId) return;
-  if (!confirm('确定删除这个日程吗？删除后无法恢复。')) return;
+  if (!await confirmDanger('确认删除日程', '删除后无法恢复。')) return;
   await api(`/api/items/${state.editingEventId}`, { method: 'DELETE' });
   clearEventForm();
   closeModal('event-modal');

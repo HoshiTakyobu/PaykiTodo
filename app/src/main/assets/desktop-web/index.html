@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>PaykiTodo Desktop Sync</title>
-  <link rel="stylesheet" href="/app.css?v=1.6.56" />
+  <link rel="stylesheet" href="/app.css?v=1.6.57" />
 </head>
 <body>
   <div class="shell">
@@ -222,6 +222,19 @@
       <div class="modal-actions destructive-row"><button id="delete-event" class="danger hidden">删除日程</button></div>
     </div>
   </div>
-  <script src="/app.js?v=1.6.56"></script>
+
+  <div id="confirm-modal" class="modal-backdrop hidden">
+    <div class="modal-sheet confirm-sheet">
+      <div class="modal-handle"></div>
+      <div class="confirm-danger-icon">!</div>
+      <h2 id="confirm-title">确认删除</h2>
+      <p id="confirm-message" class="muted">删除后无法恢复。</p>
+      <div class="confirm-actions">
+        <button class="sheet-text-button" id="confirm-cancel">取消</button>
+        <button class="danger-action" id="confirm-ok">删除</button>
+      </div>
+    </div>
+  </div>
+  <script src="/app.js?v=1.6.57"></script>
 </body>
 </html>

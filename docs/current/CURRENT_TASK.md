@@ -2,11 +2,11 @@
 
 ## Active Development Focus
 
-The current round has produced a `1.6.56` baseline. It keeps the 1.6.54 desktop event-edit fix and adds a focused UI-copy cleanup plus lightweight desktop-web motion polish.
+The current round has produced a `1.6.57` baseline. It keeps the 1.6.54 desktop event-edit fix and adds a focused UI-copy cleanup plus lightweight desktop-web motion polish.
 
 Completed in this round:
 
-1. Desktop web assets now use versioned `app.css?v=1.6.56` and `app.js?v=1.6.56` URLs.
+1. Desktop web assets now use versioned `app.css?v=1.6.57` and `app.js?v=1.6.57` URLs.
 2. `DesktopSyncServer` sends no-cache headers and allows PUT in CORS methods.
 3. Desktop event clicks use delegated handling on the timeline container rather than per-card rebinding only.
 4. Desktop event/todo editors tolerate `recurrenceWeekdays` from snapshots as either an array or a comma-separated string; this prevents `.join()` from throwing before `openModal()`.
@@ -19,14 +19,14 @@ Completed in this round:
 11. Phone-side todo/calendar editor bottom sheets no longer show generic explanatory subtitles.
 12. Settings removes redundant helper copy from the reminder-chain test, default snooze picker, and About usage-guide entry.
 13. Desktop web adds lightweight tab/card/modal/button motion with reduced-motion fallback.
-14. Version and current docs were synchronized for `1.6.56`.
+14. Version and current docs were synchronized for `1.6.57`.
 ## Immediate Practical Next Steps
 
 When testing, use:
 
-1. install `app/build/outputs/apk/debug/PaykiTodo-1.6.56-debug.apk`
+1. install `app/build/outputs/apk/debug/PaykiTodo-1.6.57-debug.apk`
 2. enable desktop sync on the phone and connect from the desktop browser
-3. force-refresh the desktop page once, then verify the HTML loads `/app.js?v=1.6.56`
+3. force-refresh the desktop page once, then verify the HTML loads `/app.js?v=1.6.57`
 4. click a timed desktop event card and verify the event editor opens
 5. navigate to a day with an all-day event and verify the compact all-day pill opens the event editor
 6. save a small event edit, refresh, and verify the edit persists
@@ -40,8 +40,8 @@ When testing, use:
 - Lunar-calendar date picking and yearly lunar recurrence are not implemented yet.
 - A full calendar performance pass remains pending.
 - Android Emulator visual QA was not completed in this round; only build/static/API checks were completed.
-- Broad UI-copy cleanup is partially improved in 1.6.56, but future screens should still be reviewed for unnecessary helper text.
+- Broad UI-copy cleanup is partially improved in 1.6.57, but future screens should still be reviewed for unnecessary helper text.
 
 ## Current External Dependency
 
-No external file is needed for the current `1.6.56` verification task.
+No external file is needed for the current `1.6.57` verification task.

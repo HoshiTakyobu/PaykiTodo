@@ -114,3 +114,5 @@ When reconstructing PaykiTodo state, use this priority order:
 - 1.6.55 removed generic editor/settings helper copy and added lightweight desktop web motion with reduced-motion fallback.
 
 - 1.6.56 added desktop web no-DDL todo editing and removed desktop modal helper subtitles.
+
+- 1.6.57 replaced desktop browser confirm delete prompts with an in-app dangerous-action modal.

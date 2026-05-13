@@ -182,6 +182,12 @@ button.ghost {
 .modal-backdrop:not(.hidden) .modal-sheet { animation: sheet-enter .18s ease-out; }
 @keyframes sheet-enter { from { opacity: .72; transform: translateY(18px) scale(.985); } to { opacity: 1; transform: translateY(0) scale(1); } }
 .wide-sheet { width: min(960px, 100%); }
+.confirm-sheet { width: min(420px, 100%); align-items: center; text-align: center; padding: 12px 20px 20px; }
+.confirm-danger-icon { width: 58px; height: 58px; border-radius: 50%; display: grid; place-items: center; margin: 6px auto 10px; color: #b52727; background: rgba(214,60,60,.12); font-size: 30px; font-weight: 900; }
+.confirm-sheet h2 { font-size: 24px; font-weight: 900; margin-bottom: 8px; }
+.confirm-sheet p { line-height: 1.6; margin-bottom: 18px; }
+.confirm-actions { width: 100%; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.danger-action { width: 100% !important; border-radius: 999px !important; padding: 11px 14px !important; background: #d63c3c !important; color: #fff !important; box-shadow: 0 10px 22px rgba(214,60,60,.2); }
 .modal-handle { width: 54px; height: 5px; border-radius: 999px; background: rgba(98,114,133,.28); margin: 4px auto 10px; flex-shrink: 0; }
 .modal-head { position: sticky; top: 0; z-index: 2; display: grid; grid-template-columns: 96px minmax(0, 1fr) 120px; align-items: center; gap: 12px; padding: 8px 0 14px; background: linear-gradient(180deg, rgba(255,255,255,.99), rgba(255,255,255,.94)); border-bottom: 1px solid rgba(215,224,234,.72); }
 .modal-title-block { text-align: center; min-width: 0; }

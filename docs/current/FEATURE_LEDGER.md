@@ -143,3 +143,5 @@ This is not a perfect specification. It is a working ledger so new sessions can 
 - what the app already does
 - what is partially done
 - what is still under active refinement
+
+- desktop web event cards use string-compatible ID lookup for card-click editing, preventing silent failures when snapshot IDs are not the same JavaScript type

@@ -4,8 +4,8 @@
 
 ### In Progress
 
-- Verify version `1.6.51` on device after board / desktop timeline UI fixes
-- Keep `README.md`, `CHANGELOG.md`, and current-state docs aligned with version `1.6.51`
+- Verify version `1.6.52` on device after desktop event-card click editing fix
+- Keep `README.md`, `CHANGELOG.md`, and current-state docs aligned with version `1.6.52`
 - Continue board / dashboard and calendar polish without regressing the current interaction model
 - Improve repo-native handoff so new sessions do not depend on long chat history
 
@@ -53,7 +53,7 @@
 - Temporary system-channel volume boost should be tested carefully because it changes global stream volume and then restores it
 - Work mode should be tested for suppressed outward sound, forced stronger vibration even on items with vibration disabled, and full-screen / accessibility fallback
 - Daily board should show a clear tomorrow section; if tomorrow has no events, it should say `明天暂无日程`
-- Desktop web event cards should open editing by clicking the card, without inline edit/delete buttons
+- Desktop web event cards should open editing by clicking the card, without inline edit/delete buttons; verify clicking a card opens the editor on the actual desktop browser
 - Desktop web event cards should use group colors first, and the separate all-day strip above the timeline should not be shown
 
 ## Mid-Term Follow-Ups
@@ -72,6 +72,8 @@
 
 ## Done Recently
 
+- Bumped the app to `1.6.52` / `versionCode 124`
+- Fixed desktop web event-card click editing by matching event IDs as strings and stopping card-click propagation into blank timeline creation
 - Bumped the app to `1.6.51` / `versionCode 123`
 - Added `明天暂无日程` fallback to the daily board schedule card
 - Removed inline edit/delete buttons from desktop web event cards and kept card-click editing

@@ -104,3 +104,5 @@ When reconstructing PaykiTodo state, use this priority order:
 - `1.6.50` closed a quiet-mode edge case: 工作模式 now forces the strong vibration pattern even if the individual todo / event had vibration disabled, avoiding silent no-vibration reminders.
 - `1.6.51` fixed daily-board tomorrow copy and desktop web event timeline UI: tomorrow now has an explicit no-event message, event cards are clicked to edit, inline edit/delete buttons are removed, group colors are preferred, and the separate all-day strip is hidden.
 - `docs/current/UI_DESIGN_RULES.md` now records the project rule against using button-group option UIs for ordinary enum settings.
+
+- 1.6.52 fixed desktop web event-card click editing by comparing event IDs as strings and stopping card-click propagation into blank timeline creation.

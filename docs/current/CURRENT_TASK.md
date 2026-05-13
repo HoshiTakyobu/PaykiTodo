@@ -2,39 +2,38 @@
 
 ## Active Development Focus
 
-The current round has produced a `1.6.51` baseline. The focus was fixing daily-board tomorrow copy and simplifying desktop web event timeline interactions.
+The current round has produced a `1.6.52` baseline. The focus was fixing the desktop web regression where clicking an event card did not open the event editor.
 
 Completed in this round:
 
-1. Daily board now always shows a tomorrow schedule section.
-2. If tomorrow has no events, the board explicitly says `明天暂无日程`.
-3. Desktop web event timeline cards no longer show inline edit/delete buttons; clicking a card opens the existing event editor, where edit/delete actions remain available.
-4. Desktop web event cards now prefer group color for display, matching the todo color model.
-5. Desktop web event timeline no longer renders the separate all-day strip above the timed grid.
-6. Version and current docs were synchronized for `1.6.51`.
+1. Desktop web event-card click lookup now compares event IDs as strings instead of relying on strict numeric equality.
+2. Event-card click handling now prevents default handling and stops propagation so the click cannot fall through into blank timeline creation.
+3. Version and current docs were synchronized for `1.6.52`.
 
 ## Immediate Practical Next Steps
 
 When testing, use:
 
-1. install `app/build/outputs/apk/debug/PaykiTodo-1.6.51-debug.apk`
-2. open daily board and verify the schedule card shows `明天暂无日程` when tomorrow has no events
-3. open desktop web event timeline and verify the separate all-day strip above the grid is gone
-4. click a desktop web event card and verify it opens the event editor
-5. verify desktop web event cards no longer show inline edit/delete buttons
-6. verify desktop web event cards use group colors first
+1. install `app/build/outputs/apk/debug/PaykiTodo-1.6.52-debug.apk`
+2. enable desktop sync on the phone and connect from the desktop browser
+3. open the desktop web event timeline
+4. click an existing event card and verify the event editor opens
+5. save a small edit, refresh, and verify the edit persists
+6. verify clicking blank timeline space still opens the create-event editor
 
 ## Repository-Verified Notes
 
-The current code baseline includes these specific `1.6.51` changes:
+The current code baseline includes these specific `1.6.52` changes:
 
-1. `app/build.gradle.kts` is bumped to `1.6.51 / 123`.
-2. `DashboardChrome.kt` shows the tomorrow schedule section even when tomorrow has no events.
-3. `app/src/main/assets/desktop-web/index.html` removes the all-day strip markup from the event timeline panel.
-4. `app/src/main/assets/desktop-web/app.js` removes inline edit/delete controls from event cards, keeps card-click editing, and prefers group color for event display.
+1. `app/build.gradle.kts` is bumped to `1.6.52 / 124`.
+2. `app/src/main/assets/desktop-web/app.js` renders event IDs as escaped string attributes.
+3. `app/src/main/assets/desktop-web/app.js` adds `sameId` / `findEventById` and uses them for card-click editing.
+4. Event-card clicks call `preventDefault()` and `stopPropagation()` before opening the editor.
 
 ## What Not To Do Immediately
 
+- do not reintroduce inline edit/delete buttons on desktop event cards
+- do not reintroduce the separate all-day strip above the desktop event timeline
 - do not reintroduce large button groups for enum-like Settings choices
 - do not describe the internal volume as a true Android system-level PaykiTodo volume channel
 - do not change 工作模式 into a normal ringing mode unless explicitly requested
@@ -45,4 +44,4 @@ The current code baseline includes these specific `1.6.51` changes:
 
 ## Current External Dependency
 
-No external file is needed for the current `1.6.51` verification task.
+No external file is needed for the current `1.6.52` verification task.

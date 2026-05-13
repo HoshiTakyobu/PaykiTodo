@@ -321,7 +321,7 @@ function renderEventCard(segment) {
   const accent = item.groupColorHex || item.accentColorHex || '#4e87e1';
   const meta = [item.groupName || '未分组', item.location || '', item.isRecurring ? '循环' : ''].filter(Boolean).join(' · ');
   return ''
-    + '<article class="event-card" data-event-id="' + item.id + '" style="--accent:' + accent + ';top:' + segment.top + 'px;height:' + segment.height + 'px">'
+    + '<article class="event-card" data-event-id="' + escapeHtml(String(item.id ?? '')) + '" style="--accent:' + accent + ';top:' + segment.top + 'px;height:' + segment.height + 'px">'
     +   '<div class="event-card-title">' + escapeHtml(item.title) + '</div>'
     +   '<div class="event-card-meta">' + escapeHtml(segment.startLabel) + ' - ' + escapeHtml(segment.endLabel) + '</div>'
     +   '<div class="event-card-meta">' + escapeHtml(meta || '定时日程') + '</div>'
@@ -421,9 +421,10 @@ function renderEvents() {
     }
   }
   document.querySelectorAll('[data-event-id]').forEach(node => {
-    node.onclick = () => {
-      const id = Number(node.dataset.eventId);
-      const eventItem = (state.snapshot?.events || []).find(item => item.id === id);
+    node.onclick = event => {
+      event.preventDefault();
+      event.stopPropagation();
+      const eventItem = findEventById(node.dataset.eventId);
       if (eventItem) openEventEditor(eventItem);
     };
   });
@@ -446,6 +447,14 @@ function renderEvents() {
 
 function escapeHtml(text) {
   return String(text || '').replace(/[&<>\"]/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch]));
+}
+
+function sameId(left, right) {
+  return String(left ?? '') === String(right ?? '');
+}
+
+function findEventById(id) {
+  return (state.snapshot?.events || []).find(item => sameId(item.id, id));
 }
 
 function parseIntList(text) {

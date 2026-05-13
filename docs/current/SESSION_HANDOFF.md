@@ -6,33 +6,32 @@ Long-running Codex sessions can become unreliable. This file exists so a new ses
 
 ## Current Handoff Summary
 
-- The project is currently at code version `1.6.51` / `versionCode 123`
-- Latest debug APK path after build should be `app/build/outputs/apk/debug/PaykiTodo-1.6.51-debug.apk`
-- Latest feature round fixed board and desktop event-timeline UI details:
-  1. Daily board schedule card always includes a tomorrow section.
-  2. If tomorrow has no events, it says `明天暂无日程`.
-  3. Desktop web event cards no longer show inline edit/delete buttons; card click opens the editor.
-  4. Desktop web event-card display color prefers group color, matching todo color behavior.
-  5. Desktop web event timeline no longer shows the separate all-day strip above the grid.
+- The project is currently at code version `1.6.52` / `versionCode 124`
+- Latest debug APK path after build should be `app/build/outputs/apk/debug/PaykiTodo-1.6.52-debug.apk`
+- Latest fix round addressed a desktop web regression:
+  1. Desktop web event cards still have no inline edit/delete buttons.
+  2. Clicking an event card now opens the existing event editor by using string-compatible ID lookup.
+  3. Card clicks stop propagation so they do not fall through into blank timeline create-event handling.
 
-Previous feature round (`1.6.48`) introduced the compact Settings controls and moved desktop sync back into common Settings.
+Previous feature round (`1.6.51`) fixed daily-board tomorrow copy and simplified the desktop event-timeline UI.
 
 ## Files Most Relevant To The Latest Round
 
 - `app/build.gradle.kts`
-- `app/src/main/java/com/example/todoalarm/alarm/ReminderAlertController.kt`
-- `app/src/main/java/com/example/todoalarm/ui/DashboardScreen.kt`
-- `app/src/main/java/com/example/todoalarm/ui/SettingsPanel.kt`
-- `app/src/main/assets/wiki/index.html`
-- `docs/current/UI_DESIGN_RULES.md`
+- `app/src/main/assets/desktop-web/app.js`
+- `app/src/main/assets/desktop-web/app.css`
+- `app/src/main/assets/desktop-web/index.html`
+- `docs/current/CURRENT_TASK.md`
+- `docs/current/PROJECT_STATUS.md`
 
 ## Current Verification Focus
 
-1. Install `PaykiTodo-1.6.51-debug.apk`
-2. Open daily board and verify the schedule card shows `明天暂无日程` when tomorrow has no events
-3. Open desktop web event timeline and verify the separate all-day strip is gone
-4. Click a desktop web event card and verify it opens the existing event editor
-5. Verify event cards no longer show inline edit/delete buttons and use group colors first
+1. Install `PaykiTodo-1.6.52-debug.apk`
+2. Enable desktop sync and connect from a desktop browser
+3. Open the desktop web event timeline
+4. Click an existing event card and verify it opens the existing event editor
+5. Verify blank timeline clicks still create a new event draft
+6. Verify event cards still have no inline edit/delete buttons
 
 ## Required Reading For A New Session
 

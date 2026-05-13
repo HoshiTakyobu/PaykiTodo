@@ -7,13 +7,13 @@
 - Package name: `com.paykitodo.app`
 - Target platform: Android 14 / API 34
 - Current version in code:
-  - `versionName = "1.6.51"`
-  - `versionCode = 123`
+  - `versionName = "1.6.52"`
+  - `versionCode = 124`
 
 ## Current Build Facts
 
 - Latest debug APK output:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.6.51-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.6.52-debug.apk`
 - Minimal verification completed in the latest code round:
   - `./gradlew assembleDebug` succeeded with Android Studio bundled `jbr`
 - Current build environment expectation:
@@ -22,11 +22,11 @@
 
 ## Current Worktree Reality
 
-The repository is now at `1.6.51` after fixing daily-board tomorrow copy and simplifying the desktop web event timeline UI.
+The repository is now at `1.6.52` after fixing desktop web event-card click editing on top of the 1.6.51 board and desktop timeline UI baseline.
 
 Most important current baseline facts:
 
-- version metadata is `1.6.51 / 123`
+- version metadata is `1.6.52 / 124`
 - launcher adaptive icon foreground now directly uses picture resource `@drawable/ic_launcher_art`
 - old vector mark launcher resources have been deleted so the launcher cannot fall back to them again
 - picture launcher art has been reprocessed to an opaque pure-white background with smaller centered content
@@ -65,7 +65,7 @@ Most important current baseline facts:
 - an advanced temporary system-channel volume boost can raise the selected global stream during reminder playback and then restore it; it is off by default
 - work mode suppresses outward reminder sound by default, forces stronger vibration even when an individual item disabled vibration, and routes calendar reminders into the full-screen / accessibility fallback chain
 - daily board always shows a tomorrow schedule section; when tomorrow has no events it says `明天暂无日程`
-- desktop web event cards open editing by card click, no longer show inline edit/delete buttons, and prefer group colors for display
+- desktop web event cards open editing by card click, no longer show inline edit/delete buttons, prefer group colors for display, and use string-compatible ID lookup so card clicks do not silently fail
 - desktop web no longer shows the separate all-day strip above the event timeline
 - Settings is split into common settings and advanced settings; desktop sync is common, while diagnostics / backup / crash logs are advanced maintenance surfaces
 - enum-like Settings choices use compact dropdown rows instead of large button groups; percentage values use a slider plus numeric input
@@ -87,7 +87,7 @@ Recent code inspection and build verification cover:
 
 ## Documentation Health
 
-Current docs have been synchronized for `1.6.51`:
+Current docs have been synchronized for `1.6.52`:
 
 - `README.md`
 - `CHANGELOG.md`

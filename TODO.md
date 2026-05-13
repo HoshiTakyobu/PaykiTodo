@@ -53,7 +53,7 @@
 - Temporary system-channel volume boost should be tested carefully because it changes global stream volume and then restores it
 - Work mode should be tested for suppressed outward sound, forced stronger vibration even on items with vibration disabled, and full-screen / accessibility fallback
 - Daily board should show a clear tomorrow section; if tomorrow has no events, it should say `明天暂无日程`
-- Desktop web timed and all-day event cards should open editing by clicking the card, without inline edit/delete buttons; verify clicking a card opens the editor on the actual desktop browser
+- Desktop web timed and all-day event cards should open preview by clicking the card, without inline edit/delete buttons; verify preview -> edit opens the editor on the actual desktop browser
 - If the live desktop page still lacks the left-side current-version marker or loads unversioned `/app.js`, install the latest APK before re-debugging click edit
 - Desktop web todo and event cards now open preview first; verify preview -> edit -> save on the actual desktop browser after installing `1.6.78`
 - Desktop web todo/event reminder input now accepts mixed reminder specs; verify valid examples and invalid late reminders on the actual desktop browser after installing `1.6.61`

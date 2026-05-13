@@ -79,6 +79,17 @@ function formatDateTimeLabel(millis) {
   }).format(new Date(millis));
 }
 
+function formatDateTimePreviewFromValue(value) {
+  const parts = toDateTimeLocalParts(value);
+  if (!parts) return null;
+  const date = new Date(Number(parts.year), Number(parts.month) - 1, Number(parts.day), Number(parts.hour), Number(parts.minute));
+  if (Number.isNaN(date.getTime())) return null;
+  if (date.getFullYear() !== Number(parts.year) || date.getMonth() + 1 !== Number(parts.month) || date.getDate() !== Number(parts.day) || date.getHours() !== Number(parts.hour) || date.getMinutes() !== Number(parts.minute)) return null;
+  const dateLabel = date.getFullYear() + '年' + (date.getMonth() + 1) + '月' + date.getDate() + '日';
+  const timeLabel = String(date.getHours()).padStart(2, '0') + ':' + String(date.getMinutes()).padStart(2, '0');
+  return { main: timeLabel, sub: dateLabel + ' · ' + formatWeekday(date) };
+}
+
 function formatShortDateLabel(millis) {
   const date = new Date(millis || 0);
   return (date.getMonth() + 1) + '月' + date.getDate() + '日 ' + formatWeekday(date);
@@ -135,6 +146,25 @@ function writeDateTimeValue(prefix, value) {
     const node = document.getElementById(prefix + '-' + key);
     if (node) node.value = parts ? parts[key] : '';
   });
+  updateDateTimePreview(prefix);
+}
+
+function updateDateTimePreview(prefix) {
+  const node = document.getElementById(prefix + '-preview');
+  if (!node) return;
+  let preview = null;
+  try {
+    preview = formatDateTimePreviewFromValue(readDateTimeValue(prefix));
+  } catch (_) {
+    preview = null;
+  }
+  if (!preview) {
+    node.classList.add('is-empty');
+    node.textContent = '完整填写日期时间后显示预览';
+    return;
+  }
+  node.classList.remove('is-empty');
+  node.innerHTML = '<strong>' + escapeHtml(preview.main) + '</strong>' + escapeHtml(preview.sub);
 }
 
 function setEventSeed(startMillis, endMillis) {
@@ -756,9 +786,11 @@ function bindDigitInputs() {
       if (digitsOnly.length >= Number(node.dataset.maxlength || node.maxLength || 4) && node.dataset.next) {
         document.getElementById(node.dataset.next)?.focus();
       }
+      updateDateTimePreview(node.id.replace(/-(year|month|day|hour|minute)$/, ''));
     });
     node.addEventListener('blur', () => {
       if (node.dataset.pad && node.value) node.value = node.value.padStart(Number(node.dataset.pad), '0');
+      updateDateTimePreview(node.id.replace(/-(year|month|day|hour|minute)$/, ''));
     });
   });
 }

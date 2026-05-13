@@ -2,7 +2,7 @@
 
 ## Active Development Focus
 
-The current round has produced a `1.6.64` build. It fixes the desktop event edit path, tightens desktop-sync/offline status behavior, polishes daily-board and calendar header UI, and extends lunar support from display labels to yearly same-lunar-date recurrence.
+The current round has produced a `1.6.65` build. It fixes the desktop event edit path, tightens desktop-sync/offline status behavior, polishes daily-board and calendar header UI, and extends lunar support from display labels to yearly same-lunar-date recurrence.
 
 Completed in this round:
 
@@ -15,15 +15,16 @@ Completed in this round:
 7. Todo and event recurrence support now includes `YEARLY_LUNAR_DATE` / 每年同农历月日, with generation and preview support.
 8. Phone-side todo/event editors and desktop web recurrence selects expose the yearly lunar recurrence option.
 9. Phone-side todo/event editor date rows now append the corresponding lunar date in parentheses after the Gregorian date.
-10. Calendar timeline headers, month cells, and agenda/list date surfaces continue to show lunar labels.
-11. Version was bumped to `1.6.64` / `versionCode 136`.
-12. `./gradlew.bat assembleDebug` succeeded with Android Studio bundled `jbr`.
+10. Desktop web todo/event editors now show card-style date/time previews below segmented date inputs.
+11. Calendar timeline headers, month cells, and agenda/list date surfaces continue to show lunar labels.
+12. Version was bumped to `1.6.65` / `versionCode 137`.
+13. `./gradlew.bat assembleDebug` succeeded with Android Studio bundled `jbr`.
 
 ## Immediate Practical Next Steps
 
 When testing, use:
 
-1. install `app/build/outputs/apk/debug/PaykiTodo-1.6.64-debug.apk`
+1. install `app/build/outputs/apk/debug/PaykiTodo-1.6.65-debug.apk`
 2. verify desktop web existing event cards open the editor directly after installing the new APK and refreshing the browser page
 3. verify Settings -> 电脑同步 shows no address when desktop sync is disabled
 4. open the calendar timeline/month/agenda views and verify lunar labels remain readable
@@ -40,4 +41,4 @@ When testing, use:
 
 ## Current External Dependency
 
-No external file is needed for the current `1.6.64` verification task.
+No external file is needed for the current `1.6.65` verification task.

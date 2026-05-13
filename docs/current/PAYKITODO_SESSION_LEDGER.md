@@ -127,3 +127,4 @@ When reconstructing PaykiTodo state, use this priority order:
 
 - 1.6.63 restored direct desktop event-card editing, hardened disabled desktop-sync status addresses, tightened daily-board/calendar header UI, and added minimal YEARLY_LUNAR_DATE recurrence support while leaving the dedicated lunar date picker pending.
 - 1.6.64 added lunar parenthesized labels to phone-side todo/event editor date rows, so picked Gregorian dates immediately show the corresponding lunar date while the dedicated lunar picker remains pending.
+- 1.6.65 added desktop-web card-style date/time previews for todo DDL and event start/end inputs, moving the editor closer to the phone-side time-card interaction.

@@ -232,6 +232,9 @@ button.ghost {
 .date-time-field { display: flex; flex-direction: column; gap: 8px; }
 .date-time-row { display: flex; align-items: center; gap: 7px; flex-wrap: nowrap; }
 .compact-row { justify-content: flex-start; }
+.date-time-preview { margin-top: 2px; border-radius: 16px; padding: 9px 11px; background: linear-gradient(135deg, rgba(53,104,212,.08), rgba(119,91,221,.07)); border: 1px solid rgba(53,104,212,.12); color: #405063; font-size: 13px; font-weight: 750; line-height: 1.35; }
+.date-time-preview strong { display: block; color: #172033; font-size: 16px; font-weight: 900; margin-bottom: 2px; }
+.date-time-preview.is-empty { color: var(--muted); font-weight: 650; background: rgba(98,114,133,.06); border-color: rgba(98,114,133,.1); }
 .digit-input { text-align: center; letter-spacing: .02em; font-variant-numeric: tabular-nums; padding: 10px 8px !important; }
 .year-input { width: 88px !important; min-width: 88px; }
 .mini-input { width: 58px !important; min-width: 58px; }

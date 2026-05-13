@@ -7,13 +7,13 @@
 - Package name: `com.paykitodo.app`
 - Target platform: Android 14 / API 34
 - Current version in code:
-  - `versionName = "1.6.75"`
-  - `versionCode = 147`
+  - `versionName = "1.6.76"`
+  - `versionCode = 148`
 
 ## Current Build Facts
 
 - Latest debug APK output:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.6.75-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.6.76-debug.apk`
 - Minimal verification completed in the latest code round:
   - `./gradlew assembleDebug` succeeded with Android Studio bundled `jbr`
 - Current build environment expectation:
@@ -22,11 +22,11 @@
 
 ## Current Worktree Reality
 
-The repository is now at `1.6.75`. It includes the desktop web editor crash fix, UI-copy cleanup, desktop web no-DDL todo editing support, in-app desktop delete confirmations, desktop-sync service self-stop protection, dynamic desktop-web resource versioning, a smaller calendar recomposition pass, desktop todo/event preview sheets plus preview-driven desktop event editing, desktop mixed reminder syntax for todos/events, and lunar-label display in calendar views, minimal yearly same-lunar-date recurrence, and the latest desktop event preview/edit status/UI polish.
+The repository is now at `1.6.76`. It includes the desktop web editor crash fix, UI-copy cleanup, desktop web no-DDL todo editing support, in-app desktop delete confirmations, desktop-sync service self-stop protection, dynamic desktop-web resource versioning, a smaller calendar recomposition pass, desktop todo/event preview sheets plus preview-driven desktop event editing, desktop mixed reminder syntax for todos/events, and lunar-label display in calendar views, minimal yearly same-lunar-date recurrence, and the latest desktop event preview/edit status/UI polish.
 
 Most important current baseline facts:
 
-- version metadata is `1.6.75 / 147`
+- version metadata is `1.6.76 / 148`
 - launcher adaptive icon foreground now directly uses picture resource `@drawable/ic_launcher_art`
 - old vector mark launcher resources have been deleted so the launcher cannot fall back to them again
 - picture launcher art has been reprocessed to an opaque pure-white background with smaller centered content
@@ -81,7 +81,7 @@ Most important current baseline facts:
 - calendar timeline headers, month cells, and agenda/list date surfaces show lunar labels using Android ICU `ChineseCalendar`
 - lunar support includes display labels, minimal yearly same-lunar-date recurrence, and a compact all-day event lunar start/end picker; timed-event/todo lunar wheel UX remains pending
 - if a live phone desktop page still loads `/app.js` without a `?v=` marker, that phone is serving an older installed APK and must be updated before further desktop click-edit debugging
-- desktop sync foreground service stops itself when relaunched while Settings says desktop sync is disabled, preventing stale access addresses / service state from persisting after sync is turned off
+- desktop sync foreground service stops itself when relaunched while Settings says desktop sync is disabled, and Settings status refreshes after sync toggles / key rotation to reduce stale access-address display
 - calendar current-time ticks are scoped to the time axis and current-time line instead of recomposing the whole calendar panel every 30 seconds
 - calendar header title now avoids hard clipping by using a slightly smaller title style with wrapping/ellipsis when screen width or font scale is tight
 
@@ -107,7 +107,7 @@ Recent code inspection and build verification cover:
 
 ## Documentation Health
 
-Current docs have been synchronized for `1.6.75`:
+Current docs have been synchronized for `1.6.76`:
 
 - `README.md`
 - `CHANGELOG.md`

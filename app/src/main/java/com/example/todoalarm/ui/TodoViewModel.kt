@@ -76,6 +76,7 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
 
     private val quoteFlow = MutableStateFlow(QuoteRepository.seedQuotes)
     private val selectedGroupIdFlow = MutableStateFlow<Long?>(null)
+    private val desktopSyncRefreshTick = MutableStateFlow(0L)
     private var quoteRefreshJob: Job? = null
 
     init {
@@ -100,8 +101,17 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
         repository.observeGroups(),
         settingsStore.settingsFlow,
         quoteFlow,
-        selectedGroupIdFlow
-    ) { items, groups, settings, quotes, selectedGroupId ->
+        selectedGroupIdFlow,
+        desktopSyncRefreshTick
+    ) { values ->
+        @Suppress("UNCHECKED_CAST")
+        val items = values[0] as List<TodoItem>
+        @Suppress("UNCHECKED_CAST")
+        val groups = values[1] as List<TaskGroup>
+        val settings = values[2] as AppSettings
+        @Suppress("UNCHECKED_CAST")
+        val quotes = values[3] as List<String>
+        val selectedGroupId = values[4] as Long?
         val nowMillis = System.currentTimeMillis()
         val today = Instant.ofEpochMilli(nowMillis).atZone(ZoneId.systemDefault()).toLocalDate()
         val availableGroups = if (groups.isEmpty()) repository.ensureDefaultGroups() else groups
@@ -379,6 +389,7 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
             app.stopService(Intent(app, DesktopSyncService::class.java))
             app.desktopSyncCoordinator.stop()
         }
+        desktopSyncRefreshTick.value = System.currentTimeMillis()
     }
 
     fun rotateDesktopSyncToken() {
@@ -386,6 +397,7 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
         if (settingsStore.currentSettings().desktopSyncEnabled) {
             app.desktopSyncCoordinator.ensureRunning()
         }
+        desktopSyncRefreshTick.value = System.currentTimeMillis()
     }
 
     fun updateReminderTone(uri: String, name: String?) {

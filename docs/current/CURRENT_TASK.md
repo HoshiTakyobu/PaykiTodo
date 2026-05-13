@@ -2,45 +2,45 @@
 
 ## Active Development Focus
 
-The current round has produced a `1.6.59` build. It focuses on the desktop event-click failure report, stale desktop-sync address risk, daily-board row polish, calendar header readability, and a small calendar recomposition optimization.
+The current round has produced a `1.6.60` build. It continues the larger desktop-parity request by changing the desktop web console from card-inline actions / direct editor jumps toward the phone-side preview-first interaction model.
 
 Completed in this round:
 
-1. Confirmed the live phone desktop page at `192.168.0.100:18765` was still serving old desktop assets: its `/app.js` lacked `csvValue`, lacked `eventTimeline.addEventListener`, and still contained the old `recurrenceWeekdays || []).join` code.
-2. Kept the local desktop event-click edit path intact and verified it with a Node-based simulated browser click: a timed event card opens the event editor and string `recurrenceWeekdays` does not block `openModal()`.
-3. Desktop web `index.html` now uses `__PAYKI_VERSION__` placeholders, and `DesktopSyncWebAssets.indexHtml()` replaces them with the installed APK version at runtime.
-4. Desktop web left brand block shows `v<installed-version>`, making it obvious whether the computer is still talking to an older installed APK.
-5. `DesktopSyncService` now self-stops if Android restarts it while Settings has desktop sync disabled; it also stops the coordinator before returning `START_NOT_STICKY`.
-6. Calendar current-time ticking no longer recomposes the whole `CalendarPanel` every 30 seconds; current-time state is scoped to the time axis and current red line, while top-level current date updates across midnight.
-7. Daily-board normal schedule rows no longer receive non-progress tint/fill, and their left color bar starts closer to the row edge. Only currently running events keep the gold border.
-8. Calendar header now keeps the month title on the left and actions on the right in one compact row, with the title using remaining width and ellipsis rather than being completely squeezed out.
-9. Settings desktop-sync summary now says `未开启` when disabled; the usage-guide enum / intermediate panel was removed because the menu item already opens Wiki directly.
-10. Removed a generic phone-side calendar editor hint under the start/end time row.
-11. Version was bumped to `1.6.59` / `versionCode 131`.
-12. `./gradlew.bat assembleDebug` succeeded with Android Studio bundled `jbr`.
+1. Desktop todo cards no longer render inline `编辑 / 完成 / 取消 / 删除` buttons.
+2. Clicking a desktop todo card opens a todo preview sheet first.
+3. The todo preview sheet shows a color block, title, state, group, DDL, recurrence, reminder, and notes.
+4. Todo preview actions now provide edit, complete, cancel, and delete from the preview surface.
+5. Desktop event cards no longer open the editor directly when clicked.
+6. Clicking a desktop timed event or compact all-day event pill opens an event preview sheet first.
+7. The event preview sheet shows a color block, title, time, recurrence, location, reminder, and notes.
+8. Event preview actions provide edit and delete; delete still uses the in-app dangerous confirmation modal.
+9. Node simulated-browser checks passed for both paths:
+   - event card -> event preview -> edit -> event editor filled
+   - todo card -> todo preview -> edit -> todo editor filled
+10. Version was bumped to `1.6.60` / `versionCode 132`.
+11. `./gradlew.bat assembleDebug` succeeded with Android Studio bundled `jbr`.
 
 ## Immediate Practical Next Steps
 
 When testing, use:
 
-1. install `app/build/outputs/apk/debug/PaykiTodo-1.6.59-debug.apk`
+1. install `app/build/outputs/apk/debug/PaykiTodo-1.6.60-debug.apk`
 2. enable desktop sync on the phone and connect from the desktop browser
-3. verify the desktop page left brand block shows `v1.6.59`
-4. verify the HTML loads `/app.js?v=1.6.59` and `/app.css?v=1.6.59`
-5. click a timed desktop event card and verify the event editor opens
-6. navigate to a day with an all-day event and verify the compact all-day pill opens the event editor
-7. disable desktop sync and verify the foreground service / access address does not remain visible
-8. verify daily-board normal schedule rows have no outer fill or border, and in-progress rows still have gold emphasis
-9. verify the calendar month title remains readable beside the header controls
+3. verify the desktop page left brand block shows `v1.6.60`
+4. click a desktop todo card and verify it opens the todo preview rather than exposing inline buttons
+5. from the todo preview, test edit, complete, cancel, and delete confirmation
+6. click a timed desktop event card and verify it opens the event preview before editing
+7. from the event preview, test edit and delete confirmation
+8. navigate to a day with an all-day event and verify its compact pill also opens the event preview
 
 ## Deferred From The User's Larger Request
 
-- Full desktop web UI parity with the phone UI is still not complete; the desktop editor remains a web adaptation, not a one-to-one clone of the Compose bottom sheets.
+- Full desktop web UI parity with the phone UI is still not complete; this round only converts the main card interactions to preview-first behavior.
 - Lunar-calendar date picking and yearly lunar recurrence are not implemented yet.
-- A full calendar performance pass remains pending; this round only scoped the 30-second current-time recomposition.
+- A full calendar performance pass remains pending; the latest performance work only scoped the 30-second current-time recomposition.
 - Android Emulator visual QA was not completed in this round; only build-level and local desktop-JS simulation checks were completed.
 - Broad UI-copy cleanup is partially improved, but future screens should still be reviewed for unnecessary helper text.
 
 ## Current External Dependency
 
-No external file is needed for the current `1.6.59` verification task.
+No external file is needed for the current `1.6.60` verification task.

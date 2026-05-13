@@ -83,6 +83,42 @@
     </main>
   </div>
 
+  <div id="todo-preview-modal" class="modal-backdrop hidden">
+    <div class="modal-sheet preview-sheet">
+      <div class="modal-handle"></div>
+      <div class="preview-head">
+        <button class="sheet-text-button" data-close-modal="todo-preview-modal">返回</button>
+        <div class="modal-title-block">
+          <h2>待办详情</h2>
+        </div>
+        <button id="preview-todo-edit" class="sheet-primary-action">编辑</button>
+      </div>
+      <div id="todo-preview-body" class="preview-body"></div>
+      <div class="preview-actions">
+        <button id="preview-todo-complete" class="success-action">完成</button>
+        <button id="preview-todo-cancel" class="secondary-action">取消事项</button>
+        <button id="preview-todo-delete" class="danger-action">删除</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="event-preview-modal" class="modal-backdrop hidden">
+    <div class="modal-sheet preview-sheet">
+      <div class="modal-handle"></div>
+      <div class="preview-head">
+        <button class="sheet-text-button" data-close-modal="event-preview-modal">返回</button>
+        <div class="modal-title-block">
+          <h2>日程详情</h2>
+        </div>
+        <div class="preview-head-actions">
+          <button id="preview-event-delete" class="danger-lite-action">删除</button>
+          <button id="preview-event-edit" class="sheet-primary-action">编辑</button>
+        </div>
+      </div>
+      <div id="event-preview-body" class="preview-body"></div>
+    </div>
+  </div>
+
   <div id="todo-modal" class="modal-backdrop hidden">
     <div class="modal-sheet">
       <div class="modal-handle"></div>

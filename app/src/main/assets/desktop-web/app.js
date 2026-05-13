@@ -3,7 +3,7 @@ const EVENT_HEADER_HEIGHT = 58;
 const FIFTEEN_MINUTES = 15 * 60 * 1000;
 const THIRTY_MINUTES = 30 * 60 * 1000;
 const DEFAULT_EVENT_COLOR = '#4e87e1';
-const state = { token: '', snapshot: null, currentTab: 'todos', selectedEventDay: dayKey(new Date()), editingTodoId: null, editingEventId: null, pendingEventSeed: null };
+const state = { token: '', snapshot: null, currentTab: 'todos', selectedEventDay: dayKey(new Date()), editingTodoId: null, editingEventId: null, previewTodoId: null, previewEventId: null, pendingEventSeed: null };
 
 const els = {
   token: document.getElementById('token'),
@@ -195,6 +195,53 @@ function todoMarker(item) {
   return { main: formatTimeLabel(item.dueAtMillis), sub: formatShortDateLabel(item.dueAtMillis) };
 }
 
+function findTodoById(id) {
+  return (state.snapshot?.todos || []).find(item => sameId(item.id, id));
+}
+
+function recurrenceLabel(item) {
+  if (!item.isRecurring || !item.recurrenceType || item.recurrenceType === 'NONE') return '不重复';
+  const labels = {
+    DAILY: '每天重复',
+    WEEKLY: '每周重复',
+    MONTHLY_NTH_WEEKDAY: '每月第几个星期几',
+    MONTHLY_DAY: '每月同日',
+    YEARLY_DATE: '每年同日'
+  };
+  const end = item.recurrenceEndDate ? '，到 ' + item.recurrenceEndDate : '';
+  return (labels[item.recurrenceType] || item.recurrenceType) + end;
+}
+
+function previewRow(icon, label, value) {
+  if (!value) return '';
+  return ''
+    + '<div class="preview-row">'
+    +   '<div class="preview-row-icon">' + escapeHtml(icon) + '</div>'
+    +   '<div class="preview-row-content">'
+    +     '<div class="preview-row-label">' + escapeHtml(label) + '</div>'
+    +     '<div class="preview-row-value">' + escapeHtml(value) + '</div>'
+    +   '</div>'
+    + '</div>';
+}
+
+function todoDueText(item) {
+  return item.hasDueDate ? formatDateTimeLabel(item.dueAtMillis) : '不设置 DDL';
+}
+
+function eventTimeText(item) {
+  if (item.allDay) {
+    const startKey = dayKeyFromMillis(eventStart(item));
+    const endKey = dayKeyFromMillis(Math.max(eventStart(item), eventEnd(item) - 1));
+    return startKey === endKey ? formatCompactDateLabel(startKey) + ' 全天' : formatCompactDateLabel(startKey) + ' - ' + formatCompactDateLabel(endKey) + ' 全天';
+  }
+  const start = eventStart(item);
+  const end = eventEnd(item);
+  const startKey = dayKeyFromMillis(start);
+  const endKey = dayKeyFromMillis(end);
+  if (startKey === endKey) return formatCompactDateLabel(startKey) + ' ' + formatTimeLabel(start) + ' - ' + formatTimeLabel(end);
+  return formatDateTimeLabel(start) + ' - ' + formatDateTimeLabel(end);
+}
+
 function renderSummaryCard(label, value) {
   return '<div class="summary-card"><div class="summary-label">' + escapeHtml(label) + '</div><div class="summary-value">' + value + '</div></div>';
 }
@@ -203,16 +250,13 @@ function renderTodoItem(item) {
   const accent = item.groupColorHex || item.accentColorHex || '#4e87e1';
   const marker = todoMarker(item);
   const meta = [item.groupName || '未分组', item.location || '', item.isRecurring ? '循环' : ''].filter(Boolean).join(' · ');
-  const actionHtml = (item.completed || item.canceled)
-    ? '<button data-action="delete" data-id="' + item.id + '" class="secondary">删除</button>'
-    : '<button data-action="edit-todo" data-id="' + item.id + '" class="secondary">编辑</button><button data-action="complete" data-id="' + item.id + '" class="success">完成</button><button data-action="cancel" data-id="' + item.id + '" class="danger">取消</button>';
   return ''
     + '<article class="timeline-item" style="--accent:' + accent + '">'
     +   '<div class="timeline-marker">'
     +     '<div class="timeline-time">' + escapeHtml(marker.main) + '</div>'
     +     '<div class="timeline-subtime">' + escapeHtml(marker.sub) + '</div>'
     +   '</div>'
-    +   '<div class="timeline-card">'
+    +   '<button type="button" class="timeline-card timeline-card-button" data-todo-id="' + escapeHtml(String(item.id ?? '')) + '">'
     +     '<div class="timeline-card-title-row">'
     +       '<div class="timeline-card-title">' + escapeHtml(item.title) + '</div>'
     +       '<div class="pill">' + escapeHtml(todoStateLabel(item)) + '</div>'
@@ -220,8 +264,7 @@ function renderTodoItem(item) {
     +     '<div class="timeline-card-meta">' + escapeHtml(meta || '无附加信息') + '</div>'
     +     (item.notes ? '<div class="timeline-card-notes">' + escapeHtml(item.notes) + '</div>' : '')
     +     '<div class="timeline-card-meta">' + escapeHtml(reminderText(item)) + '</div>'
-    +     '<div class="actions">' + actionHtml + '</div>'
-    +   '</div>'
+    +   '</button>'
     + '</article>';
 }
 
@@ -625,6 +668,48 @@ function openEventEditor(item) {
   openModal('event-modal');
 }
 
+function openTodoPreview(item) {
+  state.previewTodoId = item.id;
+  const accent = item.groupColorHex || item.accentColorHex || DEFAULT_EVENT_COLOR;
+  const body = document.getElementById('todo-preview-body');
+  const completeButton = document.getElementById('preview-todo-complete');
+  const cancelButton = document.getElementById('preview-todo-cancel');
+  if (!body) return;
+  body.innerHTML = ''
+    + '<div class="preview-title-row" style="--accent:' + accent + '">'
+    +   '<div class="preview-color-block"></div>'
+    +   '<div class="preview-main-title">' + escapeHtml(item.title) + '</div>'
+    +   '<div class="pill">' + escapeHtml(todoStateLabel(item)) + '</div>'
+    + '</div>'
+    + previewRow('分', '分组', item.groupName || '未分组')
+    + previewRow('时', 'DDL', todoDueText(item))
+    + previewRow('循', '循环', recurrenceLabel(item))
+    + previewRow('铃', '提醒', reminderText(item))
+    + (item.notes ? previewRow('记', '备注', item.notes) : '');
+  const inactive = item.completed || item.canceled;
+  completeButton?.classList.toggle('hidden', inactive);
+  cancelButton?.classList.toggle('hidden', inactive);
+  openModal('todo-preview-modal');
+}
+
+function openEventPreview(item) {
+  state.previewEventId = item.id;
+  const accent = item.groupColorHex || item.accentColorHex || DEFAULT_EVENT_COLOR;
+  const body = document.getElementById('event-preview-body');
+  if (!body) return;
+  body.innerHTML = ''
+    + '<div class="preview-title-row" style="--accent:' + accent + '">'
+    +   '<div class="preview-color-block"></div>'
+    +   '<div class="preview-main-title">' + escapeHtml(item.title) + '</div>'
+    + '</div>'
+    + previewRow('时', '时间', eventTimeText(item))
+    + previewRow('循', '重复', recurrenceLabel(item))
+    + previewRow('地', '地点', item.location || '未填写')
+    + previewRow('铃', '提醒', reminderText(item))
+    + (item.notes ? previewRow('记', '备注', item.notes) : '');
+  openModal('event-preview-modal');
+}
+
 function bindDigitInputs() {
   document.querySelectorAll('.digit-input').forEach(node => {
     node.addEventListener('input', () => {
@@ -685,23 +770,11 @@ function confirmDanger(title, message, confirmLabel = '删除') {
   });
 }
 function bindActions() {
-  document.querySelectorAll('[data-action]').forEach(node => {
-    node.onclick = async event => {
+  document.querySelectorAll('[data-todo-id]').forEach(node => {
+    node.onclick = event => {
       event.stopPropagation();
-      const id = node.dataset.id;
-      if (node.dataset.action === 'edit-todo') {
-        const todoItem = (state.snapshot?.todos || []).find(item => Number(item.id) === Number(id));
-        if (todoItem) openTodoEditor(todoItem);
-        return;
-      } else if (node.dataset.action === 'complete') {
-        await api(`/api/items/${id}/complete`, { method: 'POST' });
-      } else if (node.dataset.action === 'cancel') {
-        await api(`/api/items/${id}/cancel`, { method: 'POST' });
-      } else {
-        if (!await confirmDanger('确认删除项目', '删除后无法恢复。')) return;
-        await api(`/api/items/${id}`, { method: 'DELETE' });
-      }
-      await loadSnapshot();
+      const todoItem = findTodoById(node.dataset.todoId);
+      if (todoItem) openTodoPreview(todoItem);
     };
   });
 }
@@ -755,7 +828,7 @@ if (els.eventTimeline) {
     event.preventDefault();
     event.stopPropagation();
     const eventItem = findEventById(eventNode.dataset.eventId);
-    if (eventItem) openEventEditor(eventItem);
+    if (eventItem) openEventPreview(eventItem);
   });
 }
 
@@ -824,6 +897,35 @@ document.getElementById('delete-todo').onclick = async () => {
   await loadSnapshot();
 };
 
+document.getElementById('preview-todo-edit').onclick = () => {
+  const todoItem = findTodoById(state.previewTodoId);
+  if (!todoItem) return;
+  closeModal('todo-preview-modal');
+  openTodoEditor(todoItem);
+};
+
+document.getElementById('preview-todo-complete').onclick = async () => {
+  if (!state.previewTodoId) return;
+  await api(`/api/items/${state.previewTodoId}/complete`, { method: 'POST' });
+  closeModal('todo-preview-modal');
+  await loadSnapshot();
+};
+
+document.getElementById('preview-todo-cancel').onclick = async () => {
+  if (!state.previewTodoId) return;
+  await api(`/api/items/${state.previewTodoId}/cancel`, { method: 'POST' });
+  closeModal('todo-preview-modal');
+  await loadSnapshot();
+};
+
+document.getElementById('preview-todo-delete').onclick = async () => {
+  if (!state.previewTodoId) return;
+  if (!await confirmDanger('确认删除待办', '删除后无法恢复。')) return;
+  await api(`/api/items/${state.previewTodoId}`, { method: 'DELETE' });
+  closeModal('todo-preview-modal');
+  await loadSnapshot();
+};
+
 document.getElementById('save-event').onclick = async () => {
   const startAt = readDateTimeValue('event-start');
   const endAt = readDateTimeValue('event-end');
@@ -868,6 +970,21 @@ document.getElementById('delete-event').onclick = async () => {
   await api(`/api/items/${state.editingEventId}`, { method: 'DELETE' });
   clearEventForm();
   closeModal('event-modal');
+  await loadSnapshot();
+};
+
+document.getElementById('preview-event-edit').onclick = () => {
+  const eventItem = findEventById(state.previewEventId);
+  if (!eventItem) return;
+  closeModal('event-preview-modal');
+  openEventEditor(eventItem);
+};
+
+document.getElementById('preview-event-delete').onclick = async () => {
+  if (!state.previewEventId) return;
+  if (!await confirmDanger('确认删除日程', '删除后无法恢复。')) return;
+  await api(`/api/items/${state.previewEventId}`, { method: 'DELETE' });
+  closeModal('event-preview-modal');
   await loadSnapshot();
 };
 

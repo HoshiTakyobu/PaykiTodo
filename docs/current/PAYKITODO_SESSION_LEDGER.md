@@ -118,3 +118,5 @@ When reconstructing PaykiTodo state, use this priority order:
 - 1.6.57 replaced desktop browser confirm delete prompts with an in-app dangerous-action modal.
 
 - 1.6.59 added runtime desktop-web resource versioning, desktop-sync disabled-state self-stop protection, a Node simulated click check for desktop event editing, a smaller calendar current-time recomposition pass, daily-board normal-row cleanup, and a tighter calendar header layout.
+
+- 1.6.60 moved desktop web todo/event interactions toward the phone-side preview model: cards open preview sheets first, and edit/delete/complete/cancel actions are launched from preview instead of inline card buttons.

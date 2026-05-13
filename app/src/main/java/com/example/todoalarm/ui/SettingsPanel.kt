@@ -350,19 +350,21 @@ fun SettingsPanel(
                 Text("访问密钥：${settings.desktopSyncToken}", fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
                 OutlinedButton(onClick = onRotateDesktopSyncToken) { Text("重新生成访问密钥") }
                 Text("连接地址", fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
-                when {
-                    !settings.desktopSyncEnabled -> Text("电脑同步未启用，启用后才会显示局域网访问地址。", color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    !desktopSyncStatus.running -> Text("电脑同步服务尚未运行，稍后刷新或重新开启电脑同步。", color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    desktopSyncStatus.ipAddresses.isEmpty() -> Text("当前未检测到可用的局域网 IPv4 地址。请确认手机已连 Wi‑Fi。", color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    !desktopSyncAddressesExpanded -> {
-                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Text("需要连接新设备时再临时显示地址。", color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            OutlinedButton(onClick = { desktopSyncAddressesExpanded = true }, modifier = Modifier.fillMaxWidth()) {
-                                Text("显示连接地址")
-                            }
-                        }
+                if (!settings.desktopSyncEnabled) {
+                    Text("电脑同步未启用。", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                } else if (!desktopSyncStatus.running) {
+                    Text("电脑同步服务未运行。", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                } else if (!desktopSyncAddressesExpanded) {
+                    OutlinedButton(onClick = { desktopSyncAddressesExpanded = true }, modifier = Modifier.fillMaxWidth()) {
+                        Text("显示连接地址")
                     }
-                    else -> Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                } else if (desktopSyncStatus.ipAddresses.isEmpty()) {
+                    Text("未检测到可用的局域网 IPv4 地址。", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    OutlinedButton(onClick = { desktopSyncAddressesExpanded = false }, modifier = Modifier.fillMaxWidth()) {
+                        Text("隐藏连接地址")
+                    }
+                } else {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         desktopSyncStatus.ipAddresses.forEach { ip ->
                             Surface(shape = RoundedCornerShape(16.dp), color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f)) {
                                 Text(

@@ -33,6 +33,7 @@ This file tracks the product at a practical level for new coding sessions.
 - board schedule rows keep normal and in-progress color strips in one aligned column
 - normal board schedule rows use a same-color thin border, while in-progress rows use a gold border with only subtle inner highlight
 - daily board shows a distinct completion message when today's schedule existed but all events have already ended
+- daily board always shows the tomorrow schedule section, including `明天暂无日程` when tomorrow has no events
 - board surface intentionally does not expose add / batch-add buttons
 
 ### Calendar System
@@ -99,7 +100,7 @@ This file tracks the product at a practical level for new coding sessions.
 - phone-side HTTP serving model exists
 - browser can perform limited data operations against the phone-side dataset
 - desktop web can edit existing todos with title, notes, DDL, reminder, group, recurrence, ring, and vibration fields
-- desktop web exposes explicit edit buttons for timed and all-day events
+- desktop web event cards open editing by card click; delete remains available inside the event editor
 - desktop web todo / event editors use a bottom-sheet-like visual structure with cancel / centered title / save actions
 - desktop web editor fields are card-styled, and timeline / event card buttons are lighter and less form-like
 - desktop Web UI resources are separated under `app/src/main/assets/desktop-web/`, while Android sync service code stays in `sync/`
@@ -107,7 +108,8 @@ This file tracks the product at a practical level for new coding sessions.
 - Settings is split into common settings and advanced settings; compact dropdown rows replace large button groups for enum-like choices
 - desktop-sync foreground notification can be tapped to open the in-app Settings -> Desktop Sync panel
 - desktop web destructive delete actions require confirmation before DELETE requests are sent
-- desktop web all-day events can span multiple visible days as one continuous horizontal bar
+- desktop web event timeline cards open editing by card click, no longer expose inline edit/delete buttons, and prefer group color for display
+- desktop web event timeline no longer shows the separate all-day strip above the timeline
 
 ### Destructive Action Safety
 

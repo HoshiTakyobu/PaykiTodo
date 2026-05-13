@@ -102,4 +102,5 @@ When reconstructing PaykiTodo state, use this priority order:
 - `1.6.48` changed percent controls for reminder audio from `±10%` buttons to a 0-100 slider plus numeric input.
 - `1.6.49` corrected the `1.6.48` work-mode interpretation: 工作模式 is a quiet strong-reminder mode that suppresses outward sound by default, strengthens vibration, and keeps calendar reminders on the full-screen / accessibility fallback chain.
 - `1.6.50` closed a quiet-mode edge case: 工作模式 now forces the strong vibration pattern even if the individual todo / event had vibration disabled, avoiding silent no-vibration reminders.
+- `1.6.51` fixed daily-board tomorrow copy and desktop web event timeline UI: tomorrow now has an explicit no-event message, event cards are clicked to edit, inline edit/delete buttons are removed, group colors are preferred, and the separate all-day strip is hidden.
 - `docs/current/UI_DESIGN_RULES.md` now records the project rule against using button-group option UIs for ordinary enum settings.

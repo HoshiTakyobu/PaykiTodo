@@ -2,37 +2,36 @@
 
 ## Active Development Focus
 
-The current round has produced a `1.6.50` baseline. The focus was closing a work-mode reliability gap: quiet mode now forces strong vibration even if the individual item had vibration disabled.
+The current round has produced a `1.6.51` baseline. The focus was fixing daily-board tomorrow copy and simplifying desktop web event timeline interactions.
 
 Completed in this round:
 
-1. Restored work mode behavior: when enabled, PaykiTodo suppresses outward reminder sound by default and keeps calendar reminders on the full-screen / accessibility fallback chain.
-2. Fixed work-mode vibration reliability: work mode now forces the stronger vibration pattern even if an individual todo / event had vibration disabled.
-3. Restored new-reminder defaults so work mode disables default ringing while keeping stronger vibration.
-4. Preserved the compact Settings UI from `1.6.48`: dropdown rows for enum settings and slider + numeric input for percentage values.
-5. Updated the in-app Wiki and current docs so work mode is documented as quiet + forced strong vibration.
-6. Updated `docs/current/UI_DESIGN_RULES.md` to record both the no-large-button-group UI rule and the expected detailed Chinese commit-message style.
+1. Daily board now always shows a tomorrow schedule section.
+2. If tomorrow has no events, the board explicitly says `明天暂无日程`.
+3. Desktop web event timeline cards no longer show inline edit/delete buttons; clicking a card opens the existing event editor, where edit/delete actions remain available.
+4. Desktop web event cards now prefer group color for display, matching the todo color model.
+5. Desktop web event timeline no longer renders the separate all-day strip above the timed grid.
+6. Version and current docs were synchronized for `1.6.51`.
 
 ## Immediate Practical Next Steps
 
 When testing, use:
 
-1. install `app/build/outputs/apk/debug/PaykiTodo-1.6.50-debug.apk`
-2. open Settings -> 提醒声音策略
-3. verify playback channel is still a dropdown, not a wrapped button group
-4. verify PaykiTodo internal volume and temporary boost target still use slider + editable percentage box
-5. verify 工作模式 suppresses outward sound for ringing reminders, forces stronger vibration even if the item-level vibration switch is off, and keeps calendar full-screen / accessibility fallback
-6. open Settings -> 日历与提醒 and verify week start / default calendar reminder mode remain compact dropdowns
+1. install `app/build/outputs/apk/debug/PaykiTodo-1.6.51-debug.apk`
+2. open daily board and verify the schedule card shows `明天暂无日程` when tomorrow has no events
+3. open desktop web event timeline and verify the separate all-day strip above the grid is gone
+4. click a desktop web event card and verify it opens the event editor
+5. verify desktop web event cards no longer show inline edit/delete buttons
+6. verify desktop web event cards use group colors first
 
 ## Repository-Verified Notes
 
-The current code baseline includes these specific `1.6.50` changes:
+The current code baseline includes these specific `1.6.51` changes:
 
-1. `app/build.gradle.kts` is bumped to `1.6.50 / 122`.
-2. `ReminderAlertController.kt` skips sound playback when work mode is enabled and forces vibration in work mode.
-3. `DashboardScreen.kt` again makes new reminder ringing default to off when work mode is enabled.
-4. `SettingsPanel.kt` keeps the compact Settings controls from `1.6.48`, but its work-mode copy now describes silent strong-vibration behavior.
-5. `docs/current/UI_DESIGN_RULES.md` documents work mode as quiet strong-reminder mode and records detailed commit-message expectations.
+1. `app/build.gradle.kts` is bumped to `1.6.51 / 123`.
+2. `DashboardChrome.kt` shows the tomorrow schedule section even when tomorrow has no events.
+3. `app/src/main/assets/desktop-web/index.html` removes the all-day strip markup from the event timeline panel.
+4. `app/src/main/assets/desktop-web/app.js` removes inline edit/delete controls from event cards, keeps card-click editing, and prefers group color for event display.
 
 ## What Not To Do Immediately
 
@@ -46,4 +45,4 @@ The current code baseline includes these specific `1.6.50` changes:
 
 ## Current External Dependency
 
-No external file is needed for the current `1.6.50` verification task.
+No external file is needed for the current `1.6.51` verification task.

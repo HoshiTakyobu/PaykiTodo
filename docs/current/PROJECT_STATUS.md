@@ -7,13 +7,13 @@
 - Package name: `com.paykitodo.app`
 - Target platform: Android 14 / API 34
 - Current version in code:
-  - `versionName = "1.6.50"`
-  - `versionCode = 122`
+  - `versionName = "1.6.51"`
+  - `versionCode = 123`
 
 ## Current Build Facts
 
 - Latest debug APK output:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.6.50-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.6.51-debug.apk`
 - Minimal verification completed in the latest code round:
   - `./gradlew assembleDebug` succeeded with Android Studio bundled `jbr`
 - Current build environment expectation:
@@ -22,11 +22,11 @@
 
 ## Current Worktree Reality
 
-The repository is now at `1.6.50` after making work mode force strong vibration even for items that had vibration disabled.
+The repository is now at `1.6.51` after fixing daily-board tomorrow copy and simplifying the desktop web event timeline UI.
 
 Most important current baseline facts:
 
-- version metadata is `1.6.50 / 122`
+- version metadata is `1.6.51 / 123`
 - launcher adaptive icon foreground now directly uses picture resource `@drawable/ic_launcher_art`
 - old vector mark launcher resources have been deleted so the launcher cannot fall back to them again
 - picture launcher art has been reprocessed to an opaque pure-white background with smaller centered content
@@ -50,7 +50,7 @@ Most important current baseline facts:
 - normal daily-board schedule rows have a thin same-color border; in-progress rows use a gold border plus very subtle inner highlight rather than a large yellow overlay
 - launch screen uses transparent `ic_launcher_art_transparent`; launcher / install icons still use the white-background adaptive icon art
 - desktop web can edit existing todos, including DDL, reminder time, group, recurrence, ring, and vibration
-- desktop web timed and all-day event cards expose explicit edit buttons; event editing keeps the existing event editor flow
+- desktop web event cards open editing by card click; delete remains available inside the event editor, and inline event-card buttons are intentionally removed
 - desktop web todo / event editors now use a bottom-sheet-like header with cancel / centered title / save actions
 - desktop web editor fields are grouped into card-like surfaces, and timeline / event card actions use lighter pill buttons
 - desktop web create-mode destructive buttons are hidden by a shared `.hidden` rule rather than only the modal backdrop rule
@@ -64,6 +64,9 @@ Most important current baseline facts:
 - PaykiTodo has an internal reminder-volume percentage for self-played alert audio
 - an advanced temporary system-channel volume boost can raise the selected global stream during reminder playback and then restore it; it is off by default
 - work mode suppresses outward reminder sound by default, forces stronger vibration even when an individual item disabled vibration, and routes calendar reminders into the full-screen / accessibility fallback chain
+- daily board always shows a tomorrow schedule section; when tomorrow has no events it says `明天暂无日程`
+- desktop web event cards open editing by card click, no longer show inline edit/delete buttons, and prefer group colors for display
+- desktop web no longer shows the separate all-day strip above the event timeline
 - Settings is split into common settings and advanced settings; desktop sync is common, while diagnostics / backup / crash logs are advanced maintenance surfaces
 - enum-like Settings choices use compact dropdown rows instead of large button groups; percentage values use a slider plus numeric input
 
@@ -84,7 +87,7 @@ Recent code inspection and build verification cover:
 
 ## Documentation Health
 
-Current docs have been synchronized for `1.6.50`:
+Current docs have been synchronized for `1.6.51`:
 
 - `README.md`
 - `CHANGELOG.md`

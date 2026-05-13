@@ -4,8 +4,8 @@
 
 ### In Progress
 
-- Verify version `1.6.50` on device after forcing strong vibration in work mode
-- Keep `README.md`, `CHANGELOG.md`, and current-state docs aligned with version `1.6.50`
+- Verify version `1.6.51` on device after board / desktop timeline UI fixes
+- Keep `README.md`, `CHANGELOG.md`, and current-state docs aligned with version `1.6.51`
 - Continue board / dashboard and calendar polish without regressing the current interaction model
 - Improve repo-native handoff so new sessions do not depend on long chat history
 
@@ -31,9 +31,7 @@
 - Delete confirmation sheets should show the refined dangerous-action UI on phone-side delete paths
 - Wiki sidebar links should switch sections inside the in-app Wiki WebView
 - Settings -> 使用说明 should open Wiki directly, and Settings -> 提示音 should open the system notification-tone picker directly
-- Desktop web all-day events spanning multiple days should render as one horizontal continuous bar
 - Desktop web should allow editing existing todos with DDL, reminder, group, recurrence, ring, and vibration fields
-- Desktop web should expose explicit edit buttons on timed and all-day event cards
 - Desktop web todo / event editors should feel close to the phone-side bottom-sheet visual language and remain usable on narrow browser windows
 - Desktop web static resources should remain under `app/src/main/assets/desktop-web/` rather than being reintroduced as large Kotlin strings
 - Launcher icon should use the picture-based `ic_launcher_art` adaptive foreground, not the old vector mark
@@ -54,6 +52,9 @@
 - Reminder audio strategy should be device-tested for alarm / accessibility / notification / media channels
 - Temporary system-channel volume boost should be tested carefully because it changes global stream volume and then restores it
 - Work mode should be tested for suppressed outward sound, forced stronger vibration even on items with vibration disabled, and full-screen / accessibility fallback
+- Daily board should show a clear tomorrow section; if tomorrow has no events, it should say `明天暂无日程`
+- Desktop web event cards should open editing by clicking the card, without inline edit/delete buttons
+- Desktop web event cards should use group colors first, and the separate all-day strip above the timeline should not be shown
 
 ## Mid-Term Follow-Ups
 
@@ -71,6 +72,11 @@
 
 ## Done Recently
 
+- Bumped the app to `1.6.51` / `versionCode 123`
+- Added `明天暂无日程` fallback to the daily board schedule card
+- Removed inline edit/delete buttons from desktop web event cards and kept card-click editing
+- Changed desktop web event-card display color to prefer group color
+- Removed the separate desktop web all-day strip above the timeline
 - Bumped the app to `1.6.50` / `versionCode 122`
 - Forced strong vibration in work mode even when an individual todo / event had vibration disabled
 - Bumped the app to `1.6.49` / `versionCode 121`
@@ -139,7 +145,7 @@
 - Bumped the app to `1.6.33` / `versionCode 105`
 - Fixed in-app Wiki navigation by enabling JavaScript only for the local asset page
 - Changed Settings help and tone rows to direct actions instead of nested subpanels
-- Rendered multi-day all-day events as continuous horizontal bars in the desktop web console
+- Historical note: multi-day all-day events were once rendered as continuous bars in the desktop web console, but the separate all-day strip is hidden as of 1.6.51
 - Historical note: launcher foreground was once reconnected to a safe-zone vector mark, but this was reverted in 1.6.37; current launcher foreground uses picture resource `ic_launcher_art`
 - Bumped the app to `1.6.32` / `versionCode 104`
 - Added missed active todos back into the daily board todo block

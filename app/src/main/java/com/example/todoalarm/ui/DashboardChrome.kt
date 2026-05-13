@@ -811,13 +811,25 @@ private fun TodayScheduleBoardCard(
                     }
                 }
 
-                if (tomorrowEvents.isNotEmpty()) {
-                    Text(
-                        text = "明天",
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold
-                    )
+                Text(
+                    text = "明天",
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold
+                )
+                if (tomorrowEvents.isEmpty()) {
+                    Surface(
+                        shape = RoundedCornerShape(16.dp),
+                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.18f)
+                    ) {
+                        Text(
+                            text = "明天暂无日程",
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    }
+                } else {
                     tomorrowEvents.take(2).forEach { item ->
                         BoardScheduleEventRow(item = item, now = null, onClick = { onOpenEvent(item) })
                     }

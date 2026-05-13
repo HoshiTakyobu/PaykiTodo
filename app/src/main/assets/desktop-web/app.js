@@ -12,7 +12,6 @@ const els = {
   todoTimeline: document.getElementById('todo-timeline'),
   eventSelectedDate: document.getElementById('event-selected-date'),
   eventSelectedSubtitle: document.getElementById('event-selected-subtitle'),
-  allDayList: document.getElementById('all-day-list'),
   hourAxis: document.getElementById('hour-axis'),
   eventDayHeaders: document.getElementById('event-day-headers'),
   eventTimeline: document.getElementById('event-timeline'),
@@ -239,30 +238,6 @@ function renderTodoSection(section) {
     + '</section>';
 }
 
-function renderAllDayCard(item, span = null) {
-  const accent = item.groupColorHex || item.accentColorHex || '#4e87e1';
-  const meta = [item.groupName || '未分组', item.location || '', item.isRecurring ? '循环' : ''].filter(Boolean).join(' · ');
-  const style = '--accent:' + accent + (span ? ';grid-column:' + span.start + ' / span ' + span.length : '');
-  return ''
-    + '<article class="all-day-card' + (span ? ' spanning' : '') + '" data-event-id="' + item.id + '" style="' + style + '">'
-    +   '<div class="all-day-card-title">' + escapeHtml(item.title) + '</div>'
-    +   '<div class="all-day-card-meta">' + escapeHtml(meta || '全天日程') + '</div>'
-    +   (item.notes ? '<div class="all-day-card-meta">' + escapeHtml(item.notes) + '</div>' : '')
-    +   '<div class="actions"><button data-action="edit-event" data-id="' + item.id + '" class="secondary">编辑</button><button data-action="delete" data-id="' + item.id + '" class="danger">删除</button></div>'
-    + '</article>';
-}
-
-function allDaySpanForVisibleKeys(item, visibleKeys) {
-  const visibleStart = dayStartMillis(visibleKeys[0]);
-  const visibleEnd = dayStartMillis(visibleKeys[visibleKeys.length - 1]) + 24 * 60 * 60 * 1000;
-  const start = Math.max(eventStart(item), visibleStart);
-  const end = Math.min(eventEnd(item), visibleEnd);
-  if (end <= start) return null;
-  const startIndex = Math.max(0, Math.floor((start - visibleStart) / (24 * 60 * 60 * 1000)));
-  const inclusiveEndIndex = Math.min(visibleKeys.length - 1, Math.floor((end - 1 - visibleStart) / (24 * 60 * 60 * 1000)));
-  return { start: startIndex + 1, length: Math.max(1, inclusiveEndIndex - startIndex + 1) };
-}
-
 function buildEventSegment(item, key) {
   const start = Math.max(eventStart(item), dayStartMillis(key));
   const end = Math.min(eventEnd(item), dayStartMillis(key) + 24 * 60 * 60 * 1000);
@@ -326,28 +301,6 @@ function renderEventDayHeader(key, items) {
     + '</button>';
 }
 
-function renderAllDayDay(key, items) {
-  return ''
-    + '<div class="all-day-day">'
-    +   '<div class="all-day-day-label">' + escapeHtml(formatCompactDateLabel(key) + ' ' + formatWeekday(dateFromKey(key))) + '</div>'
-    +   (items.length ? items.map(renderAllDayCard).join('') : '<div class="all-day-empty">本日没有全天日程。</div>')
-    + '</div>';
-}
-
-function renderAllDayBoard(visibleKeys, allDayEvents) {
-  const header = '<div class="all-day-row">' + visibleKeys.map(key =>
-    '<div class="all-day-day-label">' + escapeHtml(formatCompactDateLabel(key) + ' ' + formatWeekday(dateFromKey(key))) + '</div>'
-  ).join('') + '</div>';
-  if (!allDayEvents.length) {
-    return header + '<div class="all-day-empty" style="grid-column:1 / span ' + Math.max(1, visibleKeys.length) + '">当前可见日期没有全天日程。</div>';
-  }
-  const cards = allDayEvents.map(item => {
-    const span = allDaySpanForVisibleKeys(item, visibleKeys);
-    return span ? renderAllDayCard(item, span) : '';
-  }).join('');
-  return header + cards;
-}
-
 function renderEventDayColumn(key, timed) {
   return ''
     + '<div class="event-day-column" data-column-day="' + key + '">'
@@ -365,7 +318,7 @@ function renderVisibleRangeTitle(keys) {
 
 function renderEventCard(segment) {
   const item = segment.item;
-  const accent = item.accentColorHex || item.groupColorHex || '#4e87e1';
+  const accent = item.groupColorHex || item.accentColorHex || '#4e87e1';
   const meta = [item.groupName || '未分组', item.location || '', item.isRecurring ? '循环' : ''].filter(Boolean).join(' · ');
   return ''
     + '<article class="event-card" data-event-id="' + item.id + '" style="--accent:' + accent + ';top:' + segment.top + 'px;height:' + segment.height + 'px">'
@@ -373,7 +326,6 @@ function renderEventCard(segment) {
     +   '<div class="event-card-meta">' + escapeHtml(segment.startLabel) + ' - ' + escapeHtml(segment.endLabel) + '</div>'
     +   '<div class="event-card-meta">' + escapeHtml(meta || '定时日程') + '</div>'
     +   (item.notes ? '<div class="event-card-notes">' + escapeHtml(item.notes) + '</div>' : '')
-    +   '<div class="actions"><button data-action="edit-event" data-id="' + item.id + '" class="secondary">编辑</button><button data-action="delete" data-id="' + item.id + '" class="danger">删除</button></div>'
     + '</article>';
 }
 
@@ -447,23 +399,16 @@ function renderEvents() {
     return {
       key: key,
       items: items,
-      allDay: items.filter(item => item.allDay),
       timed: items.filter(item => !item.allDay).map(item => buildEventSegment(item, key))
     };
   });
-  const totalAllDay = visibleDays.reduce((sum, day) => sum + day.allDay.length, 0);
   const totalTimed = visibleDays.reduce((sum, day) => sum + day.timed.length, 0);
-  const visibleAllDayEvents = events
-    .filter(item => item.allDay && allDaySpanForVisibleKeys(item, visibleKeys))
-    .sort((a, b) => eventStart(a) - eventStart(b));
   els.eventDayHeaders.style.setProperty('--day-count', String(visibleKeys.length || 1));
   els.eventTimeline.style.setProperty('--day-count', String(visibleKeys.length || 1));
-  els.allDayList.style.setProperty('--day-count', String(visibleKeys.length || 1));
   els.eventDayHeaders.innerHTML = visibleDays.map(day => renderEventDayHeader(day.key, day.items)).join('');
   if (els.eventAnchorDate) els.eventAnchorDate.value = state.selectedEventDay;
   els.eventSelectedDate.textContent = renderVisibleRangeTitle(visibleKeys);
-  els.eventSelectedSubtitle.textContent = '起始日：' + formatCompactDateLabel(state.selectedEventDay) + ' · 连续 ' + visibleKeys.length + ' 天 · 全天 ' + visibleAllDayEvents.length + ' 项，定时 ' + totalTimed + ' 项';
-  els.allDayList.innerHTML = renderAllDayBoard(visibleKeys, visibleAllDayEvents);
+  els.eventSelectedSubtitle.textContent = '起始日：' + formatCompactDateLabel(state.selectedEventDay) + ' · 连续 ' + visibleKeys.length + ' 天 · 定时 ' + totalTimed + ' 项';
   els.hourAxis.innerHTML = renderHourAxis();
   els.eventTimeline.innerHTML = visibleDays.map(day => renderEventDayColumn(day.key, day.timed)).join('');
   if (els.boardScroll) {
@@ -671,10 +616,6 @@ function bindActions() {
       if (node.dataset.action === 'edit-todo') {
         const todoItem = (state.snapshot?.todos || []).find(item => Number(item.id) === Number(id));
         if (todoItem) openTodoEditor(todoItem);
-        return;
-      } else if (node.dataset.action === 'edit-event') {
-        const eventItem = (state.snapshot?.events || []).find(item => Number(item.id) === Number(id));
-        if (eventItem) openEventEditor(eventItem);
         return;
       } else if (node.dataset.action === 'complete') {
         await api(`/api/items/${id}/complete`, { method: 'POST' });

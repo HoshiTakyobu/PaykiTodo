@@ -6,16 +6,14 @@ Long-running Codex sessions can become unreliable. This file exists so a new ses
 
 ## Current Handoff Summary
 
-- The project is currently at code version `1.6.50` / `versionCode 122`
-- Latest debug APK path after build should be `app/build/outputs/apk/debug/PaykiTodo-1.6.50-debug.apk`
-- Latest feature round closed a work-mode reliability gap while keeping the compact Settings UI:
-  1. 工作模式 is a quiet strong-reminder mode: sound is suppressed by default, strong vibration is forced, and calendar reminders stay on full-screen / accessibility fallback.
-  2. Work mode forces the stronger vibration pattern even if the individual todo / event had vibration disabled.
-  3. New reminder defaults disable ringing when work mode is enabled.
-  4. Reminder playback channel remains a compact dropdown row rather than a button group.
-  5. PaykiTodo internal volume and temporary system-channel boost target remain 0-100 slider + numeric input controls.
-  6. Calendar week-start and default calendar reminder mode remain compact dropdown rows.
-  7. `docs/current/UI_DESIGN_RULES.md` records both the no-large-button-group UI rule and the expected detailed Chinese commit-message style.
+- The project is currently at code version `1.6.51` / `versionCode 123`
+- Latest debug APK path after build should be `app/build/outputs/apk/debug/PaykiTodo-1.6.51-debug.apk`
+- Latest feature round fixed board and desktop event-timeline UI details:
+  1. Daily board schedule card always includes a tomorrow section.
+  2. If tomorrow has no events, it says `明天暂无日程`.
+  3. Desktop web event cards no longer show inline edit/delete buttons; card click opens the editor.
+  4. Desktop web event-card display color prefers group color, matching todo color behavior.
+  5. Desktop web event timeline no longer shows the separate all-day strip above the grid.
 
 Previous feature round (`1.6.48`) introduced the compact Settings controls and moved desktop sync back into common Settings.
 
@@ -30,11 +28,11 @@ Previous feature round (`1.6.48`) introduced the compact Settings controls and m
 
 ## Current Verification Focus
 
-1. Install `PaykiTodo-1.6.50-debug.apk`
-2. Open Settings -> 提醒声音策略
-3. Verify 工作模式 suppresses outward sound and forces stronger vibration, including for an item whose own vibration switch is off
-4. Verify 工作模式 still forces calendar reminders through full-screen / accessibility fallback
-5. Verify compact dropdown / slider controls from `1.6.48` were not regressed back to large button groups
+1. Install `PaykiTodo-1.6.51-debug.apk`
+2. Open daily board and verify the schedule card shows `明天暂无日程` when tomorrow has no events
+3. Open desktop web event timeline and verify the separate all-day strip is gone
+4. Click a desktop web event card and verify it opens the existing event editor
+5. Verify event cards no longer show inline edit/delete buttons and use group colors first
 
 ## Required Reading For A New Session
 

@@ -4,8 +4,8 @@
 
 ### In Progress
 
-- Verify version `1.6.60` on device after desktop todo/event preview interaction polish
-- Keep `README.md`, `CHANGELOG.md`, and current-state docs aligned with version `1.6.60`
+- Verify version `1.6.61` on device after desktop reminder syntax and todo multi-reminder API polish
+- Keep `README.md`, `CHANGELOG.md`, and current-state docs aligned with version `1.6.61`
 - Continue board / dashboard and calendar polish without regressing the current interaction model
 - Improve repo-native handoff so new sessions do not depend on long chat history
 
@@ -56,6 +56,7 @@
 - Desktop web timed and all-day event cards should open editing by clicking the card, without inline edit/delete buttons; verify clicking a card opens the editor on the actual desktop browser
 - If the live desktop page still lacks the left-side `v1.6.59` marker or loads `/app.js` without `?v=1.6.59`, install the latest APK before re-debugging click edit
 - Desktop web todo and event cards now open a preview first; verify preview edit / delete / complete / cancel on the actual desktop browser after installing `1.6.60`
+- Desktop web todo/event reminder input now accepts mixed reminder specs; verify valid examples and invalid late reminders on the actual desktop browser after installing `1.6.61`
 - Desktop web event cards should use group colors first; all-day events should be available through compact per-day pills rather than a large separate all-day strip
 
 ## Mid-Term Follow-Ups

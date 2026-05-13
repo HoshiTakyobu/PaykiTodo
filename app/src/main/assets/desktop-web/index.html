@@ -155,20 +155,7 @@
         </div>
         <div class="todo-due-dependent">
           <label>提醒时间</label>
-          <div class="date-time-field">
-            <div class="date-time-row">
-              <input id="todo-reminder-year" class="digit-input year-input" type="text" inputmode="numeric" maxlength="4" data-maxlength="4" data-next="todo-reminder-month" placeholder="2026" />
-              <span class="segment-separator">/</span>
-              <input id="todo-reminder-month" class="digit-input mini-input" type="text" inputmode="numeric" maxlength="2" data-maxlength="2" data-pad="2" data-next="todo-reminder-day" placeholder="05" />
-              <span class="segment-separator">/</span>
-              <input id="todo-reminder-day" class="digit-input mini-input" type="text" inputmode="numeric" maxlength="2" data-maxlength="2" data-pad="2" data-next="todo-reminder-hour" placeholder="10" />
-            </div>
-            <div class="date-time-row compact-row">
-              <input id="todo-reminder-hour" class="digit-input mini-input" type="text" inputmode="numeric" maxlength="2" data-maxlength="2" data-pad="2" data-next="todo-reminder-minute" placeholder="09" />
-              <span class="segment-separator">:</span>
-              <input id="todo-reminder-minute" class="digit-input mini-input" type="text" inputmode="numeric" maxlength="2" data-maxlength="2" data-pad="2" placeholder="25" />
-            </div>
-          </div>
+          <input id="todo-reminder-spec" placeholder="5,15,16:30,05-10 15:00,2026-05-10 14:30" />
         </div>
         <div>
           <label>分组</label>
@@ -242,7 +229,7 @@
             </div>
           </div>
         </div>
-        <div><label>提醒时间点（分钟，逗号分隔，例如 5,15,60）</label><input id="event-reminder-offsets" placeholder="5,15" /></div>
+        <div><label>提醒时间</label><input id="event-reminder-offsets" placeholder="5,15,16:30,05-10 15:00,2026-05-10 14:30" /></div>
         <div>
           <label>循环</label>
           <select id="event-recurrence-type">

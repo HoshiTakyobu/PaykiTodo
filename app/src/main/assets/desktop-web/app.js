@@ -513,11 +513,52 @@ function findEventById(id) {
   return (state.snapshot?.events || []).find(item => sameId(item.id, id));
 }
 
-function parseIntList(text) {
-  return String(text || '')
-    .split(',')
-    .map(v => Number(v.trim()))
-    .filter(v => Number.isFinite(v) && v >= 0);
+function parseLocalDateTimeMillis(text, fallbackDate) {
+  const value = String(text || '').trim().replace('：', ':');
+  let match = value.match(/^(\d{1,2}):(\d{1,2})$/);
+  if (match) {
+    const date = fallbackDate ? new Date(fallbackDate.getTime()) : new Date();
+    date.setHours(Number(match[1]), Number(match[2]), 0, 0);
+    return date.getTime();
+  }
+  match = value.match(/^(\d{1,2})-(\d{1,2})\s+(\d{1,2}):(\d{1,2})$/);
+  if (match) {
+    const year = (fallbackDate || new Date()).getFullYear();
+    return new Date(year, Number(match[1]) - 1, Number(match[2]), Number(match[3]), Number(match[4]), 0, 0).getTime();
+  }
+  match = value.match(/^(\d{4})-(\d{1,2})-(\d{1,2})\s+(\d{1,2}):(\d{1,2})$/);
+  if (match) return new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]), Number(match[4]), Number(match[5]), 0, 0).getTime();
+  return null;
+}
+
+function parseReminderSpecs(text, anchorMillis) {
+  const raw = String(text || '').trim();
+  if (!raw) return [];
+  if (!anchorMillis) throw new Error('请先填写 DDL 或日程开始时间');
+  const anchor = new Date(anchorMillis);
+  const offsets = [];
+  raw.split(',').map(part => part.trim()).filter(Boolean).forEach(part => {
+    if (/^\d+$/.test(part)) {
+      offsets.push(Number(part));
+      return;
+    }
+    const millis = parseLocalDateTimeMillis(part, anchor);
+    if (millis == null) throw new Error('无法识别提醒时间：' + part);
+    if (millis > anchorMillis) throw new Error('提醒时间不能晚于目标时间：' + part);
+    offsets.push(Math.round((anchorMillis - millis) / 60000));
+  });
+  return Array.from(new Set(offsets.filter(value => Number.isFinite(value) && value >= 0))).sort((a, b) => a - b);
+}
+
+function setInputInvalid(id, invalid) {
+  document.getElementById(id)?.classList.toggle('input-invalid', invalid);
+}
+
+function reminderSpecFromOffsets(item, anchorMillis) {
+  const offsets = item.reminderOffsetsMinutes || [];
+  if (offsets.length) return offsets.join(',');
+  if (item.reminderAtMillis && anchorMillis) return String(Math.round((anchorMillis - item.reminderAtMillis) / 60000));
+  return '';
 }
 
 function parseWeekdays(text) {
@@ -550,7 +591,7 @@ function setTodoDueEnabled(enabled) {
   });
   if (!enabled) {
     writeDateTimeValue('todo-due', '');
-    writeDateTimeValue('todo-reminder', '');
+    document.getElementById('todo-reminder-spec').value = '';
     document.getElementById('todo-recurrence-type').value = 'NONE';
     document.getElementById('todo-recurrence-end').value = '';
     document.getElementById('todo-weekdays').value = '';
@@ -565,7 +606,7 @@ function clearTodoForm() {
   document.getElementById('todo-title').value = '';
   document.getElementById('todo-notes').value = '';
   writeDateTimeValue('todo-due', '');
-  writeDateTimeValue('todo-reminder', '');
+  document.getElementById('todo-reminder-spec').value = '';
   document.getElementById('todo-recurrence-type').value = 'NONE';
   document.getElementById('todo-recurrence-end').value = '';
   document.getElementById('todo-weekdays').value = '';
@@ -588,11 +629,7 @@ function openTodoEditor(item) {
   if (hasDueCheckbox) hasDueCheckbox.disabled = item.isRecurring === true;
   setTodoDueEnabled(item.hasDueDate !== false);
   writeDateTimeValue('todo-due', item.hasDueDate ? formatDateTimeLocalValue(item.dueAtMillis) : '');
-  const reminderOffsets = item.reminderOffsetsMinutes || [];
-  const reminderMillis = reminderOffsets.length && item.hasDueDate
-    ? item.dueAtMillis - reminderOffsets[0] * 60 * 1000
-    : item.reminderAtMillis;
-  writeDateTimeValue('todo-reminder', reminderMillis ? formatDateTimeLocalValue(reminderMillis) : '');
+  document.getElementById('todo-reminder-spec').value = item.hasDueDate ? reminderSpecFromOffsets(item, item.dueAtMillis) : '';
   document.getElementById('todo-recurrence-type').value = recurrenceTypeValue(item);
   document.getElementById('todo-recurrence-end').value = item.recurrenceEndDate || '';
   document.getElementById('todo-weekdays').value = csvValue(item.recurrenceWeekdays);
@@ -658,7 +695,7 @@ function openEventEditor(item) {
   writeDateTimeValue('event-start', formatDateTimeLocalValue(item.startAtMillis));
   writeDateTimeValue('event-end', formatDateTimeLocalValue(item.endAtMillis || item.startAtMillis));
   document.getElementById('event-reminder-mode').value = item.reminderDeliveryMode || 'NOTIFICATION';
-  document.getElementById('event-reminder-offsets').value = (item.reminderOffsetsMinutes || []).join(',');
+  document.getElementById('event-reminder-offsets').value = reminderSpecFromOffsets(item, item.startAtMillis);
   document.getElementById('event-recurrence-type').value = recurrenceTypeValue(item);
   document.getElementById('event-recurrence-end').value = item.recurrenceEndDate || '';
   document.getElementById('event-weekdays').value = csvValue(item.recurrenceWeekdays);
@@ -855,37 +892,39 @@ document.addEventListener('keydown', event => {
 });
 
 document.getElementById('create-todo').onclick = async () => {
-  const hasDueDate = document.getElementById('todo-has-due')?.checked !== false;
-  const dueAt = hasDueDate ? readDateTimeValue('todo-due') : null;
-  const reminderAt = hasDueDate ? readDateTimeValue('todo-reminder') : null;
-  const payload = {
-    title: document.getElementById('todo-title').value,
-    notes: document.getElementById('todo-notes').value,
-    dueAt: dueAt,
-    reminderAt: reminderAt,
-    groupId: Number(document.getElementById('todo-group').value || 0),
-    ringEnabled: document.getElementById('todo-ring').checked,
-    vibrateEnabled: document.getElementById('todo-vibrate').checked,
-    recurrence: hasDueDate ? recurrencePayload(
-      document.getElementById('todo-recurrence-type').value,
-      document.getElementById('todo-recurrence-end').value,
-      document.getElementById('todo-weekdays').value
-    ) : { enabled: false, type: 'NONE', weeklyDays: [], endDate: null }
-  };
-  if (state.editingTodoId) {
-    await api(`/api/todos/${state.editingTodoId}`, {
-      method: 'PUT',
-      body: JSON.stringify(payload)
-    });
-  } else {
-    await api('/api/todos', {
-      method: 'POST',
-      body: JSON.stringify(payload)
-    });
+  try {
+    setInputInvalid('todo-reminder-spec', false);
+    const hasDueDate = document.getElementById('todo-has-due')?.checked !== false;
+    const dueAt = hasDueDate ? readDateTimeValue('todo-due') : null;
+    const dueAtMillis = dueAt ? new Date(dueAt).getTime() : null;
+    const reminderOffsets = hasDueDate ? parseReminderSpecs(document.getElementById('todo-reminder-spec').value, dueAtMillis) : [];
+    const payload = {
+      title: document.getElementById('todo-title').value,
+      notes: document.getElementById('todo-notes').value,
+      dueAt: dueAt,
+      reminderAt: null,
+      reminderOffsetsMinutes: reminderOffsets,
+      groupId: Number(document.getElementById('todo-group').value || 0),
+      ringEnabled: document.getElementById('todo-ring').checked,
+      vibrateEnabled: document.getElementById('todo-vibrate').checked,
+      recurrence: hasDueDate ? recurrencePayload(
+        document.getElementById('todo-recurrence-type').value,
+        document.getElementById('todo-recurrence-end').value,
+        document.getElementById('todo-weekdays').value
+      ) : { enabled: false, type: 'NONE', weeklyDays: [], endDate: null }
+    };
+    if (state.editingTodoId) {
+      await api(`/api/todos/${state.editingTodoId}`, { method: 'PUT', body: JSON.stringify(payload) });
+    } else {
+      await api('/api/todos', { method: 'POST', body: JSON.stringify(payload) });
+    }
+    clearTodoForm();
+    closeModal('todo-modal');
+    await loadSnapshot();
+  } catch (error) {
+    setInputInvalid('todo-reminder-spec', true);
+    els.status.textContent = error.message || '保存待办失败';
   }
-  clearTodoForm();
-  closeModal('todo-modal');
-  await loadSnapshot();
 };
 
 document.getElementById('delete-todo').onclick = async () => {
@@ -927,41 +966,42 @@ document.getElementById('preview-todo-delete').onclick = async () => {
 };
 
 document.getElementById('save-event').onclick = async () => {
-  const startAt = readDateTimeValue('event-start');
-  const endAt = readDateTimeValue('event-end');
-  const payload = {
-    title: document.getElementById('event-title').value,
-    groupId: Number(document.getElementById('event-group').value || 0),
-    location: document.getElementById('event-location').value,
-    notes: document.getElementById('event-notes').value,
-    startAt: startAt,
-    endAt: endAt,
-    allDay: document.getElementById('event-all-day').checked,
-    accentColorHex: document.getElementById('event-color').value || DEFAULT_EVENT_COLOR,
-    reminderOffsetsMinutes: parseIntList(document.getElementById('event-reminder-offsets').value),
-    ringEnabled: document.getElementById('event-ring').checked,
-    vibrateEnabled: document.getElementById('event-vibrate').checked,
-    reminderDeliveryMode: document.getElementById('event-reminder-mode').value,
-    recurrence: recurrencePayload(
-      document.getElementById('event-recurrence-type').value,
-      document.getElementById('event-recurrence-end').value,
-      document.getElementById('event-weekdays').value
-    )
-  };
-  if (state.editingEventId) {
-    await api(`/api/events/${state.editingEventId}`, {
-      method: 'PUT',
-      body: JSON.stringify(payload)
-    });
-  } else {
-    await api('/api/events', {
-      method: 'POST',
-      body: JSON.stringify(payload)
-    });
+  try {
+    setInputInvalid('event-reminder-offsets', false);
+    const startAt = readDateTimeValue('event-start');
+    const endAt = readDateTimeValue('event-end');
+    const startAtMillis = startAt ? new Date(startAt).getTime() : null;
+    const payload = {
+      title: document.getElementById('event-title').value,
+      groupId: Number(document.getElementById('event-group').value || 0),
+      location: document.getElementById('event-location').value,
+      notes: document.getElementById('event-notes').value,
+      startAt: startAt,
+      endAt: endAt,
+      allDay: document.getElementById('event-all-day').checked,
+      accentColorHex: document.getElementById('event-color').value || DEFAULT_EVENT_COLOR,
+      reminderOffsetsMinutes: parseReminderSpecs(document.getElementById('event-reminder-offsets').value, startAtMillis),
+      ringEnabled: document.getElementById('event-ring').checked,
+      vibrateEnabled: document.getElementById('event-vibrate').checked,
+      reminderDeliveryMode: document.getElementById('event-reminder-mode').value,
+      recurrence: recurrencePayload(
+        document.getElementById('event-recurrence-type').value,
+        document.getElementById('event-recurrence-end').value,
+        document.getElementById('event-weekdays').value
+      )
+    };
+    if (state.editingEventId) {
+      await api(`/api/events/${state.editingEventId}`, { method: 'PUT', body: JSON.stringify(payload) });
+    } else {
+      await api('/api/events', { method: 'POST', body: JSON.stringify(payload) });
+    }
+    clearEventForm();
+    closeModal('event-modal');
+    await loadSnapshot();
+  } catch (error) {
+    setInputInvalid('event-reminder-offsets', true);
+    els.status.textContent = error.message || '保存日程失败';
   }
-  clearEventForm();
-  closeModal('event-modal');
-  await loadSnapshot();
 };
 
 document.getElementById('delete-event').onclick = async () => {

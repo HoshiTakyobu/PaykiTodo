@@ -2,40 +2,37 @@
 
 ## Active Development Focus
 
-The current round has produced a `1.6.60` build. It continues the larger desktop-parity request by changing the desktop web console from card-inline actions / direct editor jumps toward the phone-side preview-first interaction model.
+The current round has produced a `1.6.61` build. It continues desktop-phone parity by aligning desktop todo/event reminder editing with the phone-side mixed reminder syntax.
 
 Completed in this round:
 
-1. Desktop todo cards no longer render inline `编辑 / 完成 / 取消 / 删除` buttons.
-2. Clicking a desktop todo card opens a todo preview sheet first.
-3. The todo preview sheet shows a color block, title, state, group, DDL, recurrence, reminder, and notes.
-4. Todo preview actions now provide edit, complete, cancel, and delete from the preview surface.
-5. Desktop event cards no longer open the editor directly when clicked.
-6. Clicking a desktop timed event or compact all-day event pill opens an event preview sheet first.
-7. The event preview sheet shows a color block, title, time, recurrence, location, reminder, and notes.
-8. Event preview actions provide edit and delete; delete still uses the in-app dangerous confirmation modal.
-9. Node simulated-browser checks passed for both paths:
-   - event card -> event preview -> edit -> event editor filled
-   - todo card -> todo preview -> edit -> todo editor filled
-10. Version was bumped to `1.6.60` / `versionCode 132`.
-11. `./gradlew.bat assembleDebug` succeeded with Android Studio bundled `jbr`.
+1. Desktop todo reminder editing now uses one mixed-syntax input instead of a single concrete reminder date-time field.
+2. Desktop event reminder editing uses the same mixed-syntax parser instead of accepting only comma-separated minute values.
+3. Supported examples include `5,15,16:30,05-10 15:00,2026-05-10 14:30`.
+4. Number entries are treated as minutes before the anchor time.
+5. `HH:mm` entries are treated as same-day concrete reminder times.
+6. `MM-DD HH:mm` entries are treated as current-year concrete reminder times.
+7. `YYYY-MM-DD HH:mm` entries are treated as full concrete reminder times.
+8. Concrete reminder times later than the todo DDL or event start time are rejected and the desktop input is marked invalid.
+9. Desktop sync API now accepts todo `reminderOffsetsMinutes`, so desktop-created / edited todos can persist multiple reminders rather than only `reminderAt`.
+10. Node parser simulation passed for mixed reminder syntax and late-reminder rejection.
+11. Version was bumped to `1.6.61` / `versionCode 133`.
+12. `./gradlew.bat assembleDebug` succeeded with Android Studio bundled `jbr`.
 
 ## Immediate Practical Next Steps
 
 When testing, use:
 
-1. install `app/build/outputs/apk/debug/PaykiTodo-1.6.60-debug.apk`
+1. install `app/build/outputs/apk/debug/PaykiTodo-1.6.61-debug.apk`
 2. enable desktop sync on the phone and connect from the desktop browser
-3. verify the desktop page left brand block shows `v1.6.60`
-4. click a desktop todo card and verify it opens the todo preview rather than exposing inline buttons
-5. from the todo preview, test edit, complete, cancel, and delete confirmation
-6. click a timed desktop event card and verify it opens the event preview before editing
-7. from the event preview, test edit and delete confirmation
-8. navigate to a day with an all-day event and verify its compact pill also opens the event preview
+3. verify the desktop page left brand block shows `v1.6.61`
+4. edit a todo and enter `5,15,16:30` when its DDL is later today; verify multiple reminders are saved
+5. edit an event and enter `5,15,05-10 15:00`; verify reminders are converted and saved
+6. enter a reminder later than the DDL / event start and verify the field becomes invalid and save does not proceed
 
 ## Deferred From The User's Larger Request
 
-- Full desktop web UI parity with the phone UI is still not complete; this round only converts the main card interactions to preview-first behavior.
+- Full desktop web UI parity with the phone UI is still not complete; this round only aligns reminder input semantics.
 - Lunar-calendar date picking and yearly lunar recurrence are not implemented yet.
 - A full calendar performance pass remains pending; the latest performance work only scoped the 30-second current-time recomposition.
 - Android Emulator visual QA was not completed in this round; only build-level and local desktop-JS simulation checks were completed.
@@ -43,4 +40,4 @@ When testing, use:
 
 ## Current External Dependency
 
-No external file is needed for the current `1.6.60` verification task.
+No external file is needed for the current `1.6.61` verification task.

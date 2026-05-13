@@ -135,6 +135,7 @@ class DesktopSyncCoordinator(
         val groupId = resolveGroupId(json)
         val dueAt = json.optStringOrNull("dueAt")?.let(LocalDateTime::parse)
         val reminderAt = json.optStringOrNull("reminderAt")?.let(LocalDateTime::parse)
+        val reminderOffsets = json.optJSONArray("reminderOffsetsMinutes")?.toIntList().orEmpty()
         val recurrence = parseRecurrence(json.optJSONObject("recurrence"), dueAt?.toLocalDate())
         val draft = sanitizeTodoDraft(
             title = json.optString("title").trim(),
@@ -144,7 +145,8 @@ class DesktopSyncCoordinator(
             groupId = groupId,
             ringEnabled = json.optBoolean("ringEnabled", true),
             vibrateEnabled = json.optBoolean("vibrateEnabled", true),
-            recurrence = recurrence
+            recurrence = recurrence,
+            reminderOffsetsMinutes = reminderOffsets
         )
         require(draft.title.isNotBlank()) { "标题不能为空" }
         val created = runBlocking { app.repository.createFromDraft(draft) }
@@ -161,6 +163,7 @@ class DesktopSyncCoordinator(
         val groupId = resolveGroupId(json)
         val dueAt = json.optStringOrNull("dueAt")?.let(LocalDateTime::parse)
         val reminderAt = json.optStringOrNull("reminderAt")?.let(LocalDateTime::parse)
+        val reminderOffsets = json.optJSONArray("reminderOffsetsMinutes")?.toIntList().orEmpty()
         val recurrence = parseRecurrence(json.optJSONObject("recurrence"), dueAt?.toLocalDate())
         val draft = sanitizeTodoDraft(
             title = json.optString("title").trim(),
@@ -170,7 +173,8 @@ class DesktopSyncCoordinator(
             groupId = groupId,
             ringEnabled = json.optBoolean("ringEnabled", original.ringEnabled),
             vibrateEnabled = json.optBoolean("vibrateEnabled", original.vibrateEnabled),
-            recurrence = recurrence
+            recurrence = recurrence,
+            reminderOffsetsMinutes = reminderOffsets
         )
         require(draft.title.isNotBlank()) { "标题不能为空" }
         validateTodoDraft(draft = draft, original = original)?.let { error(it) }
@@ -313,7 +317,8 @@ class DesktopSyncCoordinator(
         groupId: Long,
         ringEnabled: Boolean,
         vibrateEnabled: Boolean,
-        recurrence: RecurrenceConfig
+        recurrence: RecurrenceConfig,
+        reminderOffsetsMinutes: List<Int>
     ): TodoDraft {
         val now = LocalDateTime.now()
         val reminder = reminderAt?.takeIf { candidate ->
@@ -327,7 +332,8 @@ class DesktopSyncCoordinator(
             groupId = groupId,
             ringEnabled = ringEnabled,
             vibrateEnabled = vibrateEnabled,
-            recurrence = recurrence
+            recurrence = recurrence,
+            reminderOffsetsMinutes = reminderOffsetsMinutes
         )
     }
 

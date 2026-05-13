@@ -6,24 +6,21 @@ Long-running Codex sessions can become unreliable. This file exists so a new ses
 
 ## Current Handoff Summary
 
-- The project is currently at code version `1.6.60` / `versionCode 132`.
-- Latest debug APK path after build: `app/build/outputs/apk/debug/PaykiTodo-1.6.60-debug.apk`.
+- The project is currently at code version `1.6.61` / `versionCode 133`.
+- Latest debug APK path after build: `app/build/outputs/apk/debug/PaykiTodo-1.6.61-debug.apk`.
 - Latest build command used Android Studio bundled JBR and succeeded:
   - `./gradlew.bat assembleDebug`
 - Desktop web still comes from the phone APK assets under `app/src/main/assets/desktop-web/`.
-- New desktop web pages should show the installed version in the left brand block as `v1.6.60`.
+- New desktop web pages should show the installed version in the left brand block as `v1.6.61`.
 
-## Latest Fixes In 1.6.60
+## Latest Fixes In 1.6.61
 
-1. Desktop todo cards no longer show inline edit / complete / cancel / delete buttons.
-2. Clicking a desktop todo card opens a todo preview sheet first.
-3. Todo preview shows color block, title, state, group, DDL, recurrence, reminder, and notes.
-4. Todo preview actions handle edit, complete, cancel, and delete.
-5. Desktop event cards and compact all-day pills open an event preview sheet first instead of jumping straight to the editor.
-6. Event preview shows color block, title, time, recurrence, location, reminder, and notes.
-7. Event preview actions handle edit and delete.
-8. Delete actions continue to use the in-app dangerous confirmation modal.
-9. Node simulated-browser checks passed for event preview -> edit and todo preview -> edit.
+1. Desktop todo reminder editing now uses one mixed-syntax input rather than a single concrete reminder date-time field.
+2. Desktop event reminder editing uses the same mixed-syntax parser rather than only comma-separated minute values.
+3. The parser accepts minutes, same-day `HH:mm`, current-year `MM-DD HH:mm`, and full `YYYY-MM-DD HH:mm` entries.
+4. Concrete reminder times later than the todo DDL / event start are rejected and the input is marked invalid.
+5. Desktop sync API now reads todo `reminderOffsetsMinutes`, so desktop-created / edited todos can persist multiple reminders.
+6. Node parser simulation passed for valid mixed syntax and late-reminder rejection.
 
 ## Files Most Relevant To The Latest Round
 
@@ -31,6 +28,7 @@ Long-running Codex sessions can become unreliable. This file exists so a new ses
 - `app/src/main/assets/desktop-web/index.html`
 - `app/src/main/assets/desktop-web/app.js`
 - `app/src/main/assets/desktop-web/app.css`
+- `app/src/main/java/com/example/todoalarm/sync/DesktopSyncCoordinator.kt`
 - `README.md`
 - `CHANGELOG.md`
 - `TODO.md`
@@ -38,13 +36,12 @@ Long-running Codex sessions can become unreliable. This file exists so a new ses
 
 ## Current Verification Focus
 
-1. Install `PaykiTodo-1.6.60-debug.apk`.
+1. Install `PaykiTodo-1.6.61-debug.apk`.
 2. Enable desktop sync and connect from a desktop browser.
-3. Verify the desktop page shows `v1.6.60`; if not, the phone is still serving an old APK.
-4. Click todo cards and verify they open preview sheets.
-5. From todo preview, test edit / complete / cancel / delete confirmation.
-6. Click timed and all-day event entries and verify they open event preview sheets.
-7. From event preview, test edit and delete confirmation.
+3. Verify the desktop page shows `v1.6.61`; if not, the phone is still serving an old APK.
+4. Edit a todo and enter mixed reminder specs such as `5,15,16:30`; verify multiple reminders persist.
+5. Edit an event and enter mixed reminder specs such as `5,15,05-10 15:00`; verify offsets persist.
+6. Enter a reminder later than the target time and verify the desktop field is marked invalid.
 
 ## Deferred Larger Work
 

@@ -227,6 +227,7 @@ button.ghost {
 .disabled-block input, .disabled-block select, .disabled-block textarea { cursor: not-allowed; }
 .modal-sheet label { display: block; margin-bottom: 8px; font-size: 14px; font-weight: 900; color: #243446; }
 .modal-sheet input:focus, .modal-sheet textarea:focus, .modal-sheet select:focus { outline: 2px solid rgba(53,104,212,.2); border-color: rgba(53,104,212,.42); box-shadow: 0 0 0 4px rgba(53,104,212,.08); }
+.modal-sheet .input-invalid { border-color: rgba(214,60,60,.72) !important; box-shadow: 0 0 0 4px rgba(214,60,60,.1) !important; }
 .primary-editor-field { font-size: 20px !important; font-weight: 850; padding: 14px 16px !important; }
 .date-time-field { display: flex; flex-direction: column; gap: 8px; }
 .date-time-row { display: flex; align-items: center; gap: 7px; flex-wrap: nowrap; }

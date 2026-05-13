@@ -134,3 +134,4 @@ When reconstructing PaykiTodo state, use this priority order:
 - 1.6.69 tightened the daily-board schedule row layout so normal rows stay borderless and the left color strip sits closer to the row edge, with in-progress rows keeping the gold treatment.
 - 1.6.70 split the calendar browser header into a title row and a separate action row so month titles are no longer squeezed out by compact buttons on narrow screens.
 - 1.6.71 tightened the phone Settings -> Desktop Sync section further so the LAN URL stays hidden unless the user explicitly expands it.
+- 1.6.72 tightened the desktop-web todo/event editor sheets into a narrower single-column layout to better resemble the phone-side bottom sheet.

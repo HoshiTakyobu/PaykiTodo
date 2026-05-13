@@ -29,7 +29,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -682,20 +681,20 @@ private fun CalendarBrowserHeader(
         ) {
             Surface(
                 modifier = Modifier
-                    .weight(1f)
+                    .fillMaxWidth()
                     .clickable(onClick = onPickDate),
                 shape = RoundedCornerShape(18.dp),
                 color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f)
             ) {
                 Row(
-                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 7.dp),
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
                     Text(
                         text = titleMonth.format(DateTimeFormatter.ofPattern("yyyy年M月", Locale.CHINA)),
                         modifier = Modifier.weight(1f),
-                        style = MaterialTheme.typography.titleLarge.copy(fontSize = 19.sp),
+                        style = MaterialTheme.typography.titleLarge.copy(fontSize = 18.sp),
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurface,
                         maxLines = 1,
@@ -710,45 +709,47 @@ private fun CalendarBrowserHeader(
                     )
                 }
             }
-            Row(
-                modifier = Modifier.horizontalScroll(rememberScrollState()),
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                CalendarHeaderActionButton(label = "今天", onClick = onToday)
-                CalendarHeaderActionButton(label = "批量", onClick = onOpenBatchImport)
-                Box {
-                    CalendarMenuActionButton(
-                        icon = viewIcon,
-                        contentDescription = viewMode.label,
-                        onClick = onOpenViewMenu
-                    )
-                    DropdownMenu(
-                        expanded = showViewModeMenu,
-                        onDismissRequest = onDismissViewMenu
-                    ) {
-                        CalendarViewMode.entries.forEach { mode ->
-                            DropdownMenuItem(
-                                text = { Text(mode.label) },
-                                onClick = { onChangeView(mode) }
-                            )
-                        }
+        }
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.End),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            CalendarHeaderActionButton(label = "今天", onClick = onToday)
+            CalendarHeaderActionButton(icon = Icons.Rounded.Add, contentDescription = "批量导入", onClick = onOpenBatchImport)
+            Box {
+                CalendarMenuActionButton(
+                    icon = viewIcon,
+                    contentDescription = viewMode.label,
+                    onClick = onOpenViewMenu
+                )
+                DropdownMenu(
+                    expanded = showViewModeMenu,
+                    onDismissRequest = onDismissViewMenu
+                ) {
+                    CalendarViewMode.entries.forEach { mode ->
+                        DropdownMenuItem(
+                            text = { Text(mode.label) },
+                            onClick = { onChangeView(mode) }
+                        )
                     }
                 }
-                Box {
-                    CalendarMenuActionButton(
-                        icon = Icons.Rounded.MoreHoriz,
-                        contentDescription = "更多操作",
-                        onClick = onOpenActions
-                    )
-                    DropdownMenu(
-                        expanded = showActionsMenu,
-                        onDismissRequest = onDismissActions
-                    ) {
-                        DropdownMenuItem(text = { Text("快速新建") }, onClick = onQuickCreate)
-                        DropdownMenuItem(text = { Text("周模板") }, onClick = onOpenTemplateManager)
-                        DropdownMenuItem(text = { Text("保存本周模板") }, onClick = onSaveWeekTemplate)
-                    }
+            }
+            Box {
+                CalendarMenuActionButton(
+                    icon = Icons.Rounded.MoreHoriz,
+                    contentDescription = "更多操作",
+                    onClick = onOpenActions
+                )
+                DropdownMenu(
+                    expanded = showActionsMenu,
+                    onDismissRequest = onDismissActions
+                ) {
+                    DropdownMenuItem(text = { Text("快速新建") }, onClick = onQuickCreate)
+                    DropdownMenuItem(text = { Text("周模板") }, onClick = onOpenTemplateManager)
+                    DropdownMenuItem(text = { Text("保存本周模板") }, onClick = onSaveWeekTemplate)
                 }
             }
         }

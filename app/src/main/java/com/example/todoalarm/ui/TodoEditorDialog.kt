@@ -126,6 +126,7 @@ fun TodoEditorDialog(
     var showGroupPicker by remember { mutableStateOf(false) }
     var helpTopic by remember { mutableStateOf<InputSyntaxHelpTopic?>(null) }
     var activeDateTimeTarget by remember { mutableStateOf<TodoDateTimeTarget?>(null) }
+    var showDueLunarPicker by remember { mutableStateOf(false) }
     val reminderValidation = remember(reminderInput, dueAt, reminderEnabled, hasDueDate, isHistory, initialTodo?.id) {
         if (!reminderEnabled || !hasDueDate || isHistory) {
             ReminderInputValidation(isValid = true)
@@ -223,6 +224,10 @@ fun TodoEditorDialog(
                                 activeDateTimeTarget = TodoDateTimeTarget.DueAt
                             }
                         )
+                        OutlinedButton(
+                            onClick = { showDueLunarPicker = true },
+                            modifier = Modifier.fillMaxWidth()
+                        ) { Text("农历 DDL") }
                     }
                 }
 
@@ -483,6 +488,21 @@ fun TodoEditorDialog(
         InputSyntaxHelpDialog(topic = topic, onDismiss = { helpTopic = null })
     }
 
+    if (showDueLunarPicker) {
+        LunarDatePickerDialog(
+            title = "选择农历 DDL",
+            initialDate = dueAt.toLocalDate(),
+            onDismiss = { showDueLunarPicker = false },
+            onConfirm = { pickedDate ->
+                val pickedDue = LocalDateTime.of(pickedDate, dueAt.toLocalTime())
+                dueAt = pickedDue
+                if (reminderEnabled && initialTodo == null) {
+                    reminderAt = pickedDue
+                }
+                showDueLunarPicker = false
+            }
+        )
+    }
     activeDateTimeTarget?.let { target ->
         WheelDateTimePickerDialog(
             title = when (target) {

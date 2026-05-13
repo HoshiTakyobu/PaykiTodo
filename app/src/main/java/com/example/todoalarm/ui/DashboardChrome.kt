@@ -861,7 +861,7 @@ private fun BoardScheduleEventRow(
         Surface(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(start = if (inProgress) 2.dp else 0.dp, top = if (inProgress) 6.dp else 0.dp, end = if (inProgress) 5.dp else 0.dp, bottom = if (inProgress) 6.dp else 0.dp),
+                .padding(start = if (inProgress) 2.dp else 0.dp, top = if (inProgress) 8.dp else 3.dp, end = if (inProgress) 5.dp else 0.dp, bottom = if (inProgress) 8.dp else 3.dp),
             shape = RoundedCornerShape(14.dp),
             color = if (inProgress) rowColor.copy(alpha = 0.015f) else Color.Transparent
         ) {
@@ -869,8 +869,8 @@ private fun BoardScheduleEventRow(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(IntrinsicSize.Min)
-                    .padding(start = 0.dp, top = 7.dp, end = 6.dp, bottom = 7.dp),
-                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    .padding(start = 0.dp, top = 12.dp, end = 10.dp, bottom = 12.dp),
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
                 verticalAlignment = Alignment.Top
             ) {
                 Box(
@@ -884,7 +884,7 @@ private fun BoardScheduleEventRow(
                 )
                 Column(
                     modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(2.dp)
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
                     Text(
                         text = item.title,
@@ -897,7 +897,7 @@ private fun BoardScheduleEventRow(
                     Text(
                         text = boardEventSecondaryText(item),
                         color = MaterialTheme.colorScheme.onSurface,
-                        style = MaterialTheme.typography.bodyLarge,
+                        style = MaterialTheme.typography.bodyMedium,
                         fontWeight = FontWeight.Medium,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis

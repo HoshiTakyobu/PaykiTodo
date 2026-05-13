@@ -7,13 +7,13 @@
 - Package name: `com.paykitodo.app`
 - Target platform: Android 14 / API 34
 - Current version in code:
-  - `versionName = "1.6.81"`
-  - `versionCode = 153`
+  - `versionName = "1.6.83"`
+  - `versionCode = 155`
 
 ## Current Build Facts
 
 - Latest debug APK output:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.6.81-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.6.83-debug.apk`
 - Minimal verification completed in the latest code round:
   - `./gradlew assembleDebug` succeeded with Android Studio bundled `jbr`
 - Current build environment expectation:
@@ -22,11 +22,11 @@
 
 ## Current Worktree Reality
 
-The repository is now at `1.6.81`. It includes the desktop web editor crash fix, UI-copy cleanup, desktop web no-DDL todo editing support, in-app desktop delete confirmations, desktop-sync service self-stop protection, dynamic desktop-web resource versioning, a smaller calendar recomposition pass, desktop todo preview sheets plus direct desktop event editing, desktop mixed reminder syntax for todos/events, and lunar-label display in calendar views, minimal yearly same-lunar-date recurrence, and the latest desktop event preview/edit status/UI polish.
+The repository is now at `1.6.83`. It includes the desktop web editor crash fix, UI-copy cleanup, desktop web no-DDL todo editing support, in-app desktop delete confirmations, desktop-sync service self-stop protection, dynamic desktop-web resource versioning, a smaller calendar recomposition pass, desktop todo preview sheets plus direct desktop event editing, desktop mixed reminder syntax for todos/events, lunar-label display in calendar views, minimal yearly same-lunar-date recurrence, and the latest settings tone / lunar DDL / calendar header / daily-board spacing polish.
 
 Most important current baseline facts:
 
-- version metadata is `1.6.81 / 153`
+- version metadata is `1.6.83 / 155`
 - launcher adaptive icon foreground now directly uses picture resource `@drawable/ic_launcher_art`
 - old vector mark launcher resources have been deleted so the launcher cannot fall back to them again
 - picture launcher art has been reprocessed to an opaque pure-white background with smaller centered content
@@ -79,11 +79,11 @@ Most important current baseline facts:
 - desktop web todo and event editors accept the same mixed reminder syntax as the phone UI and convert concrete reminder times into normalized offset minutes
 - desktop sync API accepts todo `reminderOffsetsMinutes`, so desktop-created / edited todos can persist multiple reminder points
 - calendar timeline headers, month cells, and agenda/list date surfaces show lunar labels using Android ICU `ChineseCalendar`
-- lunar support includes display labels, minimal yearly same-lunar-date recurrence, and compact event lunar start/end picking for all-day and timed events; todo lunar wheel UX remains pending
+- lunar support includes display labels, minimal yearly same-lunar-date recurrence, compact event lunar start/end picking, and wheel-style todo lunar DDL picking
 - if a live phone desktop page still loads `/app.js` without a `?v=` marker, that phone is serving an older installed APK and must be updated before further desktop click-edit debugging
 - desktop sync foreground service stops itself when relaunched while Settings says desktop sync is disabled, and Settings status refreshes after sync toggles / key rotation to reduce stale access-address display
 - calendar current-time ticks are scoped to the time axis and current-time line instead of recomposing the whole calendar panel every 30 seconds
-- calendar header now uses a left flexible year/month pill plus compact action buttons, reducing month-title clipping when screen width or font scale is tight
+- calendar header now uses a dedicated year/month title row plus a separate action row, reducing month-title clipping when screen width or font scale is tight
 
 - desktop web existing event cards now open the editor directly while preserving the PUT update path
 - recurrence type `YEARLY_LUNAR_DATE` is available for todo/event recurrence generation, preview, phone editors, and desktop web selects
@@ -107,7 +107,7 @@ Recent code inspection and build verification cover:
 
 ## Documentation Health
 
-Current docs have been synchronized for `1.6.81`:
+Current docs have been synchronized for `1.6.83`:
 
 - `README.md`
 - `CHANGELOG.md`

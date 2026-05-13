@@ -86,6 +86,7 @@ import kotlin.math.roundToInt
 private enum class SettingsSection {
     PERMISSIONS,
     SOUND_STRATEGY,
+    TONE,
     CALENDAR,
     ABOUT,
     DIAGNOSTICS,
@@ -175,7 +176,7 @@ fun SettingsPanel(
                     icon = Icons.Rounded.LibraryMusic,
                     title = "提示音",
                     summary = settings.reminderToneName ?: "当前使用内置提醒音",
-                    onClick = onPickSystemReminderTone
+                    onClick = { selectedSection = SettingsSection.TONE }
                 )
                 SettingsMenuDivider()
                 SettingsMenuItem(
@@ -261,6 +262,22 @@ fun SettingsPanel(
                 settings = settings,
                 onChange = onReminderAudioStrategyChange
             )
+        }
+
+        SettingsSection.TONE -> SettingsSectionDialog("提示音", { selectedSection = null }) {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                ToneChoiceRow(
+                    title = "内置提醒音",
+                    selected = settings.reminderToneUri == null,
+                    onClick = onUseBuiltInReminderTone
+                )
+                ToneChoiceRow(
+                    title = "系统通知提示音",
+                    summary = settings.reminderToneName ?: "从系统通知提示音列表选择",
+                    selected = settings.reminderToneUri != null,
+                    onClick = onPickSystemReminderTone
+                )
+            }
         }
 
         SettingsSection.CALENDAR -> SettingsSectionDialog("日历与提醒", { selectedSection = null }) {
@@ -854,6 +871,42 @@ private fun SettingsMenuCard(content: @Composable ColumnScope.() -> Unit) {
                 .padding(vertical = 2.dp),
             content = content
         )
+    }
+}
+
+@Composable
+private fun ToneChoiceRow(
+    title: String,
+    selected: Boolean,
+    onClick: () -> Unit,
+    summary: String? = null
+) {
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick),
+        shape = RoundedCornerShape(18.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = if (selected) 0.34f else 0.18f),
+        border = BorderStroke(
+            1.dp,
+            if (selected) MaterialTheme.colorScheme.primary.copy(alpha = 0.46f) else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.22f)
+        )
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                Text(title, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
+                summary?.takeIf { it.isNotBlank() }?.let {
+                    Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+            if (selected) {
+                Icon(Icons.Rounded.Check, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+            }
+        }
     }
 }
 

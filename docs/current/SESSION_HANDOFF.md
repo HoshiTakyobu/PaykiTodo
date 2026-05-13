@@ -6,29 +6,32 @@ Long-running Codex sessions can become unreliable. This file exists so a new ses
 
 ## Current Handoff Summary
 
-- The project is currently at code version `1.6.81` / `versionCode 153`.
-- Latest debug APK path after build: `app/build/outputs/apk/debug/PaykiTodo-1.6.81-debug.apk`.
+- The project is currently at code version `1.6.83` / `versionCode 155`.
+- Latest debug APK path after build: `app/build/outputs/apk/debug/PaykiTodo-1.6.83-debug.apk`.
 - Latest build command used Android Studio bundled JBR and succeeded:
   - `./gradlew.bat assembleDebug`
-- Desktop web event cards now open the editor directly on card click. Todo cards still use preview-first interaction.
-- Lunar support includes display labels, yearly same-lunar-date recurrence, and event lunar start/end picking for all-day and timed events. Do not claim todo lunar wheel support is complete.
+- Settings -> 提示音 has a compact panel with both built-in tone and system notification tone choices.
+- Todo DDL now has wheel-style lunar date picking. Event lunar start/end picking still exists and now reuses the shared picker.
+- Desktop web event cards open the editor directly on card click. Todo cards still use preview-first interaction.
 
-## Latest Fixes In 1.6.81
+## Latest Fixes In 1.6.83
 
-1. Desktop web existing timed event cards open the event editor directly on click, avoiding the previous preview-first path that made editing hard to discover.
-2. Node DOM simulation with the live phone snapshot verified event `15`: card click opens `event-modal`, fills the title, sets `editingEventId`, and does not open `event-preview-modal`.
-3. Settings -> 电脑同步 hides the entire `连接地址` section while desktop sync is disabled.
-4. Daily-board normal schedule rows remain borderless and the left color strip is closer to the row edge; in-progress rows keep the gold treatment.
-5. Calendar header uses a left flexible year/month pill and compact right-side action buttons to reduce month-title clipping.
-6. `1.6.81` was built successfully with Android Studio bundled JBR.
+1. Restored the built-in reminder-tone choice in Settings through a dedicated tone panel.
+2. Added wheel-style `农历 DDL` to the todo editor; selected lunar dates preserve the existing DDL clock time.
+3. Extracted the lunar picker to `LunarDatePickerDialog.kt` and reused it from event and todo editors.
+4. Split the calendar header into a dedicated month-title row plus an action row so `2026年5月` is not squeezed by action buttons.
+5. Increased daily-board event row text spacing from the left color strip and added vertical breathing room.
+6. `1.6.83` was built successfully with Android Studio bundled JBR.
 
 ## Files Most Relevant To The Latest Round
 
 - `app/build.gradle.kts`
-- `app/src/main/assets/desktop-web/app.js`
+- `app/src/main/java/com/example/todoalarm/ui/SettingsPanel.kt`
+- `app/src/main/java/com/example/todoalarm/ui/TodoEditorDialog.kt`
+- `app/src/main/java/com/example/todoalarm/ui/CalendarEventEditorDialog.kt`
+- `app/src/main/java/com/example/todoalarm/ui/LunarDatePickerDialog.kt`
 - `app/src/main/java/com/example/todoalarm/ui/CalendarPanel.kt`
 - `app/src/main/java/com/example/todoalarm/ui/DashboardChrome.kt`
-- `app/src/main/java/com/example/todoalarm/ui/SettingsPanel.kt`
 - `README.md`
 - `CHANGELOG.md`
 - `TODO.md`
@@ -36,16 +39,15 @@ Long-running Codex sessions can become unreliable. This file exists so a new ses
 
 ## Current Verification Focus
 
-1. Install `PaykiTodo-1.6.81-debug.apk`.
-2. Refresh the desktop browser page after install, then verify clicking an existing event opens the editor directly and saving updates the existing event.
-3. Disable desktop sync and verify Settings shows no access-address section.
+1. Install `PaykiTodo-1.6.83-debug.apk`.
+2. Verify Settings -> 提示音 shows both built-in and system notification tone choices.
+3. Verify Todo edit/create -> 农历 DDL opens the wheel-style picker, converts lunar date correctly, and preserves time.
 4. Check calendar header month text and daily-board schedule row spacing on the user's phone.
-5. If the desktop browser still behaves as preview-first after installing `1.6.81`, check whether the page is still serving old `/app.js` assets from the old installed APK.
+5. If the desktop browser still behaves as preview-first after installing `1.6.83`, check whether the page is still serving old `/app.js` assets from the old installed APK.
 
 ## Deferred Larger Work
 
 - Full desktop UI parity with phone UI.
-- Todo lunar wheel picker.
 - Full calendar rendering/performance optimization.
 - Emulator-driven visual QA loop: `Pixel_8` exists, but the latest hidden launch attempt did not produce an `adb devices` entry within 90 seconds.
 - Broader UI-copy cleanup beyond the concrete strings changed so far.

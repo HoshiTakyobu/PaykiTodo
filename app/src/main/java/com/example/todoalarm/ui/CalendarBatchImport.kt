@@ -47,6 +47,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.example.todoalarm.data.CalendarEventDraft
+import com.example.todoalarm.data.LunarCalendar
 import com.example.todoalarm.data.RecurrenceConfig
 import com.example.todoalarm.data.RecurrenceType
 import com.example.todoalarm.data.ReminderDeliveryMode
@@ -1271,6 +1272,7 @@ private fun recurrencePreviewLabel(
         RecurrenceType.MONTHLY_DAY -> "每月 ${startDate.dayOfMonth} 日"
         RecurrenceType.MONTHLY_NTH_WEEKDAY -> "每月第 ${((startDate.dayOfMonth - 1) / 7) + 1} 个${weekdayShortLabel(startDate.dayOfWeek)}"
         RecurrenceType.YEARLY_DATE -> "每年 ${startDate.monthValue} 月 ${startDate.dayOfMonth} 日"
+        RecurrenceType.YEARLY_LUNAR_DATE -> "每年农历 ${LunarCalendar.labelFor(startDate).displayText}"
     }
 }
 

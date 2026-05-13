@@ -4,8 +4,8 @@
 
 ### In Progress
 
-- Verify version `1.6.62` on device after lunar-label calendar display polish
-- Keep `README.md`, `CHANGELOG.md`, and current-state docs aligned with version `1.6.62`
+- Verify version `1.6.63` on device after lunar-label calendar display polish
+- Keep `README.md`, `CHANGELOG.md`, and current-state docs aligned with version `1.6.63`
 - Continue board / dashboard and calendar polish without regressing the current interaction model
 - Improve repo-native handoff so new sessions do not depend on long chat history
 
@@ -54,19 +54,22 @@
 - Work mode should be tested for suppressed outward sound, forced stronger vibration even on items with vibration disabled, and full-screen / accessibility fallback
 - Daily board should show a clear tomorrow section; if tomorrow has no events, it should say `明天暂无日程`
 - Desktop web timed and all-day event cards should open editing by clicking the card, without inline edit/delete buttons; verify clicking a card opens the editor on the actual desktop browser
-- If the live desktop page still lacks the left-side `v1.6.59` marker or loads `/app.js` without `?v=1.6.59`, install the latest APK before re-debugging click edit
-- Desktop web todo and event cards now open a preview first; verify preview edit / delete / complete / cancel on the actual desktop browser after installing `1.6.60`
+- If the live desktop page still lacks the left-side current-version marker or loads unversioned `/app.js`, install the latest APK before re-debugging click edit
+- Desktop web todo cards still open preview first; desktop event cards now open the editor directly. Verify both flows on the actual desktop browser after installing `1.6.63`
 - Desktop web todo/event reminder input now accepts mixed reminder specs; verify valid examples and invalid late reminders on the actual desktop browser after installing `1.6.61`
-- Calendar now shows lunar labels in timeline headers, month view, and agenda/list view; verify spacing and readability on device after installing `1.6.62`
-- Lunar date picker and lunar yearly recurrence are still pending; do not treat lunar support as complete yet
+- Calendar now shows lunar labels in timeline headers, month view, and agenda/list view; verify spacing and readability on device after installing `1.6.63`
+- Desktop web existing event cards should open the event editor directly after installing `1.6.63` and refreshing the browser
+- Desktop web recurrence selects should include `每年同农历月日`, and phone-side todo/event recurrence previews should generate yearly same-lunar-date occurrences
+- Settings -> 电脑同步 should show no access address while desktop sync is disabled
+- Dedicated lunar date picker / lunar wheel is still pending; yearly same-lunar-date recurrence now has minimal support
 - Desktop web event cards should use group colors first; all-day events should be available through compact per-day pills rather than a large separate all-day strip
 
 ## Mid-Term Follow-Ups
 
 - Desktop web UI still needs a deeper phone-parity redesign for advanced event/todo editing beyond this bug-fix round
 - Calendar still needs a dedicated performance pass for smooth add/edit/delete and timeline swiping under large event sets
-- Lunar calendar support is not implemented yet; design needs data conversion, date picker behavior, yearly lunar recurrence, and reminder scheduling semantics
-- Android Emulator UI inspection can be used in a later visual QA round, but this round only completed build-level verification
+- Lunar calendar support now covers display labels and minimal yearly same-lunar-date recurrence; dedicated lunar date picking / wheel UX and deeper edge-case verification remain pending
+- Android Emulator UI inspection can be used in a later visual QA round; `Pixel_8` AVD exists, but this round could not get a booted emulator listed by `adb devices` for install/screenshot verification
 - Continue improving reminder reliability across foreground / background / lock-screen scenarios
 - Expand the LAN desktop sync console with richer operations and better field coverage
 - If the desktop UI grows much larger, consider a separate `desktop-web/` source/build directory whose output is copied into `app/src/main/assets/desktop-web/`

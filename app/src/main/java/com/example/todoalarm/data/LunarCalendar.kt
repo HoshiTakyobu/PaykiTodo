@@ -43,4 +43,23 @@ object LunarCalendar {
             displayText = display
         )
     }
+
+    fun findDate(year: Int, month: Int, day: Int, isLeapMonth: Boolean = false): LocalDate? {
+        var cursor = LocalDate.of(year, 1, 1).minusDays(45)
+        val last = LocalDate.of(year, 12, 31).plusDays(45)
+        while (!cursor.isAfter(last)) {
+            val label = labelFor(cursor)
+            if (label.month == month && label.day == day && label.isLeapMonth == isLeapMonth) {
+                return cursor
+            }
+            cursor = cursor.plusDays(1)
+        }
+        return null
+    }
+
+    fun sameLunarDateInYear(sourceDate: LocalDate, targetYear: Int): LocalDate? {
+        val source = labelFor(sourceDate)
+        return findDate(targetYear, source.month, source.day, source.isLeapMonth)
+            ?: if (source.isLeapMonth) findDate(targetYear, source.month, source.day, false) else null
+    }
 }

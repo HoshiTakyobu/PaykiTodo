@@ -206,7 +206,8 @@ function recurrenceLabel(item) {
     WEEKLY: '每周重复',
     MONTHLY_NTH_WEEKDAY: '每月第几个星期几',
     MONTHLY_DAY: '每月同日',
-    YEARLY_DATE: '每年同日'
+    YEARLY_DATE: '每年同日',
+    YEARLY_LUNAR_DATE: '每年同农历月日'
   };
   const end = item.recurrenceEndDate ? '，到 ' + item.recurrenceEndDate : '';
   return (labels[item.recurrenceType] || item.recurrenceType) + end;
@@ -865,7 +866,7 @@ if (els.eventTimeline) {
     event.preventDefault();
     event.stopPropagation();
     const eventItem = findEventById(eventNode.dataset.eventId);
-    if (eventItem) openEventPreview(eventItem);
+    if (eventItem) openEventEditor(eventItem);
   });
 }
 

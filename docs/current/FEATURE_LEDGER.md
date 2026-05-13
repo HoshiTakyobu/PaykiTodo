@@ -130,7 +130,7 @@ This file tracks the product at a practical level for new coding sessions.
 
 - board / dashboard experience details and readability tuning
 - calendar interaction polish
-- lunar date picker and lunar yearly recurrence remain pending; current lunar work is display-only
+- dedicated lunar date picker / lunar wheel remains pending; lunar work now includes display labels and minimal yearly same-lunar-date recurrence
 - final launcher / themed icon / notification icon surface verification on device
 - default snooze picker behavior and feel
 - visual consistency across settings / drawer / launch screen / board

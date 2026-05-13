@@ -6,18 +6,20 @@ Long-running Codex sessions can become unreliable. This file exists so a new ses
 
 ## Current Handoff Summary
 
-- The project is currently at code version `1.6.62` / `versionCode 134`.
-- Latest debug APK path after build: `app/build/outputs/apk/debug/PaykiTodo-1.6.62-debug.apk`.
+- The project is currently at code version `1.6.63` / `versionCode 135`.
+- Latest debug APK path after build: `app/build/outputs/apk/debug/PaykiTodo-1.6.63-debug.apk`.
 - Latest build command used Android Studio bundled JBR and succeeded:
   - `./gradlew.bat assembleDebug`
-- Lunar support is currently display-only. Do not claim lunar date picking or lunar recurrence is complete.
+- Lunar support now includes display labels and a minimal yearly same-lunar-date recurrence rule. Do not claim the dedicated lunar date picker / lunar wheel is complete.
 
-## Latest Fixes In 1.6.62
+## Latest Fixes In 1.6.63
 
-1. Added `LunarCalendar.kt`, backed by Android ICU `ChineseCalendar`.
-2. Three-day / one-day timeline headers now show lunar labels below Gregorian day numbers.
-3. Month-view day cells now show lunar labels.
-4. Agenda/list week strip and day-group headers now show lunar labels.
+1. Desktop web existing event cards open the editor directly again; Node DOM simulation verified the click path and `YEARLY_LUNAR_DATE` field population.
+2. Desktop-sync status is hardened so disabled sync reports no running service and no access addresses.
+3. Daily-board normal schedule rows remain borderless with tighter left color-strip spacing; in-progress rows use lighter gold treatment.
+4. Calendar header title/button sizing was adjusted to reduce month-title clipping.
+5. `LunarCalendar.kt` now supports both display labels and resolving the same lunar month/day in a target Gregorian year.
+6. Todo/event recurrence now supports `YEARLY_LUNAR_DATE` / 每年同农历月日 in phone editors, desktop web selects, generation, and preview.
 
 ## Files Most Relevant To The Latest Round
 
@@ -31,18 +33,19 @@ Long-running Codex sessions can become unreliable. This file exists so a new ses
 
 ## Current Verification Focus
 
-1. Install `PaykiTodo-1.6.62-debug.apk`.
-2. Check calendar timeline headers for readable lunar labels.
-3. Check month-view cells for readable lunar labels without hiding event chips.
-4. Check agenda/list week strip and daily section headers for readable lunar labels.
+1. Install `PaykiTodo-1.6.63-debug.apk`.
+2. Refresh desktop web after installing the APK and verify existing event cards open the editor directly.
+3. Disable desktop sync and verify Settings shows no access address.
+4. Check calendar timeline/month/agenda lunar labels for readability.
+5. Create a yearly lunar recurrence test event/todo and verify preview/generated dates.
 
 ## Deferred Larger Work
 
 - Lunar date picker.
-- Lunar yearly recurrence and lunar birthday reminders.
+- Dedicated lunar date picker / lunar wheel.
 - Full desktop UI parity with phone UI.
 - Full calendar rendering/performance optimization beyond the current-time tick scoping.
-- Emulator-driven visual QA loop.
+- Emulator-driven visual QA loop: `Pixel_8` AVD exists, but this round could not get a booted device listed in `adb devices` for install/screenshot verification.
 - Broader UI-copy cleanup beyond the concrete strings changed so far.
 
 ## Required Reading For A New Session

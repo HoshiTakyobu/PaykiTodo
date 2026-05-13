@@ -936,6 +936,7 @@ class TodoRepository(
         val dueAt = requireNotNull(draft.dueAt) { "Recurring todo requires DDL" }
         val dueDate = dueAt.toLocalDate()
         val normalizedOffsets = draft.normalizedReminderOffsetsMinutes
+        val lunarDate = LunarCalendar.labelFor(dueDate)
         return RecurringTaskTemplate(
             id = 0,
             seriesId = item.recurringSeriesId ?: UUID.randomUUID().toString(),
@@ -959,8 +960,16 @@ class TodoRepository(
             recurrenceMonthlyOrdinal = if (draft.recurrence.type == RecurrenceType.MONTHLY_NTH_WEEKDAY) dueDate.nthWeekOrdinal() else null,
             recurrenceMonthlyWeekday = if (draft.recurrence.type == RecurrenceType.MONTHLY_NTH_WEEKDAY) dueDate.dayOfWeek.value else null,
             recurrenceMonthlyDay = if (draft.recurrence.type == RecurrenceType.MONTHLY_DAY) dueDate.dayOfMonth else null,
-            recurrenceYearlyMonth = if (draft.recurrence.type == RecurrenceType.YEARLY_DATE) dueDate.monthValue else null,
-            recurrenceYearlyDay = if (draft.recurrence.type == RecurrenceType.YEARLY_DATE) dueDate.dayOfMonth else null,
+            recurrenceYearlyMonth = when (draft.recurrence.type) {
+                RecurrenceType.YEARLY_DATE -> dueDate.monthValue
+                RecurrenceType.YEARLY_LUNAR_DATE -> lunarDate.month
+                else -> null
+            },
+            recurrenceYearlyDay = when (draft.recurrence.type) {
+                RecurrenceType.YEARLY_DATE -> dueDate.dayOfMonth
+                RecurrenceType.YEARLY_LUNAR_DATE -> lunarDate.day
+                else -> null
+            },
             startEpochDay = dueDate.toEpochDay(),
             endEpochDay = draft.recurrence.endDate?.toEpochDay() ?: dueDate.toEpochDay()
         )
@@ -968,6 +977,7 @@ class TodoRepository(
 
     private fun buildCalendarTemplate(item: TodoItem, draft: CalendarEventDraft): RecurringTaskTemplate {
         val startDate = draft.startAt.toLocalDate()
+        val lunarDate = LunarCalendar.labelFor(startDate)
         return RecurringTaskTemplate(
             id = 0,
             seriesId = item.recurringSeriesId ?: UUID.randomUUID().toString(),
@@ -991,8 +1001,16 @@ class TodoRepository(
             recurrenceMonthlyOrdinal = if (draft.recurrence.type == RecurrenceType.MONTHLY_NTH_WEEKDAY) startDate.nthWeekOrdinal() else null,
             recurrenceMonthlyWeekday = if (draft.recurrence.type == RecurrenceType.MONTHLY_NTH_WEEKDAY) startDate.dayOfWeek.value else null,
             recurrenceMonthlyDay = if (draft.recurrence.type == RecurrenceType.MONTHLY_DAY) startDate.dayOfMonth else null,
-            recurrenceYearlyMonth = if (draft.recurrence.type == RecurrenceType.YEARLY_DATE) startDate.monthValue else null,
-            recurrenceYearlyDay = if (draft.recurrence.type == RecurrenceType.YEARLY_DATE) startDate.dayOfMonth else null,
+            recurrenceYearlyMonth = when (draft.recurrence.type) {
+                RecurrenceType.YEARLY_DATE -> startDate.monthValue
+                RecurrenceType.YEARLY_LUNAR_DATE -> lunarDate.month
+                else -> null
+            },
+            recurrenceYearlyDay = when (draft.recurrence.type) {
+                RecurrenceType.YEARLY_DATE -> startDate.dayOfMonth
+                RecurrenceType.YEARLY_LUNAR_DATE -> lunarDate.day
+                else -> null
+            },
             startEpochDay = startDate.toEpochDay(),
             endEpochDay = draft.recurrence.endDate?.toEpochDay() ?: startDate.toEpochDay()
         )
@@ -1021,6 +1039,7 @@ class TodoRepository(
             RecurrenceType.MONTHLY_NTH_WEEKDAY -> generateNthWeekdayDates(dueDate, endDate)
             RecurrenceType.MONTHLY_DAY -> generateMonthlyDayDates(dueDate, endDate)
             RecurrenceType.YEARLY_DATE -> generateYearlyDates(dueDate, endDate)
+            RecurrenceType.YEARLY_LUNAR_DATE -> generateYearlyLunarDates(dueDate, endDate)
         }
 
         return dates.map { instanceDate ->
@@ -1056,6 +1075,7 @@ class TodoRepository(
             RecurrenceType.MONTHLY_NTH_WEEKDAY -> generateNthWeekdayDates(startDate, endDate)
             RecurrenceType.MONTHLY_DAY -> generateMonthlyDayDates(startDate, endDate)
             RecurrenceType.YEARLY_DATE -> generateYearlyDates(startDate, endDate)
+            RecurrenceType.YEARLY_LUNAR_DATE -> generateYearlyLunarDates(startDate, endDate)
         }
 
         return dates.map { instanceDate ->
@@ -1139,6 +1159,19 @@ class TodoRepository(
             year += 1
         }
         return dates
+    }
+
+    private fun generateYearlyLunarDates(start: LocalDate, end: LocalDate): List<LocalDate> {
+        val dates = linkedSetOf<LocalDate>()
+        var year = start.year
+        while (year <= end.year + 1) {
+            val candidate = LunarCalendar.sameLunarDateInYear(start, year)
+            if (candidate != null && !candidate.isBefore(start) && !candidate.isAfter(end)) {
+                dates += candidate
+            }
+            year += 1
+        }
+        return dates.sorted()
     }
 
     companion object {

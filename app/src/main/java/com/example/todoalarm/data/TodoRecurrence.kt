@@ -13,7 +13,8 @@ enum class RecurrenceType(val label: String) {
     WEEKLY("每周的周几"),
     MONTHLY_NTH_WEEKDAY("每月的第几个星期几"),
     MONTHLY_DAY("每月的 D 日"),
-    YEARLY_DATE("每年的 M 月 D 日");
+    YEARLY_DATE("每年的 M 月 D 日"),
+    YEARLY_LUNAR_DATE("每年同农历月日");
 
     companion object {
         fun fromStorage(value: String?): RecurrenceType {

@@ -52,6 +52,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.example.todoalarm.data.CalendarEventDraft
+import com.example.todoalarm.data.LunarCalendar
 import com.example.todoalarm.data.RecurrenceConfig
 import com.example.todoalarm.data.ReminderDeliveryMode
 import com.example.todoalarm.data.RecurrencePreviewResult
@@ -1100,12 +1101,14 @@ private data class RecurrenceChoiceItem(
 
 private fun recurrenceChoiceItems(startAt: LocalDateTime): List<RecurrenceChoiceItem> {
     val nth = ((startAt.dayOfMonth - 1) / 7) + 1
+    val lunar = LunarCalendar.labelFor(startAt.toLocalDate())
     return listOf(
         RecurrenceChoiceItem(RecurrenceType.DAILY, "每天"),
         RecurrenceChoiceItem(RecurrenceType.WEEKLY, "每周${startAt.dayOfWeek.shortLabel().removePrefix("周")}"),
         RecurrenceChoiceItem(RecurrenceType.MONTHLY_NTH_WEEKDAY, "每月第 ${nth} 个${startAt.dayOfWeek.shortLabel()}"),
         RecurrenceChoiceItem(RecurrenceType.MONTHLY_DAY, "每月${startAt.dayOfMonth}日"),
-        RecurrenceChoiceItem(RecurrenceType.YEARLY_DATE, "每年${startAt.monthValue}月${startAt.dayOfMonth}日")
+        RecurrenceChoiceItem(RecurrenceType.YEARLY_DATE, "每年${startAt.monthValue}月${startAt.dayOfMonth}日"),
+        RecurrenceChoiceItem(RecurrenceType.YEARLY_LUNAR_DATE, "每年农历${lunar.displayText}")
     )
 }
 
@@ -1126,6 +1129,7 @@ private fun recurrenceSummaryLabel(
         }
         RecurrenceType.MONTHLY_DAY -> "每月 ${startAt.dayOfMonth} 日"
         RecurrenceType.YEARLY_DATE -> "每年 ${startAt.monthValue} 月 ${startAt.dayOfMonth} 日"
+        RecurrenceType.YEARLY_LUNAR_DATE -> "每年农历 ${LunarCalendar.labelFor(startAt.toLocalDate()).displayText}"
         RecurrenceType.NONE -> "不重复"
     }
 }

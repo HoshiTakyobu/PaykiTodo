@@ -69,6 +69,7 @@ private fun generatePreviewDates(
         RecurrenceType.MONTHLY_NTH_WEEKDAY -> generateNthWeekdayDates(start, end)
         RecurrenceType.MONTHLY_DAY -> generateMonthlyDayDates(start, end)
         RecurrenceType.YEARLY_DATE -> generateYearlyDates(start, end)
+        RecurrenceType.YEARLY_LUNAR_DATE -> generateYearlyLunarDates(start, end)
     }
 }
 
@@ -140,4 +141,17 @@ private fun generateYearlyDates(start: LocalDate, end: LocalDate): List<LocalDat
         year += 1
     }
     return dates
+}
+
+private fun generateYearlyLunarDates(start: LocalDate, end: LocalDate): List<LocalDate> {
+    val dates = linkedSetOf<LocalDate>()
+    var year = start.year
+    while (year <= end.year + 1) {
+        val candidate = LunarCalendar.sameLunarDateInYear(start, year)
+        if (candidate != null && !candidate.isBefore(start) && !candidate.isAfter(end)) {
+            dates += candidate
+        }
+        year += 1
+    }
+    return dates.sorted()
 }

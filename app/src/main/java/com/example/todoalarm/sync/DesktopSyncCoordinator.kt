@@ -59,10 +59,12 @@ class DesktopSyncCoordinator(
     }
 
     fun status(): DesktopSyncStatus {
-        return settingsStore.currentSettings().toDesktopSyncStatus(
-            running = server != null,
+        val settings = settingsStore.currentSettings()
+        val enabledAndRunning = settings.desktopSyncEnabled && server != null
+        return settings.toDesktopSyncStatus(
+            running = enabledAndRunning,
             port = port,
-            ipAddresses = if (server != null) currentIpv4Addresses() else emptyList()
+            ipAddresses = if (enabledAndRunning) currentIpv4Addresses() else emptyList()
         )
     }
 

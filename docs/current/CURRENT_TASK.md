@@ -2,38 +2,41 @@
 
 ## Active Development Focus
 
-The current round has produced a `1.6.62` build. It starts the lunar-calendar request by adding display-only lunar labels to the existing calendar views.
+The current round has produced a `1.6.63` build. It fixes the desktop event edit path, tightens desktop-sync/offline status behavior, polishes daily-board and calendar header UI, and extends lunar support from display labels to yearly same-lunar-date recurrence.
 
 Completed in this round:
 
-1. Added `app/src/main/java/com/example/todoalarm/data/LunarCalendar.kt`.
-2. `LunarCalendar` uses Android ICU `ChineseCalendar` to convert a `LocalDate` into a lunar month/day label.
-3. Timeline day headers in the three-day / one-day calendar views now show a small lunar label below the Gregorian day number.
-4. Month-view day cells now show a lunar label below the day number; first lunar day displays the lunar month, other days display the lunar day name.
-5. Agenda/list week strip now shows lunar labels below the day number.
-6. Agenda/list daily section headers now show lunar labels under the Gregorian date.
-7. Version was bumped to `1.6.62` / `versionCode 134`.
-8. `./gradlew.bat assembleDebug` succeeded with Android Studio bundled `jbr`.
+1. Desktop web existing event cards now open the event editor directly again, instead of stopping at the preview sheet.
+2. A Node-based DOM simulation verified that clicking an existing desktop event opens the editor, fills the title, sets `editingEventId`, and preserves `YEARLY_LUNAR_DATE` recurrence selection.
+3. Desktop-sync status now reports `running=false` and an empty address list whenever Settings says desktop sync is disabled, even if a background service stop is still settling.
+4. Daily-board schedule rows keep normal events borderless and move the left color strip closer to the block edge; in-progress rows keep only a lighter gold outline / inner glow.
+5. Calendar header title width is protected and header buttons are more compact, reducing month-title clipping such as missing “5月”.
+6. `LunarCalendar` now converts Gregorian dates to lunar labels and can also resolve the same lunar month/day in a target Gregorian year.
+7. Todo and event recurrence support now includes `YEARLY_LUNAR_DATE` / 每年同农历月日, with generation and preview support.
+8. Phone-side todo/event editors and desktop web recurrence selects expose the yearly lunar recurrence option.
+9. Calendar timeline headers, month cells, and agenda/list date surfaces continue to show lunar labels.
+10. Version was bumped to `1.6.63` / `versionCode 135`.
+11. `./gradlew.bat assembleDebug` succeeded with Android Studio bundled `jbr`.
 
 ## Immediate Practical Next Steps
 
 When testing, use:
 
-1. install `app/build/outputs/apk/debug/PaykiTodo-1.6.62-debug.apk`
-2. open the calendar timeline view and verify each visible day shows a readable lunar label
-3. open month view and verify lunar labels fit without hiding the event chips
-4. open list / agenda view and verify both the week strip and day-group headers show lunar labels clearly
+1. install `app/build/outputs/apk/debug/PaykiTodo-1.6.63-debug.apk`
+2. verify desktop web existing event cards open the editor directly after installing the new APK and refreshing the browser page
+3. verify Settings -> 电脑同步 shows no address when desktop sync is disabled
+4. open the calendar timeline/month/agenda views and verify lunar labels remain readable
+5. create a test todo/event with “每年同农历月日” and verify the recurrence preview/generation dates match the same lunar birthday pattern
 
 ## Deferred From The User's Larger Request
 
-- Lunar support is not complete yet. This round only adds display labels.
 - Lunar date picking is not implemented yet.
-- Lunar yearly recurrence / lunar birthday reminders are not implemented yet.
+- The current lunar recurrence support is the minimal yearly same-lunar-date path; a dedicated lunar date picker / lunar wheel remains pending.
 - Full desktop web UI parity with the phone UI is still not complete.
 - A full calendar performance pass remains pending; the latest performance work only scoped the 30-second current-time recomposition.
-- Android Emulator visual QA was not completed in this round; only build-level verification was completed.
+- Android Emulator visual QA was attempted against the installed `Pixel_8` AVD; the emulator process did not become visible to `adb devices`, so no reliable UI screenshot/interaction loop was completed in this round.
 - Broad UI-copy cleanup is partially improved, but future screens should still be reviewed for unnecessary helper text.
 
 ## Current External Dependency
 
-No external file is needed for the current `1.6.62` verification task.
+No external file is needed for the current `1.6.63` verification task.

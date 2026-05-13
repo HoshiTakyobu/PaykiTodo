@@ -29,6 +29,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -685,14 +686,15 @@ private fun CalendarBrowserHeader(
                 Row(
                     modifier = Modifier
                         .weight(1f)
+                        .widthIn(min = 112.dp)
                         .clickable(onClick = onPickDate),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
                     Text(
                         text = titleMonth.format(DateTimeFormatter.ofPattern("yyyy年M月", Locale.CHINA)),
-                        modifier = Modifier.weight(1f, fill = false),
-                        style = MaterialTheme.typography.headlineSmall.copy(fontSize = 21.sp),
+                        modifier = Modifier.weight(1f),
+                        style = MaterialTheme.typography.headlineSmall.copy(fontSize = 20.sp),
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurface,
                         maxLines = 1,
@@ -1444,8 +1446,8 @@ private fun CalendarHeaderActionButton(
     ) {
         Row(
             modifier = Modifier.padding(
-                horizontal = if (label == null) 9.dp else 10.dp,
-                vertical = 6.dp
+                horizontal = if (label == null) 8.dp else 8.dp,
+                vertical = 5.dp
             ),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(4.dp)
@@ -1462,6 +1464,7 @@ private fun CalendarHeaderActionButton(
                     text = it,
                     color = MaterialTheme.colorScheme.onSurface,
                     fontWeight = FontWeight.SemiBold,
+                    fontSize = 13.sp,
                     maxLines = 1,
                     softWrap = false,
                     overflow = TextOverflow.Ellipsis
@@ -2237,6 +2240,7 @@ private fun recurrencePreviewLine(item: TodoItem): String? {
         com.example.todoalarm.data.RecurrenceType.MONTHLY_NTH_WEEKDAY -> "每月重复，截止到${endDate.year}年${endDate.monthValue}月${endDate.dayOfMonth}日"
         com.example.todoalarm.data.RecurrenceType.MONTHLY_DAY -> "每月${start.dayOfMonth}日重复，截止到${endDate.year}年${endDate.monthValue}月${endDate.dayOfMonth}日"
         com.example.todoalarm.data.RecurrenceType.YEARLY_DATE -> "每年${start.monthValue}月${start.dayOfMonth}日重复，截止到${endDate.year}年${endDate.monthValue}月${endDate.dayOfMonth}日"
+        com.example.todoalarm.data.RecurrenceType.YEARLY_LUNAR_DATE -> "每年农历${com.example.todoalarm.data.LunarCalendar.labelFor(start.toLocalDate()).displayText}重复，截止到${endDate.year}年${endDate.monthValue}月${endDate.dayOfMonth}日"
         com.example.todoalarm.data.RecurrenceType.NONE -> null
     }
 }

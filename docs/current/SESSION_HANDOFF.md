@@ -42,7 +42,7 @@ Long-running Codex sessions can become unreliable. This file exists so a new ses
 ## Current Verification Focus
 
 1. Install `PaykiTodo-1.6.80-debug.apk`.
-2. Refresh desktop web and verify existing event click opens preview, `编辑` opens editor, and save updates the existing event.
+2. Desktop web live resource check passed against `http://192.168.0.100:18765/`: HTML served `?v=1.6.80`, live app.js matched local SHA-256, and Node DOM simulation using live snapshot observed `PUT /api/events/15` after preview -> edit -> save.
 3. Disable desktop sync and verify Settings shows no access address.
 4. Check event lunar start/end selection on device for both all-day and timed events.
 5. Check calendar header month text and daily-board schedule row spacing on the user's phone.

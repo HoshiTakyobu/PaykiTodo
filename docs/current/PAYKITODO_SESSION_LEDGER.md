@@ -144,3 +144,4 @@ When reconstructing PaykiTodo state, use this priority order:
 - Emulator QA note: SDK emulator Pixel_8 exists and was launched hidden, but no emulator/device appeared in adb devices within 90 seconds, so UI screenshot verification is still blocked.
 - 1.6.79 added role/button semantics, keyboard focus, and aria labels to desktop timed event cards so keyboard users can reach the preview path.
 - 1.6.80 updated in-app Wiki desktop-sync instructions to match the explicit address expansion step and current desktop preview/edit capabilities.
+- Live desktop sync verification: http://192.168.0.100:18765/ served versioned 1.6.80 web assets; live app.js SHA-256 matched local asset; Node DOM simulation with live snapshot event 15 observed preview -> edit -> PUT /api/events/15.

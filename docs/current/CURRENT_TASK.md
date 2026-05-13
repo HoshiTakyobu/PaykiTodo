@@ -8,7 +8,7 @@ Completed in this round:
 
 1. Desktop web existing event cards now open the event preview sheet first, matching the phone-side preview interaction model.
 2. The event preview sheet still exposes `编辑` and `删除`; choosing `编辑` opens the event editor and saving continues to use `PUT /api/events/{id}`.
-3. Direct access to `http://192.168.0.100:18765/` and `/api/status` with token `6CF4` timed out from the workstation, so live browser verification is still blocked by network/service reachability rather than source inspection.
+3. Direct access to `http://192.168.0.100:18765/` is currently reachable. Live HTML serves `/app.css?v=1.6.80` and `/app.js?v=1.6.80`, and live `/app.js` SHA-256 matches the local desktop-web asset.
 4. Calendar event editing now has compact `农历开始` / `农历结束` date picking for both all-day and timed events. Timed events preserve the original clock time while replacing the date.
 5. Calendar header month title no longer uses hard clipping; it uses a slightly smaller title style and can wrap/ellipsis under tight width or large font scale.
 6. Daily-board schedule rows keep normal events borderless and move the left color strip closer to the block edge; only currently running rows keep the gold highlight.
@@ -18,7 +18,8 @@ Completed in this round:
 10. Timed event start/end rows now also expose lunar date picking and preserve the original time of day.
 11. Desktop timed event cards now expose button semantics, keyboard focus, and an aria label so keyboard open-preview behavior is reachable.
 12. In-app Wiki desktop-sync instructions now match the current address-expansion and preview/edit desktop web behavior.
-13. `./gradlew.bat assembleDebug` succeeded with Android Studio bundled `jbr`.
+13. A Node DOM simulation using the live phone snapshot verified event card click -> preview -> edit -> save path, including observed `PUT /api/events/15`.
+14. `./gradlew.bat assembleDebug` succeeded with Android Studio bundled `jbr`.
 
 ## Immediate Practical Next Steps
 

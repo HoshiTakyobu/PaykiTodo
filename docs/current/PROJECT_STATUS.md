@@ -7,13 +7,13 @@
 - Package name: `com.paykitodo.app`
 - Target platform: Android 14 / API 34
 - Current version in code:
-  - `versionName = "1.6.76"`
-  - `versionCode = 148`
+  - `versionName = "1.6.77"`
+  - `versionCode = 149`
 
 ## Current Build Facts
 
 - Latest debug APK output:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.6.76-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.6.77-debug.apk`
 - Minimal verification completed in the latest code round:
   - `./gradlew assembleDebug` succeeded with Android Studio bundled `jbr`
 - Current build environment expectation:
@@ -22,11 +22,11 @@
 
 ## Current Worktree Reality
 
-The repository is now at `1.6.76`. It includes the desktop web editor crash fix, UI-copy cleanup, desktop web no-DDL todo editing support, in-app desktop delete confirmations, desktop-sync service self-stop protection, dynamic desktop-web resource versioning, a smaller calendar recomposition pass, desktop todo/event preview sheets plus preview-driven desktop event editing, desktop mixed reminder syntax for todos/events, and lunar-label display in calendar views, minimal yearly same-lunar-date recurrence, and the latest desktop event preview/edit status/UI polish.
+The repository is now at `1.6.77`. It includes the desktop web editor crash fix, UI-copy cleanup, desktop web no-DDL todo editing support, in-app desktop delete confirmations, desktop-sync service self-stop protection, dynamic desktop-web resource versioning, a smaller calendar recomposition pass, desktop todo/event preview sheets plus preview-driven desktop event editing, desktop mixed reminder syntax for todos/events, and lunar-label display in calendar views, minimal yearly same-lunar-date recurrence, and the latest desktop event preview/edit status/UI polish.
 
 Most important current baseline facts:
 
-- version metadata is `1.6.76 / 148`
+- version metadata is `1.6.77 / 149`
 - launcher adaptive icon foreground now directly uses picture resource `@drawable/ic_launcher_art`
 - old vector mark launcher resources have been deleted so the launcher cannot fall back to them again
 - picture launcher art has been reprocessed to an opaque pure-white background with smaller centered content
@@ -69,7 +69,7 @@ Most important current baseline facts:
 - desktop web no longer shows the large separate all-day strip above the event timeline; compact all-day pills remain available inside day columns
 - Settings is split into common settings and advanced settings; desktop sync is common, while diagnostics / backup / crash logs are advanced maintenance surfaces
 - enum-like Settings choices use compact dropdown rows instead of large button groups; percentage values use a slider plus numeric input
-- phone-side todo and calendar editor bottom sheets no longer show generic explanatory subtitles
+- phone-side todo and calendar editor bottom sheets no longer show generic explanatory subtitles; the calendar all-day section keeps only concrete controls
 - Settings removes redundant helper copy from reminder-chain test, default snooze picker, and About usage-guide entry
 - desktop web has lightweight tab/card/modal/button motion with prefers-reduced-motion fallback
 - desktop web todo editor supports creating and editing no-DDL todos; disabling DDL also disables reminder and recurrence fields
@@ -107,7 +107,7 @@ Recent code inspection and build verification cover:
 
 ## Documentation Health
 
-Current docs have been synchronized for `1.6.76`:
+Current docs have been synchronized for `1.6.77`:
 
 - `README.md`
 - `CHANGELOG.md`

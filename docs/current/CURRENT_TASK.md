@@ -2,7 +2,7 @@
 
 ## Active Development Focus
 
-The current round has produced a `1.6.76` build. It continues the user-requested desktop/web, daily-board, calendar-header, and lunar-calendar repair pass while keeping the repository buildable.
+The current round has produced a `1.6.77` build. It continues the user-requested desktop/web, daily-board, calendar-header, and lunar-calendar repair pass while keeping the repository buildable.
 
 Completed in this round:
 
@@ -12,15 +12,16 @@ Completed in this round:
 4. All-day calendar event editing now has compact `农历开始` / `农历结束` date picking. The picker accepts lunar year/month/day plus leap-month toggle and converts the result through `LunarCalendar.findDate(...)`.
 5. Calendar header month title no longer uses hard clipping; it uses a slightly smaller title style and can wrap/ellipsis under tight width or large font scale.
 6. Daily-board schedule rows keep normal events borderless and move the left color strip closer to the block edge; only currently running rows keep the gold highlight.
-7. Version was bumped to `1.6.76` / `versionCode 148`.
+7. Version was bumped to `1.6.77` / `versionCode 149`.
 8. Settings-side desktop-sync status now has an explicit ViewModel refresh tick after enabling/disabling sync or rotating the key, reducing stale access-address display after state changes.
-9. `./gradlew.bat assembleDebug` succeeded with Android Studio bundled `jbr`.
+9. Calendar event editor removed redundant all-day explanatory copy while preserving the switch and lunar start/end actions.
+10. `./gradlew.bat assembleDebug` succeeded with Android Studio bundled `jbr`.
 
 ## Immediate Practical Next Steps
 
 When testing, use:
 
-1. install `app/build/outputs/apk/debug/PaykiTodo-1.6.76-debug.apk`
+1. install `app/build/outputs/apk/debug/PaykiTodo-1.6.77-debug.apk`
 2. refresh the desktop browser page after installing the APK
 3. verify clicking an existing desktop event opens the event preview, then `编辑` opens the editor and save updates the existing event
 4. verify Settings -> 电脑同步 shows no address when desktop sync is disabled and only shows addresses after explicitly expanding while running
@@ -37,4 +38,4 @@ When testing, use:
 
 ## Current External Dependency
 
-No external file is needed for the current `1.6.76` verification task.
+No external file is needed for the current `1.6.77` verification task.

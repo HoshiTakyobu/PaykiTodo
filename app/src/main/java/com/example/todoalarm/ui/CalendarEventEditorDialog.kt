@@ -247,10 +247,7 @@ internal fun CalendarEventEditorDialog(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                            Text("全天日程", fontWeight = FontWeight.SemiBold)
-                            Text("开启后会显示在全天栏", color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        }
+                        Text("全天日程", fontWeight = FontWeight.SemiBold)
                         Switch(checked = allDay, onCheckedChange = { allDay = it })
                     }
 
@@ -298,11 +295,6 @@ internal fun CalendarEventEditorDialog(
                                 onClick = { activeLunarDateTarget = CalendarDateTarget.EndDate }
                             ) { Text("农历结束") }
                         }
-                        Text(
-                            text = "全天日程会固定显示在日期栏下方。",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
                     } else {
                         Row(
                             modifier = Modifier.fillMaxWidth(),

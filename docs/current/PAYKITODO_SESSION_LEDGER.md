@@ -137,3 +137,4 @@ When reconstructing PaykiTodo state, use this priority order:
 - 1.6.72 tightened the desktop-web todo/event editor sheets into a narrower single-column layout to better resemble the phone-side bottom sheet.
 - 1.6.73 added stable Compose keys around calendar timed-event cards and all-day pills to reduce needless node recreation during timeline scrolling and event updates.
 - 1.6.74 tightened desktop-web todo/event preview sheets so their width, header columns, and body spacing align more closely with the editor sheets and phone-side bottom-sheet language.
+- 1.6.75 changed desktop event cards back to preview-first interaction, added all-day event lunar start/end picking, softened calendar header title clipping, and tightened daily-board event-row color-strip spacing. Build verified with Android Studio bundled JBR.

@@ -689,12 +689,12 @@ private fun CalendarBrowserHeader(
                 Text(
                     text = titleMonth.format(DateTimeFormatter.ofPattern("yyyy年M月", Locale.CHINA)),
                     modifier = Modifier.weight(1f),
-                    style = MaterialTheme.typography.headlineSmall.copy(fontSize = 22.sp),
+                    style = MaterialTheme.typography.titleLarge.copy(fontSize = 21.sp),
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface,
-                    maxLines = 1,
-                    softWrap = false,
-                    overflow = TextOverflow.Clip
+                    maxLines = 2,
+                    softWrap = true,
+                    overflow = TextOverflow.Ellipsis
                 )
                 Surface(
                     shape = RoundedCornerShape(999.dp),

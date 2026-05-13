@@ -6,28 +6,29 @@ Long-running Codex sessions can become unreliable. This file exists so a new ses
 
 ## Current Handoff Summary
 
-- The project is currently at code version `1.6.74` / `versionCode 146`.
-- Latest debug APK path after build: `app/build/outputs/apk/debug/PaykiTodo-1.6.74-debug.apk`.
+- The project is currently at code version `1.6.75` / `versionCode 147`.
+- Latest debug APK path after build: `app/build/outputs/apk/debug/PaykiTodo-1.6.75-debug.apk`.
 - Latest build command used Android Studio bundled JBR and succeeded:
   - `./gradlew.bat assembleDebug`
-- Lunar support now includes display labels and a minimal yearly same-lunar-date recurrence rule. Do not claim the dedicated lunar date picker / lunar wheel is complete.
+- Desktop web event cards now open preview first; editing is launched from the preview sheet.
+- Lunar support includes display labels, yearly same-lunar-date recurrence, and an all-day event lunar start/end picker. Do not claim timed-event/todo lunar wheel support is complete.
 
-## Latest Fixes In 1.6.74
+## Latest Fixes In 1.6.75
 
-1. Desktop web existing event cards open the editor directly again; Node DOM simulation verified the click path and `YEARLY_LUNAR_DATE` field population.
-2. Desktop-sync status is hardened so disabled sync reports no running service and no access addresses.
-3. Daily-board normal schedule rows remain borderless with tighter left color-strip spacing; in-progress rows use lighter gold treatment.
-4. Calendar header title/button sizing was adjusted to reduce month-title clipping.
-5. `LunarCalendar.kt` now supports both display labels and resolving the same lunar month/day in a target Gregorian year.
-6. Todo/event recurrence now supports `YEARLY_LUNAR_DATE` / 每年同农历月日 in phone editors, desktop web selects, generation, and preview.
-7. Phone-side todo/event editor date rows append lunar labels in parentheses after the Gregorian date.
-8. Desktop web todo/event editors show card-style date/time previews below segmented date inputs.
+1. Desktop web existing event cards open the event preview sheet first, aligning events with the phone-side and desktop-todo preview model.
+2. Event preview `编辑` still opens the editor and saving continues through the existing `PUT /api/events/{id}` update path.
+3. All-day event editing now exposes `农历开始` / `农历结束` buttons backed by a compact lunar date dialog using `LunarCalendar.findDate(...)`.
+4. Calendar header month text now avoids hard clipping by using a smaller title style and wrapping/ellipsis under tight width.
+5. Daily-board normal schedule rows remain borderless and the left color strip sits closer to the row edge; in-progress rows keep the gold treatment.
+6. `1.6.75` was built successfully with Android Studio bundled JBR.
 
 ## Files Most Relevant To The Latest Round
 
 - `app/build.gradle.kts`
-- `app/src/main/java/com/example/todoalarm/data/LunarCalendar.kt`
+- `app/src/main/assets/desktop-web/app.js`
+- `app/src/main/java/com/example/todoalarm/ui/CalendarEventEditorDialog.kt`
 - `app/src/main/java/com/example/todoalarm/ui/CalendarPanel.kt`
+- `app/src/main/java/com/example/todoalarm/ui/DashboardChrome.kt`
 - `README.md`
 - `CHANGELOG.md`
 - `TODO.md`
@@ -35,19 +36,18 @@ Long-running Codex sessions can become unreliable. This file exists so a new ses
 
 ## Current Verification Focus
 
-1. Install `PaykiTodo-1.6.74-debug.apk`.
-2. Refresh desktop web after installing the APK and verify existing event cards open the editor directly.
+1. Install `PaykiTodo-1.6.75-debug.apk`.
+2. Refresh desktop web and verify existing event click opens preview, `编辑` opens editor, and save updates the existing event.
 3. Disable desktop sync and verify Settings shows no access address.
-4. Check calendar timeline/month/agenda lunar labels for readability.
-5. Create a yearly lunar recurrence test event/todo and verify preview/generated dates.
+4. Check all-day event lunar start/end selection on device.
+5. Check calendar header month text and daily-board schedule row spacing on the user's phone.
 
 ## Deferred Larger Work
 
-- Lunar date picker.
-- Dedicated lunar date picker / lunar wheel.
 - Full desktop UI parity with phone UI.
-- Full calendar rendering/performance optimization beyond the current-time tick scoping.
-- Emulator-driven visual QA loop: `Pixel_8` AVD exists, but this round could not get a booted device listed in `adb devices` for install/screenshot verification.
+- Timed-event/todo lunar wheel picker.
+- Full calendar rendering/performance optimization.
+- Emulator-driven visual QA loop.
 - Broader UI-copy cleanup beyond the concrete strings changed so far.
 
 ## Required Reading For A New Session

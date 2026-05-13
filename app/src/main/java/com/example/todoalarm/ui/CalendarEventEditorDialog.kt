@@ -185,6 +185,7 @@ internal fun CalendarEventEditorDialog(
     var showRecurrencePicker by remember { mutableStateOf(false) }
     var helpTopic by remember { mutableStateOf<InputSyntaxHelpTopic?>(null) }
     var activeDateTimeTarget by remember { mutableStateOf<CalendarDateTimeTarget?>(null) }
+    var activeLunarDateTarget by remember { mutableStateOf<CalendarDateTarget?>(null) }
     val reminderAnchor = if (allDay) LocalDateTime.of(startAt.toLocalDate(), LocalTime.of(9, 0)) else startAt
     val reminderValidation = remember(reminderInput, reminderAnchor, reminderEnabled, initialEvent?.id) {
         if (!reminderEnabled) {
@@ -286,6 +287,16 @@ internal fun CalendarEventEditorDialog(
                                     }
                                 }
                             )
+                        }
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            OutlinedButton(
+                                modifier = Modifier.weight(1f),
+                                onClick = { activeLunarDateTarget = CalendarDateTarget.StartDate }
+                            ) { Text("农历开始") }
+                            OutlinedButton(
+                                modifier = Modifier.weight(1f),
+                                onClick = { activeLunarDateTarget = CalendarDateTarget.EndDate }
+                            ) { Text("农历结束") }
                         }
                         Text(
                             text = "全天日程会固定显示在日期栏下方。",
@@ -637,6 +648,37 @@ internal fun CalendarEventEditorDialog(
         )
     }
 
+    activeLunarDateTarget?.let { target ->
+        LunarDatePickerDialog(
+            title = when (target) {
+                CalendarDateTarget.StartDate -> "选择农历开始日期"
+                CalendarDateTarget.EndDate -> "选择农历结束日期"
+            },
+            initialDate = when (target) {
+                CalendarDateTarget.StartDate -> startAt.toLocalDate()
+                CalendarDateTarget.EndDate -> endAt.toLocalDate()
+            },
+            onDismiss = { activeLunarDateTarget = null },
+            onConfirm = { pickedDate ->
+                when (target) {
+                    CalendarDateTarget.StartDate -> {
+                        startAt = LocalDateTime.of(pickedDate, LocalTime.MIN)
+                        if (endAt.toLocalDate().isBefore(pickedDate)) {
+                            endAt = LocalDateTime.of(pickedDate, LocalTime.MIN)
+                        }
+                    }
+
+                    CalendarDateTarget.EndDate -> {
+                        endAt = LocalDateTime.of(pickedDate, LocalTime.MIN)
+                        if (pickedDate.isBefore(startAt.toLocalDate())) {
+                            startAt = LocalDateTime.of(pickedDate, LocalTime.MIN)
+                        }
+                    }
+                }
+                activeLunarDateTarget = null
+            }
+        )
+    }
     if (showReminderDeliveryPicker) {
         SingleChoiceListDialog(
             title = "选择提醒方式",
@@ -876,6 +918,105 @@ private fun ReminderSelectionDialog(
 private enum class CalendarDateTimeTarget {
     StartAt,
     EndAt
+}
+
+private enum class CalendarDateTarget {
+    StartDate,
+    EndDate
+}
+
+@Composable
+private fun LunarDatePickerDialog(
+    title: String,
+    initialDate: LocalDate,
+    onDismiss: () -> Unit,
+    onConfirm: (LocalDate) -> Unit
+) {
+    val initialLunar = remember(initialDate) { LunarCalendar.labelFor(initialDate) }
+    var yearText by remember(initialDate) { mutableStateOf(initialDate.year.toString()) }
+    var monthText by remember(initialDate) { mutableStateOf(initialLunar.month.toString()) }
+    var dayText by remember(initialDate) { mutableStateOf(initialLunar.day.toString()) }
+    var isLeapMonth by remember(initialDate) { mutableStateOf(initialLunar.isLeapMonth) }
+    val year = yearText.toIntOrNull()
+    val month = monthText.toIntOrNull()
+    val day = dayText.toIntOrNull()
+    val candidateDate = remember(yearText, monthText, dayText, isLeapMonth) {
+        if (year != null && year in 1900..2100 && month != null && month in 1..12 && day != null && day in 1..30) {
+            LunarCalendar.findDate(year, month, day, isLeapMonth)
+        } else {
+            null
+        }
+    }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(title, fontWeight = FontWeight.Bold) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text(
+                    text = "当前：${formatEditorDateTitle(initialDate)} · ${initialDate.dayOfWeek.shortLabel()}",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    OutlinedTextField(
+                        value = yearText,
+                        onValueChange = { yearText = it.filter(Char::isDigit).take(4) },
+                        label = { Text("年份") },
+                        modifier = Modifier.weight(1.2f),
+                        singleLine = true
+                    )
+                    OutlinedTextField(
+                        value = monthText,
+                        onValueChange = { monthText = it.filter(Char::isDigit).take(2) },
+                        label = { Text("月") },
+                        modifier = Modifier.weight(0.8f),
+                        singleLine = true
+                    )
+                    OutlinedTextField(
+                        value = dayText,
+                        onValueChange = { dayText = it.filter(Char::isDigit).take(2) },
+                        label = { Text("日") },
+                        modifier = Modifier.weight(0.8f),
+                        singleLine = true
+                    )
+                }
+                FilterChip(
+                    selected = isLeapMonth,
+                    onClick = { isLeapMonth = !isLeapMonth },
+                    label = { Text("闰月") }
+                )
+                if (candidateDate == null) {
+                    Text(
+                        text = "没有找到对应公历日期，请检查年份、月份、日期或闰月设置。",
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodySmall,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                } else {
+                    Text(
+                        text = "对应公历：${formatEditorDateTitle(candidateDate)} · ${candidateDate.dayOfWeek.shortLabel()}",
+                        color = MaterialTheme.colorScheme.primary,
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(
+                enabled = candidateDate != null,
+                onClick = { candidateDate?.let(onConfirm) }
+            ) { Text("确定") }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("取消") }
+        }
+    )
 }
 
 @OptIn(ExperimentalLayoutApi::class)

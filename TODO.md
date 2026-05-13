@@ -4,8 +4,8 @@
 
 ### In Progress
 
-- Verify version `1.6.55` on device after the editor copy cleanup and desktop-web motion polish
-- Keep `README.md`, `CHANGELOG.md`, and current-state docs aligned with version `1.6.55`
+- Verify version `1.6.56` on device after desktop todo no-DDL editing support
+- Keep `README.md`, `CHANGELOG.md`, and current-state docs aligned with version `1.6.56`
 - Continue board / dashboard and calendar polish without regressing the current interaction model
 - Improve repo-native handoff so new sessions do not depend on long chat history
 
@@ -76,7 +76,10 @@
 
 ## Done Recently
 
-- Bumped the app to `1.6.55` / `versionCode 127`
+- Bumped the app to `1.6.56` / `versionCode 128`
+- Added desktop web no-DDL todo editing with dependent DDL/reminder/recurrence fields disabled
+- Removed generic subtitles from desktop web todo/event editor modal headers
+- Bumped the app to `1.6.56` / `versionCode 128`
 - Removed generic subtitles from phone-side todo and calendar editor bottom sheets
 - Removed redundant Settings copy from reminder-chain test, default snooze picker, and About -> usage guide entry
 - Added lightweight desktop web motion for tabs, cards, modal backdrop, and button feedback with reduced-motion fallback

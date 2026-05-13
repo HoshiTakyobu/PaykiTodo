@@ -198,6 +198,10 @@ button.ghost {
 .form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
 .editor-grid > div { min-width: 0; border-radius: 20px; background: rgba(255,255,255,.82); border: 1px solid rgba(215,224,234,.82); padding: 12px; box-shadow: 0 8px 20px rgba(46,64,98,.045); }
 .span-2 { grid-column: 1 / -1; }
+.toggle-card label { display: inline-flex; align-items: center; gap: 10px; margin: 0; }
+.toggle-card input { width: auto; }
+.disabled-block { opacity: .46; }
+.disabled-block input, .disabled-block select, .disabled-block textarea { cursor: not-allowed; }
 .modal-sheet label { display: block; margin-bottom: 8px; font-size: 14px; font-weight: 900; color: #243446; }
 .modal-sheet input:focus, .modal-sheet textarea:focus, .modal-sheet select:focus { outline: 2px solid rgba(53,104,212,.2); border-color: rgba(53,104,212,.42); box-shadow: 0 0 0 4px rgba(53,104,212,.08); }
 .primary-editor-field { font-size: 20px !important; font-weight: 850; padding: 14px 16px !important; }

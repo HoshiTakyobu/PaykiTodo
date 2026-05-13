@@ -6,8 +6,8 @@ Long-running Codex sessions can become unreliable. This file exists so a new ses
 
 ## Current Handoff Summary
 
-- The project is currently at code version `1.6.55` / `versionCode 127`
-- Latest debug APK path after build should be `app/build/outputs/apk/debug/PaykiTodo-1.6.55-debug.apk`
+- The project is currently at code version `1.6.56` / `versionCode 128`
+- Latest debug APK path after build should be `app/build/outputs/apk/debug/PaykiTodo-1.6.56-debug.apk`
 - Latest fix rounds addressed the real desktop-web editing failure, then a focused UI-copy and desktop-motion polish pass:
   1. Desktop web assets are versioned and served with no-cache headers.
   2. Event card clicks use delegated handling.
@@ -34,9 +34,9 @@ Long-running Codex sessions can become unreliable. This file exists so a new ses
 
 ## Current Verification Focus
 
-1. Install `PaykiTodo-1.6.55-debug.apk`
+1. Install `PaykiTodo-1.6.56-debug.apk`
 2. Enable desktop sync and connect from a desktop browser
-3. Hard-refresh the desktop page and verify it loads `/app.js?v=1.6.55`
+3. Hard-refresh the desktop page and verify it loads `/app.js?v=1.6.56`
 4. Click timed and all-day event entries and verify both open the event editor
 5. Verify saving an event edit still works
 6. Disable desktop sync and verify Settings does not show stale access addresses
@@ -48,7 +48,7 @@ Long-running Codex sessions can become unreliable. This file exists so a new ses
 - Lunar calendar and lunar yearly recurrence
 - Full calendar rendering/performance optimization
 - Emulator-driven visual QA loop
-- Broader UI-copy/comment cleanup beyond the concrete strings changed in 1.6.55
+- Broader UI-copy/comment cleanup beyond the concrete strings changed in 1.6.56
 
 ## Required Reading For A New Session
 

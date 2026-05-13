@@ -496,11 +496,27 @@ function recurrencePayload(typeValue, endValue, weekdaysValue) {
   };
 }
 
+function setTodoDueEnabled(enabled) {
+  const checkbox = document.getElementById('todo-has-due');
+  if (checkbox) checkbox.checked = enabled;
+  document.querySelectorAll('.todo-due-dependent').forEach(node => {
+    node.classList.toggle('disabled-block', !enabled);
+    node.querySelectorAll('input, select, textarea, button').forEach(input => {
+      input.disabled = !enabled;
+    });
+  });
+  if (!enabled) {
+    writeDateTimeValue('todo-due', '');
+    writeDateTimeValue('todo-reminder', '');
+    document.getElementById('todo-recurrence-type').value = 'NONE';
+    document.getElementById('todo-recurrence-end').value = '';
+    document.getElementById('todo-weekdays').value = '';
+  }
+}
 function clearTodoForm() {
   state.editingTodoId = null;
   fillGroupSelect('todo-group');
   document.getElementById('todo-modal-title').textContent = '新增待办';
-  document.getElementById('todo-modal-subtitle').textContent = '编辑 DDL、提醒、循环与提醒方式。';
   document.getElementById('create-todo').textContent = '创建待办';
   document.getElementById('delete-todo').classList.add('hidden');
   document.getElementById('todo-title').value = '';
@@ -512,17 +528,22 @@ function clearTodoForm() {
   document.getElementById('todo-weekdays').value = '';
   document.getElementById('todo-ring').checked = true;
   document.getElementById('todo-vibrate').checked = true;
+  const hasDueCheckbox = document.getElementById('todo-has-due');
+  if (hasDueCheckbox) hasDueCheckbox.disabled = false;
+  setTodoDueEnabled(true);
 }
 
 function openTodoEditor(item) {
   state.editingTodoId = item.id;
   fillGroupSelect('todo-group', item.groupId);
   document.getElementById('todo-modal-title').textContent = '编辑待办';
-  document.getElementById('todo-modal-subtitle').textContent = '可修改标题、备注、DDL、提醒、分组、循环、铃声和震动。';
   document.getElementById('create-todo').textContent = '保存修改';
   document.getElementById('delete-todo').classList.remove('hidden');
   document.getElementById('todo-title').value = item.title || '';
   document.getElementById('todo-notes').value = item.notes || '';
+  const hasDueCheckbox = document.getElementById('todo-has-due');
+  if (hasDueCheckbox) hasDueCheckbox.disabled = item.isRecurring === true;
+  setTodoDueEnabled(item.hasDueDate !== false);
   writeDateTimeValue('todo-due', item.hasDueDate ? formatDateTimeLocalValue(item.dueAtMillis) : '');
   const reminderOffsets = item.reminderOffsetsMinutes || [];
   const reminderMillis = reminderOffsets.length && item.hasDueDate
@@ -542,7 +563,6 @@ function clearEventForm() {
   state.pendingEventSeed = null;
   fillGroupSelect('event-group');
   document.getElementById('event-modal-title').textContent = '新增日程';
-  document.getElementById('event-modal-subtitle').textContent = '编辑起止时间、地点、颜色、循环与提醒。';
   document.getElementById('save-event').textContent = '创建日程';
   document.getElementById('delete-event').classList.add('hidden');
   document.getElementById('event-title').value = '';
@@ -586,7 +606,6 @@ function openEventEditor(item) {
   state.pendingEventSeed = null;
   fillGroupSelect('event-group', item.groupId);
   document.getElementById('event-modal-title').textContent = '编辑日程';
-  document.getElementById('event-modal-subtitle').textContent = '可修改起止时间、地点、颜色、循环与提醒。';
   document.getElementById('save-event').textContent = '保存修改';
   document.getElementById('delete-event').classList.remove('hidden');
   document.getElementById('event-title').value = item.title || '';
@@ -657,6 +676,7 @@ function bindActions() {
   });
 }
 
+document.getElementById('todo-has-due')?.addEventListener('change', event => setTodoDueEnabled(event.target.checked));
 document.getElementById('connect').onclick = () => connect().catch(err => els.status.textContent = err.message);
 els.token.addEventListener('keydown', event => {
   if (event.key !== 'Enter') return;
@@ -732,8 +752,9 @@ document.addEventListener('keydown', event => {
 });
 
 document.getElementById('create-todo').onclick = async () => {
-  const dueAt = readDateTimeValue('todo-due');
-  const reminderAt = readDateTimeValue('todo-reminder');
+  const hasDueDate = document.getElementById('todo-has-due')?.checked !== false;
+  const dueAt = hasDueDate ? readDateTimeValue('todo-due') : null;
+  const reminderAt = hasDueDate ? readDateTimeValue('todo-reminder') : null;
   const payload = {
     title: document.getElementById('todo-title').value,
     notes: document.getElementById('todo-notes').value,
@@ -742,11 +763,11 @@ document.getElementById('create-todo').onclick = async () => {
     groupId: Number(document.getElementById('todo-group').value || 0),
     ringEnabled: document.getElementById('todo-ring').checked,
     vibrateEnabled: document.getElementById('todo-vibrate').checked,
-    recurrence: recurrencePayload(
+    recurrence: hasDueDate ? recurrencePayload(
       document.getElementById('todo-recurrence-type').value,
       document.getElementById('todo-recurrence-end').value,
       document.getElementById('todo-weekdays').value
-    )
+    ) : { enabled: false, type: 'NONE', weeklyDays: [], endDate: null }
   };
   if (state.editingTodoId) {
     await api(`/api/todos/${state.editingTodoId}`, {

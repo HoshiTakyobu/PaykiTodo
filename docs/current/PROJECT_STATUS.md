@@ -7,13 +7,13 @@
 - Package name: `com.paykitodo.app`
 - Target platform: Android 14 / API 34
 - Current version in code:
-  - `versionName = "1.6.55"`
-  - `versionCode = 127`
+  - `versionName = "1.6.56"`
+  - `versionCode = 128`
 
 ## Current Build Facts
 
 - Latest debug APK output:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.6.55-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.6.56-debug.apk`
 - Minimal verification completed in the latest code round:
   - `./gradlew assembleDebug` succeeded with Android Studio bundled `jbr`
 - Current build environment expectation:
@@ -22,11 +22,11 @@
 
 ## Current Worktree Reality
 
-The repository is now at `1.6.55`. It includes the 1.6.54 desktop web editor crash fix plus a focused UI-copy cleanup and desktop-web motion polish round.
+The repository is now at `1.6.56`. It includes the desktop web editor crash fix, UI-copy cleanup, and desktop web no-DDL todo editing support.
 
 Most important current baseline facts:
 
-- version metadata is `1.6.55 / 127`
+- version metadata is `1.6.56 / 128`
 - launcher adaptive icon foreground now directly uses picture resource `@drawable/ic_launcher_art`
 - old vector mark launcher resources have been deleted so the launcher cannot fall back to them again
 - picture launcher art has been reprocessed to an opaque pure-white background with smaller centered content
@@ -72,6 +72,7 @@ Most important current baseline facts:
 - phone-side todo and calendar editor bottom sheets no longer show generic explanatory subtitles
 - Settings removes redundant helper copy from reminder-chain test, default snooze picker, and About usage-guide entry
 - desktop web has lightweight tab/card/modal/button motion with prefers-reduced-motion fallback
+- desktop web todo editor supports creating and editing no-DDL todos; disabling DDL also disables reminder and recurrence fields
 
 ## Recent Checked Areas
 
@@ -90,7 +91,7 @@ Recent code inspection and build verification cover:
 
 ## Documentation Health
 
-Current docs have been synchronized for `1.6.55`:
+Current docs have been synchronized for `1.6.56`:
 
 - `README.md`
 - `CHANGELOG.md`

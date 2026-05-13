@@ -112,3 +112,5 @@ When reconstructing PaykiTodo state, use this priority order:
 - 1.6.54 fixed the desktop event editor hidden-modal failure by normalizing recurrenceWeekdays values before filling the editor; Edge CDP click simulation passed against real phone snapshot data.
 
 - 1.6.55 removed generic editor/settings helper copy and added lightweight desktop web motion with reduced-motion fallback.
+
+- 1.6.56 added desktop web no-DDL todo editing and removed desktop modal helper subtitles.

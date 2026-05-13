@@ -4,8 +4,8 @@
 
 ### In Progress
 
-- Verify version `1.6.65` on device after lunar-label calendar display polish
-- Keep `README.md`, `CHANGELOG.md`, and current-state docs aligned with version `1.6.65`
+- Verify version `1.6.66` on device after desktop-event click-edit hardening
+- Keep `README.md`, `CHANGELOG.md`, and current-state docs aligned with version `1.6.66`
 - Continue board / dashboard and calendar polish without regressing the current interaction model
 - Improve repo-native handoff so new sessions do not depend on long chat history
 
@@ -55,10 +55,10 @@
 - Daily board should show a clear tomorrow section; if tomorrow has no events, it should say `明天暂无日程`
 - Desktop web timed and all-day event cards should open editing by clicking the card, without inline edit/delete buttons; verify clicking a card opens the editor on the actual desktop browser
 - If the live desktop page still lacks the left-side current-version marker or loads unversioned `/app.js`, install the latest APK before re-debugging click edit
-- Desktop web todo cards still open preview first; desktop event cards now open the editor directly. Verify both flows on the actual desktop browser after installing `1.6.65`
+- Desktop web todo cards still open preview first; desktop event cards now open the editor directly. Verify both flows on the actual desktop browser after installing `1.6.66`
 - Desktop web todo/event reminder input now accepts mixed reminder specs; verify valid examples and invalid late reminders on the actual desktop browser after installing `1.6.61`
-- Calendar now shows lunar labels in timeline headers, month view, and agenda/list view; verify spacing and readability on device after installing `1.6.65`
-- Desktop web existing event cards should open the event editor directly after installing `1.6.65` and refreshing the browser
+- Calendar now shows lunar labels in timeline headers, month view, and agenda/list view; verify spacing and readability on device after installing `1.6.66`
+- Desktop web existing event cards should open the event editor directly after installing `1.6.66` and refreshing the browser; this round could not reach `http://192.168.0.100:18765/` from the workstation because the request timed out
 - Desktop web recurrence selects should include `每年同农历月日`, and phone-side todo/event recurrence previews should generate yearly same-lunar-date occurrences
 - Settings -> 电脑同步 should show no access address while desktop sync is disabled
 - Dedicated lunar date picker / lunar wheel is still pending; yearly same-lunar-date recurrence now has minimal support

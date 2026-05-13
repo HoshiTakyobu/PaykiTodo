@@ -422,6 +422,15 @@ function renderEventCard(segment) {
     + '</article>';
 }
 
+function openEventEditorById(id) {
+  const eventItem = findEventById(id);
+  if (!eventItem) {
+    els.status.textContent = '没有找到这个日程，请刷新后重试。';
+    return;
+  }
+  openEventEditor(eventItem);
+}
+
 function syncTopbar() {
   const todoMode = state.currentTab === 'todos';
   els.panelTitle.textContent = todoMode ? '待办时间轴' : '日程时间轴';
@@ -527,6 +536,16 @@ function renderEvents() {
       clearEventForm();
       setEventSeed(startMillis, endMillis);
       openModal('event-modal');
+    };
+  });
+  document.querySelectorAll('[data-event-id]').forEach(node => {
+    node.onclick = event => {
+      event.preventDefault();
+      event.stopPropagation();
+      openEventEditorById(node.dataset.eventId);
+    };
+    node.onkeydown = event => {
+      if (event.key === 'Enter' || event.key === ' ') node.click();
     };
   });
   bindActions();
@@ -897,8 +916,7 @@ if (els.eventTimeline) {
     if (!eventNode) return;
     event.preventDefault();
     event.stopPropagation();
-    const eventItem = findEventById(eventNode.dataset.eventId);
-    if (eventItem) openEventEditor(eventItem);
+    openEventEditorById(eventNode.dataset.eventId);
   });
 }
 

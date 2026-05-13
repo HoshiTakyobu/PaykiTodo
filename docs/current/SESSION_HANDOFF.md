@@ -6,13 +6,13 @@ Long-running Codex sessions can become unreliable. This file exists so a new ses
 
 ## Current Handoff Summary
 
-- The project is currently at code version `1.6.67` / `versionCode 139`.
-- Latest debug APK path after build: `app/build/outputs/apk/debug/PaykiTodo-1.6.67-debug.apk`.
+- The project is currently at code version `1.6.68` / `versionCode 140`.
+- Latest debug APK path after build: `app/build/outputs/apk/debug/PaykiTodo-1.6.68-debug.apk`.
 - Latest build command used Android Studio bundled JBR and succeeded:
   - `./gradlew.bat assembleDebug`
 - Lunar support now includes display labels and a minimal yearly same-lunar-date recurrence rule. Do not claim the dedicated lunar date picker / lunar wheel is complete.
 
-## Latest Fixes In 1.6.67
+## Latest Fixes In 1.6.68
 
 1. Desktop web existing event cards open the editor directly again; Node DOM simulation verified the click path and `YEARLY_LUNAR_DATE` field population.
 2. Desktop-sync status is hardened so disabled sync reports no running service and no access addresses.
@@ -35,7 +35,7 @@ Long-running Codex sessions can become unreliable. This file exists so a new ses
 
 ## Current Verification Focus
 
-1. Install `PaykiTodo-1.6.67-debug.apk`.
+1. Install `PaykiTodo-1.6.68-debug.apk`.
 2. Refresh desktop web after installing the APK and verify existing event cards open the editor directly.
 3. Disable desktop sync and verify Settings shows no access address.
 4. Check calendar timeline/month/agenda lunar labels for readability.

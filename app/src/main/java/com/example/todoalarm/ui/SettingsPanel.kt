@@ -478,12 +478,6 @@ private fun ReminderAudioStrategyPanel(
     }
 
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-        Text(
-            text = "Android 不允许普通应用新增系统级 PaykiTodo 独立音量。这里提供的是 PaykiTodo 内部音量和播放通道策略。",
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            style = MaterialTheme.typography.bodyMedium
-        )
-
         CompactDropdownSetting(
             title = "播放通道",
             value = settings.reminderAudioChannel.label,
@@ -493,7 +487,7 @@ private fun ReminderAudioStrategyPanel(
 
         PercentSettingRow(
             title = "PaykiTodo 内部音量",
-            summary = "只影响 PaykiTodo 自己播放提醒音的音量，不会改变系统音量滑块。",
+            summary = "",
             value = settings.reminderInternalVolumePercent,
             onChange = { commit(internalVolume = it) }
         )
@@ -503,11 +497,6 @@ private fun ReminderAudioStrategyPanel(
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                     Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         Text("工作模式", fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
-                        Text(
-                            "开启后默认不外放声音，改用更强震动，并让日程提醒也走全屏 / 无障碍兜底链路。",
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            style = MaterialTheme.typography.bodySmall
-                        )
                     }
                     Switch(checked = settings.workQuietModeEnabled, onCheckedChange = { commit(quietMode = it) })
                 }
@@ -519,17 +508,12 @@ private fun ReminderAudioStrategyPanel(
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                     Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         Text("提醒时临时提升系统通道音量", fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
-                        Text(
-                            "会临时修改所选系统通道的全局音量，播放结束或提醒结束后尽量恢复原值。默认关闭。",
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            style = MaterialTheme.typography.bodySmall
-                        )
                     }
                     Switch(checked = settings.reminderBoostSystemVolume, onCheckedChange = { commit(boostSystemVolume = it) })
                 }
                 PercentSettingRow(
                     title = "临时提升目标",
-                    summary = "例如通知通道静音时，可在提醒期间尝试提升到 50%，随后恢复。",
+                    summary = "",
                     value = settings.reminderBoostVolumePercent,
                     enabled = settings.reminderBoostSystemVolume,
                     onChange = { commit(boostVolume = it) }
@@ -559,7 +543,9 @@ private fun PercentSettingRow(
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                 Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     Text(title, fontWeight = FontWeight.SemiBold, color = if (enabled) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text(summary, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+                    if (summary.isNotBlank()) {
+                        Text(summary, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+                    }
                 }
             }
             Row(

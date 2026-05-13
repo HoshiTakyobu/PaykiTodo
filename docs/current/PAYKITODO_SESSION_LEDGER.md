@@ -130,3 +130,4 @@ When reconstructing PaykiTodo state, use this priority order:
 - 1.6.65 added desktop-web card-style date/time previews for todo DDL and event start/end inputs, moving the editor closer to the phone-side time-card interaction.
 - 1.6.66 hardened desktop-web existing-event click editing by binding edit handlers directly to rendered event nodes and making timeline guide lines ignore pointer events; live access to `http://192.168.0.100:18765/` timed out from the workstation, so actual-browser verification remains pending after installing the APK.
 - 1.6.67 changed the phone Settings -> Desktop Sync address area to stay collapsed by default while the sync service is running, so the LAN URL is only shown after the user taps "显示连接地址" and can be hidden again.
+- 1.6.68 removed redundant explanatory copy from the phone todo editor and reminder-audio settings while preserving necessary warnings, validation messages, and syntax help.

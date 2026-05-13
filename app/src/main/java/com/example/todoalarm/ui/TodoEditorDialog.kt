@@ -200,15 +200,6 @@ fun TodoEditorDialog(
                     ) {
                         Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                             Text("设置 DDL", fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
-                            Text(
-                                text = if (hasDueDate) {
-                                    "当前任务会按截止时间排序。"
-                                } else {
-                                    "未设置 DDL 的任务会排在计划中末尾。"
-                                },
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                style = MaterialTheme.typography.bodySmall
-                            )
                         }
                         Switch(
                             checked = hasDueDate,
@@ -253,15 +244,6 @@ fun TodoEditorDialog(
                     )
                 }
 
-                if (hasDueDate) {
-                } else {
-                    Text(
-                        text = "当前任务不设置截止日期，也不会启用提醒或循环。",
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        style = MaterialTheme.typography.bodySmall
-                    )
-                }
-
                 if (isHistory) {
                     Text(
                         text = "历史任务允许修改标题、备注、分类和 DDL，但不会重新启用提醒。",
@@ -278,7 +260,6 @@ fun TodoEditorDialog(
                         ) {
                             Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                                 Text("提醒", fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
-                                Text("建议在 DDL 之前提醒。", color = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
                             Switch(
                                 checked = reminderEnabled,

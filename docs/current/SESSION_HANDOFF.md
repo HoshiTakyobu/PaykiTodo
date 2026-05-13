@@ -50,7 +50,7 @@ Long-running Codex sessions can become unreliable. This file exists so a new ses
 - Full desktop UI parity with phone UI.
 - Todo lunar wheel picker.
 - Full calendar rendering/performance optimization.
-- Emulator-driven visual QA loop.
+- Emulator-driven visual QA loop: `Pixel_8` exists, but the latest hidden launch attempt did not produce an `adb devices` entry within 90 seconds.
 - Broader UI-copy cleanup beyond the concrete strings changed so far.
 
 ## Required Reading For A New Session

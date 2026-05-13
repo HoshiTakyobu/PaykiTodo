@@ -141,3 +141,4 @@ When reconstructing PaykiTodo state, use this priority order:
 - 1.6.76 added a ViewModel refresh tick for desktop-sync status after enabling/disabling sync or rotating the key, so Settings does not keep showing stale access-address state after user actions.
 - 1.6.77 removed redundant all-day explanatory copy from the calendar event editor while preserving the all-day switch and lunar start/end date controls.
 - 1.6.78 extended compact lunar start/end picking from all-day events to timed events, preserving the original clock time while replacing the selected date.
+- Emulator QA note: SDK emulator Pixel_8 exists and was launched hidden, but no emulator/device appeared in adb devices within 90 seconds, so UI screenshot verification is still blocked.

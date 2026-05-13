@@ -34,7 +34,7 @@ When testing, use:
 - Full desktop web UI parity with the phone UI is still not complete.
 - Todo lunar wheel/date-picker UX remains pending; event editing now has compact lunar start/end picking for both all-day and timed events.
 - A full calendar performance pass remains pending; current work only includes incremental layout/composition hardening.
-- Android Emulator visual QA was not completed in this round because no booted emulator was available in `adb devices` during earlier attempts.
+- Android Emulator visual QA was attempted again with SDK emulator `Pixel_8`; `emulator.exe` launched but no device appeared in `adb devices` within 90 seconds, so no install/screenshot UI loop can be claimed yet.
 - Broad UI-copy cleanup is partially improved, but future screens should still be reviewed for unnecessary helper text.
 
 ## Current External Dependency

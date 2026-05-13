@@ -682,7 +682,7 @@ private fun recurrenceHint(
 private fun todoEditorDateLine(date: LocalDate): String {
     val nowYear = LocalDate.now().year
     val pattern = if (date.year == nowYear) "M月d日" else "yyyy年M月d日"
-    return date.format(DateTimeFormatter.ofPattern(pattern, Locale.CHINA)) + " · " + date.dayOfWeek.shortLabel()
+    return date.format(DateTimeFormatter.ofPattern(pattern, Locale.CHINA)) + "（农历${LunarCalendar.labelFor(date).displayText}） · " + date.dayOfWeek.shortLabel()
 }
 
 private fun showDatePicker(

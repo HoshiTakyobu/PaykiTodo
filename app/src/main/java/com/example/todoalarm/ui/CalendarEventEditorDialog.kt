@@ -1019,10 +1019,12 @@ private fun EditorDateSelectorCard(
                 fontWeight = FontWeight.Medium
             )
             Text(
-                text = date.format(DateTimeFormatter.ofPattern("M月d日", Locale.CHINA)),
+                text = formatEditorDateTitle(date),
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface
+                color = MaterialTheme.colorScheme.onSurface,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
             )
             Text(
                 text = date.dayOfWeek.shortLabel(),
@@ -1150,9 +1152,17 @@ private fun formatAllDaySpan(startDate: LocalDate, endDate: LocalDate): String {
 }
 
 private fun formatEditorDateLine(date: LocalDate): String {
+    return formatEditorDateTitle(date) + " · " + date.dayOfWeek.shortLabel()
+}
+
+private fun formatEditorDateTitle(date: LocalDate): String {
     val nowYear = LocalDate.now().year
     val pattern = if (date.year == nowYear) "M月d日" else "yyyy年M月d日"
-    return date.format(DateTimeFormatter.ofPattern(pattern, Locale.CHINA)) + " · " + date.dayOfWeek.shortLabel()
+    return date.format(DateTimeFormatter.ofPattern(pattern, Locale.CHINA)) + lunarParenthesized(date)
+}
+
+private fun lunarParenthesized(date: LocalDate): String {
+    return "（农历${LunarCalendar.labelFor(date).displayText}）"
 }
 
 private fun formatClockTime(dateTime: LocalDateTime): String {

@@ -6,13 +6,13 @@ Long-running Codex sessions can become unreliable. This file exists so a new ses
 
 ## Current Handoff Summary
 
-- The project is currently at code version `1.6.63` / `versionCode 135`.
-- Latest debug APK path after build: `app/build/outputs/apk/debug/PaykiTodo-1.6.63-debug.apk`.
+- The project is currently at code version `1.6.64` / `versionCode 136`.
+- Latest debug APK path after build: `app/build/outputs/apk/debug/PaykiTodo-1.6.64-debug.apk`.
 - Latest build command used Android Studio bundled JBR and succeeded:
   - `./gradlew.bat assembleDebug`
 - Lunar support now includes display labels and a minimal yearly same-lunar-date recurrence rule. Do not claim the dedicated lunar date picker / lunar wheel is complete.
 
-## Latest Fixes In 1.6.63
+## Latest Fixes In 1.6.64
 
 1. Desktop web existing event cards open the editor directly again; Node DOM simulation verified the click path and `YEARLY_LUNAR_DATE` field population.
 2. Desktop-sync status is hardened so disabled sync reports no running service and no access addresses.
@@ -20,6 +20,7 @@ Long-running Codex sessions can become unreliable. This file exists so a new ses
 4. Calendar header title/button sizing was adjusted to reduce month-title clipping.
 5. `LunarCalendar.kt` now supports both display labels and resolving the same lunar month/day in a target Gregorian year.
 6. Todo/event recurrence now supports `YEARLY_LUNAR_DATE` / 每年同农历月日 in phone editors, desktop web selects, generation, and preview.
+7. Phone-side todo/event editor date rows append lunar labels in parentheses after the Gregorian date.
 
 ## Files Most Relevant To The Latest Round
 
@@ -33,7 +34,7 @@ Long-running Codex sessions can become unreliable. This file exists so a new ses
 
 ## Current Verification Focus
 
-1. Install `PaykiTodo-1.6.63-debug.apk`.
+1. Install `PaykiTodo-1.6.64-debug.apk`.
 2. Refresh desktop web after installing the APK and verify existing event cards open the editor directly.
 3. Disable desktop sync and verify Settings shows no access address.
 4. Check calendar timeline/month/agenda lunar labels for readability.

@@ -126,3 +126,4 @@ When reconstructing PaykiTodo state, use this priority order:
 - 1.6.62 added display-only lunar labels to calendar timeline headers, month cells, and agenda/list date surfaces using Android ICU `ChineseCalendar`; lunar date picking and lunar recurrence remain pending.
 
 - 1.6.63 restored direct desktop event-card editing, hardened disabled desktop-sync status addresses, tightened daily-board/calendar header UI, and added minimal YEARLY_LUNAR_DATE recurrence support while leaving the dedicated lunar date picker pending.
+- 1.6.64 added lunar parenthesized labels to phone-side todo/event editor date rows, so picked Gregorian dates immediately show the corresponding lunar date while the dedicated lunar picker remains pending.

@@ -318,11 +318,6 @@ internal fun CalendarEventEditorDialog(
                                 }
                             )
                         }
-                        Text(
-                            text = "点按时间卡片即可修改起止时刻。",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
                     }
                 }
 

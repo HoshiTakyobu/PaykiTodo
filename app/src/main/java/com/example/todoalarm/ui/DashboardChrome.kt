@@ -855,13 +855,13 @@ private fun BoardScheduleEventRow(
             .fillMaxWidth()
             .clickable(onClick = onClick),
         shape = rowShape,
-        color = rowColor.copy(alpha = if (inProgress) 0.08f else 0.035f),
+        color = if (inProgress) rowColor.copy(alpha = 0.08f) else Color.Transparent,
         border = if (inProgress) BorderStroke(1.4.dp, rowColor.copy(alpha = 0.92f)) else null
     ) {
         Surface(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(start = if (inProgress) 7.dp else 3.dp, top = 7.dp, end = 7.dp, bottom = 7.dp),
+                .padding(start = if (inProgress) 6.dp else 0.dp, top = if (inProgress) 7.dp else 2.dp, end = if (inProgress) 7.dp else 2.dp, bottom = if (inProgress) 7.dp else 2.dp),
             shape = RoundedCornerShape(14.dp),
             color = if (inProgress) rowColor.copy(alpha = 0.025f) else Color.Transparent
         ) {
@@ -869,7 +869,7 @@ private fun BoardScheduleEventRow(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(IntrinsicSize.Min)
-                    .padding(start = 4.dp, top = 8.dp, end = 8.dp, bottom = 8.dp),
+                    .padding(start = if (inProgress) 4.dp else 1.dp, top = 8.dp, end = 8.dp, bottom = 8.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.Top
             ) {

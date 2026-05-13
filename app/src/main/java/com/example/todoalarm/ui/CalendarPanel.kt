@@ -167,13 +167,15 @@ internal fun CalendarPanel(
     var monthVerticalDirection by remember { mutableStateOf(0L) }
     var agendaVerticalDirection by remember { mutableStateOf(0L) }
     var agendaRefreshing by remember { mutableStateOf(false) }
-    val currentMoment by produceState(initialValue = LocalDateTime.now()) {
+    val initialMoment = remember { LocalDateTime.now() }
+    val currentDate by produceState(initialValue = LocalDate.now()) {
         while (true) {
-            delay(30_000L)
-            value = LocalDateTime.now()
+            val now = LocalDateTime.now()
+            val nextMidnight = now.toLocalDate().plusDays(1).atStartOfDay().plusSeconds(1)
+            delay(Duration.between(now, nextMidnight).toMillis().coerceAtLeast(60_000L))
+            value = LocalDate.now()
         }
     }
-    val currentDate = currentMoment.toLocalDate()
     val currentDateIndex = dayIndexByDate[currentDate] ?: anchorDateIndex
 
     val allDayEvents = remember(events) {
@@ -323,7 +325,7 @@ internal fun CalendarPanel(
 
             LaunchedEffect(hourHeightPx) {
                 if (!didInitScroll) {
-                    val targetHour = (currentMoment.hour - 2).coerceAtLeast(0)
+                    val targetHour = (initialMoment.hour - 2).coerceAtLeast(0)
                     verticalScroll.scrollTo((targetHour * hourHeightPx).roundToInt())
                     horizontalOffsetPx = (((anchorDateIndex - 1) * dayColumnWidthPx).coerceIn(0f, maxHorizontalOffsetPx))
                     didInitScroll = true
@@ -367,7 +369,7 @@ internal fun CalendarPanel(
                     onDismissActions = { showActionsMenu = false },
                     onQuickCreate = {
                         showActionsMenu = false
-                        val startAt = currentMoment.withSecond(0).withNano(0).plusMinutes(2)
+                        val startAt = LocalDateTime.now().withSecond(0).withNano(0).plusMinutes(2)
                         onCreateEventAt(startAt, startAt.plusMinutes(30))
                     },
                     onOpenBatchImport = {
@@ -498,8 +500,7 @@ internal fun CalendarPanel(
                                     CalendarTimeAxis(
                                         width = timeAxisWidth,
                                         hourHeight = hourHeight,
-                                        verticalScroll = verticalScroll,
-                                        currentMoment = currentMoment
+                                        verticalScroll = verticalScroll
                                     )
                                     CalendarTimedBoard(
                                         modifier = Modifier
@@ -513,7 +514,6 @@ internal fun CalendarPanel(
                                         hourHeight = hourHeight,
                                         hourHeightPx = hourHeightPx,
                                         verticalScroll = verticalScroll,
-                                        currentMoment = currentMoment,
                                         visibleEventPlacements = visibleTimedEventPlacements,
                                         dayIndexByDate = dayIndexByDate,
                                         pendingDraft = pendingDraft,
@@ -677,39 +677,38 @@ private fun CalendarBrowserHeader(
             verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
             Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable(onClick = onPickDate),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(6.dp)
-            ) {
-                Text(
-                    text = titleMonth.format(DateTimeFormatter.ofPattern("yyyy年M月", Locale.CHINA)),
-                    modifier = Modifier.weight(1f, fill = false),
-                    style = MaterialTheme.typography.headlineSmall.copy(fontSize = 23.sp),
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    maxLines = 1,
-                    overflow = TextOverflow.Clip
-                )
-                Surface(
-                    shape = RoundedCornerShape(999.dp),
-                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.9f)
-                ) {
-                    Icon(
-                        imageVector = Icons.Rounded.KeyboardArrowDown,
-                        contentDescription = "选择日期",
-                        modifier = Modifier.padding(2.dp),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
-
-            Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.End,
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
+                Row(
+                    modifier = Modifier
+                        .weight(1f)
+                        .clickable(onClick = onPickDate),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Text(
+                        text = titleMonth.format(DateTimeFormatter.ofPattern("yyyy年M月", Locale.CHINA)),
+                        modifier = Modifier.weight(1f, fill = false),
+                        style = MaterialTheme.typography.headlineSmall.copy(fontSize = 21.sp),
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Surface(
+                        shape = RoundedCornerShape(999.dp),
+                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.9f)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Rounded.KeyboardArrowDown,
+                            contentDescription = "选择日期",
+                            modifier = Modifier.size(20.dp).padding(2.dp),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
                 CalendarHeaderActionButton(label = "今天", onClick = onToday)
                 CalendarHeaderActionButton(label = "批量", onClick = onOpenBatchImport)
                 Box {
@@ -1621,9 +1620,14 @@ private fun CalendarAllDaySection(
 private fun CalendarTimeAxis(
     width: Dp,
     hourHeight: Dp,
-    verticalScroll: androidx.compose.foundation.ScrollState,
-    currentMoment: LocalDateTime
+    verticalScroll: androidx.compose.foundation.ScrollState
 ) {
+    val currentMoment by produceState(initialValue = LocalDateTime.now()) {
+        while (true) {
+            delay(30_000L)
+            value = LocalDateTime.now()
+        }
+    }
     val currentMinutes = currentMoment.hour * 60 + currentMoment.minute
     val currentTimeOffset = hourHeight * (currentMinutes / 60f)
 
@@ -1689,7 +1693,6 @@ private fun CalendarTimedBoard(
     hourHeight: Dp,
     hourHeightPx: Float,
     verticalScroll: androidx.compose.foundation.ScrollState,
-    currentMoment: LocalDateTime,
     visibleEventPlacements: List<Pair<LocalDate, TimedEventPlacement>>,
     dayIndexByDate: Map<LocalDate, Int>,
     pendingDraft: PendingCalendarDraft?,
@@ -1795,7 +1798,6 @@ private fun CalendarTimedBoard(
 
             CurrentTimeLine(
                 currentDayIndex = currentDayIndex,
-                currentMoment = currentMoment,
                 visibleRange = visibleRange,
                 dayColumnWidthPx = dayColumnWidthPx,
                 horizontalOffsetPx = horizontalOffsetPx,
@@ -1988,13 +1990,18 @@ private fun TimedEventCard(
 @Composable
 private fun CurrentTimeLine(
     currentDayIndex: Int,
-    currentMoment: LocalDateTime,
     visibleRange: IntRange,
     dayColumnWidthPx: Float,
     horizontalOffsetPx: Float,
     boardHeightPx: Float,
     hourHeightPx: Float
 ) {
+    val currentMoment by produceState(initialValue = LocalDateTime.now()) {
+        while (true) {
+            delay(30_000L)
+            value = LocalDateTime.now()
+        }
+    }
     val minutes = currentMoment.hour * 60 + currentMoment.minute
     val y = (minutes / 60f) * hourHeightPx
     val splitX = currentDayIndex * dayColumnWidthPx - horizontalOffsetPx

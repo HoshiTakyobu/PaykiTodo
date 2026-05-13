@@ -6,7 +6,10 @@ import java.nio.charset.StandardCharsets
 object DesktopSyncWebAssets {
     private const val BASE_PATH = "desktop-web"
 
-    fun indexHtml(context: Context): String = readAsset(context, "index.html")
+    fun indexHtml(context: Context): String {
+        return readAsset(context, "index.html")
+            .replace("__PAYKI_VERSION__", appVersionName(context))
+    }
 
     fun appCss(context: Context): String = readAsset(context, "app.css")
 
@@ -40,5 +43,11 @@ object DesktopSyncWebAssets {
 
     private fun String.toJsStringLiteral(): String {
         return "'" + replace("\\", "\\\\").replace("'", "\\'") + "'"
+    }
+
+    private fun appVersionName(context: Context): String {
+        return runCatching {
+            context.packageManager.getPackageInfo(context.packageName, 0).versionName ?: "unknown"
+        }.getOrDefault("unknown")
     }
 }

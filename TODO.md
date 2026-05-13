@@ -4,8 +4,8 @@
 
 ### In Progress
 
-- Verify version `1.6.57` on device after desktop delete confirmation modal polish
-- Keep `README.md`, `CHANGELOG.md`, and current-state docs aligned with version `1.6.57`
+- Verify version `1.6.59` on device after desktop sync service self-stop, resource-version marker, board-row, and calendar-header polish
+- Keep `README.md`, `CHANGELOG.md`, and current-state docs aligned with version `1.6.59`
 - Continue board / dashboard and calendar polish without regressing the current interaction model
 - Improve repo-native handoff so new sessions do not depend on long chat history
 
@@ -54,6 +54,7 @@
 - Work mode should be tested for suppressed outward sound, forced stronger vibration even on items with vibration disabled, and full-screen / accessibility fallback
 - Daily board should show a clear tomorrow section; if tomorrow has no events, it should say `明天暂无日程`
 - Desktop web timed and all-day event cards should open editing by clicking the card, without inline edit/delete buttons; verify clicking a card opens the editor on the actual desktop browser
+- If the live desktop page still lacks the left-side `v1.6.59` marker or loads `/app.js` without `?v=1.6.59`, install the latest APK before re-debugging click edit
 - Desktop web event cards should use group colors first; all-day events should be available through compact per-day pills rather than a large separate all-day strip
 
 ## Mid-Term Follow-Ups

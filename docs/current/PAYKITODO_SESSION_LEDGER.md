@@ -116,3 +116,5 @@ When reconstructing PaykiTodo state, use this priority order:
 - 1.6.56 added desktop web no-DDL todo editing and removed desktop modal helper subtitles.
 
 - 1.6.57 replaced desktop browser confirm delete prompts with an in-app dangerous-action modal.
+
+- 1.6.59 added runtime desktop-web resource versioning, desktop-sync disabled-state self-stop protection, a Node simulated click check for desktop event editing, a smaller calendar current-time recomposition pass, daily-board normal-row cleanup, and a tighter calendar header layout.

@@ -7,13 +7,13 @@
 - Package name: `com.paykitodo.app`
 - Target platform: Android 14 / API 34
 - Current version in code:
-  - `versionName = "1.6.57"`
-  - `versionCode = 129`
+  - `versionName = "1.6.59"`
+  - `versionCode = 131`
 
 ## Current Build Facts
 
 - Latest debug APK output:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.6.57-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.6.59-debug.apk`
 - Minimal verification completed in the latest code round:
   - `./gradlew assembleDebug` succeeded with Android Studio bundled `jbr`
 - Current build environment expectation:
@@ -22,11 +22,11 @@
 
 ## Current Worktree Reality
 
-The repository is now at `1.6.57`. It includes the desktop web editor crash fix, UI-copy cleanup, desktop web no-DDL todo editing support, and in-app desktop delete confirmations.
+The repository is now at `1.6.59`. It includes the desktop web editor crash fix, UI-copy cleanup, desktop web no-DDL todo editing support, in-app desktop delete confirmations, desktop-sync service self-stop protection, dynamic desktop-web resource versioning, and a smaller calendar recomposition pass.
 
 Most important current baseline facts:
 
-- version metadata is `1.6.57 / 129`
+- version metadata is `1.6.59 / 131`
 - launcher adaptive icon foreground now directly uses picture resource `@drawable/ic_launcher_art`
 - old vector mark launcher resources have been deleted so the launcher cannot fall back to them again
 - picture launcher art has been reprocessed to an opaque pure-white background with smaller centered content
@@ -74,6 +74,11 @@ Most important current baseline facts:
 - desktop web has lightweight tab/card/modal/button motion with prefers-reduced-motion fallback
 - desktop web todo editor supports creating and editing no-DDL todos; disabling DDL also disables reminder and recurrence fields
 - desktop web delete flows use an in-app dangerous-action confirmation modal instead of browser confirm
+- desktop web HTML now replaces `__PAYKI_VERSION__` with the installed APK version at runtime and shows that version in the left brand block
+- if a live phone desktop page still loads `/app.js` without a `?v=` marker, that phone is serving an older installed APK and must be updated before further desktop click-edit debugging
+- desktop sync foreground service stops itself when relaunched while Settings says desktop sync is disabled, preventing stale access addresses / service state from persisting after sync is turned off
+- calendar current-time ticks are scoped to the time axis and current-time line instead of recomposing the whole calendar panel every 30 seconds
+- calendar header now keeps the month title and action buttons in one compact row with the title owning the remaining left-side width
 
 ## Recent Checked Areas
 
@@ -92,7 +97,7 @@ Recent code inspection and build verification cover:
 
 ## Documentation Health
 
-Current docs have been synchronized for `1.6.57`:
+Current docs have been synchronized for `1.6.59`:
 
 - `README.md`
 - `CHANGELOG.md`

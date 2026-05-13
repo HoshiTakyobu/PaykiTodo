@@ -18,6 +18,10 @@ import com.example.todoalarm.ui.MainActivity
 class DesktopSyncService : Service() {
     override fun onCreate() {
         super.onCreate()
+        if (!(application as TodoApplication).settingsStore.currentSettings().desktopSyncEnabled) {
+            stopSelf()
+            return
+        }
         ensureChannel()
         val contentIntent = PendingIntent.getActivity(
             this,
@@ -43,7 +47,13 @@ class DesktopSyncService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        (application as TodoApplication).desktopSyncCoordinator.ensureRunning()
+        val app = application as TodoApplication
+        if (!app.settingsStore.currentSettings().desktopSyncEnabled) {
+            app.desktopSyncCoordinator.stop()
+            stopSelf(startId)
+            return START_NOT_STICKY
+        }
+        app.desktopSyncCoordinator.ensureRunning()
         return START_STICKY
     }
 

@@ -87,8 +87,6 @@ private enum class SettingsSection {
     PERMISSIONS,
     SOUND_STRATEGY,
     CALENDAR,
-    TONE,
-    HELP,
     ABOUT,
     DIAGNOSTICS,
     BACKUP,
@@ -190,7 +188,11 @@ fun SettingsPanel(
                 SettingsMenuItem(
                     icon = Icons.Rounded.Computer,
                     title = "电脑同步",
-                    summary = if (desktopSyncStatus.running) "正在运行" else "局域网网页端控制台",
+                    summary = when {
+                        desktopSyncStatus.running -> "正在运行"
+                        settings.desktopSyncEnabled -> "未运行"
+                        else -> "未开启"
+                    },
                     onClick = { selectedSection = SettingsSection.DESKTOP_SYNC }
                 )
                 SettingsMenuDivider()
@@ -274,14 +276,6 @@ fun SettingsPanel(
                     options = ReminderDeliveryMode.entries.map { it.label },
                     onSelect = { label -> ReminderDeliveryMode.entries.firstOrNull { it.label == label }?.let(onDefaultCalendarReminderModeChange) }
                 )
-            }
-        }
-
-        SettingsSection.TONE -> Unit
-
-        SettingsSection.HELP -> SettingsSectionDialog("使用说明", { selectedSection = null }) {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                OutlinedButton(onClick = onOpenWiki) { Text("打开使用说明") }
             }
         }
 

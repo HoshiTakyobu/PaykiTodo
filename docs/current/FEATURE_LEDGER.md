@@ -31,7 +31,7 @@ This file tracks the product at a practical level for new coding sessions.
 - board background now uses separate light and dark image resources
 - board schedule rows align the left color strip to the measured height of the event text block
 - board schedule rows keep normal and in-progress color strips in one aligned column
-- normal board schedule rows use a same-color thin border, while in-progress rows use a gold border with only subtle inner highlight
+- normal board schedule rows have no outer fill or border, while in-progress rows use a gold border with only subtle inner highlight
 - daily board shows a distinct completion message when today's schedule existed but all events have already ended
 - daily board always shows the tomorrow schedule section, including `明天暂无日程` when tomorrow has no events
 - board surface intentionally does not expose add / batch-add buttons
@@ -108,8 +108,11 @@ This file tracks the product at a practical level for new coding sessions.
 - Settings is split into common settings and advanced settings; compact dropdown rows replace large button groups for enum-like choices
 - desktop-sync foreground notification can be tapped to open the in-app Settings -> Desktop Sync panel
 - desktop web destructive delete actions require confirmation before DELETE requests are sent
+- desktop web uses an in-app dangerous-action modal for delete confirmation instead of browser-native confirm
 - desktop web event timeline cards open editing by card click, no longer expose inline edit/delete buttons, and prefer group color for display
 - desktop web event timeline no longer shows the separate all-day strip above the timeline
+- desktop web shows the installed APK version in the brand block and uses runtime versioned CSS / JS URLs
+- desktop sync service self-stops if Android restarts it while desktop sync is disabled in Settings
 
 ### Destructive Action Safety
 
@@ -117,7 +120,7 @@ This file tracks the product at a practical level for new coding sessions.
 - calendar event deletion asks for confirmation
 - schedule-template deletion asks for confirmation
 - group deletion asks for confirmation
-- desktop web delete buttons ask for browser confirmation
+- desktop web delete buttons use the PaykiTodo in-app dangerous-action confirmation modal
 - phone-side delete confirmations share a refined dangerous-action bottom sheet with red icon, message card, and red confirm button
 
 ## Implemented But Still Being Polished

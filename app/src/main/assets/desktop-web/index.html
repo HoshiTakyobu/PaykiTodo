@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>PaykiTodo Desktop Sync</title>
-  <link rel="stylesheet" href="/app.css?v=1.6.57" />
+  <link rel="stylesheet" href="/app.css?v=__PAYKI_VERSION__" />
 </head>
 <body>
   <div class="shell">
@@ -12,7 +12,7 @@
       <div class="sidebar-inner">
         <div class="brand-block">
           <h1>PaykiTodo</h1>
-          <p class="muted">电脑端时间轴控制台</p>
+          <p class="muted">电脑端时间轴控制台 · v__PAYKI_VERSION__</p>
         </div>
         <div class="sidebar-card">
           <label>访问密钥</label>
@@ -34,7 +34,7 @@
         <div>
           <div id="view-caption" class="eyebrow">桌面端时间轴模式</div>
           <div id="panel-title" class="title">待办时间轴</div>
-          <div id="snapshot-meta" class="muted">连接后即可读取手机端当前数据</div>
+          <div id="snapshot-meta" class="muted">未连接</div>
         </div>
         <div class="toolbar-row">
           <button id="jump-today" class="ghost mini">今天</button>
@@ -59,7 +59,7 @@
           <div class="schedule-head schedule-toolbar">
             <div>
               <div id="event-selected-date" class="schedule-date-title">今天</div>
-              <div id="event-selected-subtitle" class="muted">可查看任意日期，并按窗口宽度展示多天日程。</div>
+              <div id="event-selected-subtitle" class="muted">未连接</div>
             </div>
             <div class="schedule-toolbar-actions">
               <button id="event-prev-day" class="ghost mini">前一天</button>
@@ -235,6 +235,6 @@
       </div>
     </div>
   </div>
-  <script src="/app.js?v=1.6.57"></script>
+  <script src="/app.js?v=__PAYKI_VERSION__"></script>
 </body>
 </html>

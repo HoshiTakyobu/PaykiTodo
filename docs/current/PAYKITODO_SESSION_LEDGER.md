@@ -135,3 +135,4 @@ When reconstructing PaykiTodo state, use this priority order:
 - 1.6.70 split the calendar browser header into a title row and a separate action row so month titles are no longer squeezed out by compact buttons on narrow screens.
 - 1.6.71 tightened the phone Settings -> Desktop Sync section further so the LAN URL stays hidden unless the user explicitly expands it.
 - 1.6.72 tightened the desktop-web todo/event editor sheets into a narrower single-column layout to better resemble the phone-side bottom sheet.
+- 1.6.73 added stable Compose keys around calendar timed-event cards and all-day pills to reduce needless node recreation during timeline scrolling and event updates.

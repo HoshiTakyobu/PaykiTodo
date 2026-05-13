@@ -62,6 +62,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
@@ -1620,42 +1621,44 @@ private fun CalendarAllDaySection(
                 if (endIndex < visibleRange.first || startIndex > visibleRange.last || endIndex < startIndex) return@forEachIndexed
 
                 val tint = item.accentColorHex?.let(::colorFromHex) ?: MaterialTheme.colorScheme.primary
-                Surface(
-                    modifier = Modifier
-                        .offset {
-                            IntOffset(
-                                x = dayLeftPx(startIndex, dayColumnWidthPx, horizontalOffsetPx) + with(density) { 4.dp.roundToPx() },
-                                y = rowIndex * rowHeightPx
+                key(item.id, startDate, endDateInclusive) {
+                    Surface(
+                        modifier = Modifier
+                            .offset {
+                                IntOffset(
+                                    x = dayLeftPx(startIndex, dayColumnWidthPx, horizontalOffsetPx) + with(density) { 4.dp.roundToPx() },
+                                    y = rowIndex * rowHeightPx
+                                )
+                            }
+                            .width((dayColumnWidth * (endIndex - startIndex + 1)) - 8.dp)
+                            .height(24.dp)
+                            .clickable(onClick = { onOpenDetails(item) }),
+                        shape = RoundedCornerShape(10.dp),
+                        color = tint.copy(alpha = 0.14f),
+                        border = BorderStroke(1.dp, tint.copy(alpha = 0.24f))
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Surface(
+                                modifier = Modifier
+                                    .fillMaxHeight()
+                                    .width(3.dp),
+                                shape = RoundedCornerShape(999.dp),
+                                color = tint.copy(alpha = 0.95f)
+                            ) {}
+                            Text(
+                                text = item.title,
+                                color = tint.copy(alpha = calendarVisualAlpha(item)),
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 13.sp,
+                                lineHeight = 14.sp,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
                             )
                         }
-                        .width((dayColumnWidth * (endIndex - startIndex + 1)) - 8.dp)
-                        .height(24.dp)
-                        .clickable(onClick = { onOpenDetails(item) }),
-                    shape = RoundedCornerShape(10.dp),
-                    color = tint.copy(alpha = 0.14f),
-                    border = BorderStroke(1.dp, tint.copy(alpha = 0.24f))
-                ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
-                        horizontalArrangement = Arrangement.spacedBy(6.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Surface(
-                            modifier = Modifier
-                                .fillMaxHeight()
-                                .width(3.dp),
-                            shape = RoundedCornerShape(999.dp),
-                            color = tint.copy(alpha = 0.95f)
-                        ) {}
-                        Text(
-                            text = item.title,
-                            color = tint.copy(alpha = calendarVisualAlpha(item)),
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 13.sp,
-                            lineHeight = 14.sp,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
                     }
                 }
             }
@@ -1817,6 +1820,7 @@ private fun CalendarTimedBoard(
 
             visibleEventPlacements.forEach { (day, placement) ->
                 val dayIndex = dayIndexByDate[day] ?: return@forEach
+                key(placement.segment.item.id, day, placement.segment.startMillis, placement.segment.endMillis) {
                     TimedEventCard(
                         segment = placement.segment,
                         placement = placement,
@@ -1829,6 +1833,7 @@ private fun CalendarTimedBoard(
                         onClick = { onOpenDetails(placement.segment.item) },
                         onMove = onMoveEvent
                     )
+                }
             }
 
             pendingDraft?.let { draft ->

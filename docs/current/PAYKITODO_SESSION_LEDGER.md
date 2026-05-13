@@ -132,3 +132,4 @@ When reconstructing PaykiTodo state, use this priority order:
 - 1.6.67 changed the phone Settings -> Desktop Sync address area to stay collapsed by default while the sync service is running, so the LAN URL is only shown after the user taps "显示连接地址" and can be hidden again.
 - 1.6.68 removed redundant explanatory copy from the phone todo editor and reminder-audio settings while preserving necessary warnings, validation messages, and syntax help.
 - 1.6.69 tightened the daily-board schedule row layout so normal rows stay borderless and the left color strip sits closer to the row edge, with in-progress rows keeping the gold treatment.
+- 1.6.70 split the calendar browser header into a title row and a separate action row so month titles are no longer squeezed out by compact buttons on narrow screens.

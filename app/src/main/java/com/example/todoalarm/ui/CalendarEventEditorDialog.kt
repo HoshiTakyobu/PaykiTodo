@@ -322,6 +322,16 @@ internal fun CalendarEventEditorDialog(
                                 }
                             )
                         }
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            OutlinedButton(
+                                modifier = Modifier.weight(1f),
+                                onClick = { activeLunarDateTarget = CalendarDateTarget.StartDate }
+                            ) { Text("农历开始") }
+                            OutlinedButton(
+                                modifier = Modifier.weight(1f),
+                                onClick = { activeLunarDateTarget = CalendarDateTarget.EndDate }
+                            ) { Text("农历结束") }
+                        }
                     }
                 }
 
@@ -654,16 +664,22 @@ internal fun CalendarEventEditorDialog(
             onConfirm = { pickedDate ->
                 when (target) {
                     CalendarDateTarget.StartDate -> {
-                        startAt = LocalDateTime.of(pickedDate, LocalTime.MIN)
-                        if (endAt.toLocalDate().isBefore(pickedDate)) {
+                        val pickedStart = LocalDateTime.of(pickedDate, if (allDay) LocalTime.MIN else startAt.toLocalTime())
+                        startAt = pickedStart
+                        if (allDay && endAt.toLocalDate().isBefore(pickedDate)) {
                             endAt = LocalDateTime.of(pickedDate, LocalTime.MIN)
+                        } else if (!allDay && !pickedStart.isBefore(endAt)) {
+                            endAt = pickedStart.plusMinutes(30)
                         }
                     }
 
                     CalendarDateTarget.EndDate -> {
-                        endAt = LocalDateTime.of(pickedDate, LocalTime.MIN)
-                        if (pickedDate.isBefore(startAt.toLocalDate())) {
+                        val pickedEnd = LocalDateTime.of(pickedDate, if (allDay) LocalTime.MIN else endAt.toLocalTime())
+                        endAt = pickedEnd
+                        if (allDay && pickedDate.isBefore(startAt.toLocalDate())) {
                             startAt = LocalDateTime.of(pickedDate, LocalTime.MIN)
+                        } else if (!allDay && !pickedEnd.isAfter(startAt)) {
+                            startAt = pickedEnd.minusMinutes(30)
                         }
                     }
                 }

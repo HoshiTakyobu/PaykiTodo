@@ -6,23 +6,24 @@ Long-running Codex sessions can become unreliable. This file exists so a new ses
 
 ## Current Handoff Summary
 
-- The project is currently at code version `1.6.77` / `versionCode 149`.
-- Latest debug APK path after build: `app/build/outputs/apk/debug/PaykiTodo-1.6.77-debug.apk`.
+- The project is currently at code version `1.6.78` / `versionCode 150`.
+- Latest debug APK path after build: `app/build/outputs/apk/debug/PaykiTodo-1.6.78-debug.apk`.
 - Latest build command used Android Studio bundled JBR and succeeded:
   - `./gradlew.bat assembleDebug`
 - Desktop web event cards now open preview first; editing is launched from the preview sheet.
-- Lunar support includes display labels, yearly same-lunar-date recurrence, and an all-day event lunar start/end picker. Do not claim timed-event/todo lunar wheel support is complete.
+- Lunar support includes display labels, yearly same-lunar-date recurrence, and event lunar start/end picking for all-day and timed events. Do not claim todo lunar wheel support is complete.
 
-## Latest Fixes In 1.6.77
+## Latest Fixes In 1.6.78
 
 1. Desktop web existing event cards open the event preview sheet first, aligning events with the phone-side and desktop-todo preview model.
 2. Event preview `编辑` still opens the editor and saving continues through the existing `PUT /api/events/{id}` update path.
-3. All-day event editing now exposes `农历开始` / `农历结束` buttons backed by a compact lunar date dialog using `LunarCalendar.findDate(...)`.
+3. Event editing now exposes `农历开始` / `农历结束` buttons for all-day and timed events; timed selection preserves the original clock time.
 4. Calendar header month text now avoids hard clipping by using a smaller title style and wrapping/ellipsis under tight width.
 5. Daily-board normal schedule rows remain borderless and the left color strip sits closer to the row edge; in-progress rows keep the gold treatment.
 6. Desktop-sync Settings status now refreshes immediately after sync enable/disable and key rotation, reducing stale address display.
 7. Calendar event editor all-day section no longer shows redundant helper copy; it keeps only the switch and concrete date/lunar controls.
-8. `1.6.77` was built successfully with Android Studio bundled JBR.
+8. Timed event start/end rows now also support compact lunar date picking while preserving time of day.
+9. `1.6.78` was built successfully with Android Studio bundled JBR.
 
 ## Files Most Relevant To The Latest Round
 
@@ -38,16 +39,16 @@ Long-running Codex sessions can become unreliable. This file exists so a new ses
 
 ## Current Verification Focus
 
-1. Install `PaykiTodo-1.6.77-debug.apk`.
+1. Install `PaykiTodo-1.6.78-debug.apk`.
 2. Refresh desktop web and verify existing event click opens preview, `编辑` opens editor, and save updates the existing event.
 3. Disable desktop sync and verify Settings shows no access address.
-4. Check all-day event lunar start/end selection on device.
+4. Check event lunar start/end selection on device for both all-day and timed events.
 5. Check calendar header month text and daily-board schedule row spacing on the user's phone.
 
 ## Deferred Larger Work
 
 - Full desktop UI parity with phone UI.
-- Timed-event/todo lunar wheel picker.
+- Todo lunar wheel picker.
 - Full calendar rendering/performance optimization.
 - Emulator-driven visual QA loop.
 - Broader UI-copy cleanup beyond the concrete strings changed so far.

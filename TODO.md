@@ -4,8 +4,8 @@
 
 ### In Progress
 
-- Verify version `1.6.54` on device after the recurrenceWeekdays desktop editor crash fix
-- Keep `README.md`, `CHANGELOG.md`, and current-state docs aligned with version `1.6.54`
+- Verify version `1.6.55` on device after the editor copy cleanup and desktop-web motion polish
+- Keep `README.md`, `CHANGELOG.md`, and current-state docs aligned with version `1.6.55`
 - Continue board / dashboard and calendar polish without regressing the current interaction model
 - Improve repo-native handoff so new sessions do not depend on long chat history
 
@@ -76,6 +76,10 @@
 
 ## Done Recently
 
+- Bumped the app to `1.6.55` / `versionCode 127`
+- Removed generic subtitles from phone-side todo and calendar editor bottom sheets
+- Removed redundant Settings copy from reminder-chain test, default snooze picker, and About -> usage guide entry
+- Added lightweight desktop web motion for tabs, cards, modal backdrop, and button feedback with reduced-motion fallback
 - Bumped the app to `1.6.54` / `versionCode 126`
 - Fixed desktop event editor opening by making recurrenceWeekdays compatible with both string and array snapshot values
 - Verified the desktop event click path with Edge DevTools Protocol against real phone snapshot data

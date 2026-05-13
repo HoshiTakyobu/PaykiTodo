@@ -6,17 +6,20 @@ Long-running Codex sessions can become unreliable. This file exists so a new ses
 
 ## Current Handoff Summary
 
-- The project is currently at code version `1.6.54` / `versionCode 126`
-- Latest debug APK path after build should be `app/build/outputs/apk/debug/PaykiTodo-1.6.54-debug.apk`
-- Latest fix round addressed real desktop-web editing failures and small phone UI regressions:
+- The project is currently at code version `1.6.55` / `versionCode 127`
+- Latest debug APK path after build should be `app/build/outputs/apk/debug/PaykiTodo-1.6.55-debug.apk`
+- Latest fix rounds addressed the real desktop-web editing failure, then a focused UI-copy and desktop-motion polish pass:
   1. Desktop web assets are versioned and served with no-cache headers.
-  2. Event card clicks use delegated handling.`r`n  3. Event/todo editors tolerate `recurrenceWeekdays` as string or array, fixing the hidden-modal failure after the form was partially filled.
-  3. All-day events are shown as compact per-day pills and can be clicked to edit.
-  4. Desktop sync settings hide LAN access addresses unless sync is enabled and running.
-  5. Daily-board normal schedule rows no longer have outer borders; in-progress rows keep gold emphasis.
-  6. Calendar header separates month title from action buttons.
-  7. `今日看板` / `每日看板` naming was unified to `每日看板`.
-
+  2. Event card clicks use delegated handling.
+  3. Event/todo editors tolerate `recurrenceWeekdays` as string or array, fixing the hidden-modal failure after the form was partially filled.
+  4. All-day events are shown as compact per-day pills and can be clicked to edit.
+  5. Desktop sync settings hide LAN access addresses unless sync is enabled and running.
+  6. Daily-board normal schedule rows no longer have outer borders; in-progress rows keep gold emphasis.
+  7. Calendar header separates month title from action buttons.
+  8. `今日看板` / `每日看板` naming was unified to `每日看板`.
+  9. Generic subtitles were removed from phone-side todo/calendar editor bottom sheets.
+  10. Redundant Settings copy was removed from reminder-chain test, default snooze picker, and About usage-guide entry.
+  11. Desktop web gained lightweight tab/card/modal/button motion with reduced-motion fallback.
 ## Files Most Relevant To The Latest Round
 
 - `app/build.gradle.kts`
@@ -31,9 +34,9 @@ Long-running Codex sessions can become unreliable. This file exists so a new ses
 
 ## Current Verification Focus
 
-1. Install `PaykiTodo-1.6.54-debug.apk`
+1. Install `PaykiTodo-1.6.55-debug.apk`
 2. Enable desktop sync and connect from a desktop browser
-3. Hard-refresh the desktop page and verify it loads `/app.js?v=1.6.54`
+3. Hard-refresh the desktop page and verify it loads `/app.js?v=1.6.55`
 4. Click timed and all-day event entries and verify both open the event editor
 5. Verify saving an event edit still works
 6. Disable desktop sync and verify Settings does not show stale access addresses
@@ -45,7 +48,7 @@ Long-running Codex sessions can become unreliable. This file exists so a new ses
 - Lunar calendar and lunar yearly recurrence
 - Full calendar rendering/performance optimization
 - Emulator-driven visual QA loop
-- Broad UI-copy/comment cleanup beyond the concrete strings changed in this round
+- Broader UI-copy/comment cleanup beyond the concrete strings changed in 1.6.55
 
 ## Required Reading For A New Session
 

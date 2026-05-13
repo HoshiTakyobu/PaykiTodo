@@ -110,3 +110,5 @@ When reconstructing PaykiTodo state, use this priority order:
 - 1.6.53 fixed desktop web cache/click/all-day edit paths, hid stale desktop-sync addresses when the service is not running, and polished daily-board/calendar header naming and layout.
 
 - 1.6.54 fixed the desktop event editor hidden-modal failure by normalizing recurrenceWeekdays values before filling the editor; Edge CDP click simulation passed against real phone snapshot data.
+
+- 1.6.55 removed generic editor/settings helper copy and added lightweight desktop web motion with reduced-motion fallback.

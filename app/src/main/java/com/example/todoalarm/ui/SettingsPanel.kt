@@ -429,10 +429,6 @@ private fun ReminderChainTestDialog(
         title = { Text("提醒链路测试") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text(
-                    text = "创建一条短延迟测试任务，用于验证通知、前台服务、全屏提醒和无障碍回退链路。",
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
                 OutlinedTextField(
                     value = secondsText,
                     onValueChange = { secondsText = it.filter(Char::isDigit) },
@@ -670,11 +666,6 @@ private fun SnoozePickerDialog(
         title = { Text("选择默认延后时长") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text(
-                    text = "上下滑动选择 5 到 60 分钟。",
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    style = MaterialTheme.typography.bodyMedium
-                )
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -806,11 +797,6 @@ fun AboutPanel(
         }
 
         PrefCard("使用说明") {
-            Text(
-                text = "如果对提醒链路测试、批量导入、周模板、日历视图或备份功能不熟，可以直接打开内置使用说明。",
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                style = MaterialTheme.typography.bodyLarge
-            )
             OutlinedButton(onClick = onOpenWiki) {
                 Text("打开使用说明")
             }

@@ -201,7 +201,6 @@ internal fun CalendarEventEditorDialog(
 
     EditorBottomSheet(
         title = if (initialEvent == null) "新增日程" else "编辑日程",
-        subtitle = "主题、时间、重复、地点、描述、提醒与颜色都在这里完成设置。",
         confirmLabel = if (initialEvent == null) "创建" else "保存",
         confirmEnabled = confirmEnabled,
         onDismiss = onDismiss,

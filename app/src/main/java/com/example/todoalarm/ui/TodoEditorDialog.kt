@@ -140,7 +140,6 @@ fun TodoEditorDialog(
 
     EditorBottomSheet(
         title = if (initialTodo == null) "新增任务" else "编辑任务",
-        subtitle = "标题、DDL、提醒、循环、分组与备注都集中在这里。",
         confirmLabel = if (initialTodo == null) "创建" else "保存",
         confirmEnabled = confirmEnabled,
         onDismiss = onDismiss,

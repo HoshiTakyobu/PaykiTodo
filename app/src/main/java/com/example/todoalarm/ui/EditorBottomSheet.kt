@@ -84,7 +84,7 @@ internal fun PaykiBottomSheet(
 @Composable
 internal fun EditorBottomSheet(
     title: String,
-    subtitle: String,
+    subtitle: String? = null,
     confirmLabel: String,
     confirmEnabled: Boolean = true,
     onDismiss: () -> Unit,
@@ -129,11 +129,13 @@ internal fun EditorBottomSheet(
             }
         }
     ) {
-        Text(
-            text = subtitle,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            style = MaterialTheme.typography.bodyMedium
-        )
+        subtitle?.takeIf { it.isNotBlank() }?.let {
+            Text(
+                text = it,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                style = MaterialTheme.typography.bodyMedium
+            )
+        }
 
         Column(
             modifier = Modifier.fillMaxWidth(),

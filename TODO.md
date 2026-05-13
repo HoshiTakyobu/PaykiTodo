@@ -4,9 +4,9 @@
 
 ### In Progress
 
-- Verify version `1.6.83` on device after settings-tone, lunar-DDL, calendar-header, and daily-board spacing fixes
-- Keep `README.md`, `CHANGELOG.md`, and current-state docs aligned with version `1.6.83`
-- Continue board / dashboard and calendar polish without regressing the current interaction model
+- Verify version `1.6.84` on device after the new planning-desk feature lands
+- Keep `README.md`, `CHANGELOG.md`, Wiki, and current-state docs aligned with version `1.6.84`
+- Continue planning-desk usability polish without expanding into drag/drop, Gantt, AI auto-planning, or complex project trees
 - Improve repo-native handoff so new sessions do not depend on long chat history
 
 ### Needs Verification
@@ -45,7 +45,7 @@
 - Custom snooze should accept long delays beyond 180 minutes and update todo DDL when the snooze target is later than the current DDL
 - Launch screen icon should use the transparent logo asset without a white square background
 - Input help question-mark buttons should open the correct syntax help beside reminder, batch, and snooze fields
-- In-app Wiki should describe the current 1.6.83 settings, reminder, calendar, and input syntax accurately
+- In-app Wiki should describe the current 1.6.84 settings, reminder, calendar, planning-desk, and input syntax accurately
 - In-app Wiki should keep a left navigation / right article layout on phone-sized screens
 - Daily board should show a separate completion message when today's schedule existed but all events have ended
 - Drawer header icon should stay visually circular and not expose a white rounded-rectangle launcher background
@@ -53,20 +53,24 @@
 - Temporary system-channel volume boost should be tested carefully because it changes global stream volume and then restores it
 - Work mode should be tested for suppressed outward sound, forced stronger vibration even on items with vibration disabled, and full-screen / accessibility fallback
 - Daily board should show a clear tomorrow section; if tomorrow has no events, it should say `明天暂无日程`
-- Desktop web timed and all-day event cards should open the editor directly by clicking the card; verify this in the actual desktop browser after installing `1.6.83`
+- Desktop web timed and all-day event cards should open the editor directly by clicking the card; verify this in the actual desktop browser after installing `1.6.84`
 - If the live desktop page still lacks the left-side current-version marker or loads unversioned `/app.js`, install the latest APK before re-debugging click edit
-- Desktop web todo cards still use preview first; event cards now open the editor directly. Verify event edit/save in the actual desktop browser after installing `1.6.83`
+- Desktop web todo cards still use preview first; event cards now open the editor directly. Verify event edit/save in the actual desktop browser after installing `1.6.84`
 - Desktop web todo/event reminder input now accepts mixed reminder specs; verify valid examples and invalid late reminders on the actual desktop browser after installing `1.6.61`
-- Calendar now shows lunar labels in timeline headers, month view, and agenda/list view; verify spacing and readability on device after installing `1.6.83`
-- Desktop web existing event cards should open the editor directly after installing `1.6.83` and refreshing the browser; local Node DOM simulation with the live phone snapshot passed, but actual browser UI still needs device/browser verification after install
+- Calendar now shows lunar labels in timeline headers, month view, and agenda/list view; verify spacing and readability on device after installing `1.6.84`
+- Desktop web existing event cards should open the editor directly after installing `1.6.84` and refreshing the browser; local Node DOM simulation with the live phone snapshot passed, but actual browser UI still needs device/browser verification after install
 - Desktop web recurrence selects should include `每年同农历月日`, and phone-side todo/event recurrence previews should generate yearly same-lunar-date occurrences
 - Settings -> 电脑同步 should show no access address while desktop sync is disabled
 - Todo DDL now has a wheel-style lunar picker; event editing has compact lunar start/end picking for both all-day and timed events, plus yearly same-lunar-date recurrence support
 - Desktop web event cards should use group colors first; all-day events should be available through compact per-day pills rather than a large separate all-day strip
+- Planning Desk should be device-tested for multi-document open/save/rename/delete, shortcut-bar input, recognition preview, and import into todos/events
+- Desktop web Planning Desk should be tested from a real browser connected to the phone after installing `1.6.84`
+- Planning parser should be expanded with dedicated unit tests when the project gains a stable local JVM test harness
 
 ## Mid-Term Follow-Ups
 
 - Desktop web UI still needs a deeper phone-parity redesign for advanced event/todo editing beyond this bug-fix round
+- Planning Desk Phase 2 can add Markdown highlighting, richer preview editing, project views, drag-to-date/time, and AI-assisted decomposition only after the local first-stage workflow proves useful
 - Calendar still needs a dedicated performance pass for smooth add/edit/delete and timeline swiping under large event sets
 - Lunar calendar support now covers display labels, minimal yearly same-lunar-date recurrence, compact event lunar start/end picking, and wheel-style todo lunar DDL picking; deeper edge-case verification remains pending
 - Android Emulator UI inspection can be used in a later visual QA round; `Pixel_8` AVD exists, but this round could not get a booted emulator listed by `adb devices` for install/screenshot verification

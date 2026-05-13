@@ -7,6 +7,11 @@ import com.example.todoalarm.alarm.ReminderDispatchTracker
 import com.example.todoalarm.alarm.ReminderForegroundService
 import com.example.todoalarm.data.AppSettingsStore
 import com.example.todoalarm.data.CalendarEventDraft
+import com.example.todoalarm.data.DEFAULT_PLANNING_REMINDER_MINUTES
+import com.example.todoalarm.data.PlanningMarkdownParser
+import com.example.todoalarm.data.PlanningNote
+import com.example.todoalarm.data.PlanningParsedCandidate
+import com.example.todoalarm.data.PlanningParsedType
 import com.example.todoalarm.data.RecurrenceConfig
 import com.example.todoalarm.data.RecurrenceScope
 import com.example.todoalarm.data.RecurrenceType
@@ -96,6 +101,12 @@ class DesktopSyncCoordinator(
                 method == "PUT" && path.matches(Regex("/api/todos/\\d+")) -> DesktopSyncServer.Response.json(updateTodo(path, JSONObject(body)))
                 method == "POST" && path == "/api/events" -> DesktopSyncServer.Response.json(createEvent(JSONObject(body)))
                 method == "PUT" && path.matches(Regex("/api/events/\\d+")) -> DesktopSyncServer.Response.json(updateEvent(path, JSONObject(body)))
+                method == "GET" && path == "/api/planning/notes" -> DesktopSyncServer.Response.json(planningNotes())
+                method == "POST" && path == "/api/planning/notes" -> DesktopSyncServer.Response.json(createPlanningNote(JSONObject(body)))
+                method == "PUT" && path.matches(Regex("/api/planning/notes/\\d+")) -> DesktopSyncServer.Response.json(updatePlanningNote(path, JSONObject(body)))
+                method == "DELETE" && path.matches(Regex("/api/planning/notes/\\d+")) -> DesktopSyncServer.Response.json(deletePlanningNote(path))
+                method == "POST" && path == "/api/planning/parse" -> DesktopSyncServer.Response.json(parsePlanning(JSONObject(body)))
+                method == "POST" && path == "/api/planning/import" -> DesktopSyncServer.Response.json(importPlanning(JSONObject(body)))
                 method == "POST" && path.matches(Regex("/api/items/\\d+/complete")) -> DesktopSyncServer.Response.json(markCompleted(path))
                 method == "POST" && path.matches(Regex("/api/items/\\d+/cancel")) -> DesktopSyncServer.Response.json(cancelItem(path))
                 method == "DELETE" && path.matches(Regex("/api/items/\\d+")) -> DesktopSyncServer.Response.json(deleteItem(path))
@@ -279,6 +290,76 @@ class DesktopSyncCoordinator(
         clearReminderArtifacts(listOf(item))
         autoBackupIfNeeded()
         return JSONObject().put("ok", true)
+    }
+
+    private fun planningNotes(): JSONObject {
+        val notes = runBlocking { app.repository.getAllPlanningNotes() }.filter { !it.archived }
+        val activeId = settingsStore.currentSettings().lastOpenedPlanningNoteId ?: notes.firstOrNull()?.id
+        return JSONObject()
+            .put("activeNoteId", activeId)
+            .put("notes", JSONArray(notes.map { it.toPlanningJson() }))
+    }
+
+    private fun createPlanningNote(json: JSONObject): JSONObject {
+        val note = runBlocking { app.repository.createPlanningNote(json.optString("title", "新的规划")) }
+        settingsStore.updateLastOpenedPlanningNoteId(note.id)
+        autoBackupIfNeeded()
+        return JSONObject().put("note", note.toPlanningJson())
+    }
+
+    private fun updatePlanningNote(path: String, json: JSONObject): JSONObject {
+        val id = path.substringAfter("/api/planning/notes/").toLong()
+        val title = json.optStringOrNull("title")
+        val content = json.optStringOrNull("contentMarkdown")
+        val updatedTitle = if (title != null) runBlocking { app.repository.renamePlanningNote(id, title) } else runBlocking { app.repository.getAllPlanningNotes().firstOrNull { it.id == id } }
+        val updated = if (content != null) runBlocking { app.repository.updatePlanningNoteContent(id, content) } else updatedTitle
+        require(updated != null) { "规划文档不存在" }
+        settingsStore.updateLastOpenedPlanningNoteId(id)
+        autoBackupIfNeeded()
+        return JSONObject().put("note", updated.toPlanningJson())
+    }
+
+    private fun deletePlanningNote(path: String): JSONObject {
+        val id = path.substringAfter("/api/planning/notes/").toLong()
+        runBlocking { app.repository.deletePlanningNote(id) }
+        val fallback = runBlocking { app.repository.ensureDefaultPlanningNote() }
+        settingsStore.updateLastOpenedPlanningNoteId(fallback.id)
+        autoBackupIfNeeded()
+        return JSONObject().put("ok", true)
+    }
+
+    private fun parsePlanning(json: JSONObject): JSONObject {
+        val markdown = json.optString("markdown")
+        return PlanningMarkdownParser.parse(markdown).toPlanningParseJson()
+    }
+
+    private fun importPlanning(json: JSONObject): JSONObject {
+        val markdown = json.optString("markdown")
+        val selectedIds = json.optJSONArray("selectedIds")?.toStringSet().orEmpty()
+        val linkedTodoIds = json.optJSONArray("linkedTodoIds")?.toStringSet().orEmpty()
+        val result = PlanningMarkdownParser.parse(markdown)
+        val groups = runBlocking { app.repository.getAllGroups().ifEmpty { app.repository.ensureDefaultGroups() } }
+        val selected = result.candidates.filter { it.id in selectedIds && it.importable && !it.imported }
+        require(selected.isNotEmpty()) { "没有可导入的规划条目" }
+        selected.forEach { candidate ->
+            when (candidate.type) {
+                PlanningParsedType.TODO -> {
+                    val created = runBlocking { app.repository.createFromDraft(candidate.toPlanningTodoDraft(groups)) }
+                    created.forEach(::scheduleReminderOrDisable)
+                }
+                PlanningParsedType.EVENT -> {
+                    val created = runBlocking { app.repository.createCalendarEventFromDraft(candidate.toPlanningEventDraft(groups)) }
+                    created.forEach(::scheduleReminderOrDisable)
+                    if (candidate.id in linkedTodoIds) {
+                        val linked = runBlocking { app.repository.createFromDraft(candidate.toPlanningLinkedTodoDraft(groups)) }
+                        linked.forEach(::scheduleReminderOrDisable)
+                    }
+                }
+                else -> Unit
+            }
+        }
+        autoBackupIfNeeded()
+        return JSONObject().put("imported", selected.size)
     }
 
     private fun resolveGroupId(json: JSONObject): Long {
@@ -493,6 +574,14 @@ private fun JSONArray.toIntList(): List<Int> {
     }
 }
 
+private fun JSONArray.toStringSet(): Set<String> {
+    return buildSet(length()) {
+        for (index in 0 until length()) {
+            optString(index).takeIf { it.isNotBlank() }?.let(::add)
+        }
+    }
+}
+
 private fun JSONArray.toWeekdays(): Set<DayOfWeek> {
     return buildSet(length()) {
         for (index in 0 until length()) {
@@ -500,4 +589,101 @@ private fun JSONArray.toWeekdays(): Set<DayOfWeek> {
             runCatching { DayOfWeek.of(value) }.getOrNull()?.let(::add)
         }
     }
+}
+
+private fun PlanningNote.toPlanningJson(): JSONObject {
+    return JSONObject()
+        .put("id", id)
+        .put("title", title)
+        .put("contentMarkdown", contentMarkdown)
+        .put("createdAtMillis", createdAtMillis)
+        .put("updatedAtMillis", updatedAtMillis)
+        .put("archived", archived)
+}
+
+private fun com.example.todoalarm.data.PlanningParseResult.toPlanningParseJson(): JSONObject {
+    return JSONObject()
+        .put("importableCount", importableCount)
+        .put("candidates", JSONArray(candidates.map { it.toPlanningCandidateJson() }))
+}
+
+private fun PlanningParsedCandidate.toPlanningCandidateJson(): JSONObject {
+    return JSONObject()
+        .put("id", id)
+        .put("lineNumber", lineNumber)
+        .put("sourceLine", sourceLine)
+        .put("type", type.name)
+        .put("title", title)
+        .put("notes", notes)
+        .put("groupName", groupName)
+        .put("dueAt", dueAt?.toString())
+        .put("startAt", startAt?.toString())
+        .put("endAt", endAt?.toString())
+        .put("reminderOffsetsMinutes", JSONArray(reminderOffsetsMinutes))
+        .put("createLinkedTodo", createLinkedTodo)
+        .put("defaultToday", defaultToday)
+        .put("imported", imported)
+        .put("completed", completed)
+        .put("importBlocked", importBlocked)
+        .put("parentTitle", parentTitle)
+        .put("message", message)
+        .put("importable", importable)
+}
+
+private fun PlanningParsedCandidate.toPlanningTodoDraft(groups: List<com.example.todoalarm.data.TaskGroup>): TodoDraft {
+    return TodoDraft(
+        title = title,
+        notes = notes,
+        dueAt = dueAt,
+        reminderAt = null,
+        groupId = resolvePlanningGroupId(groupName, groups),
+        ringEnabled = true,
+        vibrateEnabled = true,
+        recurrence = RecurrenceConfig(),
+        reminderOffsetsMinutes = if (dueAt == null) emptyList() else reminderOffsetsMinutes.ifEmpty { listOf(DEFAULT_PLANNING_REMINDER_MINUTES) }
+    )
+}
+
+private fun PlanningParsedCandidate.toPlanningLinkedTodoDraft(groups: List<com.example.todoalarm.data.TaskGroup>): TodoDraft {
+    val ddl = requireNotNull(endAt) { "日程结束时间不存在" }
+    return TodoDraft(
+        title = title,
+        notes = listOfNotNull(
+            "由规划台日程自动生成，DDL 为日程结束时间。",
+            notes.takeIf { it.isNotBlank() }
+        ).joinToString("\n"),
+        dueAt = ddl,
+        reminderAt = null,
+        groupId = resolvePlanningGroupId(groupName, groups),
+        ringEnabled = true,
+        vibrateEnabled = true,
+        recurrence = RecurrenceConfig(),
+        reminderOffsetsMinutes = reminderOffsetsMinutes.ifEmpty { listOf(DEFAULT_PLANNING_REMINDER_MINUTES) }
+    )
+}
+
+private fun PlanningParsedCandidate.toPlanningEventDraft(groups: List<com.example.todoalarm.data.TaskGroup>): CalendarEventDraft {
+    return CalendarEventDraft(
+        title = title,
+        notes = notes,
+        location = "",
+        startAt = requireNotNull(startAt) { "日程开始时间不存在" },
+        endAt = requireNotNull(endAt) { "日程结束时间不存在" },
+        allDay = false,
+        accentColorHex = groups.firstOrNull { it.name == groupName }?.colorHex ?: "#4E87E1",
+        reminderMinutesBefore = reminderOffsetsMinutes.firstOrNull() ?: DEFAULT_PLANNING_REMINDER_MINUTES,
+        reminderOffsetsMinutes = reminderOffsetsMinutes.ifEmpty { listOf(DEFAULT_PLANNING_REMINDER_MINUTES) },
+        ringEnabled = true,
+        vibrateEnabled = true,
+        reminderDeliveryMode = com.example.todoalarm.data.ReminderDeliveryMode.FULLSCREEN,
+        recurrence = RecurrenceConfig(),
+        groupId = resolvePlanningGroupId(groupName, groups)
+    )
+}
+
+private fun resolvePlanningGroupId(groupName: String, groups: List<com.example.todoalarm.data.TaskGroup>): Long {
+    if (groupName.isNotBlank()) {
+        groups.firstOrNull { it.name.equals(groupName.trim(), ignoreCase = true) }?.let { return it.id }
+    }
+    return groups.firstOrNull { it.name == "例行" }?.id ?: groups.firstOrNull()?.id ?: 0L
 }

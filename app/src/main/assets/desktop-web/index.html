@@ -26,6 +26,7 @@
         <div class="sidebar-card">
           <button class="ghost tab-btn active" data-tab="todos">待办时间轴</button>
           <button class="ghost tab-btn" data-tab="events">日程时间轴</button>
+          <button class="ghost tab-btn" data-tab="planning">规划台</button>
         </div>
       </div>
     </aside>
@@ -78,6 +79,34 @@
               <div id="event-timeline" class="event-timeline"></div>
             </div>
           </section>
+        </div>
+      </section>
+
+      <section id="planning-panel" class="tab">
+        <div class="card-panel planning-panel">
+          <div class="planning-toolbar">
+            <div>
+              <h2>规划台</h2>
+              <p class="muted">像备忘录一样写 Markdown / 自然计划，再本地识别为待办或日程。</p>
+            </div>
+            <div class="toolbar-row">
+              <select id="planning-note-select"></select>
+              <button id="planning-new" class="ghost mini">新建</button>
+              <button id="planning-save" class="ghost mini">保存</button>
+              <button id="planning-parse" class="mini">识别</button>
+              <button id="planning-import" class="mini">导入选中</button>
+            </div>
+          </div>
+          <div class="planning-workspace">
+            <textarea id="planning-editor" class="planning-editor" placeholder="# 明天&#10;- [ ] 09:00-10:30 写论文 #group 课程&#10;- [ ] 整理材料 #ddl 5.28"></textarea>
+            <div class="planning-preview-shell">
+              <div class="panel-head">
+                <h3>识别预览</h3>
+                <p id="planning-preview-meta" class="muted">尚未识别</p>
+              </div>
+              <div id="planning-preview" class="planning-preview"></div>
+            </div>
+          </div>
         </div>
       </section>
     </main>

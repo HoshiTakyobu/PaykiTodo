@@ -36,6 +36,20 @@ This file tracks the product at a practical level for new coding sessions.
 - daily board always shows the tomorrow schedule section, including `明天暂无日程` when tomorrow has no events
 - board surface intentionally does not expose add / batch-add buttons
 
+### Planning Desk
+
+- phone drawer has a `规划台` entry
+- Planning Desk stores multiple Markdown planning documents in Room table `planning_notes`
+- default startup opens the last opened planning document; if none exists, the app creates `我的规划`
+- planning documents support create, open, rename, archive, and delete with confirmation on the phone UI
+- phone editor is a plain Markdown / natural-text editor with a shortcut bar for tasks, subtasks, indent/outdent, DDL, schedule, reminder, group, today, and tomorrow
+- Enter continuation attempts to keep `- [ ]` task lines flowing without forcing the user to manually type Markdown every time
+- local rule parser recognizes markdown checkboxes, completed-task skip, subtask parent notes, date headings, DDL tags, reminder tags, group tags, schedule tags, and natural schedule ranges
+- natural schedule import can create both a calendar event and a linked todo whose DDL equals the event end time
+- planning import is preview-first and selection-based, not immediate database writes
+- default Planning Desk import reminder is 5 minutes before, full-screen, ring + vibration
+- planning notes are included in JSON backup / restore snapshots
+
 ### Calendar System
 
 - timeline-style calendar foundation
@@ -117,6 +131,8 @@ This file tracks the product at a practical level for new coding sessions.
 - desktop web event timeline no longer shows the separate all-day strip above the timeline
 - desktop web shows the installed APK version in the brand block and uses runtime versioned CSS / JS URLs
 - desktop sync service self-stops if Android restarts it while desktop sync is disabled in Settings
+- desktop web has a `规划台` tab with textarea editor, document selector, save, parse preview, and selected import
+- desktop web Planning Desk uses phone-local `/api/planning/*` routes and edits the same Room planning notes as the phone UI
 
 ### Destructive Action Safety
 

@@ -95,7 +95,7 @@
     <aside>
       <div class="brand">
         <h1>PaykiTodo Wiki</h1>
-        <p>版本 1.6.83。本地内置说明，按实际使用路径解释功能，不只是罗列能力。</p>
+        <p>版本 1.6.84。本地内置说明，按实际使用路径解释功能，不只是罗列能力。</p>
       </div>
       <div class="nav-group-title">开始使用</div>
       <nav class="nav" id="nav">
@@ -106,6 +106,7 @@
         <a href="#home">首页与待办列表</a>
         <a href="#todo-editor">创建与编辑待办</a>
         <a href="#todo-ops">待办预览、完成、取消、恢复</a>
+        <a href="#planning-desk">规划台</a>
         <a href="#groups">分组管理</a>
         <a href="#history">历史记录</a>
         <div class="nav-group-title">提醒</div>
@@ -311,6 +312,117 @@
           <li>进入 <code>已错过</code> 后仍然是活动态，不会直接丢去历史。</li>
           <li>你仍然可以点开它进行修改、完成或取消。</li>
         </ul>
+      </section>
+      <section id="planning-desk" class="article">
+        <h1>规划台</h1>
+        <p>规划台是 PaykiTodo 的“前置思考区”。它不是替代待办和日历，而是让你先像写备忘录或 Obsidian 文档一样，把接下来要做的事、粗略时间、DDL 和拆分任务写下来，然后再识别并导入为真正会提醒你的待办或日程。</p>
+        <div class="callout">规划台第一阶段不做 AI 自动规划、拖拽排期、甘特图或复杂项目树。它先解决最实际的问题：自由写计划 → 本地识别 → 预览确认 → 导入待办 / 日程。</div>
+
+        <h2>如何进入</h2>
+        <ol class="steps">
+          <li>打开左侧抽屉菜单。</li>
+          <li>点击 <code>规划台</code>。</li>
+          <li>如果还没有文档，系统会自动创建 <code>我的规划</code>。</li>
+          <li>再次进入规划台时，会默认打开你最后一次使用的文档。</li>
+        </ol>
+
+        <h2>规划文档怎么管理</h2>
+        <ul>
+          <li><code>文档</code>：打开已有规划文档列表，点击即可切换。</li>
+          <li><code>新建</code>：创建一篇新的规划文档。</li>
+          <li><code>保存</code>：保存当前 Markdown 内容。</li>
+          <li><code>重命名</code>：修改当前文档名称。</li>
+          <li><code>归档</code>：从当前文档列表中隐藏这篇文档。</li>
+          <li><code>删除</code>：删除前会询问确认，删除后无法恢复，建议谨慎使用。</li>
+        </ul>
+
+        <h2>手机端快捷栏怎么用</h2>
+        <p>手机中文输入时手打 <code>- [ ]</code>、缩进和标签很麻烦，所以规划台底部提供快捷栏。</p>
+        <table class="table">
+          <tr><th>按钮</th><th>作用</th></tr>
+          <tr><td>任务</td><td>插入 <code>- [ ] </code>。</td></tr>
+          <tr><td>子任务</td><td>插入 <code>&nbsp;&nbsp;- [ ] </code>，用于大任务下面的小任务。</td></tr>
+          <tr><td>缩进 / 减少缩进</td><td>对当前行增加或减少一级缩进。</td></tr>
+          <tr><td>DDL</td><td>插入 <code>#ddl </code>。</td></tr>
+          <tr><td>日程</td><td>插入 <code>#schedule </code>。</td></tr>
+          <tr><td>提醒</td><td>插入 <code>#remind </code>。</td></tr>
+          <tr><td>分组</td><td>插入 <code>#group </code>。</td></tr>
+          <tr><td>今天 / 明天</td><td>插入自然日期词。</td></tr>
+        </table>
+        <p>长按快捷栏按钮会显示简短说明和例子。当前行是 <code>- [ ] 大任务</code> 时，按回车会尽量续写下一行 <code>- [ ] </code>。</p>
+
+        <h2>怎么写待办</h2>
+        <pre><code>- [ ] 整理保研材料
+- [ ] 写课程论文 #ddl 5.28
+- [x] 已经完成的事情
+  - [ ] 整理获奖证明 #ddl 5.20 #group 保研</code></pre>
+        <ul>
+          <li><code>- [ ]</code> 会识别为待办候选。</li>
+          <li><code>- [x]</code> / <code>- [X]</code> 默认跳过，不会重复导入。</li>
+          <li>缩进子任务第一阶段会作为独立待办导入，并在备注里记录所属大任务。</li>
+        </ul>
+
+        <h2>怎么写自然日程</h2>
+        <pre><code>10:00-12:30 作业1
+10:00~12:30 作业1
+10:00 至 12:30 作业1
+明天 19:30-21:00 整理保研材料
+5.28 14:30-16:00 写论文
+5月28日 11:55pm-次日00:30 整理材料</code></pre>
+        <ul>
+          <li>行首是时间段时，默认识别为日程。</li>
+          <li>没有写日期且没有日期标题上下文时，默认今天，预览里会标出。</li>
+          <li>导入日程时，默认会同时创建一条待办；这条待办的 DDL 等于日程结束时间。你可以在预览里取消。</li>
+        </ul>
+
+        <h2>日期上下文标题</h2>
+        <pre><code># 明天
+
+- [ ] 09:00-10:30 写论文
+- [ ] 14:00-16:00 复习</code></pre>
+        <p>标题可以写 <code># 今天</code>、<code># 明天</code>、<code># 后天</code>、<code># 周五</code>、<code># 5.28</code>、<code># 5月28日</code>、<code># 2026-05-28</code>。下面没有写日期的日程会继承最近的日期标题。</p>
+
+        <h2>DDL 支持哪些格式</h2>
+        <p><code>#ddl</code> 后面可以写这些常见格式：</p>
+        <pre><code>#ddl 5.28
+#ddl 05.28
+#ddl 5-28
+#ddl 5月28日
+#ddl 2026-05-28
+#ddl 2026.05.28
+#ddl 2026年5月28日
+#ddl 明天
+#ddl 今天 16:30
+#ddl 5.28 23:59
+#ddl 5月28日 11:55pm</code></pre>
+        <ul>
+          <li>只写日期、不写时间，默认当天 <code>23:59</code>。</li>
+          <li>只写时间，例如 <code>#ddl 16:30</code>，默认今天。</li>
+          <li>如果解析出的 DDL 已经过期，预览会提示风险，不会偷偷改到明年。</li>
+        </ul>
+
+        <h2>提醒和分组</h2>
+        <pre><code>- [ ] 交材料 #ddl 5.28 #remind 5,15 #group 保研</code></pre>
+        <ul>
+          <li><code>#group 保研</code> 会尝试映射到现有分组。</li>
+          <li><code>#remind 5,15</code> 表示提前 5 分钟和 15 分钟提醒。</li>
+          <li>没写 <code>#remind</code> 时，规划台导入默认提前 5 分钟、全屏提醒、响铃 + 震动。</li>
+        </ul>
+
+        <h2>识别、预览和导入</h2>
+        <ol class="steps">
+          <li>写好规划文本。</li>
+          <li>点击 <code>识别</code>。</li>
+          <li>在预览中检查每条内容的类型、标题、DDL 或起止时间、提醒、分组、是否同时创建待办。</li>
+          <li>取消不想导入的条目。</li>
+          <li>点击 <code>导入选中</code>。</li>
+        </ol>
+
+        <h2><code>#imported</code> 是什么</h2>
+        <p>如果一行已经带有 <code>#imported</code>，规划台会默认跳过它，避免重复导入。当前版本不会强制自动改写你的原文；你可以手动给已经处理完的行加上这个标记。</p>
+
+        <h2>电脑端规划台</h2>
+        <p>开启电脑同步后，电脑网页控制台左侧有 <code>规划台</code> Tab。第一阶段电脑端是左侧 textarea、右侧识别预览的简洁布局，支持文档选择、新建、保存、识别和导入选中。电脑端和手机端操作的是同一份本地数据库。</p>
       </section>
       <section id="desktop-sync" class="article">
         <h1>电脑同步</h1>

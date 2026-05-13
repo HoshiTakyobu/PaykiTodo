@@ -2,36 +2,58 @@
 
 ## Active Development Focus
 
-The current round has produced a local `1.6.83` build. It continues the user-requested settings tone, daily-board spacing, calendar-header, and lunar-date repair pass while keeping the repository buildable.
+The current round implements PaykiTodo Planning Desk Phase 1 and bumps the app to `1.6.84` / `versionCode 156`.
+
+Planning Desk is intended to cover the user's upstream workflow before final DDL/reminder execution: write rough plans like a memo or Obsidian note, locally recognize useful lines, preview them, then import selected entries into existing PaykiTodo todos and calendar events.
 
 Completed in this round:
 
-1. Settings -> 提示音 now opens a compact tone panel instead of jumping directly to the system picker.
-2. The tone panel exposes both `内置提醒音` and `系统通知提示音`, and shows a checkmark for the current choice.
-3. Todo editing now has a wheel-style `农历 DDL` entry. Picking a lunar date converts it to the corresponding Gregorian date while preserving the existing DDL time of day.
-4. The lunar date picker was extracted into shared `LunarDatePickerDialog.kt`, so todo and event editors reuse the same validation and conversion behavior.
-5. Calendar header puts the year/month title on its own row and moves actions to a separate row, avoiding `2026年5月` truncation caused by buttons sharing the same line.
-6. Daily-board schedule rows add more space between the left color strip and event text, increase vertical padding, and reduce the time row font size to avoid the cramped red-box layout shown by the user.
-7. Version was bumped to `1.6.83` / `versionCode 155`.
-8. `./gradlew.bat assembleDebug` succeeded with Android Studio bundled `jbr` and produced `app/build/outputs/apk/debug/PaykiTodo-1.6.83-debug.apk`.
+1. Added Room table `planning_notes` with database migration `8 -> 9`.
+2. Added multi-document planning support: create, open, rename, archive, delete, and last-opened document restoration.
+3. Added `PlanningMarkdownParser`, a local rule parser with no AI dependency.
+4. Parser supports markdown checkbox todos, completed-task skipping, subtasks as independent todos with parent metadata, date headings, common DDL date/time formats, `#ddl`, `#remind`, `#group`, `#schedule`, and natural schedule ranges such as `10:00-12:30 作业1`.
+5. Added phone-side drawer entry `规划台` and a Markdown-style planning editor.
+6. Added phone-side shortcut bar for task, subtask, indent, outdent, DDL, schedule, reminder, group, today, and tomorrow.
+7. Added preview-first import. Selected candidates can be imported as todos/events; natural events default to also creating a linked todo whose DDL is the event end time.
+8. Planning Desk imports default to 5 minutes before, full-screen, ring + vibration.
+9. Planning notes are included in JSON backup / restore snapshots.
+10. Added desktop web `规划台` tab with document selector, textarea editor, save, parse preview, and selected import.
+11. Added desktop sync APIs under `/api/planning/*` for notes, parse, and import.
+12. Updated README, CHANGELOG, TODO, docs/current, and in-app Wiki for the new workflow.
+13. `node --check app/src/main/assets/desktop-web/app.js`, `git diff --check`, and `./gradlew.bat assembleDebug` succeeded.
 
 ## Immediate Practical Next Steps
 
 When testing, use:
 
-1. install `app/build/outputs/apk/debug/PaykiTodo-1.6.83-debug.apk`
-2. verify Settings -> 提示音 can switch back to `内置提醒音` and can still open the system notification tone picker
-3. verify Todo edit/create -> 截止时间 -> `农历 DDL` opens a wheel-style lunar picker, converts a lunar date, and preserves the time
-4. verify calendar header shows `2026年5月` on the separate title row without being squeezed by action buttons
-5. verify daily-board schedule row text no longer sits too close to the blue strip and has more comfortable vertical spacing
+1. install `app/build/outputs/apk/debug/PaykiTodo-1.6.84-debug.apk`
+2. open drawer -> `规划台`
+3. verify the default `我的规划` document appears
+4. create a second document, switch between documents, rename it, and test delete confirmation
+5. type examples:
+
+```markdown
+# 明天
+
+- [ ] 09:00-10:30 写论文 #group 课程
+- [ ] 整理保研材料 #ddl 5.28
+10:00-12:30 作业1
+```
+
+6. tap `识别`, verify preview types, default-today labels, reminders, and linked todo checkbox
+7. import selected entries and verify they appear in My Tasks / Calendar
+8. enable desktop sync, open desktop web, switch to `规划台`, edit/save/parse/import the same note
 
 ## Deferred From The User's Larger Request
 
-- Full desktop web UI parity with the phone UI is still not complete.
-- A full calendar performance pass remains pending; current work only includes incremental layout/composition hardening.
-- Android Emulator visual QA was attempted previously with SDK emulator `Pixel_8`; `emulator.exe` launched but no device appeared in `adb devices` within 90 seconds, so no install/screenshot UI loop can be claimed yet.
-- Broad UI-copy cleanup is partially improved, but future screens should still be reviewed for unnecessary helper text.
+- No drag-and-drop planning.
+- No Gantt chart.
+- No AI auto-planning or paid model dependency.
+- No complex project tree; subtasks are independent todos with parent metadata in notes.
+- Phone editor is plain text, not Markdown highlighting or rich text.
+- Desktop web Planning Desk is intentionally `textarea + preview`; phone-parity visual design can be improved later.
+- Parser has build validation but not a dedicated JVM unit-test suite yet.
 
 ## Current External Dependency
 
-No external file is needed for the current `1.6.83` verification task.
+No external file is needed for the current `1.6.84` verification task.

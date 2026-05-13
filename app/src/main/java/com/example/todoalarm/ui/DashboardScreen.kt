@@ -43,6 +43,8 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import com.example.todoalarm.R
 import com.example.todoalarm.data.CalendarEventDraft
+import com.example.todoalarm.data.PlanningParsedCandidate
+import com.example.todoalarm.data.PlanningParseResult
 import com.example.todoalarm.data.RecurrenceConfig
 import com.example.todoalarm.data.RecurrenceScope
 import com.example.todoalarm.data.ReminderDeliveryMode
@@ -99,6 +101,14 @@ fun DashboardScreen(
     onCreateGroup: suspend (String, String) -> String?,
     onUpdateGroup: suspend (com.example.todoalarm.data.TaskGroup) -> String?,
     onDeleteGroup: suspend (Long) -> String?,
+    onSelectPlanningNote: (Long) -> Unit,
+    onCreatePlanningNote: suspend (String) -> String?,
+    onSavePlanningNote: suspend (Long, String) -> String?,
+    onRenamePlanningNote: suspend (Long, String) -> String?,
+    onDeletePlanningNote: suspend (Long) -> String?,
+    onArchivePlanningNote: suspend (Long) -> String?,
+    onParsePlanningMarkdown: (String) -> PlanningParseResult,
+    onImportPlanningCandidates: suspend (List<PlanningParsedCandidate>, Set<String>, Set<String>) -> String?,
     onThemeModeChange: (ThemeMode) -> Unit,
     onWeekStartModeChange: (WeekStartMode) -> Unit,
     onNextQuote: () -> Unit,
@@ -438,7 +448,15 @@ fun DashboardScreen(
                     onExportBackup = onExportBackup,
                     onImportBackup = onImportBackup,
                     onAutoBackupChange = onAutoBackupChange,
-                    onOpenCalendarBatchImport = { batchImportVisible = true }
+                    onOpenCalendarBatchImport = { batchImportVisible = true },
+                    onSelectPlanningNote = onSelectPlanningNote,
+                    onCreatePlanningNote = onCreatePlanningNote,
+                    onSavePlanningNote = onSavePlanningNote,
+                    onRenamePlanningNote = onRenamePlanningNote,
+                    onDeletePlanningNote = onDeletePlanningNote,
+                    onArchivePlanningNote = onArchivePlanningNote,
+                    onParsePlanningMarkdown = onParsePlanningMarkdown,
+                    onImportPlanningCandidates = onImportPlanningCandidates
                 )
             }
         }

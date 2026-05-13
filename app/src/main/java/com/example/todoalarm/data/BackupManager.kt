@@ -59,6 +59,7 @@ private fun BackupSnapshot.toJson(): JSONObject {
         put("tasks", JSONArray(tasks.map { it.toJson() }))
         put("reminderChainLogs", JSONArray(reminderChainLogs.map { it.toJson() }))
         put("scheduleTemplates", JSONArray(scheduleTemplates.map { it.toJson() }))
+        put("planningNotes", JSONArray(planningNotes.map { it.toJson() }))
     }
 }
 
@@ -81,6 +82,9 @@ private fun AppSettings.toJson(): JSONObject {
         put("quoteIndex", quoteIndex)
         put("backupDirectoryUri", backupDirectoryUri)
         put("autoBackupEnabled", autoBackupEnabled)
+        put("desktopSyncEnabled", desktopSyncEnabled)
+        put("desktopSyncToken", desktopSyncToken)
+        put("lastOpenedPlanningNoteId", lastOpenedPlanningNoteId)
     }
 }
 
@@ -193,6 +197,17 @@ private fun ScheduleTemplate.toJson(): JSONObject {
     }
 }
 
+private fun PlanningNote.toJson(): JSONObject {
+    return JSONObject().apply {
+        put("id", id)
+        put("title", title)
+        put("contentMarkdown", contentMarkdown)
+        put("createdAtMillis", createdAtMillis)
+        put("updatedAtMillis", updatedAtMillis)
+        put("archived", archived)
+    }
+}
+
 private fun backupSnapshotFromJson(json: JSONObject): BackupSnapshot {
     return BackupSnapshot(
         exportedAtMillis = json.optLong("exportedAtMillis", System.currentTimeMillis()),
@@ -202,6 +217,7 @@ private fun backupSnapshotFromJson(json: JSONObject): BackupSnapshot {
         tasks = json.optJSONArray("tasks").toTasks(),
         reminderChainLogs = json.optJSONArray("reminderChainLogs").toReminderChainLogs(),
         scheduleTemplates = json.optJSONArray("scheduleTemplates").toScheduleTemplates(),
+        planningNotes = json.optJSONArray("planningNotes").toPlanningNotes(),
         settings = json.optJSONObject("settings").toSettings()
     )
 }
@@ -355,6 +371,25 @@ private fun JSONArray?.toScheduleTemplates(): List<ScheduleTemplate> {
     }
 }
 
+private fun JSONArray?.toPlanningNotes(): List<PlanningNote> {
+    if (this == null) return emptyList()
+    return buildList(length()) {
+        for (index in 0 until length()) {
+            val item = optJSONObject(index) ?: continue
+            add(
+                PlanningNote(
+                    id = item.optLong("id", 0L),
+                    title = item.optString("title", "我的规划"),
+                    contentMarkdown = item.optString("contentMarkdown"),
+                    createdAtMillis = item.optLong("createdAtMillis", System.currentTimeMillis()),
+                    updatedAtMillis = item.optLong("updatedAtMillis", System.currentTimeMillis()),
+                    archived = item.optBoolean("archived", false)
+                )
+            )
+        }
+    }
+}
+
 private fun JSONObject?.toSettings(): AppSettings {
     if (this == null) return AppSettings()
     return AppSettings(
@@ -376,7 +411,10 @@ private fun JSONObject?.toSettings(): AppSettings {
         workQuietModeEnabled = optBoolean("workQuietModeEnabled", false),
         quoteIndex = optInt("quoteIndex", 0),
         backupDirectoryUri = optStringOrNull("backupDirectoryUri"),
-        autoBackupEnabled = optBoolean("autoBackupEnabled", false)
+        autoBackupEnabled = optBoolean("autoBackupEnabled", false),
+        desktopSyncEnabled = optBoolean("desktopSyncEnabled", false),
+        desktopSyncToken = optString("desktopSyncToken", ""),
+        lastOpenedPlanningNoteId = optLongOrNull("lastOpenedPlanningNoteId")?.takeIf { it > 0 }
     )
 }
 

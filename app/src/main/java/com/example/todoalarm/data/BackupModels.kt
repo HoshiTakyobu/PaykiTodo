@@ -8,5 +8,6 @@ data class BackupSnapshot(
     val pendingQuoteVersion: Int = 1,
     val reminderChainLogs: List<ReminderChainLog> = emptyList(),
     val scheduleTemplates: List<ScheduleTemplate> = emptyList(),
+    val planningNotes: List<PlanningNote> = emptyList(),
     val settings: AppSettings
 )

@@ -3,7 +3,7 @@ const EVENT_HEADER_HEIGHT = 58;
 const FIFTEEN_MINUTES = 15 * 60 * 1000;
 const THIRTY_MINUTES = 30 * 60 * 1000;
 const DEFAULT_EVENT_COLOR = '#4e87e1';
-const state = { token: '', snapshot: null, currentTab: 'todos', selectedEventDay: dayKey(new Date()), editingTodoId: null, editingEventId: null, previewTodoId: null, previewEventId: null, pendingEventSeed: null };
+const state = { token: '', snapshot: null, currentTab: 'todos', selectedEventDay: dayKey(new Date()), editingTodoId: null, editingEventId: null, previewTodoId: null, previewEventId: null, pendingEventSeed: null, planningNotes: [], activePlanningNoteId: null, planningParseResult: null };
 
 const els = {
   token: document.getElementById('token'),
@@ -23,7 +23,11 @@ const els = {
   eventAnchorDate: document.getElementById('event-anchor-date'),
   eventPrevDay: document.getElementById('event-prev-day'),
   eventNextDay: document.getElementById('event-next-day'),
-  applyEventDay: document.getElementById('apply-event-day')
+  applyEventDay: document.getElementById('apply-event-day'),
+  planningNoteSelect: document.getElementById('planning-note-select'),
+  planningEditor: document.getElementById('planning-editor'),
+  planningPreview: document.getElementById('planning-preview'),
+  planningPreviewMeta: document.getElementById('planning-preview-meta')
 };
 
 function headers() {
@@ -442,9 +446,11 @@ function openEventPreviewById(id) {
 
 function syncTopbar() {
   const todoMode = state.currentTab === 'todos';
-  els.panelTitle.textContent = todoMode ? '待办时间轴' : '日程时间轴';
-  els.viewCaption.textContent = todoMode ? '桌面端待办模式' : '桌面端日程模式';
-  els.openCreate.textContent = todoMode ? '新增待办' : '新增日程';
+  const eventMode = state.currentTab === 'events';
+  els.panelTitle.textContent = todoMode ? '待办时间轴' : eventMode ? '日程时间轴' : '规划台';
+  els.viewCaption.textContent = todoMode ? '桌面端待办模式' : eventMode ? '桌面端日程模式' : 'Markdown 规划模式';
+  els.openCreate.textContent = todoMode ? '新增待办' : eventMode ? '新增日程' : '新建规划';
+  els.openCreate.classList.toggle('hidden', state.currentTab === 'planning');
   els.snapshotMeta.textContent = state.snapshot ? ('最近刷新：' + formatDateTimeLabel(state.snapshot.generatedAtMillis)) : '连接后即可读取手机端当前数据';
 }
 
@@ -460,10 +466,18 @@ async function connect() {
 
 async function loadSnapshot() {
   state.snapshot = await api('/api/snapshot');
+  await loadPlanningNotes();
   ensureSelectedEventDay();
   renderTodos();
   renderEvents();
+  renderPlanningNotes();
   syncTopbar();
+}
+
+async function loadPlanningNotes() {
+  const data = await api('/api/planning/notes');
+  state.planningNotes = data.notes || [];
+  state.activePlanningNoteId = data.activeNoteId || (state.planningNotes[0] && state.planningNotes[0].id) || null;
 }
 
 function renderTodos() {
@@ -558,6 +572,110 @@ function renderEvents() {
     };
   });
   bindActions();
+}
+
+function activePlanningNote() {
+  return (state.planningNotes || []).find(note => sameId(note.id, state.activePlanningNoteId)) || (state.planningNotes || [])[0] || null;
+}
+
+function renderPlanningNotes() {
+  if (!els.planningNoteSelect || !els.planningEditor) return;
+  const notes = state.planningNotes || [];
+  els.planningNoteSelect.innerHTML = notes.map(note => '<option value="' + note.id + '">' + escapeHtml(note.title) + '</option>').join('');
+  const active = activePlanningNote();
+  if (active) {
+    state.activePlanningNoteId = active.id;
+    els.planningNoteSelect.value = String(active.id);
+    els.planningEditor.value = active.contentMarkdown || '';
+  }
+  renderPlanningPreview();
+}
+
+function planningTypeLabel(type) {
+  if (type === 'TODO') return '待办';
+  if (type === 'EVENT') return '日程';
+  if (type === 'SKIPPED') return '跳过';
+  if (type === 'ERROR') return '错误';
+  return type || '未知';
+}
+
+function planningTimeText(item) {
+  if (item.type === 'TODO') return item.dueAt ? ('DDL：' + item.dueAt.replace('T', ' ')) : '无 DDL';
+  if (item.type === 'EVENT') return (item.startAt || '未设置') + ' - ' + (item.endAt || '未设置') + (item.defaultToday ? '（默认今天）' : '');
+  return item.message || '';
+}
+
+function renderPlanningPreview() {
+  if (!els.planningPreview || !els.planningPreviewMeta) return;
+  const result = state.planningParseResult;
+  if (!result) {
+    els.planningPreviewMeta.textContent = '尚未识别';
+    els.planningPreview.innerHTML = '<div class="empty-state">点击“识别”后，这里会显示待办、日程、跳过和错误条目。</div>';
+    return;
+  }
+  const candidates = result.candidates || [];
+  els.planningPreviewMeta.textContent = '共 ' + candidates.length + ' 行，' + (result.importableCount || 0) + ' 条可导入。';
+  els.planningPreview.innerHTML = candidates.map(item => {
+    const importable = item.importable && !item.imported;
+    const checked = importable ? ' checked' : '';
+    const linked = item.type === 'EVENT' ? '<label class="planning-linked"><input type="checkbox" data-planning-linked="' + escapeHtml(item.id) + '"' + (item.createLinkedTodo ? ' checked' : '') + ' /> 同时创建待办</label>' : '';
+    return ''
+      + '<article class="planning-candidate ' + String(item.type || '').toLowerCase() + '">'
+      +   '<div class="planning-candidate-head">'
+      +     '<label><input type="checkbox" data-planning-select="' + escapeHtml(item.id) + '"' + checked + (importable ? '' : ' disabled') + ' /> 导入</label>'
+      +     '<span class="pill">' + escapeHtml(planningTypeLabel(item.type)) + '</span>'
+      +     '<span class="muted">第 ' + escapeHtml(item.lineNumber) + ' 行</span>'
+      +   '</div>'
+      +   '<div class="planning-source">' + escapeHtml(item.sourceLine || '') + '</div>'
+      +   (item.title ? '<div class="planning-title">' + escapeHtml(item.title) + '</div>' : '')
+      +   '<div class="planning-meta-line">' + escapeHtml(planningTimeText(item)) + '</div>'
+      +   (item.groupName ? '<div class="planning-meta-line">分组：' + escapeHtml(item.groupName) + '</div>' : '')
+      +   (importable ? '<div class="planning-meta-line">提醒：' + escapeHtml((item.reminderOffsetsMinutes || []).join(' / ') || '5') + ' 分钟前 · 全屏 · 响铃 + 震动</div>' : '')
+      +   linked
+      +   (item.message ? '<div class="planning-message">' + escapeHtml(item.message) + '</div>' : '')
+      + '</article>';
+  }).join('') || '<div class="empty-state">没有识别结果。</div>';
+}
+
+async function savePlanningNote() {
+  const active = activePlanningNote();
+  if (!active) throw new Error('没有可保存的规划文档');
+  await api('/api/planning/notes/' + active.id, {
+    method: 'PUT',
+    body: JSON.stringify({ contentMarkdown: els.planningEditor.value })
+  });
+  await loadPlanningNotes();
+  els.status.textContent = '规划文档已保存';
+}
+
+async function createPlanningNote() {
+  const title = prompt('新规划文档名称', '新的规划');
+  if (!title) return;
+  const data = await api('/api/planning/notes', { method: 'POST', body: JSON.stringify({ title }) });
+  state.activePlanningNoteId = data.note && data.note.id;
+  await loadPlanningNotes();
+  renderPlanningNotes();
+  els.status.textContent = '已新建规划文档';
+}
+
+async function parsePlanningEditor() {
+  state.planningParseResult = await api('/api/planning/parse', {
+    method: 'POST',
+    body: JSON.stringify({ markdown: els.planningEditor.value })
+  });
+  renderPlanningPreview();
+}
+
+async function importSelectedPlanning() {
+  if (!state.planningParseResult) await parsePlanningEditor();
+  const selectedIds = Array.from(document.querySelectorAll('[data-planning-select]:checked')).map(node => node.dataset.planningSelect);
+  const linkedTodoIds = Array.from(document.querySelectorAll('[data-planning-linked]:checked')).map(node => node.dataset.planningLinked);
+  const result = await api('/api/planning/import', {
+    method: 'POST',
+    body: JSON.stringify({ markdown: els.planningEditor.value, selectedIds, linkedTodoIds })
+  });
+  els.status.textContent = '已导入 ' + (result.imported || 0) + ' 条规划内容';
+  await loadSnapshot();
 }
 
 function escapeHtml(text) {
@@ -909,6 +1027,19 @@ els.applyEventDay.onclick = () => {
   state.selectedEventDay = els.eventAnchorDate.value;
   renderEvents();
 };
+document.getElementById('planning-new')?.addEventListener('click', () => createPlanningNote().catch(err => els.status.textContent = err.message));
+document.getElementById('planning-save')?.addEventListener('click', () => savePlanningNote().catch(err => els.status.textContent = err.message));
+document.getElementById('planning-parse')?.addEventListener('click', () => parsePlanningEditor().catch(err => els.status.textContent = err.message));
+document.getElementById('planning-import')?.addEventListener('click', () => importSelectedPlanning().catch(err => els.status.textContent = err.message));
+els.planningNoteSelect?.addEventListener('change', event => {
+  state.activePlanningNoteId = event.target.value;
+  const note = activePlanningNote();
+  if (note && els.planningEditor) {
+    els.planningEditor.value = note.contentMarkdown || '';
+    state.planningParseResult = null;
+    renderPlanningPreview();
+  }
+});
 els.openCreate.onclick = () => {
   if (state.currentTab === 'events') {
     clearEventForm();

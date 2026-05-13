@@ -90,6 +90,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.todoalarm.R
 import com.example.todoalarm.data.CalendarEventDraft
+import com.example.todoalarm.data.PlanningParsedCandidate
+import com.example.todoalarm.data.PlanningParseResult
 import com.example.todoalarm.data.ReminderDeliveryMode
 import com.example.todoalarm.data.ReminderAudioChannel
 import com.example.todoalarm.data.ScheduleTemplate
@@ -129,6 +131,7 @@ internal enum class DashboardSection(
     BOARD("每日看板", Icons.Rounded.ViewAgenda, "每日看板"),
     ACTIVE("我的任务", Icons.Rounded.TaskAlt, "我的任务"),
     CALENDAR("日历", Icons.Rounded.CalendarMonth, "Schedule"),
+    PLANNING("规划台", Icons.Rounded.PostAdd, "规划台"),
     HISTORY("历史记录", Icons.Rounded.History, "历史记录"),
     GROUPS("分组管理", Icons.Rounded.Folder, "分组管理"),
     SETTINGS("设置", Icons.Rounded.Settings, "设置")
@@ -367,7 +370,15 @@ internal fun DashboardBody(
     onExportBackup: () -> Unit,
     onImportBackup: () -> Unit,
     onAutoBackupChange: (Boolean) -> Unit,
-    onOpenCalendarBatchImport: () -> Unit
+    onOpenCalendarBatchImport: () -> Unit,
+    onSelectPlanningNote: (Long) -> Unit,
+    onCreatePlanningNote: suspend (String) -> String?,
+    onSavePlanningNote: suspend (Long, String) -> String?,
+    onRenamePlanningNote: suspend (Long, String) -> String?,
+    onDeletePlanningNote: suspend (Long) -> String?,
+    onArchivePlanningNote: suspend (Long) -> String?,
+    onParsePlanningMarkdown: (String) -> PlanningParseResult,
+    onImportPlanningCandidates: suspend (List<PlanningParsedCandidate>, Set<String>, Set<String>) -> String?
 ) {
     if (section == DashboardSection.CALENDAR) {
         Box(
@@ -436,6 +447,28 @@ internal fun DashboardBody(
                 onAutoBackupChange = onAutoBackupChange,
                 onCopyCrashLog = permissions.copyCrashLog,
                 onClearCrashLog = permissions.clearCrashLog
+            )
+        }
+        return
+    }
+
+    if (section == DashboardSection.PLANNING) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+        ) {
+            PlanningDeskPanel(
+                notes = uiState.planningNotes,
+                activeNote = uiState.activePlanningNote,
+                onSelectNote = onSelectPlanningNote,
+                onCreateNote = onCreatePlanningNote,
+                onSaveNote = onSavePlanningNote,
+                onRenameNote = onRenamePlanningNote,
+                onDeleteNote = onDeletePlanningNote,
+                onArchiveNote = onArchivePlanningNote,
+                onParse = onParsePlanningMarkdown,
+                onImport = onImportPlanningCandidates
             )
         }
         return
@@ -584,6 +617,7 @@ internal fun DashboardBody(
                 )
             }
             DashboardSection.CALENDAR -> Unit
+            DashboardSection.PLANNING -> Unit
             DashboardSection.SETTINGS -> Unit
         }
     }

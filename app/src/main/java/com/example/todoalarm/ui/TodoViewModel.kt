@@ -12,6 +12,12 @@ import com.example.todoalarm.alarm.ReminderDispatchTracker
 import com.example.todoalarm.alarm.ReminderForegroundService
 import com.example.todoalarm.data.AppSettings
 import com.example.todoalarm.data.CalendarEventDraft
+import com.example.todoalarm.data.DEFAULT_PLANNING_REMINDER_MINUTES
+import com.example.todoalarm.data.PlanningMarkdownParser
+import com.example.todoalarm.data.PlanningNote
+import com.example.todoalarm.data.PlanningParseResult
+import com.example.todoalarm.data.PlanningParsedCandidate
+import com.example.todoalarm.data.PlanningParsedType
 import com.example.todoalarm.data.RecurrenceScope
 import com.example.todoalarm.data.RecurrenceType
 import com.example.todoalarm.data.ReminderChainLog
@@ -43,6 +49,7 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.time.Instant
 import java.time.LocalDate
+import java.time.LocalDateTime
 import java.time.ZoneId
 
 data class TodoUiState(
@@ -53,6 +60,9 @@ data class TodoUiState(
     val upcomingItems: List<TodoItem> = emptyList(),
     val historyItems: List<TodoItem> = emptyList(),
     val calendarItems: List<TodoItem> = emptyList(),
+    val planningNotes: List<PlanningNote> = emptyList(),
+    val activePlanningNoteId: Long? = null,
+    val activePlanningNote: PlanningNote? = null,
     val reminderChainLogs: List<ReminderChainLog> = emptyList(),
     val scheduleTemplates: List<ScheduleTemplate> = emptyList(),
     val settings: AppSettings = AppSettings(),
@@ -88,6 +98,12 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
             refreshQuotesIfNeeded(force = false)
         }
         viewModelScope.launch {
+            val note = repository.ensureDefaultPlanningNote()
+            if (settingsStore.currentSettings().lastOpenedPlanningNoteId == null) {
+                settingsStore.updateLastOpenedPlanningNoteId(note.id)
+            }
+        }
+        viewModelScope.launch {
             while (true) {
                 repository.markMissedTasks()
                 dispatchDueReminders()
@@ -99,6 +115,7 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
     val uiState = combine(
         repository.observeTodos(),
         repository.observeGroups(),
+        repository.observePlanningNotes(),
         settingsStore.settingsFlow,
         quoteFlow,
         selectedGroupIdFlow,
@@ -108,10 +125,12 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
         val items = values[0] as List<TodoItem>
         @Suppress("UNCHECKED_CAST")
         val groups = values[1] as List<TaskGroup>
-        val settings = values[2] as AppSettings
         @Suppress("UNCHECKED_CAST")
-        val quotes = values[3] as List<String>
-        val selectedGroupId = values[4] as Long?
+        val planningNotes = values[2] as List<PlanningNote>
+        val settings = values[3] as AppSettings
+        @Suppress("UNCHECKED_CAST")
+        val quotes = values[4] as List<String>
+        val selectedGroupId = values[5] as Long?
         val nowMillis = System.currentTimeMillis()
         val today = Instant.ofEpochMilli(nowMillis).atZone(ZoneId.systemDefault()).toLocalDate()
         val availableGroups = if (groups.isEmpty()) repository.ensureDefaultGroups() else groups
@@ -131,6 +150,8 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
             .sortedByDescending { it.completedAtMillis ?: it.canceledAtMillis ?: it.createdAtMillis }
         val availableQuotes = quotes.ifEmpty { QuoteRepository.seedQuotes }
         val currentQuote = availableQuotes[settings.quoteIndex.mod(availableQuotes.size)]
+        val activePlanningNote = planningNotes.firstOrNull { it.id == settings.lastOpenedPlanningNoteId }
+            ?: planningNotes.firstOrNull()
 
         TodoUiState(
             groups = availableGroups,
@@ -140,6 +161,9 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
             upcomingItems = activeTaskItems.filter { !it.missed && (!it.hasDueDate || dueDate(it).isAfter(today)) },
             historyItems = historyItems,
             calendarItems = activeCalendarItems,
+            planningNotes = planningNotes,
+            activePlanningNoteId = activePlanningNote?.id,
+            activePlanningNote = activePlanningNote,
             reminderChainLogs = repository.getRecentReminderChainLogs(),
             scheduleTemplates = repository.getScheduleTemplates(),
             settings = settings,
@@ -161,6 +185,90 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
 
     fun selectGroup(groupId: Long?) {
         selectedGroupIdFlow.value = groupId
+    }
+
+    fun parsePlanningMarkdown(markdown: String): PlanningParseResult {
+        return PlanningMarkdownParser.parse(markdown)
+    }
+
+    fun selectPlanningNote(noteId: Long) {
+        settingsStore.updateLastOpenedPlanningNoteId(noteId)
+    }
+
+    suspend fun createPlanningNote(title: String): String? {
+        val note = repository.createPlanningNote(title)
+        settingsStore.updateLastOpenedPlanningNoteId(note.id)
+        autoBackupIfEnabled()
+        return null
+    }
+
+    suspend fun savePlanningNoteContent(noteId: Long, contentMarkdown: String): String? {
+        val updated = repository.updatePlanningNoteContent(noteId, contentMarkdown) ?: return "规划文档不存在"
+        settingsStore.updateLastOpenedPlanningNoteId(updated.id)
+        autoBackupIfEnabled()
+        return null
+    }
+
+    suspend fun renamePlanningNote(noteId: Long, title: String): String? {
+        if (title.isBlank()) return "文档名称不能为空"
+        repository.renamePlanningNote(noteId, title) ?: return "规划文档不存在"
+        autoBackupIfEnabled()
+        return null
+    }
+
+    suspend fun deletePlanningNote(noteId: Long): String? {
+        repository.deletePlanningNote(noteId)
+        val fallback = repository.ensureDefaultPlanningNote()
+        settingsStore.updateLastOpenedPlanningNoteId(fallback.id)
+        autoBackupIfEnabled()
+        return null
+    }
+
+    suspend fun archivePlanningNote(noteId: Long): String? {
+        repository.archivePlanningNote(noteId) ?: return "规划文档不存在"
+        val fallback = repository.ensureDefaultPlanningNote()
+        settingsStore.updateLastOpenedPlanningNoteId(fallback.id)
+        autoBackupIfEnabled()
+        return null
+    }
+
+    suspend fun importPlanningCandidates(
+        candidates: List<PlanningParsedCandidate>,
+        selectedIds: Set<String>,
+        linkedTodoIds: Set<String>
+    ): String? {
+        val selected = candidates.filter { it.id in selectedIds && it.importable && !it.imported }
+        if (selected.isEmpty()) return "没有可导入的规划条目"
+        val groups = repository.getAllGroups().ifEmpty { repository.ensureDefaultGroups() }
+
+        selected.forEachIndexed { index, candidate ->
+            when (candidate.type) {
+                PlanningParsedType.TODO -> validateDraft(candidate.toTodoDraft(groups), null, RecurrenceScope.CURRENT)
+                PlanningParsedType.EVENT -> validateCalendarDraft(candidate.toEventDraft(groups), null, RecurrenceScope.CURRENT)
+                else -> null
+            }?.let { return "第 ${index + 1} 条：$it" }
+        }
+
+        selected.forEach { candidate ->
+            when (candidate.type) {
+                PlanningParsedType.TODO -> {
+                    val created = repository.createFromDraft(candidate.toTodoDraft(groups))
+                    created.forEach { scheduleReminderOrDisable(it) }
+                }
+                PlanningParsedType.EVENT -> {
+                    val eventDraft = candidate.toEventDraft(groups)
+                    val createdEvents = repository.createCalendarEventFromDraft(eventDraft)
+                    createdEvents.forEach { scheduleReminderOrDisable(it) }
+                    if (candidate.id in linkedTodoIds) {
+                        val linked = repository.createFromDraft(candidate.toLinkedTodoDraft(groups))
+                        linked.forEach { scheduleReminderOrDisable(it) }
+                    }
+                }
+                else -> Unit
+            }
+        }
+        autoBackupIfEnabled()
+        return null
     }
 
     suspend fun addTodo(draft: TodoDraft): String? {
@@ -577,6 +685,64 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
                 }
             }
         }
+    }
+
+    private fun PlanningParsedCandidate.toTodoDraft(groups: List<TaskGroup>): TodoDraft {
+        return TodoDraft(
+            title = title,
+            notes = notes,
+            dueAt = dueAt,
+            reminderAt = null,
+            groupId = resolvePlanningGroupId(groupName, groups),
+            ringEnabled = true,
+            vibrateEnabled = true,
+            recurrence = RecurrenceConfig(),
+            reminderOffsetsMinutes = if (dueAt == null) emptyList() else reminderOffsetsMinutes.ifEmpty { listOf(DEFAULT_PLANNING_REMINDER_MINUTES) }
+        )
+    }
+
+    private fun PlanningParsedCandidate.toLinkedTodoDraft(groups: List<TaskGroup>): TodoDraft {
+        val ddl = requireNotNull(endAt) { "Linked todo requires event end time" }
+        return TodoDraft(
+            title = title,
+            notes = listOfNotNull(
+                "由规划台日程自动生成，DDL 为日程结束时间。",
+                notes.takeIf { it.isNotBlank() }
+            ).joinToString("\n"),
+            dueAt = ddl,
+            reminderAt = null,
+            groupId = resolvePlanningGroupId(groupName, groups),
+            ringEnabled = true,
+            vibrateEnabled = true,
+            recurrence = RecurrenceConfig(),
+            reminderOffsetsMinutes = reminderOffsetsMinutes.ifEmpty { listOf(DEFAULT_PLANNING_REMINDER_MINUTES) }
+        )
+    }
+
+    private fun PlanningParsedCandidate.toEventDraft(groups: List<TaskGroup>): CalendarEventDraft {
+        return CalendarEventDraft(
+            title = title,
+            notes = notes,
+            location = "",
+            startAt = requireNotNull(startAt) { "Event requires startAt" },
+            endAt = requireNotNull(endAt) { "Event requires endAt" },
+            allDay = false,
+            accentColorHex = groups.firstOrNull { it.name == groupName }?.colorHex ?: "#4E87E1",
+            reminderMinutesBefore = reminderOffsetsMinutes.firstOrNull() ?: DEFAULT_PLANNING_REMINDER_MINUTES,
+            reminderOffsetsMinutes = reminderOffsetsMinutes.ifEmpty { listOf(DEFAULT_PLANNING_REMINDER_MINUTES) },
+            ringEnabled = true,
+            vibrateEnabled = true,
+            reminderDeliveryMode = ReminderDeliveryMode.FULLSCREEN,
+            recurrence = RecurrenceConfig(),
+            groupId = resolvePlanningGroupId(groupName, groups)
+        )
+    }
+
+    private fun resolvePlanningGroupId(groupName: String, groups: List<TaskGroup>): Long {
+        if (groupName.isNotBlank()) {
+            groups.firstOrNull { it.name.equals(groupName.trim(), ignoreCase = true) }?.let { return it.id }
+        }
+        return groups.firstOrNull { it.name == "例行" }?.id ?: groups.firstOrNull()?.id ?: 0L
     }
 
     private fun validateDraft(

@@ -176,4 +176,34 @@ interface TodoDao {
 
     @Query("DELETE FROM schedule_templates")
     suspend fun clearScheduleTemplates()
+
+    @Query(
+        """
+        SELECT * FROM planning_notes
+        WHERE archived = 0
+        ORDER BY updatedAtMillis DESC, createdAtMillis DESC
+        """
+    )
+    fun observePlanningNotes(): Flow<List<PlanningNote>>
+
+    @Query("SELECT * FROM planning_notes WHERE id = :id LIMIT 1")
+    suspend fun getPlanningNote(id: Long): PlanningNote?
+
+    @Query("SELECT * FROM planning_notes ORDER BY updatedAtMillis DESC, createdAtMillis DESC")
+    suspend fun getAllPlanningNotes(): List<PlanningNote>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertPlanningNote(note: PlanningNote): Long
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertPlanningNotes(notes: List<PlanningNote>): List<Long>
+
+    @Update
+    suspend fun updatePlanningNote(note: PlanningNote)
+
+    @Query("DELETE FROM planning_notes WHERE id = :id")
+    suspend fun deletePlanningNote(id: Long)
+
+    @Query("DELETE FROM planning_notes")
+    suspend fun clearPlanningNotes()
 }

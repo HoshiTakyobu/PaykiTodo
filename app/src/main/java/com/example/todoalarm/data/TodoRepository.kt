@@ -16,6 +16,7 @@ class TodoRepository(
 ) {
     fun observeTodos(): Flow<List<TodoItem>> = todoDao.observeTodos()
     fun observeGroups(): Flow<List<TaskGroup>> = todoDao.observeGroups()
+    fun observePlanningNotes(): Flow<List<PlanningNote>> = todoDao.observePlanningNotes()
 
     suspend fun addTodo(item: TodoItem): TodoItem {
         val id = todoDao.insert(item)
@@ -25,6 +26,60 @@ class TodoRepository(
     suspend fun getTodo(id: Long): TodoItem? = todoDao.getById(id)
     suspend fun getGroup(groupId: Long): TaskGroup? = todoDao.getGroupById(groupId)
     suspend fun getAllTodos(): List<TodoItem> = todoDao.getAllTodos()
+    suspend fun getAllPlanningNotes(): List<PlanningNote> = todoDao.getAllPlanningNotes()
+
+    suspend fun ensureDefaultPlanningNote(): PlanningNote {
+        val existing = todoDao.getAllPlanningNotes().firstOrNull { !it.archived }
+        if (existing != null) return existing
+        val now = System.currentTimeMillis()
+        val note = PlanningNote(
+            title = "我的规划",
+            contentMarkdown = DEFAULT_PLANNING_NOTE_MARKDOWN,
+            createdAtMillis = now,
+            updatedAtMillis = now,
+            archived = false
+        )
+        val id = todoDao.insertPlanningNote(note)
+        return note.copy(id = id)
+    }
+
+    suspend fun createPlanningNote(title: String = "新的规划"): PlanningNote {
+        val now = System.currentTimeMillis()
+        val note = PlanningNote(
+            title = title.trim().ifBlank { "新的规划" },
+            contentMarkdown = DEFAULT_PLANNING_NOTE_MARKDOWN,
+            createdAtMillis = now,
+            updatedAtMillis = now,
+            archived = false
+        )
+        val id = todoDao.insertPlanningNote(note)
+        return note.copy(id = id)
+    }
+
+    suspend fun updatePlanningNoteContent(noteId: Long, contentMarkdown: String): PlanningNote? {
+        val note = todoDao.getPlanningNote(noteId) ?: return null
+        val updated = note.copy(contentMarkdown = contentMarkdown, updatedAtMillis = System.currentTimeMillis())
+        todoDao.updatePlanningNote(updated)
+        return updated
+    }
+
+    suspend fun renamePlanningNote(noteId: Long, title: String): PlanningNote? {
+        val note = todoDao.getPlanningNote(noteId) ?: return null
+        val updated = note.copy(title = title.trim().ifBlank { note.title }, updatedAtMillis = System.currentTimeMillis())
+        todoDao.updatePlanningNote(updated)
+        return updated
+    }
+
+    suspend fun archivePlanningNote(noteId: Long): PlanningNote? {
+        val note = todoDao.getPlanningNote(noteId) ?: return null
+        val updated = note.copy(archived = true, updatedAtMillis = System.currentTimeMillis())
+        todoDao.updatePlanningNote(updated)
+        return updated
+    }
+
+    suspend fun deletePlanningNote(noteId: Long) {
+        todoDao.deletePlanningNote(noteId)
+    }
 
     suspend fun getActiveItemsForScope(
         item: TodoItem,
@@ -393,6 +448,7 @@ class TodoRepository(
             tasks = todoDao.getAllTodos(),
             reminderChainLogs = todoDao.getRecentReminderChainLogs(400),
             scheduleTemplates = todoDao.getScheduleTemplates(),
+            planningNotes = todoDao.getAllPlanningNotes(),
             settings = settings
         )
     }
@@ -403,6 +459,7 @@ class TodoRepository(
         todoDao.clearGroups()
         todoDao.clearReminderChainLogs()
         todoDao.clearScheduleTemplates()
+        todoDao.clearPlanningNotes()
         if (snapshot.groups.isNotEmpty()) {
             todoDao.insertGroups(snapshot.groups)
         } else {
@@ -419,6 +476,9 @@ class TodoRepository(
         }
         snapshot.scheduleTemplates.forEach { template ->
             todoDao.insertScheduleTemplate(template)
+        }
+        if (snapshot.planningNotes.isNotEmpty()) {
+            todoDao.insertPlanningNotes(snapshot.planningNotes)
         }
     }
 
@@ -1176,6 +1236,15 @@ class TodoRepository(
 
     companion object {
         private const val MISSED_GRACE_PERIOD_MILLIS = 60_000L
+        private val DEFAULT_PLANNING_NOTE_MARKDOWN = """
+            # 收集箱
+
+            - [ ] 整理接下来要做的事情
+
+            # 今日计划
+
+            10:00-11:00 示例日程
+        """.trimIndent()
     }
 
     private suspend fun defaultGroupId(): Long {

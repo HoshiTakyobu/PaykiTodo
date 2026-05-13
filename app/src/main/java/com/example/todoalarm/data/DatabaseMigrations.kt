@@ -247,4 +247,22 @@ object DatabaseMigrations {
             db.execSQL("UPDATE recurring_task_templates SET reminderOffsetsCsv = CAST(reminderOffsetMinutes AS TEXT) WHERE reminderOffsetMinutes IS NOT NULL AND reminderOffsetsCsv = ''")
         }
     }
+
+    val MIGRATION_8_9 = object : Migration(8, 9) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL(
+                """
+                CREATE TABLE IF NOT EXISTS `planning_notes` (
+                    `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                    `title` TEXT NOT NULL,
+                    `contentMarkdown` TEXT NOT NULL,
+                    `createdAtMillis` INTEGER NOT NULL,
+                    `updatedAtMillis` INTEGER NOT NULL,
+                    `archived` INTEGER NOT NULL DEFAULT 0
+                )
+                """.trimIndent()
+            )
+            db.execSQL("CREATE INDEX IF NOT EXISTS `index_planning_notes_archived_updatedAtMillis` ON `planning_notes` (`archived`, `updatedAtMillis`)")
+        }
+    }
 }

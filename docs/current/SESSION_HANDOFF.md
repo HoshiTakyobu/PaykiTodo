@@ -6,51 +6,71 @@ Long-running Codex sessions can become unreliable. This file exists so a new ses
 
 ## Current Handoff Summary
 
-- The project is currently at code version `1.6.83` / `versionCode 155`.
-- Latest debug APK path after build: `app/build/outputs/apk/debug/PaykiTodo-1.6.83-debug.apk`.
+- The project is currently at code version `1.6.84` / `versionCode 156`.
+- Latest debug APK path after build: `app/build/outputs/apk/debug/PaykiTodo-1.6.84-debug.apk`.
 - Latest build command used Android Studio bundled JBR and succeeded:
   - `./gradlew.bat assembleDebug`
-- Settings -> 提示音 has a compact panel with both built-in tone and system notification tone choices.
-- Todo DDL now has wheel-style lunar date picking. Event lunar start/end picking still exists and now reuses the shared picker.
-- Desktop web event cards open the editor directly on card click. Todo cards still use preview-first interaction.
+- This round implemented Planning Desk Phase 1.
+- Planning Desk is available on the phone drawer and desktop web console.
 
-## Latest Fixes In 1.6.83
+## Latest Fixes In 1.6.84
 
-1. Restored the built-in reminder-tone choice in Settings through a dedicated tone panel.
-2. Added wheel-style `农历 DDL` to the todo editor; selected lunar dates preserve the existing DDL clock time.
-3. Extracted the lunar picker to `LunarDatePickerDialog.kt` and reused it from event and todo editors.
-4. Split the calendar header into a dedicated month-title row plus an action row so `2026年5月` is not squeezed by action buttons.
-5. Increased daily-board event row text spacing from the left color strip and added vertical breathing room.
-6. `1.6.83` was built successfully with Android Studio bundled JBR.
+1. Added `planning_notes` Room entity/table and database migration `8 -> 9`.
+2. Added multi-document Planning Desk: create, open, rename, archive, delete, and last-opened-note restoration.
+3. Added local `PlanningMarkdownParser`; no AI or paid model is involved.
+4. Parser recognizes markdown checkbox todos, completed-task skipping, subtask parent metadata, date headings, common DDL formats, reminder/group/schedule tags, and natural schedule ranges.
+5. Phone-side `规划台` page provides a plain Markdown editor, shortcut bar, parse preview, and selected import.
+6. Natural schedule lines can import as calendar events and optionally create linked todos whose DDL equals the event end time.
+7. Planning imports default to 5 minutes before, full-screen, ring + vibration.
+8. Planning notes are included in JSON backup / restore.
+9. Desktop web console has a `规划台` tab backed by `/api/planning/*` routes.
+10. README, CHANGELOG, TODO, docs/current, and Wiki were updated for the new workflow.
 
 ## Files Most Relevant To The Latest Round
 
 - `app/build.gradle.kts`
-- `app/src/main/java/com/example/todoalarm/ui/SettingsPanel.kt`
-- `app/src/main/java/com/example/todoalarm/ui/TodoEditorDialog.kt`
-- `app/src/main/java/com/example/todoalarm/ui/CalendarEventEditorDialog.kt`
-- `app/src/main/java/com/example/todoalarm/ui/LunarDatePickerDialog.kt`
-- `app/src/main/java/com/example/todoalarm/ui/CalendarPanel.kt`
+- `app/src/main/java/com/example/todoalarm/data/PlanningNote.kt`
+- `app/src/main/java/com/example/todoalarm/data/PlanningMarkdownParser.kt`
+- `app/src/main/java/com/example/todoalarm/data/AppDatabase.kt`
+- `app/src/main/java/com/example/todoalarm/data/DatabaseMigrations.kt`
+- `app/src/main/java/com/example/todoalarm/data/TodoDao.kt`
+- `app/src/main/java/com/example/todoalarm/data/TodoRepository.kt`
+- `app/src/main/java/com/example/todoalarm/data/BackupManager.kt`
+- `app/src/main/java/com/example/todoalarm/ui/PlanningDeskPanel.kt`
+- `app/src/main/java/com/example/todoalarm/ui/TodoViewModel.kt`
 - `app/src/main/java/com/example/todoalarm/ui/DashboardChrome.kt`
-- `README.md`
-- `CHANGELOG.md`
-- `TODO.md`
-- `docs/current/*`
+- `app/src/main/java/com/example/todoalarm/ui/DashboardScreen.kt`
+- `app/src/main/java/com/example/todoalarm/ui/MainActivity.kt`
+- `app/src/main/java/com/example/todoalarm/sync/DesktopSyncCoordinator.kt`
+- `app/src/main/assets/desktop-web/index.html`
+- `app/src/main/assets/desktop-web/app.js`
+- `app/src/main/assets/desktop-web/app.css`
+- `app/src/main/assets/wiki/index.html`
+- `docs/current/PLANNING_DESK_DESIGN.md`
 
 ## Current Verification Focus
 
-1. Install `PaykiTodo-1.6.83-debug.apk`.
-2. Verify Settings -> 提示音 shows both built-in and system notification tone choices.
-3. Verify Todo edit/create -> 农历 DDL opens the wheel-style picker, converts lunar date correctly, and preserves time.
-4. Check calendar header month text and daily-board schedule row spacing on the user's phone.
-5. If the desktop browser still behaves as preview-first after installing `1.6.83`, check whether the page is still serving old `/app.js` assets from the old installed APK.
+1. Install `PaykiTodo-1.6.84-debug.apk`.
+2. Verify drawer -> `规划台` opens and creates/loads `我的规划`.
+3. Verify create/open/rename/archive/delete planning documents.
+4. Verify phone shortcut bar can insert tasks/subtasks/tags and indent/outdent current line.
+5. Verify parsing examples:
+   - `- [ ] 整理材料 #ddl 5.28`
+   - `10:00-12:30 作业1`
+   - `明天 19:30-21:00 整理保研材料`
+6. Verify preview-first import and linked todo creation for events.
+7. Verify desktop web `规划台` with the same phone database.
 
 ## Deferred Larger Work
 
+- Drag-and-drop planning.
+- Gantt chart.
+- AI auto-planning.
+- Complex project tree.
+- Markdown highlighting / rich editor.
+- Dedicated parser unit-test suite.
 - Full desktop UI parity with phone UI.
 - Full calendar rendering/performance optimization.
-- Emulator-driven visual QA loop: `Pixel_8` exists, but the latest hidden launch attempt did not produce an `adb devices` entry within 90 seconds.
-- Broader UI-copy cleanup beyond the concrete strings changed so far.
 
 ## Required Reading For A New Session
 
@@ -60,8 +80,9 @@ Long-running Codex sessions can become unreliable. This file exists so a new ses
 4. `docs/current/FEATURE_LEDGER.md`
 5. `docs/current/CURRENT_TASK.md`
 6. `docs/current/UI_DESIGN_RULES.md`
-7. `docs/current/DESKTOP_WEB_ARCHITECTURE.md`
-8. `docs/current/PAYKITODO_SESSION_LEDGER.md`
+7. `docs/current/PLANNING_DESK_DESIGN.md`
+8. `docs/current/DESKTOP_WEB_ARCHITECTURE.md`
+9. `docs/current/PAYKITODO_SESSION_LEDGER.md`
 
 ## Update Rule
 

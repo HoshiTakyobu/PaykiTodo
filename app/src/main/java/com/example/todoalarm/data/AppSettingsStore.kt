@@ -48,7 +48,8 @@ data class AppSettings(
     val backupDirectoryUri: String? = null,
     val autoBackupEnabled: Boolean = false,
     val desktopSyncEnabled: Boolean = false,
-    val desktopSyncToken: String = ""
+    val desktopSyncToken: String = "",
+    val lastOpenedPlanningNoteId: Long? = null
 )
 
 class AppSettingsStore(context: Context) {
@@ -148,6 +149,17 @@ class AppSettingsStore(context: Context) {
         return token
     }
 
+    fun updateLastOpenedPlanningNoteId(noteId: Long?) {
+        preferences.edit().apply {
+            if (noteId == null || noteId <= 0) {
+                remove(KEY_LAST_OPENED_PLANNING_NOTE_ID)
+            } else {
+                putLong(KEY_LAST_OPENED_PLANNING_NOTE_ID, noteId)
+            }
+        }.apply()
+        refresh()
+    }
+
     fun replaceAll(settings: AppSettings) {
         preferences.edit()
             .putString(KEY_THEME_MODE, settings.themeMode.name)
@@ -169,6 +181,10 @@ class AppSettingsStore(context: Context) {
             .putBoolean(KEY_AUTO_BACKUP_ENABLED, settings.autoBackupEnabled)
             .putBoolean(KEY_DESKTOP_SYNC_ENABLED, settings.desktopSyncEnabled)
             .putString(KEY_DESKTOP_SYNC_TOKEN, settings.desktopSyncToken)
+            .apply {
+                val noteId = settings.lastOpenedPlanningNoteId
+                if (noteId == null || noteId <= 0) remove(KEY_LAST_OPENED_PLANNING_NOTE_ID) else putLong(KEY_LAST_OPENED_PLANNING_NOTE_ID, noteId)
+            }
             .apply()
         refresh()
     }
@@ -204,7 +220,8 @@ class AppSettingsStore(context: Context) {
             backupDirectoryUri = preferences.getString(KEY_BACKUP_DIR_URI, null),
             autoBackupEnabled = preferences.getBoolean(KEY_AUTO_BACKUP_ENABLED, false),
             desktopSyncEnabled = preferences.getBoolean(KEY_DESKTOP_SYNC_ENABLED, false),
-            desktopSyncToken = syncToken
+            desktopSyncToken = syncToken,
+            lastOpenedPlanningNoteId = preferences.getLong(KEY_LAST_OPENED_PLANNING_NOTE_ID, 0L).takeIf { it > 0 }
         )
     }
 
@@ -244,5 +261,6 @@ class AppSettingsStore(context: Context) {
         private const val KEY_AUTO_BACKUP_ENABLED = "auto_backup_enabled"
         private const val KEY_DESKTOP_SYNC_ENABLED = "desktop_sync_enabled"
         private const val KEY_DESKTOP_SYNC_TOKEN = "desktop_sync_token"
+        private const val KEY_LAST_OPENED_PLANNING_NOTE_ID = "last_opened_planning_note_id"
     }
 }

@@ -145,3 +145,6 @@ This is not a perfect specification. It is a working ledger so new sessions can 
 - what is still under active refinement
 
 - desktop web event cards use string-compatible ID lookup for card-click editing, preventing silent failures when snapshot IDs are not the same JavaScript type
+
+- desktop web all-day events are exposed through compact per-day pills that reuse the same event editor click path as timed events
+- Daily-board normal schedule rows no longer show an outer border; in-progress rows retain the gold highlight

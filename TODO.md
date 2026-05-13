@@ -4,8 +4,8 @@
 
 ### In Progress
 
-- Verify version `1.6.52` on device after desktop event-card click editing fix
-- Keep `README.md`, `CHANGELOG.md`, and current-state docs aligned with version `1.6.52`
+- Verify version `1.6.53` on device after desktop event-card click/cache/all-day fixes and board/calendar header polish
+- Keep `README.md`, `CHANGELOG.md`, and current-state docs aligned with version `1.6.53`
 - Continue board / dashboard and calendar polish without regressing the current interaction model
 - Improve repo-native handoff so new sessions do not depend on long chat history
 
@@ -25,7 +25,7 @@
 - Finished daily-board events should disappear after their end time
 - Currently running daily-board events should show the gold outline / glow treatment
 - Daily-board schedule rows should keep the left color bars aligned across in-progress and normal events
-- Normal daily-board schedule rows should show a thin same-color border instead of only a clipped side arc
+- Normal daily-board schedule rows should not show an outer border; only currently running rows should keep the gold border/glow
 - Calendar pending event draft should be cancelable by long-pressing blank timeline space, and should clear when opening an existing event
 - Missed active todos should appear in the daily board todo block
 - Delete confirmation sheets should show the refined dangerous-action UI on phone-side delete paths
@@ -53,11 +53,15 @@
 - Temporary system-channel volume boost should be tested carefully because it changes global stream volume and then restores it
 - Work mode should be tested for suppressed outward sound, forced stronger vibration even on items with vibration disabled, and full-screen / accessibility fallback
 - Daily board should show a clear tomorrow section; if tomorrow has no events, it should say `明天暂无日程`
-- Desktop web event cards should open editing by clicking the card, without inline edit/delete buttons; verify clicking a card opens the editor on the actual desktop browser
-- Desktop web event cards should use group colors first, and the separate all-day strip above the timeline should not be shown
+- Desktop web timed and all-day event cards should open editing by clicking the card, without inline edit/delete buttons; verify clicking a card opens the editor on the actual desktop browser
+- Desktop web event cards should use group colors first; all-day events should be available through compact per-day pills rather than a large separate all-day strip
 
 ## Mid-Term Follow-Ups
 
+- Desktop web UI still needs a deeper phone-parity redesign for advanced event/todo editing beyond this bug-fix round
+- Calendar still needs a dedicated performance pass for smooth add/edit/delete and timeline swiping under large event sets
+- Lunar calendar support is not implemented yet; design needs data conversion, date picker behavior, yearly lunar recurrence, and reminder scheduling semantics
+- Android Emulator UI inspection can be used in a later visual QA round, but this round only completed build-level verification
 - Continue improving reminder reliability across foreground / background / lock-screen scenarios
 - Expand the LAN desktop sync console with richer operations and better field coverage
 - If the desktop UI grows much larger, consider a separate `desktop-web/` source/build directory whose output is copied into `app/src/main/assets/desktop-web/`
@@ -72,6 +76,11 @@
 
 ## Done Recently
 
+- Bumped the app to `1.6.53` / `versionCode 125`
+- Added cache-busting/no-cache headers for desktop web resources and delegated event-card click handling
+- Restored desktop all-day event editing through compact per-day pills
+- Hid desktop sync access addresses unless the service is enabled and running
+- Removed normal daily-board schedule outer borders, tightened schedule color bars, separated calendar title/actions, and unified 每日看板 naming
 - Bumped the app to `1.6.52` / `versionCode 124`
 - Fixed desktop web event-card click editing by matching event IDs as strings and stopping card-click propagation into blank timeline creation
 - Bumped the app to `1.6.51` / `versionCode 123`

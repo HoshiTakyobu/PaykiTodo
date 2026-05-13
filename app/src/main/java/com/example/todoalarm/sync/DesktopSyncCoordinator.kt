@@ -62,7 +62,7 @@ class DesktopSyncCoordinator(
         return settingsStore.currentSettings().toDesktopSyncStatus(
             running = server != null,
             port = port,
-            ipAddresses = currentIpv4Addresses()
+            ipAddresses = if (server != null) currentIpv4Addresses() else emptyList()
         )
     }
 

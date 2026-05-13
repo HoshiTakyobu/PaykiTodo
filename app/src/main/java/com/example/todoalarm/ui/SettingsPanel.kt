@@ -349,10 +349,11 @@ fun SettingsPanel(
                 Text("访问密钥：${settings.desktopSyncToken}", fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
                 OutlinedButton(onClick = onRotateDesktopSyncToken) { Text("重新生成访问密钥") }
                 Text("可访问地址", fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
-                if (desktopSyncStatus.ipAddresses.isEmpty()) {
-                    Text("当前未检测到可用的局域网 IPv4 地址。请确认手机已连 Wi‑Fi。", color = MaterialTheme.colorScheme.onSurfaceVariant)
-                } else {
-                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                when {
+                    !settings.desktopSyncEnabled -> Text("电脑同步未启用，启用后才会显示局域网访问地址。", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    !desktopSyncStatus.running -> Text("电脑同步服务尚未运行，稍后刷新或重新开启电脑同步。", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    desktopSyncStatus.ipAddresses.isEmpty() -> Text("当前未检测到可用的局域网 IPv4 地址。请确认手机已连 Wi‑Fi。", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    else -> Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         desktopSyncStatus.ipAddresses.forEach { ip ->
                             Surface(shape = RoundedCornerShape(16.dp), color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f)) {
                                 Text(
@@ -365,7 +366,7 @@ fun SettingsPanel(
                         }
                     }
                 }
-            }
+        }
         }
 
         SettingsSection.CRASH -> SettingsSectionDialog("崩溃日志", { selectedSection = null }) {

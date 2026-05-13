@@ -6,14 +6,16 @@ Long-running Codex sessions can become unreliable. This file exists so a new ses
 
 ## Current Handoff Summary
 
-- The project is currently at code version `1.6.52` / `versionCode 124`
-- Latest debug APK path after build should be `app/build/outputs/apk/debug/PaykiTodo-1.6.52-debug.apk`
-- Latest fix round addressed a desktop web regression:
-  1. Desktop web event cards still have no inline edit/delete buttons.
-  2. Clicking an event card now opens the existing event editor by using string-compatible ID lookup.
-  3. Card clicks stop propagation so they do not fall through into blank timeline create-event handling.
-
-Previous feature round (`1.6.51`) fixed daily-board tomorrow copy and simplified the desktop event-timeline UI.
+- The project is currently at code version `1.6.53` / `versionCode 125`
+- Latest debug APK path after build should be `app/build/outputs/apk/debug/PaykiTodo-1.6.53-debug.apk`
+- Latest fix round addressed real desktop-web editing failures and small phone UI regressions:
+  1. Desktop web assets are versioned and served with no-cache headers.
+  2. Event card clicks use delegated handling.
+  3. All-day events are shown as compact per-day pills and can be clicked to edit.
+  4. Desktop sync settings hide LAN access addresses unless sync is enabled and running.
+  5. Daily-board normal schedule rows no longer have outer borders; in-progress rows keep gold emphasis.
+  6. Calendar header separates month title from action buttons.
+  7. `今日看板` / `每日看板` naming was unified to `每日看板`.
 
 ## Files Most Relevant To The Latest Round
 
@@ -21,17 +23,29 @@ Previous feature round (`1.6.51`) fixed daily-board tomorrow copy and simplified
 - `app/src/main/assets/desktop-web/app.js`
 - `app/src/main/assets/desktop-web/app.css`
 - `app/src/main/assets/desktop-web/index.html`
-- `docs/current/CURRENT_TASK.md`
-- `docs/current/PROJECT_STATUS.md`
+- `app/src/main/java/com/example/todoalarm/sync/DesktopSyncServer.kt`
+- `app/src/main/java/com/example/todoalarm/sync/DesktopSyncCoordinator.kt`
+- `app/src/main/java/com/example/todoalarm/ui/SettingsPanel.kt`
+- `app/src/main/java/com/example/todoalarm/ui/DashboardChrome.kt`
+- `app/src/main/java/com/example/todoalarm/ui/CalendarPanel.kt`
 
 ## Current Verification Focus
 
-1. Install `PaykiTodo-1.6.52-debug.apk`
+1. Install `PaykiTodo-1.6.53-debug.apk`
 2. Enable desktop sync and connect from a desktop browser
-3. Open the desktop web event timeline
-4. Click an existing event card and verify it opens the existing event editor
-5. Verify blank timeline clicks still create a new event draft
-6. Verify event cards still have no inline edit/delete buttons
+3. Hard-refresh the desktop page and verify it loads `/app.js?v=1.6.53`
+4. Click timed and all-day event entries and verify both open the event editor
+5. Verify saving an event edit still works
+6. Disable desktop sync and verify Settings does not show stale access addresses
+7. Check daily board schedule row borders and the calendar header month title on device
+
+## Deferred Larger Work
+
+- Full desktop UI parity with phone UI
+- Lunar calendar and lunar yearly recurrence
+- Full calendar rendering/performance optimization
+- Emulator-driven visual QA loop
+- Broad UI-copy/comment cleanup beyond the concrete strings changed in this round
 
 ## Required Reading For A New Session
 

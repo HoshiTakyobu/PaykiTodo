@@ -106,3 +106,5 @@ When reconstructing PaykiTodo state, use this priority order:
 - `docs/current/UI_DESIGN_RULES.md` now records the project rule against using button-group option UIs for ordinary enum settings.
 
 - 1.6.52 fixed desktop web event-card click editing by comparing event IDs as strings and stopping card-click propagation into blank timeline creation.
+
+- 1.6.53 fixed desktop web cache/click/all-day edit paths, hid stale desktop-sync addresses when the service is not running, and polished daily-board/calendar header naming and layout.

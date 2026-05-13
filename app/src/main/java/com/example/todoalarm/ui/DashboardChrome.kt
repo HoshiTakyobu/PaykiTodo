@@ -126,7 +126,7 @@ internal enum class DashboardSection(
     val icon: ImageVector,
     val topBarTitle: String
 ) {
-    BOARD("每日看板", Icons.Rounded.ViewAgenda, "今日看板"),
+    BOARD("每日看板", Icons.Rounded.ViewAgenda, "每日看板"),
     ACTIVE("我的任务", Icons.Rounded.TaskAlt, "我的任务"),
     CALENDAR("日历", Icons.Rounded.CalendarMonth, "Schedule"),
     HISTORY("历史记录", Icons.Rounded.History, "历史记录"),
@@ -856,12 +856,12 @@ private fun BoardScheduleEventRow(
             .clickable(onClick = onClick),
         shape = rowShape,
         color = rowColor.copy(alpha = if (inProgress) 0.08f else 0.035f),
-        border = BorderStroke(if (inProgress) 1.4.dp else 0.8.dp, rowColor.copy(alpha = if (inProgress) 0.92f else 0.62f))
+        border = if (inProgress) BorderStroke(1.4.dp, rowColor.copy(alpha = 0.92f)) else null
     ) {
         Surface(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(7.dp),
+                .padding(start = if (inProgress) 7.dp else 3.dp, top = 7.dp, end = 7.dp, bottom = 7.dp),
             shape = RoundedCornerShape(14.dp),
             color = if (inProgress) rowColor.copy(alpha = 0.025f) else Color.Transparent
         ) {
@@ -869,8 +869,8 @@ private fun BoardScheduleEventRow(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(IntrinsicSize.Min)
-                    .padding(horizontal = 8.dp, vertical = 8.dp),
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    .padding(start = 4.dp, top = 8.dp, end = 8.dp, bottom = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.Top
             ) {
                 Box(

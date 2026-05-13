@@ -7,13 +7,13 @@
 - Package name: `com.paykitodo.app`
 - Target platform: Android 14 / API 34
 - Current version in code:
-  - `versionName = "1.6.52"`
-  - `versionCode = 124`
+  - `versionName = "1.6.53"`
+  - `versionCode = 125`
 
 ## Current Build Facts
 
 - Latest debug APK output:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.6.52-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.6.53-debug.apk`
 - Minimal verification completed in the latest code round:
   - `./gradlew assembleDebug` succeeded with Android Studio bundled `jbr`
 - Current build environment expectation:
@@ -22,11 +22,11 @@
 
 ## Current Worktree Reality
 
-The repository is now at `1.6.52` after fixing desktop web event-card click editing on top of the 1.6.51 board and desktop timeline UI baseline.
+The repository is now at `1.6.53` after fixing desktop web event-card click/cache/all-day editing paths and several phone-side board/calendar UI regressions.
 
 Most important current baseline facts:
 
-- version metadata is `1.6.52 / 124`
+- version metadata is `1.6.53 / 125`
 - launcher adaptive icon foreground now directly uses picture resource `@drawable/ic_launcher_art`
 - old vector mark launcher resources have been deleted so the launcher cannot fall back to them again
 - picture launcher art has been reprocessed to an opaque pure-white background with smaller centered content
@@ -47,7 +47,7 @@ Most important current baseline facts:
 - calendar header exposes a standalone `批量` button; calendar batch import remains on the calendar surface
 - daily-board schedule event color strips now match the right-side text block height
 - daily-board in-progress and normal schedule rows share the same left color-bar column
-- normal daily-board schedule rows have a thin same-color border; in-progress rows use a gold border plus very subtle inner highlight rather than a large yellow overlay
+- normal daily-board schedule rows no longer show an outer border; in-progress rows use a gold border plus very subtle inner highlight rather than a large yellow overlay
 - launch screen uses transparent `ic_launcher_art_transparent`; launcher / install icons still use the white-background adaptive icon art
 - desktop web can edit existing todos, including DDL, reminder time, group, recurrence, ring, and vibration
 - desktop web event cards open editing by card click; delete remains available inside the event editor, and inline event-card buttons are intentionally removed
@@ -65,8 +65,8 @@ Most important current baseline facts:
 - an advanced temporary system-channel volume boost can raise the selected global stream during reminder playback and then restore it; it is off by default
 - work mode suppresses outward reminder sound by default, forces stronger vibration even when an individual item disabled vibration, and routes calendar reminders into the full-screen / accessibility fallback chain
 - daily board always shows a tomorrow schedule section; when tomorrow has no events it says `明天暂无日程`
-- desktop web event cards open editing by card click, no longer show inline edit/delete buttons, prefer group colors for display, and use string-compatible ID lookup so card clicks do not silently fail
-- desktop web no longer shows the separate all-day strip above the event timeline
+- desktop web event cards open editing through delegated card click handling, no longer show inline edit/delete buttons, prefer group colors for display, use string-compatible ID lookup, and expose all-day events through compact per-day pills
+- desktop web no longer shows the large separate all-day strip above the event timeline; compact all-day pills remain available inside day columns
 - Settings is split into common settings and advanced settings; desktop sync is common, while diagnostics / backup / crash logs are advanced maintenance surfaces
 - enum-like Settings choices use compact dropdown rows instead of large button groups; percentage values use a slider plus numeric input
 
@@ -87,7 +87,7 @@ Recent code inspection and build verification cover:
 
 ## Documentation Health
 
-Current docs have been synchronized for `1.6.52`:
+Current docs have been synchronized for `1.6.53`:
 
 - `README.md`
 - `CHANGELOG.md`

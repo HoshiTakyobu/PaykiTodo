@@ -301,9 +301,28 @@ function renderEventDayHeader(key, items) {
     + '</button>';
 }
 
-function renderEventDayColumn(key, timed) {
+function renderEventDayAllDayStrip(key, allDayItems) {
+  if (!allDayItems.length) return '';
+  return '<div class="event-all-day-strip">' + allDayItems.map(item => renderAllDayEventPill(item, key)).join('') + '</div>';
+}
+
+function renderAllDayEventPill(item, key) {
+  const accent = item.groupColorHex || item.accentColorHex || '#4e87e1';
+  const startKey = dayKeyFromMillis(eventStart(item));
+  const endKey = dayKeyFromMillis(Math.max(eventStart(item), eventEnd(item) - 1));
+  const range = startKey === endKey ? '全天' : formatCompactDateLabel(startKey) + ' - ' + formatCompactDateLabel(endKey);
+  return ''
+    + '<button type="button" class="event-all-day-pill" data-event-id="' + escapeHtml(String(item.id ?? '')) + '" style="--accent:' + accent + '">'
+    +   '<span class="event-all-day-dot"></span>'
+    +   '<span class="event-all-day-title">' + escapeHtml(item.title) + '</span>'
+    +   '<span class="event-all-day-range">' + escapeHtml(range) + '</span>'
+    + '</button>';
+}
+
+function renderEventDayColumn(key, timed, allDayItems) {
   return ''
     + '<div class="event-day-column" data-column-day="' + key + '">'
+    +   renderEventDayAllDayStrip(key, allDayItems)
     +   renderHourGrid()
     +   renderCurrentLine(key)
     +   timed.map(renderEventCard).join('')
@@ -399,18 +418,20 @@ function renderEvents() {
     return {
       key: key,
       items: items,
-      timed: items.filter(item => !item.allDay).map(item => buildEventSegment(item, key))
+      timed: items.filter(item => !item.allDay).map(item => buildEventSegment(item, key)),
+      allDay: items.filter(item => item.allDay)
     };
   });
   const totalTimed = visibleDays.reduce((sum, day) => sum + day.timed.length, 0);
+  const totalAllDay = visibleDays.reduce((sum, day) => sum + day.allDay.length, 0);
   els.eventDayHeaders.style.setProperty('--day-count', String(visibleKeys.length || 1));
   els.eventTimeline.style.setProperty('--day-count', String(visibleKeys.length || 1));
   els.eventDayHeaders.innerHTML = visibleDays.map(day => renderEventDayHeader(day.key, day.items)).join('');
   if (els.eventAnchorDate) els.eventAnchorDate.value = state.selectedEventDay;
   els.eventSelectedDate.textContent = renderVisibleRangeTitle(visibleKeys);
-  els.eventSelectedSubtitle.textContent = '起始日：' + formatCompactDateLabel(state.selectedEventDay) + ' · 连续 ' + visibleKeys.length + ' 天 · 定时 ' + totalTimed + ' 项';
+  els.eventSelectedSubtitle.textContent = '起始日：' + formatCompactDateLabel(state.selectedEventDay) + ' · 连续 ' + visibleKeys.length + ' 天 · 定时 ' + totalTimed + ' 项 · 全天 ' + totalAllDay + ' 项';
   els.hourAxis.innerHTML = renderHourAxis();
-  els.eventTimeline.innerHTML = visibleDays.map(day => renderEventDayColumn(day.key, day.timed)).join('');
+  els.eventTimeline.innerHTML = visibleDays.map(day => renderEventDayColumn(day.key, day.timed, day.allDay)).join('');
   if (els.boardScroll) {
     if (visibleKeys.includes(dayKey(new Date()))) {
       const nowDate = new Date();
@@ -420,14 +441,6 @@ function renderEvents() {
       els.boardScroll.scrollTop = firstTimed ? Math.max(0, EVENT_HEADER_HEIGHT + firstTimed.top - 80) : 0;
     }
   }
-  document.querySelectorAll('[data-event-id]').forEach(node => {
-    node.onclick = event => {
-      event.preventDefault();
-      event.stopPropagation();
-      const eventItem = findEventById(node.dataset.eventId);
-      if (eventItem) openEventEditor(eventItem);
-    };
-  });
   document.querySelectorAll('[data-column-day]').forEach(node => {
     node.onclick = event => {
       if (event.target.closest('[data-event-id]')) return;
@@ -680,6 +693,17 @@ els.openCreate.onclick = () => {
   }
   openModal(state.currentTab === 'todos' ? 'todo-modal' : 'event-modal');
 };
+if (els.eventTimeline) {
+  els.eventTimeline.addEventListener('click', event => {
+    const eventNode = event.target.closest?.('[data-event-id]');
+    if (!eventNode) return;
+    event.preventDefault();
+    event.stopPropagation();
+    const eventItem = findEventById(eventNode.dataset.eventId);
+    if (eventItem) openEventEditor(eventItem);
+  });
+}
+
 document.querySelectorAll('[data-tab]').forEach(node => {
   node.onclick = () => {
     state.currentTab = node.dataset.tab;

@@ -672,25 +672,25 @@ private fun CalendarBrowserHeader(
             .padding(horizontal = 4.dp, vertical = 4.dp),
         verticalArrangement = Arrangement.spacedBy(6.dp)
     ) {
-        Row(
+        Column(
             modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
+            verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
             Row(
                 modifier = Modifier
-                    .weight(1f)
+                    .fillMaxWidth()
                     .clickable(onClick = onPickDate),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(6.dp)
             ) {
                 Text(
                     text = titleMonth.format(DateTimeFormatter.ofPattern("yyyy年M月", Locale.CHINA)),
-                    style = MaterialTheme.typography.headlineSmall,
+                    modifier = Modifier.weight(1f, fill = false),
+                    style = MaterialTheme.typography.headlineSmall.copy(fontSize = 23.sp),
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface,
                     maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
+                    overflow = TextOverflow.Clip
                 )
                 Surface(
                     shape = RoundedCornerShape(999.dp),
@@ -705,7 +705,11 @@ private fun CalendarBrowserHeader(
                 }
             }
 
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
                 CalendarHeaderActionButton(label = "今天", onClick = onToday)
                 CalendarHeaderActionButton(label = "批量", onClick = onOpenBatchImport)
                 Box {
@@ -2451,5 +2455,3 @@ private fun java.time.DayOfWeek.shortLabel(): String = when (this) {
     java.time.DayOfWeek.SATURDAY -> "周六"
     java.time.DayOfWeek.SUNDAY -> "周日"
 }
-
-

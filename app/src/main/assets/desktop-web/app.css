@@ -160,6 +160,12 @@ button.ghost {
 .event-timeline { position: relative; width: 100%; min-width: 0; height: calc(var(--hour-height) * 24); display: grid; grid-template-columns: repeat(var(--day-count, 1), minmax(0, 1fr)); }
 .event-day-column { position: relative; min-width: 0; height: 100%; border-left: 1px solid rgba(185,200,218,.9); cursor: crosshair; }
 .event-day-column:last-child { border-right: 1px solid rgba(185,200,218,.9); }
+.event-all-day-strip { position: absolute; left: 5px; right: 5px; top: 5px; z-index: 2; display: flex; flex-direction: column; gap: 4px; pointer-events: none; }
+.event-all-day-pill { pointer-events: auto; min-width: 0; width: 100%; display: grid; grid-template-columns: 8px minmax(0, 1fr) auto; align-items: center; gap: 6px; border-radius: 999px; border: 1px solid color-mix(in srgb, var(--accent, var(--primary)) 34%, transparent); background: color-mix(in srgb, var(--accent, var(--primary)) 10%, rgba(255,255,255,.96)); color: #243446; padding: 5px 8px; box-shadow: none; }
+.event-all-day-pill:hover { transform: translateY(-1px); box-shadow: 0 10px 20px rgba(46,64,98,.1); }
+.event-all-day-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent, var(--primary)); }
+.event-all-day-title { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; font-weight: 850; text-align: left; }
+.event-all-day-range { font-size: 10px; font-weight: 800; color: var(--muted); white-space: nowrap; }
 .hour-row { position: absolute; left: 0; right: 0; height: var(--hour-height); border-top: 1px solid rgba(188,201,217,.9); }
 .half-row { position: absolute; left: 0; right: 0; border-top: 1px dashed rgba(188,201,217,.4); }
 .event-card { position: absolute; left: 7px; right: 7px; min-height: 34px; border-radius: 17px; padding: 8px 10px 8px 12px; border: 1px solid rgba(211,220,230,.9); border-left: 5px solid var(--accent, var(--primary)); background: rgba(255,255,255,.96); box-shadow: 0 10px 22px rgba(40,57,88,.08); overflow: hidden; cursor: pointer; transition: transform .16s ease, box-shadow .16s ease; }

@@ -6,11 +6,11 @@ Long-running Codex sessions can become unreliable. This file exists so a new ses
 
 ## Current Handoff Summary
 
-- The project is currently at code version `1.6.53` / `versionCode 125`
-- Latest debug APK path after build should be `app/build/outputs/apk/debug/PaykiTodo-1.6.53-debug.apk`
+- The project is currently at code version `1.6.54` / `versionCode 126`
+- Latest debug APK path after build should be `app/build/outputs/apk/debug/PaykiTodo-1.6.54-debug.apk`
 - Latest fix round addressed real desktop-web editing failures and small phone UI regressions:
   1. Desktop web assets are versioned and served with no-cache headers.
-  2. Event card clicks use delegated handling.
+  2. Event card clicks use delegated handling.`r`n  3. Event/todo editors tolerate `recurrenceWeekdays` as string or array, fixing the hidden-modal failure after the form was partially filled.
   3. All-day events are shown as compact per-day pills and can be clicked to edit.
   4. Desktop sync settings hide LAN access addresses unless sync is enabled and running.
   5. Daily-board normal schedule rows no longer have outer borders; in-progress rows keep gold emphasis.
@@ -31,9 +31,9 @@ Long-running Codex sessions can become unreliable. This file exists so a new ses
 
 ## Current Verification Focus
 
-1. Install `PaykiTodo-1.6.53-debug.apk`
+1. Install `PaykiTodo-1.6.54-debug.apk`
 2. Enable desktop sync and connect from a desktop browser
-3. Hard-refresh the desktop page and verify it loads `/app.js?v=1.6.53`
+3. Hard-refresh the desktop page and verify it loads `/app.js?v=1.6.54`
 4. Click timed and all-day event entries and verify both open the event editor
 5. Verify saving an event edit still works
 6. Disable desktop sync and verify Settings does not show stale access addresses

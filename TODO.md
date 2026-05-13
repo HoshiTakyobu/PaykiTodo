@@ -4,8 +4,8 @@
 
 ### In Progress
 
-- Verify version `1.6.53` on device after desktop event-card click/cache/all-day fixes and board/calendar header polish
-- Keep `README.md`, `CHANGELOG.md`, and current-state docs aligned with version `1.6.53`
+- Verify version `1.6.54` on device after the recurrenceWeekdays desktop editor crash fix
+- Keep `README.md`, `CHANGELOG.md`, and current-state docs aligned with version `1.6.54`
 - Continue board / dashboard and calendar polish without regressing the current interaction model
 - Improve repo-native handoff so new sessions do not depend on long chat history
 
@@ -76,6 +76,9 @@
 
 ## Done Recently
 
+- Bumped the app to `1.6.54` / `versionCode 126`
+- Fixed desktop event editor opening by making recurrenceWeekdays compatible with both string and array snapshot values
+- Verified the desktop event click path with Edge DevTools Protocol against real phone snapshot data
 - Bumped the app to `1.6.53` / `versionCode 125`
 - Added cache-busting/no-cache headers for desktop web resources and delegated event-card click handling
 - Restored desktop all-day event editing through compact per-day pills

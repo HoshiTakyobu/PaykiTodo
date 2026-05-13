@@ -531,7 +531,7 @@ function openTodoEditor(item) {
   writeDateTimeValue('todo-reminder', reminderMillis ? formatDateTimeLocalValue(reminderMillis) : '');
   document.getElementById('todo-recurrence-type').value = recurrenceTypeValue(item);
   document.getElementById('todo-recurrence-end').value = item.recurrenceEndDate || '';
-  document.getElementById('todo-weekdays').value = (item.recurrenceWeekdays || []).join(',');
+  document.getElementById('todo-weekdays').value = csvValue(item.recurrenceWeekdays);
   document.getElementById('todo-ring').checked = item.ringEnabled !== false;
   document.getElementById('todo-vibrate').checked = item.vibrateEnabled !== false;
   openModal('todo-modal');
@@ -576,6 +576,11 @@ function recurrenceTypeValue(item) {
   return item.isRecurring ? (item.recurrenceType || 'NONE') : 'NONE';
 }
 
+
+function csvValue(value) {
+  if (Array.isArray(value)) return value.join(',');
+  return String(value || '');
+}
 function openEventEditor(item) {
   state.editingEventId = item.id;
   state.pendingEventSeed = null;
@@ -594,7 +599,7 @@ function openEventEditor(item) {
   document.getElementById('event-reminder-offsets').value = (item.reminderOffsetsMinutes || []).join(',');
   document.getElementById('event-recurrence-type').value = recurrenceTypeValue(item);
   document.getElementById('event-recurrence-end').value = item.recurrenceEndDate || '';
-  document.getElementById('event-weekdays').value = (item.recurrenceWeekdays || []).join(',');
+  document.getElementById('event-weekdays').value = csvValue(item.recurrenceWeekdays);
   document.getElementById('event-all-day').checked = item.allDay === true;
   document.getElementById('event-ring').checked = item.ringEnabled !== false;
   document.getElementById('event-vibrate').checked = item.vibrateEnabled !== false;

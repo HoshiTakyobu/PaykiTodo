@@ -2,28 +2,28 @@
 
 ## Active Development Focus
 
-The current round has produced a `1.6.53` baseline. The focus was fixing the desktop web event-edit path that still failed in real use, then landing small phone-side UI corrections from the same report.
+The current round has produced a `1.6.54` baseline. The focus was fixing the desktop web event-edit path that still failed in real use, then landing small phone-side UI corrections from the same report.
 
 Completed in this round:
 
 1. Desktop web assets now use versioned `app.css?v=1.6.53` and `app.js?v=1.6.53` URLs.
 2. `DesktopSyncServer` now sends no-cache headers and allows PUT in CORS methods.
-3. Desktop event clicks now use delegated handling on the timeline container rather than per-card rebinding only.
+3. Desktop event clicks now use delegated handling on the timeline container rather than per-card rebinding only.`r`n4. Desktop event/todo editors now tolerate `recurrenceWeekdays` from snapshots as either an array or a comma-separated string; this prevents `.join()` from throwing before `openModal()`.
 4. All-day events are visible again through compact per-day pills, so they have an edit entry without restoring the large separate all-day strip.
 5. `PUT /api/events/{id}` was verified against the live phone sync server at `192.168.0.100:18765` with token `6CF4`.
 6. Desktop sync status no longer returns/shows LAN addresses when the service is not running.
 7. Daily-board normal schedule rows no longer show an outer border; only currently running rows keep the gold highlight.
 8. Calendar header title/actions are split to avoid the month title being squeezed out.
 9. Drawer and top-bar naming are unified to `每日看板`.
-10. Version and current docs were synchronized for `1.6.53`.
+10. Version and current docs were synchronized for `1.6.54`.
 
 ## Immediate Practical Next Steps
 
 When testing, use:
 
-1. install `app/build/outputs/apk/debug/PaykiTodo-1.6.53-debug.apk`
+1. install `app/build/outputs/apk/debug/PaykiTodo-1.6.54-debug.apk`
 2. enable desktop sync on the phone and connect from the desktop browser
-3. force-refresh the desktop page once, then verify the HTML loads `/app.js?v=1.6.53`
+3. force-refresh the desktop page once, then verify the HTML loads `/app.js?v=1.6.54`
 4. click a timed desktop event card and verify the event editor opens
 5. navigate to a day with an all-day event and verify the compact all-day pill opens the event editor
 6. save a small event edit, refresh, and verify the edit persists
@@ -41,4 +41,4 @@ When testing, use:
 
 ## Current External Dependency
 
-No external file is needed for the current `1.6.53` verification task.
+No external file is needed for the current `1.6.54` verification task.

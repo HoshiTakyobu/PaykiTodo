@@ -7,13 +7,13 @@
 - Package name: `com.paykitodo.app`
 - Target platform: Android 14 / API 34
 - Current version in code:
-  - `versionName = "1.6.53"`
-  - `versionCode = 125`
+  - `versionName = "1.6.54"`
+  - `versionCode = 126`
 
 ## Current Build Facts
 
 - Latest debug APK output:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.6.53-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.6.54-debug.apk`
 - Minimal verification completed in the latest code round:
   - `./gradlew assembleDebug` succeeded with Android Studio bundled `jbr`
 - Current build environment expectation:
@@ -22,11 +22,11 @@
 
 ## Current Worktree Reality
 
-The repository is now at `1.6.53` after fixing desktop web event-card click/cache/all-day editing paths and several phone-side board/calendar UI regressions.
+The repository is now at `1.6.54` after fixing the desktop web editor crash that happened before `openModal()` when recurrence weekdays arrived as a string.
 
 Most important current baseline facts:
 
-- version metadata is `1.6.53 / 125`
+- version metadata is `1.6.54 / 126`
 - launcher adaptive icon foreground now directly uses picture resource `@drawable/ic_launcher_art`
 - old vector mark launcher resources have been deleted so the launcher cannot fall back to them again
 - picture launcher art has been reprocessed to an opaque pure-white background with smaller centered content
@@ -65,7 +65,7 @@ Most important current baseline facts:
 - an advanced temporary system-channel volume boost can raise the selected global stream during reminder playback and then restore it; it is off by default
 - work mode suppresses outward reminder sound by default, forces stronger vibration even when an individual item disabled vibration, and routes calendar reminders into the full-screen / accessibility fallback chain
 - daily board always shows a tomorrow schedule section; when tomorrow has no events it says `明天暂无日程`
-- desktop web event cards open editing through delegated card click handling, no longer show inline edit/delete buttons, prefer group colors for display, use string-compatible ID lookup, and expose all-day events through compact per-day pills
+- desktop web event cards open editing through delegated card click handling, no longer show inline edit/delete buttons, prefer group colors for display, use string-compatible ID lookup, tolerate recurrence weekdays as strings or arrays, and expose all-day events through compact per-day pills
 - desktop web no longer shows the large separate all-day strip above the event timeline; compact all-day pills remain available inside day columns
 - Settings is split into common settings and advanced settings; desktop sync is common, while diagnostics / backup / crash logs are advanced maintenance surfaces
 - enum-like Settings choices use compact dropdown rows instead of large button groups; percentage values use a slider plus numeric input
@@ -87,7 +87,7 @@ Recent code inspection and build verification cover:
 
 ## Documentation Health
 
-Current docs have been synchronized for `1.6.53`:
+Current docs have been synchronized for `1.6.54`:
 
 - `README.md`
 - `CHANGELOG.md`

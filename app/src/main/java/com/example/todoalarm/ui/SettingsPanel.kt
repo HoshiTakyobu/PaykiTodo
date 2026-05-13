@@ -349,38 +349,38 @@ fun SettingsPanel(
                 }
                 Text("访问密钥：${settings.desktopSyncToken}", fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
                 OutlinedButton(onClick = onRotateDesktopSyncToken) { Text("重新生成访问密钥") }
-                Text("连接地址", fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
-                if (!settings.desktopSyncEnabled) {
-                    Text("电脑同步未启用。", color = MaterialTheme.colorScheme.onSurfaceVariant)
-                } else if (!desktopSyncStatus.running) {
-                    Text("电脑同步服务未运行。", color = MaterialTheme.colorScheme.onSurfaceVariant)
-                } else if (!desktopSyncAddressesExpanded) {
-                    OutlinedButton(onClick = { desktopSyncAddressesExpanded = true }, modifier = Modifier.fillMaxWidth()) {
-                        Text("显示连接地址")
-                    }
-                } else if (desktopSyncStatus.ipAddresses.isEmpty()) {
-                    Text("未检测到可用的局域网 IPv4 地址。", color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    OutlinedButton(onClick = { desktopSyncAddressesExpanded = false }, modifier = Modifier.fillMaxWidth()) {
-                        Text("隐藏连接地址")
-                    }
-                } else {
-                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        desktopSyncStatus.ipAddresses.forEach { ip ->
-                            Surface(shape = RoundedCornerShape(16.dp), color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f)) {
-                                Text(
-                                    text = "http://$ip:${desktopSyncStatus.port}",
-                                    modifier = Modifier.fillMaxWidth().padding(12.dp),
-                                    color = MaterialTheme.colorScheme.onSurface,
-                                    style = MaterialTheme.typography.bodyMedium
-                                )
-                            }
+                if (settings.desktopSyncEnabled) {
+                    Text("连接地址", fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
+                    if (!desktopSyncStatus.running) {
+                        Text("电脑同步服务未运行。", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    } else if (!desktopSyncAddressesExpanded) {
+                        OutlinedButton(onClick = { desktopSyncAddressesExpanded = true }, modifier = Modifier.fillMaxWidth()) {
+                            Text("显示连接地址")
                         }
+                    } else if (desktopSyncStatus.ipAddresses.isEmpty()) {
+                        Text("未检测到可用的局域网 IPv4 地址。", color = MaterialTheme.colorScheme.onSurfaceVariant)
                         OutlinedButton(onClick = { desktopSyncAddressesExpanded = false }, modifier = Modifier.fillMaxWidth()) {
                             Text("隐藏连接地址")
                         }
+                    } else {
+                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            desktopSyncStatus.ipAddresses.forEach { ip ->
+                                Surface(shape = RoundedCornerShape(16.dp), color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f)) {
+                                    Text(
+                                        text = "http://$ip:${desktopSyncStatus.port}",
+                                        modifier = Modifier.fillMaxWidth().padding(12.dp),
+                                        color = MaterialTheme.colorScheme.onSurface,
+                                        style = MaterialTheme.typography.bodyMedium
+                                    )
+                                }
+                            }
+                            OutlinedButton(onClick = { desktopSyncAddressesExpanded = false }, modifier = Modifier.fillMaxWidth()) {
+                                Text("隐藏连接地址")
+                            }
+                        }
                     }
                 }
-        }
+            }
         }
 
         SettingsSection.CRASH -> SettingsSectionDialog("崩溃日志", { selectedSection = null }) {

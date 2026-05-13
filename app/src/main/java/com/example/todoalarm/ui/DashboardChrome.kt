@@ -861,7 +861,7 @@ private fun BoardScheduleEventRow(
         Surface(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(start = if (inProgress) 3.dp else 0.dp, top = if (inProgress) 6.dp else 0.dp, end = if (inProgress) 5.dp else 0.dp, bottom = if (inProgress) 6.dp else 0.dp),
+                .padding(start = if (inProgress) 2.dp else 0.dp, top = if (inProgress) 6.dp else 0.dp, end = if (inProgress) 5.dp else 0.dp, bottom = if (inProgress) 6.dp else 0.dp),
             shape = RoundedCornerShape(14.dp),
             color = if (inProgress) rowColor.copy(alpha = 0.015f) else Color.Transparent
         ) {
@@ -870,7 +870,7 @@ private fun BoardScheduleEventRow(
                     .fillMaxWidth()
                     .height(IntrinsicSize.Min)
                     .padding(start = 0.dp, top = 7.dp, end = 6.dp, bottom = 7.dp),
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
                 verticalAlignment = Alignment.Top
             ) {
                 Box(

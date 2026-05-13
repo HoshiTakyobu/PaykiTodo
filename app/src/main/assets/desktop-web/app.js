@@ -414,7 +414,7 @@ function renderEventCard(segment) {
   const accent = item.groupColorHex || item.accentColorHex || '#4e87e1';
   const meta = [item.groupName || '未分组', item.location || '', item.isRecurring ? '循环' : ''].filter(Boolean).join(' · ');
   return ''
-    + '<article class="event-card" role="button" tabindex="0" aria-label="打开日程：' + escapeHtml(item.title) + '" data-event-id="' + escapeHtml(String(item.id ?? '')) + '" style="--accent:' + accent + ';top:' + segment.top + 'px;height:' + segment.height + 'px">'
+    + '<article class="event-card" role="button" tabindex="0" aria-label="编辑日程：' + escapeHtml(item.title) + '" data-event-id="' + escapeHtml(String(item.id ?? '')) + '" style="--accent:' + accent + ';top:' + segment.top + 'px;height:' + segment.height + 'px">'
     +   '<div class="event-card-title">' + escapeHtml(item.title) + '</div>'
     +   '<div class="event-card-meta">' + escapeHtml(segment.startLabel) + ' - ' + escapeHtml(segment.endLabel) + '</div>'
     +   '<div class="event-card-meta">' + escapeHtml(meta || '定时日程') + '</div>'
@@ -551,7 +551,7 @@ function renderEvents() {
     node.onclick = event => {
       event.preventDefault();
       event.stopPropagation();
-      openEventPreviewById(node.dataset.eventId);
+      openEventEditorById(node.dataset.eventId);
     };
     node.onkeydown = event => {
       if (event.key === 'Enter' || event.key === ' ') node.click();
@@ -925,7 +925,7 @@ if (els.eventTimeline) {
     if (!eventNode) return;
     event.preventDefault();
     event.stopPropagation();
-    openEventPreviewById(eventNode.dataset.eventId);
+    openEventEditorById(eventNode.dataset.eventId);
   });
 }
 

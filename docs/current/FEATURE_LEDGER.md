@@ -101,7 +101,7 @@ This file tracks the product at a practical level for new coding sessions.
 - phone-side HTTP serving model exists
 - browser can perform limited data operations against the phone-side dataset
 - desktop web can edit existing todos with title, notes, DDL, reminder, group, recurrence, ring, and vibration fields
-- desktop web todo and event cards open a detail preview first; edit / delete / complete / cancel actions are exposed from the preview surface instead of inline card buttons
+- desktop web todo cards open a detail preview first; event cards open the editor directly, while destructive actions still require confirmation
 - desktop web todo and event reminder editors accept mixed reminder syntax matching the phone-side examples, including minutes, same-day time, current-year date-time, and full date-time
 - desktop sync API accepts todo `reminderOffsetsMinutes`, allowing desktop-created / edited todos to persist multiple reminders
 - desktop web todo / event editors use a bottom-sheet-like visual structure with cancel / centered title / save actions
@@ -112,7 +112,7 @@ This file tracks the product at a practical level for new coding sessions.
 - desktop-sync foreground notification can be tapped to open the in-app Settings -> Desktop Sync panel
 - desktop web destructive delete actions require confirmation before DELETE requests are sent
 - desktop web uses an in-app dangerous-action modal for delete confirmation instead of browser-native confirm
-- desktop web event timeline cards open a preview sheet first, no longer expose inline edit/delete buttons, and prefer group color for display
+- desktop web event timeline cards open the editor directly, no longer expose inline edit/delete buttons, and prefer group color for display
 - desktop web event timeline no longer shows the separate all-day strip above the timeline
 - desktop web shows the installed APK version in the brand block and uses runtime versioned CSS / JS URLs
 - desktop sync service self-stops if Android restarts it while desktop sync is disabled in Settings

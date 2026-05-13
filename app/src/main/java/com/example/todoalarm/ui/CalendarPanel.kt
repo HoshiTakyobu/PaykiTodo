@@ -94,6 +94,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.todoalarm.data.LunarCalendar
 import com.example.todoalarm.data.ScheduleTemplate
 import com.example.todoalarm.data.ScheduleTemplateType
 import com.example.todoalarm.data.TaskGroup
@@ -812,6 +813,7 @@ private fun CalendarMonthGridView(
                     val isCurrentMonth = date.month == monthDate.month
                     val isSelected = date == selectedDate
                     val isToday = date == currentDate
+                    val lunarLabel = remember(date) { LunarCalendar.labelFor(date).displayText }
                     val dayEvents = eventsByDate[date].orEmpty().take(4)
                     Surface(
                         modifier = Modifier
@@ -847,9 +849,10 @@ private fun CalendarMonthGridView(
                                 .padding(horizontal = 6.dp, vertical = 6.dp),
                             verticalArrangement = Arrangement.spacedBy(4.dp)
                         ) {
-                            Box(
+                            Column(
                                 modifier = Modifier.fillMaxWidth(),
-                                contentAlignment = Alignment.TopCenter
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.spacedBy(1.dp)
                             ) {
                                 Surface(
                                     shape = RoundedCornerShape(999.dp),
@@ -872,6 +875,18 @@ private fun CalendarMonthGridView(
                                         fontSize = 12.sp
                                     )
                                 }
+                                Text(
+                                    text = lunarLabel,
+                                    color = when {
+                                        isSelected -> MaterialTheme.colorScheme.primary
+                                        isCurrentMonth -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.72f)
+                                        else -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.42f)
+                                    },
+                                    fontSize = 9.sp,
+                                    lineHeight = 10.sp,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
                             }
 
                             Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
@@ -986,6 +1001,7 @@ private fun CalendarAgendaView(
             weekDays.forEach { date ->
                 val isSelected = date == selectedDate
                 val isToday = date == currentDate
+                val lunarLabel = remember(date) { LunarCalendar.labelFor(date).displayText }
                 Surface(
                     modifier = Modifier
                         .weight(1f)
@@ -1016,6 +1032,14 @@ private fun CalendarAgendaView(
                                 else -> MaterialTheme.colorScheme.onSurface
                             }
                         )
+                        Text(
+                            lunarLabel,
+                            fontSize = 9.sp,
+                            lineHeight = 10.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.72f),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
                     }
                 }
             }
@@ -1030,6 +1054,7 @@ private fun CalendarAgendaView(
 
         agendaDates.forEach { date ->
             val dayEvents = grouped[date].orEmpty()
+            val lunarLabel = remember(date) { LunarCalendar.labelFor(date).displayText }
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
@@ -1042,6 +1067,14 @@ private fun CalendarAgendaView(
                 ) {
                     Text(date.dayOfWeek.shortLabel(), color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Medium)
                     Text(date.dayOfMonth.toString(), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+                    Text(
+                        lunarLabel,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.72f),
+                        fontSize = 10.sp,
+                        lineHeight = 11.sp,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
                 }
                 Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     if (dayEvents.isEmpty()) {
@@ -1494,6 +1527,7 @@ private fun CalendarHeaderRow(
             visibleRange.forEach { dayIndex ->
                 val day = days[dayIndex]
                 val isToday = day == currentDate
+                val lunarLabel = remember(day) { LunarCalendar.labelFor(day).displayText }
                 Box(
                     modifier = Modifier
                         .offset {
@@ -1522,6 +1556,14 @@ private fun CalendarHeaderRow(
                                 style = MaterialTheme.typography.headlineSmall,
                                 fontWeight = FontWeight.Bold,
                                 color = if (isToday) todayHighlightTextColor else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.94f)
+                            )
+                            Text(
+                                text = lunarLabel,
+                                color = if (isToday) todayHighlightTextColor.copy(alpha = 0.82f) else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.72f),
+                                fontSize = 10.sp,
+                                lineHeight = 11.sp,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
                             )
                         }
                     }

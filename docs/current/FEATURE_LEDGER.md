@@ -48,6 +48,7 @@ This file tracks the product at a practical level for new coding sessions.
 - text-based batch import support
 - week-template and semester-generation related capabilities exist in the codebase and docs history
 - current-time label is wired on the left time axis and remains visible even when today is off-screen, while the red current-time line remains in the schedule area and also stays visible
+- timeline headers, month cells, and agenda/list date surfaces show lunar labels using Android ICU `ChineseCalendar`
 
 ### Reminder System
 
@@ -129,6 +130,7 @@ This file tracks the product at a practical level for new coding sessions.
 
 - board / dashboard experience details and readability tuning
 - calendar interaction polish
+- lunar date picker and lunar yearly recurrence remain pending; current lunar work is display-only
 - final launcher / themed icon / notification icon surface verification on device
 - default snooze picker behavior and feel
 - visual consistency across settings / drawer / launch screen / board

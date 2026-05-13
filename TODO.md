@@ -4,8 +4,8 @@
 
 ### In Progress
 
-- Verify version `1.6.61` on device after desktop reminder syntax and todo multi-reminder API polish
-- Keep `README.md`, `CHANGELOG.md`, and current-state docs aligned with version `1.6.61`
+- Verify version `1.6.62` on device after lunar-label calendar display polish
+- Keep `README.md`, `CHANGELOG.md`, and current-state docs aligned with version `1.6.62`
 - Continue board / dashboard and calendar polish without regressing the current interaction model
 - Improve repo-native handoff so new sessions do not depend on long chat history
 
@@ -57,6 +57,8 @@
 - If the live desktop page still lacks the left-side `v1.6.59` marker or loads `/app.js` without `?v=1.6.59`, install the latest APK before re-debugging click edit
 - Desktop web todo and event cards now open a preview first; verify preview edit / delete / complete / cancel on the actual desktop browser after installing `1.6.60`
 - Desktop web todo/event reminder input now accepts mixed reminder specs; verify valid examples and invalid late reminders on the actual desktop browser after installing `1.6.61`
+- Calendar now shows lunar labels in timeline headers, month view, and agenda/list view; verify spacing and readability on device after installing `1.6.62`
+- Lunar date picker and lunar yearly recurrence are still pending; do not treat lunar support as complete yet
 - Desktop web event cards should use group colors first; all-day events should be available through compact per-day pills rather than a large separate all-day strip
 
 ## Mid-Term Follow-Ups

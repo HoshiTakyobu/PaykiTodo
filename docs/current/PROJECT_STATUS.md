@@ -7,13 +7,13 @@
 - Package name: `com.paykitodo.app`
 - Target platform: Android 14 / API 34
 - Current version in code:
-  - `versionName = "1.6.61"`
-  - `versionCode = 133`
+  - `versionName = "1.6.62"`
+  - `versionCode = 134`
 
 ## Current Build Facts
 
 - Latest debug APK output:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.6.61-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.6.62-debug.apk`
 - Minimal verification completed in the latest code round:
   - `./gradlew assembleDebug` succeeded with Android Studio bundled `jbr`
 - Current build environment expectation:
@@ -22,11 +22,11 @@
 
 ## Current Worktree Reality
 
-The repository is now at `1.6.61`. It includes the desktop web editor crash fix, UI-copy cleanup, desktop web no-DDL todo editing support, in-app desktop delete confirmations, desktop-sync service self-stop protection, dynamic desktop-web resource versioning, a smaller calendar recomposition pass, desktop todo/event preview sheets before editing, and desktop mixed reminder syntax for todos/events.
+The repository is now at `1.6.62`. It includes the desktop web editor crash fix, UI-copy cleanup, desktop web no-DDL todo editing support, in-app desktop delete confirmations, desktop-sync service self-stop protection, dynamic desktop-web resource versioning, a smaller calendar recomposition pass, desktop todo/event preview sheets before editing, desktop mixed reminder syntax for todos/events, and basic lunar-label display in calendar views.
 
 Most important current baseline facts:
 
-- version metadata is `1.6.61 / 133`
+- version metadata is `1.6.62 / 134`
 - launcher adaptive icon foreground now directly uses picture resource `@drawable/ic_launcher_art`
 - old vector mark launcher resources have been deleted so the launcher cannot fall back to them again
 - picture launcher art has been reprocessed to an opaque pure-white background with smaller centered content
@@ -78,6 +78,8 @@ Most important current baseline facts:
 - desktop web todo and event cards now open a detail preview first; editing / deletion / completion / cancellation actions live in the preview instead of being exposed inline on cards
 - desktop web todo and event editors accept the same mixed reminder syntax as the phone UI and convert concrete reminder times into normalized offset minutes
 - desktop sync API accepts todo `reminderOffsetsMinutes`, so desktop-created / edited todos can persist multiple reminder points
+- calendar timeline headers, month cells, and agenda/list date surfaces show lunar labels using Android ICU `ChineseCalendar`
+- lunar date picking and lunar yearly recurrence are not implemented yet; current lunar support is display-only infrastructure
 - if a live phone desktop page still loads `/app.js` without a `?v=` marker, that phone is serving an older installed APK and must be updated before further desktop click-edit debugging
 - desktop sync foreground service stops itself when relaunched while Settings says desktop sync is disabled, preventing stale access addresses / service state from persisting after sync is turned off
 - calendar current-time ticks are scoped to the time axis and current-time line instead of recomposing the whole calendar panel every 30 seconds
@@ -100,7 +102,7 @@ Recent code inspection and build verification cover:
 
 ## Documentation Health
 
-Current docs have been synchronized for `1.6.61`:
+Current docs have been synchronized for `1.6.62`:
 
 - `README.md`
 - `CHANGELOG.md`

@@ -122,3 +122,5 @@ When reconstructing PaykiTodo state, use this priority order:
 - 1.6.60 moved desktop web todo/event interactions toward the phone-side preview model: cards open preview sheets first, and edit/delete/complete/cancel actions are launched from preview instead of inline card buttons.
 
 - 1.6.61 aligned desktop todo/event reminder editing with the phone-side mixed reminder syntax and added todo `reminderOffsetsMinutes` support to the desktop sync API.
+
+- 1.6.62 added display-only lunar labels to calendar timeline headers, month cells, and agenda/list date surfaces using Android ICU `ChineseCalendar`; lunar date picking and lunar recurrence remain pending.

@@ -6,55 +6,47 @@ Long-running Codex sessions can become unreliable. This file exists so a new ses
 
 ## Current Handoff Summary
 
-- The project is currently at code version `1.7.15` / `versionCode 172`.
-- Latest debug APK path after build: `app/build/outputs/apk/debug/PaykiTodo-1.7.15-debug.apk`.
+- The project is currently at code version `1.7.17` / `versionCode 174`.
+- Latest debug APK path after build: `app/build/outputs/apk/debug/PaykiTodo-1.7.17-debug.apk`.
 - Latest build commands used Android Studio bundled JBR and succeeded:
-  - `./gradlew.bat testDebugUnitTest`
   - `./gradlew.bat assembleDebug`
-- `node --check app/src/main/assets/desktop-web/app.js` also succeeded.
-- This round fixes Planning Desk parser priority and compact date-heading issues: explicit `#ddl` wins over natural schedule detection, and headings such as `# 周五计划` can provide date context without reintroducing broad contains-based misclassification.
+- This round fixes the Planning Desk mobile operation area density regression:
+  - Operation area is constrained to a fixed 56dp toolbar so it cannot expand into a large blank card
+  - Main actions remain preview / recognize / document list / overflow menu
+  - Autosave state is kept as a compact status label only when there are pending edits
+  - Previous 1.7.16 density changes remain in place:
+    - Header compressed from 3-row to 1-row compact layout with overflow menu
+  - Shortcut bar moved above editor to avoid IME occlusion
+  - Dark mode onSurfaceVariant contrast raised from ~4.2:1 to ~5.3:1
+  - Desktop web content area capped at max-width 1200px for wide screens
 - The previous crash root cause was likely the Room migration schema mismatch for `planning_notes`; `1.7.6` keeps that repair and improves the Planning Desk UI.
 - Phone-side Planning Desk Markdown rendering remains opt-in manual preview, not the startup default.
 - The phone Planning Desk keeps the raw Markdown / natural-text editor plus Phase 2 import/edit workflow.
 - Desktop web Planning Desk remains available with textarea editing, auto-save, editable parse preview, selected import, document deletion, unified reminder input handoff, and `#imported` write-back.
 - Do not push `1.7.x` or the last `1.6.x` line to GitHub unless the user explicitly asks again.
 
-## Latest Fixes In 1.7.15
+## Latest Changes In 1.7.17
 
-1. Upgraded app version metadata to `1.7.15` / `versionCode 172`.
-2. Explicit `#ddl` now takes precedence over natural schedule detection.
-3. `会议 9:00-10:00 讨论 #ddl 5.28` is parsed as a todo with DDL instead of an event.
-4. Compact date headings such as `# 周五计划`, `# 明天安排`, and `# 5/28周末计划` now provide date context.
-5. Descriptive headings such as `# 我的明天计划` and `# 后天的事` remain ordinary headings.
-6. Parser tests cover the priority and heading-boundary behavior.
+1. Upgraded app version metadata to `1.7.17` / `versionCode 174`.
+2. Planning Desk mobile operation area now uses a fixed-height 56dp toolbar.
+3. The toolbar no longer renders the document title / explanatory subtitle in the same row as the main actions, avoiding narrow-screen expansion and oversized blank space.
+4. Preview / recognize / document-list / overflow actions remain available in the toolbar.
+5. Autosave state is still visible as a compact status label while edits are pending.
 
 ## Files Most Relevant To The Latest Round
 
 - `app/build.gradle.kts`
-- `app/src/main/java/com/example/todoalarm/data/ReminderTextParser.kt`
-- `app/src/main/java/com/example/todoalarm/data/PlanningMarkdownParser.kt`
-- `app/src/main/java/com/example/todoalarm/data/PlanningImportCandidate.kt`
-- `app/src/main/java/com/example/todoalarm/data/TodoRepository.kt`
-- `app/src/main/java/com/example/todoalarm/ui/TodoBatchImport.kt`
 - `app/src/main/java/com/example/todoalarm/ui/PlanningDeskPanel.kt`
-- `app/src/main/java/com/example/todoalarm/ui/ReminderInputParser.kt`
-- `app/src/main/java/com/example/todoalarm/sync/DesktopSyncCoordinator.kt`
-- `app/src/main/assets/desktop-web/app.js`
-- `app/src/main/assets/desktop-web/index.html`
-- `app/src/main/assets/wiki/index.html`
-- `README.md`
+- `app/src/main/java/com/example/todoalarm/ui/theme/Theme.kt`
+- `app/src/main/assets/desktop-web/app.css`
 - `CHANGELOG.md`
-- `TODO.md`
-- `docs/current/CURRENT_TASK.md`
 - `docs/current/PROJECT_STATUS.md`
-- `docs/current/FEATURE_LEDGER.md`
-- `docs/current/PLANNING_DESK_DESIGN.md`
-- `docs/current/PAYKITODO_SESSION_LEDGER.md`
+- `docs/current/SESSION_HANDOFF.md`
 
 ## Current Verification Focus
 
-1. Install `PaykiTodo-1.7.15-debug.apk`.
-2. Verify the app no longer crashes immediately after launch.
+1. Install `PaykiTodo-1.7.17-debug.apk`.
+2. Verify the app launches without crash.
 3. Verify existing todos/events are still present.
 4. Verify todo batch rows such as `5.28,整理材料,5`, `5月28日,整理材料,5`, `明天,整理材料,5`, and `周五,整理材料,5`.
 5. Verify desktop web todo/event reminder input accepts `5,15,2:30 pm,明天 16:30,周五 16:30,5.10 15:00,5月10日，14:30`.

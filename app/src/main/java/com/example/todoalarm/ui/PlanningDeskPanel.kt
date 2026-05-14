@@ -24,17 +24,18 @@ import androidx.compose.material.icons.rounded.Archive
 import androidx.compose.material.icons.rounded.Article
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.Info
-import androidx.compose.material.icons.rounded.Save
+import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
-import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -105,6 +106,7 @@ internal fun PlanningDeskPanel(
     var pendingDeleteNote by remember { mutableStateOf<PlanningNote?>(null) }
     var archiveDialog by remember { mutableStateOf(false) }
     var newDialog by remember { mutableStateOf(false) }
+    var overflowMenuExpanded by remember { mutableStateOf(false) }
     val selectedIds = remember { mutableStateMapOf<String, Boolean>() }
     val editableCandidates = remember { mutableStateListOf<PlanningImportCandidate>() }
     val hasUnsavedChanges = activeNote != null && editorValue.text != activeNote.contentMarkdown
@@ -130,145 +132,137 @@ internal fun PlanningDeskPanel(
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
-        ElevatedCard(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(28.dp),
-            colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surface),
-            elevation = CardDefaults.elevatedCardElevation(defaultElevation = 2.dp)
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(56.dp),
+            shape = RoundedCornerShape(22.dp),
+            color = MaterialTheme.colorScheme.surface,
+            tonalElevation = 2.dp
         ) {
-            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    Surface(
-                        shape = RoundedCornerShape(18.dp),
-                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
-                    ) {
-                        Icon(
-                            Icons.Rounded.Article,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.padding(10.dp).size(24.dp)
-                        )
-                    }
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = activeNote?.title ?: "我的规划",
-                            style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.Bold,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                        Text(
-                            text = if (hasUnsavedChanges) "正在自动保存未保存内容..." else "先把想法写下来，再识别成待办和日程。",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = if (hasUnsavedChanges) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                    IconButton(onClick = { documentSheetVisible = true }) {
-                        Icon(Icons.Rounded.Article, contentDescription = "文档")
-                    }
-                }
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    FilledTonalButton(onClick = { newDialog = true }) { Text("新建") }
-                    FilledTonalButton(onClick = { renameDialog = true }, enabled = activeNote != null) { Text("重命名") }
-                    FilledTonalButton(onClick = { markdownEditMode = !markdownEditMode }) { Text(if (markdownEditMode) "预览" else "编辑") }
+            Row(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 10.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                if (hasUnsavedChanges) {
+                    Text(
+                        text = "自动保存中...",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.weight(1f),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                } else {
                     Spacer(Modifier.weight(1f))
-                    IconButton(onClick = { helpSheetVisible = true }) { Icon(Icons.Rounded.Info, contentDescription = "规划台说明") }
-                    IconButton(onClick = { archiveDialog = true }, enabled = activeNote != null) { Icon(Icons.Rounded.Archive, contentDescription = "归档") }
-                    IconButton(onClick = { activeNote?.let { pendingDeleteNote = it } }, enabled = activeNote != null) { Icon(Icons.Rounded.Delete, contentDescription = "删除") }
                 }
-
-                Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
-                    FilledTonalButton(
-                        modifier = Modifier.weight(1f),
-                        onClick = {
-                            val noteId = activeNote?.id ?: return@FilledTonalButton
-                            scope.launch {
-                                val message = onSaveNote(noteId, editorValue.text)
-                                Toast.makeText(context, message ?: "规划已保存", Toast.LENGTH_SHORT).show()
-                            }
-                        },
-                        enabled = activeNote != null
-                    ) {
-                        Icon(Icons.Rounded.Save, contentDescription = null, modifier = Modifier.size(18.dp))
-                        Spacer(Modifier.width(6.dp))
-                        Text("保存")
-                    }
-                    Button(
-                        modifier = Modifier.weight(1f),
-                        onClick = {
-                            val result = onParse(editorValue.text)
-                            parseResult = result
-                            selectedIds.clear()
-                            editableCandidates.clear()
-                            result.candidates.forEach { candidate ->
-                                val editable = candidate.toPlanningImportCandidate()
-                                editableCandidates += editable
-                                selectedIds[editable.id] = editable.validate() == null
-                            }
-                            previewSheetVisible = true
+                OutlinedButton(
+                    modifier = Modifier.height(40.dp),
+                    onClick = { markdownEditMode = !markdownEditMode }
+                ) {
+                    Text(if (markdownEditMode) "预览" else "编辑")
+                }
+                Button(
+                    modifier = Modifier.height(40.dp),
+                    onClick = {
+                        val result = onParse(editorValue.text)
+                        parseResult = result
+                        selectedIds.clear()
+                        editableCandidates.clear()
+                        result.candidates.forEach { candidate ->
+                            val editable = candidate.toPlanningImportCandidate()
+                            editableCandidates += editable
+                            selectedIds[editable.id] = editable.validate() == null
                         }
+                        previewSheetVisible = true
+                    }
+                ) {
+                    Icon(Icons.Rounded.Search, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Spacer(Modifier.width(4.dp))
+                    Text("识别")
+                }
+                IconButton(
+                    modifier = Modifier.size(40.dp),
+                    onClick = { documentSheetVisible = true }
+                ) {
+                    Icon(Icons.Rounded.Article, contentDescription = "文档列表")
+                }
+                androidx.compose.foundation.layout.Box {
+                    IconButton(
+                        modifier = Modifier.size(40.dp),
+                        onClick = { overflowMenuExpanded = true }
                     ) {
-                        Icon(Icons.Rounded.Search, contentDescription = null, modifier = Modifier.size(18.dp))
-                        Spacer(Modifier.width(6.dp))
-                        Text("识别")
+                        Icon(Icons.Rounded.MoreVert, contentDescription = "更多操作")
+                    }
+                    DropdownMenu(
+                        expanded = overflowMenuExpanded,
+                        onDismissRequest = { overflowMenuExpanded = false }
+                    ) {
+                        DropdownMenuItem(
+                            text = { Text("新建文档") },
+                            onClick = { overflowMenuExpanded = false; newDialog = true }
+                        )
+                        DropdownMenuItem(
+                            text = { Text("重命名") },
+                            onClick = { overflowMenuExpanded = false; renameDialog = true },
+                            enabled = activeNote != null
+                        )
+                        DropdownMenuItem(
+                            text = { Text("使用说明") },
+                            onClick = { overflowMenuExpanded = false; helpSheetVisible = true }
+                        )
+                        DropdownMenuItem(
+                            text = { Text("归档") },
+                            onClick = { overflowMenuExpanded = false; archiveDialog = true },
+                            enabled = activeNote != null
+                        )
+                        DropdownMenuItem(
+                            text = { Text("删除文档") },
+                            onClick = { overflowMenuExpanded = false; activeNote?.let { pendingDeleteNote = it } },
+                            enabled = activeNote != null
+                        )
                     }
                 }
             }
         }
 
         if (markdownEditMode) {
-            ElevatedCard(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f),
-                shape = RoundedCornerShape(28.dp),
-                colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surface),
-                elevation = CardDefaults.elevatedCardElevation(defaultElevation = 2.dp)
-            ) {
-                Column(modifier = Modifier.fillMaxSize().padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Text(
-                        text = "规划正文",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.55f))
-                    OutlinedTextField(
-                        value = editorValue,
-                        onValueChange = { editorValue = autoContinuePlanningLine(editorValue, it) },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .weight(1f),
-                        placeholder = {
-                            Text(
-                                "这里像备忘录一样自由写，提示文字不会保存。\n\n" +
-                                    "# 收集箱\n" +
-                                    "- [ ] 先把脑子里的事情写下来\n\n" +
-                                    "# 明天\n" +
-                                    "09:00-10:30 写论文 #group 课程 #remind 5\n" +
-                                    "- [ ] 整理材料 #ddl 5.28 23:59 #remind 30,5"
-                            )
-                        },
-                        textStyle = MaterialTheme.typography.bodyLarge.copy(fontFamily = FontFamily.Monospace),
-                        shape = RoundedCornerShape(22.dp),
-                        minLines = 12
-                    )
-                }
-            }
-
             PlanningShortcutBar(
                 onAction = { action -> editorValue = applyPlanningShortcut(editorValue, action) },
                 onHelp = { token, description -> Toast.makeText(context, "$token：$description", Toast.LENGTH_LONG).show() }
             )
+
+            ElevatedCard(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f),
+                shape = RoundedCornerShape(22.dp),
+                colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surface),
+                elevation = CardDefaults.elevatedCardElevation(defaultElevation = 1.dp)
+            ) {
+                OutlinedTextField(
+                    value = editorValue,
+                    onValueChange = { editorValue = autoContinuePlanningLine(editorValue, it) },
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(6.dp),
+                    placeholder = {
+                        Text(
+                            "# 收集箱\n" +
+                                "- [ ] 先把脑子里的事情写下来\n\n" +
+                                "# 明天\n" +
+                                "09:00-10:30 写论文 #group 课程 #remind 5\n" +
+                                "- [ ] 整理材料 #ddl 5.28 23:59 #remind 30,5"
+                        )
+                    },
+                    textStyle = MaterialTheme.typography.bodyLarge.copy(fontFamily = FontFamily.Monospace),
+                    shape = RoundedCornerShape(18.dp),
+                    minLines = 12
+                )
+            }
         } else {
             PlanningMarkdownPreview(
                 markdown = editorValue.text,

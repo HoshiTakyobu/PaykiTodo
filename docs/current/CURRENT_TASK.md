@@ -2,7 +2,14 @@
 
 ## Active Development Focus
 
-The current round is PaykiTodo `1.7.15` / `versionCode 172`, focused on Planning Desk parser priority and compact date-heading fixes.
+The current round is PaykiTodo `1.7.17` / `versionCode 174`, focused on fixing the Planning Desk mobile operation-area density regression after the `1.7.16` UI compression pass.
+
+Completed in the `1.7.17` UI-density fix:
+
+1. The phone Planning Desk operation area is constrained to a fixed 56dp toolbar instead of being allowed to expand into a large blank surface.
+2. The toolbar keeps only the main actions: preview/edit, recognize, document list, and overflow menu.
+3. Document title / explanatory subtitle text is no longer rendered in the same narrow row as the action buttons.
+4. Autosave state remains visible as a compact status label only while edits are pending.
 
 The syntax review conclusion:
 
@@ -65,22 +72,14 @@ Completed in the `1.7.15` Planning Desk parser-priority round:
 
 When testing, use:
 
-1. install `app/build/outputs/apk/debug/PaykiTodo-1.7.15-debug.apk`
-2. open 我的任务 -> 批量待办
-3. verify rows like `5.28,整理材料,5`, `5月28日,整理材料,5`, `明天,整理材料,5`, and `周五,整理材料,5` parse correctly
-4. verify `16:30,写报告,5` still means today 16:30
-5. enable desktop sync and test desktop todo/event reminder inputs such as `5,15,2:30 pm,明天 16:30,周五 16:30,5.10 15:00,5月10日，14:30`
-6. verify Planning Desk rows such as `5.28 14:00-16:00 小组讨论`, `复习 14:00-16:00`, and `5/28 下午 2:30～下午 4:00 小组讨论`
-7. verify headings such as `# 我的明天计划`, `# 明天`, `# 收集箱`, `# 周五计划`, and `# 5/28周末计划` behave as documented
-8. verify desktop web todo/event reminder fields accept `下午 2:30`, `5/10 下午 2:30`, and `5月10日，14:30`
-9. open Planning Desk help, todo batch help, calendar batch help, built-in Wiki, and desktop Planning Desk help to verify the same syntax rules are explained consistently
-10. verify invalid desktop reminder times still surface an error instead of silently saving bad offsets
-11. verify Planning Desk auto-save persists text after waiting about 2 seconds and after switching documents
-12. verify one tap on each shortcut chip inserts only once
-13. verify import preview cannot import zero selected candidates and can select all / clear all
-14. verify imported Planning Desk lines keep `#imported` after leaving and reopening the document
-15. verify desktop web Planning Desk supports `Ctrl+S` save and `Ctrl+Enter` identify/parse
-16. verify `会议 9:00-10:00 讨论 #ddl 5.28` is recognized as a todo with DDL, not an event
+1. install `app/build/outputs/apk/debug/PaykiTodo-1.7.17-debug.apk`
+2. open the phone-side Planning Desk
+3. verify the operation area is a short toolbar rather than a large blank card
+4. verify preview/edit, recognize, document list, and overflow menu are still reachable
+5. type text and wait about 2 seconds to verify the compact autosave state still appears and persists
+6. verify one tap on each shortcut chip inserts only once
+7. verify Planning Desk rows such as `5.28 14:00-16:00 小组讨论`, `复习 14:00-16:00`, and `5/28 下午 2:30～下午 4:00 小组讨论`
+8. verify `会议 9:00-10:00 讨论 #ddl 5.28` is recognized as a todo with DDL, not an event
 
 ## Commit Message Rule
 
@@ -88,4 +87,4 @@ PaykiTodo commit messages should describe product behavior changes and bug/debug
 
 ## Current External Dependency
 
-No external file or API key is needed for the current `1.7.15` verification task.
+No external file or API key is needed for the current `1.7.17` verification task.

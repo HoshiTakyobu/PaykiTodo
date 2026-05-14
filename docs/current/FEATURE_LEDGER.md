@@ -43,7 +43,10 @@ This file tracks the product at a practical level for new coding sessions.
 - default startup opens the last opened planning document; if none exists, the app creates an empty `我的规划` and shows examples only as placeholder/help content
 - planning documents support create, open, rename, archive, and delete with confirmation on the phone UI; the phone document directory and desktop web Planning Desk both expose delete actions
 - phone Planning Desk currently defaults to stable raw Markdown / natural-text editing; `1.7.8` restores a manual Markdown preview that renders headings, task checkboxes, subtask indentation, tag pills, and `#imported` state pills while keeping raw edit as the startup default
-- phone editor mode remains a plain Markdown / natural-text editor with a solid-color document surface and horizontal shortcut toolbar for tasks, subtasks, indent/outdent, DDL, schedule, reminder, group, today, and tomorrow`r`n- phone Planning Desk includes an in-screen help sheet explaining the workflow, heading sections such as `# 收集箱` / `# 今日计划`, and directly usable examples`r`n- phone Markdown preview checkbox toggles rewrite the source Markdown line only; they do not directly complete imported official todos
+- phone editor mode remains a plain Markdown / natural-text editor with a fixed-height 56dp operation toolbar (预览 / 识别 / 文档列表 / 更多) and a horizontal shortcut toolbar positioned above the editor to reduce IME occlusion
+- phone Planning Desk secondary actions (新建/重命名/使用说明/归档/删除) are in an overflow DropdownMenu; manual save button removed in favor of auto-save
+- phone Planning Desk includes an in-screen help sheet explaining the workflow, heading sections such as `# 收集箱` / `# 今日计划`, and directly usable examples
+- phone Markdown preview checkbox toggles rewrite the source Markdown line only; they do not directly complete imported official todos
 - phone Planning Desk editor auto-saves after a short debounce and saves before switching planning documents
 - Enter continuation attempts to keep `- [ ]` task lines flowing without forcing the user to manually type Markdown every time, including when Enter is pressed in the middle of a document
 - shortcut `任务` converts the current line to one checkbox task without duplicating `- [ ]`; shortcut `子任务` inserts a new indented child task line; shortcut chips avoid double-triggering one tap

@@ -28,12 +28,12 @@ private val DarkColors = darkColorScheme(
     tertiary = Moss,
     background = Night,
     surface = NightSurface,
-    surfaceVariant = Color(0xFF20343C),
+    surfaceVariant = Color(0xFF243A44),
     onPrimary = Night,
     onSecondary = Night,
     onBackground = Color(0xFFF2F4F5),
     onSurface = Color(0xFFF2F4F5),
-    onSurfaceVariant = Color(0xFFB7C2C6)
+    onSurfaceVariant = Color(0xFFCDD6DA)
 )
 
 @Composable

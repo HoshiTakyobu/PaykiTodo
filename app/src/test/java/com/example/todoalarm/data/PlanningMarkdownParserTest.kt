@@ -50,6 +50,19 @@ class PlanningMarkdownParserTest {
     }
 
     @Test
+    fun explicitDdlTakesPrecedenceOverNaturalScheduleText() {
+        val result = PlanningMarkdownParser.parse(
+            "- [ ] 会议 9:00-10:00 讨论 #ddl 5.28",
+            now = now
+        )
+
+        val todo = result.candidates.single()
+        assertEquals(PlanningParsedType.TODO, todo.type)
+        assertEquals("会议 9:00-10:00 讨论", todo.title)
+        assertEquals(LocalDateTime.of(2026, 5, 28, 23, 59), todo.dueAt)
+    }
+
+    @Test
     fun headingDateContextIsExplicitAndResetsOnPlainHeading() {
         val result = PlanningMarkdownParser.parse(
             """
@@ -81,6 +94,23 @@ class PlanningMarkdownParserTest {
 
         val todo = result.candidates.single { it.title == "写论文" }
         assertEquals(LocalDateTime.of(2026, 5, 28, 23, 59), todo.dueAt)
+    }
+
+    @Test
+    fun parsesCompactWeekdayHeadingAsDateContext() {
+        val result = PlanningMarkdownParser.parse(
+            """
+            # 周五计划
+            - [ ] 写论文 #ddl 23:59
+            # 后天的事
+            - [ ] 描述标题任务 #ddl 23:59
+            """.trimIndent(),
+            now = now
+        )
+
+        val byTitle = result.candidates.associateBy { it.title }
+        assertEquals(LocalDateTime.of(2026, 5, 15, 23, 59), byTitle["写论文"]?.dueAt)
+        assertEquals(LocalDateTime.of(2026, 5, 14, 23, 59), byTitle["描述标题任务"]?.dueAt)
     }
 
     @Test

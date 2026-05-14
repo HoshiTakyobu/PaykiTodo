@@ -7,13 +7,13 @@
 - Package name: `com.paykitodo.app`
 - Target platform: Android 14 / API 34
 - Current version in code:
-  - `versionName = "1.7.14"`
-  - `versionCode = 171`
+  - `versionName = "1.7.15"`
+  - `versionCode = 172`
 
 ## Current Build Facts
 
 - Latest debug APK output:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.7.14-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.7.15-debug.apk`
 - Minimal verification completed in the latest code round:
   - `./gradlew.bat testDebugUnitTest` succeeded with Android Studio bundled `jbr`
   - `./gradlew assembleDebug` succeeded with Android Studio bundled `jbr`
@@ -23,15 +23,16 @@
 
 ## Current Worktree Reality
 
-The repository is now at `1.7.14`. It includes the desktop web editor crash fix, UI-copy cleanup, desktop web no-DDL todo editing support, in-app desktop delete confirmations, desktop-sync service self-stop protection, dynamic desktop-web resource versioning, a smaller calendar recomposition pass, desktop todo preview sheets plus direct desktop event editing, desktop mixed reminder syntax for todos/events, lunar-label display in calendar views, minimal yearly same-lunar-date recurrence, the latest settings tone / lunar DDL / calendar header / daily-board spacing polish, Planning Desk Phase 1 plus Phase 2 usability workflow, an emergency rollback of the unstable phone-side Planning Desk Markdown renderer introduced in `1.7.2` / `1.7.3`, a `1.7.5` Room migration repair for the `planning_notes` table, `1.7.10` Planning Desk usability fixes for empty new documents / shortcut behavior / document deletion / unified reminder parsing, `1.7.11` syntax consistency fixes for todo batch DDL plus desktop-web reminder input, `1.7.12` help-surface coverage for those syntax rules, `1.7.13` Planning Desk parser boundary fixes, and `1.7.14` Planning Desk editor / import workflow fixes.
+The repository is now at `1.7.15`. It includes the desktop web editor crash fix, UI-copy cleanup, desktop web no-DDL todo editing support, in-app desktop delete confirmations, desktop-sync service self-stop protection, dynamic desktop-web resource versioning, a smaller calendar recomposition pass, desktop todo preview sheets plus direct desktop event editing, desktop mixed reminder syntax for todos/events, lunar-label display in calendar views, minimal yearly same-lunar-date recurrence, the latest settings tone / lunar DDL / calendar header / daily-board spacing polish, Planning Desk Phase 1 plus Phase 2 usability workflow, an emergency rollback of the unstable phone-side Planning Desk Markdown renderer introduced in `1.7.2` / `1.7.3`, a `1.7.5` Room migration repair for the `planning_notes` table, `1.7.10` Planning Desk usability fixes for empty new documents / shortcut behavior / document deletion / unified reminder parsing, `1.7.11` syntax consistency fixes for todo batch DDL plus desktop-web reminder input, `1.7.12` help-surface coverage for those syntax rules, `1.7.13` Planning Desk parser boundary fixes, `1.7.14` Planning Desk editor / import workflow fixes, and `1.7.15` Planning Desk parser priority / compact date-heading fixes.
 
 Most important current baseline facts:
 
-- version metadata is `1.7.14 / 171`
+- version metadata is `1.7.15 / 172`
 - Planning Desk exists as a phone-side drawer entry and desktop-web tab. It stores multiple Markdown planning documents in Room table `planning_notes`, restores the last opened note, and supports create/open/rename/archive/delete. New/default documents now start with empty content; examples are shown as placeholder/help content rather than saved text.
 - Planning Desk parsing is local and rule-based through `PlanningMarkdownParser`; it does not call AI or paid services.
 - Planning Desk recognizes markdown checkboxes, completed-task skips, subtasks as independent todos with parent-note metadata, explicit date headings, common DDL formats, unified `#remind` mixed reminder syntax, group/schedule tags, and lightweight natural schedule lines such as `10:00-12:30 作业1`, `复习 14:00-16:00`, and `5/28 下午 2:30～下午 4:00 小组讨论`.
-- Planning Desk heading context now uses explicit date headings. `# 今日计划` and `# 明天` provide context, date headings such as `# 5/28 周末计划` work, and ordinary headings such as `# 收集箱` reset previous date context.
+- Planning Desk heading context now uses explicit date headings. `# 今日计划`, `# 明天`, and compact headings such as `# 周五计划` provide context, date headings such as `# 5/28 周末计划` / `# 5/28周末计划` work, and ordinary headings such as `# 收集箱` reset previous date context.
+- Explicit `#ddl` takes precedence over natural schedule detection, so a line with a time range and `#ddl` is treated as a todo.
 - Planning Desk shortcut actions now prevent repeated `- [ ]` insertion on one line, and the subtask shortcut inserts a new indented child task line.
 - Phone and desktop Planning Desk document pickers now expose delete actions with confirmation.
 - Phone Planning Desk currently uses stable raw Markdown / natural-text editing by default, with a manually triggered Markdown preview restored in `1.7.8`. The preview renders headings, task checkboxes, subtask indentation, tag pills, and `#imported` state pills.`r`n- Planning Desk phone UI now uses solid-color editor/document surfaces, a horizontal shortcut toolbar, a scrollable document picker, and a tighter recognition preview sheet.`r`n- Planning Desk has an in-screen help sheet with workflow instructions and examples for todos, subtasks, DDL, reminders, groups, and schedule ranges.`r`n- `docs/current/PLANNING_DESK_EXAMPLES.md` now documents detailed Planning Desk usage, including what `# 收集箱`, `# 今日计划`, `# 明天`, and `# 本周计划` mean.`r`n- Markdown preview is not the startup default; opening or switching notes resets to raw edit mode to avoid repeating the 1.7.2/1.7.3 startup-risk pattern.
@@ -123,7 +124,7 @@ Recent code inspection and build verification cover:
 
 ## Documentation Health
 
-Current docs have been synchronized for `1.7.14`:
+Current docs have been synchronized for `1.7.15`:
 
 - `README.md`
 - `CHANGELOG.md`
@@ -138,7 +139,7 @@ Older versioned docs under `docs/` remain historical references and should not b
 
 ## Current Risk Areas
 
-1. Device-side verification is required to confirm `1.7.14` opens and the Planning Desk parser edge cases / empty-document / placeholder / shortcut / delete / help-copy / auto-save / import persistence changes behave correctly.
+1. Device-side verification is required to confirm `1.7.15` opens and the Planning Desk parser edge cases / empty-document / placeholder / shortcut / delete / help-copy / auto-save / import persistence changes behave correctly.
 2. Device-side verification is still required for the unified reminder input UX, especially invalid-value red state and disabled save/import behavior.
 3. Todo multi-reminder scheduling should be tested with at least two future reminders on one todo
 4. Todo batch import should be tested with valid comma rows, no-DDL rows, and illegal reminder rows

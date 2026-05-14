@@ -125,9 +125,14 @@ object PlanningMarkdownParser {
         checkboxPresent: Boolean,
         now: LocalDateTime
     ): PlanningParsedCandidate? {
+        val explicitDdl = tagValue(content, "ddl")
         val explicitSchedule = tagValue(content, "schedule")
         val scheduleSource = explicitSchedule ?: content
-        val naturalEvent = parseNaturalEvent(scheduleSource, dateContext, now)
+        val naturalEvent = if (explicitSchedule != null || explicitDdl == null) {
+            parseNaturalEvent(scheduleSource, dateContext, now)
+        } else {
+            null
+        }
         if (explicitSchedule != null || naturalEvent != null) {
             val event = naturalEvent ?: return error(lineNumber, sourceLine, "无法识别 #schedule 后的日程时间。")
             val title = if (explicitSchedule == null) {
@@ -172,7 +177,7 @@ object PlanningMarkdownParser {
 
         val title = cleanTitle(content).trim()
         if (title.isBlank()) return error(lineNumber, sourceLine, "待办标题不能为空。")
-        val ddl = tagValue(content, "ddl")?.let { ddlText ->
+        val ddl = explicitDdl?.let { ddlText ->
             parseDateTimeExpression(ddlText, defaultDate = dateContext, nowDate = now.toLocalDate(), defaultTime = LocalTime.of(23, 59))
                 ?: return error(lineNumber, sourceLine, "无法识别 DDL：$ddlText")
         }
@@ -299,9 +304,10 @@ object PlanningMarkdownParser {
             "后天", "后天计划" -> return ParsedDate(today.plusDays(2))
         }
         parseDateExpression(text, today)?.let { return it }
-        val leadingDate = parseLeadingDate(text, today) ?: return null
-        val rest = leadingDate.rest
-        return if (rest.isBlank() || rest.first().isWhitespace()) ParsedDate(leadingDate.date) else null
+        val match = LeadingDateRegex.find(text)?.takeIf { it.range.first == 0 } ?: return null
+        val date = parseDateExpression(match.value.trim(), today) ?: return null
+        val rest = text.substring(match.range.last + 1)
+        return if (isHeadingDateContextRest(rest)) date else null
     }
 
     private fun parseTimeToken(raw: String): LocalTime? {
@@ -382,6 +388,20 @@ object PlanningMarkdownParser {
     private fun isLeadingDateBoundary(rest: String): Boolean {
         val first = rest.firstOrNull() ?: return true
         return first.isWhitespace() || first == ',' || first.isDigit()
+    }
+
+    private fun isHeadingDateContextRest(rest: String): Boolean {
+        val trimmed = rest.trim()
+        if (trimmed.isBlank()) return true
+        val first = rest.firstOrNull()
+        if (first != null && (first.isWhitespace() || first == ',')) return true
+        return trimmed == "计划" ||
+            trimmed == "安排" ||
+            trimmed == "日程" ||
+            trimmed == "任务" ||
+            trimmed == "待办" ||
+            trimmed == "清单" ||
+            trimmed.endsWith("计划")
     }
 
     private fun applyChineseDayPeriod(hour: Int, period: String): Int? {

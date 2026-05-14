@@ -2,7 +2,7 @@
 
 ## Active Development Focus
 
-The current round is PaykiTodo `1.7.14` / `versionCode 171`, focused on Planning Desk editor / import workflow fixes called out by UI review.
+The current round is PaykiTodo `1.7.15` / `versionCode 172`, focused on Planning Desk parser priority and compact date-heading fixes.
 
 The syntax review conclusion:
 
@@ -53,17 +53,25 @@ Completed in the `1.7.14` Planning Desk workflow round:
 8. Desktop Web Planning Desk now has auto-save, save-before-document-switch, `Ctrl+S` save, `Ctrl+Enter` parse, empty-selection import blocking, and select-all / clear-all preview controls.
 9. App version metadata moved to `1.7.14` / `versionCode 171`.
 
+Completed in the `1.7.15` Planning Desk parser-priority round:
+
+1. Explicit `#ddl` now takes precedence over natural schedule detection, so `会议 9:00-10:00 讨论 #ddl 5.28` is parsed as a todo.
+2. Compact date headings such as `# 周五计划`, `# 明天安排`, and `# 5/28周末计划` can provide date context.
+3. Descriptive headings such as `# 我的明天计划` and `# 后天的事` are still not treated as date context.
+4. Parser unit tests cover the explicit-DDL priority and compact-heading boundary.
+5. App version metadata moved to `1.7.15` / `versionCode 172`.
+
 ## Immediate Practical Next Steps
 
 When testing, use:
 
-1. install `app/build/outputs/apk/debug/PaykiTodo-1.7.14-debug.apk`
+1. install `app/build/outputs/apk/debug/PaykiTodo-1.7.15-debug.apk`
 2. open 我的任务 -> 批量待办
 3. verify rows like `5.28,整理材料,5`, `5月28日,整理材料,5`, `明天,整理材料,5`, and `周五,整理材料,5` parse correctly
 4. verify `16:30,写报告,5` still means today 16:30
 5. enable desktop sync and test desktop todo/event reminder inputs such as `5,15,2:30 pm,明天 16:30,周五 16:30,5.10 15:00,5月10日，14:30`
 6. verify Planning Desk rows such as `5.28 14:00-16:00 小组讨论`, `复习 14:00-16:00`, and `5/28 下午 2:30～下午 4:00 小组讨论`
-7. verify headings such as `# 我的明天计划`, `# 明天`, `# 收集箱`, and `# 5/28 周末计划` behave as documented
+7. verify headings such as `# 我的明天计划`, `# 明天`, `# 收集箱`, `# 周五计划`, and `# 5/28周末计划` behave as documented
 8. verify desktop web todo/event reminder fields accept `下午 2:30`, `5/10 下午 2:30`, and `5月10日，14:30`
 9. open Planning Desk help, todo batch help, calendar batch help, built-in Wiki, and desktop Planning Desk help to verify the same syntax rules are explained consistently
 10. verify invalid desktop reminder times still surface an error instead of silently saving bad offsets
@@ -72,6 +80,7 @@ When testing, use:
 13. verify import preview cannot import zero selected candidates and can select all / clear all
 14. verify imported Planning Desk lines keep `#imported` after leaving and reopening the document
 15. verify desktop web Planning Desk supports `Ctrl+S` save and `Ctrl+Enter` identify/parse
+16. verify `会议 9:00-10:00 讨论 #ddl 5.28` is recognized as a todo with DDL, not an event
 
 ## Commit Message Rule
 
@@ -79,4 +88,4 @@ PaykiTodo commit messages should describe product behavior changes and bug/debug
 
 ## Current External Dependency
 
-No external file or API key is needed for the current `1.7.14` verification task.
+No external file or API key is needed for the current `1.7.15` verification task.

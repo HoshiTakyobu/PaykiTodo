@@ -2,7 +2,6 @@ package com.example.todoalarm.data
 
 import java.time.DateTimeException
 import java.time.DayOfWeek
-import java.time.Duration
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
@@ -78,7 +77,7 @@ object PlanningMarkdownParser {
 
             val headingText = headingTextOrNull(trimmed)
             if (headingText != null) {
-                parseDateExpression(headingText, now.toLocalDate())?.let { dateContext = it.date }
+                parseHeadingDateContext(headingText, now.toLocalDate())?.let { dateContext = it.date }
                 return@forEachIndexed
             }
 
@@ -136,7 +135,11 @@ object PlanningMarkdownParser {
                 .ifBlank { event.title }
             if (title.isBlank()) return error(lineNumber, sourceLine, "日程标题不能为空。")
             if (!event.endAt.isAfter(event.startAt)) return error(lineNumber, sourceLine, "日程结束时间必须晚于开始时间。")
-            val reminder = parseReminderTag(content, event.startAt, now) ?: listOf(DEFAULT_PLANNING_REMINDER_MINUTES)
+            val reminderResult = parseReminderTag(content, event.startAt, now)
+            if (reminderResult != null && !reminderResult.isValid) {
+                return error(lineNumber, sourceLine, "提醒格式无效：${reminderResult.message}")
+            }
+            val reminder = reminderResult?.offsetsMinutes ?: listOf(DEFAULT_PLANNING_REMINDER_MINUTES)
             val group = tagValue(content, "group").orEmpty()
             val warnings = mutableListOf<String>()
             if (event.defaultToday) warnings += "未写日期，默认今天。"
@@ -171,7 +174,11 @@ object PlanningMarkdownParser {
             parseDateTimeExpression(ddlText, defaultDate = dateContext, nowDate = now.toLocalDate(), defaultTime = LocalTime.of(23, 59))
                 ?: return error(lineNumber, sourceLine, "无法识别 DDL：$ddlText")
         }
-        val reminder = if (ddl != null) parseReminderTag(content, ddl, now) ?: listOf(DEFAULT_PLANNING_REMINDER_MINUTES) else emptyList()
+        val reminderResult = if (ddl != null) parseReminderTag(content, ddl, now) else null
+        if (reminderResult != null && !reminderResult.isValid) {
+            return error(lineNumber, sourceLine, "提醒格式无效：${reminderResult.message}")
+        }
+        val reminder = if (ddl != null) reminderResult?.offsetsMinutes ?: listOf(DEFAULT_PLANNING_REMINDER_MINUTES) else emptyList()
         val warnings = mutableListOf<String>()
         if (ddl != null && !ddl.isAfter(now)) warnings += "DDL 已早于当前时间，导入前请调整。"
         val importBlocked = ddl != null && (!ddl.isAfter(now) || reminder.any { offset -> !ddl.minusMinutes(offset.toLong()).isAfter(now) })
@@ -194,24 +201,9 @@ object PlanningMarkdownParser {
         )
     }
 
-    private fun parseReminderTag(content: String, anchor: LocalDateTime, now: LocalDateTime): List<Int>? {
+    private fun parseReminderTag(content: String, anchor: LocalDateTime, now: LocalDateTime): ReminderTextParseResult? {
         val raw = tagValue(content, "remind") ?: return null
-        val offsets = mutableListOf<Int>()
-        val tokens = raw.split(',').map { it.trim() }.filter { it.isNotEmpty() }
-        if (tokens.isEmpty()) return null
-        tokens.forEach { token ->
-            val normalized = token.replace('：', ':')
-            val offset = normalized.toIntOrNull()
-            if (offset != null) {
-                offsets += offset.coerceAtLeast(0)
-            } else {
-                val triggerAt = parseDateTimeExpression(normalized, defaultDate = anchor.toLocalDate(), nowDate = now.toLocalDate(), defaultTime = null)
-                    ?: return null
-                if (triggerAt.isAfter(anchor)) return null
-                offsets += Duration.between(triggerAt, anchor).toMinutes().toInt().coerceAtLeast(0)
-            }
-        }
-        return normalizeReminderOffsets(offsets)
+        return parseReminderTextInput(raw = raw, anchor = anchor, now = now, requireFuture = false)
     }
 
     private fun parseNaturalEvent(text: String, dateContext: LocalDate?, now: LocalDateTime): ParsedNaturalEvent? {
@@ -291,6 +283,17 @@ object PlanningMarkdownParser {
             return safeDate(today.year, match.groupValues[1].toInt(), match.groupValues[2].toInt())?.let(::ParsedDate)
         }
         return null
+    }
+
+    private fun parseHeadingDateContext(raw: String, today: LocalDate): ParsedDate? {
+        parseDateExpression(raw, today)?.let { return it }
+        val text = raw.trim()
+        return when {
+            text.contains("今日") || text.contains("今天") -> ParsedDate(today)
+            text.contains("明天") || text.contains("明日") -> ParsedDate(today.plusDays(1))
+            text.contains("后天") -> ParsedDate(today.plusDays(2))
+            else -> null
+        }
     }
 
     private fun parseTimeToken(raw: String): LocalTime? {

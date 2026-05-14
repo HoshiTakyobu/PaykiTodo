@@ -113,8 +113,8 @@ internal fun inputSyntaxHelpLines(topic: InputSyntaxHelpTopic): List<String> {
         InputSyntaxHelpTopic.Reminder -> listOf(
             "多个提醒用英文逗号分隔。",
             "纯数字表示提前多少分钟。",
-            "HH:mm 表示 DDL / 日程开始当天的具体时刻。",
-            "MM-DD HH:mm 表示当年的日期时间；YYYY-MM-DD HH:mm 表示完整日期时间。",
+            "HH:mm 或 2:30 pm 表示 DDL / 日程开始当天的具体时刻。",
+            "MM-DD HH:mm、M.D HH:mm、M月D日 HH:mm 表示当年的日期时间；YYYY-MM-DD HH:mm 表示完整日期时间。",
             "任一提醒晚于 DDL / 日程开始，或新建时已经过去，都会被判定为非法。"
         )
         InputSyntaxHelpTopic.TodoBatch -> listOf(
@@ -127,13 +127,13 @@ internal fun inputSyntaxHelpLines(topic: InputSyntaxHelpTopic): List<String> {
         InputSyntaxHelpTopic.CalendarBatch -> listOf(
             "首条日程需要写日期，同一天后续日程可以省略日期。",
             "条目之间可以用分号或换行分隔。",
-            "Remind= 后面的提醒时间支持和编辑界面相同的写法。",
+            "Remind= / #remind 后面的提醒时间支持和编辑界面相同的写法。",
             "地点里的 @ 会被当作普通文字保存。"
         )
         InputSyntaxHelpTopic.Snooze -> listOf(
             "可以输入延后分钟数，也可以直接输入未来时刻。",
-            "HH:mm 表示今天的具体时刻。",
-            "MM-DD HH:mm 表示当年的日期时间；YYYY-MM-DD HH:mm 表示完整日期时间。",
+            "HH:mm 或 2:30 pm 表示今天的具体时刻。",
+            "MM-DD HH:mm、M.D HH:mm、M月D日 HH:mm 表示当年的日期时间；YYYY-MM-DD HH:mm 表示完整日期时间。",
             "目标时间必须晚于当前时间；若目标晚于当前 DDL，会同步把 DDL 改到目标时间。"
         )
     }
@@ -141,9 +141,9 @@ internal fun inputSyntaxHelpLines(topic: InputSyntaxHelpTopic): List<String> {
 
 internal fun inputSyntaxHelpExample(topic: InputSyntaxHelpTopic): String {
     return when (topic) {
-        InputSyntaxHelpTopic.Reminder -> "5,15,16:30,05-10 15:00,2026-05-10 14:30"
+        InputSyntaxHelpTopic.Reminder -> "5,15,16:30,2:30 pm,05-10 15:00,5.10 15:00,5月10日 14:30"
         InputSyntaxHelpTopic.TodoBatch -> "16:30,写报告,5\n05-13 09:30,给老师发消息,09:00\n无DDL,整理 Obsidian 待办"
         InputSyntaxHelpTopic.CalendarBatch -> "2026-04-27: 10:20-11:55, 辅导员助理值班, @MB-B1-412, Remind=5;\n12:30-14:00, 午休"
-        InputSyntaxHelpTopic.Snooze -> "5\n16:30\n05-10 15:00"
+        InputSyntaxHelpTopic.Snooze -> "5\n16:30\n2:30 pm\n5月10日 15:00"
     }
 }

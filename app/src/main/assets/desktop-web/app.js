@@ -635,7 +635,7 @@ function renderPlanningPreview() {
       + (item.type === 'TODO'
         ? planningEditableField(item.id, 'dueAt', 'DDL', editableDateTimeValue(item.dueAt), '2026-05-28 14:30')
         : planningEditableField(item.id, 'startAt', '开始', editableDateTimeValue(item.startAt), '2026-05-28 10:00') + planningEditableField(item.id, 'endAt', '结束', editableDateTimeValue(item.endAt), '2026-05-28 12:00'))
-      + planningEditableField(item.id, 'reminders', '提醒分钟', (item.reminderOffsetsMinutes || []).join(','), '5,15')
+      + planningEditableField(item.id, 'reminders', '提醒', item.reminderInputText || (item.reminderOffsetsMinutes || []).join(','), '5,15,16:30,05-10 15:00')
       + '</div>'
       + '<label class="planning-edit-field full"><span>备注</span><textarea data-planning-field="notes" data-planning-id="' + escapeHtml(item.id) + '" rows="2">' + escapeHtml(item.notes || '') + '</textarea></label>'
     ) : '';
@@ -663,6 +663,7 @@ function collectPlanningCandidates() {
     if (!item) return;
     const value = node.value || '';
     if (node.dataset.planningField === 'reminders') {
+      item.reminderInputText = value;
       item.reminderOffsetsMinutes = value.split(/[,，]/).map(token => Number(token.trim())).filter(Number.isFinite).map(value => Math.max(0, Math.floor(value)));
     } else if (['dueAt', 'startAt', 'endAt'].includes(node.dataset.planningField)) {
       item[node.dataset.planningField] = value.trim().replace(' ', 'T') || null;
@@ -696,6 +697,16 @@ async function createPlanningNote() {
   await loadPlanningNotes();
   renderPlanningNotes();
   els.status.textContent = '已新建规划文档';
+}
+
+async function deletePlanningNote() {
+  const active = activePlanningNote();
+  if (!active) return;
+  if (!await confirmDanger('确认删除规划文档', '删除后无法恢复：' + (active.title || '未命名规划'), '删除')) return;
+  await api('/api/planning/notes/' + active.id, { method: 'DELETE' });
+  state.planningParseResult = null;
+  await loadPlanningNotes();
+  renderPlanningNotes();
 }
 
 async function parsePlanningEditor() {
@@ -1074,6 +1085,7 @@ els.applyEventDay.onclick = () => {
   renderEvents();
 };
 document.getElementById('planning-new')?.addEventListener('click', () => createPlanningNote().catch(err => els.status.textContent = err.message));
+document.getElementById('planning-delete')?.addEventListener('click', () => deletePlanningNote().catch(err => els.status.textContent = err.message));
 document.getElementById('planning-save')?.addEventListener('click', () => savePlanningNote().catch(err => els.status.textContent = err.message));
 document.getElementById('planning-help')?.addEventListener('click', () => openModal('planning-help-modal'));
 document.getElementById('planning-parse')?.addEventListener('click', () => parsePlanningEditor().catch(err => els.status.textContent = err.message));

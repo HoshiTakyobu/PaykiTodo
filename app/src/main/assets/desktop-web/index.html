@@ -92,6 +92,7 @@
             <div class="toolbar-row">
               <select id="planning-note-select"></select>
               <button id="planning-new" class="ghost mini">新建</button>
+              <button id="planning-delete" class="ghost mini danger-lite-action">删除</button>
               <button id="planning-save" class="ghost mini">保存</button>
               <button id="planning-help" class="ghost mini">使用说明</button>
               <button id="planning-parse" class="mini">识别</button>
@@ -305,10 +306,10 @@
       <div class="planning-help-body">
         <section class="planning-help-card">
           <h3>标题是用来分区的</h3>
-          <p><strong># 收集箱</strong>：先把脑子里的事情倒出来，暂时不一定有时间和 DDL。</p>
-          <p><strong># 今日计划</strong>：放今天准备做的事，适合写具体时间段。</p>
-          <p><strong># 明天</strong>：放明天安排；下面的 10:00-11:30 这类时间段会更容易按明天理解。</p>
-          <p><strong># 本周计划</strong>：放还没精确排到某一天、但这周要推进的任务。</p>
+          <p><strong># 收集箱</strong>：先把脑子里的事情倒出来，不会自动设置日期或 DDL。</p>
+          <p><strong># 今日计划 / # 今天</strong>：下面没写日期的 10:00-11:30 会按今天理解。</p>
+          <p><strong># 明天</strong>：下面没写日期的时间段会按明天理解。</p>
+          <p><strong># 本周计划</strong>：只是普通分区；重要任务仍建议写 <code>#ddl</code>。</p>
         </section>
         <section class="planning-help-card">
           <h3>常用写法</h3>
@@ -317,7 +318,7 @@
             <li>子任务：在任务下一行缩进两个空格再写 <code>- [ ]</code></li>
             <li>日程：<code>10:00-12:30 写课程论文</code> 或 <code>明天 19:30-21:00 复习</code></li>
             <li>分组：<code>#group 课程</code></li>
-            <li>提醒：<code>#remind 30,5</code> 表示提前 30 分钟和 5 分钟</li>
+            <li>提醒：<code>#remind 30,5</code> 表示提前 30 分钟和 5 分钟；也支持 <code>#remind 16:30</code>、<code>#remind 2:30 pm</code>、<code>#remind 5月28日 14:30</code></li>
           </ul>
         </section>
         <section class="planning-help-card">

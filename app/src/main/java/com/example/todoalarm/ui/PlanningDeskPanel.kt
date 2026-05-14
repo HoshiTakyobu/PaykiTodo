@@ -100,7 +100,7 @@ internal fun PlanningDeskPanel(
     var helpSheetVisible by remember { mutableStateOf(false) }
     var markdownEditMode by rememberSaveable(activeNote?.id) { mutableStateOf(true) }
     var renameDialog by remember { mutableStateOf(false) }
-    var deleteDialog by remember { mutableStateOf(false) }
+    var pendingDeleteNote by remember { mutableStateOf<PlanningNote?>(null) }
     var archiveDialog by remember { mutableStateOf(false) }
     var newDialog by remember { mutableStateOf(false) }
     val selectedIds = remember { mutableStateMapOf<String, Boolean>() }
@@ -173,7 +173,7 @@ internal fun PlanningDeskPanel(
                     Spacer(Modifier.weight(1f))
                     IconButton(onClick = { helpSheetVisible = true }) { Icon(Icons.Rounded.Info, contentDescription = "规划台说明") }
                     IconButton(onClick = { archiveDialog = true }, enabled = activeNote != null) { Icon(Icons.Rounded.Archive, contentDescription = "归档") }
-                    IconButton(onClick = { deleteDialog = true }, enabled = activeNote != null) { Icon(Icons.Rounded.Delete, contentDescription = "删除") }
+                    IconButton(onClick = { activeNote?.let { pendingDeleteNote = it } }, enabled = activeNote != null) { Icon(Icons.Rounded.Delete, contentDescription = "删除") }
                 }
 
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
@@ -238,7 +238,16 @@ internal fun PlanningDeskPanel(
                         modifier = Modifier
                             .fillMaxWidth()
                             .weight(1f),
-                        placeholder = { Text("例如：\n# 明天\n- [ ] 09:00-10:30 写论文 #group 课程\n- [ ] 整理材料 #ddl 5.28") },
+                        placeholder = {
+                            Text(
+                                "这里像备忘录一样自由写，提示文字不会保存。\n\n" +
+                                    "# 收集箱\n" +
+                                    "- [ ] 先把脑子里的事情写下来\n\n" +
+                                    "# 明天\n" +
+                                    "09:00-10:30 写论文 #group 课程 #remind 5\n" +
+                                    "- [ ] 整理材料 #ddl 5.28 23:59 #remind 30,5"
+                            )
+                        },
                         textStyle = MaterialTheme.typography.bodyLarge.copy(fontFamily = FontFamily.Monospace),
                         shape = RoundedCornerShape(22.dp),
                         minLines = 12
@@ -273,7 +282,8 @@ internal fun PlanningDeskPanel(
                 onSelect = {
                     onSelectNote(it)
                     documentSheetVisible = false
-                }
+                },
+                onDelete = { pendingDeleteNote = it }
             )
         }
     }
@@ -352,17 +362,17 @@ internal fun PlanningDeskPanel(
             }
         )
     }
-    if (deleteDialog && activeNote != null) {
+    pendingDeleteNote?.let { note ->
         ConfirmPlanningDialog(
             title = "删除规划文档？",
-            message = "删除后无法恢复：${activeNote.title}",
+            message = "删除后无法恢复：${note.title}",
             confirmText = "删除",
-            onDismiss = { deleteDialog = false },
+            onDismiss = { pendingDeleteNote = null },
             onConfirm = {
                 scope.launch {
-                    val message = onDeleteNote(activeNote.id)
+                    val message = onDeleteNote(note.id)
                     Toast.makeText(context, message ?: "文档已删除", Toast.LENGTH_SHORT).show()
-                    deleteDialog = false
+                    pendingDeleteNote = null
                 }
             }
         )
@@ -391,16 +401,16 @@ private fun PlanningShortcutBar(
     onHelp: (String, String) -> Unit
 ) {
     val chips = listOf(
-        PlanningShortcutSpec("任务", PlanningShortcutAction.Insert("- [ ] "), "插入一条待办任务"),
-        PlanningShortcutSpec("子任务", PlanningShortcutAction.Insert("  - [ ] "), "插入缩进后的子任务"),
+        PlanningShortcutSpec("任务", PlanningShortcutAction.TaskLine, "把当前行变成一条待办；同一行不会重复插入 - [ ]"),
+        PlanningShortcutSpec("子任务", PlanningShortcutAction.SubtaskLine, "在当前行下面新建一条缩进子任务"),
         PlanningShortcutSpec("缩进", PlanningShortcutAction.Indent, "当前行增加一级缩进"),
         PlanningShortcutSpec("减少缩进", PlanningShortcutAction.Outdent, "当前行减少一级缩进"),
         PlanningShortcutSpec("DDL", PlanningShortcutAction.Insert(" #ddl "), "设置截止时间，例如 #ddl 5.28 23:59"),
         PlanningShortcutSpec("日程", PlanningShortcutAction.Insert(" #schedule "), "显式声明日程时间段"),
-        PlanningShortcutSpec("提醒", PlanningShortcutAction.Insert(" #remind "), "设置提醒，例如 #remind 5,15"),
+        PlanningShortcutSpec("提醒", PlanningShortcutAction.Insert(" #remind "), "设置提醒，例如 #remind 5,15,16:30"),
         PlanningShortcutSpec("分组", PlanningShortcutAction.Insert(" #group "), "指定分组，例如 #group 课程"),
-        PlanningShortcutSpec("今天", PlanningShortcutAction.Insert("今天"), "插入今天"),
-        PlanningShortcutSpec("明天", PlanningShortcutAction.Insert("明天"), "插入明天")
+        PlanningShortcutSpec("今日标题", PlanningShortcutAction.InsertSection("# 今日计划"), "插入标题分区；下面没写日期的时间段按今天理解"),
+        PlanningShortcutSpec("明日标题", PlanningShortcutAction.InsertSection("# 明天"), "插入标题分区；下面没写日期的时间段按明天理解")
     )
     Surface(
         modifier = Modifier.fillMaxWidth(),
@@ -445,7 +455,8 @@ private fun PlanningShortcutChip(
 private fun PlanningDocumentSheet(
     notes: List<PlanningNote>,
     activeNoteId: Long?,
-    onSelect: (Long) -> Unit
+    onSelect: (Long) -> Unit,
+    onDelete: (PlanningNote) -> Unit
 ) {
     var query by rememberSaveable { mutableStateOf("") }
     val visibleNotes = remember(notes, query) {
@@ -475,9 +486,18 @@ private fun PlanningDocumentSheet(
                     tonalElevation = if (note.id == activeNoteId) 2.dp else 1.dp,
                     onClick = { onSelect(note.id) }
                 ) {
-                    Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Text(note.title, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                        Text("更新于 ${planningMillisLabel(note.updatedAtMillis)}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Row(
+                        modifier = Modifier.padding(start = 16.dp, end = 8.dp, top = 12.dp, bottom = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Text(note.title, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            Text("更新于 ${planningMillisLabel(note.updatedAtMillis)}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                        IconButton(onClick = { onDelete(note) }) {
+                            Icon(Icons.Rounded.Delete, contentDescription = "删除文档", tint = MaterialTheme.colorScheme.error)
+                        }
                     }
                 }
             }
@@ -551,7 +571,7 @@ private fun PlanningHelpSheet(onDismiss: () -> Unit) {
                     title = "1. 先像备忘录一样写",
                     lines = listOf(
                         "不用一开始就填完整表单，先把近期要做的事情写下来。",
-                        "一行一个任务最容易识别；大标题可以写 # 收集箱、# 今日计划、# 明天、# 本周计划。",
+                        "一行一个任务最容易识别；大标题不是必须语法，只是帮你把文档分区。",
                         "输入法上方的快捷栏可以快速插入任务、子任务、DDL、提醒和分组。"
                     )
                 )
@@ -560,10 +580,10 @@ private fun PlanningHelpSheet(onDismiss: () -> Unit) {
                 PlanningHelpCard(
                     title = "2. 标题是用来分区的",
                     lines = listOf(
-                        "# 收集箱：先把脑子里的事倒出来，暂时不一定有时间和 DDL。",
-                        "# 今日计划：放今天准备做的事，适合写具体时间段。",
-                        "# 明天：放明天安排；下面的 10:00-11:30 这类时间段会更容易按明天理解。",
-                        "# 本周计划：放还没精确排到某一天、但这周要推进的任务。"
+                        "# 收集箱：只表示“先收进来”，不会自动给日期或 DDL。",
+                        "# 今日计划 / # 今天：表示下面没写日期的 10:00-11:30 会按今天解析。",
+                        "# 明天：表示下面没写日期的时间段会按明天解析。",
+                        "# 本周计划：只是普通分区；没有具体日期时，重要任务仍建议写 #ddl。"
                     )
                 )
             }
@@ -572,10 +592,10 @@ private fun PlanningHelpSheet(onDismiss: () -> Unit) {
                     title = "3. 常用写法",
                     lines = listOf(
                         "待办：- [ ] 整理材料 #ddl 5.28 23:59",
-                        "子任务：在任务下一行点“子任务”，或手写两个空格再写 - [ ]。",
+                        "子任务：把光标放在父任务行，点“子任务”，会自动新起一行并缩进。",
                         "日程：10:00-12:30 写论文，或 明天 19:30-21:00 复习。",
                         "分组：在行尾写 #group 课程。",
-                        "提醒：在行尾写 #remind 5,15，表示提前 5 分钟和 15 分钟。"
+                        "提醒：#remind 5,15 表示提前分钟；也支持 #remind 16:30 或 #remind 5月28日 14:30。"
                     )
                 )
             }
@@ -917,7 +937,7 @@ private fun PlanningCandidateCard(
                     PlanningDateTimeField(
                         label = "DDL",
                         value = candidate.dueAt,
-                        onChange = { onCandidateChange(candidate.copy(dueAt = it)) }
+                        onChange = { onCandidateChange(candidate.copy(dueAt = it).revalidatePlanningReminderInput()) }
                     )
                 } else {
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
@@ -925,7 +945,7 @@ private fun PlanningCandidateCard(
                             label = "开始",
                             value = candidate.startAt,
                             modifier = Modifier.weight(1f),
-                            onChange = { onCandidateChange(candidate.copy(startAt = it)) }
+                            onChange = { onCandidateChange(candidate.copy(startAt = it).revalidatePlanningReminderInput()) }
                         )
                         PlanningDateTimeField(
                             label = "结束",
@@ -951,12 +971,19 @@ private fun PlanningCandidateCard(
                     maxLines = 3
                 )
                 OutlinedTextField(
-                    value = candidate.reminderOffsetsMinutes.joinToString(","),
-                    onValueChange = { raw -> onCandidateChange(candidate.copy(reminderOffsetsMinutes = parsePlanningReminderOffsets(raw))) },
+                    value = candidate.reminderInputText.ifBlank { candidate.reminderOffsetsMinutes.joinToString(",") },
+                    onValueChange = { raw -> onCandidateChange(candidate.withPlanningReminderInput(raw)) },
                     modifier = Modifier.fillMaxWidth(),
-                    label = { Text("提醒分钟") },
-                    placeholder = { Text("例如 5,15") },
-                    singleLine = true
+                    label = { Text("提醒") },
+                    placeholder = { Text("5,15,16:30,05-10 15:00") },
+                    singleLine = true,
+                    isError = candidate.reminderInputError.isNotBlank(),
+                    supportingText = {
+                        Text(
+                            candidate.reminderInputError.ifBlank { "支持提前分钟、当天时刻、日期时间；用逗号分隔多项。" },
+                            color = if (candidate.reminderInputError.isNotBlank()) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 )
                 Text("提醒默认全屏 · 响铃 + 震动", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
@@ -1039,6 +1066,9 @@ private data class PlanningShortcutSpec(
 
 private sealed interface PlanningShortcutAction {
     data class Insert(val token: String) : PlanningShortcutAction
+    data class InsertSection(val heading: String) : PlanningShortcutAction
+    data object TaskLine : PlanningShortcutAction
+    data object SubtaskLine : PlanningShortcutAction
     data object Indent : PlanningShortcutAction
     data object Outdent : PlanningShortcutAction
 }
@@ -1046,6 +1076,9 @@ private sealed interface PlanningShortcutAction {
 private fun applyPlanningShortcut(value: TextFieldValue, action: PlanningShortcutAction): TextFieldValue {
     return when (action) {
         is PlanningShortcutAction.Insert -> insertPlanningToken(value, action.token)
+        is PlanningShortcutAction.InsertSection -> insertPlanningSection(value, action.heading)
+        PlanningShortcutAction.TaskLine -> applyPlanningTaskLine(value)
+        PlanningShortcutAction.SubtaskLine -> insertPlanningSubtaskLine(value)
         PlanningShortcutAction.Indent -> indentCurrentPlanningLine(value)
         PlanningShortcutAction.Outdent -> outdentCurrentPlanningLine(value)
     }
@@ -1057,6 +1090,62 @@ private fun insertPlanningToken(value: TextFieldValue, token: String): TextField
     val nextText = value.text.replaceRange(start, end, token)
     val cursor = start + token.length
     return value.copy(text = nextText, selection = androidx.compose.ui.text.TextRange(cursor))
+}
+
+private fun insertPlanningSection(value: TextFieldValue, heading: String): TextFieldValue {
+    val start = value.selection.min
+    val end = value.selection.max
+    val before = value.text.substring(0, start)
+    val after = value.text.substring(end)
+    val prefix = when {
+        before.isBlank() -> ""
+        before.endsWith("\n\n") -> ""
+        before.endsWith("\n") -> "\n"
+        else -> "\n\n"
+    }
+    val suffix = if (after.startsWith("\n")) "" else "\n"
+    val token = "$prefix$heading\n$suffix"
+    val nextText = before + token + after
+    val cursor = before.length + token.length
+    return value.copy(text = nextText, selection = androidx.compose.ui.text.TextRange(cursor))
+}
+
+private fun applyPlanningTaskLine(value: TextFieldValue): TextFieldValue {
+    val (lineStart, lineEnd) = currentPlanningLineBounds(value.text, value.selection.min)
+    val line = value.text.substring(lineStart, lineEnd)
+    if (TaskPreviewRegex.matches(line)) return value
+    val indent = line.takeWhile { it == ' ' || it == '\t' }
+    val content = line.trimStart()
+    val nextLine = if (content.isBlank()) "${indent}- [ ] " else "${indent}- [ ] $content"
+    val nextText = value.text.replaceRange(lineStart, lineEnd, nextLine)
+    val cursor = lineStart + nextLine.length
+    return value.copy(text = nextText, selection = androidx.compose.ui.text.TextRange(cursor))
+}
+
+private fun insertPlanningSubtaskLine(value: TextFieldValue): TextFieldValue {
+    val (lineStart, lineEnd) = currentPlanningLineBounds(value.text, value.selection.min)
+    val line = value.text.substring(lineStart, lineEnd)
+    val parentIndent = line.takeWhile { it == ' ' || it == '\t' }.replace("\t", "  ")
+    val subtask = parentIndent + "  - [ ] "
+    val insertPoint: Int
+    val token: String
+    if (lineEnd < value.text.length && value.text[lineEnd] == '\n') {
+        insertPoint = lineEnd + 1
+        token = subtask
+    } else {
+        insertPoint = lineEnd
+        token = "\n$subtask"
+    }
+    val nextText = value.text.replaceRange(insertPoint, insertPoint, token)
+    val cursor = insertPoint + token.length
+    return value.copy(text = nextText, selection = androidx.compose.ui.text.TextRange(cursor))
+}
+
+private fun currentPlanningLineBounds(text: String, cursor: Int): Pair<Int, Int> {
+    val safeCursor = cursor.coerceIn(0, text.length)
+    val lineStart = if (safeCursor == 0) 0 else text.lastIndexOf('\n', safeCursor - 1).let { if (it < 0) 0 else it + 1 }
+    val lineEnd = text.indexOf('\n', safeCursor).let { if (it < 0) text.length else it }
+    return lineStart to lineEnd
 }
 
 private fun indentCurrentPlanningLine(value: TextFieldValue): TextFieldValue {
@@ -1230,12 +1319,31 @@ private fun parsePlanningEditableDateTime(raw: String): LocalDateTime? {
     return runCatching { LocalDateTime.of(LocalDate.now().year, month, day, hour, minute) }.getOrNull()
 }
 
-private fun parsePlanningReminderOffsets(raw: String): List<Int> {
-    return raw.split(',', '，')
-        .mapNotNull { it.trim().toIntOrNull() }
-        .map { it.coerceAtLeast(0) }
-        .distinct()
-        .sortedDescending()
+private fun PlanningImportCandidate.withPlanningReminderInput(raw: String): PlanningImportCandidate {
+    val text = raw.trim()
+    if (text.isBlank()) {
+        return copy(reminderInputText = "", reminderInputError = "", reminderOffsetsMinutes = emptyList())
+    }
+    val anchor = when (type) {
+        PlanningParsedType.TODO -> dueAt
+        PlanningParsedType.EVENT -> startAt
+        else -> null
+    } ?: return copy(reminderInputText = raw, reminderInputError = "请先设置 DDL / 日程开始时间。")
+
+    val parsed = parseReminderInput(raw = raw, anchor = anchor, requireFuture = false)
+    return if (parsed.isValid) {
+        copy(
+            reminderInputText = raw,
+            reminderInputError = "",
+            reminderOffsetsMinutes = parsed.offsetsMinutes
+        )
+    } else {
+        copy(reminderInputText = raw, reminderInputError = parsed.message)
+    }
+}
+
+private fun PlanningImportCandidate.revalidatePlanningReminderInput(): PlanningImportCandidate {
+    return if (reminderInputText.isBlank()) this else withPlanningReminderInput(reminderInputText)
 }
 
 private fun planningMillisLabel(value: Long): String {

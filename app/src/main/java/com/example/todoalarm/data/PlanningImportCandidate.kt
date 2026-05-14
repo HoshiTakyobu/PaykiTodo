@@ -14,6 +14,8 @@ data class PlanningImportCandidate(
     val startAt: LocalDateTime? = null,
     val endAt: LocalDateTime? = null,
     val reminderOffsetsMinutes: List<Int> = listOf(DEFAULT_PLANNING_REMINDER_MINUTES),
+    val reminderInputText: String = "",
+    val reminderInputError: String = "",
     val createLinkedTodo: Boolean = false,
     val defaultToday: Boolean = false,
     val imported: Boolean = false,
@@ -28,6 +30,7 @@ data class PlanningImportCandidate(
     fun validate(now: LocalDateTime = LocalDateTime.now()): String? {
         if (!importable) return message.takeIf { it.isNotBlank() } ?: "该条目不可导入"
         if (title.isBlank()) return "标题不能为空"
+        if (reminderInputError.isNotBlank()) return reminderInputError
         val offsets = normalizedReminderOffsets()
         return when (type) {
             PlanningParsedType.TODO -> {
@@ -72,6 +75,7 @@ fun PlanningParsedCandidate.toPlanningImportCandidate(): PlanningImportCandidate
         startAt = startAt,
         endAt = endAt,
         reminderOffsetsMinutes = reminderOffsetsMinutes,
+        reminderInputText = reminderOffsetsMinutes.joinToString(","),
         createLinkedTodo = createLinkedTodo,
         defaultToday = defaultToday,
         imported = imported,

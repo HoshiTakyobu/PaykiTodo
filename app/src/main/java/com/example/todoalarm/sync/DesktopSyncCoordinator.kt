@@ -19,6 +19,7 @@ import com.example.todoalarm.data.RecurrenceScope
 import com.example.todoalarm.data.RecurrenceType
 import com.example.todoalarm.data.TodoDraft
 import com.example.todoalarm.data.TodoItem
+import com.example.todoalarm.data.parseReminderTextInput
 import com.example.todoalarm.data.reminderTriggerTimesMillis
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -636,6 +637,7 @@ private fun PlanningParsedCandidate.toPlanningCandidateJson(): JSONObject {
         .put("startAt", startAt?.toString())
         .put("endAt", endAt?.toString())
         .put("reminderOffsetsMinutes", JSONArray(reminderOffsetsMinutes))
+        .put("reminderInputText", reminderOffsetsMinutes.joinToString(","))
         .put("createLinkedTodo", createLinkedTodo)
         .put("defaultToday", defaultToday)
         .put("imported", imported)
@@ -651,7 +653,8 @@ private fun JSONArray.toPlanningImportCandidates(fallback: List<PlanningParsedCa
     return (0 until length()).mapNotNull { index ->
         val json = optJSONObject(index) ?: return@mapNotNull null
         val base = fallbackById[json.optString("id")]?.toPlanningImportCandidate() ?: return@mapNotNull null
-        base.copy(
+        val reminderRaw = json.optStringOrNull("reminderInputText")
+        val edited = base.copy(
             title = json.optString("title", base.title),
             notes = json.optString("notes", base.notes),
             groupName = json.optString("groupName", base.groupName),
@@ -659,8 +662,28 @@ private fun JSONArray.toPlanningImportCandidates(fallback: List<PlanningParsedCa
             startAt = parsePlanningImportDateTime(json.optStringOrNull("startAt")),
             endAt = parsePlanningImportDateTime(json.optStringOrNull("endAt")),
             reminderOffsetsMinutes = json.optJSONArray("reminderOffsetsMinutes")?.toIntList().orEmpty(),
+            reminderInputText = reminderRaw.orEmpty(),
             createLinkedTodo = json.optBoolean("createLinkedTodo", base.createLinkedTodo)
         )
+        if (reminderRaw.isNullOrBlank()) {
+            edited
+        } else {
+            val anchor = when (edited.type) {
+                PlanningParsedType.TODO -> edited.dueAt
+                PlanningParsedType.EVENT -> edited.startAt
+                else -> null
+            }
+            if (anchor == null) {
+                edited.copy(reminderInputError = "请先设置 DDL / 日程开始时间。")
+            } else {
+                val parsed = parseReminderTextInput(raw = reminderRaw, anchor = anchor, requireFuture = false)
+                if (parsed.isValid) {
+                    edited.copy(reminderOffsetsMinutes = parsed.offsetsMinutes, reminderInputError = "")
+                } else {
+                    edited.copy(reminderInputError = parsed.message)
+                }
+            }
+        }
     }
 }
 

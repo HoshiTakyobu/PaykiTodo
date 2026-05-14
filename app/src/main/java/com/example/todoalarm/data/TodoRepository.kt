@@ -34,7 +34,7 @@ class TodoRepository(
         val now = System.currentTimeMillis()
         val note = PlanningNote(
             title = "我的规划",
-            contentMarkdown = DEFAULT_PLANNING_NOTE_MARKDOWN,
+            contentMarkdown = "",
             createdAtMillis = now,
             updatedAtMillis = now,
             archived = false
@@ -47,7 +47,7 @@ class TodoRepository(
         val now = System.currentTimeMillis()
         val note = PlanningNote(
             title = title.trim().ifBlank { "新的规划" },
-            contentMarkdown = DEFAULT_PLANNING_NOTE_MARKDOWN,
+            contentMarkdown = "",
             createdAtMillis = now,
             updatedAtMillis = now,
             archived = false
@@ -1236,15 +1236,6 @@ class TodoRepository(
 
     companion object {
         private const val MISSED_GRACE_PERIOD_MILLIS = 60_000L
-        private val DEFAULT_PLANNING_NOTE_MARKDOWN = """
-            # 收集箱
-
-            - [ ] 整理接下来要做的事情
-
-            # 今日计划
-
-            10:00-11:00 示例日程
-        """.trimIndent()
     }
 
     private suspend fun defaultGroupId(): Long {

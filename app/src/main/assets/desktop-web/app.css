@@ -273,6 +273,14 @@ button.ghost {
 .planning-meta-line { font-size: 13px; color: #405063; line-height: 1.5; }
 .planning-message { margin-top: 6px; color: #9a5a16; font-size: 13px; line-height: 1.5; }
 .planning-linked { margin-top: 8px; padding: 7px 10px; border-radius: 999px; background: rgba(53,104,212,.08); }
+.planning-help-sheet { max-width: 920px; }
+.planning-help-body { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; padding: 4px 2px 8px; max-height: 72vh; overflow: auto; }
+.planning-help-card { border-radius: 22px; border: 1px solid rgba(211,220,230,.9); background: rgba(255,255,255,.96); padding: 16px; box-shadow: 0 8px 24px rgba(46,64,98,.06); }
+.planning-help-card h3 { margin-bottom: 10px; font-size: 17px; font-weight: 900; color: var(--text); }
+.planning-help-card p, .planning-help-card li { color: #405063; line-height: 1.65; font-size: 14px; }
+.planning-help-card ul, .planning-help-card ol { padding-left: 20px; display: flex; flex-direction: column; gap: 6px; }
+.planning-help-card code { border-radius: 8px; background: rgba(53,104,212,.08); color: #254b9b; padding: 2px 5px; font-family: Consolas, "Microsoft YaHei UI", monospace; }
+.planning-help-card pre { margin: 0; white-space: pre-wrap; word-break: break-word; border-radius: 18px; background: rgba(53,104,212,.07); padding: 14px; line-height: 1.6; color: var(--text); }
 @keyframes tab-rise { from { opacity: .72; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
 @keyframes card-rise { from { opacity: .68; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
 @keyframes backdrop-fade { from { opacity: 0; } to { opacity: 1; } }
@@ -284,6 +292,7 @@ button.ghost {
   .sidebar { position: static; height: auto; }
   .topbar, .hour-axis { position: static; }
   .planning-workspace { grid-template-columns: 1fr; }
+  .planning-help-body { grid-template-columns: 1fr; }
 }
 @media (max-width: 840px) {
   .toolbar-row, .form-grid { display: flex; flex-wrap: wrap; }

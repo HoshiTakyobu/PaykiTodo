@@ -73,7 +73,29 @@ At minimum, ask it to do these things:
 8. after a real feature / fix is completed and minimally verified, create a focused git commit unless the user says not to commit yet
 9. report the latest APK path for the current version, and clearly say whether that APK was rebuilt in the current round
 10. write the git commit message in Chinese
-11. make the commit message describe the version-relevant feature or behavior changes completed in that round, rather than vague process wording
+11. make the commit message describe the feature behavior changes and bug-fix/debug logic completed in that round, rather than vague process wording or process bookkeeping
+
+## Commit Message Style
+
+PaykiTodo commit messages should be useful as a product history. The core of a commit message is what changed in the app, not whether a command was run.
+
+Good commit messages should explain:
+
+- the module or feature that changed;
+- the concrete behavior added, removed, or improved;
+- the bug symptom and before/after behavior when fixing defects;
+- the relevant root cause or debug conclusion when that matters;
+- version changes when the app version is bumped.
+
+Avoid commit messages whose main content is:
+
+- `优化界面` without saying what changed;
+- `修复问题` without describing the bug;
+- `更新文档` without saying which behavior/status changed;
+- whether the commit was pushed;
+- a long list of validation commands.
+
+Validation commands can be mentioned briefly if useful, but final user replies are the better place for detailed verification and APK path reporting.
 
 ## Recommended End-Of-Session Prompt
 
@@ -89,7 +111,7 @@ Before ending this session:
 6. update README.md / TODO.md / CHANGELOG.md or any other affected docs if your work changed what they claim
 7. create a focused git commit if a real feature / fix round was completed and minimally verified
 8. tell me the latest APK path for the current version and whether it was rebuilt in this round
-9. write the git commit message in Chinese and describe the actual version-level changes you completed
+9. write the git commit message in Chinese and describe the actual user-visible feature changes or bug-fix/debug logic you completed
 10. do not start new feature work after the handoff update
 ```
 

@@ -93,6 +93,7 @@
               <select id="planning-note-select"></select>
               <button id="planning-new" class="ghost mini">新建</button>
               <button id="planning-save" class="ghost mini">保存</button>
+              <button id="planning-help" class="ghost mini">使用说明</button>
               <button id="planning-parse" class="mini">识别</button>
               <button id="planning-import" class="mini">导入选中</button>
             </div>
@@ -287,6 +288,66 @@
       <div class="confirm-actions">
         <button class="sheet-text-button" id="confirm-cancel">取消</button>
         <button class="danger-action" id="confirm-ok">删除</button>
+      </div>
+    </div>
+  </div>
+  <div id="planning-help-modal" class="modal-backdrop hidden">
+    <div class="modal-sheet wide-sheet planning-help-sheet">
+      <div class="modal-handle"></div>
+      <div class="modal-head">
+        <button class="sheet-text-button" data-close-modal="planning-help-modal">返回</button>
+        <div class="modal-title-block">
+          <h2>规划台使用说明</h2>
+          <p class="muted">先像备忘录一样写，再识别为正式待办和日程。</p>
+        </div>
+        <button class="sheet-primary-action" data-close-modal="planning-help-modal">知道了</button>
+      </div>
+      <div class="planning-help-body">
+        <section class="planning-help-card">
+          <h3>标题是用来分区的</h3>
+          <p><strong># 收集箱</strong>：先把脑子里的事情倒出来，暂时不一定有时间和 DDL。</p>
+          <p><strong># 今日计划</strong>：放今天准备做的事，适合写具体时间段。</p>
+          <p><strong># 明天</strong>：放明天安排；下面的 10:00-11:30 这类时间段会更容易按明天理解。</p>
+          <p><strong># 本周计划</strong>：放还没精确排到某一天、但这周要推进的任务。</p>
+        </section>
+        <section class="planning-help-card">
+          <h3>常用写法</h3>
+          <ul>
+            <li>待办：<code>- [ ] 整理材料 #ddl 5.28 23:59</code></li>
+            <li>子任务：在任务下一行缩进两个空格再写 <code>- [ ]</code></li>
+            <li>日程：<code>10:00-12:30 写课程论文</code> 或 <code>明天 19:30-21:00 复习</code></li>
+            <li>分组：<code>#group 课程</code></li>
+            <li>提醒：<code>#remind 30,5</code> 表示提前 30 分钟和 5 分钟</li>
+          </ul>
+        </section>
+        <section class="planning-help-card">
+          <h3>完整范例</h3>
+          <pre><code># 收集箱
+- [ ] 想一下保研材料还缺什么
+- [ ] 问老师课程论文格式
+
+# 今日计划
+- [ ] 10:00-11:30 写课程论文 #group 课程 #remind 5
+- [ ] 晚上复习操作系统 #ddl 23:59 #remind 30,5
+
+# 明天
+- [ ] 09:00-10:30 背英语单词 #group 学习
+- [ ] 完成实验报告 #ddl 21:30 #remind 15,5
+
+# 本周计划
+- [ ] 完成课程论文初稿 #ddl 5.28 23:59 #group 课程
+- [ ] 整理保研竞赛材料 #ddl 5.30 18:00 #group 保研</code></pre>
+        </section>
+        <section class="planning-help-card">
+          <h3>识别和导入</h3>
+          <ol>
+            <li>先在左侧编辑器写计划。</li>
+            <li>点击“识别”，右侧会出现待办、日程、跳过和错误条目。</li>
+            <li>在预览里修正标题、DDL、开始/结束时间、提醒、分组和备注。</li>
+            <li>勾选需要导入的条目，点击“导入选中”。</li>
+            <li>导入成功后原文会追加 <code>#imported</code>，避免重复导入。</li>
+          </ol>
+        </section>
       </div>
     </div>
   </div>

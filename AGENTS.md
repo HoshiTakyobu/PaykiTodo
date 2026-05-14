@@ -30,6 +30,33 @@ Then read only the code files directly relevant to the current task.
 9. Git commit messages for this repository should be written in Chinese.
 10. A git commit message should describe the version-relevant feature / behavior changes in that round compared with the previous state, not just generic process wording such as "finalize" or "cleanup".
 
+## Git Commit Message Rules
+
+Commit messages are part of the product history. They should primarily describe product behavior changes and bug-fix logic, not process bookkeeping.
+
+Good commit messages should answer:
+
+- Which module or feature changed?
+- What user-visible behavior was added, removed, or improved?
+- What bug was fixed, what was the before/after behavior, and what root cause or debug conclusion mattered?
+- If relevant, what stability, data-safety, migration, reminder, sync, icon, or startup behavior changed?
+
+Avoid making the commit subject/body primarily about:
+
+- whether the branch was pushed;
+- which validation commands were run;
+- generic process notes;
+- vague wording such as `优化`, `修复问题`, `更新代码`, or `完善功能` without concrete behavior.
+
+Preferred structure for non-trivial commits:
+
+1. Chinese subject that includes the affected module and concrete behavior change.
+2. Body paragraphs or bullets describing user-visible feature changes.
+3. Body paragraphs or bullets describing debug / bug-fix reasoning when the work fixes a defect.
+4. Version bump details when the version changes.
+
+Validation commands may be mentioned briefly when useful, but they are secondary and should not dominate the commit message.
+
 ## Purpose Of The Current Docs
 
 - `PROJECT_INTENT.md`: stable product background and design intent

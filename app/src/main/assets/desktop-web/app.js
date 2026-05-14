@@ -1075,6 +1075,7 @@ els.applyEventDay.onclick = () => {
 };
 document.getElementById('planning-new')?.addEventListener('click', () => createPlanningNote().catch(err => els.status.textContent = err.message));
 document.getElementById('planning-save')?.addEventListener('click', () => savePlanningNote().catch(err => els.status.textContent = err.message));
+document.getElementById('planning-help')?.addEventListener('click', () => openModal('planning-help-modal'));
 document.getElementById('planning-parse')?.addEventListener('click', () => parsePlanningEditor().catch(err => els.status.textContent = err.message));
 document.getElementById('planning-import')?.addEventListener('click', () => importSelectedPlanning().catch(err => els.status.textContent = err.message));
 els.planningNoteSelect?.addEventListener('change', event => {

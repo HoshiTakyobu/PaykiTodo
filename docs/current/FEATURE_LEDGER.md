@@ -43,7 +43,7 @@ This file tracks the product at a practical level for new coding sessions.
 - default startup opens the last opened planning document; if none exists, the app creates `我的规划`
 - planning documents support create, open, rename, archive, and delete with confirmation on the phone UI
 - phone Planning Desk currently defaults to stable raw Markdown / natural-text editing; `1.7.8` restores a manual Markdown preview that renders headings, task checkboxes, subtask indentation, tag pills, and `#imported` state pills while keeping raw edit as the startup default
-- phone editor mode remains a plain Markdown / natural-text editor with a solid-color document surface and horizontal shortcut toolbar for tasks, subtasks, indent/outdent, DDL, schedule, reminder, group, today, and tomorrow`r`n- phone Planning Desk includes an in-screen help sheet explaining the workflow and showing directly usable examples`r`n- phone Markdown preview checkbox toggles rewrite the source Markdown line only; they do not directly complete imported official todos
+- phone editor mode remains a plain Markdown / natural-text editor with a solid-color document surface and horizontal shortcut toolbar for tasks, subtasks, indent/outdent, DDL, schedule, reminder, group, today, and tomorrow`r`n- phone Planning Desk includes an in-screen help sheet explaining the workflow, heading sections such as `# 收集箱` / `# 今日计划`, and directly usable examples`r`n- phone Markdown preview checkbox toggles rewrite the source Markdown line only; they do not directly complete imported official todos
 - Enter continuation attempts to keep `- [ ]` task lines flowing without forcing the user to manually type Markdown every time
 - local rule parser recognizes markdown checkboxes, completed-task skip, subtask parent notes, date headings, DDL tags, reminder tags, group tags, schedule tags, and natural schedule ranges
 - natural schedule import can create both a calendar event and a linked todo whose DDL equals the event end time
@@ -134,7 +134,7 @@ This file tracks the product at a practical level for new coding sessions.
 - desktop web event timeline no longer shows the separate all-day strip above the timeline
 - desktop web shows the installed APK version in the brand block and uses runtime versioned CSS / JS URLs
 - desktop sync service self-stops if Android restarts it while desktop sync is disabled in Settings
-- desktop web has a `规划台` tab with textarea editor, document selector, save, editable parse preview, and selected import
+- desktop web has a `规划台` tab with textarea editor, document selector, save, editable parse preview, selected import, and a help modal
 - desktop web Planning Desk uses phone-local `/api/planning/*` routes, edits the same Room planning notes as the phone UI, and writes back `#imported` markers after import
 
 ### Destructive Action Safety

@@ -505,12 +505,17 @@ private fun PlanningDocumentSheet(
 @Composable
 private fun PlanningHelpSheet(onDismiss: () -> Unit) {
     val example = """
+        # 收集箱
+        - [ ] 想一下保研材料还缺什么
+        - [ ] 问老师课程论文格式
+
+        # 今日计划
+        - [ ] 10:00-11:30 写课程论文 #group 课程 #remind 5
+        - [ ] 晚上复习操作系统 #ddl 23:59 #remind 30,5
+
         # 明天
-        - [ ] 10:00-12:30 写课程论文 #group 课程
-        - [ ] 整理保研材料 #ddl 5.28 23:59 #remind 5,15
-          - [ ] 打印成绩单
-          - [ ] 整理获奖证明
-        明天 19:30-21:00 复习操作系统 #group 学习
+        - [ ] 09:00-10:30 背英语单词 #group 学习
+        - [ ] 完成实验报告 #ddl 21:30 #remind 15,5
     """.trimIndent()
     Column(
         modifier = Modifier
@@ -546,14 +551,25 @@ private fun PlanningHelpSheet(onDismiss: () -> Unit) {
                     title = "1. 先像备忘录一样写",
                     lines = listOf(
                         "不用一开始就填完整表单，先把近期要做的事情写下来。",
-                        "一行一个任务最容易识别；大标题可以写 # 明天、# 本周、# 保研材料。",
+                        "一行一个任务最容易识别；大标题可以写 # 收集箱、# 今日计划、# 明天、# 本周计划。",
                         "输入法上方的快捷栏可以快速插入任务、子任务、DDL、提醒和分组。"
                     )
                 )
             }
             item {
                 PlanningHelpCard(
-                    title = "2. 常用写法",
+                    title = "2. 标题是用来分区的",
+                    lines = listOf(
+                        "# 收集箱：先把脑子里的事倒出来，暂时不一定有时间和 DDL。",
+                        "# 今日计划：放今天准备做的事，适合写具体时间段。",
+                        "# 明天：放明天安排；下面的 10:00-11:30 这类时间段会更容易按明天理解。",
+                        "# 本周计划：放还没精确排到某一天、但这周要推进的任务。"
+                    )
+                )
+            }
+            item {
+                PlanningHelpCard(
+                    title = "3. 常用写法",
                     lines = listOf(
                         "待办：- [ ] 整理材料 #ddl 5.28 23:59",
                         "子任务：在任务下一行点“子任务”，或手写两个空格再写 - [ ]。",
@@ -565,7 +581,7 @@ private fun PlanningHelpSheet(onDismiss: () -> Unit) {
             }
             item {
                 PlanningHelpCard(
-                    title = "3. 识别和导入",
+                    title = "4. 识别和导入",
                     lines = listOf(
                         "写完后点右侧的“识别”。",
                         "识别预览里可以先修改标题、DDL、开始结束时间、分组、备注和提醒。",
@@ -579,7 +595,7 @@ private fun PlanningHelpSheet(onDismiss: () -> Unit) {
             }
             item {
                 PlanningHelpCard(
-                    title = "4. 当前限制",
+                    title = "5. 当前限制",
                     lines = listOf(
                         "手机端当前是稳定原文编辑，不是富文本 Markdown 渲染。",
                         "AI 拆解、拖拽排期、甘特图还没有接入。",

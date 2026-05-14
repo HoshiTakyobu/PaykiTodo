@@ -42,6 +42,7 @@ import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -57,10 +58,13 @@ import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.example.todoalarm.data.PlanningNote
+import com.example.todoalarm.data.PlanningImportCandidate
+import com.example.todoalarm.data.PlanningImportResult
 import com.example.todoalarm.data.PlanningParseResult
-import com.example.todoalarm.data.PlanningParsedCandidate
 import com.example.todoalarm.data.PlanningParsedType
+import com.example.todoalarm.data.toPlanningImportCandidate
 import kotlinx.coroutines.launch
+import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import java.util.Locale
@@ -77,7 +81,7 @@ internal fun PlanningDeskPanel(
     onDeleteNote: suspend (Long) -> String?,
     onArchiveNote: suspend (Long) -> String?,
     onParse: (String) -> PlanningParseResult,
-    onImport: suspend (List<PlanningParsedCandidate>, Set<String>, Set<String>) -> String?
+    onImport: suspend (List<PlanningImportCandidate>, Set<String>, String, Long?) -> PlanningImportResult
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -90,13 +94,13 @@ internal fun PlanningDeskPanel(
     var archiveDialog by remember { mutableStateOf(false) }
     var newDialog by remember { mutableStateOf(false) }
     val selectedIds = remember { mutableStateMapOf<String, Boolean>() }
-    val linkedTodoIds = remember { mutableStateMapOf<String, Boolean>() }
+    val editableCandidates = remember { mutableStateListOf<PlanningImportCandidate>() }
 
     LaunchedEffect(activeNote?.id, activeNote?.contentMarkdown) {
         editorValue = TextFieldValue(activeNote?.contentMarkdown.orEmpty())
         parseResult = null
         selectedIds.clear()
-        linkedTodoIds.clear()
+        editableCandidates.clear()
     }
 
     Column(
@@ -162,12 +166,11 @@ internal fun PlanningDeskPanel(
                             val result = onParse(editorValue.text)
                             parseResult = result
                             selectedIds.clear()
-                            linkedTodoIds.clear()
+                            editableCandidates.clear()
                             result.candidates.forEach { candidate ->
-                                selectedIds[candidate.id] = candidate.importable
-                                if (candidate.type == PlanningParsedType.EVENT) {
-                                    linkedTodoIds[candidate.id] = candidate.createLinkedTodo
-                                }
+                                val editable = candidate.toPlanningImportCandidate()
+                                editableCandidates += editable
+                                selectedIds[editable.id] = editable.validate() == null
                             }
                             previewSheetVisible = true
                         }
@@ -221,17 +224,28 @@ internal fun PlanningDeskPanel(
         ) {
             PlanningPreviewSheet(
                 result = requireNotNull(parseResult),
+                candidates = editableCandidates,
                 selectedIds = selectedIds,
-                linkedTodoIds = linkedTodoIds,
+                onCandidateChange = { changed ->
+                    val index = editableCandidates.indexOfFirst { it.id == changed.id }
+                    if (index >= 0) editableCandidates[index] = changed
+                },
                 onImport = {
                     scope.launch {
-                        val message = onImport(
-                            requireNotNull(parseResult).candidates,
+                        val result = onImport(
+                            editableCandidates.toList(),
                             selectedIds.filterValues { it }.keys,
-                            linkedTodoIds.filterValues { it }.keys
+                            editorValue.text,
+                            activeNote?.id
                         )
-                        Toast.makeText(context, message ?: "规划条目已导入", Toast.LENGTH_SHORT).show()
-                        if (message == null) previewSheetVisible = false
+                        Toast.makeText(context, result.message ?: "已导入 ${result.importedCount} 条规划", Toast.LENGTH_SHORT).show()
+                        if (result.message == null) {
+                            result.updatedMarkdown?.let { editorValue = TextFieldValue(it) }
+                            parseResult = null
+                            editableCandidates.clear()
+                            selectedIds.clear()
+                            previewSheetVisible = false
+                        }
                     }
                 }
             )
@@ -356,9 +370,23 @@ private fun PlanningDocumentSheet(
     activeNoteId: Long?,
     onSelect: (Long) -> Unit
 ) {
+    var query by rememberSaveable { mutableStateOf("") }
+    val visibleNotes = remember(notes, query) {
+        val keyword = query.trim()
+        if (keyword.isBlank()) notes else notes.filter { note ->
+            note.title.contains(keyword, ignoreCase = true) || note.contentMarkdown.contains(keyword, ignoreCase = true)
+        }
+    }
     Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text("规划文档", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-        notes.forEach { note ->
+        OutlinedTextField(
+            value = query,
+            onValueChange = { query = it },
+            modifier = Modifier.fillMaxWidth(),
+            label = { Text("搜索文档") },
+            singleLine = true
+        )
+        visibleNotes.forEach { note ->
             Surface(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(18.dp),
@@ -371,6 +399,9 @@ private fun PlanningDocumentSheet(
                 }
             }
         }
+        if (visibleNotes.isEmpty()) {
+            Text("没有匹配的规划文档", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
         Spacer(Modifier.height(16.dp))
     }
 }
@@ -378,27 +409,28 @@ private fun PlanningDocumentSheet(
 @Composable
 private fun PlanningPreviewSheet(
     result: PlanningParseResult,
+    candidates: List<PlanningImportCandidate>,
     selectedIds: MutableMap<String, Boolean>,
-    linkedTodoIds: MutableMap<String, Boolean>,
+    onCandidateChange: (PlanningImportCandidate) -> Unit,
     onImport: () -> Unit
 ) {
+    val invalidSelected = candidates.any { candidate -> selectedIds[candidate.id] == true && candidate.validate() != null }
     Column(modifier = Modifier.fillMaxWidth().padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             Icon(Icons.Rounded.Search, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
             Column(modifier = Modifier.weight(1f)) {
                 Text("识别预览", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-                Text("共 ${result.candidates.size} 行，${result.importableCount} 条可导入。", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text("共 ${result.candidates.size} 行，${candidates.count { it.validate() == null }} 条可导入。可在这里先修正标题、时间、提醒和分组。", color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
-            OutlinedButton(onClick = onImport) { Text("导入选中") }
+            OutlinedButton(onClick = onImport, enabled = !invalidSelected) { Text("导入选中") }
         }
         LazyColumn(modifier = Modifier.fillMaxWidth().height(520.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            items(result.candidates, key = { it.id }) { candidate ->
+            items(candidates, key = { it.id }) { candidate ->
                 PlanningCandidateCard(
                     candidate = candidate,
                     selected = selectedIds[candidate.id] == true,
-                    linkedTodo = linkedTodoIds[candidate.id] == true,
                     onSelectedChange = { selectedIds[candidate.id] = it },
-                    onLinkedTodoChange = { linkedTodoIds[candidate.id] = it }
+                    onCandidateChange = onCandidateChange
                 )
             }
         }
@@ -407,41 +439,115 @@ private fun PlanningPreviewSheet(
 
 @Composable
 private fun PlanningCandidateCard(
-    candidate: PlanningParsedCandidate,
+    candidate: PlanningImportCandidate,
     selected: Boolean,
-    linkedTodo: Boolean,
     onSelectedChange: (Boolean) -> Unit,
-    onLinkedTodoChange: (Boolean) -> Unit
+    onCandidateChange: (PlanningImportCandidate) -> Unit
 ) {
+    val validation = candidate.validate()
+    val canSelect = validation == null
     ElevatedCard(shape = RoundedCornerShape(20.dp)) {
         Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 FilterChip(
                     selected = selected,
-                    onClick = { if (candidate.importable) onSelectedChange(!selected) },
-                    enabled = candidate.importable,
-                    label = { Text(if (candidate.importable) "导入" else "不导入") }
+                    onClick = { if (canSelect) onSelectedChange(!selected) },
+                    enabled = canSelect,
+                    label = { Text(if (canSelect) "导入" else "需修正") }
                 )
                 Text(candidate.type.label(), fontWeight = FontWeight.Bold, color = candidate.type.color())
                 Text("第 ${candidate.lineNumber} 行", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             Text(candidate.sourceLine, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            if (candidate.title.isNotBlank()) Text(candidate.title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-            Text(candidate.timeSummary(), style = MaterialTheme.typography.bodyMedium)
-            if (candidate.groupName.isNotBlank()) Text("分组：${candidate.groupName}", style = MaterialTheme.typography.bodySmall)
-            if (candidate.reminderOffsetsMinutes.isNotEmpty() && candidate.importable) {
-                Text("提醒：${candidate.reminderOffsetsMinutes.joinToString("、") { "提前 ${it} 分钟" }} · 全屏 · 响铃 + 震动", style = MaterialTheme.typography.bodySmall)
+            if (candidate.type == PlanningParsedType.TODO || candidate.type == PlanningParsedType.EVENT) {
+                OutlinedTextField(
+                    value = candidate.title,
+                    onValueChange = { onCandidateChange(candidate.copy(title = it)) },
+                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text("标题") },
+                    singleLine = true
+                )
+                if (candidate.type == PlanningParsedType.TODO) {
+                    PlanningDateTimeField(
+                        label = "DDL",
+                        value = candidate.dueAt,
+                        onChange = { onCandidateChange(candidate.copy(dueAt = it)) }
+                    )
+                } else {
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                        PlanningDateTimeField(
+                            label = "开始",
+                            value = candidate.startAt,
+                            modifier = Modifier.weight(1f),
+                            onChange = { onCandidateChange(candidate.copy(startAt = it)) }
+                        )
+                        PlanningDateTimeField(
+                            label = "结束",
+                            value = candidate.endAt,
+                            modifier = Modifier.weight(1f),
+                            onChange = { onCandidateChange(candidate.copy(endAt = it)) }
+                        )
+                    }
+                }
+                OutlinedTextField(
+                    value = candidate.groupName,
+                    onValueChange = { onCandidateChange(candidate.copy(groupName = it)) },
+                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text("分组") },
+                    singleLine = true
+                )
+                OutlinedTextField(
+                    value = candidate.notes,
+                    onValueChange = { onCandidateChange(candidate.copy(notes = it)) },
+                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text("备注") },
+                    minLines = 1,
+                    maxLines = 3
+                )
+                OutlinedTextField(
+                    value = candidate.reminderOffsetsMinutes.joinToString(","),
+                    onValueChange = { raw -> onCandidateChange(candidate.copy(reminderOffsetsMinutes = parsePlanningReminderOffsets(raw))) },
+                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text("提醒分钟") },
+                    placeholder = { Text("例如 5,15") },
+                    singleLine = true
+                )
+                Text("提醒默认全屏 · 响铃 + 震动", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             if (candidate.type == PlanningParsedType.EVENT) {
                 FilterChip(
-                    selected = linkedTodo,
-                    onClick = { onLinkedTodoChange(!linkedTodo) },
+                    selected = candidate.createLinkedTodo,
+                    onClick = { onCandidateChange(candidate.copy(createLinkedTodo = !candidate.createLinkedTodo)) },
                     label = { Text("同时创建待办，DDL = 日程结束时间") }
                 )
             }
-            if (candidate.message.isNotBlank()) Text(candidate.message, color = if (candidate.type == PlanningParsedType.ERROR) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant)
+            if (validation != null) Text(validation, color = MaterialTheme.colorScheme.error)
+            if (validation == null && candidate.message.isNotBlank()) Text(candidate.message, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
+}
+
+@Composable
+private fun PlanningDateTimeField(
+    label: String,
+    value: LocalDateTime?,
+    modifier: Modifier = Modifier,
+    onChange: (LocalDateTime?) -> Unit
+) {
+    var text by remember(value) { mutableStateOf(value?.let(::planningEditableDateTime).orEmpty()) }
+    val parsed = remember(text) { parsePlanningEditableDateTime(text) }
+    OutlinedTextField(
+        value = text,
+        onValueChange = {
+            text = it
+            onChange(parsePlanningEditableDateTime(it))
+        },
+        modifier = modifier.fillMaxWidth(),
+        label = { Text(label) },
+        placeholder = { Text("05-28 14:30") },
+        singleLine = true,
+        isError = text.isNotBlank() && parsed == null
+    )
 }
 
 @Composable
@@ -558,18 +664,36 @@ private fun PlanningParsedType.color() = when (this) {
     PlanningParsedType.ERROR -> MaterialTheme.colorScheme.error
 }
 
-private fun PlanningParsedCandidate.timeSummary(): String {
-    return when (type) {
-        PlanningParsedType.TODO -> dueAt?.let { "DDL：${planningDateTimeLabel(it)}" } ?: "无 DDL"
-        PlanningParsedType.EVENT -> "${planningDateTimeLabel(startAt)} - ${planningDateTimeLabel(endAt)}" + if (defaultToday) "（默认今天）" else ""
-        PlanningParsedType.SKIPPED -> message.ifBlank { "跳过" }
-        PlanningParsedType.ERROR -> message.ifBlank { "无法识别" }
-    }
-}
-
 private fun planningDateTimeLabel(value: LocalDateTime?): String {
     if (value == null) return "未设置"
     return value.format(DateTimeFormatter.ofPattern("MM-dd HH:mm", Locale.CHINA))
+}
+
+private fun planningEditableDateTime(value: LocalDateTime): String {
+    return value.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm", Locale.CHINA))
+}
+
+private fun parsePlanningEditableDateTime(raw: String): LocalDateTime? {
+    val text = raw.trim().replace('：', ':').replace('T', ' ')
+    if (text.isBlank()) return null
+    runCatching { LocalDateTime.parse(text) }.getOrNull()?.let { return it }
+    listOf("yyyy-MM-dd HH:mm", "yyyy-M-d H:mm", "yyyy.MM.dd HH:mm", "yyyy.M.d H:mm").forEach { pattern ->
+        runCatching { LocalDateTime.parse(text, DateTimeFormatter.ofPattern(pattern, Locale.CHINA)) }.getOrNull()?.let { return it }
+    }
+    val monthDayMatch = Regex("^(\\d{1,2})[-.](\\d{1,2})\\s+(\\d{1,2}):(\\d{2})$").matchEntire(text) ?: return null
+    val month = monthDayMatch.groupValues[1].toIntOrNull() ?: return null
+    val day = monthDayMatch.groupValues[2].toIntOrNull() ?: return null
+    val hour = monthDayMatch.groupValues[3].toIntOrNull() ?: return null
+    val minute = monthDayMatch.groupValues[4].toIntOrNull() ?: return null
+    return runCatching { LocalDateTime.of(LocalDate.now().year, month, day, hour, minute) }.getOrNull()
+}
+
+private fun parsePlanningReminderOffsets(raw: String): List<Int> {
+    return raw.split(',', '，')
+        .mapNotNull { it.trim().toIntOrNull() }
+        .map { it.coerceAtLeast(0) }
+        .distinct()
+        .sortedDescending()
 }
 
 private fun planningMillisLabel(value: Long): String {

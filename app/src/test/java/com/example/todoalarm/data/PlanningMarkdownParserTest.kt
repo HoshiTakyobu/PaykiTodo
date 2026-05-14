@@ -70,4 +70,24 @@ class PlanningMarkdownParserTest {
         assertTrue(todo.importBlocked)
         assertEquals(false, todo.importable)
     }
+
+    @Test
+    fun marksImportedLinesWithoutDuplicatingExistingTag() {
+        val markdown = """
+            - [ ] 第一条 #ddl 5.28
+            - [ ] 第二条 #imported
+            - [ ] 第三条 #ddl 5.29
+        """.trimIndent()
+
+        val updated = PlanningMarkdownParser.markImportedLines(markdown, setOf(1, 2, 3))
+
+        assertEquals(
+            """
+            - [ ] 第一条 #ddl 5.28 #imported
+            - [ ] 第二条 #imported
+            - [ ] 第三条 #ddl 5.29 #imported
+            """.trimIndent(),
+            updated
+        )
+    }
 }

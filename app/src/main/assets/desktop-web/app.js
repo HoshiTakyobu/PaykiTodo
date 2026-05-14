@@ -605,6 +605,14 @@ function planningTimeText(item) {
   return item.message || '';
 }
 
+function editableDateTimeValue(value) {
+  return String(value || '').replace('T', ' ');
+}
+
+function planningEditableField(id, field, label, value, placeholder) {
+  return '<label class="planning-edit-field"><span>' + escapeHtml(label) + '</span><input data-planning-field="' + escapeHtml(field) + '" data-planning-id="' + escapeHtml(id) + '" value="' + escapeHtml(value || '') + '" placeholder="' + escapeHtml(placeholder || '') + '" /></label>';
+}
+
 function renderPlanningPreview() {
   if (!els.planningPreview || !els.planningPreviewMeta) return;
   const result = state.planningParseResult;
@@ -616,9 +624,21 @@ function renderPlanningPreview() {
   const candidates = result.candidates || [];
   els.planningPreviewMeta.textContent = '共 ' + candidates.length + ' 行，' + (result.importableCount || 0) + ' 条可导入。';
   els.planningPreview.innerHTML = candidates.map(item => {
-    const importable = item.importable && !item.imported;
-    const checked = importable ? ' checked' : '';
+    const editable = item.type === 'TODO' || item.type === 'EVENT';
+    const importable = editable ? (!item.imported && !item.completed) : (item.importable && !item.imported);
+    const checked = importable && !item.importBlocked ? ' checked' : '';
     const linked = item.type === 'EVENT' ? '<label class="planning-linked"><input type="checkbox" data-planning-linked="' + escapeHtml(item.id) + '"' + (item.createLinkedTodo ? ' checked' : '') + ' /> 同时创建待办</label>' : '';
+    const editFields = editable ? (
+      '<div class="planning-edit-grid">'
+      + planningEditableField(item.id, 'title', '标题', item.title || '', '任务标题')
+      + planningEditableField(item.id, 'groupName', '分组', item.groupName || '', '例行')
+      + (item.type === 'TODO'
+        ? planningEditableField(item.id, 'dueAt', 'DDL', editableDateTimeValue(item.dueAt), '2026-05-28 14:30')
+        : planningEditableField(item.id, 'startAt', '开始', editableDateTimeValue(item.startAt), '2026-05-28 10:00') + planningEditableField(item.id, 'endAt', '结束', editableDateTimeValue(item.endAt), '2026-05-28 12:00'))
+      + planningEditableField(item.id, 'reminders', '提醒分钟', (item.reminderOffsetsMinutes || []).join(','), '5,15')
+      + '</div>'
+      + '<label class="planning-edit-field full"><span>备注</span><textarea data-planning-field="notes" data-planning-id="' + escapeHtml(item.id) + '" rows="2">' + escapeHtml(item.notes || '') + '</textarea></label>'
+    ) : '';
     return ''
       + '<article class="planning-candidate ' + String(item.type || '').toLowerCase() + '">'
       +   '<div class="planning-candidate-head">'
@@ -627,14 +647,34 @@ function renderPlanningPreview() {
       +     '<span class="muted">第 ' + escapeHtml(item.lineNumber) + ' 行</span>'
       +   '</div>'
       +   '<div class="planning-source">' + escapeHtml(item.sourceLine || '') + '</div>'
-      +   (item.title ? '<div class="planning-title">' + escapeHtml(item.title) + '</div>' : '')
-      +   '<div class="planning-meta-line">' + escapeHtml(planningTimeText(item)) + '</div>'
-      +   (item.groupName ? '<div class="planning-meta-line">分组：' + escapeHtml(item.groupName) + '</div>' : '')
-      +   (importable ? '<div class="planning-meta-line">提醒：' + escapeHtml((item.reminderOffsetsMinutes || []).join(' / ') || '5') + ' 分钟前 · 全屏 · 响铃 + 震动</div>' : '')
+      +   editFields
+      +   (!editable ? '<div class="planning-meta-line">' + escapeHtml(planningTimeText(item)) + '</div>' : '<div class="planning-meta-line">提醒默认全屏 · 响铃 + 震动。</div>')
       +   linked
       +   (item.message ? '<div class="planning-message">' + escapeHtml(item.message) + '</div>' : '')
       + '</article>';
   }).join('') || '<div class="empty-state">没有识别结果。</div>';
+}
+
+function collectPlanningCandidates() {
+  const base = ((state.planningParseResult && state.planningParseResult.candidates) || []).map(item => ({ ...item }));
+  const byId = new Map(base.map(item => [String(item.id), item]));
+  document.querySelectorAll('[data-planning-field]').forEach(node => {
+    const item = byId.get(String(node.dataset.planningId));
+    if (!item) return;
+    const value = node.value || '';
+    if (node.dataset.planningField === 'reminders') {
+      item.reminderOffsetsMinutes = value.split(/[,，]/).map(token => Number(token.trim())).filter(Number.isFinite).map(value => Math.max(0, Math.floor(value)));
+    } else if (['dueAt', 'startAt', 'endAt'].includes(node.dataset.planningField)) {
+      item[node.dataset.planningField] = value.trim().replace(' ', 'T') || null;
+    } else {
+      item[node.dataset.planningField] = value;
+    }
+  });
+  document.querySelectorAll('[data-planning-linked]').forEach(node => {
+    const item = byId.get(String(node.dataset.planningLinked));
+    if (item) item.createLinkedTodo = node.checked;
+  });
+  return base;
 }
 
 async function savePlanningNote() {
@@ -669,12 +709,18 @@ async function parsePlanningEditor() {
 async function importSelectedPlanning() {
   if (!state.planningParseResult) await parsePlanningEditor();
   const selectedIds = Array.from(document.querySelectorAll('[data-planning-select]:checked')).map(node => node.dataset.planningSelect);
-  const linkedTodoIds = Array.from(document.querySelectorAll('[data-planning-linked]:checked')).map(node => node.dataset.planningLinked);
+  const active = activePlanningNote();
   const result = await api('/api/planning/import', {
     method: 'POST',
-    body: JSON.stringify({ markdown: els.planningEditor.value, selectedIds, linkedTodoIds })
+    body: JSON.stringify({ markdown: els.planningEditor.value, selectedIds, candidates: collectPlanningCandidates(), noteId: active && active.id })
   });
+  if (result.updatedMarkdown != null) {
+    els.planningEditor.value = result.updatedMarkdown;
+    state.planningParseResult = null;
+    renderPlanningPreview();
+  }
   els.status.textContent = '已导入 ' + (result.imported || 0) + ' 条规划内容';
+  await loadPlanningNotes();
   await loadSnapshot();
 }
 

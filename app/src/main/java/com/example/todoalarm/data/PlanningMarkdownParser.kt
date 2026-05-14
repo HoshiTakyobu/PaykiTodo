@@ -47,6 +47,21 @@ data class PlanningParsedCandidate(
 }
 
 object PlanningMarkdownParser {
+    fun markImportedLines(markdown: String, importedLineNumbers: Set<Int>): String {
+        if (markdown.isEmpty() || importedLineNumbers.isEmpty()) return markdown
+        val hasTrailingNewline = markdown.endsWith("\n") || markdown.endsWith("\r")
+        val normalized = markdown.replace("\r\n", "\n").replace('\r', '\n')
+        val updated = normalized.lines().mapIndexed { index, line ->
+            val lineNumber = index + 1
+            if (lineNumber !in importedLineNumbers || line.isBlank() || hasSimpleTag(line, "imported")) {
+                line
+            } else {
+                "$line #imported"
+            }
+        }.joinToString("\n")
+        return if (hasTrailingNewline && !updated.endsWith("\n")) "$updated\n" else updated
+    }
+
     fun parse(
         markdown: String,
         now: LocalDateTime = LocalDateTime.now()

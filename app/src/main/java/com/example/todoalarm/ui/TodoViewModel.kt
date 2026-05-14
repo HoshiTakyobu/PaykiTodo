@@ -13,10 +13,11 @@ import com.example.todoalarm.alarm.ReminderForegroundService
 import com.example.todoalarm.data.AppSettings
 import com.example.todoalarm.data.CalendarEventDraft
 import com.example.todoalarm.data.DEFAULT_PLANNING_REMINDER_MINUTES
+import com.example.todoalarm.data.PlanningImportCandidate
+import com.example.todoalarm.data.PlanningImportResult
 import com.example.todoalarm.data.PlanningMarkdownParser
 import com.example.todoalarm.data.PlanningNote
 import com.example.todoalarm.data.PlanningParseResult
-import com.example.todoalarm.data.PlanningParsedCandidate
 import com.example.todoalarm.data.PlanningParsedType
 import com.example.todoalarm.data.RecurrenceScope
 import com.example.todoalarm.data.RecurrenceType
@@ -233,20 +234,22 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     suspend fun importPlanningCandidates(
-        candidates: List<PlanningParsedCandidate>,
+        candidates: List<PlanningImportCandidate>,
         selectedIds: Set<String>,
-        linkedTodoIds: Set<String>
-    ): String? {
-        val selected = candidates.filter { it.id in selectedIds && it.importable && !it.imported }
-        if (selected.isEmpty()) return "没有可导入的规划条目"
+        currentMarkdown: String,
+        activeNoteId: Long?
+    ): PlanningImportResult {
+        val selected = candidates.filter { it.id in selectedIds && it.importable }
+        if (selected.isEmpty()) return PlanningImportResult(message = "没有可导入的规划条目")
         val groups = repository.getAllGroups().ifEmpty { repository.ensureDefaultGroups() }
 
         selected.forEachIndexed { index, candidate ->
+            candidate.validate()?.let { return PlanningImportResult(message = "第 ${index + 1} 条：$it") }
             when (candidate.type) {
                 PlanningParsedType.TODO -> validateDraft(candidate.toTodoDraft(groups), null, RecurrenceScope.CURRENT)
                 PlanningParsedType.EVENT -> validateCalendarDraft(candidate.toEventDraft(groups), null, RecurrenceScope.CURRENT)
                 else -> null
-            }?.let { return "第 ${index + 1} 条：$it" }
+            }?.let { return PlanningImportResult(message = "第 ${index + 1} 条：$it") }
         }
 
         selected.forEach { candidate ->
@@ -259,7 +262,7 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
                     val eventDraft = candidate.toEventDraft(groups)
                     val createdEvents = repository.createCalendarEventFromDraft(eventDraft)
                     createdEvents.forEach { scheduleReminderOrDisable(it) }
-                    if (candidate.id in linkedTodoIds) {
+                    if (candidate.createLinkedTodo) {
                         val linked = repository.createFromDraft(candidate.toLinkedTodoDraft(groups))
                         linked.forEach { scheduleReminderOrDisable(it) }
                     }
@@ -267,8 +270,13 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
                 else -> Unit
             }
         }
+        val updatedMarkdown = PlanningMarkdownParser.markImportedLines(currentMarkdown, selected.map { it.lineNumber }.toSet())
+        if (activeNoteId != null) {
+            repository.updatePlanningNoteContent(activeNoteId, updatedMarkdown)
+            settingsStore.updateLastOpenedPlanningNoteId(activeNoteId)
+        }
         autoBackupIfEnabled()
-        return null
+        return PlanningImportResult(importedCount = selected.size, updatedMarkdown = updatedMarkdown)
     }
 
     suspend fun addTodo(draft: TodoDraft): String? {
@@ -687,7 +695,7 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    private fun PlanningParsedCandidate.toTodoDraft(groups: List<TaskGroup>): TodoDraft {
+    private fun PlanningImportCandidate.toTodoDraft(groups: List<TaskGroup>): TodoDraft {
         return TodoDraft(
             title = title,
             notes = notes,
@@ -697,11 +705,11 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
             ringEnabled = true,
             vibrateEnabled = true,
             recurrence = RecurrenceConfig(),
-            reminderOffsetsMinutes = if (dueAt == null) emptyList() else reminderOffsetsMinutes.ifEmpty { listOf(DEFAULT_PLANNING_REMINDER_MINUTES) }
+            reminderOffsetsMinutes = if (dueAt == null) emptyList() else normalizedReminderOffsets().ifEmpty { listOf(DEFAULT_PLANNING_REMINDER_MINUTES) }
         )
     }
 
-    private fun PlanningParsedCandidate.toLinkedTodoDraft(groups: List<TaskGroup>): TodoDraft {
+    private fun PlanningImportCandidate.toLinkedTodoDraft(groups: List<TaskGroup>): TodoDraft {
         val ddl = requireNotNull(endAt) { "Linked todo requires event end time" }
         return TodoDraft(
             title = title,
@@ -715,11 +723,12 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
             ringEnabled = true,
             vibrateEnabled = true,
             recurrence = RecurrenceConfig(),
-            reminderOffsetsMinutes = reminderOffsetsMinutes.ifEmpty { listOf(DEFAULT_PLANNING_REMINDER_MINUTES) }
+            reminderOffsetsMinutes = normalizedReminderOffsets().ifEmpty { listOf(DEFAULT_PLANNING_REMINDER_MINUTES) }
         )
     }
 
-    private fun PlanningParsedCandidate.toEventDraft(groups: List<TaskGroup>): CalendarEventDraft {
+    private fun PlanningImportCandidate.toEventDraft(groups: List<TaskGroup>): CalendarEventDraft {
+        val offsets = normalizedReminderOffsets().ifEmpty { listOf(DEFAULT_PLANNING_REMINDER_MINUTES) }
         return CalendarEventDraft(
             title = title,
             notes = notes,
@@ -728,8 +737,8 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
             endAt = requireNotNull(endAt) { "Event requires endAt" },
             allDay = false,
             accentColorHex = groups.firstOrNull { it.name == groupName }?.colorHex ?: "#4E87E1",
-            reminderMinutesBefore = reminderOffsetsMinutes.firstOrNull() ?: DEFAULT_PLANNING_REMINDER_MINUTES,
-            reminderOffsetsMinutes = reminderOffsetsMinutes.ifEmpty { listOf(DEFAULT_PLANNING_REMINDER_MINUTES) },
+            reminderMinutesBefore = offsets.firstOrNull() ?: DEFAULT_PLANNING_REMINDER_MINUTES,
+            reminderOffsetsMinutes = offsets,
             ringEnabled = true,
             vibrateEnabled = true,
             reminderDeliveryMode = ReminderDeliveryMode.FULLSCREEN,

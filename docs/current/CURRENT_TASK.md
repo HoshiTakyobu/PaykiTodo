@@ -2,35 +2,30 @@
 
 ## Active Development Focus
 
-The current round implements PaykiTodo Planning Desk Phase 1 and bumps the app to `1.7.0` / `versionCode 157`.
+The current round implements PaykiTodo Planning Desk Phase 2 and bumps the app to `1.7.1` / `versionCode 158`.
 
-Planning Desk is intended to cover the user's upstream workflow before final DDL/reminder execution: write rough plans like a memo or Obsidian note, locally recognize useful lines, preview them, then import selected entries into existing PaykiTodo todos and calendar events.
+Phase 2 keeps the Planning Desk scope practical: no AI dependency, no drag/drop planning, no Gantt chart, and no complex project tree. The goal is to make the existing memo-like planning workflow safer and more usable for daily work.
 
 Completed in this round:
 
-1. Added Room table `planning_notes` with database migration `8 -> 9`.
-2. Added multi-document planning support: create, open, rename, archive, delete, and last-opened document restoration.
-3. Added `PlanningMarkdownParser`, a local rule parser with no AI dependency.
-4. Parser supports markdown checkbox todos, completed-task skipping, subtasks as independent todos with parent metadata, date headings, common DDL date/time formats, `#ddl`, `#remind`, `#group`, `#schedule`, and natural schedule ranges such as `10:00-12:30 作业1`.
-5. Added phone-side drawer entry `规划台` and a Markdown-style planning editor.
-6. Added phone-side shortcut bar for task, subtask, indent, outdent, DDL, schedule, reminder, group, today, and tomorrow.
-7. Added preview-first import. Selected candidates can be imported as todos/events; natural events default to also creating a linked todo whose DDL is the event end time.
-8. Planning Desk imports default to 5 minutes before, full-screen, ring + vibration.
-9. Planning notes are included in JSON backup / restore snapshots.
-10. Added desktop web `规划台` tab with document selector, textarea editor, save, parse preview, and selected import.
-11. Added desktop sync APIs under `/api/planning/*` for notes, parse, and import.
-12. Updated README, CHANGELOG, TODO, docs/current, and in-app Wiki for the new workflow.
-13. `node --check app/src/main/assets/desktop-web/app.js`, `git diff --check`, and `./gradlew.bat assembleDebug` succeeded.
+1. Added document search in the phone Planning Desk document sheet. Search matches title and Markdown content.
+2. Added editable phone-side recognition preview cards. Before import, the user can adjust title, group, notes, todo DDL, event start/end, reminder offsets, and event linked-todo creation.
+3. Added shared `PlanningImportCandidate` / `PlanningImportResult` models so edited preview data can flow through the same import path.
+4. Added automatic `#imported` write-back after a successful import. The current planning document is updated immediately to reduce duplicate imports.
+5. Added `PlanningMarkdownParser.markImportedLines` with unit-test coverage for appending the marker without duplicating an existing one.
+6. Updated desktop web Planning Desk preview cards to support inline editing before import.
+7. Updated `/api/planning/import` to accept edited candidates, validate them, import selected candidates, write back `#imported`, and return `updatedMarkdown`.
+8. Kept Planning Desk import defaults at 5 minutes before, full-screen, ring + vibration.
+9. Updated README, CHANGELOG, TODO, docs/current, and in-app Wiki for `1.7.1`.
 
 ## Immediate Practical Next Steps
 
 When testing, use:
 
-1. install `app/build/outputs/apk/debug/PaykiTodo-1.7.0-debug.apk`
+1. install `app/build/outputs/apk/debug/PaykiTodo-1.7.1-debug.apk`
 2. open drawer -> `规划台`
-3. verify the default `我的规划` document appears
-4. create a second document, switch between documents, rename it, and test delete confirmation
-5. type examples:
+3. verify document search filters by title and content
+4. type examples:
 
 ```markdown
 # 明天
@@ -40,20 +35,20 @@ When testing, use:
 10:00-12:30 作业1
 ```
 
-6. tap `识别`, verify preview types, default-today labels, reminders, and linked todo checkbox
-7. import selected entries and verify they appear in My Tasks / Calendar
-8. enable desktop sync, open desktop web, switch to `规划台`, edit/save/parse/import the same note
+5. tap `识别`, edit title/group/notes/time/reminder fields in preview, then import selected entries
+6. verify imported todos/events appear in My Tasks / Calendar
+7. verify imported source lines are automatically appended with `#imported`
+8. enable desktop sync, open desktop web, switch to `规划台`, edit preview fields, import, and verify the editor text receives `#imported`
 
 ## Deferred From The User's Larger Request
 
 - No drag-and-drop planning.
 - No Gantt chart.
 - No AI auto-planning or paid model dependency.
-- No complex project tree; subtasks are independent todos with parent metadata in notes.
-- Phone editor is plain text, not Markdown highlighting or rich text.
-- Desktop web Planning Desk is intentionally `textarea + preview`; phone-parity visual design can be improved later.
-- Parser has build validation but not a dedicated JVM unit-test suite yet.
+- No complex project tree; subtasks remain independent todos with parent metadata in notes.
+- Phone editor remains plain text, not Markdown highlighting or rich text.
+- Desktop web Planning Desk remains a textarea plus preview layout, now with editable preview fields.
 
 ## Current External Dependency
 
-No external file is needed for the current `1.7.0` verification task.
+No external file is needed for the current `1.7.1` verification task.

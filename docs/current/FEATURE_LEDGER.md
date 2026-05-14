@@ -47,6 +47,8 @@ This file tracks the product at a practical level for new coding sessions.
 - local rule parser recognizes markdown checkboxes, completed-task skip, subtask parent notes, date headings, DDL tags, reminder tags, group tags, schedule tags, and natural schedule ranges
 - natural schedule import can create both a calendar event and a linked todo whose DDL equals the event end time
 - planning import is preview-first and selection-based, not immediate database writes
+- planning preview cards are editable before import for title, group, notes, DDL/start/end times, reminder offsets, and event linked-todo creation
+- successful planning import appends `#imported` to imported source lines and saves the active planning note to reduce duplicate imports
 - default Planning Desk import reminder is 5 minutes before, full-screen, ring + vibration
 - planning notes are included in JSON backup / restore snapshots
 
@@ -131,8 +133,8 @@ This file tracks the product at a practical level for new coding sessions.
 - desktop web event timeline no longer shows the separate all-day strip above the timeline
 - desktop web shows the installed APK version in the brand block and uses runtime versioned CSS / JS URLs
 - desktop sync service self-stops if Android restarts it while desktop sync is disabled in Settings
-- desktop web has a `规划台` tab with textarea editor, document selector, save, parse preview, and selected import
-- desktop web Planning Desk uses phone-local `/api/planning/*` routes and edits the same Room planning notes as the phone UI
+- desktop web has a `规划台` tab with textarea editor, document selector, save, editable parse preview, and selected import
+- desktop web Planning Desk uses phone-local `/api/planning/*` routes, edits the same Room planning notes as the phone UI, and writes back `#imported` markers after import
 
 ### Destructive Action Safety
 

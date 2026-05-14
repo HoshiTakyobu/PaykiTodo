@@ -90,7 +90,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.todoalarm.R
 import com.example.todoalarm.data.CalendarEventDraft
-import com.example.todoalarm.data.PlanningParsedCandidate
+import com.example.todoalarm.data.PlanningImportCandidate
+import com.example.todoalarm.data.PlanningImportResult
 import com.example.todoalarm.data.PlanningParseResult
 import com.example.todoalarm.data.ReminderDeliveryMode
 import com.example.todoalarm.data.ReminderAudioChannel
@@ -378,7 +379,7 @@ internal fun DashboardBody(
     onDeletePlanningNote: suspend (Long) -> String?,
     onArchivePlanningNote: suspend (Long) -> String?,
     onParsePlanningMarkdown: (String) -> PlanningParseResult,
-    onImportPlanningCandidates: suspend (List<PlanningParsedCandidate>, Set<String>, Set<String>) -> String?
+    onImportPlanningCandidates: suspend (List<PlanningImportCandidate>, Set<String>, String, Long?) -> PlanningImportResult
 ) {
     if (section == DashboardSection.CALENDAR) {
         Box(

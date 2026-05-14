@@ -8,10 +8,12 @@ import com.example.todoalarm.alarm.ReminderForegroundService
 import com.example.todoalarm.data.AppSettingsStore
 import com.example.todoalarm.data.CalendarEventDraft
 import com.example.todoalarm.data.DEFAULT_PLANNING_REMINDER_MINUTES
+import com.example.todoalarm.data.PlanningImportCandidate
 import com.example.todoalarm.data.PlanningMarkdownParser
 import com.example.todoalarm.data.PlanningNote
 import com.example.todoalarm.data.PlanningParsedCandidate
 import com.example.todoalarm.data.PlanningParsedType
+import com.example.todoalarm.data.toPlanningImportCandidate
 import com.example.todoalarm.data.RecurrenceConfig
 import com.example.todoalarm.data.RecurrenceScope
 import com.example.todoalarm.data.RecurrenceType
@@ -31,7 +33,9 @@ import java.net.NetworkInterface
 import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
 import java.util.Collections
+import java.util.Locale
 
 class DesktopSyncCoordinator(
     private val context: Context,
@@ -336,11 +340,15 @@ class DesktopSyncCoordinator(
     private fun importPlanning(json: JSONObject): JSONObject {
         val markdown = json.optString("markdown")
         val selectedIds = json.optJSONArray("selectedIds")?.toStringSet().orEmpty()
-        val linkedTodoIds = json.optJSONArray("linkedTodoIds")?.toStringSet().orEmpty()
         val result = PlanningMarkdownParser.parse(markdown)
+        val editedCandidates = json.optJSONArray("candidates")?.toPlanningImportCandidates(result.candidates).orEmpty()
+        val sourceCandidates = if (editedCandidates.isNotEmpty()) editedCandidates else result.candidates.map { it.toPlanningImportCandidate() }
         val groups = runBlocking { app.repository.getAllGroups().ifEmpty { app.repository.ensureDefaultGroups() } }
-        val selected = result.candidates.filter { it.id in selectedIds && it.importable && !it.imported }
+        val selected = sourceCandidates.filter { it.id in selectedIds && it.importable }
         require(selected.isNotEmpty()) { "没有可导入的规划条目" }
+        selected.forEachIndexed { index, candidate ->
+            candidate.validate()?.let { error("第 ${index + 1} 条：$it") }
+        }
         selected.forEach { candidate ->
             when (candidate.type) {
                 PlanningParsedType.TODO -> {
@@ -350,7 +358,7 @@ class DesktopSyncCoordinator(
                 PlanningParsedType.EVENT -> {
                     val created = runBlocking { app.repository.createCalendarEventFromDraft(candidate.toPlanningEventDraft(groups)) }
                     created.forEach(::scheduleReminderOrDisable)
-                    if (candidate.id in linkedTodoIds) {
+                    if (candidate.createLinkedTodo) {
                         val linked = runBlocking { app.repository.createFromDraft(candidate.toPlanningLinkedTodoDraft(groups)) }
                         linked.forEach(::scheduleReminderOrDisable)
                     }
@@ -358,8 +366,16 @@ class DesktopSyncCoordinator(
                 else -> Unit
             }
         }
+        val updatedMarkdown = PlanningMarkdownParser.markImportedLines(markdown, selected.map { it.lineNumber }.toSet())
+        val noteId = json.optLong("noteId", 0L).takeIf { it > 0L }
+        if (noteId != null) {
+            runBlocking { app.repository.updatePlanningNoteContent(noteId, updatedMarkdown) }
+            settingsStore.updateLastOpenedPlanningNoteId(noteId)
+        }
         autoBackupIfNeeded()
-        return JSONObject().put("imported", selected.size)
+        return JSONObject()
+            .put("imported", selected.size)
+            .put("updatedMarkdown", updatedMarkdown)
     }
 
     private fun resolveGroupId(json: JSONObject): Long {
@@ -630,7 +646,40 @@ private fun PlanningParsedCandidate.toPlanningCandidateJson(): JSONObject {
         .put("importable", importable)
 }
 
-private fun PlanningParsedCandidate.toPlanningTodoDraft(groups: List<com.example.todoalarm.data.TaskGroup>): TodoDraft {
+private fun JSONArray.toPlanningImportCandidates(fallback: List<PlanningParsedCandidate>): List<PlanningImportCandidate> {
+    val fallbackById = fallback.associateBy { it.id }
+    return (0 until length()).mapNotNull { index ->
+        val json = optJSONObject(index) ?: return@mapNotNull null
+        val base = fallbackById[json.optString("id")]?.toPlanningImportCandidate() ?: return@mapNotNull null
+        base.copy(
+            title = json.optString("title", base.title),
+            notes = json.optString("notes", base.notes),
+            groupName = json.optString("groupName", base.groupName),
+            dueAt = parsePlanningImportDateTime(json.optStringOrNull("dueAt")),
+            startAt = parsePlanningImportDateTime(json.optStringOrNull("startAt")),
+            endAt = parsePlanningImportDateTime(json.optStringOrNull("endAt")),
+            reminderOffsetsMinutes = json.optJSONArray("reminderOffsetsMinutes")?.toIntList().orEmpty(),
+            createLinkedTodo = json.optBoolean("createLinkedTodo", base.createLinkedTodo)
+        )
+    }
+}
+
+private fun parsePlanningImportDateTime(raw: String?): LocalDateTime? {
+    val text = raw.orEmpty().trim().replace('：', ':').replace('T', ' ')
+    if (text.isBlank()) return null
+    runCatching { LocalDateTime.parse(text.replace(' ', 'T')) }.getOrNull()?.let { return it }
+    listOf("yyyy-MM-dd HH:mm", "yyyy-M-d H:mm", "yyyy.MM.dd HH:mm", "yyyy.M.d H:mm").forEach { pattern ->
+        runCatching { LocalDateTime.parse(text, DateTimeFormatter.ofPattern(pattern, Locale.CHINA)) }.getOrNull()?.let { return it }
+    }
+    val monthDay = Regex("^(\\d{1,2})[-.](\\d{1,2})\\s+(\\d{1,2}):(\\d{2})$").matchEntire(text) ?: return null
+    val month = monthDay.groupValues[1].toIntOrNull() ?: return null
+    val day = monthDay.groupValues[2].toIntOrNull() ?: return null
+    val hour = monthDay.groupValues[3].toIntOrNull() ?: return null
+    val minute = monthDay.groupValues[4].toIntOrNull() ?: return null
+    return runCatching { LocalDateTime.of(LocalDate.now().year, month, day, hour, minute) }.getOrNull()
+}
+
+private fun PlanningImportCandidate.toPlanningTodoDraft(groups: List<com.example.todoalarm.data.TaskGroup>): TodoDraft {
     return TodoDraft(
         title = title,
         notes = notes,
@@ -640,11 +689,11 @@ private fun PlanningParsedCandidate.toPlanningTodoDraft(groups: List<com.example
         ringEnabled = true,
         vibrateEnabled = true,
         recurrence = RecurrenceConfig(),
-        reminderOffsetsMinutes = if (dueAt == null) emptyList() else reminderOffsetsMinutes.ifEmpty { listOf(DEFAULT_PLANNING_REMINDER_MINUTES) }
+        reminderOffsetsMinutes = if (dueAt == null) emptyList() else normalizedReminderOffsets().ifEmpty { listOf(DEFAULT_PLANNING_REMINDER_MINUTES) }
     )
 }
 
-private fun PlanningParsedCandidate.toPlanningLinkedTodoDraft(groups: List<com.example.todoalarm.data.TaskGroup>): TodoDraft {
+private fun PlanningImportCandidate.toPlanningLinkedTodoDraft(groups: List<com.example.todoalarm.data.TaskGroup>): TodoDraft {
     val ddl = requireNotNull(endAt) { "日程结束时间不存在" }
     return TodoDraft(
         title = title,
@@ -658,11 +707,12 @@ private fun PlanningParsedCandidate.toPlanningLinkedTodoDraft(groups: List<com.e
         ringEnabled = true,
         vibrateEnabled = true,
         recurrence = RecurrenceConfig(),
-        reminderOffsetsMinutes = reminderOffsetsMinutes.ifEmpty { listOf(DEFAULT_PLANNING_REMINDER_MINUTES) }
+        reminderOffsetsMinutes = normalizedReminderOffsets().ifEmpty { listOf(DEFAULT_PLANNING_REMINDER_MINUTES) }
     )
 }
 
-private fun PlanningParsedCandidate.toPlanningEventDraft(groups: List<com.example.todoalarm.data.TaskGroup>): CalendarEventDraft {
+private fun PlanningImportCandidate.toPlanningEventDraft(groups: List<com.example.todoalarm.data.TaskGroup>): CalendarEventDraft {
+    val offsets = normalizedReminderOffsets().ifEmpty { listOf(DEFAULT_PLANNING_REMINDER_MINUTES) }
     return CalendarEventDraft(
         title = title,
         notes = notes,
@@ -671,8 +721,8 @@ private fun PlanningParsedCandidate.toPlanningEventDraft(groups: List<com.exampl
         endAt = requireNotNull(endAt) { "日程结束时间不存在" },
         allDay = false,
         accentColorHex = groups.firstOrNull { it.name == groupName }?.colorHex ?: "#4E87E1",
-        reminderMinutesBefore = reminderOffsetsMinutes.firstOrNull() ?: DEFAULT_PLANNING_REMINDER_MINUTES,
-        reminderOffsetsMinutes = reminderOffsetsMinutes.ifEmpty { listOf(DEFAULT_PLANNING_REMINDER_MINUTES) },
+        reminderMinutesBefore = offsets.firstOrNull() ?: DEFAULT_PLANNING_REMINDER_MINUTES,
+        reminderOffsetsMinutes = offsets,
         ringEnabled = true,
         vibrateEnabled = true,
         reminderDeliveryMode = com.example.todoalarm.data.ReminderDeliveryMode.FULLSCREEN,

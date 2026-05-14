@@ -2,27 +2,26 @@
 
 ## Active Development Focus
 
-The current round implements PaykiTodo Planning Desk Markdown rendering and bumps the app to `1.7.2` / `versionCode 159`.
+The current round hotfixes the PaykiTodo `1.7.2` Planning Desk startup crash and bumps the app to `1.7.3` / `versionCode 160`.
 
-The goal is to make the phone Planning Desk feel closer to Obsidian-style task notes: the app still stores raw Markdown, but the default reading surface renders task syntax into visible UI instead of showing `- [ ]` / `- [x]` as plain text.
+The `1.7.2` Markdown rendering work made the phone Planning Desk feel closer to Obsidian-style task notes, but it also made app startup risky when the last opened page was Planning Desk. The `1.7.3` hotfix keeps Markdown rendering opt-in so a bad document cannot block app launch.
 
 Completed in this round:
 
-1. Added phone-side Planning Desk reading/preview mode and kept a separate `编辑全文` mode for raw Markdown editing.
-2. Rendered Markdown headings as visual heading levels.
-3. Rendered `- [ ]` / `- [x]` task lines as checkbox rows, including indentation for subtasks.
-4. Rendered `#tag` tokens as compact pills and `#imported` as an `已导入` state pill.
-5. Allowed tapping a rendered checkbox to toggle the underlying Markdown line between `- [ ]` and `- [x]`; this only edits the planning document and does not directly complete imported todos.
-6. Kept the underlying Markdown storage unchanged so parsing, import, backup, and desktop sync continue to operate on the original text.
-7. Added future AI planning guidance to `docs/current/PLANNING_DESK_DESIGN.md`: local rules first, optional OpenAI-compatible providers, user-supplied keys, preview-first confirmation, and no direct database mutation by AI.
+1. Changed Planning Desk startup behavior so it always enters `编辑全文` first instead of auto-rendering old Markdown.
+2. Kept rendered Markdown preview available only after the user taps `预览`.
+3. Added preview parse/render failure protection with a fallback path back to `编辑全文`.
+4. Replaced the experimental `FlowRow` preview layout with simpler `Column` / `Row` layout to reduce device compatibility risk.
+5. Preserved the `1.7.2` Markdown rendering features: headings, task checkboxes, subtask indentation, tag pills, imported-state pills, and checkbox-to-Markdown toggling.
 
 ## Immediate Practical Next Steps
 
 When testing, use:
 
-1. install `app/build/outputs/apk/debug/PaykiTodo-1.7.2-debug.apk`
-2. open drawer -> `规划台`
-3. write raw Markdown in `编辑全文` mode:
+1. install `app/build/outputs/apk/debug/PaykiTodo-1.7.3-debug.apk`
+2. open the app and verify it no longer crashes on launch
+3. open drawer -> `规划台`; it should enter `编辑全文` first
+4. write raw Markdown:
 
 ```markdown
 # 20260405待办
@@ -32,10 +31,10 @@ When testing, use:
   - [ ] 子任务示例 #ddl 5.28
 ```
 
-4. switch to `预览`
-5. verify headings, checkboxes, subtask indentation, tag pills, and imported-state pill render correctly
-6. tap a checkbox in preview and verify the raw Markdown line changes between `- [ ]` and `- [x]` after returning to `编辑全文`
-7. verify `识别` and import still work from the same Markdown content
+5. switch to `预览`
+6. verify headings, checkboxes, subtask indentation, tag pills, and imported-state pill render correctly
+7. tap a checkbox in preview and verify the raw Markdown line changes between `- [ ]` and `- [x]` after returning to `编辑全文`
+8. verify `识别` and import still work from the same Markdown content
 
 ## Deferred From The User's Larger Request
 
@@ -48,4 +47,4 @@ When testing, use:
 
 ## Current External Dependency
 
-No external file or API key is needed for the current `1.7.2` verification task.
+No external file or API key is needed for the current `1.7.3` verification task.

@@ -6,21 +6,20 @@ Long-running Codex sessions can become unreliable. This file exists so a new ses
 
 ## Current Handoff Summary
 
-- The project is currently at code version `1.7.2` / `versionCode 159`.
-- Latest debug APK path after build: `app/build/outputs/apk/debug/PaykiTodo-1.7.2-debug.apk`.
+- The project is currently at code version `1.7.3` / `versionCode 160`.
+- Latest debug APK path after build: `app/build/outputs/apk/debug/PaykiTodo-1.7.3-debug.apk`.
 - Latest build command used Android Studio bundled JBR and succeeded:
   - `./gradlew.bat assembleDebug`
-- This round implemented phone-side Planning Desk Markdown rendering.
+- This round hotfixed the phone-side Planning Desk Markdown rendering startup crash.
 - Planning Desk is available on the phone drawer and desktop web console, with editable preview, automatic `#imported` write-back, and phone-side rendered Markdown reading mode.
 
-## Latest Fixes In 1.7.2
+## Latest Fixes In 1.7.3
 
-1. Added phone-side Planning Desk Markdown reading mode.
-2. Rendered headings, task checkboxes, subtask indentation, tag pills, and imported-state pills.
-3. Added `编辑全文 / 预览` switching so raw Markdown remains available for editing.
-4. Tapping a rendered checkbox toggles the raw Markdown line between `- [ ]` and `- [x]` without directly completing imported todos.
-5. Added AI planning assistant guidance to Planning Desk design docs without implementing AI calls in this version.
-6. README, CHANGELOG, TODO, docs/current, and Wiki were updated for the Markdown rendering workflow.
+1. Planning Desk now always starts in raw `编辑全文` mode instead of auto-rendering old Markdown during app launch.
+2. Markdown preview remains available only when the user taps `预览`.
+3. Markdown preview has parse/render failure protection and a fallback back to `编辑全文`.
+4. Experimental `FlowRow` preview layout was replaced with simpler `Column` / `Row` layout to reduce device compatibility risk.
+5. README, CHANGELOG, TODO, docs/current, and Wiki were updated for `1.7.3`.
 
 ## Files Most Relevant To The Latest Round
 
@@ -48,9 +47,10 @@ Long-running Codex sessions can become unreliable. This file exists so a new ses
 
 ## Current Verification Focus
 
-1. Install `PaykiTodo-1.7.2-debug.apk`.
-2. Verify drawer -> `规划台` opens and creates/loads `我的规划`.
-3. Verify `编辑全文 / 预览` switching.
+1. Install `PaykiTodo-1.7.3-debug.apk`.
+2. Verify the app no longer crashes immediately after launch.
+3. Verify drawer -> `规划台` opens in `编辑全文` mode.
+4. Verify `编辑全文 / 预览` switching.
 4. Verify rendered headings, checkboxes, tag pills, subtask indentation, and imported-state pills.
 5. Verify tapping a rendered checkbox changes the raw Markdown checkbox state.
 6. Verify parsing examples:

@@ -6,8 +6,6 @@ import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -99,7 +97,7 @@ internal fun PlanningDeskPanel(
     var deleteDialog by remember { mutableStateOf(false) }
     var archiveDialog by remember { mutableStateOf(false) }
     var newDialog by remember { mutableStateOf(false) }
-    var markdownEditMode by rememberSaveable(activeNote?.id) { mutableStateOf(activeNote?.contentMarkdown.isNullOrBlank()) }
+    var markdownEditMode by rememberSaveable(activeNote?.id) { mutableStateOf(true) }
     val selectedIds = remember { mutableStateMapOf<String, Boolean>() }
     val editableCandidates = remember { mutableStateListOf<PlanningImportCandidate>() }
 
@@ -108,7 +106,8 @@ internal fun PlanningDeskPanel(
         parseResult = null
         selectedIds.clear()
         editableCandidates.clear()
-        markdownEditMode = activeNote?.contentMarkdown.isNullOrBlank()
+        // Never render old planning documents during app startup. Preview is opt-in to avoid a bad document crashing launch.
+        markdownEditMode = true
     }
 
     Column(
@@ -394,12 +393,25 @@ private fun PlanningMarkdownPreview(
     onToggleCheckbox: (Int) -> Unit,
     onRequestEdit: () -> Unit
 ) {
-    val lines = remember(markdown) { parsePlanningMarkdownLines(markdown) }
+    val parsedLines = remember(markdown) { runCatching { parsePlanningMarkdownLines(markdown) } }
     ElevatedCard(
         modifier = modifier,
         shape = RoundedCornerShape(22.dp),
         colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.92f))
     ) {
+        if (parsedLines.isFailure) {
+            Column(
+                modifier = Modifier.fillMaxSize().padding(20.dp),
+                verticalArrangement = Arrangement.Center,
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text("Markdown 预览失败，已保护为可编辑模式。", color = MaterialTheme.colorScheme.error)
+                Spacer(Modifier.height(10.dp))
+                OutlinedButton(onClick = onRequestEdit) { Text("编辑全文") }
+            }
+            return@ElevatedCard
+        }
+        val lines = parsedLines.getOrDefault(emptyList())
         if (lines.isEmpty()) {
             Box(modifier = Modifier.fillMaxSize().padding(20.dp), contentAlignment = Alignment.Center) {
                 Text("还没有内容，点击“编辑全文”开始写规划。", color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -439,7 +451,6 @@ private fun PlanningMarkdownHeading(line: PlanningRenderedLine.Heading) {
 }
 
 @Composable
-@OptIn(ExperimentalLayoutApi::class)
 private fun PlanningMarkdownTaskLine(
     line: PlanningRenderedLine.Task,
     onToggleCheckbox: (Int) -> Unit
@@ -457,24 +468,24 @@ private fun PlanningMarkdownTaskLine(
             modifier = Modifier.size(32.dp)
         )
         Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text(
-                    text = line.text.ifBlank { "未命名任务" },
-                    style = MaterialTheme.typography.bodyLarge.copy(
-                        textDecoration = if (line.checked) TextDecoration.LineThrough else TextDecoration.None
-                    ),
-                    color = if (line.checked) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface,
-                    modifier = Modifier.widthIn(max = 520.dp)
-                )
+            Text(
+                text = line.text.ifBlank { "未命名任务" },
+                style = MaterialTheme.typography.bodyLarge.copy(
+                    textDecoration = if (line.checked) TextDecoration.LineThrough else TextDecoration.None
+                ),
+                color = if (line.checked) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface
+            )
+            if (line.tags.isNotEmpty() || line.imported) {
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
                 line.tags.forEach { tag -> PlanningMarkdownTagPill(tag) }
                 if (line.imported) PlanningMarkdownStatePill("已导入")
+                }
             }
         }
     }
 }
 
 @Composable
-@OptIn(ExperimentalLayoutApi::class)
 private fun PlanningMarkdownTextLine(
     line: PlanningRenderedLine.Text,
     onRequestEdit: () -> Unit
@@ -485,14 +496,17 @@ private fun PlanningMarkdownTextLine(
         color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.18f),
         onClick = onRequestEdit
     ) {
-        FlowRow(
+        Column(
             modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
             verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
             Text(line.text, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface)
-            line.tags.forEach { tag -> PlanningMarkdownTagPill(tag) }
-            if (line.imported) PlanningMarkdownStatePill("已导入")
+            if (line.tags.isNotEmpty() || line.imported) {
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+                    line.tags.forEach { tag -> PlanningMarkdownTagPill(tag) }
+                    if (line.imported) PlanningMarkdownStatePill("已导入")
+                }
+            }
         }
     }
 }

@@ -42,7 +42,8 @@ This file tracks the product at a practical level for new coding sessions.
 - Planning Desk stores multiple Markdown planning documents in Room table `planning_notes`
 - default startup opens the last opened planning document; if none exists, the app creates `我的规划`
 - planning documents support create, open, rename, archive, and delete with confirmation on the phone UI
-- phone Planning Desk has a Markdown reading mode and a raw `编辑全文` mode; headings, task checkboxes, subtask indentation, tag pills, and imported-state pills render visually in reading mode
+- phone Planning Desk has an opt-in Markdown preview and a raw `编辑全文` mode; it always opens in `编辑全文` first so historical Markdown cannot crash app startup
+- opt-in preview renders headings, task checkboxes, subtask indentation, tag pills, and imported-state pills
 - phone editor mode remains a plain Markdown / natural-text editor with a shortcut bar for tasks, subtasks, indent/outdent, DDL, schedule, reminder, group, today, and tomorrow
 - tapping a rendered planning checkbox toggles the underlying Markdown between `- [ ]` and `- [x]`, without directly completing imported todos
 - Enter continuation attempts to keep `- [ ]` task lines flowing without forcing the user to manually type Markdown every time

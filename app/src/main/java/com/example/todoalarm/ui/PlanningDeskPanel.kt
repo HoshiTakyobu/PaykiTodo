@@ -23,6 +23,7 @@ import androidx.compose.material.icons.rounded.Archive
 import androidx.compose.material.icons.rounded.Article
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.Edit
+import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.Save
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material3.AlertDialog
@@ -94,6 +95,7 @@ internal fun PlanningDeskPanel(
     var parseResult by remember { mutableStateOf<PlanningParseResult?>(null) }
     var documentSheetVisible by remember { mutableStateOf(false) }
     var previewSheetVisible by remember { mutableStateOf(false) }
+    var helpSheetVisible by remember { mutableStateOf(false) }
     var renameDialog by remember { mutableStateOf(false) }
     var deleteDialog by remember { mutableStateOf(false) }
     var archiveDialog by remember { mutableStateOf(false) }
@@ -164,6 +166,7 @@ internal fun PlanningDeskPanel(
                     FilledTonalButton(onClick = { newDialog = true }) { Text("新建") }
                     FilledTonalButton(onClick = { renameDialog = true }, enabled = activeNote != null) { Text("重命名") }
                     Spacer(Modifier.weight(1f))
+                    IconButton(onClick = { helpSheetVisible = true }) { Icon(Icons.Rounded.Info, contentDescription = "规划台说明") }
                     IconButton(onClick = { archiveDialog = true }, enabled = activeNote != null) { Icon(Icons.Rounded.Archive, contentDescription = "归档") }
                     IconButton(onClick = { deleteDialog = true }, enabled = activeNote != null) { Icon(Icons.Rounded.Delete, contentDescription = "删除") }
                 }
@@ -256,6 +259,15 @@ internal fun PlanningDeskPanel(
                     documentSheetVisible = false
                 }
             )
+        }
+    }
+
+    if (helpSheetVisible) {
+        ModalBottomSheet(
+            onDismissRequest = { helpSheetVisible = false },
+            sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+        ) {
+            PlanningHelpSheet(onDismiss = { helpSheetVisible = false })
         }
     }
 
@@ -471,6 +483,131 @@ private fun PlanningDocumentSheet(
             }
         }
         Spacer(Modifier.height(16.dp))
+    }
+}
+
+@Composable
+private fun PlanningHelpSheet(onDismiss: () -> Unit) {
+    val example = """
+        # 明天
+        - [ ] 10:00-12:30 写课程论文 #group 课程
+        - [ ] 整理保研材料 #ddl 5.28 23:59 #remind 5,15
+          - [ ] 打印成绩单
+          - [ ] 整理获奖证明
+        明天 19:30-21:00 复习操作系统 #group 学习
+    """.trimIndent()
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp, vertical = 14.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            Surface(
+                shape = RoundedCornerShape(16.dp),
+                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
+            ) {
+                Icon(
+                    Icons.Rounded.Info,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(9.dp).size(22.dp)
+                )
+            }
+            Column(modifier = Modifier.weight(1f)) {
+                Text("规划台怎么用", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                Text("先自由写计划，再识别为待办或日程。", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            TextButton(onClick = onDismiss) { Text("知道了") }
+        }
+
+        LazyColumn(
+            modifier = Modifier.fillMaxWidth().height(560.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            item {
+                PlanningHelpCard(
+                    title = "1. 先像备忘录一样写",
+                    lines = listOf(
+                        "不用一开始就填完整表单，先把近期要做的事情写下来。",
+                        "一行一个任务最容易识别；大标题可以写 # 明天、# 本周、# 保研材料。",
+                        "输入法上方的快捷栏可以快速插入任务、子任务、DDL、提醒和分组。"
+                    )
+                )
+            }
+            item {
+                PlanningHelpCard(
+                    title = "2. 常用写法",
+                    lines = listOf(
+                        "待办：- [ ] 整理材料 #ddl 5.28 23:59",
+                        "子任务：在任务下一行点“子任务”，或手写两个空格再写 - [ ]。",
+                        "日程：10:00-12:30 写论文，或 明天 19:30-21:00 复习。",
+                        "分组：在行尾写 #group 课程。",
+                        "提醒：在行尾写 #remind 5,15，表示提前 5 分钟和 15 分钟。"
+                    )
+                )
+            }
+            item {
+                PlanningHelpCard(
+                    title = "3. 识别和导入",
+                    lines = listOf(
+                        "写完后点右侧的“识别”。",
+                        "识别预览里可以先修改标题、DDL、开始结束时间、分组、备注和提醒。",
+                        "勾选需要导入的条目，再点“导入”。",
+                        "导入成功后，原文会追加 #imported，避免同一行重复导入。"
+                    )
+                )
+            }
+            item {
+                PlanningHelpExampleCard(example)
+            }
+            item {
+                PlanningHelpCard(
+                    title = "4. 当前限制",
+                    lines = listOf(
+                        "手机端当前是稳定原文编辑，不是富文本 Markdown 渲染。",
+                        "AI 拆解、拖拽排期、甘特图还没有接入。",
+                        "如果识别不准，优先在预览页修正，再导入正式待办和日程。"
+                    )
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun PlanningHelpCard(title: String, lines: List<String>) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(22.dp),
+        color = MaterialTheme.colorScheme.surface,
+        tonalElevation = 1.dp
+    ) {
+        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            lines.forEach { line ->
+                Text("• $line", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
+    }
+}
+
+@Composable
+private fun PlanningHelpExampleCard(example: String) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(22.dp),
+        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.10f),
+        tonalElevation = 1.dp
+    ) {
+        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text("可以直接照这个格式写", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+            Text(
+                example,
+                style = MaterialTheme.typography.bodyMedium.copy(fontFamily = FontFamily.Monospace),
+                color = MaterialTheme.colorScheme.onSurface
+            )
+        }
     }
 }
 

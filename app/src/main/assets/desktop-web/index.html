@@ -187,7 +187,7 @@
         </div>
         <div class="todo-due-dependent">
           <label>提醒时间</label>
-          <input id="todo-reminder-spec" placeholder="5,15,16:30,2:30 pm,明天 16:30,5月10日，14:30" />
+          <input id="todo-reminder-spec" placeholder="5,15,16:30,下午 2:30,明天 16:30,5/10，14:30" />
         </div>
         <div>
           <label>分组</label>
@@ -263,7 +263,7 @@
             <div id="event-end-preview" class="date-time-preview">选择结束时间后显示日期预览</div>
           </div>
         </div>
-        <div><label>提醒时间</label><input id="event-reminder-offsets" placeholder="5,15,16:30,2:30 pm,周五 16:30,5月10日，14:30" /></div>
+        <div><label>提醒时间</label><input id="event-reminder-offsets" placeholder="5,15,16:30,下午 2:30,周五 16:30,5月10日，14:30" /></div>
         <div>
           <label>循环</label>
           <select id="event-recurrence-type">
@@ -316,16 +316,18 @@
           <ul>
             <li>待办：<code>- [ ] 整理材料 #ddl 5.28 23:59</code>；只写日期默认当天 <code>23:59</code></li>
             <li>子任务：在任务下一行缩进两个空格再写 <code>- [ ]</code></li>
-            <li>日程：<code>10:00-12:30 写课程论文</code> 或 <code>明天 19:30-21:00 复习</code></li>
+            <li>日程：<code>10:00-12:30 写课程论文</code>、<code>复习 14:00-16:00</code> 或 <code>5/28 下午 2:30～下午 4:00 小组讨论</code></li>
             <li>分组：<code>#group 课程</code></li>
-            <li>提醒：<code>#remind 30,5</code> 表示提前 30 分钟和 5 分钟；也支持 <code>#remind 16:30</code>、<code>#remind 2:30 pm</code>、<code>#remind 明天 16:30</code>、<code>#remind 周五 16:30</code>、<code>#remind 5月28日 14:30</code>、<code>#remind 5月28日，14:30</code></li>
+            <li>提醒：<code>#remind 30,5</code> 表示提前 30 分钟和 5 分钟；也支持 <code>#remind 16:30</code>、<code>#remind 2:30 pm</code>、<code>#remind 下午 2:30</code>、<code>#remind 明天 16:30</code>、<code>#remind 周五 16:30</code>、<code>#remind 5月28日，14:30</code></li>
           </ul>
         </section>
         <section class="planning-help-card">
           <h3>日期和提醒时间怎么写</h3>
           <ul>
-            <li><code>#ddl</code> 支持 <code>16:30</code>、<code>5.28</code>、<code>5月28日</code>、<code>明天</code>、<code>周五</code>、<code>2026-05-28 14:30</code>。</li>
+            <li><code>#ddl</code> 支持 <code>16:30</code>、<code>5.28</code>、<code>5/28</code>、<code>5月28日</code>、<code>明天</code>、<code>周五</code>、<code>2026-05-28 14:30</code>。</li>
             <li>日期和时间之间可以用空格，也可以用中文逗号，例如 <code>#ddl 5.28，23:59</code>。</li>
+            <li>常见全角分隔符会先归一化，例如 <code>5．28</code>、<code>14:00～16:00</code>。</li>
+            <li><code>#today</code>、<code>#tomorrow</code>、<code>#important</code>、<code>#project</code> 暂不写入正式待办属性，会保留在标题里。</li>
             <li>提醒输入和待办 / 日程编辑界面共用同一套语法；任一提醒晚于 DDL / 日程开始时间时会阻止导入。</li>
           </ul>
         </section>

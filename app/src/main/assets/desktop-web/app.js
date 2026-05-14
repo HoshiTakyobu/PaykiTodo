@@ -748,20 +748,35 @@ function findEventById(id) {
 }
 
 function parseLocalDateTimeMillis(text, fallbackDate) {
-  const value = String(text || '').trim().replace('：', ':').replace('T', ' ');
+  const normalizeDateTimeText = raw => String(raw || '')
+    .trim()
+    .replace(/：/g, ':')
+    .replace(/[，]/g, ',')
+    .replace(/[．。]/g, '.')
+    .replace(/／/g, '/')
+    .replace(/[－–—]/g, '-')
+    .replace(/[～〜]/g, '~')
+    .replace('T', ' ');
+  const value = normalizeDateTimeText(text);
   const buildDate = (year, month, day, hour, minute) => {
     if (hour < 0 || hour > 23 || minute < 0 || minute > 59) return null;
     const date = new Date(year, month - 1, day, hour, minute, 0, 0);
     if (date.getFullYear() !== year || date.getMonth() !== month - 1 || date.getDate() !== day) return null;
     return date.getTime();
   };
-  const parseHour = (rawHour, period) => {
+  const parseHour = (rawHour, period, chinesePeriod) => {
     let hour = Number(rawHour);
     const lower = String(period || '').toLowerCase();
     if (lower) {
       if (hour < 1 || hour > 12) return null;
       if (lower === 'pm' && hour < 12) hour += 12;
       if (lower === 'am' && hour === 12) hour = 0;
+    } else if (chinesePeriod) {
+      if (hour < 0 || hour > 23) return null;
+      if (['凌晨'].includes(chinesePeriod) && hour === 12) hour = 0;
+      if (['早上', '上午'].includes(chinesePeriod) && hour === 12) hour = 0;
+      if (chinesePeriod === '中午' && hour >= 1 && hour <= 10) hour += 12;
+      if (['下午', '晚上'].includes(chinesePeriod) && hour < 12) hour += 12;
     }
     return hour;
   };
@@ -775,13 +790,14 @@ function parseLocalDateTimeMillis(text, fallbackDate) {
     if (['周日', '周天', '星期日', '星期天', '礼拜日', '礼拜天'].includes(label)) return 7;
     return null;
   };
-  let match = value.match(/^(\d{1,2}):(\d{2})\s*([aApP][mM])?$/);
+  const timeExpr = '(凌晨|早上|上午|中午|下午|晚上)?\\s*(\\d{1,2}):(\\d{2})\\s*([aApP][mM])?';
+  let match = value.match(new RegExp('^' + timeExpr + '$'));
   if (match) {
     const date = fallbackDate ? new Date(fallbackDate.getTime()) : new Date();
-    const hour = parseHour(match[1], match[3]);
-    return hour == null ? null : buildDate(date.getFullYear(), date.getMonth() + 1, date.getDate(), hour, Number(match[2]));
+    const hour = parseHour(match[2], match[4], match[1]);
+    return hour == null ? null : buildDate(date.getFullYear(), date.getMonth() + 1, date.getDate(), hour, Number(match[3]));
   }
-  match = value.match(/^(今天|今日|明天|明日|后天|周[一二三四五六日天]|星期[一二三四五六日天]|礼拜[一二三四五六日天])[\s,，]+(\d{1,2}):(\d{2})\s*([aApP][mM])?$/);
+  match = value.match(new RegExp('^(今天|今日|明天|明日|后天|周[一二三四五六日天]|星期[一二三四五六日天]|礼拜[一二三四五六日天])[\\s,]+' + timeExpr + '$'));
   if (match) {
     const date = fallbackDate ? new Date(fallbackDate.getTime()) : new Date();
     if (match[1] === '明天' || match[1] === '明日') date.setDate(date.getDate() + 1);
@@ -791,39 +807,44 @@ function parseLocalDateTimeMillis(text, fallbackDate) {
       const currentWeekday = date.getDay() === 0 ? 7 : date.getDay();
       date.setDate(date.getDate() + ((targetWeekday - currentWeekday + 7) % 7));
     }
-    const hour = parseHour(match[2], match[4]);
-    return hour == null ? null : buildDate(date.getFullYear(), date.getMonth() + 1, date.getDate(), hour, Number(match[3]));
+    const hour = parseHour(match[3], match[5], match[2]);
+    return hour == null ? null : buildDate(date.getFullYear(), date.getMonth() + 1, date.getDate(), hour, Number(match[4]));
   }
-  match = value.match(/^(\d{1,2})[-.](\d{1,2})[\s,，]+(\d{1,2}):(\d{2})\s*([aApP][mM])?$/);
+  match = value.match(new RegExp('^(\\d{1,2})[-./](\\d{1,2})[\\s,]+' + timeExpr + '$'));
   if (match) {
     const year = (fallbackDate || new Date()).getFullYear();
-    const hour = parseHour(match[3], match[5]);
-    return hour == null ? null : buildDate(year, Number(match[1]), Number(match[2]), hour, Number(match[4]));
+    const hour = parseHour(match[4], match[6], match[3]);
+    return hour == null ? null : buildDate(year, Number(match[1]), Number(match[2]), hour, Number(match[5]));
   }
-  match = value.match(/^(\d{1,2})月(\d{1,2})日?[\s,，]+(\d{1,2}):(\d{2})\s*([aApP][mM])?$/);
+  match = value.match(new RegExp('^(\\d{1,2})月(\\d{1,2})日?[\\s,]+' + timeExpr + '$'));
   if (match) {
     const year = (fallbackDate || new Date()).getFullYear();
-    const hour = parseHour(match[3], match[5]);
-    return hour == null ? null : buildDate(year, Number(match[1]), Number(match[2]), hour, Number(match[4]));
+    const hour = parseHour(match[4], match[6], match[3]);
+    return hour == null ? null : buildDate(year, Number(match[1]), Number(match[2]), hour, Number(match[5]));
   }
-  match = value.match(/^(\d{4})[-.](\d{1,2})[-.](\d{1,2})[\s,，]+(\d{1,2}):(\d{2})\s*([aApP][mM])?$/);
+  match = value.match(new RegExp('^(\\d{4})[-./](\\d{1,2})[-./](\\d{1,2})[\\s,]+' + timeExpr + '$'));
   if (match) {
-    const hour = parseHour(match[4], match[6]);
-    return hour == null ? null : buildDate(Number(match[1]), Number(match[2]), Number(match[3]), hour, Number(match[5]));
+    const hour = parseHour(match[5], match[7], match[4]);
+    return hour == null ? null : buildDate(Number(match[1]), Number(match[2]), Number(match[3]), hour, Number(match[6]));
   }
-  match = value.match(/^(\d{4})年(\d{1,2})月(\d{1,2})日?[\s,，]+(\d{1,2}):(\d{2})\s*([aApP][mM])?$/);
+  match = value.match(new RegExp('^(\\d{4})年(\\d{1,2})月(\\d{1,2})日?[\\s,]+' + timeExpr + '$'));
   if (match) {
-    const hour = parseHour(match[4], match[6]);
-    return hour == null ? null : buildDate(Number(match[1]), Number(match[2]), Number(match[3]), hour, Number(match[5]));
+    const hour = parseHour(match[5], match[7], match[4]);
+    return hour == null ? null : buildDate(Number(match[1]), Number(match[2]), Number(match[3]), hour, Number(match[6]));
   }
   return null;
 }
 
 function splitReminderSpecTokens(raw) {
-  const parts = String(raw || '').split(/[,，]/).map(part => part.trim()).filter(Boolean);
+  const normalized = String(raw || '')
+    .replace(/：/g, ':')
+    .replace(/[，]/g, ',')
+    .replace(/[．。]/g, '.')
+    .replace(/／/g, '/');
+  const parts = normalized.split(',').map(part => part.trim()).filter(Boolean);
   const tokens = [];
-  const dateOnlyPattern = /^(今天|今日|明天|明日|后天|周[一二三四五六日天]|星期[一二三四五六日天]|礼拜[一二三四五六日天]|\d{4}[-.]\d{1,2}[-.]\d{1,2}|\d{4}年\d{1,2}月\d{1,2}日?|\d{1,2}[-.]\d{1,2}|\d{1,2}月\d{1,2}日?)$/;
-  const timeOnlyPattern = /^\d{1,2}:\d{2}\s*([aApP][mM])?$/;
+  const dateOnlyPattern = /^(今天|今日|明天|明日|后天|周[一二三四五六日天]|星期[一二三四五六日天]|礼拜[一二三四五六日天]|\d{4}[-./]\d{1,2}[-./]\d{1,2}|\d{4}年\d{1,2}月\d{1,2}日?|\d{1,2}[-./]\d{1,2}|\d{1,2}月\d{1,2}日?)$/;
+  const timeOnlyPattern = /^(凌晨|早上|上午|中午|下午|晚上)?\s*\d{1,2}:\d{2}\s*([aApP][mM])?$/;
   for (let index = 0; index < parts.length; index += 1) {
     if (index + 1 < parts.length && dateOnlyPattern.test(parts[index]) && timeOnlyPattern.test(parts[index + 1])) {
       tokens.push(parts[index] + ' ' + parts[index + 1]);

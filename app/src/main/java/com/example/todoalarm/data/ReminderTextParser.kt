@@ -101,7 +101,7 @@ internal fun parseSnoozeTextInput(
     raw: String,
     now: LocalDateTime = LocalDateTime.now().withSecond(0).withNano(0)
 ): SnoozeTextParseResult {
-    val token = raw.trim().replace('：', ':')
+    val token = normalizeSyntaxText(raw).trim()
     if (token.isBlank()) {
         return SnoozeTextParseResult(false, message = "请输入延后分钟或具体时刻。")
     }
@@ -123,7 +123,7 @@ internal fun parseSnoozeTextInput(
 }
 
 private fun parseReminderTriggerToken(token: String, anchor: LocalDateTime, today: LocalDate): LocalDateTime? {
-    val text = token.trim().replace('：', ':').replace('T', ' ')
+    val text = normalizeSyntaxText(token).trim().replace('T', ' ')
     if (text.isBlank()) return null
     if (text.all { it.isDigit() }) {
         val minutes = text.toIntOrNull() ?: return null
@@ -141,14 +141,16 @@ private fun parseReminderTriggerToken(token: String, anchor: LocalDateTime, toda
 
 private fun parseLeadingDate(text: String, today: LocalDate): ParsedLeadingDate? {
     LeadingDateRegex.find(text)?.takeIf { it.range.first == 0 }?.let { match ->
+        val rest = text.substring(match.range.last + 1)
+        if (!isLeadingDateBoundary(rest)) return null
         val date = parseDateExpression(match.value.trim(), today) ?: return null
-        return ParsedLeadingDate(date, text.substring(match.range.last + 1))
+        return ParsedLeadingDate(date, rest)
     }
     return null
 }
 
 private fun parseDateExpression(raw: String, today: LocalDate): LocalDate? {
-    val text = raw.trim().removePrefix("#").trim()
+    val text = normalizeSyntaxText(raw).trim().removePrefix("#").trim()
     when (text) {
         "今天", "今日" -> return today
         "明天", "明日" -> return today.plusDays(1)
@@ -174,14 +176,15 @@ private fun parseDateExpression(raw: String, today: LocalDate): LocalDate? {
 }
 
 private fun isDateOnlyReminderToken(text: String): Boolean {
-    return ReminderDateOnlyRegex.matches(text.trim())
+    return ReminderDateOnlyRegex.matches(normalizeSyntaxText(text).trim())
 }
 
 private fun parseTimeToken(raw: String): LocalTime? {
-    val match = TimeOnlyRegex.matchEntire(raw.trim().replace('：', ':')) ?: return null
-    var hour = match.groupValues[1].toInt()
-    val minute = match.groupValues[2].toInt()
-    val period = match.groupValues.getOrNull(3).orEmpty().lowercase(Locale.ROOT)
+    val match = TimeOnlyRegex.matchEntire(normalizeSyntaxText(raw).trim()) ?: return null
+    val chinesePeriod = match.groupValues.getOrNull(1).orEmpty()
+    var hour = match.groupValues[2].toInt()
+    val minute = match.groupValues[3].toInt()
+    val period = match.groupValues.getOrNull(4).orEmpty().lowercase(Locale.ROOT)
     if (minute !in 0..59) return null
     if (period.isNotBlank()) {
         if (hour !in 1..12) return null
@@ -190,6 +193,8 @@ private fun parseTimeToken(raw: String): LocalTime? {
             period == "am" && hour == 12 -> 0
             else -> hour
         }
+    } else if (chinesePeriod.isNotBlank()) {
+        hour = applyChineseDayPeriod(hour, chinesePeriod) ?: return null
     }
     if (hour !in 0..23) return null
     return LocalTime.of(hour, minute)
@@ -200,6 +205,36 @@ private fun safeDate(year: Int, month: Int, day: Int): LocalDate? {
         LocalDate.of(year, month, day)
     } catch (_: DateTimeException) {
         null
+    }
+}
+
+private fun normalizeSyntaxText(raw: String): String {
+    return raw
+        .replace('：', ':')
+        .replace('，', ',')
+        .replace('．', '.')
+        .replace('。', '.')
+        .replace('／', '/')
+        .replace('－', '-')
+        .replace('–', '-')
+        .replace('—', '-')
+        .replace('～', '~')
+        .replace('〜', '~')
+}
+
+private fun isLeadingDateBoundary(rest: String): Boolean {
+    val first = rest.firstOrNull() ?: return true
+    return first.isWhitespace() || first == ',' || first.isDigit()
+}
+
+private fun applyChineseDayPeriod(hour: Int, period: String): Int? {
+    if (hour !in 0..23) return null
+    return when (period) {
+        "凌晨" -> if (hour == 12) 0 else hour
+        "早上", "上午" -> if (hour == 12) 0 else hour
+        "中午" -> if (hour in 1..10) hour + 12 else hour
+        "下午", "晚上" -> if (hour < 12) hour + 12 else hour
+        else -> null
     }
 }
 
@@ -218,10 +253,10 @@ private fun weekdayFromText(text: String): DayOfWeek? {
 
 private data class ParsedLeadingDate(val date: LocalDate, val rest: String)
 
-private val FullDateRegex = Regex("^(\\d{4})[-.](\\d{1,2})[-.](\\d{1,2})$")
+private val FullDateRegex = Regex("^(\\d{4})[-./](\\d{1,2})[-./](\\d{1,2})$")
 private val FullChineseDateRegex = Regex("^(\\d{4})年(\\d{1,2})月(\\d{1,2})日?$")
-private val MonthDayRegex = Regex("^(\\d{1,2})[-.](\\d{1,2})$")
+private val MonthDayRegex = Regex("^(\\d{1,2})[-./](\\d{1,2})$")
 private val ChineseMonthDayRegex = Regex("^(\\d{1,2})月(\\d{1,2})日?$")
-private val TimeOnlyRegex = Regex("^(\\d{1,2})[:：](\\d{2})\\s*([aApP][mM])?$")
-private val LeadingDateRegex = Regex("^(今天|今日|明天|明日|后天|周[一二三四五六日天]|星期[一二三四五六日天]|礼拜[一二三四五六日天]|\\d{4}[-.]\\d{1,2}[-.]\\d{1,2}|\\d{4}年\\d{1,2}月\\d{1,2}日?|\\d{1,2}[-.]\\d{1,2}|\\d{1,2}月\\d{1,2}日?)")
-private val ReminderDateOnlyRegex = Regex("^(今天|今日|明天|明日|后天|周[一二三四五六日天]|星期[一二三四五六日天]|礼拜[一二三四五六日天]|\\d{4}[-.]\\d{1,2}[-.]\\d{1,2}|\\d{4}年\\d{1,2}月\\d{1,2}日?|\\d{1,2}[-.]\\d{1,2}|\\d{1,2}月\\d{1,2}日?)$")
+private val TimeOnlyRegex = Regex("^(凌晨|早上|上午|中午|下午|晚上)?\\s*(\\d{1,2})[:：](\\d{2})\\s*([aApP][mM])?$")
+private val LeadingDateRegex = Regex("^(今天|今日|明天|明日|后天|周[一二三四五六日天]|星期[一二三四五六日天]|礼拜[一二三四五六日天]|\\d{4}[-./]\\d{1,2}[-./]\\d{1,2}|\\d{4}年\\d{1,2}月\\d{1,2}日?|\\d{1,2}[-./]\\d{1,2}|\\d{1,2}月\\d{1,2}日?)")
+private val ReminderDateOnlyRegex = Regex("^(今天|今日|明天|明日|后天|周[一二三四五六日天]|星期[一二三四五六日天]|礼拜[一二三四五六日天]|\\d{4}[-./]\\d{1,2}[-./]\\d{1,2}|\\d{4}年\\d{1,2}月\\d{1,2}日?|\\d{1,2}[-./]\\d{1,2}|\\d{1,2}月\\d{1,2}日?)$")

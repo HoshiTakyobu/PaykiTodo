@@ -537,6 +537,7 @@ private fun PlanningHelpSheet(onDismiss: () -> Unit) {
         - [ ] 09:00-10:30 背英语单词 #group 学习
         - [ ] 完成实验报告 #ddl 21:30 #remind 15,5
         - [ ] 整理材料 #ddl 5.28，23:59 #remind 5月28日，22:00
+        - [ ] 5/28 下午 2:30～下午 4:00 小组讨论
     """.trimIndent()
     Column(
         modifier = Modifier
@@ -593,11 +594,12 @@ private fun PlanningHelpSheet(onDismiss: () -> Unit) {
                     title = "3. 常用写法",
                     lines = listOf(
                         "待办：- [ ] 整理材料 #ddl 5.28 23:59",
-                        "DDL：支持 16:30、5.28、5月28日、明天、周五；只写日期默认 23:59。",
+                        "DDL：支持 16:30、5.28、5/28、5月28日、明天、周五；只写日期默认 23:59。",
                         "子任务：把光标放在父任务行，点“子任务”，会自动新起一行并缩进。",
-                        "日程：10:00-12:30 写论文，或 明天 19:30-21:00 复习。",
+                        "日程：10:00-12:30 写论文、复习 14:00-16:00，或 5/28 下午 2:30～下午 4:00 小组讨论。",
                         "分组：在行尾写 #group 课程。",
-                        "提醒：#remind 5,15 表示提前分钟；也支持 #remind 16:30、#remind 明天 16:30、#remind 周五 16:30、#remind 5月28日，14:30。"
+                        "提醒：#remind 5,15 表示提前分钟；也支持 #remind 16:30、#remind 下午 2:30、#remind 明天 16:30、#remind 周五 16:30、#remind 5月28日，14:30。",
+                        "#today、#tomorrow、#important、#project 暂不写入正式待办属性，会保留在标题里。"
                     )
                 )
             }

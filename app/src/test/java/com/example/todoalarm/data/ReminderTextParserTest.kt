@@ -55,4 +55,25 @@ class ReminderTextParserTest {
         assertTrue(parsed.isValid)
         assertEquals(1950, parsed.minutes)
     }
+
+    @Test
+    fun parsesSlashFullwidthAndChinesePeriodReminderTimes() {
+        val parsed = parseReminderTextInput(
+            raw = "5/20 下午 2:30,5．20，15:30",
+            anchor = anchor,
+            now = now,
+            requireFuture = false
+        )
+
+        assertTrue(parsed.isValid)
+        assertEquals(listOf(210, 150), parsed.offsetsMinutes)
+    }
+
+    @Test
+    fun parsesChinesePeriodSnoozeTarget() {
+        val parsed = parseSnoozeTextInput(raw = "上午 9:30", now = now)
+
+        assertTrue(parsed.isValid)
+        assertEquals(90, parsed.minutes)
+    }
 }

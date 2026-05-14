@@ -29,6 +29,98 @@ class PlanningMarkdownParserTest {
     }
 
     @Test
+    fun parsesNaturalScheduleWithLeadingDateInlineWithoutPollutingTitle() {
+        val result = PlanningMarkdownParser.parse(
+            """
+            - [ ] 5.28 14:00-16:00 小组讨论
+            - [ ] 明天 19:30-21:00 整理保研材料
+            - [ ] 周五 14:00-16:00 写论文
+            """.trimIndent(),
+            now = now
+        )
+
+        val events = result.candidates.filter { it.type == PlanningParsedType.EVENT }
+        assertEquals(3, events.size)
+        assertEquals("小组讨论", events[0].title)
+        assertEquals(LocalDateTime.of(2026, 5, 28, 14, 0), events[0].startAt)
+        assertEquals("整理保研材料", events[1].title)
+        assertEquals(LocalDateTime.of(2026, 5, 15, 19, 30), events[1].startAt)
+        assertEquals("写论文", events[2].title)
+        assertEquals(LocalDateTime.of(2026, 5, 15, 14, 0), events[2].startAt)
+    }
+
+    @Test
+    fun headingDateContextIsExplicitAndResetsOnPlainHeading() {
+        val result = PlanningMarkdownParser.parse(
+            """
+            # 我的明天计划
+            - [ ] 描述标题任务 #ddl 09:00
+            # 明天
+            - [ ] 明天任务 #ddl 09:00
+            # 收集箱
+            - [ ] 收集箱任务 #ddl 09:00
+            """.trimIndent(),
+            now = now
+        )
+
+        val byTitle = result.candidates.associateBy { it.title }
+        assertEquals(LocalDateTime.of(2026, 5, 14, 9, 0), byTitle["描述标题任务"]?.dueAt)
+        assertEquals(LocalDateTime.of(2026, 5, 15, 9, 0), byTitle["明天任务"]?.dueAt)
+        assertEquals(LocalDateTime.of(2026, 5, 14, 9, 0), byTitle["收集箱任务"]?.dueAt)
+    }
+
+    @Test
+    fun parsesDateHeadingWithDescription() {
+        val result = PlanningMarkdownParser.parse(
+            """
+            # 5/28 周末计划
+            - [ ] 写论文 #ddl 23:59
+            """.trimIndent(),
+            now = now
+        )
+
+        val todo = result.candidates.single { it.title == "写论文" }
+        assertEquals(LocalDateTime.of(2026, 5, 28, 23, 59), todo.dueAt)
+    }
+
+    @Test
+    fun parsesNaturalScheduleWhenTimeRangeIsNotAtLineStart() {
+        val result = PlanningMarkdownParser.parse("- [ ] 复习 14:00-16:00", now = now)
+
+        val event = result.candidates.single()
+        assertEquals(PlanningParsedType.EVENT, event.type)
+        assertEquals("复习", event.title)
+        assertEquals(LocalDateTime.of(2026, 5, 14, 14, 0), event.startAt)
+        assertEquals(LocalDateTime.of(2026, 5, 14, 16, 0), event.endAt)
+    }
+
+    @Test
+    fun parsesSlashDatesFullwidthSeparatorsAndChineseDayPeriods() {
+        val result = PlanningMarkdownParser.parse("- [ ] 5/28 下午 2:30～下午 4:00 小组讨论", now = now)
+
+        val event = result.candidates.single()
+        assertEquals(PlanningParsedType.EVENT, event.type)
+        assertEquals("小组讨论", event.title)
+        assertEquals(LocalDateTime.of(2026, 5, 28, 14, 30), event.startAt)
+        assertEquals(LocalDateTime.of(2026, 5, 28, 16, 0), event.endAt)
+    }
+
+    @Test
+    fun eventParentTitleIsAppliedToSubtasks() {
+        val result = PlanningMarkdownParser.parse(
+            """
+            - [ ] 10:00-12:00 项目会议
+              - [ ] 准备资料
+            """.trimIndent(),
+            now = now
+        )
+
+        val child = result.candidates.single { it.title == "准备资料" }
+        assertEquals(PlanningParsedType.TODO, child.type)
+        assertEquals("所属大任务：项目会议", child.notes)
+    }
+
+    @Test
     fun parsesTodoDdlWithDefaultEndOfDayAndSubtaskParentNote() {
         val result = PlanningMarkdownParser.parse(
             """
@@ -43,6 +135,14 @@ class PlanningMarkdownParserTest {
         assertEquals(LocalDateTime.of(2026, 5, 28, 23, 59), todo.dueAt)
         assertEquals("保研", todo.groupName)
         assertEquals("所属大任务：保研材料准备", todo.notes)
+    }
+
+    @Test
+    fun keepsUnsupportedSemanticTagsVisibleInTitle() {
+        val result = PlanningMarkdownParser.parse("- [ ] 给导师发邮件 #ddl 5.18 #important #project", now = now)
+
+        val todo = result.candidates.single()
+        assertEquals("给导师发邮件 #important #project", todo.title)
     }
 
     @Test

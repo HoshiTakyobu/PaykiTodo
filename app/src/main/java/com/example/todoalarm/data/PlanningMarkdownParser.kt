@@ -77,7 +77,8 @@ object PlanningMarkdownParser {
 
             val headingText = headingTextOrNull(trimmed)
             if (headingText != null) {
-                parseHeadingDateContext(headingText, now.toLocalDate())?.let { dateContext = it.date }
+                dateContext = parseHeadingDateContext(headingText, now.toLocalDate())?.date
+                topLevelTaskTitle = null
                 return@forEachIndexed
             }
 
@@ -106,7 +107,7 @@ object PlanningMarkdownParser {
             )
             if (parsed != null) {
                 candidates += parsed
-                if (indentLevel == 0 && parsed.type == PlanningParsedType.TODO && parsed.title.isNotBlank()) {
+                if (indentLevel == 0 && (parsed.type == PlanningParsedType.TODO || parsed.type == PlanningParsedType.EVENT) && parsed.title.isNotBlank()) {
                     topLevelTaskTitle = parsed.title
                 }
             }
@@ -129,10 +130,11 @@ object PlanningMarkdownParser {
         val naturalEvent = parseNaturalEvent(scheduleSource, dateContext, now)
         if (explicitSchedule != null || naturalEvent != null) {
             val event = naturalEvent ?: return error(lineNumber, sourceLine, "无法识别 #schedule 后的日程时间。")
-            val title = cleanTitle(content)
-                .removePrefix(event.matchedText)
-                .trim()
-                .ifBlank { event.title }
+            val title = if (explicitSchedule == null) {
+                event.title
+            } else {
+                cleanTitle(content).trim().ifBlank { event.title }
+            }
             if (title.isBlank()) return error(lineNumber, sourceLine, "日程标题不能为空。")
             if (!event.endAt.isAfter(event.startAt)) return error(lineNumber, sourceLine, "日程结束时间必须晚于开始时间。")
             val reminderResult = parseReminderTag(content, event.startAt, now)
@@ -207,13 +209,12 @@ object PlanningMarkdownParser {
     }
 
     private fun parseNaturalEvent(text: String, dateContext: LocalDate?, now: LocalDateTime): ParsedNaturalEvent? {
-        val trimmed = text.trim()
+        val trimmed = normalizeSyntaxText(text).trim()
         val leadingDate = parseLeadingDate(trimmed, now.toLocalDate())
         val date = leadingDate?.date ?: dateContext ?: now.toLocalDate()
         val defaultToday = leadingDate == null && dateContext == null
         val rest = leadingDate?.rest?.trimStart() ?: trimmed
         val match = TimeRangeRegex.find(rest) ?: return null
-        if (match.range.first != 0) return null
         val startTime = parseTimeToken(match.groupValues[1]) ?: return null
         val endNextDay = match.groupValues[2].isNotBlank()
         val endTime = parseTimeToken(match.groupValues[3]) ?: return null
@@ -222,7 +223,10 @@ object PlanningMarkdownParser {
         if (endNextDay || !endAt.isAfter(startAt)) {
             endAt = endAt.plusDays(1)
         }
-        val title = rest.substring(match.range.last + 1).trim()
+        val title = listOf(
+            rest.substring(0, match.range.first).trim(),
+            rest.substring(match.range.last + 1).trim()
+        ).filter { it.isNotBlank() }.joinToString(" ")
         return ParsedNaturalEvent(
             startAt = startAt,
             endAt = endAt,
@@ -234,8 +238,10 @@ object PlanningMarkdownParser {
 
     private fun parseLeadingDate(text: String, today: LocalDate): ParsedLeadingDate? {
         LeadingDateRegex.find(text)?.takeIf { it.range.first == 0 }?.let { match ->
+            val rest = text.substring(match.range.last + 1)
+            if (!isLeadingDateBoundary(rest)) return null
             val parsed = parseDateExpression(match.value.trim(), today) ?: return null
-            return ParsedLeadingDate(parsed.date, text.substring(match.range.last + 1))
+            return ParsedLeadingDate(parsed.date, rest)
         }
         return null
     }
@@ -246,7 +252,7 @@ object PlanningMarkdownParser {
         nowDate: LocalDate,
         defaultTime: LocalTime?
     ): LocalDateTime? {
-        val text = raw.trim().replace('：', ':').replace('T', ' ').replace("，", ",")
+        val text = normalizeSyntaxText(raw).trim().replace('T', ' ')
         if (text.isBlank()) return null
         val leadingDate = parseLeadingDate(text, nowDate)
         val date = leadingDate?.date ?: defaultDate ?: nowDate
@@ -260,7 +266,7 @@ object PlanningMarkdownParser {
     }
 
     private fun parseDateExpression(raw: String, today: LocalDate): ParsedDate? {
-        val text = raw.trim().removePrefix("#").trim()
+        val text = normalizeSyntaxText(raw).trim().removePrefix("#").trim()
         when (text) {
             "今天", "今日" -> return ParsedDate(today)
             "明天", "明日" -> return ParsedDate(today.plusDays(1))
@@ -286,21 +292,24 @@ object PlanningMarkdownParser {
     }
 
     private fun parseHeadingDateContext(raw: String, today: LocalDate): ParsedDate? {
-        parseDateExpression(raw, today)?.let { return it }
-        val text = raw.trim()
-        return when {
-            text.contains("今日") || text.contains("今天") -> ParsedDate(today)
-            text.contains("明天") || text.contains("明日") -> ParsedDate(today.plusDays(1))
-            text.contains("后天") -> ParsedDate(today.plusDays(2))
-            else -> null
+        val text = normalizeSyntaxText(raw).trim()
+        when (text) {
+            "今日", "今天", "今日计划", "今天计划" -> return ParsedDate(today)
+            "明天", "明日", "明天计划", "明日计划" -> return ParsedDate(today.plusDays(1))
+            "后天", "后天计划" -> return ParsedDate(today.plusDays(2))
         }
+        parseDateExpression(text, today)?.let { return it }
+        val leadingDate = parseLeadingDate(text, today) ?: return null
+        val rest = leadingDate.rest
+        return if (rest.isBlank() || rest.first().isWhitespace()) ParsedDate(leadingDate.date) else null
     }
 
     private fun parseTimeToken(raw: String): LocalTime? {
-        val match = TimeOnlyRegex.matchEntire(raw.trim().replace('：', ':')) ?: return null
-        var hour = match.groupValues[1].toInt()
-        val minute = match.groupValues[2].toInt()
-        val period = match.groupValues.getOrNull(3).orEmpty().lowercase(Locale.ROOT)
+        val match = TimeOnlyRegex.matchEntire(normalizeSyntaxText(raw).trim()) ?: return null
+        val chinesePeriod = match.groupValues.getOrNull(1).orEmpty()
+        var hour = match.groupValues[2].toInt()
+        val minute = match.groupValues[3].toInt()
+        val period = match.groupValues.getOrNull(4).orEmpty().lowercase(Locale.ROOT)
         if (minute !in 0..59) return null
         if (period.isNotBlank()) {
             if (hour !in 1..12) return null
@@ -309,6 +318,8 @@ object PlanningMarkdownParser {
                 period == "am" && hour == 12 -> 0
                 else -> hour
             }
+        } else if (chinesePeriod.isNotBlank()) {
+            hour = applyChineseDayPeriod(hour, chinesePeriod) ?: return null
         }
         if (hour !in 0..23) return null
         return LocalTime.of(hour, minute)
@@ -329,16 +340,16 @@ object PlanningMarkdownParser {
     private fun cleanTitle(raw: String): String {
         var text = raw
         listOf("schedule", "ddl", "remind", "group").forEach { tag ->
-            text = text.replace(Regex("(?:^|\\s)#$tag\\s+[^#]+"), " ")
+            text = text.replace(Regex("(?:^|\\s)#$tag\\s*[^#]+"), " ")
         }
-        listOf("task", "project", "today", "tomorrow", "important", "imported").forEach { tag ->
+        listOf("task", "imported").forEach { tag ->
             text = text.replace(Regex("(?:^|\\s)#$tag(?=\\s|$)"), " ")
         }
         return text.trim().replace(Regex("\\s+"), " ")
     }
 
     private fun tagValue(content: String, tag: String): String? {
-        val match = Regex("(?:^|\\s)#$tag\\s+([^#]+)").find(content) ?: return null
+        val match = Regex("(?:^|\\s)#$tag\\s*([^#]+)").find(content) ?: return null
         return match.groupValues[1].trim().takeIf { it.isNotBlank() }
     }
 
@@ -351,6 +362,36 @@ object PlanningMarkdownParser {
             LocalDate.of(year, month, day)
         } catch (_: DateTimeException) {
             null
+        }
+    }
+
+    private fun normalizeSyntaxText(raw: String): String {
+        return raw
+            .replace('：', ':')
+            .replace('，', ',')
+            .replace('．', '.')
+            .replace('。', '.')
+            .replace('／', '/')
+            .replace('－', '-')
+            .replace('–', '-')
+            .replace('—', '-')
+            .replace('～', '~')
+            .replace('〜', '~')
+    }
+
+    private fun isLeadingDateBoundary(rest: String): Boolean {
+        val first = rest.firstOrNull() ?: return true
+        return first.isWhitespace() || first == ',' || first.isDigit()
+    }
+
+    private fun applyChineseDayPeriod(hour: Int, period: String): Int? {
+        if (hour !in 0..23) return null
+        return when (period) {
+            "凌晨" -> if (hour == 12) 0 else hour
+            "早上", "上午" -> if (hour == 12) 0 else hour
+            "中午" -> if (hour in 1..10) hour + 12 else hour
+            "下午", "晚上" -> if (hour < 12) hour + 12 else hour
+            else -> null
         }
     }
 
@@ -402,13 +443,14 @@ object PlanningMarkdownParser {
 
     private val HeadingRegex = Regex("^#{1,6}\\s+(.+)$")
     private val CheckboxRegex = Regex("^(\\s*)-\\s*\\[([ xX])\\]\\s*(.*)$")
-    private val FullDateRegex = Regex("^(\\d{4})[-.](\\d{1,2})[-.](\\d{1,2})$")
+    private val FullDateRegex = Regex("^(\\d{4})[-./](\\d{1,2})[-./](\\d{1,2})$")
     private val FullChineseDateRegex = Regex("^(\\d{4})年(\\d{1,2})月(\\d{1,2})日?$")
-    private val MonthDayRegex = Regex("^(\\d{1,2})[.-](\\d{1,2})$")
+    private val MonthDayRegex = Regex("^(\\d{1,2})[-./](\\d{1,2})$")
     private val ChineseMonthDayRegex = Regex("^(\\d{1,2})月(\\d{1,2})日?$")
-    private val TimeOnlyRegex = Regex("^(\\d{1,2})[:：](\\d{2})\\s*([aApP][mM])?$")
-    private val TimeRangeRegex = Regex("^(\\d{1,2}[:：]\\d{2}\\s*(?:[aApP][mM])?)\\s*(?:-|~|至|到)\\s*(次日)?(\\d{1,2}[:：]\\d{2}\\s*(?:[aApP][mM])?)")
-    private val LeadingDateRegex = Regex("^(今天|今日|明天|明日|后天|周[一二三四五六日天]|星期[一二三四五六日天]|礼拜[一二三四五六日天]|\\d{4}[-.]\\d{1,2}[-.]\\d{1,2}|\\d{4}年\\d{1,2}月\\d{1,2}日?|\\d{1,2}[.-]\\d{1,2}|\\d{1,2}月\\d{1,2}日?)")
+    private val TimeOnlyRegex = Regex("^(凌晨|早上|上午|中午|下午|晚上)?\\s*(\\d{1,2})[:：](\\d{2})\\s*([aApP][mM])?$")
+    private val TimeTokenPattern = "(?:凌晨|早上|上午|中午|下午|晚上)?\\s*\\d{1,2}[:：]\\d{2}\\s*(?:[aApP][mM])?"
+    private val TimeRangeRegex = Regex("($TimeTokenPattern)\\s*(?:-|~|至|到)\\s*(次日)?($TimeTokenPattern)")
+    private val LeadingDateRegex = Regex("^(今天|今日|明天|明日|后天|周[一二三四五六日天]|星期[一二三四五六日天]|礼拜[一二三四五六日天]|\\d{4}[-./]\\d{1,2}[-./]\\d{1,2}|\\d{4}年\\d{1,2}月\\d{1,2}日?|\\d{1,2}[-./]\\d{1,2}|\\d{1,2}月\\d{1,2}日?)")
 }
 
 const val DEFAULT_PLANNING_REMINDER_MINUTES = 5

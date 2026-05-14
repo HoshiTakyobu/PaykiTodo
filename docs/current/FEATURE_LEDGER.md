@@ -48,6 +48,9 @@ This file tracks the product at a practical level for new coding sessions.
 - shortcut `任务` converts the current line to one checkbox task without duplicating `- [ ]`; shortcut `子任务` inserts a new indented child task line
 - local rule parser recognizes markdown checkboxes, completed-task skip, subtask parent notes, date headings, DDL tags, unified mixed reminder tags, group tags, schedule tags, and natural schedule ranges
 - headings containing `今日` / `今天` / `明天` provide date context for following undated schedule lines, so `# 今日计划` has actual parser behavior
+- heading date context is explicit and resets on plain headings; date headings with descriptions such as `# 5/28 周末计划` work, while descriptive headings such as `# 我的明天计划` are not treated as dates
+- natural schedule parsing accepts inline leading dates, time ranges later in the line, slash dates, full-width separators, Chinese AM/PM, and full-width range separators
+- unsupported semantic tags such as `#today`, `#tomorrow`, `#important`, and `#project` remain visible in titles instead of being silently stripped
 - natural schedule import can create both a calendar event and a linked todo whose DDL equals the event end time
 - planning import is preview-first and selection-based, not immediate database writes
 - planning preview cards are editable before import for title, group, notes, DDL/start/end times, mixed reminder input, and event linked-todo creation
@@ -121,7 +124,7 @@ This file tracks the product at a practical level for new coding sessions.
 - phone-side HTTP serving model exists
 - browser can perform limited data operations against the phone-side dataset
 - desktop web can edit existing todos with title, notes, DDL, reminder, group, recurrence, ring, and vibration fields
-- desktop web todo/event reminder inputs accept AM/PM, relative-date, weekday, dot-date, Chinese-date, and Chinese-comma reminder syntax in addition to the existing minute and ISO-like forms; placeholders now show these examples
+- desktop web todo/event reminder inputs accept AM/PM, Chinese AM/PM, relative-date, weekday, dot/slash-date, Chinese-date, full-width separator, and Chinese-comma reminder syntax in addition to the existing minute and ISO-like forms; placeholders now show these examples
 - desktop web todo cards open a detail preview first; event cards open the editor directly, while destructive actions still require confirmation
 - desktop web todo and event reminder editors accept mixed reminder syntax matching the phone-side examples, including minutes, same-day time, current-year date-time, and full date-time
 - desktop sync API accepts todo `reminderOffsetsMinutes`, allowing desktop-created / edited todos to persist multiple reminders

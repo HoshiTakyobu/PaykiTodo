@@ -6,27 +6,29 @@ Long-running Codex sessions can become unreliable. This file exists so a new ses
 
 ## Current Handoff Summary
 
-- The project is currently at code version `1.7.12` / `versionCode 169`.
-- Latest debug APK path after build: `app/build/outputs/apk/debug/PaykiTodo-1.7.12-debug.apk`.
+- The project is currently at code version `1.7.13` / `versionCode 170`.
+- Latest debug APK path after build: `app/build/outputs/apk/debug/PaykiTodo-1.7.13-debug.apk`.
 - Latest build commands used Android Studio bundled JBR and succeeded:
   - `./gradlew.bat testDebugUnitTest`
   - `./gradlew.bat assembleDebug`
 - `node --check app/src/main/assets/desktop-web/app.js` also succeeded.
-- This round documents the `1.7.11` syntax consistency work across all user-facing help surfaces: phone Planning Desk help, todo batch help, calendar batch help, built-in Wiki, desktop Planning Desk help, and desktop reminder placeholders.
+- This round fixes Planning Desk parser boundary issues found in syntax review, including inline leading-date event titles, heading date-context reset, non-leading time ranges, slash/full-width/Chinese-AMPM inputs, and unsupported semantic-tag handling.
 - The previous crash root cause was likely the Room migration schema mismatch for `planning_notes`; `1.7.6` keeps that repair and improves the Planning Desk UI.
 - Phone-side Planning Desk Markdown rendering remains opt-in manual preview, not the startup default.
 - The phone Planning Desk keeps the raw Markdown / natural-text editor plus Phase 2 import/edit workflow.
 - Desktop web Planning Desk remains available with textarea editing, editable parse preview, selected import, document deletion, unified reminder input handoff, and `#imported` write-back.
 - Do not push `1.7.x` or the last `1.6.x` line to GitHub unless the user explicitly asks again.
 
-## Latest Fixes In 1.7.12
+## Latest Fixes In 1.7.13
 
-1. Upgraded app version metadata to `1.7.12` / `versionCode 169`.
-2. Phone Planning Desk help now explains common DDL forms, natural reminder forms, and preview-edit time fields.
-3. Todo batch import help now states that English commas split fields, while date/time inside one field should use a space or Chinese comma.
-4. Calendar batch import help now documents `Remind=` support for the shared reminder syntax, including natural dates and Chinese date-time commas.
-5. Built-in Wiki now covers the same syntax boundaries across Planning Desk, todo batch import, calendar batch import, and desktop Planning Desk.
-6. Desktop Web Planning Desk help and reminder placeholders now show the same accepted reminder examples.
+1. Upgraded app version metadata to `1.7.13` / `versionCode 170`.
+2. Natural event titles no longer include leading inline dates or time ranges.
+3. Heading date context now uses explicit date headings and resets on plain headings.
+4. Natural event parsing accepts time ranges later in the line, slash dates, common full-width separators, Chinese AM/PM, and full-width range separators.
+5. Phone and desktop-web reminder parsing both accept the same common slash-date / Chinese-AMPM / full-width-separator reminder inputs.
+6. Top-level events can now become the parent title for indented subtasks.
+7. Unsupported semantic tags such as `#today`, `#tomorrow`, `#important`, and `#project` remain visible instead of being silently stripped.
+8. Parser tests now cover the syntax-review regressions.
 
 ## Files Most Relevant To The Latest Round
 
@@ -53,17 +55,20 @@ Long-running Codex sessions can become unreliable. This file exists so a new ses
 
 ## Current Verification Focus
 
-1. Install `PaykiTodo-1.7.12-debug.apk`.
+1. Install `PaykiTodo-1.7.13-debug.apk`.
 2. Verify the app no longer crashes immediately after launch.
 3. Verify existing todos/events are still present.
 4. Verify todo batch rows such as `5.28,整理材料,5`, `5月28日,整理材料,5`, `明天,整理材料,5`, and `周五,整理材料,5`.
 5. Verify desktop web todo/event reminder input accepts `5,15,2:30 pm,明天 16:30,周五 16:30,5.10 15:00,5月10日，14:30`.
-6. Verify Planning Desk help, todo batch help, calendar batch help, built-in Wiki, and desktop Planning Desk help all explain the same syntax rules.
-7. Verify invalid desktop reminder inputs still fail visibly instead of saving bad offsets.
-8. Verify drawer -> `规划台` still opens an empty new document with grey placeholder examples.
-9. Verify `任务` repeated taps do not duplicate `- [ ]` on one line, and `子任务` inserts a new indented child line.
-10. Verify importing selected todos/events still writes data and appends `#imported` to source Markdown lines.
-11. Verify basic navigation to 每日看板 / 我的任务 / 日历 / 设置 still works.
+6. Verify Planning Desk rows such as `5.28 14:00-16:00 小组讨论`, `复习 14:00-16:00`, and `5/28 下午 2:30～下午 4:00 小组讨论`.
+7. Verify headings such as `# 我的明天计划`, `# 明天`, `# 收集箱`, and `# 5/28 周末计划`.
+8. Verify desktop web todo/event reminder fields accept `下午 2:30`, `5/10 下午 2:30`, and `5月10日，14:30`.
+9. Verify Planning Desk help, todo batch help, calendar batch help, built-in Wiki, and desktop Planning Desk help all explain the same syntax rules.
+10. Verify invalid desktop reminder inputs still fail visibly instead of saving bad offsets.
+11. Verify drawer -> `规划台` still opens an empty new document with grey placeholder examples.
+12. Verify `任务` repeated taps do not duplicate `- [ ]` on one line, and `子任务` inserts a new indented child line.
+13. Verify importing selected todos/events still writes data and appends `#imported` to source Markdown lines.
+14. Verify basic navigation to 每日看板 / 我的任务 / 日历 / 设置 still works.
 
 ## If 1.7.5 Still Crashes
 

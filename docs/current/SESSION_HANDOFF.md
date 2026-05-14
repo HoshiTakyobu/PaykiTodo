@@ -6,29 +6,30 @@ Long-running Codex sessions can become unreliable. This file exists so a new ses
 
 ## Current Handoff Summary
 
-- The project is currently at code version `1.7.13` / `versionCode 170`.
-- Latest debug APK path after build: `app/build/outputs/apk/debug/PaykiTodo-1.7.13-debug.apk`.
+- The project is currently at code version `1.7.14` / `versionCode 171`.
+- Latest debug APK path after build: `app/build/outputs/apk/debug/PaykiTodo-1.7.14-debug.apk`.
 - Latest build commands used Android Studio bundled JBR and succeeded:
   - `./gradlew.bat testDebugUnitTest`
   - `./gradlew.bat assembleDebug`
 - `node --check app/src/main/assets/desktop-web/app.js` also succeeded.
-- This round fixes Planning Desk parser boundary issues found in syntax review, including inline leading-date event titles, heading date-context reset, non-leading time ranges, slash/full-width/Chinese-AMPM inputs, and unsupported semantic-tag handling.
+- This round fixes Planning Desk editor and import workflow issues found in UI review, including auto-save, duplicate shortcut clicks, import write-back persistence, empty-selection import blocking, preview selection controls, natural datetime preview edits, and desktop-web shortcuts.
 - The previous crash root cause was likely the Room migration schema mismatch for `planning_notes`; `1.7.6` keeps that repair and improves the Planning Desk UI.
 - Phone-side Planning Desk Markdown rendering remains opt-in manual preview, not the startup default.
 - The phone Planning Desk keeps the raw Markdown / natural-text editor plus Phase 2 import/edit workflow.
-- Desktop web Planning Desk remains available with textarea editing, editable parse preview, selected import, document deletion, unified reminder input handoff, and `#imported` write-back.
+- Desktop web Planning Desk remains available with textarea editing, auto-save, editable parse preview, selected import, document deletion, unified reminder input handoff, and `#imported` write-back.
 - Do not push `1.7.x` or the last `1.6.x` line to GitHub unless the user explicitly asks again.
 
-## Latest Fixes In 1.7.13
+## Latest Fixes In 1.7.14
 
-1. Upgraded app version metadata to `1.7.13` / `versionCode 170`.
-2. Natural event titles no longer include leading inline dates or time ranges.
-3. Heading date context now uses explicit date headings and resets on plain headings.
-4. Natural event parsing accepts time ranges later in the line, slash dates, common full-width separators, Chinese AM/PM, and full-width range separators.
-5. Phone and desktop-web reminder parsing both accept the same common slash-date / Chinese-AMPM / full-width-separator reminder inputs.
-6. Top-level events can now become the parent title for indented subtasks.
-7. Unsupported semantic tags such as `#today`, `#tomorrow`, `#important`, and `#project` remain visible instead of being silently stripped.
-8. Parser tests now cover the syntax-review regressions.
+1. Upgraded app version metadata to `1.7.14` / `versionCode 171`.
+2. Phone Planning Desk now auto-saves Markdown content after a short debounce and saves before switching documents.
+3. Fixed duplicate shortcut-chip clicks so one tap no longer inserts the same Planning Desk token twice.
+4. Successful Planning Desk import now persists the updated `#imported` Markdown immediately instead of only updating local UI state.
+5. Planning preview import now requires at least one selected valid candidate and exposes select-all / clear-all controls.
+6. Planning preview and document sheets use screen-height based sizing instead of fixed heights.
+7. Markdown preview interactions can return to the corresponding source line, and Enter auto-continuation works in the middle of a document.
+8. Preview-stage DDL / start / end time editing accepts natural datetime forms such as `5.28 23:59`, `明天 16:30`, and `下午 2:30`.
+9. Desktop web Planning Desk now supports auto-save, save-before-document-switch, `Ctrl+S` save, `Ctrl+Enter` parse, empty-selection import blocking, and select-all / clear-all preview controls.
 
 ## Files Most Relevant To The Latest Round
 
@@ -55,7 +56,7 @@ Long-running Codex sessions can become unreliable. This file exists so a new ses
 
 ## Current Verification Focus
 
-1. Install `PaykiTodo-1.7.13-debug.apk`.
+1. Install `PaykiTodo-1.7.14-debug.apk`.
 2. Verify the app no longer crashes immediately after launch.
 3. Verify existing todos/events are still present.
 4. Verify todo batch rows such as `5.28,整理材料,5`, `5月28日,整理材料,5`, `明天,整理材料,5`, and `周五,整理材料,5`.
@@ -67,8 +68,11 @@ Long-running Codex sessions can become unreliable. This file exists so a new ses
 10. Verify invalid desktop reminder inputs still fail visibly instead of saving bad offsets.
 11. Verify drawer -> `规划台` still opens an empty new document with grey placeholder examples.
 12. Verify `任务` repeated taps do not duplicate `- [ ]` on one line, and `子任务` inserts a new indented child line.
-13. Verify importing selected todos/events still writes data and appends `#imported` to source Markdown lines.
-14. Verify basic navigation to 每日看板 / 我的任务 / 日历 / 设置 still works.
+13. Verify importing selected todos/events still writes data, appends `#imported` to source Markdown lines, and stays persisted after leaving/reopening Planning Desk.
+14. Verify Planning Desk shortcut chips only insert once per tap.
+15. Verify Planning Desk auto-save by typing, waiting at least 2 seconds, switching documents or leaving the page, then reopening.
+16. Verify desktop web Planning Desk supports `Ctrl+S`, `Ctrl+Enter`, auto-save, and refuses import when no candidate is selected.
+17. Verify basic navigation to 每日看板 / 我的任务 / 日历 / 设置 still works.
 
 ## If 1.7.5 Still Crashes
 

@@ -2,7 +2,7 @@
 
 ## Active Development Focus
 
-The current round is PaykiTodo `1.7.13` / `versionCode 170`, focused on Planning Desk parser boundary fixes called out by syntax review.
+The current round is PaykiTodo `1.7.14` / `versionCode 171`, focused on Planning Desk editor / import workflow fixes called out by UI review.
 
 The syntax review conclusion:
 
@@ -41,11 +41,23 @@ Completed in the `1.7.13` parser boundary-fix round:
 7. Unsupported semantic tags such as `#today`, `#tomorrow`, `#important`, and `#project` remain visible in titles instead of being silently stripped.
 8. App version metadata moved to `1.7.13` / `versionCode 170`.
 
+Completed in the `1.7.14` Planning Desk workflow round:
+
+1. Phone Planning Desk content now auto-saves after a short debounce and saves before switching planning documents.
+2. Fixed the shortcut chip double-trigger bug that could insert the same token twice.
+3. Import success now immediately persists updated Markdown with `#imported`, preventing repeat import after leaving/reopening.
+4. Import preview disables import when no valid candidate is selected and adds `全选可导入项` / `全不选`.
+5. Preview and document sheets use screen-height based sizing instead of fixed 420dp / 520dp / 560dp heights.
+6. Markdown preview interactions can return to the source line, and Enter auto-continuation works in the middle of a document.
+7. Preview-stage DDL / start / end time fields accept natural datetime inputs such as `5.28 23:59`, `明天 16:30`, `下午 2:30`, `5/28 下午 2:30`.
+8. Desktop Web Planning Desk now has auto-save, save-before-document-switch, `Ctrl+S` save, `Ctrl+Enter` parse, empty-selection import blocking, and select-all / clear-all preview controls.
+9. App version metadata moved to `1.7.14` / `versionCode 171`.
+
 ## Immediate Practical Next Steps
 
 When testing, use:
 
-1. install `app/build/outputs/apk/debug/PaykiTodo-1.7.13-debug.apk`
+1. install `app/build/outputs/apk/debug/PaykiTodo-1.7.14-debug.apk`
 2. open 我的任务 -> 批量待办
 3. verify rows like `5.28,整理材料,5`, `5月28日,整理材料,5`, `明天,整理材料,5`, and `周五,整理材料,5` parse correctly
 4. verify `16:30,写报告,5` still means today 16:30
@@ -55,6 +67,11 @@ When testing, use:
 8. verify desktop web todo/event reminder fields accept `下午 2:30`, `5/10 下午 2:30`, and `5月10日，14:30`
 9. open Planning Desk help, todo batch help, calendar batch help, built-in Wiki, and desktop Planning Desk help to verify the same syntax rules are explained consistently
 10. verify invalid desktop reminder times still surface an error instead of silently saving bad offsets
+11. verify Planning Desk auto-save persists text after waiting about 2 seconds and after switching documents
+12. verify one tap on each shortcut chip inserts only once
+13. verify import preview cannot import zero selected candidates and can select all / clear all
+14. verify imported Planning Desk lines keep `#imported` after leaving and reopening the document
+15. verify desktop web Planning Desk supports `Ctrl+S` save and `Ctrl+Enter` identify/parse
 
 ## Commit Message Rule
 
@@ -62,4 +79,4 @@ PaykiTodo commit messages should describe product behavior changes and bug/debug
 
 ## Current External Dependency
 
-No external file or API key is needed for the current `1.7.13` verification task.
+No external file or API key is needed for the current `1.7.14` verification task.

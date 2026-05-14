@@ -44,17 +44,18 @@ This file tracks the product at a practical level for new coding sessions.
 - planning documents support create, open, rename, archive, and delete with confirmation on the phone UI; the phone document directory and desktop web Planning Desk both expose delete actions
 - phone Planning Desk currently defaults to stable raw Markdown / natural-text editing; `1.7.8` restores a manual Markdown preview that renders headings, task checkboxes, subtask indentation, tag pills, and `#imported` state pills while keeping raw edit as the startup default
 - phone editor mode remains a plain Markdown / natural-text editor with a solid-color document surface and horizontal shortcut toolbar for tasks, subtasks, indent/outdent, DDL, schedule, reminder, group, today, and tomorrow`r`n- phone Planning Desk includes an in-screen help sheet explaining the workflow, heading sections such as `# 收集箱` / `# 今日计划`, and directly usable examples`r`n- phone Markdown preview checkbox toggles rewrite the source Markdown line only; they do not directly complete imported official todos
-- Enter continuation attempts to keep `- [ ]` task lines flowing without forcing the user to manually type Markdown every time
-- shortcut `任务` converts the current line to one checkbox task without duplicating `- [ ]`; shortcut `子任务` inserts a new indented child task line
+- phone Planning Desk editor auto-saves after a short debounce and saves before switching planning documents
+- Enter continuation attempts to keep `- [ ]` task lines flowing without forcing the user to manually type Markdown every time, including when Enter is pressed in the middle of a document
+- shortcut `任务` converts the current line to one checkbox task without duplicating `- [ ]`; shortcut `子任务` inserts a new indented child task line; shortcut chips avoid double-triggering one tap
 - local rule parser recognizes markdown checkboxes, completed-task skip, subtask parent notes, date headings, DDL tags, unified mixed reminder tags, group tags, schedule tags, and natural schedule ranges
 - headings containing `今日` / `今天` / `明天` provide date context for following undated schedule lines, so `# 今日计划` has actual parser behavior
 - heading date context is explicit and resets on plain headings; date headings with descriptions such as `# 5/28 周末计划` work, while descriptive headings such as `# 我的明天计划` are not treated as dates
 - natural schedule parsing accepts inline leading dates, time ranges later in the line, slash dates, full-width separators, Chinese AM/PM, and full-width range separators
 - unsupported semantic tags such as `#today`, `#tomorrow`, `#important`, and `#project` remain visible in titles instead of being silently stripped
 - natural schedule import can create both a calendar event and a linked todo whose DDL equals the event end time
-- planning import is preview-first and selection-based, not immediate database writes
-- planning preview cards are editable before import for title, group, notes, DDL/start/end times, mixed reminder input, and event linked-todo creation
-- successful planning import appends `#imported` to imported source lines and saves the active planning note to reduce duplicate imports
+- planning import is preview-first and selection-based, not immediate database writes; import is disabled until at least one valid candidate is selected
+- planning preview cards are editable before import for title, group, notes, DDL/start/end times, mixed reminder input, and event linked-todo creation; preview has select-all / clear-all controls
+- successful planning import appends `#imported` to imported source lines and immediately saves the active planning note to reduce duplicate imports
 - default Planning Desk import reminder is 5 minutes before, full-screen, ring + vibration
 - planning notes are included in JSON backup / restore snapshots`r`n- Planning Desk database migration is repaired in `1.7.5`: database version `10` includes `MIGRATION_9_10` to rebuild `planning_notes` tables created by the mismatched `1.7.0`-`1.7.4` migration
 
@@ -140,8 +141,8 @@ This file tracks the product at a practical level for new coding sessions.
 - desktop web event timeline no longer shows the separate all-day strip above the timeline
 - desktop web shows the installed APK version in the brand block and uses runtime versioned CSS / JS URLs
 - desktop sync service self-stops if Android restarts it while desktop sync is disabled in Settings
-- desktop web has a `规划台` tab with textarea editor, document selector, save, editable parse preview, selected import, and a help modal that explains the same DDL/reminder syntax as the phone-side Planning Desk help
-- desktop web Planning Desk uses phone-local `/api/planning/*` routes, edits the same Room planning notes as the phone UI, and writes back `#imported` markers after import
+- desktop web has a `规划台` tab with textarea editor, document selector, auto-save, `Ctrl+S` save, `Ctrl+Enter` parse, editable parse preview, selected import, and a help modal that explains the same DDL/reminder syntax as the phone-side Planning Desk help
+- desktop web Planning Desk uses phone-local `/api/planning/*` routes, edits the same Room planning notes as the phone UI, saves before switching documents, blocks empty selected imports, and writes back `#imported` markers after import
 
 ### Destructive Action Safety
 

@@ -3,7 +3,24 @@ const EVENT_HEADER_HEIGHT = 58;
 const FIFTEEN_MINUTES = 15 * 60 * 1000;
 const THIRTY_MINUTES = 30 * 60 * 1000;
 const DEFAULT_EVENT_COLOR = '#4e87e1';
-const state = { token: '', snapshot: null, currentTab: 'todos', selectedEventDay: dayKey(new Date()), editingTodoId: null, editingEventId: null, previewTodoId: null, previewEventId: null, pendingEventSeed: null, planningNotes: [], activePlanningNoteId: null, planningParseResult: null };
+const state = {
+  token: '',
+  snapshot: null,
+  currentTab: 'todos',
+  selectedEventDay: dayKey(new Date()),
+  editingTodoId: null,
+  editingEventId: null,
+  previewTodoId: null,
+  previewEventId: null,
+  pendingEventSeed: null,
+  planningNotes: [],
+  activePlanningNoteId: null,
+  planningParseResult: null,
+  planningSaveTimer: null,
+  planningDirty: false,
+  planningSaving: false,
+  planningRenderedNoteId: null
+};
 
 const els = {
   token: document.getElementById('token'),
@@ -584,9 +601,14 @@ function renderPlanningNotes() {
   els.planningNoteSelect.innerHTML = notes.map(note => '<option value="' + note.id + '">' + escapeHtml(note.title) + '</option>').join('');
   const active = activePlanningNote();
   if (active) {
+    const activeChanged = !sameId(state.planningRenderedNoteId, active.id);
     state.activePlanningNoteId = active.id;
     els.planningNoteSelect.value = String(active.id);
-    els.planningEditor.value = active.contentMarkdown || '';
+    if (activeChanged || !state.planningDirty) {
+      els.planningEditor.value = active.contentMarkdown || '';
+      state.planningDirty = false;
+    }
+    state.planningRenderedNoteId = active.id;
   }
   renderPlanningPreview();
 }
@@ -623,7 +645,13 @@ function renderPlanningPreview() {
   }
   const candidates = result.candidates || [];
   els.planningPreviewMeta.textContent = '共 ' + candidates.length + ' 行，' + (result.importableCount || 0) + ' 条可导入。';
-  els.planningPreview.innerHTML = candidates.map(item => {
+  const actions = candidates.length ? (
+    '<div class="planning-preview-actions">'
+    + '<button type="button" class="ghost mini" data-planning-select-all="true">全选可导入项</button>'
+    + '<button type="button" class="ghost mini" data-planning-clear-all="true">全不选</button>'
+    + '</div>'
+  ) : '';
+  els.planningPreview.innerHTML = actions + (candidates.map(item => {
     const editable = item.type === 'TODO' || item.type === 'EVENT';
     const importable = editable ? (!item.imported && !item.completed) : (item.importable && !item.imported);
     const checked = importable && !item.importBlocked ? ' checked' : '';
@@ -652,7 +680,7 @@ function renderPlanningPreview() {
       +   linked
       +   (item.message ? '<div class="planning-message">' + escapeHtml(item.message) + '</div>' : '')
       + '</article>';
-  }).join('') || '<div class="empty-state">没有识别结果。</div>';
+  }).join('') || '<div class="empty-state">没有识别结果。</div>');
 }
 
 function collectPlanningCandidates() {
@@ -666,7 +694,9 @@ function collectPlanningCandidates() {
       item.reminderInputText = value;
       item.reminderOffsetsMinutes = value.split(/[,，]/).map(token => Number(token.trim())).filter(Number.isFinite).map(value => Math.max(0, Math.floor(value)));
     } else if (['dueAt', 'startAt', 'endAt'].includes(node.dataset.planningField)) {
-      item[node.dataset.planningField] = value.trim().replace(' ', 'T') || null;
+      const trimmed = value.trim();
+      const parsedMillis = trimmed ? parseLocalDateTimeMillis(trimmed, new Date()) : null;
+      item[node.dataset.planningField] = trimmed ? (parsedMillis == null ? trimmed.replace(' ', 'T') : formatDateTimeLocalValue(parsedMillis)) : null;
     } else {
       item[node.dataset.planningField] = value;
     }
@@ -678,18 +708,47 @@ function collectPlanningCandidates() {
   return base;
 }
 
-async function savePlanningNote() {
+function markPlanningDirty() {
+  state.planningDirty = true;
+  if (state.planningSaveTimer) window.clearTimeout(state.planningSaveTimer);
+  state.planningSaveTimer = window.setTimeout(() => {
+    savePlanningNote(true).catch(err => els.status.textContent = err.message);
+  }, 2000);
+}
+
+async function flushPlanningAutosave() {
+  if (state.planningSaveTimer) {
+    window.clearTimeout(state.planningSaveTimer);
+    state.planningSaveTimer = null;
+  }
+  if (state.planningDirty) await savePlanningNote(true);
+}
+
+async function savePlanningNote(quiet = false) {
   const active = activePlanningNote();
   if (!active) throw new Error('没有可保存的规划文档');
-  await api('/api/planning/notes/' + active.id, {
-    method: 'PUT',
-    body: JSON.stringify({ contentMarkdown: els.planningEditor.value })
-  });
-  await loadPlanningNotes();
-  els.status.textContent = '规划文档已保存';
+  if (state.planningSaving) return;
+  if (state.planningSaveTimer) {
+    window.clearTimeout(state.planningSaveTimer);
+    state.planningSaveTimer = null;
+  }
+  state.planningSaving = true;
+  const savedContent = els.planningEditor.value;
+  try {
+    await api('/api/planning/notes/' + active.id, {
+      method: 'PUT',
+      body: JSON.stringify({ contentMarkdown: savedContent })
+    });
+    await loadPlanningNotes();
+    state.planningDirty = els.planningEditor.value !== savedContent;
+    if (!quiet) els.status.textContent = '规划文档已保存';
+  } finally {
+    state.planningSaving = false;
+  }
 }
 
 async function createPlanningNote() {
+  await flushPlanningAutosave();
   const title = prompt('新规划文档名称', '新的规划');
   if (!title) return;
   const data = await api('/api/planning/notes', { method: 'POST', body: JSON.stringify({ title }) });
@@ -700,6 +759,7 @@ async function createPlanningNote() {
 }
 
 async function deletePlanningNote() {
+  await flushPlanningAutosave();
   const active = activePlanningNote();
   if (!active) return;
   if (!await confirmDanger('确认删除规划文档', '删除后无法恢复：' + (active.title || '未命名规划'), '删除')) return;
@@ -710,6 +770,7 @@ async function deletePlanningNote() {
 }
 
 async function parsePlanningEditor() {
+  await flushPlanningAutosave();
   state.planningParseResult = await api('/api/planning/parse', {
     method: 'POST',
     body: JSON.stringify({ markdown: els.planningEditor.value })
@@ -720,6 +781,10 @@ async function parsePlanningEditor() {
 async function importSelectedPlanning() {
   if (!state.planningParseResult) await parsePlanningEditor();
   const selectedIds = Array.from(document.querySelectorAll('[data-planning-select]:checked')).map(node => node.dataset.planningSelect);
+  if (!selectedIds.length) {
+    els.status.textContent = '请先勾选至少一条可导入内容';
+    return;
+  }
   const active = activePlanningNote();
   const result = await api('/api/planning/import', {
     method: 'POST',
@@ -727,6 +792,8 @@ async function importSelectedPlanning() {
   });
   if (result.updatedMarkdown != null) {
     els.planningEditor.value = result.updatedMarkdown;
+    state.planningDirty = true;
+    await savePlanningNote(true);
     state.planningParseResult = null;
     renderPlanningPreview();
   }
@@ -790,6 +857,17 @@ function parseLocalDateTimeMillis(text, fallbackDate) {
     if (['周日', '周天', '星期日', '星期天', '礼拜日', '礼拜天'].includes(label)) return 7;
     return null;
   };
+  const resolveRelativeDate = label => {
+    const date = fallbackDate ? new Date(fallbackDate.getTime()) : new Date();
+    if (label === '明天' || label === '明日') date.setDate(date.getDate() + 1);
+    if (label === '后天') date.setDate(date.getDate() + 2);
+    const targetWeekday = weekdayValue(label);
+    if (targetWeekday != null) {
+      const currentWeekday = date.getDay() === 0 ? 7 : date.getDay();
+      date.setDate(date.getDate() + ((targetWeekday - currentWeekday + 7) % 7));
+    }
+    return date;
+  };
   const timeExpr = '(凌晨|早上|上午|中午|下午|晚上)?\\s*(\\d{1,2}):(\\d{2})\\s*([aApP][mM])?';
   let match = value.match(new RegExp('^' + timeExpr + '$'));
   if (match) {
@@ -799,16 +877,32 @@ function parseLocalDateTimeMillis(text, fallbackDate) {
   }
   match = value.match(new RegExp('^(今天|今日|明天|明日|后天|周[一二三四五六日天]|星期[一二三四五六日天]|礼拜[一二三四五六日天])[\\s,]+' + timeExpr + '$'));
   if (match) {
-    const date = fallbackDate ? new Date(fallbackDate.getTime()) : new Date();
-    if (match[1] === '明天' || match[1] === '明日') date.setDate(date.getDate() + 1);
-    if (match[1] === '后天') date.setDate(date.getDate() + 2);
-    const targetWeekday = weekdayValue(match[1]);
-    if (targetWeekday != null) {
-      const currentWeekday = date.getDay() === 0 ? 7 : date.getDay();
-      date.setDate(date.getDate() + ((targetWeekday - currentWeekday + 7) % 7));
-    }
+    const date = resolveRelativeDate(match[1]);
     const hour = parseHour(match[3], match[5], match[2]);
     return hour == null ? null : buildDate(date.getFullYear(), date.getMonth() + 1, date.getDate(), hour, Number(match[4]));
+  }
+  match = value.match(/^(今天|今日|明天|明日|后天|周[一二三四五六日天]|星期[一二三四五六日天]|礼拜[一二三四五六日天])$/);
+  if (match) {
+    const date = resolveRelativeDate(match[1]);
+    return buildDate(date.getFullYear(), date.getMonth() + 1, date.getDate(), 23, 59);
+  }
+  match = value.match(/^(\d{1,2})[-./](\d{1,2})$/);
+  if (match) {
+    const year = (fallbackDate || new Date()).getFullYear();
+    return buildDate(year, Number(match[1]), Number(match[2]), 23, 59);
+  }
+  match = value.match(/^(\d{1,2})月(\d{1,2})日?$/);
+  if (match) {
+    const year = (fallbackDate || new Date()).getFullYear();
+    return buildDate(year, Number(match[1]), Number(match[2]), 23, 59);
+  }
+  match = value.match(/^(\d{4})[-./](\d{1,2})[-./](\d{1,2})$/);
+  if (match) {
+    return buildDate(Number(match[1]), Number(match[2]), Number(match[3]), 23, 59);
+  }
+  match = value.match(/^(\d{4})年(\d{1,2})月(\d{1,2})日?$/);
+  if (match) {
+    return buildDate(Number(match[1]), Number(match[2]), Number(match[3]), 23, 59);
   }
   match = value.match(new RegExp('^(\\d{1,2})[-./](\\d{1,2})[\\s,]+' + timeExpr + '$'));
   if (match) {
@@ -1181,14 +1275,52 @@ document.getElementById('planning-save')?.addEventListener('click', () => savePl
 document.getElementById('planning-help')?.addEventListener('click', () => openModal('planning-help-modal'));
 document.getElementById('planning-parse')?.addEventListener('click', () => parsePlanningEditor().catch(err => els.status.textContent = err.message));
 document.getElementById('planning-import')?.addEventListener('click', () => importSelectedPlanning().catch(err => els.status.textContent = err.message));
-els.planningNoteSelect?.addEventListener('change', event => {
+els.planningEditor?.addEventListener('input', () => {
+  state.planningParseResult = null;
+  renderPlanningPreview();
+  markPlanningDirty();
+});
+els.planningEditor?.addEventListener('keydown', event => {
+  if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 's') {
+    event.preventDefault();
+    savePlanningNote().catch(err => els.status.textContent = err.message);
+  }
+  if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {
+    event.preventDefault();
+    parsePlanningEditor().catch(err => els.status.textContent = err.message);
+  }
+});
+els.planningPreview?.addEventListener('click', event => {
+  const selectAll = event.target.closest?.('[data-planning-select-all]');
+  const clearAll = event.target.closest?.('[data-planning-clear-all]');
+  if (selectAll) {
+    document.querySelectorAll('[data-planning-select]:not(:disabled)').forEach(node => { node.checked = true; });
+  }
+  if (clearAll) {
+    document.querySelectorAll('[data-planning-select]').forEach(node => { node.checked = false; });
+  }
+});
+els.planningNoteSelect?.addEventListener('change', async event => {
+  try {
+    await flushPlanningAutosave();
+  } catch (err) {
+    els.status.textContent = err.message;
+    return;
+  }
   state.activePlanningNoteId = event.target.value;
   const note = activePlanningNote();
   if (note && els.planningEditor) {
     els.planningEditor.value = note.contentMarkdown || '';
+    state.planningDirty = false;
+    state.planningRenderedNoteId = note.id;
     state.planningParseResult = null;
     renderPlanningPreview();
   }
+});
+window.addEventListener('beforeunload', event => {
+  if (!state.planningDirty) return;
+  event.preventDefault();
+  event.returnValue = '';
 });
 els.openCreate.onclick = () => {
   if (state.currentTab === 'events') {

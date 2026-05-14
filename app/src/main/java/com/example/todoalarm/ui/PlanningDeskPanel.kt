@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -22,7 +23,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Archive
 import androidx.compose.material.icons.rounded.Article
 import androidx.compose.material.icons.rounded.Delete
-import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.Save
 import androidx.compose.material.icons.rounded.Search
@@ -71,7 +71,9 @@ import com.example.todoalarm.data.PlanningImportResult
 import com.example.todoalarm.data.PlanningParseResult
 import com.example.todoalarm.data.PlanningParsedType
 import com.example.todoalarm.data.toPlanningImportCandidate
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
@@ -105,13 +107,21 @@ internal fun PlanningDeskPanel(
     var newDialog by remember { mutableStateOf(false) }
     val selectedIds = remember { mutableStateMapOf<String, Boolean>() }
     val editableCandidates = remember { mutableStateListOf<PlanningImportCandidate>() }
+    val hasUnsavedChanges = activeNote != null && editorValue.text != activeNote.contentMarkdown
 
-    LaunchedEffect(activeNote?.id, activeNote?.contentMarkdown) {
+    LaunchedEffect(activeNote?.id) {
         editorValue = TextFieldValue(activeNote?.contentMarkdown.orEmpty())
         parseResult = null
         selectedIds.clear()
         editableCandidates.clear()
         markdownEditMode = true
+    }
+
+    LaunchedEffect(activeNote?.id, editorValue.text, activeNote?.contentMarkdown) {
+        val note = activeNote ?: return@LaunchedEffect
+        if (editorValue.text == note.contentMarkdown) return@LaunchedEffect
+        delay(2000)
+        onSaveNote(note.id, editorValue.text)
     }
 
     Column(
@@ -152,9 +162,9 @@ internal fun PlanningDeskPanel(
                             overflow = TextOverflow.Ellipsis
                         )
                         Text(
-                            text = "先把想法写下来，再识别成待办和日程。",
+                            text = if (hasUnsavedChanges) "正在自动保存未保存内容..." else "先把想法写下来，再识别成待办和日程。",
                             style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            color = if (hasUnsavedChanges) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                     IconButton(onClick = { documentSheetVisible = true }) {
@@ -265,8 +275,19 @@ internal fun PlanningDeskPanel(
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(1f),
-                onToggleCheckbox = { lineNumber -> editorValue = editorValue.copy(text = togglePlanningCheckbox(editorValue.text, lineNumber)) },
-                onRequestEdit = { markdownEditMode = true }
+                onToggleCheckbox = { lineNumber ->
+                    val nextText = togglePlanningCheckbox(editorValue.text, lineNumber)
+                    editorValue = TextFieldValue(
+                        text = nextText,
+                        selection = androidx.compose.ui.text.TextRange(planningLineStartOffset(nextText, lineNumber))
+                    )
+                },
+                onRequestEdit = { lineNumber ->
+                    lineNumber?.let {
+                        editorValue = editorValue.copy(selection = androidx.compose.ui.text.TextRange(planningLineStartOffset(editorValue.text, it)))
+                    }
+                    markdownEditMode = true
+                }
             )
         }
     }
@@ -280,8 +301,13 @@ internal fun PlanningDeskPanel(
                 notes = notes,
                 activeNoteId = activeNote?.id,
                 onSelect = {
-                    onSelectNote(it)
-                    documentSheetVisible = false
+                    scope.launch {
+                        activeNote?.takeIf { hasUnsavedChanges }?.let { note ->
+                            onSaveNote(note.id, editorValue.text)
+                        }
+                        onSelectNote(it)
+                        documentSheetVisible = false
+                    }
                 },
                 onDelete = { pendingDeleteNote = it }
             )
@@ -320,7 +346,10 @@ internal fun PlanningDeskPanel(
                         )
                         Toast.makeText(context, result.message ?: "已导入 ${result.importedCount} 条规划", Toast.LENGTH_SHORT).show()
                         if (result.message == null) {
-                            result.updatedMarkdown?.let { editorValue = TextFieldValue(it) }
+                            result.updatedMarkdown?.let { updated ->
+                                editorValue = TextFieldValue(updated)
+                                activeNote?.id?.let { noteId -> onSaveNote(noteId, updated) }
+                            }
                             parseResult = null
                             editableCandidates.clear()
                             selectedIds.clear()
@@ -446,7 +475,7 @@ private fun PlanningShortcutChip(
 ) {
     AssistChip(
         modifier = Modifier.combinedClickable(onClick = { onAction(spec.action) }, onLongClick = { onHelp(spec.label, spec.help) }),
-        onClick = { onAction(spec.action) },
+        onClick = {},
         label = { Text(spec.label, maxLines = 1) }
     )
 }
@@ -461,9 +490,10 @@ private fun PlanningDocumentSheet(
     var query by rememberSaveable { mutableStateOf("") }
     val visibleNotes = remember(notes, query) {
         val keyword = query.trim()
-        if (keyword.isBlank()) notes else notes.filter { note ->
+        val filtered = if (keyword.isBlank()) notes else notes.filter { note ->
             note.title.contains(keyword, ignoreCase = true) || note.contentMarkdown.contains(keyword, ignoreCase = true)
         }
+        filtered.sortedByDescending { it.updatedAtMillis }
     }
     Column(modifier = Modifier.padding(horizontal = 20.dp, vertical = 14.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text("规划文档", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
@@ -475,7 +505,7 @@ private fun PlanningDocumentSheet(
             singleLine = true
         )
         LazyColumn(
-            modifier = Modifier.fillMaxWidth().height(420.dp),
+            modifier = Modifier.fillMaxWidth().fillMaxHeight(0.62f),
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             items(visibleNotes, key = { it.id }) { note ->
@@ -565,7 +595,7 @@ private fun PlanningHelpSheet(onDismiss: () -> Unit) {
         }
 
         LazyColumn(
-            modifier = Modifier.fillMaxWidth().height(560.dp),
+            modifier = Modifier.fillMaxWidth().fillMaxHeight(0.72f),
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             item {
@@ -574,6 +604,7 @@ private fun PlanningHelpSheet(onDismiss: () -> Unit) {
                     lines = listOf(
                         "不用一开始就填完整表单，先把近期要做的事情写下来。",
                         "一行一个任务最容易识别；大标题不是必须语法，只是帮你把文档分区。",
+                        "正文会在停止输入约 2 秒后自动保存，切换规划文档前也会先保存当前内容。",
                         "输入法上方的快捷栏可以快速插入任务、子任务、DDL、提醒和分组。"
                     )
                 )
@@ -609,8 +640,9 @@ private fun PlanningHelpSheet(onDismiss: () -> Unit) {
                     lines = listOf(
                         "写完后点右侧的“识别”。",
                         "识别预览里可以先修改标题、DDL、开始结束时间、分组、备注和提醒；时间字段继续支持自然日期写法。",
+                        "可以点“全选可导入项”或“全不选”快速控制候选；没有选中有效候选时不能导入。",
                         "勾选需要导入的条目，再点“导入”。",
-                        "导入成功后，原文会追加 #imported，避免同一行重复导入。"
+                        "导入成功后，原文会追加 #imported 并立即保存，避免同一行重复导入。"
                     )
                 )
             }
@@ -672,7 +704,7 @@ private fun PlanningMarkdownPreview(
     markdown: String,
     modifier: Modifier,
     onToggleCheckbox: (Int) -> Unit,
-    onRequestEdit: () -> Unit
+    onRequestEdit: (Int?) -> Unit
 ) {
     val parsedLines = remember(markdown) { runCatching { parsePlanningMarkdownLines(markdown) } }
     ElevatedCard(
@@ -684,11 +716,11 @@ private fun PlanningMarkdownPreview(
         Column(modifier = Modifier.fillMaxSize().padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text("Markdown 预览", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
-                TextButton(onClick = onRequestEdit) { Text("编辑原文") }
+                TextButton(onClick = { onRequestEdit(null) }) { Text("编辑原文") }
             }
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.55f))
             if (parsedLines.isFailure) {
-                PlanningPreviewFallback(onRequestEdit = onRequestEdit)
+                PlanningPreviewFallback(onRequestEdit = { onRequestEdit(null) })
                 return@Column
             }
             val lines = parsedLines.getOrDefault(emptyList())
@@ -713,7 +745,7 @@ private fun PlanningMarkdownPreview(
                 items(lines, key = { it.lineNumber }) { line ->
                     when (line) {
                         is PlanningRenderedLine.Heading -> PlanningMarkdownHeading(line)
-                        is PlanningRenderedLine.Task -> PlanningMarkdownTaskLine(line, onToggleCheckbox)
+                        is PlanningRenderedLine.Task -> PlanningMarkdownTaskLine(line, onToggleCheckbox, onRequestEdit)
                         is PlanningRenderedLine.Text -> PlanningMarkdownTextLine(line, onRequestEdit)
                     }
                 }
@@ -757,12 +789,14 @@ private fun PlanningMarkdownHeading(line: PlanningRenderedLine.Heading) {
 @Composable
 private fun PlanningMarkdownTaskLine(
     line: PlanningRenderedLine.Task,
-    onToggleCheckbox: (Int) -> Unit
+    onToggleCheckbox: (Int) -> Unit,
+    onRequestEdit: (Int?) -> Unit
 ) {
     Surface(
         modifier = Modifier.fillMaxWidth().padding(start = (line.indentLevel * 18).dp),
         shape = RoundedCornerShape(18.dp),
-        color = if (line.imported) MaterialTheme.colorScheme.primary.copy(alpha = 0.08f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.28f)
+        color = if (line.imported) MaterialTheme.colorScheme.primary.copy(alpha = 0.08f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.28f),
+        onClick = { onRequestEdit(line.lineNumber) }
     ) {
         Row(
             modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
@@ -791,13 +825,13 @@ private fun PlanningMarkdownTaskLine(
 @Composable
 private fun PlanningMarkdownTextLine(
     line: PlanningRenderedLine.Text,
-    onRequestEdit: () -> Unit
+    onRequestEdit: (Int?) -> Unit
 ) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(18.dp),
         color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.20f),
-        onClick = onRequestEdit
+        onClick = { onRequestEdit(line.lineNumber) }
     ) {
         Column(
             modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
@@ -860,6 +894,8 @@ private fun PlanningPreviewSheet(
     onImport: () -> Unit
 ) {
     val invalidSelected = candidates.any { candidate -> selectedIds[candidate.id] == true && candidate.validate() != null }
+    val selectedCount = candidates.count { selectedIds[it.id] == true }
+    val validCandidates = candidates.filter { it.validate() == null }
     Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 14.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             Surface(
@@ -875,11 +911,20 @@ private fun PlanningPreviewSheet(
             }
             Column(modifier = Modifier.weight(1f)) {
                 Text("识别预览", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-                Text("${candidates.count { it.validate() == null }} / ${result.candidates.size} 条可导入", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text("${validCandidates.size} / ${result.candidates.size} 条可导入，已选 $selectedCount 条", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
-            Button(onClick = onImport, enabled = !invalidSelected) { Text("导入") }
+            Button(onClick = onImport, enabled = selectedCount > 0 && !invalidSelected) { Text("导入") }
         }
-        LazyColumn(modifier = Modifier.fillMaxWidth().height(520.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+            OutlinedButton(
+                onClick = {
+                    validCandidates.forEach { selectedIds[it.id] = true }
+                },
+                enabled = validCandidates.isNotEmpty()
+            ) { Text("全选可导入项") }
+            TextButton(onClick = { candidates.forEach { selectedIds[it.id] = false } }, enabled = selectedCount > 0) { Text("全不选") }
+        }
+        LazyColumn(modifier = Modifier.fillMaxWidth().fillMaxHeight(0.72f), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             items(candidates, key = { it.id }) { candidate ->
                 PlanningCandidateCard(
                     candidate = candidate,
@@ -1177,15 +1222,33 @@ private fun outdentCurrentPlanningLine(value: TextFieldValue): TextFieldValue {
 }
 
 private fun autoContinuePlanningLine(old: TextFieldValue, new: TextFieldValue): TextFieldValue {
-    if (new.text.length != old.text.length + 1 || !new.text.endsWith('\n')) return new
-    val previousLine = old.text.substringBeforeLast('\n', old.text).substringAfterLast('\n')
+    if (new.text.length != old.text.length + 1 || old.selection.min != old.selection.max) return new
+    val insertIndex = old.selection.min.coerceIn(0, old.text.length)
+    if (new.text.getOrNull(insertIndex) != '\n') return new
+    if (new.text.removeRange(insertIndex, insertIndex + 1) != old.text) return new
+    val previousLine = old.text.substring(0, insertIndex).substringAfterLast('\n')
     val match = Regex("^(\\s*)- \\[ \\]\\s*(.*)$").matchEntire(previousLine) ?: return new
     if (match.groupValues[2].isBlank()) return new
     val suffix = match.groupValues[1] + "- [ ] "
+    val insertAfterNewline = insertIndex + 1
+    val nextText = new.text.replaceRange(insertAfterNewline, insertAfterNewline, suffix)
     return new.copy(
-        text = new.text + suffix,
-        selection = androidx.compose.ui.text.TextRange(new.text.length + suffix.length)
+        text = nextText,
+        selection = androidx.compose.ui.text.TextRange(insertAfterNewline + suffix.length)
     )
+}
+
+private fun planningLineStartOffset(markdown: String, lineNumber: Int): Int {
+    if (lineNumber <= 1) return 0
+    var offset = 0
+    var currentLine = 1
+    while (currentLine < lineNumber && offset < markdown.length) {
+        val nextBreak = markdown.indexOf('\n', offset)
+        if (nextBreak < 0) return markdown.length
+        offset = nextBreak + 1
+        currentLine += 1
+    }
+    return offset.coerceIn(0, markdown.length)
 }
 
 private sealed interface PlanningRenderedLine {
@@ -1309,19 +1372,132 @@ private fun planningEditableDateTime(value: LocalDateTime): String {
 }
 
 private fun parsePlanningEditableDateTime(raw: String): LocalDateTime? {
-    val text = raw.trim().replace('：', ':').replace('T', ' ')
+    val text = normalizePlanningDateTimeText(raw).trim().replace('T', ' ')
     if (text.isBlank()) return null
     runCatching { LocalDateTime.parse(text) }.getOrNull()?.let { return it }
-    listOf("yyyy-MM-dd HH:mm", "yyyy-M-d H:mm", "yyyy.MM.dd HH:mm", "yyyy.M.d H:mm").forEach { pattern ->
+    listOf(
+        "yyyy-MM-dd HH:mm",
+        "yyyy-M-d H:mm",
+        "yyyy.MM.dd HH:mm",
+        "yyyy.M.d H:mm",
+        "yyyy/MM/dd HH:mm",
+        "yyyy/M/d H:mm",
+        "yyyy年M月d日 H:mm"
+    ).forEach { pattern ->
         runCatching { LocalDateTime.parse(text, DateTimeFormatter.ofPattern(pattern, Locale.CHINA)) }.getOrNull()?.let { return it }
     }
-    val monthDayMatch = Regex("^(\\d{1,2})[-.](\\d{1,2})\\s+(\\d{1,2}):(\\d{2})$").matchEntire(text) ?: return null
-    val month = monthDayMatch.groupValues[1].toIntOrNull() ?: return null
-    val day = monthDayMatch.groupValues[2].toIntOrNull() ?: return null
-    val hour = monthDayMatch.groupValues[3].toIntOrNull() ?: return null
-    val minute = monthDayMatch.groupValues[4].toIntOrNull() ?: return null
-    return runCatching { LocalDateTime.of(LocalDate.now().year, month, day, hour, minute) }.getOrNull()
+
+    val today = LocalDate.now()
+    parsePlanningDateExpression(text, today)?.let { date ->
+        return LocalDateTime.of(date, java.time.LocalTime.of(23, 59))
+    }
+
+    val leadingDate = parsePlanningLeadingDate(text, today)
+    val date = leadingDate?.date ?: today
+    val timeText = (leadingDate?.rest ?: text).trim().trimStart(',')
+    val time = parsePlanningTimeToken(timeText.trim()) ?: return null
+    return LocalDateTime.of(date, time)
 }
+
+private data class PlanningLeadingDate(val date: LocalDate, val rest: String)
+
+private fun normalizePlanningDateTimeText(raw: String): String {
+    return raw
+        .replace('：', ':')
+        .replace('，', ',')
+        .replace('．', '.')
+        .replace('。', '.')
+        .replace('／', '/')
+}
+
+private fun parsePlanningLeadingDate(text: String, today: LocalDate): PlanningLeadingDate? {
+    val match = PlanningLeadingDateRegex.find(text)?.takeIf { it.range.first == 0 } ?: return null
+    val rest = text.substring(match.range.last + 1)
+    val boundary = rest.firstOrNull()
+    if (boundary != null && !boundary.isWhitespace() && boundary != ',' && !boundary.isDigit()) return null
+    val date = parsePlanningDateExpression(match.value.trim(), today) ?: return null
+    return PlanningLeadingDate(date, rest)
+}
+
+private fun parsePlanningDateExpression(raw: String, today: LocalDate): LocalDate? {
+    val text = normalizePlanningDateTimeText(raw).trim()
+    return when (text) {
+        "今天", "今日" -> today
+        "明天", "明日" -> today.plusDays(1)
+        "后天" -> today.plusDays(2)
+        else -> parsePlanningWeekday(text, today)
+            ?: parsePlanningNumericDate(text, today)
+            ?: parsePlanningChineseDate(text, today)
+    }
+}
+
+private fun parsePlanningNumericDate(text: String, today: LocalDate): LocalDate? {
+    Regex("^(\\d{4})[-./](\\d{1,2})[-./](\\d{1,2})$").matchEntire(text)?.let { match ->
+        return safePlanningDate(match.groupValues[1].toInt(), match.groupValues[2].toInt(), match.groupValues[3].toInt())
+    }
+    Regex("^(\\d{1,2})[-./](\\d{1,2})$").matchEntire(text)?.let { match ->
+        return safePlanningDate(today.year, match.groupValues[1].toInt(), match.groupValues[2].toInt())
+    }
+    return null
+}
+
+private fun parsePlanningChineseDate(text: String, today: LocalDate): LocalDate? {
+    Regex("^(\\d{4})年(\\d{1,2})月(\\d{1,2})日?$").matchEntire(text)?.let { match ->
+        return safePlanningDate(match.groupValues[1].toInt(), match.groupValues[2].toInt(), match.groupValues[3].toInt())
+    }
+    Regex("^(\\d{1,2})月(\\d{1,2})日?$").matchEntire(text)?.let { match ->
+        return safePlanningDate(today.year, match.groupValues[1].toInt(), match.groupValues[2].toInt())
+    }
+    return null
+}
+
+private fun parsePlanningWeekday(text: String, today: LocalDate): LocalDate? {
+    val weekday = when (text) {
+        "周一", "星期一", "礼拜一" -> DayOfWeek.MONDAY
+        "周二", "星期二", "礼拜二" -> DayOfWeek.TUESDAY
+        "周三", "星期三", "礼拜三" -> DayOfWeek.WEDNESDAY
+        "周四", "星期四", "礼拜四" -> DayOfWeek.THURSDAY
+        "周五", "星期五", "礼拜五" -> DayOfWeek.FRIDAY
+        "周六", "星期六", "礼拜六" -> DayOfWeek.SATURDAY
+        "周日", "周天", "星期日", "星期天", "礼拜日", "礼拜天" -> DayOfWeek.SUNDAY
+        else -> return null
+    }
+    val delta = (weekday.value - today.dayOfWeek.value + 7) % 7
+    return today.plusDays(delta.toLong())
+}
+
+private fun parsePlanningTimeToken(raw: String): java.time.LocalTime? {
+    val match = Regex("^(凌晨|早上|上午|中午|下午|晚上)?\\s*(\\d{1,2}):(\\d{2})\\s*([aApP][mM])?$").matchEntire(raw) ?: return null
+    val chinesePeriod = match.groupValues[1]
+    var hour = match.groupValues[2].toIntOrNull() ?: return null
+    val minute = match.groupValues[3].toIntOrNull() ?: return null
+    val period = match.groupValues[4].lowercase(Locale.ROOT)
+    if (minute !in 0..59) return null
+    if (period.isNotBlank()) {
+        if (hour !in 1..12) return null
+        hour = when {
+            period == "pm" && hour < 12 -> hour + 12
+            period == "am" && hour == 12 -> 0
+            else -> hour
+        }
+    } else if (chinesePeriod.isNotBlank()) {
+        hour = when (chinesePeriod) {
+            "凌晨" -> if (hour == 12) 0 else hour
+            "早上", "上午" -> if (hour == 12) 0 else hour
+            "中午" -> if (hour in 1..10) hour + 12 else hour
+            "下午", "晚上" -> if (hour < 12) hour + 12 else hour
+            else -> return null
+        }
+    }
+    if (hour !in 0..23) return null
+    return java.time.LocalTime.of(hour, minute)
+}
+
+private fun safePlanningDate(year: Int, month: Int, day: Int): LocalDate? {
+    return runCatching { LocalDate.of(year, month, day) }.getOrNull()
+}
+
+private val PlanningLeadingDateRegex = Regex("^(今天|今日|明天|明日|后天|周[一二三四五六日天]|星期[一二三四五六日天]|礼拜[一二三四五六日天]|\\d{4}[-./]\\d{1,2}[-./]\\d{1,2}|\\d{4}年\\d{1,2}月\\d{1,2}日?|\\d{1,2}[-./]\\d{1,2}|\\d{1,2}月\\d{1,2}日?)")
 
 private fun PlanningImportCandidate.withPlanningReminderInput(raw: String): PlanningImportCandidate {
     val text = raw.trim()

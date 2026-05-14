@@ -6,14 +6,14 @@ Long-running Codex sessions can become unreliable. This file exists so a new ses
 
 ## Current Handoff Summary
 
-- The project is currently at code version `1.6.84` / `versionCode 156`.
-- Latest debug APK path after build: `app/build/outputs/apk/debug/PaykiTodo-1.6.84-debug.apk`.
+- The project is currently at code version `1.7.0` / `versionCode 157`.
+- Latest debug APK path after build: `app/build/outputs/apk/debug/PaykiTodo-1.7.0-debug.apk`.
 - Latest build command used Android Studio bundled JBR and succeeded:
   - `./gradlew.bat assembleDebug`
 - This round implemented Planning Desk Phase 1.
 - Planning Desk is available on the phone drawer and desktop web console.
 
-## Latest Fixes In 1.6.84
+## Latest Fixes In 1.7.0
 
 1. Added `planning_notes` Room entity/table and database migration `8 -> 9`.
 2. Added multi-document Planning Desk: create, open, rename, archive, delete, and last-opened-note restoration.
@@ -50,7 +50,7 @@ Long-running Codex sessions can become unreliable. This file exists so a new ses
 
 ## Current Verification Focus
 
-1. Install `PaykiTodo-1.6.84-debug.apk`.
+1. Install `PaykiTodo-1.7.0-debug.apk`.
 2. Verify drawer -> `规划台` opens and creates/loads `我的规划`.
 3. Verify create/open/rename/archive/delete planning documents.
 4. Verify phone shortcut bar can insert tasks/subtasks/tags and indent/outdent current line.

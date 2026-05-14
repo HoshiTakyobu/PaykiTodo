@@ -2,7 +2,7 @@
 
 ## Active Development Focus
 
-The current round implements PaykiTodo Planning Desk Phase 1 and bumps the app to `1.6.84` / `versionCode 156`.
+The current round implements PaykiTodo Planning Desk Phase 1 and bumps the app to `1.7.0` / `versionCode 157`.
 
 Planning Desk is intended to cover the user's upstream workflow before final DDL/reminder execution: write rough plans like a memo or Obsidian note, locally recognize useful lines, preview them, then import selected entries into existing PaykiTodo todos and calendar events.
 
@@ -26,7 +26,7 @@ Completed in this round:
 
 When testing, use:
 
-1. install `app/build/outputs/apk/debug/PaykiTodo-1.6.84-debug.apk`
+1. install `app/build/outputs/apk/debug/PaykiTodo-1.7.0-debug.apk`
 2. open drawer -> `规划台`
 3. verify the default `我的规划` document appears
 4. create a second document, switch between documents, rename it, and test delete confirmation
@@ -56,4 +56,4 @@ When testing, use:
 
 ## Current External Dependency
 
-No external file is needed for the current `1.6.84` verification task.
+No external file is needed for the current `1.7.0` verification task.

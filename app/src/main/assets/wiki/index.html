@@ -95,7 +95,7 @@
     <aside>
       <div class="brand">
         <h1>PaykiTodo Wiki</h1>
-        <p>版本 1.7.1。本地内置说明，按实际使用路径解释功能，不只是罗列能力。</p>
+        <p>版本 1.7.2。本地内置说明，按实际使用路径解释功能，不只是罗列能力。</p>
       </div>
       <div class="nav-group-title">开始使用</div>
       <nav class="nav" id="nav">
@@ -337,7 +337,8 @@
         </ul>
 
         <h2>手机端快捷栏怎么用</h2>
-        <p>手机中文输入时手打 <code>- [ ]</code>、缩进和标签很麻烦，所以规划台底部提供快捷栏。</p>
+        <p>手机端规划台有“预览”和“编辑全文”两种状态。预览状态会把 <code>- [ ]</code> / <code>- [x]</code> 渲染为 checkbox，把 <code>#task</code>、<code>#group</code>、<code>#imported</code> 等标签显示成胶囊，不再把 Markdown 语法原样堆在屏幕上。需要输入或大段修改时，点击 <code>编辑全文</code> 回到原始 Markdown。</p>
+        <p>手机中文输入时手打 <code>- [ ]</code>、缩进和标签很麻烦，所以编辑状态底部提供快捷栏。</p>
         <table class="table">
           <tr><th>按钮</th><th>作用</th></tr>
           <tr><td>任务</td><td>插入 <code>- [ ] </code>。</td></tr>
@@ -359,6 +360,7 @@
         <ul>
           <li><code>- [ ]</code> 会识别为待办候选。</li>
           <li><code>- [x]</code> / <code>- [X]</code> 默认跳过，不会重复导入。</li>
+          <li>在预览状态点击 checkbox，会把原始 Markdown 行在 <code>- [ ]</code> 和 <code>- [x]</code> 之间切换；这只修改规划文档，不会直接完成已经导入的正式待办。</li>
           <li>缩进子任务第一阶段会作为独立待办导入，并在备注里记录所属大任务。</li>
         </ul>
 

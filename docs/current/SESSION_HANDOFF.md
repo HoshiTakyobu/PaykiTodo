@@ -6,23 +6,21 @@ Long-running Codex sessions can become unreliable. This file exists so a new ses
 
 ## Current Handoff Summary
 
-- The project is currently at code version `1.7.1` / `versionCode 158`.
-- Latest debug APK path after build: `app/build/outputs/apk/debug/PaykiTodo-1.7.1-debug.apk`.
+- The project is currently at code version `1.7.2` / `versionCode 159`.
+- Latest debug APK path after build: `app/build/outputs/apk/debug/PaykiTodo-1.7.2-debug.apk`.
 - Latest build command used Android Studio bundled JBR and succeeded:
   - `./gradlew.bat assembleDebug`
-- This round implemented Planning Desk Phase 2 usability improvements.
-- Planning Desk is available on the phone drawer and desktop web console, with editable preview and automatic `#imported` write-back.
+- This round implemented phone-side Planning Desk Markdown rendering.
+- Planning Desk is available on the phone drawer and desktop web console, with editable preview, automatic `#imported` write-back, and phone-side rendered Markdown reading mode.
 
-## Latest Fixes In 1.7.1
+## Latest Fixes In 1.7.2
 
-1. Phone Planning Desk document sheet now supports title/content search.
-2. Phone recognition preview cards are editable before import for title, group, notes, DDL, event start/end, reminder minutes, and linked-todo creation.
-3. Added shared Planning Desk import models for edited candidates and import results.
-4. Successful Planning Desk imports now append `#imported` to imported source lines and save the active planning note.
-5. Desktop web Planning Desk preview cards now support inline editing before import.
-6. `/api/planning/import` accepts edited candidates, validates them, imports selected entries, writes back `#imported`, and returns `updatedMarkdown`.
-7. Planning imports still default to 5 minutes before, full-screen, ring + vibration.
-8. README, CHANGELOG, TODO, docs/current, and Wiki were updated for the Phase 2 workflow.
+1. Added phone-side Planning Desk Markdown reading mode.
+2. Rendered headings, task checkboxes, subtask indentation, tag pills, and imported-state pills.
+3. Added `编辑全文 / 预览` switching so raw Markdown remains available for editing.
+4. Tapping a rendered checkbox toggles the raw Markdown line between `- [ ]` and `- [x]` without directly completing imported todos.
+5. Added AI planning assistant guidance to Planning Desk design docs without implementing AI calls in this version.
+6. README, CHANGELOG, TODO, docs/current, and Wiki were updated for the Markdown rendering workflow.
 
 ## Files Most Relevant To The Latest Round
 
@@ -50,17 +48,18 @@ Long-running Codex sessions can become unreliable. This file exists so a new ses
 
 ## Current Verification Focus
 
-1. Install `PaykiTodo-1.7.1-debug.apk`.
+1. Install `PaykiTodo-1.7.2-debug.apk`.
 2. Verify drawer -> `规划台` opens and creates/loads `我的规划`.
-3. Verify create/open/rename/archive/delete planning documents and document search.
-4. Verify phone shortcut bar can insert tasks/subtasks/tags and indent/outdent current line.
-5. Verify parsing examples:
+3. Verify `编辑全文 / 预览` switching.
+4. Verify rendered headings, checkboxes, tag pills, subtask indentation, and imported-state pills.
+5. Verify tapping a rendered checkbox changes the raw Markdown checkbox state.
+6. Verify parsing examples:
    - `- [ ] 整理材料 #ddl 5.28`
    - `10:00-12:30 作业1`
    - `明天 19:30-21:00 整理保研材料`
-6. Verify preview editing before import and linked todo creation for events.
-7. Verify successful import appends `#imported` to source lines.
-8. Verify desktop web `规划台` with the same phone database, including editable preview and updated Markdown after import.
+7. Verify preview editing before import and linked todo creation for events.
+8. Verify successful import appends `#imported` to source lines and appears as an imported-state pill.
+9. Verify desktop web `规划台` with the same phone database, including editable preview and updated Markdown after import.
 
 ## Deferred Larger Work
 

@@ -7,13 +7,13 @@
 - Package name: `com.paykitodo.app`
 - Target platform: Android 14 / API 34
 - Current version in code:
-  - `versionName = "1.7.1"`
-  - `versionCode = 158`
+  - `versionName = "1.7.2"`
+  - `versionCode = 159`
 
 ## Current Build Facts
 
 - Latest debug APK output:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.7.1-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.7.2-debug.apk`
 - Minimal verification completed in the latest code round:
   - `./gradlew assembleDebug` succeeded with Android Studio bundled `jbr`
 - Current build environment expectation:
@@ -22,14 +22,16 @@
 
 ## Current Worktree Reality
 
-The repository is now at `1.7.1`. It includes the desktop web editor crash fix, UI-copy cleanup, desktop web no-DDL todo editing support, in-app desktop delete confirmations, desktop-sync service self-stop protection, dynamic desktop-web resource versioning, a smaller calendar recomposition pass, desktop todo preview sheets plus direct desktop event editing, desktop mixed reminder syntax for todos/events, lunar-label display in calendar views, minimal yearly same-lunar-date recurrence, the latest settings tone / lunar DDL / calendar header / daily-board spacing polish, and Planning Desk Phase 1 plus Phase 2 usability workflow.
+The repository is now at `1.7.2`. It includes the desktop web editor crash fix, UI-copy cleanup, desktop web no-DDL todo editing support, in-app desktop delete confirmations, desktop-sync service self-stop protection, dynamic desktop-web resource versioning, a smaller calendar recomposition pass, desktop todo preview sheets plus direct desktop event editing, desktop mixed reminder syntax for todos/events, lunar-label display in calendar views, minimal yearly same-lunar-date recurrence, the latest settings tone / lunar DDL / calendar header / daily-board spacing polish, Planning Desk Phase 1 plus Phase 2 usability workflow, and phone-side Planning Desk Markdown rendering.
 
 Most important current baseline facts:
 
-- version metadata is `1.7.1 / 158`
+- version metadata is `1.7.2 / 159`
 - Planning Desk exists as a phone-side drawer entry and desktop-web tab. It stores multiple Markdown planning documents in Room table `planning_notes`, restores the last opened note, and supports create/open/rename/archive/delete.
 - Planning Desk parsing is local and rule-based through `PlanningMarkdownParser`; it does not call AI or paid services.
 - Planning Desk recognizes markdown checkboxes, completed-task skips, subtasks as independent todos with parent-note metadata, date headings, common DDL formats, reminder/group/schedule tags, and lightweight natural schedule lines such as `10:00-12:30 作业1`.
+- Phone Planning Desk has a rendered Markdown reading mode: headings render as headings, `- [ ]` / `- [x]` render as checkboxes, `#tag` renders as pills, and `#imported` renders as an `已导入` state pill.
+- Tapping a rendered checkbox toggles the raw Markdown line only; it does not directly complete imported todos.
 - Planning Desk import uses preview-first selection. Imported todos/events reuse existing repository draft creation and reminder scheduling, defaulting to 5 minutes before, full-screen, ring + vibration.
 - Planning Desk Phase 2 allows preview-stage editing of title, group, notes, DDL/start/end times, reminders, and event linked-todo creation before import.
 - Successful Planning Desk import automatically appends `#imported` to imported source lines and writes the updated Markdown back to the active planning note.
@@ -115,7 +117,7 @@ Recent code inspection and build verification cover:
 
 ## Documentation Health
 
-Current docs have been synchronized for `1.7.1`:
+Current docs have been synchronized for `1.7.2`:
 
 - `README.md`
 - `CHANGELOG.md`

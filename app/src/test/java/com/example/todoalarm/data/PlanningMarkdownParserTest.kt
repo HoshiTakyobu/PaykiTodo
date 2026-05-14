@@ -72,6 +72,19 @@ class PlanningMarkdownParserTest {
     }
 
     @Test
+    fun parsesCommaBetweenDateAndTimeInDdlAndReminder() {
+        val result = PlanningMarkdownParser.parse(
+            "- [ ] 交材料 #ddl 5.28,23:59 #remind 5.28,22:00",
+            now = now
+        )
+
+        val todo = result.candidates.single()
+        assertEquals(PlanningParsedType.TODO, todo.type)
+        assertEquals(LocalDateTime.of(2026, 5, 28, 23, 59), todo.dueAt)
+        assertEquals(listOf(119), todo.reminderOffsetsMinutes)
+    }
+
+    @Test
     fun marksImportedLinesWithoutDuplicatingExistingTag() {
         val markdown = """
             - [ ] 第一条 #ddl 5.28

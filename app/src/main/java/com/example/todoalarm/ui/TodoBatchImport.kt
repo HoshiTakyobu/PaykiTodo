@@ -25,11 +25,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.example.todoalarm.data.PlanningMarkdownParser
 import com.example.todoalarm.data.RecurrenceConfig
 import com.example.todoalarm.data.TaskGroup
 import com.example.todoalarm.data.TodoDraft
-import java.time.DateTimeException
+import java.time.LocalDate
 import java.time.LocalDateTime
+import java.time.LocalTime
 
 internal data class TodoBatchImportDefaults(
     val defaultGroupId: Long,
@@ -276,35 +278,12 @@ private object TodoBatchImportParser {
 private fun parseTodoDueAt(raw: String): LocalDateTime? {
     val token = raw.trim().replace('：', ':')
     if (token.isNoDueToken()) return null
-    val now = LocalDateTime.now()
-    ClockTimeTokenRegex.matchEntire(token)?.let { match ->
-        return safeDateTime(
-            year = now.year,
-            month = now.monthValue,
-            day = now.dayOfMonth,
-            hour = match.groupValues[1].toInt(),
-            minute = match.groupValues[2].toInt()
-        )
-    }
-    DateTimeTokenRegex.matchEntire(token)?.let { match ->
-        return safeDateTime(
-            year = match.groupValues[1].toInt(),
-            month = match.groupValues[2].toInt(),
-            day = match.groupValues[3].toInt(),
-            hour = match.groupValues[4].toInt(),
-            minute = match.groupValues[5].toInt()
-        )
-    }
-    MonthDayTimeTokenRegex.matchEntire(token)?.let { match ->
-        return safeDateTime(
-            year = now.year,
-            month = match.groupValues[1].toInt(),
-            day = match.groupValues[2].toInt(),
-            hour = match.groupValues[3].toInt(),
-            minute = match.groupValues[4].toInt()
-        )
-    }
-    return null
+    return PlanningMarkdownParser.parseDateTimeExpression(
+        raw = token,
+        defaultDate = null,
+        nowDate = LocalDate.now(),
+        defaultTime = LocalTime.of(23, 59)
+    )
 }
 
 private fun String.isNoDueToken(): Boolean {
@@ -312,21 +291,9 @@ private fun String.isNoDueToken(): Boolean {
     return normalized == "无ddl" || normalized == "无 ddl" || normalized == "无截止" || normalized == "no due" || normalized == "-"
 }
 
-private val ClockTimeTokenRegex = Regex("""^(\d{1,2}):(\d{2})$""")
-private val MonthDayTimeTokenRegex = Regex("""^(\d{1,2})-(\d{1,2})\s+(\d{1,2}):(\d{2})$""")
-private val DateTimeTokenRegex = Regex("""^(\d{4})-(\d{1,2})-(\d{1,2})\s+(\d{1,2}):(\d{2})$""")
-
-private fun safeDateTime(year: Int, month: Int, day: Int, hour: Int, minute: Int): LocalDateTime? {
-    if (hour !in 0..23 || minute !in 0..59) return null
-    return try {
-        LocalDateTime.of(year, month, day, hour, minute)
-    } catch (_: DateTimeException) {
-        null
-    }
-}
-
 private val TodoBatchImportSampleText = """
 16:30,写报告,5
-05-13 09:30,给老师发消息,09:00
+5.13 09:30,给老师发消息,09:00
+5月14日,整理保研材料,5
 无DDL,整理 Obsidian 待办
 """.trimIndent()

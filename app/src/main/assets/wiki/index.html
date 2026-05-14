@@ -171,7 +171,10 @@
           <tr><td><code>5</code></td><td>提前 5 分钟提醒。</td></tr>
           <tr><td><code>5,15</code></td><td>提前 5 分钟和 15 分钟分别提醒。编辑待办/日程时可多选。</td></tr>
           <tr><td><code>16:30</code></td><td>DDL 或日程开始当天的 16:30。</td></tr>
+          <tr><td><code>2:30 pm</code></td><td>DDL 或日程开始当天的下午 2:30。</td></tr>
+          <tr><td><code>明天 16:30</code> / <code>周五 16:30</code></td><td>相对日期或本周对应星期的具体时刻。</td></tr>
           <tr><td><code>05-10 15:00</code></td><td>当年 5 月 10 日 15:00。</td></tr>
+          <tr><td><code>5.10 15:00</code> / <code>5月10日 15:00</code></td><td>更接近手写习惯的当年日期时间。</td></tr>
           <tr><td><code>2026-05-10 14:30</code></td><td>完整日期时间。</td></tr>
         </table>
         <div class="callout">如果任一提醒时间晚于 DDL / 日程开始时间，或新建时已经过去，输入框会标红，保存按钮会禁用。</div>
@@ -396,6 +399,7 @@
 #ddl 明天
 #ddl 今天 16:30
 #ddl 5.28 23:59
+#ddl 5.28,23:59
 #ddl 5月28日 11:55pm</code></pre>
         <ul>
           <li>只写日期、不写时间，默认当天 <code>23:59</code>。</li>
@@ -411,6 +415,7 @@
           <li><code>#group 保研</code> 会尝试映射到现有分组。</li>
           <li><code>#remind 5,15</code> 表示提前 5 分钟和 15 分钟提醒。</li>
           <li><code>#remind 16:30</code> 表示 DDL / 日程开始当天 16:30 提醒；也支持 <code>2:30 pm</code>、<code>5.30 17:30</code>、<code>5月30日 17:30</code>。</li>
+          <li><code>#remind 5.30,17:30</code> 或 <code>#remind 5月30日，17:30</code> 会按一条具体提醒时间识别。</li>
           <li>没写 <code>#remind</code> 时，规划台导入默认提前 5 分钟、全屏提醒、响铃 + 震动。</li>
         </ul>
 
@@ -691,10 +696,12 @@
         <p>我的任务页右下角有 <code>批量待办</code>。它是为了快速手输，所以语法比日程更轻。每日看板只负责展示今日信息，不放添加按钮。</p>
         <div class="code-card"><div class="label">待办格式</div><pre>DDL时间,任务名称,提醒时间</pre></div>
         <div class="code-card"><div class="label">示例</div><pre>16:30,写报告,5
-05-13 09:30,给老师发消息,09:00
+5.13 09:30,给老师发消息,09:00
+5月14日,整理保研材料,5
 无DDL,整理 Obsidian 待办</pre></div>
         <ul>
           <li><code>16:30</code> 这样的 DDL 表示今天 16:30；中文冒号 <code>16：30</code> 也会自动识别。</li>
+          <li>DDL 也可写 <code>5.28</code>、<code>5月28日</code>、<code>明天</code>、<code>周五</code>；只写日期时默认当天 <code>23:59</code>。</li>
           <li>提醒时间可省略。</li>
           <li>为了手输简单，一行待办只支持一个提醒时间。</li>
           <li>默认使用默认分组、默认响铃和默认震动设置。</li>

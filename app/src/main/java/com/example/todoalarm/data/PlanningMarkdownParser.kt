@@ -246,7 +246,7 @@ object PlanningMarkdownParser {
         nowDate: LocalDate,
         defaultTime: LocalTime?
     ): LocalDateTime? {
-        val text = raw.trim().replace('：', ':').replace("，", ",")
+        val text = raw.trim().replace('：', ':').replace('T', ' ').replace("，", ",")
         if (text.isBlank()) return null
         val leadingDate = parseLeadingDate(text, nowDate)
         val date = leadingDate?.date ?: defaultDate ?: nowDate

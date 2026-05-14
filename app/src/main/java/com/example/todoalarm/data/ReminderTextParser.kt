@@ -1,6 +1,7 @@
 package com.example.todoalarm.data
 
 import java.time.DateTimeException
+import java.time.DayOfWeek
 import java.time.Duration
 import java.time.LocalDate
 import java.time.LocalDateTime
@@ -26,9 +27,7 @@ internal fun parseReminderTextInput(
     now: LocalDateTime = LocalDateTime.now().withSecond(0).withNano(0),
     requireFuture: Boolean = true
 ): ReminderTextParseResult {
-    val tokens = raw.split(',', '，')
-        .map { it.trim() }
-        .filter { it.isNotEmpty() }
+    val tokens = splitReminderTokens(raw)
 
     if (tokens.isEmpty()) {
         return ReminderTextParseResult(isValid = false, message = "请输入提醒时间。")
@@ -64,6 +63,28 @@ internal fun parseReminderTextInput(
         triggerTimes = normalizedTriggers,
         message = normalizedOffsets.joinToString("、") { reminderTextLeadTimeLabel(it) }
     )
+}
+
+private fun splitReminderTokens(raw: String): List<String> {
+    val parts = raw.split(',', '，')
+        .map { it.trim() }
+        .filter { it.isNotEmpty() }
+    if (parts.isEmpty()) return emptyList()
+
+    val tokens = mutableListOf<String>()
+    var index = 0
+    while (index < parts.size) {
+        val current = parts[index]
+        val next = parts.getOrNull(index + 1)
+        if (next != null && isDateOnlyReminderToken(current) && parseTimeToken(next) != null) {
+            tokens += "$current $next"
+            index += 2
+        } else {
+            tokens += current
+            index += 1
+        }
+    }
+    return tokens
 }
 
 internal fun reminderTextLeadTimeLabel(minutes: Int): String {
@@ -133,6 +154,10 @@ private fun parseDateExpression(raw: String, today: LocalDate): LocalDate? {
         "明天", "明日" -> return today.plusDays(1)
         "后天" -> return today.plusDays(2)
     }
+    weekdayFromText(text)?.let { weekday ->
+        val delta = (weekday.value - today.dayOfWeek.value + 7) % 7
+        return today.plusDays(delta.toLong())
+    }
     FullDateRegex.matchEntire(text)?.let { match ->
         return safeDate(match.groupValues[1].toInt(), match.groupValues[2].toInt(), match.groupValues[3].toInt())
     }
@@ -146,6 +171,10 @@ private fun parseDateExpression(raw: String, today: LocalDate): LocalDate? {
         return safeDate(today.year, match.groupValues[1].toInt(), match.groupValues[2].toInt())
     }
     return null
+}
+
+private fun isDateOnlyReminderToken(text: String): Boolean {
+    return ReminderDateOnlyRegex.matches(text.trim())
 }
 
 private fun parseTimeToken(raw: String): LocalTime? {
@@ -174,6 +203,19 @@ private fun safeDate(year: Int, month: Int, day: Int): LocalDate? {
     }
 }
 
+private fun weekdayFromText(text: String): DayOfWeek? {
+    return when (text) {
+        "周一", "星期一", "礼拜一" -> DayOfWeek.MONDAY
+        "周二", "星期二", "礼拜二" -> DayOfWeek.TUESDAY
+        "周三", "星期三", "礼拜三" -> DayOfWeek.WEDNESDAY
+        "周四", "星期四", "礼拜四" -> DayOfWeek.THURSDAY
+        "周五", "星期五", "礼拜五" -> DayOfWeek.FRIDAY
+        "周六", "星期六", "礼拜六" -> DayOfWeek.SATURDAY
+        "周日", "周天", "星期日", "星期天", "礼拜日", "礼拜天" -> DayOfWeek.SUNDAY
+        else -> null
+    }
+}
+
 private data class ParsedLeadingDate(val date: LocalDate, val rest: String)
 
 private val FullDateRegex = Regex("^(\\d{4})[-.](\\d{1,2})[-.](\\d{1,2})$")
@@ -181,4 +223,5 @@ private val FullChineseDateRegex = Regex("^(\\d{4})年(\\d{1,2})月(\\d{1,2})日
 private val MonthDayRegex = Regex("^(\\d{1,2})[-.](\\d{1,2})$")
 private val ChineseMonthDayRegex = Regex("^(\\d{1,2})月(\\d{1,2})日?$")
 private val TimeOnlyRegex = Regex("^(\\d{1,2})[:：](\\d{2})\\s*([aApP][mM])?$")
-private val LeadingDateRegex = Regex("^(今天|今日|明天|明日|后天|\\d{4}[-.]\\d{1,2}[-.]\\d{1,2}|\\d{4}年\\d{1,2}月\\d{1,2}日?|\\d{1,2}[-.]\\d{1,2}|\\d{1,2}月\\d{1,2}日?)")
+private val LeadingDateRegex = Regex("^(今天|今日|明天|明日|后天|周[一二三四五六日天]|星期[一二三四五六日天]|礼拜[一二三四五六日天]|\\d{4}[-.]\\d{1,2}[-.]\\d{1,2}|\\d{4}年\\d{1,2}月\\d{1,2}日?|\\d{1,2}[-.]\\d{1,2}|\\d{1,2}月\\d{1,2}日?)")
+private val ReminderDateOnlyRegex = Regex("^(今天|今日|明天|明日|后天|周[一二三四五六日天]|星期[一二三四五六日天]|礼拜[一二三四五六日天]|\\d{4}[-.]\\d{1,2}[-.]\\d{1,2}|\\d{4}年\\d{1,2}月\\d{1,2}日?|\\d{1,2}[-.]\\d{1,2}|\\d{1,2}月\\d{1,2}日?)$")

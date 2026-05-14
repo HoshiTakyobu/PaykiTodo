@@ -6,29 +6,28 @@ Long-running Codex sessions can become unreliable. This file exists so a new ses
 
 ## Current Handoff Summary
 
-- The project is currently at code version `1.7.10` / `versionCode 167`.
-- Latest debug APK path after build: `app/build/outputs/apk/debug/PaykiTodo-1.7.10-debug.apk`.
+- The project is currently at code version `1.7.11` / `versionCode 168`.
+- Latest debug APK path after build: `app/build/outputs/apk/debug/PaykiTodo-1.7.11-debug.apk`.
 - Latest build commands used Android Studio bundled JBR and succeeded:
   - `./gradlew.bat testDebugUnitTest`
   - `./gradlew.bat assembleDebug`
 - `node --check app/src/main/assets/desktop-web/app.js` also succeeded.
-- This round improves Planning Desk real-use behavior: empty new documents, clearer placeholder/help, unified reminder syntax, shortcut fixes, document deletion, and desktop-web planning delete/reminder parity.
+- This round reviews text-input syntax consistency and narrows two gaps: todo batch DDL now accepts the Planning Desk natural date syntax, and desktop-web reminder input now matches common phone-side reminder forms.
 - The previous crash root cause was likely the Room migration schema mismatch for `planning_notes`; `1.7.6` keeps that repair and improves the Planning Desk UI.
 - Phone-side Planning Desk Markdown rendering remains opt-in manual preview, not the startup default.
 - The phone Planning Desk keeps the raw Markdown / natural-text editor plus Phase 2 import/edit workflow.
 - Desktop web Planning Desk remains available with textarea editing, editable parse preview, selected import, document deletion, unified reminder input handoff, and `#imported` write-back.
 - Do not push `1.7.x` or the last `1.6.x` line to GitHub unless the user explicitly asks again.
 
-## Latest Fixes In 1.7.10
+## Latest Fixes In 1.7.11
 
-1. Upgraded app version metadata to `1.7.10` / `versionCode 167`.
-2. New/default planning notes now start with empty content; examples are shown as placeholder/help content.
-3. Added shared reminder text parsing for Planning Desk `#remind`, reminder editors, batch import reminder fields, and custom snooze.
-4. Expanded reminder syntax to support examples such as `2:30 pm`, `5.10 15:00`, and `5月10日 14:30`.
-5. Fixed Planning Desk shortcut behavior: `任务` avoids duplicate checkbox prefixes, and `子任务` inserts a new indented child line.
-6. `# 今日计划` / `# 今天` / `# 明天` now act as real date context for following undated schedule lines.
-7. Phone Planning Desk document directory and desktop web Planning Desk now expose delete actions with confirmation.
-8. Planning preview reminder edits preserve invalid raw text, show errors, and block import until corrected.
+1. Upgraded app version metadata to `1.7.11` / `versionCode 168`.
+2. Todo batch DDL now reuses Planning Desk date-time parsing.
+3. Todo batch DDL accepts `5.28`, `5月28日`, `明天`, `周五`, and full Chinese dates; date-only values default to `23:59`.
+4. Android reminder parsing now accepts relative dates and weekdays such as `明天 16:30` and `周五 16:30`.
+5. Desktop Web todo/event reminder parsing now accepts `2:30 pm`, `明天 16:30`, `周五 16:30`, `5.10 15:00`, `5月10日 14:30`, `5月10日，14:30`, full Chinese dates, and Chinese comma separators.
+6. Desktop Planning Desk preview edits reuse Planning Desk date parsing for edited DDL / start / end fields.
+7. Input help, Wiki, README, CHANGELOG, TODO, and current docs were updated for the broader syntax.
 
 ## Files Most Relevant To The Latest Round
 
@@ -37,6 +36,7 @@ Long-running Codex sessions can become unreliable. This file exists so a new ses
 - `app/src/main/java/com/example/todoalarm/data/PlanningMarkdownParser.kt`
 - `app/src/main/java/com/example/todoalarm/data/PlanningImportCandidate.kt`
 - `app/src/main/java/com/example/todoalarm/data/TodoRepository.kt`
+- `app/src/main/java/com/example/todoalarm/ui/TodoBatchImport.kt`
 - `app/src/main/java/com/example/todoalarm/ui/PlanningDeskPanel.kt`
 - `app/src/main/java/com/example/todoalarm/ui/ReminderInputParser.kt`
 - `app/src/main/java/com/example/todoalarm/sync/DesktopSyncCoordinator.kt`
@@ -54,14 +54,14 @@ Long-running Codex sessions can become unreliable. This file exists so a new ses
 
 ## Current Verification Focus
 
-1. Install `PaykiTodo-1.7.10-debug.apk`.
+1. Install `PaykiTodo-1.7.11-debug.apk`.
 2. Verify the app no longer crashes immediately after launch.
 3. Verify existing todos/events are still present.
-4. Verify drawer -> `规划台` opens an empty new document with grey placeholder examples.
-5. Verify `任务` repeated taps do not duplicate `- [ ]` on one line, and `子任务` inserts a new indented child line.
-6. Verify `# 今日计划` followed by `10:00-11:00 写论文` recognizes today's date.
-7. Verify `#remind` accepts mixed reminder syntax and shows explicit errors for invalid reminders.
-8. Verify document create/open/search/delete works on phone and desktop web.
+4. Verify todo batch rows such as `5.28,整理材料,5`, `5月28日,整理材料,5`, `明天,整理材料,5`, and `周五,整理材料,5`.
+5. Verify desktop web todo/event reminder input accepts `5,15,2:30 pm,明天 16:30,周五 16:30,5.10 15:00,5月10日,14:30`.
+6. Verify invalid desktop reminder inputs still fail visibly instead of saving bad offsets.
+7. Verify drawer -> `规划台` still opens an empty new document with grey placeholder examples.
+8. Verify `任务` repeated taps do not duplicate `- [ ]` on one line, and `子任务` inserts a new indented child line.
 9. Verify importing selected todos/events still writes data and appends `#imported` to source Markdown lines.
 10. Verify basic navigation to 每日看板 / 我的任务 / 日历 / 设置 still works.
 

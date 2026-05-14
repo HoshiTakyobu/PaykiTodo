@@ -34,6 +34,7 @@ import java.net.NetworkInterface
 import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.LocalDateTime
+import java.time.LocalTime
 import java.time.format.DateTimeFormatter
 import java.util.Collections
 import java.util.Locale
@@ -658,9 +659,9 @@ private fun JSONArray.toPlanningImportCandidates(fallback: List<PlanningParsedCa
             title = json.optString("title", base.title),
             notes = json.optString("notes", base.notes),
             groupName = json.optString("groupName", base.groupName),
-            dueAt = parsePlanningImportDateTime(json.optStringOrNull("dueAt")),
-            startAt = parsePlanningImportDateTime(json.optStringOrNull("startAt")),
-            endAt = parsePlanningImportDateTime(json.optStringOrNull("endAt")),
+            dueAt = parsePlanningImportDateTime(json.optStringOrNull("dueAt"), defaultTime = LocalTime.of(23, 59)),
+            startAt = parsePlanningImportDateTime(json.optStringOrNull("startAt"), defaultTime = null),
+            endAt = parsePlanningImportDateTime(json.optStringOrNull("endAt"), defaultTime = null),
             reminderOffsetsMinutes = json.optJSONArray("reminderOffsetsMinutes")?.toIntList().orEmpty(),
             reminderInputText = reminderRaw.orEmpty(),
             createLinkedTodo = json.optBoolean("createLinkedTodo", base.createLinkedTodo)
@@ -687,14 +688,20 @@ private fun JSONArray.toPlanningImportCandidates(fallback: List<PlanningParsedCa
     }
 }
 
-private fun parsePlanningImportDateTime(raw: String?): LocalDateTime? {
+private fun parsePlanningImportDateTime(raw: String?, defaultTime: LocalTime?): LocalDateTime? {
     val text = raw.orEmpty().trim().replace('：', ':').replace('T', ' ')
     if (text.isBlank()) return null
     runCatching { LocalDateTime.parse(text.replace(' ', 'T')) }.getOrNull()?.let { return it }
+    PlanningMarkdownParser.parseDateTimeExpression(
+        raw = text,
+        defaultDate = null,
+        nowDate = LocalDate.now(),
+        defaultTime = defaultTime
+    )?.let { return it }
     listOf("yyyy-MM-dd HH:mm", "yyyy-M-d H:mm", "yyyy.MM.dd HH:mm", "yyyy.M.d H:mm").forEach { pattern ->
         runCatching { LocalDateTime.parse(text, DateTimeFormatter.ofPattern(pattern, Locale.CHINA)) }.getOrNull()?.let { return it }
     }
-    val monthDay = Regex("^(\\d{1,2})[-.](\\d{1,2})\\s+(\\d{1,2}):(\\d{2})$").matchEntire(text) ?: return null
+    val monthDay = Regex("^(\\d{1,2})[-.](\\d{1,2})[\\s,，]+(\\d{1,2}):(\\d{2})$").matchEntire(text) ?: return null
     val month = monthDay.groupValues[1].toIntOrNull() ?: return null
     val day = monthDay.groupValues[2].toIntOrNull() ?: return null
     val hour = monthDay.groupValues[3].toIntOrNull() ?: return null

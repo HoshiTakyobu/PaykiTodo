@@ -114,13 +114,16 @@ internal fun inputSyntaxHelpLines(topic: InputSyntaxHelpTopic): List<String> {
             "多个提醒用英文逗号分隔。",
             "纯数字表示提前多少分钟。",
             "HH:mm 或 2:30 pm 表示 DDL / 日程开始当天的具体时刻。",
+            "明天 16:30、周五 16:30 表示相对日期或本周对应星期的具体时刻。",
             "MM-DD HH:mm、M.D HH:mm、M月D日 HH:mm 表示当年的日期时间；YYYY-MM-DD HH:mm 表示完整日期时间。",
+            "如果习惯写 5.28,14:30 或 5月28日，14:30，也会按一条具体提醒时间识别。",
             "任一提醒晚于 DDL / 日程开始，或新建时已经过去，都会被判定为非法。"
         )
         InputSyntaxHelpTopic.TodoBatch -> listOf(
             "每行一条待办，字段顺序固定。",
             "格式是：DDL时间,任务名称,提醒时间。",
-            "DDL 可写 HH:mm，表示今天的对应时刻；中文冒号会自动按英文冒号处理。",
+            "DDL 可写 HH:mm 表示今天，也可写 5.28、5月28日、明天、周五；只写日期默认 23:59。",
+            "DDL 和提醒都支持中文冒号，提醒还支持 2:30 pm、5.28 14:30、5.28,14:30、5月28日 14:30。",
             "提醒时间可省略；默认使用默认分组、响铃和震动设置。",
             "待办批量添加为了好手输，一行只支持一个提醒时间。"
         )
@@ -133,7 +136,8 @@ internal fun inputSyntaxHelpLines(topic: InputSyntaxHelpTopic): List<String> {
         InputSyntaxHelpTopic.Snooze -> listOf(
             "可以输入延后分钟数，也可以直接输入未来时刻。",
             "HH:mm 或 2:30 pm 表示今天的具体时刻。",
-            "MM-DD HH:mm、M.D HH:mm、M月D日 HH:mm 表示当年的日期时间；YYYY-MM-DD HH:mm 表示完整日期时间。",
+            "明天 16:30、周五 16:30 表示相对日期或本周对应星期的具体时刻。",
+            "MM-DD HH:mm、M.D HH:mm、M月D日 HH:mm 表示当年的日期时间；YYYY-MM-DD HH:mm 表示完整日期时间，日期和时间之间也可以用逗号。",
             "目标时间必须晚于当前时间；若目标晚于当前 DDL，会同步把 DDL 改到目标时间。"
         )
     }
@@ -141,9 +145,9 @@ internal fun inputSyntaxHelpLines(topic: InputSyntaxHelpTopic): List<String> {
 
 internal fun inputSyntaxHelpExample(topic: InputSyntaxHelpTopic): String {
     return when (topic) {
-        InputSyntaxHelpTopic.Reminder -> "5,15,16:30,2:30 pm,05-10 15:00,5.10 15:00,5月10日 14:30"
-        InputSyntaxHelpTopic.TodoBatch -> "16:30,写报告,5\n05-13 09:30,给老师发消息,09:00\n无DDL,整理 Obsidian 待办"
+        InputSyntaxHelpTopic.Reminder -> "5,15,16:30,2:30 pm,明天 16:30,周五 16:30,5月10日,14:30"
+        InputSyntaxHelpTopic.TodoBatch -> "16:30,写报告,5\n5.13 09:30,给老师发消息,09:00\n5月14日,整理保研材料,5\n无DDL,整理 Obsidian 待办"
         InputSyntaxHelpTopic.CalendarBatch -> "2026-04-27: 10:20-11:55, 辅导员助理值班, @MB-B1-412, Remind=5;\n12:30-14:00, 午休"
-        InputSyntaxHelpTopic.Snooze -> "5\n16:30\n2:30 pm\n5月10日 15:00"
+        InputSyntaxHelpTopic.Snooze -> "5\n16:30\n2:30 pm\n明天 16:30\n周五 16:30"
     }
 }

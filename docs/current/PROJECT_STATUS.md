@@ -7,13 +7,13 @@
 - Package name: `com.paykitodo.app`
 - Target platform: Android 14 / API 34
 - Current version in code:
-  - `versionName = "1.7.10"`
-  - `versionCode = 167`
+  - `versionName = "1.7.11"`
+  - `versionCode = 168`
 
 ## Current Build Facts
 
 - Latest debug APK output:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.7.10-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.7.11-debug.apk`
 - Minimal verification completed in the latest code round:
   - `./gradlew.bat testDebugUnitTest` succeeded with Android Studio bundled `jbr`
   - `./gradlew assembleDebug` succeeded with Android Studio bundled `jbr`
@@ -23,11 +23,11 @@
 
 ## Current Worktree Reality
 
-The repository is now at `1.7.10`. It includes the desktop web editor crash fix, UI-copy cleanup, desktop web no-DDL todo editing support, in-app desktop delete confirmations, desktop-sync service self-stop protection, dynamic desktop-web resource versioning, a smaller calendar recomposition pass, desktop todo preview sheets plus direct desktop event editing, desktop mixed reminder syntax for todos/events, lunar-label display in calendar views, minimal yearly same-lunar-date recurrence, the latest settings tone / lunar DDL / calendar header / daily-board spacing polish, Planning Desk Phase 1 plus Phase 2 usability workflow, an emergency rollback of the unstable phone-side Planning Desk Markdown renderer introduced in `1.7.2` / `1.7.3`, a `1.7.5` Room migration repair for the `planning_notes` table, and `1.7.10` Planning Desk usability fixes for empty new documents, shortcut behavior, document deletion, and unified reminder parsing.
+The repository is now at `1.7.11`. It includes the desktop web editor crash fix, UI-copy cleanup, desktop web no-DDL todo editing support, in-app desktop delete confirmations, desktop-sync service self-stop protection, dynamic desktop-web resource versioning, a smaller calendar recomposition pass, desktop todo preview sheets plus direct desktop event editing, desktop mixed reminder syntax for todos/events, lunar-label display in calendar views, minimal yearly same-lunar-date recurrence, the latest settings tone / lunar DDL / calendar header / daily-board spacing polish, Planning Desk Phase 1 plus Phase 2 usability workflow, an emergency rollback of the unstable phone-side Planning Desk Markdown renderer introduced in `1.7.2` / `1.7.3`, a `1.7.5` Room migration repair for the `planning_notes` table, `1.7.10` Planning Desk usability fixes for empty new documents / shortcut behavior / document deletion / unified reminder parsing, and `1.7.11` syntax consistency fixes for todo batch DDL plus desktop-web reminder input.
 
 Most important current baseline facts:
 
-- version metadata is `1.7.10 / 167`
+- version metadata is `1.7.11 / 168`
 - Planning Desk exists as a phone-side drawer entry and desktop-web tab. It stores multiple Markdown planning documents in Room table `planning_notes`, restores the last opened note, and supports create/open/rename/archive/delete. New/default documents now start with empty content; examples are shown as placeholder/help content rather than saved text.
 - Planning Desk parsing is local and rule-based through `PlanningMarkdownParser`; it does not call AI or paid services.
 - Planning Desk recognizes markdown checkboxes, completed-task skips, subtasks as independent todos with parent-note metadata, date headings, common DDL formats, unified `#remind` mixed reminder syntax, group/schedule tags, and lightweight natural schedule lines such as `10:00-12:30 作业1`.
@@ -45,11 +45,12 @@ Most important current baseline facts:
 - old vector mark launcher resources have been deleted so the launcher cannot fall back to them again
 - picture launcher art has been reprocessed to an opaque pure-white background with smaller centered content
 - todo and calendar editors share a comma-separated reminder input syntax
-- reminder input accepts examples such as `5,15,16:30,2:30 pm,05-10 15:00,5.10 15:00,5月10日 14:30,2026-05-10 14:30`
+- reminder input accepts examples such as `5,15,16:30,2:30 pm,明天 16:30,周五 16:30,05-10 15:00,5.10 15:00,5月10日 14:30,5月10日，14:30,2026-05-10 14:30`
 - invalid reminder entries turn the field/error text red and disable the save button
 - normal todos now use `reminderOffsetsCsv` for multi-reminder storage and scheduling, not only the single `reminderAtMillis` field
 - todo batch import uses the lightweight comma syntax `DDL时间,任务名称,提醒时间` and defaults group / ring / vibrate settings
-- todo batch-import DDL accepts `HH:mm` as today's time and also accepts Chinese colon input such as `16：30`
+- todo batch-import DDL accepts `HH:mm` as today's time, Chinese colon input such as `16：30`, and natural date forms such as `5.28`, `5月28日`, `明天`, and `周五`; date-only DDL defaults to `23:59`
+- desktop web todo/event reminder input accepts the same common reminder forms, including AM/PM, relative dates, weekdays, dot dates, Chinese dates, and Chinese comma separators
 - calendar batch import `Remind=` fields use the same reminder-time parser as the editors
 - full-screen and accessibility reminder custom snooze inputs accept minutes or a concrete future time
 - custom snooze no longer has a 180-minute cap; the target only has to be in the future
@@ -121,7 +122,7 @@ Recent code inspection and build verification cover:
 
 ## Documentation Health
 
-Current docs have been synchronized for `1.7.10`:
+Current docs have been synchronized for `1.7.11`:
 
 - `README.md`
 - `CHANGELOG.md`
@@ -136,7 +137,7 @@ Older versioned docs under `docs/` remain historical references and should not b
 
 ## Current Risk Areas
 
-1. Device-side verification is required to confirm `1.7.10` opens and the Planning Desk empty-document / placeholder / shortcut / delete changes behave correctly.
+1. Device-side verification is required to confirm `1.7.11` opens and the Planning Desk empty-document / placeholder / shortcut / delete changes behave correctly.
 2. Device-side verification is still required for the unified reminder input UX, especially invalid-value red state and disabled save/import behavior.
 3. Todo multi-reminder scheduling should be tested with at least two future reminders on one todo
 4. Todo batch import should be tested with valid comma rows, no-DDL rows, and illegal reminder rows

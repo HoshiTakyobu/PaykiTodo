@@ -10,7 +10,7 @@ This file tracks the product at a practical level for new coding sessions.
 - title / notes / group / deadline / multi-reminder fields
 - no-deadline todos
 - lightweight comma-based todo batch import with preview validation
-- todo batch-import DDL supports same-day clock input such as `16:30` / `16：30`
+- todo batch-import DDL supports same-day clock input such as `16:30` / `16：30`, plus Planning Desk-style natural date forms such as `5.28`, `5月28日`, `明天`, and `周五`; date-only values default to `23:59`
 - My Tasks exposes todo batch import beside the bottom-right new-todo button instead of as a top content row
 - complete / cancel / restore flows
 - active todo preview now uses the same bottom-sheet visual language as calendar event preview
@@ -121,6 +121,7 @@ This file tracks the product at a practical level for new coding sessions.
 - phone-side HTTP serving model exists
 - browser can perform limited data operations against the phone-side dataset
 - desktop web can edit existing todos with title, notes, DDL, reminder, group, recurrence, ring, and vibration fields
+- desktop web todo/event reminder inputs accept AM/PM, relative-date, weekday, dot-date, Chinese-date, and Chinese-comma reminder syntax in addition to the existing minute and ISO-like forms
 - desktop web todo cards open a detail preview first; event cards open the editor directly, while destructive actions still require confirmation
 - desktop web todo and event reminder editors accept mixed reminder syntax matching the phone-side examples, including minutes, same-day time, current-year date-time, and full date-time
 - desktop sync API accepts todo `reminderOffsetsMinutes`, allowing desktop-created / edited todos to persist multiple reminders

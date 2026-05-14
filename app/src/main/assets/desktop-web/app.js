@@ -748,21 +748,91 @@ function findEventById(id) {
 }
 
 function parseLocalDateTimeMillis(text, fallbackDate) {
-  const value = String(text || '').trim().replace('：', ':');
-  let match = value.match(/^(\d{1,2}):(\d{1,2})$/);
+  const value = String(text || '').trim().replace('：', ':').replace('T', ' ');
+  const buildDate = (year, month, day, hour, minute) => {
+    if (hour < 0 || hour > 23 || minute < 0 || minute > 59) return null;
+    const date = new Date(year, month - 1, day, hour, minute, 0, 0);
+    if (date.getFullYear() !== year || date.getMonth() !== month - 1 || date.getDate() !== day) return null;
+    return date.getTime();
+  };
+  const parseHour = (rawHour, period) => {
+    let hour = Number(rawHour);
+    const lower = String(period || '').toLowerCase();
+    if (lower) {
+      if (hour < 1 || hour > 12) return null;
+      if (lower === 'pm' && hour < 12) hour += 12;
+      if (lower === 'am' && hour === 12) hour = 0;
+    }
+    return hour;
+  };
+  const weekdayValue = label => {
+    if (['周一', '星期一', '礼拜一'].includes(label)) return 1;
+    if (['周二', '星期二', '礼拜二'].includes(label)) return 2;
+    if (['周三', '星期三', '礼拜三'].includes(label)) return 3;
+    if (['周四', '星期四', '礼拜四'].includes(label)) return 4;
+    if (['周五', '星期五', '礼拜五'].includes(label)) return 5;
+    if (['周六', '星期六', '礼拜六'].includes(label)) return 6;
+    if (['周日', '周天', '星期日', '星期天', '礼拜日', '礼拜天'].includes(label)) return 7;
+    return null;
+  };
+  let match = value.match(/^(\d{1,2}):(\d{2})\s*([aApP][mM])?$/);
   if (match) {
     const date = fallbackDate ? new Date(fallbackDate.getTime()) : new Date();
-    date.setHours(Number(match[1]), Number(match[2]), 0, 0);
-    return date.getTime();
+    const hour = parseHour(match[1], match[3]);
+    return hour == null ? null : buildDate(date.getFullYear(), date.getMonth() + 1, date.getDate(), hour, Number(match[2]));
   }
-  match = value.match(/^(\d{1,2})-(\d{1,2})\s+(\d{1,2}):(\d{1,2})$/);
+  match = value.match(/^(今天|今日|明天|明日|后天|周[一二三四五六日天]|星期[一二三四五六日天]|礼拜[一二三四五六日天])[\s,，]+(\d{1,2}):(\d{2})\s*([aApP][mM])?$/);
+  if (match) {
+    const date = fallbackDate ? new Date(fallbackDate.getTime()) : new Date();
+    if (match[1] === '明天' || match[1] === '明日') date.setDate(date.getDate() + 1);
+    if (match[1] === '后天') date.setDate(date.getDate() + 2);
+    const targetWeekday = weekdayValue(match[1]);
+    if (targetWeekday != null) {
+      const currentWeekday = date.getDay() === 0 ? 7 : date.getDay();
+      date.setDate(date.getDate() + ((targetWeekday - currentWeekday + 7) % 7));
+    }
+    const hour = parseHour(match[2], match[4]);
+    return hour == null ? null : buildDate(date.getFullYear(), date.getMonth() + 1, date.getDate(), hour, Number(match[3]));
+  }
+  match = value.match(/^(\d{1,2})[-.](\d{1,2})[\s,，]+(\d{1,2}):(\d{2})\s*([aApP][mM])?$/);
   if (match) {
     const year = (fallbackDate || new Date()).getFullYear();
-    return new Date(year, Number(match[1]) - 1, Number(match[2]), Number(match[3]), Number(match[4]), 0, 0).getTime();
+    const hour = parseHour(match[3], match[5]);
+    return hour == null ? null : buildDate(year, Number(match[1]), Number(match[2]), hour, Number(match[4]));
   }
-  match = value.match(/^(\d{4})-(\d{1,2})-(\d{1,2})\s+(\d{1,2}):(\d{1,2})$/);
-  if (match) return new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]), Number(match[4]), Number(match[5]), 0, 0).getTime();
+  match = value.match(/^(\d{1,2})月(\d{1,2})日?[\s,，]+(\d{1,2}):(\d{2})\s*([aApP][mM])?$/);
+  if (match) {
+    const year = (fallbackDate || new Date()).getFullYear();
+    const hour = parseHour(match[3], match[5]);
+    return hour == null ? null : buildDate(year, Number(match[1]), Number(match[2]), hour, Number(match[4]));
+  }
+  match = value.match(/^(\d{4})[-.](\d{1,2})[-.](\d{1,2})[\s,，]+(\d{1,2}):(\d{2})\s*([aApP][mM])?$/);
+  if (match) {
+    const hour = parseHour(match[4], match[6]);
+    return hour == null ? null : buildDate(Number(match[1]), Number(match[2]), Number(match[3]), hour, Number(match[5]));
+  }
+  match = value.match(/^(\d{4})年(\d{1,2})月(\d{1,2})日?[\s,，]+(\d{1,2}):(\d{2})\s*([aApP][mM])?$/);
+  if (match) {
+    const hour = parseHour(match[4], match[6]);
+    return hour == null ? null : buildDate(Number(match[1]), Number(match[2]), Number(match[3]), hour, Number(match[5]));
+  }
   return null;
+}
+
+function splitReminderSpecTokens(raw) {
+  const parts = String(raw || '').split(/[,，]/).map(part => part.trim()).filter(Boolean);
+  const tokens = [];
+  const dateOnlyPattern = /^(今天|今日|明天|明日|后天|周[一二三四五六日天]|星期[一二三四五六日天]|礼拜[一二三四五六日天]|\d{4}[-.]\d{1,2}[-.]\d{1,2}|\d{4}年\d{1,2}月\d{1,2}日?|\d{1,2}[-.]\d{1,2}|\d{1,2}月\d{1,2}日?)$/;
+  const timeOnlyPattern = /^\d{1,2}:\d{2}\s*([aApP][mM])?$/;
+  for (let index = 0; index < parts.length; index += 1) {
+    if (index + 1 < parts.length && dateOnlyPattern.test(parts[index]) && timeOnlyPattern.test(parts[index + 1])) {
+      tokens.push(parts[index] + ' ' + parts[index + 1]);
+      index += 1;
+    } else {
+      tokens.push(parts[index]);
+    }
+  }
+  return tokens;
 }
 
 function parseReminderSpecs(text, anchorMillis) {
@@ -771,7 +841,7 @@ function parseReminderSpecs(text, anchorMillis) {
   if (!anchorMillis) throw new Error('请先填写 DDL 或日程开始时间');
   const anchor = new Date(anchorMillis);
   const offsets = [];
-  raw.split(',').map(part => part.trim()).filter(Boolean).forEach(part => {
+  splitReminderSpecTokens(raw).forEach(part => {
     if (/^\d+$/.test(part)) {
       offsets.push(Number(part));
       return;

@@ -2,47 +2,40 @@
 
 ## Active Development Focus
 
-The current round is PaykiTodo `1.7.10` / `versionCode 167`, focused on making Planning Desk behave like a practical blank planning notebook instead of a demo-filled syntax surface.
+The current round is PaykiTodo `1.7.11` / `versionCode 168`, focused on checking whether the app's text-input syntaxes are internally reasonable and reducing the most visible inconsistencies.
 
-The user reported these Planning Desk issues:
+The syntax review conclusion:
 
-1. New documents should not contain saved example text; examples should be grey placeholder guidance that disappears when typing.
-2. Planning Desk `#remind` must align with the mixed reminder syntax already used by todo/event editing and batch import.
-3. The shortcut bar should not insert repeated `- [ ]` markers into one line, and the subtask button should create a new indented subtask line.
-4. Headings such as `# 今日计划`, `# 今天`, and `# 明天` were unclear and needed real behavior plus clearer explanation.
-5. The planning document directory needed an obvious delete path.
+1. Planning Desk `#remind`, phone reminder editors, calendar batch `Remind=`, and snooze input now share the same reminder parser on Android.
+2. Todo batch import still had a narrower DDL parser than Planning Desk, so natural forms such as `5.28`, `5月28日`, `明天`, and `周五` were not accepted there.
+3. Desktop Web todo/event reminder input still lagged behind the Android parser and did not support `2:30 pm`, relative dates, weekdays, dot dates, Chinese dates, date-comma-time tokens, or Chinese comma splitting.
+4. Calendar batch import remains intentionally stricter because it is a structured multi-field import format; that boundary should be documented rather than hidden.
 
 Completed in this round:
 
-1. New/default planning notes now start with empty `contentMarkdown`.
-2. The editor placeholder now contains the example guidance instead of storing it as document content.
-3. Added a common reminder text parser used by reminder inputs and Planning Desk `#remind`.
-4. Expanded reminder parsing to support examples such as `5,15,16:30,2:30 pm,05-10 15:00,5.10 15:00,5月10日 14:30`.
-5. Planning Desk `#remind` now reports invalid explicit reminder syntax instead of silently falling back to the default 5-minute reminder.
-6. Planning Desk preview reminder editing now preserves raw input, shows invalid input errors, and blocks import until fixed.
-7. The shortcut bar now has semantic `任务` and `子任务` actions rather than blindly inserting raw text.
-8. Heading context now recognizes headings containing `今日` / `今天` / `明天`, so `# 今日计划` affects following undated schedule lines.
-9. Phone Planning Desk document list now includes a per-document delete button with confirmation.
-10. Desktop Web Planning Desk now includes a current-document delete button and sends raw reminder input back to the phone API for unified parsing.
+1. Todo batch DDL now reuses Planning Desk date-time parsing.
+2. Todo batch DDL accepts `HH:mm`, `5.28`, `5月28日`, `明天`, `周五`, `2026年5月28日`, and date-only values default to `23:59`.
+3. Android reminder parsing now accepts relative dates and weekdays such as `明天 16:30` and `周五 16:30`, and treats `5.28,14:30` / `5月28日，14:30` as one concrete reminder token.
+4. Desktop Web reminder parsing now accepts AM/PM times, relative dates, weekdays, dot dates, Chinese month-day dates, full Chinese dates, date-comma-time tokens, and Chinese comma separators.
+5. Desktop Planning Desk preview edits now reuse Planning Desk date parsing for edited DDL / start / end fields instead of falling back to a narrower desktop-only syntax.
+6. Input help, Wiki, README, CHANGELOG, TODO, and current docs were updated to describe the broader syntax.
+7. App version metadata moved to `1.7.11` / `versionCode 168`.
 
 ## Immediate Practical Next Steps
 
 When testing, use:
 
-1. install `app/build/outputs/apk/debug/PaykiTodo-1.7.10-debug.apk`
-2. open drawer -> `规划台`
-3. create a new planning document and verify the editor is empty while placeholder text is grey
-4. type on one line and tap `任务` repeatedly; verify only one `- [ ]` exists
-5. place the cursor on a task and tap `子任务`; verify a new indented child task line appears
-6. test `# 今日计划` followed by `10:00-11:00 写论文`; verify recognition uses today's date
-7. test `#remind 5,15,16:30,5月10日 14:30` and verify preview recognizes or reports specific invalid reasons
-8. open the document directory and verify a document can be deleted only after confirmation
-9. enable desktop sync, open the Web Planning Desk, and verify the delete button and reminder preview import still work
+1. install `app/build/outputs/apk/debug/PaykiTodo-1.7.11-debug.apk`
+2. open 我的任务 -> 批量待办
+3. verify rows like `5.28,整理材料,5`, `5月28日,整理材料,5`, `明天,整理材料,5`, and `周五,整理材料,5` parse correctly
+4. verify `16:30,写报告,5` still means today 16:30
+5. enable desktop sync and test desktop todo/event reminder inputs such as `5,15,2:30 pm,明天 16:30,周五 16:30,5.10 15:00,5月10日,14:30`
+6. verify invalid desktop reminder times still surface an error instead of silently saving bad offsets
 
 ## Commit Message Rule
 
-PaykiTodo commit messages should describe product behavior changes and bug/debug reasoning. They should not primarily document push state, validation commands, or vague process notes. Commit subjects must not append version-bump tails such as `并升级到1.7.10`.
+PaykiTodo commit messages should describe product behavior changes and bug/debug reasoning. They should not primarily document push state, validation commands, or vague process notes. Commit subjects must not append version-bump tails such as `并升级到1.7.11`.
 
 ## Current External Dependency
 
-No external file or API key is needed for the current `1.7.10` verification task.
+No external file or API key is needed for the current `1.7.11` verification task.

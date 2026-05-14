@@ -340,7 +340,7 @@
         </ul>
 
         <h2>手机端快捷栏怎么用</h2>
-        <p>手机端规划台当前使用稳定的纯色 Markdown 原文编辑器和横向快捷输入栏。新文档默认是空白正文，示例只会作为灰色提示或说明出现，不会真实保存进文档。1.7.10 进一步修正了快捷栏、文档目录删除、<code>#remind</code> 统一提醒语法和标题日期上下文。</p>
+        <p>手机端规划台当前使用稳定的纯色 Markdown 原文编辑器和横向快捷输入栏。新文档默认是空白正文，示例只会作为灰色提示或说明出现，不会真实保存进文档。1.7.12 进一步补齐了规划台、批量导入、电脑端 Web 和输入帮助里的语法说明。</p>
         <p>手机中文输入时手打 <code>- [ ]</code>、缩进和标签很麻烦，所以编辑器底部提供快捷栏。</p>
         <table class="table">
           <tr><th>按钮</th><th>作用</th></tr>
@@ -404,6 +404,7 @@
         <ul>
           <li>只写日期、不写时间，默认当天 <code>23:59</code>。</li>
           <li>只写时间，例如 <code>#ddl 16:30</code>，默认今天。</li>
+          <li>日期和时间之间可以用空格，也可以用中文逗号，例如 <code>#ddl 5.28，23:59</code>。</li>
           <li>如果解析出的 DDL 已经过期，预览会提示风险，不会偷偷改到明年。</li>
         </ul>
 
@@ -433,7 +434,7 @@
         <p>如果一行已经带有 <code>#imported</code>，规划台会默认跳过它，避免重复导入。从 1.7.1 开始，导入成功后，规划台会自动给被导入的原文行追加 <code>#imported</code>，并保存当前规划文档。</p>
 
         <h2>电脑端规划台</h2>
-        <p>开启电脑同步后，电脑网页控制台左侧有 <code>规划台</code> Tab。电脑端是左侧 textarea、右侧识别预览的简洁布局，支持文档选择、新建、删除、保存、识别、预览内编辑和导入选中。导入成功后同样会把原文对应行标记为 <code>#imported</code>。电脑端和手机端操作的是同一份本地数据库。</p>
+        <p>开启电脑同步后，电脑网页控制台左侧有 <code>规划台</code> Tab。电脑端是左侧 textarea、右侧识别预览的简洁布局，支持文档选择、新建、删除、保存、识别、预览内编辑和导入选中。预览内编辑 DDL、日程开始 / 结束时间、提醒时间时，也使用和手机端一致的自然日期语法。导入成功后同样会把原文对应行标记为 <code>#imported</code>。电脑端和手机端操作的是同一份本地数据库。</p>
       </section>
       <section id="desktop-sync" class="article">
         <h1>电脑同步</h1>
@@ -694,14 +695,17 @@
         </ul>
         <h2>待办批量添加</h2>
         <p>我的任务页右下角有 <code>批量待办</code>。它是为了快速手输，所以语法比日程更轻。每日看板只负责展示今日信息，不放添加按钮。</p>
+        <div class="callout">待办批量添加的字段分隔符是英文逗号。字段内部如果需要连接日期和时间，推荐用空格或中文逗号，不要再用英文逗号，否则会被当作下一个字段。</div>
         <div class="code-card"><div class="label">待办格式</div><pre>DDL时间,任务名称,提醒时间</pre></div>
         <div class="code-card"><div class="label">示例</div><pre>16:30,写报告,5
 5.13 09:30,给老师发消息,09:00
+5月14日，09:30,整理保研材料,5
 5月14日,整理保研材料,5
 无DDL,整理 Obsidian 待办</pre></div>
         <ul>
           <li><code>16:30</code> 这样的 DDL 表示今天 16:30；中文冒号 <code>16：30</code> 也会自动识别。</li>
           <li>DDL 也可写 <code>5.28</code>、<code>5月28日</code>、<code>明天</code>、<code>周五</code>；只写日期时默认当天 <code>23:59</code>。</li>
+          <li>提醒时间可写 <code>5</code>、<code>16:30</code>、<code>2:30 pm</code>、<code>明天 16:30</code>、<code>周五 16:30</code>、<code>5月28日，14:30</code>。</li>
           <li>提醒时间可省略。</li>
           <li>为了手输简单，一行待办只支持一个提醒时间。</li>
           <li>默认使用默认分组、默认响铃和默认震动设置。</li>
@@ -747,7 +751,7 @@
         <table class="table">
           <tr><th>字段</th><th>示例</th><th>作用</th></tr>
           <tr><td><code>Note</code></td><td><code>Note="刷题 2 套"</code></td><td>备注</td></tr>
-          <tr><td><code>Remind</code></td><td><code>Remind=5</code> / <code>Remind=16:30</code></td><td>提醒时间。支持提前分钟、当天时刻、当年日期时间、完整日期时间；<code>off</code> 表示不提醒。</td></tr>
+          <tr><td><code>Remind</code></td><td><code>Remind=5</code> / <code>Remind=16:30</code> / <code>Remind=5月28日，14:30</code></td><td>提醒时间。支持提前分钟、当天时刻、AM/PM、相对日期、星期日期、当年日期时间、完整日期时间；<code>off</code> 表示不提醒。</td></tr>
           <tr><td><code>Mode</code></td><td><code>Mode=Notification</code></td><td>通知栏提醒或全屏提醒</td></tr>
           <tr><td><code>Ring</code></td><td><code>Ring=On</code></td><td>是否响铃</td></tr>
           <tr><td><code>Vibrate</code></td><td><code>Vibrate=Off</code></td><td>是否震动</td></tr>
@@ -759,7 +763,7 @@
           <li>不写循环规则：按单次日程处理。</li>
           <li>写了循环规则但不写截止日期：默认截止到起始日期后 90 天。</li>
           <li>批量导入默认提醒是：<code>提前 5 分钟 + 通知栏提醒 + 响铃开启 + 震动开启</code>。</li>
-          <li>日程批量导入的 <code>Remind=</code> 支持和编辑界面相同的提醒时间写法。</li>
+          <li>日程批量导入的 <code>Remind=</code> 支持和编辑界面相同的提醒时间写法。因为日程批量字段也用英文逗号分隔，<code>Remind</code> 内多个提醒建议用中文逗号，日期和时间连接建议用空格或中文逗号。</li>
         </ul>
         <h2>导入前建议先做什么</h2>
         <ol class="steps">

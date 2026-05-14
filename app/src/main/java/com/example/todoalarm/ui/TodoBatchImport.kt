@@ -74,7 +74,7 @@ internal fun TodoBatchImportDialog(
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 Text(
-                    text = "每行一条待办：DDL时间,任务名称,提醒时间。默认使用当前默认分组、响铃和震动设置。",
+                    text = "每行一条待办：DDL时间,任务名称,提醒时间。字段分隔用英文逗号；默认使用当前默认分组、响铃和震动设置。",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -144,8 +144,9 @@ internal fun TodoBatchImportDialog(
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text("格式：DDL时间,任务名称,提醒时间")
-                    Text("DDL 支持：16:30、2026-05-12 18:00、05-12 18:00、无DDL；16:30 表示今天 16:30。")
-                    Text("提醒时间只写一个：5、16:30、05-10 15:00、2026-05-10 14:30。")
+                    Text("DDL 支持：16:30、5.28、5月28日、明天、周五、2026-05-12 18:00、无DDL；只写日期默认 23:59。")
+                    Text("提醒时间只写一个：5、16:30、2:30 pm、明天 16:30、周五 16:30、5月28日，14:30。")
+                    Text("因为英文逗号用于分隔字段，所以日期和时间放在同一个字段里时，推荐用空格或中文逗号，不要用英文逗号。")
                     Text("如果提醒时刻晚于 DDL，或提醒已经过去，该行会被判定为非法。")
                     Text("示例：16:30,写报告,5")
                 }

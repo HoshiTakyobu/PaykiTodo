@@ -533,12 +533,14 @@ internal fun CalendarBatchImportHelpDialog(
                     body = listOf(
                         "使用 Remind=... 可以显式覆盖默认提醒。",
                         "如果不写 Remind，则默认提前 5 分钟提醒，并使用铃声+震动。",
-                        "支持 Remind=15m / 1h / 2d / off。",
+                        "支持 Remind=5、Remind=15m、Remind=1h、Remind=2d、Remind=16:30、Remind=2:30 pm、Remind=明天 16:30、Remind=周五 16:30、Remind=5月28日，14:30、Remind=off。",
+                        "日程批量字段用英文逗号分隔；Remind 内多个提醒建议用中文逗号，日期和时间连接也建议用空格或中文逗号。",
                         "Mode=Notification 或 Mode=Fullscreen。",
                         "Ring=On/Off，Vibrate=On/Off。"
                     ),
                     code = """
                         2026-05-02: 18:30-20:00, 复习线代, Note="刷题 2 套", Remind=30m, Mode=Notification, Ring=On, Vibrate=Off
+                        2026-05-03: 18:30-20:00, 复习英语, Remind=5月3日，17:30, Mode=Fullscreen
                     """.trimIndent()
                 )
                 HelpSectionCard(

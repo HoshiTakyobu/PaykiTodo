@@ -108,12 +108,12 @@ This file tracks the product at a practical level for new coding sessions.
 - in-app wiki assets
 - in-app Wiki sidebar navigation works through local WebView JavaScript
 - in-app Wiki keeps a left menu / right article layout on phone-sized screens instead of stacking all section buttons above the content
-- in-app Wiki documents current reminder, batch-import, and snooze input syntax
+- in-app Wiki documents current reminder, batch-import, Planning Desk, desktop Planning Desk, and snooze input syntax
 
 ### Input Help
 
 - reminder, batch-import, and custom-snooze input fields expose nearby question-mark syntax help
-- shared input-help dialog explains valid examples and invalid-value behavior
+- shared input-help dialog explains valid examples, field-boundary rules, and invalid-value behavior
 
 ### Desktop / LAN Assistance
 
@@ -121,7 +121,7 @@ This file tracks the product at a practical level for new coding sessions.
 - phone-side HTTP serving model exists
 - browser can perform limited data operations against the phone-side dataset
 - desktop web can edit existing todos with title, notes, DDL, reminder, group, recurrence, ring, and vibration fields
-- desktop web todo/event reminder inputs accept AM/PM, relative-date, weekday, dot-date, Chinese-date, and Chinese-comma reminder syntax in addition to the existing minute and ISO-like forms
+- desktop web todo/event reminder inputs accept AM/PM, relative-date, weekday, dot-date, Chinese-date, and Chinese-comma reminder syntax in addition to the existing minute and ISO-like forms; placeholders now show these examples
 - desktop web todo cards open a detail preview first; event cards open the editor directly, while destructive actions still require confirmation
 - desktop web todo and event reminder editors accept mixed reminder syntax matching the phone-side examples, including minutes, same-day time, current-year date-time, and full date-time
 - desktop sync API accepts todo `reminderOffsetsMinutes`, allowing desktop-created / edited todos to persist multiple reminders
@@ -137,7 +137,7 @@ This file tracks the product at a practical level for new coding sessions.
 - desktop web event timeline no longer shows the separate all-day strip above the timeline
 - desktop web shows the installed APK version in the brand block and uses runtime versioned CSS / JS URLs
 - desktop sync service self-stops if Android restarts it while desktop sync is disabled in Settings
-- desktop web has a `规划台` tab with textarea editor, document selector, save, editable parse preview, selected import, and a help modal
+- desktop web has a `规划台` tab with textarea editor, document selector, save, editable parse preview, selected import, and a help modal that explains the same DDL/reminder syntax as the phone-side Planning Desk help
 - desktop web Planning Desk uses phone-local `/api/planning/*` routes, edits the same Room planning notes as the phone UI, and writes back `#imported` markers after import
 
 ### Destructive Action Safety

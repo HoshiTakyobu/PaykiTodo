@@ -2,7 +2,7 @@
 
 ## Active Development Focus
 
-The current round is PaykiTodo `1.7.11` / `versionCode 168`, focused on checking whether the app's text-input syntaxes are internally reasonable and reducing the most visible inconsistencies.
+The current round is PaykiTodo `1.7.12` / `versionCode 169`, focused on making sure the syntax rules already implemented in `1.7.11` are also visible in every user-facing help surface.
 
 The syntax review conclusion:
 
@@ -11,7 +11,7 @@ The syntax review conclusion:
 3. Desktop Web todo/event reminder input still lagged behind the Android parser and did not support `2:30 pm`, relative dates, weekdays, dot dates, Chinese dates, date-comma-time tokens, or Chinese comma splitting.
 4. Calendar batch import remains intentionally stricter because it is a structured multi-field import format; that boundary should be documented rather than hidden.
 
-Completed in this round:
+Completed in the `1.7.11` syntax implementation round:
 
 1. Todo batch DDL now reuses Planning Desk date-time parsing.
 2. Todo batch DDL accepts `HH:mm`, `5.28`, `5月28日`, `明天`, `周五`, `2026年5月28日`, and date-only values default to `23:59`.
@@ -21,16 +21,26 @@ Completed in this round:
 6. Input help, Wiki, README, CHANGELOG, TODO, and current docs were updated to describe the broader syntax.
 7. App version metadata moved to `1.7.11` / `versionCode 168`.
 
+Completed in the `1.7.12` documentation/UI-copy round:
+
+1. Phone Planning Desk help now documents common DDL forms, natural reminder forms, and preview-edit time behavior.
+2. Todo batch import dialog/help now states that English commas split fields and date/time inside one field should use a space or Chinese comma.
+3. Calendar batch import help now documents `Remind=` support for the shared reminder syntax, including natural dates and Chinese date-time commas.
+4. Built-in Wiki now documents the same field boundary and reminder syntax across Planning Desk, todo batch import, calendar batch import, and desktop Planning Desk.
+5. Desktop Web Planning Desk help and reminder placeholders now show the same accepted reminder examples.
+6. App version metadata moved to `1.7.12` / `versionCode 169`.
+
 ## Immediate Practical Next Steps
 
 When testing, use:
 
-1. install `app/build/outputs/apk/debug/PaykiTodo-1.7.11-debug.apk`
+1. install `app/build/outputs/apk/debug/PaykiTodo-1.7.12-debug.apk`
 2. open 我的任务 -> 批量待办
 3. verify rows like `5.28,整理材料,5`, `5月28日,整理材料,5`, `明天,整理材料,5`, and `周五,整理材料,5` parse correctly
 4. verify `16:30,写报告,5` still means today 16:30
-5. enable desktop sync and test desktop todo/event reminder inputs such as `5,15,2:30 pm,明天 16:30,周五 16:30,5.10 15:00,5月10日,14:30`
-6. verify invalid desktop reminder times still surface an error instead of silently saving bad offsets
+5. enable desktop sync and test desktop todo/event reminder inputs such as `5,15,2:30 pm,明天 16:30,周五 16:30,5.10 15:00,5月10日，14:30`
+6. open Planning Desk help, todo batch help, calendar batch help, built-in Wiki, and desktop Planning Desk help to verify the same syntax rules are explained consistently
+7. verify invalid desktop reminder times still surface an error instead of silently saving bad offsets
 
 ## Commit Message Rule
 
@@ -38,4 +48,4 @@ PaykiTodo commit messages should describe product behavior changes and bug/debug
 
 ## Current External Dependency
 
-No external file or API key is needed for the current `1.7.11` verification task.
+No external file or API key is needed for the current `1.7.12` verification task.

@@ -111,7 +111,7 @@ internal fun inputSyntaxHelpTitle(topic: InputSyntaxHelpTopic): String {
 internal fun inputSyntaxHelpLines(topic: InputSyntaxHelpTopic): List<String> {
     return when (topic) {
         InputSyntaxHelpTopic.Reminder -> listOf(
-            "多个提醒用英文逗号分隔。",
+            "多个提醒用英文或中文逗号分隔。",
             "纯数字表示提前多少分钟。",
             "HH:mm 或 2:30 pm 表示 DDL / 日程开始当天的具体时刻。",
             "明天 16:30、周五 16:30 表示相对日期或本周对应星期的具体时刻。",
@@ -122,8 +122,9 @@ internal fun inputSyntaxHelpLines(topic: InputSyntaxHelpTopic): List<String> {
         InputSyntaxHelpTopic.TodoBatch -> listOf(
             "每行一条待办，字段顺序固定。",
             "格式是：DDL时间,任务名称,提醒时间。",
+            "字段分隔用英文逗号；字段内部如果要连接日期和时间，推荐用空格或中文逗号。",
             "DDL 可写 HH:mm 表示今天，也可写 5.28、5月28日、明天、周五；只写日期默认 23:59。",
-            "DDL 和提醒都支持中文冒号，提醒还支持 2:30 pm、5.28 14:30、5.28,14:30、5月28日 14:30。",
+            "DDL 和提醒都支持中文冒号，提醒还支持 2:30 pm、5.28 14:30、5月28日，14:30。",
             "提醒时间可省略；默认使用默认分组、响铃和震动设置。",
             "待办批量添加为了好手输，一行只支持一个提醒时间。"
         )

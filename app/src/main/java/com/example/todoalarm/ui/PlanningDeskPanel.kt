@@ -405,9 +405,9 @@ private fun PlanningShortcutBar(
         PlanningShortcutSpec("子任务", PlanningShortcutAction.SubtaskLine, "在当前行下面新建一条缩进子任务"),
         PlanningShortcutSpec("缩进", PlanningShortcutAction.Indent, "当前行增加一级缩进"),
         PlanningShortcutSpec("减少缩进", PlanningShortcutAction.Outdent, "当前行减少一级缩进"),
-        PlanningShortcutSpec("DDL", PlanningShortcutAction.Insert(" #ddl "), "设置截止时间，例如 #ddl 5.28 23:59"),
+        PlanningShortcutSpec("DDL", PlanningShortcutAction.Insert(" #ddl "), "设置截止时间，例如 #ddl 5.28 23:59 或 #ddl 明天 16:30"),
         PlanningShortcutSpec("日程", PlanningShortcutAction.Insert(" #schedule "), "显式声明日程时间段"),
-        PlanningShortcutSpec("提醒", PlanningShortcutAction.Insert(" #remind "), "设置提醒，例如 #remind 5,15,16:30"),
+        PlanningShortcutSpec("提醒", PlanningShortcutAction.Insert(" #remind "), "设置提醒，例如 #remind 5,15,16:30,明天 16:30"),
         PlanningShortcutSpec("分组", PlanningShortcutAction.Insert(" #group "), "指定分组，例如 #group 课程"),
         PlanningShortcutSpec("今日标题", PlanningShortcutAction.InsertSection("# 今日计划"), "插入标题分区；下面没写日期的时间段按今天理解"),
         PlanningShortcutSpec("明日标题", PlanningShortcutAction.InsertSection("# 明天"), "插入标题分区；下面没写日期的时间段按明天理解")
@@ -536,6 +536,7 @@ private fun PlanningHelpSheet(onDismiss: () -> Unit) {
         # 明天
         - [ ] 09:00-10:30 背英语单词 #group 学习
         - [ ] 完成实验报告 #ddl 21:30 #remind 15,5
+        - [ ] 整理材料 #ddl 5.28，23:59 #remind 5月28日，22:00
     """.trimIndent()
     Column(
         modifier = Modifier
@@ -592,10 +593,11 @@ private fun PlanningHelpSheet(onDismiss: () -> Unit) {
                     title = "3. 常用写法",
                     lines = listOf(
                         "待办：- [ ] 整理材料 #ddl 5.28 23:59",
+                        "DDL：支持 16:30、5.28、5月28日、明天、周五；只写日期默认 23:59。",
                         "子任务：把光标放在父任务行，点“子任务”，会自动新起一行并缩进。",
                         "日程：10:00-12:30 写论文，或 明天 19:30-21:00 复习。",
                         "分组：在行尾写 #group 课程。",
-                        "提醒：#remind 5,15 表示提前分钟；也支持 #remind 16:30 或 #remind 5月28日 14:30。"
+                        "提醒：#remind 5,15 表示提前分钟；也支持 #remind 16:30、#remind 明天 16:30、#remind 周五 16:30、#remind 5月28日，14:30。"
                     )
                 )
             }
@@ -604,7 +606,7 @@ private fun PlanningHelpSheet(onDismiss: () -> Unit) {
                     title = "4. 识别和导入",
                     lines = listOf(
                         "写完后点右侧的“识别”。",
-                        "识别预览里可以先修改标题、DDL、开始结束时间、分组、备注和提醒。",
+                        "识别预览里可以先修改标题、DDL、开始结束时间、分组、备注和提醒；时间字段继续支持自然日期写法。",
                         "勾选需要导入的条目，再点“导入”。",
                         "导入成功后，原文会追加 #imported，避免同一行重复导入。"
                     )

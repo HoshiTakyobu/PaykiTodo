@@ -7,13 +7,13 @@
 - Package name: `com.paykitodo.app`
 - Target platform: Android 14 / API 34
 - Current version in code:
-  - `versionName = "1.7.11"`
-  - `versionCode = 168`
+  - `versionName = "1.7.12"`
+  - `versionCode = 169`
 
 ## Current Build Facts
 
 - Latest debug APK output:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.7.11-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.7.12-debug.apk`
 - Minimal verification completed in the latest code round:
   - `./gradlew.bat testDebugUnitTest` succeeded with Android Studio bundled `jbr`
   - `./gradlew assembleDebug` succeeded with Android Studio bundled `jbr`
@@ -23,11 +23,11 @@
 
 ## Current Worktree Reality
 
-The repository is now at `1.7.11`. It includes the desktop web editor crash fix, UI-copy cleanup, desktop web no-DDL todo editing support, in-app desktop delete confirmations, desktop-sync service self-stop protection, dynamic desktop-web resource versioning, a smaller calendar recomposition pass, desktop todo preview sheets plus direct desktop event editing, desktop mixed reminder syntax for todos/events, lunar-label display in calendar views, minimal yearly same-lunar-date recurrence, the latest settings tone / lunar DDL / calendar header / daily-board spacing polish, Planning Desk Phase 1 plus Phase 2 usability workflow, an emergency rollback of the unstable phone-side Planning Desk Markdown renderer introduced in `1.7.2` / `1.7.3`, a `1.7.5` Room migration repair for the `planning_notes` table, `1.7.10` Planning Desk usability fixes for empty new documents / shortcut behavior / document deletion / unified reminder parsing, and `1.7.11` syntax consistency fixes for todo batch DDL plus desktop-web reminder input.
+The repository is now at `1.7.12`. It includes the desktop web editor crash fix, UI-copy cleanup, desktop web no-DDL todo editing support, in-app desktop delete confirmations, desktop-sync service self-stop protection, dynamic desktop-web resource versioning, a smaller calendar recomposition pass, desktop todo preview sheets plus direct desktop event editing, desktop mixed reminder syntax for todos/events, lunar-label display in calendar views, minimal yearly same-lunar-date recurrence, the latest settings tone / lunar DDL / calendar header / daily-board spacing polish, Planning Desk Phase 1 plus Phase 2 usability workflow, an emergency rollback of the unstable phone-side Planning Desk Markdown renderer introduced in `1.7.2` / `1.7.3`, a `1.7.5` Room migration repair for the `planning_notes` table, `1.7.10` Planning Desk usability fixes for empty new documents / shortcut behavior / document deletion / unified reminder parsing, `1.7.11` syntax consistency fixes for todo batch DDL plus desktop-web reminder input, and `1.7.12` help-surface coverage for those syntax rules.
 
 Most important current baseline facts:
 
-- version metadata is `1.7.11 / 168`
+- version metadata is `1.7.12 / 169`
 - Planning Desk exists as a phone-side drawer entry and desktop-web tab. It stores multiple Markdown planning documents in Room table `planning_notes`, restores the last opened note, and supports create/open/rename/archive/delete. New/default documents now start with empty content; examples are shown as placeholder/help content rather than saved text.
 - Planning Desk parsing is local and rule-based through `PlanningMarkdownParser`; it does not call AI or paid services.
 - Planning Desk recognizes markdown checkboxes, completed-task skips, subtasks as independent todos with parent-note metadata, date headings, common DDL formats, unified `#remind` mixed reminder syntax, group/schedule tags, and lightweight natural schedule lines such as `10:00-12:30 作业1`.
@@ -56,7 +56,7 @@ Most important current baseline facts:
 - custom snooze no longer has a 180-minute cap; the target only has to be in the future
 - todo snooze moves the todo DDL when the snooze target is later than the current DDL, and pins the next reminder to that target
 - reminder / batch / custom snooze input surfaces have nearby question-mark syntax help buttons
-- in-app Wiki has been updated to describe current reminder syntax, todo batch syntax, calendar batch `Remind=`, custom snooze behavior, and the current desktop-sync address expansion / preview-edit flow
+- in-app Wiki and in-app help sheets have been updated to describe current reminder syntax, todo batch syntax, calendar batch `Remind=`, custom snooze behavior, Planning Desk preview-edit syntax, and the current desktop-sync address expansion / preview-edit flow
 - daily board no longer exposes add / batch-add controls; it is a read-only board surface
 - active task surface exposes only todo batch import beside the bottom-right new-todo button
 - calendar header exposes a standalone `批量` button; calendar batch import remains on the calendar surface
@@ -122,7 +122,7 @@ Recent code inspection and build verification cover:
 
 ## Documentation Health
 
-Current docs have been synchronized for `1.7.11`:
+Current docs have been synchronized for `1.7.12`:
 
 - `README.md`
 - `CHANGELOG.md`
@@ -137,7 +137,7 @@ Older versioned docs under `docs/` remain historical references and should not b
 
 ## Current Risk Areas
 
-1. Device-side verification is required to confirm `1.7.11` opens and the Planning Desk empty-document / placeholder / shortcut / delete changes behave correctly.
+1. Device-side verification is required to confirm `1.7.12` opens and the Planning Desk empty-document / placeholder / shortcut / delete / help-copy changes behave correctly.
 2. Device-side verification is still required for the unified reminder input UX, especially invalid-value red state and disabled save/import behavior.
 3. Todo multi-reminder scheduling should be tested with at least two future reminders on one todo
 4. Todo batch import should be tested with valid comma rows, no-DDL rows, and illegal reminder rows

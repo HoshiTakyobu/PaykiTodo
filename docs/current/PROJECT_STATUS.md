@@ -7,13 +7,13 @@
 - Package name: `com.paykitodo.app`
 - Target platform: Android 14 / API 34
 - Current version in code:
-  - `versionName = "1.7.3"`
-  - `versionCode = 160`
+  - `versionName = "1.7.4"`
+  - `versionCode = 161`
 
 ## Current Build Facts
 
 - Latest debug APK output:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.7.3-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.7.4-debug.apk`
 - Minimal verification completed in the latest code round:
   - `./gradlew assembleDebug` succeeded with Android Studio bundled `jbr`
 - Current build environment expectation:
@@ -22,17 +22,16 @@
 
 ## Current Worktree Reality
 
-The repository is now at `1.7.3`. It includes the desktop web editor crash fix, UI-copy cleanup, desktop web no-DDL todo editing support, in-app desktop delete confirmations, desktop-sync service self-stop protection, dynamic desktop-web resource versioning, a smaller calendar recomposition pass, desktop todo preview sheets plus direct desktop event editing, desktop mixed reminder syntax for todos/events, lunar-label display in calendar views, minimal yearly same-lunar-date recurrence, the latest settings tone / lunar DDL / calendar header / daily-board spacing polish, Planning Desk Phase 1 plus Phase 2 usability workflow, phone-side Planning Desk Markdown rendering, and the startup-crash hotfix that makes Markdown preview opt-in.
+The repository is now at `1.7.4`. It includes the desktop web editor crash fix, UI-copy cleanup, desktop web no-DDL todo editing support, in-app desktop delete confirmations, desktop-sync service self-stop protection, dynamic desktop-web resource versioning, a smaller calendar recomposition pass, desktop todo preview sheets plus direct desktop event editing, desktop mixed reminder syntax for todos/events, lunar-label display in calendar views, minimal yearly same-lunar-date recurrence, the latest settings tone / lunar DDL / calendar header / daily-board spacing polish, Planning Desk Phase 1 plus Phase 2 usability workflow, and an emergency rollback of the unstable phone-side Planning Desk Markdown renderer introduced in `1.7.2` / `1.7.3`.
 
 Most important current baseline facts:
 
-- version metadata is `1.7.3 / 160`
+- version metadata is `1.7.4 / 161`
 - Planning Desk exists as a phone-side drawer entry and desktop-web tab. It stores multiple Markdown planning documents in Room table `planning_notes`, restores the last opened note, and supports create/open/rename/archive/delete.
 - Planning Desk parsing is local and rule-based through `PlanningMarkdownParser`; it does not call AI or paid services.
 - Planning Desk recognizes markdown checkboxes, completed-task skips, subtasks as independent todos with parent-note metadata, date headings, common DDL formats, reminder/group/schedule tags, and lightweight natural schedule lines such as `10:00-12:30 作业1`.
-- Phone Planning Desk has an opt-in rendered Markdown preview: headings render as headings, `- [ ]` / `- [x]` render as checkboxes, `#tag` renders as pills, and `#imported` renders as an `已导入` state pill.
-- Phone Planning Desk now starts in raw `编辑全文` mode to avoid a bad historical Markdown document crashing app launch.
-- Tapping a rendered checkbox toggles the raw Markdown line only; it does not directly complete imported todos.
+- Phone Planning Desk currently uses the stable `1.7.1` raw Markdown / natural-text editor. The rendered Markdown preview from `1.7.2` / `1.7.3` is temporarily removed from the phone UI because it still caused startup crashes on device.
+- Planning Desk import still supports local parsing, editable preview cards, selected import, and automatic `#imported` write-back.
 - Planning Desk import uses preview-first selection. Imported todos/events reuse existing repository draft creation and reminder scheduling, defaulting to 5 minutes before, full-screen, ring + vibration.
 - Planning Desk Phase 2 allows preview-stage editing of title, group, notes, DDL/start/end times, reminders, and event linked-todo creation before import.
 - Successful Planning Desk import automatically appends `#imported` to imported source lines and writes the updated Markdown back to the active planning note.
@@ -118,7 +117,7 @@ Recent code inspection and build verification cover:
 
 ## Documentation Health
 
-Current docs have been synchronized for `1.7.3`:
+Current docs have been synchronized for `1.7.4`:
 
 - `README.md`
 - `CHANGELOG.md`
@@ -133,12 +132,12 @@ Older versioned docs under `docs/` remain historical references and should not b
 
 ## Current Risk Areas
 
-1. Device-side verification is required for the new reminder input UX, especially invalid-value red state and disabled save behavior
-2. Todo multi-reminder scheduling should be tested with at least two future reminders on one todo
-3. Todo batch import should be tested with valid comma rows, no-DDL rows, and illegal reminder rows
-4. Calendar event reminder input and calendar batch `Remind=` should be tested for all-day and timed events
-5. Custom snooze should be tested with both minutes and a future clock time
-6. Long-running chat sessions can become unreliable, so repository docs must carry state
+1. Device-side verification is required to confirm `1.7.4` no longer crashes on launch after the phone-side Markdown renderer rollback`n2. Device-side verification is still required for the new reminder input UX, especially invalid-value red state and disabled save behavior
+3. Todo multi-reminder scheduling should be tested with at least two future reminders on one todo
+4. Todo batch import should be tested with valid comma rows, no-DDL rows, and illegal reminder rows
+5. Calendar event reminder input and calendar batch `Remind=` should be tested for all-day and timed events
+6. Custom snooze should be tested with both minutes and a future clock time
+7. Long-running chat sessions can become unreliable, so repository docs must carry state
 
 ## How A New Session Should Start
 

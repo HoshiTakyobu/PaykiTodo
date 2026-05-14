@@ -2,49 +2,44 @@
 
 ## Active Development Focus
 
-The current round hotfixes the PaykiTodo `1.7.2` Planning Desk startup crash and bumps the app to `1.7.3` / `versionCode 160`.
+The current round is an emergency stabilization release for PaykiTodo `1.7.4` / `versionCode 161`.
 
-The `1.7.2` Markdown rendering work made the phone Planning Desk feel closer to Obsidian-style task notes, but it also made app startup risky when the last opened page was Planning Desk. The `1.7.3` hotfix keeps Markdown rendering opt-in so a bad document cannot block app launch.
+The device still crashed on launch after the `1.7.3` Planning Desk hotfix. Because the app must open reliably before any Markdown rendering polish matters, this round rolls back the phone-side Planning Desk Markdown rendering implementation introduced in `1.7.2` / `1.7.3` and restores the stable `1.7.1` phone Planning Desk surface.
 
 Completed in this round:
 
-1. Changed Planning Desk startup behavior so it always enters `编辑全文` first instead of auto-rendering old Markdown.
-2. Kept rendered Markdown preview available only after the user taps `预览`.
-3. Added preview parse/render failure protection with a fallback path back to `编辑全文`.
-4. Replaced the experimental `FlowRow` preview layout with simpler `Column` / `Row` layout to reduce device compatibility risk.
-5. Preserved the `1.7.2` Markdown rendering features: headings, task checkboxes, subtask indentation, tag pills, imported-state pills, and checkbox-to-Markdown toggling.
+1. Restored `PlanningDeskPanel.kt` to the verified `1.7.1` implementation.
+2. Removed the phone-side rendered Markdown preview path from the app startup/UI path.
+3. Kept the Planning Desk core workflow from `1.7.1`: multiple documents, search, raw Markdown editing, local parsing, editable import preview, selected import, and automatic `#imported` write-back.
+4. Kept desktop-web Planning Desk Phase 2 behavior; this rollback only targets the unstable phone-side Markdown renderer.
+5. Upgraded version metadata to `1.7.4` / `versionCode 161`.
+6. Updated README / CHANGELOG / TODO / Wiki / current docs to make the rollback explicit.
 
 ## Immediate Practical Next Steps
 
 When testing, use:
 
-1. install `app/build/outputs/apk/debug/PaykiTodo-1.7.3-debug.apk`
+1. install `app/build/outputs/apk/debug/PaykiTodo-1.7.4-debug.apk`
 2. open the app and verify it no longer crashes on launch
-3. open drawer -> `规划台`; it should enter `编辑全文` first
-4. write raw Markdown:
-
-```markdown
-# 20260405待办
-
-- [ ] 【保研】研究操作系统课程 #task
-- [x] 【优秀】打印并提交先进个人资料 #task #imported
-  - [ ] 子任务示例 #ddl 5.28
-```
-
-5. switch to `预览`
-6. verify headings, checkboxes, subtask indentation, tag pills, and imported-state pill render correctly
-7. tap a checkbox in preview and verify the raw Markdown line changes between `- [ ]` and `- [x]` after returning to `编辑全文`
-8. verify `识别` and import still work from the same Markdown content
+3. open drawer -> `规划台`
+4. verify the phone Planning Desk shows the stable raw Markdown editor, not the reverted rendered preview
+5. verify document create/open/search still works
+6. verify `识别` still opens editable preview cards
+7. verify importing selected items still creates todos/events and appends `#imported` to source lines
+8. verify existing core app areas still open: 每日看板, 我的任务, 日历, 设置
 
 ## Deferred From The User's Larger Request
 
+- Phone-side rendered Markdown reading mode is temporarily deferred because it caused repeated startup crashes in `1.7.2` / `1.7.3`.
 - No rich-text inline Markdown editor yet.
 - No AI auto-planning in this version.
 - No drag-and-drop planning.
 - No Gantt chart.
 - No complex project tree; subtasks remain independent todos with parent metadata in notes.
-- Desktop web Planning Desk still uses textarea plus editable parse preview; phone Markdown rendering is implemented first.
+- Full desktop UI parity with phone UI remains incomplete.
+- Full calendar rendering/performance optimization remains incomplete.
+- Todo lunar wheel / lunar DDL work still needs a dedicated completion pass.
 
 ## Current External Dependency
 
-No external file or API key is needed for the current `1.7.3` verification task.
+No external file or API key is needed for the current `1.7.4` verification task.

@@ -3,6 +3,7 @@ package com.example.todoalarm.ui
 import android.widget.Toast
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -15,6 +16,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Archive
@@ -25,10 +27,13 @@ import androidx.compose.material.icons.rounded.Save
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
+import androidx.compose.material3.Button
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -107,19 +112,31 @@ internal fun PlanningDeskPanel(
         modifier = Modifier
             .fillMaxSize()
             .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
+        verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         ElevatedCard(
-            shape = RoundedCornerShape(24.dp),
-            colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.92f))
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(28.dp),
+            colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surface),
+            elevation = CardDefaults.elevatedCardElevation(defaultElevation = 2.dp)
         ) {
-            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    Icon(Icons.Rounded.Article, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                    Surface(
+                        shape = RoundedCornerShape(18.dp),
+                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
+                    ) {
+                        Icon(
+                            Icons.Rounded.Article,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.padding(10.dp).size(24.dp)
+                        )
+                    }
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
                             text = activeNote?.title ?: "我的规划",
@@ -129,26 +146,33 @@ internal fun PlanningDeskPanel(
                             overflow = TextOverflow.Ellipsis
                         )
                         Text(
-                            text = "像备忘录一样先写计划，再识别为待办 / 日程。",
+                            text = "先把想法写下来，再识别成待办和日程。",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
-                    IconButton(onClick = { documentSheetVisible = true }) { Icon(Icons.Rounded.Article, contentDescription = "文档") }
-                    IconButton(onClick = { renameDialog = true }, enabled = activeNote != null) { Icon(Icons.Rounded.Edit, contentDescription = "重命名") }
+                    IconButton(onClick = { documentSheetVisible = true }) {
+                        Icon(Icons.Rounded.Article, contentDescription = "文档")
+                    }
+                }
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    FilledTonalButton(onClick = { newDialog = true }) { Text("新建") }
+                    FilledTonalButton(onClick = { renameDialog = true }, enabled = activeNote != null) { Text("重命名") }
+                    Spacer(Modifier.weight(1f))
                     IconButton(onClick = { archiveDialog = true }, enabled = activeNote != null) { Icon(Icons.Rounded.Archive, contentDescription = "归档") }
                     IconButton(onClick = { deleteDialog = true }, enabled = activeNote != null) { Icon(Icons.Rounded.Delete, contentDescription = "删除") }
                 }
 
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-                    OutlinedButton(
-                        modifier = Modifier.weight(1f),
-                        onClick = { newDialog = true }
-                    ) { Text("新建") }
-                    OutlinedButton(
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
+                    FilledTonalButton(
                         modifier = Modifier.weight(1f),
                         onClick = {
-                            val noteId = activeNote?.id ?: return@OutlinedButton
+                            val noteId = activeNote?.id ?: return@FilledTonalButton
                             scope.launch {
                                 val message = onSaveNote(noteId, editorValue.text)
                                 Toast.makeText(context, message ?: "规划已保存", Toast.LENGTH_SHORT).show()
@@ -160,7 +184,7 @@ internal fun PlanningDeskPanel(
                         Spacer(Modifier.width(6.dp))
                         Text("保存")
                     }
-                    OutlinedButton(
+                    Button(
                         modifier = Modifier.weight(1f),
                         onClick = {
                             val result = onParse(editorValue.text)
@@ -183,17 +207,35 @@ internal fun PlanningDeskPanel(
             }
         }
 
-        OutlinedTextField(
-            value = editorValue,
-            onValueChange = { editorValue = autoContinuePlanningLine(editorValue, it) },
+        ElevatedCard(
             modifier = Modifier
                 .fillMaxWidth()
                 .weight(1f),
-            placeholder = { Text("例如：\n# 明天\n- [ ] 09:00-10:30 写论文 #group 课程\n- [ ] 整理材料 #ddl 5.28") },
-            textStyle = MaterialTheme.typography.bodyLarge.copy(fontFamily = FontFamily.Monospace),
-            shape = RoundedCornerShape(22.dp),
-            minLines = 12
-        )
+            shape = RoundedCornerShape(28.dp),
+            colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surface),
+            elevation = CardDefaults.elevatedCardElevation(defaultElevation = 2.dp)
+        ) {
+            Column(modifier = Modifier.fillMaxSize().padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text(
+                    text = "规划正文",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.55f))
+                OutlinedTextField(
+                    value = editorValue,
+                    onValueChange = { editorValue = autoContinuePlanningLine(editorValue, it) },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f),
+                    placeholder = { Text("例如：\n# 明天\n- [ ] 09:00-10:30 写论文 #group 课程\n- [ ] 整理材料 #ddl 5.28") },
+                    textStyle = MaterialTheme.typography.bodyLarge.copy(fontFamily = FontFamily.Monospace),
+                    shape = RoundedCornerShape(22.dp),
+                    minLines = 12
+                )
+            }
+        }
 
         PlanningShortcutBar(
             onAction = { action -> editorValue = applyPlanningShortcut(editorValue, action) },
@@ -332,20 +374,27 @@ private fun PlanningShortcutBar(
         PlanningShortcutSpec("今天", PlanningShortcutAction.Insert("今天"), "插入今天"),
         PlanningShortcutSpec("明天", PlanningShortcutAction.Insert("明天"), "插入明天")
     )
-    Row(
+    Surface(
         modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
+        shape = RoundedCornerShape(24.dp),
+        color = MaterialTheme.colorScheme.surface,
+        tonalElevation = 1.dp
     ) {
-        chips.take(5).forEach { spec ->
-            PlanningShortcutChip(spec, onAction, onHelp)
-        }
-    }
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        chips.drop(5).forEach { spec ->
-            PlanningShortcutChip(spec, onAction, onHelp)
+        Row(
+            modifier = Modifier
+                .horizontalScroll(rememberScrollState())
+                .padding(horizontal = 12.dp, vertical = 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "快捷",
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            chips.forEach { spec ->
+                PlanningShortcutChip(spec, onAction, onHelp)
+            }
         }
     }
 }
@@ -377,7 +426,7 @@ private fun PlanningDocumentSheet(
             note.title.contains(keyword, ignoreCase = true) || note.contentMarkdown.contains(keyword, ignoreCase = true)
         }
     }
-    Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+    Column(modifier = Modifier.padding(horizontal = 20.dp, vertical = 14.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text("规划文档", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
         OutlinedTextField(
             value = query,
@@ -386,21 +435,40 @@ private fun PlanningDocumentSheet(
             label = { Text("搜索文档") },
             singleLine = true
         )
-        visibleNotes.forEach { note ->
-            Surface(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(18.dp),
-                color = if (note.id == activeNoteId) MaterialTheme.colorScheme.primary.copy(alpha = 0.12f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.28f),
-                onClick = { onSelect(note.id) }
-            ) {
-                Column(modifier = Modifier.padding(14.dp)) {
-                    Text(note.title, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    Text("更新于 ${planningMillisLabel(note.updatedAtMillis)}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        LazyColumn(
+            modifier = Modifier.fillMaxWidth().height(420.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            items(visibleNotes, key = { it.id }) { note ->
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(20.dp),
+                    color = if (note.id == activeNoteId) MaterialTheme.colorScheme.primary.copy(alpha = 0.12f) else MaterialTheme.colorScheme.surface,
+                    tonalElevation = if (note.id == activeNoteId) 2.dp else 1.dp,
+                    onClick = { onSelect(note.id) }
+                ) {
+                    Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text(note.title, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Text("更新于 ${planningMillisLabel(note.updatedAtMillis)}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
                 }
             }
-        }
-        if (visibleNotes.isEmpty()) {
-            Text("没有匹配的规划文档", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            if (visibleNotes.isEmpty()) {
+                item {
+                    Surface(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(20.dp),
+                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f)
+                    ) {
+                        Text(
+                            "没有匹配的规划文档",
+                            modifier = Modifier.padding(18.dp),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            }
         }
         Spacer(Modifier.height(16.dp))
     }
@@ -415,14 +483,24 @@ private fun PlanningPreviewSheet(
     onImport: () -> Unit
 ) {
     val invalidSelected = candidates.any { candidate -> selectedIds[candidate.id] == true && candidate.validate() != null }
-    Column(modifier = Modifier.fillMaxWidth().padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+    Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 14.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            Icon(Icons.Rounded.Search, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+            Surface(
+                shape = RoundedCornerShape(16.dp),
+                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
+            ) {
+                Icon(
+                    Icons.Rounded.Search,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(9.dp).size(22.dp)
+                )
+            }
             Column(modifier = Modifier.weight(1f)) {
                 Text("识别预览", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-                Text("共 ${result.candidates.size} 行，${candidates.count { it.validate() == null }} 条可导入。可在这里先修正标题、时间、提醒和分组。", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text("${candidates.count { it.validate() == null }} / ${result.candidates.size} 条可导入", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
-            OutlinedButton(onClick = onImport, enabled = !invalidSelected) { Text("导入选中") }
+            Button(onClick = onImport, enabled = !invalidSelected) { Text("导入") }
         }
         LazyColumn(modifier = Modifier.fillMaxWidth().height(520.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             items(candidates, key = { it.id }) { candidate ->
@@ -446,8 +524,12 @@ private fun PlanningCandidateCard(
 ) {
     val validation = candidate.validate()
     val canSelect = validation == null
-    ElevatedCard(shape = RoundedCornerShape(20.dp)) {
-        Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    ElevatedCard(
+        shape = RoundedCornerShape(22.dp),
+        colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.elevatedCardElevation(defaultElevation = 1.dp)
+    ) {
+        Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 FilterChip(
                     selected = selected,
@@ -458,7 +540,18 @@ private fun PlanningCandidateCard(
                 Text(candidate.type.label(), fontWeight = FontWeight.Bold, color = candidate.type.color())
                 Text("第 ${candidate.lineNumber} 行", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
-            Text(candidate.sourceLine, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp),
+                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.34f)
+            ) {
+                Text(
+                    candidate.sourceLine,
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 9.dp),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
             if (candidate.type == PlanningParsedType.TODO || candidate.type == PlanningParsedType.EVENT) {
                 OutlinedTextField(
                     value = candidate.title,

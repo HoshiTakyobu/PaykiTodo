@@ -6,28 +6,28 @@ Long-running Codex sessions can become unreliable. This file exists so a new ses
 
 ## Current Handoff Summary
 
-- The project is currently at code version `1.7.5` / `versionCode 162`.
-- Latest debug APK path after build: `app/build/outputs/apk/debug/PaykiTodo-1.7.5-debug.apk`.
+- The project is currently at code version `1.7.6` / `versionCode 163`.
+- Latest debug APK path after build: `app/build/outputs/apk/debug/PaykiTodo-1.7.6-debug.apk`.
 - Latest build commands used Android Studio bundled JBR and succeeded:
   - `./gradlew.bat testDebugUnitTest`
   - `./gradlew.bat assembleDebug`
 - `node --check app/src/main/assets/desktop-web/app.js` also succeeded.
-- This round is an emergency startup-crash stabilization after `1.7.4` still crashed on device launch.
-- The current suspected root cause is Room migration schema mismatch for `planning_notes`, not the already-reverted Planning Desk Markdown renderer.
+- This round follows the successful `1.7.5` startup-crash repair and focuses on phone-side Planning Desk UI readability.
+- The previous crash root cause was likely the Room migration schema mismatch for `planning_notes`; `1.7.6` keeps that repair and improves the Planning Desk UI.
 - Phone-side Planning Desk Markdown rendering remains removed from the phone UI path.
 - The phone Planning Desk stays on the stable `1.7.1` raw Markdown / natural-text editor while keeping Phase 2 import/edit workflow.
 - Desktop web Planning Desk remains available with textarea editing, editable parse preview, selected import, and `#imported` write-back.
 - Do not push `1.7.x` or the last `1.6.x` line to GitHub unless the user explicitly asks again.
 
-## Latest Fixes In 1.7.5
+## Latest Fixes In 1.7.6
 
-1. Upgraded app version metadata to `1.7.5` / `versionCode 162`.
-2. Upgraded Room database version from `9` to `10`.
-3. Corrected `MIGRATION_8_9` so direct `1.6.x -> 1.7.5` upgrades create a `planning_notes` table matching the `PlanningNote` entity.
-4. Added `MIGRATION_9_10` to rebuild existing `planning_notes` tables created by `1.7.0`-`1.7.4` into the Room-expected schema.
-5. Made the repair path tolerate incomplete leftover `planning_notes` tables by recreating the table if required columns are missing.
-6. Kept the `1.7.4` rollback of phone-side rendered Markdown preview.
-7. README, CHANGELOG, TODO, docs/current, and Wiki were updated for `1.7.5`.
+1. Upgraded app version metadata to `1.7.6` / `versionCode 163`.
+2. Reworked the phone Planning Desk main surface into solid-color cards instead of semi-transparent debug-like surfaces.
+3. Reworked the raw Markdown editor into a solid document card with clearer title, divider, and text area hierarchy.
+4. Changed shortcut chips into a horizontal scrolling toolbar to reduce vertical clutter.
+5. Changed the document picker into a scrollable solid-color document list.
+6. Tightened the recognition preview sheet and candidate cards while keeping import behavior unchanged.
+7. Kept the `1.7.5` database repair and `1.7.4` rendered Markdown rollback; README, CHANGELOG, TODO, docs/current, and Wiki were updated for `1.7.6`.
 
 ## Files Most Relevant To The Latest Round
 
@@ -48,9 +48,9 @@ Long-running Codex sessions can become unreliable. This file exists so a new ses
 
 ## Current Verification Focus
 
-1. Install `PaykiTodo-1.7.5-debug.apk` over the crashing `1.7.4` installation.
+1. Install `PaykiTodo-1.7.6-debug.apk` over the crashing `1.7.4` installation.
 2. Verify the app no longer crashes immediately after launch.
-3. Verify existing todos/events survived the database migration.
+3. Verify existing todos/events are still present.
 4. Verify drawer -> `规划台` opens the raw Markdown editor.
 5. Verify document create/open/search works.
 6. Verify `识别` still opens editable import preview cards.

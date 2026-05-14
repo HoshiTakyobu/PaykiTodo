@@ -95,6 +95,8 @@ Avoid commit messages whose main content is:
 - whether the commit was pushed;
 - a long list of validation commands.
 
+Commit subjects must not append version-bump tails such as `并升级到1.7.9` or `并升级到 x.x.x`. The subject should describe only the concrete feature or bug-fix behavior. If the app version changed, put that detail in the commit body or the relevant version docs instead of the subject.
+
 Validation commands can be mentioned briefly if useful, but final user replies are the better place for detailed verification and APK path reporting.
 
 ## Recommended End-Of-Session Prompt

@@ -48,6 +48,8 @@ Avoid making the commit subject/body primarily about:
 - generic process notes;
 - vague wording such as `优化`, `修复问题`, `更新代码`, or `完善功能` without concrete behavior.
 
+Commit subjects must not append version-bump tails such as `并升级到1.7.9` or `并升级到 x.x.x`. The subject should describe only the concrete feature or bug-fix behavior. If the app version changed, put that detail in the commit body or the relevant version docs instead of the subject.
+
 Preferred structure for non-trivial commits:
 
 1. Chinese subject that includes the affected module and concrete behavior change.

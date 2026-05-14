@@ -51,7 +51,7 @@ This file tracks the product at a practical level for new coding sessions.
 - planning preview cards are editable before import for title, group, notes, DDL/start/end times, reminder offsets, and event linked-todo creation
 - successful planning import appends `#imported` to imported source lines and saves the active planning note to reduce duplicate imports
 - default Planning Desk import reminder is 5 minutes before, full-screen, ring + vibration
-- planning notes are included in JSON backup / restore snapshots
+- planning notes are included in JSON backup / restore snapshots`r`n- Planning Desk database migration is repaired in `1.7.5`: database version `10` includes `MIGRATION_9_10` to rebuild `planning_notes` tables created by the mismatched `1.7.0`-`1.7.4` migration
 
 ### Calendar System
 

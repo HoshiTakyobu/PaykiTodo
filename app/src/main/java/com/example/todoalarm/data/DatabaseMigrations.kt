@@ -250,19 +250,74 @@ object DatabaseMigrations {
 
     val MIGRATION_8_9 = object : Migration(8, 9) {
         override fun migrate(db: SupportSQLiteDatabase) {
-            db.execSQL(
-                """
-                CREATE TABLE IF NOT EXISTS `planning_notes` (
-                    `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
-                    `title` TEXT NOT NULL,
-                    `contentMarkdown` TEXT NOT NULL,
-                    `createdAtMillis` INTEGER NOT NULL,
-                    `updatedAtMillis` INTEGER NOT NULL,
-                    `archived` INTEGER NOT NULL DEFAULT 0
-                )
-                """.trimIndent()
-            )
-            db.execSQL("CREATE INDEX IF NOT EXISTS `index_planning_notes_archived_updatedAtMillis` ON `planning_notes` (`archived`, `updatedAtMillis`)")
+            if (tableExists(db, "planning_notes")) {
+                rebuildPlanningNotesTable(db)
+            } else {
+                createPlanningNotesTable(db, "planning_notes")
+            }
         }
+    }
+
+    val MIGRATION_9_10 = object : Migration(9, 10) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            // 1.7.0-1.7.4 created planning_notes through a migration whose schema did not
+            // exactly match the Room entity. Rebuild it so upgraded 1.6.x databases can open.
+            rebuildPlanningNotesTable(db)
+        }
+    }
+
+    private fun rebuildPlanningNotesTable(db: SupportSQLiteDatabase) {
+        db.execSQL("DROP TABLE IF EXISTS `planning_notes_room_expected`")
+        createPlanningNotesTable(db, "planning_notes_room_expected")
+        if (tableExists(db, "planning_notes")) {
+            if (tableHasColumns(db, "planning_notes", listOf("id", "title", "contentMarkdown", "createdAtMillis", "updatedAtMillis", "archived"))) {
+                db.execSQL(
+                    """
+                    INSERT INTO `planning_notes_room_expected` (
+                        `id`, `title`, `contentMarkdown`, `createdAtMillis`, `updatedAtMillis`, `archived`
+                    )
+                    SELECT `id`, `title`, `contentMarkdown`, `createdAtMillis`, `updatedAtMillis`, `archived`
+                    FROM `planning_notes`
+                    """.trimIndent()
+                )
+            }
+            db.execSQL("DROP TABLE `planning_notes`")
+        }
+        db.execSQL("ALTER TABLE `planning_notes_room_expected` RENAME TO `planning_notes`")
+    }
+
+    private fun createPlanningNotesTable(db: SupportSQLiteDatabase, tableName: String) {
+        db.execSQL(
+            """
+            CREATE TABLE `$tableName` (
+                `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                `title` TEXT NOT NULL,
+                `contentMarkdown` TEXT NOT NULL,
+                `createdAtMillis` INTEGER NOT NULL,
+                `updatedAtMillis` INTEGER NOT NULL,
+                `archived` INTEGER NOT NULL
+            )
+            """.trimIndent()
+        )
+    }
+
+    private fun tableExists(db: SupportSQLiteDatabase, tableName: String): Boolean {
+        db.query(
+            "SELECT name FROM sqlite_master WHERE type = 'table' AND name = ?",
+            arrayOf(tableName)
+        ).use { cursor ->
+            return cursor.moveToFirst()
+        }
+    }
+
+    private fun tableHasColumns(db: SupportSQLiteDatabase, tableName: String, columns: List<String>): Boolean {
+        val existing = mutableSetOf<String>()
+        db.query("PRAGMA table_info(`$tableName`)").use { cursor ->
+            val nameIndex = cursor.getColumnIndexOrThrow("name")
+            while (cursor.moveToNext()) {
+                existing += cursor.getString(nameIndex)
+            }
+        }
+        return existing.containsAll(columns)
     }
 }

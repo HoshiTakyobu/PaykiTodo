@@ -6,28 +6,28 @@ Long-running Codex sessions can become unreliable. This file exists so a new ses
 
 ## Current Handoff Summary
 
-- The project is currently at code version `1.7.7` / `versionCode 164`.
-- Latest debug APK path after build: `app/build/outputs/apk/debug/PaykiTodo-1.7.7-debug.apk`.
+- The project is currently at code version `1.7.8` / `versionCode 165`.
+- Latest debug APK path after build: `app/build/outputs/apk/debug/PaykiTodo-1.7.8-debug.apk`.
 - Latest build commands used Android Studio bundled JBR and succeeded:
   - `./gradlew.bat testDebugUnitTest`
   - `./gradlew.bat assembleDebug`
 - `node --check app/src/main/assets/desktop-web/app.js` also succeeded.
-- This round follows the `1.7.6` Planning Desk UI polish and adds an in-screen Planning Desk help sheet because the feature was not obvious to use.
+- This round safely restores the Planning Desk Markdown preview that was originally attempted before the database migration crash was fixed.
 - The previous crash root cause was likely the Room migration schema mismatch for `planning_notes`; `1.7.6` keeps that repair and improves the Planning Desk UI.
 - Phone-side Planning Desk Markdown rendering remains removed from the phone UI path.
 - The phone Planning Desk stays on the stable `1.7.1` raw Markdown / natural-text editor while keeping Phase 2 import/edit workflow.
 - Desktop web Planning Desk remains available with textarea editing, editable parse preview, selected import, and `#imported` write-back.
 - Do not push `1.7.x` or the last `1.6.x` line to GitHub unless the user explicitly asks again.
 
-## Latest Fixes In 1.7.7
+## Latest Fixes In 1.7.8
 
-1. Upgraded app version metadata to `1.7.7` / `versionCode 164`.
-2. Added a Planning Desk help button in the top action area.
-3. Added a Planning Desk help bottom sheet explaining write -> recognize -> edit preview -> import.
-4. Added directly usable examples for todo lines, subtasks, DDL, reminders, groups, and schedule ranges.
-5. The help sheet explains current limitations so users do not expect rich Markdown rendering, AI splitting, or drag scheduling yet.
-6. Existing Planning Desk editing/import behavior remains unchanged.
-7. Kept the `1.7.6` pure-color UI polish, `1.7.5` database repair, and `1.7.4` rendered Markdown rollback; README, CHANGELOG, TODO, docs/current, and Wiki were updated for `1.7.7`.
+1. Upgraded app version metadata to `1.7.8` / `versionCode 165`.
+2. Restored the Planning Desk `编辑 / 预览` switch, with raw edit mode remaining the startup default.
+3. Restored Markdown preview rendering for headings, task checkboxes, subtask indentation, tag pills, and `#imported` state pills.
+4. Preview checkbox taps rewrite the raw Markdown line between `- [ ]` and `- [x]` without completing official todos.
+5. Preview rendering has a fallback card that returns to raw edit mode if parsing/rendering fails.
+6. Existing Planning Desk help, editing, recognition preview, and import behavior remain unchanged.
+7. Kept the `1.7.7` help sheet, `1.7.6` pure-color UI polish, and `1.7.5` database repair; README, CHANGELOG, TODO, docs/current, and Wiki were updated for `1.7.8`.
 
 ## Files Most Relevant To The Latest Round
 
@@ -48,10 +48,10 @@ Long-running Codex sessions can become unreliable. This file exists so a new ses
 
 ## Current Verification Focus
 
-1. Install `PaykiTodo-1.7.7-debug.apk` over the crashing `1.7.4` installation.
+1. Install `PaykiTodo-1.7.8-debug.apk` over the crashing `1.7.4` installation.
 2. Verify the app no longer crashes immediately after launch.
 3. Verify existing todos/events are still present.
-4. Verify drawer -> `规划台` opens the raw Markdown editor and the说明/Info button opens the help sheet.
+4. Verify drawer -> `规划台` opens the raw Markdown editor, the Info button opens the help sheet, and tapping `预览` renders Markdown safely.
 5. Verify document create/open/search works.
 6. Verify `识别` still opens editable import preview cards.
 7. Verify importing selected todos/events still writes data and appends `#imported` to source Markdown lines.

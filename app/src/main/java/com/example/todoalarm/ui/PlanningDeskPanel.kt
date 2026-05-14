@@ -30,6 +30,7 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
@@ -61,6 +62,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.example.todoalarm.data.PlanningNote
@@ -96,6 +98,7 @@ internal fun PlanningDeskPanel(
     var documentSheetVisible by remember { mutableStateOf(false) }
     var previewSheetVisible by remember { mutableStateOf(false) }
     var helpSheetVisible by remember { mutableStateOf(false) }
+    var markdownEditMode by rememberSaveable(activeNote?.id) { mutableStateOf(true) }
     var renameDialog by remember { mutableStateOf(false) }
     var deleteDialog by remember { mutableStateOf(false) }
     var archiveDialog by remember { mutableStateOf(false) }
@@ -108,6 +111,7 @@ internal fun PlanningDeskPanel(
         parseResult = null
         selectedIds.clear()
         editableCandidates.clear()
+        markdownEditMode = true
     }
 
     Column(
@@ -165,6 +169,7 @@ internal fun PlanningDeskPanel(
                 ) {
                     FilledTonalButton(onClick = { newDialog = true }) { Text("新建") }
                     FilledTonalButton(onClick = { renameDialog = true }, enabled = activeNote != null) { Text("重命名") }
+                    FilledTonalButton(onClick = { markdownEditMode = !markdownEditMode }) { Text(if (markdownEditMode) "预览" else "编辑") }
                     Spacer(Modifier.weight(1f))
                     IconButton(onClick = { helpSheetVisible = true }) { Icon(Icons.Rounded.Info, contentDescription = "规划台说明") }
                     IconButton(onClick = { archiveDialog = true }, enabled = activeNote != null) { Icon(Icons.Rounded.Archive, contentDescription = "归档") }
@@ -210,40 +215,51 @@ internal fun PlanningDeskPanel(
             }
         }
 
-        ElevatedCard(
-            modifier = Modifier
-                .fillMaxWidth()
-                .weight(1f),
-            shape = RoundedCornerShape(28.dp),
-            colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surface),
-            elevation = CardDefaults.elevatedCardElevation(defaultElevation = 2.dp)
-        ) {
-            Column(modifier = Modifier.fillMaxSize().padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                Text(
-                    text = "规划正文",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.55f))
-                OutlinedTextField(
-                    value = editorValue,
-                    onValueChange = { editorValue = autoContinuePlanningLine(editorValue, it) },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .weight(1f),
-                    placeholder = { Text("例如：\n# 明天\n- [ ] 09:00-10:30 写论文 #group 课程\n- [ ] 整理材料 #ddl 5.28") },
-                    textStyle = MaterialTheme.typography.bodyLarge.copy(fontFamily = FontFamily.Monospace),
-                    shape = RoundedCornerShape(22.dp),
-                    minLines = 12
-                )
+        if (markdownEditMode) {
+            ElevatedCard(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f),
+                shape = RoundedCornerShape(28.dp),
+                colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surface),
+                elevation = CardDefaults.elevatedCardElevation(defaultElevation = 2.dp)
+            ) {
+                Column(modifier = Modifier.fillMaxSize().padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text(
+                        text = "规划正文",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.55f))
+                    OutlinedTextField(
+                        value = editorValue,
+                        onValueChange = { editorValue = autoContinuePlanningLine(editorValue, it) },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .weight(1f),
+                        placeholder = { Text("例如：\n# 明天\n- [ ] 09:00-10:30 写论文 #group 课程\n- [ ] 整理材料 #ddl 5.28") },
+                        textStyle = MaterialTheme.typography.bodyLarge.copy(fontFamily = FontFamily.Monospace),
+                        shape = RoundedCornerShape(22.dp),
+                        minLines = 12
+                    )
+                }
             }
-        }
 
-        PlanningShortcutBar(
-            onAction = { action -> editorValue = applyPlanningShortcut(editorValue, action) },
-            onHelp = { token, description -> Toast.makeText(context, "$token：$description", Toast.LENGTH_LONG).show() }
-        )
+            PlanningShortcutBar(
+                onAction = { action -> editorValue = applyPlanningShortcut(editorValue, action) },
+                onHelp = { token, description -> Toast.makeText(context, "$token：$description", Toast.LENGTH_LONG).show() }
+            )
+        } else {
+            PlanningMarkdownPreview(
+                markdown = editorValue.text,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f),
+                onToggleCheckbox = { lineNumber -> editorValue = editorValue.copy(text = togglePlanningCheckbox(editorValue.text, lineNumber)) },
+                onRequestEdit = { markdownEditMode = true }
+            )
+        }
     }
 
     if (documentSheetVisible) {
@@ -612,6 +628,190 @@ private fun PlanningHelpExampleCard(example: String) {
 }
 
 @Composable
+private fun PlanningMarkdownPreview(
+    markdown: String,
+    modifier: Modifier,
+    onToggleCheckbox: (Int) -> Unit,
+    onRequestEdit: () -> Unit
+) {
+    val parsedLines = remember(markdown) { runCatching { parsePlanningMarkdownLines(markdown) } }
+    ElevatedCard(
+        modifier = modifier,
+        shape = RoundedCornerShape(28.dp),
+        colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.elevatedCardElevation(defaultElevation = 2.dp)
+    ) {
+        Column(modifier = Modifier.fillMaxSize().padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text("Markdown 预览", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+                TextButton(onClick = onRequestEdit) { Text("编辑原文") }
+            }
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.55f))
+            if (parsedLines.isFailure) {
+                PlanningPreviewFallback(onRequestEdit = onRequestEdit)
+                return@Column
+            }
+            val lines = parsedLines.getOrDefault(emptyList())
+            if (lines.isEmpty()) {
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(20.dp),
+                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.32f)
+                ) {
+                    Text(
+                        "还没有内容，点击“编辑原文”开始写规划。",
+                        modifier = Modifier.padding(18.dp),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                return@Column
+            }
+            LazyColumn(
+                modifier = Modifier.fillMaxWidth().weight(1f),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                items(lines, key = { it.lineNumber }) { line ->
+                    when (line) {
+                        is PlanningRenderedLine.Heading -> PlanningMarkdownHeading(line)
+                        is PlanningRenderedLine.Task -> PlanningMarkdownTaskLine(line, onToggleCheckbox)
+                        is PlanningRenderedLine.Text -> PlanningMarkdownTextLine(line, onRequestEdit)
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun PlanningPreviewFallback(onRequestEdit: () -> Unit) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(20.dp),
+        color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.55f)
+    ) {
+        Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Text("Markdown 预览失败", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onErrorContainer)
+            Text("已保护为可编辑模式，原文不会丢失。", color = MaterialTheme.colorScheme.onErrorContainer)
+            OutlinedButton(onClick = onRequestEdit) { Text("编辑原文") }
+        }
+    }
+}
+
+@Composable
+private fun PlanningMarkdownHeading(line: PlanningRenderedLine.Heading) {
+    val style = when (line.level) {
+        1 -> MaterialTheme.typography.headlineSmall
+        2 -> MaterialTheme.typography.titleLarge
+        3 -> MaterialTheme.typography.titleMedium
+        else -> MaterialTheme.typography.bodyLarge
+    }
+    Text(
+        text = line.text,
+        style = style,
+        fontWeight = FontWeight.Bold,
+        color = MaterialTheme.colorScheme.onSurface,
+        modifier = Modifier.padding(top = if (line.level <= 2) 8.dp else 4.dp)
+    )
+}
+
+@Composable
+private fun PlanningMarkdownTaskLine(
+    line: PlanningRenderedLine.Task,
+    onToggleCheckbox: (Int) -> Unit
+) {
+    Surface(
+        modifier = Modifier.fillMaxWidth().padding(start = (line.indentLevel * 18).dp),
+        shape = RoundedCornerShape(18.dp),
+        color = if (line.imported) MaterialTheme.colorScheme.primary.copy(alpha = 0.08f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.28f)
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.Top,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Checkbox(
+                checked = line.checked,
+                onCheckedChange = { onToggleCheckbox(line.lineNumber) },
+                modifier = Modifier.size(32.dp)
+            )
+            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                Text(
+                    text = line.text.ifBlank { "未命名任务" },
+                    style = MaterialTheme.typography.bodyLarge.copy(
+                        textDecoration = if (line.checked) TextDecoration.LineThrough else TextDecoration.None
+                    ),
+                    color = if (line.checked) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface
+                )
+                PlanningMarkdownPills(tags = line.tags, imported = line.imported)
+            }
+        }
+    }
+}
+
+@Composable
+private fun PlanningMarkdownTextLine(
+    line: PlanningRenderedLine.Text,
+    onRequestEdit: () -> Unit
+) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(18.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.20f),
+        onClick = onRequestEdit
+    ) {
+        Column(
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            Text(line.text, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface)
+            PlanningMarkdownPills(tags = line.tags, imported = line.imported)
+        }
+    }
+}
+
+@Composable
+private fun PlanningMarkdownPills(tags: List<String>, imported: Boolean) {
+    if (tags.isEmpty() && !imported) return
+    Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+        tags.forEach { tag -> PlanningMarkdownTagPill(tag) }
+        if (imported) PlanningMarkdownStatePill("已导入")
+    }
+}
+
+@Composable
+private fun PlanningMarkdownTagPill(tag: String) {
+    Surface(
+        shape = RoundedCornerShape(999.dp),
+        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.78f),
+        tonalElevation = 1.dp
+    ) {
+        Text(
+            text = "#$tag",
+            modifier = Modifier.padding(horizontal = 9.dp, vertical = 4.dp),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 1
+        )
+    }
+}
+
+@Composable
+private fun PlanningMarkdownStatePill(label: String) {
+    Surface(
+        shape = RoundedCornerShape(999.dp),
+        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.14f)
+    ) {
+        Text(
+            text = label,
+            modifier = Modifier.padding(horizontal = 9.dp, vertical = 4.dp),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.primary,
+            maxLines = 1
+        )
+    }
+}
+
+@Composable
 private fun PlanningPreviewSheet(
     result: PlanningParseResult,
     candidates: List<PlanningImportCandidate>,
@@ -878,6 +1078,102 @@ private fun autoContinuePlanningLine(old: TextFieldValue, new: TextFieldValue): 
         selection = androidx.compose.ui.text.TextRange(new.text.length + suffix.length)
     )
 }
+
+private sealed interface PlanningRenderedLine {
+    val lineNumber: Int
+
+    data class Heading(
+        override val lineNumber: Int,
+        val level: Int,
+        val text: String
+    ) : PlanningRenderedLine
+
+    data class Task(
+        override val lineNumber: Int,
+        val indentLevel: Int,
+        val checked: Boolean,
+        val text: String,
+        val tags: List<String>,
+        val imported: Boolean
+    ) : PlanningRenderedLine
+
+    data class Text(
+        override val lineNumber: Int,
+        val text: String,
+        val tags: List<String>,
+        val imported: Boolean
+    ) : PlanningRenderedLine
+}
+
+private fun parsePlanningMarkdownLines(markdown: String): List<PlanningRenderedLine> {
+    return markdown.lineSequence().mapIndexedNotNull { index, rawLine ->
+        val lineNumber = index + 1
+        val trimmed = rawLine.trim()
+        if (trimmed.isBlank()) return@mapIndexedNotNull null
+
+        HeadingPreviewRegex.matchEntire(trimmed)?.let { match ->
+            return@mapIndexedNotNull PlanningRenderedLine.Heading(
+                lineNumber = lineNumber,
+                level = match.groupValues[1].length.coerceIn(1, 6),
+                text = match.groupValues[2].trim()
+            )
+        }
+
+        TaskPreviewRegex.matchEntire(rawLine)?.let { match ->
+            val content = match.groupValues[3].trim()
+            val tags = planningTags(content)
+            return@mapIndexedNotNull PlanningRenderedLine.Task(
+                lineNumber = lineNumber,
+                indentLevel = match.groupValues[1].replace("\t", "  ").length / 2,
+                checked = match.groupValues[2].equals("x", ignoreCase = true),
+                text = stripPlanningInlineTags(content),
+                tags = tags.filterNot { it == "imported" },
+                imported = tags.any { it == "imported" }
+            )
+        }
+
+        val tags = planningTags(trimmed)
+        PlanningRenderedLine.Text(
+            lineNumber = lineNumber,
+            text = stripPlanningInlineTags(trimmed),
+            tags = tags.filterNot { it == "imported" },
+            imported = tags.any { it == "imported" }
+        )
+    }.toList()
+}
+
+private fun togglePlanningCheckbox(markdown: String, lineNumber: Int): String {
+    if (lineNumber <= 0) return markdown
+    val hasTrailingNewline = markdown.endsWith("\n") || markdown.endsWith("\r")
+    val normalized = markdown.replace("\r\n", "\n").replace('\r', '\n')
+    val updated = normalized.lines().mapIndexed { index, line ->
+        if (index + 1 != lineNumber) return@mapIndexed line
+        TaskPreviewRegex.matchEntire(line)?.let { match ->
+            val next = if (match.groupValues[2].equals("x", ignoreCase = true)) " " else "x"
+            return@mapIndexed match.groupValues[1] + "- [" + next + "] " + match.groupValues[3]
+        }
+        line
+    }.joinToString("\n")
+    return if (hasTrailingNewline && !updated.endsWith("\n")) "$updated\n" else updated
+}
+
+private fun planningTags(content: String): List<String> {
+    return TagPreviewRegex.findAll(content)
+        .map { it.groupValues[1] }
+        .distinct()
+        .toList()
+}
+
+private fun stripPlanningInlineTags(content: String): String {
+    return content
+        .replace(TagPreviewRegex, " ")
+        .replace(Regex("\\s+"), " ")
+        .trim()
+}
+
+private val HeadingPreviewRegex = Regex("^(#{1,6})\\s+(.+)$")
+private val TaskPreviewRegex = Regex("^(\\s*)-\\s*\\[([ xX])\\]\\s*(.*)$")
+private val TagPreviewRegex = Regex("(?:^|\\s)#([\\p{L}\\p{N}_-]+)(?=\\s|$)")
 
 private fun PlanningParsedType.label(): String = when (this) {
     PlanningParsedType.TODO -> "待办"

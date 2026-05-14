@@ -42,8 +42,8 @@ This file tracks the product at a practical level for new coding sessions.
 - Planning Desk stores multiple Markdown planning documents in Room table `planning_notes`
 - default startup opens the last opened planning document; if none exists, the app creates `我的规划`
 - planning documents support create, open, rename, archive, and delete with confirmation on the phone UI
-- phone Planning Desk currently uses the stable raw Markdown / natural-text editor restored from `1.7.1`; the `1.7.2` / `1.7.3` rendered Markdown preview was removed in `1.7.4` because it still caused device startup crashes
-- phone editor mode remains a plain Markdown / natural-text editor with a solid-color document surface and horizontal shortcut toolbar for tasks, subtasks, indent/outdent, DDL, schedule, reminder, group, today, and tomorrow`r`n- phone Planning Desk includes an in-screen help sheet explaining the workflow and showing directly usable examples
+- phone Planning Desk currently defaults to stable raw Markdown / natural-text editing; `1.7.8` restores a manual Markdown preview that renders headings, task checkboxes, subtask indentation, tag pills, and `#imported` state pills while keeping raw edit as the startup default
+- phone editor mode remains a plain Markdown / natural-text editor with a solid-color document surface and horizontal shortcut toolbar for tasks, subtasks, indent/outdent, DDL, schedule, reminder, group, today, and tomorrow`r`n- phone Planning Desk includes an in-screen help sheet explaining the workflow and showing directly usable examples`r`n- phone Markdown preview checkbox toggles rewrite the source Markdown line only; they do not directly complete imported official todos
 - Enter continuation attempts to keep `- [ ]` task lines flowing without forcing the user to manually type Markdown every time
 - local rule parser recognizes markdown checkboxes, completed-task skip, subtask parent notes, date headings, DDL tags, reminder tags, group tags, schedule tags, and natural schedule ranges
 - natural schedule import can create both a calendar event and a linked todo whose DDL equals the event end time

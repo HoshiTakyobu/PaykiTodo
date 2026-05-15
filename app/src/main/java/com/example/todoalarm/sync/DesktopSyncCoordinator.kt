@@ -9,10 +9,11 @@ import com.example.todoalarm.data.AppSettingsStore
 import com.example.todoalarm.data.CalendarEventDraft
 import com.example.todoalarm.data.DEFAULT_PLANNING_REMINDER_MINUTES
 import com.example.todoalarm.data.PlanningImportCandidate
-import com.example.todoalarm.data.PlanningMarkdownParser
 import com.example.todoalarm.data.PlanningNote
 import com.example.todoalarm.data.PlanningParsedCandidate
 import com.example.todoalarm.data.PlanningParsedType
+import com.example.todoalarm.data.PlanningRecognitionService
+import com.example.todoalarm.data.PlanningMarkdownParser
 import com.example.todoalarm.data.toPlanningImportCandidate
 import com.example.todoalarm.data.RecurrenceConfig
 import com.example.todoalarm.data.RecurrenceScope
@@ -336,7 +337,13 @@ class DesktopSyncCoordinator(
 
     private fun parsePlanning(json: JSONObject): JSONObject {
         val markdown = json.optString("markdown")
-        return PlanningMarkdownParser.parse(markdown).toPlanningParseJson()
+        val result = runBlocking {
+            PlanningRecognitionService.recognize(
+                markdown = markdown,
+                settings = settingsStore.currentSettings()
+            )
+        }
+        return result.toPlanningParseJson()
     }
 
     private fun importPlanning(json: JSONObject): JSONObject {
@@ -621,6 +628,7 @@ private fun PlanningNote.toPlanningJson(): JSONObject {
 
 private fun com.example.todoalarm.data.PlanningParseResult.toPlanningParseJson(): JSONObject {
     return JSONObject()
+        .put("message", message)
         .put("importableCount", importableCount)
         .put("candidates", JSONArray(candidates.map { it.toPlanningCandidateJson() }))
 }

@@ -19,7 +19,8 @@ const state = {
   planningSaveTimer: null,
   planningDirty: false,
   planningSaving: false,
-  planningRenderedNoteId: null
+  planningRenderedNoteId: null,
+  planningParsing: false
 };
 
 const els = {
@@ -638,13 +639,19 @@ function planningEditableField(id, field, label, value, placeholder) {
 function renderPlanningPreview() {
   if (!els.planningPreview || !els.planningPreviewMeta) return;
   const result = state.planningParseResult;
+  const parseButton = document.getElementById('planning-parse');
+  if (parseButton) {
+    parseButton.disabled = state.planningParsing;
+    parseButton.textContent = state.planningParsing ? '识别中' : '识别';
+  }
   if (!result) {
-    els.planningPreviewMeta.textContent = '尚未识别';
+    els.planningPreviewMeta.textContent = state.planningParsing ? '识别中…' : '尚未识别';
     els.planningPreview.innerHTML = '<div class="empty-state">点击“识别”后，这里会显示待办、日程、跳过和错误条目。</div>';
     return;
   }
   const candidates = result.candidates || [];
-  els.planningPreviewMeta.textContent = '共 ' + candidates.length + ' 行，' + (result.importableCount || 0) + ' 条可导入。';
+  const summary = '共 ' + candidates.length + ' 行，' + (result.importableCount || 0) + ' 条可导入。';
+  els.planningPreviewMeta.textContent = result.message ? (summary + ' ' + result.message) : summary;
   const actions = candidates.length ? (
     '<div class="planning-preview-actions">'
     + '<button type="button" class="ghost mini" data-planning-select-all="true">全选可导入项</button>'
@@ -771,11 +778,18 @@ async function deletePlanningNote() {
 
 async function parsePlanningEditor() {
   await flushPlanningAutosave();
-  state.planningParseResult = await api('/api/planning/parse', {
-    method: 'POST',
-    body: JSON.stringify({ markdown: els.planningEditor.value })
-  });
+  state.planningParsing = true;
   renderPlanningPreview();
+  try {
+    state.planningParseResult = await api('/api/planning/parse', {
+      method: 'POST',
+      body: JSON.stringify({ markdown: els.planningEditor.value })
+    });
+    renderPlanningPreview();
+  } finally {
+    state.planningParsing = false;
+    renderPlanningPreview();
+  }
 }
 
 async function importSelectedPlanning() {

@@ -87,7 +87,7 @@
           <div class="planning-toolbar">
             <div>
               <h2>规划台</h2>
-              <p class="muted">像备忘录一样写 Markdown / 自然计划，再本地识别为待办或日程；正文会自动保存，Ctrl+S 保存，Ctrl+Enter 识别。</p>
+              <p class="muted">像备忘录一样写 Markdown / 自然计划，再用 AI 或本地规则识别为待办或日程；正文会自动保存，Ctrl+S 保存，Ctrl+Enter 识别。</p>
             </div>
             <div class="toolbar-row">
               <select id="planning-note-select"></select>
@@ -299,7 +299,7 @@
         <button class="sheet-text-button" data-close-modal="planning-help-modal">返回</button>
         <div class="modal-title-block">
           <h2>规划台使用说明</h2>
-          <p class="muted">先像备忘录一样写，再识别为正式待办和日程。</p>
+          <p class="muted">先像备忘录一样写，再通过 AI 或本地规则识别为正式待办和日程。</p>
         </div>
         <button class="sheet-primary-action" data-close-modal="planning-help-modal">知道了</button>
       </div>
@@ -353,7 +353,7 @@
           <h3>识别和导入</h3>
           <ol>
             <li>先在左侧编辑器写计划。</li>
-            <li>点击“识别”，右侧会出现待办、日程、跳过和错误条目。</li>
+            <li>点击“识别”，如果设置里启用了完整 AI 源，会优先走 AI；否则会回到本地规则。右侧会出现待办、日程、跳过和错误条目。</li>
             <li>在预览里修正标题、DDL、开始/结束时间、提醒、分组和备注；这些时间字段同样支持上面的自然日期写法。</li>
             <li>可用“全选可导入项 / 全不选”快速控制候选，至少勾选一条有效候选后才能导入。</li>
             <li>勾选需要导入的条目，点击“导入选中”。电脑端也支持 <code>Ctrl+S</code> 保存、<code>Ctrl+Enter</code> 识别。</li>

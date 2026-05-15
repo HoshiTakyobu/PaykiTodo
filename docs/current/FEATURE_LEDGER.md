@@ -67,7 +67,7 @@ This file tracks the product at a practical level for new coding sessions.
 - successful planning import appends `#imported` to imported source lines and immediately saves the active planning note to reduce duplicate imports
 - default Planning Desk import reminder is 5 minutes before, full-screen, ring + vibration
 - planning notes are included in JSON backup / restore snapshots
-- AI recognition for Planning Desk is now an optional Provider-based enhancement for DeepSeek / Qwen / OpenAI-compatible APIs; Settings exposes ordered multi-provider Base URL/API Key/model configuration, recognition calls enabled sources in order, local rules remain the fallback, and AI output enters preview before import
+- AI recognition for Planning Desk is now an optional Provider-based enhancement for DeepSeek / Qwen / OpenAI-compatible APIs; Settings exposes ordered multi-provider Base URL/API Key/model configuration, both phone and desktop Planning Desk recognition call enabled sources in order, local rules remain the fallback, and AI output enters preview before import
 - AI Provider API Keys are stored locally in settings, deliberately excluded from backup JSON export, and preserved when importing backups without keys
 - Planning Desk database migration is repaired in `1.7.5`: database version `10` includes `MIGRATION_9_10` to rebuild `planning_notes` tables created by the mismatched `1.7.0`-`1.7.4` migration
 
@@ -155,7 +155,7 @@ This file tracks the product at a practical level for new coding sessions.
 - desktop web shows the installed APK version in the brand block and uses runtime versioned CSS / JS URLs
 - desktop sync service self-stops if Android restarts it while desktop sync is disabled in Settings
 - desktop web has a `规划台` tab with textarea editor, document selector, auto-save, `Ctrl+S` save, `Ctrl+Enter` parse, editable parse preview, selected import, and a help modal that explains the same DDL/reminder syntax as the phone-side Planning Desk help
-- desktop web Planning Desk uses phone-local `/api/planning/*` routes, edits the same Room planning notes as the phone UI, saves before switching documents, blocks empty selected imports, and writes back `#imported` markers after import
+- desktop web Planning Desk uses phone-local `/api/planning/*` routes, edits the same Room planning notes as the phone UI, saves before switching documents, blocks empty selected imports, writes back `#imported` markers after import, and reuses the same AI recognition / local fallback path as the phone Planning Desk
 
 ### Destructive Action Safety
 

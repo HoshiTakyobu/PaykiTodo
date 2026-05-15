@@ -15,11 +15,11 @@ import com.example.todoalarm.data.CalendarEventDraft
 import com.example.todoalarm.data.DEFAULT_PLANNING_REMINDER_MINUTES
 import com.example.todoalarm.data.PlanningImportCandidate
 import com.example.todoalarm.data.PlanningImportResult
-import com.example.todoalarm.data.PlanningAiRecognizer
 import com.example.todoalarm.data.PlanningMarkdownParser
 import com.example.todoalarm.data.PlanningNote
 import com.example.todoalarm.data.PlanningParseResult
 import com.example.todoalarm.data.PlanningParsedType
+import com.example.todoalarm.data.PlanningRecognitionService
 import com.example.todoalarm.data.RecurrenceScope
 import com.example.todoalarm.data.RecurrenceType
 import com.example.todoalarm.data.ReminderChainLog
@@ -42,7 +42,6 @@ import com.example.todoalarm.data.toWeeklyRecurringDrafts
 import com.example.todoalarm.data.toEpochMillis
 import com.example.todoalarm.sync.DesktopSyncStatus
 import com.example.todoalarm.sync.DesktopSyncService
-import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -191,23 +190,7 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     suspend fun parsePlanningMarkdown(markdown: String): PlanningParseResult {
-        val settings = settingsStore.currentSettings()
-        val enabledProviders = settings.planningAiProviders.filter {
-            it.enabled && it.baseUrl.isNotBlank() && it.apiKey.isNotBlank() && it.model.isNotBlank()
-        }
-        if (!settings.planningAiEnabled) return PlanningMarkdownParser.parse(markdown)
-        if (enabledProviders.isEmpty()) {
-            return PlanningMarkdownParser.parse(markdown).copy(message = "AI 配置未完整，已使用本地规则")
-        }
-        return try {
-            PlanningAiRecognizer.recognize(markdown = markdown, providers = enabledProviders)
-        } catch (error: CancellationException) {
-            throw error
-        } catch (error: Exception) {
-            PlanningMarkdownParser.parse(markdown).copy(
-                message = "AI 识别失败，已使用本地规则：${error.message?.take(80) ?: "未知错误"}"
-            )
-        }
+        return PlanningRecognitionService.recognize(markdown = markdown, settings = settingsStore.currentSettings())
     }
 
     fun selectPlanningNote(noteId: Long) {

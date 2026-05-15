@@ -17,24 +17,25 @@ The current round is PaykiTodo `1.7.25` / `versionCode 182`, focused on turning 
 4. Planning Desk preview messages now flag natural inference with `根据自然文本推断，建议确认`, and loop hints such as `每天` / `每周` add a reminder to configure recurrence after import.
 5. Settings -> AI 调用配置 stores `List<PlanningAiProvider>` as JSON in SharedPreferences, migrates old single-provider fields into the first provider, and preserves local API keys across backup import when backup JSON excludes keys.
 6. The AI config UI supports adding, editing, deleting, long-press deletion, enable/disable switches, and up/down priority ordering for providers.
-7. Planning Desk “识别” now uses enabled AI providers first when configuration is complete. The internal prompt requires JSON-only output, converts AI items into existing preview candidates, and keeps preview confirmation mandatory.
-8. `PlanningAiCaller.callWithFallback` retries enabled providers in order on 401/403/429/5xx and network timeout/DNS failures, but not on 400 or cancellation; AI failure or incomplete configuration falls back to local rules.
-9. `TodoEditorDialog` defaults new todos to title, DDL, and group; notes, reminder input, recurrence, ring, and vibration live under 更多选项 with `AnimatedVisibility`.
-10. Existing todos auto-expand 更多选项 when they contain notes, custom reminder offsets, recurrence, or non-default ring/vibration state.
-11. Daily-board floating block titles now use stronger dark-theme text shadow over the wallpaper background, while light-theme shadow remains subtle.
-12. Version metadata is now `1.7.25` / `versionCode 182`.
+7. Planning Desk “识别” now uses enabled AI providers first when configuration is complete on both phone and desktop. The internal prompt requires JSON-only output, converts AI items into existing preview candidates, and keeps preview confirmation mandatory.
+8. Desktop-web `/api/planning/parse` now reuses the same shared recognition service, so desktop Planning Desk follows the same AI-first / local-fallback chain and surfaces the shared result message in preview meta.
+9. `PlanningAiCaller.callWithFallback` retries enabled providers in order on 401/403/429/5xx and network timeout/DNS failures, but not on 400 or cancellation; AI failure or incomplete configuration falls back to local rules.
+10. `TodoEditorDialog` defaults new todos to title, DDL, and group; notes, reminder input, recurrence, ring, and vibration live under 更多选项 with `AnimatedVisibility`.
+11. Existing todos auto-expand 更多选项 when they contain notes, custom reminder offsets, recurrence, or non-default ring/vibration state.
+12. Daily-board floating block titles now use stronger dark-theme text shadow over the wallpaper background, while light-theme shadow remains subtle.
+13. Version metadata is now `1.7.25` / `versionCode 182`.
 
 ## Verification Completed This Round
 
 1. `./gradlew.bat compileDebugKotlin` succeeded.
 2. `./gradlew.bat testDebugUnitTest --tests com.example.todoalarm.data.PlanningMarkdownParserTest` succeeded.
-3. `./gradlew.bat assembleDebug` succeeded after the daily-board title readability hotfix.
-4. `./gradlew.bat testDebugUnitTest --tests com.example.todoalarm.data.PlanningAiRecognizerTest` succeeded.
+3. `./gradlew.bat testDebugUnitTest --tests com.example.todoalarm.data.PlanningAiRecognizerTest` succeeded.
+4. `./gradlew.bat testDebugUnitTest --tests com.example.todoalarm.data.PlanningRecognitionServiceTest` succeeded.
+5. `./gradlew.bat assembleDebug` succeeded after the desktop-web recognition follow-up.
 
 Final release verification still requires:
 
-1. `./gradlew.bat assembleDebug` after the `1.7.25` AI integration.
-2. Device-side smoke testing of Planning Desk AI recognition, AI fallback to local rules, onboarding reset, daily-board dark/light readability, AI provider list persistence, Todo editor folding, and Planning Desk natural DDL preview behavior.
+1. Device-side smoke testing of phone and desktop Planning Desk AI recognition, AI fallback to local rules, onboarding reset, daily-board dark/light readability, AI provider list persistence, Todo editor folding, and Planning Desk natural DDL preview behavior.
 
 ## Immediate Practical Next Steps
 
@@ -45,7 +46,7 @@ When testing, use:
 3. Open Settings -> AI 调用配置 and verify adding, editing, enabling/disabling, deleting, moving providers up/down, and enabling AI recognition persists after leaving and reopening Settings.
 4. Open the Todo editor for a new todo and confirm only title / DDL / group are visible until 更多选项 is expanded.
 5. Edit an existing todo with notes, custom reminders, recurrence, or non-default ring/vibration and confirm 更多选项 auto-expands.
-6. In Planning Desk, write free-form text and verify AI recognition creates preview candidates when an AI source is enabled, while invalid/disabled AI configuration falls back to local rules.
+6. In both phone and desktop Planning Desk, write free-form text and verify AI recognition creates preview candidates when an AI source is enabled, while invalid/disabled AI configuration falls back to local rules.
 7. In Planning Desk preview, verify `# 今日计划` followed by `- [ ] 晚上交论文`, `- [ ] 5点前交作业`, `- [ ] 明天下午3点前提交`, and `交论文 截止明天 23:59，每天复盘`.
 
 ## Commit Message Rule

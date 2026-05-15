@@ -1,6 +1,6 @@
 # PaykiTodo 规划台 AI 识别设计
 
-状态：`1.7.25` 已接入手机端真实网络调用。设置页保存多个 OpenAI-compatible Provider，规划台“识别”会在启用 AI 且配置完整时优先调用 AI，失败时回退本地规则。
+状态：`1.7.25` 已接入手机端和桌面 Web 规划台的真实网络调用。设置页保存多个 OpenAI-compatible Provider，规划台“识别”会在启用 AI 且配置完整时优先调用 AI，失败时回退本地规则。
 
 ## 目标
 
@@ -102,4 +102,5 @@ AI 应只输出 JSON，不输出解释文本。建议结构：
 3. 规划台识别按钮现在是异步执行，网络请求期间显示 `识别中`。
 4. `PlanningAiRecognizer` 负责内置 prompt、解析 AI JSON、转换为现有 `PlanningParsedCandidate`。
 5. AI 和本地规则共用现有预览、编辑、导入闭环。
-6. 可选后续：支持从本地 JSON 模板导入 Provider 配置；为桌面 Web 规划台也接入同一 AI 识别入口。
+6. 手机端和桌面 Web 规划台现已共用 `PlanningRecognitionService` 识别入口，桌面预览摘要也会显示共享的回退消息。
+7. 可选后续：支持从本地 JSON 模板导入 Provider 配置。

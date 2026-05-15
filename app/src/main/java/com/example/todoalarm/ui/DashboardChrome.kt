@@ -43,7 +43,6 @@ import androidx.compose.material.icons.rounded.ExpandLess
 import androidx.compose.material.icons.rounded.ExpandMore
 import androidx.compose.material.icons.rounded.ChevronRight
 import androidx.compose.material.icons.rounded.Folder
-import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material.icons.rounded.TaskAlt
 import androidx.compose.material.icons.rounded.ViewAgenda
@@ -352,7 +351,6 @@ internal fun DashboardBody(
     onRequestIgnoreBatteryOptimization: () -> Unit,
     onRequestAccessibilityService: () -> Unit,
     onWeekStartModeChange: (WeekStartMode) -> Unit,
-    onNextQuote: () -> Unit,
     onDefaultSnoozeChange: (Int) -> Unit,
     onDefaultCalendarReminderModeChange: (ReminderDeliveryMode) -> Unit,
     onReminderAudioStrategyChange: (ReminderAudioChannel, Int, Boolean, Int, Boolean) -> Unit,
@@ -391,7 +389,6 @@ internal fun DashboardBody(
             CalendarPanel(
                 modifier = Modifier.fillMaxSize(),
                 events = uiState.calendarItems,
-                groups = uiState.groups,
                 weekStartMode = uiState.settings.weekStartMode,
                 scheduleTemplates = uiState.scheduleTemplates,
                 onQuickCreateEvent = onQuickCreateCalendarEvent,
@@ -516,10 +513,7 @@ internal fun DashboardBody(
         when (section) {
             DashboardSection.BOARD -> {
                 item {
-                    CompactGreetingCard(
-                        quote = uiState.currentQuote,
-                        onNextQuote = onNextQuote
-                    )
+                    CompactGreetingCard(quote = uiState.currentQuote)
                 }
 
                 item {
@@ -648,59 +642,8 @@ private fun ExpandableSectionHeader(
 }
 
 @Composable
-private fun GreetingCard(
-    quote: String,
-    onNextQuote: () -> Unit
-) {
-    ElevatedCard(
-        shape = RoundedCornerShape(28.dp),
-        colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.96f))
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(
-                    Brush.horizontalGradient(
-                        listOf(
-                            MaterialTheme.colorScheme.primary.copy(alpha = 0.18f),
-                            MaterialTheme.colorScheme.tertiary.copy(alpha = 0.12f),
-                            MaterialTheme.colorScheme.surface
-                        )
-                    )
-                )
-                .padding(20.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            Text(
-                text = "${timeGreeting()}，Payki",
-                style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.Bold,
-                fontFamily = PaykiGreetingFontFamily,
-                color = MaterialTheme.colorScheme.onSurface
-            )
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = quote,
-                    modifier = Modifier.weight(1f),
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                IconButton(onClick = onNextQuote) {
-                    Icon(Icons.Rounded.Refresh, contentDescription = "更换短句", tint = MaterialTheme.colorScheme.primary)
-                }
-            }
-        }
-    }
-}
-
-@Composable
 private fun CompactGreetingCard(
-    quote: String,
-    onNextQuote: () -> Unit
+    quote: String
 ) {
     var collapsed by rememberSaveable { mutableStateOf(false) }
     ElevatedCard(

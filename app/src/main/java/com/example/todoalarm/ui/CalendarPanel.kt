@@ -33,11 +33,11 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.CalendarMonth
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.Edit
-import androidx.compose.material.icons.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
 import androidx.compose.material.icons.rounded.MoreHoriz
 import androidx.compose.material.icons.rounded.NotificationsNone
@@ -131,7 +131,6 @@ private enum class CalendarViewMode(val label: String) {
 internal fun CalendarPanel(
     modifier: Modifier = Modifier,
     events: List<TodoItem>,
-    groups: List<TaskGroup>,
     weekStartMode: WeekStartMode,
     scheduleTemplates: List<ScheduleTemplate>,
     onQuickCreateEvent: (LocalDateTime, LocalDateTime) -> Unit,
@@ -287,7 +286,6 @@ internal fun CalendarPanel(
                     CalendarViewMode.AGENDA -> {
                         selectedDateEpochDay = targetDate.toEpochDay()
                     }
-                    else -> Unit
                 }
             }
 
@@ -1830,7 +1828,6 @@ private fun CalendarTimedBoard(
                         dayColumnWidthPx = dayColumnWidthPx,
                         horizontalOffsetPx = horizontalOffsetPx,
                         hourHeight = hourHeight,
-                        viewportStartDate = days[visibleRange.first],
                         onClick = { onOpenDetails(placement.segment.item) },
                         onMove = onMoveEvent
                     )
@@ -1919,7 +1916,6 @@ private fun TimedEventCard(
     dayColumnWidthPx: Float,
     horizontalOffsetPx: Float,
     hourHeight: Dp,
-    viewportStartDate: LocalDate,
     onClick: () -> Unit,
     onMove: (TodoItem, LocalDateTime, LocalDateTime) -> Unit
 ) {
@@ -2134,7 +2130,7 @@ private fun CalendarEventDetailsDialog(
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 IconButton(onClick = onDismiss) {
-                    Icon(Icons.Rounded.ArrowBack, contentDescription = "返回", tint = MaterialTheme.colorScheme.onSurface)
+                    Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "返回", tint = MaterialTheme.colorScheme.onSurface)
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
                     IconButton(onClick = onDelete) {

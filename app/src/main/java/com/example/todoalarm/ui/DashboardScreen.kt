@@ -430,7 +430,6 @@ fun DashboardScreen(
                     onRequestIgnoreBatteryOptimization = onRequestIgnoreBatteryOptimization,
                     onRequestAccessibilityService = onRequestAccessibilityService,
                     onWeekStartModeChange = onWeekStartModeChange,
-                    onNextQuote = onNextQuote,
                     onDefaultSnoozeChange = onDefaultSnoozeChange,
                     onDefaultCalendarReminderModeChange = onDefaultCalendarReminderModeChange,
                     onReminderAudioStrategyChange = onReminderAudioStrategyChange,

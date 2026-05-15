@@ -85,6 +85,10 @@ private fun AppSettings.toJson(): JSONObject {
         put("desktopSyncEnabled", desktopSyncEnabled)
         put("desktopSyncToken", desktopSyncToken)
         put("lastOpenedPlanningNoteId", lastOpenedPlanningNoteId)
+        put("planningAiEnabled", planningAiEnabled)
+        put("planningAiProviderName", planningAiProviderName)
+        put("planningAiBaseUrl", planningAiBaseUrl)
+        put("planningAiModel", planningAiModel)
     }
 }
 
@@ -414,7 +418,12 @@ private fun JSONObject?.toSettings(): AppSettings {
         autoBackupEnabled = optBoolean("autoBackupEnabled", false),
         desktopSyncEnabled = optBoolean("desktopSyncEnabled", false),
         desktopSyncToken = optString("desktopSyncToken", ""),
-        lastOpenedPlanningNoteId = optLongOrNull("lastOpenedPlanningNoteId")?.takeIf { it > 0 }
+        lastOpenedPlanningNoteId = optLongOrNull("lastOpenedPlanningNoteId")?.takeIf { it > 0 },
+        planningAiEnabled = optBoolean("planningAiEnabled", false),
+        planningAiProviderName = optString("planningAiProviderName", ""),
+        planningAiBaseUrl = optString("planningAiBaseUrl", ""),
+        planningAiApiKey = "",
+        planningAiModel = optString("planningAiModel", "")
     )
 }
 

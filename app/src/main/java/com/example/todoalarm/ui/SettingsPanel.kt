@@ -31,6 +31,7 @@ import androidx.compose.material.icons.rounded.ArrowDropDown
 import androidx.compose.material.icons.rounded.BugReport
 import androidx.compose.material.icons.rounded.CalendarMonth
 import androidx.compose.material.icons.rounded.Check
+import androidx.compose.material.icons.rounded.Psychology
 import androidx.compose.material.icons.rounded.Folder
 import androidx.compose.material.icons.rounded.LibraryMusic
 import androidx.compose.material.icons.rounded.ManageSearch
@@ -70,7 +71,9 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.core.content.pm.PackageInfoCompat
@@ -88,6 +91,7 @@ private enum class SettingsSection {
     SOUND_STRATEGY,
     TONE,
     CALENDAR,
+    AI_CONFIG,
     ABOUT,
     DIAGNOSTICS,
     BACKUP,
@@ -113,6 +117,7 @@ fun SettingsPanel(
     onDefaultSnoozeChange: (Int) -> Unit,
     onDefaultCalendarReminderModeChange: (ReminderDeliveryMode) -> Unit,
     onReminderAudioStrategyChange: (ReminderAudioChannel, Int, Boolean, Int, Boolean) -> Unit,
+    onPlanningAiConfigChange: (Boolean, String, String, String, String) -> Unit,
     onDesktopSyncEnabledChange: (Boolean) -> Unit,
     onRotateDesktopSyncToken: () -> Unit,
     onUseBuiltInReminderTone: () -> Unit,
@@ -184,6 +189,17 @@ fun SettingsPanel(
                     title = "日历与提醒",
                     summary = "默认延后时长、周起始日、日历默认提醒方式",
                     onClick = { selectedSection = SettingsSection.CALENDAR }
+                )
+                SettingsMenuDivider()
+                SettingsMenuItem(
+                    icon = Icons.Rounded.Psychology,
+                    title = "AI 调用配置",
+                    summary = if (settings.planningAiEnabled && settings.planningAiBaseUrl.isNotBlank()) {
+                        "${settings.planningAiProviderName.ifBlank { "未命名服务" }} · ${settings.planningAiModel.ifBlank { "未填写模型" }}"
+                    } else {
+                        "为规划台后续 AI 识别准备 Base URL、API Key 和模型名"
+                    },
+                    onClick = { selectedSection = SettingsSection.AI_CONFIG }
                 )
                 SettingsMenuDivider()
                 SettingsMenuItem(
@@ -301,6 +317,13 @@ fun SettingsPanel(
                     onSelect = { label -> ReminderDeliveryMode.entries.firstOrNull { it.label == label }?.let(onDefaultCalendarReminderModeChange) }
                 )
             }
+        }
+
+        SettingsSection.AI_CONFIG -> SettingsSectionDialog("AI 调用配置", { selectedSection = null }) {
+            PlanningAiConfigPanel(
+                settings = settings,
+                onSave = onPlanningAiConfigChange
+            )
         }
 
         SettingsSection.ABOUT -> SettingsSectionDialog("关于 PaykiTodo", { selectedSection = null }) {
@@ -594,6 +617,114 @@ private fun PercentSettingRow(
                     modifier = Modifier.weight(0.42f)
                 )
             }
+        }
+    }
+}
+
+@Composable
+private fun PlanningAiConfigPanel(
+    settings: AppSettings,
+    onSave: (Boolean, String, String, String, String) -> Unit
+) {
+    var enabled by remember(settings.planningAiEnabled) { mutableStateOf(settings.planningAiEnabled) }
+    var providerName by remember(settings.planningAiProviderName) { mutableStateOf(settings.planningAiProviderName.ifBlank { "DeepSeek / Qwen" }) }
+    var baseUrl by remember(settings.planningAiBaseUrl) { mutableStateOf(settings.planningAiBaseUrl) }
+    var apiKey by remember(settings.planningAiApiKey) { mutableStateOf(settings.planningAiApiKey) }
+    var model by remember(settings.planningAiModel) { mutableStateOf(settings.planningAiModel) }
+    var showApiKey by remember { mutableStateOf(false) }
+    var savedHint by remember { mutableStateOf(false) }
+    val requiredMissing = enabled && (baseUrl.isBlank() || apiKey.isBlank() || model.isBlank())
+
+    Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+        Surface(
+            shape = RoundedCornerShape(18.dp),
+            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.08f),
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.18f))
+        ) {
+            Text(
+                text = "当前只保存调用配置，规划台仍默认使用本地规则识别。后续接入 AI 时，会读取这里的 Base URL / API Key / 模型名，但 AI 只生成候选，必须预览确认后才能导入。",
+                modifier = Modifier.padding(14.dp),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+        }
+
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                Text("启用 AI 识别配置", fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
+                Text("关闭后保留配置，但规划台不会显示为可用。", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            Switch(checked = enabled, onCheckedChange = { enabled = it; savedHint = false })
+        }
+
+        OutlinedTextField(
+            value = providerName,
+            onValueChange = { providerName = it; savedHint = false },
+            modifier = Modifier.fillMaxWidth(),
+            label = { Text("服务名称") },
+            singleLine = true,
+            placeholder = { Text("例如 DeepSeek、Qwen、硅基流动") }
+        )
+        OutlinedTextField(
+            value = baseUrl,
+            onValueChange = { baseUrl = it; savedHint = false },
+            modifier = Modifier.fillMaxWidth(),
+            label = { Text("Base URL") },
+            singleLine = true,
+            isError = enabled && baseUrl.isBlank(),
+            placeholder = { Text("例如 https://api.example.com/v1") },
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri)
+        )
+        OutlinedTextField(
+            value = apiKey,
+            onValueChange = { apiKey = it; savedHint = false },
+            modifier = Modifier.fillMaxWidth(),
+            label = { Text("API Key") },
+            singleLine = true,
+            isError = enabled && apiKey.isBlank(),
+            visualTransformation = if (showApiKey) VisualTransformation.None else PasswordVisualTransformation(),
+            trailingIcon = {
+                TextButton(onClick = { showApiKey = !showApiKey }) {
+                    Text(if (showApiKey) "隐藏" else "显示")
+                }
+            }
+        )
+        OutlinedTextField(
+            value = model,
+            onValueChange = { model = it; savedHint = false },
+            modifier = Modifier.fillMaxWidth(),
+            label = { Text("模型名") },
+            singleLine = true,
+            isError = enabled && model.isBlank(),
+            placeholder = { Text("例如 deepseek-v4-flash / qwen3.6") }
+        )
+
+        if (requiredMissing) {
+            Text(
+                text = "启用 AI 配置时，Base URL、API Key 和模型名都需要填写。",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.error
+            )
+        } else {
+            Text(
+                text = "真实 API Key 只保存在本机设置中；备份 JSON 不会导出 API Key。",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+
+        OutlinedButton(
+            onClick = {
+                onSave(enabled, providerName, baseUrl, apiKey, model)
+                savedHint = true
+            },
+            enabled = !requiredMissing,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("保存 AI 调用配置")
+        }
+        if (savedHint) {
+            Text("已保存。", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
         }
     }
 }

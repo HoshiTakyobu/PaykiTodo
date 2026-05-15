@@ -49,7 +49,12 @@ data class AppSettings(
     val autoBackupEnabled: Boolean = false,
     val desktopSyncEnabled: Boolean = false,
     val desktopSyncToken: String = "",
-    val lastOpenedPlanningNoteId: Long? = null
+    val lastOpenedPlanningNoteId: Long? = null,
+    val planningAiEnabled: Boolean = false,
+    val planningAiProviderName: String = "",
+    val planningAiBaseUrl: String = "",
+    val planningAiApiKey: String = "",
+    val planningAiModel: String = ""
 )
 
 class AppSettingsStore(context: Context) {
@@ -160,7 +165,27 @@ class AppSettingsStore(context: Context) {
         refresh()
     }
 
+    fun updatePlanningAiConfig(
+        enabled: Boolean,
+        providerName: String,
+        baseUrl: String,
+        apiKey: String,
+        model: String
+    ) {
+        preferences.edit()
+            .putBoolean(KEY_PLANNING_AI_ENABLED, enabled)
+            .putString(KEY_PLANNING_AI_PROVIDER_NAME, providerName.trim())
+            .putString(KEY_PLANNING_AI_BASE_URL, baseUrl.trim())
+            .putString(KEY_PLANNING_AI_API_KEY, apiKey.trim())
+            .putString(KEY_PLANNING_AI_MODEL, model.trim())
+            .apply()
+        refresh()
+    }
+
     fun replaceAll(settings: AppSettings) {
+        val preservedPlanningAiApiKey = settings.planningAiApiKey.ifBlank {
+            preferences.getString(KEY_PLANNING_AI_API_KEY, null).orEmpty()
+        }
         preferences.edit()
             .putString(KEY_THEME_MODE, settings.themeMode.name)
             .putString(KEY_WEEK_START_MODE, settings.weekStartMode.name)
@@ -181,6 +206,11 @@ class AppSettingsStore(context: Context) {
             .putBoolean(KEY_AUTO_BACKUP_ENABLED, settings.autoBackupEnabled)
             .putBoolean(KEY_DESKTOP_SYNC_ENABLED, settings.desktopSyncEnabled)
             .putString(KEY_DESKTOP_SYNC_TOKEN, settings.desktopSyncToken)
+            .putBoolean(KEY_PLANNING_AI_ENABLED, settings.planningAiEnabled)
+            .putString(KEY_PLANNING_AI_PROVIDER_NAME, settings.planningAiProviderName)
+            .putString(KEY_PLANNING_AI_BASE_URL, settings.planningAiBaseUrl)
+            .putString(KEY_PLANNING_AI_API_KEY, preservedPlanningAiApiKey)
+            .putString(KEY_PLANNING_AI_MODEL, settings.planningAiModel)
             .apply {
                 val noteId = settings.lastOpenedPlanningNoteId
                 if (noteId == null || noteId <= 0) remove(KEY_LAST_OPENED_PLANNING_NOTE_ID) else putLong(KEY_LAST_OPENED_PLANNING_NOTE_ID, noteId)
@@ -221,7 +251,12 @@ class AppSettingsStore(context: Context) {
             autoBackupEnabled = preferences.getBoolean(KEY_AUTO_BACKUP_ENABLED, false),
             desktopSyncEnabled = preferences.getBoolean(KEY_DESKTOP_SYNC_ENABLED, false),
             desktopSyncToken = syncToken,
-            lastOpenedPlanningNoteId = preferences.getLong(KEY_LAST_OPENED_PLANNING_NOTE_ID, 0L).takeIf { it > 0 }
+            lastOpenedPlanningNoteId = preferences.getLong(KEY_LAST_OPENED_PLANNING_NOTE_ID, 0L).takeIf { it > 0 },
+            planningAiEnabled = preferences.getBoolean(KEY_PLANNING_AI_ENABLED, false),
+            planningAiProviderName = preferences.getString(KEY_PLANNING_AI_PROVIDER_NAME, null).orEmpty(),
+            planningAiBaseUrl = preferences.getString(KEY_PLANNING_AI_BASE_URL, null).orEmpty(),
+            planningAiApiKey = preferences.getString(KEY_PLANNING_AI_API_KEY, null).orEmpty(),
+            planningAiModel = preferences.getString(KEY_PLANNING_AI_MODEL, null).orEmpty()
         )
     }
 
@@ -262,5 +297,10 @@ class AppSettingsStore(context: Context) {
         private const val KEY_DESKTOP_SYNC_ENABLED = "desktop_sync_enabled"
         private const val KEY_DESKTOP_SYNC_TOKEN = "desktop_sync_token"
         private const val KEY_LAST_OPENED_PLANNING_NOTE_ID = "last_opened_planning_note_id"
+        private const val KEY_PLANNING_AI_ENABLED = "planning_ai_enabled"
+        private const val KEY_PLANNING_AI_PROVIDER_NAME = "planning_ai_provider_name"
+        private const val KEY_PLANNING_AI_BASE_URL = "planning_ai_base_url"
+        private const val KEY_PLANNING_AI_API_KEY = "planning_ai_api_key"
+        private const val KEY_PLANNING_AI_MODEL = "planning_ai_model"
     }
 }

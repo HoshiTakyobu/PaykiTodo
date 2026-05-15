@@ -43,7 +43,7 @@ This file tracks the product at a practical level for new coding sessions.
 - default startup opens the last opened planning document; if none exists, the app creates an empty `我的规划` and shows examples only as placeholder/help content
 - planning documents support create, open, rename, archive, and delete with confirmation on the phone UI; the phone document directory and desktop web Planning Desk both expose delete actions
 - phone Planning Desk currently defaults to stable raw Markdown / natural-text editing; `1.7.8` restores a manual Markdown preview that renders headings, task checkboxes, subtask indentation, tag pills, and `#imported` state pills while keeping raw edit as the startup default
-- phone editor mode remains a plain Markdown / natural-text editor with a fixed-height 56dp operation toolbar (预览 / 识别 / 文档列表 / 教程 / 更多) and a compact icon-style horizontal shortcut toolbar positioned above the editor to reduce IME occlusion
+- phone editor mode remains a plain Markdown / natural-text editor with a fixed-height 56dp operation toolbar (预览 / 识别 / 文档列表 / 教程 / 快捷展开 / 更多) and a collapsible compact icon-style shortcut toolbar positioned above the editor only when needed
 - phone Planning Desk secondary actions (新建/重命名/使用说明/归档/删除) are in an overflow DropdownMenu; manual save button removed in favor of auto-save
 - phone Planning Desk includes a multi-page in-screen beginner tutorial explaining the workflow, natural writing, heading sections such as `# 收集箱` / `# 今日计划`, preview/import, future AI recognition, and directly usable examples
 - phone Markdown preview checkbox toggles rewrite the source Markdown line only; they do not directly complete imported official todos
@@ -62,7 +62,8 @@ This file tracks the product at a practical level for new coding sessions.
 - successful planning import appends `#imported` to imported source lines and immediately saves the active planning note to reduce duplicate imports
 - default Planning Desk import reminder is 5 minutes before, full-screen, ring + vibration
 - planning notes are included in JSON backup / restore snapshots
-- AI recognition for Planning Desk is documented as a later optional Provider-based enhancement for DeepSeek / Qwen / OpenAI-compatible APIs; local rules remain the default and AI output must enter preview before import
+- AI recognition for Planning Desk is documented as a later optional Provider-based enhancement for DeepSeek / Qwen / OpenAI-compatible APIs; Settings already exposes phone-side provider/Base URL/API Key/model configuration, local rules remain the default, and AI output must enter preview before import
+- AI Provider API Key is stored locally in settings, deliberately excluded from backup JSON export, and preserved when importing backups without a key
 - Planning Desk database migration is repaired in `1.7.5`: database version `10` includes `MIGRATION_9_10` to rebuild `planning_notes` tables created by the mismatched `1.7.0`-`1.7.4` migration
 
 ### Calendar System

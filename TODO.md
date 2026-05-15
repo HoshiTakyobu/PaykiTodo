@@ -4,8 +4,8 @@
 
 ### In Progress
 
-- Verify version `1.7.21` on device after the Planning Desk shortcut-bar icon UI, multi-page tutorial, and bare `ddl` parsing changes
-- Keep `README.md`, `CHANGELOG.md`, Wiki, in-app help sheets, desktop-web help, and current-state docs aligned with version `1.7.21`
+- Verify version `1.7.22` on device after the Settings AI config panel and Planning Desk collapsible shortcut-bar changes
+- Keep `README.md`, `CHANGELOG.md`, Wiki, in-app help sheets, desktop-web help, and current-state docs aligned with version `1.7.22`
 - Continue planning-desk usability polish without expanding into drag/drop, Gantt, AI auto-planning, or complex project trees
 - Improve repo-native handoff so new sessions do not depend on long chat history
 
@@ -45,7 +45,7 @@
 - Custom snooze should accept long delays beyond 180 minutes and update todo DDL when the snooze target is later than the current DDL
 - Launch screen icon should use the transparent logo asset without a white square background
 - Input help question-mark buttons should open the correct syntax help beside reminder, batch, and snooze fields
-- In-app Wiki should describe the current 1.7.21 settings, reminder, calendar, planning-desk, and input syntax accurately
+- In-app Wiki should describe the current 1.7.22 settings, reminder, calendar, planning-desk, and input syntax accurately
 - In-app Wiki should keep a left navigation / right article layout on phone-sized screens
 - Daily board should show a separate completion message when today's schedule existed but all events have ended
 - Drawer header icon should stay visually circular and not expose a white rounded-rectangle launcher background
@@ -53,20 +53,22 @@
 - Temporary system-channel volume boost should be tested carefully because it changes global stream volume and then restores it
 - Work mode should be tested for suppressed outward sound, forced stronger vibration even on items with vibration disabled, and full-screen / accessibility fallback
 - Daily board should show a clear tomorrow section; if tomorrow has no events, it should say `明天暂无日程`
-- Desktop web timed and all-day event cards should open the editor directly by clicking the card; verify this in the actual desktop browser after installing `1.7.21`
+- Desktop web timed and all-day event cards should open the editor directly by clicking the card; verify this in the actual desktop browser after installing `1.7.22`
 - If the live desktop page still lacks the left-side current-version marker or loads unversioned `/app.js`, install the latest APK before re-debugging click edit
-- Desktop web todo cards still use preview first; event cards now open the editor directly. Verify event edit/save in the actual desktop browser after installing `1.7.21`
-- Desktop web todo/event reminder input now accepts mixed reminder specs; verify valid examples and invalid late reminders on the actual desktop browser after installing `1.7.21`
-- Calendar now shows lunar labels in timeline headers, month view, and agenda/list view; verify spacing and readability on device after installing `1.7.21`
-- Desktop web existing event cards should open the editor directly after installing `1.7.21` and refreshing the browser; local Node DOM simulation with the live phone snapshot passed, but actual browser UI still needs device/browser verification after install
+- Desktop web todo cards still use preview first; event cards now open the editor directly. Verify event edit/save in the actual desktop browser after installing `1.7.22`
+- Desktop web todo/event reminder input now accepts mixed reminder specs; verify valid examples and invalid late reminders on the actual desktop browser after installing `1.7.22`
+- Calendar now shows lunar labels in timeline headers, month view, and agenda/list view; verify spacing and readability on device after installing `1.7.22`
+- Desktop web existing event cards should open the editor directly after installing `1.7.22` and refreshing the browser; local Node DOM simulation with the live phone snapshot passed, but actual browser UI still needs device/browser verification after install
 - Desktop web recurrence selects should include `每年同农历月日`, and phone-side todo/event recurrence previews should generate yearly same-lunar-date occurrences
 - Settings -> 电脑同步 should show no access address while desktop sync is disabled
 - Todo DDL now has a wheel-style lunar picker; event editing has compact lunar start/end picking for both all-day and timed events, plus yearly same-lunar-date recurrence support
 - Desktop web event cards should use group colors first; all-day events should be available through compact per-day pills rather than a large separate all-day strip
 - Planning Desk should be device-tested for empty new documents, placeholder behavior, multi-document open/save/rename/delete, document search, auto-save, shortcut-bar task/subtask input, mixed `#remind` parsing, the Planning Desk help sheet, Markdown preview checkbox toggling, editable recognition preview, import into todos/events, and automatic persisted `#imported` marking
 - Planning Desk `任务M ddl 15:00` and similar bare `ddl` lines should be tested on device to confirm they enter the recognition preview as todos with today's DDL
-- Planning Desk AI recognition remains design-only; later implementation should use `docs/templates/planning_ai_providers.example.json` as a template and must not commit real API keys
-- Desktop web Planning Desk should be tested from a real browser connected to the phone after installing `1.7.21`, including auto-save, `Ctrl+S`, `Ctrl+Enter`, select-all / clear-all, no-empty-import guard, the desktop Planning Desk help modal, document delete, editable preview, mixed reminder input, parser edge cases, and import marker write-back
+- Settings -> AI 调用配置 should be tested on device for enabling/disabling, Base URL/API Key/model validation, save persistence after leaving/reopening Settings, and non-export of API Key in backup JSON
+- Planning Desk collapsible shortcut controls should be tested on device: default collapsed state, expanded icon toolbar, tap feedback, and enough writing area with the keyboard open
+- Planning Desk AI recognition remains config-only; later implementation should read the phone-side saved config and still require preview confirmation before import
+- Desktop web Planning Desk should be tested from a real browser connected to the phone after installing `1.7.22`, including auto-save, `Ctrl+S`, `Ctrl+Enter`, select-all / clear-all, no-empty-import guard, the desktop Planning Desk help modal, document delete, editable preview, mixed reminder input, parser edge cases, and import marker write-back
 - Planning parser should be expanded with dedicated unit tests when the project gains a stable local JVM test harness
 
 ## Mid-Term Follow-Ups

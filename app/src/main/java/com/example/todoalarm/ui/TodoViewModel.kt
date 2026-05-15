@@ -497,6 +497,22 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
         )
     }
 
+    fun updatePlanningAiConfig(
+        enabled: Boolean,
+        providerName: String,
+        baseUrl: String,
+        apiKey: String,
+        model: String
+    ) {
+        settingsStore.updatePlanningAiConfig(
+            enabled = enabled,
+            providerName = providerName,
+            baseUrl = baseUrl,
+            apiKey = apiKey,
+            model = model
+        )
+    }
+
     fun updateDesktopSyncEnabled(enabled: Boolean) {
         settingsStore.updateDesktopSyncEnabled(enabled)
         if (enabled) {

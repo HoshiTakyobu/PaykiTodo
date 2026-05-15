@@ -2,7 +2,15 @@
 
 ## Active Development Focus
 
-The current round is PaykiTodo `1.7.21` / `versionCode 178`, focused on making the Planning Desk phone shortcuts feel like a notes-app icon toolbar, adding a beginner-friendly tutorial, and accepting lightweight bare `ddl` planning text.
+The current round is PaykiTodo `1.7.22` / `versionCode 179`, focused on adding phone-side AI call configuration under Settings and making Planning Desk shortcut controls collapsible so writing space stays primary.
+
+Completed in the `1.7.22` Settings / Planning Desk usability round:
+
+1. Settings now exposes `AI 调用配置` under common settings.
+2. The AI config panel lets the user enable the config and enter provider name, Base URL, API Key, and model name on the phone.
+3. AI config is stored locally in `AppSettings`; backup JSON exports provider/base URL/model but deliberately does not export the real API Key.
+4. Planning Desk shortcut controls default to collapsed with a light `展开快捷操作` affordance.
+5. The icon shortcut toolbar can be expanded on demand from the Planning Desk toolbar or the collapsed hint, maximizing writing area for normal use.
 
 Completed in the `1.7.21` Planning Desk usability round:
 
@@ -100,7 +108,7 @@ Completed in the `1.7.15` Planning Desk parser-priority round:
 
 When testing, use:
 
-1. install `app/build/outputs/apk/debug/PaykiTodo-1.7.21-debug.apk`
+1. install `app/build/outputs/apk/debug/PaykiTodo-1.7.22-debug.apk`
 2. open Calendar batch import and verify `13:40-14:40, 学院立德树人优秀教师推荐学生座谈会, @MB-B1-403` parses as a valid event for today
 3. verify `今天: 13:40-14:40, 标题` and `明天: 13:40-14:40, 标题` parse correctly
 4. verify `5.28: 13:40-14:40, 标题` and `5月28日: 13:40-14:40, 标题` parse correctly
@@ -115,4 +123,4 @@ PaykiTodo commit messages should describe product behavior changes and bug/debug
 
 ## Current External Dependency
 
-No external file or API key is needed for the current `1.7.21` verification task. AI Provider keys are only for a later implementation and must not be committed.
+No external file is needed for the current `1.7.22` verification task. If testing AI config, use a disposable API Key; real keys should remain local to the phone and must not be committed.

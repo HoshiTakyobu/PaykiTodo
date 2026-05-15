@@ -189,6 +189,7 @@ class MainActivity : ComponentActivity() {
                     onDefaultSnoozeChange = viewModel::updateDefaultSnooze,
                     onDefaultCalendarReminderModeChange = viewModel::updateDefaultCalendarReminderMode,
                     onReminderAudioStrategyChange = viewModel::updateReminderAudioStrategy,
+                    onPlanningAiConfigChange = viewModel::updatePlanningAiConfig,
                     onDesktopSyncEnabledChange = viewModel::updateDesktopSyncEnabled,
                     onRotateDesktopSyncToken = viewModel::rotateDesktopSyncToken,
                     onUseBuiltInReminderTone = {

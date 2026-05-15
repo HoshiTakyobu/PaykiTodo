@@ -27,6 +27,8 @@ import androidx.compose.material.icons.rounded.CalendarMonth
 import androidx.compose.material.icons.rounded.CheckBox
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.Event
+import androidx.compose.material.icons.rounded.ExpandLess
+import androidx.compose.material.icons.rounded.ExpandMore
 import androidx.compose.material.icons.rounded.Folder
 import androidx.compose.material.icons.rounded.FormatIndentDecrease
 import androidx.compose.material.icons.rounded.FormatIndentIncrease
@@ -119,6 +121,7 @@ internal fun PlanningDeskPanel(
     var archiveDialog by remember { mutableStateOf(false) }
     var newDialog by remember { mutableStateOf(false) }
     var overflowMenuExpanded by remember { mutableStateOf(false) }
+    var shortcutBarExpanded by rememberSaveable(activeNote?.id) { mutableStateOf(false) }
     val selectedIds = remember { mutableStateMapOf<String, Boolean>() }
     val editableCandidates = remember { mutableStateListOf<PlanningImportCandidate>() }
     val hasUnsavedChanges = activeNote != null && editorValue.text != activeNote.contentMarkdown
@@ -221,6 +224,18 @@ internal fun PlanningDeskPanel(
                 ) {
                     Icon(Icons.Rounded.Info, contentDescription = "规划台教程")
                 }
+                IconButton(
+                    modifier = Modifier.size(40.dp),
+                    onClick = {
+                        shortcutBarExpanded = !shortcutBarExpanded
+                        Toast.makeText(context, if (shortcutBarExpanded) "已展开快捷操作" else "已收起快捷操作", Toast.LENGTH_SHORT).show()
+                    }
+                ) {
+                    Icon(
+                        if (shortcutBarExpanded) Icons.Rounded.ExpandLess else Icons.Rounded.ExpandMore,
+                        contentDescription = if (shortcutBarExpanded) "收起快捷操作" else "展开快捷操作"
+                    )
+                }
                 androidx.compose.foundation.layout.Box {
                     IconButton(
                         modifier = Modifier.size(40.dp),
@@ -263,14 +278,19 @@ internal fun PlanningDeskPanel(
             }
         }
 
-    if (markdownEditMode) {
-            PlanningShortcutBar(
-                onAction = { label, action ->
-                    editorValue = applyPlanningShortcut(editorValue, action)
-                    Toast.makeText(context, "已执行：$label", Toast.LENGTH_SHORT).show()
-                },
-                onHelp = { token, description -> Toast.makeText(context, "$token：$description", Toast.LENGTH_LONG).show() }
-            )
+        if (markdownEditMode) {
+            if (!shortcutBarExpanded) {
+                PlanningShortcutCollapsedHint(onExpand = { shortcutBarExpanded = true })
+            }
+            if (shortcutBarExpanded) {
+                PlanningShortcutBar(
+                    onAction = { label, action ->
+                        editorValue = applyPlanningShortcut(editorValue, action)
+                        Toast.makeText(context, "已执行：$label", Toast.LENGTH_SHORT).show()
+                    },
+                    onHelp = { token, description -> Toast.makeText(context, "$token：$description", Toast.LENGTH_LONG).show() }
+                )
+            }
 
             ElevatedCard(
                 modifier = Modifier
@@ -453,6 +473,45 @@ internal fun PlanningDeskPanel(
         )
     }
 
+}
+
+@Composable
+private fun PlanningShortcutCollapsedHint(
+    onExpand: () -> Unit
+) {
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(36.dp),
+        shape = RoundedCornerShape(18.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.22f),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.24f)),
+        onClick = onExpand
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Icon(
+                Icons.Rounded.ExpandMore,
+                contentDescription = null,
+                modifier = Modifier.size(18.dp),
+                tint = MaterialTheme.colorScheme.primary
+            )
+            Text(
+                "展开快捷操作",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Spacer(Modifier.weight(1f))
+            Text(
+                "写作区优先",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.72f)
+            )
+        }
+    }
 }
 
 @Composable

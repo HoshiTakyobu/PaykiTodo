@@ -20,6 +20,7 @@ Long-running Codex sessions can become unreliable. This file exists so a new ses
   - Settings AI config supports multiple ordered providers and Planning Desk now uses them for optional AI recognition.
   - Todo editor folds advanced fields behind 更多选项 by default.
 - A follow-up patch routes desktop-web Planning Desk parsing through the same shared AI-first / local-fallback recognition service as the phone UI, and desktop preview summaries now surface fallback messages.
+- Another small follow-up removes the built-in Planning Desk example placeholder from both phone and desktop editors; examples remain available from help/tutorial surfaces only.
 - A follow-up `1.7.24` hotfix strengthens the dark-theme text shadow for floating daily-board block titles over the wallpaper background, without changing version metadata.
 - Do not push to GitHub unless the user explicitly asks.
 
@@ -39,9 +40,10 @@ Long-running Codex sessions can become unreliable. This file exists so a new ses
 8. `PlanningAiCaller.callWithFallback` retries eligible providers in order on auth/rate-limit/server/network failures; AI failure or incomplete config falls back to local `PlanningMarkdownParser`.
 9. Phone and desktop Planning Desk recognition now share `PlanningRecognitionService`, so `/api/planning/parse` and the phone-side parse action use the same AI prompt, provider ordering, and fallback messaging.
 10. Planning Desk recognition is async in the UI and shows `识别中` while network recognition is running; desktop preview metadata now also displays shared recognition messages.
-11. `TodoEditorDialog` now shows title, DDL, and group first; notes/reminders/recurrence/ring/vibration are inside animated 更多选项, with auto-expand for existing advanced todos.
-12. Floating daily-board block titles such as `今日待办` / `今日日程` now use a stronger dark-theme text shadow so they remain readable over the dark wallpaper; greeting and schedule cards remain protected by high-opacity surfaces.
-13. Existing `1.7.23` baseline changes are included in this working tree: onboarding card introduction, tomorrow no-schedule planning jump, desktop-sync copy buttons, reminder placeholder copy, and the Planning Desk tutorial page for other import methods.
+11. Planning Desk editors on phone and desktop now open as fully blank writing surfaces; examples live in tutorial/help content instead of inline placeholders.
+12. `TodoEditorDialog` now shows title, DDL, and group first; notes/reminders/recurrence/ring/vibration are inside animated 更多选项, with auto-expand for existing advanced todos.
+13. Floating daily-board block titles such as `今日待办` / `今日日程` now use a stronger dark-theme text shadow so they remain readable over the dark wallpaper; greeting and schedule cards remain protected by high-opacity surfaces.
+14. Existing `1.7.23` baseline changes are included in this working tree: onboarding card introduction, tomorrow no-schedule planning jump, desktop-sync copy buttons, reminder placeholder copy, and the Planning Desk tutorial page for other import methods.
 
 ## Files Most Relevant To The Latest Round
 

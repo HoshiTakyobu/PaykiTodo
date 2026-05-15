@@ -43,7 +43,7 @@ This file tracks the product at a practical level for new coding sessions.
 
 - phone drawer has a `规划台` entry
 - Planning Desk stores multiple Markdown planning documents in Room table `planning_notes`
-- default startup opens the last opened planning document; if none exists, the app creates an empty `我的规划` and shows examples only as placeholder/help content
+- default startup opens the last opened planning document; if none exists, the app creates an empty `我的规划`; examples stay in help/tutorial content instead of the editor itself
 - planning documents support create, open, rename, archive, and delete with confirmation on the phone UI; the phone document directory and desktop web Planning Desk both expose delete actions
 - phone Planning Desk currently defaults to stable raw Markdown / natural-text editing; `1.7.8` restores a manual Markdown preview that renders headings, task checkboxes, subtask indentation, tag pills, and `#imported` state pills while keeping raw edit as the startup default
 - phone editor mode remains a plain Markdown / natural-text editor with a fixed-height 56dp operation toolbar (预览 / 识别 / 文档列表 / 教程 / 快捷展开 / 更多) and a collapsible compact icon-style shortcut toolbar positioned above the editor only when needed

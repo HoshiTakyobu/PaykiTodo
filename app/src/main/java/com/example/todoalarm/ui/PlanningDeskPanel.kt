@@ -318,15 +318,6 @@ internal fun PlanningDeskPanel(
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(6.dp),
-                    placeholder = {
-                        Text(
-                            "# 收集箱\n" +
-                                "- [ ] 先把脑子里的事情写下来\n\n" +
-                                "# 明天\n" +
-                                "09:00-10:30 写论文 #group 课程 #remind 5\n" +
-                                "- [ ] 整理材料 #ddl 5.28 23:59 #remind 30,5"
-                        )
-                    },
                     textStyle = MaterialTheme.typography.bodyLarge.copy(fontFamily = FontFamily.Monospace),
                     shape = RoundedCornerShape(18.dp),
                     minLines = 12

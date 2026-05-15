@@ -31,7 +31,10 @@ object PlanningAiCaller {
         request: PlanningAiRequest
     ): PlanningAiResponse {
         var lastRetryable: Exception? = null
-        for (provider in providers.filter { it.enabled }) {
+        val usableProviders = providers
+            .map { it.normalized() }
+            .filter { it.enabled && it.baseUrl.isNotBlank() && it.apiKey.isNotBlank() && it.model.isNotBlank() }
+        for (provider in usableProviders) {
             try {
                 return callSingle(provider, request)
             } catch (error: Exception) {
@@ -40,7 +43,7 @@ object PlanningAiCaller {
                 lastRetryable = error
             }
         }
-        throw lastRetryable ?: IllegalStateException("所有 AI 源均不可用")
+        throw lastRetryable ?: IllegalStateException("没有可用的 AI 源，请检查 Base URL、API Key 和模型名。")
     }
 
     private suspend fun callSingle(

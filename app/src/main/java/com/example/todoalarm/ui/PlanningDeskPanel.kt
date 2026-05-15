@@ -104,7 +104,7 @@ internal fun PlanningDeskPanel(
     onRenameNote: suspend (Long, String) -> String?,
     onDeleteNote: suspend (Long) -> String?,
     onArchiveNote: suspend (Long) -> String?,
-    onParse: (String) -> PlanningParseResult,
+    onParse: suspend (String) -> PlanningParseResult,
     onImport: suspend (List<PlanningImportCandidate>, Set<String>, String, Long?) -> PlanningImportResult
 ) {
     val context = LocalContext.current
@@ -122,6 +122,7 @@ internal fun PlanningDeskPanel(
     var newDialog by remember { mutableStateOf(false) }
     var overflowMenuExpanded by remember { mutableStateOf(false) }
     var shortcutBarExpanded by rememberSaveable(activeNote?.id) { mutableStateOf(false) }
+    var parsing by remember { mutableStateOf(false) }
     val selectedIds = remember { mutableStateMapOf<String, Boolean>() }
     val editableCandidates = remember { mutableStateListOf<PlanningImportCandidate>() }
     val hasUnsavedChanges = activeNote != null && editorValue.text != activeNote.contentMarkdown
@@ -186,24 +187,35 @@ internal fun PlanningDeskPanel(
                 }
                 Button(
                     modifier = Modifier.height(40.dp),
+                    enabled = !parsing,
                     onClick = {
                         focusManager.clearFocus()
-                        val result = onParse(editorValue.text)
-                        parseResult = result
-                        selectedIds.clear()
-                        editableCandidates.clear()
-                        result.candidates.forEach { candidate ->
-                            val editable = candidate.toPlanningImportCandidate()
-                            editableCandidates += editable
-                            selectedIds[editable.id] = editable.validate() == null
+                        scope.launch {
+                            parsing = true
+                            try {
+                                val result = onParse(editorValue.text)
+                                parseResult = result
+                                selectedIds.clear()
+                                editableCandidates.clear()
+                                result.candidates.forEach { candidate ->
+                                    val editable = candidate.toPlanningImportCandidate()
+                                    editableCandidates += editable
+                                    selectedIds[editable.id] = editable.validate() == null
+                                }
+                                val extra = result.message.takeIf { it.isNotBlank() }?.let { "；$it" }.orEmpty()
+                                Toast.makeText(context, "识别完成：${result.importableCount} 条可导入$extra", Toast.LENGTH_SHORT).show()
+                                previewSheetVisible = true
+                            } catch (error: Exception) {
+                                Toast.makeText(context, error.message ?: "识别失败", Toast.LENGTH_SHORT).show()
+                            } finally {
+                                parsing = false
+                            }
                         }
-                        Toast.makeText(context, "识别完成：${result.importableCount} 条可导入", Toast.LENGTH_SHORT).show()
-                        previewSheetVisible = true
                     }
                 ) {
                     Icon(Icons.Rounded.Search, contentDescription = null, modifier = Modifier.size(16.dp))
                     Spacer(Modifier.width(4.dp))
-                    Text("识别")
+                    Text(if (parsing) "识别中" else "识别")
                 }
                 IconButton(
                     modifier = Modifier.size(40.dp),
@@ -831,12 +843,12 @@ private fun planningTutorialPages(): List<PlanningTutorialPage> {
         ),
         PlanningTutorialPage(
             title = "6. 关于 AI 识别",
-            subtitle = "后续做成可选增强",
+            subtitle = "可选增强",
             lines = listOf(
-                "本地规则识别会继续保留，保证没有网络和 API Key 时也能用。",
-                "DeepSeek、Qwen 等 OpenAI 兼容接口可以做成多个服务商配置。",
-                "AI 识别适合处理你写得很花哨、格式不固定的内容。",
-                "AI 只能生成候选，不会直接写入待办或日程；仍然必须经过预览确认。"
+                "设置里启用 AI 调用配置后，“识别”会优先调用 AI 源。",
+                "DeepSeek、Qwen、OpenAI 兼容接口可以配置多个，按顺序失败兜底。",
+                "AI 识别适合处理写得很随性、格式不固定的内容。",
+                "AI 失败或没有完整配置时会回到本地规则；AI 只生成候选，不会直接写入待办或日程。"
             )
         ),
         PlanningTutorialPage(
@@ -1064,6 +1076,9 @@ private fun PlanningPreviewSheet(
             Column(modifier = Modifier.weight(1f)) {
                 Text("识别预览", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
                 Text("${validCandidates.size} / ${result.candidates.size} 条可导入，已选 $selectedCount 条", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                if (result.message.isNotBlank()) {
+                    Text(result.message, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
+                }
             }
             Button(onClick = onImport, enabled = selectedCount > 0 && !invalidSelected) { Text("导入") }
         }

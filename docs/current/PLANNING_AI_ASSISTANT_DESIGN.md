@@ -1,6 +1,6 @@
 # PaykiTodo 规划台 AI 识别设计
 
-状态：设计落档，尚未接入真实网络调用。
+状态：`1.7.25` 已接入手机端真实网络调用。设置页保存多个 OpenAI-compatible Provider，规划台“识别”会在启用 AI 且配置完整时优先调用 AI，失败时回退本地规则。
 
 ## 目标
 
@@ -28,8 +28,8 @@
 
 ```text
 用户写自然规划
-  -> 本地规则解析
-  -> 如果用户选择 AI 识别，则把原文发送给选中的 AI Provider
+  -> 如果启用 AI 且存在完整 Provider，则按设置页顺序调用 AI
+  -> AI 不可用 / 返回异常 / 配置不完整时回到本地规则解析
   -> AI 返回 JSON 候选
   -> App 校验字段、时间、提醒、类型
   -> 进入统一识别预览页
@@ -58,19 +58,28 @@ AI 应只输出 JSON，不输出解释文本。建议结构：
   "items": [
     {
       "type": "event",
+      "lineNumber": 1,
+      "sourceLine": "10:00-12:00 事件1",
       "title": "事件1",
-      "start": "2026-05-15T10:00:00",
-      "end": "2026-05-15T12:00:00",
-      "location": "",
-      "reminders": ["PT5M"],
-      "source": "10:00-12:00 事件1"
+      "notes": "",
+      "groupName": "",
+      "startAt": "2026-05-15T10:00:00",
+      "endAt": "2026-05-15T12:00:00",
+      "reminderOffsetsMinutes": [5],
+      "createLinkedTodo": true,
+      "message": "AI 识别结果，建议确认"
     },
     {
       "type": "todo",
+      "lineNumber": 2,
+      "sourceLine": "任务M ddl 15:00",
       "title": "任务M",
-      "deadline": "2026-05-15T15:00:00",
-      "reminders": ["PT5M"],
-      "source": "任务M ddl 15:00"
+      "notes": "",
+      "groupName": "",
+      "dueAt": "2026-05-15T15:00:00",
+      "reminderOffsetsMinutes": [5],
+      "createLinkedTodo": false,
+      "message": "AI 识别结果，建议确认"
     }
   ]
 }
@@ -78,19 +87,19 @@ AI 应只输出 JSON，不输出解释文本。建议结构：
 
 ## 风险控制
 
-- 网络失败：按启用 Provider 顺序尝试下一个；全部失败后提示失败，不影响本地规则识别。
+- 网络失败：按启用 Provider 顺序尝试下一个；全部失败后自动回到本地规则识别，并在预览页显示回退提示。
 - 可重试失败：401 / 403 / 429 / 500 / 502 / 503 / 504、连接超时、DNS 解析失败。
 - 不可重试失败：400 请求格式错误、用户主动取消。
-- JSON 解析失败：提示“AI 返回格式无法识别”，不导入。
+- JSON 解析失败：回到本地规则识别，不导入 AI 结果。
 - 时间缺失：进入预览页标红，要求用户补齐。
 - 晚于 DDL / 开始时间的提醒：沿用现有非法提醒校验。
 - 多 Provider：列表顺序就是调用优先级，用户可以在设置页通过上移 / 下移调整。
 
-## 后续实现拆分
+## 已实现拆分
 
-1. 设置页已经具备多 Provider 管理入口，但规划台识别入口尚未调用 AI。
-2. 后续需要把 `PlanningAiCaller.callWithFallback` 接入规划台识别流程。
-3. 规划台识别弹窗增加“本地识别 / AI 识别”入口。
-4. AI 返回 JSON 转为现有 `PlanningImportCandidate`。
-5. 进入现有预览、编辑、导入闭环。
-6. 可选：支持从本地 JSON 模板导入 Provider 配置。
+1. 设置页具备多 Provider 管理入口。
+2. `PlanningAiCaller.callWithFallback` 已接入规划台识别流程。
+3. 规划台识别按钮现在是异步执行，网络请求期间显示 `识别中`。
+4. `PlanningAiRecognizer` 负责内置 prompt、解析 AI JSON、转换为现有 `PlanningParsedCandidate`。
+5. AI 和本地规则共用现有预览、编辑、导入闭环。
+6. 可选后续：支持从本地 JSON 模板导入 Provider 配置；为桌面 Web 规划台也接入同一 AI 识别入口。

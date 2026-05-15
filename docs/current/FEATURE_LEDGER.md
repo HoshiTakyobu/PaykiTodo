@@ -67,7 +67,7 @@ This file tracks the product at a practical level for new coding sessions.
 - successful planning import appends `#imported` to imported source lines and immediately saves the active planning note to reduce duplicate imports
 - default Planning Desk import reminder is 5 minutes before, full-screen, ring + vibration
 - planning notes are included in JSON backup / restore snapshots
-- AI recognition for Planning Desk is documented as a later optional Provider-based enhancement for DeepSeek / Qwen / OpenAI-compatible APIs; Settings already exposes ordered multi-provider Base URL/API Key/model configuration, local rules remain the default, and AI output must enter preview before import
+- AI recognition for Planning Desk is now an optional Provider-based enhancement for DeepSeek / Qwen / OpenAI-compatible APIs; Settings exposes ordered multi-provider Base URL/API Key/model configuration, recognition calls enabled sources in order, local rules remain the fallback, and AI output enters preview before import
 - AI Provider API Keys are stored locally in settings, deliberately excluded from backup JSON export, and preserved when importing backups without keys
 - Planning Desk database migration is repaired in `1.7.5`: database version `10` includes `MIGRATION_9_10` to rebuild `planning_notes` tables created by the mismatched `1.7.0`-`1.7.4` migration
 

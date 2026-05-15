@@ -1,0 +1,105 @@
+package com.example.todoalarm.data
+
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
+import org.junit.Test
+import java.time.LocalDateTime
+
+class PlanningAiRecognizerTest {
+    private val now = LocalDateTime.of(2026, 5, 15, 9, 0)
+
+    @Test
+    fun parsesAiJsonObjectIntoPreviewCandidates() {
+        val result = PlanningAiRecognizer.parseAiContent(
+            content = """
+                {
+                  "items": [
+                    {
+                      "type": "todo",
+                      "lineNumber": 1,
+                      "sourceLine": "晚上交论文，记得提前提醒我",
+                      "title": "交论文",
+                      "notes": "用户随手写的 DDL",
+                      "groupName": "课程",
+                      "dueAt": "2026-05-15T22:00:00",
+                      "reminderOffsetsMinutes": [30, 5],
+                      "message": "根据自然文本推断，建议确认"
+                    },
+                    {
+                      "type": "event",
+                      "lineNumber": 2,
+                      "sourceLine": "明天下午开组会两点到四点",
+                      "title": "组会",
+                      "startAt": "2026-05-16T14:00:00",
+                      "endAt": "2026-05-16T16:00:00",
+                      "createLinkedTodo": true
+                    }
+                  ]
+                }
+            """.trimIndent(),
+            originalMarkdown = "晚上交论文，记得提前提醒我\n明天下午开组会两点到四点",
+            providerName = "TestAI",
+            now = now
+        )
+
+        assertEquals("AI 识别：TestAI；请在预览中确认", result.message)
+        assertEquals(2, result.candidates.size)
+
+        val todo = result.candidates[0]
+        assertEquals(PlanningParsedType.TODO, todo.type)
+        assertEquals("交论文", todo.title)
+        assertEquals("课程", todo.groupName)
+        assertEquals(LocalDateTime.of(2026, 5, 15, 22, 0), todo.dueAt)
+        assertEquals(listOf(30, 5), todo.reminderOffsetsMinutes)
+        assertTrue(todo.message.contains("AI 识别结果"))
+
+        val event = result.candidates[1]
+        assertEquals(PlanningParsedType.EVENT, event.type)
+        assertEquals("组会", event.title)
+        assertEquals(LocalDateTime.of(2026, 5, 16, 14, 0), event.startAt)
+        assertEquals(LocalDateTime.of(2026, 5, 16, 16, 0), event.endAt)
+        assertTrue(event.createLinkedTodo)
+        assertEquals(listOf(5), event.reminderOffsetsMinutes)
+    }
+
+    @Test
+    fun parsesFencedAiJsonArray() {
+        val result = PlanningAiRecognizer.parseAiContent(
+            content = """
+                ```json
+                [
+                  {
+                    "type": "todo",
+                    "title": "整理材料",
+                    "dueAt": "2026-05-18",
+                    "sourceLine": "下周一前整理材料"
+                  }
+                ]
+                ```
+            """.trimIndent(),
+            originalMarkdown = "下周一前整理材料",
+            providerName = "TestAI",
+            now = now
+        )
+
+        val todo = result.candidates.single()
+        assertEquals(PlanningParsedType.TODO, todo.type)
+        assertEquals("整理材料", todo.title)
+        assertEquals(LocalDateTime.of(2026, 5, 18, 23, 59), todo.dueAt)
+        assertEquals(listOf(5), todo.reminderOffsetsMinutes)
+    }
+
+    @Test
+    fun marksImportedSourceLineAsSkipped() {
+        val result = PlanningAiRecognizer.parseAiContent(
+            content = """{"items":[{"type":"todo","lineNumber":1,"title":"旧任务"}]}""",
+            originalMarkdown = "- [ ] 旧任务 #imported",
+            providerName = "TestAI",
+            now = now
+        )
+
+        val candidate = result.candidates.single()
+        assertEquals(PlanningParsedType.SKIPPED, candidate.type)
+        assertTrue(candidate.imported)
+    }
+}

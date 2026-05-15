@@ -4,8 +4,8 @@
 
 ### In Progress
 
-- Verify version `1.7.24` on device after onboarding reset, Planning Desk natural DDL parsing, multi-provider AI config, and Todo editor option folding
-- Keep `README.md`, `CHANGELOG.md`, Wiki, in-app help sheets, desktop-web help, and current-state docs aligned with version `1.7.24`
+- Verify version `1.7.25` on device after Planning Desk AI recognition, onboarding reset, Planning Desk natural DDL parsing, multi-provider AI config, and Todo editor option folding
+- Keep `README.md`, `CHANGELOG.md`, Wiki, in-app help sheets, desktop-web help, and current-state docs aligned with version `1.7.25`
 - Continue planning-desk usability polish without expanding into drag/drop, Gantt, AI auto-planning, or complex project trees
 - Improve repo-native handoff so new sessions do not depend on long chat history
 
@@ -45,7 +45,7 @@
 - Custom snooze should accept long delays beyond 180 minutes and update todo DDL when the snooze target is later than the current DDL
 - Launch screen icon should use the transparent logo asset without a white square background
 - Input help question-mark buttons should open the correct syntax help beside reminder, batch, and snooze fields
-- In-app Wiki should describe the current 1.7.24 settings, reminder, calendar, planning-desk, and input syntax accurately
+- In-app Wiki should describe the current 1.7.25 settings, reminder, calendar, planning-desk, and input syntax accurately
 - In-app Wiki should keep a left navigation / right article layout on phone-sized screens
 - Daily board should show a separate completion message when today's schedule existed but all events have ended
 - Drawer header icon should stay visually circular and not expose a white rounded-rectangle launcher background
@@ -53,12 +53,12 @@
 - Temporary system-channel volume boost should be tested carefully because it changes global stream volume and then restores it
 - Work mode should be tested for suppressed outward sound, forced stronger vibration even on items with vibration disabled, and full-screen / accessibility fallback
 - Daily board should show a clear tomorrow section; if tomorrow has no events, it should say `明天暂无日程`
-- Desktop web timed and all-day event cards should open the editor directly by clicking the card; verify this in the actual desktop browser after installing `1.7.24`
+- Desktop web timed and all-day event cards should open the editor directly by clicking the card; verify this in the actual desktop browser after installing `1.7.25`
 - If the live desktop page still lacks the left-side current-version marker or loads unversioned `/app.js`, install the latest APK before re-debugging click edit
-- Desktop web todo cards still use preview first; event cards now open the editor directly. Verify event edit/save in the actual desktop browser after installing `1.7.24`
-- Desktop web todo/event reminder input now accepts mixed reminder specs; verify valid examples and invalid late reminders on the actual desktop browser after installing `1.7.24`
-- Calendar now shows lunar labels in timeline headers, month view, and agenda/list view; verify spacing and readability on device after installing `1.7.24`
-- Desktop web existing event cards should open the editor directly after installing `1.7.24` and refreshing the browser; local Node DOM simulation with the live phone snapshot passed, but actual browser UI still needs device/browser verification after install
+- Desktop web todo cards still use preview first; event cards now open the editor directly. Verify event edit/save in the actual desktop browser after installing `1.7.25`
+- Desktop web todo/event reminder input now accepts mixed reminder specs; verify valid examples and invalid late reminders on the actual desktop browser after installing `1.7.25`
+- Calendar now shows lunar labels in timeline headers, month view, and agenda/list view; verify spacing and readability on device after installing `1.7.25`
+- Desktop web existing event cards should open the editor directly after installing `1.7.25` and refreshing the browser; local Node DOM simulation with the live phone snapshot passed, but actual browser UI still needs device/browser verification after install
 - Desktop web recurrence selects should include `每年同农历月日`, and phone-side todo/event recurrence previews should generate yearly same-lunar-date occurrences
 - Settings -> 电脑同步 should show no access address while desktop sync is disabled
 - Todo DDL now has a wheel-style lunar picker; event editing has compact lunar start/end picking for both all-day and timed events, plus yearly same-lunar-date recurrence support
@@ -70,8 +70,8 @@
 - Todo editor should be tested on device: new todos default to title/DDL/group only, while existing todos with notes/custom reminders/recurrence/non-default ring or vibration auto-expand 更多选项
 - Planning Desk parser should be device-tested for `# 今日计划` 下的 `晚上交论文` / `上午开会`, `5点前交作业`, `明天下午3点前提交`, and bare `交论文 截止明天 23:59`
 - Planning Desk collapsible shortcut controls should be tested on device: default collapsed state, expanded icon toolbar, tap feedback, and enough writing area with the keyboard open
-- Planning Desk AI recognition remains config-only; later implementation should read the phone-side saved config and still require preview confirmation before import
-- Desktop web Planning Desk should be tested from a real browser connected to the phone after installing `1.7.24`, including auto-save, `Ctrl+S`, `Ctrl+Enter`, select-all / clear-all, no-empty-import guard, the desktop Planning Desk help modal, document delete, editable preview, mixed reminder input, parser edge cases, and import marker write-back
+- Planning Desk AI recognition should be device-tested with at least one enabled AI source: free-form text should produce preview candidates, provider failure should fall back to the next source or local rules, and import should still require preview confirmation
+- Desktop web Planning Desk should be tested from a real browser connected to the phone after installing `1.7.25`, including auto-save, `Ctrl+S`, `Ctrl+Enter`, select-all / clear-all, no-empty-import guard, the desktop Planning Desk help modal, document delete, editable preview, mixed reminder input, parser edge cases, and import marker write-back
 - Planning parser should be expanded with dedicated unit tests when the project gains a stable local JVM test harness
 
 ## Mid-Term Follow-Ups

@@ -109,7 +109,7 @@ fun DashboardScreen(
     onRenamePlanningNote: suspend (Long, String) -> String?,
     onDeletePlanningNote: suspend (Long) -> String?,
     onArchivePlanningNote: suspend (Long) -> String?,
-    onParsePlanningMarkdown: (String) -> PlanningParseResult,
+    onParsePlanningMarkdown: suspend (String) -> PlanningParseResult,
     onImportPlanningCandidates: suspend (List<PlanningImportCandidate>, Set<String>, String, Long?) -> PlanningImportResult,
     onThemeModeChange: (ThemeMode) -> Unit,
     onWeekStartModeChange: (WeekStartMode) -> Unit,

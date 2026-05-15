@@ -380,7 +380,7 @@ internal fun DashboardBody(
     onRenamePlanningNote: suspend (Long, String) -> String?,
     onDeletePlanningNote: suspend (Long) -> String?,
     onArchivePlanningNote: suspend (Long) -> String?,
-    onParsePlanningMarkdown: (String) -> PlanningParseResult,
+    onParsePlanningMarkdown: suspend (String) -> PlanningParseResult,
     onImportPlanningCandidates: suspend (List<PlanningImportCandidate>, Set<String>, String, Long?) -> PlanningImportResult,
     onDismissOnboarding: () -> Unit = {},
     onNavigatePlanning: () -> Unit = {}

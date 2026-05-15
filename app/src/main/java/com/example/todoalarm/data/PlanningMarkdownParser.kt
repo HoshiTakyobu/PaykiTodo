@@ -15,7 +15,8 @@ enum class PlanningParsedType {
 }
 
 data class PlanningParseResult(
-    val candidates: List<PlanningParsedCandidate>
+    val candidates: List<PlanningParsedCandidate>,
+    val message: String = ""
 ) {
     val importableCount: Int
         get() = candidates.count { it.importable }

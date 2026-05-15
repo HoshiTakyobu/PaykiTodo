@@ -202,7 +202,7 @@ fun SettingsPanel(
                     summary = if (settings.planningAiEnabled && settings.planningAiProviders.isNotEmpty()) {
                         "${settings.planningAiProviders.count { it.enabled }} 个已启用 · 共 ${settings.planningAiProviders.size} 个源"
                     } else {
-                        "为规划台后续 AI 识别准备多个 Base URL、API Key 和模型名"
+                        "为规划台 AI 识别配置多个 Base URL、API Key 和模型名"
                     },
                     onClick = { selectedSection = SettingsSection.AI_CONFIG }
                 )
@@ -678,7 +678,7 @@ private fun PlanningAiConfigPanel(
             border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.18f))
         ) {
             Text(
-                text = "当前只保存调用配置，规划台仍默认使用本地规则识别。后续接入 AI 时，会读取这里的 Base URL / API Key / 模型名，但 AI 只生成候选，必须预览确认后才能导入。",
+                text = "启用后，规划台“识别”会优先调用这里的 AI 源，把随手写的内容转成预览候选；AI 失败或未配置完整时会自动回到本地规则。AI 只生成候选，必须预览确认后才能导入。",
                 modifier = Modifier.padding(14.dp),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurface
@@ -688,7 +688,7 @@ private fun PlanningAiConfigPanel(
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
             Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
                 Text("启用 AI 识别配置", fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
-                Text("后续接入 AI 时，会按下方顺序从上到下轮询可用源。", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text("识别时会按下方顺序从上到下轮询可用源。", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             Switch(checked = enabled, onCheckedChange = { enabled = it; savedHint = false })
         }
@@ -731,7 +731,7 @@ private fun PlanningAiConfigPanel(
             )
         } else {
             Text(
-                text = "真实 API Key 只保存在本机设置中；备份 JSON 不会导出 API Key。后续接入 AI 时会使用这些配置。",
+                text = "真实 API Key 只保存在本机设置中；备份 JSON 不会导出 API Key。AI 输出会进入现有预览页，不会直接写入待办或日程。",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )

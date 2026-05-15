@@ -11,11 +11,13 @@ Long-running Codex sessions can become unreliable. This file exists so a new ses
 - Latest completed verification before final handoff:
   - `./gradlew.bat compileDebugKotlin`
   - `./gradlew.bat testDebugUnitTest --tests com.example.todoalarm.data.PlanningMarkdownParserTest`
+  - `./gradlew.bat assembleDebug`
 - This round implements four requested behavior changes:
   - Daily-board onboarding is readable in dark mode and can be reset from Settings.
   - Planning Desk local parser recognizes more Chinese natural DDL expressions.
   - Settings AI config supports multiple ordered providers for future fallback calls.
   - Todo editor folds advanced fields behind 更多选项 by default.
+- A follow-up `1.7.24` hotfix strengthens the dark-theme text shadow for floating daily-board block titles over the wallpaper background, without changing version metadata.
 - Do not push to GitHub unless the user explicitly asks.
 
 ## Latest Changes In 1.7.24
@@ -32,7 +34,8 @@ Long-running Codex sessions can become unreliable. This file exists so a new ses
 6. AI provider JSON storage keeps backward compatibility with old single-provider fields, preserves API keys on backup import, and excludes keys from backup export.
 7. `PlanningAiCaller.callWithFallback` is available for later integration and retries eligible providers in order on auth/rate-limit/server/network failures.
 8. `TodoEditorDialog` now shows title, DDL, and group first; notes/reminders/recurrence/ring/vibration are inside animated 更多选项, with auto-expand for existing advanced todos.
-9. Existing `1.7.23` baseline changes are included in this working tree: onboarding card introduction, tomorrow no-schedule planning jump, desktop-sync copy buttons, reminder placeholder copy, and the Planning Desk tutorial page for other import methods.
+9. Floating daily-board block titles such as `今日待办` / `今日日程` now use a stronger dark-theme text shadow so they remain readable over the dark wallpaper; greeting and schedule cards remain protected by high-opacity surfaces.
+10. Existing `1.7.23` baseline changes are included in this working tree: onboarding card introduction, tomorrow no-schedule planning jump, desktop-sync copy buttons, reminder placeholder copy, and the Planning Desk tutorial page for other import methods.
 
 ## Files Most Relevant To The Latest Round
 
@@ -63,14 +66,15 @@ Long-running Codex sessions can become unreliable. This file exists so a new ses
 2. Verify the app launches without crash.
 3. Verify Settings -> 关于 -> 使用说明 -> 重新显示新手引导 causes the onboarding card to show again on 每日看板.
 4. Verify onboarding card text remains readable in dark mode.
-5. Verify Settings -> AI 调用配置 can add/edit/delete/long-press delete providers, toggle enabled, move providers up/down, save, leave, and reopen with the same values.
-6. Verify backup JSON still excludes real AI API keys.
-7. Verify Todo editor new-todo mode shows only title / DDL / group until 更多选项 is expanded.
-8. Verify editing a todo with notes/custom reminder offsets/recurrence/non-default ring or vibration auto-expands 更多选项.
-9. Verify Planning Desk preview parses `# 今日计划` + `- [ ] 晚上交论文` to today's 22:00 and `- [ ] 上午开会` to today's 12:00.
-10. Verify `- [ ] 5点前交作业`, `- [ ] 明天下午3点前提交`, and `- [ ] 16:30之前发邮件` produce expected DDLs.
-11. Verify `交论文 截止明天 23:59，每天复盘` becomes a todo with a natural inference message and recurrence hint.
-12. Verify existing Planning Desk parser cases still work: `任务M ddl 15:00`, explicit `#ddl` priority, compact date headings, natural schedules, and `#imported` write-back.
+5. Verify `今日待办` / `今日日程` titles stay readable over the dark wallpaper and do not look overly heavy in light mode.
+6. Verify Settings -> AI 调用配置 can add/edit/delete/long-press delete providers, toggle enabled, move providers up/down, save, leave, and reopen with the same values.
+7. Verify backup JSON still excludes real AI API keys.
+8. Verify Todo editor new-todo mode shows only title / DDL / group until 更多选项 is expanded.
+9. Verify editing a todo with notes/custom reminder offsets/recurrence/non-default ring or vibration auto-expands 更多选项.
+10. Verify Planning Desk preview parses `# 今日计划` + `- [ ] 晚上交论文` to today's 22:00 and `- [ ] 上午开会` to today's 12:00.
+11. Verify `- [ ] 5点前交作业`, `- [ ] 明天下午3点前提交`, and `- [ ] 16:30之前发邮件` produce expected DDLs.
+12. Verify `交论文 截止明天 23:59，每天复盘` becomes a todo with a natural inference message and recurrence hint.
+13. Verify existing Planning Desk parser cases still work: `任务M ddl 15:00`, explicit `#ddl` priority, compact date headings, natural schedules, and `#imported` write-back.
 
 ## Deferred Larger Work
 

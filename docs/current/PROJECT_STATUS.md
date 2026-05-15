@@ -65,6 +65,7 @@ Most important current baseline facts:
 - reminder / batch / custom snooze input surfaces have nearby question-mark syntax help buttons
 - Settings includes multi-provider `AI 调用配置` for Planning Desk future AI recognition. API Keys are stored locally, intentionally excluded from backup JSON export, and preserved when importing backups that do not contain keys. Providers can be added, edited, deleted, enabled/disabled, and moved up/down; future AI calls should use this order for fallback.
 - Daily-board onboarding uses a readable `surfaceVariant` card, can be dismissed, and can be reset from Settings -> About -> 使用说明 -> 重新显示新手引导.
+- Daily-board block titles such as `今日待办` / `今日日程` now use stronger dark-theme text shadow over the wallpaper background, while light-theme shadow remains subtle.
 - Todo editor now folds advanced fields by default: new todos show title, DDL, and group first; notes, reminder input, recurrence, ring, and vibration live under 更多选项 and auto-expand for existing todos with non-default advanced state.
 - in-app Wiki and in-app help sheets have been updated to describe current reminder syntax, todo batch syntax, calendar batch `Remind=`, custom snooze behavior, Planning Desk preview-edit syntax, and the current desktop-sync address expansion / preview-edit flow
 - daily board no longer exposes add / batch-add controls; it is a read-only board surface
@@ -119,6 +120,7 @@ Most important current baseline facts:
 
 Recent code inspection and build verification cover:
 
+- `DashboardChrome.kt`: daily-board wallpaper readability audit; greeting card and schedule card remain protected by high-opacity surfaces, while floating board block titles use a stronger dark-theme shadow.
 - `ReminderInputParser.kt`: shared parser for minutes, same-day times, current-year date-times, and full date-times
 - `TodoRecurrence.kt`: `TodoDraft` carries normalized reminder offsets while keeping backward compatibility with `reminderAt`
 - `ReminderOffsetCodec.kt`: todo reminder trigger calculation reads configured offsets

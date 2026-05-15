@@ -20,17 +20,18 @@ The current round is PaykiTodo `1.7.24` / `versionCode 181`, focused on four use
 7. `PlanningAiCaller.callWithFallback` is available for later AI recognition integration. It retries enabled providers in order on 401/403/429/5xx and network timeout/DNS failures, but not on 400 or cancellation.
 8. `TodoEditorDialog` defaults new todos to title, DDL, and group; notes, reminder input, recurrence, ring, and vibration live under 更多选项 with `AnimatedVisibility`.
 9. Existing todos auto-expand 更多选项 when they contain notes, custom reminder offsets, recurrence, or non-default ring/vibration state.
-10. Version metadata is now `1.7.24` / `versionCode 181`.
+10. Daily-board floating block titles now use stronger dark-theme text shadow over the wallpaper background, while light-theme shadow remains subtle.
+11. Version metadata is now `1.7.24` / `versionCode 181`.
 
 ## Verification Completed This Round
 
 1. `./gradlew.bat compileDebugKotlin` succeeded.
 2. `./gradlew.bat testDebugUnitTest --tests com.example.todoalarm.data.PlanningMarkdownParserTest` succeeded.
+3. `./gradlew.bat assembleDebug` succeeded after the daily-board title readability hotfix.
 
 Final release verification still requires:
 
-1. `./gradlew.bat assembleDebug`
-2. Device-side smoke testing of onboarding reset, AI provider list persistence, Todo editor folding, and Planning Desk natural DDL preview behavior.
+1. Device-side smoke testing of onboarding reset, daily-board dark/light readability, AI provider list persistence, Todo editor folding, and Planning Desk natural DDL preview behavior.
 
 ## Immediate Practical Next Steps
 

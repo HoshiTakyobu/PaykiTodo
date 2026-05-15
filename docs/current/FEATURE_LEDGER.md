@@ -36,6 +36,7 @@ This file tracks the product at a practical level for new coding sessions.
 - daily board shows a distinct completion message when today's schedule existed but all events have already ended
 - daily board always shows the tomorrow schedule section, including `明天暂无日程` when tomorrow has no events
 - daily board onboarding card is readable in dark mode, can be dismissed, and can be reset from Settings -> About -> 使用说明
+- daily board floating block titles have stronger dark-theme text shadow so they stay readable over the dark wallpaper background
 - board surface intentionally does not expose add / batch-add buttons
 
 ### Planning Desk

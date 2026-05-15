@@ -6,42 +6,45 @@ Long-running Codex sessions can become unreliable. This file exists so a new ses
 
 ## Current Handoff Summary
 
-- The project is currently at code version `1.7.20` / `versionCode 177`.
-- Latest debug APK path after build: `app/build/outputs/apk/debug/PaykiTodo-1.7.20-debug.apk`.
+- The project is currently at code version `1.7.21` / `versionCode 178`.
+- Latest debug APK path after build: `app/build/outputs/apk/debug/PaykiTodo-1.7.21-debug.apk`.
 - Latest build commands used Android Studio bundled JBR and succeeded:
   - `./gradlew.bat assembleDebug`
-- This round fixes Planning Desk shortcut-bar click reliability and feedback:
-  - Shortcut buttons no longer combine an empty Material `AssistChip.onClick` with an outer `combinedClickable`.
-  - Shortcut buttons now use a single clickable Surface path.
-  - Every shortcut tap shows `已执行：按钮名`; long-press still shows the help text.
+- This round improves Planning Desk first-use usability:
+  - Shortcut buttons are compact icon-style actions similar to a phone notes app toolbar.
+  - The phone toolbar exposes a direct tutorial/help icon.
+  - The help sheet is now a multi-page beginner tutorial instead of one long help page.
+  - The parser accepts bare `ddl` text such as `任务M ddl 15:00` as a lightweight todo.
+  - Future AI recognition for DeepSeek / Qwen / OpenAI-compatible providers is documented as optional, preview-first, and key-safe.
 - The previous crash root cause was likely the Room migration schema mismatch for `planning_notes`; `1.7.6` keeps that repair and improves the Planning Desk UI.
 - Phone-side Planning Desk Markdown rendering remains opt-in manual preview, not the startup default.
 - The phone Planning Desk keeps the raw Markdown / natural-text editor plus Phase 2 import/edit workflow.
 - Desktop web Planning Desk remains available with textarea editing, auto-save, editable parse preview, selected import, document deletion, unified reminder input handoff, and `#imported` write-back.
 - Do not push `1.7.x` or the last `1.6.x` line to GitHub unless the user explicitly asks again.
 
-## Latest Changes In 1.7.20
+## Latest Changes In 1.7.21
 
-1. Upgraded app version metadata to `1.7.20` / `versionCode 177`.
-2. Planning Desk shortcut-bar buttons now have a single click-handling path.
-3. Planning Desk shortcut-bar actions show visible execution feedback.
-4. Long-press shortcut help behavior is preserved.
+1. Upgraded app version metadata to `1.7.21` / `versionCode 178`.
+2. Planning Desk shortcut bar now uses compact icon-style buttons.
+3. Planning Desk help is accessible directly from the top toolbar and is presented as a multi-page tutorial.
+4. Bare `ddl` planning text such as `任务M ddl 15:00` is parsed as a todo.
+5. AI recognition design and Provider config template were added without committing secrets.
 
 ## Files Most Relevant To The Latest Round
 
 - `app/build.gradle.kts`
-- `app/src/main/java/com/example/todoalarm/ui/CalendarBatchImport.kt`
-- `app/src/main/java/com/example/todoalarm/ui/InputSyntaxHelp.kt`
+- `app/src/main/java/com/example/todoalarm/data/PlanningMarkdownParser.kt`
 - `app/src/main/java/com/example/todoalarm/ui/PlanningDeskPanel.kt`
-- `app/src/main/java/com/example/todoalarm/ui/theme/Theme.kt`
-- `app/src/main/assets/desktop-web/app.css`
+- `app/src/test/java/com/example/todoalarm/data/PlanningMarkdownParserTest.kt`
 - `CHANGELOG.md`
+- `docs/current/PLANNING_AI_ASSISTANT_DESIGN.md`
+- `docs/templates/planning_ai_providers.example.json`
 - `docs/current/PROJECT_STATUS.md`
 - `docs/current/SESSION_HANDOFF.md`
 
 ## Current Verification Focus
 
-1. Install `PaykiTodo-1.7.20-debug.apk`.
+1. Install `PaykiTodo-1.7.21-debug.apk`.
 2. Verify the app launches without crash.
 3. Verify existing todos/events are still present.
 4. Verify todo batch rows such as `5.28,整理材料,5`, `5月28日,整理材料,5`, `明天,整理材料,5`, and `周五,整理材料,5`.
@@ -54,11 +57,12 @@ Long-running Codex sessions can become unreliable. This file exists so a new ses
 11. Verify drawer -> `规划台` still opens an empty new document with grey placeholder examples.
 12. Verify `任务` repeated taps do not duplicate `- [ ]` on one line, and `子任务` inserts a new indented child line.
 13. Verify importing selected todos/events still writes data, appends `#imported` to source Markdown lines, and stays persisted after leaving/reopening Planning Desk.
-14. Verify Planning Desk shortcut chips only insert once per tap.
-15. Verify Planning Desk auto-save by typing, waiting at least 2 seconds, switching documents or leaving the page, then reopening.
-16. Verify desktop web Planning Desk supports `Ctrl+S`, `Ctrl+Enter`, auto-save, and refuses import when no candidate is selected.
-17. Verify `会议 9:00-10:00 讨论 #ddl 5.28` is recognized as a todo with DDL, not an event.
-18. Verify basic navigation to 每日看板 / 我的任务 / 日历 / 设置 still works.
+14. Verify Planning Desk icon shortcuts only insert once per tap and still show `已执行：按钮名`.
+15. Verify `任务M ddl 15:00` is recognized as a todo with today's 15:00 DDL.
+16. Verify Planning Desk auto-save by typing, waiting at least 2 seconds, switching documents or leaving the page, then reopening.
+17. Verify desktop web Planning Desk supports `Ctrl+S`, `Ctrl+Enter`, auto-save, and refuses import when no candidate is selected.
+18. Verify `会议 9:00-10:00 讨论 #ddl 5.28` is recognized as a todo with DDL, not an event.
+19. Verify basic navigation to 每日看板 / 我的任务 / 日历 / 设置 still works.
 
 ## If 1.7.5 Still Crashes
 

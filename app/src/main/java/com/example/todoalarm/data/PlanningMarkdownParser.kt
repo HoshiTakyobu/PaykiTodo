@@ -125,7 +125,8 @@ object PlanningMarkdownParser {
         checkboxPresent: Boolean,
         now: LocalDateTime
     ): PlanningParsedCandidate? {
-        val explicitDdl = tagValue(content, "ddl")
+        val bareDdl = bareDdlValue(content)
+        val explicitDdl = tagValue(content, "ddl") ?: bareDdl
         val explicitSchedule = tagValue(content, "schedule")
         val scheduleSource = explicitSchedule ?: content
         val naturalEvent = if (explicitSchedule != null || explicitDdl == null) {
@@ -171,7 +172,7 @@ object PlanningMarkdownParser {
             )
         }
 
-        if (!checkboxPresent && !hasSimpleTag(content, "task") && !content.contains("#ddl")) {
+        if (!checkboxPresent && !hasSimpleTag(content, "task") && explicitDdl == null) {
             return null
         }
 
@@ -348,6 +349,7 @@ object PlanningMarkdownParser {
         listOf("schedule", "ddl", "remind", "group").forEach { tag ->
             text = text.replace(Regex("(?:^|\\s)#$tag\\s*[^#]+"), " ")
         }
+        text = text.replace(BareDdlRegex, " ")
         listOf("task", "imported").forEach { tag ->
             text = text.replace(Regex("(?:^|\\s)#$tag(?=\\s|$)"), " ")
         }
@@ -356,6 +358,12 @@ object PlanningMarkdownParser {
 
     private fun tagValue(content: String, tag: String): String? {
         val match = Regex("(?:^|\\s)#$tag\\s*([^#]+)").find(content) ?: return null
+        return match.groupValues[1].trim().takeIf { it.isNotBlank() }
+    }
+
+    private fun bareDdlValue(content: String): String? {
+        if (content.contains("#ddl")) return null
+        val match = BareDdlRegex.find(content) ?: return null
         return match.groupValues[1].trim().takeIf { it.isNotBlank() }
     }
 
@@ -471,6 +479,7 @@ object PlanningMarkdownParser {
     private val TimeTokenPattern = "(?:凌晨|早上|上午|中午|下午|晚上)?\\s*\\d{1,2}[:：]\\d{2}\\s*(?:[aApP][mM])?"
     private val TimeRangeRegex = Regex("($TimeTokenPattern)\\s*(?:-|~|至|到)\\s*(次日)?($TimeTokenPattern)")
     private val LeadingDateRegex = Regex("^(今天|今日|明天|明日|后天|周[一二三四五六日天]|星期[一二三四五六日天]|礼拜[一二三四五六日天]|\\d{4}[-./]\\d{1,2}[-./]\\d{1,2}|\\d{4}年\\d{1,2}月\\d{1,2}日?|\\d{1,2}[-./]\\d{1,2}|\\d{1,2}月\\d{1,2}日?)")
+    private val BareDdlRegex = Regex("(?:^|\\s)ddl\\s+([^#]+)", RegexOption.IGNORE_CASE)
 }
 
 const val DEFAULT_PLANNING_REMINDER_MINUTES = 5

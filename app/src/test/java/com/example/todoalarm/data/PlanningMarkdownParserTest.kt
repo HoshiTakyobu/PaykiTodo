@@ -63,6 +63,20 @@ class PlanningMarkdownParserTest {
     }
 
     @Test
+    fun parsesBareDdlKeywordAsLightweightTodo() {
+        val result = PlanningMarkdownParser.parse(
+            "任务M ddl 15:00",
+            now = now
+        )
+
+        val todo = result.candidates.single()
+        assertEquals(PlanningParsedType.TODO, todo.type)
+        assertEquals("任务M", todo.title)
+        assertEquals(LocalDateTime.of(2026, 5, 14, 15, 0), todo.dueAt)
+        assertEquals(listOf(5), todo.reminderOffsetsMinutes)
+    }
+
+    @Test
     fun headingDateContextIsExplicitAndResetsOnPlainHeading() {
         val result = PlanningMarkdownParser.parse(
             """

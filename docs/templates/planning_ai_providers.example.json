@@ -1,0 +1,19 @@
+{
+  "providers": [
+    {
+      "name": "deepseek-free",
+      "base_url": "https://example.com/v1",
+      "api_key": "填写你的 API Key，不要把真实 Key 提交到 Git",
+      "model": "deepseek-v4-flash",
+      "enabled": true
+    },
+    {
+      "name": "qwen-provider",
+      "base_url": "https://example-qwen.com/v1",
+      "api_key": "填写你的 API Key，不要把真实 Key 提交到 Git",
+      "model": "qwen3.6",
+      "enabled": false
+    }
+  ],
+  "default_provider": "deepseek-free"
+}

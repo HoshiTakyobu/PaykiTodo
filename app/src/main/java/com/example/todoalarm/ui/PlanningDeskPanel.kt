@@ -1,6 +1,7 @@
 package com.example.todoalarm.ui
 
 import android.widget.Toast
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.horizontalScroll
@@ -22,10 +23,20 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Archive
 import androidx.compose.material.icons.rounded.Article
+import androidx.compose.material.icons.rounded.CalendarMonth
+import androidx.compose.material.icons.rounded.CheckBox
 import androidx.compose.material.icons.rounded.Delete
+import androidx.compose.material.icons.rounded.Event
+import androidx.compose.material.icons.rounded.Folder
+import androidx.compose.material.icons.rounded.FormatIndentDecrease
+import androidx.compose.material.icons.rounded.FormatIndentIncrease
 import androidx.compose.material.icons.rounded.Info
+import androidx.compose.material.icons.rounded.NotificationsNone
 import androidx.compose.material.icons.rounded.MoreVert
+import androidx.compose.material.icons.rounded.PlaylistAdd
 import androidx.compose.material.icons.rounded.Search
+import androidx.compose.material.icons.rounded.Today
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CardDefaults
@@ -200,6 +211,15 @@ internal fun PlanningDeskPanel(
                     }
                 ) {
                     Icon(Icons.Rounded.Article, contentDescription = "文档列表")
+                }
+                IconButton(
+                    modifier = Modifier.size(40.dp),
+                    onClick = {
+                        focusManager.clearFocus()
+                        helpSheetVisible = true
+                    }
+                ) {
+                    Icon(Icons.Rounded.Info, contentDescription = "规划台教程")
                 }
                 androidx.compose.foundation.layout.Box {
                     IconButton(
@@ -441,38 +461,27 @@ private fun PlanningShortcutBar(
     onHelp: (String, String) -> Unit
 ) {
     val chips = listOf(
-        PlanningShortcutSpec("任务", PlanningShortcutAction.TaskLine, "把当前行变成一条待办；同一行不会重复插入 - [ ]"),
-        PlanningShortcutSpec("子任务", PlanningShortcutAction.SubtaskLine, "在当前行下面新建一条缩进子任务"),
-        PlanningShortcutSpec("缩进", PlanningShortcutAction.Indent, "当前行增加一级缩进"),
-        PlanningShortcutSpec("减少缩进", PlanningShortcutAction.Outdent, "当前行减少一级缩进"),
-        PlanningShortcutSpec("DDL", PlanningShortcutAction.Insert(" #ddl "), "设置截止时间，例如 #ddl 5.28 23:59 或 #ddl 明天 16:30"),
-        PlanningShortcutSpec("日程", PlanningShortcutAction.Insert(" #schedule "), "显式声明日程时间段"),
-        PlanningShortcutSpec("提醒", PlanningShortcutAction.Insert(" #remind "), "设置提醒，例如 #remind 5,15,16:30,明天 16:30"),
-        PlanningShortcutSpec("分组", PlanningShortcutAction.Insert(" #group "), "指定分组，例如 #group 课程"),
-        PlanningShortcutSpec("今日标题", PlanningShortcutAction.InsertSection("# 今日计划"), "插入标题分区；下面没写日期的时间段按今天理解"),
-        PlanningShortcutSpec("明日标题", PlanningShortcutAction.InsertSection("# 明天"), "插入标题分区；下面没写日期的时间段按明天理解")
+        PlanningShortcutSpec("任务", Icons.Rounded.CheckBox, PlanningShortcutAction.TaskLine, "把当前行变成一条待办；同一行不会重复插入 - [ ]"),
+        PlanningShortcutSpec("子任务", Icons.Rounded.PlaylistAdd, PlanningShortcutAction.SubtaskLine, "在当前行下面新建一条缩进子任务"),
+        PlanningShortcutSpec("缩进", Icons.Rounded.FormatIndentIncrease, PlanningShortcutAction.Indent, "当前行增加一级缩进"),
+        PlanningShortcutSpec("减少缩进", Icons.Rounded.FormatIndentDecrease, PlanningShortcutAction.Outdent, "当前行减少一级缩进"),
+        PlanningShortcutSpec("DDL", Icons.Rounded.Event, PlanningShortcutAction.Insert(" #ddl "), "设置截止时间，例如 #ddl 5.28 23:59 或 #ddl 明天 16:30"),
+        PlanningShortcutSpec("日程", Icons.Rounded.CalendarMonth, PlanningShortcutAction.Insert(" #schedule "), "显式声明日程时间段"),
+        PlanningShortcutSpec("提醒", Icons.Rounded.NotificationsNone, PlanningShortcutAction.Insert(" #remind "), "设置提醒，例如 #remind 5,15,16:30,明天 16:30"),
+        PlanningShortcutSpec("分组", Icons.Rounded.Folder, PlanningShortcutAction.Insert(" #group "), "指定分组，例如 #group 课程"),
+        PlanningShortcutSpec("今日", Icons.Rounded.Today, PlanningShortcutAction.InsertSection("# 今日计划"), "插入标题分区；下面没写日期的时间段按今天理解"),
+        PlanningShortcutSpec("明日", Icons.Rounded.Event, PlanningShortcutAction.InsertSection("# 明天"), "插入标题分区；下面没写日期的时间段按明天理解")
     )
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(24.dp),
-        color = MaterialTheme.colorScheme.surface,
-        tonalElevation = 1.dp
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .horizontalScroll(rememberScrollState())
+            .padding(horizontal = 4.dp, vertical = 2.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        Row(
-            modifier = Modifier
-                .horizontalScroll(rememberScrollState())
-                .padding(horizontal = 12.dp, vertical = 8.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = "快捷",
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            chips.forEach { spec ->
-                PlanningShortcutChip(spec, onAction, onHelp)
-            }
+        chips.forEach { spec ->
+            PlanningShortcutChip(spec, onAction, onHelp)
         }
     }
 }
@@ -485,22 +494,35 @@ private fun PlanningShortcutChip(
     onHelp: (String, String) -> Unit
 ) {
     Surface(
-        shape = RoundedCornerShape(14.dp),
-        color = MaterialTheme.colorScheme.surface,
-        tonalElevation = 1.dp,
-        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.65f)),
+        shape = RoundedCornerShape(18.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.42f),
+        tonalElevation = 0.dp,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.55f)),
         modifier = Modifier.combinedClickable(
             onClick = { onAction(spec.label, spec.action) },
             onLongClick = { onHelp(spec.label, spec.help) }
         )
     ) {
-        Text(
-            text = spec.label,
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 9.dp),
-            maxLines = 1,
-            style = MaterialTheme.typography.labelLarge,
-            color = MaterialTheme.colorScheme.onSurface
-        )
+        Column(
+            modifier = Modifier
+                .width(58.dp)
+                .padding(horizontal = 6.dp, vertical = 7.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            Icon(
+                imageVector = spec.icon,
+                contentDescription = spec.label,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(23.dp)
+            )
+            Text(
+                text = spec.label,
+                maxLines = 1,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
     }
 }
 
@@ -578,21 +600,9 @@ private fun PlanningDocumentSheet(
 
 @Composable
 private fun PlanningHelpSheet(onDismiss: () -> Unit) {
-    val example = """
-        # 收集箱
-        - [ ] 想一下保研材料还缺什么
-        - [ ] 问老师课程论文格式
-
-        # 今日计划
-        - [ ] 10:00-11:30 写课程论文 #group 课程 #remind 5
-        - [ ] 晚上复习操作系统 #ddl 23:59 #remind 30,5
-
-        # 明天
-        - [ ] 09:00-10:30 背英语单词 #group 学习
-        - [ ] 完成实验报告 #ddl 21:30 #remind 15,5
-        - [ ] 整理材料 #ddl 5.28，23:59 #remind 5月28日，22:00
-        - [ ] 5/28 下午 2:30～下午 4:00 小组讨论
-    """.trimIndent()
+    val pages = remember { planningTutorialPages() }
+    var pageIndex by rememberSaveable { mutableStateOf(0) }
+    val page = pages[pageIndex]
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -612,115 +622,165 @@ private fun PlanningHelpSheet(onDismiss: () -> Unit) {
                 )
             }
             Column(modifier = Modifier.weight(1f)) {
-                Text("规划台怎么用", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-                Text("先自由写计划，再识别为待办或日程。", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text("规划台新手教程", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                Text("第 ${pageIndex + 1} / ${pages.size} 页 · ${page.subtitle}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             TextButton(onClick = onDismiss) { Text("知道了") }
         }
 
-        LazyColumn(
-            modifier = Modifier.fillMaxWidth().fillMaxHeight(0.72f),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
+        Surface(
+            modifier = Modifier.fillMaxWidth().fillMaxHeight(0.58f),
+            shape = RoundedCornerShape(24.dp),
+            color = MaterialTheme.colorScheme.surface,
+            tonalElevation = 1.dp
         ) {
-            item {
-                PlanningHelpCard(
-                    title = "1. 先像备忘录一样写",
-                    lines = listOf(
-                        "不用一开始就填完整表单，先把近期要做的事情写下来。",
-                        "一行一个任务最容易识别；大标题不是必须语法，只是帮你把文档分区。",
-                        "正文会在停止输入约 2 秒后自动保存，切换规划文档前也会先保存当前内容。",
-                        "输入法上方的快捷栏可以快速插入任务、子任务、DDL、提醒和分组。"
-                    )
-                )
-            }
-            item {
-                PlanningHelpCard(
-                    title = "2. 标题是用来分区的",
-                    lines = listOf(
-                        "# 收集箱：只表示“先收进来”，不会自动给日期或 DDL。",
-                        "# 今日计划 / # 今天：表示下面没写日期的 10:00-11:30 会按今天解析。",
-                        "# 明天：表示下面没写日期的时间段会按明天解析。",
-                        "# 本周计划：只是普通分区；没有具体日期时，重要任务仍建议写 #ddl。"
-                    )
-                )
-            }
-            item {
-                PlanningHelpCard(
-                    title = "3. 常用写法",
-                    lines = listOf(
-                        "待办：- [ ] 整理材料 #ddl 5.28 23:59",
-                        "DDL：支持 16:30、5.28、5/28、5月28日、明天、周五；只写日期默认 23:59。",
-                        "子任务：把光标放在父任务行，点“子任务”，会自动新起一行并缩进。",
-                        "日程：10:00-12:30 写论文、复习 14:00-16:00，或 5/28 下午 2:30～下午 4:00 小组讨论。",
-                        "分组：在行尾写 #group 课程。",
-                        "提醒：#remind 5,15 表示提前分钟；也支持 #remind 16:30、#remind 下午 2:30、#remind 明天 16:30、#remind 周五 16:30、#remind 5月28日，14:30。",
-                        "#today、#tomorrow、#important、#project 暂不写入正式待办属性，会保留在标题里。"
-                    )
-                )
-            }
-            item {
-                PlanningHelpCard(
-                    title = "4. 识别和导入",
-                    lines = listOf(
-                        "写完后点右侧的“识别”。",
-                        "识别预览里可以先修改标题、DDL、开始结束时间、分组、备注和提醒；时间字段继续支持自然日期写法。",
-                        "可以点“全选可导入项”或“全不选”快速控制候选；没有选中有效候选时不能导入。",
-                        "勾选需要导入的条目，再点“导入”。",
-                        "导入成功后，原文会追加 #imported 并立即保存，避免同一行重复导入。"
-                    )
-                )
-            }
-            item {
-                PlanningHelpExampleCard(example)
-            }
-            item {
-                PlanningHelpCard(
-                    title = "5. 当前限制",
-                    lines = listOf(
-                        "手机端当前是稳定原文编辑，不是富文本 Markdown 渲染。",
-                        "AI 拆解、拖拽排期、甘特图还没有接入。",
-                        "如果识别不准，优先在预览页修正，再导入正式待办和日程。"
-                    )
-                )
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(18.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                item {
+                    Text(page.title, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                }
+                items(page.lines) { line ->
+                    Text("• $line", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                page.example?.let { example ->
+                    item {
+                        Surface(
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(18.dp),
+                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.42f)
+                        ) {
+                            Text(
+                                text = example,
+                                modifier = Modifier.padding(14.dp),
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontFamily = FontFamily.Monospace,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                        }
+                    }
+                }
             }
         }
-    }
-}
 
-@Composable
-private fun PlanningHelpCard(title: String, lines: List<String>) {
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(22.dp),
-        color = MaterialTheme.colorScheme.surface,
-        tonalElevation = 1.dp
-    ) {
-        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-            lines.forEach { line ->
-                Text("• $line", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-        }
-    }
-}
-
-@Composable
-private fun PlanningHelpExampleCard(example: String) {
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(22.dp),
-        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.10f),
-        tonalElevation = 1.dp
-    ) {
-        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text("可以直接照这个格式写", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            OutlinedButton(
+                onClick = { pageIndex = (pageIndex - 1).coerceAtLeast(0) },
+                enabled = pageIndex > 0
+            ) { Text("上一页") }
             Text(
-                example,
-                style = MaterialTheme.typography.bodyMedium.copy(fontFamily = FontFamily.Monospace),
-                color = MaterialTheme.colorScheme.onSurface
+                text = pages.indices.joinToString(" ") { index -> if (index == pageIndex) "●" else "○" },
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.primary
             )
+            Button(
+                onClick = {
+                    if (pageIndex < pages.lastIndex) {
+                        pageIndex += 1
+                    } else {
+                        onDismiss()
+                    }
+                }
+            ) { Text(if (pageIndex < pages.lastIndex) "下一页" else "开始使用") }
         }
     }
+}
+
+private data class PlanningTutorialPage(
+    val title: String,
+    val subtitle: String,
+    val lines: List<String>,
+    val example: String? = null
+)
+
+private fun planningTutorialPages(): List<PlanningTutorialPage> {
+    return listOf(
+        PlanningTutorialPage(
+            title = "1. 你可以先随便写",
+            subtitle = "像备忘录一样",
+            lines = listOf(
+                "不用先想复杂语法，先把脑子里的计划写下来。",
+                "最自然的日程写法是：时间段 + 事情。",
+                "最自然的任务写法是：事情 + ddl + 时间。",
+                "如果你写得很花哨，先保留原文，再用识别预览页校正。"
+            ),
+            example = """
+                10:00-12:00 事件1
+                12:00-13:00 事件2
+                任务M ddl 15:00
+            """.trimIndent()
+        ),
+        PlanningTutorialPage(
+            title = "2. 点图标可以快速变成任务",
+            subtitle = "不用手敲 - [ ]",
+            lines = listOf(
+                "把光标放在一行文字里，点“任务”图标，这一行会变成待办。",
+                "点“子任务”会在当前行下面新建缩进任务。",
+                "长按任意快捷图标，可以看它的用途说明。"
+            ),
+            example = """
+                整理材料
+                点“任务”后：
+                - [ ] 整理材料
+            """.trimIndent()
+        ),
+        PlanningTutorialPage(
+            title = "3. DDL 和提醒怎么写",
+            subtitle = "常用就够",
+            lines = listOf(
+                "DDL 可以写 15:00、明天 16:30、5.28 23:59。",
+                "提醒可以写 #remind 5,15，意思是提前 5 分钟和 15 分钟。",
+                "你也可以先不写提醒，导入前在预览页修改。",
+                "常用自然文本里写 ddl 15:00，也会尽量按今天 15:00 理解。"
+            ),
+            example = """
+                - [ ] 任务M #ddl 15:00
+                - [ ] 交材料 #ddl 5.28 23:59 #remind 30,5
+            """.trimIndent()
+        ),
+        PlanningTutorialPage(
+            title = "4. 标题只是分区",
+            subtitle = "不是必须",
+            lines = listOf(
+                "# 今日计划 下面没写日期的时间段会按今天理解。",
+                "# 明天 下面没写日期的时间段会按明天理解。",
+                "# 收集箱 只是普通分区，不会自动加日期。"
+            ),
+            example = """
+                # 今日计划
+                10:00-12:00 写作业
+
+                # 明天
+                09:00-10:30 背单词
+            """.trimIndent()
+        ),
+        PlanningTutorialPage(
+            title = "5. 最后点识别",
+            subtitle = "预览确认再导入",
+            lines = listOf(
+                "写完后点顶部“识别”。",
+                "识别预览里可以改标题、时间、分组、提醒。",
+                "确认没问题再导入，导入后原文会追加 #imported，避免重复导入。"
+            )
+        ),
+        PlanningTutorialPage(
+            title = "6. 关于 AI 识别",
+            subtitle = "后续做成可选增强",
+            lines = listOf(
+                "本地规则识别会继续保留，保证没有网络和 API Key 时也能用。",
+                "DeepSeek、Qwen 等 OpenAI 兼容接口可以做成多个服务商配置。",
+                "AI 识别适合处理你写得很花哨、格式不固定的内容。",
+                "AI 只能生成候选，不会直接写入待办或日程；仍然必须经过预览确认。"
+            )
+        )
+    )
 }
 
 @Composable
@@ -1133,6 +1193,7 @@ private fun ConfirmPlanningDialog(
 
 private data class PlanningShortcutSpec(
     val label: String,
+    val icon: ImageVector,
     val action: PlanningShortcutAction,
     val help: String
 )

@@ -43,14 +43,14 @@ This file tracks the product at a practical level for new coding sessions.
 - default startup opens the last opened planning document; if none exists, the app creates an empty `我的规划` and shows examples only as placeholder/help content
 - planning documents support create, open, rename, archive, and delete with confirmation on the phone UI; the phone document directory and desktop web Planning Desk both expose delete actions
 - phone Planning Desk currently defaults to stable raw Markdown / natural-text editing; `1.7.8` restores a manual Markdown preview that renders headings, task checkboxes, subtask indentation, tag pills, and `#imported` state pills while keeping raw edit as the startup default
-- phone editor mode remains a plain Markdown / natural-text editor with a fixed-height 56dp operation toolbar (预览 / 识别 / 文档列表 / 更多) and a horizontal shortcut toolbar positioned above the editor to reduce IME occlusion
+- phone editor mode remains a plain Markdown / natural-text editor with a fixed-height 56dp operation toolbar (预览 / 识别 / 文档列表 / 教程 / 更多) and a compact icon-style horizontal shortcut toolbar positioned above the editor to reduce IME occlusion
 - phone Planning Desk secondary actions (新建/重命名/使用说明/归档/删除) are in an overflow DropdownMenu; manual save button removed in favor of auto-save
-- phone Planning Desk includes an in-screen help sheet explaining the workflow, heading sections such as `# 收集箱` / `# 今日计划`, and directly usable examples
+- phone Planning Desk includes a multi-page in-screen beginner tutorial explaining the workflow, natural writing, heading sections such as `# 收集箱` / `# 今日计划`, preview/import, future AI recognition, and directly usable examples
 - phone Markdown preview checkbox toggles rewrite the source Markdown line only; they do not directly complete imported official todos
 - phone Planning Desk editor auto-saves after a short debounce and saves before switching planning documents
 - Enter continuation attempts to keep `- [ ]` task lines flowing without forcing the user to manually type Markdown every time, including when Enter is pressed in the middle of a document
 - shortcut `任务` converts the current line to one checkbox task without duplicating `- [ ]`; shortcut `子任务` inserts a new indented child task line; shortcut chips avoid double-triggering one tap
-- local rule parser recognizes markdown checkboxes, completed-task skip, subtask parent notes, date headings, DDL tags, unified mixed reminder tags, group tags, schedule tags, and natural schedule ranges
+- local rule parser recognizes markdown checkboxes, completed-task skip, subtask parent notes, date headings, DDL tags, lightweight bare `ddl` text such as `任务M ddl 15:00`, unified mixed reminder tags, group tags, schedule tags, and natural schedule ranges
 - headings containing `今日` / `今天` / `明天` provide date context for following undated schedule lines, so `# 今日计划` has actual parser behavior
 - heading date context is explicit and resets on plain headings; date headings with descriptions such as `# 5/28 周末计划` and compact headings such as `# 周五计划` work, while descriptive headings such as `# 我的明天计划` are not treated as dates
 - natural schedule parsing accepts inline leading dates, time ranges later in the line, slash dates, full-width separators, Chinese AM/PM, and full-width range separators
@@ -62,6 +62,7 @@ This file tracks the product at a practical level for new coding sessions.
 - successful planning import appends `#imported` to imported source lines and immediately saves the active planning note to reduce duplicate imports
 - default Planning Desk import reminder is 5 minutes before, full-screen, ring + vibration
 - planning notes are included in JSON backup / restore snapshots
+- AI recognition for Planning Desk is documented as a later optional Provider-based enhancement for DeepSeek / Qwen / OpenAI-compatible APIs; local rules remain the default and AI output must enter preview before import
 - Planning Desk database migration is repaired in `1.7.5`: database version `10` includes `MIGRATION_9_10` to rebuild `planning_notes` tables created by the mismatched `1.7.0`-`1.7.4` migration
 
 ### Calendar System

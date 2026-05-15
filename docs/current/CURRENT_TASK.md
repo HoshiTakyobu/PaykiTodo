@@ -2,7 +2,15 @@
 
 ## Active Development Focus
 
-The current round is PaykiTodo `1.7.20` / `versionCode 177`, focused on fixing Planning Desk shortcut-bar click feedback and reliability.
+The current round is PaykiTodo `1.7.21` / `versionCode 178`, focused on making the Planning Desk phone shortcuts feel like a notes-app icon toolbar, adding a beginner-friendly tutorial, and accepting lightweight bare `ddl` planning text.
+
+Completed in the `1.7.21` Planning Desk usability round:
+
+1. Planning Desk shortcut controls are now compact icon buttons instead of text-heavy chips inside a large card.
+2. The phone Planning Desk toolbar exposes a direct tutorial/help icon.
+3. The help sheet is now a multi-page beginner tutorial focused on natural writing, task conversion, DDL/reminder basics, sections, preview/import, and future AI recognition.
+4. Planning Desk parsing accepts bare `ddl` text such as `任务M ddl 15:00` as a todo with today's DDL, while keeping `#ddl` as the precise syntax.
+5. AI recognition remains a future optional enhancement; the design and provider template are documented without committing any real API keys.
 
 Completed in the `1.7.20` shortcut-bar fix:
 
@@ -92,7 +100,7 @@ Completed in the `1.7.15` Planning Desk parser-priority round:
 
 When testing, use:
 
-1. install `app/build/outputs/apk/debug/PaykiTodo-1.7.20-debug.apk`
+1. install `app/build/outputs/apk/debug/PaykiTodo-1.7.21-debug.apk`
 2. open Calendar batch import and verify `13:40-14:40, 学院立德树人优秀教师推荐学生座谈会, @MB-B1-403` parses as a valid event for today
 3. verify `今天: 13:40-14:40, 标题` and `明天: 13:40-14:40, 标题` parse correctly
 4. verify `5.28: 13:40-14:40, 标题` and `5月28日: 13:40-14:40, 标题` parse correctly
@@ -107,4 +115,4 @@ PaykiTodo commit messages should describe product behavior changes and bug/debug
 
 ## Current External Dependency
 
-No external file or API key is needed for the current `1.7.20` verification task.
+No external file or API key is needed for the current `1.7.21` verification task. AI Provider keys are only for a later implementation and must not be committed.

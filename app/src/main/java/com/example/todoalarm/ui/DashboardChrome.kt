@@ -77,6 +77,7 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
@@ -740,14 +741,15 @@ private fun OnboardingCard(onDismiss: () -> Unit) {
 
 @Composable
 private fun BoardBlockTitle(title: String) {
+    val isDarkTheme = MaterialTheme.colorScheme.background.luminance() <= 0.5f
     Text(
         text = title,
         style = MaterialTheme.typography.titleLarge.copy(
             fontSize = 22.sp,
             shadow = Shadow(
-                color = Color.Black.copy(alpha = 0.14f),
+                color = Color.Black.copy(alpha = if (isDarkTheme) 0.55f else 0.14f),
                 offset = Offset(0f, 1.5f),
-                blurRadius = 4f
+                blurRadius = if (isDarkTheme) 10f else 4f
             )
         ),
         fontWeight = FontWeight.Bold,

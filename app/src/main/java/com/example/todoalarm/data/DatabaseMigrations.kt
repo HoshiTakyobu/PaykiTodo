@@ -266,6 +266,35 @@ object DatabaseMigrations {
         }
     }
 
+    val MIGRATION_10_11 = object : Migration(10, 11) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL(
+                """
+                CREATE TABLE IF NOT EXISTS `planning_line_mappings` (
+                    `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                    `noteId` INTEGER NOT NULL,
+                    `contentFingerprint` TEXT NOT NULL,
+                    `originalLineText` TEXT NOT NULL,
+                    `currentLineText` TEXT NOT NULL,
+                    `todoId` INTEGER,
+                    `eventId` INTEGER,
+                    `batchId` TEXT NOT NULL,
+                    `operationType` TEXT NOT NULL,
+                    `createdAtMillis` INTEGER NOT NULL,
+                    `lastRefreshedAtMillis` INTEGER NOT NULL,
+                    `status` TEXT NOT NULL,
+                    `postponeOffsetMinutes` INTEGER NOT NULL,
+                    `lastKnownLineNumber` INTEGER NOT NULL
+                )
+                """.trimIndent()
+            )
+            db.execSQL("CREATE INDEX IF NOT EXISTS `index_planning_line_mappings_noteId` ON `planning_line_mappings` (`noteId`)")
+            db.execSQL("CREATE INDEX IF NOT EXISTS `index_planning_line_mappings_batchId` ON `planning_line_mappings` (`batchId`)")
+            db.execSQL("CREATE INDEX IF NOT EXISTS `index_planning_line_mappings_todoId` ON `planning_line_mappings` (`todoId`)")
+            db.execSQL("CREATE INDEX IF NOT EXISTS `index_planning_line_mappings_eventId` ON `planning_line_mappings` (`eventId`)")
+        }
+    }
+
     private fun rebuildPlanningNotesTable(db: SupportSQLiteDatabase) {
         db.execSQL("DROP TABLE IF EXISTS `planning_notes_room_expected`")
         createPlanningNotesTable(db, "planning_notes_room_expected")

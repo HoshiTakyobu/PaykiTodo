@@ -2,52 +2,39 @@
 
 ## Active Development Focus
 
-The current round is PaykiTodo `1.7.25` / `versionCode 182`, focused on turning the existing Planning Desk AI provider configuration into a real optional recognition path while preserving the `1.7.24` refinements:
+The current round is PaykiTodo `1.8.0` / `versionCode 183`, focused on turning Planning Desk from a one-shot importer into a persistent upstream planning document with stable item mappings, refresh/postpone/undo operations, and explicit conflict handling across phone and desktop.
 
-1. Make the daily-board onboarding card readable in dark mode and resettable from Settings.
-2. Expand Planning Desk local natural-language parsing for common Chinese DDL expressions.
-3. Use Planning Desk AI configuration for actual OpenAI-compatible recognition with ordered fallback.
-4. Fold advanced Todo editor fields behind a 更多选项 section so new-todo creation starts simpler.
+## Completed In 1.8.0
 
-## Completed In 1.7.25
-
-1. The onboarding card now uses `surfaceVariant` + `onSurface`, avoiding low-contrast text in dark mode.
-2. Settings -> 关于 -> 使用说明 now includes `重新显示新手引导`; tapping it sets `hasSeenOnboarding = false`, and the next daily-board visit shows the card again.
-3. `PlanningMarkdownParser` now recognizes date-context fuzzy DDL words such as `晚上交论文` / `上午开会`, before-time forms such as `5点前交作业`, `16:30之前发邮件`, and `明天下午3点前提交`, plus bare non-checkbox DDL keyword lines such as `交论文 截止明天 23:59`.
-4. Planning Desk preview messages now flag natural inference with `根据自然文本推断，建议确认`, and loop hints such as `每天` / `每周` add a reminder to configure recurrence after import.
-5. Settings -> AI 调用配置 stores `List<PlanningAiProvider>` as JSON in SharedPreferences, migrates old single-provider fields into the first provider, and preserves local API keys across backup import when backup JSON excludes keys.
-6. The AI config UI supports adding, editing, deleting, long-press deletion, enable/disable switches, and up/down priority ordering for providers.
-7. Planning Desk “识别” now uses enabled AI providers first when configuration is complete on both phone and desktop. The internal prompt requires JSON-only output, converts AI items into existing preview candidates, and keeps preview confirmation mandatory.
-8. Desktop-web `/api/planning/parse` now reuses the same shared recognition service, so desktop Planning Desk follows the same AI-first / local-fallback chain and surfaces the shared result message in preview meta.
-9. `PlanningAiCaller.callWithFallback` retries enabled providers in order on 401/403/429/5xx and network timeout/DNS failures, but not on 400 or cancellation; AI failure or incomplete configuration falls back to local rules.
-10. `TodoEditorDialog` defaults new todos to title, DDL, and group; notes, reminder input, recurrence, ring, and vibration live under 更多选项 with `AnimatedVisibility`.
-11. Existing todos auto-expand 更多选项 when they contain notes, custom reminder offsets, recurrence, or non-default ring/vibration state.
-12. Daily-board floating block titles now use stronger dark-theme text shadow over the wallpaper background, while light-theme shadow remains subtle.
-13. Version metadata is now `1.7.25` / `versionCode 182`.
+1. Planning Desk import now creates `planning_line_mappings`, linking each imported Markdown line to the created todo or event instead of relying only on `#imported`.
+2. Mapping relocation uses `PlanningLineMatcher` with normalized fingerprints plus fuzzy text matching, so inserted lines or edited wording do not immediately break the linkage.
+3. Mapping status sync now classifies each imported line as `ACTIVE`, `COMPLETED`, `CANCELED`, `ORPHANED`, or `CONFLICT`.
+4. Phone-side Markdown preview now renders those mapping states directly with pills and strike-through treatment, and completed imported tasks can be manually written back to source Markdown as `- [x]` through `同步完成状态到原文`.
+5. `refreshPlanningImportedItems` now refreshes only unfinished active mappings, supports current-section or whole-document scope, skips completed/canceled items, and marks missing or diverged mappings as orphaned/conflict instead of silently overwriting.
+6. `postponePlanningImportedItems` now batch-shifts unfinished imported items and the corresponding Markdown time text together, with scope options for current section or document tail.
+7. The latest import / refresh / postpone batch can now be undone; undo also restores Markdown marker or shifted-time state when applicable.
+8. Conflict handling now supports both directions: document overwrites item, or current item state rewrites the original planning line.
+9. Desktop-web Planning Desk now exposes the same mapping-aware loop through `/api/planning/*`, including mapping preview, refresh, postpone, undo, and conflict actions.
+10. Planning note backup / restore now includes mapping records, and Room moved to database version `11` with `MIGRATION_10_11` creating `planning_line_mappings`.
+11. Version metadata is now `1.8.0` / `versionCode 183`.
 
 ## Verification Completed This Round
 
-1. `./gradlew.bat compileDebugKotlin` succeeded.
-2. `./gradlew.bat testDebugUnitTest --tests com.example.todoalarm.data.PlanningMarkdownParserTest` succeeded.
-3. `./gradlew.bat testDebugUnitTest --tests com.example.todoalarm.data.PlanningAiRecognizerTest` succeeded.
-4. `./gradlew.bat testDebugUnitTest --tests com.example.todoalarm.data.PlanningRecognitionServiceTest` succeeded.
-5. `./gradlew.bat assembleDebug` succeeded after the desktop-web recognition follow-up.
-
-Final release verification still requires:
-
-1. Device-side smoke testing of phone and desktop Planning Desk AI recognition, AI fallback to local rules, onboarding reset, daily-board dark/light readability, AI provider list persistence, Todo editor folding, and Planning Desk natural DDL preview behavior.
+1. `node --check app/src/main/assets/desktop-web/app.js` succeeded.
+2. `./gradlew.bat testDebugUnitTest` succeeded.
+3. `./gradlew.bat assembleDebug` succeeded.
 
 ## Immediate Practical Next Steps
 
-When testing, use:
+When device-testing the `1.8.0` APK, verify:
 
-1. Install `app/build/outputs/apk/debug/PaykiTodo-1.7.25-debug.apk`.
-2. Open 每日看板, dismiss the onboarding card, then use Settings -> 关于 -> 使用说明 -> 重新显示新手引导 and confirm the card returns on the board.
-3. Open Settings -> AI 调用配置 and verify adding, editing, enabling/disabling, deleting, moving providers up/down, and enabling AI recognition persists after leaving and reopening Settings.
-4. Open the Todo editor for a new todo and confirm only title / DDL / group are visible until 更多选项 is expanded.
-5. Edit an existing todo with notes, custom reminders, recurrence, or non-default ring/vibration and confirm 更多选项 auto-expands.
-6. In both phone and desktop Planning Desk, write free-form text and verify AI recognition creates preview candidates when an AI source is enabled, while invalid/disabled AI configuration falls back to local rules.
-7. In Planning Desk preview, verify `# 今日计划` followed by `- [ ] 晚上交论文`, `- [ ] 5点前交作业`, `- [ ] 明天下午3点前提交`, and `交论文 截止明天 23:59，每天复盘`.
+1. Importing from Planning Desk creates visible mapping state pills in phone preview and desktop preview.
+2. Completing or canceling imported items changes mapping status to `已完成` / `已取消`.
+3. `同步完成状态到原文` rewrites only completed imported task lines to `- [x]`.
+4. `刷新已导入项` skips completed/canceled items and only refreshes unfinished mapped items.
+5. `批量顺延` updates both formal items and Markdown time text, and `撤销上次操作` restores the latest import / refresh / postpone batch.
+6. Editing an imported item outside Planning Desk produces `已手动修改`, and both “以文档为准覆盖” and “以事项为准更新文档” resolve it correctly.
+7. Desktop Planning Desk shows the current note title, empty-state guidance, mapping preview, refresh, postpone, undo, and conflict actions after reconnecting to the phone.
 
 ## Commit Message Rule
 
@@ -55,4 +42,4 @@ PaykiTodo commit messages should describe product behavior changes and bug/debug
 
 ## Current External Dependency
 
-No external file is needed for the current `1.7.25` verification task. If testing AI config, use disposable API keys; real keys should remain local to the phone and must not be committed.
+No external file is required for the current `1.8.0` verification task. The original `app/build/outputs/apk/debug/goal.md` objective file is no longer present in the working tree, so current completion checks must rely on the implemented code, synchronized docs, and the verified build/test outputs.

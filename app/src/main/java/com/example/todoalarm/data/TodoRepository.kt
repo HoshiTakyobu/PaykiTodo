@@ -9,6 +9,7 @@ import java.time.LocalDateTime
 import java.time.LocalTime
 import java.time.YearMonth
 import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 import java.util.UUID
 
 class TodoRepository(
@@ -27,6 +28,11 @@ class TodoRepository(
     suspend fun getGroup(groupId: Long): TaskGroup? = todoDao.getGroupById(groupId)
     suspend fun getAllTodos(): List<TodoItem> = todoDao.getAllTodos()
     suspend fun getAllPlanningNotes(): List<PlanningNote> = todoDao.getAllPlanningNotes()
+    suspend fun getPlanningMappingsForNote(noteId: Long): List<PlanningLineMapping> = todoDao.getMappingsForNote(noteId)
+
+    suspend fun insertPlanningMappings(mappings: List<PlanningLineMapping>) {
+        if (mappings.isNotEmpty()) todoDao.insertPlanningMappings(mappings)
+    }
 
     suspend fun ensureDefaultPlanningNote(): PlanningNote {
         val existing = todoDao.getAllPlanningNotes().firstOrNull { !it.archived }
@@ -78,7 +84,292 @@ class TodoRepository(
     }
 
     suspend fun deletePlanningNote(noteId: Long) {
+        todoDao.deletePlanningMappingsForNote(noteId)
         todoDao.deletePlanningNote(noteId)
+    }
+
+    suspend fun syncPlanningMappingStatuses(noteId: Long, markdown: String): PlanningMappingStatusSnapshot {
+        val mappings = todoDao.getMappingsForNote(noteId)
+        if (mappings.isEmpty()) return PlanningMappingStatusSnapshot(emptyList(), 0)
+        val lines = planningDocumentLines(markdown)
+        val relocated = PlanningLineMatcher.relocateMappings(lines, mappings)
+        val updated = mappings.map { mapping ->
+            val item = mapping.itemId?.let { todoDao.getById(it) }
+            val nextStatus = when {
+                item == null -> MappingStatus.ORPHANED
+                item.completed -> MappingStatus.COMPLETED
+                item.canceled -> MappingStatus.CANCELED
+                mapping.status == MappingStatus.CONFLICT -> MappingStatus.CONFLICT
+                relocated[mapping.id] == null -> MappingStatus.ORPHANED
+                else -> MappingStatus.ACTIVE
+            }
+            val lineIndex = relocated[mapping.id]
+            val nextLineText = lineIndex?.let { lines.getOrNull(it) }.orEmpty()
+            mapping.copy(
+                status = nextStatus,
+                currentLineText = nextLineText.ifBlank { mapping.currentLineText },
+                lastKnownLineNumber = lineIndex?.plus(1) ?: mapping.lastKnownLineNumber
+            )
+        }
+        val changed = updated.filterIndexed { index, next -> next != mappings[index] }
+        if (changed.isNotEmpty()) todoDao.updatePlanningMappings(changed)
+        return PlanningMappingStatusSnapshot(todoDao.getMappingsForNote(noteId), changed.size)
+    }
+
+    suspend fun refreshPlanningImportedItems(
+        noteId: Long,
+        markdown: String,
+        wholeDocument: Boolean = true,
+        cursorLineNumber: Int? = null
+    ): PlanningOperationResult {
+        val sync = syncPlanningMappingStatuses(noteId, markdown)
+        val activeMappings = sync.mappings.filter { it.status == MappingStatus.ACTIVE }
+        if (activeMappings.isEmpty()) {
+            return PlanningOperationResult(message = "没有可刷新的已导入项")
+        }
+        val lines = planningDocumentLines(markdown)
+        val allowedLineRange = if (wholeDocument) lines.indices else planningSectionRange(lines, cursorLineNumber)
+        val relocated = PlanningLineMatcher.relocateMappings(lines, activeMappings)
+        val parseByLine = PlanningMarkdownParser.parse(markdownWithoutImportedMarkers(markdown)).candidates
+            .filter { it.importable }
+            .associateBy { it.lineNumber }
+        val groups = getAllGroups().ifEmpty { ensureDefaultGroups() }
+        val batchId = UUID.randomUUID().toString()
+        val now = System.currentTimeMillis()
+        val updatedMappings = mutableListOf<PlanningLineMapping>()
+        val beforeItems = mutableListOf<TodoItem>()
+        val afterItems = mutableListOf<TodoItem>()
+        var skipped = sync.mappings.count { it.status == MappingStatus.COMPLETED || it.status == MappingStatus.CANCELED }
+        var orphaned = 0
+        var conflicts = 0
+
+        for (mapping in activeMappings) {
+            val lineIndex = relocated[mapping.id]
+            if (lineIndex == null) {
+                orphaned += 1
+                updatedMappings += mapping.copy(status = MappingStatus.ORPHANED)
+                continue
+            }
+            if (lineIndex !in allowedLineRange) {
+                skipped += 1
+                continue
+            }
+            val candidate = parseByLine[lineIndex + 1]
+            if (candidate == null) {
+                skipped += 1
+                continue
+            }
+            val item = mapping.itemId?.let { todoDao.getById(it) }
+            if (item == null) {
+                orphaned += 1
+                updatedMappings += mapping.copy(status = MappingStatus.ORPHANED)
+                continue
+            }
+            if (item.completed || item.canceled) {
+                skipped += 1
+                updatedMappings += mapping.copy(status = if (item.completed) MappingStatus.COMPLETED else MappingStatus.CANCELED)
+                continue
+            }
+            if (isPlanningItemConflict(item, mapping)) {
+                conflicts += 1
+                updatedMappings += mapping.copy(status = MappingStatus.CONFLICT)
+                continue
+            }
+            val updated = updateItemFromPlanningCandidate(item, candidate, groups)
+            if (updated == null) {
+                skipped += 1
+                continue
+            }
+            beforeItems += item
+            afterItems += updated
+            updatedMappings += mapping.copy(
+                currentLineText = lines[lineIndex],
+                contentFingerprint = PlanningLineMatcher.fingerprint(lines[lineIndex]),
+                batchId = batchId,
+                operationType = "REFRESH",
+                lastRefreshedAtMillis = now,
+                lastKnownLineNumber = lineIndex + 1,
+                status = MappingStatus.ACTIVE
+            )
+        }
+
+        if (afterItems.isNotEmpty()) todoDao.updateAll(afterItems)
+        if (updatedMappings.isNotEmpty()) todoDao.updatePlanningMappings(updatedMappings)
+        val message = "已刷新 ${afterItems.size} 条，跳过 $skipped 条已完成/不在范围项，冲突 $conflicts 条，丢失 $orphaned 条"
+        return PlanningOperationResult(
+            message = message,
+            affectedBeforeItems = beforeItems,
+            affectedAfterItems = afterItems,
+            refreshedCount = afterItems.size,
+            skippedCount = skipped,
+            orphanedCount = orphaned,
+            conflictCount = conflicts,
+            batchId = batchId.takeIf { afterItems.isNotEmpty() || updatedMappings.isNotEmpty() }
+        )
+    }
+
+    suspend fun postponePlanningImportedItems(
+        noteId: Long,
+        markdown: String,
+        startMappingId: Long?,
+        offsetMinutes: Int,
+        scope: PlanningPostponeScope
+    ): PlanningOperationResult {
+        val offset = offsetMinutes.coerceIn(-24 * 60, 24 * 60)
+        if (offset == 0) return PlanningOperationResult(message = "顺延分钟数不能为 0")
+        val sync = syncPlanningMappingStatuses(noteId, markdown)
+        val activeMappings = sync.mappings.filter { it.status == MappingStatus.ACTIVE }
+        if (activeMappings.isEmpty()) return PlanningOperationResult(message = "没有可顺延的已导入项")
+        val lines = planningDocumentLines(markdown)
+        val relocated = PlanningLineMatcher.relocateMappings(lines, activeMappings)
+        val startLine = startMappingId?.let { id -> relocated[id] } ?: activeMappings.mapNotNull { relocated[it.id] }.minOrNull()
+        if (startLine == null) return PlanningOperationResult(message = "找不到起始条目")
+        val targetRange = when (scope) {
+            PlanningPostponeScope.FROM_ITEM_TO_SECTION_END -> planningSectionRange(lines, startLine + 1).let { startLine..it.last }
+            PlanningPostponeScope.FROM_ITEM_TO_DOCUMENT_END -> startLine..lines.lastIndex
+            PlanningPostponeScope.CURRENT_SECTION_ALL -> planningSectionRange(lines, startLine + 1)
+        }
+        val targets = activeMappings
+            .mapNotNull { mapping -> relocated[mapping.id]?.let { lineIndex -> mapping to lineIndex } }
+            .filter { (_, lineIndex) -> lineIndex in targetRange }
+            .sortedBy { it.second }
+        if (targets.isEmpty()) return PlanningOperationResult(message = "当前范围没有可顺延条目")
+
+        val batchId = UUID.randomUUID().toString()
+        val now = System.currentTimeMillis()
+        val mutableLines = lines.toMutableList()
+        val beforeItems = mutableListOf<TodoItem>()
+        val afterItems = mutableListOf<TodoItem>()
+        val updatedMappings = mutableListOf<PlanningLineMapping>()
+
+        for ((mapping, lineIndex) in targets) {
+            val item = mapping.itemId?.let { todoDao.getById(it) } ?: continue
+            if (item.completed || item.canceled) continue
+            if (isPlanningItemConflict(item, mapping)) {
+                updatedMappings += mapping.copy(status = MappingStatus.CONFLICT)
+                continue
+            }
+            val updated = postponeItem(item, offset)
+            beforeItems += item
+            afterItems += updated
+            val updatedLine = shiftPlanningLineTimeText(mutableLines[lineIndex], offset)
+            mutableLines[lineIndex] = updatedLine
+            updatedMappings += mapping.copy(
+                currentLineText = updatedLine,
+                contentFingerprint = PlanningLineMatcher.fingerprint(updatedLine),
+                batchId = batchId,
+                operationType = "POSTPONE",
+                postponeOffsetMinutes = offset,
+                lastRefreshedAtMillis = now,
+                lastKnownLineNumber = lineIndex + 1,
+                status = MappingStatus.ACTIVE
+            )
+        }
+
+        if (afterItems.isNotEmpty()) todoDao.updateAll(afterItems)
+        if (updatedMappings.isNotEmpty()) todoDao.updatePlanningMappings(updatedMappings)
+        val updatedMarkdown = joinPlanningDocumentLines(markdown, mutableLines)
+        updatePlanningNoteContent(noteId, updatedMarkdown)
+        return PlanningOperationResult(
+            message = "已顺延 ${afterItems.size} 条，偏移 ${offset} 分钟",
+            updatedMarkdown = updatedMarkdown,
+            affectedBeforeItems = beforeItems,
+            affectedAfterItems = afterItems,
+            refreshedCount = afterItems.size,
+            conflictCount = updatedMappings.count { it.status == MappingStatus.CONFLICT },
+            batchId = batchId
+        )
+    }
+
+    suspend fun undoLastPlanningOperation(noteId: Long, markdown: String): PlanningOperationResult {
+        val latest = todoDao.getLatestPlanningMappingForNote(noteId) ?: return PlanningOperationResult(message = "没有可撤销的规划台操作")
+        val batch = todoDao.getMappingsByBatch(latest.batchId).filter { it.noteId == noteId }
+        if (batch.isEmpty()) return PlanningOperationResult(message = "没有可撤销的规划台操作")
+        return when (latest.operationType) {
+            "IMPORT" -> undoPlanningImport(noteId, markdown, latest.batchId, batch)
+            "REFRESH" -> undoPlanningRefresh(batch)
+            "POSTPONE" -> undoPlanningPostpone(noteId, markdown, batch)
+            else -> PlanningOperationResult(message = "暂不支持撤销 ${latest.operationType}")
+        }
+    }
+
+    suspend fun resolvePlanningConflictWithDocument(
+        noteId: Long,
+        markdown: String,
+        mappingId: Long
+    ): PlanningOperationResult {
+        val mapping = todoDao.getMappingsForNote(noteId).firstOrNull { it.id == mappingId } ?: return PlanningOperationResult(message = "映射不存在")
+        val item = mapping.itemId?.let { todoDao.getById(it) } ?: return PlanningOperationResult(message = "事项不存在")
+        val lines = planningDocumentLines(markdown)
+        val lineIndex = PlanningLineMatcher.relocateMappings(lines, listOf(mapping))[mapping.id]
+            ?: return PlanningOperationResult(message = "文档中找不到对应行")
+        val candidate = PlanningMarkdownParser.parse(markdownWithoutImportedMarkers(markdown)).candidates
+            .firstOrNull { it.lineNumber == lineIndex + 1 && it.importable }
+            ?: return PlanningOperationResult(message = "当前行无法解析为可导入事项")
+        val groups = getAllGroups().ifEmpty { ensureDefaultGroups() }
+        val updated = updateItemFromPlanningCandidate(item, candidate, groups) ?: return PlanningOperationResult(message = "事项类型与文档行不匹配")
+        val now = System.currentTimeMillis()
+        val batchId = UUID.randomUUID().toString()
+        todoDao.update(updated)
+        todoDao.updatePlanningMappings(
+            listOf(
+                mapping.copy(
+                    status = MappingStatus.ACTIVE,
+                    currentLineText = lines[lineIndex],
+                    contentFingerprint = PlanningLineMatcher.fingerprint(lines[lineIndex]),
+                    lastKnownLineNumber = lineIndex + 1,
+                    lastRefreshedAtMillis = now,
+                    operationType = "REFRESH",
+                    batchId = batchId
+                )
+            )
+        )
+        return PlanningOperationResult(
+            message = "已按文档内容覆盖事项",
+            affectedBeforeItems = listOf(item),
+            affectedAfterItems = listOf(updated),
+            batchId = batchId
+        )
+    }
+
+    suspend fun resolvePlanningConflictWithItem(
+        noteId: Long,
+        markdown: String,
+        mappingId: Long
+    ): PlanningOperationResult {
+        val mapping = todoDao.getMappingsForNote(noteId).firstOrNull { it.id == mappingId } ?: return PlanningOperationResult(message = "映射不存在")
+        val item = mapping.itemId?.let { todoDao.getById(it) } ?: return PlanningOperationResult(message = "事项不存在")
+        val lines = planningDocumentLines(markdown).toMutableList()
+        val lineIndex = PlanningLineMatcher.relocateMappings(lines, listOf(mapping))[mapping.id] ?: ((mapping.lastKnownLineNumber - 1).coerceAtLeast(0).coerceAtMost(lines.size))
+        val groupName = item.groupId.takeIf { it > 0 }?.let { todoDao.getGroupById(it)?.name }.orEmpty()
+        val rewrittenLine = planningLineFromItem(item, groupName)
+        if (lineIndex in lines.indices) {
+            lines[lineIndex] = rewrittenLine
+        } else {
+            lines += rewrittenLine
+        }
+        val updatedMarkdown = joinPlanningDocumentLines(markdown, lines)
+        updatePlanningNoteContent(noteId, updatedMarkdown)
+        val now = System.currentTimeMillis()
+        val batchId = UUID.randomUUID().toString()
+        todoDao.updatePlanningMappings(
+            listOf(
+                mapping.copy(
+                    status = MappingStatus.ACTIVE,
+                    currentLineText = rewrittenLine,
+                    contentFingerprint = PlanningLineMatcher.fingerprint(rewrittenLine),
+                    lastKnownLineNumber = (if (lineIndex in lines.indices) lineIndex else lines.lastIndex) + 1,
+                    lastRefreshedAtMillis = now,
+                    operationType = "REFRESH",
+                    batchId = batchId
+                )
+            )
+        )
+        return PlanningOperationResult(
+            message = "已按事项内容回写原文",
+            updatedMarkdown = updatedMarkdown,
+            batchId = batchId
+        )
     }
 
     suspend fun getActiveItemsForScope(
@@ -441,6 +732,11 @@ class TodoRepository(
     }
 
     suspend fun exportSnapshot(settings: AppSettings): BackupSnapshot {
+        val planningNotes = todoDao.getAllPlanningNotes()
+        val planningMappings = mutableListOf<PlanningLineMapping>()
+        for (note in planningNotes) {
+            planningMappings += todoDao.getMappingsForNote(note.id)
+        }
         return BackupSnapshot(
             exportedAtMillis = System.currentTimeMillis(),
             groups = todoDao.getAllGroups(),
@@ -448,7 +744,8 @@ class TodoRepository(
             tasks = todoDao.getAllTodos(),
             reminderChainLogs = todoDao.getRecentReminderChainLogs(400),
             scheduleTemplates = todoDao.getScheduleTemplates(),
-            planningNotes = todoDao.getAllPlanningNotes(),
+            planningNotes = planningNotes,
+            planningLineMappings = planningMappings,
             settings = settings
         )
     }
@@ -460,6 +757,7 @@ class TodoRepository(
         todoDao.clearReminderChainLogs()
         todoDao.clearScheduleTemplates()
         todoDao.clearPlanningNotes()
+        todoDao.clearPlanningMappings()
         if (snapshot.groups.isNotEmpty()) {
             todoDao.insertGroups(snapshot.groups)
         } else {
@@ -479,6 +777,292 @@ class TodoRepository(
         }
         if (snapshot.planningNotes.isNotEmpty()) {
             todoDao.insertPlanningNotes(snapshot.planningNotes)
+        }
+        if (snapshot.planningLineMappings.isNotEmpty()) {
+            todoDao.insertPlanningMappings(snapshot.planningLineMappings)
+        }
+    }
+
+    private suspend fun updateItemFromPlanningCandidate(
+        item: TodoItem,
+        candidate: PlanningParsedCandidate,
+        groups: List<TaskGroup>
+    ): TodoItem? {
+        val groupId = resolvePlanningGroupId(candidate.groupName, groups, item.groupId)
+        val offsets = candidate.reminderOffsetsMinutes
+            .map { it.coerceAtLeast(0) }
+            .distinct()
+            .sortedDescending()
+        return when {
+            item.isTodo && candidate.type == PlanningParsedType.TODO -> {
+                val dueAtMillis = candidate.dueAt?.toEpochMillis() ?: NO_DUE_DATE_MILLIS
+                val reminderOffsets = if (candidate.dueAt == null) emptyList() else offsets
+                val updated = item.copy(
+                    title = candidate.title.trim(),
+                    notes = candidate.notes.trim(),
+                    dueAtMillis = dueAtMillis,
+                    groupId = groupId,
+                    reminderOffsetsCsv = encodeReminderOffsets(reminderOffsets),
+                    reminderOffsetMinutes = reminderOffsets.firstOrNull(),
+                    reminderAtMillis = candidate.dueAt?.let { due -> reminderOffsets.minOrNull()?.let { due.minusMinutes(it.toLong()).toEpochMillis() } },
+                    reminderEnabled = reminderOffsets.isNotEmpty(),
+                    missed = false,
+                    missedAtMillis = null
+                )
+                updated
+            }
+            item.isEvent && candidate.type == PlanningParsedType.EVENT && candidate.startAt != null && candidate.endAt != null -> {
+                val startMillis = candidate.startAt.toEpochMillis()
+                val endMillis = candidate.endAt.toEpochMillis()
+                val updated = item.copy(
+                    title = candidate.title.trim(),
+                    notes = candidate.notes.trim(),
+                    dueAtMillis = startMillis,
+                    startAtMillis = startMillis,
+                    endAtMillis = endMillis,
+                    groupId = groupId,
+                    reminderOffsetsCsv = encodeReminderOffsets(offsets, DEFAULT_PLANNING_REMINDER_MINUTES),
+                    reminderOffsetMinutes = offsets.firstOrNull(),
+                    reminderAtMillis = offsets.minOrNull()?.let { candidate.startAt.minusMinutes(it.toLong()).toEpochMillis() },
+                    reminderEnabled = offsets.isNotEmpty(),
+                    missed = false,
+                    missedAtMillis = null
+                )
+                updated
+            }
+            else -> null
+        }
+    }
+
+    private fun postponeItem(item: TodoItem, offsetMinutes: Int): TodoItem {
+        val delta = offsetMinutes * 60_000L
+        return if (item.isEvent) {
+            item.copy(
+                dueAtMillis = item.dueAtMillis + delta,
+                startAtMillis = item.startAtMillis?.plus(delta),
+                endAtMillis = item.endAtMillis?.plus(delta),
+                reminderAtMillis = item.reminderAtMillis?.plus(delta),
+                missed = false,
+                missedAtMillis = null
+            )
+        } else {
+            val dueAtMillis = if (item.hasDueDate) item.dueAtMillis + delta else item.dueAtMillis
+            item.copy(
+                dueAtMillis = dueAtMillis,
+                reminderAtMillis = item.reminderAtMillis?.plus(delta),
+                missed = false,
+                missedAtMillis = null
+            )
+        }
+    }
+
+    private fun isPlanningItemConflict(item: TodoItem, mapping: PlanningLineMapping): Boolean {
+        val expected = PlanningMarkdownParser.parse(stripImportedMarker(mapping.trackedLineText.ifBlank { mapping.originalLineText })).candidates.firstOrNull { it.importable }
+            ?: return false
+        val titleChanged = item.title.trim() != expected.title.trim()
+        val timeChanged = when {
+            item.isTodo && expected.type == PlanningParsedType.TODO -> expected.dueAt?.toEpochMillis() != item.dueAtMillis.takeIf { item.hasDueDate }
+            item.isEvent && expected.type == PlanningParsedType.EVENT -> expected.startAt?.toEpochMillis() != item.startAtMillis ||
+                expected.endAt?.toEpochMillis() != item.endAtMillis
+            else -> true
+        }
+        return titleChanged || timeChanged
+    }
+
+    private suspend fun undoPlanningImport(
+        noteId: Long,
+        markdown: String,
+        batchId: String,
+        batch: List<PlanningLineMapping>
+    ): PlanningOperationResult {
+        val affectedItems = batch.mapNotNull { it.itemId?.let { id -> todoDao.getById(id) } }
+        val todoIds = affectedItems.filter { it.isTodo }.map { it.id }
+        val eventItems = affectedItems.filter { it.isEvent }
+        if (todoIds.isNotEmpty()) todoDao.deleteByIds(todoIds)
+        eventItems.forEach { todoDao.deleteById(it.id) }
+        todoDao.deletePlanningMappingBatch(batchId)
+        val updatedMarkdown = removeImportedMarkersForMappings(markdown, batch)
+        updatePlanningNoteContent(noteId, updatedMarkdown)
+        return PlanningOperationResult(
+            message = "已撤销导入，删除 ${affectedItems.size} 条事项",
+            updatedMarkdown = updatedMarkdown,
+            affectedBeforeItems = affectedItems
+        )
+    }
+
+    private suspend fun undoPlanningRefresh(batch: List<PlanningLineMapping>): PlanningOperationResult {
+        val groups = getAllGroups().ifEmpty { ensureDefaultGroups() }
+        val beforeItems = mutableListOf<TodoItem>()
+        val afterItems = mutableListOf<TodoItem>()
+        val updatedMappings = mutableListOf<PlanningLineMapping>()
+        val batchId = UUID.randomUUID().toString()
+        val now = System.currentTimeMillis()
+        batch.forEach { mapping ->
+            val item = mapping.itemId?.let { todoDao.getById(it) } ?: return@forEach
+            val candidate = PlanningMarkdownParser.parse(mapping.originalLineText).candidates.firstOrNull { it.importable } ?: return@forEach
+            val restored = updateItemFromPlanningCandidate(item, candidate, groups) ?: return@forEach
+            beforeItems += item
+            afterItems += restored
+            val trackedLine = mapping.currentLineText.ifBlank { mapping.originalLineText }
+            val staysAligned = PlanningLineMatcher.normalizeLine(trackedLine) == PlanningLineMatcher.normalizeLine(mapping.originalLineText)
+            updatedMappings += mapping.copy(
+                status = if (staysAligned) MappingStatus.ACTIVE else MappingStatus.CONFLICT,
+                contentFingerprint = PlanningLineMatcher.fingerprint(trackedLine),
+                batchId = batchId,
+                operationType = "UNDO_REFRESH",
+                postponeOffsetMinutes = 0,
+                lastRefreshedAtMillis = now
+            )
+        }
+        if (afterItems.isNotEmpty()) todoDao.updateAll(afterItems)
+        if (updatedMappings.isNotEmpty()) todoDao.updatePlanningMappings(updatedMappings)
+        val conflictCount = updatedMappings.count { it.status == MappingStatus.CONFLICT }
+        return PlanningOperationResult(
+            message = buildString {
+                append("已撤销刷新，恢复 ${afterItems.size} 条事项")
+                if (conflictCount > 0) append("，${conflictCount} 条因原文仍不同步而标记为冲突")
+            },
+            affectedBeforeItems = beforeItems,
+            affectedAfterItems = afterItems,
+            conflictCount = conflictCount,
+            batchId = batchId.takeIf { updatedMappings.isNotEmpty() }
+        )
+    }
+
+    private suspend fun undoPlanningPostpone(
+        noteId: Long,
+        markdown: String,
+        batch: List<PlanningLineMapping>
+    ): PlanningOperationResult {
+        val lines = planningDocumentLines(markdown)
+        val relocated = PlanningLineMatcher.relocateMappings(lines, batch)
+        val mutableLines = lines.toMutableList()
+        val beforeItems = mutableListOf<TodoItem>()
+        val afterItems = mutableListOf<TodoItem>()
+        val updatedMappings = mutableListOf<PlanningLineMapping>()
+        val batchId = UUID.randomUUID().toString()
+        val now = System.currentTimeMillis()
+        batch.forEach { mapping ->
+            val item = mapping.itemId?.let { todoDao.getById(it) } ?: return@forEach
+            val offset = mapping.postponeOffsetMinutes
+            if (offset == 0) return@forEach
+            val restored = postponeItem(item, -offset)
+            relocated[mapping.id]?.let { lineIndex ->
+                if (lineIndex in mutableLines.indices) {
+                    mutableLines[lineIndex] = shiftPlanningLineTimeText(mutableLines[lineIndex], -offset)
+                }
+            }
+            beforeItems += item
+            afterItems += restored
+            val resolvedLineIndex = relocated[mapping.id]
+            val restoredLine = resolvedLineIndex?.let { mutableLines.getOrNull(it) }.orEmpty()
+            updatedMappings += mapping.copy(
+                currentLineText = restoredLine.ifBlank { mapping.currentLineText },
+                contentFingerprint = PlanningLineMatcher.fingerprint(restoredLine.ifBlank { mapping.currentLineText }),
+                batchId = batchId,
+                postponeOffsetMinutes = 0,
+                operationType = "UNDO_POSTPONE",
+                lastKnownLineNumber = resolvedLineIndex?.plus(1) ?: mapping.lastKnownLineNumber,
+                lastRefreshedAtMillis = now,
+                status = if (resolvedLineIndex == null) MappingStatus.ORPHANED else MappingStatus.ACTIVE
+            )
+        }
+        if (afterItems.isNotEmpty()) todoDao.updateAll(afterItems)
+        if (updatedMappings.isNotEmpty()) todoDao.updatePlanningMappings(updatedMappings)
+        val updatedMarkdown = joinPlanningDocumentLines(markdown, mutableLines)
+        if (afterItems.isNotEmpty()) updatePlanningNoteContent(noteId, updatedMarkdown)
+        return PlanningOperationResult(
+            message = "已撤销顺延，恢复 ${afterItems.size} 条事项",
+            updatedMarkdown = updatedMarkdown.takeIf { afterItems.isNotEmpty() },
+            affectedBeforeItems = beforeItems,
+            affectedAfterItems = afterItems,
+            batchId = batchId.takeIf { updatedMappings.isNotEmpty() }
+        )
+    }
+
+    private suspend fun resolvePlanningGroupId(groupName: String, groups: List<TaskGroup>, fallbackGroupId: Long): Long {
+        if (groupName.isNotBlank()) {
+            groups.firstOrNull { it.name.equals(groupName.trim(), ignoreCase = true) }?.let { return it.id }
+            return createGroup(groupName.trim(), "#4E87E1").id
+        }
+        return fallbackGroupId.takeIf { it > 0 } ?: groups.firstOrNull { it.name == "例行" }?.id ?: groups.firstOrNull()?.id ?: 0L
+    }
+
+    private fun planningDocumentLines(markdown: String): List<String> {
+        return markdown.replace("\r\n", "\n").replace('\r', '\n').lines().let { lines ->
+            if (lines.size > 1 && lines.last().isEmpty() && markdown.endsWith("\n")) lines.dropLast(1) else lines
+        }
+    }
+
+    private fun joinPlanningDocumentLines(originalMarkdown: String, lines: List<String>): String {
+        val joined = lines.joinToString("\n")
+        return if ((originalMarkdown.endsWith("\n") || originalMarkdown.endsWith("\r")) && !joined.endsWith("\n")) "$joined\n" else joined
+    }
+
+    private fun planningSectionRange(lines: List<String>, cursorLineNumber: Int?): IntRange {
+        if (lines.isEmpty()) return IntRange.EMPTY
+        val cursor = ((cursorLineNumber ?: 1) - 1).coerceIn(lines.indices)
+        val start = (cursor downTo 0).firstOrNull { lines[it].trimStart().startsWith("#") } ?: 0
+        val end = ((start + 1)..lines.lastIndex).firstOrNull { lines[it].trimStart().startsWith("#") }?.minus(1) ?: lines.lastIndex
+        return start..end
+    }
+
+    private fun shiftPlanningLineTimeText(line: String, offsetMinutes: Int): String {
+        val timeRegex = Regex("(凌晨|早上|上午|中午|下午|晚上)?\\s*(\\d{1,2})[:：](\\d{2})")
+        return timeRegex.replace(line) { match ->
+            val period = match.groupValues[1]
+            val hour = match.groupValues[2].toIntOrNull() ?: return@replace match.value
+            val minute = match.groupValues[3].toIntOrNull() ?: return@replace match.value
+            val base = LocalTime.of(hour.coerceIn(0, 23), minute.coerceIn(0, 59)).plusMinutes(offsetMinutes.toLong())
+            if (period.isBlank()) "%02d:%02d".format(base.hour, base.minute) else "$period %02d:%02d".format(base.hour, base.minute)
+        }
+    }
+
+    private fun removeImportedMarkersByLine(markdown: String, lineNumbers: Set<Int>): String {
+        if (lineNumbers.isEmpty()) return markdown
+        val hasTrailingNewline = markdown.endsWith("\n") || markdown.endsWith("\r")
+        val updated = planningDocumentLines(markdown).mapIndexed { index, line ->
+            if (index + 1 in lineNumbers) {
+                line.replace(Regex("\\s+#imported(?=\\s|$)"), "")
+            } else {
+                line
+            }
+        }.joinToString("\n")
+        return if (hasTrailingNewline && !updated.endsWith("\n")) "$updated\n" else updated
+    }
+
+    private fun removeImportedMarkersForMappings(markdown: String, mappings: List<PlanningLineMapping>): String {
+        if (mappings.isEmpty()) return markdown
+        val lines = planningDocumentLines(markdown)
+        if (lines.isEmpty()) return markdown
+        val relocated = PlanningLineMatcher.relocateMappings(lines, mappings)
+        val targetLineNumbers = mappings.mapNotNull { mapping ->
+            relocated[mapping.id]?.plus(1)
+                ?: mapping.lastKnownLineNumber.takeIf { it > 0 && it <= lines.size }
+        }.toSet()
+        return removeImportedMarkersByLine(markdown, targetLineNumbers)
+    }
+
+    private fun markdownWithoutImportedMarkers(markdown: String): String {
+        return planningDocumentLines(markdown).joinToString("\n") { stripImportedMarker(it) }
+    }
+
+    private fun stripImportedMarker(line: String): String {
+        return line.replace(Regex("\\s+#imported(?=\\s|$)"), "")
+    }
+
+    private fun planningLineFromItem(item: TodoItem, groupName: String): String {
+        val groupPart = groupName.takeIf { it.isNotBlank() }?.let { " #group $it" }.orEmpty()
+        return if (item.isEvent) {
+            val start = item.startAtMillis?.let { Instant.ofEpochMilli(it).atZone(ZoneId.systemDefault()).toLocalDateTime() }
+            val end = item.endAtMillis?.let { Instant.ofEpochMilli(it).atZone(ZoneId.systemDefault()).toLocalDateTime() }
+            val startLabel = start?.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")) ?: ""
+            val endLabel = end?.format(DateTimeFormatter.ofPattern("HH:mm")) ?: ""
+            "- [ ] $startLabel-$endLabel ${item.title}$groupPart #imported".trim()
+        } else {
+            val ddl = item.dueDateTimeOrNull()?.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"))
+            val ddlPart = ddl?.let { " #ddl $it" }.orEmpty()
+            "- [ ] ${item.title}$ddlPart$groupPart #imported".trim()
         }
     }
 

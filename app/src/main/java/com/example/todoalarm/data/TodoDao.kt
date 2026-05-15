@@ -206,4 +206,40 @@ interface TodoDao {
 
     @Query("DELETE FROM planning_notes")
     suspend fun clearPlanningNotes()
+
+    @Query("SELECT * FROM planning_line_mappings WHERE noteId = :noteId ORDER BY id ASC")
+    suspend fun getMappingsForNote(noteId: Long): List<PlanningLineMapping>
+
+    @Query("SELECT * FROM planning_line_mappings WHERE noteId = :noteId AND status = 'ACTIVE' ORDER BY id ASC")
+    suspend fun getActiveMappingsForNote(noteId: Long): List<PlanningLineMapping>
+
+    @Query("SELECT * FROM planning_line_mappings WHERE batchId = :batchId ORDER BY id ASC")
+    suspend fun getMappingsByBatch(batchId: String): List<PlanningLineMapping>
+
+    @Query("SELECT * FROM planning_line_mappings WHERE operationType IN ('IMPORT', 'REFRESH', 'POSTPONE') ORDER BY lastRefreshedAtMillis DESC, id DESC LIMIT 1")
+    suspend fun getLatestPlanningMapping(): PlanningLineMapping?
+
+    @Query("SELECT * FROM planning_line_mappings WHERE noteId = :noteId AND operationType IN ('IMPORT', 'REFRESH', 'POSTPONE') ORDER BY lastRefreshedAtMillis DESC, id DESC LIMIT 1")
+    suspend fun getLatestPlanningMappingForNote(noteId: Long): PlanningLineMapping?
+
+    @Query("SELECT * FROM planning_line_mappings WHERE (todoId = :todoId AND :todoId IS NOT NULL) OR (eventId = :eventId AND :eventId IS NOT NULL) LIMIT 1")
+    suspend fun getMappingForItem(todoId: Long? = null, eventId: Long? = null): PlanningLineMapping?
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertPlanningMappings(mappings: List<PlanningLineMapping>): List<Long>
+
+    @Update
+    suspend fun updatePlanningMappings(mappings: List<PlanningLineMapping>)
+
+    @Query("DELETE FROM planning_line_mappings WHERE batchId = :batchId")
+    suspend fun deletePlanningMappingBatch(batchId: String)
+
+    @Query("DELETE FROM planning_line_mappings WHERE noteId = :noteId")
+    suspend fun deletePlanningMappingsForNote(noteId: Long)
+
+    @Query("UPDATE planning_line_mappings SET status = :status WHERE id = :id")
+    suspend fun updatePlanningMappingStatus(id: Long, status: MappingStatus)
+
+    @Query("DELETE FROM planning_line_mappings")
+    suspend fun clearPlanningMappings()
 }

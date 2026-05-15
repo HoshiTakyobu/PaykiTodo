@@ -7,134 +7,59 @@
 - Package name: `com.paykitodo.app`
 - Target platform: Android 14 / API 34
 - Current version in code:
-  - `versionName = "1.7.25"`
-  - `versionCode = 182`
+  - `versionName = "1.8.0"`
+  - `versionCode = 183`
 
 ## Current Build Facts
 
 - Latest debug APK output:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.7.25-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.8.0-debug.apk`
 - Minimal verification completed in the latest code round:
-  - `./gradlew.bat assembleDebug` succeeded with Android Studio bundled `jbr`
+  - `node --check app/src/main/assets/desktop-web/app.js`
+  - `./gradlew.bat testDebugUnitTest`
+  - `./gradlew.bat assembleDebug`
 - Current build environment expectation:
   - prefer Android Studio bundled `jbr`
   - avoid random system Java overrides when building this repo
 
 ## Current Worktree Reality
 
-The repository is now at `1.7.25`. It includes the desktop web editor crash fix, UI-copy cleanup, desktop web no-DDL todo editing support, in-app desktop delete confirmations, desktop-sync service self-stop protection, dynamic desktop-web resource versioning, a smaller calendar recomposition pass, desktop todo preview sheets plus direct desktop event editing, desktop mixed reminder syntax for todos/events, lunar-label display in calendar views, minimal yearly same-lunar-date recurrence, the latest settings tone / lunar DDL / calendar header / daily-board spacing polish, Planning Desk Phase 1 plus Phase 2 usability workflow, an emergency rollback of the unstable phone-side Planning Desk Markdown renderer introduced in `1.7.2` / `1.7.3`, a `1.7.5` Room migration repair for the `planning_notes` table, `1.7.10` Planning Desk usability fixes for empty new documents / shortcut behavior / document deletion / unified reminder parsing, `1.7.11` syntax consistency fixes for todo batch DDL plus desktop-web reminder input, `1.7.12` help-surface coverage for those syntax rules, `1.7.13` Planning Desk parser boundary fixes, `1.7.14` Planning Desk editor / import workflow fixes, `1.7.15` Planning Desk parser priority / compact date-heading fixes, `1.7.16` Planning Desk operation-density changes, `1.7.17` fixed-height Planning Desk operation toolbar, `1.7.18` calendar batch default-today parsing plus Planning Desk toolbar feedback, `1.7.19` calendar batch Chinese-input normalization, `1.7.20` Planning Desk shortcut-bar click feedback/reliability, `1.7.21` Planning Desk icon shortcuts / multi-page tutorial / bare `ddl` parsing plus AI recognition design docs, `1.7.22` Settings AI call configuration plus collapsible Planning Desk shortcut controls, `1.7.23` onboarding / desktop-sync copy polish, `1.7.24` onboarding reset, natural DDL parsing, multi-source AI config, Todo editor option folding, and `1.7.25` Planning Desk AI recognition integration.
+The repository is now at `1.8.0`. It carries forward the `1.7.25` Planning Desk AI-recognition integration and adds the next missing product loop: imported planning lines are no longer treated as fire-and-forget text markers, but as tracked upstream planning entries with mapping status, refresh/postpone/undo operations, and explicit conflict resolution on both phone and desktop.
 
 Most important current baseline facts:
 
-- version metadata is `1.7.25 / 182`
-- Planning Desk exists as a phone-side drawer entry and desktop-web tab. It stores multiple Markdown planning documents in Room table `planning_notes`, restores the last opened note, and supports create/open/rename/archive/delete. New/default documents now start with empty content; examples live in help/tutorial surfaces rather than the editor itself.
-- Planning Desk parsing keeps the local rule-based `PlanningMarkdownParser` as fallback. When Settings -> AI 调用配置 is enabled and at least one complete provider exists, both the phone-side recognition button and the desktop-web `/api/planning/parse` path first call the ordered OpenAI-compatible AI sources with an internal JSON-only prompt, then convert the result into the existing editable preview candidates. AI output never imports directly.
-- Planning Desk recognizes markdown checkboxes, completed-task skips, subtasks as independent todos with parent-note metadata, explicit date headings, common DDL formats, lightweight bare `ddl` text such as `任务M ddl 15:00`, natural DDL hints such as `晚上交论文` under date context / `5点前交作业` / `交论文 截止明天 23:59`, unified `#remind` mixed reminder syntax, group/schedule tags, and lightweight natural schedule lines such as `10:00-12:30 作业1`, `复习 14:00-16:00`, and `5/28 下午 2:30～下午 4:00 小组讨论`.
-- Planning Desk heading context now uses explicit date headings. `# 今日计划`, `# 明天`, and compact headings such as `# 周五计划` provide context, date headings such as `# 5/28 周末计划` / `# 5/28周末计划` work, and ordinary headings such as `# 收集箱` reset previous date context.
-- Explicit `#ddl` takes precedence over natural schedule detection, so a line with a time range and `#ddl` is treated as a todo.
-- Planning Desk shortcut actions now prevent repeated `- [ ]` insertion on one line, and the subtask shortcut inserts a new indented child task line.
-- Phone and desktop Planning Desk document pickers now expose delete actions with confirmation.
-- Phone Planning Desk currently uses stable raw Markdown / natural-text editing by default, with a manually triggered Markdown preview restored in `1.7.8`. The preview renders headings, task checkboxes, subtask indentation, tag pills, and `#imported` state pills.
-- Planning Desk phone UI now uses solid-color editor/document surfaces, a fixed-height operation toolbar, a collapsible compact icon-style horizontal shortcut toolbar, a direct tutorial icon, a scrollable document picker, and a tighter recognition preview sheet.
-- Planning Desk has a multi-page in-screen beginner tutorial with workflow instructions and examples for natural writing, todos, subtasks, DDL, reminders, groups, schedule ranges, preview/import, and future AI recognition.
-- `docs/current/PLANNING_DESK_EXAMPLES.md` now documents detailed Planning Desk usage, including what `# 收集箱`, `# 今日计划`, `# 明天`, and `# 本周计划` mean.
-- Markdown preview is not the startup default; opening or switching notes resets to raw edit mode to avoid repeating the 1.7.2/1.7.3 startup-risk pattern.
-- Planning Desk import still supports local parsing, editable preview cards, selected import, and automatic `#imported` write-back.
-- Planning Desk phone editing now auto-saves after a short debounce and saves before switching planning documents.
-- Planning Desk import uses preview-first selection. Imported todos/events reuse existing repository draft creation and reminder scheduling, defaulting to 5 minutes before, full-screen, ring + vibration.
-- Planning Desk Phase 2 allows preview-stage editing of title, group, notes, DDL/start/end times, reminders, and event linked-todo creation before import.
-- Successful Planning Desk import automatically appends `#imported` to imported source lines and immediately writes the updated Markdown back to the active planning note.
-- Desktop web Planning Desk talks to phone-local APIs under `/api/planning/*`, edits the same Room data as the phone UI, supports auto-save, keyboard shortcuts, editable preview fields, select-all / clear-all preview controls, receives updated Markdown after import, and now shares the same AI-first / local-fallback recognition backend as the phone UI.
-- Planning notes are included in JSON backup / restore snapshots.
-- Database version is now `10`; `MIGRATION_9_10` rebuilds `planning_notes` to repair the 1.7.0-1.7.4 migration schema mismatch that could cause startup Room validation crashes.
-- launcher adaptive icon foreground now directly uses picture resource `@drawable/ic_launcher_art`
-- old vector mark launcher resources have been deleted so the launcher cannot fall back to them again
-- picture launcher art has been reprocessed to an opaque pure-white background with smaller centered content
-- todo and calendar editors share a comma-separated reminder input syntax
-- reminder input accepts examples such as `5,15,16:30,2:30 pm,下午 2:30,明天 16:30,周五 16:30,05-10 15:00,5.10 15:00,5/10 下午 2:30,5月10日 14:30,5月10日，14:30,2026-05-10 14:30`
-- invalid reminder entries turn the field/error text red and disable the save button
-- normal todos now use `reminderOffsetsCsv` for multi-reminder storage and scheduling, not only the single `reminderAtMillis` field
-- todo batch import uses the lightweight comma syntax `DDL时间,任务名称,提醒时间` and defaults group / ring / vibrate settings
-- todo batch-import DDL accepts `HH:mm` as today's time, Chinese colon input such as `16：30`, and natural date forms such as `5.28`, `5月28日`, `明天`, and `周五`; date-only DDL defaults to `23:59`
-- desktop web todo/event reminder input accepts the same common reminder forms, including AM/PM, Chinese AM/PM, relative dates, weekdays, dot/slash dates, Chinese dates, full-width date separators, and Chinese comma separators
-- calendar batch import `Remind=` fields use the same reminder-time parser as the editors
-- calendar batch import custom syntax defaults missing dates to today and normalizes Chinese commas/colons before splitting fields
-- full-screen and accessibility reminder custom snooze inputs accept minutes or a concrete future time
-- custom snooze no longer has a 180-minute cap; the target only has to be in the future
-- todo snooze moves the todo DDL when the snooze target is later than the current DDL, and pins the next reminder to that target
-- reminder / batch / custom snooze input surfaces have nearby question-mark syntax help buttons
-- Settings includes multi-provider `AI 调用配置` for Planning Desk AI recognition. API Keys are stored locally, intentionally excluded from backup JSON export, and preserved when importing backups that do not contain keys. Providers can be added, edited, deleted, enabled/disabled, and moved up/down; recognition uses this order for fallback before returning to local rules.
-- Daily-board onboarding uses a readable `surfaceVariant` card, can be dismissed, and can be reset from Settings -> About -> 使用说明 -> 重新显示新手引导.
-- Daily-board block titles such as `今日待办` / `今日日程` now use stronger dark-theme text shadow over the wallpaper background, while light-theme shadow remains subtle.
-- Todo editor now folds advanced fields by default: new todos show title, DDL, and group first; notes, reminder input, recurrence, ring, and vibration live under 更多选项 and auto-expand for existing todos with non-default advanced state.
-- in-app Wiki and in-app help sheets have been updated to describe current reminder syntax, todo batch syntax, calendar batch `Remind=`, custom snooze behavior, Planning Desk preview-edit syntax, and the current desktop-sync address expansion / preview-edit flow
-- daily board no longer exposes add / batch-add controls; it is a read-only board surface
-- active task surface exposes only todo batch import beside the bottom-right new-todo button
-- calendar header exposes a standalone `批量` button; calendar batch import remains on the calendar surface
-- daily-board schedule event color strips now match the right-side text block height
-- daily-board in-progress and normal schedule rows share the same left color-bar column
-- normal daily-board schedule rows no longer show an outer border; in-progress rows use a gold border plus very subtle inner highlight rather than a large yellow overlay
-- launch screen uses transparent `ic_launcher_art_transparent`; launcher / install icons still use the white-background adaptive icon art
-- desktop web can edit existing todos, including DDL, reminder time, group, recurrence, ring, and vibration
-- desktop web event cards open the editor directly by card click; deletion remains behind the editor/confirmation surfaces, and inline event-card buttons are intentionally removed
-- desktop web todo / event editors now use a bottom-sheet-like header with cancel / centered title / save actions
-- desktop web editor fields are grouped into card-like surfaces, and timeline / event card actions use lighter pill buttons
-- desktop web create-mode destructive buttons are hidden by a shared `.hidden` rule rather than only the modal backdrop rule
-- desktop Web HTML / CSS / JS now live under `app/src/main/assets/desktop-web/` instead of inside large Kotlin raw strings
-- `DesktopSyncWebAssets.kt` is now a small asset loader with a minimal fallback page
-- `docs/current/DESKTOP_WEB_ARCHITECTURE.md` documents why the APK contains desktop UI assets and how to evolve that structure later
-- in-app Wiki now preserves a left navigation / right article layout on phone-sized screens instead of stacking the navigation above the article
-- daily board distinguishes between no schedule today and all of today's schedule already finished
-- drawer header app icon is clipped to the circular header surface and enlarged to avoid showing the white rounded-rectangle launcher background
-- reminder playback can now use alarm, accessibility, notification, or media audio channels
-- PaykiTodo has an internal reminder-volume percentage for self-played alert audio
-- an advanced temporary system-channel volume boost can raise the selected global stream during reminder playback and then restore it; it is off by default
-- work mode suppresses outward reminder sound by default, forces stronger vibration even when an individual item disabled vibration, and routes calendar reminders into the full-screen / accessibility fallback chain
-- daily board always shows a tomorrow schedule section; when tomorrow has no events it says `明天暂无日程`
-- desktop web event cards open the editor through delegated card click handling, expose button semantics / keyboard focus for timed cards, no longer show inline edit/delete buttons, prefer group colors for display, use string-compatible ID lookup, tolerate recurrence weekdays as strings or arrays, and expose all-day events through compact per-day pills
-- desktop web no longer shows the large separate all-day strip above the event timeline; compact all-day pills remain available inside day columns
-- Settings is split into common settings and advanced settings; desktop sync is common, while diagnostics / backup / crash logs are advanced maintenance surfaces
-- enum-like Settings choices use compact dropdown rows instead of large button groups; percentage values use a slider plus numeric input
-- phone-side todo and calendar editor bottom sheets no longer show generic explanatory subtitles; the calendar all-day section keeps only concrete controls
-- Settings removes redundant helper copy from reminder-chain test, default snooze picker, and About usage-guide entry
-- desktop web has lightweight tab/card/modal/button motion with prefers-reduced-motion fallback
-- desktop web todo editor supports creating and editing no-DDL todos; disabling DDL also disables reminder and recurrence fields
-- desktop web delete flows use an in-app dangerous-action confirmation modal instead of browser confirm
-- desktop web HTML now replaces `__PAYKI_VERSION__` with the installed APK version at runtime and shows that version in the left brand block
-- desktop web todo cards open a detail preview first; event cards open the editor directly after user feedback that the preview-first event path hid editing too much
-- desktop web todo and event editors accept the same mixed reminder syntax as the phone UI and convert concrete reminder times into normalized offset minutes
-- desktop sync API accepts todo `reminderOffsetsMinutes`, so desktop-created / edited todos can persist multiple reminder points
-- calendar timeline headers, month cells, and agenda/list date surfaces show lunar labels using Android ICU `ChineseCalendar`
-- lunar support includes display labels, minimal yearly same-lunar-date recurrence, compact event lunar start/end picking, and wheel-style todo lunar DDL picking
-- if a live phone desktop page still loads `/app.js` without a `?v=` marker, that phone is serving an older installed APK and must be updated before further desktop click-edit debugging
-- desktop sync foreground service stops itself when relaunched while Settings says desktop sync is disabled, and Settings status refreshes after sync toggles / key rotation to reduce stale access-address display
-- calendar current-time ticks are scoped to the time axis and current-time line instead of recomposing the whole calendar panel every 30 seconds
-- calendar header now uses a dedicated year/month title row plus a separate action row, reducing month-title clipping when screen width or font scale is tight
-
-- desktop web existing event cards now open the editor directly while preserving the PUT update path
-- recurrence type `YEARLY_LUNAR_DATE` is available for todo/event recurrence generation, preview, phone editors, and desktop web selects
-- phone-side todo/event editor date rows append a lunar parenthesized label after the Gregorian date, and event editors can pick start/end dates through a compact lunar dialog
-- desktop web todo/event editors show card-style date/time previews below segmented date inputs, closer to the phone-side time-card presentation
+- version metadata is `1.8.0 / 183`
+- Planning Desk still keeps AI-first / local-fallback recognition, editable preview, selected import, and automatic `#imported` write-back.
+- Importing from Planning Desk now also creates persistent `planning_line_mappings` records, connecting the planning note line to the created todo or event item.
+- Mapping relocation is no longer line-number-only: `PlanningLineMatcher` normalizes text, ignores `#imported`, hashes the line, and falls back to fuzzy edit-distance matching when the original line wording changes.
+- Mapping status sync now distinguishes `ACTIVE`, `COMPLETED`, `CANCELED`, `ORPHANED`, and `CONFLICT`.
+- Phone-side Markdown preview now renders imported-line state pills directly; completed or canceled mapped items are visually marked, and `同步完成状态到原文` can rewrite completed imported task lines to `- [x]`.
+- `刷新已导入项` only refreshes unfinished mapped items. Completed/canceled items are skipped; missing items become `ORPHANED`; manually diverged items become `CONFLICT`.
+- `批量顺延` only targets unfinished active mappings and updates both the formal item timestamps and the Markdown time text.
+- The latest import / refresh / postpone batch can be undone. Undo import removes created items and `#imported`; undo refresh restores prior item content; undo postpone restores both item times and Markdown time text.
+- Conflicts can now be resolved in both directions:
+  - `以文档为准覆盖`: current planning line overwrites the item
+  - `以事项为准更新文档`: current item rewrites the source planning line
+- Desktop-web Planning Desk now exposes mapping preview, refresh, postpone, undo, and conflict resolution through `/api/planning/*`, and the desktop UI shows the current note title plus an empty-state hint before parsing.
+- Planning notes and planning mappings are both included in backup / restore snapshots.
+- Database version is now `11`; `MIGRATION_10_11` creates the `planning_line_mappings` table and its indices.
 
 ## Recent Checked Areas
 
 Recent code inspection and build verification cover:
 
-- `DashboardChrome.kt`: daily-board wallpaper readability audit; greeting card and schedule card remain protected by high-opacity surfaces, while floating board block titles use a stronger dark-theme shadow.
-- `ReminderInputParser.kt`: shared parser for minutes, same-day times, current-year date-times, and full date-times
-- `TodoRecurrence.kt`: `TodoDraft` carries normalized reminder offsets while keeping backward compatibility with `reminderAt`
-- `ReminderOffsetCodec.kt`: todo reminder trigger calculation reads configured offsets
-- `TodoRepository.kt`: todo items and recurring templates persist multiple reminder offsets
-- `TodoEditorDialog.kt` and `CalendarEventEditorDialog.kt`: shared input syntax, validation message, save disabling
-- `TodoBatchImport.kt`: lightweight comma-based todo batch parser/dialog, including same-day DDL time parsing
-- `ReminderActivity.kt`, `ReminderAccessibilityOverlay.kt`, `ReminderInputParser.kt`, `TodoRepository.kt`: custom snooze parsing and DDL update behavior
-- `InputSyntaxHelp.kt`: shared question-mark help button and syntax help dialog
-- `app/src/main/assets/wiki/index.html`: current input syntax documentation
-- `DesktopSyncCoordinator.kt`, `DesktopSyncWebAssets.kt`, `app/src/main/assets/desktop-web/*`: desktop web routing, asset loading, and desktop browser UI resources
+- `PlanningLineMapping.kt`, `PlanningLineMatcher.kt`, `PlanningSyncModels.kt`: mapping schema, matching strategy, and operation result models.
+- `TodoRepository.kt`: mapping status sync, refresh, postpone, undo, conflict resolution, and backup inclusion.
+- `TodoDao.kt`, `AppDatabase.kt`, `DatabaseMigrations.kt`, `TodoApplication.kt`: Room entity registration, migration path, and DB version `11`.
+- `PlanningDeskPanel.kt`: phone-side refresh/postpone/undo entry points, completed-to-markdown sync, preview state pills, and conflict actions.
+- `TodoViewModel.kt`: phone-side orchestration for mapping operations and reminder rescheduling after planning operations.
+- `DesktopSyncCoordinator.kt`, `DesktopSyncServer.kt`, `app/src/main/assets/desktop-web/*`: desktop Planning Desk mapping APIs, preview/status rendering, and desktop refresh/postpone/undo/conflict actions.
+- `BackupManager.kt`, `BackupModels.kt`: planning mapping export/import.
+- `DashboardChrome.kt`: prior dark-board title readability fix remains intact alongside the new Planning Desk work.
 
 ## Documentation Health
 
-Current docs have been synchronized for `1.7.25`:
+Current docs have been synchronized for `1.8.0`:
 
 - `README.md`
 - `CHANGELOG.md`
@@ -143,25 +68,21 @@ Current docs have been synchronized for `1.7.25`:
 - `docs/current/FEATURE_LEDGER.md`
 - `docs/current/CURRENT_TASK.md`
 - `docs/current/SESSION_HANDOFF.md`
-- `docs/current/DESKTOP_WEB_ARCHITECTURE.md`
-- `docs/current/PLANNING_AI_ASSISTANT_DESIGN.md`
-- `docs/templates/planning_ai_providers.example.json`
+- `docs/current/PLANNING_DESK_DESIGN.md`
+- `docs/current/PAYKITODO_SESSION_LEDGER.md`
 
 Older versioned docs under `docs/` remain historical references and should not be treated as the live baseline unless a current doc explicitly points to them.
 
 ## Current Risk Areas
 
-1. Device-side verification is required to confirm `1.7.25` opens and the Planning Desk AI recognition path / fallback to local rules / onboarding reset / Settings AI multi-provider panel / Todo editor 更多选项 folding / Planning Desk natural DDL parser / existing parser edge cases / empty-document / placeholder / shortcut / delete / help-copy / auto-save / import persistence changes behave correctly.
-2. Device-side verification is still required for the unified reminder input UX, especially invalid-value red state and disabled save/import behavior.
-3. Todo multi-reminder scheduling should be tested with at least two future reminders on one todo
-4. Todo batch import should be tested with valid comma rows, no-DDL rows, and illegal reminder rows
-5. Calendar event reminder input and calendar batch `Remind=` should be tested for all-day and timed events
-6. Custom snooze should be tested with both minutes and a future clock time
-7. Long-running chat sessions can become unreliable, so repository docs must carry state
+1. Device-side verification is still required for the full `1.8.0` Planning Desk mapping loop: import -> status sync -> completed markdown sync -> refresh -> postpone -> undo -> conflict resolution.
+2. Desktop-browser verification is still required for the same mapping loop after installing `PaykiTodo-1.8.0-debug.apk` on the phone and reconnecting from a real browser.
+3. Unit tests currently cover parser / AI / line-matching behavior, but there are still no dedicated repository-level automated tests for refresh/postpone/undo/conflict flows; those are presently covered by code inspection plus build/test success.
+4. Long-running chat sessions can become unreliable, so repository docs must remain the source of truth for future continuation.
 
 ## How A New Session Should Start
 
 1. Read `AGENTS.md`
 2. Read the `docs/current/` files
-3. Inspect current code and git status
+3. Inspect current code and `git status`
 4. Only then decide the next edit

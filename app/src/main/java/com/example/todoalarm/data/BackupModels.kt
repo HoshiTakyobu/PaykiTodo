@@ -9,5 +9,6 @@ data class BackupSnapshot(
     val reminderChainLogs: List<ReminderChainLog> = emptyList(),
     val scheduleTemplates: List<ScheduleTemplate> = emptyList(),
     val planningNotes: List<PlanningNote> = emptyList(),
+    val planningLineMappings: List<PlanningLineMapping> = emptyList(),
     val settings: AppSettings
 )

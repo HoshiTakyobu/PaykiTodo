@@ -97,10 +97,16 @@
               <button id="planning-help" class="ghost mini">使用说明</button>
               <button id="planning-parse" class="mini">识别</button>
               <button id="planning-import" class="mini">导入选中</button>
+              <button id="planning-refresh" class="ghost mini">刷新已导入</button>
+              <button id="planning-postpone" class="ghost mini">批量顺延</button>
+              <button id="planning-undo" class="ghost mini">撤销</button>
             </div>
           </div>
           <div class="planning-workspace">
-            <textarea id="planning-editor" class="planning-editor"></textarea>
+            <div class="planning-editor-pane">
+              <div id="planning-active-title" class="planning-active-title">我的规划</div>
+              <textarea id="planning-editor" class="planning-editor"></textarea>
+            </div>
             <div class="planning-preview-shell">
               <div class="panel-head">
                 <h3>识别预览</h3>

@@ -15,10 +15,15 @@ import com.example.todoalarm.data.CalendarEventDraft
 import com.example.todoalarm.data.DEFAULT_PLANNING_REMINDER_MINUTES
 import com.example.todoalarm.data.PlanningImportCandidate
 import com.example.todoalarm.data.PlanningImportResult
+import com.example.todoalarm.data.PlanningLineMapping
+import com.example.todoalarm.data.PlanningLineMatcher
 import com.example.todoalarm.data.PlanningMarkdownParser
 import com.example.todoalarm.data.PlanningNote
 import com.example.todoalarm.data.PlanningParseResult
 import com.example.todoalarm.data.PlanningParsedType
+import com.example.todoalarm.data.PlanningPostponeScope
+import com.example.todoalarm.data.PlanningRefreshScope
+import com.example.todoalarm.data.PlanningOperationResult
 import com.example.todoalarm.data.PlanningRecognitionService
 import com.example.todoalarm.data.RecurrenceScope
 import com.example.todoalarm.data.RecurrenceType
@@ -53,6 +58,7 @@ import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.ZoneId
+import java.util.UUID
 
 data class TodoUiState(
     val groups: List<TaskGroup> = emptyList(),
@@ -253,19 +259,51 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
             }?.let { return PlanningImportResult(message = "第 ${index + 1} 条：$it") }
         }
 
+        val batchId = UUID.randomUUID().toString()
+        val importAtMillis = System.currentTimeMillis()
+        val markdownLines = planningDocumentLines(currentMarkdown)
+        val mappings = mutableListOf<PlanningLineMapping>()
         selected.forEach { candidate ->
+            val sourceLine = markdownLines.getOrNull(candidate.lineNumber - 1) ?: candidate.sourceLine
             when (candidate.type) {
                 PlanningParsedType.TODO -> {
                     val created = repository.createFromDraft(candidate.toTodoDraft(groups))
                     created.forEach { scheduleReminderOrDisable(it) }
+                    mappings += created.mapNotNull { item ->
+                        candidate.toPlanningLineMapping(
+                            noteId = activeNoteId,
+                            item = item,
+                            sourceLine = sourceLine,
+                            batchId = batchId,
+                            timestamp = importAtMillis
+                        )
+                    }
                 }
                 PlanningParsedType.EVENT -> {
                     val eventDraft = candidate.toEventDraft(groups)
                     val createdEvents = repository.createCalendarEventFromDraft(eventDraft)
                     createdEvents.forEach { scheduleReminderOrDisable(it) }
+                    mappings += createdEvents.mapNotNull { item ->
+                        candidate.toPlanningLineMapping(
+                            noteId = activeNoteId,
+                            item = item,
+                            sourceLine = sourceLine,
+                            batchId = batchId,
+                            timestamp = importAtMillis
+                        )
+                    }
                     if (candidate.createLinkedTodo) {
                         val linked = repository.createFromDraft(candidate.toLinkedTodoDraft(groups))
                         linked.forEach { scheduleReminderOrDisable(it) }
+                        mappings += linked.mapNotNull { item ->
+                            candidate.toPlanningLineMapping(
+                                noteId = activeNoteId,
+                                item = item,
+                                sourceLine = sourceLine,
+                                batchId = batchId,
+                                timestamp = importAtMillis
+                            )
+                        }
                     }
                 }
                 else -> Unit
@@ -273,11 +311,77 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
         }
         val updatedMarkdown = PlanningMarkdownParser.markImportedLines(currentMarkdown, selected.map { it.lineNumber }.toSet())
         if (activeNoteId != null) {
+            repository.insertPlanningMappings(mappings)
             repository.updatePlanningNoteContent(activeNoteId, updatedMarkdown)
             settingsStore.updateLastOpenedPlanningNoteId(activeNoteId)
         }
         autoBackupIfEnabled()
         return PlanningImportResult(importedCount = selected.size, updatedMarkdown = updatedMarkdown)
+    }
+
+    suspend fun syncPlanningMappings(noteId: Long, markdown: String): List<PlanningLineMapping> {
+        return repository.syncPlanningMappingStatuses(noteId, markdown).mappings
+    }
+
+    suspend fun getPlanningMappings(noteId: Long): List<PlanningLineMapping> {
+        return repository.getPlanningMappingsForNote(noteId)
+    }
+
+    suspend fun refreshPlanningImportedItems(
+        noteId: Long,
+        markdown: String,
+        scope: PlanningRefreshScope,
+        cursorLineNumber: Int?
+    ): PlanningOperationResult {
+        val result = repository.refreshPlanningImportedItems(
+            noteId = noteId,
+            markdown = markdown,
+            wholeDocument = scope == PlanningRefreshScope.WHOLE_DOCUMENT,
+            cursorLineNumber = cursorLineNumber
+        )
+        reschedulePlanningOperationItems(result)
+        autoBackupIfEnabled()
+        return result
+    }
+
+    suspend fun postponePlanningImportedItems(
+        noteId: Long,
+        markdown: String,
+        startMappingId: Long?,
+        offsetMinutes: Int,
+        scope: PlanningPostponeScope
+    ): PlanningOperationResult {
+        val result = repository.postponePlanningImportedItems(
+            noteId = noteId,
+            markdown = markdown,
+            startMappingId = startMappingId,
+            offsetMinutes = offsetMinutes,
+            scope = scope
+        )
+        reschedulePlanningOperationItems(result)
+        autoBackupIfEnabled()
+        return result
+    }
+
+    suspend fun undoLastPlanningOperation(noteId: Long, markdown: String): PlanningOperationResult {
+        val result = repository.undoLastPlanningOperation(noteId, markdown)
+        clearReminderArtifacts(result.affectedBeforeItems)
+        result.affectedAfterItems.forEach { scheduleReminderOrDisable(it) }
+        autoBackupIfEnabled()
+        return result
+    }
+
+    suspend fun applyPlanningConflictDocument(noteId: Long, markdown: String, mappingId: Long): PlanningOperationResult {
+        val result = repository.resolvePlanningConflictWithDocument(noteId, markdown, mappingId)
+        reschedulePlanningOperationItems(result)
+        autoBackupIfEnabled()
+        return result
+    }
+
+    suspend fun applyPlanningConflictItem(noteId: Long, markdown: String, mappingId: Long): PlanningOperationResult {
+        val result = repository.resolvePlanningConflictWithItem(noteId, markdown, mappingId)
+        autoBackupIfEnabled()
+        return result
     }
 
     suspend fun addTodo(draft: TodoDraft): String? {
@@ -777,6 +881,40 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
             recurrence = RecurrenceConfig(),
             groupId = resolvePlanningGroupId(groupName, groups)
         )
+    }
+
+    private fun PlanningImportCandidate.toPlanningLineMapping(
+        noteId: Long?,
+        item: TodoItem,
+        sourceLine: String,
+        batchId: String,
+        timestamp: Long
+    ): PlanningLineMapping? {
+        val resolvedNoteId = noteId ?: return null
+        return PlanningLineMapping(
+            noteId = resolvedNoteId,
+            contentFingerprint = PlanningLineMatcher.fingerprint(sourceLine),
+            originalLineText = sourceLine,
+            currentLineText = sourceLine,
+            todoId = item.id.takeIf { item.isTodo },
+            eventId = item.id.takeIf { item.isEvent },
+            batchId = batchId,
+            operationType = "IMPORT",
+            createdAtMillis = timestamp,
+            lastRefreshedAtMillis = timestamp,
+            lastKnownLineNumber = lineNumber
+        )
+    }
+
+    private fun planningDocumentLines(markdown: String): List<String> {
+        return markdown.replace("\r\n", "\n").replace('\r', '\n').lines().let { lines ->
+            if (lines.size > 1 && lines.last().isEmpty() && markdown.endsWith("\n")) lines.dropLast(1) else lines
+        }
+    }
+
+    private suspend fun reschedulePlanningOperationItems(result: PlanningOperationResult) {
+        clearReminderArtifacts(result.affectedBeforeItems)
+        result.affectedAfterItems.forEach { scheduleReminderOrDisable(it) }
     }
 
     private fun resolvePlanningGroupId(groupName: String, groups: List<TaskGroup>): Long {

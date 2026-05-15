@@ -51,11 +51,13 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
@@ -71,6 +73,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.FontFamily
@@ -82,8 +85,13 @@ import androidx.compose.ui.unit.dp
 import com.example.todoalarm.data.PlanningNote
 import com.example.todoalarm.data.PlanningImportCandidate
 import com.example.todoalarm.data.PlanningImportResult
+import com.example.todoalarm.data.PlanningLineMapping
+import com.example.todoalarm.data.MappingStatus
+import com.example.todoalarm.data.PlanningOperationResult
 import com.example.todoalarm.data.PlanningParseResult
 import com.example.todoalarm.data.PlanningParsedType
+import com.example.todoalarm.data.PlanningPostponeScope
+import com.example.todoalarm.data.PlanningRefreshScope
 import com.example.todoalarm.data.toPlanningImportCandidate
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -105,7 +113,15 @@ internal fun PlanningDeskPanel(
     onDeleteNote: suspend (Long) -> String?,
     onArchiveNote: suspend (Long) -> String?,
     onParse: suspend (String) -> PlanningParseResult,
-    onImport: suspend (List<PlanningImportCandidate>, Set<String>, String, Long?) -> PlanningImportResult
+    onImport: suspend (List<PlanningImportCandidate>, Set<String>, String, Long?) -> PlanningImportResult,
+    onSyncMappings: suspend (Long, String) -> List<PlanningLineMapping>,
+    onGetMappings: suspend (Long) -> List<PlanningLineMapping>,
+    onRefreshImportedItems: suspend (Long, String, PlanningRefreshScope, Int?) -> PlanningOperationResult,
+    onPostponeImportedItems: suspend (Long, String, Long?, Int, PlanningPostponeScope) -> PlanningOperationResult,
+    onUndoLastOperation: suspend (Long, String) -> PlanningOperationResult,
+    onApplyConflictDocument: suspend (Long, String, Long) -> PlanningOperationResult,
+    onApplyConflictItem: suspend (Long, String, Long) -> PlanningOperationResult,
+    isNewUser: Boolean
 ) {
     val context = LocalContext.current
     val focusManager = LocalFocusManager.current
@@ -121,11 +137,17 @@ internal fun PlanningDeskPanel(
     var archiveDialog by remember { mutableStateOf(false) }
     var newDialog by remember { mutableStateOf(false) }
     var overflowMenuExpanded by remember { mutableStateOf(false) }
-    var shortcutBarExpanded by rememberSaveable(activeNote?.id) { mutableStateOf(false) }
+    var shortcutBarExpanded by rememberSaveable { mutableStateOf(isNewUser) }
     var parsing by remember { mutableStateOf(false) }
+    var mappingStates by remember(activeNote?.id) { mutableStateOf<List<PlanningLineMapping>>(emptyList()) }
+    var refreshConfirmVisible by remember { mutableStateOf(false) }
+    var postponeSheetVisible by remember { mutableStateOf(false) }
+    var undoConfirmVisible by remember { mutableStateOf(false) }
+    var operationRunning by remember { mutableStateOf(false) }
     val selectedIds = remember { mutableStateMapOf<String, Boolean>() }
     val editableCandidates = remember { mutableStateListOf<PlanningImportCandidate>() }
     val hasUnsavedChanges = activeNote != null && editorValue.text != activeNote.contentMarkdown
+    val latestUndoSummary = remember(mappingStates) { latestPlanningUndoSummary(mappingStates) }
 
     LaunchedEffect(activeNote?.id) {
         editorValue = TextFieldValue(activeNote?.contentMarkdown.orEmpty())
@@ -135,11 +157,18 @@ internal fun PlanningDeskPanel(
         markdownEditMode = true
     }
 
+    LaunchedEffect(activeNote?.id) {
+        val note = activeNote ?: return@LaunchedEffect
+        mappingStates = onSyncMappings(note.id, editorValue.text)
+    }
+
     LaunchedEffect(activeNote?.id, editorValue.text, activeNote?.contentMarkdown) {
         val note = activeNote ?: return@LaunchedEffect
         if (editorValue.text == note.contentMarkdown) return@LaunchedEffect
         delay(2000)
-        onSaveNote(note.id, editorValue.text)
+        onSaveNote(note.id, editorValue.text)?.let { message ->
+            Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+        }
     }
 
     Column(
@@ -164,23 +193,19 @@ internal fun PlanningDeskPanel(
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 if (hasUnsavedChanges) {
-                    Text(
-                        text = "自动保存中...",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.weight(1f),
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
+                    LinearProgressIndicator(
+                        modifier = Modifier
+                            .width(44.dp)
+                            .height(2.dp),
+                        color = MaterialTheme.colorScheme.primary
                     )
-                } else {
-                    Spacer(Modifier.weight(1f))
                 }
+                Spacer(Modifier.weight(1f))
                 OutlinedButton(
                     modifier = Modifier.height(40.dp),
                     onClick = {
                         focusManager.clearFocus()
                         markdownEditMode = !markdownEditMode
-                        Toast.makeText(context, if (markdownEditMode) "已切换到编辑模式" else "已切换到预览模式", Toast.LENGTH_SHORT).show()
                     }
                 ) {
                     Text(if (markdownEditMode) "预览" else "编辑")
@@ -221,32 +246,10 @@ internal fun PlanningDeskPanel(
                     modifier = Modifier.size(40.dp),
                     onClick = {
                         focusManager.clearFocus()
-                        Toast.makeText(context, "打开规划文档列表", Toast.LENGTH_SHORT).show()
                         documentSheetVisible = true
                     }
                 ) {
                     Icon(Icons.Rounded.Article, contentDescription = "文档列表")
-                }
-                IconButton(
-                    modifier = Modifier.size(40.dp),
-                    onClick = {
-                        focusManager.clearFocus()
-                        helpSheetVisible = true
-                    }
-                ) {
-                    Icon(Icons.Rounded.Info, contentDescription = "规划台教程")
-                }
-                IconButton(
-                    modifier = Modifier.size(40.dp),
-                    onClick = {
-                        shortcutBarExpanded = !shortcutBarExpanded
-                        Toast.makeText(context, if (shortcutBarExpanded) "已展开快捷操作" else "已收起快捷操作", Toast.LENGTH_SHORT).show()
-                    }
-                ) {
-                    Icon(
-                        if (shortcutBarExpanded) Icons.Rounded.ExpandLess else Icons.Rounded.ExpandMore,
-                        contentDescription = if (shortcutBarExpanded) "收起快捷操作" else "展开快捷操作"
-                    )
                 }
                 androidx.compose.foundation.layout.Box {
                     IconButton(
@@ -276,6 +279,36 @@ internal fun PlanningDeskPanel(
                             onClick = { overflowMenuExpanded = false; helpSheetVisible = true }
                         )
                         DropdownMenuItem(
+                            text = { Text(if (shortcutBarExpanded) "隐藏快捷输入栏" else "显示快捷输入栏") },
+                            onClick = { overflowMenuExpanded = false; shortcutBarExpanded = !shortcutBarExpanded }
+                        )
+                        DropdownMenuItem(
+                            text = { Text("刷新已导入项") },
+                            onClick = { overflowMenuExpanded = false; refreshConfirmVisible = true },
+                            enabled = activeNote != null && !operationRunning
+                        )
+                        DropdownMenuItem(
+                            text = { Text("批量顺延") },
+                            onClick = { overflowMenuExpanded = false; postponeSheetVisible = true },
+                            enabled = activeNote != null && mappingStates.any { it.status == MappingStatus.ACTIVE } && !operationRunning
+                        )
+                        DropdownMenuItem(
+                            text = { Text("撤销上次操作") },
+                            onClick = { overflowMenuExpanded = false; undoConfirmVisible = true },
+                            enabled = activeNote != null && latestUndoSummary != null && !operationRunning
+                        )
+                        DropdownMenuItem(
+                            text = { Text("同步完成状态到原文") },
+                            onClick = {
+                                overflowMenuExpanded = false
+                                val updated = syncCompletedMappingsToMarkdown(editorValue.text, mappingStates)
+                                if (updated != editorValue.text) {
+                                    editorValue = editorValue.copy(text = updated)
+                                }
+                            },
+                            enabled = mappingStates.any { it.status == MappingStatus.COMPLETED }
+                        )
+                        DropdownMenuItem(
                             text = { Text("归档") },
                             onClick = { overflowMenuExpanded = false; archiveDialog = true },
                             enabled = activeNote != null
@@ -296,11 +329,10 @@ internal fun PlanningDeskPanel(
             }
             if (shortcutBarExpanded) {
                 PlanningShortcutBar(
-                    onAction = { label, action ->
+                    onAction = { _, action ->
                         editorValue = applyPlanningShortcut(editorValue, action)
-                        Toast.makeText(context, "已执行：$label", Toast.LENGTH_SHORT).show()
                     },
-                    onHelp = { token, description -> Toast.makeText(context, "$token：$description", Toast.LENGTH_LONG).show() }
+                    onHelp = { _, description -> Toast.makeText(context, description, Toast.LENGTH_LONG).show() }
                 )
             }
 
@@ -326,6 +358,7 @@ internal fun PlanningDeskPanel(
         } else {
             PlanningMarkdownPreview(
                 markdown = editorValue.text,
+                mappings = mappingStates,
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(1f),
@@ -341,6 +374,24 @@ internal fun PlanningDeskPanel(
                         editorValue = editorValue.copy(selection = androidx.compose.ui.text.TextRange(planningLineStartOffset(editorValue.text, it)))
                     }
                     markdownEditMode = true
+                },
+                onApplyConflictDocument = { mappingId ->
+                    val noteId = activeNote?.id ?: return@PlanningMarkdownPreview
+                    scope.launch {
+                        val result = onApplyConflictDocument(noteId, editorValue.text, mappingId)
+                        result.updatedMarkdown?.let { editorValue = TextFieldValue(it) }
+                        mappingStates = onSyncMappings(noteId, editorValue.text)
+                        Toast.makeText(context, result.message, Toast.LENGTH_SHORT).show()
+                    }
+                },
+                onApplyConflictItem = { mappingId ->
+                    val noteId = activeNote?.id ?: return@PlanningMarkdownPreview
+                    scope.launch {
+                        val result = onApplyConflictItem(noteId, editorValue.text, mappingId)
+                        result.updatedMarkdown?.let { editorValue = TextFieldValue(it) }
+                        mappingStates = onSyncMappings(noteId, editorValue.text)
+                        Toast.makeText(context, result.message, Toast.LENGTH_SHORT).show()
+                    }
                 }
             )
         }
@@ -402,7 +453,10 @@ internal fun PlanningDeskPanel(
                         if (result.message == null) {
                             result.updatedMarkdown?.let { updated ->
                                 editorValue = TextFieldValue(updated)
-                                activeNote?.id?.let { noteId -> onSaveNote(noteId, updated) }
+                                activeNote?.id?.let { noteId ->
+                                    onSaveNote(noteId, updated)
+                                    mappingStates = onSyncMappings(noteId, updated)
+                                }
                             }
                             parseResult = null
                             editableCandidates.clear()
@@ -424,7 +478,7 @@ internal fun PlanningDeskPanel(
             onConfirm = { title ->
                 scope.launch {
                     val message = onCreateNote(title)
-                    Toast.makeText(context, message ?: "已新建规划文档", Toast.LENGTH_SHORT).show()
+                    message?.let { Toast.makeText(context, it, Toast.LENGTH_SHORT).show() }
                     newDialog = false
                 }
             }
@@ -439,7 +493,7 @@ internal fun PlanningDeskPanel(
             onConfirm = { title ->
                 scope.launch {
                     val message = onRenameNote(activeNote.id, title)
-                    Toast.makeText(context, message ?: "文档已重命名", Toast.LENGTH_SHORT).show()
+                    message?.let { Toast.makeText(context, it, Toast.LENGTH_SHORT).show() }
                     renameDialog = false
                 }
             }
@@ -454,7 +508,7 @@ internal fun PlanningDeskPanel(
             onConfirm = {
                 scope.launch {
                     val message = onDeleteNote(note.id)
-                    Toast.makeText(context, message ?: "文档已删除", Toast.LENGTH_SHORT).show()
+                    message?.let { Toast.makeText(context, it, Toast.LENGTH_SHORT).show() }
                     pendingDeleteNote = null
                 }
             }
@@ -469,8 +523,86 @@ internal fun PlanningDeskPanel(
             onConfirm = {
                 scope.launch {
                     val message = onArchiveNote(activeNote.id)
-                    Toast.makeText(context, message ?: "文档已归档", Toast.LENGTH_SHORT).show()
+                    message?.let { Toast.makeText(context, it, Toast.LENGTH_SHORT).show() }
                     archiveDialog = false
+                }
+            }
+        )
+    }
+
+    if (refreshConfirmVisible && activeNote != null) {
+        PlanningRefreshDialog(
+            running = operationRunning,
+            onDismiss = { refreshConfirmVisible = false },
+            onConfirm = { scopeChoice ->
+                scope.launch {
+                    operationRunning = true
+                    try {
+                        val result = onRefreshImportedItems(
+                            activeNote.id,
+                            editorValue.text,
+                            scopeChoice,
+                            currentPlanningCursorLine(editorValue)
+                        )
+                        result.updatedMarkdown?.let { editorValue = TextFieldValue(it) }
+                        mappingStates = onGetMappings(activeNote.id)
+                        Toast.makeText(context, result.message, Toast.LENGTH_SHORT).show()
+                    } catch (error: Exception) {
+                        Toast.makeText(context, error.message ?: "刷新失败", Toast.LENGTH_SHORT).show()
+                    } finally {
+                        operationRunning = false
+                        refreshConfirmVisible = false
+                    }
+                }
+            }
+        )
+    }
+
+    if (postponeSheetVisible && activeNote != null) {
+        PlanningPostponeSheet(
+            mappings = mappingStates.filter { it.status == MappingStatus.ACTIVE },
+            running = operationRunning,
+            onDismiss = { postponeSheetVisible = false },
+            onConfirm = { mappingId, offsetMinutes, scopeChoice ->
+                scope.launch {
+                    operationRunning = true
+                    try {
+                        val result = onPostponeImportedItems(activeNote.id, editorValue.text, mappingId, offsetMinutes, scopeChoice)
+                        result.updatedMarkdown?.let { editorValue = TextFieldValue(it) }
+                        mappingStates = onGetMappings(activeNote.id)
+                        Toast.makeText(context, result.message, Toast.LENGTH_SHORT).show()
+                    } catch (error: Exception) {
+                        Toast.makeText(context, error.message ?: "顺延失败", Toast.LENGTH_SHORT).show()
+                    } finally {
+                        operationRunning = false
+                        postponeSheetVisible = false
+                    }
+                }
+            }
+        )
+    }
+
+    if (undoConfirmVisible && activeNote != null) {
+        ConfirmPlanningDialog(
+            title = "撤销上次规划台操作？",
+            message = latestUndoSummary?.let { "会回滚最近一次${it.label}批次，影响 ${it.affectedCount} 条事项。" }
+                ?: "没有可撤销的导入、刷新或顺延批次。",
+            confirmText = "撤销",
+            onDismiss = { undoConfirmVisible = false },
+            onConfirm = {
+                scope.launch {
+                    operationRunning = true
+                    try {
+                        val result = onUndoLastOperation(activeNote.id, editorValue.text)
+                        result.updatedMarkdown?.let { editorValue = TextFieldValue(it) }
+                        mappingStates = onGetMappings(activeNote.id)
+                        Toast.makeText(context, result.message, Toast.LENGTH_SHORT).show()
+                    } catch (error: Exception) {
+                        Toast.makeText(context, error.message ?: "撤销失败", Toast.LENGTH_SHORT).show()
+                    } finally {
+                        operationRunning = false
+                        undoConfirmVisible = false
+                    }
                 }
             }
         )
@@ -586,6 +718,152 @@ private fun PlanningShortcutChip(
             )
         }
     }
+}
+
+@Composable
+private fun PlanningRefreshDialog(
+    running: Boolean,
+    onDismiss: () -> Unit,
+    onConfirm: (PlanningRefreshScope) -> Unit
+) {
+    var wholeDocument by rememberSaveable { mutableStateOf(false) }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("刷新已导入项") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text("只会刷新未完成且未取消的映射项；已完成项会跳过，手动改过的事项会标记为冲突。")
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Switch(checked = wholeDocument, onCheckedChange = { wholeDocument = it })
+                    Text(if (wholeDocument) "范围：整篇文档" else "范围：当前标题分区")
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                enabled = !running,
+                onClick = { onConfirm(if (wholeDocument) PlanningRefreshScope.WHOLE_DOCUMENT else PlanningRefreshScope.CURRENT_SECTION) }
+            ) { Text("刷新") }
+        },
+        dismissButton = { TextButton(onClick = onDismiss, enabled = !running) { Text("取消") } }
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun PlanningPostponeSheet(
+    mappings: List<PlanningLineMapping>,
+    running: Boolean,
+    onDismiss: () -> Unit,
+    onConfirm: (Long?, Int, PlanningPostponeScope) -> Unit
+) {
+    var selectedId by rememberSaveable(mappings) { mutableStateOf(mappings.firstOrNull()?.id) }
+    var customOffset by rememberSaveable { mutableStateOf("") }
+    var selectedOffset by rememberSaveable { mutableStateOf(30) }
+    var selectedScope by rememberSaveable { mutableStateOf(PlanningPostponeScope.FROM_ITEM_TO_SECTION_END) }
+    val offset = customOffset.toIntOrNull() ?: selectedOffset
+    val previewItems: List<Pair<String, String>> = remember(mappings, selectedId, offset) {
+        val selectedIndex = mappings.indexOfFirst { it.id == selectedId }.takeIf { it >= 0 } ?: 0
+        mappings.drop(selectedIndex).take(6).map { mapping ->
+            val sourceLine = mapping.trackedLineText.ifBlank { "未命名条目" }
+            sourceLine to shiftPlanningPreviewText(sourceLine, offset)
+        }
+    }
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    ) {
+        Column(modifier = Modifier.padding(horizontal = 18.dp, vertical = 14.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+            Text("批量顺延", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+            Text("选择起始条目和偏移量后，会同步修改正式事项时间和规划台原文里的时间文本。", color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text("起始条目", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+            LazyColumn(
+                modifier = Modifier.fillMaxWidth().fillMaxHeight(0.25f),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                items(mappings, key = { it.id }) { mapping ->
+                    FilterChip(
+                        selected = selectedId == mapping.id,
+                        onClick = { selectedId = mapping.id },
+                        label = {
+                            Text(
+                                mapping.trackedLineText.ifBlank { "第 ${mapping.lastKnownLineNumber} 行" },
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                    )
+                }
+            }
+            Text("偏移量", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                listOf(15, 30, 60, 120).forEach { minutes ->
+                    FilterChip(
+                        selected = customOffset.isBlank() && selectedOffset == minutes,
+                        onClick = {
+                            customOffset = ""
+                            selectedOffset = minutes
+                        },
+                        label = { Text("+${minutes}分") }
+                    )
+                }
+            }
+            OutlinedTextField(
+                value = customOffset,
+                onValueChange = { value -> customOffset = value.filter { it.isDigit() || it == '-' }.take(4) },
+                label = { Text("自定义分钟，可填负数") },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth()
+            )
+            Text("影响范围", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                PlanningScopeChip("从此条目到分区末尾", selectedScope == PlanningPostponeScope.FROM_ITEM_TO_SECTION_END) {
+                    selectedScope = PlanningPostponeScope.FROM_ITEM_TO_SECTION_END
+                }
+                PlanningScopeChip("从此条目到文档末尾", selectedScope == PlanningPostponeScope.FROM_ITEM_TO_DOCUMENT_END) {
+                    selectedScope = PlanningPostponeScope.FROM_ITEM_TO_DOCUMENT_END
+                }
+                PlanningScopeChip("当前分区所有未完成项", selectedScope == PlanningPostponeScope.CURRENT_SECTION_ALL) {
+                    selectedScope = PlanningPostponeScope.CURRENT_SECTION_ALL
+                }
+            }
+            Text("预览", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                previewItems.forEach { (oldLine, newLine) ->
+                    Surface(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(14.dp),
+                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.22f)
+                    ) {
+                        Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Text(oldLine, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                            Text("→ $newLine", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                        }
+                    }
+                }
+            }
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                TextButton(onClick = onDismiss, enabled = !running) { Text("取消") }
+                Spacer(Modifier.width(8.dp))
+                Button(
+                    enabled = !running && selectedId != null && offset != 0,
+                    onClick = { onConfirm(selectedId, offset, selectedScope) }
+                ) { Text("执行顺延") }
+            }
+        }
+    }
+}
+
+@Composable
+private fun PlanningScopeChip(label: String, selected: Boolean, onClick: () -> Unit) {
+    FilterChip(
+        selected = selected,
+        onClick = onClick,
+        label = { Text(label) }
+    )
 }
 
 @Composable
@@ -857,11 +1135,20 @@ private fun planningTutorialPages(): List<PlanningTutorialPage> {
 @Composable
 private fun PlanningMarkdownPreview(
     markdown: String,
+    mappings: List<PlanningLineMapping>,
     modifier: Modifier,
     onToggleCheckbox: (Int) -> Unit,
-    onRequestEdit: (Int?) -> Unit
+    onRequestEdit: (Int?) -> Unit,
+    onApplyConflictDocument: (Long) -> Unit,
+    onApplyConflictItem: (Long) -> Unit
 ) {
     val parsedLines = remember(markdown) { runCatching { parsePlanningMarkdownLines(markdown) } }
+    val mappingsByLine = remember(mappings) {
+        mappings
+            .filter { it.lastKnownLineNumber > 0 }
+            .groupBy { it.lastKnownLineNumber }
+            .mapValues { (_, value) -> value.maxByOrNull { it.lastRefreshedAtMillis } }
+    }
     ElevatedCard(
         modifier = modifier,
         shape = RoundedCornerShape(28.dp),
@@ -898,10 +1185,11 @@ private fun PlanningMarkdownPreview(
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 items(lines, key = { it.lineNumber }) { line ->
+                    val mapping = mappingsByLine[line.lineNumber]
                     when (line) {
                         is PlanningRenderedLine.Heading -> PlanningMarkdownHeading(line)
-                        is PlanningRenderedLine.Task -> PlanningMarkdownTaskLine(line, onToggleCheckbox, onRequestEdit)
-                        is PlanningRenderedLine.Text -> PlanningMarkdownTextLine(line, onRequestEdit)
+                        is PlanningRenderedLine.Task -> PlanningMarkdownTaskLine(line, mapping, onToggleCheckbox, onRequestEdit, onApplyConflictDocument, onApplyConflictItem)
+                        is PlanningRenderedLine.Text -> PlanningMarkdownTextLine(line, mapping, onRequestEdit, onApplyConflictDocument, onApplyConflictItem)
                     }
                 }
             }
@@ -944,13 +1232,18 @@ private fun PlanningMarkdownHeading(line: PlanningRenderedLine.Heading) {
 @Composable
 private fun PlanningMarkdownTaskLine(
     line: PlanningRenderedLine.Task,
+    mapping: PlanningLineMapping?,
     onToggleCheckbox: (Int) -> Unit,
-    onRequestEdit: (Int?) -> Unit
+    onRequestEdit: (Int?) -> Unit,
+    onApplyConflictDocument: (Long) -> Unit,
+    onApplyConflictItem: (Long) -> Unit
 ) {
+    val status = mapping?.status
     Surface(
         modifier = Modifier.fillMaxWidth().padding(start = (line.indentLevel * 18).dp),
         shape = RoundedCornerShape(18.dp),
-        color = if (line.imported) MaterialTheme.colorScheme.primary.copy(alpha = 0.08f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.28f),
+        color = planningLineContainerColor(status, line.imported),
+        border = planningLineBorder(status),
         onClick = { onRequestEdit(line.lineNumber) }
     ) {
         Row(
@@ -967,11 +1260,14 @@ private fun PlanningMarkdownTaskLine(
                 Text(
                     text = line.text.ifBlank { "未命名任务" },
                     style = MaterialTheme.typography.bodyLarge.copy(
-                        textDecoration = if (line.checked) TextDecoration.LineThrough else TextDecoration.None
+                        textDecoration = if (line.checked || status == MappingStatus.COMPLETED || status == MappingStatus.CANCELED) TextDecoration.LineThrough else TextDecoration.None
                     ),
-                    color = if (line.checked) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface
+                    color = planningLineTextColor(status, line.checked)
                 )
-                PlanningMarkdownPills(tags = line.tags, imported = line.imported)
+                PlanningMarkdownPills(tags = line.tags, imported = line.imported, status = status)
+                if (status == MappingStatus.CONFLICT && mapping != null) {
+                    PlanningConflictActions(mapping.id, onApplyConflictDocument, onApplyConflictItem)
+                }
             }
         }
     }
@@ -980,30 +1276,53 @@ private fun PlanningMarkdownTaskLine(
 @Composable
 private fun PlanningMarkdownTextLine(
     line: PlanningRenderedLine.Text,
-    onRequestEdit: (Int?) -> Unit
+    mapping: PlanningLineMapping?,
+    onRequestEdit: (Int?) -> Unit,
+    onApplyConflictDocument: (Long) -> Unit,
+    onApplyConflictItem: (Long) -> Unit
 ) {
+    val status = mapping?.status
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(18.dp),
-        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.20f),
+        color = planningLineContainerColor(status, line.imported),
+        border = planningLineBorder(status),
         onClick = { onRequestEdit(line.lineNumber) }
     ) {
         Column(
             modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
             verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
-            Text(line.text, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface)
-            PlanningMarkdownPills(tags = line.tags, imported = line.imported)
+            Text(
+                line.text,
+                style = MaterialTheme.typography.bodyMedium.copy(
+                    textDecoration = if (status == MappingStatus.COMPLETED || status == MappingStatus.CANCELED) TextDecoration.LineThrough else TextDecoration.None
+                ),
+                color = planningLineTextColor(status, false)
+            )
+            PlanningMarkdownPills(tags = line.tags, imported = line.imported, status = status)
+            if (status == MappingStatus.CONFLICT && mapping != null) {
+                PlanningConflictActions(mapping.id, onApplyConflictDocument, onApplyConflictItem)
+            }
         }
     }
 }
 
 @Composable
-private fun PlanningMarkdownPills(tags: List<String>, imported: Boolean) {
-    if (tags.isEmpty() && !imported) return
+private fun PlanningMarkdownPills(tags: List<String>, imported: Boolean, status: MappingStatus? = null) {
+    if (tags.isEmpty() && !imported && status == null) return
     Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
         tags.forEach { tag -> PlanningMarkdownTagPill(tag) }
-        if (imported) PlanningMarkdownStatePill("已导入")
+        val label = when (status) {
+            MappingStatus.ACTIVE -> "已导入"
+            MappingStatus.COMPLETED -> "✓ 已完成"
+            MappingStatus.CANCELED -> "已取消"
+            MappingStatus.ORPHANED -> "映射丢失"
+            MappingStatus.CONFLICT -> "已手动修改"
+            null -> if (imported) "已导入" else null
+        }
+        val resolvedStatus = status ?: if (imported) MappingStatus.ACTIVE else null
+        if (label != null && resolvedStatus != null) PlanningMarkdownStatePill(label, resolvedStatus)
     }
 }
 
@@ -1025,18 +1344,77 @@ private fun PlanningMarkdownTagPill(tag: String) {
 }
 
 @Composable
-private fun PlanningMarkdownStatePill(label: String) {
+private fun PlanningMarkdownStatePill(label: String, status: MappingStatus = MappingStatus.ACTIVE) {
+    val color = planningStatusColor(status)
     Surface(
         shape = RoundedCornerShape(999.dp),
-        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.14f)
+        color = color.copy(alpha = 0.14f)
     ) {
         Text(
             text = label,
             modifier = Modifier.padding(horizontal = 9.dp, vertical = 4.dp),
             style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.primary,
+            color = color,
             maxLines = 1
         )
+    }
+}
+
+@Composable
+private fun planningLineContainerColor(status: MappingStatus?, imported: Boolean): Color {
+    return when (status) {
+        MappingStatus.ACTIVE -> MaterialTheme.colorScheme.primary.copy(alpha = 0.08f)
+        MappingStatus.COMPLETED -> Color(0xFF2E7D32).copy(alpha = 0.10f)
+        MappingStatus.CANCELED -> MaterialTheme.colorScheme.outline.copy(alpha = 0.12f)
+        MappingStatus.ORPHANED -> Color(0xFFEF6C00).copy(alpha = 0.10f)
+        MappingStatus.CONFLICT -> Color(0xFFF9A825).copy(alpha = 0.13f)
+        null -> if (imported) MaterialTheme.colorScheme.primary.copy(alpha = 0.08f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.28f)
+    }
+}
+
+@Composable
+private fun planningLineBorder(status: MappingStatus?): BorderStroke? {
+    return when (status) {
+        MappingStatus.ORPHANED -> BorderStroke(1.dp, Color(0xFFEF6C00).copy(alpha = 0.65f))
+        MappingStatus.CONFLICT -> BorderStroke(1.dp, Color(0xFFF9A825).copy(alpha = 0.72f))
+        else -> null
+    }
+}
+
+@Composable
+private fun planningLineTextColor(status: MappingStatus?, checked: Boolean): Color {
+    return when {
+        status == MappingStatus.COMPLETED -> Color(0xFF2E7D32)
+        status == MappingStatus.CANCELED -> MaterialTheme.colorScheme.onSurfaceVariant
+        checked -> MaterialTheme.colorScheme.onSurfaceVariant
+        else -> MaterialTheme.colorScheme.onSurface
+    }
+}
+
+@Composable
+private fun planningStatusColor(status: MappingStatus): Color {
+    return when (status) {
+        MappingStatus.ACTIVE -> MaterialTheme.colorScheme.primary
+        MappingStatus.COMPLETED -> Color(0xFF2E7D32)
+        MappingStatus.CANCELED -> MaterialTheme.colorScheme.onSurfaceVariant
+        MappingStatus.ORPHANED -> Color(0xFFEF6C00)
+        MappingStatus.CONFLICT -> Color(0xFFF9A825)
+    }
+}
+
+@Composable
+private fun PlanningConflictActions(
+    mappingId: Long,
+    onApplyConflictDocument: (Long) -> Unit,
+    onApplyConflictItem: (Long) -> Unit
+) {
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+        TextButton(onClick = { onApplyConflictDocument(mappingId) }) {
+            Text("以文档为准覆盖")
+        }
+        TextButton(onClick = { onApplyConflictItem(mappingId) }) {
+            Text("以事项为准更新文档")
+        }
     }
 }
 
@@ -1408,6 +1786,70 @@ private fun planningLineStartOffset(markdown: String, lineNumber: Int): Int {
         currentLine += 1
     }
     return offset.coerceIn(0, markdown.length)
+}
+
+private fun currentPlanningCursorLine(value: TextFieldValue): Int {
+    val cursor = value.selection.start.coerceIn(0, value.text.length)
+    return value.text.take(cursor).count { it == '\n' } + 1
+}
+
+private fun syncCompletedMappingsToMarkdown(
+    markdown: String,
+    mappings: List<PlanningLineMapping>
+): String {
+    val completedLines = mappings
+        .filter { it.status == MappingStatus.COMPLETED && it.lastKnownLineNumber > 0 }
+        .map { it.lastKnownLineNumber }
+        .toSet()
+    if (completedLines.isEmpty()) return markdown
+    val hasTrailingNewline = markdown.endsWith("\n") || markdown.endsWith("\r")
+    val normalized = markdown.replace("\r\n", "\n").replace('\r', '\n')
+    val updated = normalized.lines().mapIndexed { index, line ->
+        if (index + 1 !in completedLines) return@mapIndexed line
+        TaskPreviewRegex.matchEntire(line)?.let { match ->
+            if (match.groupValues[2].equals("x", ignoreCase = true)) line else match.groupValues[1] + "- [x] " + match.groupValues[3]
+        } ?: line
+    }.joinToString("\n")
+    return if (hasTrailingNewline && !updated.endsWith("\n")) "$updated\n" else updated
+}
+
+private fun shiftPlanningPreviewText(line: String, offsetMinutes: Int): String {
+    val timeRegex = Regex("(凌晨|早上|上午|中午|下午|晚上)?\\s*(\\d{1,2})[:：](\\d{2})")
+    return timeRegex.replace(line) { match ->
+        val period = match.groupValues[1]
+        val hour = match.groupValues[2].toIntOrNull() ?: return@replace match.value
+        val minute = match.groupValues[3].toIntOrNull() ?: return@replace match.value
+        val base = java.time.LocalTime.of(hour.coerceIn(0, 23), minute.coerceIn(0, 59)).plusMinutes(offsetMinutes.toLong())
+        if (period.isBlank()) "%02d:%02d".format(base.hour, base.minute) else "$period %02d:%02d".format(base.hour, base.minute)
+    }
+}
+
+private data class PlanningUndoSummary(
+    val batchId: String,
+    val operationType: String,
+    val affectedCount: Int
+) {
+    val label: String
+        get() = when (operationType) {
+            "IMPORT" -> "导入"
+            "REFRESH" -> "刷新"
+            "POSTPONE" -> "顺延"
+            else -> operationType
+        }
+}
+
+private fun latestPlanningUndoSummary(mappings: List<PlanningLineMapping>): PlanningUndoSummary? {
+    val latest = mappings
+        .filter { it.operationType == "IMPORT" || it.operationType == "REFRESH" || it.operationType == "POSTPONE" }
+        .maxWithOrNull(compareBy<PlanningLineMapping> { it.lastRefreshedAtMillis }.thenBy { it.id })
+        ?: return null
+    val batch = mappings.filter { it.batchId == latest.batchId }
+    val affectedCount = batch.mapNotNull { it.itemId }.toSet().size.takeIf { it > 0 } ?: batch.size
+    return PlanningUndoSummary(
+        batchId = latest.batchId,
+        operationType = latest.operationType,
+        affectedCount = affectedCount
+    )
 }
 
 private sealed interface PlanningRenderedLine {

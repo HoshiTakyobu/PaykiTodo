@@ -9,9 +9,15 @@ import com.example.todoalarm.data.AppSettingsStore
 import com.example.todoalarm.data.CalendarEventDraft
 import com.example.todoalarm.data.DEFAULT_PLANNING_REMINDER_MINUTES
 import com.example.todoalarm.data.PlanningImportCandidate
+import com.example.todoalarm.data.PlanningLineMapping
+import com.example.todoalarm.data.PlanningLineMatcher
+import com.example.todoalarm.data.MappingStatus
 import com.example.todoalarm.data.PlanningNote
+import com.example.todoalarm.data.PlanningOperationResult
 import com.example.todoalarm.data.PlanningParsedCandidate
 import com.example.todoalarm.data.PlanningParsedType
+import com.example.todoalarm.data.PlanningPostponeScope
+import com.example.todoalarm.data.PlanningRefreshScope
 import com.example.todoalarm.data.PlanningRecognitionService
 import com.example.todoalarm.data.PlanningMarkdownParser
 import com.example.todoalarm.data.toPlanningImportCandidate
@@ -39,6 +45,7 @@ import java.time.LocalTime
 import java.time.format.DateTimeFormatter
 import java.util.Collections
 import java.util.Locale
+import java.util.UUID
 
 class DesktopSyncCoordinator(
     private val context: Context,
@@ -86,13 +93,14 @@ class DesktopSyncCoordinator(
         body: String,
         headers: Map<String, String>
     ): DesktopSyncServer.Response {
-        if (path == "/" || path == "/index.html") {
+        val routePath = path.substringBefore('?')
+        if (routePath == "/" || routePath == "/index.html") {
             return DesktopSyncServer.Response.html(DesktopSyncWebAssets.indexHtml(context))
         }
-        if (path == "/app.js") {
+        if (routePath == "/app.js") {
             return DesktopSyncServer.Response.js(DesktopSyncWebAssets.appJs(context))
         }
-        if (path == "/app.css") {
+        if (routePath == "/app.css") {
             return DesktopSyncServer.Response.css(DesktopSyncWebAssets.appCss(context))
         }
 
@@ -105,18 +113,24 @@ class DesktopSyncCoordinator(
                 method == "GET" && path == "/api/status" -> DesktopSyncServer.Response.json(status().toJson())
                 method == "GET" && path == "/api/snapshot" -> DesktopSyncServer.Response.json(buildSnapshot().toJson(buildGroupsMap()))
                 method == "POST" && path == "/api/todos" -> DesktopSyncServer.Response.json(createTodo(JSONObject(body)))
-                method == "PUT" && path.matches(Regex("/api/todos/\\d+")) -> DesktopSyncServer.Response.json(updateTodo(path, JSONObject(body)))
                 method == "POST" && path == "/api/events" -> DesktopSyncServer.Response.json(createEvent(JSONObject(body)))
-                method == "PUT" && path.matches(Regex("/api/events/\\d+")) -> DesktopSyncServer.Response.json(updateEvent(path, JSONObject(body)))
+                method == "PUT" && routePath.matches(Regex("/api/todos/\\d+")) -> DesktopSyncServer.Response.json(updateTodo(routePath, JSONObject(body)))
+                method == "PUT" && routePath.matches(Regex("/api/events/\\d+")) -> DesktopSyncServer.Response.json(updateEvent(routePath, JSONObject(body)))
                 method == "GET" && path == "/api/planning/notes" -> DesktopSyncServer.Response.json(planningNotes())
                 method == "POST" && path == "/api/planning/notes" -> DesktopSyncServer.Response.json(createPlanningNote(JSONObject(body)))
-                method == "PUT" && path.matches(Regex("/api/planning/notes/\\d+")) -> DesktopSyncServer.Response.json(updatePlanningNote(path, JSONObject(body)))
-                method == "DELETE" && path.matches(Regex("/api/planning/notes/\\d+")) -> DesktopSyncServer.Response.json(deletePlanningNote(path))
+                method == "PUT" && routePath.matches(Regex("/api/planning/notes/\\d+")) -> DesktopSyncServer.Response.json(updatePlanningNote(routePath, JSONObject(body)))
+                method == "DELETE" && routePath.matches(Regex("/api/planning/notes/\\d+")) -> DesktopSyncServer.Response.json(deletePlanningNote(routePath))
                 method == "POST" && path == "/api/planning/parse" -> DesktopSyncServer.Response.json(parsePlanning(JSONObject(body)))
                 method == "POST" && path == "/api/planning/import" -> DesktopSyncServer.Response.json(importPlanning(JSONObject(body)))
-                method == "POST" && path.matches(Regex("/api/items/\\d+/complete")) -> DesktopSyncServer.Response.json(markCompleted(path))
-                method == "POST" && path.matches(Regex("/api/items/\\d+/cancel")) -> DesktopSyncServer.Response.json(cancelItem(path))
-                method == "DELETE" && path.matches(Regex("/api/items/\\d+")) -> DesktopSyncServer.Response.json(deleteItem(path))
+                method == "GET" && routePath == "/api/planning/mappings" -> DesktopSyncServer.Response.json(planningMappings(path))
+                method == "POST" && path == "/api/planning/refresh" -> DesktopSyncServer.Response.json(refreshPlanning(JSONObject(body)))
+                method == "POST" && path == "/api/planning/postpone" -> DesktopSyncServer.Response.json(postponePlanning(JSONObject(body)))
+                method == "POST" && path == "/api/planning/undo-last" -> DesktopSyncServer.Response.json(undoPlanning(JSONObject(body)))
+                method == "POST" && path == "/api/planning/conflict/document" -> DesktopSyncServer.Response.json(resolvePlanningConflictDocument(JSONObject(body)))
+                method == "POST" && path == "/api/planning/conflict/item" -> DesktopSyncServer.Response.json(resolvePlanningConflictItem(JSONObject(body)))
+                method == "POST" && routePath.matches(Regex("/api/items/\\d+/complete")) -> DesktopSyncServer.Response.json(markCompleted(routePath))
+                method == "POST" && routePath.matches(Regex("/api/items/\\d+/cancel")) -> DesktopSyncServer.Response.json(cancelItem(routePath))
+                method == "DELETE" && routePath.matches(Regex("/api/items/\\d+")) -> DesktopSyncServer.Response.json(deleteItem(routePath))
                 else -> DesktopSyncServer.Response.json(JSONObject().put("error", "未找到接口"), 404)
             }
         }.getOrElse { throwable ->
@@ -358,26 +372,41 @@ class DesktopSyncCoordinator(
         selected.forEachIndexed { index, candidate ->
             candidate.validate()?.let { error("第 ${index + 1} 条：$it") }
         }
+        val noteId = json.optLong("noteId", 0L).takeIf { it > 0L }
+        val batchId = UUID.randomUUID().toString()
+        val importAtMillis = System.currentTimeMillis()
+        val markdownLines = planningDocumentLines(markdown)
+        val mappings = mutableListOf<PlanningLineMapping>()
         selected.forEach { candidate ->
+            val sourceLine = markdownLines.getOrNull(candidate.lineNumber - 1) ?: candidate.sourceLine
             when (candidate.type) {
                 PlanningParsedType.TODO -> {
                     val created = runBlocking { app.repository.createFromDraft(candidate.toPlanningTodoDraft(groups)) }
                     created.forEach(::scheduleReminderOrDisable)
+                    mappings += created.mapNotNull { item ->
+                        candidate.toPlanningLineMapping(noteId, item, sourceLine, batchId, importAtMillis)
+                    }
                 }
                 PlanningParsedType.EVENT -> {
                     val created = runBlocking { app.repository.createCalendarEventFromDraft(candidate.toPlanningEventDraft(groups)) }
                     created.forEach(::scheduleReminderOrDisable)
+                    mappings += created.mapNotNull { item ->
+                        candidate.toPlanningLineMapping(noteId, item, sourceLine, batchId, importAtMillis)
+                    }
                     if (candidate.createLinkedTodo) {
                         val linked = runBlocking { app.repository.createFromDraft(candidate.toPlanningLinkedTodoDraft(groups)) }
                         linked.forEach(::scheduleReminderOrDisable)
+                        mappings += linked.mapNotNull { item ->
+                            candidate.toPlanningLineMapping(noteId, item, sourceLine, batchId, importAtMillis)
+                        }
                     }
                 }
                 else -> Unit
             }
         }
         val updatedMarkdown = PlanningMarkdownParser.markImportedLines(markdown, selected.map { it.lineNumber }.toSet())
-        val noteId = json.optLong("noteId", 0L).takeIf { it > 0L }
         if (noteId != null) {
+            runBlocking { app.repository.insertPlanningMappings(mappings) }
             runBlocking { app.repository.updatePlanningNoteContent(noteId, updatedMarkdown) }
             settingsStore.updateLastOpenedPlanningNoteId(noteId)
         }
@@ -385,6 +414,82 @@ class DesktopSyncCoordinator(
         return JSONObject()
             .put("imported", selected.size)
             .put("updatedMarkdown", updatedMarkdown)
+    }
+
+    private fun planningMappings(path: String): JSONObject {
+        val noteId = queryParam(path, "noteId")?.toLongOrNull() ?: error("缺少 noteId")
+        val note = runBlocking { app.repository.getAllPlanningNotes().firstOrNull { it.id == noteId } } ?: error("规划文档不存在")
+        val synced = runBlocking { app.repository.syncPlanningMappingStatuses(noteId, note.contentMarkdown) }
+        return JSONObject()
+            .put("changed", synced.changedCount)
+            .put("mappings", JSONArray(synced.mappings.map { it.toPlanningMappingJson() }))
+    }
+
+    private fun refreshPlanning(json: JSONObject): JSONObject {
+        val noteId = json.optLong("noteId", 0L).takeIf { it > 0L } ?: error("缺少 noteId")
+        val markdown = json.optString("markdown")
+        val scope = PlanningRefreshScope.fromStorage(json.optString("scope", PlanningRefreshScope.CURRENT_SECTION.name))
+        val cursorLineNumber = json.optInt("cursorLineNumber", 0).takeIf { it > 0 }
+        val result = runBlocking {
+            app.repository.refreshPlanningImportedItems(
+                noteId = noteId,
+                markdown = markdown,
+                wholeDocument = scope == PlanningRefreshScope.WHOLE_DOCUMENT,
+                cursorLineNumber = cursorLineNumber
+            )
+        }
+        reschedulePlanningOperationItems(result)
+        autoBackupIfNeeded()
+        return result.toPlanningOperationJson()
+    }
+
+    private fun postponePlanning(json: JSONObject): JSONObject {
+        val noteId = json.optLong("noteId", 0L).takeIf { it > 0L } ?: error("缺少 noteId")
+        val markdown = json.optString("markdown")
+        val mappingId = json.optLong("mappingId", 0L).takeIf { it > 0L }
+        val offsetMinutes = json.optInt("offsetMinutes", 0)
+        val scope = PlanningPostponeScope.fromStorage(json.optString("scope", PlanningPostponeScope.FROM_ITEM_TO_SECTION_END.name))
+        val result = runBlocking {
+            app.repository.postponePlanningImportedItems(
+                noteId = noteId,
+                markdown = markdown,
+                startMappingId = mappingId,
+                offsetMinutes = offsetMinutes,
+                scope = scope
+            )
+        }
+        reschedulePlanningOperationItems(result)
+        autoBackupIfNeeded()
+        return result.toPlanningOperationJson()
+    }
+
+    private fun undoPlanning(json: JSONObject): JSONObject {
+        val noteId = json.optLong("noteId", 0L).takeIf { it > 0L } ?: error("缺少 noteId")
+        val markdown = json.optString("markdown")
+        val result = runBlocking { app.repository.undoLastPlanningOperation(noteId, markdown) }
+        clearReminderArtifacts(result.affectedBeforeItems)
+        result.affectedAfterItems.forEach(::scheduleReminderOrDisable)
+        autoBackupIfNeeded()
+        return result.toPlanningOperationJson()
+    }
+
+    private fun resolvePlanningConflictDocument(json: JSONObject): JSONObject {
+        val noteId = json.optLong("noteId", 0L).takeIf { it > 0L } ?: error("缺少 noteId")
+        val markdown = json.optString("markdown")
+        val mappingId = json.optLong("mappingId", 0L).takeIf { it > 0L } ?: error("缺少 mappingId")
+        val result = runBlocking { app.repository.resolvePlanningConflictWithDocument(noteId, markdown, mappingId) }
+        reschedulePlanningOperationItems(result)
+        autoBackupIfNeeded()
+        return result.toPlanningOperationJson()
+    }
+
+    private fun resolvePlanningConflictItem(json: JSONObject): JSONObject {
+        val noteId = json.optLong("noteId", 0L).takeIf { it > 0L } ?: error("缺少 noteId")
+        val markdown = json.optString("markdown")
+        val mappingId = json.optLong("mappingId", 0L).takeIf { it > 0L } ?: error("缺少 mappingId")
+        val result = runBlocking { app.repository.resolvePlanningConflictWithItem(noteId, markdown, mappingId) }
+        autoBackupIfNeeded()
+        return result.toPlanningOperationJson()
     }
 
     private fun resolveGroupId(json: JSONObject): Long {
@@ -559,6 +664,11 @@ class DesktopSyncCoordinator(
         context.stopService(android.content.Intent(context, ReminderForegroundService::class.java))
     }
 
+    private fun reschedulePlanningOperationItems(result: PlanningOperationResult) {
+        clearReminderArtifacts(result.affectedBeforeItems)
+        result.affectedAfterItems.forEach(::scheduleReminderOrDisable)
+    }
+
     private fun autoBackupIfNeeded() {
         val settings = settingsStore.currentSettings()
         if (!settings.autoBackupEnabled) return
@@ -604,6 +714,16 @@ private fun JSONArray.toStringSet(): Set<String> {
         for (index in 0 until length()) {
             optString(index).takeIf { it.isNotBlank() }?.let(::add)
         }
+    }
+}
+
+private fun queryParam(path: String, key: String): String? {
+    val query = path.substringAfter('?', missingDelimiterValue = "")
+    if (query.isBlank()) return null
+    return query.split('&').firstNotNullOfOrNull { part ->
+        val name = part.substringBefore('=')
+        val value = part.substringAfter('=', missingDelimiterValue = "")
+        if (name == key) java.net.URLDecoder.decode(value, Charsets.UTF_8.name()) else null
     }
 }
 
@@ -657,6 +777,35 @@ private fun PlanningParsedCandidate.toPlanningCandidateJson(): JSONObject {
         .put("importable", importable)
 }
 
+private fun PlanningLineMapping.toPlanningMappingJson(): JSONObject {
+    return JSONObject()
+        .put("id", id)
+        .put("noteId", noteId)
+        .put("contentFingerprint", contentFingerprint)
+        .put("originalLineText", originalLineText)
+        .put("currentLineText", currentLineText)
+        .put("todoId", todoId)
+        .put("eventId", eventId)
+        .put("batchId", batchId)
+        .put("operationType", operationType)
+        .put("createdAtMillis", createdAtMillis)
+        .put("lastRefreshedAtMillis", lastRefreshedAtMillis)
+        .put("status", status.name)
+        .put("postponeOffsetMinutes", postponeOffsetMinutes)
+        .put("lastKnownLineNumber", lastKnownLineNumber)
+}
+
+private fun PlanningOperationResult.toPlanningOperationJson(): JSONObject {
+    return JSONObject()
+        .put("message", message)
+        .put("updatedMarkdown", updatedMarkdown)
+        .put("refreshedCount", refreshedCount)
+        .put("skippedCount", skippedCount)
+        .put("orphanedCount", orphanedCount)
+        .put("conflictCount", conflictCount)
+        .put("batchId", batchId)
+}
+
 private fun JSONArray.toPlanningImportCandidates(fallback: List<PlanningParsedCandidate>): List<PlanningImportCandidate> {
     val fallbackById = fallback.associateBy { it.id }
     return (0 until length()).mapNotNull { index ->
@@ -693,6 +842,35 @@ private fun JSONArray.toPlanningImportCandidates(fallback: List<PlanningParsedCa
                 }
             }
         }
+    }
+}
+
+private fun PlanningImportCandidate.toPlanningLineMapping(
+    noteId: Long?,
+    item: TodoItem,
+    sourceLine: String,
+    batchId: String,
+    timestamp: Long
+): PlanningLineMapping? {
+    val resolvedNoteId = noteId ?: return null
+    return PlanningLineMapping(
+        noteId = resolvedNoteId,
+        contentFingerprint = PlanningLineMatcher.fingerprint(sourceLine),
+        originalLineText = sourceLine,
+        currentLineText = sourceLine,
+        todoId = item.id.takeIf { item.isTodo },
+        eventId = item.id.takeIf { item.isEvent },
+        batchId = batchId,
+        operationType = "IMPORT",
+        createdAtMillis = timestamp,
+        lastRefreshedAtMillis = timestamp,
+        lastKnownLineNumber = lineNumber
+    )
+}
+
+private fun planningDocumentLines(markdown: String): List<String> {
+    return markdown.replace("\r\n", "\n").replace('\r', '\n').lines().let { lines ->
+        if (lines.size > 1 && lines.last().isEmpty() && markdown.endsWith("\n")) lines.dropLast(1) else lines
     }
 }
 

@@ -65,11 +65,21 @@ This file tracks the product at a practical level for new coding sessions.
 - planning import is preview-first and selection-based, not immediate database writes; import is disabled until at least one valid candidate is selected
 - planning preview cards are editable before import for title, group, notes, DDL/start/end times, mixed reminder input, and event linked-todo creation; preview has select-all / clear-all controls
 - successful planning import appends `#imported` to imported source lines and immediately saves the active planning note to reduce duplicate imports
+- imported planning lines now also create stable `planning_line_mappings` entries that link the source line to the created todo/event item
+- mapping relocation uses normalized fingerprints plus fuzzy text matching, so the planning linkage is not purely a stored line number
+- mapping status sync distinguishes `ACTIVE`, `COMPLETED`, `CANCELED`, `ORPHANED`, and `CONFLICT`
+- phone Planning Desk preview can manually sync completed imported task lines back to source Markdown as `- [x]`, while rendered preview lines already show completion/cancel status pills
+- Planning Desk refresh can update current-section or whole-document imported items from the latest Markdown, but only for unfinished active mappings
+- Planning Desk batch postpone can shift unfinished imported items and the corresponding Markdown time text together
+- the latest import / refresh / postpone batch can be undone
+- conflicts between imported items and source Markdown can be resolved either by overwriting the item from the document or rewriting the document from the current item
 - default Planning Desk import reminder is 5 minutes before, full-screen, ring + vibration
 - planning notes are included in JSON backup / restore snapshots
+- planning mapping records are also included in JSON backup / restore snapshots
 - AI recognition for Planning Desk is now an optional Provider-based enhancement for DeepSeek / Qwen / OpenAI-compatible APIs; Settings exposes ordered multi-provider Base URL/API Key/model configuration, both phone and desktop Planning Desk recognition call enabled sources in order, local rules remain the fallback, and AI output enters preview before import
 - AI Provider API Keys are stored locally in settings, deliberately excluded from backup JSON export, and preserved when importing backups without keys
 - Planning Desk database migration is repaired in `1.7.5`: database version `10` includes `MIGRATION_9_10` to rebuild `planning_notes` tables created by the mismatched `1.7.0`-`1.7.4` migration
+- Planning Desk database version is now `11`; `MIGRATION_10_11` creates the `planning_line_mappings` table and indices
 
 ### Calendar System
 
@@ -156,6 +166,7 @@ This file tracks the product at a practical level for new coding sessions.
 - desktop sync service self-stops if Android restarts it while desktop sync is disabled in Settings
 - desktop web has a `规划台` tab with textarea editor, document selector, auto-save, `Ctrl+S` save, `Ctrl+Enter` parse, editable parse preview, selected import, and a help modal that explains the same DDL/reminder syntax as the phone-side Planning Desk help
 - desktop web Planning Desk uses phone-local `/api/planning/*` routes, edits the same Room planning notes as the phone UI, saves before switching documents, blocks empty selected imports, writes back `#imported` markers after import, and reuses the same AI recognition / local fallback path as the phone Planning Desk
+- desktop web Planning Desk now also shows the current note title, mapping status preview, refresh/postpone/undo controls, and conflict resolution actions for imported planning lines
 
 ### Destructive Action Safety
 

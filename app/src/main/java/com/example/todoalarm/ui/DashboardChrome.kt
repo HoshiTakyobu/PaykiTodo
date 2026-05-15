@@ -93,7 +93,11 @@ import com.example.todoalarm.data.CalendarEventDraft
 import com.example.todoalarm.data.PlanningAiProvider
 import com.example.todoalarm.data.PlanningImportCandidate
 import com.example.todoalarm.data.PlanningImportResult
+import com.example.todoalarm.data.PlanningLineMapping
+import com.example.todoalarm.data.PlanningOperationResult
 import com.example.todoalarm.data.PlanningParseResult
+import com.example.todoalarm.data.PlanningPostponeScope
+import com.example.todoalarm.data.PlanningRefreshScope
 import com.example.todoalarm.data.ReminderDeliveryMode
 import com.example.todoalarm.data.ReminderAudioChannel
 import com.example.todoalarm.data.ScheduleTemplate
@@ -382,6 +386,13 @@ internal fun DashboardBody(
     onArchivePlanningNote: suspend (Long) -> String?,
     onParsePlanningMarkdown: suspend (String) -> PlanningParseResult,
     onImportPlanningCandidates: suspend (List<PlanningImportCandidate>, Set<String>, String, Long?) -> PlanningImportResult,
+    onSyncPlanningMappings: suspend (Long, String) -> List<PlanningLineMapping>,
+    onGetPlanningMappings: suspend (Long) -> List<PlanningLineMapping>,
+    onRefreshPlanningImportedItems: suspend (Long, String, PlanningRefreshScope, Int?) -> PlanningOperationResult,
+    onPostponePlanningImportedItems: suspend (Long, String, Long?, Int, PlanningPostponeScope) -> PlanningOperationResult,
+    onUndoLastPlanningOperation: suspend (Long, String) -> PlanningOperationResult,
+    onApplyPlanningConflictDocument: suspend (Long, String, Long) -> PlanningOperationResult,
+    onApplyPlanningConflictItem: suspend (Long, String, Long) -> PlanningOperationResult,
     onDismissOnboarding: () -> Unit = {},
     onNavigatePlanning: () -> Unit = {}
 ) {
@@ -474,7 +485,15 @@ internal fun DashboardBody(
                 onDeleteNote = onDeletePlanningNote,
                 onArchiveNote = onArchivePlanningNote,
                 onParse = onParsePlanningMarkdown,
-                onImport = onImportPlanningCandidates
+                onImport = onImportPlanningCandidates,
+                onSyncMappings = onSyncPlanningMappings,
+                onGetMappings = onGetPlanningMappings,
+                onRefreshImportedItems = onRefreshPlanningImportedItems,
+                onPostponeImportedItems = onPostponePlanningImportedItems,
+                onUndoLastOperation = onUndoLastPlanningOperation,
+                onApplyConflictDocument = onApplyPlanningConflictDocument,
+                onApplyConflictItem = onApplyPlanningConflictItem,
+                isNewUser = !uiState.settings.hasSeenOnboarding
             )
         }
         return
@@ -741,7 +760,7 @@ private fun OnboardingCard(onDismiss: () -> Unit) {
 
 @Composable
 private fun BoardBlockTitle(title: String) {
-    val isDarkTheme = MaterialTheme.colorScheme.background.luminance() <= 0.5f
+    val isDarkTheme = MaterialTheme.colorScheme.background.luminance() < 0.3f
     Text(
         text = title,
         style = MaterialTheme.typography.titleLarge.copy(

@@ -20,7 +20,8 @@ const state = {
   planningDirty: false,
   planningSaving: false,
   planningRenderedNoteId: null,
-  planningParsing: false
+  planningParsing: false,
+  planningMappings: []
 };
 
 const els = {
@@ -44,6 +45,7 @@ const els = {
   applyEventDay: document.getElementById('apply-event-day'),
   planningNoteSelect: document.getElementById('planning-note-select'),
   planningEditor: document.getElementById('planning-editor'),
+  planningActiveTitle: document.getElementById('planning-active-title'),
   planningPreview: document.getElementById('planning-preview'),
   planningPreviewMeta: document.getElementById('planning-preview-meta')
 };
@@ -496,6 +498,17 @@ async function loadPlanningNotes() {
   const data = await api('/api/planning/notes');
   state.planningNotes = data.notes || [];
   state.activePlanningNoteId = data.activeNoteId || (state.planningNotes[0] && state.planningNotes[0].id) || null;
+  await loadPlanningMappings();
+}
+
+async function loadPlanningMappings() {
+  const active = activePlanningNote();
+  if (!active) {
+    state.planningMappings = [];
+    return;
+  }
+  const data = await api('/api/planning/mappings?noteId=' + encodeURIComponent(active.id));
+  state.planningMappings = data.mappings || [];
 }
 
 function renderTodos() {
@@ -609,8 +622,13 @@ function renderPlanningNotes() {
       els.planningEditor.value = active.contentMarkdown || '';
       state.planningDirty = false;
     }
+    if (els.planningActiveTitle) els.planningActiveTitle.textContent = active.title || '我的规划';
     state.planningRenderedNoteId = active.id;
+  } else if (els.planningActiveTitle) {
+    els.planningActiveTitle.textContent = '未选择规划文档';
   }
+  const undoButton = document.getElementById('planning-undo');
+  if (undoButton) undoButton.disabled = !latestPlanningUndoSummary();
   renderPlanningPreview();
 }
 
@@ -632,8 +650,64 @@ function editableDateTimeValue(value) {
   return String(value || '').replace('T', ' ');
 }
 
+function planningCursorLine() {
+  const value = els.planningEditor?.value || '';
+  const cursor = els.planningEditor?.selectionStart || 0;
+  return value.slice(0, cursor).split('\n').length;
+}
+
 function planningEditableField(id, field, label, value, placeholder) {
   return '<label class="planning-edit-field"><span>' + escapeHtml(label) + '</span><input data-planning-field="' + escapeHtml(field) + '" data-planning-id="' + escapeHtml(id) + '" value="' + escapeHtml(value || '') + '" placeholder="' + escapeHtml(placeholder || '') + '" /></label>';
+}
+
+function planningMappingStatusLabel(status) {
+  if (status === 'ACTIVE') return '已导入';
+  if (status === 'COMPLETED') return '✓ 已完成';
+  if (status === 'CANCELED') return '已取消';
+  if (status === 'ORPHANED') return '映射丢失';
+  if (status === 'CONFLICT') return '已手动修改';
+  return '';
+}
+
+function latestPlanningUndoSummary() {
+  const mappings = (state.planningMappings || []).filter(item => ['IMPORT', 'REFRESH', 'POSTPONE'].includes(String(item.operationType || '')));
+  if (!mappings.length) return null;
+  const latest = mappings.slice().sort((a, b) => {
+    const timeDiff = Number(b.lastRefreshedAtMillis || 0) - Number(a.lastRefreshedAtMillis || 0);
+    return timeDiff || (Number(b.id || 0) - Number(a.id || 0));
+  })[0];
+  const batch = mappings.filter(item => String(item.batchId || '') === String(latest.batchId || ''));
+  const affectedIds = new Set(batch.map(item => String(item.todoId ?? item.eventId ?? '')).filter(Boolean));
+  return {
+    batchId: latest.batchId,
+    operationType: latest.operationType,
+    affectedCount: affectedIds.size || batch.length,
+    label: latest.operationType === 'IMPORT' ? '导入' : latest.operationType === 'REFRESH' ? '刷新' : latest.operationType === 'POSTPONE' ? '顺延' : String(latest.operationType || '')
+  };
+}
+
+function renderPlanningMappingPreview() {
+  const mappings = state.planningMappings || [];
+  if (!mappings.length) return '';
+  const sorted = mappings.slice().sort((a, b) => (a.lastKnownLineNumber || 0) - (b.lastKnownLineNumber || 0));
+  return sorted.map(mapping => {
+    const status = String(mapping.status || '').toLowerCase();
+    const conflictActions = mapping.status === 'CONFLICT'
+      ? '<div class="planning-conflict-actions">'
+          + '<button type="button" class="ghost mini" data-planning-conflict-document="' + escapeHtml(mapping.id) + '">以文档为准覆盖</button>'
+          + '<button type="button" class="ghost mini" data-planning-conflict-item="' + escapeHtml(mapping.id) + '">以事项为准更新原文</button>'
+        + '</div>'
+      : '';
+    return ''
+      + '<article class="planning-candidate ' + escapeHtml(status) + '">'
+      +   '<div class="planning-candidate-head">'
+      +     '<span class="pill">' + escapeHtml(planningMappingStatusLabel(mapping.status)) + '</span>'
+      +     '<span class="muted">第 ' + escapeHtml(mapping.lastKnownLineNumber || '-') + ' 行</span>'
+      +   '</div>'
+      +   '<div class="planning-source">' + escapeHtml(mapping.currentLineText || mapping.originalLineText || '') + '</div>'
+      +   conflictActions
+      + '</article>';
+  }).join('');
 }
 
 function renderPlanningPreview() {
@@ -646,7 +720,8 @@ function renderPlanningPreview() {
   }
   if (!result) {
     els.planningPreviewMeta.textContent = state.planningParsing ? '识别中…' : '尚未识别';
-    els.planningPreview.innerHTML = '<div class="empty-state">点击“识别”后，这里会显示待办、日程、跳过和错误条目。</div>';
+    const mappingHtml = renderPlanningMappingPreview();
+    els.planningPreview.innerHTML = mappingHtml || '<div class="empty-state">写完计划后点&quot;识别&quot;，这里会显示识别结果。<br>你也可以直接自由书写，AI 会尝试理解你的意图。</div>';
     return;
   }
   const candidates = result.candidates || [];
@@ -688,6 +763,48 @@ function renderPlanningPreview() {
       +   (item.message ? '<div class="planning-message">' + escapeHtml(item.message) + '</div>' : '')
       + '</article>';
   }).join('') || '<div class="empty-state">没有识别结果。</div>');
+}
+
+async function resolvePlanningConflictDocument(mappingId) {
+  const active = activePlanningNote();
+  if (!active) throw new Error('没有可处理冲突的规划文档');
+  const result = await api('/api/planning/conflict/document', {
+    method: 'POST',
+    body: JSON.stringify({
+      noteId: active.id,
+      markdown: els.planningEditor.value,
+      mappingId
+    })
+  });
+  if (result.updatedMarkdown != null) {
+    els.planningEditor.value = result.updatedMarkdown;
+    state.planningDirty = false;
+  }
+  await loadPlanningMappings();
+  await loadSnapshot();
+  renderPlanningNotes();
+  els.status.textContent = result.message || '已按文档内容覆盖事项';
+}
+
+async function resolvePlanningConflictItem(mappingId) {
+  const active = activePlanningNote();
+  if (!active) throw new Error('没有可处理冲突的规划文档');
+  const result = await api('/api/planning/conflict/item', {
+    method: 'POST',
+    body: JSON.stringify({
+      noteId: active.id,
+      markdown: els.planningEditor.value,
+      mappingId
+    })
+  });
+  if (result.updatedMarkdown != null) {
+    els.planningEditor.value = result.updatedMarkdown;
+    state.planningDirty = false;
+    state.planningParseResult = null;
+  }
+  await loadPlanningMappings();
+  renderPlanningNotes();
+  els.status.textContent = result.message || '已按事项内容回写原文';
 }
 
 function collectPlanningCandidates() {
@@ -747,6 +864,8 @@ async function savePlanningNote(quiet = false) {
       body: JSON.stringify({ contentMarkdown: savedContent })
     });
     await loadPlanningNotes();
+    await loadPlanningMappings();
+    renderPlanningNotes();
     state.planningDirty = els.planningEditor.value !== savedContent;
     if (!quiet) els.status.textContent = '规划文档已保存';
   } finally {
@@ -761,6 +880,7 @@ async function createPlanningNote() {
   const data = await api('/api/planning/notes', { method: 'POST', body: JSON.stringify({ title }) });
   state.activePlanningNoteId = data.note && data.note.id;
   await loadPlanningNotes();
+  await loadPlanningMappings();
   renderPlanningNotes();
   els.status.textContent = '已新建规划文档';
 }
@@ -773,6 +893,7 @@ async function deletePlanningNote() {
   await api('/api/planning/notes/' + active.id, { method: 'DELETE' });
   state.planningParseResult = null;
   await loadPlanningNotes();
+  await loadPlanningMappings();
   renderPlanningNotes();
 }
 
@@ -809,11 +930,91 @@ async function importSelectedPlanning() {
     state.planningDirty = true;
     await savePlanningNote(true);
     state.planningParseResult = null;
+    await loadPlanningMappings();
     renderPlanningPreview();
   }
   els.status.textContent = '已导入 ' + (result.imported || 0) + ' 条规划内容';
   await loadPlanningNotes();
   await loadSnapshot();
+}
+
+async function refreshPlanningImported() {
+  const active = activePlanningNote();
+  if (!active) throw new Error('没有可刷新的规划文档');
+  const wholeDocument = window.confirm('确定要刷新整篇文档的未完成已导入项吗？\n选择“取消”则只刷新当前标题分区。');
+  const result = await api('/api/planning/refresh', {
+    method: 'POST',
+    body: JSON.stringify({
+      noteId: active.id,
+      markdown: els.planningEditor.value,
+      scope: wholeDocument ? 'WHOLE_DOCUMENT' : 'CURRENT_SECTION',
+      cursorLineNumber: planningCursorLine()
+    })
+  });
+  if (result.updatedMarkdown != null) {
+    els.planningEditor.value = result.updatedMarkdown;
+    state.planningDirty = true;
+    await savePlanningNote(true);
+  }
+  await loadPlanningMappings();
+  renderPlanningNotes();
+  els.status.textContent = result.message || '刷新完成';
+}
+
+async function postponePlanningImported() {
+  const active = activePlanningNote();
+  if (!active) throw new Error('没有可顺延的规划文档');
+  const mappings = (state.planningMappings || []).filter(item => item.status === 'ACTIVE');
+  if (!mappings.length) throw new Error('当前没有可顺延的未完成已导入项');
+  const summary = mappings.map((item, index) => '[' + (index + 1) + '] 第' + (item.lastKnownLineNumber || '-') + '行 ' + (item.currentLineText || item.originalLineText || '')).join('\n');
+  const startIndex = Number(prompt('选择起始条目序号：\n' + summary, '1'));
+  if (!Number.isFinite(startIndex) || startIndex < 1 || startIndex > mappings.length) return;
+  const offsetMinutes = Number(prompt('输入顺延分钟数，例如 30 / 60 / -15', '30'));
+  if (!Number.isFinite(offsetMinutes) || !offsetMinutes) return;
+  const scopeRaw = prompt('范围：1=从此条目到分区末尾；2=从此条目到文档末尾；3=当前分区所有未完成项', '1');
+  const scope = scopeRaw === '2' ? 'FROM_ITEM_TO_DOCUMENT_END' : (scopeRaw === '3' ? 'CURRENT_SECTION_ALL' : 'FROM_ITEM_TO_SECTION_END');
+  const result = await api('/api/planning/postpone', {
+    method: 'POST',
+    body: JSON.stringify({
+      noteId: active.id,
+      markdown: els.planningEditor.value,
+      mappingId: mappings[startIndex - 1].id,
+      offsetMinutes,
+      scope
+    })
+  });
+  if (result.updatedMarkdown != null) {
+    els.planningEditor.value = result.updatedMarkdown;
+    state.planningDirty = true;
+    await savePlanningNote(true);
+  }
+  await loadPlanningMappings();
+  renderPlanningNotes();
+  els.status.textContent = result.message || '顺延完成';
+}
+
+async function undoPlanningLastOperation() {
+  const active = activePlanningNote();
+  if (!active) throw new Error('没有可撤销的规划文档');
+  const undoSummary = latestPlanningUndoSummary();
+  if (!undoSummary) throw new Error('当前没有可撤销的导入、刷新或顺延批次');
+  if (!await confirmDanger('撤销上次规划台操作', '会回滚最近一次' + undoSummary.label + '批次，影响 ' + undoSummary.affectedCount + ' 条事项。', '撤销')) return;
+  const result = await api('/api/planning/undo-last', {
+    method: 'POST',
+    body: JSON.stringify({
+      noteId: active.id,
+      markdown: els.planningEditor.value
+    })
+  });
+  if (result.updatedMarkdown != null) {
+    els.planningEditor.value = result.updatedMarkdown;
+    state.planningDirty = true;
+    await savePlanningNote(true);
+  }
+  await loadPlanningMappings();
+  await loadSnapshot();
+  renderPlanningNotes();
+  els.status.textContent = result.message || '撤销完成';
 }
 
 function escapeHtml(text) {
@@ -1289,6 +1490,9 @@ document.getElementById('planning-save')?.addEventListener('click', () => savePl
 document.getElementById('planning-help')?.addEventListener('click', () => openModal('planning-help-modal'));
 document.getElementById('planning-parse')?.addEventListener('click', () => parsePlanningEditor().catch(err => els.status.textContent = err.message));
 document.getElementById('planning-import')?.addEventListener('click', () => importSelectedPlanning().catch(err => els.status.textContent = err.message));
+document.getElementById('planning-refresh')?.addEventListener('click', () => refreshPlanningImported().catch(err => els.status.textContent = err.message));
+document.getElementById('planning-postpone')?.addEventListener('click', () => postponePlanningImported().catch(err => els.status.textContent = err.message));
+document.getElementById('planning-undo')?.addEventListener('click', () => undoPlanningLastOperation().catch(err => els.status.textContent = err.message));
 els.planningEditor?.addEventListener('input', () => {
   state.planningParseResult = null;
   renderPlanningPreview();
@@ -1307,11 +1511,19 @@ els.planningEditor?.addEventListener('keydown', event => {
 els.planningPreview?.addEventListener('click', event => {
   const selectAll = event.target.closest?.('[data-planning-select-all]');
   const clearAll = event.target.closest?.('[data-planning-clear-all]');
+  const conflictDocument = event.target.closest?.('[data-planning-conflict-document]');
+  const conflictItem = event.target.closest?.('[data-planning-conflict-item]');
   if (selectAll) {
     document.querySelectorAll('[data-planning-select]:not(:disabled)').forEach(node => { node.checked = true; });
   }
   if (clearAll) {
     document.querySelectorAll('[data-planning-select]').forEach(node => { node.checked = false; });
+  }
+  if (conflictDocument) {
+    resolvePlanningConflictDocument(Number(conflictDocument.dataset.planningConflictDocument)).catch(err => els.status.textContent = err.message);
+  }
+  if (conflictItem) {
+    resolvePlanningConflictItem(Number(conflictItem.dataset.planningConflictItem)).catch(err => els.status.textContent = err.message);
   }
 });
 els.planningNoteSelect?.addEventListener('change', async event => {
@@ -1328,6 +1540,7 @@ els.planningNoteSelect?.addEventListener('change', async event => {
     state.planningDirty = false;
     state.planningRenderedNoteId = note.id;
     state.planningParseResult = null;
+    await loadPlanningMappings();
     renderPlanningPreview();
   }
 });

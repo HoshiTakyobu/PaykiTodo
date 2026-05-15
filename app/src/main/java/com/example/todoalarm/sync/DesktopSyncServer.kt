@@ -50,7 +50,7 @@ class DesktopSyncServer(
             val parts = requestLine.split(' ')
             if (parts.size < 2) return
             val method = parts[0].uppercase(Locale.ROOT)
-            val path = parts[1].substringBefore('?')
+            val path = parts[1]
             val headers = linkedMapOf<String, String>()
             var contentLength = 0
             while (true) {

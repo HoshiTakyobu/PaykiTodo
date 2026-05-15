@@ -45,8 +45,12 @@ import com.example.todoalarm.R
 import com.example.todoalarm.data.CalendarEventDraft
 import com.example.todoalarm.data.PlanningImportCandidate
 import com.example.todoalarm.data.PlanningImportResult
+import com.example.todoalarm.data.PlanningLineMapping
+import com.example.todoalarm.data.PlanningOperationResult
 import com.example.todoalarm.data.PlanningParseResult
 import com.example.todoalarm.data.PlanningAiProvider
+import com.example.todoalarm.data.PlanningPostponeScope
+import com.example.todoalarm.data.PlanningRefreshScope
 import com.example.todoalarm.data.RecurrenceConfig
 import com.example.todoalarm.data.RecurrenceScope
 import com.example.todoalarm.data.ReminderDeliveryMode
@@ -111,6 +115,13 @@ fun DashboardScreen(
     onArchivePlanningNote: suspend (Long) -> String?,
     onParsePlanningMarkdown: suspend (String) -> PlanningParseResult,
     onImportPlanningCandidates: suspend (List<PlanningImportCandidate>, Set<String>, String, Long?) -> PlanningImportResult,
+    onSyncPlanningMappings: suspend (Long, String) -> List<PlanningLineMapping>,
+    onGetPlanningMappings: suspend (Long) -> List<PlanningLineMapping>,
+    onRefreshPlanningImportedItems: suspend (Long, String, PlanningRefreshScope, Int?) -> PlanningOperationResult,
+    onPostponePlanningImportedItems: suspend (Long, String, Long?, Int, PlanningPostponeScope) -> PlanningOperationResult,
+    onUndoLastPlanningOperation: suspend (Long, String) -> PlanningOperationResult,
+    onApplyPlanningConflictDocument: suspend (Long, String, Long) -> PlanningOperationResult,
+    onApplyPlanningConflictItem: suspend (Long, String, Long) -> PlanningOperationResult,
     onThemeModeChange: (ThemeMode) -> Unit,
     onWeekStartModeChange: (WeekStartMode) -> Unit,
     onNextQuote: () -> Unit,
@@ -463,6 +474,13 @@ fun DashboardScreen(
                     onArchivePlanningNote = onArchivePlanningNote,
                     onParsePlanningMarkdown = onParsePlanningMarkdown,
                     onImportPlanningCandidates = onImportPlanningCandidates,
+                    onSyncPlanningMappings = onSyncPlanningMappings,
+                    onGetPlanningMappings = onGetPlanningMappings,
+                    onRefreshPlanningImportedItems = onRefreshPlanningImportedItems,
+                    onPostponePlanningImportedItems = onPostponePlanningImportedItems,
+                    onUndoLastPlanningOperation = onUndoLastPlanningOperation,
+                    onApplyPlanningConflictDocument = onApplyPlanningConflictDocument,
+                    onApplyPlanningConflictItem = onApplyPlanningConflictItem,
                     onDismissOnboarding = onDismissOnboarding,
                     onNavigatePlanning = { section = DashboardSection.PLANNING }
                 )

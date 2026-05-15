@@ -60,6 +60,7 @@ private fun BackupSnapshot.toJson(): JSONObject {
         put("reminderChainLogs", JSONArray(reminderChainLogs.map { it.toJson() }))
         put("scheduleTemplates", JSONArray(scheduleTemplates.map { it.toJson() }))
         put("planningNotes", JSONArray(planningNotes.map { it.toJson() }))
+        put("planningLineMappings", JSONArray(planningLineMappings.map { it.toJson() }))
     }
 }
 
@@ -214,6 +215,25 @@ private fun PlanningNote.toJson(): JSONObject {
     }
 }
 
+private fun PlanningLineMapping.toJson(): JSONObject {
+    return JSONObject().apply {
+        put("id", id)
+        put("noteId", noteId)
+        put("contentFingerprint", contentFingerprint)
+        put("originalLineText", originalLineText)
+        put("currentLineText", currentLineText)
+        put("todoId", todoId)
+        put("eventId", eventId)
+        put("batchId", batchId)
+        put("operationType", operationType)
+        put("createdAtMillis", createdAtMillis)
+        put("lastRefreshedAtMillis", lastRefreshedAtMillis)
+        put("status", status.name)
+        put("postponeOffsetMinutes", postponeOffsetMinutes)
+        put("lastKnownLineNumber", lastKnownLineNumber)
+    }
+}
+
 private fun backupSnapshotFromJson(json: JSONObject): BackupSnapshot {
     return BackupSnapshot(
         exportedAtMillis = json.optLong("exportedAtMillis", System.currentTimeMillis()),
@@ -224,6 +244,7 @@ private fun backupSnapshotFromJson(json: JSONObject): BackupSnapshot {
         reminderChainLogs = json.optJSONArray("reminderChainLogs").toReminderChainLogs(),
         scheduleTemplates = json.optJSONArray("scheduleTemplates").toScheduleTemplates(),
         planningNotes = json.optJSONArray("planningNotes").toPlanningNotes(),
+        planningLineMappings = json.optJSONArray("planningLineMappings").toPlanningLineMappings(),
         settings = json.optJSONObject("settings").toSettings()
     )
 }
@@ -390,6 +411,33 @@ private fun JSONArray?.toPlanningNotes(): List<PlanningNote> {
                     createdAtMillis = item.optLong("createdAtMillis", System.currentTimeMillis()),
                     updatedAtMillis = item.optLong("updatedAtMillis", System.currentTimeMillis()),
                     archived = item.optBoolean("archived", false)
+                )
+            )
+        }
+    }
+}
+
+private fun JSONArray?.toPlanningLineMappings(): List<PlanningLineMapping> {
+    if (this == null) return emptyList()
+    return buildList(length()) {
+        for (index in 0 until length()) {
+            val item = optJSONObject(index) ?: continue
+            add(
+                PlanningLineMapping(
+                    id = item.optLong("id", 0L),
+                    noteId = item.optLong("noteId", 0L),
+                    contentFingerprint = item.optString("contentFingerprint"),
+                    originalLineText = item.optString("originalLineText"),
+                    currentLineText = item.optString("currentLineText"),
+                    todoId = item.optLongOrNull("todoId"),
+                    eventId = item.optLongOrNull("eventId"),
+                    batchId = item.optString("batchId"),
+                    operationType = item.optString("operationType", "IMPORT"),
+                    createdAtMillis = item.optLong("createdAtMillis", System.currentTimeMillis()),
+                    lastRefreshedAtMillis = item.optLong("lastRefreshedAtMillis", System.currentTimeMillis()),
+                    status = MappingStatus.entries.firstOrNull { it.name == item.optString("status") } ?: MappingStatus.ACTIVE,
+                    postponeOffsetMinutes = item.optInt("postponeOffsetMinutes", 0),
+                    lastKnownLineNumber = item.optInt("lastKnownLineNumber", 0)
                 )
             )
         }

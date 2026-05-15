@@ -662,7 +662,7 @@ internal object CalendarBatchImportParser {
             else -> LocalDate.now()
         }
         val body = dateMatch?.groupValues?.get(2) ?: entry
-        val fields = splitTopLevel(body, setOf(','))
+        val fields = splitTopLevel(normalizeBatchSyntax(body), setOf(','))
             .map { it.trim() }
             .filter { it.isNotBlank() }
         require(fields.size >= 2) { "至少需要“时间段, 标题”两个字段" }

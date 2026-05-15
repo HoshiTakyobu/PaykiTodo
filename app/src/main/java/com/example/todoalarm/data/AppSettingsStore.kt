@@ -54,7 +54,9 @@ data class AppSettings(
     val planningAiProviderName: String = "",
     val planningAiBaseUrl: String = "",
     val planningAiApiKey: String = "",
-    val planningAiModel: String = ""
+    val planningAiModel: String = "",
+    val planningAiProviders: List<PlanningAiProvider> = emptyList(),
+    val hasSeenOnboarding: Boolean = false
 )
 
 class AppSettingsStore(context: Context) {
@@ -172,18 +174,53 @@ class AppSettingsStore(context: Context) {
         apiKey: String,
         model: String
     ) {
+        updatePlanningAiProviders(
+            enabled = enabled,
+            providers = listOf(
+                PlanningAiProvider(
+                    name = providerName,
+                    baseUrl = baseUrl,
+                    apiKey = apiKey,
+                    model = model,
+                    enabled = enabled
+                )
+            )
+        )
+    }
+
+    fun updatePlanningAiProviders(
+        enabled: Boolean,
+        providers: List<PlanningAiProvider>
+    ) {
+        val normalized = providers.map { it.normalized() }
+        val primary = normalized.firstOrNull()
         preferences.edit()
             .putBoolean(KEY_PLANNING_AI_ENABLED, enabled)
-            .putString(KEY_PLANNING_AI_PROVIDER_NAME, providerName.trim())
-            .putString(KEY_PLANNING_AI_BASE_URL, baseUrl.trim())
-            .putString(KEY_PLANNING_AI_API_KEY, apiKey.trim())
-            .putString(KEY_PLANNING_AI_MODEL, model.trim())
+            .putString(KEY_PLANNING_AI_PROVIDER_NAME, primary?.name.orEmpty())
+            .putString(KEY_PLANNING_AI_BASE_URL, primary?.baseUrl.orEmpty())
+            .putString(KEY_PLANNING_AI_API_KEY, primary?.apiKey.orEmpty())
+            .putString(KEY_PLANNING_AI_MODEL, primary?.model.orEmpty())
+            .putString(KEY_PLANNING_AI_PROVIDERS_JSON, planningAiProvidersToJson(normalized))
             .apply()
         refresh()
     }
 
+    fun markOnboardingSeen() {
+        preferences.edit().putBoolean(KEY_HAS_SEEN_ONBOARDING, true).apply()
+        refresh()
+    }
+
+    fun resetOnboarding() {
+        preferences.edit().putBoolean(KEY_HAS_SEEN_ONBOARDING, false).apply()
+        refresh()
+    }
+
     fun replaceAll(settings: AppSettings) {
-        val preservedPlanningAiApiKey = settings.planningAiApiKey.ifBlank {
+        val mergedPlanningAiProviders = mergePlanningAiApiKeys(settings.planningAiProviders)
+        val primaryPlanningAiProvider = mergedPlanningAiProviders.firstOrNull()
+        val preservedPlanningAiApiKey = primaryPlanningAiProvider?.apiKey?.ifBlank {
+            preferences.getString(KEY_PLANNING_AI_API_KEY, null).orEmpty()
+        } ?: settings.planningAiApiKey.ifBlank {
             preferences.getString(KEY_PLANNING_AI_API_KEY, null).orEmpty()
         }
         preferences.edit()
@@ -207,10 +244,12 @@ class AppSettingsStore(context: Context) {
             .putBoolean(KEY_DESKTOP_SYNC_ENABLED, settings.desktopSyncEnabled)
             .putString(KEY_DESKTOP_SYNC_TOKEN, settings.desktopSyncToken)
             .putBoolean(KEY_PLANNING_AI_ENABLED, settings.planningAiEnabled)
-            .putString(KEY_PLANNING_AI_PROVIDER_NAME, settings.planningAiProviderName)
-            .putString(KEY_PLANNING_AI_BASE_URL, settings.planningAiBaseUrl)
+            .putString(KEY_PLANNING_AI_PROVIDER_NAME, primaryPlanningAiProvider?.name ?: settings.planningAiProviderName)
+            .putString(KEY_PLANNING_AI_BASE_URL, primaryPlanningAiProvider?.baseUrl ?: settings.planningAiBaseUrl)
             .putString(KEY_PLANNING_AI_API_KEY, preservedPlanningAiApiKey)
-            .putString(KEY_PLANNING_AI_MODEL, settings.planningAiModel)
+            .putString(KEY_PLANNING_AI_MODEL, primaryPlanningAiProvider?.model ?: settings.planningAiModel)
+            .putString(KEY_PLANNING_AI_PROVIDERS_JSON, planningAiProvidersToJson(mergedPlanningAiProviders))
+            .putBoolean(KEY_HAS_SEEN_ONBOARDING, settings.hasSeenOnboarding)
             .apply {
                 val noteId = settings.lastOpenedPlanningNoteId
                 if (noteId == null || noteId <= 0) remove(KEY_LAST_OPENED_PLANNING_NOTE_ID) else putLong(KEY_LAST_OPENED_PLANNING_NOTE_ID, noteId)
@@ -229,6 +268,26 @@ class AppSettingsStore(context: Context) {
         val syncToken = preferences.getString(KEY_DESKTOP_SYNC_TOKEN, null)
             ?.takeIf { it.isNotBlank() }
             ?: generateAndPersistDesktopSyncToken()
+        val legacyProviderName = preferences.getString(KEY_PLANNING_AI_PROVIDER_NAME, null).orEmpty()
+        val legacyBaseUrl = preferences.getString(KEY_PLANNING_AI_BASE_URL, null).orEmpty()
+        val legacyApiKey = preferences.getString(KEY_PLANNING_AI_API_KEY, null).orEmpty()
+        val legacyModel = preferences.getString(KEY_PLANNING_AI_MODEL, null).orEmpty()
+        val planningAiEnabled = preferences.getBoolean(KEY_PLANNING_AI_ENABLED, false)
+        val storedProviders = planningAiProvidersFromJson(preferences.getString(KEY_PLANNING_AI_PROVIDERS_JSON, null))
+        val planningAiProviders = if (storedProviders.isEmpty() && listOf(legacyProviderName, legacyBaseUrl, legacyApiKey, legacyModel).any { it.isNotBlank() }) {
+            listOf(
+                PlanningAiProvider(
+                    name = legacyProviderName.ifBlank { "未命名服务" },
+                    baseUrl = legacyBaseUrl,
+                    apiKey = legacyApiKey,
+                    model = legacyModel,
+                    enabled = planningAiEnabled
+                )
+            )
+        } else {
+            storedProviders
+        }
+        val primaryPlanningAiProvider = planningAiProviders.firstOrNull()
         return AppSettings(
             themeMode = ThemeMode.entries.firstOrNull { it.name == themeName } ?: ThemeMode.SYSTEM,
             weekStartMode = WeekStartMode.entries.firstOrNull { it.name == weekStartName } ?: WeekStartMode.MONDAY,
@@ -252,12 +311,30 @@ class AppSettingsStore(context: Context) {
             desktopSyncEnabled = preferences.getBoolean(KEY_DESKTOP_SYNC_ENABLED, false),
             desktopSyncToken = syncToken,
             lastOpenedPlanningNoteId = preferences.getLong(KEY_LAST_OPENED_PLANNING_NOTE_ID, 0L).takeIf { it > 0 },
-            planningAiEnabled = preferences.getBoolean(KEY_PLANNING_AI_ENABLED, false),
-            planningAiProviderName = preferences.getString(KEY_PLANNING_AI_PROVIDER_NAME, null).orEmpty(),
-            planningAiBaseUrl = preferences.getString(KEY_PLANNING_AI_BASE_URL, null).orEmpty(),
-            planningAiApiKey = preferences.getString(KEY_PLANNING_AI_API_KEY, null).orEmpty(),
-            planningAiModel = preferences.getString(KEY_PLANNING_AI_MODEL, null).orEmpty()
+            planningAiEnabled = planningAiEnabled,
+            planningAiProviderName = primaryPlanningAiProvider?.name ?: legacyProviderName,
+            planningAiBaseUrl = primaryPlanningAiProvider?.baseUrl ?: legacyBaseUrl,
+            planningAiApiKey = primaryPlanningAiProvider?.apiKey ?: legacyApiKey,
+            planningAiModel = primaryPlanningAiProvider?.model ?: legacyModel,
+            planningAiProviders = planningAiProviders,
+            hasSeenOnboarding = preferences.getBoolean(KEY_HAS_SEEN_ONBOARDING, false)
         )
+    }
+
+    private fun mergePlanningAiApiKeys(imported: List<PlanningAiProvider>): List<PlanningAiProvider> {
+        if (imported.isEmpty()) return emptyList()
+        val existingById = planningAiProvidersFromJson(preferences.getString(KEY_PLANNING_AI_PROVIDERS_JSON, null)).associateBy { it.id }
+        val existingByNameAndBase = existingById.values.associateBy { "${it.name}|${it.baseUrl}|${it.model}" }
+        return imported.map { provider ->
+            val normalized = provider.normalized()
+            if (normalized.apiKey.isNotBlank()) {
+                normalized
+            } else {
+                val preserved = existingById[normalized.id]
+                    ?: existingByNameAndBase["${normalized.name}|${normalized.baseUrl}|${normalized.model}"]
+                normalized.copy(apiKey = preserved?.apiKey.orEmpty())
+            }
+        }
     }
 
     private fun generateAndPersistDesktopSyncToken(): String {
@@ -302,5 +379,7 @@ class AppSettingsStore(context: Context) {
         private const val KEY_PLANNING_AI_BASE_URL = "planning_ai_base_url"
         private const val KEY_PLANNING_AI_API_KEY = "planning_ai_api_key"
         private const val KEY_PLANNING_AI_MODEL = "planning_ai_model"
+        private const val KEY_PLANNING_AI_PROVIDERS_JSON = "planning_ai_providers_json"
+        private const val KEY_HAS_SEEN_ONBOARDING = "has_seen_onboarding"
     }
 }

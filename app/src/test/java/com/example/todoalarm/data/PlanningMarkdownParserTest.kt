@@ -77,6 +77,56 @@ class PlanningMarkdownParserTest {
     }
 
     @Test
+    fun parsesFuzzyDayPeriodAsDdlOnlyWithDateContext() {
+        val result = PlanningMarkdownParser.parse(
+            """
+            # 今日计划
+            - [ ] 晚上交论文
+            - [ ] 上午开会
+            # 收集箱
+            - [ ] 晚上随便想想
+            """.trimIndent(),
+            now = now
+        )
+
+        val byTitle = result.candidates.associateBy { it.title }
+        assertEquals(LocalDateTime.of(2026, 5, 14, 22, 0), byTitle["晚上交论文"]?.dueAt)
+        assertEquals(LocalDateTime.of(2026, 5, 14, 12, 0), byTitle["上午开会"]?.dueAt)
+        assertEquals(null, byTitle["晚上随便想想"]?.dueAt)
+    }
+
+    @Test
+    fun parsesBeforeTimeNaturalDdl() {
+        val result = PlanningMarkdownParser.parse(
+            """
+            - [ ] 5点前交作业
+            - [ ] 明天下午3点前提交
+            - [ ] 16:30之前发邮件
+            """.trimIndent(),
+            now = now
+        )
+
+        val todos = result.candidates.filter { it.type == PlanningParsedType.TODO }
+        assertEquals(LocalDateTime.of(2026, 5, 14, 17, 0), todos[0].dueAt)
+        assertEquals(LocalDateTime.of(2026, 5, 15, 15, 0), todos[1].dueAt)
+        assertEquals(LocalDateTime.of(2026, 5, 14, 16, 30), todos[2].dueAt)
+    }
+
+    @Test
+    fun parsesNonCheckboxDdlKeywordTodoAndRecurrenceHintMessage() {
+        val result = PlanningMarkdownParser.parse(
+            "交论文 截止明天 23:59，每天复盘",
+            now = now
+        )
+
+        val todo = result.candidates.single()
+        assertEquals(PlanningParsedType.TODO, todo.type)
+        assertEquals(LocalDateTime.of(2026, 5, 15, 23, 59), todo.dueAt)
+        assertTrue(todo.message.contains("根据自然文本推断"))
+        assertTrue(todo.message.contains("检测到循环关键词"))
+    }
+
+    @Test
     fun headingDateContextIsExplicitAndResetsOnPlainHeading() {
         val result = PlanningMarkdownParser.parse(
             """

@@ -89,6 +89,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.todoalarm.R
 import com.example.todoalarm.data.CalendarEventDraft
+import com.example.todoalarm.data.PlanningAiProvider
 import com.example.todoalarm.data.PlanningImportCandidate
 import com.example.todoalarm.data.PlanningImportResult
 import com.example.todoalarm.data.PlanningParseResult
@@ -354,7 +355,8 @@ internal fun DashboardBody(
     onDefaultSnoozeChange: (Int) -> Unit,
     onDefaultCalendarReminderModeChange: (ReminderDeliveryMode) -> Unit,
     onReminderAudioStrategyChange: (ReminderAudioChannel, Int, Boolean, Int, Boolean) -> Unit,
-    onPlanningAiConfigChange: (Boolean, String, String, String, String) -> Unit,
+    onPlanningAiProvidersChange: (Boolean, List<PlanningAiProvider>) -> Unit,
+    onResetOnboarding: () -> Unit,
     onDesktopSyncEnabledChange: (Boolean) -> Unit,
     onRotateDesktopSyncToken: () -> Unit,
     onUseBuiltInReminderTone: () -> Unit,
@@ -378,7 +380,9 @@ internal fun DashboardBody(
     onDeletePlanningNote: suspend (Long) -> String?,
     onArchivePlanningNote: suspend (Long) -> String?,
     onParsePlanningMarkdown: (String) -> PlanningParseResult,
-    onImportPlanningCandidates: suspend (List<PlanningImportCandidate>, Set<String>, String, Long?) -> PlanningImportResult
+    onImportPlanningCandidates: suspend (List<PlanningImportCandidate>, Set<String>, String, Long?) -> PlanningImportResult,
+    onDismissOnboarding: () -> Unit = {},
+    onNavigatePlanning: () -> Unit = {}
 ) {
     if (section == DashboardSection.CALENDAR) {
         Box(
@@ -431,7 +435,8 @@ internal fun DashboardBody(
                 onDefaultSnoozeChange = onDefaultSnoozeChange,
                 onDefaultCalendarReminderModeChange = onDefaultCalendarReminderModeChange,
                 onReminderAudioStrategyChange = onReminderAudioStrategyChange,
-                onPlanningAiConfigChange = onPlanningAiConfigChange,
+                onPlanningAiProvidersChange = onPlanningAiProvidersChange,
+                onResetOnboarding = onResetOnboarding,
                 onDesktopSyncEnabledChange = onDesktopSyncEnabledChange,
                 onRotateDesktopSyncToken = onRotateDesktopSyncToken,
                 onUseBuiltInReminderTone = onUseBuiltInReminderTone,
@@ -518,6 +523,12 @@ internal fun DashboardBody(
                     CompactGreetingCard(quote = uiState.currentQuote)
                 }
 
+                if (!uiState.settings.hasSeenOnboarding) {
+                    item {
+                        OnboardingCard(onDismiss = onDismissOnboarding)
+                    }
+                }
+
                 item {
                     BoardBlockTitle("今日待办（${boardTodoItems.size}）")
                 }
@@ -539,7 +550,8 @@ internal fun DashboardBody(
                         hasTodayEvents = allTodayScheduleItems.isNotEmpty(),
                         todayEvents = todayScheduleItems,
                         tomorrowEvents = tomorrowScheduleItems,
-                        onOpenEvent = onEditCalendarEvent
+                        onOpenEvent = onEditCalendarEvent,
+                        onNavigatePlanning = onNavigatePlanning
                     )
                 }
             }
@@ -703,6 +715,30 @@ private fun CompactGreetingCard(
 }
 
 @Composable
+private fun OnboardingCard(onDismiss: () -> Unit) {
+    ElevatedCard(
+        shape = RoundedCornerShape(28.dp),
+        colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+    ) {
+        Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Text("欢迎使用 PaykiTodo", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+            Text("• 点右下角 + 创建第一条待办", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface)
+            Text("• 打开抽屉试试「规划台」，把近期要做的事写下来", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface)
+            Text("• 到设置里检查提醒权限，避免错过 DDL", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface)
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                Surface(
+                    shape = RoundedCornerShape(18.dp),
+                    color = MaterialTheme.colorScheme.primary,
+                    onClick = onDismiss
+                ) {
+                    Text("知道了", modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp), color = MaterialTheme.colorScheme.onPrimary, fontWeight = FontWeight.SemiBold)
+                }
+            }
+        }
+    }
+}
+
+@Composable
 private fun BoardBlockTitle(title: String) {
     Text(
         text = title,
@@ -726,7 +762,8 @@ private fun TodayScheduleBoardCard(
     hasTodayEvents: Boolean,
     todayEvents: List<TodoItem>,
     tomorrowEvents: List<TodoItem>,
-    onOpenEvent: (TodoItem) -> Unit
+    onOpenEvent: (TodoItem) -> Unit,
+    onNavigatePlanning: () -> Unit = {}
 ) {
     ElevatedCard(
         shape = RoundedCornerShape(28.dp),
@@ -800,12 +837,13 @@ private fun TodayScheduleBoardCard(
                 if (tomorrowEvents.isEmpty()) {
                     Surface(
                         shape = RoundedCornerShape(16.dp),
-                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.18f)
+                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.18f),
+                        onClick = onNavigatePlanning
                     ) {
                         Text(
-                            text = "明天暂无日程",
+                            text = "明天暂无日程 · 去规划台安排一下？",
                             modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            color = MaterialTheme.colorScheme.primary,
                             style = MaterialTheme.typography.bodyMedium
                         )
                     }

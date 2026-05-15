@@ -189,7 +189,12 @@ class MainActivity : ComponentActivity() {
                     onDefaultSnoozeChange = viewModel::updateDefaultSnooze,
                     onDefaultCalendarReminderModeChange = viewModel::updateDefaultCalendarReminderMode,
                     onReminderAudioStrategyChange = viewModel::updateReminderAudioStrategy,
-                    onPlanningAiConfigChange = viewModel::updatePlanningAiConfig,
+                    onPlanningAiProvidersChange = viewModel::updatePlanningAiProviders,
+                    onDismissOnboarding = viewModel::markOnboardingSeen,
+                    onResetOnboarding = {
+                        viewModel.resetOnboarding()
+                        Toast.makeText(this, "下次打开看板时会显示引导卡", Toast.LENGTH_SHORT).show()
+                    },
                     onDesktopSyncEnabledChange = viewModel::updateDesktopSyncEnabled,
                     onRotateDesktopSyncToken = viewModel::rotateDesktopSyncToken,
                     onUseBuiltInReminderTone = {

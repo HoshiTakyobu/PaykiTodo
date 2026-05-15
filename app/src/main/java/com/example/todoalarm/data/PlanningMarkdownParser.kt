@@ -173,15 +173,23 @@ object PlanningMarkdownParser {
         }
 
         if (!checkboxPresent && !hasSimpleTag(content, "task") && explicitDdl == null) {
-            return null
+            return parseNaturalTodoHints(
+                lineNumber = lineNumber,
+                sourceLine = sourceLine,
+                content = content,
+                dateContext = dateContext,
+                parentTitle = parentTitle,
+                now = now
+            )
         }
 
         val title = cleanTitle(content).trim()
         if (title.isBlank()) return error(lineNumber, sourceLine, "待办标题不能为空。")
+        val naturalDdl = if (explicitDdl == null) parseNaturalDdlHint(content, dateContext, now) else null
         val ddl = explicitDdl?.let { ddlText ->
             parseDateTimeExpression(ddlText, defaultDate = dateContext, nowDate = now.toLocalDate(), defaultTime = LocalTime.of(23, 59))
                 ?: return error(lineNumber, sourceLine, "无法识别 DDL：$ddlText")
-        }
+        } ?: naturalDdl
         val reminderResult = if (ddl != null) parseReminderTag(content, ddl, now) else null
         if (reminderResult != null && !reminderResult.isValid) {
             return error(lineNumber, sourceLine, "提醒格式无效：${reminderResult.message}")
@@ -191,6 +199,7 @@ object PlanningMarkdownParser {
         if (ddl != null && !ddl.isAfter(now)) warnings += "DDL 已早于当前时间，导入前请调整。"
         val importBlocked = ddl != null && (!ddl.isAfter(now) || reminder.any { offset -> !ddl.minusMinutes(offset.toLong()).isAfter(now) })
         if (importBlocked && warnings.isEmpty()) warnings += "提醒时间已经过去，请调整 DDL 或提醒时间后再导入。"
+        naturalTextMessage(content, naturalDdl != null)?.let { warnings += it }
         val group = tagValue(content, "group").orEmpty()
         val notes = parentTitle?.let { "所属大任务：$it" }.orEmpty()
         return PlanningParsedCandidate(
@@ -205,8 +214,109 @@ object PlanningMarkdownParser {
             reminderOffsetsMinutes = reminder,
             parentTitle = parentTitle,
             importBlocked = importBlocked,
-            message = warnings.joinToString("；")
+            message = warnings.distinct().joinToString("；")
         )
+    }
+
+    private fun parseNaturalTodoHints(
+        lineNumber: Int,
+        sourceLine: String,
+        content: String,
+        dateContext: LocalDate?,
+        parentTitle: String?,
+        now: LocalDateTime
+    ): PlanningParsedCandidate? {
+        val ddl = parseNaturalDdlHint(content, dateContext, now) ?: return null
+        val title = cleanNaturalTodoTitle(content).trim()
+        if (title.isBlank()) return error(lineNumber, sourceLine, "待办标题不能为空。")
+        val reminderResult = parseReminderTag(content, ddl, now)
+        if (reminderResult != null && !reminderResult.isValid) {
+            return error(lineNumber, sourceLine, "提醒格式无效：${reminderResult.message}")
+        }
+        val reminder = reminderResult?.offsetsMinutes ?: listOf(DEFAULT_PLANNING_REMINDER_MINUTES)
+        val warnings = mutableListOf("根据自然文本推断，建议确认")
+        naturalTextMessage(content, true)?.let { warnings += it }
+        if (!ddl.isAfter(now)) warnings += "DDL 已早于当前时间，导入前请调整。"
+        val importBlocked = !ddl.isAfter(now) || reminder.any { offset -> !ddl.minusMinutes(offset.toLong()).isAfter(now) }
+        if (importBlocked && warnings.none { it.contains("提醒时间已经过去") }) {
+            warnings += "提醒时间已经过去，请调整 DDL 或提醒时间后再导入。"
+        }
+        return PlanningParsedCandidate(
+            id = "line-$lineNumber",
+            lineNumber = lineNumber,
+            sourceLine = sourceLine,
+            type = PlanningParsedType.TODO,
+            title = title,
+            notes = parentTitle?.let { "所属大任务：$it" }.orEmpty(),
+            groupName = tagValue(content, "group").orEmpty(),
+            dueAt = ddl,
+            reminderOffsetsMinutes = reminder,
+            parentTitle = parentTitle,
+            importBlocked = importBlocked,
+            message = warnings.distinct().joinToString("；")
+        )
+    }
+
+    private fun parseNaturalDdlHint(content: String, dateContext: LocalDate?, now: LocalDateTime): LocalDateTime? {
+        val text = normalizeSyntaxText(content)
+        DdlKeywordRegex.find(text)?.let { match ->
+            val raw = text.substring(match.range.last + 1).trim().trimStart(':', '：', ' ', ',')
+            parseDateTimeExpression(raw, defaultDate = dateContext, nowDate = now.toLocalDate(), defaultTime = LocalTime.of(23, 59))?.let {
+                return it
+            }
+        }
+        BeforeTimeRegex.find(text)?.let { match ->
+            val prefix = text.substring(0, match.range.first)
+            val date = parseDateFromNaturalPrefix(prefix.trim(), now.toLocalDate()) ?: dateContext ?: now.toLocalDate()
+            val period = ChineseDayPeriodRegex.find(prefix)?.value.orEmpty()
+            val hour = match.groupValues[1].toIntOrNull() ?: return@let
+            val minute = match.groupValues[2].takeIf { it.isNotBlank() }?.toIntOrNull() ?: 0
+            val normalizedHour = normalizeNaturalHour(hour, period)
+            if (normalizedHour in 0..23 && minute in 0..59) {
+                return LocalDateTime.of(date, LocalTime.of(normalizedHour, minute))
+            }
+        }
+        if (dateContext != null) {
+            FuzzyPeriodDeadlineRegex.find(text)?.let { match ->
+                return LocalDateTime.of(dateContext, fuzzyPeriodDeadlineTime(match.value) ?: return@let)
+            }
+        }
+        return null
+    }
+
+    private fun parseDateFromNaturalPrefix(prefix: String, today: LocalDate): LocalDate? {
+        val match = LeadingDateRegex.find(prefix)?.takeIf { it.range.first == 0 } ?: return null
+        return parseDateExpression(match.value.trim(), today)?.date
+    }
+
+    private fun normalizeNaturalHour(hour: Int, period: String): Int {
+        if (period.isBlank()) return if (hour in 1..7) hour + 12 else hour
+        return applyChineseDayPeriod(hour, period) ?: hour
+    }
+
+    private fun fuzzyPeriodDeadlineTime(period: String): LocalTime? {
+        return when (period) {
+            "早上" -> LocalTime.of(9, 0)
+            "上午", "中午" -> LocalTime.NOON
+            "下午" -> LocalTime.of(17, 0)
+            "晚上" -> LocalTime.of(22, 0)
+            else -> null
+        }
+    }
+
+    private fun naturalTextMessage(content: String, inferred: Boolean): String? {
+        val parts = mutableListOf<String>()
+        if (inferred) parts += "根据自然文本推断，建议确认"
+        if (RecurrenceHintRegex.containsMatchIn(content)) parts += "检测到循环关键词，如需循环请导入后在待办编辑器中设置"
+        return parts.distinct().joinToString("；").takeIf { it.isNotBlank() }
+    }
+
+    private fun cleanNaturalTodoTitle(raw: String): String {
+        return cleanTitle(raw)
+            .replace(DdlKeywordRegex, " ")
+            .replace(BeforeTimeRegex, " ")
+            .trim()
+            .replace(Regex("\\s+"), " ")
     }
 
     private fun parseReminderTag(content: String, anchor: LocalDateTime, now: LocalDateTime): ReminderTextParseResult? {
@@ -350,6 +460,7 @@ object PlanningMarkdownParser {
             text = text.replace(Regex("(?:^|\\s)#$tag\\s*[^#]+"), " ")
         }
         text = text.replace(BareDdlRegex, " ")
+        text = text.replace(BeforeTimeRegex, " ")
         listOf("task", "imported").forEach { tag ->
             text = text.replace(Regex("(?:^|\\s)#$tag(?=\\s|$)"), " ")
         }
@@ -480,6 +591,11 @@ object PlanningMarkdownParser {
     private val TimeRangeRegex = Regex("($TimeTokenPattern)\\s*(?:-|~|至|到)\\s*(次日)?($TimeTokenPattern)")
     private val LeadingDateRegex = Regex("^(今天|今日|明天|明日|后天|周[一二三四五六日天]|星期[一二三四五六日天]|礼拜[一二三四五六日天]|\\d{4}[-./]\\d{1,2}[-./]\\d{1,2}|\\d{4}年\\d{1,2}月\\d{1,2}日?|\\d{1,2}[-./]\\d{1,2}|\\d{1,2}月\\d{1,2}日?)")
     private val BareDdlRegex = Regex("(?:^|\\s)ddl\\s+([^#]+)", RegexOption.IGNORE_CASE)
+    private val DdlKeywordRegex = Regex("(截止|deadline|ddl)", RegexOption.IGNORE_CASE)
+    private val BeforeTimeRegex = Regex("(\\d{1,2})(?::(\\d{2})|点)(?:前|之前)")
+    private val ChineseDayPeriodRegex = Regex("(早上|上午|中午|下午|晚上)")
+    private val FuzzyPeriodDeadlineRegex = Regex("(早上|上午|中午|下午|晚上)")
+    private val RecurrenceHintRegex = Regex("(每天|每日|每周|每星期|每月|每年|工作日|周末)")
 }
 
 const val DEFAULT_PLANNING_REMINDER_MINUTES = 5

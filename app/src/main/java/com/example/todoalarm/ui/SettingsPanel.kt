@@ -1,10 +1,12 @@
 package com.example.todoalarm.ui
 
+import android.widget.Toast
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.snapping.rememberSnapFlingBehavior
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -75,9 +77,11 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.core.content.pm.PackageInfoCompat
 import com.example.todoalarm.data.AppSettings
+import com.example.todoalarm.data.PlanningAiProvider
 import com.example.todoalarm.data.ReminderAudioChannel
 import com.example.todoalarm.data.ReminderChainLog
 import com.example.todoalarm.data.ReminderDeliveryMode
@@ -117,7 +121,8 @@ fun SettingsPanel(
     onDefaultSnoozeChange: (Int) -> Unit,
     onDefaultCalendarReminderModeChange: (ReminderDeliveryMode) -> Unit,
     onReminderAudioStrategyChange: (ReminderAudioChannel, Int, Boolean, Int, Boolean) -> Unit,
-    onPlanningAiConfigChange: (Boolean, String, String, String, String) -> Unit,
+    onPlanningAiProvidersChange: (Boolean, List<PlanningAiProvider>) -> Unit,
+    onResetOnboarding: () -> Unit,
     onDesktopSyncEnabledChange: (Boolean) -> Unit,
     onRotateDesktopSyncToken: () -> Unit,
     onUseBuiltInReminderTone: () -> Unit,
@@ -194,10 +199,10 @@ fun SettingsPanel(
                 SettingsMenuItem(
                     icon = Icons.Rounded.Psychology,
                     title = "AI 调用配置",
-                    summary = if (settings.planningAiEnabled && settings.planningAiBaseUrl.isNotBlank()) {
-                        "${settings.planningAiProviderName.ifBlank { "未命名服务" }} · ${settings.planningAiModel.ifBlank { "未填写模型" }}"
+                    summary = if (settings.planningAiEnabled && settings.planningAiProviders.isNotEmpty()) {
+                        "${settings.planningAiProviders.count { it.enabled }} 个已启用 · 共 ${settings.planningAiProviders.size} 个源"
                     } else {
-                        "为规划台后续 AI 识别准备 Base URL、API Key 和模型名"
+                        "为规划台后续 AI 识别准备多个 Base URL、API Key 和模型名"
                     },
                     onClick = { selectedSection = SettingsSection.AI_CONFIG }
                 )
@@ -322,12 +327,15 @@ fun SettingsPanel(
         SettingsSection.AI_CONFIG -> SettingsSectionDialog("AI 调用配置", { selectedSection = null }) {
             PlanningAiConfigPanel(
                 settings = settings,
-                onSave = onPlanningAiConfigChange
+                onSave = onPlanningAiProvidersChange
             )
         }
 
         SettingsSection.ABOUT -> SettingsSectionDialog("关于 PaykiTodo", { selectedSection = null }) {
-            AboutPanel(onOpenWiki = onOpenWiki)
+            AboutPanel(
+                onOpenWiki = onOpenWiki,
+                onResetOnboarding = onResetOnboarding
+            )
         }
 
         SettingsSection.DIAGNOSTICS -> SettingsSectionDialog("提醒链路诊断", { selectedSection = null }) {
@@ -379,6 +387,7 @@ fun SettingsPanel(
         }
 
         SettingsSection.DESKTOP_SYNC -> SettingsSectionDialog("电脑同步", { selectedSection = null }) {
+            val context = LocalContext.current
             Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                     Column(modifier = Modifier.weight(1f)) {
@@ -387,7 +396,14 @@ fun SettingsPanel(
                     }
                     Switch(checked = settings.desktopSyncEnabled, onCheckedChange = onDesktopSyncEnabledChange)
                 }
-                Text("访问密钥：${settings.desktopSyncToken}", fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("访问密钥：${settings.desktopSyncToken}", fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.weight(1f))
+                    OutlinedButton(onClick = {
+                        val clip = context.getSystemService(android.content.ClipboardManager::class.java)
+                        clip?.setPrimaryClip(android.content.ClipData.newPlainText("token", settings.desktopSyncToken))
+                        Toast.makeText(context, "密钥已复制", Toast.LENGTH_SHORT).show()
+                    }) { Text("复制") }
+                }
                 OutlinedButton(onClick = onRotateDesktopSyncToken) { Text("重新生成访问密钥") }
                 if (settings.desktopSyncEnabled) {
                     Text("连接地址", fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
@@ -405,13 +421,21 @@ fun SettingsPanel(
                     } else {
                         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                             desktopSyncStatus.ipAddresses.forEach { ip ->
+                                val url = "http://$ip:${desktopSyncStatus.port}"
                                 Surface(shape = RoundedCornerShape(16.dp), color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f)) {
-                                    Text(
-                                        text = "http://$ip:${desktopSyncStatus.port}",
-                                        modifier = Modifier.fillMaxWidth().padding(12.dp),
-                                        color = MaterialTheme.colorScheme.onSurface,
-                                        style = MaterialTheme.typography.bodyMedium
-                                    )
+                                    Row(modifier = Modifier.fillMaxWidth().padding(start = 12.dp, top = 4.dp, bottom = 4.dp, end = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                                        Text(
+                                            text = url,
+                                            modifier = Modifier.weight(1f),
+                                            color = MaterialTheme.colorScheme.onSurface,
+                                            style = MaterialTheme.typography.bodyMedium
+                                        )
+                                        OutlinedButton(onClick = {
+                                            val clip = context.getSystemService(android.content.ClipboardManager::class.java)
+                                            clip?.setPrimaryClip(android.content.ClipData.newPlainText("url", url))
+                                            Toast.makeText(context, "链接已复制", Toast.LENGTH_SHORT).show()
+                                        }) { Text("复制") }
+                                    }
                                 }
                             }
                             OutlinedButton(onClick = { desktopSyncAddressesExpanded = false }, modifier = Modifier.fillMaxWidth()) {
@@ -624,16 +648,28 @@ private fun PercentSettingRow(
 @Composable
 private fun PlanningAiConfigPanel(
     settings: AppSettings,
-    onSave: (Boolean, String, String, String, String) -> Unit
+    onSave: (Boolean, List<PlanningAiProvider>) -> Unit
 ) {
     var enabled by remember(settings.planningAiEnabled) { mutableStateOf(settings.planningAiEnabled) }
-    var providerName by remember(settings.planningAiProviderName) { mutableStateOf(settings.planningAiProviderName.ifBlank { "DeepSeek / Qwen" }) }
-    var baseUrl by remember(settings.planningAiBaseUrl) { mutableStateOf(settings.planningAiBaseUrl) }
-    var apiKey by remember(settings.planningAiApiKey) { mutableStateOf(settings.planningAiApiKey) }
-    var model by remember(settings.planningAiModel) { mutableStateOf(settings.planningAiModel) }
-    var showApiKey by remember { mutableStateOf(false) }
+    var providers by remember(settings.planningAiProviders) {
+        mutableStateOf(
+            settings.planningAiProviders.ifEmpty {
+                listOf(
+                    PlanningAiProvider(
+                        name = settings.planningAiProviderName.ifBlank { "DeepSeek / Qwen" },
+                        baseUrl = settings.planningAiBaseUrl,
+                        apiKey = settings.planningAiApiKey,
+                        model = settings.planningAiModel,
+                        enabled = settings.planningAiEnabled
+                    )
+                ).filter { it.baseUrl.isNotBlank() || it.apiKey.isNotBlank() || it.model.isNotBlank() }
+            }
+        )
+    }
+    var editingProvider by remember { mutableStateOf<PlanningAiProvider?>(null) }
+    var deleteTarget by remember { mutableStateOf<PlanningAiProvider?>(null) }
     var savedHint by remember { mutableStateOf(false) }
-    val requiredMissing = enabled && (baseUrl.isBlank() || apiKey.isBlank() || model.isBlank())
+    val requiredMissing = enabled && providers.filter { it.enabled }.any { it.baseUrl.isBlank() || it.apiKey.isBlank() || it.model.isBlank() }
 
     Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
         Surface(
@@ -652,62 +688,50 @@ private fun PlanningAiConfigPanel(
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
             Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
                 Text("启用 AI 识别配置", fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
-                Text("关闭后保留配置，但规划台不会显示为可用。", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text("后续接入 AI 时，会按下方顺序从上到下轮询可用源。", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             Switch(checked = enabled, onCheckedChange = { enabled = it; savedHint = false })
         }
 
-        OutlinedTextField(
-            value = providerName,
-            onValueChange = { providerName = it; savedHint = false },
-            modifier = Modifier.fillMaxWidth(),
-            label = { Text("服务名称") },
-            singleLine = true,
-            placeholder = { Text("例如 DeepSeek、Qwen、硅基流动") }
-        )
-        OutlinedTextField(
-            value = baseUrl,
-            onValueChange = { baseUrl = it; savedHint = false },
-            modifier = Modifier.fillMaxWidth(),
-            label = { Text("Base URL") },
-            singleLine = true,
-            isError = enabled && baseUrl.isBlank(),
-            placeholder = { Text("例如 https://api.example.com/v1") },
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri)
-        )
-        OutlinedTextField(
-            value = apiKey,
-            onValueChange = { apiKey = it; savedHint = false },
-            modifier = Modifier.fillMaxWidth(),
-            label = { Text("API Key") },
-            singleLine = true,
-            isError = enabled && apiKey.isBlank(),
-            visualTransformation = if (showApiKey) VisualTransformation.None else PasswordVisualTransformation(),
-            trailingIcon = {
-                TextButton(onClick = { showApiKey = !showApiKey }) {
-                    Text(if (showApiKey) "隐藏" else "显示")
-                }
+        if (providers.isEmpty()) {
+            Text("当前还没有 AI 源。", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        } else {
+            providers.forEachIndexed { index, provider ->
+                PlanningAiProviderRow(
+                    index = index,
+                    total = providers.size,
+                    provider = provider,
+                    onToggle = { checked ->
+                        providers = providers.map { if (it.id == provider.id) it.copy(enabled = checked) else it }
+                        savedHint = false
+                    },
+                    onMoveUp = {
+                        providers = providers.moveProvider(index, index - 1)
+                        savedHint = false
+                    },
+                    onMoveDown = {
+                        providers = providers.moveProvider(index, index + 1)
+                        savedHint = false
+                    },
+                    onEdit = {
+                        editingProvider = provider
+                    },
+                    onDelete = {
+                        deleteTarget = provider
+                    }
+                )
             }
-        )
-        OutlinedTextField(
-            value = model,
-            onValueChange = { model = it; savedHint = false },
-            modifier = Modifier.fillMaxWidth(),
-            label = { Text("模型名") },
-            singleLine = true,
-            isError = enabled && model.isBlank(),
-            placeholder = { Text("例如 deepseek-v4-flash / qwen3.6") }
-        )
+        }
 
         if (requiredMissing) {
             Text(
-                text = "启用 AI 配置时，Base URL、API Key 和模型名都需要填写。",
+                text = "启用的 AI 源需要填写 Base URL、API Key 和模型名。",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.error
             )
         } else {
             Text(
-                text = "真实 API Key 只保存在本机设置中；备份 JSON 不会导出 API Key。",
+                text = "真实 API Key 只保存在本机设置中；备份 JSON 不会导出 API Key。后续接入 AI 时会使用这些配置。",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -715,7 +739,22 @@ private fun PlanningAiConfigPanel(
 
         OutlinedButton(
             onClick = {
-                onSave(enabled, providerName, baseUrl, apiKey, model)
+                editingProvider = PlanningAiProvider(
+                    name = "",
+                    baseUrl = "",
+                    apiKey = "",
+                    model = "",
+                    enabled = true
+                )
+            },
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("添加 AI 源")
+        }
+
+        OutlinedButton(
+            onClick = {
+                onSave(enabled, providers)
                 savedHint = true
             },
             enabled = !requiredMissing,
@@ -727,6 +766,203 @@ private fun PlanningAiConfigPanel(
             Text("已保存。", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
         }
     }
+
+    editingProvider?.let { provider ->
+        PlanningAiProviderDialog(
+            provider = provider,
+            onDismiss = { editingProvider = null },
+            onConfirm = { updated ->
+                providers = if (providers.any { it.id == updated.id }) {
+                    providers.map { if (it.id == updated.id) updated else it }
+                } else {
+                    providers + updated
+                }
+                savedHint = false
+                editingProvider = null
+            }
+        )
+    }
+
+    deleteTarget?.let { provider ->
+        AlertDialog(
+            onDismissRequest = { deleteTarget = null },
+            title = { Text("删除 AI 源") },
+            text = { Text("确定删除「${provider.name.ifBlank { "未命名服务" }}」吗？") },
+            confirmButton = {
+                TextButton(onClick = {
+                    providers = providers.filterNot { it.id == provider.id }
+                    savedHint = false
+                    deleteTarget = null
+                }) {
+                    Text("删除", color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { deleteTarget = null }) {
+                    Text("取消")
+                }
+            }
+        )
+    }
+}
+
+@Composable
+@OptIn(ExperimentalFoundationApi::class)
+private fun PlanningAiProviderRow(
+    index: Int,
+    total: Int,
+    provider: PlanningAiProvider,
+    onToggle: (Boolean) -> Unit,
+    onMoveUp: () -> Unit,
+    onMoveDown: () -> Unit,
+    onEdit: () -> Unit,
+    onDelete: () -> Unit
+) {
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .combinedClickable(
+                onClick = onEdit,
+                onLongClick = onDelete
+            ),
+        shape = RoundedCornerShape(18.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.24f),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.28f))
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text("${index + 1}. ${provider.name.ifBlank { "未命名服务" }}", fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
+                Text(
+                    text = provider.baseUrl.ifBlank { "未填写 Base URL" },
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Text(
+                    text = provider.model.ifBlank { "未填写模型" },
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
+            Switch(checked = provider.enabled, onCheckedChange = onToggle)
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                TextButton(onClick = onMoveUp, enabled = index > 0) {
+                    Text("上移")
+                }
+                TextButton(onClick = onMoveDown, enabled = index < total - 1) {
+                    Text("下移")
+                }
+            }
+            TextButton(onClick = onDelete) {
+                Text("删除", color = MaterialTheme.colorScheme.error)
+            }
+        }
+    }
+}
+
+private fun List<PlanningAiProvider>.moveProvider(from: Int, to: Int): List<PlanningAiProvider> {
+    if (from !in indices || to !in indices || from == to) return this
+    return toMutableList().apply {
+        val item = removeAt(from)
+        add(to, item)
+    }
+}
+
+@Composable
+private fun PlanningAiProviderDialog(
+    provider: PlanningAiProvider,
+    onDismiss: () -> Unit,
+    onConfirm: (PlanningAiProvider) -> Unit
+) {
+    var name by remember(provider.id) { mutableStateOf(provider.name) }
+    var baseUrl by remember(provider.id) { mutableStateOf(provider.baseUrl) }
+    var apiKey by remember(provider.id) { mutableStateOf(provider.apiKey) }
+    var model by remember(provider.id) { mutableStateOf(provider.model) }
+    var enabled by remember(provider.id) { mutableStateOf(provider.enabled) }
+    var showApiKey by remember { mutableStateOf(false) }
+    val missingRequired = baseUrl.isBlank() || apiKey.isBlank() || model.isBlank()
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(if (provider.name.isBlank() && provider.baseUrl.isBlank()) "添加 AI 源" else "编辑 AI 源") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                    Text("启用此源", fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
+                    Switch(checked = enabled, onCheckedChange = { enabled = it })
+                }
+                OutlinedTextField(
+                    value = name,
+                    onValueChange = { name = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text("显示名") },
+                    singleLine = true,
+                    placeholder = { Text("例如 DeepSeek、Qwen、硅基流动") }
+                )
+                OutlinedTextField(
+                    value = baseUrl,
+                    onValueChange = { baseUrl = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text("Base URL") },
+                    singleLine = true,
+                    isError = baseUrl.isBlank(),
+                    placeholder = { Text("例如 https://api.example.com/v1") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri)
+                )
+                OutlinedTextField(
+                    value = apiKey,
+                    onValueChange = { apiKey = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text("API Key") },
+                    singleLine = true,
+                    isError = apiKey.isBlank(),
+                    visualTransformation = if (showApiKey) VisualTransformation.None else PasswordVisualTransformation(),
+                    trailingIcon = {
+                        TextButton(onClick = { showApiKey = !showApiKey }) {
+                            Text(if (showApiKey) "隐藏" else "显示")
+                        }
+                    }
+                )
+                OutlinedTextField(
+                    value = model,
+                    onValueChange = { model = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text("模型名") },
+                    singleLine = true,
+                    isError = model.isBlank(),
+                    placeholder = { Text("例如 deepseek-v4-flash / qwen3.6") }
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = {
+                    onConfirm(
+                        provider.copy(
+                            name = name.ifBlank { "未命名服务" },
+                            baseUrl = baseUrl,
+                            apiKey = apiKey,
+                            model = model,
+                            enabled = enabled
+                        ).normalized()
+                    )
+                },
+                enabled = !missingRequired
+            ) {
+                Text("保存")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("取消")
+            }
+        }
+    )
 }
 
 @Composable
@@ -912,7 +1148,8 @@ private fun SnoozePickerDialog(
 
 @Composable
 fun AboutPanel(
-    onOpenWiki: () -> Unit = {}
+    onOpenWiki: () -> Unit = {},
+    onResetOnboarding: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val packageInfo = remember(context) {
@@ -948,6 +1185,13 @@ fun AboutPanel(
             OutlinedButton(onClick = onOpenWiki) {
                 Text("打开使用说明")
             }
+            SettingsMenuDivider()
+            SettingsActionRow(
+                title = "重新显示新手引导",
+                summary = "下次回到每日看板时重新展示欢迎引导卡",
+                actionText = "重新显示",
+                onClick = onResetOnboarding
+            )
         }
     }
 }
@@ -1172,6 +1416,28 @@ private fun AboutRow(label: String, value: String) {
             style = MaterialTheme.typography.bodyLarge,
             color = MaterialTheme.colorScheme.onSurface
         )
+    }
+}
+
+@Composable
+private fun SettingsActionRow(
+    title: String,
+    summary: String,
+    actionText: String,
+    onClick: () -> Unit
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text(title, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
+            Text(summary, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        OutlinedButton(onClick = onClick) {
+            Text(actionText)
+        }
     }
 }
 

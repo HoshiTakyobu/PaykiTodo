@@ -8,6 +8,7 @@ This file tracks the product at a practical level for new coding sessions.
 
 - create, edit, delete todo items
 - title / notes / group / deadline / multi-reminder fields
+- Todo editor shows title / DDL / group first for new todos and folds notes / reminder input / recurrence / ring / vibration into 更多选项, auto-expanding when editing existing todos that use advanced state
 - no-deadline todos
 - lightweight comma-based todo batch import with preview validation
 - todo batch-import DDL supports same-day clock input such as `16:30` / `16：30`, plus Planning Desk-style natural date forms such as `5.28`, `5月28日`, `明天`, and `周五`; date-only values default to `23:59`
@@ -34,6 +35,7 @@ This file tracks the product at a practical level for new coding sessions.
 - normal board schedule rows have no outer fill or border, while in-progress rows use a gold border with only subtle inner highlight
 - daily board shows a distinct completion message when today's schedule existed but all events have already ended
 - daily board always shows the tomorrow schedule section, including `明天暂无日程` when tomorrow has no events
+- daily board onboarding card is readable in dark mode, can be dismissed, and can be reset from Settings -> About -> 使用说明
 - board surface intentionally does not expose add / batch-add buttons
 
 ### Planning Desk
@@ -51,6 +53,8 @@ This file tracks the product at a practical level for new coding sessions.
 - Enter continuation attempts to keep `- [ ]` task lines flowing without forcing the user to manually type Markdown every time, including when Enter is pressed in the middle of a document
 - shortcut `任务` converts the current line to one checkbox task without duplicating `- [ ]`; shortcut `子任务` inserts a new indented child task line; shortcut chips avoid double-triggering one tap
 - local rule parser recognizes markdown checkboxes, completed-task skip, subtask parent notes, date headings, DDL tags, lightweight bare `ddl` text such as `任务M ddl 15:00`, unified mixed reminder tags, group tags, schedule tags, and natural schedule ranges
+- local rule parser also recognizes common Chinese natural DDL hints, including date-context fuzzy words such as `晚上交论文`, before-time forms such as `5点前` / `16:30之前` / `明天下午3点前`, and non-checkbox DDL keyword lines such as `交论文 截止明天 23:59`
+- Planning Desk preview warns when a todo DDL is inferred from natural text and flags recurrence hint words such as `每天` / `每周` without auto-creating recurrence rules
 - headings containing `今日` / `今天` / `明天` provide date context for following undated schedule lines, so `# 今日计划` has actual parser behavior
 - heading date context is explicit and resets on plain headings; date headings with descriptions such as `# 5/28 周末计划` and compact headings such as `# 周五计划` work, while descriptive headings such as `# 我的明天计划` are not treated as dates
 - natural schedule parsing accepts inline leading dates, time ranges later in the line, slash dates, full-width separators, Chinese AM/PM, and full-width range separators
@@ -62,8 +66,8 @@ This file tracks the product at a practical level for new coding sessions.
 - successful planning import appends `#imported` to imported source lines and immediately saves the active planning note to reduce duplicate imports
 - default Planning Desk import reminder is 5 minutes before, full-screen, ring + vibration
 - planning notes are included in JSON backup / restore snapshots
-- AI recognition for Planning Desk is documented as a later optional Provider-based enhancement for DeepSeek / Qwen / OpenAI-compatible APIs; Settings already exposes phone-side provider/Base URL/API Key/model configuration, local rules remain the default, and AI output must enter preview before import
-- AI Provider API Key is stored locally in settings, deliberately excluded from backup JSON export, and preserved when importing backups without a key
+- AI recognition for Planning Desk is documented as a later optional Provider-based enhancement for DeepSeek / Qwen / OpenAI-compatible APIs; Settings already exposes ordered multi-provider Base URL/API Key/model configuration, local rules remain the default, and AI output must enter preview before import
+- AI Provider API Keys are stored locally in settings, deliberately excluded from backup JSON export, and preserved when importing backups without keys
 - Planning Desk database migration is repaired in `1.7.5`: database version `10` includes `MIGRATION_9_10` to rebuild `planning_notes` tables created by the mismatched `1.7.0`-`1.7.4` migration
 
 ### Calendar System

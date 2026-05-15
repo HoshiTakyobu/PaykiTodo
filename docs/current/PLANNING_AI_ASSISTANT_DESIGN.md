@@ -22,6 +22,7 @@
 4. AI 输出必须进入识别预览页，由用户确认后再导入。
 5. API Key、Base URL、模型名不得硬编码进源码，也不得提交到 Git。
 6. 多服务商并存：DeepSeek、Qwen、兼容 OpenAI Chat Completions 的第三方中转都应按同一配置结构处理。
+7. 多 Provider 按设置页列表顺序作为 fallback 优先级，后续真实 AI 调用应先尝试第一个启用源，遇到认证失效、限流、服务端错误或网络错误再尝试下一个。
 
 ## 推荐流程
 
@@ -40,10 +41,11 @@
 每个服务商至少需要：
 
 - `name`：本地显示名。
-- `base_url`：OpenAI 兼容接口地址，例如 `https://example.com/v1`。
-- `api_key`：用户自己的 Key。
+- `baseUrl`：OpenAI 兼容接口地址，例如 `https://example.com/v1`。
+- `apiKey`：用户自己的 Key。
 - `model`：模型名，例如 `deepseek-v4-flash`、`qwen3.6`。
 - `enabled`：是否启用。
+- `id`：本机唯一标识，App 内部生成，用于编辑和保留本地 Key。
 
 示例见：`docs/templates/planning_ai_providers.example.json`。
 
@@ -76,18 +78,19 @@ AI 应只输出 JSON，不输出解释文本。建议结构：
 
 ## 风险控制
 
-- 网络失败：直接提示失败，不影响本地规则识别。
+- 网络失败：按启用 Provider 顺序尝试下一个；全部失败后提示失败，不影响本地规则识别。
+- 可重试失败：401 / 403 / 429 / 500 / 502 / 503 / 504、连接超时、DNS 解析失败。
+- 不可重试失败：400 请求格式错误、用户主动取消。
 - JSON 解析失败：提示“AI 返回格式无法识别”，不导入。
 - 时间缺失：进入预览页标红，要求用户补齐。
 - 晚于 DDL / 开始时间的提醒：沿用现有非法提醒校验。
-- 多 Provider：用户手动选择默认 Provider；失败时可以切换，不自动轮询所有 Key。
+- 多 Provider：列表顺序就是调用优先级，用户可以在设置页通过上移 / 下移调整。
 
 ## 后续实现拆分
 
-1. 设置页增加“AI 识别服务商”管理入口。
-2. 支持从本地 JSON 模板导入 Provider 配置。
+1. 设置页已经具备多 Provider 管理入口，但规划台识别入口尚未调用 AI。
+2. 后续需要把 `PlanningAiCaller.callWithFallback` 接入规划台识别流程。
 3. 规划台识别弹窗增加“本地识别 / AI 识别”入口。
-4. 接入 OpenAI-compatible Chat Completions 调用。
-5. AI 返回 JSON 转为现有 `PlanningImportCandidate`。
-6. 进入现有预览、编辑、导入闭环。
-
+4. AI 返回 JSON 转为现有 `PlanningImportCandidate`。
+5. 进入现有预览、编辑、导入闭环。
+6. 可选：支持从本地 JSON 模板导入 Provider 配置。

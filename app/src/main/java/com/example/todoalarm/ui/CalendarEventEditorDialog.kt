@@ -429,7 +429,7 @@ internal fun CalendarEventEditorDialog(
                                     )
                                 }
                             },
-                            placeholder = { Text("5,15,16:30,05-10 15:00,2026-05-10 14:30") },
+                            placeholder = { Text("例：5（提前5分钟）或 5,15,16:30") },
                             isError = !reminderValidation.isValid,
                             supportingText = {
                                 Text("数字=提前分钟；HH:mm=当天时刻；MM-DD HH:mm=当年；YYYY-MM-DD HH:mm=完整时刻。用英文逗号分隔。")

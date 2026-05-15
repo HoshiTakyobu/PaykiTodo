@@ -513,6 +513,21 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
         )
     }
 
+    fun updatePlanningAiProviders(
+        enabled: Boolean,
+        providers: List<com.example.todoalarm.data.PlanningAiProvider>
+    ) {
+        settingsStore.updatePlanningAiProviders(enabled, providers)
+    }
+
+    fun resetOnboarding() {
+        settingsStore.resetOnboarding()
+    }
+
+    fun markOnboardingSeen() {
+        settingsStore.markOnboardingSeen()
+    }
+
     fun updateDesktopSyncEnabled(enabled: Boolean) {
         settingsStore.updateDesktopSyncEnabled(enabled)
         if (enabled) {

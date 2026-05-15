@@ -1,19 +1,21 @@
 {
   "providers": [
     {
+      "id": "example-deepseek",
       "name": "deepseek-free",
-      "base_url": "https://example.com/v1",
-      "api_key": "填写你的 API Key，不要把真实 Key 提交到 Git",
+      "baseUrl": "https://example.com/v1",
+      "apiKey": "填写你的 API Key，不要把真实 Key 提交到 Git",
       "model": "deepseek-v4-flash",
       "enabled": true
     },
     {
+      "id": "example-qwen",
       "name": "qwen-provider",
-      "base_url": "https://example-qwen.com/v1",
-      "api_key": "填写你的 API Key，不要把真实 Key 提交到 Git",
+      "baseUrl": "https://example-qwen.com/v1",
+      "apiKey": "填写你的 API Key，不要把真实 Key 提交到 Git",
       "model": "qwen3.6",
       "enabled": false
     }
   ],
-  "default_provider": "deepseek-free"
+  "priority_note": "App 内列表顺序就是后续 fallback 优先级；真实 API Key 不要提交到 Git"
 }

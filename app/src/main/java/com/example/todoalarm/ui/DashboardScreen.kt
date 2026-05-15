@@ -46,6 +46,7 @@ import com.example.todoalarm.data.CalendarEventDraft
 import com.example.todoalarm.data.PlanningImportCandidate
 import com.example.todoalarm.data.PlanningImportResult
 import com.example.todoalarm.data.PlanningParseResult
+import com.example.todoalarm.data.PlanningAiProvider
 import com.example.todoalarm.data.RecurrenceConfig
 import com.example.todoalarm.data.RecurrenceScope
 import com.example.todoalarm.data.ReminderDeliveryMode
@@ -116,7 +117,9 @@ fun DashboardScreen(
     onDefaultSnoozeChange: (Int) -> Unit,
     onDefaultCalendarReminderModeChange: (ReminderDeliveryMode) -> Unit,
     onReminderAudioStrategyChange: (ReminderAudioChannel, Int, Boolean, Int, Boolean) -> Unit,
-    onPlanningAiConfigChange: (Boolean, String, String, String, String) -> Unit,
+    onPlanningAiProvidersChange: (Boolean, List<PlanningAiProvider>) -> Unit,
+    onDismissOnboarding: () -> Unit,
+    onResetOnboarding: () -> Unit,
     onDesktopSyncEnabledChange: (Boolean) -> Unit,
     onRotateDesktopSyncToken: () -> Unit,
     onUseBuiltInReminderTone: () -> Unit,
@@ -434,7 +437,8 @@ fun DashboardScreen(
                     onDefaultSnoozeChange = onDefaultSnoozeChange,
                     onDefaultCalendarReminderModeChange = onDefaultCalendarReminderModeChange,
                     onReminderAudioStrategyChange = onReminderAudioStrategyChange,
-                    onPlanningAiConfigChange = onPlanningAiConfigChange,
+                    onPlanningAiProvidersChange = onPlanningAiProvidersChange,
+                    onResetOnboarding = onResetOnboarding,
                     onDesktopSyncEnabledChange = onDesktopSyncEnabledChange,
                     onRotateDesktopSyncToken = onRotateDesktopSyncToken,
                     onUseBuiltInReminderTone = onUseBuiltInReminderTone,
@@ -458,7 +462,9 @@ fun DashboardScreen(
                     onDeletePlanningNote = onDeletePlanningNote,
                     onArchivePlanningNote = onArchivePlanningNote,
                     onParsePlanningMarkdown = onParsePlanningMarkdown,
-                    onImportPlanningCandidates = onImportPlanningCandidates
+                    onImportPlanningCandidates = onImportPlanningCandidates,
+                    onDismissOnboarding = onDismissOnboarding,
+                    onNavigatePlanning = { section = DashboardSection.PLANNING }
                 )
             }
         }

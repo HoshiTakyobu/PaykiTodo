@@ -2,120 +2,46 @@
 
 ## Active Development Focus
 
-The current round is PaykiTodo `1.7.22` / `versionCode 179`, focused on adding phone-side AI call configuration under Settings and making Planning Desk shortcut controls collapsible so writing space stays primary.
+The current round is PaykiTodo `1.7.24` / `versionCode 181`, focused on four user-facing refinements:
 
-Completed in the `1.7.22` Settings / Planning Desk usability round:
+1. Make the daily-board onboarding card readable in dark mode and resettable from Settings.
+2. Expand Planning Desk local natural-language parsing for common Chinese DDL expressions.
+3. Upgrade Planning Desk AI configuration from one saved source to multiple ordered providers for future fallback calls.
+4. Fold advanced Todo editor fields behind a 更多选项 section so new-todo creation starts simpler.
 
-1. Settings now exposes `AI 调用配置` under common settings.
-2. The AI config panel lets the user enable the config and enter provider name, Base URL, API Key, and model name on the phone.
-3. AI config is stored locally in `AppSettings`; backup JSON exports provider/base URL/model but deliberately does not export the real API Key.
-4. Planning Desk shortcut controls default to collapsed with a light `展开快捷操作` affordance.
-5. The icon shortcut toolbar can be expanded on demand from the Planning Desk toolbar or the collapsed hint, maximizing writing area for normal use.
+## Completed In 1.7.24
 
-Completed in the `1.7.21` Planning Desk usability round:
+1. The onboarding card now uses `surfaceVariant` + `onSurface`, avoiding low-contrast text in dark mode.
+2. Settings -> 关于 -> 使用说明 now includes `重新显示新手引导`; tapping it sets `hasSeenOnboarding = false`, and the next daily-board visit shows the card again.
+3. `PlanningMarkdownParser` now recognizes date-context fuzzy DDL words such as `晚上交论文` / `上午开会`, before-time forms such as `5点前交作业`, `16:30之前发邮件`, and `明天下午3点前提交`, plus bare non-checkbox DDL keyword lines such as `交论文 截止明天 23:59`.
+4. Planning Desk preview messages now flag natural inference with `根据自然文本推断，建议确认`, and loop hints such as `每天` / `每周` add a reminder to configure recurrence after import.
+5. Settings -> AI 调用配置 now stores `List<PlanningAiProvider>` as JSON in SharedPreferences, migrates old single-provider fields into the first provider, and preserves local API keys across backup import when backup JSON excludes keys.
+6. The AI config UI supports adding, editing, deleting, long-press deletion, enable/disable switches, and up/down priority ordering for providers.
+7. `PlanningAiCaller.callWithFallback` is available for later AI recognition integration. It retries enabled providers in order on 401/403/429/5xx and network timeout/DNS failures, but not on 400 or cancellation.
+8. `TodoEditorDialog` defaults new todos to title, DDL, and group; notes, reminder input, recurrence, ring, and vibration live under 更多选项 with `AnimatedVisibility`.
+9. Existing todos auto-expand 更多选项 when they contain notes, custom reminder offsets, recurrence, or non-default ring/vibration state.
+10. Version metadata is now `1.7.24` / `versionCode 181`.
 
-1. Planning Desk shortcut controls are now compact icon buttons instead of text-heavy chips inside a large card.
-2. The phone Planning Desk toolbar exposes a direct tutorial/help icon.
-3. The help sheet is now a multi-page beginner tutorial focused on natural writing, task conversion, DDL/reminder basics, sections, preview/import, and future AI recognition.
-4. Planning Desk parsing accepts bare `ddl` text such as `任务M ddl 15:00` as a todo with today's DDL, while keeping `#ddl` as the precise syntax.
-5. AI recognition remains a future optional enhancement; the design and provider template are documented without committing any real API keys.
+## Verification Completed This Round
 
-Completed in the `1.7.20` shortcut-bar fix:
+1. `./gradlew.bat compileDebugKotlin` succeeded.
+2. `./gradlew.bat testDebugUnitTest --tests com.example.todoalarm.data.PlanningMarkdownParserTest` succeeded.
 
-1. Planning Desk shortcut buttons no longer use an `AssistChip` with an empty Material onClick and a separate outer `combinedClickable`.
-2. Shortcut buttons now use one clickable Surface path, reducing event-dispatch ambiguity.
-3. Every shortcut tap shows `已执行：按钮名`, and long-press still shows the button help text.
+Final release verification still requires:
 
-Completed in the `1.7.19` input-normalization fix:
-
-1. Calendar batch import custom syntax normalizes the event body before splitting fields.
-2. Chinese commas / colons and common full-width range separators now work in the custom batch event body.
-3. `13:40-14:40，标题，@地点` can be parsed like `13:40-14:40, 标题, @地点`.
-
-Completed in the `1.7.18` usability fix:
-
-1. Calendar batch import custom syntax no longer requires the first item to explicitly write a date.
-2. Missing date now defaults to today, so `13:40-14:40, 标题, @地点` is valid.
-3. Calendar batch date prefixes now accept `今天`、`明天`、`后天`、`5.28`、`5/28`、`5月28日`、`2026-05-28`、`2026年5月28日`.
-4. Calendar batch examples and help copy now recommend lightweight default-today input.
-5. Planning Desk top toolbar buttons now clear input focus and show immediate feedback for preview/edit, recognize, and document list.
-
-Completed in the `1.7.17` UI-density fix:
-
-1. The phone Planning Desk operation area is constrained to a fixed 56dp toolbar instead of being allowed to expand into a large blank surface.
-2. The toolbar keeps only the main actions: preview/edit, recognize, document list, and overflow menu.
-3. Document title / explanatory subtitle text is no longer rendered in the same narrow row as the action buttons.
-4. Autosave state remains visible as a compact status label only while edits are pending.
-
-The syntax review conclusion:
-
-1. Planning Desk `#remind`, phone reminder editors, calendar batch `Remind=`, and snooze input now share the same reminder parser on Android.
-2. Todo batch import still had a narrower DDL parser than Planning Desk, so natural forms such as `5.28`, `5月28日`, `明天`, and `周五` were not accepted there.
-3. Desktop Web todo/event reminder input still lagged behind the Android parser and did not support `2:30 pm`, relative dates, weekdays, dot dates, Chinese dates, date-comma-time tokens, or Chinese comma splitting.
-4. Calendar batch import remains intentionally stricter because it is a structured multi-field import format; that boundary should be documented rather than hidden.
-
-Completed in the `1.7.11` syntax implementation round:
-
-1. Todo batch DDL now reuses Planning Desk date-time parsing.
-2. Todo batch DDL accepts `HH:mm`, `5.28`, `5月28日`, `明天`, `周五`, `2026年5月28日`, and date-only values default to `23:59`.
-3. Android reminder parsing now accepts relative dates and weekdays such as `明天 16:30` and `周五 16:30`, and treats `5.28,14:30` / `5月28日，14:30` as one concrete reminder token.
-4. Desktop Web reminder parsing now accepts AM/PM times, relative dates, weekdays, dot dates, Chinese month-day dates, full Chinese dates, date-comma-time tokens, and Chinese comma separators.
-5. Desktop Planning Desk preview edits now reuse Planning Desk date parsing for edited DDL / start / end fields instead of falling back to a narrower desktop-only syntax.
-6. Input help, Wiki, README, CHANGELOG, TODO, and current docs were updated to describe the broader syntax.
-7. App version metadata moved to `1.7.11` / `versionCode 168`.
-
-Completed in the `1.7.12` documentation/UI-copy round:
-
-1. Phone Planning Desk help now documents common DDL forms, natural reminder forms, and preview-edit time behavior.
-2. Todo batch import dialog/help now states that English commas split fields and date/time inside one field should use a space or Chinese comma.
-3. Calendar batch import help now documents `Remind=` support for the shared reminder syntax, including natural dates and Chinese date-time commas.
-4. Built-in Wiki now documents the same field boundary and reminder syntax across Planning Desk, todo batch import, calendar batch import, and desktop Planning Desk.
-5. Desktop Web Planning Desk help and reminder placeholders now show the same accepted reminder examples.
-6. App version metadata moved to `1.7.12` / `versionCode 169`.
-
-Completed in the `1.7.13` parser boundary-fix round:
-
-1. Inline leading dates no longer pollute natural event titles.
-2. Heading date context is explicit and resets on plain headings such as `# 收集箱`.
-3. Date headings can include a description, such as `# 5/28 周末计划`, while descriptive headings such as `# 我的明天计划` are not treated as dates.
-4. Natural schedules can have the time range later in the line, such as `复习 14:00-16:00`.
-5. Slash dates, common full-width separators, Chinese AM/PM, and full-width time-range separators are normalized before parsing on phone-side Planning Desk / reminder input, and desktop web reminder parsing has the same common input coverage.
-6. Top-level events can be used as parent titles for indented subtasks.
-7. Unsupported semantic tags such as `#today`, `#tomorrow`, `#important`, and `#project` remain visible in titles instead of being silently stripped.
-8. App version metadata moved to `1.7.13` / `versionCode 170`.
-
-Completed in the `1.7.14` Planning Desk workflow round:
-
-1. Phone Planning Desk content now auto-saves after a short debounce and saves before switching planning documents.
-2. Fixed the shortcut chip double-trigger bug that could insert the same token twice.
-3. Import success now immediately persists updated Markdown with `#imported`, preventing repeat import after leaving/reopening.
-4. Import preview disables import when no valid candidate is selected and adds `全选可导入项` / `全不选`.
-5. Preview and document sheets use screen-height based sizing instead of fixed 420dp / 520dp / 560dp heights.
-6. Markdown preview interactions can return to the source line, and Enter auto-continuation works in the middle of a document.
-7. Preview-stage DDL / start / end time fields accept natural datetime inputs such as `5.28 23:59`, `明天 16:30`, `下午 2:30`, `5/28 下午 2:30`.
-8. Desktop Web Planning Desk now has auto-save, save-before-document-switch, `Ctrl+S` save, `Ctrl+Enter` parse, empty-selection import blocking, and select-all / clear-all preview controls.
-9. App version metadata moved to `1.7.14` / `versionCode 171`.
-
-Completed in the `1.7.15` Planning Desk parser-priority round:
-
-1. Explicit `#ddl` now takes precedence over natural schedule detection, so `会议 9:00-10:00 讨论 #ddl 5.28` is parsed as a todo.
-2. Compact date headings such as `# 周五计划`, `# 明天安排`, and `# 5/28周末计划` can provide date context.
-3. Descriptive headings such as `# 我的明天计划` and `# 后天的事` are still not treated as date context.
-4. Parser unit tests cover the explicit-DDL priority and compact-heading boundary.
-5. App version metadata moved to `1.7.15` / `versionCode 172`.
+1. `./gradlew.bat assembleDebug`
+2. Device-side smoke testing of onboarding reset, AI provider list persistence, Todo editor folding, and Planning Desk natural DDL preview behavior.
 
 ## Immediate Practical Next Steps
 
 When testing, use:
 
-1. install `app/build/outputs/apk/debug/PaykiTodo-1.7.22-debug.apk`
-2. open Calendar batch import and verify `13:40-14:40, 学院立德树人优秀教师推荐学生座谈会, @MB-B1-403` parses as a valid event for today
-3. verify `今天: 13:40-14:40, 标题` and `明天: 13:40-14:40, 标题` parse correctly
-4. verify `5.28: 13:40-14:40, 标题` and `5月28日: 13:40-14:40, 标题` parse correctly
-5. open the phone-side Planning Desk
-6. verify the operation area is a short toolbar rather than a large blank card
-7. verify preview/edit, recognize, document list, and overflow menu are still reachable and produce visible feedback
-8. type text and wait about 2 seconds to verify the compact autosave state still appears and persists
+1. Install `app/build/outputs/apk/debug/PaykiTodo-1.7.24-debug.apk`.
+2. Open 每日看板, dismiss the onboarding card, then use Settings -> 关于 -> 使用说明 -> 重新显示新手引导 and confirm the card returns on the board.
+3. Open Settings -> AI 调用配置 and verify adding, editing, enabling/disabling, deleting, and moving providers up/down persists after leaving and reopening Settings.
+4. Open the Todo editor for a new todo and confirm only title / DDL / group are visible until 更多选项 is expanded.
+5. Edit an existing todo with notes, custom reminders, recurrence, or non-default ring/vibration and confirm 更多选项 auto-expands.
+6. In Planning Desk preview, verify `# 今日计划` followed by `- [ ] 晚上交论文`, `- [ ] 5点前交作业`, `- [ ] 明天下午3点前提交`, and `交论文 截止明天 23:59，每天复盘`.
 
 ## Commit Message Rule
 
@@ -123,4 +49,4 @@ PaykiTodo commit messages should describe product behavior changes and bug/debug
 
 ## Current External Dependency
 
-No external file is needed for the current `1.7.22` verification task. If testing AI config, use a disposable API Key; real keys should remain local to the phone and must not be committed.
+No external file is needed for the current `1.7.24` verification task. If testing AI config, use disposable API keys; real keys should remain local to the phone and must not be committed.

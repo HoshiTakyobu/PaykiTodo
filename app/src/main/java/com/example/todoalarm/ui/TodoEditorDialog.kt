@@ -2,8 +2,15 @@ package com.example.todoalarm.ui
 
 import android.app.DatePickerDialog
 import android.content.Context
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
+import androidx.compose.material.icons.rounded.ExpandLess
+import androidx.compose.material.icons.rounded.ExpandMore
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -139,6 +146,16 @@ fun TodoEditorDialog(
         }
     }
     val confirmEnabled = title.isNotBlank() && (!reminderEnabled || !hasDueDate || isHistory || reminderValidation.isValid)
+    val shouldAutoExpandMore = remember(initialTodo?.id, defaultRingEnabled, defaultVibrateEnabled) {
+        initialTodo != null && (
+            initialTodo.notes.isNotBlank() ||
+                initialTodo.configuredReminderOffsetsMinutes.joinToString(",").ifBlank { "5" } != "5" ||
+                initialTodo.recurrenceTypeEnum != RecurrenceType.NONE ||
+                initialTodo.ringEnabled != defaultRingEnabled ||
+                initialTodo.vibrateEnabled != defaultVibrateEnabled
+            )
+    }
+    var moreOptionsExpanded by remember(initialTodo?.id, shouldAutoExpandMore) { mutableStateOf(shouldAutoExpandMore) }
 
     EditorBottomSheet(
         title = if (initialTodo == null) "新增任务" else "编辑任务",
@@ -185,14 +202,6 @@ fun TodoEditorDialog(
                     )
                 }
 
-                TodoEditorBlock(title = "分组") {
-                    TodoSelectionRow(
-                        title = "所属分组",
-                        value = groups.firstOrNull { it.id == groupId }?.name ?: "未分组",
-                        onClick = { showGroupPicker = true }
-                    )
-                }
-
                 TodoEditorBlock(title = "截止时间") {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -231,220 +240,241 @@ fun TodoEditorDialog(
                     }
                 }
 
-                TodoEditorBlock(title = "备注") {
-                    OutlinedTextField(
-                        value = notes,
-                        onValueChange = { notes = it },
-                        label = { Text("添加备注") },
-                        modifier = Modifier.fillMaxWidth(),
-                        minLines = 4
+                TodoEditorBlock(title = "分组") {
+                    TodoSelectionRow(
+                        title = "所属分组",
+                        value = groups.firstOrNull { it.id == groupId }?.name ?: "未分组",
+                        onClick = { showGroupPicker = true }
                     )
                 }
 
-                if (!canDisableDueDate) {
-                    Text(
-                        text = "循环任务必须保留 DDL，不能移除截止时间。",
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        style = MaterialTheme.typography.bodySmall
-                    )
-                }
+                MoreOptionsToggle(
+                    expanded = moreOptionsExpanded,
+                    onToggle = { moreOptionsExpanded = !moreOptionsExpanded }
+                )
 
-                if (isHistory) {
-                    Text(
-                        text = "历史任务允许修改标题、备注、分类和 DDL，但不会重新启用提醒。",
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-
-                if (!isHistory && hasDueDate) {
-                    TodoEditorBlock(title = "提醒") {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                                Text("提醒", fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
-                            }
-                            Switch(
-                                checked = reminderEnabled,
-                                onCheckedChange = {
-                                    reminderEnabled = it
-                                    if (it && initialTodo == null) {
-                                        reminderAt = dueAt
-                                        if (reminderInput.isBlank()) reminderInput = "5"
-                                    }
-                                },
-                                thumbContent = null
+                AnimatedVisibility(
+                    visible = moreOptionsExpanded,
+                    enter = expandVertically() + fadeIn(),
+                    exit = shrinkVertically() + fadeOut()
+                ) {
+                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        TodoEditorBlock(title = "备注") {
+                            OutlinedTextField(
+                                value = notes,
+                                onValueChange = { notes = it },
+                                label = { Text("添加备注") },
+                                modifier = Modifier.fillMaxWidth(),
+                                minLines = 4
                             )
                         }
 
-                        if (reminderEnabled) {
-                            Surface(
-                                shape = RoundedCornerShape(18.dp),
-                                color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.24f)
-                            ) {
-                                Column(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(horizontal = 14.dp, vertical = 12.dp),
-                                    verticalArrangement = Arrangement.spacedBy(3.dp)
+                        if (!canDisableDueDate) {
+                            Text(
+                                text = "循环任务必须保留 DDL，不能移除截止时间。",
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                style = MaterialTheme.typography.bodySmall
+                            )
+                        }
+
+                        if (isHistory) {
+                            Text(
+                                text = "历史任务允许修改标题、备注、分类和 DDL，但不会重新启用提醒。",
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+
+                        if (!isHistory && hasDueDate) {
+                            TodoEditorBlock(title = "提醒") {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.SpaceBetween
                                 ) {
-                                    Text("提醒时间", fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
-                                    Text(
-                                        text = if (reminderValidation.isValid) reminderValidation.message else "输入存在非法项",
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = if (reminderValidation.isValid) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.error
+                                    Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                                        Text("提醒", fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
+                                    }
+                                    Switch(
+                                        checked = reminderEnabled,
+                                        onCheckedChange = {
+                                            reminderEnabled = it
+                                            if (it && initialTodo == null) {
+                                                reminderAt = dueAt
+                                                if (reminderInput.isBlank()) reminderInput = "5"
+                                            }
+                                        },
+                                        thumbContent = null
                                     )
                                 }
-                            }
-                            if (!reminderValidation.isValid) {
-                                Text(
-                                    text = "非法输入：${reminderValidation.message}",
-                                    color = MaterialTheme.colorScheme.error,
-                                    style = MaterialTheme.typography.bodySmall,
-                                    fontWeight = FontWeight.SemiBold
-                                )
-                            }
-                            OutlinedTextField(
-                                value = reminderInput,
-                                onValueChange = { reminderInput = it },
-                                label = {
-                                    Row(verticalAlignment = Alignment.CenterVertically) {
-                                        Text("提醒时间")
-                                        InputSyntaxHelpIconButton(
-                                            topic = InputSyntaxHelpTopic.Reminder,
-                                            onClick = { helpTopic = InputSyntaxHelpTopic.Reminder }
+
+                                if (reminderEnabled) {
+                                    Surface(
+                                        shape = RoundedCornerShape(18.dp),
+                                        color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.24f)
+                                    ) {
+                                        Column(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .padding(horizontal = 14.dp, vertical = 12.dp),
+                                            verticalArrangement = Arrangement.spacedBy(3.dp)
+                                        ) {
+                                            Text("提醒时间", fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
+                                            Text(
+                                                text = if (reminderValidation.isValid) reminderValidation.message else "输入存在非法项",
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = if (reminderValidation.isValid) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.error
+                                            )
+                                        }
+                                    }
+                                    if (!reminderValidation.isValid) {
+                                        Text(
+                                            text = "非法输入：${reminderValidation.message}",
+                                            color = MaterialTheme.colorScheme.error,
+                                            style = MaterialTheme.typography.bodySmall,
+                                            fontWeight = FontWeight.SemiBold
                                         )
                                     }
-                                },
-                                placeholder = { Text("5,15,16:30,05-10 15:00,2026-05-10 14:30") },
-                                isError = !reminderValidation.isValid,
-                                supportingText = {
-                                    Text("数字=提前分钟；HH:mm=当天时刻；MM-DD HH:mm=当年；YYYY-MM-DD HH:mm=完整时刻。用英文逗号分隔。")
-                                },
-                                modifier = Modifier.fillMaxWidth(),
-                                singleLine = false,
-                                minLines = 1,
-                                maxLines = 3
-                            )
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .horizontalScroll(rememberScrollState()),
-                                horizontalArrangement = Arrangement.spacedBy(8.dp)
-                            ) {
-                                FilterChip(
-                                    selected = ringEnabled,
-                                    onClick = { ringEnabled = !ringEnabled },
-                                    label = { Text("响铃") }
-                                )
-                                FilterChip(
-                                    selected = vibrateEnabled,
-                                    onClick = { vibrateEnabled = !vibrateEnabled },
-                                    label = { Text("震动") }
-                                )
-                            }
-                        }
-                    }
-
-                    TodoEditorBlock(title = "循环") {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                                Text("循环", fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
-                                Text(if (recurringEnabled) recurrenceType.label else "不重复", color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            }
-                            Switch(
-                                checked = recurringEnabled,
-                                onCheckedChange = { recurringEnabled = it },
-                                thumbContent = null
-                            )
-                        }
-
-                        if (recurringEnabled) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .horizontalScroll(rememberScrollState()),
-                                horizontalArrangement = Arrangement.spacedBy(8.dp)
-                            ) {
-                                RecurrenceType.entries
-                                    .filter { it != RecurrenceType.NONE }
-                                    .forEach { type ->
-                                        FilterChip(
-                                            selected = recurrenceType == type,
-                                            onClick = { recurrenceType = type },
-                                            label = { Text(type.label) }
-                                        )
-                                    }
-                            }
-
-                            if (recurrenceType == RecurrenceType.WEEKLY) {
+                                    OutlinedTextField(
+                                        value = reminderInput,
+                                        onValueChange = { reminderInput = it },
+                                        label = {
+                                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                                Text("提醒时间")
+                                                InputSyntaxHelpIconButton(
+                                                    topic = InputSyntaxHelpTopic.Reminder,
+                                                    onClick = { helpTopic = InputSyntaxHelpTopic.Reminder }
+                                                )
+                                            }
+                                        },
+                                        placeholder = { Text("例：5（提前5分钟）或 5,15,16:30") },
+                                        isError = !reminderValidation.isValid,
+                                        supportingText = {
+                                            Text("数字=提前分钟；HH:mm=当天时刻；MM-DD HH:mm=当年；YYYY-MM-DD HH:mm=完整时刻。用英文逗号分隔。")
+                                        },
+                                        modifier = Modifier.fillMaxWidth(),
+                                        singleLine = false,
+                                        minLines = 1,
+                                        maxLines = 3
+                                    )
+                                }
                                 Row(
                                     modifier = Modifier
                                         .fillMaxWidth()
                                         .horizontalScroll(rememberScrollState()),
                                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                                 ) {
-                                    DayOfWeek.entries.forEach { day ->
-                                        FilterChip(
-                                            selected = day in weeklyDays,
-                                            onClick = {
-                                                weeklyDays = if (day in weeklyDays) weeklyDays - day else weeklyDays + day
-                                            },
-                                            label = { Text(day.shortLabel()) }
-                                        )
-                                    }
+                                    FilterChip(
+                                        selected = ringEnabled,
+                                        onClick = { ringEnabled = !ringEnabled },
+                                        label = { Text("响铃") }
+                                    )
+                                    FilterChip(
+                                        selected = vibrateEnabled,
+                                        onClick = { vibrateEnabled = !vibrateEnabled },
+                                        label = { Text("震动") }
+                                    )
                                 }
                             }
 
-                            recurrenceHint(
-                                recurrenceType = recurrenceType,
-                                dueAt = dueAt,
-                                modifier = Modifier.fillMaxWidth()
-                            )
-
-                            if (recurrenceType == RecurrenceType.MONTHLY_DAY && dueAt.dayOfMonth > 28) {
-                                Text(
-                                    text = "（若某个月不存在 ${dueAt.dayOfMonth} 日，则自动落到该月最后一天）",
-                                    color = Color(0xFFC62828),
-                                    style = MaterialTheme.typography.bodySmall
-                                )
-                            }
-
-                            TodoSelectionRow(
-                                title = "循环截止日期",
-                                value = recurrenceEndDate.toString(),
-                                onClick = { showDatePicker(context, recurrenceEndDate) { recurrenceEndDate = it } }
-                            )
-                            OutlinedButton(
-                                onClick = {
-                                    recurrencePreview = previewTodoRecurrence(
-                                        TodoDraft(
-                                            title = title,
-                                            notes = notes,
-                                            dueAt = dueAt,
-                                            reminderAt = if (reminderEnabled && reminderValidation.isValid) reminderValidation.triggerTimes.minOrNull() else null,
-                                            groupId = groupId,
-                                            ringEnabled = ringEnabled,
-                                            vibrateEnabled = vibrateEnabled,
-                                            recurrence = RecurrenceConfig(
-                                                enabled = true,
-                                                type = recurrenceType,
-                                                weeklyDays = weeklyDays,
-                                                endDate = recurrenceEndDate
-                                            ),
-                                            reminderOffsetsMinutes = if (reminderEnabled && reminderValidation.isValid) reminderValidation.offsetsMinutes else emptyList()
-                                        )
+                            TodoEditorBlock(title = "循环") {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                                        Text("循环", fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
+                                        Text(if (recurringEnabled) recurrenceType.label else "不重复", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    }
+                                    Switch(
+                                        checked = recurringEnabled,
+                                        onCheckedChange = { recurringEnabled = it },
+                                        thumbContent = null
                                     )
-                                },
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                Text("预览循环生成")
+                                }
+
+                                if (recurringEnabled) {
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .horizontalScroll(rememberScrollState()),
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                    ) {
+                                        RecurrenceType.entries
+                                            .filter { it != RecurrenceType.NONE }
+                                            .forEach { type ->
+                                                FilterChip(
+                                                    selected = recurrenceType == type,
+                                                    onClick = { recurrenceType = type },
+                                                    label = { Text(type.label) }
+                                                )
+                                            }
+                                    }
+
+                                    if (recurrenceType == RecurrenceType.WEEKLY) {
+                                        Row(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .horizontalScroll(rememberScrollState()),
+                                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                        ) {
+                                            DayOfWeek.entries.forEach { day ->
+                                                FilterChip(
+                                                    selected = day in weeklyDays,
+                                                    onClick = {
+                                                        weeklyDays = if (day in weeklyDays) weeklyDays - day else weeklyDays + day
+                                                    },
+                                                    label = { Text(day.shortLabel()) }
+                                                )
+                                            }
+                                        }
+                                    }
+
+                                    recurrenceHint(
+                                        recurrenceType = recurrenceType,
+                                        dueAt = dueAt,
+                                        modifier = Modifier.fillMaxWidth()
+                                    )
+
+                                    if (recurrenceType == RecurrenceType.MONTHLY_DAY && dueAt.dayOfMonth > 28) {
+                                        Text(
+                                            text = "（若某个月不存在 ${dueAt.dayOfMonth} 日，则自动落到该月最后一天）",
+                                            color = Color(0xFFC62828),
+                                            style = MaterialTheme.typography.bodySmall
+                                        )
+                                    }
+
+                                    TodoSelectionRow(
+                                        title = "循环截止日期",
+                                        value = recurrenceEndDate.toString(),
+                                        onClick = { showDatePicker(context, recurrenceEndDate) { recurrenceEndDate = it } }
+                                    )
+                                    OutlinedButton(
+                                        onClick = {
+                                            recurrencePreview = previewTodoRecurrence(
+                                                TodoDraft(
+                                                    title = title,
+                                                    notes = notes,
+                                                    dueAt = dueAt,
+                                                    reminderAt = if (reminderEnabled && reminderValidation.isValid) reminderValidation.triggerTimes.minOrNull() else null,
+                                                    groupId = groupId,
+                                                    ringEnabled = ringEnabled,
+                                                    vibrateEnabled = vibrateEnabled,
+                                                    recurrence = RecurrenceConfig(
+                                                        enabled = true,
+                                                        type = recurrenceType,
+                                                        weeklyDays = weeklyDays,
+                                                        endDate = recurrenceEndDate
+                                                    ),
+                                                    reminderOffsetsMinutes = if (reminderEnabled && reminderValidation.isValid) reminderValidation.offsetsMinutes else emptyList()
+                                                )
+                                            )
+                                        },
+                                        modifier = Modifier.fillMaxWidth()
+                                    ) {
+                                        Text("预览循环生成")
+                                    }
+                                }
                             }
                         }
                     }
@@ -530,6 +560,45 @@ fun TodoEditorDialog(
                 activeDateTimeTarget = null
             }
         )
+    }
+}
+
+@Composable
+private fun MoreOptionsToggle(
+    expanded: Boolean,
+    onToggle: () -> Unit
+) {
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onToggle),
+        shape = RoundedCornerShape(18.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.24f),
+        border = androidx.compose.foundation.BorderStroke(
+            1.dp,
+            MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.34f)
+        )
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 14.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Text(
+                text = "更多选项",
+                modifier = Modifier.weight(1f),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            Icon(
+                imageVector = if (expanded) Icons.Rounded.ExpandLess else Icons.Rounded.ExpandMore,
+                contentDescription = if (expanded) "收起更多选项" else "展开更多选项",
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
     }
 }
 

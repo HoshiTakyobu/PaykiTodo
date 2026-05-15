@@ -2,7 +2,13 @@
 
 ## Active Development Focus
 
-The current round is PaykiTodo `1.7.19` / `versionCode 176`, focused on a follow-up Calendar batch import input-normalization fix after the 1.7.18 default-today pass.
+The current round is PaykiTodo `1.7.20` / `versionCode 177`, focused on fixing Planning Desk shortcut-bar click feedback and reliability.
+
+Completed in the `1.7.20` shortcut-bar fix:
+
+1. Planning Desk shortcut buttons no longer use an `AssistChip` with an empty Material onClick and a separate outer `combinedClickable`.
+2. Shortcut buttons now use one clickable Surface path, reducing event-dispatch ambiguity.
+3. Every shortcut tap shows `已执行：按钮名`, and long-press still shows the button help text.
 
 Completed in the `1.7.19` input-normalization fix:
 
@@ -86,7 +92,7 @@ Completed in the `1.7.15` Planning Desk parser-priority round:
 
 When testing, use:
 
-1. install `app/build/outputs/apk/debug/PaykiTodo-1.7.19-debug.apk`
+1. install `app/build/outputs/apk/debug/PaykiTodo-1.7.20-debug.apk`
 2. open Calendar batch import and verify `13:40-14:40, 学院立德树人优秀教师推荐学生座谈会, @MB-B1-403` parses as a valid event for today
 3. verify `今天: 13:40-14:40, 标题` and `明天: 13:40-14:40, 标题` parse correctly
 4. verify `5.28: 13:40-14:40, 标题` and `5月28日: 13:40-14:40, 标题` parse correctly
@@ -101,4 +107,4 @@ PaykiTodo commit messages should describe product behavior changes and bug/debug
 
 ## Current External Dependency
 
-No external file or API key is needed for the current `1.7.19` verification task.
+No external file or API key is needed for the current `1.7.20` verification task.

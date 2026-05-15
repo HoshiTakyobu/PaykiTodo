@@ -27,7 +27,6 @@ import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
@@ -244,9 +243,12 @@ internal fun PlanningDeskPanel(
             }
         }
 
-        if (markdownEditMode) {
+    if (markdownEditMode) {
             PlanningShortcutBar(
-                onAction = { action -> editorValue = applyPlanningShortcut(editorValue, action) },
+                onAction = { label, action ->
+                    editorValue = applyPlanningShortcut(editorValue, action)
+                    Toast.makeText(context, "已执行：$label", Toast.LENGTH_SHORT).show()
+                },
                 onHelp = { token, description -> Toast.makeText(context, "$token：$description", Toast.LENGTH_LONG).show() }
             )
 
@@ -435,7 +437,7 @@ internal fun PlanningDeskPanel(
 
 @Composable
 private fun PlanningShortcutBar(
-    onAction: (PlanningShortcutAction) -> Unit,
+    onAction: (String, PlanningShortcutAction) -> Unit,
     onHelp: (String, String) -> Unit
 ) {
     val chips = listOf(
@@ -479,14 +481,27 @@ private fun PlanningShortcutBar(
 @Composable
 private fun PlanningShortcutChip(
     spec: PlanningShortcutSpec,
-    onAction: (PlanningShortcutAction) -> Unit,
+    onAction: (String, PlanningShortcutAction) -> Unit,
     onHelp: (String, String) -> Unit
 ) {
-    AssistChip(
-        modifier = Modifier.combinedClickable(onClick = { onAction(spec.action) }, onLongClick = { onHelp(spec.label, spec.help) }),
-        onClick = {},
-        label = { Text(spec.label, maxLines = 1) }
-    )
+    Surface(
+        shape = RoundedCornerShape(14.dp),
+        color = MaterialTheme.colorScheme.surface,
+        tonalElevation = 1.dp,
+        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.65f)),
+        modifier = Modifier.combinedClickable(
+            onClick = { onAction(spec.label, spec.action) },
+            onLongClick = { onHelp(spec.label, spec.help) }
+        )
+    ) {
+        Text(
+            text = spec.label,
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 9.dp),
+            maxLines = 1,
+            style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.onSurface
+        )
+    }
 }
 
 @Composable

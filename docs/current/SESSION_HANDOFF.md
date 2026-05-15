@@ -6,26 +6,26 @@ Long-running Codex sessions can become unreliable. This file exists so a new ses
 
 ## Current Handoff Summary
 
-- The project is currently at code version `1.7.19` / `versionCode 176`.
-- Latest debug APK path after build: `app/build/outputs/apk/debug/PaykiTodo-1.7.19-debug.apk`.
+- The project is currently at code version `1.7.20` / `versionCode 177`.
+- Latest debug APK path after build: `app/build/outputs/apk/debug/PaykiTodo-1.7.20-debug.apk`.
 - Latest build commands used Android Studio bundled JBR and succeeded:
   - `./gradlew.bat assembleDebug`
-- This round fixes a follow-up calendar batch import input issue:
-  - Calendar batch import custom syntax now normalizes Chinese commas / colons and common full-width range separators before splitting fields.
-  - `13:40-14:40，标题，@地点` parses like `13:40-14:40, 标题, @地点`.
-  - The previous 1.7.18 default-today parsing and Planning Desk toolbar feedback remain in place.
+- This round fixes Planning Desk shortcut-bar click reliability and feedback:
+  - Shortcut buttons no longer combine an empty Material `AssistChip.onClick` with an outer `combinedClickable`.
+  - Shortcut buttons now use a single clickable Surface path.
+  - Every shortcut tap shows `已执行：按钮名`; long-press still shows the help text.
 - The previous crash root cause was likely the Room migration schema mismatch for `planning_notes`; `1.7.6` keeps that repair and improves the Planning Desk UI.
 - Phone-side Planning Desk Markdown rendering remains opt-in manual preview, not the startup default.
 - The phone Planning Desk keeps the raw Markdown / natural-text editor plus Phase 2 import/edit workflow.
 - Desktop web Planning Desk remains available with textarea editing, auto-save, editable parse preview, selected import, document deletion, unified reminder input handoff, and `#imported` write-back.
 - Do not push `1.7.x` or the last `1.6.x` line to GitHub unless the user explicitly asks again.
 
-## Latest Changes In 1.7.19
+## Latest Changes In 1.7.20
 
-1. Upgraded app version metadata to `1.7.19` / `versionCode 176`.
-2. Calendar batch import custom syntax normalizes the body before field splitting.
-3. Chinese comma / Chinese colon / full-width separators now work in common custom-syntax calendar rows.
-4. Existing 1.7.18 default-today and flexible date-prefix behavior is preserved.
+1. Upgraded app version metadata to `1.7.20` / `versionCode 177`.
+2. Planning Desk shortcut-bar buttons now have a single click-handling path.
+3. Planning Desk shortcut-bar actions show visible execution feedback.
+4. Long-press shortcut help behavior is preserved.
 
 ## Files Most Relevant To The Latest Round
 
@@ -41,7 +41,7 @@ Long-running Codex sessions can become unreliable. This file exists so a new ses
 
 ## Current Verification Focus
 
-1. Install `PaykiTodo-1.7.19-debug.apk`.
+1. Install `PaykiTodo-1.7.20-debug.apk`.
 2. Verify the app launches without crash.
 3. Verify existing todos/events are still present.
 4. Verify todo batch rows such as `5.28,整理材料,5`, `5月28日,整理材料,5`, `明天,整理材料,5`, and `周五,整理材料,5`.

@@ -6,36 +6,34 @@ Long-running Codex sessions can become unreliable. This file exists so a new ses
 
 ## Current Handoff Summary
 
-- The project is currently at code version `1.7.17` / `versionCode 174`.
-- Latest debug APK path after build: `app/build/outputs/apk/debug/PaykiTodo-1.7.17-debug.apk`.
+- The project is currently at code version `1.7.18` / `versionCode 175`.
+- Latest debug APK path after build: `app/build/outputs/apk/debug/PaykiTodo-1.7.18-debug.apk`.
 - Latest build commands used Android Studio bundled JBR and succeeded:
   - `./gradlew.bat assembleDebug`
-- This round fixes the Planning Desk mobile operation area density regression:
-  - Operation area is constrained to a fixed 56dp toolbar so it cannot expand into a large blank card
-  - Main actions remain preview / recognize / document list / overflow menu
-  - Autosave state is kept as a compact status label only when there are pending edits
-  - Previous 1.7.16 density changes remain in place:
-    - Header compressed from 3-row to 1-row compact layout with overflow menu
-  - Shortcut bar moved above editor to avoid IME occlusion
-  - Dark mode onSurfaceVariant contrast raised from ~4.2:1 to ~5.3:1
-  - Desktop web content area capped at max-width 1200px for wide screens
+- This round fixes two phone-side usability problems:
+  - Calendar batch import no longer requires the first custom-syntax event to write an explicit date; missing date defaults to today.
+  - Calendar batch import date prefixes now accept 今天 / 明天 / 后天 / 5.28 / 5/28 / 5月28日 / 2026-05-28 / 2026年5月28日.
+  - Planning Desk toolbar actions clear focus and show immediate feedback, so tapping preview / recognize / document list is observable.
+  - The previous fixed-height Planning Desk toolbar from 1.7.17 remains in place.
 - The previous crash root cause was likely the Room migration schema mismatch for `planning_notes`; `1.7.6` keeps that repair and improves the Planning Desk UI.
 - Phone-side Planning Desk Markdown rendering remains opt-in manual preview, not the startup default.
 - The phone Planning Desk keeps the raw Markdown / natural-text editor plus Phase 2 import/edit workflow.
 - Desktop web Planning Desk remains available with textarea editing, auto-save, editable parse preview, selected import, document deletion, unified reminder input handoff, and `#imported` write-back.
 - Do not push `1.7.x` or the last `1.6.x` line to GitHub unless the user explicitly asks again.
 
-## Latest Changes In 1.7.17
+## Latest Changes In 1.7.18
 
-1. Upgraded app version metadata to `1.7.17` / `versionCode 174`.
-2. Planning Desk mobile operation area now uses a fixed-height 56dp toolbar.
-3. The toolbar no longer renders the document title / explanatory subtitle in the same row as the main actions, avoiding narrow-screen expansion and oversized blank space.
-4. Preview / recognize / document-list / overflow actions remain available in the toolbar.
-5. Autosave state is still visible as a compact status label while edits are pending.
+1. Upgraded app version metadata to `1.7.18` / `versionCode 175`.
+2. Calendar batch import custom syntax defaults missing dates to today.
+3. Calendar batch import custom syntax accepts common date prefixes beyond strict `YYYY-MM-DD`.
+4. Calendar batch import examples and help now recommend the lightweight default-today form.
+5. Planning Desk top toolbar actions now clear input focus and show immediate Toast feedback.
 
 ## Files Most Relevant To The Latest Round
 
 - `app/build.gradle.kts`
+- `app/src/main/java/com/example/todoalarm/ui/CalendarBatchImport.kt`
+- `app/src/main/java/com/example/todoalarm/ui/InputSyntaxHelp.kt`
 - `app/src/main/java/com/example/todoalarm/ui/PlanningDeskPanel.kt`
 - `app/src/main/java/com/example/todoalarm/ui/theme/Theme.kt`
 - `app/src/main/assets/desktop-web/app.css`
@@ -45,7 +43,7 @@ Long-running Codex sessions can become unreliable. This file exists so a new ses
 
 ## Current Verification Focus
 
-1. Install `PaykiTodo-1.7.17-debug.apk`.
+1. Install `PaykiTodo-1.7.18-debug.apk`.
 2. Verify the app launches without crash.
 3. Verify existing todos/events are still present.
 4. Verify todo batch rows such as `5.28,整理材料,5`, `5月28日,整理材料,5`, `明天,整理材料,5`, and `周五,整理材料,5`.

@@ -130,7 +130,8 @@ internal fun inputSyntaxHelpLines(topic: InputSyntaxHelpTopic): List<String> {
             "待办批量添加为了好手输，一行只支持一个提醒时间。"
         )
         InputSyntaxHelpTopic.CalendarBatch -> listOf(
-            "首条日程需要写日期，同一天后续日程可以省略日期。",
+            "不写日期时默认今天；写了日期后，同一天后续日程可以省略日期。",
+            "日期可写 今天、明天、5.28、5/28、5月28日、2026-05-28。",
             "条目之间可以用分号或换行分隔。",
             "Remind= / #remind 后面的提醒时间支持和编辑界面相同的写法。",
             "地点里的 @ 会被当作普通文字保存。"
@@ -149,7 +150,7 @@ internal fun inputSyntaxHelpExample(topic: InputSyntaxHelpTopic): String {
     return when (topic) {
         InputSyntaxHelpTopic.Reminder -> "5,15,16:30,2:30 pm,下午 2:30,明天 16:30,周五 16:30,5/10,14:30"
         InputSyntaxHelpTopic.TodoBatch -> "16:30,写报告,5\n5/13 09:30,给老师发消息,09:00\n5月14日，09:30,整理保研材料,5\n无DDL,整理 Obsidian 待办"
-        InputSyntaxHelpTopic.CalendarBatch -> "2026-04-27: 10:20-11:55, 辅导员助理值班, @MB-B1-412, Remind=5;\n12:30-14:00, 午休"
+        InputSyntaxHelpTopic.CalendarBatch -> "13:40-14:40, 学院立德树人优秀教师推荐学生座谈会, @MB-B1-403\n明天: 10:20-11:55, 辅导员助理值班, @MB-B1-412, Remind=5"
         InputSyntaxHelpTopic.Snooze -> "5\n16:30\n2:30 pm\n下午 2:30\n明天 16:30\n周五 16:30"
     }
 }

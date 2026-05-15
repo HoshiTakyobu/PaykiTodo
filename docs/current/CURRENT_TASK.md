@@ -2,7 +2,15 @@
 
 ## Active Development Focus
 
-The current round is PaykiTodo `1.7.17` / `versionCode 174`, focused on fixing the Planning Desk mobile operation-area density regression after the `1.7.16` UI compression pass.
+The current round is PaykiTodo `1.7.18` / `versionCode 175`, focused on fixing Calendar batch default-today parsing and Planning Desk toolbar feedback.
+
+Completed in the `1.7.18` usability fix:
+
+1. Calendar batch import custom syntax no longer requires the first item to explicitly write a date.
+2. Missing date now defaults to today, so `13:40-14:40, 标题, @地点` is valid.
+3. Calendar batch date prefixes now accept `今天`、`明天`、`后天`、`5.28`、`5/28`、`5月28日`、`2026-05-28`、`2026年5月28日`.
+4. Calendar batch examples and help copy now recommend lightweight default-today input.
+5. Planning Desk top toolbar buttons now clear input focus and show immediate feedback for preview/edit, recognize, and document list.
 
 Completed in the `1.7.17` UI-density fix:
 
@@ -72,14 +80,14 @@ Completed in the `1.7.15` Planning Desk parser-priority round:
 
 When testing, use:
 
-1. install `app/build/outputs/apk/debug/PaykiTodo-1.7.17-debug.apk`
-2. open the phone-side Planning Desk
-3. verify the operation area is a short toolbar rather than a large blank card
-4. verify preview/edit, recognize, document list, and overflow menu are still reachable
-5. type text and wait about 2 seconds to verify the compact autosave state still appears and persists
-6. verify one tap on each shortcut chip inserts only once
-7. verify Planning Desk rows such as `5.28 14:00-16:00 小组讨论`, `复习 14:00-16:00`, and `5/28 下午 2:30～下午 4:00 小组讨论`
-8. verify `会议 9:00-10:00 讨论 #ddl 5.28` is recognized as a todo with DDL, not an event
+1. install `app/build/outputs/apk/debug/PaykiTodo-1.7.18-debug.apk`
+2. open Calendar batch import and verify `13:40-14:40, 学院立德树人优秀教师推荐学生座谈会, @MB-B1-403` parses as a valid event for today
+3. verify `今天: 13:40-14:40, 标题` and `明天: 13:40-14:40, 标题` parse correctly
+4. verify `5.28: 13:40-14:40, 标题` and `5月28日: 13:40-14:40, 标题` parse correctly
+5. open the phone-side Planning Desk
+6. verify the operation area is a short toolbar rather than a large blank card
+7. verify preview/edit, recognize, document list, and overflow menu are still reachable and produce visible feedback
+8. type text and wait about 2 seconds to verify the compact autosave state still appears and persists
 
 ## Commit Message Rule
 
@@ -87,4 +95,4 @@ PaykiTodo commit messages should describe product behavior changes and bug/debug
 
 ## Current External Dependency
 
-No external file or API key is needed for the current `1.7.17` verification task.
+No external file or API key is needed for the current `1.7.18` verification task.

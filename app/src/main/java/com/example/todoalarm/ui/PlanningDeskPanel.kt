@@ -60,6 +60,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.TextFieldValue
@@ -95,6 +96,7 @@ internal fun PlanningDeskPanel(
     onImport: suspend (List<PlanningImportCandidate>, Set<String>, String, Long?) -> PlanningImportResult
 ) {
     val context = LocalContext.current
+    val focusManager = LocalFocusManager.current
     val scope = rememberCoroutineScope()
     var editorValue by remember(activeNote?.id) { mutableStateOf(TextFieldValue(activeNote?.contentMarkdown.orEmpty())) }
     var parseResult by remember { mutableStateOf<PlanningParseResult?>(null) }
@@ -161,13 +163,18 @@ internal fun PlanningDeskPanel(
                 }
                 OutlinedButton(
                     modifier = Modifier.height(40.dp),
-                    onClick = { markdownEditMode = !markdownEditMode }
+                    onClick = {
+                        focusManager.clearFocus()
+                        markdownEditMode = !markdownEditMode
+                        Toast.makeText(context, if (markdownEditMode) "已切换到编辑模式" else "已切换到预览模式", Toast.LENGTH_SHORT).show()
+                    }
                 ) {
                     Text(if (markdownEditMode) "预览" else "编辑")
                 }
                 Button(
                     modifier = Modifier.height(40.dp),
                     onClick = {
+                        focusManager.clearFocus()
                         val result = onParse(editorValue.text)
                         parseResult = result
                         selectedIds.clear()
@@ -177,6 +184,7 @@ internal fun PlanningDeskPanel(
                             editableCandidates += editable
                             selectedIds[editable.id] = editable.validate() == null
                         }
+                        Toast.makeText(context, "识别完成：${result.importableCount} 条可导入", Toast.LENGTH_SHORT).show()
                         previewSheetVisible = true
                     }
                 ) {
@@ -186,14 +194,21 @@ internal fun PlanningDeskPanel(
                 }
                 IconButton(
                     modifier = Modifier.size(40.dp),
-                    onClick = { documentSheetVisible = true }
+                    onClick = {
+                        focusManager.clearFocus()
+                        Toast.makeText(context, "打开规划文档列表", Toast.LENGTH_SHORT).show()
+                        documentSheetVisible = true
+                    }
                 ) {
                     Icon(Icons.Rounded.Article, contentDescription = "文档列表")
                 }
                 androidx.compose.foundation.layout.Box {
                     IconButton(
                         modifier = Modifier.size(40.dp),
-                        onClick = { overflowMenuExpanded = true }
+                        onClick = {
+                            focusManager.clearFocus()
+                            overflowMenuExpanded = true
+                        }
                     ) {
                         Icon(Icons.Rounded.MoreVert, contentDescription = "更多操作")
                     }

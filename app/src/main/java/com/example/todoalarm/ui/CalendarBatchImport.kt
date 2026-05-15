@@ -55,6 +55,7 @@ import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
+import java.time.DateTimeException
 import java.time.format.DateTimeFormatter
 import java.time.format.DateTimeParseException
 import java.util.Locale
@@ -182,7 +183,7 @@ internal fun CalendarBatchImportDialog(
                     },
                     placeholder = {
                         Text(
-                            text = "2026-03-02: 19:30-21:55, 【课】二胡演奏基础, @品学楼C506, Weekly, 2026-05-12",
+                            text = "13:40-14:40, 学院立德树人优秀教师推荐学生座谈会, @MB-B1-403",
                             maxLines = 3,
                             overflow = TextOverflow.Ellipsis
                         )
@@ -481,12 +482,14 @@ internal fun CalendarBatchImportHelpDialog(
                 HelpSectionCard(
                     title = "1. 最小可用格式",
                     body = listOf(
-                        "每条日程至少要有：日期、时间段、标题。",
-                        "首条必须带日期；后续同一天的日程可以省略日期。",
+                        "每条日程至少要有：时间段、标题。",
+                        "不写日期时默认今天；写了日期后，后续没写日期的日程会沿用最近一次日期。",
+                        "日期可以写 2026-04-27、5.28、5/28、5月28日、今天、明天。",
                         "条目之间可以用英文分号 ; 或直接换行。"
                     ),
                     code = """
-                        2026-04-27: 10:20-11:55, 辅导员助理值班, @MB-B1-412;
+                        10:20-11:55, 辅导员助理值班, @MB-B1-412;
+                        明天: 09:00-10:30, 写论文;
                         12:30-14:00, 午休
                     """.trimIndent()
                 )
@@ -652,11 +655,11 @@ internal object CalendarBatchImportParser {
         inheritedDate: LocalDate?,
         defaults: CalendarBatchImportDefaults
     ): ParsedEntry {
-        val dateMatch = EntryDatePattern.matchEntire(entry)
+        val dateMatch = EntryDatePattern.matchEntire(normalizeBatchSyntax(entry))
         val date = when {
-            dateMatch != null -> parseDate(dateMatch.groupValues[1], "日期格式错误，应为 YYYY-MM-DD")
+            dateMatch != null -> parseFlexibleDate(dateMatch.groupValues[1])
             inheritedDate != null -> inheritedDate
-            else -> error("首条日程必须显式写日期，格式如 2026-04-27: 10:20-11:55, 标题")
+            else -> LocalDate.now()
         }
         val body = dateMatch?.groupValues?.get(2) ?: entry
         val fields = splitTopLevel(body, setOf(','))
@@ -880,15 +883,53 @@ internal object CalendarBatchImportParser {
     }
 
     private fun parseDate(value: String, errorMessage: String): LocalDate {
+        return parseIsoDate(value) ?: error(errorMessage)
+    }
+
+    private fun parseFlexibleDate(value: String): LocalDate {
+        val normalized = normalizeBatchSyntax(value).trim()
+        val today = LocalDate.now()
+        return when (normalized) {
+            "今天", "今日" -> today
+            "明天", "明日" -> today.plusDays(1)
+            "后天" -> today.plusDays(2)
+            else -> parseIsoDate(normalized)
+                ?: parseFullChineseDate(normalized)
+                ?: parseMonthDayDate(normalized, today)
+                ?: parseChineseMonthDayDate(normalized, today)
+                ?: error("日期格式错误，可写 2026-04-27、5.28、5/28、5月28日、今天、明天")
+        }
+    }
+
+    private fun parseIsoDate(value: String): LocalDate? {
+        return runCatching { LocalDate.parse(normalizeBatchSyntax(value).trim()) }.getOrNull()
+    }
+
+    private fun parseFullChineseDate(value: String): LocalDate? {
+        val match = FullChineseDatePattern.matchEntire(value.trim()) ?: return null
+        return safeDate(match.groupValues[1].toInt(), match.groupValues[2].toInt(), match.groupValues[3].toInt())
+    }
+
+    private fun parseMonthDayDate(value: String, today: LocalDate): LocalDate? {
+        val match = MonthDayDatePattern.matchEntire(value.trim()) ?: return null
+        return safeDate(today.year, match.groupValues[1].toInt(), match.groupValues[2].toInt())
+    }
+
+    private fun parseChineseMonthDayDate(value: String, today: LocalDate): LocalDate? {
+        val match = ChineseMonthDayDatePattern.matchEntire(value.trim()) ?: return null
+        return safeDate(today.year, match.groupValues[1].toInt(), match.groupValues[2].toInt())
+    }
+
+    private fun safeDate(year: Int, month: Int, day: Int): LocalDate? {
         return try {
-            LocalDate.parse(value.trim())
-        } catch (_: DateTimeParseException) {
-            error(errorMessage)
+            LocalDate.of(year, month, day)
+        } catch (_: DateTimeException) {
+            null
         }
     }
 
     private fun parseClockTime(value: String): LocalTime {
-        val parts = value.trim().split(':')
+        val parts = normalizeBatchSyntax(value).trim().split(':')
         require(parts.size == 2) { "时间格式错误：$value" }
         val hour = parts[0].toIntOrNull() ?: error("时间格式错误：$value")
         val minute = parts[1].toIntOrNull() ?: error("时间格式错误：$value")
@@ -920,7 +961,9 @@ internal object CalendarBatchImportParser {
     }
 
     private fun looksLikeDateLiteral(value: String): Boolean {
-        return DateLiteralPattern.matches(value.trim())
+        return DateLiteralPattern.matches(normalizeBatchSyntax(value).trim()) ||
+            MonthDayDatePattern.matches(normalizeBatchSyntax(value).trim()) ||
+            ChineseMonthDayDatePattern.matches(normalizeBatchSyntax(value).trim())
     }
 
     private data class ParsedEntry(
@@ -942,11 +985,28 @@ internal object CalendarBatchImportParser {
         val weeklyDays: Set<DayOfWeek>
     )
 
-    private val EntryDatePattern = Regex("""^\s*(\d{4}-\d{2}-\d{2})\s*:\s*(.+)$""")
-    private val DateLiteralPattern = Regex("""^\d{4}-\d{2}-\d{2}$""")
-    private val TimeRangePattern = Regex("""^\s*([0-2]?\d:\d{2})\s*-\s*(次日)?\s*([0-2]?\d:\d{2})\s*$""")
+    private val EntryDatePattern = Regex("""^\s*(今天|今日|明天|明日|后天|\d{4}[-./]\d{1,2}[-./]\d{1,2}|\d{4}年\d{1,2}月\d{1,2}日?|\d{1,2}[-./]\d{1,2}|\d{1,2}月\d{1,2}日?)\s*[:：]\s*(.+)$""")
+    private val DateLiteralPattern = Regex("""^\d{4}[-./]\d{1,2}[-./]\d{1,2}$""")
+    private val FullChineseDatePattern = Regex("""^(\d{4})年(\d{1,2})月(\d{1,2})日?$""")
+    private val MonthDayDatePattern = Regex("""^(\d{1,2})[-./](\d{1,2})$""")
+    private val ChineseMonthDayDatePattern = Regex("""^(\d{1,2})月(\d{1,2})日?$""")
+    private val TimeRangePattern = Regex("""^\s*([0-2]?\d:\d{2})\s*[-~]\s*(次日)?\s*([0-2]?\d:\d{2})\s*$""")
     private val ReminderPattern = Regex("""^\s*(\d+)\s*(m|min|mins|minute|minutes|分钟|h|hour|hours|小时|d|day|days|天)\s*$""")
     private val ColorPattern = Regex("""^#[0-9A-Fa-f]{6}$""")
+}
+
+private fun normalizeBatchSyntax(value: String): String {
+    return value
+        .replace('：', ':')
+        .replace('，', ',')
+        .replace('．', '.')
+        .replace('。', '.')
+        .replace('／', '/')
+        .replace('－', '-')
+        .replace('–', '-')
+        .replace('—', '-')
+        .replace('～', '~')
+        .replace('〜', '~')
 }
 
 internal object CalendarBatchImportHub {
@@ -1297,7 +1357,8 @@ private fun weekdayShortLabel(dayOfWeek: DayOfWeek): String = when (dayOfWeek) {
 }
 
 private val CalendarBatchImportSampleText = """
-    2026-03-02: 19:30-21:55, 【课】二胡演奏基础, @品学楼C506, Weekly, 2026-05-12, Remind=30m, Mode=Notification;
+    13:40-14:40, 学院立德树人优秀教师推荐学生座谈会, @MB-B1-403;
+    明天: 19:30-21:55, 【课】二胡演奏基础, @品学楼C506, Weekly, 2026-05-12, Remind=30m, Mode=Notification;
     09:00-10:05, 【课】辅导员助理值班, @MB-B1-412, Weekly, 2026-06-15;
     12:30-14:00, 午休
 """.trimIndent()

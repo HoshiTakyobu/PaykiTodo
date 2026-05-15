@@ -61,7 +61,8 @@ This file tracks the product at a practical level for new coding sessions.
 - planning preview cards are editable before import for title, group, notes, DDL/start/end times, mixed reminder input, and event linked-todo creation; preview has select-all / clear-all controls
 - successful planning import appends `#imported` to imported source lines and immediately saves the active planning note to reduce duplicate imports
 - default Planning Desk import reminder is 5 minutes before, full-screen, ring + vibration
-- planning notes are included in JSON backup / restore snapshots`r`n- Planning Desk database migration is repaired in `1.7.5`: database version `10` includes `MIGRATION_9_10` to rebuild `planning_notes` tables created by the mismatched `1.7.0`-`1.7.4` migration
+- planning notes are included in JSON backup / restore snapshots
+- Planning Desk database migration is repaired in `1.7.5`: database version `10` includes `MIGRATION_9_10` to rebuild `planning_notes` tables created by the mismatched `1.7.0`-`1.7.4` migration
 
 ### Calendar System
 
@@ -73,6 +74,7 @@ This file tracks the product at a practical level for new coding sessions.
 - event preview keeps showing configured reminder offsets after reminder acknowledgement
 - timeline pending event draft can be canceled by long-pressing blank timeline space and is cleared when opening an existing event
 - text-based batch import support
+- calendar batch import custom syntax defaults missing dates to today and accepts lightweight date prefixes such as `今天`, `明天`, `5.28`, `5/28`, and `5月28日`
 - week-template and semester-generation related capabilities exist in the codebase and docs history
 - current-time label is wired on the left time axis and remains visible even when today is off-screen, while the red current-time line remains in the schedule area and also stays visible
 - todo editor can pick DDL through a wheel-style lunar date picker while preserving the existing time of day

@@ -12,6 +12,7 @@ import com.example.todoalarm.data.TodoRepository
 import com.example.todoalarm.sync.DesktopSyncCoordinator
 import com.example.todoalarm.sync.DesktopSyncService
 import com.example.todoalarm.ui.QuoteRepository
+import com.example.todoalarm.widget.TodoWidgetProvider
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -49,7 +50,9 @@ class TodoApplication : Application() {
     }
 
     val repository: TodoRepository by lazy {
-        TodoRepository(database.todoDao())
+        TodoRepository(database.todoDao()) {
+            TodoWidgetProvider.notifyWidgetDataChanged(applicationContext)
+        }
     }
 
     val settingsStore: AppSettingsStore by lazy {

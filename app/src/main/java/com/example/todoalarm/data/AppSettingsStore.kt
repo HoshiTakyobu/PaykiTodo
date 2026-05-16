@@ -56,6 +56,9 @@ data class AppSettings(
     val planningAiApiKey: String = "",
     val planningAiModel: String = "",
     val planningAiProviders: List<PlanningAiProvider> = emptyList(),
+    val announcementText: String = "",
+    val announcementStartDate: String = "",
+    val announcementEndDate: String = "",
     val hasSeenOnboarding: Boolean = false
 )
 
@@ -205,6 +208,15 @@ class AppSettingsStore(context: Context) {
         refresh()
     }
 
+    fun updateAnnouncement(text: String, startDate: String, endDate: String) {
+        preferences.edit()
+            .putString(KEY_ANNOUNCEMENT_TEXT, text.trim().take(200))
+            .putString(KEY_ANNOUNCEMENT_START_DATE, startDate.trim())
+            .putString(KEY_ANNOUNCEMENT_END_DATE, endDate.trim())
+            .apply()
+        refresh()
+    }
+
     fun markOnboardingSeen() {
         preferences.edit().putBoolean(KEY_HAS_SEEN_ONBOARDING, true).apply()
         refresh()
@@ -249,6 +261,9 @@ class AppSettingsStore(context: Context) {
             .putString(KEY_PLANNING_AI_API_KEY, preservedPlanningAiApiKey)
             .putString(KEY_PLANNING_AI_MODEL, primaryPlanningAiProvider?.model ?: settings.planningAiModel)
             .putString(KEY_PLANNING_AI_PROVIDERS_JSON, planningAiProvidersToJson(mergedPlanningAiProviders))
+            .putString(KEY_ANNOUNCEMENT_TEXT, settings.announcementText)
+            .putString(KEY_ANNOUNCEMENT_START_DATE, settings.announcementStartDate)
+            .putString(KEY_ANNOUNCEMENT_END_DATE, settings.announcementEndDate)
             .putBoolean(KEY_HAS_SEEN_ONBOARDING, settings.hasSeenOnboarding)
             .apply {
                 val noteId = settings.lastOpenedPlanningNoteId
@@ -317,6 +332,9 @@ class AppSettingsStore(context: Context) {
             planningAiApiKey = primaryPlanningAiProvider?.apiKey ?: legacyApiKey,
             planningAiModel = primaryPlanningAiProvider?.model ?: legacyModel,
             planningAiProviders = planningAiProviders,
+            announcementText = preferences.getString(KEY_ANNOUNCEMENT_TEXT, null).orEmpty(),
+            announcementStartDate = preferences.getString(KEY_ANNOUNCEMENT_START_DATE, null).orEmpty(),
+            announcementEndDate = preferences.getString(KEY_ANNOUNCEMENT_END_DATE, null).orEmpty(),
             hasSeenOnboarding = preferences.getBoolean(KEY_HAS_SEEN_ONBOARDING, false)
         )
     }
@@ -380,6 +398,9 @@ class AppSettingsStore(context: Context) {
         private const val KEY_PLANNING_AI_API_KEY = "planning_ai_api_key"
         private const val KEY_PLANNING_AI_MODEL = "planning_ai_model"
         private const val KEY_PLANNING_AI_PROVIDERS_JSON = "planning_ai_providers_json"
+        private const val KEY_ANNOUNCEMENT_TEXT = "announcement_text"
+        private const val KEY_ANNOUNCEMENT_START_DATE = "announcement_start_date"
+        private const val KEY_ANNOUNCEMENT_END_DATE = "announcement_end_date"
         private const val KEY_HAS_SEEN_ONBOARDING = "has_seen_onboarding"
     }
 }

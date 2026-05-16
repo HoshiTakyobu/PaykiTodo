@@ -625,6 +625,10 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
         settingsStore.updatePlanningAiProviders(enabled, providers)
     }
 
+    fun updateAnnouncement(text: String, startDate: String, endDate: String) {
+        settingsStore.updateAnnouncement(text, startDate, endDate)
+    }
+
     fun resetOnboarding() {
         settingsStore.resetOnboarding()
     }

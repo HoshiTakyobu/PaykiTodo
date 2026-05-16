@@ -20,6 +20,11 @@ data class PlanningAiResponse(
     val provider: PlanningAiProvider
 )
 
+sealed class PlanningAiTestResult {
+    data class Success(val providerName: String, val model: String, val contentLength: Int) : PlanningAiTestResult()
+    data class Failure(val message: String) : PlanningAiTestResult()
+}
+
 class PlanningAiHttpException(
     val statusCode: Int,
     message: String
@@ -46,9 +51,44 @@ object PlanningAiCaller {
         throw lastRetryable ?: IllegalStateException("没有可用的 AI 源，请检查 Base URL、API Key 和模型名。")
     }
 
+    suspend fun testProvider(provider: PlanningAiProvider): PlanningAiTestResult {
+        val normalized = provider.normalized()
+        if (normalized.baseUrl.isBlank() || normalized.apiKey.isBlank() || normalized.model.isBlank()) {
+            return PlanningAiTestResult.Failure("Base URL、API Key 和模型名不能为空")
+        }
+        return try {
+            val response = callSingle(
+                provider = normalized.copy(enabled = true),
+                request = PlanningAiRequest(
+                    systemPrompt = "你是一个测试助手，只回 ok",
+                    prompt = "ping"
+                ),
+                connectTimeoutMs = 5_000,
+                readTimeoutMs = 10_000
+            )
+            if (response.content.isBlank()) {
+                PlanningAiTestResult.Failure("响应为空")
+            } else {
+                PlanningAiTestResult.Success(
+                    providerName = normalized.name.ifBlank { "未命名服务" },
+                    model = normalized.model,
+                    contentLength = response.content.length
+                )
+            }
+        } catch (error: CancellationException) {
+            throw error
+        } catch (error: PlanningAiHttpException) {
+            PlanningAiTestResult.Failure("HTTP ${error.statusCode}: ${error.message?.take(120) ?: "请求失败"}")
+        } catch (error: Exception) {
+            PlanningAiTestResult.Failure(error.message?.take(120) ?: "未知错误")
+        }
+    }
+
     private suspend fun callSingle(
         provider: PlanningAiProvider,
-        request: PlanningAiRequest
+        request: PlanningAiRequest,
+        connectTimeoutMs: Int = 15_000,
+        readTimeoutMs: Int = 45_000
     ): PlanningAiResponse = withContext(Dispatchers.IO) {
         val base = provider.baseUrl.trimEnd('/')
         val endpoint = if (base.endsWith("/chat/completions")) base else "$base/chat/completions"
@@ -67,8 +107,8 @@ object PlanningAiCaller {
 
         val connection = (URL(endpoint).openConnection() as HttpURLConnection).apply {
             requestMethod = "POST"
-            connectTimeout = 15_000
-            readTimeout = 45_000
+            connectTimeout = connectTimeoutMs
+            readTimeout = readTimeoutMs
             doOutput = true
             setRequestProperty("Content-Type", "application/json")
             setRequestProperty("Authorization", "Bearer ${provider.apiKey}")

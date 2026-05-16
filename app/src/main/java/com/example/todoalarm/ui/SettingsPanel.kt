@@ -32,6 +32,7 @@ import androidx.compose.material.icons.rounded.Alarm
 import androidx.compose.material.icons.rounded.ArrowDropDown
 import androidx.compose.material.icons.rounded.BugReport
 import androidx.compose.material.icons.rounded.CalendarMonth
+import androidx.compose.material.icons.rounded.Campaign
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Psychology
 import androidx.compose.material.icons.rounded.Folder
@@ -81,14 +82,18 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.core.content.pm.PackageInfoCompat
 import com.example.todoalarm.data.AppSettings
+import com.example.todoalarm.data.PlanningAiCaller
 import com.example.todoalarm.data.PlanningAiProvider
+import com.example.todoalarm.data.PlanningAiTestResult
 import com.example.todoalarm.data.ReminderAudioChannel
 import com.example.todoalarm.data.ReminderChainLog
 import com.example.todoalarm.data.ReminderDeliveryMode
 import com.example.todoalarm.data.WeekStartMode
 import com.example.todoalarm.sync.DesktopSyncStatus
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
+import java.time.LocalDate
 
 private enum class SettingsSection {
     PERMISSIONS,
@@ -96,6 +101,7 @@ private enum class SettingsSection {
     TONE,
     CALENDAR,
     AI_CONFIG,
+    ANNOUNCEMENT,
     ABOUT,
     DIAGNOSTICS,
     BACKUP,
@@ -122,6 +128,7 @@ fun SettingsPanel(
     onDefaultCalendarReminderModeChange: (ReminderDeliveryMode) -> Unit,
     onReminderAudioStrategyChange: (ReminderAudioChannel, Int, Boolean, Int, Boolean) -> Unit,
     onPlanningAiProvidersChange: (Boolean, List<PlanningAiProvider>) -> Unit,
+    onAnnouncementChange: (String, String, String) -> Unit,
     onResetOnboarding: () -> Unit,
     onDesktopSyncEnabledChange: (Boolean) -> Unit,
     onRotateDesktopSyncToken: () -> Unit,
@@ -205,6 +212,13 @@ fun SettingsPanel(
                         "为规划台 AI 识别配置多个 Base URL、API Key 和模型名"
                     },
                     onClick = { selectedSection = SettingsSection.AI_CONFIG }
+                )
+                SettingsMenuDivider()
+                SettingsMenuItem(
+                    icon = Icons.Rounded.Campaign,
+                    title = "公告设置",
+                    summary = announcementSummary(settings),
+                    onClick = { selectedSection = SettingsSection.ANNOUNCEMENT }
                 )
                 SettingsMenuDivider()
                 SettingsMenuItem(
@@ -328,6 +342,13 @@ fun SettingsPanel(
             PlanningAiConfigPanel(
                 settings = settings,
                 onSave = onPlanningAiProvidersChange
+            )
+        }
+
+        SettingsSection.ANNOUNCEMENT -> SettingsSectionDialog("公告设置", { selectedSection = null }) {
+            AnnouncementSettingsPanel(
+                settings = settings,
+                onSave = onAnnouncementChange
             )
         }
 
@@ -646,6 +667,120 @@ private fun PercentSettingRow(
 }
 
 @Composable
+private fun AnnouncementSettingsPanel(
+    settings: AppSettings,
+    onSave: (String, String, String) -> Unit
+) {
+    var text by remember(settings.announcementText) { mutableStateOf(settings.announcementText) }
+    var startDate by remember(settings.announcementStartDate) { mutableStateOf(settings.announcementStartDate) }
+    var endDate by remember(settings.announcementEndDate) { mutableStateOf(settings.announcementEndDate) }
+    var savedHint by remember { mutableStateOf(false) }
+    val normalizedText = text.trim().take(200)
+    val start = parseIsoDateOrNull(startDate)
+    val end = parseIsoDateOrNull(endDate)
+    val datesValid = normalizedText.isBlank() || (start != null && end != null && !start.isAfter(end))
+    val canSave = normalizedText.isBlank() || datesValid
+
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Surface(
+            shape = RoundedCornerShape(18.dp),
+            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.08f),
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.18f))
+        ) {
+            Text(
+                text = "公告会显示在每日看板顶部。日期格式使用 yyyy-MM-dd，例如 2026-05-16；不在生效期内会自动隐藏。",
+                modifier = Modifier.padding(14.dp),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+        }
+        OutlinedTextField(
+            value = text,
+            onValueChange = {
+                text = it.take(200)
+                savedHint = false
+            },
+            modifier = Modifier.fillMaxWidth(),
+            label = { Text("公告文本") },
+            minLines = 3,
+            maxLines = 5,
+            supportingText = { Text("${normalizedText.length}/200") }
+        )
+        OutlinedTextField(
+            value = startDate,
+            onValueChange = {
+                startDate = it.trim()
+                savedHint = false
+            },
+            modifier = Modifier.fillMaxWidth(),
+            label = { Text("开始日期") },
+            placeholder = { Text("2026-05-16") },
+            singleLine = true,
+            isError = normalizedText.isNotBlank() && start == null
+        )
+        OutlinedTextField(
+            value = endDate,
+            onValueChange = {
+                endDate = it.trim()
+                savedHint = false
+            },
+            modifier = Modifier.fillMaxWidth(),
+            label = { Text("结束日期") },
+            placeholder = { Text("2026-07-01") },
+            singleLine = true,
+            isError = normalizedText.isNotBlank() && end == null
+        )
+        if (!datesValid) {
+            Text(
+                text = "请填写有效日期，且结束日期不能早于开始日期。",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.error
+            )
+        }
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            OutlinedButton(
+                onClick = {
+                    text = ""
+                    startDate = ""
+                    endDate = ""
+                    onSave("", "", "")
+                    savedHint = true
+                },
+                modifier = Modifier.weight(1f)
+            ) {
+                Text("清除")
+            }
+            OutlinedButton(
+                onClick = {
+                    onSave(normalizedText, startDate.trim(), endDate.trim())
+                    savedHint = true
+                },
+                enabled = canSave,
+                modifier = Modifier.weight(1f)
+            ) {
+                Text("保存公告")
+            }
+        }
+        if (savedHint) {
+            Text("已保存。", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
+        }
+    }
+}
+
+private fun announcementSummary(settings: AppSettings): String {
+    if (settings.announcementText.isBlank()) return "未设置"
+    val text = settings.announcementText.take(20)
+    val range = listOf(settings.announcementStartDate, settings.announcementEndDate)
+        .filter { it.isNotBlank() }
+        .joinToString(" 至 ")
+    return if (range.isBlank()) text else "$text · $range"
+}
+
+private fun parseIsoDateOrNull(value: String): LocalDate? {
+    return runCatching { LocalDate.parse(value.trim()) }.getOrNull()
+}
+
+@Composable
 private fun PlanningAiConfigPanel(
     settings: AppSettings,
     onSave: (Boolean, List<PlanningAiProvider>) -> Unit
@@ -885,7 +1020,21 @@ private fun PlanningAiProviderDialog(
     var model by remember(provider.id) { mutableStateOf(provider.model) }
     var enabled by remember(provider.id) { mutableStateOf(provider.enabled) }
     var showApiKey by remember { mutableStateOf(false) }
+    var testing by remember { mutableStateOf(false) }
+    var testResult by remember { mutableStateOf<PlanningAiTestResult?>(null) }
+    val scope = rememberCoroutineScope()
     val missingRequired = baseUrl.isBlank() || apiKey.isBlank() || model.isBlank()
+
+    LaunchedEffect(testResult) {
+        if (testResult != null) {
+            delay(5_000)
+            testResult = null
+        }
+    }
+
+    fun clearTestResult() {
+        testResult = null
+    }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -894,11 +1043,11 @@ private fun PlanningAiProviderDialog(
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                     Text("启用此源", fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
-                    Switch(checked = enabled, onCheckedChange = { enabled = it })
+                    Switch(checked = enabled, onCheckedChange = { enabled = it; clearTestResult() })
                 }
                 OutlinedTextField(
                     value = name,
-                    onValueChange = { name = it },
+                    onValueChange = { name = it; clearTestResult() },
                     modifier = Modifier.fillMaxWidth(),
                     label = { Text("显示名") },
                     singleLine = true,
@@ -906,7 +1055,7 @@ private fun PlanningAiProviderDialog(
                 )
                 OutlinedTextField(
                     value = baseUrl,
-                    onValueChange = { baseUrl = it },
+                    onValueChange = { baseUrl = it; clearTestResult() },
                     modifier = Modifier.fillMaxWidth(),
                     label = { Text("Base URL") },
                     singleLine = true,
@@ -916,7 +1065,7 @@ private fun PlanningAiProviderDialog(
                 )
                 OutlinedTextField(
                     value = apiKey,
-                    onValueChange = { apiKey = it },
+                    onValueChange = { apiKey = it; clearTestResult() },
                     modifier = Modifier.fillMaxWidth(),
                     label = { Text("API Key") },
                     singleLine = true,
@@ -930,13 +1079,53 @@ private fun PlanningAiProviderDialog(
                 )
                 OutlinedTextField(
                     value = model,
-                    onValueChange = { model = it },
+                    onValueChange = { model = it; clearTestResult() },
                     modifier = Modifier.fillMaxWidth(),
                     label = { Text("模型名") },
                     singleLine = true,
                     isError = model.isBlank(),
                     placeholder = { Text("例如 deepseek-v4-flash / qwen3.6") }
                 )
+                OutlinedButton(
+                    onClick = {
+                        scope.launch {
+                            testing = true
+                            testResult = null
+                            try {
+                                testResult = PlanningAiCaller.testProvider(
+                                    provider.copy(
+                                        name = name.ifBlank { "未命名服务" },
+                                        baseUrl = baseUrl,
+                                        apiKey = apiKey,
+                                        model = model,
+                                        enabled = true
+                                    )
+                                )
+                            } finally {
+                                testing = false
+                            }
+                        }
+                    },
+                    enabled = !testing && !missingRequired,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(if (testing) "测试中..." else "测试连接")
+                }
+                testResult?.let { result ->
+                    val (message, color) = when (result) {
+                        is PlanningAiTestResult.Success -> {
+                            "✓ 连接成功，模型：${result.model}，响应：${result.contentLength} 字" to Color(0xFF1B7F3A)
+                        }
+                        is PlanningAiTestResult.Failure -> {
+                            "✗ 失败：${result.message}" to MaterialTheme.colorScheme.error
+                        }
+                    }
+                    Text(
+                        text = message,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = color
+                    )
+                }
             }
         },
         confirmButton = {

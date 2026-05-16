@@ -13,7 +13,8 @@ import java.time.format.DateTimeFormatter
 import java.util.UUID
 
 class TodoRepository(
-    private val todoDao: TodoDao
+    private val todoDao: TodoDao,
+    private val onItemsChanged: (() -> Unit)? = null
 ) {
     fun observeTodos(): Flow<List<TodoItem>> = todoDao.observeTodos()
     fun observeGroups(): Flow<List<TaskGroup>> = todoDao.observeGroups()
@@ -21,6 +22,7 @@ class TodoRepository(
 
     suspend fun addTodo(item: TodoItem): TodoItem {
         val id = todoDao.insert(item)
+        notifyItemsChanged()
         return item.copy(id = id)
     }
 
@@ -391,11 +393,13 @@ class TodoRepository(
 
     suspend fun updateTodo(item: TodoItem): TodoItem {
         todoDao.update(item)
+        notifyItemsChanged()
         return item
     }
 
     suspend fun deleteTodo(id: Long) {
         todoDao.deleteById(id)
+        notifyItemsChanged()
     }
 
     suspend fun acknowledgeCalendarEvent(id: Long): TodoItem? {
@@ -424,6 +428,7 @@ class TodoRepository(
             val template = buildTemplate(created.first(), draft.copy(groupId = groupId))
             todoDao.insertTemplate(template)
         }
+        notifyItemsChanged()
         return created
     }
 
@@ -454,7 +459,7 @@ class TodoRepository(
         scope: RecurrenceScope = RecurrenceScope.CURRENT
     ): List<TodoItem> {
         val resolvedDraft = draft.copy(groupId = draft.groupId.takeIf { it > 0 } ?: original.groupId)
-        return when {
+        val updatedItems = when {
             !original.isRecurring && resolvedDraft.recurrence.isRecurring -> {
                 convertSingleTodoToRecurring(original, resolvedDraft)
             }
@@ -472,6 +477,8 @@ class TodoRepository(
                 listOf(updated)
             }
         }
+        notifyItemsChanged()
+        return updatedItems
     }
 
     suspend fun cancelTodo(
@@ -528,6 +535,7 @@ class TodoRepository(
                 }
             }
         }
+        notifyItemsChanged()
         return canceledItems
     }
 
@@ -548,6 +556,7 @@ class TodoRepository(
             }
         )
         todoDao.update(updated)
+        notifyItemsChanged()
         return updated
     }
 
@@ -569,6 +578,7 @@ class TodoRepository(
             missedAtMillis = null
         )
         todoDao.update(updated)
+        notifyItemsChanged()
         return updated
     }
 
@@ -1864,5 +1874,9 @@ class TodoRepository(
             draft.endAt
         }
         return end.toEpochMillis()
+    }
+
+    private fun notifyItemsChanged() {
+        onItemsChanged?.invoke()
     }
 }

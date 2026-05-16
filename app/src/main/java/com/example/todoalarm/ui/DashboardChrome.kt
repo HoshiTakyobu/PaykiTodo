@@ -2,8 +2,10 @@ package com.example.todoalarm.ui
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
@@ -33,6 +35,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.BrightnessAuto
 import androidx.compose.material.icons.rounded.CalendarMonth
+import androidx.compose.material.icons.rounded.Campaign
 import androidx.compose.material.icons.rounded.DarkMode
 import androidx.compose.material.icons.rounded.History
 import androidx.compose.material.icons.rounded.Info
@@ -361,6 +364,7 @@ internal fun DashboardBody(
     onDefaultCalendarReminderModeChange: (ReminderDeliveryMode) -> Unit,
     onReminderAudioStrategyChange: (ReminderAudioChannel, Int, Boolean, Int, Boolean) -> Unit,
     onPlanningAiProvidersChange: (Boolean, List<PlanningAiProvider>) -> Unit,
+    onAnnouncementChange: (String, String, String) -> Unit,
     onResetOnboarding: () -> Unit,
     onDesktopSyncEnabledChange: (Boolean) -> Unit,
     onRotateDesktopSyncToken: () -> Unit,
@@ -448,6 +452,7 @@ internal fun DashboardBody(
                 onDefaultCalendarReminderModeChange = onDefaultCalendarReminderModeChange,
                 onReminderAudioStrategyChange = onReminderAudioStrategyChange,
                 onPlanningAiProvidersChange = onPlanningAiProvidersChange,
+                onAnnouncementChange = onAnnouncementChange,
                 onResetOnboarding = onResetOnboarding,
                 onDesktopSyncEnabledChange = onDesktopSyncEnabledChange,
                 onRotateDesktopSyncToken = onRotateDesktopSyncToken,
@@ -529,6 +534,18 @@ internal fun DashboardBody(
         uiState.calendarItems.filter { boardEventOverlapsDay(it, tomorrow) }
             .sortedBy { it.startAtMillis ?: it.dueAtMillis }
     }
+    val announcementVisible = remember(
+        uiState.settings.announcementText,
+        uiState.settings.announcementStartDate,
+        uiState.settings.announcementEndDate,
+        boardDate
+    ) {
+        uiState.settings.announcementText.isNotBlank() && runCatching {
+            val start = LocalDate.parse(uiState.settings.announcementStartDate)
+            val end = LocalDate.parse(uiState.settings.announcementEndDate)
+            !boardDate.isBefore(start) && !boardDate.isAfter(end)
+        }.getOrDefault(false)
+    }
 
     LazyColumn(
         modifier = Modifier
@@ -539,6 +556,12 @@ internal fun DashboardBody(
     ) {
         when (section) {
             DashboardSection.BOARD -> {
+                if (announcementVisible) {
+                    item {
+                        AnnouncementBanner(text = uiState.settings.announcementText)
+                    }
+                }
+
                 item {
                     CompactGreetingCard(quote = uiState.currentQuote)
                 }
@@ -672,6 +695,47 @@ private fun ExpandableSectionHeader(
             contentDescription = if (expanded) "收起$title" else "展开$title",
             tint = MaterialTheme.colorScheme.onSurface
         )
+    }
+}
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun AnnouncementBanner(text: String) {
+    val dark = isSystemInDarkTheme()
+    val background = if (dark) Color(0xFFCC8030) else Color(0xFFFFB347)
+    val foreground = Color(0xFF5C3A0E)
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(44.dp),
+        shape = RoundedCornerShape(22.dp),
+        color = background
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(start = 16.dp, end = 16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Icon(
+                imageVector = Icons.Rounded.Campaign,
+                contentDescription = null,
+                tint = foreground,
+                modifier = Modifier.size(20.dp)
+            )
+            Text(
+                text = text,
+                modifier = Modifier
+                    .weight(1f)
+                    .basicMarquee(),
+                maxLines = 1,
+                overflow = TextOverflow.Clip,
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Bold,
+                color = foreground
+            )
+        }
     }
 }
 

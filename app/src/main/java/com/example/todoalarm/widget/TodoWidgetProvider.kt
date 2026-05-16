@@ -1,0 +1,65 @@
+package com.example.todoalarm.widget
+
+import android.app.PendingIntent
+import android.appwidget.AppWidgetManager
+import android.appwidget.AppWidgetProvider
+import android.content.ComponentName
+import android.content.Context
+import android.content.Intent
+import android.widget.RemoteViews
+import com.example.todoalarm.R
+import com.example.todoalarm.ui.MainActivity
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
+
+class TodoWidgetProvider : AppWidgetProvider() {
+    override fun onUpdate(context: Context, appWidgetManager: AppWidgetManager, appWidgetIds: IntArray) {
+        appWidgetIds.forEach { appWidgetId ->
+            updateWidget(context, appWidgetManager, appWidgetId)
+        }
+    }
+
+    override fun onReceive(context: Context, intent: Intent) {
+        super.onReceive(context, intent)
+        if (intent.action == AppWidgetManager.ACTION_APPWIDGET_UPDATE) {
+            notifyWidgetDataChanged(context)
+        }
+    }
+
+    companion object {
+        private val dateFormatter: DateTimeFormatter = DateTimeFormatter.ofPattern("M月d日")
+
+        fun notifyWidgetDataChanged(context: Context) {
+            val manager = AppWidgetManager.getInstance(context)
+            val ids = manager.getAppWidgetIds(ComponentName(context, TodoWidgetProvider::class.java))
+            ids.forEach { id ->
+                updateWidget(context, manager, id)
+                manager.notifyAppWidgetViewDataChanged(id, R.id.widget_list)
+            }
+        }
+
+        private fun updateWidget(context: Context, manager: AppWidgetManager, appWidgetId: Int) {
+            val openAppIntent = PendingIntent.getActivity(
+                context,
+                appWidgetId,
+                Intent(context, MainActivity::class.java).apply {
+                    flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+                },
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+            val serviceIntent = Intent(context, TodoWidgetService::class.java).apply {
+                putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId)
+                data = android.net.Uri.parse(toUri(Intent.URI_INTENT_SCHEME))
+            }
+            val views = RemoteViews(context.packageName, R.layout.widget_todo).apply {
+                setTextViewText(R.id.widget_title, "今日待办")
+                setTextViewText(R.id.widget_date, LocalDate.now().format(dateFormatter))
+                setRemoteAdapter(R.id.widget_list, serviceIntent)
+                setEmptyView(R.id.widget_list, R.id.widget_empty)
+                setOnClickPendingIntent(R.id.widget_root, openAppIntent)
+                setPendingIntentTemplate(R.id.widget_list, openAppIntent)
+            }
+            manager.updateAppWidget(appWidgetId, views)
+        }
+    }
+}

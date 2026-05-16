@@ -914,7 +914,11 @@ async function parsePlanningEditor() {
 }
 
 async function importSelectedPlanning() {
-  if (!state.planningParseResult) await parsePlanningEditor();
+  if (!state.planningParseResult) {
+    els.status.textContent = '请先点击“识别”生成预览，再勾选并导入';
+    renderPlanningPreview();
+    return;
+  }
   const selectedIds = Array.from(document.querySelectorAll('[data-planning-select]:checked')).map(node => node.dataset.planningSelect);
   if (!selectedIds.length) {
     els.status.textContent = '请先勾选至少一条可导入内容';

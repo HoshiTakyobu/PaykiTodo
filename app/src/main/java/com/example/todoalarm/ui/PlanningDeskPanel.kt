@@ -51,7 +51,6 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
@@ -193,11 +192,10 @@ internal fun PlanningDeskPanel(
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 if (hasUnsavedChanges) {
-                    LinearProgressIndicator(
-                        modifier = Modifier
-                            .width(44.dp)
-                            .height(2.dp),
-                        color = MaterialTheme.colorScheme.primary
+                    Text(
+                        text = "自动保存中",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
                 Spacer(Modifier.weight(1f))
@@ -1497,6 +1495,21 @@ private fun PlanningCandidateCard(
                 )
                 Text(candidate.type.label(), fontWeight = FontWeight.Bold, color = candidate.type.color())
                 Text("第 ${candidate.lineNumber} 行", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                if (candidate.message.contains("AI", ignoreCase = true)) {
+                    Surface(
+                        shape = RoundedCornerShape(10.dp),
+                        color = Color(0xFFFFD166).copy(alpha = 0.26f),
+                        border = BorderStroke(1.dp, Color(0xFFFFB000).copy(alpha = 0.45f))
+                    ) {
+                        Text(
+                            text = "AI",
+                            modifier = Modifier.padding(horizontal = 7.dp, vertical = 2.dp),
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF8A5A00)
+                        )
+                    }
+                }
             }
             Surface(
                 modifier = Modifier.fillMaxWidth(),

@@ -39,6 +39,14 @@ This file tracks the product at a practical level for new coding sessions.
 - daily board floating block titles have stronger dark-theme text shadow so they stay readable over the dark wallpaper background
 - board surface intentionally does not expose add / batch-add buttons
 
+### Board Announcements
+
+- Settings exposes `公告设置` for a short announcement text plus inclusive start/end ISO dates
+- daily board shows the announcement above the greeting card only when today is inside the configured range
+- announcement banner uses an orange rounded surface, campaign icon, bold deep-brown text, and marquee for long text
+- expired, future, or cleared announcements stay hidden
+- announcement settings are persisted in app settings and included in JSON backup / restore
+
 ### Planning Desk
 
 - phone drawer has a `规划台` entry
@@ -76,7 +84,8 @@ This file tracks the product at a practical level for new coding sessions.
 - default Planning Desk import reminder is 5 minutes before, full-screen, ring + vibration
 - planning notes are included in JSON backup / restore snapshots
 - planning mapping records are also included in JSON backup / restore snapshots
-- AI recognition for Planning Desk is now an optional Provider-based enhancement for DeepSeek / Qwen / OpenAI-compatible APIs; Settings exposes ordered multi-provider Base URL/API Key/model configuration, both phone and desktop Planning Desk recognition call enabled sources in order, local rules remain the fallback, and AI output enters preview before import
+- AI recognition for Planning Desk is now an optional Provider-based enhancement for DeepSeek / Qwen / OpenAI-compatible APIs; Settings exposes ordered multi-provider Base URL/API Key/model configuration, single-provider connection testing, both phone and desktop Planning Desk recognition call enabled sources in order, local rules remain the fallback, and AI output enters preview before import
+- Planning Desk AI recognition is explicit-only: phone calls it from the `识别` button, desktop calls it from `识别` or `Ctrl+Enter`, and desktop import without preview no longer triggers AI silently
 - AI Provider API Keys are stored locally in settings, deliberately excluded from backup JSON export, and preserved when importing backups without keys
 - Planning Desk database migration is repaired in `1.7.5`: database version `10` includes `MIGRATION_9_10` to rebuild `planning_notes` tables created by the mismatched `1.7.0`-`1.7.4` migration
 - Planning Desk database version is now `11`; `MIGRATION_10_11` creates the `planning_line_mappings` table and indices
@@ -125,6 +134,14 @@ This file tracks the product at a practical level for new coding sessions.
 - launch screen uses a transparent-logo variant so the mountain / sun background remains visible behind the logo
 - picture launcher art is opaque pure white and scaled down inside the 512px canvas to reduce desktop mask crowding
 - release-signing information template exists under `docs/PaykiTodo-Release-Signing-Template.md`
+
+### Android Desktop Widget
+
+- Android launcher exposes a PaykiTodo `今日待办` widget through `TodoWidgetProvider`
+- widget displays current date and up to five active todos whose DDL falls today, sorted by DDL time
+- widget uses RemoteViews `ListView`; empty state says `今天没有安排`
+- tapping the widget or a row opens `MainActivity`
+- repository todo mutations notify widget data refresh through the application-level widget callback
 
 ### Data / Backup / Diagnostics
 

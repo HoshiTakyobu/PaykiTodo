@@ -46,6 +46,10 @@ class TodoRepository(
         return todoDao.getFocusSessionsInRange(startMillis, endMillis)
     }
 
+    suspend fun getFocusSessionsInRange(startMillis: Long, endMillis: Long): List<FocusSession> {
+        return todoDao.getFocusSessionsInRange(startMillis, endMillis)
+    }
+
     suspend fun getActiveItemsForBoardRange(now: LocalDate = LocalDate.now()): List<TodoItem> {
         val zone = ZoneId.systemDefault()
         val boardStart = now.atStartOfDay(zone).toInstant().toEpochMilli()
@@ -60,6 +64,29 @@ class TodoRepository(
 
     suspend fun getAllPlanningNotes(): List<PlanningNote> = todoDao.getAllPlanningNotes()
     suspend fun getPlanningMappingsForNote(noteId: Long): List<PlanningLineMapping> = todoDao.getMappingsForNote(noteId)
+
+    suspend fun getOrCreateReportNote(title: String): PlanningNote {
+        val normalized = title.trim().ifBlank { "AI 日报" }
+        todoDao.findPlanningNoteByTitle(normalized)?.let { existing ->
+            if (!existing.archived) return existing
+            val restored = existing.copy(archived = false, updatedAtMillis = System.currentTimeMillis())
+            todoDao.updatePlanningNote(restored)
+            notifyItemsChanged()
+            return restored
+        }
+        val now = System.currentTimeMillis()
+        val note = PlanningNote(
+            title = normalized,
+            contentMarkdown = "",
+            createdAtMillis = now,
+            updatedAtMillis = now,
+            archived = false
+        )
+        val id = todoDao.insertPlanningNote(note)
+        val created = note.copy(id = id)
+        notifyItemsChanged()
+        return created
+    }
 
     suspend fun insertPlanningMappings(mappings: List<PlanningLineMapping>) {
         if (mappings.isNotEmpty()) todoDao.insertPlanningMappings(mappings)

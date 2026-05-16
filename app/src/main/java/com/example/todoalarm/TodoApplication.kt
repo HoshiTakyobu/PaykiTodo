@@ -3,6 +3,8 @@ package com.example.todoalarm
 import android.app.Application
 import androidx.room.Room
 import com.example.todoalarm.alarm.AlarmScheduler
+import com.example.todoalarm.alarm.DailyReportNotifier
+import com.example.todoalarm.alarm.DailyReportScheduler
 import com.example.todoalarm.alarm.ReminderNotifier
 import com.example.todoalarm.data.AppDatabase
 import com.example.todoalarm.data.BackupManager
@@ -21,6 +23,8 @@ class TodoApplication : Application() {
     override fun onCreate() {
         super.onCreate()
         CrashLogger.install(this)
+        DailyReportNotifier.ensureChannel(this)
+        DailyReportScheduler.scheduleNext(this)
         CoroutineScope(Dispatchers.IO).launch {
             repository.ensureDefaultGroups()
             if (settingsStore.currentSettings().desktopSyncEnabled) {

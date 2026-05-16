@@ -218,6 +218,9 @@ interface TodoDao {
     @Query("SELECT * FROM planning_notes WHERE id = :id LIMIT 1")
     suspend fun getPlanningNote(id: Long): PlanningNote?
 
+    @Query("SELECT * FROM planning_notes WHERE title = :title ORDER BY updatedAtMillis DESC LIMIT 1")
+    suspend fun findPlanningNoteByTitle(title: String): PlanningNote?
+
     @Query("SELECT * FROM planning_notes ORDER BY updatedAtMillis DESC, createdAtMillis DESC")
     suspend fun getAllPlanningNotes(): List<PlanningNote>
 

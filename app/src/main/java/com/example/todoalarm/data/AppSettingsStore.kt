@@ -60,7 +60,13 @@ data class AppSettings(
     val focusDefaultMinutes: Int = 25,
     val focusExtensionMinutes: Int = 5,
     val focusKeepScreenOn: Boolean = true,
-    val focusBlockNotifications: Boolean = false
+    val focusBlockNotifications: Boolean = false,
+    val dailyReportEnabled: Boolean = false,
+    val dailyReportHour: Int = 22,
+    val dailyReportMinute: Int = 0,
+    val weeklyReportEnabled: Boolean = false,
+    val weeklyReportHour: Int = 22,
+    val weeklyReportMinute: Int = 0
 )
 
 class AppSettingsStore(context: Context) {
@@ -234,6 +240,25 @@ class AppSettingsStore(context: Context) {
         refresh()
     }
 
+    fun updateReportPreferences(
+        dailyEnabled: Boolean,
+        dailyHour: Int,
+        dailyMinute: Int,
+        weeklyEnabled: Boolean,
+        weeklyHour: Int,
+        weeklyMinute: Int
+    ) {
+        preferences.edit()
+            .putBoolean(KEY_DAILY_REPORT_ENABLED, dailyEnabled)
+            .putInt(KEY_DAILY_REPORT_HOUR, dailyHour.coerceIn(0, 23))
+            .putInt(KEY_DAILY_REPORT_MINUTE, dailyMinute.coerceIn(0, 59))
+            .putBoolean(KEY_WEEKLY_REPORT_ENABLED, weeklyEnabled)
+            .putInt(KEY_WEEKLY_REPORT_HOUR, weeklyHour.coerceIn(0, 23))
+            .putInt(KEY_WEEKLY_REPORT_MINUTE, weeklyMinute.coerceIn(0, 59))
+            .apply()
+        refresh()
+    }
+
     fun replaceAll(settings: AppSettings) {
         val mergedPlanningAiProviders = mergePlanningAiApiKeys(settings.planningAiProviders)
         val primaryPlanningAiProvider = mergedPlanningAiProviders.firstOrNull()
@@ -273,6 +298,12 @@ class AppSettingsStore(context: Context) {
             .putInt(KEY_FOCUS_EXTENSION_MINUTES, settings.focusExtensionMinutes.coerceIn(1, 30))
             .putBoolean(KEY_FOCUS_KEEP_SCREEN_ON, settings.focusKeepScreenOn)
             .putBoolean(KEY_FOCUS_BLOCK_NOTIFICATIONS, settings.focusBlockNotifications)
+            .putBoolean(KEY_DAILY_REPORT_ENABLED, settings.dailyReportEnabled)
+            .putInt(KEY_DAILY_REPORT_HOUR, settings.dailyReportHour.coerceIn(0, 23))
+            .putInt(KEY_DAILY_REPORT_MINUTE, settings.dailyReportMinute.coerceIn(0, 59))
+            .putBoolean(KEY_WEEKLY_REPORT_ENABLED, settings.weeklyReportEnabled)
+            .putInt(KEY_WEEKLY_REPORT_HOUR, settings.weeklyReportHour.coerceIn(0, 23))
+            .putInt(KEY_WEEKLY_REPORT_MINUTE, settings.weeklyReportMinute.coerceIn(0, 59))
             .apply {
                 val noteId = settings.lastOpenedPlanningNoteId
                 if (noteId == null || noteId <= 0) remove(KEY_LAST_OPENED_PLANNING_NOTE_ID) else putLong(KEY_LAST_OPENED_PLANNING_NOTE_ID, noteId)
@@ -345,7 +376,13 @@ class AppSettingsStore(context: Context) {
             focusDefaultMinutes = preferences.getInt(KEY_FOCUS_DEFAULT_MINUTES, 25).coerceIn(5, 90),
             focusExtensionMinutes = preferences.getInt(KEY_FOCUS_EXTENSION_MINUTES, 5).coerceIn(1, 30),
             focusKeepScreenOn = preferences.getBoolean(KEY_FOCUS_KEEP_SCREEN_ON, true),
-            focusBlockNotifications = preferences.getBoolean(KEY_FOCUS_BLOCK_NOTIFICATIONS, false)
+            focusBlockNotifications = preferences.getBoolean(KEY_FOCUS_BLOCK_NOTIFICATIONS, false),
+            dailyReportEnabled = preferences.getBoolean(KEY_DAILY_REPORT_ENABLED, false),
+            dailyReportHour = preferences.getInt(KEY_DAILY_REPORT_HOUR, 22).coerceIn(0, 23),
+            dailyReportMinute = preferences.getInt(KEY_DAILY_REPORT_MINUTE, 0).coerceIn(0, 59),
+            weeklyReportEnabled = preferences.getBoolean(KEY_WEEKLY_REPORT_ENABLED, false),
+            weeklyReportHour = preferences.getInt(KEY_WEEKLY_REPORT_HOUR, 22).coerceIn(0, 23),
+            weeklyReportMinute = preferences.getInt(KEY_WEEKLY_REPORT_MINUTE, 0).coerceIn(0, 59)
         )
     }
 
@@ -424,5 +461,11 @@ class AppSettingsStore(context: Context) {
         private const val KEY_FOCUS_EXTENSION_MINUTES = "focus_extension_minutes"
         private const val KEY_FOCUS_KEEP_SCREEN_ON = "focus_keep_screen_on"
         private const val KEY_FOCUS_BLOCK_NOTIFICATIONS = "focus_block_notifications"
+        private const val KEY_DAILY_REPORT_ENABLED = "daily_report_enabled"
+        private const val KEY_DAILY_REPORT_HOUR = "daily_report_hour"
+        private const val KEY_DAILY_REPORT_MINUTE = "daily_report_minute"
+        private const val KEY_WEEKLY_REPORT_ENABLED = "weekly_report_enabled"
+        private const val KEY_WEEKLY_REPORT_HOUR = "weekly_report_hour"
+        private const val KEY_WEEKLY_REPORT_MINUTE = "weekly_report_minute"
     }
 }

@@ -7,12 +7,14 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.todoalarm.TodoApplication
 import com.example.todoalarm.alarm.ActiveReminderStore
+import com.example.todoalarm.alarm.DailyReportScheduler
 import com.example.todoalarm.alarm.ReminderChainLogger
 import com.example.todoalarm.alarm.ReminderDispatchTracker
 import com.example.todoalarm.alarm.ReminderForegroundService
 import com.example.todoalarm.data.AppSettings
 import com.example.todoalarm.data.CalendarEventDraft
 import com.example.todoalarm.data.DEFAULT_PLANNING_REMINDER_MINUTES
+import com.example.todoalarm.data.DailyReportGenerator
 import com.example.todoalarm.data.PlanningAnnouncement
 import com.example.todoalarm.data.PlanningAnnouncementParser
 import com.example.todoalarm.data.PlanningImportCandidate
@@ -646,6 +648,33 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
 
     fun updateFocusPreferences(defaultMinutes: Int, extensionMinutes: Int, keepScreenOn: Boolean, blockNotifications: Boolean) {
         settingsStore.updateFocusPreferences(defaultMinutes, extensionMinutes, keepScreenOn, blockNotifications)
+    }
+
+    fun updateReportPreferences(
+        dailyEnabled: Boolean,
+        dailyHour: Int,
+        dailyMinute: Int,
+        weeklyEnabled: Boolean,
+        weeklyHour: Int,
+        weeklyMinute: Int
+    ) {
+        settingsStore.updateReportPreferences(
+            dailyEnabled = dailyEnabled,
+            dailyHour = dailyHour,
+            dailyMinute = dailyMinute,
+            weeklyEnabled = weeklyEnabled,
+            weeklyHour = weeklyHour,
+            weeklyMinute = weeklyMinute
+        )
+        DailyReportScheduler.scheduleNext(app)
+    }
+
+    suspend fun generateDailyReportNow(): String? {
+        val note = runCatching { DailyReportGenerator.generateDaily(app) }
+            .getOrElse { return "日报生成失败：${it.message ?: it::class.java.simpleName}" }
+        settingsStore.updateLastOpenedPlanningNoteId(note.id)
+        autoBackupIfEnabled()
+        return null
     }
 
     fun resetOnboarding() {

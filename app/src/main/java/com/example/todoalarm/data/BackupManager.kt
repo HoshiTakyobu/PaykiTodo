@@ -97,6 +97,12 @@ private fun AppSettings.toJson(): JSONObject {
         put("focusExtensionMinutes", focusExtensionMinutes)
         put("focusKeepScreenOn", focusKeepScreenOn)
         put("focusBlockNotifications", focusBlockNotifications)
+        put("dailyReportEnabled", dailyReportEnabled)
+        put("dailyReportHour", dailyReportHour)
+        put("dailyReportMinute", dailyReportMinute)
+        put("weeklyReportEnabled", weeklyReportEnabled)
+        put("weeklyReportHour", weeklyReportHour)
+        put("weeklyReportMinute", weeklyReportMinute)
     }
 }
 
@@ -523,7 +529,13 @@ private fun JSONObject?.toSettings(): AppSettings {
         focusDefaultMinutes = optInt("focusDefaultMinutes", 25),
         focusExtensionMinutes = optInt("focusExtensionMinutes", 5),
         focusKeepScreenOn = optBoolean("focusKeepScreenOn", true),
-        focusBlockNotifications = optBoolean("focusBlockNotifications", false)
+        focusBlockNotifications = optBoolean("focusBlockNotifications", false),
+        dailyReportEnabled = optBoolean("dailyReportEnabled", false),
+        dailyReportHour = optInt("dailyReportHour", 22),
+        dailyReportMinute = optInt("dailyReportMinute", 0),
+        weeklyReportEnabled = optBoolean("weeklyReportEnabled", false),
+        weeklyReportHour = optInt("weeklyReportHour", 22),
+        weeklyReportMinute = optInt("weeklyReportMinute", 0)
     )
 }
 

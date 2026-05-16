@@ -129,6 +129,8 @@ fun SettingsPanel(
     onReminderAudioStrategyChange: (ReminderAudioChannel, Int, Boolean, Int, Boolean) -> Unit,
     onFocusPreferencesChange: (Int, Int, Boolean, Boolean) -> Unit,
     onPlanningAiProvidersChange: (Boolean, List<PlanningAiProvider>) -> Unit,
+    onReportPreferencesChange: (Boolean, Int, Int, Boolean, Int, Int) -> Unit,
+    onGenerateDailyReportNow: suspend () -> String?,
     onResetOnboarding: () -> Unit,
     onDesktopSyncEnabledChange: (Boolean) -> Unit,
     onRotateDesktopSyncToken: () -> Unit,
@@ -341,7 +343,9 @@ fun SettingsPanel(
         SettingsSection.AI_CONFIG -> SettingsSectionDialog("AI 调用配置", { selectedSection = null }) {
             PlanningAiConfigPanel(
                 settings = settings,
-                onSave = onPlanningAiProvidersChange
+                onSave = onPlanningAiProvidersChange,
+                onReportPreferencesChange = onReportPreferencesChange,
+                onGenerateDailyReportNow = onGenerateDailyReportNow
             )
         }
 
@@ -766,7 +770,9 @@ private fun MinuteSliderSettingRow(
 @Composable
 private fun PlanningAiConfigPanel(
     settings: AppSettings,
-    onSave: (Boolean, List<PlanningAiProvider>) -> Unit
+    onSave: (Boolean, List<PlanningAiProvider>) -> Unit,
+    onReportPreferencesChange: (Boolean, Int, Int, Boolean, Int, Int) -> Unit,
+    onGenerateDailyReportNow: suspend () -> String?
 ) {
     var enabled by remember(settings.planningAiEnabled) { mutableStateOf(settings.planningAiEnabled) }
     var providers by remember(settings.planningAiProviders) {
@@ -883,6 +889,14 @@ private fun PlanningAiConfigPanel(
         if (savedHint) {
             Text("已保存。", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
         }
+
+        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.32f))
+
+        AiReportPreferencesPanel(
+            settings = settings,
+            onChange = onReportPreferencesChange,
+            onGenerateDailyReportNow = onGenerateDailyReportNow
+        )
     }
 
     editingProvider?.let { provider ->
@@ -922,6 +936,166 @@ private fun PlanningAiConfigPanel(
             }
         )
     }
+}
+
+@Composable
+private fun AiReportPreferencesPanel(
+    settings: AppSettings,
+    onChange: (Boolean, Int, Int, Boolean, Int, Int) -> Unit,
+    onGenerateDailyReportNow: suspend () -> String?
+) {
+    var dailyEnabled by remember(settings.dailyReportEnabled) { mutableStateOf(settings.dailyReportEnabled) }
+    var dailyTimeText by remember(settings.dailyReportHour, settings.dailyReportMinute) {
+        mutableStateOf(formatReportTime(settings.dailyReportHour, settings.dailyReportMinute))
+    }
+    var weeklyEnabled by remember(settings.weeklyReportEnabled) { mutableStateOf(settings.weeklyReportEnabled) }
+    var weeklyTimeText by remember(settings.weeklyReportHour, settings.weeklyReportMinute) {
+        mutableStateOf(formatReportTime(settings.weeklyReportHour, settings.weeklyReportMinute))
+    }
+    var savedHint by remember { mutableStateOf(false) }
+    var runningNow by remember { mutableStateOf(false) }
+    var runMessage by remember { mutableStateOf<String?>(null) }
+    val scope = rememberCoroutineScope()
+    val context = LocalContext.current
+    val dailyTime = parseReportTime(dailyTimeText)
+    val weeklyTime = parseReportTime(weeklyTimeText)
+    val invalid = (dailyEnabled && dailyTime == null) || (weeklyEnabled && weeklyTime == null)
+
+    fun save() {
+        val daily = dailyTime ?: (settings.dailyReportHour to settings.dailyReportMinute)
+        val weekly = weeklyTime ?: (settings.weeklyReportHour to settings.weeklyReportMinute)
+        onChange(dailyEnabled, daily.first, daily.second, weeklyEnabled, weekly.first, weekly.second)
+        savedHint = true
+        runMessage = null
+    }
+
+    PrefCard("AI 日报 / 周报") {
+        Text(
+            text = "日报会在每天设定时间生成并写入规划台「AI 日报」；周报会在每周日设定时间写入「AI 周报」。AI 配置不可用时会用本地模板兜底。",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        ReportScheduleRow(
+            title = "启用日报",
+            summary = "每天生成，默认 22:00",
+            enabled = dailyEnabled,
+            timeText = dailyTimeText,
+            timeValid = dailyTime != null,
+            onEnabledChange = {
+                dailyEnabled = it
+                savedHint = false
+            },
+            onTimeChange = {
+                dailyTimeText = it
+                savedHint = false
+            }
+        )
+        ReportScheduleRow(
+            title = "启用周报",
+            summary = "每周日生成，默认 22:00",
+            enabled = weeklyEnabled,
+            timeText = weeklyTimeText,
+            timeValid = weeklyTime != null,
+            onEnabledChange = {
+                weeklyEnabled = it
+                savedHint = false
+            },
+            onTimeChange = {
+                weeklyTimeText = it
+                savedHint = false
+            }
+        )
+        if (invalid) {
+            Text("时间格式需要是 HH:mm，例如 22:00。", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
+        }
+        OutlinedButton(
+            onClick = { save() },
+            enabled = !invalid,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("保存日报 / 周报设置")
+        }
+        OutlinedButton(
+            onClick = {
+                scope.launch {
+                    runningNow = true
+                    runMessage = null
+                    try {
+                        val message = onGenerateDailyReportNow()
+                        val finalMessage = message ?: "AI 日报已生成，并写入规划台「AI 日报」。"
+                        runMessage = finalMessage
+                        Toast.makeText(context, finalMessage, Toast.LENGTH_SHORT).show()
+                    } finally {
+                        runningNow = false
+                    }
+                }
+            },
+            enabled = !runningNow,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text(if (runningNow) "生成中..." else "立即生成一次日报")
+        }
+        if (savedHint) {
+            Text("日报 / 周报设置已保存，系统定时已重新调度。", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
+        }
+        runMessage?.let {
+            Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
+        }
+    }
+}
+
+@Composable
+private fun ReportScheduleRow(
+    title: String,
+    summary: String,
+    enabled: Boolean,
+    timeText: String,
+    timeValid: Boolean,
+    onEnabledChange: (Boolean) -> Unit,
+    onTimeChange: (String) -> Unit
+) {
+    Surface(
+        shape = RoundedCornerShape(18.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.24f),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.24f))
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 14.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                Text(title, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
+                Text(summary, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            OutlinedTextField(
+                value = timeText,
+                onValueChange = { if (it.length <= 5) onTimeChange(it) },
+                modifier = Modifier.size(width = 92.dp, height = 58.dp),
+                singleLine = true,
+                isError = !timeValid,
+                enabled = enabled,
+                label = { Text("时间") },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text),
+                placeholder = { Text("22:00") }
+            )
+            Switch(checked = enabled, onCheckedChange = onEnabledChange)
+        }
+    }
+}
+
+private fun formatReportTime(hour: Int, minute: Int): String {
+    return "%02d:%02d".format(hour.coerceIn(0, 23), minute.coerceIn(0, 59))
+}
+
+private fun parseReportTime(value: String): Pair<Int, Int>? {
+    val match = Regex("""^\s*(\d{1,2})[:：](\d{1,2})\s*$""").matchEntire(value) ?: return null
+    val hour = match.groupValues[1].toIntOrNull() ?: return null
+    val minute = match.groupValues[2].toIntOrNull() ?: return null
+    if (hour !in 0..23 || minute !in 0..59) return null
+    return hour to minute
 }
 
 @Composable

@@ -198,6 +198,8 @@ class MainActivity : ComponentActivity() {
                     onReminderAudioStrategyChange = viewModel::updateReminderAudioStrategy,
                     onFocusPreferencesChange = viewModel::updateFocusPreferences,
                     onPlanningAiProvidersChange = viewModel::updatePlanningAiProviders,
+                    onReportPreferencesChange = viewModel::updateReportPreferences,
+                    onGenerateDailyReportNow = viewModel::generateDailyReportNow,
                     onDismissOnboarding = viewModel::markOnboardingSeen,
                     onResetOnboarding = {
                         viewModel.resetOnboarding()

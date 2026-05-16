@@ -6,38 +6,44 @@ Long-running Codex sessions can become unreliable. This file exists so a new ses
 
 ## Current Handoff Summary
 
-- The project is now being advanced to `1.9.0.1` / `versionCode 194`.
-- This round is a focused Android `今日看板` launcher-widget visual hotfix.
-- Latest intended debug APK after packaging: `app/build/outputs/apk/debug/PaykiTodo-1.9.0.1-debug.apk`.
-- The separate AI 日报 / 周报 goal is still pending and should remain the planned `1.9.1` work after this hotfix is committed.
+- The project is now being advanced to `1.9.1` / `versionCode 195`.
+- This round completes AI 日报 / 周报 after the `1.9.0` focus-mode baseline and `1.9.0.1` launcher-widget hotfix.
+- Latest debug APK after packaging: `app/build/outputs/apk/debug/PaykiTodo-1.9.1-debug.apk`.
+- Local commits: `c20d18a` for focus mode and `3036768` for AI reports plus the latest widget visual pass.
 - Do not push to GitHub unless the user explicitly asks.
 
-## Latest 1.9.0.1 Widget Changes
+## Latest 1.9.1 AI Report Changes
 
-1. Widget version metadata moved to `1.9.0.1` / `versionCode 194` for installable hotfix testing.
-2. Widget root padding, title header size, list spacing, and light/dark scrims were adjusted so the launcher surface feels less like a generic Android list.
-3. A new `今日已专注` RemoteViews card was added to the widget, showing today's completed focus minutes, total focus sessions, and completed session count.
-4. Greeting, section, todo, empty, announcement, and schedule-card XML layouts were retuned for stronger rounded-card hierarchy, lightweight card elevation, higher card-surface opacity, larger readable title text, and daily-board-like spacing.
-5. Widget docs were updated in README, CHANGELOG, in-app Wiki, `PROJECT_STATUS`, `FEATURE_LEDGER`, `CURRENT_TASK`, and TODO.
+1. `DailyReportScheduler` schedules daily and Sunday weekly report alarms, cancels disabled alarms, and is called on app startup plus boot/time/timezone recovery.
+2. `DailyReportReceiver` runs report generation with `goAsync()` and reschedules after each run.
+3. `DailyReportGenerator` collects completed todos, missed todos, events, upcoming DDLs, and focus minutes; it tries Planning Desk AI providers first and falls back to local templates.
+4. Generated reports are written to Planning Desk `AI 日报` / `AI 周报` notes, with new entries prepended above old reports.
+5. `DailyReportNotifier` posts low-priority report notifications and deep-links to the matching report note.
+6. Settings -> `AI 调用配置` now includes compact daily/weekly report switches, HH:mm time fields, save/re-schedule, and `立即生成一次日报`.
+7. Planning Desk shows a purple hint when `AI 日报` or `AI 周报` is active.
+8. README, CHANGELOG, Wiki, TODO, and current-state docs were updated for `1.9.1`.
+9. The Android `今日看板` launcher widget received an additional visual pass: announcements now precede the greeting like the in-app board, the header/card spacing is tighter, and light/dark card opacity was raised for a less generic RemoteViews-list look.
 
-## Files Most Relevant To This Hotfix
+## Files Most Relevant To This Round
 
 - `app/build.gradle.kts`
-- `app/src/main/java/com/example/todoalarm/widget/TodoWidgetService.kt`
-- `app/src/main/res/layout/widget_todo.xml`
-- `app/src/main/res/layout/widget_todo_focus_card.xml`
-- `app/src/main/res/layout/widget_todo_greeting_card.xml`
-- `app/src/main/res/layout/widget_todo_task_card.xml`
-- `app/src/main/res/layout/widget_todo_schedule_card.xml`
-- `app/src/main/res/layout/widget_todo_section.xml`
-- `app/src/main/res/layout/widget_todo_empty_card.xml`
-- `app/src/main/res/layout/widget_todo_announcement_card.xml`
-- `app/src/main/res/drawable/widget_todo_item_background.xml`
-- `app/src/main/res/drawable-night/widget_todo_item_background.xml`
-- `app/src/main/res/drawable/widget_schedule_inner_background.xml`
-- `app/src/main/res/drawable-night/widget_schedule_inner_background.xml`
-- `app/src/main/res/drawable/widget_board_scrim.xml`
-- `app/src/main/res/drawable-night/widget_board_scrim.xml`
+- `app/src/main/AndroidManifest.xml`
+- `app/src/main/java/com/example/todoalarm/TodoApplication.kt`
+- `app/src/main/java/com/example/todoalarm/alarm/BootReceiver.kt`
+- `app/src/main/java/com/example/todoalarm/alarm/DailyReportScheduler.kt`
+- `app/src/main/java/com/example/todoalarm/alarm/DailyReportReceiver.kt`
+- `app/src/main/java/com/example/todoalarm/alarm/DailyReportNotifier.kt`
+- `app/src/main/java/com/example/todoalarm/data/DailyReportGenerator.kt`
+- `app/src/main/java/com/example/todoalarm/data/AppSettingsStore.kt`
+- `app/src/main/java/com/example/todoalarm/data/BackupManager.kt`
+- `app/src/main/java/com/example/todoalarm/data/TodoDao.kt`
+- `app/src/main/java/com/example/todoalarm/data/TodoRepository.kt`
+- `app/src/main/java/com/example/todoalarm/ui/TodoViewModel.kt`
+- `app/src/main/java/com/example/todoalarm/ui/MainActivity.kt`
+- `app/src/main/java/com/example/todoalarm/ui/DashboardScreen.kt`
+- `app/src/main/java/com/example/todoalarm/ui/DashboardChrome.kt`
+- `app/src/main/java/com/example/todoalarm/ui/SettingsPanel.kt`
+- `app/src/main/java/com/example/todoalarm/ui/PlanningDeskPanel.kt`
 - `README.md`
 - `CHANGELOG.md`
 - `TODO.md`
@@ -49,30 +55,33 @@ Long-running Codex sessions can become unreliable. This file exists so a new ses
 
 ## Verification Status
 
-Completed so far:
+Completed locally:
 
 1. `./gradlew.bat :app:compileDebugKotlin`
-2. `git diff --check`
+2. `./gradlew.bat :app:mergeDebugResources`
+3. `node --check app/src/main/assets/desktop-web/app.js`
+4. `./gradlew.bat testDebugUnitTest`
+5. `./gradlew.bat assembleDebug`
+6. `git diff --check`
 
-Still recommended before commit:
+Real launcher verification is still needed for the widget visual pass because RemoteViews rendering varies by launcher.
 
-1. `node --check app/src/main/assets/desktop-web/app.js`
-2. `./gradlew.bat assembleDebug`
-3. `git diff --check`
+Local device verification blocker observed in this session:
 
-Then verify on a real Android launcher after installing `PaykiTodo-1.9.0.1-debug.apk`:
+1. `adb` is available at `C:\Users\hp\AppData\Local\Android\Sdk\platform-tools\adb.exe`, but no device is attached.
+2. `Pixel_8` AVD exists, but its configured system image `system-images\android-34\google_apis_playstore\x86_64\` is missing.
+3. No local `sdkmanager.bat` was found, so the missing system image cannot be installed automatically from this environment.
+4. Continue device-only checks after connecting a phone or repairing the local Android SDK / AVD.
 
-1. add / refresh the PaykiTodo `今日看板` widget;
-2. confirm the widget includes the new `今日已专注` card;
-3. confirm the overall surface resembles the in-app daily board rather than a system list;
-4. resize the widget and check text readability in light / dark mode;
-5. verify row-level deep links still open todo, event, or source planning note correctly.
+Then verify on a real device after installing `PaykiTodo-1.9.1-debug.apk`:
 
-## Pending Next Goal
-
-After this widget hotfix is committed, implement `docs/goals/2026-05-17-paykitodo-ai-daily-report-goal.md` as `1.9.1`.
-
-The two goal docs are intentionally untracked local task specs unless the user explicitly asks to keep them in git.
+1. enable daily report at current time + 1 minute and wait for automatic generation;
+2. disable daily report and confirm the next scheduled daily report is canceled;
+3. tap `立即生成一次日报` and confirm `AI 日报` is created / updated;
+4. test with AI disabled or broken to confirm local template fallback;
+5. confirm the notification appears when permission is granted and opens the matching report note;
+6. test Sunday weekly report generation into `AI 周报`;
+7. test boot/time/timezone recovery on device.
 
 ## Required Reading For A New Session
 

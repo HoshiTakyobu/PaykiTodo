@@ -7,13 +7,13 @@
 - Package name: `com.paykitodo.app`
 - Target platform: Android 14 / API 34
 - Current version in code:
-  - `versionName = "1.9.0.1"`
-  - `versionCode = 194`
+  - `versionName = "1.9.1"`
+  - `versionCode = 195`
 
 ## Current Build Facts
 
 - Latest debug APK output:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.9.0.1-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.9.1-debug.apk`
 - Minimal verification completed in the latest code round:
   - `node --check app/src/main/assets/desktop-web/app.js`
   - `./gradlew.bat testDebugUnitTest`
@@ -25,11 +25,11 @@
 
 ## Current Worktree Reality
 
-The repository is now on `1.9.0.1`. It carries forward the `1.9.0` focus-mode baseline and applies a launcher-widget visual hotfix so the Android `今日看板` widget reads closer to the in-app daily board.
+The repository is now being advanced to `1.9.1`. It carries forward the `1.9.0` focus-mode baseline and `1.9.0.1` widget visual hotfix, and adds AI daily / weekly report generation into Planning Desk.
 
 Most important current baseline facts:
 
-- version metadata is `1.9.0.1 / 194`
+- version metadata is `1.9.1 / 195`
 - Database version is now `12`; `MIGRATION_11_12` creates `focus_sessions`.
 - Settings -> `专注模式` controls default focus duration, extension duration, screen-on behavior, and a documented-only notification-suppression preference.
 - Active todo long-press menus include `开始专注 · X 分钟`; the daily-board focus card can start free focus.
@@ -39,13 +39,18 @@ Most important current baseline facts:
 - Planning Desk AI recognition is now explicit-only: phone recognition still starts from the `识别` button, desktop recognition starts from the `识别` button or `Ctrl+Enter`, and desktop import no longer silently calls parse when no preview exists.
 - Settings -> `AI 调用配置` can fetch a single provider's model list with only Base URL / API Key before saving. Model fetch handles service roots, `/v1`, full `/chat/completions`, and full `/models` URLs, shows a compact dropdown on success, keeps a manual model-name fallback, and reports API-key / endpoint / non-JSON failures in user-readable language.
 - Settings -> `AI 调用配置` can still test a single provider with the currently edited Base URL / API Key / model before saving; root Base URLs try `/v1/chat/completions` first, `/v1` Base URLs append `/chat/completions`, full `/models` URLs convert back to sibling `/chat/completions`, and HTML/non-JSON responses produce a readable Base URL hint.
+- Settings -> `AI 调用配置` now includes `AI 日报 / 周报` controls: daily and weekly switches, compact HH:mm time fields, save/re-schedule behavior, and an immediate daily-report generation button for debugging.
+- AI daily reports write into Planning Desk `AI 日报`; weekly reports write into `AI 周报`. Reports collect completed todos, missed todos, events, upcoming DDLs, and focus minutes, call enabled Planning AI providers first, and fall back to a local template if AI is unavailable.
+- AI report notifications use a low-priority `ai_report_channel`; tapping a report notification opens the matching Planning Desk report document.
+- `DailyReportScheduler` schedules exact daily and weekly report alarms, cancels disabled schedules, and is invoked from app startup plus boot/time/timezone recovery.
+- Planning Desk displays a purple hint when opening `AI 日报` or `AI 周报`, reminding the user that the document is an auto-generated review record.
 - Daily board can show multiple active announcements parsed from unarchived Planning Desk notes. Announcement parsing now accepts explicit lines, checkbox announcement lines, quote-prefixed announcement lines, and inline `#公告` hints; tail `#imported` / hashtag metadata is stripped from display text.
 - Settings no longer exposes or stores a separate announcement editor. The old `AppSettings` announcement fields and backup serialization were removed; old backup JSON fields are ignored and legacy SharedPreferences keys are cleaned once.
 - Android launcher widgets now expose a `今日看板` widget backed by Room data: active announcements, today todos, today schedule state, and tomorrow schedule summary share one RemoteViews `ListView`; widget colors support system dark mode and widget refresh uses a board-range query rather than pulling all todos.
 - Android launcher widget root now layers the daily-board background art with light/dark scrims and uses a circular menu-button + `每日看板` title area, so the widget reads closer to the in-app daily board rather than a generic list surface.
 - Android launcher widget rows now use distinct RemoteViews layouts for the greeting card, focus summary card, orange announcement banner, section headers, empty cards, todo cards, and an aggregated schedule card. The schedule card mirrors the daily-board structure: one left date block, right-side today rows, tomorrow label, tomorrow rows, and vertical color strips.
 - Android launcher widget now includes a `今日已专注` card with today's completed focus minutes, total sessions, and completed sessions, matching the in-app daily-board ordering more closely.
-- Android launcher widget card surfaces now use stronger light/dark opacity, lightweight elevation, retuned scrims, and roomier rounded-card spacing so the widget resembles the in-app daily board card stack more than a generic RemoteViews list.
+- Android launcher widget card surfaces now use stronger light/dark opacity, lightweight elevation, retuned scrims, tighter title/card spacing, and daily-board ordering with announcements before greeting so the widget resembles the in-app daily board card stack more than a generic RemoteViews list.
 - Tapping a todo row opens that todo, tapping an event row opens Calendar with that event detail, tapping an announcement row opens the source Planning Desk note, and section/empty rows return to the default daily board.
 - Desktop web `/api/snapshot` includes active Planning Desk announcements and the browser console renders them as a top announcement banner. Long announcement text now scrolls only when the combined text exceeds 60 characters, and hover pauses the marquee.
 - Desktop web now follows system dark mode through CSS variables for timeline cards, event cards, modal sheets, summary cards, sidebar cards, tab buttons, Planning Desk, and announcements.
@@ -69,7 +74,7 @@ Recent code inspection and build verification cover:
 
 - `PlanningLineMapping.kt`, `PlanningLineMatcher.kt`, `PlanningSyncModels.kt`: mapping schema, matching strategy, and operation result models.
 - `TodoRepository.kt`: mapping status sync, refresh, postpone, undo, conflict resolution, and backup inclusion.
-- `TodoDao.kt`, `AppDatabase.kt`, `DatabaseMigrations.kt`, `TodoApplication.kt`: Room entity registration, migration path, and DB version `11`.
+- `TodoDao.kt`, `AppDatabase.kt`, `DatabaseMigrations.kt`, `TodoApplication.kt`: Room entity registration, migration path, DB version `12`, and `MIGRATION_11_12`.
 - `PlanningDeskPanel.kt`: phone-side refresh/postpone/undo entry points, completed-to-markdown sync, preview state pills, and conflict actions.
 - `TodoViewModel.kt`: phone-side orchestration for mapping operations and reminder rescheduling after planning operations.
 - `DesktopSyncCoordinator.kt`, `DesktopSyncServer.kt`, `app/src/main/assets/desktop-web/*`: desktop Planning Desk mapping APIs, preview/status rendering, desktop refresh/postpone/undo/conflict actions, announcement marquee, and system-follow dark theme.
@@ -81,7 +86,7 @@ Recent code inspection and build verification cover:
 
 ## Documentation Health
 
-Current docs are being synchronized for `1.9.0.1`:
+Current docs are being synchronized for `1.9.1`:
 
 - `README.md`
 - `CHANGELOG.md`
@@ -106,7 +111,8 @@ Older versioned docs under `docs/` remain historical references and should not b
 6. Unit tests currently cover parser / AI / line-matching behavior, but there are still no dedicated repository-level automated tests for refresh/postpone/undo/conflict flows; those are presently covered by code inspection plus build/test success.
 7. Long-running chat sessions can become unreliable, so repository docs must remain the source of truth for future continuation.
 8. 专注模式 requires real-device verification for haptics, screen-on behavior, countdown extension, save-before-exit persistence, and daily-board stat refresh.
-9. The AI 日报 / 周报 goal remains pending after the `1.9.0` focus-session commit.
+9. AI 日报 / 周报 still needs real-device AlarmManager verification: scheduled minute-ahead daily trigger, disabled-switch cancellation, Sunday weekly trigger, notification tap route, and boot/time-change rescheduling.
+10. Local emulator verification is currently blocked: `Pixel_8` AVD exists but its Android 34 Play Store x86_64 system image is missing, no device is attached through adb, and `sdkmanager.bat` is not present in the local SDK.
 
 ## How A New Session Should Start
 

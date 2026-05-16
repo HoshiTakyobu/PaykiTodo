@@ -4,8 +4,8 @@
 
 ### In Progress
 
-- Verify version `1.9.0.1` on device after the launcher-widget visual hotfix: widget should read like the in-app daily board, include the focus summary card, and remain readable after resizing / dark-mode switching
-- Keep `README.md`, `CHANGELOG.md`, Wiki, in-app help sheets, desktop-web help, and current-state docs aligned with version `1.9.0.1`
+- Verify version `1.9.1` on device after adding AI 日报 / 周报: scheduled daily report, manual daily report, weekly report, notification tap route, and local fallback should all work
+- Keep `README.md`, `CHANGELOG.md`, Wiki, in-app help sheets, desktop-web help, and current-state docs aligned with version `1.9.1`
 - Continue planning-desk usability polish without expanding into drag/drop, Gantt, AI auto-planning, or complex project trees
 - Improve repo-native handoff so new sessions do not depend on long chat history
 
@@ -45,7 +45,7 @@
 - Custom snooze should accept long delays beyond 180 minutes and update todo DDL when the snooze target is later than the current DDL
 - Launch screen icon should use the transparent logo asset without a white square background
 - Input help question-mark buttons should open the correct syntax help beside reminder, batch, and snooze fields
-- In-app Wiki should describe the current 1.9.0.1 settings, reminder, calendar, planning-desk, announcement, widget, focus-mode, and input syntax accurately
+- In-app Wiki should describe the current 1.9.1 settings, reminder, calendar, planning-desk, announcement, widget, focus-mode, AI report, and input syntax accurately
 - In-app Wiki should keep a left navigation / right article layout on phone-sized screens
 - Daily board should show a separate completion message when today's schedule existed but all events have ended
 - Drawer header icon should stay visually circular and not expose a white rounded-rectangle launcher background
@@ -75,13 +75,18 @@
 - Planning Desk collapsible shortcut controls should be tested on device: default collapsed state, expanded icon toolbar, tap feedback, and enough writing area with the keyboard open
 - Planning Desk AI recognition should be device-tested with at least one enabled AI source: free-form text should produce preview candidates, provider failure should fall back to the next source or local rules, and import should still require preview confirmation
 - Settings -> AI 调用配置 should be device-tested for the single-provider `测试连接` button: success, HTTP 401/403, timeout/unreachable Base URL, root Base URL fallback to `/v1/chat/completions`, non-JSON HTML response, and result auto-clear after field edits or time.
+- Settings -> AI 调用配置 should be device-tested for AI 日报 / 周报: daily and weekly switches, HH:mm validation, save/re-schedule behavior, immediate daily generation, and disabled-switch cancellation.
+- AI 日报 should be device-tested with AI enabled and with AI disabled/broken: both paths should write a new top entry into Planning Desk `AI 日报` and keep older reports below.
+- AI report notification should be device-tested: when notification permission is granted, generated reports should post a low-priority notification and tapping it should open the matching Planning Desk note.
+- AI 周报 should be tested by forcing or waiting for Sunday scheduling; it should write into `AI 周报` rather than the daily note.
+- AI report scheduling should be device-tested after reboot, timezone change, and time change because AlarmManager behavior cannot be fully validated by local JVM tests.
 - Planning Desk should be device-tested that pressing Enter / editing text only auto-saves and does not trigger AI; desktop import without prior preview should ask the user to click `识别` first.
 - Planning Desk announcements should be device-tested for multiple `#公告` / `> [!公告]` lines, active/future/expired ranges, long marquee text, and removal by editing/deleting/archiving the source planning note.
 - Planning Desk announcement parser should be device-tested for `- [ ] #公告 ...`, `> #公告 ...`, inline `#公告 ...`, tail `#imported` cleanup, and recent-date-before-long-running ordering.
 - Desktop web top announcement banner should be verified after writing an active Planning Desk announcement and refreshing `/api/snapshot`; short text should stay still, 60+ character text should scroll, and hover should pause it.
 - Desktop web system dark mode should be verified in a real browser for timeline cards, event cards, modal sheets, summary cards, tab buttons, sidebar cards, Planning Desk, and announcements.
 - Android desktop widget should be verified in system dark mode and after resizing; text should remain readable and refresh should still show focus summary / missed / today / tomorrow board content.
-- Android desktop widget should be device-tested from the launcher widget picker after installing `1.9.0.1`: add widget, freely resize it, confirm the daily-board background/topbar/card visual direction, show announcements / focus summary / today todos / today schedules / tomorrow schedules in the greeting-card plus aggregated schedule-card structure, row-level deep links, and refresh after todo/event/planning-note changes.
+- Android desktop widget should be device-tested from the launcher widget picker after installing the current `1.9.1` debug APK: add widget, freely resize it, confirm the daily-board background/topbar/card visual direction, show announcements at the top followed by greeting / focus summary / today todos / today schedules / tomorrow schedules, confirm row-level deep links, and confirm refresh after todo/event/planning-note changes.
 - 专注模式 should be device-tested after installing `1.9.0`: long-press an active todo, start focus, pause/continue, abandon with confirmation, finish early, let countdown reach zero, extend once, complete, and confirm the daily-board focus minutes/statistics update.
 - 专注模式 settings should be device-tested after installing `1.9.0`: default duration 5-90 minutes, extension duration 1-30 minutes, keep-screen-on behavior, and the documented-only notification-suppression preference.
 - Desktop web Planning Desk should be tested from a real browser connected to the phone after installing `1.8.9`, including auto-save, `Ctrl+S`, `Ctrl+Enter`, select-all / clear-all, no-empty-import guard, the desktop Planning Desk help modal, document delete, editable preview, mixed reminder input, announcement syntax, parser edge cases, import marker write-back, and the mapping refresh/postpone/undo/conflict actions

@@ -7,10 +7,10 @@
     android:elevation="2dp"
     android:gravity="center_vertical"
     android:orientation="vertical"
-    android:paddingStart="20dp"
-    android:paddingTop="17dp"
-    android:paddingEnd="20dp"
-    android:paddingBottom="17dp">
+    android:paddingStart="18dp"
+    android:paddingTop="16dp"
+    android:paddingEnd="18dp"
+    android:paddingBottom="16dp">
 
     <TextView
         android:id="@+id/widget_greeting_title"
@@ -20,7 +20,7 @@
         android:maxLines="1"
         android:textColor="@color/widget_text_primary"
         android:includeFontPadding="false"
-        android:textSize="20sp"
+        android:textSize="19sp"
         android:textStyle="bold" />
 
     <TextView

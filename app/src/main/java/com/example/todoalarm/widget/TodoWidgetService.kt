@@ -253,6 +253,16 @@ private class TodoWidgetFactory(
         val output = mutableListOf<WidgetBoardRow>()
         val today = snapshot.date
 
+        snapshot.announcements.take(2).forEachIndexed { index, announcement ->
+            output += WidgetBoardRow(
+                stableId = -10_000L - index,
+                type = WidgetRowType.ANNOUNCEMENT,
+                sourceNoteId = announcement.sourceNoteId,
+                title = "${announcement.rangeLabel()} · ${announcement.text}",
+                titleColor = darkText
+            )
+        }
+
         output += WidgetBoardRow(
             stableId = -20_000L,
             type = WidgetRowType.GREETING,
@@ -270,16 +280,6 @@ private class TodoWidgetFactory(
             titleColor = headerText,
             metaColor = mutedText
         )
-
-        snapshot.announcements.take(2).forEachIndexed { index, announcement ->
-            output += WidgetBoardRow(
-                stableId = -10_000L - index,
-                type = WidgetRowType.ANNOUNCEMENT,
-                sourceNoteId = announcement.sourceNoteId,
-                title = "${announcement.rangeLabel()} · ${announcement.text}",
-                titleColor = darkText
-            )
-        }
 
         output += sectionRow(-1L, "今日待办（${snapshot.todoItems.size}）", highlight = true)
         if (snapshot.todoItems.isEmpty()) {

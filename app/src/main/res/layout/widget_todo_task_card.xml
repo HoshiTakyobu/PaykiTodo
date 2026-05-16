@@ -3,7 +3,7 @@
     android:id="@+id/widget_item_root"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:minHeight="78dp"
+    android:minHeight="74dp"
     android:background="@drawable/widget_todo_item_background"
     android:elevation="2dp"
     android:gravity="center_vertical"
@@ -15,7 +15,7 @@
 
     <ImageView
         android:id="@+id/widget_task_strip"
-        android:layout_width="8dp"
+        android:layout_width="7dp"
         android:layout_height="match_parent"
         android:contentDescription="@null"
         android:scaleType="fitXY"
@@ -23,9 +23,9 @@
 
     <TextView
         android:id="@+id/widget_task_time"
-        android:layout_width="48dp"
+        android:layout_width="45dp"
         android:layout_height="wrap_content"
-        android:layout_marginStart="15dp"
+        android:layout_marginStart="14dp"
         android:gravity="center_vertical"
         android:includeFontPadding="false"
         android:maxLines="2"
@@ -37,8 +37,8 @@
         android:id="@+id/widget_task_title"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:layout_marginStart="12dp"
-        android:layout_marginEnd="16dp"
+        android:layout_marginStart="11dp"
+        android:layout_marginEnd="14dp"
         android:layout_weight="1"
         android:ellipsize="end"
         android:includeFontPadding="false"

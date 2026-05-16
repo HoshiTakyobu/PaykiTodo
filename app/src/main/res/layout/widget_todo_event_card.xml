@@ -3,18 +3,18 @@
     android:id="@+id/widget_item_root"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:minHeight="118dp"
+    android:minHeight="108dp"
     android:background="@drawable/widget_todo_item_background"
     android:gravity="center_vertical"
     android:orientation="horizontal"
     android:paddingStart="18dp"
-    android:paddingTop="16dp"
+    android:paddingTop="15dp"
     android:paddingEnd="18dp"
-    android:paddingBottom="16dp">
+    android:paddingBottom="15dp">
 
     <LinearLayout
         android:id="@+id/widget_event_date_block"
-        android:layout_width="64dp"
+        android:layout_width="56dp"
         android:layout_height="wrap_content"
         android:gravity="center"
         android:orientation="vertical">
@@ -25,7 +25,8 @@
             android:layout_height="wrap_content"
             android:gravity="center"
             android:textColor="@color/widget_text_secondary"
-            android:textSize="13sp"
+            android:includeFontPadding="false"
+            android:textSize="12sp"
             android:textStyle="bold" />
 
         <TextView
@@ -35,7 +36,8 @@
             android:layout_marginTop="4dp"
             android:gravity="center"
             android:textColor="@color/widget_event_blue"
-            android:textSize="14sp"
+            android:includeFontPadding="false"
+            android:textSize="13sp"
             android:textStyle="bold" />
 
         <TextView
@@ -45,6 +47,7 @@
             android:layout_marginTop="4dp"
             android:gravity="center"
             android:textColor="@color/widget_text_primary"
+            android:includeFontPadding="false"
             android:textSize="30sp"
             android:textStyle="bold" />
     </LinearLayout>
@@ -52,7 +55,7 @@
     <TextView
         android:id="@+id/widget_event_strip"
         android:layout_width="5dp"
-        android:layout_height="84dp"
+        android:layout_height="78dp"
         android:layout_marginStart="12dp"
         android:background="@color/widget_event_blue" />
 
@@ -70,7 +73,8 @@
             android:ellipsize="end"
             android:singleLine="true"
             android:textColor="@color/widget_text_secondary"
-            android:textSize="14sp"
+            android:includeFontPadding="false"
+            android:textSize="13sp"
             android:textStyle="bold" />
 
         <TextView
@@ -81,7 +85,8 @@
             android:ellipsize="end"
             android:maxLines="2"
             android:textColor="@color/widget_text_primary"
-            android:textSize="17sp"
+            android:includeFontPadding="false"
+            android:textSize="16sp"
             android:textStyle="bold" />
 
         <TextView
@@ -92,7 +97,8 @@
             android:ellipsize="end"
             android:singleLine="true"
             android:textColor="@color/widget_text_primary"
-            android:textSize="15sp" />
+            android:includeFontPadding="false"
+            android:textSize="14sp" />
 
         <TextView
             android:id="@+id/widget_event_location"
@@ -102,6 +108,7 @@
             android:ellipsize="end"
             android:maxLines="1"
             android:textColor="@color/widget_text_muted"
-            android:textSize="13sp" />
+            android:includeFontPadding="false"
+            android:textSize="12sp" />
     </LinearLayout>
 </LinearLayout>

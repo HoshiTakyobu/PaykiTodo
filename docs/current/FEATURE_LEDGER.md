@@ -109,6 +109,18 @@ This file tracks the product at a practical level for new coding sessions.
 - Planning Desk database migration is repaired in `1.7.5`: database version `10` includes `MIGRATION_9_10` to rebuild `planning_notes` tables created by the mismatched `1.7.0`-`1.7.4` migration
 - Planning Desk database version is now `11`; `MIGRATION_10_11` creates the `planning_line_mappings` table and indices
 
+### AI 日报 / 周报
+
+- Settings -> `AI 调用配置` includes an `AI 日报 / 周报` block with compact switches, HH:mm time fields, a save/re-schedule button, and `立即生成一次日报`
+- daily reports collect today's completed todos, missed todos, today's events, tomorrow events, tomorrow DDLs, and today's focus minutes
+- weekly reports collect Monday-Sunday completed todos, missed todos, week events, next-week DDLs, and completed focus minutes for the week
+- report generation tries enabled Planning Desk AI providers in order through `PlanningAiCaller.callWithFallback`; if AI is disabled or fails, a local template still generates a usable report
+- reports are stored in Planning Desk notes named `AI 日报` and `AI 周报`, with the newest entry prepended above older entries
+- archived report notes are restored instead of duplicated when a report is generated again
+- report notifications use a low-priority `ai_report_channel`, skip posting if Android 13+ notification permission is missing, and deep-link to the matching Planning Desk note
+- `DailyReportScheduler` schedules exact daily and Sunday weekly report alarms, cancels disabled schedules, and is invoked on app startup plus boot/time/timezone recovery
+- Planning Desk shows a purple auto-report hint when the active document is `AI 日报` or `AI 周报`
+
 ### Calendar System
 
 - timeline-style calendar foundation
@@ -167,7 +179,7 @@ This file tracks the product at a practical level for new coding sessions.
 - widget schedule content is aggregated into one card with a left date block, today rows, tomorrow label, and tomorrow rows instead of independent event cards; todo cards use the task group's color strip
 - widget root now includes a daily-board-style background image layer, lighter/tuned day-night scrims, circular menu-button header, shadowed `每日看板` title, and current-date subtitle, making the launcher widget read closer to the in-app daily board instead of a generic RemoteViews list
 - widget includes a `今日已专注` card with today's completed focus minutes, total sessions, and completed sessions, so the launcher surface follows the in-app daily-board sequence more closely
-- widget greeting, empty, orange announcement, todo, and schedule cards use stronger light/dark card surfaces, lightweight elevation, larger 28dp-style rounding, wider todo color strips, roomier schedule rows, and daily-board-like spacing for better launcher readability
+- widget greeting, empty, orange announcement, todo, and schedule cards use stronger light/dark card surfaces, lightweight elevation, larger 28dp-style rounding, wider todo color strips, tighter title/card spacing, and daily-board-like ordering with announcements before greeting for better launcher readability
 - repository todo mutations and Planning Desk note edits / delete / archive operations notify widget data refresh through the application-level widget callback
 
 ### Data / Backup / Diagnostics

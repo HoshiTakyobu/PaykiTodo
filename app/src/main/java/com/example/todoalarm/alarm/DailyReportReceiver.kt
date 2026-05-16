@@ -4,27 +4,30 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import com.example.todoalarm.TodoApplication
-import com.example.todoalarm.sync.DesktopSyncService
+import com.example.todoalarm.data.DailyReportGenerator
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
-class BootReceiver : BroadcastReceiver() {
+class DailyReportReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         val pendingResult = goAsync()
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 val app = context.applicationContext as TodoApplication
-                app.repository.markMissedTasks(System.currentTimeMillis())
-                val items = app.repository.futureReminderItems(System.currentTimeMillis())
-                items.forEach(app.alarmScheduler::schedule)
-                DailyReportScheduler.scheduleNext(context.applicationContext)
-                if (app.settingsStore.currentSettings().desktopSyncEnabled) {
-                    DesktopSyncService.start(context.applicationContext)
+                when (intent.action) {
+                    ACTION_GENERATE_DAILY -> DailyReportGenerator.generateDaily(app)
+                    ACTION_GENERATE_WEEKLY -> DailyReportGenerator.generateWeekly(app)
                 }
+                DailyReportScheduler.scheduleNext(context.applicationContext)
             } finally {
                 pendingResult.finish()
             }
         }
+    }
+
+    companion object {
+        const val ACTION_GENERATE_DAILY = "com.example.todoalarm.GENERATE_DAILY_REPORT"
+        const val ACTION_GENERATE_WEEKLY = "com.example.todoalarm.GENERATE_WEEKLY_REPORT"
     }
 }

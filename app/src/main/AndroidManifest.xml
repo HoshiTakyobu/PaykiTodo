@@ -96,6 +96,10 @@
             android:exported="false" />
 
         <receiver
+            android:name=".alarm.DailyReportReceiver"
+            android:exported="false" />
+
+        <receiver
             android:name=".widget.TodoWidgetProvider"
             android:exported="true">
             <intent-filter>

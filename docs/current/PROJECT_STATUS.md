@@ -7,13 +7,13 @@
 - Package name: `com.paykitodo.app`
 - Target platform: Android 14 / API 34
 - Current version in code:
-  - `versionName = "1.8.9"`
-  - `versionCode = 192`
+  - `versionName = "1.9.0"`
+  - `versionCode = 193`
 
 ## Current Build Facts
 
 - Latest debug APK output:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.8.9-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.9.0-debug.apk`
 - Minimal verification completed in the latest code round:
   - `node --check app/src/main/assets/desktop-web/app.js`
   - `./gradlew.bat testDebugUnitTest`
@@ -25,11 +25,16 @@
 
 ## Current Worktree Reality
 
-The repository is now at `1.8.9`. It carries forward the `1.8.5` AI Provider model discovery baseline and refines the Android `今日看板` widget further toward the in-app daily board visual language: the widget now layers the same daily-board background art with a scrim, uses a circular menu-button + title header, keeps greeting / announcement / todo / schedule cards, and preserves the aggregated today / tomorrow schedule card instead of scattered independent event cards.
+The repository is now being advanced to `1.9.0`. It carries forward the `1.8.9` Android `今日看板` widget baseline and adds 专注模式（番茄钟）: todo-bound focus sessions, free focus from the daily board, full-screen countdown, focus preferences, Room-backed focus-session records, daily focus statistics, and backup / restore support.
 
 Most important current baseline facts:
 
-- version metadata is `1.8.9 / 192`
+- version metadata is `1.9.0 / 193`
+- Database version is now `12`; `MIGRATION_11_12` creates `focus_sessions`.
+- Settings -> `专注模式` controls default focus duration, extension duration, screen-on behavior, and a documented-only notification-suppression preference.
+- Active todo long-press menus include `开始专注 · X 分钟`; the daily-board focus card can start free focus.
+- `FocusActivity` provides a full-screen circular countdown with pause / continue, completion confirmation, abandon confirmation, zero-time vibration, extension, save-before-exit behavior, and a completion feedback page.
+- Daily board shows completed focus minutes, total focus sessions, and completed session count for today.
 - Planning Desk still keeps AI-first / local-fallback recognition, editable preview, selected import, and automatic `#imported` write-back.
 - Planning Desk AI recognition is now explicit-only: phone recognition still starts from the `识别` button, desktop recognition starts from the `识别` button or `Ctrl+Enter`, and desktop import no longer silently calls parse when no preview exists.
 - Settings -> `AI 调用配置` can fetch a single provider's model list with only Base URL / API Key before saving. Model fetch handles service roots, `/v1`, full `/chat/completions`, and full `/models` URLs, shows a compact dropdown on success, keeps a manual model-name fallback, and reports API-key / endpoint / non-JSON failures in user-readable language.
@@ -54,8 +59,7 @@ Most important current baseline facts:
   - `以文档为准覆盖`: current planning line overwrites the item
   - `以事项为准更新文档`: current item rewrites the source planning line
 - Desktop-web Planning Desk now exposes mapping preview, refresh, postpone, undo, and conflict resolution through `/api/planning/*`, and the desktop UI shows the current note title plus an empty-state hint before parsing.
-- Planning notes and planning mappings are both included in backup / restore snapshots.
-- Database version is now `11`; `MIGRATION_10_11` creates the `planning_line_mappings` table and its indices.
+- Planning notes, planning mappings, and focus sessions are included in backup / restore snapshots.
 
 ## Recent Checked Areas
 
@@ -71,10 +75,11 @@ Recent code inspection and build verification cover:
 - `PlanningAiCaller.kt`, `SettingsPanel.kt`: AI provider model-list fetch path, test-connection path, endpoint fallback, and Settings UI.
 - `PlanningAnnouncementParser.kt`, `DashboardChrome.kt`, `PlanningDeskPanel.kt`: Planning Desk multi-announcement parsing, help text, and board banner visibility.
 - `DailyBoardSnapshot.kt`, `TodoWidgetProvider.kt`, `TodoWidgetService.kt`, widget XML resources, `AndroidManifest.xml`, `MainActivity.kt`, `DashboardScreen.kt`, `CalendarPanel.kt`: Android launcher widget registration, board-style RemoteViews data path, card-style row layouts, row-level deep links, and in-app launch routing.
+- `FocusSession.kt`, `FocusActivity.kt`, `SettingsPanel.kt`, `TodoCards.kt`, `DashboardChrome.kt`, `TodoViewModel.kt`: focus-session schema, full-screen countdown, focus preferences, todo long-press entry, daily-board focus stats, and settings state propagation.
 
 ## Documentation Health
 
-Current docs have been synchronized for `1.8.9`:
+Current docs are being synchronized for `1.9.0`:
 
 - `README.md`
 - `CHANGELOG.md`
@@ -93,12 +98,13 @@ Older versioned docs under `docs/` remain historical references and should not b
 
 1. Device-side verification is still required for the full Planning Desk mapping loop: import -> status sync -> completed markdown sync -> refresh -> postpone -> undo -> conflict resolution.
 2. Settings -> AI 调用配置 model discovery still needs device-side verification with real providers: valid `/models`, root and `/v1` Base URLs, full `/chat/completions` conversion, invalid keys, unsupported `/models`, HTML responses, dropdown selection, and manual fallback.
-3. Desktop-browser verification is still required for the mapping loop, system dark mode, and the top announcement marquee after installing `PaykiTodo-1.8.9-debug.apk` on the phone and reconnecting from a real browser.
+3. Desktop-browser verification is still required for the mapping loop, system dark mode, and the top announcement marquee after installing the latest APK on the phone and reconnecting from a real browser.
 4. Widget behavior and the new card-style visual hierarchy must be verified on a real launcher because Android widget picker / RemoteViews refresh, resize, dark-mode behavior, and row-level PendingIntent deep links cannot be fully covered by JVM tests.
 5. Planning Desk announcement syntax, multi-announcement visibility, date-range filtering, long-text marquee, preview highlighting, desktop-web propagation, and widget propagation need real UI verification.
 6. Unit tests currently cover parser / AI / line-matching behavior, but there are still no dedicated repository-level automated tests for refresh/postpone/undo/conflict flows; those are presently covered by code inspection plus build/test success.
 7. Long-running chat sessions can become unreliable, so repository docs must remain the source of truth for future continuation.
-8. The active goal files under `docs/goals/` were written before the `1.8.8 / 191` and `1.8.9 / 192` widget fixes. If the focus-session goal continues, its implementation should use the next available versionCode rather than reusing `191` or `192`.
+8. 专注模式 requires real-device verification for haptics, screen-on behavior, countdown extension, save-before-exit persistence, and daily-board stat refresh.
+9. The AI 日报 / 周报 goal remains pending after the `1.9.0` focus-session commit.
 
 ## How A New Session Should Start
 

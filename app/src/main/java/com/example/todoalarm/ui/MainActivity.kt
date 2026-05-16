@@ -196,6 +196,7 @@ class MainActivity : ComponentActivity() {
                     onDefaultSnoozeChange = viewModel::updateDefaultSnooze,
                     onDefaultCalendarReminderModeChange = viewModel::updateDefaultCalendarReminderMode,
                     onReminderAudioStrategyChange = viewModel::updateReminderAudioStrategy,
+                    onFocusPreferencesChange = viewModel::updateFocusPreferences,
                     onPlanningAiProvidersChange = viewModel::updatePlanningAiProviders,
                     onDismissOnboarding = viewModel::markOnboardingSeen,
                     onResetOnboarding = {

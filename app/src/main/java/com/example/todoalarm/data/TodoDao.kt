@@ -271,4 +271,25 @@ interface TodoDao {
 
     @Query("DELETE FROM planning_line_mappings")
     suspend fun clearPlanningMappings()
+
+    @Insert
+    suspend fun insertFocusSession(session: FocusSession): Long
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertFocusSessions(sessions: List<FocusSession>): List<Long>
+
+    @Query("SELECT * FROM focus_sessions ORDER BY startedAtMillis DESC")
+    fun observeFocusSessions(): Flow<List<FocusSession>>
+
+    @Query("SELECT * FROM focus_sessions WHERE startedAtMillis BETWEEN :startMillis AND :endMillis ORDER BY startedAtMillis DESC")
+    suspend fun getFocusSessionsInRange(startMillis: Long, endMillis: Long): List<FocusSession>
+
+    @Query("SELECT COALESCE(SUM(actualMinutes), 0) FROM focus_sessions WHERE completed = 1 AND startedAtMillis BETWEEN :startMillis AND :endMillis")
+    suspend fun getCompletedFocusMinutesInRange(startMillis: Long, endMillis: Long): Int
+
+    @Query("SELECT * FROM focus_sessions ORDER BY startedAtMillis DESC")
+    suspend fun getAllFocusSessions(): List<FocusSession>
+
+    @Query("DELETE FROM focus_sessions")
+    suspend fun clearFocusSessions()
 }

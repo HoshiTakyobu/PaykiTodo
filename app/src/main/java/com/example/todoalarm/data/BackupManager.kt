@@ -57,6 +57,7 @@ private fun BackupSnapshot.toJson(): JSONObject {
         put("groups", JSONArray(groups.map { it.toJson() }))
         put("templates", JSONArray(templates.map { it.toJson() }))
         put("tasks", JSONArray(tasks.map { it.toJson() }))
+        put("focusSessions", JSONArray(focusSessions.map { it.toJson() }))
         put("reminderChainLogs", JSONArray(reminderChainLogs.map { it.toJson() }))
         put("scheduleTemplates", JSONArray(scheduleTemplates.map { it.toJson() }))
         put("planningNotes", JSONArray(planningNotes.map { it.toJson() }))
@@ -92,6 +93,10 @@ private fun AppSettings.toJson(): JSONObject {
         put("planningAiModel", planningAiModel)
         put("planningAiProviders", JSONArray(planningAiProvidersToJson(planningAiProviders, includeApiKey = false)))
         put("hasSeenOnboarding", hasSeenOnboarding)
+        put("focusDefaultMinutes", focusDefaultMinutes)
+        put("focusExtensionMinutes", focusExtensionMinutes)
+        put("focusKeepScreenOn", focusKeepScreenOn)
+        put("focusBlockNotifications", focusBlockNotifications)
     }
 }
 
@@ -178,6 +183,20 @@ private fun TodoItem.toJson(): JSONObject {
     }
 }
 
+private fun FocusSession.toJson(): JSONObject {
+    return JSONObject().apply {
+        put("id", id)
+        put("todoId", todoId)
+        put("title", title)
+        put("plannedMinutes", plannedMinutes)
+        put("actualMinutes", actualMinutes)
+        put("startedAtMillis", startedAtMillis)
+        put("endedAtMillis", endedAtMillis)
+        put("completed", completed)
+        put("extensionCount", extensionCount)
+    }
+}
+
 private fun ReminderChainLog.toJson(): JSONObject {
     return JSONObject().apply {
         put("id", id)
@@ -241,6 +260,7 @@ private fun backupSnapshotFromJson(json: JSONObject): BackupSnapshot {
         groups = json.optJSONArray("groups").toGroups(),
         templates = json.optJSONArray("templates").toTemplates(),
         tasks = json.optJSONArray("tasks").toTasks(),
+        focusSessions = json.optJSONArray("focusSessions").toFocusSessions(),
         reminderChainLogs = json.optJSONArray("reminderChainLogs").toReminderChainLogs(),
         scheduleTemplates = json.optJSONArray("scheduleTemplates").toScheduleTemplates(),
         planningNotes = json.optJSONArray("planningNotes").toPlanningNotes(),
@@ -350,6 +370,28 @@ private fun JSONArray?.toTasks(): List<TodoItem> {
                     recurrenceAnchorDueAtMillis = item.optLongOrNull("recurrenceAnchorDueAtMillis"),
                     reminderOffsetMinutes = item.optIntOrNull("reminderOffsetMinutes"),
                     createdAtMillis = item.optLong("createdAtMillis", System.currentTimeMillis())
+                )
+            )
+        }
+    }
+}
+
+private fun JSONArray?.toFocusSessions(): List<FocusSession> {
+    if (this == null) return emptyList()
+    return buildList(length()) {
+        for (index in 0 until length()) {
+            val item = optJSONObject(index) ?: continue
+            add(
+                FocusSession(
+                    id = item.optLong("id", 0L),
+                    todoId = item.optLongOrNull("todoId"),
+                    title = item.optString("title", "自由专注"),
+                    plannedMinutes = item.optInt("plannedMinutes", 25),
+                    actualMinutes = item.optInt("actualMinutes", 0),
+                    startedAtMillis = item.optLong("startedAtMillis", System.currentTimeMillis()),
+                    endedAtMillis = item.optLong("endedAtMillis", System.currentTimeMillis()),
+                    completed = item.optBoolean("completed", false),
+                    extensionCount = item.optInt("extensionCount", 0)
                 )
             )
         }
@@ -477,7 +519,11 @@ private fun JSONObject?.toSettings(): AppSettings {
         planningAiProviders = optJSONArray("planningAiProviders")
             ?.let { planningAiProvidersFromJson(it.toString()) }
             ?: emptyList(),
-        hasSeenOnboarding = optBoolean("hasSeenOnboarding", false)
+        hasSeenOnboarding = optBoolean("hasSeenOnboarding", false),
+        focusDefaultMinutes = optInt("focusDefaultMinutes", 25),
+        focusExtensionMinutes = optInt("focusExtensionMinutes", 5),
+        focusKeepScreenOn = optBoolean("focusKeepScreenOn", true),
+        focusBlockNotifications = optBoolean("focusBlockNotifications", false)
     )
 }
 

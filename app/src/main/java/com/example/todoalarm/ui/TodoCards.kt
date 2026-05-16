@@ -22,7 +22,9 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.Undo
 import androidx.compose.material.icons.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.Edit
+import androidx.compose.material.icons.rounded.Timer
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ElevatedCard
@@ -73,11 +75,14 @@ internal fun ActiveTodoCard(
     onEdit: () -> Unit,
     onComplete: () -> Unit,
     onCancel: () -> Unit,
-    onDelete: () -> Unit
+    onDelete: () -> Unit,
+    focusDefaultMinutes: Int = 25,
+    onStartFocus: (() -> Unit)? = null
 ) {
     var completing by remember(item.id) { mutableStateOf(false) }
     var showDetails by remember(item.id) { mutableStateOf(false) }
     var showDeleteConfirm by remember(item.id) { mutableStateOf(false) }
+    var showActionSheet by remember(item.id) { mutableStateOf(false) }
     val haptic = LocalHapticFeedback.current
     val progress by animateFloatAsState(targetValue = if (completing) 1f else 0f, label = "complete_progress")
 
@@ -117,7 +122,7 @@ internal fun ActiveTodoCard(
                         onClick = { showDetails = true },
                         onLongClick = {
                             haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                            showDeleteConfirm = true
+                            showActionSheet = true
                         }
                     ),
                 verticalArrangement = Arrangement.spacedBy(6.dp)
@@ -168,6 +173,41 @@ internal fun ActiveTodoCard(
         )
     }
 
+    if (showActionSheet) {
+        PaykiBottomSheet(onDismiss = { showActionSheet = false }, showDragHandle = true) {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text(
+                    text = item.title,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
+                if (onStartFocus != null) {
+                    TodoActionRow(
+                        icon = Icons.Rounded.Timer,
+                        title = "开始专注 · ${focusDefaultMinutes.coerceIn(5, 90)} 分钟",
+                        tint = MaterialTheme.colorScheme.primary,
+                        onClick = {
+                            showActionSheet = false
+                            onStartFocus()
+                        }
+                    )
+                }
+                TodoActionRow(
+                    icon = Icons.Rounded.Delete,
+                    title = "删除",
+                    tint = Color(0xFFD14343),
+                    onClick = {
+                        showActionSheet = false
+                        showDeleteConfirm = true
+                    }
+                )
+            }
+        }
+    }
+
     if (showDeleteConfirm) {
         PaykiDecisionBottomSheet(
             title = "删除任务",
@@ -180,6 +220,33 @@ internal fun ActiveTodoCard(
                 onDelete()
             }
         )
+    }
+}
+
+@Composable
+private fun TodoActionRow(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    title: String,
+    tint: Color,
+    onClick: () -> Unit
+) {
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick),
+        shape = RoundedCornerShape(18.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.28f)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 14.dp, vertical = 13.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(icon, contentDescription = null, tint = tint)
+            Text(title, color = tint, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyLarge)
+        }
     }
 }
 

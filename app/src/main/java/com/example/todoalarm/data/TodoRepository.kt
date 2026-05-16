@@ -19,6 +19,7 @@ class TodoRepository(
     fun observeTodos(): Flow<List<TodoItem>> = todoDao.observeTodos()
     fun observeGroups(): Flow<List<TaskGroup>> = todoDao.observeGroups()
     fun observePlanningNotes(): Flow<List<PlanningNote>> = todoDao.observePlanningNotes()
+    fun observeFocusSessions(): Flow<List<FocusSession>> = todoDao.observeFocusSessions()
 
     suspend fun addTodo(item: TodoItem): TodoItem {
         val id = todoDao.insert(item)
@@ -29,6 +30,22 @@ class TodoRepository(
     suspend fun getTodo(id: Long): TodoItem? = todoDao.getById(id)
     suspend fun getGroup(groupId: Long): TaskGroup? = todoDao.getGroupById(groupId)
     suspend fun getAllTodos(): List<TodoItem> = todoDao.getAllTodos()
+    suspend fun saveFocusSession(session: FocusSession): Long {
+        val id = todoDao.insertFocusSession(session)
+        notifyItemsChanged()
+        return id
+    }
+
+    suspend fun getTodayFocusMinutes(): Int {
+        val (startMillis, endMillis) = todayRangeMillis()
+        return todoDao.getCompletedFocusMinutesInRange(startMillis, endMillis)
+    }
+
+    suspend fun getTodayFocusSessions(): List<FocusSession> {
+        val (startMillis, endMillis) = todayRangeMillis()
+        return todoDao.getFocusSessionsInRange(startMillis, endMillis)
+    }
+
     suspend fun getActiveItemsForBoardRange(now: LocalDate = LocalDate.now()): List<TodoItem> {
         val zone = ZoneId.systemDefault()
         val boardStart = now.atStartOfDay(zone).toInstant().toEpochMilli()
@@ -781,6 +798,7 @@ class TodoRepository(
             groups = todoDao.getAllGroups(),
             templates = todoDao.getAllRecurringTemplates(),
             tasks = todoDao.getAllTodos(),
+            focusSessions = todoDao.getAllFocusSessions(),
             reminderChainLogs = todoDao.getRecentReminderChainLogs(400),
             scheduleTemplates = todoDao.getScheduleTemplates(),
             planningNotes = planningNotes,
@@ -797,6 +815,7 @@ class TodoRepository(
         todoDao.clearScheduleTemplates()
         todoDao.clearPlanningNotes()
         todoDao.clearPlanningMappings()
+        todoDao.clearFocusSessions()
         if (snapshot.groups.isNotEmpty()) {
             todoDao.insertGroups(snapshot.groups)
         } else {
@@ -807,6 +826,9 @@ class TodoRepository(
         }
         if (snapshot.tasks.isNotEmpty()) {
             todoDao.insertAll(snapshot.tasks)
+        }
+        if (snapshot.focusSessions.isNotEmpty()) {
+            todoDao.insertFocusSessions(snapshot.focusSessions)
         }
         if (snapshot.reminderChainLogs.isNotEmpty()) {
             todoDao.insertReminderChainLogs(snapshot.reminderChainLogs)
@@ -1914,5 +1936,12 @@ class TodoRepository(
 
     private fun notifyItemsChanged() {
         onItemsChanged?.invoke()
+    }
+
+    private fun todayRangeMillis(date: LocalDate = LocalDate.now()): Pair<Long, Long> {
+        val zone = ZoneId.systemDefault()
+        val start = date.atStartOfDay(zone).toInstant().toEpochMilli()
+        val end = date.plusDays(1).atStartOfDay(zone).toInstant().toEpochMilli() - 1
+        return start to end
     }
 }

@@ -11,9 +11,10 @@ import androidx.room.RoomDatabase
         ReminderChainLog::class,
         ScheduleTemplate::class,
         PlanningNote::class,
-        PlanningLineMapping::class
+        PlanningLineMapping::class,
+        FocusSession::class
     ],
-    version = 11,
+    version = 12,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {

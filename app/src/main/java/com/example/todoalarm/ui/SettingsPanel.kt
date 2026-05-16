@@ -42,6 +42,7 @@ import androidx.compose.material.icons.rounded.Computer
 import androidx.compose.material.icons.rounded.Security
 import androidx.compose.material.icons.rounded.Storage
 import androidx.compose.material.icons.rounded.TaskAlt
+import androidx.compose.material.icons.rounded.Timer
 import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.material.icons.rounded.VolumeUp
 import androidx.compose.material3.AlertDialog
@@ -99,6 +100,7 @@ private enum class SettingsSection {
     SOUND_STRATEGY,
     TONE,
     CALENDAR,
+    FOCUS,
     AI_CONFIG,
     ABOUT,
     DIAGNOSTICS,
@@ -125,6 +127,7 @@ fun SettingsPanel(
     onDefaultSnoozeChange: (Int) -> Unit,
     onDefaultCalendarReminderModeChange: (ReminderDeliveryMode) -> Unit,
     onReminderAudioStrategyChange: (ReminderAudioChannel, Int, Boolean, Int, Boolean) -> Unit,
+    onFocusPreferencesChange: (Int, Int, Boolean, Boolean) -> Unit,
     onPlanningAiProvidersChange: (Boolean, List<PlanningAiProvider>) -> Unit,
     onResetOnboarding: () -> Unit,
     onDesktopSyncEnabledChange: (Boolean) -> Unit,
@@ -198,6 +201,13 @@ fun SettingsPanel(
                     title = "日历与提醒",
                     summary = "默认延后时长、周起始日、日历默认提醒方式",
                     onClick = { selectedSection = SettingsSection.CALENDAR }
+                )
+                SettingsMenuDivider()
+                SettingsMenuItem(
+                    icon = Icons.Rounded.Timer,
+                    title = "专注模式",
+                    summary = "默认 ${settings.focusDefaultMinutes} 分钟 · 延续 ${settings.focusExtensionMinutes} 分钟",
+                    onClick = { selectedSection = SettingsSection.FOCUS }
                 )
                 SettingsMenuDivider()
                 SettingsMenuItem(
@@ -332,6 +342,13 @@ fun SettingsPanel(
             PlanningAiConfigPanel(
                 settings = settings,
                 onSave = onPlanningAiProvidersChange
+            )
+        }
+
+        SettingsSection.FOCUS -> SettingsSectionDialog("专注模式", { selectedSection = null }) {
+            FocusPreferencesPanel(
+                settings = settings,
+                onChange = onFocusPreferencesChange
             )
         }
 
@@ -645,6 +662,103 @@ private fun PercentSettingRow(
                     modifier = Modifier.weight(0.42f)
                 )
             }
+        }
+    }
+}
+
+@Composable
+private fun FocusPreferencesPanel(
+    settings: AppSettings,
+    onChange: (Int, Int, Boolean, Boolean) -> Unit
+) {
+    fun commit(
+        defaultMinutes: Int = settings.focusDefaultMinutes,
+        extensionMinutes: Int = settings.focusExtensionMinutes,
+        keepScreenOn: Boolean = settings.focusKeepScreenOn,
+        blockNotifications: Boolean = settings.focusBlockNotifications
+    ) {
+        onChange(
+            defaultMinutes.coerceIn(5, 90),
+            extensionMinutes.coerceIn(1, 30),
+            keepScreenOn,
+            blockNotifications
+        )
+    }
+
+    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        MinuteSliderSettingRow(
+            title = "默认专注时长",
+            summary = "从待办或自由专注入口启动时默认使用这个时长。",
+            value = settings.focusDefaultMinutes,
+            min = 5,
+            max = 90,
+            step = 5,
+            onChange = { commit(defaultMinutes = it) }
+        )
+        MinuteSliderSettingRow(
+            title = "单次延续时长",
+            summary = "倒计时结束后点击延续，会追加这段时间。",
+            value = settings.focusExtensionMinutes,
+            min = 1,
+            max = 30,
+            step = 1,
+            onChange = { commit(extensionMinutes = it) }
+        )
+        Surface(shape = RoundedCornerShape(18.dp), color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.26f)) {
+            Column(modifier = Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                    Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text("专注期间保持屏幕常亮", fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
+                    }
+                    Switch(checked = settings.focusKeepScreenOn, onCheckedChange = { commit(keepScreenOn = it) })
+                }
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.22f))
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                    Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text("专注期间压制新提醒", fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
+                        Text(
+                            "专注期间不再弹出新提醒（专注内的事项除外）。当前版本只记录偏好，不真实拦截系统通知。",
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
+                    Switch(checked = settings.focusBlockNotifications, onCheckedChange = { commit(blockNotifications = it) })
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun MinuteSliderSettingRow(
+    title: String,
+    summary: String,
+    value: Int,
+    min: Int,
+    max: Int,
+    step: Int,
+    onChange: (Int) -> Unit
+) {
+    fun normalize(raw: Float): Int {
+        val rounded = ((raw.roundToInt() - min + step / 2) / step) * step + min
+        return rounded.coerceIn(min, max)
+    }
+
+    Surface(shape = RoundedCornerShape(18.dp), color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.26f)) {
+        Column(modifier = Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text(title, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
+                    Text(summary, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+                }
+                Text("${value.coerceIn(min, max)} 分钟", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+            }
+            Slider(
+                value = value.coerceIn(min, max).toFloat(),
+                onValueChange = { onChange(normalize(it)) },
+                valueRange = min.toFloat()..max.toFloat(),
+                steps = ((max - min) / step - 1).coerceAtLeast(0)
+            )
         }
     }
 }

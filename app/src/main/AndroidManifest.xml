@@ -32,6 +32,14 @@
             android:theme="@style/Theme.TodoAlarm" />
 
         <activity
+            android:name=".ui.FocusActivity"
+            android:exported="false"
+            android:launchMode="singleTask"
+            android:showOnLockScreen="true"
+            android:theme="@style/Theme.TodoAlarm"
+            android:turnScreenOn="false" />
+
+        <activity
             android:name=".ui.MainActivity"
             android:exported="true"
             android:theme="@style/Theme.TodoAlarm">

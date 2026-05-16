@@ -295,6 +295,28 @@ object DatabaseMigrations {
         }
     }
 
+    val MIGRATION_11_12 = object : Migration(11, 12) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL(
+                """
+                CREATE TABLE IF NOT EXISTS `focus_sessions` (
+                    `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                    `todoId` INTEGER,
+                    `title` TEXT NOT NULL,
+                    `plannedMinutes` INTEGER NOT NULL,
+                    `actualMinutes` INTEGER NOT NULL,
+                    `startedAtMillis` INTEGER NOT NULL,
+                    `endedAtMillis` INTEGER NOT NULL,
+                    `completed` INTEGER NOT NULL,
+                    `extensionCount` INTEGER NOT NULL DEFAULT 0
+                )
+                """.trimIndent()
+            )
+            db.execSQL("CREATE INDEX IF NOT EXISTS `index_focus_sessions_startedAtMillis` ON `focus_sessions` (`startedAtMillis`)")
+            db.execSQL("CREATE INDEX IF NOT EXISTS `index_focus_sessions_todoId` ON `focus_sessions` (`todoId`)")
+        }
+    }
+
     private fun rebuildPlanningNotesTable(db: SupportSQLiteDatabase) {
         db.execSQL("DROP TABLE IF EXISTS `planning_notes_room_expected`")
         createPlanningNotesTable(db, "planning_notes_room_expected")

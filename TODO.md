@@ -4,8 +4,8 @@
 
 ### In Progress
 
-- Verify version `1.8.9` on device after the Android 今日看板 widget switches closer to the in-app daily-board background/topbar/card visual language, while still covering AI provider model fetching, desktop web dark mode, announcement marquee, widget deep-link rows, and data-ready launch hiding
-- Keep `README.md`, `CHANGELOG.md`, Wiki, in-app help sheets, desktop-web help, and current-state docs aligned with version `1.8.9`
+- Verify version `1.9.0` on device after adding 专注模式: todo long-press focus entry, free focus from the daily-board focus card, countdown completion / extension / abandon flows, and the daily focus statistics card
+- Keep `README.md`, `CHANGELOG.md`, Wiki, in-app help sheets, desktop-web help, and current-state docs aligned with version `1.9.0`
 - Continue planning-desk usability polish without expanding into drag/drop, Gantt, AI auto-planning, or complex project trees
 - Improve repo-native handoff so new sessions do not depend on long chat history
 
@@ -45,7 +45,7 @@
 - Custom snooze should accept long delays beyond 180 minutes and update todo DDL when the snooze target is later than the current DDL
 - Launch screen icon should use the transparent logo asset without a white square background
 - Input help question-mark buttons should open the correct syntax help beside reminder, batch, and snooze fields
-- In-app Wiki should describe the current 1.8.9 settings, reminder, calendar, planning-desk, announcement, widget, and input syntax accurately
+- In-app Wiki should describe the current 1.9.0 settings, reminder, calendar, planning-desk, announcement, widget, focus-mode, and input syntax accurately
 - In-app Wiki should keep a left navigation / right article layout on phone-sized screens
 - Daily board should show a separate completion message when today's schedule existed but all events have ended
 - Drawer header icon should stay visually circular and not expose a white rounded-rectangle launcher background
@@ -82,6 +82,8 @@
 - Desktop web system dark mode should be verified in a real browser for timeline cards, event cards, modal sheets, summary cards, tab buttons, sidebar cards, Planning Desk, and announcements.
 - Android desktop widget should be verified in system dark mode and after resizing; text should remain readable and refresh should still show missed/today/tomorrow board content.
 - Android desktop widget should be device-tested from the launcher widget picker after installing `1.8.9`: add widget, freely resize it, confirm the daily-board background/topbar/card visual direction, show announcements / today todos / today schedules / tomorrow schedules in the greeting-card plus aggregated schedule-card structure, row-level deep links, and refresh after todo/event/planning-note changes.
+- 专注模式 should be device-tested after installing `1.9.0`: long-press an active todo, start focus, pause/continue, abandon with confirmation, finish early, let countdown reach zero, extend once, complete, and confirm the daily-board focus minutes/statistics update.
+- 专注模式 settings should be device-tested after installing `1.9.0`: default duration 5-90 minutes, extension duration 1-30 minutes, keep-screen-on behavior, and the documented-only notification-suppression preference.
 - Desktop web Planning Desk should be tested from a real browser connected to the phone after installing `1.8.9`, including auto-save, `Ctrl+S`, `Ctrl+Enter`, select-all / clear-all, no-empty-import guard, the desktop Planning Desk help modal, document delete, editable preview, mixed reminder input, announcement syntax, parser edge cases, import marker write-back, and the mapping refresh/postpone/undo/conflict actions
 - Planning parser should be expanded with dedicated unit tests when the project gains a stable local JVM test harness
 

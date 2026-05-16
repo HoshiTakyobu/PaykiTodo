@@ -56,7 +56,11 @@ data class AppSettings(
     val planningAiApiKey: String = "",
     val planningAiModel: String = "",
     val planningAiProviders: List<PlanningAiProvider> = emptyList(),
-    val hasSeenOnboarding: Boolean = false
+    val hasSeenOnboarding: Boolean = false,
+    val focusDefaultMinutes: Int = 25,
+    val focusExtensionMinutes: Int = 5,
+    val focusKeepScreenOn: Boolean = true,
+    val focusBlockNotifications: Boolean = false
 )
 
 class AppSettingsStore(context: Context) {
@@ -215,6 +219,21 @@ class AppSettingsStore(context: Context) {
         refresh()
     }
 
+    fun updateFocusPreferences(
+        defaultMinutes: Int,
+        extensionMinutes: Int,
+        keepScreenOn: Boolean,
+        blockNotifications: Boolean
+    ) {
+        preferences.edit()
+            .putInt(KEY_FOCUS_DEFAULT_MINUTES, defaultMinutes.coerceIn(5, 90))
+            .putInt(KEY_FOCUS_EXTENSION_MINUTES, extensionMinutes.coerceIn(1, 30))
+            .putBoolean(KEY_FOCUS_KEEP_SCREEN_ON, keepScreenOn)
+            .putBoolean(KEY_FOCUS_BLOCK_NOTIFICATIONS, blockNotifications)
+            .apply()
+        refresh()
+    }
+
     fun replaceAll(settings: AppSettings) {
         val mergedPlanningAiProviders = mergePlanningAiApiKeys(settings.planningAiProviders)
         val primaryPlanningAiProvider = mergedPlanningAiProviders.firstOrNull()
@@ -250,6 +269,10 @@ class AppSettingsStore(context: Context) {
             .putString(KEY_PLANNING_AI_MODEL, primaryPlanningAiProvider?.model ?: settings.planningAiModel)
             .putString(KEY_PLANNING_AI_PROVIDERS_JSON, planningAiProvidersToJson(mergedPlanningAiProviders))
             .putBoolean(KEY_HAS_SEEN_ONBOARDING, settings.hasSeenOnboarding)
+            .putInt(KEY_FOCUS_DEFAULT_MINUTES, settings.focusDefaultMinutes.coerceIn(5, 90))
+            .putInt(KEY_FOCUS_EXTENSION_MINUTES, settings.focusExtensionMinutes.coerceIn(1, 30))
+            .putBoolean(KEY_FOCUS_KEEP_SCREEN_ON, settings.focusKeepScreenOn)
+            .putBoolean(KEY_FOCUS_BLOCK_NOTIFICATIONS, settings.focusBlockNotifications)
             .apply {
                 val noteId = settings.lastOpenedPlanningNoteId
                 if (noteId == null || noteId <= 0) remove(KEY_LAST_OPENED_PLANNING_NOTE_ID) else putLong(KEY_LAST_OPENED_PLANNING_NOTE_ID, noteId)
@@ -318,7 +341,11 @@ class AppSettingsStore(context: Context) {
             planningAiApiKey = primaryPlanningAiProvider?.apiKey ?: legacyApiKey,
             planningAiModel = primaryPlanningAiProvider?.model ?: legacyModel,
             planningAiProviders = planningAiProviders,
-            hasSeenOnboarding = preferences.getBoolean(KEY_HAS_SEEN_ONBOARDING, false)
+            hasSeenOnboarding = preferences.getBoolean(KEY_HAS_SEEN_ONBOARDING, false),
+            focusDefaultMinutes = preferences.getInt(KEY_FOCUS_DEFAULT_MINUTES, 25).coerceIn(5, 90),
+            focusExtensionMinutes = preferences.getInt(KEY_FOCUS_EXTENSION_MINUTES, 5).coerceIn(1, 30),
+            focusKeepScreenOn = preferences.getBoolean(KEY_FOCUS_KEEP_SCREEN_ON, true),
+            focusBlockNotifications = preferences.getBoolean(KEY_FOCUS_BLOCK_NOTIFICATIONS, false)
         )
     }
 
@@ -393,5 +420,9 @@ class AppSettingsStore(context: Context) {
         private const val KEY_PLANNING_AI_PROVIDERS_JSON = "planning_ai_providers_json"
         private const val KEY_LEGACY_ANNOUNCEMENT_CLEANED = "legacy_announcement_cleaned"
         private const val KEY_HAS_SEEN_ONBOARDING = "has_seen_onboarding"
+        private const val KEY_FOCUS_DEFAULT_MINUTES = "focus_default_minutes"
+        private const val KEY_FOCUS_EXTENSION_MINUTES = "focus_extension_minutes"
+        private const val KEY_FOCUS_KEEP_SCREEN_ON = "focus_keep_screen_on"
+        private const val KEY_FOCUS_BLOCK_NOTIFICATIONS = "focus_block_notifications"
     }
 }

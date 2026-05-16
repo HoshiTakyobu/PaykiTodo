@@ -25,6 +25,7 @@ This file tracks the product at a practical level for new coding sessions.
 
 - dedicated daily board entry exists in the drawer and is the default home section
 - board todo block includes missed active todos and today's normal todos
+- board shows a `今日已专注` focus card with today's completed focus minutes, total focus sessions, completed sessions, and a free-focus entry
 - board view can show today's todos and today's / tomorrow's schedule summary together
 - board today's schedule hides timed events after they have ended
 - board currently running events can be visually highlighted with a gold outline and subtle glow
@@ -38,6 +39,18 @@ This file tracks the product at a practical level for new coding sessions.
 - daily board onboarding card is readable in dark mode, can be dismissed, and can be reset from Settings -> About -> 使用说明
 - daily board floating block titles have stronger dark-theme text shadow so they stay readable over the dark wallpaper background
 - board surface intentionally does not expose add / batch-add buttons
+
+### Focus Mode
+
+- active todo cards expose `开始专注 · X 分钟` from the long-press action sheet while destructive delete remains confirmation-gated
+- daily board exposes free focus from the `今日已专注` card instead of adding a generic board FAB, preserving the board as a read-only overview surface
+- full-screen `FocusActivity` supports todo-bound and free-focus countdown sessions
+- focus countdown shows circular progress, large monospace `MM:SS`, elapsed minutes, extension count, and pause / continue, complete, and abandon controls
+- countdown completion vibrates with a short / gap / long pattern and asks the user to complete, extend by the configured duration, or abandon
+- early completion and abandon both require confirmation; completed sessions show a short success feedback page before returning
+- focus records are saved before the focus screen exits, reducing the chance of losing completed or abandoned sessions during Activity finish
+- Settings -> `专注模式` controls default focus duration, extension duration, screen-on behavior, and a documented-only notification-suppression preference
+- focus sessions are stored in Room table `focus_sessions`, included in JSON backup / restore, and contribute completed minutes to today's board statistics
 
 ### Board Announcements
 

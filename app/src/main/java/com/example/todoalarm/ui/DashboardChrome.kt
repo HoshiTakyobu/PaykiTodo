@@ -42,6 +42,7 @@ import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.LightMode
 import androidx.compose.material.icons.rounded.Menu
 import androidx.compose.material.icons.rounded.PostAdd
+import androidx.compose.material.icons.rounded.Timer
 import androidx.compose.material.icons.rounded.ExpandLess
 import androidx.compose.material.icons.rounded.ExpandMore
 import androidx.compose.material.icons.rounded.ChevronRight
@@ -83,6 +84,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -365,6 +367,7 @@ internal fun DashboardBody(
     onDefaultSnoozeChange: (Int) -> Unit,
     onDefaultCalendarReminderModeChange: (ReminderDeliveryMode) -> Unit,
     onReminderAudioStrategyChange: (ReminderAudioChannel, Int, Boolean, Int, Boolean) -> Unit,
+    onFocusPreferencesChange: (Int, Int, Boolean, Boolean) -> Unit,
     onPlanningAiProvidersChange: (Boolean, List<PlanningAiProvider>) -> Unit,
     onResetOnboarding: () -> Unit,
     onDesktopSyncEnabledChange: (Boolean) -> Unit,
@@ -454,6 +457,7 @@ internal fun DashboardBody(
                 onDefaultSnoozeChange = onDefaultSnoozeChange,
                 onDefaultCalendarReminderModeChange = onDefaultCalendarReminderModeChange,
                 onReminderAudioStrategyChange = onReminderAudioStrategyChange,
+                onFocusPreferencesChange = onFocusPreferencesChange,
                 onPlanningAiProvidersChange = onPlanningAiProvidersChange,
                 onResetOnboarding = onResetOnboarding,
                 onDesktopSyncEnabledChange = onDesktopSyncEnabledChange,
@@ -539,6 +543,18 @@ internal fun DashboardBody(
     val activeAnnouncements = remember(uiState.planningNotes, boardDate) {
         PlanningAnnouncementParser.activeAnnouncements(uiState.planningNotes, boardDate)
     }
+    val context = LocalContext.current
+
+    fun startFocus(todo: TodoItem? = null) {
+        val title = todo?.title ?: "自由专注"
+        val intent = FocusActivity.createIntent(
+            context = context,
+            todoId = todo?.id,
+            title = title,
+            minutes = uiState.settings.focusDefaultMinutes
+        )
+        context.startActivity(intent)
+    }
 
     LazyColumn(
         modifier = Modifier
@@ -567,13 +583,31 @@ internal fun DashboardBody(
                 }
 
                 item {
+                    TodayFocusCard(
+                        minutes = uiState.todayFocusMinutes,
+                        sessionCount = uiState.todayFocusSessionCount,
+                        completedCount = uiState.todayCompletedFocusSessionCount,
+                        onStartFreeFocus = { startFocus() }
+                    )
+                }
+
+                item {
                     BoardBlockTitle("今日待办（${boardTodoItems.size}）")
                 }
                 if (boardTodoItems.isEmpty()) {
                     item { EmptyStateCard("今天还没有安排任务。") }
                 } else {
                     items(boardTodoItems, key = { it.id }) { item ->
-                        ActiveTodoCard(item, uiState.groups, { onEdit(item) }, { onCompleteTodo(item) }, { onCancelTodo(item) }, { onDeleteTodo(item) })
+                        ActiveTodoCard(
+                            item = item,
+                            groups = uiState.groups,
+                            onEdit = { onEdit(item) },
+                            onComplete = { onCompleteTodo(item) },
+                            onCancel = { onCancelTodo(item) },
+                            onDelete = { onDeleteTodo(item) },
+                            focusDefaultMinutes = uiState.settings.focusDefaultMinutes,
+                            onStartFocus = { startFocus(item) }
+                        )
                     }
                 }
 
@@ -604,7 +638,7 @@ internal fun DashboardBody(
                     }
                     if (missedExpanded) {
                         items(uiState.missedItems, key = { it.id }) { item ->
-                            ActiveTodoCard(item, uiState.groups, { onEdit(item) }, { onCompleteTodo(item) }, { onCancelTodo(item) }, { onDeleteTodo(item) })
+                            ActiveTodoCard(item, uiState.groups, { onEdit(item) }, { onCompleteTodo(item) }, { onCancelTodo(item) }, { onDeleteTodo(item) }, uiState.settings.focusDefaultMinutes, { startFocus(item) })
                         }
                     }
                 }
@@ -621,7 +655,7 @@ internal fun DashboardBody(
                         item { EmptyStateCard("今天还没有安排任务。") }
                     } else {
                         items(uiState.todayItems, key = { it.id }) { item ->
-                            ActiveTodoCard(item, uiState.groups, { onEdit(item) }, { onCompleteTodo(item) }, { onCancelTodo(item) }, { onDeleteTodo(item) })
+                            ActiveTodoCard(item, uiState.groups, { onEdit(item) }, { onCompleteTodo(item) }, { onCancelTodo(item) }, { onDeleteTodo(item) }, uiState.settings.focusDefaultMinutes, { startFocus(item) })
                         }
                     }
                 }
@@ -638,7 +672,7 @@ internal fun DashboardBody(
                         item { EmptyStateCard("后续时间暂时没有新计划。") }
                     } else {
                         items(uiState.upcomingItems, key = { it.id }) { item ->
-                            ActiveTodoCard(item, uiState.groups, { onEdit(item) }, { onCompleteTodo(item) }, { onCancelTodo(item) }, { onDeleteTodo(item) })
+                            ActiveTodoCard(item, uiState.groups, { onEdit(item) }, { onCompleteTodo(item) }, { onCancelTodo(item) }, { onDeleteTodo(item) }, uiState.settings.focusDefaultMinutes, { startFocus(item) })
                         }
                     }
                 }
@@ -810,6 +844,80 @@ private fun OnboardingCard(onDismiss: () -> Unit) {
                     onClick = onDismiss
                 ) {
                     Text("知道了", modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp), color = MaterialTheme.colorScheme.onPrimary, fontWeight = FontWeight.SemiBold)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun TodayFocusCard(
+    minutes: Int,
+    sessionCount: Int,
+    completedCount: Int,
+    onStartFreeFocus: () -> Unit
+) {
+    ElevatedCard(
+        shape = RoundedCornerShape(28.dp),
+        colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.96f))
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 18.dp, vertical = 18.dp),
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(
+                    text = minutes.toString(),
+                    color = MaterialTheme.colorScheme.primary,
+                    fontSize = 48.sp,
+                    lineHeight = 50.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    fontFamily = FontFamily.Monospace
+                )
+                Text(
+                    text = "分钟",
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    style = MaterialTheme.typography.bodySmall,
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
+            Box(
+                modifier = Modifier
+                    .width(1.dp)
+                    .height(56.dp)
+                    .background(MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.38f))
+            )
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(5.dp)
+            ) {
+                Text(
+                    text = "今日已专注",
+                    color = MaterialTheme.colorScheme.onSurface,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    text = "$sessionCount 次专注 · $completedCount 次完成",
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            }
+            Surface(
+                shape = RoundedCornerShape(18.dp),
+                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
+                onClick = onStartFreeFocus
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 9.dp),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(Icons.Rounded.Timer, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
+                    Text("自由专注", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelLarge)
                 }
             }
         }

@@ -2,57 +2,46 @@
 
 ## Active Development Focus
 
-The current round is PaykiTodo `1.8.9` / `versionCode 192`, focused on correcting the Android `今日看板` launcher widget after visual review: the widget should look like the in-app daily board rather than a generic list surface.
+The current goal is PaykiTodo `1.9.0` / `versionCode 193`, focused on adding 专注模式（番茄钟） before moving on to the separate `1.9.1` AI 日报 / 周报 goal.
 
-## Completed In 1.8.9
+The prior Android `今日看板` launcher-widget visual follow-up was committed separately as `1d768ef` and should not be mixed into the remaining focus-session work.
 
-1. The widget root now layers daily-board background art with a light/dark scrim instead of only using a plain gradient/list-like surface.
-2. The widget header now resembles the in-app daily-board top bar with a circular menu button, `每日看板` title, and current-date subtitle.
-3. Announcement rows now render as an orange rounded banner rather than a generic white/gray card.
-4. Greeting, empty, todo, and schedule cards use stronger light/dark surfaces, wider color strips, larger section titles, and daily-board-like spacing.
-5. The aggregated schedule card still shows today / tomorrow in one board card, with the left date block and row color strips preserved.
-6. Todo / event / announcement deep links remain intact.
-7. Version metadata is now `1.8.9` / `versionCode 192`.
+## Completed In 1.9.0 So Far
 
-## Follow-up Widget Visual Tightening
-
-After another visual review, the widget RemoteViews resources were tightened again to better match the phone-side daily board:
-
-1. The widget root uses larger outer padding, a lighter board scrim, and title/subtitle shadows so the wallpaper-backed board reads closer to the in-app surface.
-2. Greeting, empty, todo, and schedule cards now use 28dp-style rounded surfaces with stronger opacity.
-3. Section titles are larger and shadowed, matching the visual weight of the app's `今日待办` / `今日日程` blocks.
-4. Schedule rows have more breathing room, narrower vertical event strips, and larger titles so the schedule board no longer looks like a compact table.
-5. Day/night card opacity and inner schedule surfaces were adjusted for real launcher readability.
+1. Version metadata is now `1.9.0` / `versionCode 193`.
+2. Room database version is now `12`; `MIGRATION_11_12` creates `focus_sessions` and indices for `startedAtMillis` and `todoId`.
+3. `FocusSession` records todo binding, title, planned / actual minutes, start / end timestamps, completion state, and extension count.
+4. Repository and DAO expose focus-session insert, today-range queries, completed-focus minute totals, observation, backup export/import, and clear/restore support.
+5. Settings -> `专注模式` provides default duration, extension duration, keep-screen-on, and documented-only notification-suppression preferences.
+6. `FocusActivity` implements a full-screen countdown with circular progress, pause / continue, early completion confirmation, abandon confirmation, zero-time vibration, extension, save-before-exit behavior, and completion feedback.
+7. Active todo long-press menus now include `开始专注 · X 分钟` beside the destructive delete entry.
+8. Daily board now shows a `今日已专注` card with completed minutes, total sessions, completed sessions, and a `自由专注` entry.
 
 ## Verification Completed This Round
 
-1. `node --check app/src/main/assets/desktop-web/app.js`
-2. `./gradlew.bat testDebugUnitTest`
-3. `./gradlew.bat assembleDebug`
-4. `git diff --check`
-
-## Follow-up Verification
-
-1. `./gradlew.bat :app:processDebugResources`
-2. `./gradlew.bat assembleDebug`
-3. `git diff --check`
+1. `./gradlew.bat :app:compileDebugKotlin`
 
 ## Immediate Practical Next Steps
 
-1. Install the latest locally built APK and re-add / refresh the launcher widget to verify the new card rhythm on a real launcher.
-2. Because the worktree also contains separate uncommitted `1.9.0` focus-session changes, keep any widget commit focused and do not push unless the user explicitly asks.
+1. Finish user-facing docs for `1.9.0`.
+2. Run full verification:
+   - `node --check app/src/main/assets/desktop-web/app.js`
+   - `./gradlew.bat testDebugUnitTest`
+   - `./gradlew.bat assembleDebug`
+   - `git diff --check`
+3. Create a focused local commit for `1.9.0` 专注模式 using the `完成内容概要：` bullet-list body.
+4. Do not push unless the user explicitly asks.
+5. Then start the separate `1.9.1` AI 日报 / 周报 goal.
 
-After installing the latest APK on device, verify:
+## Device Verification Needed After Installing 1.9.0
 
-1. The launcher widget visually resembles the in-app daily board background/topbar/card hierarchy more than the old bordered/list card.
-2. The sample state from the user screenshot shows the circular menu header, greeting card, `今日待办（0）`, the empty todo card, `今日日程（0）`, and one schedule board card containing today / tomorrow content.
-3. Widget resizing still reveals more content; because RemoteViews cannot fully guarantee child bitmap clipping on every launcher, check for square-corner background bleed specifically.
-4. Todo / event / announcement row taps still deep-link to the correct in-app screen.
-5. Dark-mode widget background, cards, and text remain readable on the actual launcher.
-
-## Active Goal Version Note
-
-Two goal docs remain under `docs/goals/` for the future focus-session and AI-report work. They were written before the `1.8.8 / 191` and `1.8.9 / 192` widget fixes. If that goal resumes, continue from the current code version and do not reuse old versionCodes.
+1. Long-press a todo and confirm `开始专注 · X 分钟` appears.
+2. Start a bound focus session, pause / continue, finish early, and confirm the completion feedback page appears.
+3. Start a focus session and abandon it; confirm the abandon record does not add completed minutes.
+4. Let a countdown reach zero; confirm vibration, `完成 / 延续 / 放弃` choices, and extension-count behavior.
+5. Start a free focus session from the daily-board focus card.
+6. Confirm completed focus minutes update on the daily-board focus card after returning.
+7. Confirm `设置 -> 专注模式` duration sliders affect newly started focus sessions.
 
 ## Commit Message Rule
 

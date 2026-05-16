@@ -8,6 +8,7 @@
     <color name="widget_text_muted">#B5AA98</color>
     <color name="widget_accent">#FFCB6B</color>
     <color name="widget_event_blue">#5A92FF</color>
+    <color name="widget_todo_green">#4CB782</color>
     <color name="widget_danger">#E89A9A</color>
     <color name="widget_header">#FFCB6B</color>
 </resources>

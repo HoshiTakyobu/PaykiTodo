@@ -6,40 +6,42 @@ Long-running Codex sessions can become unreliable. This file exists so a new ses
 
 ## Current Handoff Summary
 
-- The project is currently at code version `1.8.6` / `versionCode 189`.
-- Latest debug APK output after final build: `app/build/outputs/apk/debug/PaykiTodo-1.8.6-debug.apk`.
+- The project is currently at code version `1.8.7` / `versionCode 190`.
+- Latest debug APK output after final build: `app/build/outputs/apk/debug/PaykiTodo-1.8.7-debug.apk`.
 - Latest verification in this round:
   - `node --check app/src/main/assets/desktop-web/app.js`
   - `./gradlew.bat testDebugUnitTest`
   - `./gradlew.bat assembleDebug`
   - `git diff --check`
-- This round redesigns the Android `今日看板` launcher widget so it looks closer to the in-app daily board.
+- This round refines the Android `今日看板` launcher widget after visual review so it follows the in-app daily board structure more closely.
 - Do not push to GitHub unless the user explicitly asks.
 
-## Latest Changes In 1.8.6
+## Latest Changes In 1.8.7
 
-1. Upgraded app version metadata to `1.8.6` / `versionCode 189`.
-2. The widget now uses multiple RemoteViews row layouts instead of one generic thin bordered row.
-3. Widget section titles are standalone rows, closer to the in-app daily board hierarchy.
-4. Widget empty states are large rounded cards rather than small outlined rows.
-5. Widget event rows now show a date block, weekday, day number, vertical color strip, title, time range, and location.
-6. Widget event strips use the event accent color when available; in-progress events keep a gold highlight color.
-7. Widget dark colors were retuned to deep card surfaces with subtler borders.
-8. Todo, event, and announcement row deep links remain in place.
+1. Upgraded app version metadata to `1.8.7` / `versionCode 190`.
+2. Widget root background changed to a light/dark gradient board surface.
+3. Widget top content now starts with a greeting card instead of a plain `今日看板` title row.
+4. Todo cards now include a left vertical color strip based on the todo's task group color.
+5. Schedule content is now one aggregated board card with:
+   - a left date block for today
+   - today schedule rows or today's empty/all-finished message
+   - a `明天` subsection
+   - tomorrow schedule rows or `明天暂无日程` guidance
+6. Schedule rows inside the aggregated card still deep-link to the corresponding calendar event.
+7. Todo and announcement row deep links remain in place.
 
 ## Files Most Relevant To This Round
 
 - `app/build.gradle.kts`
-- `app/src/main/java/com/example/todoalarm/widget/TodoWidgetProvider.kt`
 - `app/src/main/java/com/example/todoalarm/widget/TodoWidgetService.kt`
 - `app/src/main/res/layout/widget_todo.xml`
-- `app/src/main/res/layout/widget_todo_section.xml`
-- `app/src/main/res/layout/widget_todo_empty_card.xml`
+- `app/src/main/res/layout/widget_todo_greeting_card.xml`
+- `app/src/main/res/layout/widget_todo_schedule_card.xml`
 - `app/src/main/res/layout/widget_todo_task_card.xml`
-- `app/src/main/res/layout/widget_todo_event_card.xml`
-- `app/src/main/res/layout/widget_todo_announcement_card.xml`
-- `app/src/main/res/drawable*/widget_todo_background.xml`
-- `app/src/main/res/drawable*/widget_todo_item_background.xml`
+- `app/src/main/res/drawable*/widget_board_background.xml`
+- `app/src/main/res/drawable*/widget_greeting_background.xml`
+- `app/src/main/res/drawable*/widget_schedule_inner_background.xml`
+- `app/src/main/res/drawable/widget_vertical_pill.xml`
 - `app/src/main/res/values*/colors.xml`
 - `CHANGELOG.md`
 - `README.md`
@@ -51,19 +53,18 @@ Long-running Codex sessions can become unreliable. This file exists so a new ses
 
 ## Current Verification Focus
 
-1. Build `PaykiTodo-1.8.6-debug.apk`.
-2. Verify on a real Android launcher:
-   - widget resembles the in-app daily board more than the old outlined row list;
-   - section titles, empty cards, event card date block, vertical strip, title, time, and location render correctly;
+1. Verify on a real Android launcher after installing `PaykiTodo-1.8.7-debug.apk`:
+   - widget resembles the in-app daily board rather than a generic list;
+   - greeting card, todo group color strips, and one aggregated schedule card render correctly;
    - resizing the widget reveals more content cleanly;
    - todo/event/announcement taps still open the correct in-app target;
    - dark-mode widget colors remain readable.
-3. Re-check Settings -> `AI 调用配置` model discovery from `1.8.5` if installing this APK for broader QA.
+2. Re-check Settings -> `AI 调用配置` model discovery from `1.8.5` if installing this APK for broader QA.
 
 ## Deferred Larger Work
 
 - The widget is still implemented with Android RemoteViews, not Compose, so it cannot perfectly reuse the in-app daily board component.
-- Launcher-specific widget padding, scaling, and list scroll behavior still require real-device visual checks.
+- Launcher-specific widget padding, scaling, nested row click behavior, and list scroll behavior still require real-device visual checks.
 
 ## Required Reading For A New Session
 

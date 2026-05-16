@@ -11,6 +11,7 @@ import com.example.todoalarm.R
 import com.example.todoalarm.TodoApplication
 import com.example.todoalarm.data.DailyBoardSnapshot
 import com.example.todoalarm.data.DailyBoardSnapshotBuilder
+import com.example.todoalarm.data.TaskGroup
 import com.example.todoalarm.data.TodoItem
 import com.example.todoalarm.ui.MainActivity
 import kotlinx.coroutines.runBlocking
@@ -39,6 +40,7 @@ private class TodoWidgetFactory(
     private var orange: Int = 0
     private var danger: Int = 0
     private var eventBlue: Int = 0
+    private var todoFallback: Int = 0
 
     override fun onCreate() = Unit
 
@@ -47,9 +49,10 @@ private class TodoWidgetFactory(
         val app = context.applicationContext as TodoApplication
         rows = runBlocking {
             val items = app.repository.getActiveItemsForBoardRange()
+            val groups = app.repository.getAllGroups()
             val notes = app.repository.getAllPlanningNotes()
             val snapshot = DailyBoardSnapshotBuilder.build(items = items, planningNotes = notes)
-            buildRows(snapshot)
+            buildRows(snapshot, groups)
         }
     }
 
@@ -62,9 +65,11 @@ private class TodoWidgetFactory(
     override fun getViewAt(position: Int): RemoteViews {
         val row = rows.getOrNull(position) ?: return emptyRowViews(emptyRow(-1L, "今日看板暂无内容"))
         return when (row.type) {
+            WidgetRowType.GREETING -> greetingViews(row)
             WidgetRowType.SECTION -> sectionViews(row)
             WidgetRowType.EMPTY -> emptyRowViews(row)
             WidgetRowType.TODO -> todoViews(row)
+            WidgetRowType.SCHEDULE -> scheduleViews(row)
             WidgetRowType.EVENT -> eventViews(row)
             WidgetRowType.ANNOUNCEMENT -> announcementViews(row)
         }.apply {
@@ -76,6 +81,15 @@ private class TodoWidgetFactory(
     override fun getViewTypeCount(): Int = WidgetRowType.entries.size
     override fun getItemId(position: Int): Long = rows.getOrNull(position)?.stableId ?: position.toLong()
     override fun hasStableIds(): Boolean = true
+
+    private fun greetingViews(row: WidgetBoardRow): RemoteViews {
+        return RemoteViews(context.packageName, R.layout.widget_todo_greeting_card).apply {
+            setTextViewText(R.id.widget_greeting_title, row.title)
+            setTextViewText(R.id.widget_greeting_quote, row.meta)
+            setTextColor(R.id.widget_greeting_title, darkText)
+            setTextColor(R.id.widget_greeting_quote, mutedText)
+        }
+    }
 
     private fun sectionViews(row: WidgetBoardRow): RemoteViews {
         return RemoteViews(context.packageName, R.layout.widget_todo_section).apply {
@@ -102,9 +116,87 @@ private class TodoWidgetFactory(
             setTextColor(R.id.widget_task_time, row.metaColor)
             setTextColor(R.id.widget_task_title, row.titleColor)
             setTextColor(R.id.widget_task_badge, row.trailingColor)
+            setInt(R.id.widget_task_strip, "setColorFilter", row.accentColor)
             setViewVisibility(R.id.widget_task_time, if (row.meta.isBlank()) View.GONE else View.VISIBLE)
             setViewVisibility(R.id.widget_task_badge, if (row.trailing.isBlank()) View.GONE else View.VISIBLE)
         }
+    }
+
+    private fun scheduleViews(row: WidgetBoardRow): RemoteViews {
+        val today = row.date ?: LocalDate.now()
+        return RemoteViews(context.packageName, R.layout.widget_todo_schedule_card).apply {
+            setTextViewText(R.id.widget_schedule_month, today.format(monthFormatter))
+            setTextViewText(R.id.widget_schedule_weekday, weekdayLabel(today))
+            setTextViewText(R.id.widget_schedule_day, today.dayOfMonth.toString())
+            setTextViewText(R.id.widget_schedule_today_message, row.title)
+            setTextViewText(R.id.widget_schedule_tomorrow_message, row.trailing)
+            setTextColor(R.id.widget_schedule_month, mutedText)
+            setTextColor(R.id.widget_schedule_weekday, eventBlue)
+            setTextColor(R.id.widget_schedule_day, darkText)
+            setTextColor(R.id.widget_schedule_today_message, if (row.highlight) darkText else mutedText)
+            setTextColor(R.id.widget_schedule_tomorrow_label, mutedText)
+            setTextColor(R.id.widget_schedule_tomorrow_message, if (row.trailing.isBlank()) mutedText else headerText)
+
+            bindScheduleEvent(
+                rootId = R.id.widget_schedule_today_event_1,
+                stripId = R.id.widget_schedule_today_event_1_strip,
+                titleId = R.id.widget_schedule_today_event_1_title,
+                timeId = R.id.widget_schedule_today_event_1_time,
+                locationId = R.id.widget_schedule_today_event_1_location,
+                row = row.events.getOrNull(0)
+            )
+            bindScheduleEvent(
+                rootId = R.id.widget_schedule_today_event_2,
+                stripId = R.id.widget_schedule_today_event_2_strip,
+                titleId = R.id.widget_schedule_today_event_2_title,
+                timeId = R.id.widget_schedule_today_event_2_time,
+                locationId = R.id.widget_schedule_today_event_2_location,
+                row = row.events.getOrNull(1)
+            )
+            bindScheduleEvent(
+                rootId = R.id.widget_schedule_tomorrow_event_1,
+                stripId = R.id.widget_schedule_tomorrow_event_1_strip,
+                titleId = R.id.widget_schedule_tomorrow_event_1_title,
+                timeId = R.id.widget_schedule_tomorrow_event_1_time,
+                locationId = R.id.widget_schedule_tomorrow_event_1_location,
+                row = row.tomorrowEvents.getOrNull(0)
+            )
+            bindScheduleEvent(
+                rootId = R.id.widget_schedule_tomorrow_event_2,
+                stripId = R.id.widget_schedule_tomorrow_event_2_strip,
+                titleId = R.id.widget_schedule_tomorrow_event_2_title,
+                timeId = R.id.widget_schedule_tomorrow_event_2_time,
+                locationId = R.id.widget_schedule_tomorrow_event_2_location,
+                row = row.tomorrowEvents.getOrNull(1)
+            )
+
+            setViewVisibility(R.id.widget_schedule_today_message, if (row.events.isEmpty()) View.VISIBLE else View.GONE)
+            setViewVisibility(R.id.widget_schedule_tomorrow_message, if (row.tomorrowEvents.isEmpty()) View.VISIBLE else View.GONE)
+        }
+    }
+
+    private fun RemoteViews.bindScheduleEvent(
+        rootId: Int,
+        stripId: Int,
+        titleId: Int,
+        timeId: Int,
+        locationId: Int,
+        row: WidgetBoardRow?
+    ) {
+        if (row == null) {
+            setViewVisibility(rootId, View.GONE)
+            return
+        }
+        setViewVisibility(rootId, View.VISIBLE)
+        setTextViewText(titleId, row.title)
+        setTextViewText(timeId, row.meta)
+        setTextViewText(locationId, row.location)
+        setTextColor(titleId, row.titleColor)
+        setTextColor(timeId, darkText)
+        setTextColor(locationId, mutedText)
+        setInt(stripId, "setColorFilter", row.accentColor)
+        setViewVisibility(locationId, if (row.location.isBlank()) View.GONE else View.VISIBLE)
+        setOnClickFillInIntent(rootId, row.fillInIntent())
     }
 
     private fun eventViews(row: WidgetBoardRow): RemoteViews {
@@ -133,16 +225,17 @@ private class TodoWidgetFactory(
         }
     }
 
-    private fun buildRows(snapshot: DailyBoardSnapshot): List<WidgetBoardRow> {
+    private fun buildRows(snapshot: DailyBoardSnapshot, groups: List<TaskGroup>): List<WidgetBoardRow> {
         val output = mutableListOf<WidgetBoardRow>()
         val today = snapshot.date
-        val tomorrow = today.plusDays(1)
 
-        output += sectionRow(
+        output += WidgetBoardRow(
             stableId = -20_000L,
-            title = "今日看板",
-            meta = today.format(fullDateFormatter),
-            highlight = false
+            type = WidgetRowType.GREETING,
+            title = "${timeGreeting(snapshot.now.hour)}，Payki",
+            meta = "今天是 ${today.format(fullDateFormatter)}，先处理最关键的一步。",
+            titleColor = darkText,
+            metaColor = mutedText
         )
 
         snapshot.announcements.take(2).forEachIndexed { index, announcement ->
@@ -169,43 +262,14 @@ private class TodoWidgetFactory(
                     trailing = if (item.missed) "!" else "",
                     titleColor = darkText,
                     metaColor = if (item.missed) danger else mutedText,
-                    trailingColor = danger
+                    trailingColor = danger,
+                    accentColor = todoAccentColor(item, groups)
                 )
             }
         }
 
         output += sectionRow(-3L, "今日日程（${snapshot.allTodayEvents.size}）", highlight = true)
-        if (snapshot.visibleTodayEvents.isEmpty()) {
-            output += emptyRow(
-                stableId = -4L,
-                title = if (snapshot.allTodayEvents.isNotEmpty()) "太棒了！今天的日程都结束了~" else "今天暂无日程"
-            )
-        } else {
-            snapshot.visibleTodayEvents.take(4).forEach { event ->
-                output += eventRow(
-                    stableId = 1_000_000L + event.id,
-                    item = event,
-                    date = today,
-                    dayLabel = "今天",
-                    inProgress = DailyBoardSnapshotBuilder.eventInProgress(event, snapshot.now)
-                )
-            }
-        }
-
-        output += sectionRow(-5L, "明天", highlight = true)
-        if (snapshot.tomorrowEvents.isEmpty()) {
-            output += emptyRow(-6L, "明天暂无日程")
-        } else {
-            snapshot.tomorrowEvents.take(4).forEach { event ->
-                output += eventRow(
-                    stableId = 2_000_000L + event.id,
-                    item = event,
-                    date = tomorrow,
-                    dayLabel = "明天",
-                    inProgress = false
-                )
-            }
-        }
+        output += scheduleRow(snapshot)
         return output.take(40)
     }
 
@@ -259,6 +323,43 @@ private class TodoWidgetFactory(
         )
     }
 
+    private fun scheduleRow(snapshot: DailyBoardSnapshot): WidgetBoardRow {
+        val todayMessage = if (snapshot.visibleTodayEvents.isEmpty()) {
+            if (snapshot.allTodayEvents.isNotEmpty()) "太棒了！今天的日程都结束了~" else "今天暂无日程"
+        } else {
+            ""
+        }
+        val tomorrowMessage = if (snapshot.tomorrowEvents.isEmpty()) "明天暂无日程 · 去规划台安排一下？" else ""
+        return WidgetBoardRow(
+            stableId = -4L,
+            type = WidgetRowType.SCHEDULE,
+            title = todayMessage,
+            trailing = tomorrowMessage,
+            date = snapshot.date,
+            titleColor = darkText,
+            metaColor = mutedText,
+            highlight = snapshot.allTodayEvents.isNotEmpty() && snapshot.visibleTodayEvents.isEmpty(),
+            events = snapshot.visibleTodayEvents.take(2).map { event ->
+                eventRow(
+                    stableId = 1_000_000L + event.id,
+                    item = event,
+                    date = snapshot.date,
+                    dayLabel = "今天",
+                    inProgress = DailyBoardSnapshotBuilder.eventInProgress(event, snapshot.now)
+                )
+            },
+            tomorrowEvents = snapshot.tomorrowEvents.take(2).map { event ->
+                eventRow(
+                    stableId = 2_000_000L + event.id,
+                    item = event,
+                    date = snapshot.date.plusDays(1),
+                    dayLabel = "明天",
+                    inProgress = false
+                )
+            }
+        )
+    }
+
     private fun todoTimeLabel(item: TodoItem): String {
         if (!item.hasDueDate) return "待办"
         return Instant.ofEpochMilli(item.dueAtMillis)
@@ -267,11 +368,30 @@ private class TodoWidgetFactory(
             .format(timeFormatter)
     }
 
+    private fun todoAccentColor(item: TodoItem, groups: List<TaskGroup>): Int {
+        val groupColor = groups.firstOrNull { it.id == item.groupId }?.colorHex
+        return parseColorOrNull(groupColor) ?: todoFallback
+    }
+
     private fun eventAccentColor(item: TodoItem): Int {
-        return item.accentColorHex
+        return parseColorOrNull(item.accentColorHex)
+            ?: eventBlue
+    }
+
+    private fun parseColorOrNull(value: String?): Int? {
+        return value
             ?.takeIf { it.isNotBlank() }
             ?.let { runCatching { Color.parseColor(it) }.getOrNull() }
-            ?: eventBlue
+    }
+
+    private fun timeGreeting(hour: Int): String {
+        return when (hour) {
+            in 5..10 -> "早上好"
+            in 11..13 -> "中午好"
+            in 14..17 -> "下午好"
+            in 18..22 -> "晚上好"
+            else -> "夜深了"
+        }
     }
 
     private fun weekdayLabel(date: LocalDate): String {
@@ -292,6 +412,8 @@ private class TodoWidgetFactory(
                 WidgetRowType.TODO -> putExtra(MainActivity.EXTRA_OPEN_TODO_ID, itemId)
                 WidgetRowType.EVENT -> putExtra(MainActivity.EXTRA_OPEN_EVENT_ID, itemId)
                 WidgetRowType.ANNOUNCEMENT -> putExtra(MainActivity.EXTRA_OPEN_PLANNING_NOTE_ID, sourceNoteId)
+                WidgetRowType.GREETING,
+                WidgetRowType.SCHEDULE,
                 WidgetRowType.SECTION,
                 WidgetRowType.EMPTY -> putExtra(MainActivity.EXTRA_OPEN_BOARD, true)
             }
@@ -305,12 +427,15 @@ private class TodoWidgetFactory(
         orange = ContextCompat.getColor(context, R.color.widget_accent)
         danger = ContextCompat.getColor(context, R.color.widget_danger)
         eventBlue = ContextCompat.getColor(context, R.color.widget_event_blue)
+        todoFallback = ContextCompat.getColor(context, R.color.widget_todo_green)
     }
 
     private enum class WidgetRowType {
+        GREETING,
         SECTION,
         EMPTY,
         TODO,
+        SCHEDULE,
         EVENT,
         ANNOUNCEMENT
     }
@@ -330,6 +455,8 @@ private class TodoWidgetFactory(
         val metaColor: Int = 0,
         val trailingColor: Int = 0,
         val accentColor: Int = 0,
-        val highlight: Boolean = false
+        val highlight: Boolean = false,
+        val events: List<WidgetBoardRow> = emptyList(),
+        val tomorrowEvents: List<WidgetBoardRow> = emptyList()
     )
 }

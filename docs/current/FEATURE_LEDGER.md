@@ -144,13 +144,14 @@ This file tracks the product at a practical level for new coding sessions.
 ### Android Desktop Widget
 
 - Android launcher exposes a PaykiTodo `今日看板` widget through `TodoWidgetProvider`
-- widget displays active Planning Desk announcements, today todo block, today schedule block, and tomorrow schedule block in card-style rows closer to the in-app daily board
-- widget uses RemoteViews `ListView`; rows are adaptive-height, split into section / empty-card / todo-card / event-card / announcement-card types, and no longer limited to five todos, so resizing the launcher widget reveals more board content
+- widget displays active Planning Desk announcements, today todo block, and a combined today/tomorrow schedule board closer to the in-app daily board
+- widget uses RemoteViews `ListView`; rows are adaptive-height, split into greeting / section / empty-card / todo-card / schedule-card / announcement-card types, and no longer limited to five todos, so resizing the launcher widget reveals more board content
 - widget provider declares horizontal / vertical resize mode plus min resize dimensions for better launcher compatibility
 - widget day/night colors are resource-backed, with dark-mode background and text colors for launcher readability
 - widget refresh uses a board-range Room query rather than loading all historical todos, and duplicate `onReceive` update routing has been removed
 - tapping a todo row opens the matching todo editor, tapping an event row opens the calendar event detail, tapping an announcement row opens the source Planning Desk note, and header / empty rows return to the default daily board
 - widget empty states now use the same card-style visual direction as the in-app daily board rather than thin bordered rows
+- widget schedule content is aggregated into one card with a left date block, today rows, tomorrow label, and tomorrow rows instead of independent event cards; todo cards use the task group's color strip
 - repository todo mutations and Planning Desk note edits / delete / archive operations notify widget data refresh through the application-level widget callback
 
 ### Data / Backup / Diagnostics

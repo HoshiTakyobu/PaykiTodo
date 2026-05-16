@@ -2,7 +2,7 @@
 
 ## Scope
 
-This document verifies the PaykiTodo `1.8.2` Planning Desk AI-recognition path. AI recognition must only run after an explicit recognition action, then still enter the preview-first import flow.
+This document verifies the PaykiTodo `1.8.3` Planning Desk AI-recognition path. AI recognition must only run after an explicit recognition action, then still enter the preview-first import flow.
 
 ## Phone Call Chain
 
@@ -36,6 +36,21 @@ The phone editor auto-save effects call `onSaveNote` / `onSyncMappings` only. Th
 
 `1.8.1` removes the previous desktop import-side implicit parse: if there is no preview result, `importSelectedPlanning()` now asks the user to click `识别` first instead of calling `parsePlanningEditor()` by itself. `1.8.2` keeps that trigger rule and changes provider endpoint handling only.
 
+## 1.8.1 Trigger Tightening
+
+- Phone-side editing and pressing Enter never directly called AI recognition. The misleading part was the old auto-save progress indicator: it could look like a network / AI loading state. `1.8.1` replaced that with plain `自动保存中` text.
+- Phone auto-save still only calls `onSaveNote`; mapping sync only calls `onSyncMappings`. Neither path calls `PlanningRecognitionService.recognize`.
+- Desktop `importSelectedPlanning()` previously called `parsePlanningEditor()` when `state.planningParseResult` was absent. `1.8.1` changed this to show `请先点击“识别”生成预览，再勾选并导入`, so desktop import cannot silently trigger AI.
+
+## 1.8.2 Base URL Compatibility
+
+- `PlanningAiCaller.endpointCandidates` resolves provider Base URLs as follows:
+  1. full `/chat/completions` URL: use directly
+  2. URL ending in `/v1`: append `/chat/completions`
+  3. service root: try `/v1/chat/completions`, then `/chat/completions`
+- `shouldTryNextEndpoint` tries the next endpoint after non-JSON responses and after HTTP `400 / 404 / 405`, which are common signs that the path shape is wrong for an OpenAI-compatible service.
+- HTML responses, such as filling a site root that returns an HTML homepage, now produce a readable Base URL / endpoint hint instead of surfacing raw `<!doctype` JSON conversion errors.
+
 ## Expected UI Messages
 
 - AI success:
@@ -60,6 +75,19 @@ The phone editor auto-save effects call `onSaveNote` / `onSyncMappings` only. Th
 4. Open Planning Desk and write free-form planning text.
 5. Tap `识别`.
 6. Expect preview candidates and the AI success message. Import still requires selecting candidates and confirming import.
+
+### 1A. Base URL Shape Checks
+
+Use the same valid API Key and model, then test these Base URL shapes in the provider dialog:
+
+1. `https://api.deepseek.com`
+   - Expect success through the automatic `/v1/chat/completions` candidate.
+2. `https://api.deepseek.com/v1`
+   - Expect success after appending `/chat/completions`.
+3. `https://api.deepseek.com/v1/chat/completions`
+   - Expect success with the exact endpoint.
+4. `https://example.com`
+   - Expect a friendly non-JSON / Base URL hint, not a raw JSON parse exception.
 
 ### 2. AI Failure Fallback
 

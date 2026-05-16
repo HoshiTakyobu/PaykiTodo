@@ -55,4 +55,70 @@ class PlanningAnnouncementParserTest {
 
         assertEquals(listOf("今天显示"), announcements.map { it.text })
     }
+
+    @Test
+    fun parsesAnnouncementInsideCheckboxAndQuoteLines() {
+        val note = PlanningNote(
+            id = 9,
+            title = "mixed",
+            contentMarkdown = """
+                - [ ] #公告 5.16 checkbox公告
+                > #公告 5.16 引用公告
+                今日提醒：#公告 5.16 行内公告
+            """.trimIndent()
+        )
+
+        val announcements = PlanningAnnouncementParser.activeAnnouncements(
+            notes = listOf(note),
+            today = LocalDate.of(2026, 5, 16)
+        )
+
+        assertEquals(
+            listOf("checkbox公告", "引用公告", "行内公告"),
+            announcements.map { it.text }
+        )
+    }
+
+    @Test
+    fun stripsImportedAndTrailingHashtagsFromAnnouncementText() {
+        val note = PlanningNote(
+            id = 10,
+            title = "tags",
+            contentMarkdown = """
+                #公告 5.16 干净公告 #imported
+                #公告 5.16 分组公告 #group 自律
+                公告: 长期公告 #tag
+            """.trimIndent()
+        )
+
+        val announcements = PlanningAnnouncementParser.activeAnnouncements(
+            notes = listOf(note),
+            today = LocalDate.of(2026, 5, 16)
+        )
+
+        assertEquals(
+            listOf("干净公告", "分组公告", "长期公告"),
+            announcements.map { it.text }
+        )
+    }
+
+    @Test
+    fun dateRangedAnnouncementsSortBeforeLongRunningOnesByRecentStart() {
+        val note = PlanningNote(
+            id = 11,
+            title = "sort",
+            contentMarkdown = """
+                #公告 5.16-6.30 A
+                #公告 6.1-6.30 B
+                #公告 长期 C
+            """.trimIndent()
+        )
+
+        val announcements = PlanningAnnouncementParser.activeAnnouncements(
+            notes = listOf(note),
+            today = LocalDate.of(2026, 6, 1)
+        )
+
+        assertEquals(listOf("B", "A", "长期 C"), announcements.map { it.text })
+    }
 }

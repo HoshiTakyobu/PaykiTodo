@@ -1,6 +1,7 @@
 package com.example.todoalarm.sync
 
 import com.example.todoalarm.data.AppSettings
+import com.example.todoalarm.data.PlanningAnnouncement
 import com.example.todoalarm.data.TaskGroup
 import com.example.todoalarm.data.TodoItem
 import org.json.JSONArray
@@ -20,7 +21,8 @@ data class DesktopSyncSnapshot(
     val generatedAtMillis: Long,
     val groups: List<TaskGroup>,
     val todos: List<TodoItem>,
-    val events: List<TodoItem>
+    val events: List<TodoItem>,
+    val announcements: List<PlanningAnnouncement> = emptyList()
 )
 
 fun DesktopSyncStatus.toJson(): JSONObject {
@@ -39,6 +41,17 @@ fun DesktopSyncSnapshot.toJson(groupsById: Map<Long, TaskGroup>): JSONObject {
         put("groups", JSONArray(groups.map { it.toDesktopJson() }))
         put("todos", JSONArray(todos.map { it.toDesktopJson(groupsById[it.groupId]) }))
         put("events", JSONArray(events.map { it.toDesktopJson(groupsById[it.groupId]) }))
+        put("announcements", JSONArray(announcements.map { it.toDesktopJson() }))
+    }
+}
+
+private fun PlanningAnnouncement.toDesktopJson(): JSONObject {
+    return JSONObject().apply {
+        put("text", text)
+        put("rangeLabel", rangeLabel())
+        put("sourceNoteTitle", sourceNoteTitle)
+        put("sourceNoteId", sourceNoteId)
+        put("lineNumber", lineNumber)
     }
 }
 

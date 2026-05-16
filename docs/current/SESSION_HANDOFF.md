@@ -6,84 +6,80 @@ Long-running Codex sessions can become unreliable. This file exists so a new ses
 
 ## Current Handoff Summary
 
-- The project is currently at code version `1.8.2` / `versionCode 185`.
-- Expected debug APK path after the final build: `app/build/outputs/apk/debug/PaykiTodo-1.8.2-debug.apk`.
-- Latest verification in this round:
+- The project is currently at code version `1.8.3` / `versionCode 186`.
+- Expected debug APK path after the final build: `app/build/outputs/apk/debug/PaykiTodo-1.8.3-debug.apk`.
+- Latest verification in this round so far:
   - `node --check app/src/main/assets/desktop-web/app.js`
   - `./gradlew.bat testDebugUnitTest`
   - `./gradlew.bat assembleDebug`
   - `git diff --check`
-- This round repairs AI provider endpoint compatibility, moves announcements into Planning Desk as multiple Markdown lines, and upgrades the Android widget from today-todo list to board-style content.
+- Latest debug APK output: `app/build/outputs/apk/debug/PaykiTodo-1.8.3-debug.apk`.
+- This round cleans up legacy announcement settings, improves Planning Desk announcement parsing / preview / ordering, adds desktop-web announcement visibility, and hardens the Android `今日看板` widget for dark mode and refresh performance.
 - Do not push to GitHub unless the user explicitly asks.
 
-## Latest Changes In 1.8.2
+## Latest Changes In 1.8.3
 
-1. Upgraded app version metadata to `1.8.2` / `versionCode 185`.
-2. `PlanningAiCaller` now supports common OpenAI-compatible Base URL forms:
-   - full `/chat/completions` URL: use directly
-   - `/v1` Base URL: append `/chat/completions`
-   - root Base URL: try `/v1/chat/completions` before `/chat/completions`
-3. AI provider `测试连接` timeout changed to 10s connect / 20s read.
-4. Non-JSON / HTML provider responses now report a readable Base URL / endpoint hint instead of raw `<!doctype` JSON conversion failures.
-5. Added `PlanningAnnouncementParser`.
-6. Announcements now come from all unarchived Planning Desk notes:
-   - `#公告 5.16-7.1 内容`
-   - `#公告 2026-05-16 2026-05-20 内容`
-   - `> [!公告] 内容`
-   - no date range means long-running announcement
-7. `TodoUiState` exposes `activeAnnouncements`; `DashboardChrome` renders each active announcement above the greeting card.
-8. Settings no longer exposes `公告设置`; old app-settings fields are retained only for backward-compatible storage / backup data.
-9. Added `DailyBoardSnapshotBuilder` to share board-style todo/event filtering outside Compose.
-10. Android widget is now titled `今日看板` and displays:
-    - active Planning Desk announcements
-    - today todo count and rows
-    - today schedule count, visible rows, or “all events ended” / empty message
-    - tomorrow schedule rows or empty message
-11. Widget rows are adaptive-height and the hard `take(5)` cap was removed; the list is sanity-capped at 40 rows.
-12. Widget provider XML declares min resize dimensions.
-13. Planning Desk phone tutorial, desktop-web Planning Desk help, in-app Wiki, README, current docs, and changelog now mention Planning Desk announcements and AI endpoint behavior.
-14. Added JVM tests:
-    - `PlanningAiCallerTest`
-    - `PlanningAnnouncementParserTest`
+1. Upgraded app version metadata to `1.8.3` / `versionCode 186`.
+2. Removed Settings-backed announcement fields from `AppSettings`.
+3. Removed old announcement JSON backup export/import fields; old backup files that still contain those unknown fields remain tolerated.
+4. Added one-time cleanup for legacy SharedPreferences announcement keys.
+5. Planning Desk announcement parser now recognizes:
+   - `#公告 ...`
+   - `- [ ] #公告 ...`
+   - `> #公告 ...`
+   - inline `今日提醒：#公告 ...`
+   - `> [!公告] ...`
+   - `公告: ...`
+6. Announcement display text strips trailing `#imported`, `#group ...`, and ordinary tail hashtags.
+7. Active announcements sort date-scoped items before long-running announcements, with newer start dates first.
+8. Planning Desk Markdown preview renders announcement rows with orange styling, campaign icon, `全局公告` pill, and range label.
+9. Desktop web `/api/snapshot` includes `announcements`; `index.html` / `app.js` / `app.css` render a top announcement banner.
+10. Android widget color resources now live in day/night color resources, and widget drawables have night variants.
+11. `TodoWidgetService` reloads colors on each `onDataSetChanged` and uses `ContextCompat.getColor`.
+12. Widget refresh uses `TodoDao.getActiveItemsForBoardRange(...)` via `TodoRepository.getActiveItemsForBoardRange()` instead of `getAllTodos()`.
+13. `TodoWidgetProvider.onReceive` duplicate refresh override was removed.
+14. `AI_RECOGNITION_VERIFICATION.md` now documents `1.8.1` trigger tightening and `1.8.2` Base URL endpoint fallback / non-JSON handling.
+15. The goal prompt for this round is archived under `docs/goals/2026-05-16-paykitodo-1.8.3-goal.md`.
 
 ## Files Most Relevant To This Round
 
 - `app/build.gradle.kts`
-- `app/src/main/java/com/example/todoalarm/data/PlanningAiCaller.kt`
+- `app/src/main/java/com/example/todoalarm/data/AppSettingsStore.kt`
+- `app/src/main/java/com/example/todoalarm/data/BackupManager.kt`
 - `app/src/main/java/com/example/todoalarm/data/PlanningAnnouncementParser.kt`
-- `app/src/main/java/com/example/todoalarm/data/DailyBoardSnapshot.kt`
+- `app/src/main/java/com/example/todoalarm/data/TodoDao.kt`
 - `app/src/main/java/com/example/todoalarm/data/TodoRepository.kt`
-- `app/src/main/java/com/example/todoalarm/ui/TodoViewModel.kt`
-- `app/src/main/java/com/example/todoalarm/ui/DashboardChrome.kt`
-- `app/src/main/java/com/example/todoalarm/ui/DashboardScreen.kt`
-- `app/src/main/java/com/example/todoalarm/ui/MainActivity.kt`
-- `app/src/main/java/com/example/todoalarm/ui/SettingsPanel.kt`
 - `app/src/main/java/com/example/todoalarm/ui/PlanningDeskPanel.kt`
 - `app/src/main/java/com/example/todoalarm/widget/TodoWidgetProvider.kt`
 - `app/src/main/java/com/example/todoalarm/widget/TodoWidgetService.kt`
+- `app/src/main/java/com/example/todoalarm/sync/DesktopSyncCoordinator.kt`
+- `app/src/main/java/com/example/todoalarm/sync/DesktopSyncModels.kt`
+- `app/src/main/res/values/colors.xml`
+- `app/src/main/res/values-night/colors.xml`
+- `app/src/main/res/drawable/widget_todo_background.xml`
+- `app/src/main/res/drawable-night/widget_todo_background.xml`
+- `app/src/main/res/drawable/widget_todo_item_background.xml`
+- `app/src/main/res/drawable-night/widget_todo_item_background.xml`
 - `app/src/main/res/layout/widget_todo.xml`
 - `app/src/main/res/layout/widget_todo_item.xml`
-- `app/src/main/res/xml/widget_todo_info.xml`
 - `app/src/main/assets/desktop-web/index.html`
-- `app/src/main/assets/wiki/index.html`
-- `app/src/test/java/com/example/todoalarm/data/PlanningAiCallerTest.kt`
+- `app/src/main/assets/desktop-web/app.css`
+- `app/src/main/assets/desktop-web/app.js`
 - `app/src/test/java/com/example/todoalarm/data/PlanningAnnouncementParserTest.kt`
+- `docs/current/AI_RECOGNITION_VERIFICATION.md`
 
 ## Current Verification Focus
 
-1. Install `PaykiTodo-1.8.2-debug.apk`.
-2. Verify AI provider `测试连接` with:
-   - root Base URL that needs `/v1/chat/completions`
-   - Base URL ending in `/v1`
-   - full `/v1/chat/completions`
-   - HTML/non-JSON response
-   - timeout/unreachable host
-3. Verify Planning Desk announcements:
-   - multiple active announcements
-   - date-range filtering
-   - no-date long-running announcements
-   - deleted / archived / edited source notes update board and widget
-4. Verify launcher widget add/list/empty/tap/refresh/resize behavior on a real Android launcher.
+1. Build `PaykiTodo-1.8.3-debug.apk`.
+2. Verify Planning Desk announcement parser cases on device:
+   - checkbox announcement
+   - quote announcement
+   - inline announcement
+   - `#imported` / hashtag cleanup
+   - recent-date sorting before long-running announcements
+3. Verify Planning Desk preview announcement card and click-to-edit behavior.
+4. Verify desktop web announcement banner from a real browser connected to the phone.
+5. Verify launcher widget dark-mode readability, resize behavior, tap behavior, and refresh after todo/event/planning-note edits.
 
 ## Deferred Larger Work
 

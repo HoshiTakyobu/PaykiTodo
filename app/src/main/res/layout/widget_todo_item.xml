@@ -18,7 +18,7 @@
         android:layout_height="wrap_content"
         android:gravity="center_vertical"
         android:maxLines="2"
-        android:textColor="#7B5A32"
+        android:textColor="@color/widget_text_secondary"
         android:textSize="11sp"
         android:textStyle="bold" />
 
@@ -30,7 +30,7 @@
         android:layout_weight="1"
         android:ellipsize="end"
         android:maxLines="2"
-        android:textColor="#2A2015"
+        android:textColor="@color/widget_text_primary"
         android:textSize="13sp" />
 
     <TextView
@@ -38,6 +38,6 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginStart="8dp"
-        android:textColor="#FFB347"
+        android:textColor="@color/widget_accent"
         android:textSize="14sp" />
 </LinearLayout>

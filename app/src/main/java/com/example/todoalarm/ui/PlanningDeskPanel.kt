@@ -24,6 +24,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Archive
 import androidx.compose.material.icons.rounded.Article
 import androidx.compose.material.icons.rounded.CalendarMonth
+import androidx.compose.material.icons.rounded.Campaign
 import androidx.compose.material.icons.rounded.CheckBox
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.Event
@@ -82,6 +83,7 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.example.todoalarm.data.PlanningNote
+import com.example.todoalarm.data.PlanningAnnouncementParser
 import com.example.todoalarm.data.PlanningImportCandidate
 import com.example.todoalarm.data.PlanningImportResult
 import com.example.todoalarm.data.PlanningLineMapping
@@ -1200,6 +1202,7 @@ private fun PlanningMarkdownPreview(
                     val mapping = mappingsByLine[line.lineNumber]
                     when (line) {
                         is PlanningRenderedLine.Heading -> PlanningMarkdownHeading(line)
+                        is PlanningRenderedLine.Announcement -> PlanningMarkdownAnnouncementLine(line, onRequestEdit)
                         is PlanningRenderedLine.Task -> PlanningMarkdownTaskLine(line, mapping, onToggleCheckbox, onRequestEdit, onApplyConflictDocument, onApplyConflictItem)
                         is PlanningRenderedLine.Text -> PlanningMarkdownTextLine(line, mapping, onRequestEdit, onApplyConflictDocument, onApplyConflictItem)
                     }
@@ -1220,6 +1223,68 @@ private fun PlanningPreviewFallback(onRequestEdit: () -> Unit) {
             Text("Markdown 预览失败", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onErrorContainer)
             Text("已保护为可编辑模式，原文不会丢失。", color = MaterialTheme.colorScheme.onErrorContainer)
             OutlinedButton(onClick = onRequestEdit) { Text("编辑原文") }
+        }
+    }
+}
+
+@Composable
+private fun PlanningMarkdownAnnouncementLine(
+    line: PlanningRenderedLine.Announcement,
+    onRequestEdit: (Int?) -> Unit
+) {
+    val accent = Color(0xFFFFB347)
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(20.dp),
+        color = accent.copy(alpha = 0.13f),
+        border = BorderStroke(1.dp, accent.copy(alpha = 0.82f)),
+        onClick = { onRequestEdit(line.lineNumber) }
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.Top,
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Icon(
+                imageVector = Icons.Rounded.Campaign,
+                contentDescription = null,
+                tint = Color(0xFFCC8030),
+                modifier = Modifier.size(22.dp)
+            )
+            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(7.dp)) {
+                Text(
+                    text = line.text,
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Surface(
+                        shape = RoundedCornerShape(999.dp),
+                        color = accent.copy(alpha = 0.20f)
+                    ) {
+                        Text(
+                            "全局公告",
+                            modifier = Modifier.padding(horizontal = 9.dp, vertical = 4.dp),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = Color(0xFF8A560F),
+                            maxLines = 1
+                        )
+                    }
+                    Surface(
+                        shape = RoundedCornerShape(999.dp),
+                        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.75f)
+                    ) {
+                        Text(
+                            line.rangeLabel,
+                            modifier = Modifier.padding(horizontal = 9.dp, vertical = 4.dp),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1
+                        )
+                    }
+                }
+            }
         }
     }
 }
@@ -1888,6 +1953,12 @@ private sealed interface PlanningRenderedLine {
         val text: String
     ) : PlanningRenderedLine
 
+    data class Announcement(
+        override val lineNumber: Int,
+        val text: String,
+        val rangeLabel: String
+    ) : PlanningRenderedLine
+
     data class Task(
         override val lineNumber: Int,
         val indentLevel: Int,
@@ -1910,6 +1981,14 @@ private fun parsePlanningMarkdownLines(markdown: String): List<PlanningRenderedL
         val lineNumber = index + 1
         val trimmed = rawLine.trim()
         if (trimmed.isBlank()) return@mapIndexedNotNull null
+
+        PlanningAnnouncementParser.parseSingleLine(rawLine, lineNumber = lineNumber)?.let { announcement ->
+            return@mapIndexedNotNull PlanningRenderedLine.Announcement(
+                lineNumber = lineNumber,
+                text = announcement.text,
+                rangeLabel = announcement.rangeLabel()
+            )
+        }
 
         HeadingPreviewRegex.matchEntire(trimmed)?.let { match ->
             return@mapIndexedNotNull PlanningRenderedLine.Heading(

@@ -41,11 +41,13 @@ This file tracks the product at a practical level for new coding sessions.
 
 ### Board Announcements
 
-- Planning Desk supports multiple announcement lines in unarchived notes, including `#公告 5.16-7.1 内容`, `#公告 2026-05-16 2026-05-20 内容`, and `> [!公告] 内容`
+- Planning Desk supports multiple announcement lines in unarchived notes, including `#公告 5.16-7.1 内容`, `#公告 2026-05-16 2026-05-20 内容`, `> [!公告] 内容`, `> #公告 内容`, checkbox announcement lines such as `- [ ] #公告 内容`, and inline `#公告` hints
 - daily board shows all active Planning Desk announcements above the greeting card when today is inside each optional date range
 - announcement banner uses an orange rounded surface, campaign icon, bold deep-brown text, and marquee for long text
+- announcement text strips trailing `#imported`, `#group ...`, and ordinary tail hashtags before display
+- active date-scoped announcements are sorted before long-running announcements, with newer start dates first
 - expired, future, archived-note, deleted-note, or removed-line announcements stay hidden
-- Settings no longer exposes a separate announcement editor; old app-settings announcement fields remain only for backward-compatible storage / backup data
+- Settings no longer exposes or stores a separate announcement editor; old app-settings announcement fields were removed and legacy SharedPreferences keys are cleaned once
 
 ### Planning Desk
 
@@ -58,6 +60,7 @@ This file tracks the product at a practical level for new coding sessions.
 - phone Planning Desk secondary actions (新建/重命名/使用说明/归档/删除) are in an overflow DropdownMenu; manual save button removed in favor of auto-save
 - phone Planning Desk includes a multi-page in-screen beginner tutorial explaining the workflow, natural writing, heading sections such as `# 收集箱` / `# 今日计划`, preview/import, future AI recognition, and directly usable examples
 - phone Markdown preview checkbox toggles rewrite the source Markdown line only; they do not directly complete imported official todos
+- phone Markdown preview renders Planning Desk announcement lines with orange styling, a campaign icon, a `全局公告` pill, and a date-range pill; tapping the line jumps back to the source line
 - phone Planning Desk editor auto-saves after a short debounce and saves before switching planning documents
 - Enter continuation attempts to keep `- [ ]` task lines flowing without forcing the user to manually type Markdown every time, including when Enter is pressed in the middle of a document
 - shortcut `任务` converts the current line to one checkbox task without duplicating `- [ ]`; shortcut `子任务` inserts a new indented child task line; shortcut chips avoid double-triggering one tap
@@ -142,6 +145,8 @@ This file tracks the product at a practical level for new coding sessions.
 - widget displays current date plus board-style rows: active Planning Desk announcements, today todo block, today schedule block, and tomorrow schedule block
 - widget uses RemoteViews `ListView`; rows are adaptive-height and no longer limited to five todos, so resizing the launcher widget reveals more board content
 - widget provider declares horizontal / vertical resize mode plus min resize dimensions for better launcher compatibility
+- widget day/night colors are resource-backed, with dark-mode background and text colors for launcher readability
+- widget refresh uses a board-range Room query rather than loading all historical todos, and duplicate `onReceive` update routing has been removed
 - tapping the widget or a row opens `MainActivity`
 - repository todo mutations and Planning Desk note edits / delete / archive operations notify widget data refresh through the application-level widget callback
 
@@ -186,6 +191,7 @@ This file tracks the product at a practical level for new coding sessions.
 - desktop web has a `规划台` tab with textarea editor, document selector, auto-save, `Ctrl+S` save, `Ctrl+Enter` parse, editable parse preview, selected import, and a help modal that explains the same DDL/reminder syntax as the phone-side Planning Desk help
 - desktop web Planning Desk uses phone-local `/api/planning/*` routes, edits the same Room planning notes as the phone UI, saves before switching documents, blocks empty selected imports, writes back `#imported` markers after import, and reuses the same AI recognition / local fallback path as the phone Planning Desk
 - desktop web Planning Desk now also shows the current note title, mapping status preview, refresh/postpone/undo controls, and conflict resolution actions for imported planning lines
+- desktop web `/api/snapshot` includes active Planning Desk announcements and the browser console renders them as a top orange announcement banner
 
 ### Destructive Action Safety
 

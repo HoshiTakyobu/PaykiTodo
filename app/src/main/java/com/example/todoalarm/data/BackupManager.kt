@@ -91,9 +91,6 @@ private fun AppSettings.toJson(): JSONObject {
         put("planningAiBaseUrl", planningAiBaseUrl)
         put("planningAiModel", planningAiModel)
         put("planningAiProviders", JSONArray(planningAiProvidersToJson(planningAiProviders, includeApiKey = false)))
-        put("announcementText", announcementText)
-        put("announcementStartDate", announcementStartDate)
-        put("announcementEndDate", announcementEndDate)
         put("hasSeenOnboarding", hasSeenOnboarding)
     }
 }
@@ -480,9 +477,6 @@ private fun JSONObject?.toSettings(): AppSettings {
         planningAiProviders = optJSONArray("planningAiProviders")
             ?.let { planningAiProvidersFromJson(it.toString()) }
             ?: emptyList(),
-        announcementText = optString("announcementText", ""),
-        announcementStartDate = optString("announcementStartDate", ""),
-        announcementEndDate = optString("announcementEndDate", ""),
         hasSeenOnboarding = optBoolean("hasSeenOnboarding", false)
     )
 }

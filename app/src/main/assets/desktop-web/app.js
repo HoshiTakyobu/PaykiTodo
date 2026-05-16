@@ -35,6 +35,7 @@ const els = {
   eventDayHeaders: document.getElementById('event-day-headers'),
   eventTimeline: document.getElementById('event-timeline'),
   snapshotMeta: document.getElementById('snapshot-meta'),
+  announcementsBanner: document.getElementById('announcements-banner'),
   panelTitle: document.getElementById('panel-title'),
   viewCaption: document.getElementById('view-caption'),
   openCreate: document.getElementById('open-create'),
@@ -490,8 +491,26 @@ async function loadSnapshot() {
   ensureSelectedEventDay();
   renderTodos();
   renderEvents();
+  renderAnnouncements();
   renderPlanningNotes();
   syncTopbar();
+}
+
+function renderAnnouncements() {
+  if (!els.announcementsBanner) return;
+  const announcements = state.snapshot?.announcements || [];
+  if (!announcements.length) {
+    els.announcementsBanner.classList.add('hidden');
+    els.announcementsBanner.innerHTML = '';
+    return;
+  }
+  const text = announcements.map(item => {
+    const range = item.rangeLabel ? item.rangeLabel + ' · ' : '';
+    const source = item.sourceNoteTitle ? '（' + item.sourceNoteTitle + '）' : '';
+    return range + item.text + source;
+  }).join(' · ');
+  els.announcementsBanner.innerHTML = '<span>' + escapeHtml(text) + '</span>';
+  els.announcementsBanner.classList.remove('hidden');
 }
 
 async function loadPlanningNotes() {

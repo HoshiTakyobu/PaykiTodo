@@ -20,6 +20,7 @@ import com.example.todoalarm.data.PlanningPostponeScope
 import com.example.todoalarm.data.PlanningRefreshScope
 import com.example.todoalarm.data.PlanningRecognitionService
 import com.example.todoalarm.data.PlanningMarkdownParser
+import com.example.todoalarm.data.PlanningAnnouncementParser
 import com.example.todoalarm.data.toPlanningImportCandidate
 import com.example.todoalarm.data.RecurrenceConfig
 import com.example.todoalarm.data.RecurrenceScope
@@ -153,11 +154,14 @@ class DesktopSyncCoordinator(
     private fun buildSnapshot(): DesktopSyncSnapshot {
         val groups = runBlocking { app.repository.getAllGroups().ifEmpty { app.repository.ensureDefaultGroups() } }
         val items = runBlocking { app.repository.getAllTodos() }
+        val notes = runBlocking { app.repository.getAllPlanningNotes() }
+        val announcements = PlanningAnnouncementParser.activeAnnouncements(notes, LocalDate.now())
         return DesktopSyncSnapshot(
             generatedAtMillis = System.currentTimeMillis(),
             groups = groups,
             todos = items.filter { it.isTodo }.sortedBy { it.dueAtMillis },
-            events = items.filter { it.isEvent }.sortedBy { it.startAtMillis ?: it.dueAtMillis }
+            events = items.filter { it.isEvent }.sortedBy { it.startAtMillis ?: it.dueAtMillis },
+            announcements = announcements
         )
     }
 

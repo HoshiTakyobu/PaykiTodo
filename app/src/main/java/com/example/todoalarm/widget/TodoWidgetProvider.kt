@@ -19,13 +19,6 @@ class TodoWidgetProvider : AppWidgetProvider() {
         }
     }
 
-    override fun onReceive(context: Context, intent: Intent) {
-        super.onReceive(context, intent)
-        if (intent.action == AppWidgetManager.ACTION_APPWIDGET_UPDATE) {
-            notifyWidgetDataChanged(context)
-        }
-    }
-
     companion object {
         private val dateFormatter: DateTimeFormatter = DateTimeFormatter.ofPattern("M月d日")
 

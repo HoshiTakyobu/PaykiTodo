@@ -2,72 +2,68 @@
 
 ## Active Development Focus
 
-The current round is PaykiTodo `1.8.2` / `versionCode 185`, focused on closing three follow-up issues from the `1.8.1` daily-use surfaces:
+The current round is PaykiTodo `1.8.3` / `versionCode 186`, focused on cleanup and parity after `1.8.2`:
 
-1. Android widget content should behave like a compact daily board, not a five-item today-todo list.
-2. Announcements should support multiple entries and be authored in Planning Desk, not Settings.
-3. Phone-side AI provider connection should handle common OpenAI-compatible Base URL shapes and report endpoint / non-JSON failures clearly.
+1. Remove the old Settings-backed announcement storage now that announcements live in Planning Desk.
+2. Make Planning Desk announcements easier to write, preview, sort, and see from desktop web.
+3. Make the Android `今日看板` widget more robust: dark-mode colors, narrower data loading, no duplicate update path, and confirmed adaptive row height.
+4. Update AI-recognition verification docs for the `1.8.1` trigger tightening and `1.8.2` Base URL endpoint fallback behavior.
 
-## Completed In 1.8.2
+## Completed In 1.8.3
 
-1. `PlanningAiCaller` now resolves endpoint candidates more flexibly:
-   - full `/chat/completions` URLs are used as-is
-   - Base URLs ending in `/v1` append `/chat/completions`
-   - root Base URLs try `/v1/chat/completions` before `/chat/completions`
-2. AI provider test connection now uses 10s connect / 20s read timeouts.
-3. HTML or other non-JSON responses now report a readable Base URL / OpenAI-compatible endpoint hint instead of surfacing `<!doctype` JSON conversion errors.
-4. Added `PlanningAnnouncementParser`:
-   - parses multiple active announcements from all unarchived Planning Desk notes
-   - supports `#公告 5.16-7.1 文本`
-   - supports `#公告 2026-05-16 2026-05-20 文本`
-   - supports `> [!公告] 文本`
-   - supports long-running announcements with no date range
-5. Daily board reads active announcements from Planning Desk notes through `TodoUiState.activeAnnouncements`.
-6. Settings no longer exposes `公告设置`; old app-settings announcement fields remain only as backward-compatible storage / backup fields.
-7. Added `DailyBoardSnapshotBuilder` so board-style filtering can be reused outside Compose.
-8. Android widget is now titled `今日看板` and displays a mixed RemoteViews list:
-   - active Planning Desk announcements
-   - today todo block including missed + today items
-   - today schedule block including the “all events ended” message
-   - tomorrow schedule block including empty state
-9. Widget row layout is adaptive-height and no longer hard-limits to five todos; launcher resizing can reveal more rows.
-10. Widget provider XML now declares min resize dimensions for better drag-resize compatibility.
-11. Planning Desk phone tutorial, desktop-web Planning Desk help, Wiki, README, current docs, and changelog now describe Planning Desk announcements and the AI Base URL behavior.
-12. Version metadata is now `1.8.2` / `versionCode 185`.
+1. Removed legacy `announcementText / announcementStartDate / announcementEndDate` fields from `AppSettings`.
+2. Removed old announcement backup serialization / deserialization; old backup JSON fields are ignored without error.
+3. Added one-time cleanup for legacy announcement SharedPreferences keys.
+4. Removed `TodoWidgetProvider.onReceive` duplicate refresh handling; default `AppWidgetProvider` routing now handles update broadcasts once.
+5. Confirmed widget rows remain adaptive-height (`wrap_content`, `maxLines=2`) and resizable metadata remains present.
+6. Relaxed Planning Desk announcement parsing:
+   - `#公告 ...`
+   - `- [ ] #公告 ...`
+   - `> #公告 ...`
+   - inline `今日提醒：#公告 ...`
+   - `> [!公告] ...`
+   - `公告: ...`
+7. Announcement display text strips trailing `#imported`, `#group ...`, and ordinary tail hashtags.
+8. Announcement sorting now prefers date-scoped active announcements, newest start date first, with long-running announcements last.
+9. Planning Desk Markdown preview renders announcement lines with orange border, campaign icon, `全局公告` pill, and date range pill; tapping the row jumps back to the source line.
+10. Android widget colors moved into `res/values/colors.xml` and `res/values-night/colors.xml`, with matching night drawables.
+11. Widget `TodoWidgetService` reloads colors on every `onDataSetChanged` and uses `ContextCompat.getColor`.
+12. Added a board-range DAO query for widget refresh so it no longer pulls every historical todo/event.
+13. Desktop web `/api/snapshot` now includes active announcements; the web UI renders a top orange announcement banner.
+14. `docs/current/AI_RECOGNITION_VERIFICATION.md` now documents:
+    - `1.8.1` trigger tightening
+    - desktop import no longer auto-parses
+    - `1.8.2` endpoint candidates and next-endpoint conditions
+    - Base URL manual test cases
+15. Version metadata is now `1.8.3` / `versionCode 186`.
 
 ## Verification Completed This Round
 
 1. `node --check app/src/main/assets/desktop-web/app.js` succeeded.
-2. `./gradlew.bat testDebugUnitTest` succeeded after adding:
-   - `PlanningAiCallerTest`
-   - `PlanningAnnouncementParserTest`
-3. `./gradlew.bat assembleDebug` succeeded and produced `app/build/outputs/apk/debug/PaykiTodo-1.8.2-debug.apk`.
+2. `./gradlew.bat testDebugUnitTest` succeeded after parser / DAO / resource changes.
+3. `./gradlew.bat assembleDebug` succeeded and produced `app/build/outputs/apk/debug/PaykiTodo-1.8.3-debug.apk`.
 4. `git diff --check` succeeded.
 
 ## Immediate Practical Next Steps
 
-After installing the `1.8.2` APK on device, verify:
+Before final completion, create a focused local commit with a concrete Chinese message; do not push unless the user asks.
 
-1. AI provider `测试连接` with:
-   - root Base URL that requires `/v1/chat/completions`
-   - Base URL already ending in `/v1`
-   - full `/v1/chat/completions`
-   - invalid root returning HTML
-   - unreachable provider / timeout
-2. Planning Desk announcements:
-   - multiple active `#公告` lines
-   - `> [!公告]` line
-   - future / expired / no-date announcements
-   - edit / delete / archive source note updates the board and widget
-3. Daily board:
-   - multiple active announcements appear above greeting
-   - old Settings announcement entry is no longer present
-4. Android launcher widget:
-   - can be added as PaykiTodo `今日看板`
-   - can be resized horizontally and vertically
-   - shows announcements / today todos / today schedules / tomorrow schedules
-   - uses today-ended schedule empty message correctly
-   - opens the app on tap
+After installing the `1.8.3` APK on device, verify:
+
+1. Planning Desk announcements:
+   - `- [ ] #公告 ...`
+   - `> #公告 ...`
+   - inline `#公告 ...`
+   - tail `#imported` cleanup
+   - newest date-range announcement before older / long-running announcements
+   - preview orange announcement card jumps back to source line
+2. Desktop web:
+   - active announcement appears below the topbar after browser refresh
+3. Android launcher widget:
+   - system dark mode readability
+   - resize behavior
+   - today/tomorrow board rows still correct
+   - refresh after todo/event/planning-note changes
 
 ## Commit Message Rule
 
@@ -75,4 +71,4 @@ PaykiTodo commit messages should describe product behavior changes and bug/debug
 
 ## Current External Dependency
 
-The active objective came from the user request for widget board content, Planning Desk multi-announcements, and AI connection repair. Do not push unless the user explicitly asks.
+The active objective came from `docs/goals/2026-05-16-paykitodo-1.8.3-goal.md`. Do not push unless the user explicitly asks.

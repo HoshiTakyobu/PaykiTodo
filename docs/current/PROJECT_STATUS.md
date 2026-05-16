@@ -7,13 +7,13 @@
 - Package name: `com.paykitodo.app`
 - Target platform: Android 14 / API 34
 - Current version in code:
-  - `versionName = "1.8.2"`
-  - `versionCode = 185`
+  - `versionName = "1.8.3"`
+  - `versionCode = 186`
 
 ## Current Build Facts
 
 - Latest debug APK output:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.8.2-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.8.3-debug.apk`
 - Minimal verification completed in the latest code round:
   - `node --check app/src/main/assets/desktop-web/app.js`
   - `./gradlew.bat testDebugUnitTest`
@@ -25,16 +25,18 @@
 
 ## Current Worktree Reality
 
-The repository is now at `1.8.2`. It carries forward the `1.8.0` Planning Desk mapping loop and the `1.8.1` AI-trigger repairs, then fixes three follow-up surfaces: AI provider endpoint compatibility, Planning Desk-sourced multi-announcements, and Android widget content that mirrors the daily board rather than only today's todos.
+The repository is now at `1.8.3`. It carries forward the `1.8.2` Planning Desk announcements, AI endpoint compatibility, and board-style widget, then closes cleanup and parity gaps around old announcement settings, announcement parsing / preview, desktop-web announcement visibility, widget dark-mode resources, and widget refresh/query behavior.
 
 Most important current baseline facts:
 
-- version metadata is `1.8.2 / 185`
+- version metadata is `1.8.3 / 186`
 - Planning Desk still keeps AI-first / local-fallback recognition, editable preview, selected import, and automatic `#imported` write-back.
 - Planning Desk AI recognition is now explicit-only: phone recognition still starts from the `识别` button, desktop recognition starts from the `识别` button or `Ctrl+Enter`, and desktop import no longer silently calls parse when no preview exists.
 - Settings -> `AI 调用配置` can test a single provider with the currently edited Base URL / API Key / model before saving; root Base URLs now try `/v1/chat/completions` first, `/v1` Base URLs append `/chat/completions`, and HTML/non-JSON responses produce a readable Base URL hint.
-- Daily board can show multiple active announcements parsed from unarchived Planning Desk notes, using explicit `#公告` / `> [!公告]` lines with optional date ranges; Settings no longer exposes a separate announcement editor.
-- Android launcher widgets now expose a `今日看板` widget backed by Room data: active announcements, today todos, today schedule state, and tomorrow schedule summary share one RemoteViews `ListView`.
+- Daily board can show multiple active announcements parsed from unarchived Planning Desk notes. Announcement parsing now accepts explicit lines, checkbox announcement lines, quote-prefixed announcement lines, and inline `#公告` hints; tail `#imported` / hashtag metadata is stripped from display text.
+- Settings no longer exposes or stores a separate announcement editor. The old `AppSettings` announcement fields and backup serialization were removed; old backup JSON fields are ignored and legacy SharedPreferences keys are cleaned once.
+- Android launcher widgets now expose a `今日看板` widget backed by Room data: active announcements, today todos, today schedule state, and tomorrow schedule summary share one RemoteViews `ListView`; widget colors support system dark mode and widget refresh uses a board-range query rather than pulling all todos.
+- Desktop web `/api/snapshot` now includes active Planning Desk announcements and the browser console renders them as a top announcement banner.
 - Launch screen delay is now 600 ms instead of 1600 ms.
 - Importing from Planning Desk now also creates persistent `planning_line_mappings` records, connecting the planning note line to the created todo or event item.
 - Mapping relocation is no longer line-number-only: `PlanningLineMatcher` normalizes text, ignores `#imported`, hashes the line, and falls back to fuzzy edit-distance matching when the original line wording changes.
@@ -67,7 +69,7 @@ Recent code inspection and build verification cover:
 
 ## Documentation Health
 
-Current docs have been synchronized for `1.8.2`:
+Current docs have been synchronized for `1.8.3`:
 
 - `README.md`
 - `CHANGELOG.md`
@@ -84,10 +86,10 @@ Older versioned docs under `docs/` remain historical references and should not b
 
 ## Current Risk Areas
 
-1. Device-side verification is still required for the full `1.8.2` Planning Desk mapping loop: import -> status sync -> completed markdown sync -> refresh -> postpone -> undo -> conflict resolution.
-2. Desktop-browser verification is still required for the same mapping loop after installing `PaykiTodo-1.8.2-debug.apk` on the phone and reconnecting from a real browser.
-3. Widget behavior must be verified on a real launcher because Android widget picker / RemoteViews refresh behavior cannot be fully covered by JVM tests.
-4. Planning Desk announcement syntax, multi-announcement visibility, date-range filtering, long-text marquee, and widget propagation need real UI verification.
+1. Device-side verification is still required for the full `1.8.3` Planning Desk mapping loop: import -> status sync -> completed markdown sync -> refresh -> postpone -> undo -> conflict resolution.
+2. Desktop-browser verification is still required for the mapping loop and the top announcement banner after installing `PaykiTodo-1.8.3-debug.apk` on the phone and reconnecting from a real browser.
+3. Widget behavior must be verified on a real launcher because Android widget picker / RemoteViews refresh, resize, and dark-mode behavior cannot be fully covered by JVM tests.
+4. Planning Desk announcement syntax, multi-announcement visibility, date-range filtering, long-text marquee, preview highlighting, desktop-web propagation, and widget propagation need real UI verification.
 5. Unit tests currently cover parser / AI / line-matching behavior, but there are still no dedicated repository-level automated tests for refresh/postpone/undo/conflict flows; those are presently covered by code inspection plus build/test success.
 6. Long-running chat sessions can become unreliable, so repository docs must remain the source of truth for future continuation.
 

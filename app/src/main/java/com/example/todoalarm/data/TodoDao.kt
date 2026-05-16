@@ -83,6 +83,35 @@ interface TodoDao {
     @Query("SELECT * FROM todo_items")
     suspend fun getAllTodos(): List<TodoItem>
 
+    @Query(
+        """
+        SELECT * FROM todo_items
+        WHERE completed = 0
+        AND canceled = 0
+        AND (
+            (
+                itemType = 'TODO'
+                AND (
+                    missed = 1
+                    OR dueAtMillis BETWEEN :todoStartMillis AND :boardEndMillis
+                )
+            )
+            OR (
+                itemType = 'EVENT'
+                AND startAtMillis IS NOT NULL
+                AND startAtMillis < :boardEndMillis
+                AND COALESCE(endAtMillis, startAtMillis) >= :boardStartMillis
+            )
+        )
+        ORDER BY dueAtMillis ASC, createdAtMillis ASC
+        """
+    )
+    suspend fun getActiveItemsForBoardRange(
+        todoStartMillis: Long,
+        boardStartMillis: Long,
+        boardEndMillis: Long
+    ): List<TodoItem>
+
     @Query("DELETE FROM todo_items")
     suspend fun clearTodos()
 

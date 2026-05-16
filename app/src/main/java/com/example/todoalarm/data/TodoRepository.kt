@@ -29,6 +29,18 @@ class TodoRepository(
     suspend fun getTodo(id: Long): TodoItem? = todoDao.getById(id)
     suspend fun getGroup(groupId: Long): TaskGroup? = todoDao.getGroupById(groupId)
     suspend fun getAllTodos(): List<TodoItem> = todoDao.getAllTodos()
+    suspend fun getActiveItemsForBoardRange(now: LocalDate = LocalDate.now()): List<TodoItem> {
+        val zone = ZoneId.systemDefault()
+        val boardStart = now.atStartOfDay(zone).toInstant().toEpochMilli()
+        val boardEnd = now.plusDays(2).atStartOfDay(zone).toInstant().toEpochMilli()
+        val todoStart = now.minusDays(30).atStartOfDay(zone).toInstant().toEpochMilli()
+        return todoDao.getActiveItemsForBoardRange(
+            todoStartMillis = todoStart,
+            boardStartMillis = boardStart,
+            boardEndMillis = boardEnd
+        )
+    }
+
     suspend fun getAllPlanningNotes(): List<PlanningNote> = todoDao.getAllPlanningNotes()
     suspend fun getPlanningMappingsForNote(noteId: Long): List<PlanningLineMapping> = todoDao.getMappingsForNote(noteId)
 

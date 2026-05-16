@@ -82,6 +82,7 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.pm.PackageInfoCompat
 import com.example.todoalarm.data.AppSettings
 import com.example.todoalarm.data.PlanningAiCaller
+import com.example.todoalarm.data.PlanningAiModelFetchResult
 import com.example.todoalarm.data.PlanningAiProvider
 import com.example.todoalarm.data.PlanningAiTestResult
 import com.example.todoalarm.data.ReminderAudioChannel
@@ -890,8 +891,13 @@ private fun PlanningAiProviderDialog(
     var showApiKey by remember { mutableStateOf(false) }
     var testing by remember { mutableStateOf(false) }
     var testResult by remember { mutableStateOf<PlanningAiTestResult?>(null) }
+    var fetchingModels by remember { mutableStateOf(false) }
+    var fetchedModels by remember(provider.id) { mutableStateOf<List<String>>(emptyList()) }
+    var modelFetchResult by remember { mutableStateOf<PlanningAiModelFetchResult?>(null) }
+    var modelMenuExpanded by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     val missingRequired = baseUrl.isBlank() || apiKey.isBlank() || model.isBlank()
+    val modelFetchReady = baseUrl.isNotBlank() && apiKey.isNotBlank()
 
     LaunchedEffect(testResult) {
         if (testResult != null) {
@@ -904,11 +910,20 @@ private fun PlanningAiProviderDialog(
         testResult = null
     }
 
+    fun clearFetchedModels() {
+        fetchedModels = emptyList()
+        modelFetchResult = null
+        modelMenuExpanded = false
+    }
+
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(if (provider.name.isBlank() && provider.baseUrl.isBlank()) "添加 AI 源" else "编辑 AI 源") },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Column(
+                modifier = Modifier.verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                     Text("启用此源", fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
                     Switch(checked = enabled, onCheckedChange = { enabled = it; clearTestResult() })
@@ -923,7 +938,11 @@ private fun PlanningAiProviderDialog(
                 )
                 OutlinedTextField(
                     value = baseUrl,
-                    onValueChange = { baseUrl = it; clearTestResult() },
+                    onValueChange = {
+                        baseUrl = it
+                        clearTestResult()
+                        clearFetchedModels()
+                    },
                     modifier = Modifier.fillMaxWidth(),
                     label = { Text("Base URL") },
                     singleLine = true,
@@ -933,7 +952,11 @@ private fun PlanningAiProviderDialog(
                 )
                 OutlinedTextField(
                     value = apiKey,
-                    onValueChange = { apiKey = it; clearTestResult() },
+                    onValueChange = {
+                        apiKey = it
+                        clearTestResult()
+                        clearFetchedModels()
+                    },
                     modifier = Modifier.fillMaxWidth(),
                     label = { Text("API Key") },
                     singleLine = true,
@@ -945,15 +968,91 @@ private fun PlanningAiProviderDialog(
                         }
                     }
                 )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    OutlinedButton(
+                        onClick = {
+                            scope.launch {
+                                fetchingModels = true
+                                fetchedModels = emptyList()
+                                modelFetchResult = null
+                                clearTestResult()
+                                try {
+                                    val result = PlanningAiCaller.fetchModels(
+                                        provider.copy(
+                                            name = name.ifBlank { "未命名服务" },
+                                            baseUrl = baseUrl,
+                                            apiKey = apiKey,
+                                            model = model,
+                                            enabled = true
+                                        )
+                                    )
+                                    modelFetchResult = result
+                                    if (result is PlanningAiModelFetchResult.Success) {
+                                        fetchedModels = result.models
+                                        if (model.isBlank() || model !in result.models) {
+                                            model = result.models.first()
+                                        }
+                                    }
+                                } finally {
+                                    fetchingModels = false
+                                }
+                            }
+                        },
+                        enabled = !fetchingModels && modelFetchReady,
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text(if (fetchingModels) "获取中..." else "获取模型")
+                    }
+                    Text(
+                        text = if (fetchedModels.isEmpty()) "未获取" else "${fetchedModels.size} 个模型",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = if (fetchedModels.isEmpty()) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.primary
+                    )
+                }
+                if (fetchedModels.isNotEmpty()) {
+                    PlanningAiModelDropdown(
+                        selectedModel = model,
+                        models = fetchedModels,
+                        expanded = modelMenuExpanded,
+                        onExpandedChange = { modelMenuExpanded = it },
+                        onSelect = { selected ->
+                            model = selected
+                            modelMenuExpanded = false
+                            clearTestResult()
+                        }
+                    )
+                }
                 OutlinedTextField(
                     value = model,
-                    onValueChange = { model = it; clearTestResult() },
+                    onValueChange = {
+                        model = it
+                        clearTestResult()
+                    },
                     modifier = Modifier.fillMaxWidth(),
-                    label = { Text("模型名") },
+                    label = { Text(if (fetchedModels.isEmpty()) "模型名" else "模型名（可手动覆盖）") },
                     singleLine = true,
                     isError = model.isBlank(),
                     placeholder = { Text("例如 deepseek-v4-flash / qwen3.6") }
                 )
+                modelFetchResult?.let { result ->
+                    val (message, color) = when (result) {
+                        is PlanningAiModelFetchResult.Success -> {
+                            "✓ 已从 ${result.endpoint} 获取 ${result.models.size} 个模型" to Color(0xFF1B7F3A)
+                        }
+                        is PlanningAiModelFetchResult.Failure -> {
+                            "✗ 模型获取失败：${result.message}；仍可手动填写模型名。" to MaterialTheme.colorScheme.error
+                        }
+                    }
+                    Text(
+                        text = message,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = color
+                    )
+                }
                 OutlinedButton(
                     onClick = {
                         scope.launch {
@@ -1020,6 +1119,66 @@ private fun PlanningAiProviderDialog(
             }
         }
     )
+}
+
+@Composable
+private fun PlanningAiModelDropdown(
+    selectedModel: String,
+    models: List<String>,
+    expanded: Boolean,
+    onExpandedChange: (Boolean) -> Unit,
+    onSelect: (String) -> Unit
+) {
+    Box {
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { onExpandedChange(true) },
+            shape = RoundedCornerShape(18.dp),
+            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.26f),
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.18f))
+        ) {
+            Row(
+                modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                    Text("从已获取模型中选择", fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
+                    Text(
+                        text = selectedModel.ifBlank { "请选择模型" },
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.primary,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+                Icon(Icons.Rounded.ArrowDropDown, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
+        DropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { onExpandedChange(false) }
+        ) {
+            models.forEach { option ->
+                DropdownMenuItem(
+                    text = {
+                        Text(
+                            text = option,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    },
+                    trailingIcon = {
+                        if (option == selectedModel) {
+                            Icon(Icons.Rounded.Check, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                        }
+                    },
+                    onClick = { onSelect(option) }
+                )
+            }
+        }
+    }
 }
 
 @Composable

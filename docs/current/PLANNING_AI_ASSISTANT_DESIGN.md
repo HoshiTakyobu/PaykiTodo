@@ -1,6 +1,6 @@
 # PaykiTodo 规划台 AI 识别设计
 
-状态：`1.7.25` 已接入手机端和桌面 Web 规划台的真实网络调用；当前 `1.8.4` 继续沿用这条 AI 优先 / 本地规则回退链路，并补充了单个 Provider 的“测试连接”和 Base URL endpoint 兼容修复。设置页保存多个 OpenAI-compatible Provider，规划台“识别”会在启用 AI 且配置完整时优先调用 AI，失败时回退本地规则；编辑、换行、自动保存和桌面导入不会隐式触发 AI。
+状态：`1.7.25` 已接入手机端和桌面 Web 规划台的真实网络调用；当前 `1.8.5` 继续沿用这条 AI 优先 / 本地规则回退链路，并补充了单个 Provider 的“获取模型”“测试连接”和 Base URL endpoint 兼容修复。设置页保存多个 OpenAI-compatible Provider，规划台“识别”会在启用 AI 且配置完整时优先调用 AI，失败时回退本地规则；编辑、换行、自动保存和桌面导入不会隐式触发 AI。
 
 ## 目标
 
@@ -41,7 +41,7 @@
 每个服务商至少需要：
 
 - `name`：本地显示名。
-- `baseUrl`：OpenAI 兼容接口地址，可以填写服务根地址、`https://example.com/v1`，或完整 `https://example.com/v1/chat/completions`。
+- `baseUrl`：OpenAI 兼容接口地址，可以填写服务根地址、`https://example.com/v1`、完整 `https://example.com/v1/chat/completions`，或完整 `https://example.com/v1/models`。
 - `apiKey`：用户自己的 Key。
 - `model`：模型名，例如 `deepseek-v4-flash`、`qwen3.6`。
 - `enabled`：是否启用。
@@ -88,7 +88,8 @@ AI 应只输出 JSON，不输出解释文本。建议结构：
 ## 风险控制
 
 - 网络失败：按启用 Provider 顺序尝试下一个；全部失败后自动回到本地规则识别，并在预览页显示回退提示。
-- Endpoint 兼容：完整 `/chat/completions` URL 直接使用；`/v1` Base URL 追加 `/chat/completions`；服务根地址先尝试 `/v1/chat/completions`，再尝试 `/chat/completions`。
+- Chat endpoint 兼容：完整 `/chat/completions` URL 直接使用；完整 `/models` URL 会转换为同级 `/chat/completions`；`/v1` Base URL 追加 `/chat/completions`；服务根地址先尝试 `/v1/chat/completions`，再尝试 `/chat/completions`。
+- Model endpoint 兼容：完整 `/models` URL 直接使用；完整 `/chat/completions` URL 会转换为同级 `/models`；`/v1` Base URL 追加 `/models`；服务根地址先尝试 `/v1/models`，再尝试 `/models`。
 - 非 JSON 响应：如果中转或服务返回 HTML / 网页内容，提示检查 Base URL 是否应填写到 `/v1` 或完整 endpoint，不再显示原始 `<!doctype` JSON 转换错误。
 - 可重试失败：401 / 403 / 429 / 500 / 502 / 503 / 504、连接超时、DNS 解析失败。
 - 不可重试失败：400 请求格式错误、用户主动取消。
@@ -106,4 +107,5 @@ AI 应只输出 JSON，不输出解释文本。建议结构：
 5. AI 和本地规则共用现有预览、编辑、导入闭环。
 6. 手机端和桌面 Web 规划台现已共用 `PlanningRecognitionService` 识别入口，桌面预览摘要也会显示共享的回退消息。
 7. `1.8.2` 起，Provider 测试连接使用 10s connect / 20s read timeout，并对 root Base URL、`/v1` Base URL 和完整 endpoint 做 endpoint 候选处理。
-8. 可选后续：支持从本地 JSON 模板导入 Provider 配置。
+8. `1.8.5` 起，Provider 编辑弹窗支持只填 Base URL / API Key 后拉取 `/models`，成功后用下拉选择模型，失败时仍可手动填写模型名。
+9. 可选后续：支持从本地 JSON 模板导入 Provider 配置。

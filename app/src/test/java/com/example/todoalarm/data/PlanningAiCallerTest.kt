@@ -30,4 +30,39 @@ class PlanningAiCallerTest {
             PlanningAiCaller.endpointCandidates("https://example.com/v1")
         )
     }
+
+    @Test
+    fun endpointCandidatesConvertModelsUrlToChatCompletionUrl() {
+        assertEquals(
+            listOf("https://example.com/v1/chat/completions"),
+            PlanningAiCaller.endpointCandidates("https://example.com/v1/models")
+        )
+    }
+
+    @Test
+    fun modelEndpointCandidatesPreferOpenAiCompatibleV1ForRootBaseUrl() {
+        assertEquals(
+            listOf(
+                "https://example.com/v1/models",
+                "https://example.com/models"
+            ),
+            PlanningAiCaller.modelEndpointCandidates("https://example.com/")
+        )
+    }
+
+    @Test
+    fun modelEndpointCandidatesConvertChatCompletionUrlToModelsUrl() {
+        assertEquals(
+            listOf("https://example.com/v1/models"),
+            PlanningAiCaller.modelEndpointCandidates("https://example.com/v1/chat/completions")
+        )
+    }
+
+    @Test
+    fun modelEndpointCandidatesKeepExplicitModelsUrl() {
+        assertEquals(
+            listOf("https://example.com/v1/models"),
+            PlanningAiCaller.modelEndpointCandidates("https://example.com/v1/models")
+        )
+    }
 }

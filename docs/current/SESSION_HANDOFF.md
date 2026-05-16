@@ -6,44 +6,34 @@ Long-running Codex sessions can become unreliable. This file exists so a new ses
 
 ## Current Handoff Summary
 
-- The project is currently at code version `1.8.4` / `versionCode 187`.
-- Latest debug APK output: `app/build/outputs/apk/debug/PaykiTodo-1.8.4-debug.apk`.
+- The project is currently at code version `1.8.5` / `versionCode 188`.
+- Latest debug APK output after final build: `app/build/outputs/apk/debug/PaykiTodo-1.8.5-debug.apk`.
 - Latest verification in this round:
   - `node --check app/src/main/assets/desktop-web/app.js`
   - `./gradlew.bat testDebugUnitTest`
   - `./gradlew.bat assembleDebug`
   - `git diff --check`
-- This round implements the `docs/goals/2026-05-16-paykitodo-1.8.4-goal.md` scope: desktop-web announcement marquee, desktop-web system dark theme, Android widget row deep links, widget single empty state, and data-ready launch hiding.
+- This round implements phone-side AI Provider model discovery in Settings -> `AI 调用配置`.
 - Do not push to GitHub unless the user explicitly asks.
 
-## Latest Changes In 1.8.4
+## Latest Changes In 1.8.5
 
-1. Upgraded app version metadata to `1.8.4` / `versionCode 187`.
-2. Desktop-web announcement banner now adds `marquee-needed` only when the combined active announcement text exceeds 60 characters.
-3. Desktop-web long announcements scroll horizontally; hovering the banner pauses the marquee.
-4. Desktop-web CSS now has light/dark theme variables with `@media (prefers-color-scheme: dark)`.
-5. Desktop-web timeline cards, event cards, modal sheets, summary cards, tab buttons, sidebar cards, Planning Desk surfaces, inputs, and announcement banner now use the theme variables for dark-mode readability.
-6. Widget rows now use explicit row types: `HEADER`, `EMPTY`, `TODO`, `EVENT`, `ANNOUNCEMENT`.
-7. Widget row fill-in intents now carry `EXTRA_OPEN_TODO_ID`, `EXTRA_OPEN_EVENT_ID`, or `EXTRA_OPEN_PLANNING_NOTE_ID` as appropriate.
-8. `TodoWidgetProvider` uses a mutable `PendingIntentTemplate` on Android 12+ so list-row fill-in extras work.
-9. `MainActivity` and `DashboardLaunchRoute` parse widget deep-link targets in addition to Settings section targets.
-10. Dashboard launch routing opens targeted todo rows in the todo editor, targeted event rows in Calendar event details, and targeted announcement rows in the source Planning Desk note.
-11. Widget completely empty board state now shows only `今天没有安排，去 App 创建吧`.
-12. `TodoUiState.dataReady` marks the first real combined state; launch screen hides when ready with an 800ms fallback.
-13. The goal prompt for this round is archived under `docs/goals/2026-05-16-paykitodo-1.8.4-goal.md`.
+1. Upgraded app version metadata to `1.8.5` / `versionCode 188`.
+2. `PlanningAiCaller` now exposes a model-list fetch path for OpenAI-compatible `/models` endpoints.
+3. Model endpoint fallback supports service roots, `/v1`, full `/chat/completions`, and full `/models` Base URLs.
+4. Model responses parse standard `data[].id` values and compatible top-level / `models` arrays.
+5. Model fetch errors are user-readable for invalid keys / permissions, unsupported endpoints, HTML or non-JSON responses, and incompatible JSON formats.
+6. The phone AI source dialog now has a `获取模型` action enabled after Base URL and API Key are filled.
+7. Successfully fetched models appear in a compact dropdown, and the first model is selected automatically when the current model is blank or stale.
+8. Manual model-name entry remains available, so providers without `/models` can still be configured and tested.
+9. Existing `测试连接` behavior remains tied to the currently selected / typed model.
 
 ## Files Most Relevant To This Round
 
 - `app/build.gradle.kts`
-- `app/src/main/assets/desktop-web/app.css`
-- `app/src/main/assets/desktop-web/app.js`
-- `app/src/main/java/com/example/todoalarm/widget/TodoWidgetProvider.kt`
-- `app/src/main/java/com/example/todoalarm/widget/TodoWidgetService.kt`
-- `app/src/main/java/com/example/todoalarm/ui/MainActivity.kt`
-- `app/src/main/java/com/example/todoalarm/ui/DashboardScreen.kt`
-- `app/src/main/java/com/example/todoalarm/ui/DashboardChrome.kt`
-- `app/src/main/java/com/example/todoalarm/ui/CalendarPanel.kt`
-- `app/src/main/java/com/example/todoalarm/ui/TodoViewModel.kt`
+- `app/src/main/java/com/example/todoalarm/data/PlanningAiCaller.kt`
+- `app/src/main/java/com/example/todoalarm/ui/SettingsPanel.kt`
+- `app/src/test/java/com/example/todoalarm/data/PlanningAiCallerTest.kt`
 - `CHANGELOG.md`
 - `README.md`
 - `TODO.md`
@@ -51,35 +41,33 @@ Long-running Codex sessions can become unreliable. This file exists so a new ses
 - `docs/current/FEATURE_LEDGER.md`
 - `docs/current/CURRENT_TASK.md`
 - `docs/current/SESSION_HANDOFF.md`
+- `docs/current/PLANNING_AI_ASSISTANT_DESIGN.md`
+- `docs/current/AI_RECOGNITION_VERIFICATION.md`
+- `app/src/main/assets/wiki/index.html`
 
 ## Current Verification Focus
 
-1. Build `PaykiTodo-1.8.4-debug.apk`.
-2. Verify desktop web announcement behavior:
-   - short text stays static;
-   - 60+ character text scrolls;
-   - hover pauses scrolling.
-3. Verify desktop web system dark mode readability for:
-   - `.timeline-card`
-   - `.event-card`
-   - `.modal-sheet`
-   - `.summary-card`
-   - `.tab-btn`
-   - `.sidebar-card`
-   - `.announcements-banner`
-4. Verify launcher widget behavior on a real device:
-   - todo row opens the matching todo;
-   - event row opens Calendar event details;
-   - announcement row opens the source Planning Desk note;
-   - header and empty rows return to the default daily board;
-   - completely empty board shows a single empty row.
-5. Verify launch screen disappears when data is ready and never waits longer than roughly 800ms.
+1. Build `PaykiTodo-1.8.5-debug.apk`.
+2. Device-test Settings -> `AI 调用配置` with real providers:
+   - service root -> `/v1/models`
+   - `/v1` -> `/v1/models`
+   - full `/chat/completions` -> sibling `/models`
+   - full `/models` exact endpoint
+   - invalid API Key / 403
+   - unsupported `/models` / 404
+   - HTML or non-JSON Base URL response
+   - dropdown model selection followed by `测试连接`
+   - manual model entry after model fetch failure
+3. Re-check the carried `1.8.4` surfaces after installing the new APK:
+   - desktop web announcement marquee and system dark mode
+   - widget row deep links and single empty state
+   - data-ready launch hiding
 
 ## Deferred Larger Work
 
 - Planning Desk remains an import + tracked refresh/sync model, not a fully live bidirectional rich editor.
 - Drag-and-drop planning, Gantt chart, AI auto-planning, complex project tree, and deeper desktop parity remain deferred.
-- Widget row deep links are implemented, but launcher-specific PendingIntent behavior still needs real-device confirmation.
+- Provider model discovery is implemented for OpenAI-compatible `/models`; some third-party gateways may still block or customize model-list endpoints, so manual model entry remains intentionally supported.
 
 ## Required Reading For A New Session
 

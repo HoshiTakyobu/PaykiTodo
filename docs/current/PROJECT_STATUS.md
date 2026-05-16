@@ -7,13 +7,13 @@
 - Package name: `com.paykitodo.app`
 - Target platform: Android 14 / API 34
 - Current version in code:
-  - `versionName = "1.8.4"`
-  - `versionCode = 187`
+  - `versionName = "1.8.5"`
+  - `versionCode = 188`
 
 ## Current Build Facts
 
 - Latest debug APK output:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.8.4-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.8.5-debug.apk`
 - Minimal verification completed in the latest code round:
   - `node --check app/src/main/assets/desktop-web/app.js`
   - `./gradlew.bat testDebugUnitTest`
@@ -25,14 +25,15 @@
 
 ## Current Worktree Reality
 
-The repository is now at `1.8.4`. It carries forward the `1.8.3` Planning Desk announcement and board-widget baseline, then closes the next desktop/widget/startup gaps: desktop-web announcement marquee, system-follow dark mode, widget row deep links, widget single empty state, and data-ready launch hiding.
+The repository is now at `1.8.5`. It carries forward the `1.8.4` desktop/widget/startup baseline and adds phone-side AI Provider model discovery: Settings can fetch available models from OpenAI-compatible `/models` endpoints using only Base URL and API Key, then let the user choose from a dropdown while keeping manual model entry as a fallback.
 
 Most important current baseline facts:
 
-- version metadata is `1.8.4 / 187`
+- version metadata is `1.8.5 / 188`
 - Planning Desk still keeps AI-first / local-fallback recognition, editable preview, selected import, and automatic `#imported` write-back.
 - Planning Desk AI recognition is now explicit-only: phone recognition still starts from the `识别` button, desktop recognition starts from the `识别` button or `Ctrl+Enter`, and desktop import no longer silently calls parse when no preview exists.
-- Settings -> `AI 调用配置` can test a single provider with the currently edited Base URL / API Key / model before saving; root Base URLs now try `/v1/chat/completions` first, `/v1` Base URLs append `/chat/completions`, and HTML/non-JSON responses produce a readable Base URL hint.
+- Settings -> `AI 调用配置` can fetch a single provider's model list with only Base URL / API Key before saving. Model fetch handles service roots, `/v1`, full `/chat/completions`, and full `/models` URLs, shows a compact dropdown on success, keeps a manual model-name fallback, and reports API-key / endpoint / non-JSON failures in user-readable language.
+- Settings -> `AI 调用配置` can still test a single provider with the currently edited Base URL / API Key / model before saving; root Base URLs try `/v1/chat/completions` first, `/v1` Base URLs append `/chat/completions`, full `/models` URLs convert back to sibling `/chat/completions`, and HTML/non-JSON responses produce a readable Base URL hint.
 - Daily board can show multiple active announcements parsed from unarchived Planning Desk notes. Announcement parsing now accepts explicit lines, checkbox announcement lines, quote-prefixed announcement lines, and inline `#公告` hints; tail `#imported` / hashtag metadata is stripped from display text.
 - Settings no longer exposes or stores a separate announcement editor. The old `AppSettings` announcement fields and backup serialization were removed; old backup JSON fields are ignored and legacy SharedPreferences keys are cleaned once.
 - Android launcher widgets now expose a `今日看板` widget backed by Room data: active announcements, today todos, today schedule state, and tomorrow schedule summary share one RemoteViews `ListView`; widget colors support system dark mode and widget refresh uses a board-range query rather than pulling all todos.
@@ -66,13 +67,13 @@ Recent code inspection and build verification cover:
 - `TodoViewModel.kt`: phone-side orchestration for mapping operations and reminder rescheduling after planning operations.
 - `DesktopSyncCoordinator.kt`, `DesktopSyncServer.kt`, `app/src/main/assets/desktop-web/*`: desktop Planning Desk mapping APIs, preview/status rendering, desktop refresh/postpone/undo/conflict actions, announcement marquee, and system-follow dark theme.
 - `BackupManager.kt`, `BackupModels.kt`: planning mapping export/import.
-- `PlanningAiCaller.kt`, `SettingsPanel.kt`: AI provider test-connection path, endpoint fallback, and Settings UI.
+- `PlanningAiCaller.kt`, `SettingsPanel.kt`: AI provider model-list fetch path, test-connection path, endpoint fallback, and Settings UI.
 - `PlanningAnnouncementParser.kt`, `DashboardChrome.kt`, `PlanningDeskPanel.kt`: Planning Desk multi-announcement parsing, help text, and board banner visibility.
 - `DailyBoardSnapshot.kt`, `TodoWidgetProvider.kt`, `TodoWidgetService.kt`, widget XML resources, `AndroidManifest.xml`, `MainActivity.kt`, `DashboardScreen.kt`, `CalendarPanel.kt`: Android launcher widget registration, board-style RemoteViews data path, row-level deep links, single empty state, and in-app launch routing.
 
 ## Documentation Health
 
-Current docs have been synchronized for `1.8.4`:
+Current docs have been synchronized for `1.8.5`:
 
 - `README.md`
 - `CHANGELOG.md`
@@ -90,11 +91,12 @@ Older versioned docs under `docs/` remain historical references and should not b
 ## Current Risk Areas
 
 1. Device-side verification is still required for the full Planning Desk mapping loop: import -> status sync -> completed markdown sync -> refresh -> postpone -> undo -> conflict resolution.
-2. Desktop-browser verification is still required for the mapping loop, system dark mode, and the top announcement marquee after installing `PaykiTodo-1.8.4-debug.apk` on the phone and reconnecting from a real browser.
-3. Widget behavior must be verified on a real launcher because Android widget picker / RemoteViews refresh, resize, dark-mode behavior, and row-level PendingIntent deep links cannot be fully covered by JVM tests.
-4. Planning Desk announcement syntax, multi-announcement visibility, date-range filtering, long-text marquee, preview highlighting, desktop-web propagation, and widget propagation need real UI verification.
-5. Unit tests currently cover parser / AI / line-matching behavior, but there are still no dedicated repository-level automated tests for refresh/postpone/undo/conflict flows; those are presently covered by code inspection plus build/test success.
-6. Long-running chat sessions can become unreliable, so repository docs must remain the source of truth for future continuation.
+2. Settings -> AI 调用配置 model discovery still needs device-side verification with real providers: valid `/models`, root and `/v1` Base URLs, full `/chat/completions` conversion, invalid keys, unsupported `/models`, HTML responses, dropdown selection, and manual fallback.
+3. Desktop-browser verification is still required for the mapping loop, system dark mode, and the top announcement marquee after installing `PaykiTodo-1.8.5-debug.apk` on the phone and reconnecting from a real browser.
+4. Widget behavior must be verified on a real launcher because Android widget picker / RemoteViews refresh, resize, dark-mode behavior, and row-level PendingIntent deep links cannot be fully covered by JVM tests.
+5. Planning Desk announcement syntax, multi-announcement visibility, date-range filtering, long-text marquee, preview highlighting, desktop-web propagation, and widget propagation need real UI verification.
+6. Unit tests currently cover parser / AI / line-matching behavior, but there are still no dedicated repository-level automated tests for refresh/postpone/undo/conflict flows; those are presently covered by code inspection plus build/test success.
+7. Long-running chat sessions can become unreliable, so repository docs must remain the source of truth for future continuation.
 
 ## How A New Session Should Start
 

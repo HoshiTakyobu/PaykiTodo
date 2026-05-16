@@ -2,7 +2,7 @@
 
 ## Scope
 
-This document verifies the PaykiTodo `1.8.4` Planning Desk AI-recognition path. AI recognition must only run after an explicit recognition action, then still enter the preview-first import flow.
+This document verifies the PaykiTodo `1.8.5` Planning Desk AI-recognition path. AI recognition must only run after an explicit recognition action, then still enter the preview-first import flow.
 
 ## Phone Call Chain
 
@@ -46,10 +46,23 @@ The phone editor auto-save effects call `onSaveNote` / `onSyncMappings` only. Th
 
 - `PlanningAiCaller.endpointCandidates` resolves provider Base URLs as follows:
   1. full `/chat/completions` URL: use directly
-  2. URL ending in `/v1`: append `/chat/completions`
-  3. service root: try `/v1/chat/completions`, then `/chat/completions`
+  2. full `/models` URL: convert to the sibling `/chat/completions`
+  3. URL ending in `/v1`: append `/chat/completions`
+  4. service root: try `/v1/chat/completions`, then `/chat/completions`
 - `shouldTryNextEndpoint` tries the next endpoint after non-JSON responses and after HTTP `400 / 404 / 405`, which are common signs that the path shape is wrong for an OpenAI-compatible service.
 - HTML responses, such as filling a site root that returns an HTML homepage, now produce a readable Base URL / endpoint hint instead of surfacing raw `<!doctype` JSON conversion errors.
+
+## 1.8.5 Model Discovery Compatibility
+
+- `PlanningAiCaller.modelEndpointCandidates` resolves provider Base URLs as follows:
+  1. full `/models` URL: use directly
+  2. full `/chat/completions` URL: convert to the sibling `/models`
+  3. URL ending in `/v1`: append `/models`
+  4. service root: try `/v1/models`, then `/models`
+- The phone Settings -> `AI 调用配置` provider dialog can fetch models after Base URL and API Key are filled.
+- Fetch success shows a compact model dropdown and defaults the model field to the first fetched model if the field is blank or not in the fetched list.
+- Fetch failure does not block manual model entry.
+- Expected model-list response is OpenAI-compatible `data[].id`; compatible top-level arrays / `models` arrays are also tolerated.
 
 ## Expected UI Messages
 
@@ -69,16 +82,17 @@ The phone editor auto-save effects call `onSaveNote` / `onSyncMappings` only. Th
 
 1. Settings -> `AI 调用配置`.
 2. Add one enabled provider with valid Base URL, API Key, and model.
-3. Tap `测试连接`; expect green success text.
+3. If the provider supports model listing, tap `获取模型`; expect a green success message and a dropdown of model names. Select one model or accept the first default.
+4. Tap `测试连接`; expect green success text.
    - Base URL may be a service root, a `/v1` URL, or a full `/v1/chat/completions` URL.
    - If the service returns HTML / non-JSON, expect a readable Base URL hint rather than a raw `<!doctype` JSON conversion error.
-4. Open Planning Desk and write free-form planning text.
-5. Tap `识别`.
-6. Expect preview candidates and the AI success message. Import still requires selecting candidates and confirming import.
+5. Open Planning Desk and write free-form planning text.
+6. Tap `识别`.
+7. Expect preview candidates and the AI success message. Import still requires selecting candidates and confirming import.
 
 ### 1A. Base URL Shape Checks
 
-Use the same valid API Key and model, then test these Base URL shapes in the provider dialog:
+Use the same valid API Key and model, then test these chat-completion Base URL shapes in the provider dialog:
 
 1. `https://api.deepseek.com`
    - Expect success through the automatic `/v1/chat/completions` candidate.
@@ -86,8 +100,25 @@ Use the same valid API Key and model, then test these Base URL shapes in the pro
    - Expect success after appending `/chat/completions`.
 3. `https://api.deepseek.com/v1/chat/completions`
    - Expect success with the exact endpoint.
-4. `https://example.com`
+4. `https://api.deepseek.com/v1/models`
+   - Expect conversion to `https://api.deepseek.com/v1/chat/completions`.
+5. `https://example.com`
    - Expect a friendly non-JSON / Base URL hint, not a raw JSON parse exception.
+
+### 1B. Model Fetch Shape Checks
+
+Use the same valid API Key, then test these Base URL shapes with `获取模型`:
+
+1. `https://api.deepseek.com`
+   - Expect `/v1/models` to be tried first.
+2. `https://api.deepseek.com/v1`
+   - Expect `/v1/models`.
+3. `https://api.deepseek.com/v1/chat/completions`
+   - Expect conversion to `https://api.deepseek.com/v1/models`.
+4. `https://api.deepseek.com/v1/models`
+   - Expect the exact endpoint.
+5. A provider that does not expose `/models`
+   - Expect a readable failure and manual model-name fallback to remain usable.
 
 ### 2. AI Failure Fallback
 

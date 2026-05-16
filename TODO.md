@@ -4,8 +4,8 @@
 
 ### In Progress
 
-- Verify version `1.8.4` on device after desktop web dark mode, announcement marquee, widget deep-link rows, widget single empty state, and data-ready launch hiding landed
-- Keep `README.md`, `CHANGELOG.md`, Wiki, in-app help sheets, desktop-web help, and current-state docs aligned with version `1.8.4`
+- Verify version `1.8.5` on device after AI provider model fetching, desktop web dark mode, announcement marquee, widget deep-link rows, widget single empty state, and data-ready launch hiding landed
+- Keep `README.md`, `CHANGELOG.md`, Wiki, in-app help sheets, desktop-web help, and current-state docs aligned with version `1.8.5`
 - Continue planning-desk usability polish without expanding into drag/drop, Gantt, AI auto-planning, or complex project trees
 - Improve repo-native handoff so new sessions do not depend on long chat history
 
@@ -45,7 +45,7 @@
 - Custom snooze should accept long delays beyond 180 minutes and update todo DDL when the snooze target is later than the current DDL
 - Launch screen icon should use the transparent logo asset without a white square background
 - Input help question-mark buttons should open the correct syntax help beside reminder, batch, and snooze fields
-- In-app Wiki should describe the current 1.8.4 settings, reminder, calendar, planning-desk, announcement, widget, and input syntax accurately
+- In-app Wiki should describe the current 1.8.5 settings, reminder, calendar, planning-desk, announcement, widget, and input syntax accurately
 - In-app Wiki should keep a left navigation / right article layout on phone-sized screens
 - Daily board should show a separate completion message when today's schedule existed but all events have ended
 - Drawer header icon should stay visually circular and not expose a white rounded-rectangle launcher background
@@ -53,12 +53,12 @@
 - Temporary system-channel volume boost should be tested carefully because it changes global stream volume and then restores it
 - Work mode should be tested for suppressed outward sound, forced stronger vibration even on items with vibration disabled, and full-screen / accessibility fallback
 - Daily board should show a clear tomorrow section; if tomorrow has no events, it should say `明天暂无日程`
-- Desktop web timed and all-day event cards should open the editor directly by clicking the card; verify this in the actual desktop browser after installing `1.8.4`
+- Desktop web timed and all-day event cards should open the editor directly by clicking the card; verify this in the actual desktop browser after installing `1.8.5`
 - If the live desktop page still lacks the left-side current-version marker or loads unversioned `/app.js`, install the latest APK before re-debugging click edit
-- Desktop web todo cards still use preview first; event cards now open the editor directly. Verify event edit/save in the actual desktop browser after installing `1.8.4`
-- Desktop web todo/event reminder input now accepts mixed reminder specs; verify valid examples and invalid late reminders on the actual desktop browser after installing `1.8.4`
-- Calendar now shows lunar labels in timeline headers, month view, and agenda/list view; verify spacing and readability on device after installing `1.8.4`
-- Desktop web existing event cards should open the editor directly after installing `1.8.4` and refreshing the browser; local Node DOM simulation with the live phone snapshot passed, but actual browser UI still needs device/browser verification after install
+- Desktop web todo cards still use preview first; event cards now open the editor directly. Verify event edit/save in the actual desktop browser after installing `1.8.5`
+- Desktop web todo/event reminder input now accepts mixed reminder specs; verify valid examples and invalid late reminders on the actual desktop browser after installing `1.8.5`
+- Calendar now shows lunar labels in timeline headers, month view, and agenda/list view; verify spacing and readability on device after installing `1.8.5`
+- Desktop web existing event cards should open the editor directly after installing `1.8.5` and refreshing the browser; local Node DOM simulation with the live phone snapshot passed, but actual browser UI still needs device/browser verification after install
 - Desktop web recurrence selects should include `每年同农历月日`, and phone-side todo/event recurrence previews should generate yearly same-lunar-date occurrences
 - Settings -> 电脑同步 should show no access address while desktop sync is disabled
 - Todo DDL now has a wheel-style lunar picker; event editing has compact lunar start/end picking for both all-day and timed events, plus yearly same-lunar-date recurrence support
@@ -68,6 +68,7 @@
 - Planning Desk refresh/postpone/undo/conflict flows should be device-tested end-to-end on both phone and desktop after at least one real import batch exists
 - Planning Desk `任务M ddl 15:00` and similar bare `ddl` lines should be tested on device to confirm they enter the recognition preview as todos with today's DDL
 - Settings -> AI 调用配置 should be tested on device for multi-source add/edit/delete, enable/disable, up/down priority sorting, validation, save persistence after leaving/reopening Settings, and non-export of API Key in backup JSON
+- Settings -> AI 调用配置 should be device-tested for `获取模型`: valid `/models` success, root Base URL fallback to `/v1/models`, `/v1` Base URL append, full `/chat/completions` converted to `/models`, invalid API Key / 404 / HTML response friendly errors, fetched-model dropdown selection, and manual model-name fallback after failure.
 - Settings -> 关于 -> 重新显示新手引导 should be tested on device: after tapping it, returning to 每日看板 should show the onboarding card again
 - Todo editor should be tested on device: new todos default to title/DDL/group only, while existing todos with notes/custom reminders/recurrence/non-default ring or vibration auto-expand 更多选项
 - Planning Desk parser should be device-tested for `# 今日计划` 下的 `晚上交论文` / `上午开会`, `5点前交作业`, `明天下午3点前提交`, and bare `交论文 截止明天 23:59`
@@ -81,7 +82,7 @@
 - Desktop web system dark mode should be verified in a real browser for timeline cards, event cards, modal sheets, summary cards, tab buttons, sidebar cards, Planning Desk, and announcements.
 - Android desktop widget should be verified in system dark mode and after resizing; text should remain readable and refresh should still show missed/today/tomorrow board content.
 - Android desktop widget should be device-tested from the launcher widget picker: add widget, freely resize it, show announcements / today todos / today schedules / tomorrow schedules, single completely-empty state, row-level deep links, and refresh after todo/event/planning-note changes.
-- Desktop web Planning Desk should be tested from a real browser connected to the phone after installing `1.8.4`, including auto-save, `Ctrl+S`, `Ctrl+Enter`, select-all / clear-all, no-empty-import guard, the desktop Planning Desk help modal, document delete, editable preview, mixed reminder input, announcement syntax, parser edge cases, import marker write-back, and the mapping refresh/postpone/undo/conflict actions
+- Desktop web Planning Desk should be tested from a real browser connected to the phone after installing `1.8.5`, including auto-save, `Ctrl+S`, `Ctrl+Enter`, select-all / clear-all, no-empty-import guard, the desktop Planning Desk help modal, document delete, editable preview, mixed reminder input, announcement syntax, parser edge cases, import marker write-back, and the mapping refresh/postpone/undo/conflict actions
 - Planning parser should be expanded with dedicated unit tests when the project gains a stable local JVM test harness
 
 ## Mid-Term Follow-Ups

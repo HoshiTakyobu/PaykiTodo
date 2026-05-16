@@ -44,6 +44,7 @@ This file tracks the product at a practical level for new coding sessions.
 - Planning Desk supports multiple announcement lines in unarchived notes, including `#公告 5.16-7.1 内容`, `#公告 2026-05-16 2026-05-20 内容`, `> [!公告] 内容`, `> #公告 内容`, checkbox announcement lines such as `- [ ] #公告 内容`, and inline `#公告` hints
 - daily board shows all active Planning Desk announcements above the greeting card when today is inside each optional date range
 - announcement banner uses an orange rounded surface, campaign icon, bold deep-brown text, and marquee for long text
+- desktop web announcement banner uses the same active Planning Desk announcements, stays static for short text, scrolls only when the combined text exceeds 60 characters, and pauses on hover
 - announcement text strips trailing `#imported`, `#group ...`, and ordinary tail hashtags before display
 - active date-scoped announcements are sorted before long-running announcements, with newer start dates first
 - expired, future, archived-note, deleted-note, or removed-line announcements stay hidden
@@ -147,7 +148,8 @@ This file tracks the product at a practical level for new coding sessions.
 - widget provider declares horizontal / vertical resize mode plus min resize dimensions for better launcher compatibility
 - widget day/night colors are resource-backed, with dark-mode background and text colors for launcher readability
 - widget refresh uses a board-range Room query rather than loading all historical todos, and duplicate `onReceive` update routing has been removed
-- tapping the widget or a row opens `MainActivity`
+- tapping a todo row opens the matching todo editor, tapping an event row opens the calendar event detail, tapping an announcement row opens the source Planning Desk note, and header / empty rows return to the default daily board
+- widget fully empty board state collapses to one row: `今天没有安排，去 App 创建吧`
 - repository todo mutations and Planning Desk note edits / delete / archive operations notify widget data refresh through the application-level widget callback
 
 ### Data / Backup / Diagnostics
@@ -192,6 +194,7 @@ This file tracks the product at a practical level for new coding sessions.
 - desktop web Planning Desk uses phone-local `/api/planning/*` routes, edits the same Room planning notes as the phone UI, saves before switching documents, blocks empty selected imports, writes back `#imported` markers after import, and reuses the same AI recognition / local fallback path as the phone Planning Desk
 - desktop web Planning Desk now also shows the current note title, mapping status preview, refresh/postpone/undo controls, and conflict resolution actions for imported planning lines
 - desktop web `/api/snapshot` includes active Planning Desk announcements and the browser console renders them as a top orange announcement banner
+- desktop web follows system dark mode through CSS variables for timeline cards, event cards, modal sheets, summary cards, tab buttons, sidebar cards, Planning Desk, inputs, and announcement surfaces
 
 ### Destructive Action Safety
 

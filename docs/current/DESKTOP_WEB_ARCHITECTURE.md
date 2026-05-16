@@ -45,6 +45,14 @@ app/src/main/assets/desktop-web/app.js
 
 `DesktopSyncWebAssets.kt` is now only a small asset loader with a minimal fallback page.
 
+## Current Desktop UI Theme Behavior
+
+As of `1.8.4`, the desktop Web UI follows the browser / system color scheme with CSS variables in `app.css`.
+
+- The phone still serves the same static files from `app/src/main/assets/desktop-web/`.
+- Theme switching does not require a new API contract; it is handled entirely in CSS through `@media (prefers-color-scheme: dark)`.
+- Announcement banners, timeline cards, event cards, modal sheets, summary cards, tab buttons, sidebar cards, Planning Desk surfaces, and inputs should remain readable in both light and dark modes.
+
 ## Recommended Future Direction
 
 Keep this model for now:

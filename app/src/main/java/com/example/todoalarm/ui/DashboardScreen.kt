@@ -164,17 +164,72 @@ fun DashboardScreen(
     var scopeDialogMode by remember { mutableStateOf<ScopeDialogMode?>(null) }
     var lastBackPressedAt by rememberSaveable { mutableLongStateOf(0L) }
     var boardVisited by rememberSaveable { mutableStateOf(false) }
+    var handledTodoLaunchSerial by rememberSaveable { mutableStateOf(-1) }
     val defaultReminderRing = if (uiState.settings.workQuietModeEnabled) false else uiState.settings.defaultRingEnabled
     val defaultReminderVibrate = if (uiState.settings.workQuietModeEnabled) true else uiState.settings.defaultVibrateEnabled
 
+    fun openTodoEditor(item: TodoItem) {
+        if (item.isRecurring && !item.isHistory) {
+            scopeDialogTarget = item
+            scopeDialogMode = ScopeDialogMode.EDIT_TODO
+        } else {
+            editorKind = EditorKind.TODO
+            editingItem = item
+            editScope = RecurrenceScope.CURRENT
+            editorVisible = true
+        }
+    }
+
+    fun openCalendarEventEditor(item: TodoItem) {
+        if (item.isRecurring) {
+            scopeDialogTarget = item
+            scopeDialogMode = ScopeDialogMode.EDIT_EVENT
+        } else {
+            editorKind = EditorKind.CALENDAR
+            editingItem = item
+            calendarDraftSeed = null
+            editScope = RecurrenceScope.CURRENT
+            editorVisible = true
+        }
+    }
+
     LaunchedEffect(launchRouteSerial) {
-        if (launchRoute?.settingsSectionKey != null) {
-            section = DashboardSection.SETTINGS
+        when {
+            launchRoute?.settingsSectionKey != null -> section = DashboardSection.SETTINGS
+            launchRoute?.targetEventId != null -> section = DashboardSection.CALENDAR
+            launchRoute?.targetPlanningNoteId != null -> {
+                section = DashboardSection.PLANNING
+                onSelectPlanningNote(launchRoute.targetPlanningNoteId)
+            }
+            launchRoute?.openBoard == true -> section = DashboardSection.BOARD
+        }
+    }
+
+    LaunchedEffect(
+        launchRouteSerial,
+        uiState.missedItems,
+        uiState.todayItems,
+        uiState.upcomingItems,
+        uiState.historyItems
+    ) {
+        val targetTodoId = launchRoute?.targetTodoId ?: return@LaunchedEffect
+        if (handledTodoLaunchSerial == launchRouteSerial) return@LaunchedEffect
+        val target = (uiState.missedItems + uiState.todayItems + uiState.upcomingItems + uiState.historyItems)
+            .firstOrNull { it.id == targetTodoId && it.isTodo }
+            ?: return@LaunchedEffect
+        handledTodoLaunchSerial = launchRouteSerial
+        section = if (target.isHistory) DashboardSection.HISTORY else DashboardSection.ACTIVE
+        openTodoEditor(target)
+    }
+
+    LaunchedEffect(uiState.dataReady) {
+        if (uiState.dataReady) {
+            launchVisible = false
         }
     }
 
     LaunchedEffect(Unit) {
-        delay(600)
+        delay(800)
         launchVisible = false
     }
 
@@ -329,32 +384,13 @@ fun DashboardScreen(
                     section = section,
                     settingsInitialSectionKey = launchRoute?.settingsSectionKey,
                     settingsInitialSectionSerial = launchRouteSerial,
+                    targetEventId = launchRoute?.targetEventId,
+                    targetEventSerial = launchRouteSerial,
                     padding = padding,
                     uiState = uiState,
                     permissions = permissions,
-                    onEdit = { item ->
-                        if (item.isRecurring && !item.isHistory) {
-                            scopeDialogTarget = item
-                            scopeDialogMode = ScopeDialogMode.EDIT_TODO
-                        } else {
-                            editorKind = EditorKind.TODO
-                            editingItem = item
-                            editScope = RecurrenceScope.CURRENT
-                            editorVisible = true
-                        }
-                    },
-                    onEditCalendarEvent = { item ->
-                        if (item.isRecurring) {
-                            scopeDialogTarget = item
-                            scopeDialogMode = ScopeDialogMode.EDIT_EVENT
-                        } else {
-                            editorKind = EditorKind.CALENDAR
-                            editingItem = item
-                            calendarDraftSeed = null
-                            editScope = RecurrenceScope.CURRENT
-                            editorVisible = true
-                        }
-                    },
+                    onEdit = { openTodoEditor(it) },
+                    onEditCalendarEvent = { openCalendarEventEditor(it) },
                     onQuickCreateCalendarEvent = { startAt, endAt ->
                         editorKind = EditorKind.CALENDAR
                         editingItem = null

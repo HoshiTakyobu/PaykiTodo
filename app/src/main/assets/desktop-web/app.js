@@ -501,6 +501,7 @@ function renderAnnouncements() {
   const announcements = state.snapshot?.announcements || [];
   if (!announcements.length) {
     els.announcementsBanner.classList.add('hidden');
+    els.announcementsBanner.classList.remove('marquee-needed');
     els.announcementsBanner.innerHTML = '';
     return;
   }
@@ -510,6 +511,7 @@ function renderAnnouncements() {
     return range + item.text + source;
   }).join(' · ');
   els.announcementsBanner.innerHTML = '<span>' + escapeHtml(text) + '</span>';
+  els.announcementsBanner.classList.toggle('marquee-needed', text.length > 60);
   els.announcementsBanner.classList.remove('hidden');
 }
 

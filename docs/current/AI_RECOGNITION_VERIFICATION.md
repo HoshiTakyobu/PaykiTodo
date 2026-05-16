@@ -2,7 +2,7 @@
 
 ## Scope
 
-This document verifies the PaykiTodo `1.8.3` Planning Desk AI-recognition path. AI recognition must only run after an explicit recognition action, then still enter the preview-first import flow.
+This document verifies the PaykiTodo `1.8.4` Planning Desk AI-recognition path. AI recognition must only run after an explicit recognition action, then still enter the preview-first import flow.
 
 ## Phone Call Chain
 

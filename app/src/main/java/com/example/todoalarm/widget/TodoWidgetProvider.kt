@@ -6,6 +6,7 @@ import android.appwidget.AppWidgetProvider
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.os.Build
 import android.widget.RemoteViews
 import com.example.todoalarm.R
 import com.example.todoalarm.ui.MainActivity
@@ -37,8 +38,19 @@ class TodoWidgetProvider : AppWidgetProvider() {
                 appWidgetId,
                 Intent(context, MainActivity::class.java).apply {
                     flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+                    putExtra(MainActivity.EXTRA_OPEN_BOARD, true)
                 },
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+            val templateFlags = PendingIntent.FLAG_UPDATE_CURRENT or
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) PendingIntent.FLAG_MUTABLE else 0
+            val rowTemplateIntent = PendingIntent.getActivity(
+                context,
+                appWidgetId + 10_000,
+                Intent(context, MainActivity::class.java).apply {
+                    flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+                },
+                templateFlags
             )
             val serviceIntent = Intent(context, TodoWidgetService::class.java).apply {
                 putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId)
@@ -50,7 +62,7 @@ class TodoWidgetProvider : AppWidgetProvider() {
                 setRemoteAdapter(R.id.widget_list, serviceIntent)
                 setEmptyView(R.id.widget_list, R.id.widget_empty)
                 setOnClickPendingIntent(R.id.widget_root, openAppIntent)
-                setPendingIntentTemplate(R.id.widget_list, openAppIntent)
+                setPendingIntentTemplate(R.id.widget_list, rowTemplateIntent)
             }
             manager.updateAppWidget(appWidgetId, views)
         }

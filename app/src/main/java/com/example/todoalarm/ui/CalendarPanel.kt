@@ -133,6 +133,8 @@ internal fun CalendarPanel(
     events: List<TodoItem>,
     weekStartMode: WeekStartMode,
     scheduleTemplates: List<ScheduleTemplate>,
+    targetEventId: Long? = null,
+    targetEventSerial: Int = 0,
     onQuickCreateEvent: (LocalDateTime, LocalDateTime) -> Unit,
     onCreateEventAt: (LocalDateTime, LocalDateTime) -> Unit,
     onEditEvent: (TodoItem) -> Unit,
@@ -165,6 +167,7 @@ internal fun CalendarPanel(
     var showViewModeMenu by remember { mutableStateOf(false) }
     var showActionsMenu by remember { mutableStateOf(false) }
     var pendingDeleteTarget by remember { mutableStateOf<TodoItem?>(null) }
+    var handledTargetEventSerial by rememberSaveable { mutableStateOf(-1) }
     var monthVerticalDirection by remember { mutableStateOf(0L) }
     var agendaVerticalDirection by remember { mutableStateOf(0L) }
     var agendaRefreshing by remember { mutableStateOf(false) }
@@ -352,6 +355,18 @@ internal fun CalendarPanel(
             fun openDetails(item: TodoItem) {
                 pendingDraft = null
                 detailsTarget = item
+            }
+
+            LaunchedEffect(targetEventSerial, targetEventId, events) {
+                val id = targetEventId ?: return@LaunchedEffect
+                if (handledTargetEventSerial == targetEventSerial) return@LaunchedEffect
+                val target = events.firstOrNull { it.id == id && it.isEvent } ?: return@LaunchedEffect
+                handledTargetEventSerial = targetEventSerial
+                val targetDate = target.startAtMillis
+                    ?.let { java.time.Instant.ofEpochMilli(it).atZone(java.time.ZoneId.systemDefault()).toLocalDate() }
+                    ?: target.dueDate()
+                revealDate(targetDate)
+                openDetails(target)
             }
 
             Column(modifier = Modifier.fillMaxSize()) {

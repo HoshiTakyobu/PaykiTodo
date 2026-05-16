@@ -11,6 +11,7 @@ import com.example.todoalarm.TodoApplication
 import com.example.todoalarm.data.DailyBoardSnapshot
 import com.example.todoalarm.data.DailyBoardSnapshotBuilder
 import com.example.todoalarm.data.TodoItem
+import com.example.todoalarm.ui.MainActivity
 import kotlinx.coroutines.runBlocking
 import java.time.Instant
 import java.time.ZoneId
@@ -63,7 +64,18 @@ private class TodoWidgetFactory(
             setTextColor(R.id.widget_item_dot, row.trailingColor)
             setViewVisibility(R.id.widget_item_time, if (row.leading.isBlank()) View.GONE else View.VISIBLE)
             setViewVisibility(R.id.widget_item_dot, if (row.trailing.isBlank()) View.GONE else View.VISIBLE)
-            setOnClickFillInIntent(R.id.widget_item_root, Intent())
+            setOnClickFillInIntent(
+                R.id.widget_item_root,
+                Intent().apply {
+                    when (row.type) {
+                        WidgetRowType.TODO -> putExtra(MainActivity.EXTRA_OPEN_TODO_ID, row.itemId)
+                        WidgetRowType.EVENT -> putExtra(MainActivity.EXTRA_OPEN_EVENT_ID, row.itemId)
+                        WidgetRowType.ANNOUNCEMENT -> putExtra(MainActivity.EXTRA_OPEN_PLANNING_NOTE_ID, row.sourceNoteId)
+                        WidgetRowType.HEADER,
+                        WidgetRowType.EMPTY -> putExtra(MainActivity.EXTRA_OPEN_BOARD, true)
+                    }
+                }
+            )
         }
     }
 
@@ -73,10 +85,21 @@ private class TodoWidgetFactory(
     override fun hasStableIds(): Boolean = true
 
     private fun buildRows(snapshot: DailyBoardSnapshot): List<WidgetBoardRow> {
+        if (
+            snapshot.announcements.isEmpty() &&
+            snapshot.todoItems.isEmpty() &&
+            snapshot.allTodayEvents.isEmpty() &&
+            snapshot.tomorrowEvents.isEmpty()
+        ) {
+            return listOf(emptyRow(-9_999L, "今天没有安排，去 App 创建吧"))
+        }
+
         val output = mutableListOf<WidgetBoardRow>()
         snapshot.announcements.take(4).forEachIndexed { index, announcement ->
             output += WidgetBoardRow(
                 stableId = -10_000L - index,
+                type = WidgetRowType.ANNOUNCEMENT,
+                sourceNoteId = announcement.sourceNoteId,
                 leading = "公告",
                 title = "${announcement.rangeLabel()} · ${announcement.text}",
                 trailing = "",
@@ -93,6 +116,8 @@ private class TodoWidgetFactory(
             snapshot.todoItems.forEach { item ->
                 output += WidgetBoardRow(
                     stableId = item.id,
+                    type = WidgetRowType.TODO,
+                    itemId = item.id,
                     leading = todoTimeLabel(item),
                     title = item.title,
                     trailing = if (item.missed) "!" else "○",
@@ -113,6 +138,8 @@ private class TodoWidgetFactory(
             snapshot.visibleTodayEvents.forEach { event ->
                 output += WidgetBoardRow(
                     stableId = 1_000_000L + event.id,
+                    type = WidgetRowType.EVENT,
+                    itemId = event.id,
                     leading = DailyBoardSnapshotBuilder.eventSecondaryText(event),
                     title = event.title,
                     trailing = if (DailyBoardSnapshotBuilder.eventInProgress(event, snapshot.now)) "●" else "",
@@ -130,6 +157,8 @@ private class TodoWidgetFactory(
             snapshot.tomorrowEvents.forEach { event ->
                 output += WidgetBoardRow(
                     stableId = 2_000_000L + event.id,
+                    type = WidgetRowType.EVENT,
+                    itemId = event.id,
                     leading = DailyBoardSnapshotBuilder.eventSecondaryText(event),
                     title = event.title,
                     trailing = "",
@@ -145,6 +174,7 @@ private class TodoWidgetFactory(
     private fun headerRow(stableId: Long, title: String): WidgetBoardRow {
         return WidgetBoardRow(
             stableId = stableId,
+            type = WidgetRowType.HEADER,
             leading = "",
             title = title,
             trailing = "",
@@ -157,6 +187,7 @@ private class TodoWidgetFactory(
     private fun emptyRow(stableId: Long, title: String): WidgetBoardRow {
         return WidgetBoardRow(
             stableId = stableId,
+            type = WidgetRowType.EMPTY,
             leading = "",
             title = title,
             trailing = "",
@@ -182,8 +213,19 @@ private class TodoWidgetFactory(
         danger = ContextCompat.getColor(context, R.color.widget_danger)
     }
 
+    private enum class WidgetRowType {
+        HEADER,
+        EMPTY,
+        TODO,
+        EVENT,
+        ANNOUNCEMENT
+    }
+
     private data class WidgetBoardRow(
         val stableId: Long,
+        val type: WidgetRowType,
+        val itemId: Long = 0L,
+        val sourceNoteId: Long = 0L,
         val leading: String,
         val title: String,
         val trailing: String,

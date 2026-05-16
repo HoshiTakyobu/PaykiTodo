@@ -78,6 +78,7 @@ data class TodoUiState(
     val scheduleTemplates: List<ScheduleTemplate> = emptyList(),
     val settings: AppSettings = AppSettings(),
     val currentQuote: String = QuoteRepository.seedQuotes.first(),
+    val dataReady: Boolean = false,
     val desktopSyncStatus: DesktopSyncStatus = DesktopSyncStatus(
         enabled = false,
         running = false,
@@ -180,6 +181,7 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
             scheduleTemplates = repository.getScheduleTemplates(),
             settings = settings,
             currentQuote = currentQuote,
+            dataReady = true,
             desktopSyncStatus = app.desktopSyncCoordinator.status()
         )
     }.stateIn(

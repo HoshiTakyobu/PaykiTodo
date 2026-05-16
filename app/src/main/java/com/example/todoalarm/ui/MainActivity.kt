@@ -249,10 +249,27 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun consumeDashboardLaunchRoute(intent: Intent?) {
-        val target = intent?.getStringExtra(EXTRA_OPEN_SETTINGS_SECTION) ?: return
-        launchRoute = DashboardLaunchRoute(settingsSectionKey = target)
+        intent ?: return
+        val settingsTarget = intent.getStringExtra(EXTRA_OPEN_SETTINGS_SECTION)
+        val todoTarget = intent.getLongExtra(EXTRA_OPEN_TODO_ID, 0L).takeIf { it > 0L }
+        val eventTarget = intent.getLongExtra(EXTRA_OPEN_EVENT_ID, 0L).takeIf { it > 0L }
+        val planningTarget = intent.getLongExtra(EXTRA_OPEN_PLANNING_NOTE_ID, 0L).takeIf { it > 0L }
+        val openBoard = intent.getBooleanExtra(EXTRA_OPEN_BOARD, false)
+        if (settingsTarget == null && todoTarget == null && eventTarget == null && planningTarget == null && !openBoard) return
+
+        launchRoute = DashboardLaunchRoute(
+            settingsSectionKey = settingsTarget,
+            targetTodoId = todoTarget,
+            targetEventId = eventTarget,
+            targetPlanningNoteId = planningTarget,
+            openBoard = openBoard
+        )
         launchRouteSerial += 1
         intent.removeExtra(EXTRA_OPEN_SETTINGS_SECTION)
+        intent.removeExtra(EXTRA_OPEN_TODO_ID)
+        intent.removeExtra(EXTRA_OPEN_EVENT_ID)
+        intent.removeExtra(EXTRA_OPEN_PLANNING_NOTE_ID)
+        intent.removeExtra(EXTRA_OPEN_BOARD)
     }
 
     private fun refreshPermissions() {
@@ -523,10 +540,18 @@ class MainActivity : ComponentActivity() {
 
     companion object {
         const val EXTRA_OPEN_SETTINGS_SECTION = "com.example.todoalarm.OPEN_SETTINGS_SECTION"
+        const val EXTRA_OPEN_BOARD = "com.example.todoalarm.OPEN_BOARD"
+        const val EXTRA_OPEN_TODO_ID = "com.example.todoalarm.OPEN_TODO_ID"
+        const val EXTRA_OPEN_EVENT_ID = "com.example.todoalarm.OPEN_EVENT_ID"
+        const val EXTRA_OPEN_PLANNING_NOTE_ID = "com.example.todoalarm.OPEN_PLANNING_NOTE_ID"
         const val SETTINGS_SECTION_DESKTOP_SYNC = "desktop_sync"
     }
 }
 
 data class DashboardLaunchRoute(
-    val settingsSectionKey: String? = null
+    val settingsSectionKey: String? = null,
+    val targetTodoId: Long? = null,
+    val targetEventId: Long? = null,
+    val targetPlanningNoteId: Long? = null,
+    val openBoard: Boolean = false
 )

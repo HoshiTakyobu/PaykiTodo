@@ -6,86 +6,80 @@ Long-running Codex sessions can become unreliable. This file exists so a new ses
 
 ## Current Handoff Summary
 
-- The project is currently at code version `1.8.3` / `versionCode 186`.
-- Expected debug APK path after the final build: `app/build/outputs/apk/debug/PaykiTodo-1.8.3-debug.apk`.
-- Latest verification in this round so far:
+- The project is currently at code version `1.8.4` / `versionCode 187`.
+- Latest debug APK output: `app/build/outputs/apk/debug/PaykiTodo-1.8.4-debug.apk`.
+- Latest verification in this round:
   - `node --check app/src/main/assets/desktop-web/app.js`
   - `./gradlew.bat testDebugUnitTest`
   - `./gradlew.bat assembleDebug`
   - `git diff --check`
-- Latest debug APK output: `app/build/outputs/apk/debug/PaykiTodo-1.8.3-debug.apk`.
-- This round cleans up legacy announcement settings, improves Planning Desk announcement parsing / preview / ordering, adds desktop-web announcement visibility, and hardens the Android `今日看板` widget for dark mode and refresh performance.
+- This round implements the `docs/goals/2026-05-16-paykitodo-1.8.4-goal.md` scope: desktop-web announcement marquee, desktop-web system dark theme, Android widget row deep links, widget single empty state, and data-ready launch hiding.
 - Do not push to GitHub unless the user explicitly asks.
 
-## Latest Changes In 1.8.3
+## Latest Changes In 1.8.4
 
-1. Upgraded app version metadata to `1.8.3` / `versionCode 186`.
-2. Removed Settings-backed announcement fields from `AppSettings`.
-3. Removed old announcement JSON backup export/import fields; old backup files that still contain those unknown fields remain tolerated.
-4. Added one-time cleanup for legacy SharedPreferences announcement keys.
-5. Planning Desk announcement parser now recognizes:
-   - `#公告 ...`
-   - `- [ ] #公告 ...`
-   - `> #公告 ...`
-   - inline `今日提醒：#公告 ...`
-   - `> [!公告] ...`
-   - `公告: ...`
-6. Announcement display text strips trailing `#imported`, `#group ...`, and ordinary tail hashtags.
-7. Active announcements sort date-scoped items before long-running announcements, with newer start dates first.
-8. Planning Desk Markdown preview renders announcement rows with orange styling, campaign icon, `全局公告` pill, and range label.
-9. Desktop web `/api/snapshot` includes `announcements`; `index.html` / `app.js` / `app.css` render a top announcement banner.
-10. Android widget color resources now live in day/night color resources, and widget drawables have night variants.
-11. `TodoWidgetService` reloads colors on each `onDataSetChanged` and uses `ContextCompat.getColor`.
-12. Widget refresh uses `TodoDao.getActiveItemsForBoardRange(...)` via `TodoRepository.getActiveItemsForBoardRange()` instead of `getAllTodos()`.
-13. `TodoWidgetProvider.onReceive` duplicate refresh override was removed.
-14. `AI_RECOGNITION_VERIFICATION.md` now documents `1.8.1` trigger tightening and `1.8.2` Base URL endpoint fallback / non-JSON handling.
-15. The goal prompt for this round is archived under `docs/goals/2026-05-16-paykitodo-1.8.3-goal.md`.
+1. Upgraded app version metadata to `1.8.4` / `versionCode 187`.
+2. Desktop-web announcement banner now adds `marquee-needed` only when the combined active announcement text exceeds 60 characters.
+3. Desktop-web long announcements scroll horizontally; hovering the banner pauses the marquee.
+4. Desktop-web CSS now has light/dark theme variables with `@media (prefers-color-scheme: dark)`.
+5. Desktop-web timeline cards, event cards, modal sheets, summary cards, tab buttons, sidebar cards, Planning Desk surfaces, inputs, and announcement banner now use the theme variables for dark-mode readability.
+6. Widget rows now use explicit row types: `HEADER`, `EMPTY`, `TODO`, `EVENT`, `ANNOUNCEMENT`.
+7. Widget row fill-in intents now carry `EXTRA_OPEN_TODO_ID`, `EXTRA_OPEN_EVENT_ID`, or `EXTRA_OPEN_PLANNING_NOTE_ID` as appropriate.
+8. `TodoWidgetProvider` uses a mutable `PendingIntentTemplate` on Android 12+ so list-row fill-in extras work.
+9. `MainActivity` and `DashboardLaunchRoute` parse widget deep-link targets in addition to Settings section targets.
+10. Dashboard launch routing opens targeted todo rows in the todo editor, targeted event rows in Calendar event details, and targeted announcement rows in the source Planning Desk note.
+11. Widget completely empty board state now shows only `今天没有安排，去 App 创建吧`.
+12. `TodoUiState.dataReady` marks the first real combined state; launch screen hides when ready with an 800ms fallback.
+13. The goal prompt for this round is archived under `docs/goals/2026-05-16-paykitodo-1.8.4-goal.md`.
 
 ## Files Most Relevant To This Round
 
 - `app/build.gradle.kts`
-- `app/src/main/java/com/example/todoalarm/data/AppSettingsStore.kt`
-- `app/src/main/java/com/example/todoalarm/data/BackupManager.kt`
-- `app/src/main/java/com/example/todoalarm/data/PlanningAnnouncementParser.kt`
-- `app/src/main/java/com/example/todoalarm/data/TodoDao.kt`
-- `app/src/main/java/com/example/todoalarm/data/TodoRepository.kt`
-- `app/src/main/java/com/example/todoalarm/ui/PlanningDeskPanel.kt`
-- `app/src/main/java/com/example/todoalarm/widget/TodoWidgetProvider.kt`
-- `app/src/main/java/com/example/todoalarm/widget/TodoWidgetService.kt`
-- `app/src/main/java/com/example/todoalarm/sync/DesktopSyncCoordinator.kt`
-- `app/src/main/java/com/example/todoalarm/sync/DesktopSyncModels.kt`
-- `app/src/main/res/values/colors.xml`
-- `app/src/main/res/values-night/colors.xml`
-- `app/src/main/res/drawable/widget_todo_background.xml`
-- `app/src/main/res/drawable-night/widget_todo_background.xml`
-- `app/src/main/res/drawable/widget_todo_item_background.xml`
-- `app/src/main/res/drawable-night/widget_todo_item_background.xml`
-- `app/src/main/res/layout/widget_todo.xml`
-- `app/src/main/res/layout/widget_todo_item.xml`
-- `app/src/main/assets/desktop-web/index.html`
 - `app/src/main/assets/desktop-web/app.css`
 - `app/src/main/assets/desktop-web/app.js`
-- `app/src/test/java/com/example/todoalarm/data/PlanningAnnouncementParserTest.kt`
-- `docs/current/AI_RECOGNITION_VERIFICATION.md`
+- `app/src/main/java/com/example/todoalarm/widget/TodoWidgetProvider.kt`
+- `app/src/main/java/com/example/todoalarm/widget/TodoWidgetService.kt`
+- `app/src/main/java/com/example/todoalarm/ui/MainActivity.kt`
+- `app/src/main/java/com/example/todoalarm/ui/DashboardScreen.kt`
+- `app/src/main/java/com/example/todoalarm/ui/DashboardChrome.kt`
+- `app/src/main/java/com/example/todoalarm/ui/CalendarPanel.kt`
+- `app/src/main/java/com/example/todoalarm/ui/TodoViewModel.kt`
+- `CHANGELOG.md`
+- `README.md`
+- `TODO.md`
+- `docs/current/PROJECT_STATUS.md`
+- `docs/current/FEATURE_LEDGER.md`
+- `docs/current/CURRENT_TASK.md`
+- `docs/current/SESSION_HANDOFF.md`
 
 ## Current Verification Focus
 
-1. Build `PaykiTodo-1.8.3-debug.apk`.
-2. Verify Planning Desk announcement parser cases on device:
-   - checkbox announcement
-   - quote announcement
-   - inline announcement
-   - `#imported` / hashtag cleanup
-   - recent-date sorting before long-running announcements
-3. Verify Planning Desk preview announcement card and click-to-edit behavior.
-4. Verify desktop web announcement banner from a real browser connected to the phone.
-5. Verify launcher widget dark-mode readability, resize behavior, tap behavior, and refresh after todo/event/planning-note edits.
+1. Build `PaykiTodo-1.8.4-debug.apk`.
+2. Verify desktop web announcement behavior:
+   - short text stays static;
+   - 60+ character text scrolls;
+   - hover pauses scrolling.
+3. Verify desktop web system dark mode readability for:
+   - `.timeline-card`
+   - `.event-card`
+   - `.modal-sheet`
+   - `.summary-card`
+   - `.tab-btn`
+   - `.sidebar-card`
+   - `.announcements-banner`
+4. Verify launcher widget behavior on a real device:
+   - todo row opens the matching todo;
+   - event row opens Calendar event details;
+   - announcement row opens the source Planning Desk note;
+   - header and empty rows return to the default daily board;
+   - completely empty board shows a single empty row.
+5. Verify launch screen disappears when data is ready and never waits longer than roughly 800ms.
 
 ## Deferred Larger Work
 
 - Planning Desk remains an import + tracked refresh/sync model, not a fully live bidirectional rich editor.
 - Drag-and-drop planning, Gantt chart, AI auto-planning, complex project tree, and deeper desktop parity remain deferred.
-- Widget deep links to a specific todo/event are not implemented; current widget opens the app.
+- Widget row deep links are implemented, but launcher-specific PendingIntent behavior still needs real-device confirmation.
 
 ## Required Reading For A New Session
 

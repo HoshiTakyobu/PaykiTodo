@@ -6,9 +6,9 @@
     android:gravity="center_vertical"
     android:orientation="horizontal"
     android:paddingStart="2dp"
-    android:paddingTop="4dp"
+    android:paddingTop="8dp"
     android:paddingEnd="2dp"
-    android:paddingBottom="0dp">
+    android:paddingBottom="2dp">
 
     <TextView
         android:id="@+id/widget_section_title"
@@ -22,7 +22,7 @@
         android:shadowColor="#26000000"
         android:shadowDx="0"
         android:shadowDy="1"
-        android:shadowRadius="4"
+        android:shadowRadius="6"
         android:textSize="22sp"
         android:textStyle="bold" />
 

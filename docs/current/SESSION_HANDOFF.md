@@ -6,19 +6,19 @@ Long-running Codex sessions can become unreliable. This file exists so a new ses
 
 ## Current Handoff Summary
 
-- The project is now being advanced to `1.9.2` / `versionCode 196`.
-- This round carries forward AI 日报 / 周报 after the `1.9.0` focus-mode baseline and applies a follow-up launcher-widget visual hotfix.
-- Latest debug APK after packaging: `app/build/outputs/apk/debug/PaykiTodo-1.9.2-debug.apk`.
+- The project is now being advanced to `1.9.3` / `versionCode 197`.
+- This round carries forward AI 日报 / 周报 after the `1.9.0` focus-mode baseline and applies a follow-up launcher-widget visual hotfix to make the widget closer to the in-app daily board.
+- Latest debug APK after packaging: `app/build/outputs/apk/debug/PaykiTodo-1.9.3-debug.apk`.
 - Local commits before this hotfix: `c20d18a` for focus mode and `104c9aa` for AI reports plus the previous widget visual pass.
 - Do not push to GitHub unless the user explicitly asks.
 
-## Latest 1.9.2 Widget Hotfix Changes
+## Latest 1.9.3 Widget Hotfix Changes
 
-1. Android `今日看板` launcher widget default provider dimensions now prefer a square / vertical daily-board card instead of a shallow flat list.
-2. The widget top header is lighter and shorter so the card stack becomes the main visual subject.
-3. Greeting, focus, todo, empty, and schedule cards use more solid daily-board-style rounded surfaces and less glass/list-border styling.
-4. Todo and schedule vertical color strips now have more breathing room from text; schedule rows have slightly larger title sizing and vertical padding to resemble the in-app daily board.
-5. Version metadata moved to `1.9.2` / `versionCode 196`.
+1. Android `今日看板` launcher widget default provider dimensions now prefer a taller vertical daily-board card instead of a shallow flat list.
+2. The widget root padding, title/date hierarchy, and row divider rhythm were retuned so the surface reads more like the in-app daily board card stack.
+3. Greeting, focus, todo, empty, and schedule cards use stronger light/dark card surfaces, larger rounded corners, and less glass/list-border styling.
+4. Todo strips are wider; schedule rows get subtle inner card backgrounds, more vertical padding, and clearer strip/text spacing.
+5. Version metadata moved to `1.9.3` / `versionCode 197`.
 
 ## Latest 1.9.1 AI Report Changes
 
@@ -71,6 +71,7 @@ Completed locally:
 4. `./gradlew.bat testDebugUnitTest`
 5. `./gradlew.bat assembleDebug`
 6. `git diff --check`
+7. `./gradlew.bat :app:mergeDebugResources` after the `1.9.3` widget resource pass
 
 Real launcher verification is still needed for the widget visual pass because RemoteViews rendering varies by launcher.
 
@@ -81,7 +82,7 @@ Local device verification blocker observed in this session:
 3. No local `sdkmanager.bat` was found, so the missing system image cannot be installed automatically from this environment.
 4. Continue device-only checks after connecting a phone or repairing the local Android SDK / AVD.
 
-Then verify on a real device after installing `PaykiTodo-1.9.2-debug.apk`:
+Then verify on a real device after installing `PaykiTodo-1.9.3-debug.apk`:
 
 1. enable daily report at current time + 1 minute and wait for automatic generation;
 2. disable daily report and confirm the next scheduled daily report is canceled;

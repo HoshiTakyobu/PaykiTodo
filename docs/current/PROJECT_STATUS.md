@@ -7,13 +7,13 @@
 - Package name: `com.paykitodo.app`
 - Target platform: Android 14 / API 34
 - Current version in code:
-  - `versionName = "1.9.2"`
-  - `versionCode = 196`
+  - `versionName = "1.9.3"`
+  - `versionCode = 197`
 
 ## Current Build Facts
 
 - Latest debug APK output:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.9.2-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.9.3-debug.apk`
 - Minimal verification completed in the latest code round:
   - `node --check app/src/main/assets/desktop-web/app.js`
   - `./gradlew.bat testDebugUnitTest`
@@ -25,11 +25,11 @@
 
 ## Current Worktree Reality
 
-The repository is now being advanced to `1.9.2`. It carries forward the `1.9.0` focus-mode baseline, the `1.9.1` AI daily / weekly report generation, and adds another Android launcher-widget visual hotfix after user review.
+The repository is now being advanced to `1.9.3`. It carries forward the `1.9.0` focus-mode baseline, the `1.9.1` AI daily / weekly report generation, and adds another Android launcher-widget visual hotfix after user review that more aggressively matches the in-app daily-board surface.
 
 Most important current baseline facts:
 
-- version metadata is `1.9.2 / 196`
+- version metadata is `1.9.3 / 197`
 - Database version is now `12`; `MIGRATION_11_12` creates `focus_sessions`.
 - Settings -> `专注模式` controls default focus duration, extension duration, screen-on behavior, and a documented-only notification-suppression preference.
 - Active todo long-press menus include `开始专注 · X 分钟`; the daily-board focus card can start free focus.
@@ -52,6 +52,7 @@ Most important current baseline facts:
 - Android launcher widget now includes a `今日已专注` card with today's completed focus minutes, total sessions, and completed sessions, matching the in-app daily-board ordering more closely.
 - Android launcher widget card surfaces now use stronger light/dark opacity, lightweight elevation, retuned scrims, tighter title/card spacing, and daily-board ordering with announcements before greeting so the widget resembles the in-app daily board card stack more than a generic RemoteViews list.
 - Android launcher widget default provider size is now closer to a square / vertical daily-board card instead of a shallow flat list; its header is lighter and the greeting, focus, todo, empty, and schedule cards use more solid rounded daily-board-style surfaces with wider text/strip breathing room.
+- Android launcher widget `1.9.3` visual pass increases the default provider height, widens the outer board padding, raises the title/subtitle hierarchy, strengthens light/dark card opacity, widens todo color strips, and gives schedule rows subtle inner card backgrounds so the widget reads as a daily-board card stack rather than a system ListView.
 - Tapping a todo row opens that todo, tapping an event row opens Calendar with that event detail, tapping an announcement row opens the source Planning Desk note, and section/empty rows return to the default daily board.
 - Desktop web `/api/snapshot` includes active Planning Desk announcements and the browser console renders them as a top announcement banner. Long announcement text now scrolls only when the combined text exceeds 60 characters, and hover pauses the marquee.
 - Desktop web now follows system dark mode through CSS variables for timeline cards, event cards, modal sheets, summary cards, sidebar cards, tab buttons, Planning Desk, and announcements.
@@ -87,7 +88,7 @@ Recent code inspection and build verification cover:
 
 ## Documentation Health
 
-Current docs are being synchronized for `1.9.2`:
+Current docs are being synchronized for `1.9.3`:
 
 - `README.md`
 - `CHANGELOG.md`

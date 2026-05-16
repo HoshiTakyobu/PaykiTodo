@@ -180,6 +180,7 @@ This file tracks the product at a practical level for new coding sessions.
 - widget root now includes a daily-board-style background image layer, lighter/tuned day-night scrims, circular menu-button header, shadowed `每日看板` title, and current-date subtitle, making the launcher widget read closer to the in-app daily board instead of a generic RemoteViews list
 - widget includes a `今日已专注` card with today's completed focus minutes, total sessions, and completed sessions, so the launcher surface follows the in-app daily-board sequence more closely
 - widget greeting, empty, orange announcement, todo, and schedule cards use stronger light/dark card surfaces, lightweight elevation, larger 28dp-style rounding, wider todo color strips, tighter title/card spacing, and daily-board-like ordering with announcements before greeting for better launcher readability
+- widget provider now suggests a more daily-board-like square / vertical default size instead of a shallow list-size widget, and the current card pass uses more solid rounded card surfaces plus wider todo/schedule strip spacing so desktop rendering is less like a generic system list
 - repository todo mutations and Planning Desk note edits / delete / archive operations notify widget data refresh through the application-level widget callback
 
 ### Data / Backup / Diagnostics

@@ -4,7 +4,7 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:minHeight="64dp"
-    android:background="@drawable/widget_todo_item_background"
+    android:background="@drawable/widget_todo_soft_card_background"
     android:elevation="2dp"
     android:gravity="center_vertical"
     android:orientation="vertical"

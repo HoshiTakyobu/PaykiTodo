@@ -2,7 +2,7 @@
 
 ## Active Development Focus
 
-The current round is PaykiTodo `1.9.1` / `versionCode 195`, completing the `docs/goals/2026-05-17-paykitodo-ai-daily-report-goal.md` work after the `1.9.0` focus-mode baseline and the `1.9.0.1` widget visual hotfix.
+The current round is PaykiTodo `1.9.2` / `versionCode 196`, carrying forward the `1.9.1` AI daily / weekly report work and applying a launcher-widget visual hotfix after user review.
 
 ## Completed In This Round
 
@@ -14,6 +14,7 @@ The current round is PaykiTodo `1.9.1` / `versionCode 195`, completing the `docs
 6. Planning Desk shows a purple hint when the active document is `AI 日报` or `AI 周报`, reminding the user it is an auto-generated review record.
 7. Version metadata moved to `1.9.1` / `versionCode 195`.
 8. Android `今日看板` launcher widget received an extra visual pass after user review: announcements now appear before the greeting like the in-app daily board, card spacing is tighter, and light/dark surfaces are more opaque for launcher readability.
+9. Android `今日看板` launcher widget was advanced again for `1.9.2`: the provider default size is now square / vertical-board oriented, the header is lighter, and greeting / focus / todo / empty / schedule rows use more solid daily-board-style rounded card surfaces with wider strip/text spacing.
 
 ## Verification Completed This Round
 
@@ -26,10 +27,10 @@ The current round is PaykiTodo `1.9.1` / `versionCode 195`, completing the `docs
 
 ## Immediate Practical Next Steps
 
-1. Install `app/build/outputs/apk/debug/PaykiTodo-1.9.1-debug.apk` on a real device for the device-only checks below.
+1. Install `app/build/outputs/apk/debug/PaykiTodo-1.9.2-debug.apk` on a real device for the device-only checks below.
 2. Do not push unless the user explicitly asks.
 
-## Device Verification Needed After Installing 1.9.1
+## Device Verification Needed After Installing 1.9.2
 
 1. In Settings -> `AI 调用配置`, enable daily report, set the time to current time + 1 minute, and confirm a report is generated.
 2. Verify disabling the daily switch cancels future daily report alarms.
@@ -49,7 +50,8 @@ The current round is PaykiTodo `1.9.1` / `versionCode 195`, completing the `docs
 ## Local Commit State
 
 - `c20d18a` implements the `1.9.0` focus-mode baseline.
-- `3036768` implements the `1.9.1` AI daily / weekly report work and the latest launcher-widget visual pass.
+- `104c9aa` implements the `1.9.1` AI daily / weekly report work and the previous launcher-widget visual pass.
+- The current verified work implements the `1.9.2` launcher-widget visual hotfix and should be committed as the next focused commit.
 - `docs/goals/2026-05-17-paykitodo-focus-session-goal.md` and `docs/goals/2026-05-17-paykitodo-ai-daily-report-goal.md` remain untracked goal input files by design.
 
 ## Commit Message Rule

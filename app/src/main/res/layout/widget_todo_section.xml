@@ -5,9 +5,9 @@
     android:layout_height="wrap_content"
     android:gravity="center_vertical"
     android:orientation="horizontal"
-    android:paddingStart="4dp"
-    android:paddingTop="1dp"
-    android:paddingEnd="4dp"
+    android:paddingStart="2dp"
+    android:paddingTop="2dp"
+    android:paddingEnd="2dp"
     android:paddingBottom="0dp">
 
     <TextView
@@ -19,7 +19,7 @@
         android:singleLine="true"
         android:textColor="@color/widget_text_primary"
         android:includeFontPadding="false"
-        android:textSize="18sp"
+        android:textSize="20sp"
         android:textStyle="bold" />
 
     <TextView

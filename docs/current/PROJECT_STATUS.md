@@ -7,13 +7,13 @@
 - Package name: `com.paykitodo.app`
 - Target platform: Android 14 / API 34
 - Current version in code:
-  - `versionName = "1.8.8"`
-  - `versionCode = 191`
+  - `versionName = "1.8.9"`
+  - `versionCode = 192`
 
 ## Current Build Facts
 
 - Latest debug APK output:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.8.8-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.8.9-debug.apk`
 - Minimal verification completed in the latest code round:
   - `node --check app/src/main/assets/desktop-web/app.js`
   - `./gradlew.bat testDebugUnitTest`
@@ -25,11 +25,11 @@
 
 ## Current Worktree Reality
 
-The repository is now at `1.8.8`. It carries forward the `1.8.5` AI Provider model discovery baseline and refines the Android `今日看板` widget further toward the in-app daily board visual language: a fixed daily-board header, transparent app-icon badge, greeting card, rounded semi-transparent cards, grouped todo color strips, and one aggregated schedule card for today / tomorrow instead of scattered independent event cards.
+The repository is now at `1.8.9`. It carries forward the `1.8.5` AI Provider model discovery baseline and refines the Android `今日看板` widget further toward the in-app daily board visual language: the widget now layers the same daily-board background art with a scrim, uses a circular menu-button + title header, keeps greeting / announcement / todo / schedule cards, and preserves the aggregated today / tomorrow schedule card instead of scattered independent event cards.
 
 Most important current baseline facts:
 
-- version metadata is `1.8.8 / 191`
+- version metadata is `1.8.9 / 192`
 - Planning Desk still keeps AI-first / local-fallback recognition, editable preview, selected import, and automatic `#imported` write-back.
 - Planning Desk AI recognition is now explicit-only: phone recognition still starts from the `识别` button, desktop recognition starts from the `识别` button or `Ctrl+Enter`, and desktop import no longer silently calls parse when no preview exists.
 - Settings -> `AI 调用配置` can fetch a single provider's model list with only Base URL / API Key before saving. Model fetch handles service roots, `/v1`, full `/chat/completions`, and full `/models` URLs, shows a compact dropdown on success, keeps a manual model-name fallback, and reports API-key / endpoint / non-JSON failures in user-readable language.
@@ -37,8 +37,8 @@ Most important current baseline facts:
 - Daily board can show multiple active announcements parsed from unarchived Planning Desk notes. Announcement parsing now accepts explicit lines, checkbox announcement lines, quote-prefixed announcement lines, and inline `#公告` hints; tail `#imported` / hashtag metadata is stripped from display text.
 - Settings no longer exposes or stores a separate announcement editor. The old `AppSettings` announcement fields and backup serialization were removed; old backup JSON fields are ignored and legacy SharedPreferences keys are cleaned once.
 - Android launcher widgets now expose a `今日看板` widget backed by Room data: active announcements, today todos, today schedule state, and tomorrow schedule summary share one RemoteViews `ListView`; widget colors support system dark mode and widget refresh uses a board-range query rather than pulling all todos.
-- Android launcher widget root now has a fixed `每日看板` title area with current date copy and a transparent app-icon badge, so the widget reads as a compact daily board rather than a generic list surface.
-- Android launcher widget rows now use distinct RemoteViews layouts for the greeting card, section headers, empty cards, todo cards, an aggregated schedule card, and announcement cards. The schedule card mirrors the daily-board structure: one left date block, right-side today rows, tomorrow label, tomorrow rows, and vertical color strips.
+- Android launcher widget root now layers the daily-board background art with light/dark scrims and uses a circular menu-button + `每日看板` title area, so the widget reads closer to the in-app daily board rather than a generic list surface.
+- Android launcher widget rows now use distinct RemoteViews layouts for the greeting card, orange announcement banner, section headers, empty cards, todo cards, and an aggregated schedule card. The schedule card mirrors the daily-board structure: one left date block, right-side today rows, tomorrow label, tomorrow rows, and vertical color strips.
 - Tapping a todo row opens that todo, tapping an event row opens Calendar with that event detail, tapping an announcement row opens the source Planning Desk note, and section/empty rows return to the default daily board.
 - Desktop web `/api/snapshot` includes active Planning Desk announcements and the browser console renders them as a top announcement banner. Long announcement text now scrolls only when the combined text exceeds 60 characters, and hover pauses the marquee.
 - Desktop web now follows system dark mode through CSS variables for timeline cards, event cards, modal sheets, summary cards, sidebar cards, tab buttons, Planning Desk, and announcements.
@@ -74,7 +74,7 @@ Recent code inspection and build verification cover:
 
 ## Documentation Health
 
-Current docs have been synchronized for `1.8.8`:
+Current docs have been synchronized for `1.8.9`:
 
 - `README.md`
 - `CHANGELOG.md`
@@ -93,12 +93,12 @@ Older versioned docs under `docs/` remain historical references and should not b
 
 1. Device-side verification is still required for the full Planning Desk mapping loop: import -> status sync -> completed markdown sync -> refresh -> postpone -> undo -> conflict resolution.
 2. Settings -> AI 调用配置 model discovery still needs device-side verification with real providers: valid `/models`, root and `/v1` Base URLs, full `/chat/completions` conversion, invalid keys, unsupported `/models`, HTML responses, dropdown selection, and manual fallback.
-3. Desktop-browser verification is still required for the mapping loop, system dark mode, and the top announcement marquee after installing `PaykiTodo-1.8.8-debug.apk` on the phone and reconnecting from a real browser.
+3. Desktop-browser verification is still required for the mapping loop, system dark mode, and the top announcement marquee after installing `PaykiTodo-1.8.9-debug.apk` on the phone and reconnecting from a real browser.
 4. Widget behavior and the new card-style visual hierarchy must be verified on a real launcher because Android widget picker / RemoteViews refresh, resize, dark-mode behavior, and row-level PendingIntent deep links cannot be fully covered by JVM tests.
 5. Planning Desk announcement syntax, multi-announcement visibility, date-range filtering, long-text marquee, preview highlighting, desktop-web propagation, and widget propagation need real UI verification.
 6. Unit tests currently cover parser / AI / line-matching behavior, but there are still no dedicated repository-level automated tests for refresh/postpone/undo/conflict flows; those are presently covered by code inspection plus build/test success.
 7. Long-running chat sessions can become unreliable, so repository docs must remain the source of truth for future continuation.
-8. The active goal files under `docs/goals/` were written before the `1.8.8 / 191` widget fix. If the focus-session goal continues, its implementation should use the next available versionCode rather than reusing `191`.
+8. The active goal files under `docs/goals/` were written before the `1.8.8 / 191` and `1.8.9 / 192` widget fixes. If the focus-session goal continues, its implementation should use the next available versionCode rather than reusing `191` or `192`.
 
 ## How A New Session Should Start
 

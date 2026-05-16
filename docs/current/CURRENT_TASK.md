@@ -2,17 +2,17 @@
 
 ## Active Development Focus
 
-The current round is PaykiTodo `1.8.8` / `versionCode 191`, focused on correcting the Android `今日看板` launcher widget after visual review: the widget should look like the in-app daily board rather than a generic list surface.
+The current round is PaykiTodo `1.8.9` / `versionCode 192`, focused on correcting the Android `今日看板` launcher widget after visual review: the widget should look like the in-app daily board rather than a generic list surface.
 
-## Completed In 1.8.8
+## Completed In 1.8.9
 
-1. The widget root now has a fixed `每日看板` title area with current date copy and a transparent app-icon badge.
-2. The widget keeps the daily-board-like greeting card, section titles, todo group-color strips, and one aggregated today/tomorrow schedule board card.
-3. The widget background and card surfaces were adjusted to a safer RemoteViews-compatible light/dark rounded gradient + semi-transparent card hierarchy, avoiding bitmap background clipping risk on launchers.
-4. Greeting, empty, announcement, todo, and schedule layouts now use tighter padding and reduced font extra padding so small widget sizes show more useful content.
-5. Schedule rows inside the aggregated schedule card use tighter title/time/location typography and vertical color strips that stretch with the row height.
+1. The widget root now layers daily-board background art with a light/dark scrim instead of only using a plain gradient/list-like surface.
+2. The widget header now resembles the in-app daily-board top bar with a circular menu button, `每日看板` title, and current-date subtitle.
+3. Announcement rows now render as an orange rounded banner rather than a generic white/gray card.
+4. Greeting, empty, todo, and schedule cards use stronger light/dark surfaces, wider color strips, larger section titles, and daily-board-like spacing.
+5. The aggregated schedule card still shows today / tomorrow in one board card, with the left date block and row color strips preserved.
 6. Todo / event / announcement deep links remain intact.
-7. Version metadata is now `1.8.8` / `versionCode 191`.
+7. Version metadata is now `1.8.9` / `versionCode 192`.
 
 ## Verification Completed This Round
 
@@ -23,21 +23,20 @@ The current round is PaykiTodo `1.8.8` / `versionCode 191`, focused on correctin
 
 ## Immediate Practical Next Steps
 
-1. Run the verification commands above.
-2. Create a focused local commit with the required `完成内容概要：` bullet-list body.
-3. Do not push unless the user explicitly asks.
+1. Create a focused local commit with the required `完成内容概要：` bullet-list body.
+2. Do not push unless the user explicitly asks.
 
-After installing the `1.8.8` APK on device, verify:
+After installing the `1.8.9` APK on device, verify:
 
-1. The launcher widget visually resembles the in-app daily board more than the old bordered/list card.
-2. The sample state from the user screenshot shows the fixed `每日看板` header, greeting card, `今日待办（0）`, the empty todo card, `今日日程（0）`, and one schedule board card containing today / tomorrow content.
-3. Widget resizing still reveals more content without clipping.
+1. The launcher widget visually resembles the in-app daily board background/topbar/card hierarchy more than the old bordered/list card.
+2. The sample state from the user screenshot shows the circular menu header, greeting card, `今日待办（0）`, the empty todo card, `今日日程（0）`, and one schedule board card containing today / tomorrow content.
+3. Widget resizing still reveals more content; because RemoteViews cannot fully guarantee child bitmap clipping on every launcher, check for square-corner background bleed specifically.
 4. Todo / event / announcement row taps still deep-link to the correct in-app screen.
 5. Dark-mode widget background, cards, and text remain readable on the actual launcher.
 
 ## Active Goal Version Note
 
-Two goal docs remain under `docs/goals/` for the future `1.9.0` focus-session and `1.9.1` AI-report work. They were written before this `1.8.8 / 191` widget fix. If that goal resumes, do not reuse `versionCode 191`; continue from the current code version.
+Two goal docs remain under `docs/goals/` for the future focus-session and AI-report work. They were written before the `1.8.8 / 191` and `1.8.9 / 192` widget fixes. If that goal resumes, continue from the current code version and do not reuse old versionCodes.
 
 ## Commit Message Rule
 

@@ -10,6 +10,9 @@ import android.os.Build
 import android.widget.RemoteViews
 import com.example.todoalarm.R
 import com.example.todoalarm.ui.MainActivity
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
+import java.util.Locale
 
 class TodoWidgetProvider : AppWidgetProvider() {
     override fun onUpdate(context: Context, appWidgetManager: AppWidgetManager, appWidgetIds: IntArray) {
@@ -52,7 +55,9 @@ class TodoWidgetProvider : AppWidgetProvider() {
                 putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId)
                 data = android.net.Uri.parse(toUri(Intent.URI_INTENT_SCHEME))
             }
+            val todayLabel = LocalDate.now().format(DateTimeFormatter.ofPattern("M月d日 EEEE", Locale.CHINA))
             val views = RemoteViews(context.packageName, R.layout.widget_todo).apply {
+                setTextViewText(R.id.widget_board_subtitle, "$todayLabel · 轻触打开")
                 setRemoteAdapter(R.id.widget_list, serviceIntent)
                 setEmptyView(R.id.widget_list, R.id.widget_empty)
                 setOnClickPendingIntent(R.id.widget_root, openAppIntent)

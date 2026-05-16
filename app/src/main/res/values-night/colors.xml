@@ -1,7 +1,7 @@
 <resources>
     <color name="widget_bg">#15130F</color>
-    <color name="widget_item_bg">#142729</color>
-    <color name="widget_item_stroke">#26393A</color>
+    <color name="widget_item_bg">#D119282A</color>
+    <color name="widget_item_stroke">#3D3A4C4D</color>
     <color name="widget_outer_stroke">#5E4A2B</color>
     <color name="widget_text_primary">#F2EFE8</color>
     <color name="widget_text_secondary">#D3C8B5</color>

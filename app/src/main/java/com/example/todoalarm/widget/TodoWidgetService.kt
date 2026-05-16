@@ -51,8 +51,15 @@ private class TodoWidgetFactory(
             val items = app.repository.getActiveItemsForBoardRange()
             val groups = app.repository.getAllGroups()
             val notes = app.repository.getAllPlanningNotes()
+            val focusSessions = app.repository.getTodayFocusSessions()
             val snapshot = DailyBoardSnapshotBuilder.build(items = items, planningNotes = notes)
-            buildRows(snapshot, groups)
+            buildRows(
+                snapshot = snapshot,
+                groups = groups,
+                focusSessionCount = focusSessions.size,
+                completedFocusCount = focusSessions.count { it.completed },
+                completedFocusMinutes = focusSessions.filter { it.completed }.sumOf { it.actualMinutes }
+            )
         }
     }
 
@@ -66,6 +73,7 @@ private class TodoWidgetFactory(
         val row = rows.getOrNull(position) ?: return emptyRowViews(emptyRow(-1L, "今日看板暂无内容"))
         return when (row.type) {
             WidgetRowType.GREETING -> greetingViews(row)
+            WidgetRowType.FOCUS -> focusViews(row)
             WidgetRowType.SECTION -> sectionViews(row)
             WidgetRowType.EMPTY -> emptyRowViews(row)
             WidgetRowType.TODO -> todoViews(row)
@@ -88,6 +96,16 @@ private class TodoWidgetFactory(
             setTextViewText(R.id.widget_greeting_quote, row.meta)
             setTextColor(R.id.widget_greeting_title, darkText)
             setTextColor(R.id.widget_greeting_quote, mutedText)
+        }
+    }
+
+    private fun focusViews(row: WidgetBoardRow): RemoteViews {
+        return RemoteViews(context.packageName, R.layout.widget_todo_focus_card).apply {
+            setTextViewText(R.id.widget_focus_minutes, row.title)
+            setTextViewText(R.id.widget_focus_meta, row.meta)
+            setTextColor(R.id.widget_focus_minutes, headerText)
+            setTextColor(R.id.widget_focus_title, darkText)
+            setTextColor(R.id.widget_focus_meta, mutedText)
         }
     }
 
@@ -225,7 +243,13 @@ private class TodoWidgetFactory(
         }
     }
 
-    private fun buildRows(snapshot: DailyBoardSnapshot, groups: List<TaskGroup>): List<WidgetBoardRow> {
+    private fun buildRows(
+        snapshot: DailyBoardSnapshot,
+        groups: List<TaskGroup>,
+        focusSessionCount: Int,
+        completedFocusCount: Int,
+        completedFocusMinutes: Int
+    ): List<WidgetBoardRow> {
         val output = mutableListOf<WidgetBoardRow>()
         val today = snapshot.date
 
@@ -235,6 +259,15 @@ private class TodoWidgetFactory(
             title = "${timeGreeting(snapshot.now.hour)}，Payki",
             meta = "今天是 ${today.format(fullDateFormatter)}，先处理最关键的一步。",
             titleColor = darkText,
+            metaColor = mutedText
+        )
+
+        output += WidgetBoardRow(
+            stableId = -19_000L,
+            type = WidgetRowType.FOCUS,
+            title = completedFocusMinutes.toString(),
+            meta = "$focusSessionCount 次专注 · $completedFocusCount 次完成",
+            titleColor = headerText,
             metaColor = mutedText
         )
 
@@ -413,6 +446,7 @@ private class TodoWidgetFactory(
                 WidgetRowType.EVENT -> putExtra(MainActivity.EXTRA_OPEN_EVENT_ID, itemId)
                 WidgetRowType.ANNOUNCEMENT -> putExtra(MainActivity.EXTRA_OPEN_PLANNING_NOTE_ID, sourceNoteId)
                 WidgetRowType.GREETING,
+                WidgetRowType.FOCUS,
                 WidgetRowType.SCHEDULE,
                 WidgetRowType.SECTION,
                 WidgetRowType.EMPTY -> putExtra(MainActivity.EXTRA_OPEN_BOARD, true)
@@ -432,6 +466,7 @@ private class TodoWidgetFactory(
 
     private enum class WidgetRowType {
         GREETING,
+        FOCUS,
         SECTION,
         EMPTY,
         TODO,

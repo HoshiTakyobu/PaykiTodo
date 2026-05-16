@@ -158,7 +158,7 @@ This file tracks the product at a practical level for new coding sessions.
 
 - Android launcher exposes a PaykiTodo `今日看板` widget through `TodoWidgetProvider`
 - widget displays active Planning Desk announcements, today todo block, and a combined today/tomorrow schedule board closer to the in-app daily board
-- widget uses RemoteViews `ListView`; rows are adaptive-height, split into greeting / section / empty-card / todo-card / schedule-card / announcement-card types, and no longer limited to five todos, so resizing the launcher widget reveals more board content
+- widget uses RemoteViews `ListView`; rows are adaptive-height, split into greeting / focus-summary / section / empty-card / todo-card / schedule-card / announcement-card types, and no longer limited to five todos, so resizing the launcher widget reveals more board content
 - widget provider declares horizontal / vertical resize mode plus min resize dimensions for better launcher compatibility
 - widget day/night colors are resource-backed, with daily-board background art, dark-mode scrims, and text colors for launcher readability
 - widget refresh uses a board-range Room query rather than loading all historical todos, and duplicate `onReceive` update routing has been removed
@@ -166,6 +166,7 @@ This file tracks the product at a practical level for new coding sessions.
 - widget empty states now use the same card-style visual direction as the in-app daily board rather than thin bordered rows
 - widget schedule content is aggregated into one card with a left date block, today rows, tomorrow label, and tomorrow rows instead of independent event cards; todo cards use the task group's color strip
 - widget root now includes a daily-board-style background image layer, lighter/tuned day-night scrims, circular menu-button header, shadowed `每日看板` title, and current-date subtitle, making the launcher widget read closer to the in-app daily board instead of a generic RemoteViews list
+- widget includes a `今日已专注` card with today's completed focus minutes, total sessions, and completed sessions, so the launcher surface follows the in-app daily-board sequence more closely
 - widget greeting, empty, orange announcement, todo, and schedule cards use stronger light/dark card surfaces, larger 28dp-style rounding, wider todo color strips, roomier schedule rows, and daily-board-like spacing for better launcher readability
 - repository todo mutations and Planning Desk note edits / delete / archive operations notify widget data refresh through the application-level widget callback
 

@@ -7,13 +7,13 @@
 - Package name: `com.paykitodo.app`
 - Target platform: Android 14 / API 34
 - Current version in code:
-  - `versionName = "1.9.0"`
-  - `versionCode = 193`
+  - `versionName = "1.9.0.1"`
+  - `versionCode = 194`
 
 ## Current Build Facts
 
 - Latest debug APK output:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.9.0-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.9.0.1-debug.apk`
 - Minimal verification completed in the latest code round:
   - `node --check app/src/main/assets/desktop-web/app.js`
   - `./gradlew.bat testDebugUnitTest`
@@ -25,11 +25,11 @@
 
 ## Current Worktree Reality
 
-The repository is now being advanced to `1.9.0`. It carries forward the `1.8.9` Android `今日看板` widget baseline and adds 专注模式（番茄钟）: todo-bound focus sessions, free focus from the daily board, full-screen countdown, focus preferences, Room-backed focus-session records, daily focus statistics, and backup / restore support.
+The repository is now on `1.9.0.1`. It carries forward the `1.9.0` focus-mode baseline and applies a launcher-widget visual hotfix so the Android `今日看板` widget reads closer to the in-app daily board.
 
 Most important current baseline facts:
 
-- version metadata is `1.9.0 / 193`
+- version metadata is `1.9.0.1 / 194`
 - Database version is now `12`; `MIGRATION_11_12` creates `focus_sessions`.
 - Settings -> `专注模式` controls default focus duration, extension duration, screen-on behavior, and a documented-only notification-suppression preference.
 - Active todo long-press menus include `开始专注 · X 分钟`; the daily-board focus card can start free focus.
@@ -43,7 +43,8 @@ Most important current baseline facts:
 - Settings no longer exposes or stores a separate announcement editor. The old `AppSettings` announcement fields and backup serialization were removed; old backup JSON fields are ignored and legacy SharedPreferences keys are cleaned once.
 - Android launcher widgets now expose a `今日看板` widget backed by Room data: active announcements, today todos, today schedule state, and tomorrow schedule summary share one RemoteViews `ListView`; widget colors support system dark mode and widget refresh uses a board-range query rather than pulling all todos.
 - Android launcher widget root now layers the daily-board background art with light/dark scrims and uses a circular menu-button + `每日看板` title area, so the widget reads closer to the in-app daily board rather than a generic list surface.
-- Android launcher widget rows now use distinct RemoteViews layouts for the greeting card, orange announcement banner, section headers, empty cards, todo cards, and an aggregated schedule card. The schedule card mirrors the daily-board structure: one left date block, right-side today rows, tomorrow label, tomorrow rows, and vertical color strips.
+- Android launcher widget rows now use distinct RemoteViews layouts for the greeting card, focus summary card, orange announcement banner, section headers, empty cards, todo cards, and an aggregated schedule card. The schedule card mirrors the daily-board structure: one left date block, right-side today rows, tomorrow label, tomorrow rows, and vertical color strips.
+- Android launcher widget now includes a `今日已专注` card with today's completed focus minutes, total sessions, and completed sessions, matching the in-app daily-board ordering more closely.
 - Tapping a todo row opens that todo, tapping an event row opens Calendar with that event detail, tapping an announcement row opens the source Planning Desk note, and section/empty rows return to the default daily board.
 - Desktop web `/api/snapshot` includes active Planning Desk announcements and the browser console renders them as a top announcement banner. Long announcement text now scrolls only when the combined text exceeds 60 characters, and hover pauses the marquee.
 - Desktop web now follows system dark mode through CSS variables for timeline cards, event cards, modal sheets, summary cards, sidebar cards, tab buttons, Planning Desk, and announcements.
@@ -79,7 +80,7 @@ Recent code inspection and build verification cover:
 
 ## Documentation Health
 
-Current docs are being synchronized for `1.9.0`:
+Current docs are being synchronized for `1.9.0.1`:
 
 - `README.md`
 - `CHANGELOG.md`

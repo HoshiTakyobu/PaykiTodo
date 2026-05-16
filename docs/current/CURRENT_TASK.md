@@ -2,46 +2,40 @@
 
 ## Active Development Focus
 
-The current goal is PaykiTodo `1.9.0` / `versionCode 193`, focused on adding 专注模式（番茄钟） before moving on to the separate `1.9.1` AI 日报 / 周报 goal.
+The current round is PaykiTodo `1.9.0.1` / `versionCode 194`, a launcher-widget visual hotfix after the `1.9.0` focus-mode commit.
 
-The prior Android `今日看板` launcher-widget visual follow-up was committed separately as `1d768ef` and should not be mixed into the remaining focus-session work.
+The separate `1.9.1` AI 日报 / 周报 goal remains pending and should not be mixed into this widget fix.
 
-## Completed In 1.9.0 So Far
+## Completed In This Round
 
-1. Version metadata is now `1.9.0` / `versionCode 193`.
-2. Room database version is now `12`; `MIGRATION_11_12` creates `focus_sessions` and indices for `startedAtMillis` and `todoId`.
-3. `FocusSession` records todo binding, title, planned / actual minutes, start / end timestamps, completion state, and extension count.
-4. Repository and DAO expose focus-session insert, today-range queries, completed-focus minute totals, observation, backup export/import, and clear/restore support.
-5. Settings -> `专注模式` provides default duration, extension duration, keep-screen-on, and documented-only notification-suppression preferences.
-6. `FocusActivity` implements a full-screen countdown with circular progress, pause / continue, early completion confirmation, abandon confirmation, zero-time vibration, extension, save-before-exit behavior, and completion feedback.
-7. Active todo long-press menus now include `开始专注 · X 分钟` beside the destructive delete entry.
-8. Daily board now shows a `今日已专注` card with completed minutes, total sessions, completed sessions, and a `自由专注` entry.
+1. Version metadata moved to `1.9.0.1` / `versionCode 194` so the hotfix APK can be installed and distinguished from the prior `1.9.0` build.
+2. Android `今日看板` widget root padding, header height, card spacing, and light/dark scrim strength were adjusted to reduce the generic-list feel.
+3. Widget rows now include a `今日已专注` card that shows today's completed focus minutes, total focus sessions, and completed sessions.
+4. Widget greeting, section, todo, empty, and schedule-card layouts were retuned for stronger rounded-card hierarchy and closer daily-board spacing.
+5. README, CHANGELOG, Wiki, and current-state docs were updated to reflect the widget hotfix.
 
 ## Verification Completed This Round
 
 1. `./gradlew.bat :app:compileDebugKotlin`
+2. `git diff --check`
 
 ## Immediate Practical Next Steps
 
-1. Finish user-facing docs for `1.9.0`.
-2. Run full verification:
+1. Run final packaging verification:
    - `node --check app/src/main/assets/desktop-web/app.js`
-   - `./gradlew.bat testDebugUnitTest`
    - `./gradlew.bat assembleDebug`
    - `git diff --check`
-3. Create a focused local commit for `1.9.0` 专注模式 using the `完成内容概要：` bullet-list body.
-4. Do not push unless the user explicitly asks.
-5. Then start the separate `1.9.1` AI 日报 / 周报 goal.
+2. Create a focused local commit for the `1.9.0.1` widget visual hotfix.
+3. Do not push unless the user explicitly asks.
+4. After this hotfix is committed, resume the separate `docs/goals/2026-05-17-paykitodo-ai-daily-report-goal.md` as the planned `1.9.1` work.
 
-## Device Verification Needed After Installing 1.9.0
+## Device Verification Needed After Installing 1.9.0.1
 
-1. Long-press a todo and confirm `开始专注 · X 分钟` appears.
-2. Start a bound focus session, pause / continue, finish early, and confirm the completion feedback page appears.
-3. Start a focus session and abandon it; confirm the abandon record does not add completed minutes.
-4. Let a countdown reach zero; confirm vibration, `完成 / 延续 / 放弃` choices, and extension-count behavior.
-5. Start a free focus session from the daily-board focus card.
-6. Confirm completed focus minutes update on the daily-board focus card after returning.
-7. Confirm `设置 -> 专注模式` duration sliders affect newly started focus sessions.
+1. Add or refresh the Android launcher `今日看板` widget.
+2. Confirm the widget looks like the in-app daily board rather than a generic list.
+3. Confirm the new `今日已专注` card appears and updates after a completed focus session.
+4. Resize the widget vertically and horizontally; verify text remains readable in light and dark mode.
+5. Verify row deep links still work: todo row -> todo detail, event row -> calendar detail, announcement row -> source planning note.
 
 ## Commit Message Rule
 

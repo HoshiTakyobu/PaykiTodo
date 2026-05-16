@@ -6,43 +6,33 @@ Long-running Codex sessions can become unreliable. This file exists so a new ses
 
 ## Current Handoff Summary
 
-- The project is being advanced to `1.9.0` / `versionCode 193`.
-- Latest local debug APK after the current build round: `app/build/outputs/apk/debug/PaykiTodo-1.9.0-debug.apk`.
-- The Android `今日看板` launcher-widget visual follow-up was committed separately as `1d768ef` and is not part of the current uncommitted focus-session work.
-- Current uncommitted focus-session work implements 专注模式 and still needs full final verification plus commit.
+- The project is now being advanced to `1.9.0.1` / `versionCode 194`.
+- This round is a focused Android `今日看板` launcher-widget visual hotfix.
+- Latest intended debug APK after packaging: `app/build/outputs/apk/debug/PaykiTodo-1.9.0.1-debug.apk`.
+- The separate AI 日报 / 周报 goal is still pending and should remain the planned `1.9.1` work after this hotfix is committed.
 - Do not push to GitHub unless the user explicitly asks.
 
-## Latest 1.9.0 Focus-Mode Changes
+## Latest 1.9.0.1 Widget Changes
 
-1. `FocusSession` was added as Room table `focus_sessions`, with indices for `startedAtMillis` and `todoId`.
-2. Database version moved to `12`; `MIGRATION_11_12` creates the focus-session table and indices.
-3. Repository / DAO now save focus sessions, observe them, query today's sessions / completed minutes, and include focus sessions in backup / restore.
-4. App settings now store focus default duration, extension duration, keep-screen-on, and a documented-only notification-suppression preference.
-5. Settings -> `专注模式` exposes duration sliders and switches for those preferences.
-6. `FocusActivity` implements full-screen countdown, circular progress, pause / continue, finish confirmation, abandon confirmation, zero-time vibration, extension, save-before-exit behavior, and completion feedback.
-7. Active todo long-press action sheets now include `开始专注 · X 分钟` while delete remains behind confirmation.
-8. Daily board now includes a `今日已专注` statistics card and a `自由专注` entry.
+1. Widget version metadata moved to `1.9.0.1` / `versionCode 194` for installable hotfix testing.
+2. Widget root padding, title header size, list spacing, and light/dark scrims were adjusted so the launcher surface feels less like a generic Android list.
+3. A new `今日已专注` RemoteViews card was added to the widget, showing today's completed focus minutes, total focus sessions, and completed session count.
+4. Greeting, section, todo, empty, and schedule-card XML layouts were retuned for stronger rounded-card hierarchy, larger readable title text, and daily-board-like spacing.
+5. Widget docs were updated in README, CHANGELOG, in-app Wiki, `PROJECT_STATUS`, `FEATURE_LEDGER`, `CURRENT_TASK`, and TODO.
 
-## Files Most Relevant To 1.9.0
+## Files Most Relevant To This Hotfix
 
 - `app/build.gradle.kts`
-- `app/src/main/AndroidManifest.xml`
-- `app/src/main/java/com/example/todoalarm/TodoApplication.kt`
-- `app/src/main/java/com/example/todoalarm/data/FocusSession.kt`
-- `app/src/main/java/com/example/todoalarm/data/AppDatabase.kt`
-- `app/src/main/java/com/example/todoalarm/data/DatabaseMigrations.kt`
-- `app/src/main/java/com/example/todoalarm/data/TodoDao.kt`
-- `app/src/main/java/com/example/todoalarm/data/TodoRepository.kt`
-- `app/src/main/java/com/example/todoalarm/data/AppSettingsStore.kt`
-- `app/src/main/java/com/example/todoalarm/data/BackupModels.kt`
-- `app/src/main/java/com/example/todoalarm/data/BackupManager.kt`
-- `app/src/main/java/com/example/todoalarm/ui/FocusActivity.kt`
-- `app/src/main/java/com/example/todoalarm/ui/TodoCards.kt`
-- `app/src/main/java/com/example/todoalarm/ui/DashboardChrome.kt`
-- `app/src/main/java/com/example/todoalarm/ui/DashboardScreen.kt`
-- `app/src/main/java/com/example/todoalarm/ui/MainActivity.kt`
-- `app/src/main/java/com/example/todoalarm/ui/SettingsPanel.kt`
-- `app/src/main/java/com/example/todoalarm/ui/TodoViewModel.kt`
+- `app/src/main/java/com/example/todoalarm/widget/TodoWidgetService.kt`
+- `app/src/main/res/layout/widget_todo.xml`
+- `app/src/main/res/layout/widget_todo_focus_card.xml`
+- `app/src/main/res/layout/widget_todo_greeting_card.xml`
+- `app/src/main/res/layout/widget_todo_task_card.xml`
+- `app/src/main/res/layout/widget_todo_schedule_card.xml`
+- `app/src/main/res/layout/widget_todo_section.xml`
+- `app/src/main/res/layout/widget_todo_empty_card.xml`
+- `app/src/main/res/drawable/widget_board_scrim.xml`
+- `app/src/main/res/drawable-night/widget_board_scrim.xml`
 - `README.md`
 - `CHANGELOG.md`
 - `TODO.md`
@@ -57,25 +47,25 @@ Long-running Codex sessions can become unreliable. This file exists so a new ses
 Completed so far:
 
 1. `./gradlew.bat :app:compileDebugKotlin`
+2. `git diff --check`
 
-Still required before committing `1.9.0`:
+Still recommended before commit:
 
 1. `node --check app/src/main/assets/desktop-web/app.js`
-2. `./gradlew.bat testDebugUnitTest`
-3. `./gradlew.bat assembleDebug`
-4. `git diff --check`
+2. `./gradlew.bat assembleDebug`
+3. `git diff --check`
 
-Then verify on a real Android device after installing `PaykiTodo-1.9.0-debug.apk`:
+Then verify on a real Android launcher after installing `PaykiTodo-1.9.0.1-debug.apk`:
 
-1. long-press a todo and start a bound focus session;
-2. start a free focus session from the daily-board focus card;
-3. pause / continue, finish early, abandon, let countdown reach zero, extend once, and complete;
-4. confirm completed focus minutes update on the daily-board focus card;
-5. confirm screen-on and haptic behavior on device.
+1. add / refresh the PaykiTodo `今日看板` widget;
+2. confirm the widget includes the new `今日已专注` card;
+3. confirm the overall surface resembles the in-app daily board rather than a system list;
+4. resize the widget and check text readability in light / dark mode;
+5. verify row-level deep links still open todo, event, or source planning note correctly.
 
 ## Pending Next Goal
 
-After the `1.9.0` focus-mode commit, implement `docs/goals/2026-05-17-paykitodo-ai-daily-report-goal.md` as `1.9.1` / next versionCode.
+After this widget hotfix is committed, implement `docs/goals/2026-05-17-paykitodo-ai-daily-report-goal.md` as `1.9.1`.
 
 The two goal docs are intentionally untracked local task specs unless the user explicitly asks to keep them in git.
 

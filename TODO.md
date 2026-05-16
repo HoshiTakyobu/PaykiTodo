@@ -4,8 +4,8 @@
 
 ### In Progress
 
-- Verify version `1.9.0` on device after adding 专注模式: todo long-press focus entry, free focus from the daily-board focus card, countdown completion / extension / abandon flows, and the daily focus statistics card
-- Keep `README.md`, `CHANGELOG.md`, Wiki, in-app help sheets, desktop-web help, and current-state docs aligned with version `1.9.0`
+- Verify version `1.9.0.1` on device after the launcher-widget visual hotfix: widget should read like the in-app daily board, include the focus summary card, and remain readable after resizing / dark-mode switching
+- Keep `README.md`, `CHANGELOG.md`, Wiki, in-app help sheets, desktop-web help, and current-state docs aligned with version `1.9.0.1`
 - Continue planning-desk usability polish without expanding into drag/drop, Gantt, AI auto-planning, or complex project trees
 - Improve repo-native handoff so new sessions do not depend on long chat history
 
@@ -45,7 +45,7 @@
 - Custom snooze should accept long delays beyond 180 minutes and update todo DDL when the snooze target is later than the current DDL
 - Launch screen icon should use the transparent logo asset without a white square background
 - Input help question-mark buttons should open the correct syntax help beside reminder, batch, and snooze fields
-- In-app Wiki should describe the current 1.9.0 settings, reminder, calendar, planning-desk, announcement, widget, focus-mode, and input syntax accurately
+- In-app Wiki should describe the current 1.9.0.1 settings, reminder, calendar, planning-desk, announcement, widget, focus-mode, and input syntax accurately
 - In-app Wiki should keep a left navigation / right article layout on phone-sized screens
 - Daily board should show a separate completion message when today's schedule existed but all events have ended
 - Drawer header icon should stay visually circular and not expose a white rounded-rectangle launcher background
@@ -80,8 +80,8 @@
 - Planning Desk announcement parser should be device-tested for `- [ ] #公告 ...`, `> #公告 ...`, inline `#公告 ...`, tail `#imported` cleanup, and recent-date-before-long-running ordering.
 - Desktop web top announcement banner should be verified after writing an active Planning Desk announcement and refreshing `/api/snapshot`; short text should stay still, 60+ character text should scroll, and hover should pause it.
 - Desktop web system dark mode should be verified in a real browser for timeline cards, event cards, modal sheets, summary cards, tab buttons, sidebar cards, Planning Desk, and announcements.
-- Android desktop widget should be verified in system dark mode and after resizing; text should remain readable and refresh should still show missed/today/tomorrow board content.
-- Android desktop widget should be device-tested from the launcher widget picker after installing `1.8.9`: add widget, freely resize it, confirm the daily-board background/topbar/card visual direction, show announcements / today todos / today schedules / tomorrow schedules in the greeting-card plus aggregated schedule-card structure, row-level deep links, and refresh after todo/event/planning-note changes.
+- Android desktop widget should be verified in system dark mode and after resizing; text should remain readable and refresh should still show focus summary / missed / today / tomorrow board content.
+- Android desktop widget should be device-tested from the launcher widget picker after installing `1.9.0.1`: add widget, freely resize it, confirm the daily-board background/topbar/card visual direction, show announcements / focus summary / today todos / today schedules / tomorrow schedules in the greeting-card plus aggregated schedule-card structure, row-level deep links, and refresh after todo/event/planning-note changes.
 - 专注模式 should be device-tested after installing `1.9.0`: long-press an active todo, start focus, pause/continue, abandon with confirmation, finish early, let countdown reach zero, extend once, complete, and confirm the daily-board focus minutes/statistics update.
 - 专注模式 settings should be device-tested after installing `1.9.0`: default duration 5-90 minutes, extension duration 1-30 minutes, keep-screen-on behavior, and the documented-only notification-suppression preference.
 - Desktop web Planning Desk should be tested from a real browser connected to the phone after installing `1.8.9`, including auto-save, `Ctrl+S`, `Ctrl+Enter`, select-all / clear-all, no-empty-import guard, the desktop Planning Desk help modal, document delete, editable preview, mixed reminder input, announcement syntax, parser edge cases, import marker write-back, and the mapping refresh/postpone/undo/conflict actions

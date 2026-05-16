@@ -13,7 +13,7 @@
 
     <LinearLayout
         android:id="@+id/widget_schedule_date_block"
-        android:layout_width="58dp"
+        android:layout_width="56dp"
         android:layout_height="wrap_content"
         android:gravity="center"
         android:orientation="vertical">
@@ -47,7 +47,7 @@
             android:gravity="center"
             android:includeFontPadding="false"
             android:textColor="@color/widget_text_primary"
-            android:textSize="30sp"
+            android:textSize="31sp"
             android:textStyle="bold" />
     </LinearLayout>
 
@@ -78,7 +78,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:gravity="top"
-            android:minHeight="62dp"
+            android:minHeight="60dp"
             android:orientation="horizontal"
             android:paddingTop="8dp"
             android:paddingEnd="6dp"
@@ -95,7 +95,7 @@
             <LinearLayout
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="14dp"
+                android:layout_marginStart="16dp"
                 android:layout_weight="1"
                 android:orientation="vertical">
 
@@ -107,7 +107,7 @@
                     android:includeFontPadding="false"
                     android:maxLines="2"
                     android:textColor="@color/widget_text_primary"
-                    android:textSize="15sp"
+                    android:textSize="16sp"
                     android:textStyle="bold" />
 
                 <TextView
@@ -139,7 +139,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:gravity="top"
-            android:minHeight="62dp"
+            android:minHeight="60dp"
             android:orientation="horizontal"
             android:paddingTop="8dp"
             android:paddingEnd="6dp"
@@ -156,7 +156,7 @@
             <LinearLayout
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="14dp"
+                android:layout_marginStart="16dp"
                 android:layout_weight="1"
                 android:orientation="vertical">
 
@@ -168,7 +168,7 @@
                     android:includeFontPadding="false"
                     android:maxLines="2"
                     android:textColor="@color/widget_text_primary"
-                    android:textSize="15sp"
+                    android:textSize="16sp"
                     android:textStyle="bold" />
 
                 <TextView
@@ -227,7 +227,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:gravity="top"
-            android:minHeight="62dp"
+            android:minHeight="60dp"
             android:orientation="horizontal"
             android:paddingTop="8dp"
             android:paddingEnd="6dp"
@@ -244,7 +244,7 @@
             <LinearLayout
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="14dp"
+                android:layout_marginStart="16dp"
                 android:layout_weight="1"
                 android:orientation="vertical">
 
@@ -256,7 +256,7 @@
                     android:includeFontPadding="false"
                     android:maxLines="2"
                     android:textColor="@color/widget_text_primary"
-                    android:textSize="15sp"
+                    android:textSize="16sp"
                     android:textStyle="bold" />
 
                 <TextView
@@ -288,7 +288,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:gravity="top"
-            android:minHeight="62dp"
+            android:minHeight="60dp"
             android:orientation="horizontal"
             android:paddingTop="8dp"
             android:paddingEnd="6dp"
@@ -305,7 +305,7 @@
             <LinearLayout
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="14dp"
+                android:layout_marginStart="16dp"
                 android:layout_weight="1"
                 android:orientation="vertical">
 
@@ -317,7 +317,7 @@
                     android:includeFontPadding="false"
                     android:maxLines="2"
                     android:textColor="@color/widget_text_primary"
-                    android:textSize="15sp"
+                    android:textSize="16sp"
                     android:textStyle="bold" />
 
                 <TextView

@@ -6,14 +6,18 @@ Long-running Codex sessions can become unreliable. This file exists so a new ses
 
 ## Current Handoff Summary
 
-- The project is currently at code version `1.8.9` / `versionCode 192`.
-- Latest debug APK output after final build: `app/build/outputs/apk/debug/PaykiTodo-1.8.9-debug.apk`.
-- Latest verification in this round:
+- The committed baseline documented before this follow-up widget pass was `1.8.9` / `versionCode 192`.
+- The current worktree has separate uncommitted `1.9.0` focus-session changes, so the latest locally built APK is `app/build/outputs/apk/debug/PaykiTodo-1.9.0-debug.apk`.
+- Latest verification after the widget follow-up:
+  - `./gradlew.bat :app:processDebugResources`
+  - `./gradlew.bat assembleDebug`
+  - `git diff --check`
+- Verification from the prior widget round:
   - `node --check app/src/main/assets/desktop-web/app.js`
   - `./gradlew.bat testDebugUnitTest`
   - `./gradlew.bat assembleDebug`
   - `git diff --check`
-- This round refines the Android `今日看板` launcher widget after visual review so it follows the in-app daily board background/topbar/card structure more closely.
+- This follow-up refines the Android `今日看板` launcher widget after visual review so it reads closer to the in-app daily board card rhythm instead of a generic list widget.
 - Do not push to GitHub unless the user explicitly asks.
 
 ## Latest Changes In 1.8.9
@@ -26,6 +30,14 @@ Long-running Codex sessions can become unreliable. This file exists so a new ses
 6. Widget keeps the daily-board structure: greeting card, section titles, todo cards with group-color strips, and one aggregated schedule card for today/tomorrow.
 7. RemoteViews child bitmap clipping still needs real launcher verification; if square-corner background bleed appears, the next step is a pre-composited/cropped bitmap background.
 8. Todo, event, and announcement row deep links remain in place.
+
+## Latest Follow-up Widget Changes
+
+1. Widget outer padding, list spacing, header button size, title size, and title/subtitle shadows were adjusted to better match the phone-side daily-board top area.
+2. Greeting, empty, todo, and schedule cards now use larger 28dp-style rounded surfaces and stronger light/dark opacity so they feel like floating board cards.
+3. Section titles are larger and shadowed, closer to the in-app `今日待办` / `今日日程` visual weight.
+4. Schedule card spacing was loosened, event titles were enlarged, and event strips were narrowed to make the schedule board less table-like and closer to the phone-side row style.
+5. Light/dark widget scrims and inner schedule backgrounds were tuned for launcher readability.
 
 ## Files Most Relevant To This Round
 
@@ -67,7 +79,7 @@ Completed before closing the round:
 3. `./gradlew.bat assembleDebug`
 4. `git diff --check`
 
-Then verify on a real Android launcher after installing `PaykiTodo-1.8.9-debug.apk`:
+Then verify on a real Android launcher after installing the latest locally built APK:
 
 1. widget resembles the in-app daily board background/topbar/card hierarchy rather than a generic list;
 2. circular menu-button header, greeting card, orange announcement banner, todo group color strips, and one aggregated schedule card render correctly;

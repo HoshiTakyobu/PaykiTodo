@@ -1,8 +1,8 @@
 <resources>
     <color name="widget_bg">#15130F</color>
-    <color name="widget_item_bg">#E616262D</color>
-    <color name="widget_item_stroke">#5260787D</color>
-    <color name="widget_inner_bg">#332F464C</color>
+    <color name="widget_item_bg">#EE16262D</color>
+    <color name="widget_item_stroke">#5E60787D</color>
+    <color name="widget_inner_bg">#3F2F464C</color>
     <color name="widget_announcement_text">#5C3A0E</color>
     <color name="widget_outer_stroke">#5E4A2B</color>
     <color name="widget_text_primary">#F2EFE8</color>

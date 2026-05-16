@@ -152,8 +152,8 @@ This file tracks the product at a practical level for new coding sessions.
 - tapping a todo row opens the matching todo editor, tapping an event row opens the calendar event detail, tapping an announcement row opens the source Planning Desk note, and header / empty rows return to the default daily board
 - widget empty states now use the same card-style visual direction as the in-app daily board rather than thin bordered rows
 - widget schedule content is aggregated into one card with a left date block, today rows, tomorrow label, and tomorrow rows instead of independent event cards; todo cards use the task group's color strip
-- widget root now includes a daily-board-style background image layer, light/dark scrim, circular menu-button header, `每日看板` title, and current-date subtitle, making the launcher widget read closer to the in-app daily board instead of a generic RemoteViews list
-- widget greeting, empty, orange announcement, todo, and schedule cards use stronger light/dark card surfaces, wider color strips, and daily-board-like spacing for better launcher readability
+- widget root now includes a daily-board-style background image layer, lighter/tuned day-night scrims, circular menu-button header, shadowed `每日看板` title, and current-date subtitle, making the launcher widget read closer to the in-app daily board instead of a generic RemoteViews list
+- widget greeting, empty, orange announcement, todo, and schedule cards use stronger light/dark card surfaces, larger 28dp-style rounding, wider todo color strips, roomier schedule rows, and daily-board-like spacing for better launcher readability
 - repository todo mutations and Planning Desk note edits / delete / archive operations notify widget data refresh through the application-level widget callback
 
 ### Data / Backup / Diagnostics

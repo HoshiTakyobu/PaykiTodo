@@ -1,9 +1,9 @@
 <resources>
     <color name="launcher_background">#FFFFFF</color>
     <color name="widget_bg">#F2E7D4</color>
-    <color name="widget_item_bg">#F2FFFBF4</color>
-    <color name="widget_item_stroke">#84FFFFFF</color>
-    <color name="widget_inner_bg">#73FFFFFF</color>
+    <color name="widget_item_bg">#F6FFFBF4</color>
+    <color name="widget_item_stroke">#92FFFFFF</color>
+    <color name="widget_inner_bg">#7DFFFFFF</color>
     <color name="widget_announcement_text">#5C3A0E</color>
     <color name="widget_outer_stroke">#D5B06A</color>
     <color name="widget_text_primary">#2A2118</color>

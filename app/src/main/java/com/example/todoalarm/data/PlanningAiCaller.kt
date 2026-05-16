@@ -3,6 +3,7 @@ package com.example.todoalarm.data
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import org.json.JSONException
 import org.json.JSONObject
 import java.io.IOException
 import java.net.HttpURLConnection
@@ -29,6 +30,8 @@ class PlanningAiHttpException(
     val statusCode: Int,
     message: String
 ) : IOException(message)
+
+class PlanningAiNonJsonException(message: String) : IOException(message)
 
 object PlanningAiCaller {
     suspend fun callWithFallback(
@@ -63,8 +66,8 @@ object PlanningAiCaller {
                     systemPrompt = "你是一个测试助手，只回 ok",
                     prompt = "ping"
                 ),
-                connectTimeoutMs = 5_000,
-                readTimeoutMs = 10_000
+                connectTimeoutMs = 10_000,
+                readTimeoutMs = 20_000
             )
             if (response.content.isBlank()) {
                 PlanningAiTestResult.Failure("响应为空")
@@ -90,8 +93,6 @@ object PlanningAiCaller {
         connectTimeoutMs: Int = 15_000,
         readTimeoutMs: Int = 45_000
     ): PlanningAiResponse = withContext(Dispatchers.IO) {
-        val base = provider.baseUrl.trimEnd('/')
-        val endpoint = if (base.endsWith("/chat/completions")) base else "$base/chat/completions"
         val body = JSONObject().apply {
             put("model", provider.model)
             put(
@@ -105,6 +106,48 @@ object PlanningAiCaller {
             )
         }.toString()
 
+        var lastError: Exception? = null
+        val endpoints = endpointCandidates(provider.baseUrl)
+        for ((index, endpoint) in endpoints.withIndex()) {
+            try {
+                return@withContext postChatCompletion(
+                    endpoint = endpoint,
+                    provider = provider,
+                    body = body,
+                    connectTimeoutMs = connectTimeoutMs,
+                    readTimeoutMs = readTimeoutMs
+                )
+            } catch (error: Exception) {
+                if (error is CancellationException) throw error
+                lastError = error
+                if (index >= endpoints.lastIndex || !shouldTryNextEndpoint(error)) {
+                    throw error
+                }
+            }
+        }
+        throw lastError ?: IOException("没有可用的 AI 接口地址。")
+    }
+
+    internal fun endpointCandidates(rawBaseUrl: String): List<String> {
+        val base = rawBaseUrl.trim().trimEnd('/')
+        if (base.isBlank()) return emptyList()
+        return when {
+            base.endsWith("/chat/completions", ignoreCase = true) -> listOf(base)
+            base.endsWith("/v1", ignoreCase = true) -> listOf("$base/chat/completions")
+            else -> listOf(
+                "$base/v1/chat/completions",
+                "$base/chat/completions"
+            )
+        }.distinct()
+    }
+
+    private fun postChatCompletion(
+        endpoint: String,
+        provider: PlanningAiProvider,
+        body: String,
+        connectTimeoutMs: Int,
+        readTimeoutMs: Int
+    ): PlanningAiResponse {
         val connection = (URL(endpoint).openConnection() as HttpURLConnection).apply {
             requestMethod = "POST"
             connectTimeout = connectTimeoutMs
@@ -124,16 +167,48 @@ object PlanningAiCaller {
             if (code !in 200..299) {
                 throw PlanningAiHttpException(code, responseText.ifBlank { "HTTP $code" })
             }
-            val content = JSONObject(responseText)
+            if (!looksLikeJson(responseText)) {
+                throw PlanningAiNonJsonException(
+                    "服务返回的不是 JSON，请检查 Base URL 是否应填写到 /v1 或完整 /v1/chat/completions。响应开头：${responsePreview(responseText)}"
+                )
+            }
+            val json = try {
+                JSONObject(responseText)
+            } catch (error: JSONException) {
+                throw PlanningAiNonJsonException(
+                    "服务返回的 JSON 无法解析，请确认该接口兼容 OpenAI chat/completions。响应开头：${responsePreview(responseText)}"
+                )
+            }
+            val content = json
                 .optJSONArray("choices")
                 ?.optJSONObject(0)
                 ?.optJSONObject("message")
                 ?.optString("content")
                 .orEmpty()
-            PlanningAiResponse(content = content, provider = provider)
+            if (content.isBlank()) {
+                throw IOException("服务已返回 JSON，但不是 OpenAI-compatible chat/completions 响应格式。")
+            }
+            return PlanningAiResponse(content = content, provider = provider)
         } finally {
             connection.disconnect()
         }
+    }
+
+    private fun shouldTryNextEndpoint(error: Exception): Boolean {
+        return when (error) {
+            is PlanningAiNonJsonException -> true
+            is PlanningAiHttpException -> error.statusCode in setOf(400, 404, 405)
+            else -> false
+        }
+    }
+
+    private fun looksLikeJson(text: String): Boolean {
+        val trimmed = text.trimStart()
+        return trimmed.startsWith("{") || trimmed.startsWith("[")
+    }
+
+    private fun responsePreview(text: String): String {
+        return text.replace(Regex("\\s+"), " ").trim().take(120).ifBlank { "空响应" }
     }
 
     private fun isRetryable(error: Exception): Boolean {

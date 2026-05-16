@@ -13,6 +13,8 @@ import com.example.todoalarm.alarm.ReminderForegroundService
 import com.example.todoalarm.data.AppSettings
 import com.example.todoalarm.data.CalendarEventDraft
 import com.example.todoalarm.data.DEFAULT_PLANNING_REMINDER_MINUTES
+import com.example.todoalarm.data.PlanningAnnouncement
+import com.example.todoalarm.data.PlanningAnnouncementParser
 import com.example.todoalarm.data.PlanningImportCandidate
 import com.example.todoalarm.data.PlanningImportResult
 import com.example.todoalarm.data.PlanningLineMapping
@@ -71,6 +73,7 @@ data class TodoUiState(
     val planningNotes: List<PlanningNote> = emptyList(),
     val activePlanningNoteId: Long? = null,
     val activePlanningNote: PlanningNote? = null,
+    val activeAnnouncements: List<PlanningAnnouncement> = emptyList(),
     val reminderChainLogs: List<ReminderChainLog> = emptyList(),
     val scheduleTemplates: List<ScheduleTemplate> = emptyList(),
     val settings: AppSettings = AppSettings(),
@@ -172,6 +175,7 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
             planningNotes = planningNotes,
             activePlanningNoteId = activePlanningNote?.id,
             activePlanningNote = activePlanningNote,
+            activeAnnouncements = PlanningAnnouncementParser.activeAnnouncements(planningNotes, today),
             reminderChainLogs = repository.getRecentReminderChainLogs(),
             scheduleTemplates = repository.getScheduleTemplates(),
             settings = settings,
@@ -623,10 +627,6 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
         providers: List<com.example.todoalarm.data.PlanningAiProvider>
     ) {
         settingsStore.updatePlanningAiProviders(enabled, providers)
-    }
-
-    fun updateAnnouncement(text: String, startDate: String, endDate: String) {
-        settingsStore.updateAnnouncement(text, startDate, endDate)
     }
 
     fun resetOnboarding() {

@@ -197,7 +197,6 @@ class MainActivity : ComponentActivity() {
                     onDefaultCalendarReminderModeChange = viewModel::updateDefaultCalendarReminderMode,
                     onReminderAudioStrategyChange = viewModel::updateReminderAudioStrategy,
                     onPlanningAiProvidersChange = viewModel::updatePlanningAiProviders,
-                    onAnnouncementChange = viewModel::updateAnnouncement,
                     onDismissOnboarding = viewModel::markOnboardingSeen,
                     onResetOnboarding = {
                         viewModel.resetOnboarding()

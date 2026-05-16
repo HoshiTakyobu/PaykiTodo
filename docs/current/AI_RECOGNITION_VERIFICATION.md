@@ -2,7 +2,7 @@
 
 ## Scope
 
-This document verifies the PaykiTodo `1.8.1` Planning Desk AI-recognition path. AI recognition must only run after an explicit recognition action, then still enter the preview-first import flow.
+This document verifies the PaykiTodo `1.8.2` Planning Desk AI-recognition path. AI recognition must only run after an explicit recognition action, then still enter the preview-first import flow.
 
 ## Phone Call Chain
 
@@ -34,7 +34,7 @@ The phone editor auto-save effects call `onSaveNote` / `onSyncMappings` only. Th
 5. `app/src/main/java/com/example/todoalarm/sync/DesktopSyncCoordinator.kt:355`
    - calls `PlanningRecognitionService.recognize`.
 
-`1.8.1` removes the previous desktop import-side implicit parse: if there is no preview result, `importSelectedPlanning()` now asks the user to click `识别` first instead of calling `parsePlanningEditor()` by itself.
+`1.8.1` removes the previous desktop import-side implicit parse: if there is no preview result, `importSelectedPlanning()` now asks the user to click `识别` first instead of calling `parsePlanningEditor()` by itself. `1.8.2` keeps that trigger rule and changes provider endpoint handling only.
 
 ## Expected UI Messages
 
@@ -55,6 +55,8 @@ The phone editor auto-save effects call `onSaveNote` / `onSyncMappings` only. Th
 1. Settings -> `AI 调用配置`.
 2. Add one enabled provider with valid Base URL, API Key, and model.
 3. Tap `测试连接`; expect green success text.
+   - Base URL may be a service root, a `/v1` URL, or a full `/v1/chat/completions` URL.
+   - If the service returns HTML / non-JSON, expect a readable Base URL hint rather than a raw `<!doctype` JSON conversion error.
 4. Open Planning Desk and write free-form planning text.
 5. Tap `识别`.
 6. Expect preview candidates and the AI success message. Import still requires selecting candidates and confirming import.

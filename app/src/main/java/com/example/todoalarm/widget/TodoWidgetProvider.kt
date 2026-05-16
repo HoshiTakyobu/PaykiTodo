@@ -52,7 +52,7 @@ class TodoWidgetProvider : AppWidgetProvider() {
                 data = android.net.Uri.parse(toUri(Intent.URI_INTENT_SCHEME))
             }
             val views = RemoteViews(context.packageName, R.layout.widget_todo).apply {
-                setTextViewText(R.id.widget_title, "今日待办")
+                setTextViewText(R.id.widget_title, "今日看板")
                 setTextViewText(R.id.widget_date, LocalDate.now().format(dateFormatter))
                 setRemoteAdapter(R.id.widget_list, serviceIntent)
                 setEmptyView(R.id.widget_list, R.id.widget_empty)

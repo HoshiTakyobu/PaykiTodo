@@ -6,82 +6,90 @@ Long-running Codex sessions can become unreliable. This file exists so a new ses
 
 ## Current Handoff Summary
 
-- The project is currently at code version `1.8.1` / `versionCode 184`.
-- Expected debug APK path after the final build: `app/build/outputs/apk/debug/PaykiTodo-1.8.1-debug.apk`.
-- Latest completed verification in this round:
+- The project is currently at code version `1.8.2` / `versionCode 185`.
+- Expected debug APK path after the final build: `app/build/outputs/apk/debug/PaykiTodo-1.8.2-debug.apk`.
+- Latest verification in this round:
   - `node --check app/src/main/assets/desktop-web/app.js`
-  - `./gradlew.bat :app:compileDebugKotlin`
   - `./gradlew.bat testDebugUnitTest`
   - `./gradlew.bat assembleDebug`
-- This round repairs the `1.8.0` Planning Desk AI-recognition UX and adds board announcements plus an Android today-todo widget.
+  - `git diff --check`
+- This round repairs AI provider endpoint compatibility, moves announcements into Planning Desk as multiple Markdown lines, and upgrades the Android widget from today-todo list to board-style content.
 - Do not push to GitHub unless the user explicitly asks.
 
-## Latest Changes In 1.8.1
+## Latest Changes In 1.8.2
 
-1. Upgraded app version metadata to `1.8.1` / `versionCode 184`.
-2. Confirmed the phone Planning Desk auto-save / mapping sync paths do not call AI recognition; recognition is still triggered from the `识别` button.
-3. Desktop Planning Desk import no longer calls `parsePlanningEditor()` implicitly when there is no preview result. It now asks the user to click `识别` first.
-4. Phone Planning Desk unsaved-state feedback no longer uses a progress bar; it uses plain `自动保存中` text so newline/typing feedback does not look like an AI request.
-5. `PlanningAiCaller` now exposes `testProvider`, a short-timeout single-provider OpenAI-compatible ping.
-6. Settings -> `AI 调用配置` provider edit dialog now has `测试连接`, disabled while testing, and reports green success or red HTTP/network failure.
-7. `docs/current/AI_RECOGNITION_VERIFICATION.md` records the phone and desktop AI call chains and the expected UI messages for AI success, fallback, disabled, and incomplete config.
-8. Settings -> `公告设置` persists announcement text and inclusive start/end dates.
-9. Daily board shows an orange `Campaign` announcement banner above the greeting card when today is inside the configured range; long text uses marquee.
-10. Android launcher widget support was added:
-    - `TodoWidgetProvider`
-    - `TodoWidgetService`
-    - `widget_todo.xml`
-    - `widget_todo_item.xml`
-    - `widget_todo_info.xml`
-    - widget drawables
-    - manifest receiver/service registration
-11. `TodoRepository` accepts a mutation callback and `TodoApplication` wires it to `TodoWidgetProvider.notifyWidgetDataChanged`, so widget data refreshes after common todo create/update/delete/complete/cancel operations.
-12. Launch screen delay changed from `1600ms` to `600ms`.
+1. Upgraded app version metadata to `1.8.2` / `versionCode 185`.
+2. `PlanningAiCaller` now supports common OpenAI-compatible Base URL forms:
+   - full `/chat/completions` URL: use directly
+   - `/v1` Base URL: append `/chat/completions`
+   - root Base URL: try `/v1/chat/completions` before `/chat/completions`
+3. AI provider `测试连接` timeout changed to 10s connect / 20s read.
+4. Non-JSON / HTML provider responses now report a readable Base URL / endpoint hint instead of raw `<!doctype` JSON conversion failures.
+5. Added `PlanningAnnouncementParser`.
+6. Announcements now come from all unarchived Planning Desk notes:
+   - `#公告 5.16-7.1 内容`
+   - `#公告 2026-05-16 2026-05-20 内容`
+   - `> [!公告] 内容`
+   - no date range means long-running announcement
+7. `TodoUiState` exposes `activeAnnouncements`; `DashboardChrome` renders each active announcement above the greeting card.
+8. Settings no longer exposes `公告设置`; old app-settings fields are retained only for backward-compatible storage / backup data.
+9. Added `DailyBoardSnapshotBuilder` to share board-style todo/event filtering outside Compose.
+10. Android widget is now titled `今日看板` and displays:
+    - active Planning Desk announcements
+    - today todo count and rows
+    - today schedule count, visible rows, or “all events ended” / empty message
+    - tomorrow schedule rows or empty message
+11. Widget rows are adaptive-height and the hard `take(5)` cap was removed; the list is sanity-capped at 40 rows.
+12. Widget provider XML declares min resize dimensions.
+13. Planning Desk phone tutorial, desktop-web Planning Desk help, in-app Wiki, README, current docs, and changelog now mention Planning Desk announcements and AI endpoint behavior.
+14. Added JVM tests:
+    - `PlanningAiCallerTest`
+    - `PlanningAnnouncementParserTest`
 
 ## Files Most Relevant To This Round
 
 - `app/build.gradle.kts`
-- `app/src/main/assets/desktop-web/app.js`
-- `app/src/main/AndroidManifest.xml`
-- `app/src/main/java/com/example/todoalarm/TodoApplication.kt`
-- `app/src/main/java/com/example/todoalarm/data/AppSettingsStore.kt`
-- `app/src/main/java/com/example/todoalarm/data/BackupManager.kt`
 - `app/src/main/java/com/example/todoalarm/data/PlanningAiCaller.kt`
+- `app/src/main/java/com/example/todoalarm/data/PlanningAnnouncementParser.kt`
+- `app/src/main/java/com/example/todoalarm/data/DailyBoardSnapshot.kt`
 - `app/src/main/java/com/example/todoalarm/data/TodoRepository.kt`
+- `app/src/main/java/com/example/todoalarm/ui/TodoViewModel.kt`
 - `app/src/main/java/com/example/todoalarm/ui/DashboardChrome.kt`
 - `app/src/main/java/com/example/todoalarm/ui/DashboardScreen.kt`
 - `app/src/main/java/com/example/todoalarm/ui/MainActivity.kt`
-- `app/src/main/java/com/example/todoalarm/ui/PlanningDeskPanel.kt`
 - `app/src/main/java/com/example/todoalarm/ui/SettingsPanel.kt`
-- `app/src/main/java/com/example/todoalarm/ui/TodoViewModel.kt`
+- `app/src/main/java/com/example/todoalarm/ui/PlanningDeskPanel.kt`
 - `app/src/main/java/com/example/todoalarm/widget/TodoWidgetProvider.kt`
 - `app/src/main/java/com/example/todoalarm/widget/TodoWidgetService.kt`
 - `app/src/main/res/layout/widget_todo.xml`
 - `app/src/main/res/layout/widget_todo_item.xml`
 - `app/src/main/res/xml/widget_todo_info.xml`
-- `docs/current/AI_RECOGNITION_VERIFICATION.md`
-- `CHANGELOG.md`
-- `README.md`
-- `TODO.md`
-- `docs/current/PROJECT_STATUS.md`
-- `docs/current/FEATURE_LEDGER.md`
-- `docs/current/CURRENT_TASK.md`
+- `app/src/main/assets/desktop-web/index.html`
+- `app/src/main/assets/wiki/index.html`
+- `app/src/test/java/com/example/todoalarm/data/PlanningAiCallerTest.kt`
+- `app/src/test/java/com/example/todoalarm/data/PlanningAnnouncementParserTest.kt`
 
 ## Current Verification Focus
 
-1. Install `PaykiTodo-1.8.1-debug.apk`.
-2. Verify Planning Desk editing/newline does not trigger AI; only `识别` / desktop `Ctrl+Enter` does.
-3. Verify Settings AI provider `测试连接` success, HTTP error, timeout/unreachable provider, and result clearing behavior.
-4. Verify announcement active/future/expired/long-text/clear behavior.
-5. Verify launcher widget add/list/empty/tap/refresh behavior on a real Android launcher.
-6. Re-run the existing `1.8.0` Planning Desk mapping loop device checks because `1.8.1` carries that baseline forward.
+1. Install `PaykiTodo-1.8.2-debug.apk`.
+2. Verify AI provider `测试连接` with:
+   - root Base URL that needs `/v1/chat/completions`
+   - Base URL ending in `/v1`
+   - full `/v1/chat/completions`
+   - HTML/non-JSON response
+   - timeout/unreachable host
+3. Verify Planning Desk announcements:
+   - multiple active announcements
+   - date-range filtering
+   - no-date long-running announcements
+   - deleted / archived / edited source notes update board and widget
+4. Verify launcher widget add/list/empty/tap/refresh/resize behavior on a real Android launcher.
 
 ## Deferred Larger Work
 
 - Planning Desk remains an import + tracked refresh/sync model, not a fully live bidirectional rich editor.
 - Drag-and-drop planning, Gantt chart, AI auto-planning, complex project tree, and deeper desktop parity remain deferred.
-- Widget deep links to a specific todo are not implemented; first version opens the app.
-- Announcement uses ISO date text fields in Settings; a dedicated wheel/date picker can be added later if needed.
+- Widget deep links to a specific todo/event are not implemented; current widget opens the app.
 
 ## Required Reading For A New Session
 

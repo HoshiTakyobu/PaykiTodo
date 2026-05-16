@@ -1119,7 +1119,21 @@ private fun planningTutorialPages(): List<PlanningTutorialPage> {
             )
         ),
         PlanningTutorialPage(
-            title = "7. 其他导入方式",
+            title = "7. 公告写在规划台",
+            subtitle = "可以写多条",
+            lines = listOf(
+                "公告不在设置里单独维护，直接写进任意未归档规划文档。",
+                "以 #公告 开头的行会显示在每日看板顶部和桌面小组件里。",
+                "可以写日期范围；不写日期时视为长期公告。"
+            ),
+            example = """
+                #公告 5.16-7.1 期间禁止游玩舞萌DX游戏
+                #公告 2026-05-16 2026-05-20 本周专注保研材料
+                > [!公告] 长期提醒：先完成今天三件大事
+            """.trimIndent()
+        ),
+        PlanningTutorialPage(
+            title = "8. 其他导入方式",
             subtitle = "已整理好的大量待办/日程",
             lines = listOf(
                 "已整理好的大量待办，可以去「我的任务 → 右下角 + 长按 → 批量导入」一次性录入。",

@@ -1,0 +1,58 @@
+package com.example.todoalarm.data
+
+import org.junit.Assert.assertEquals
+import org.junit.Test
+import java.time.LocalDate
+
+class PlanningAnnouncementParserTest {
+    @Test
+    fun parsesMultipleActiveAnnouncementsFromPlanningNotes() {
+        val note = PlanningNote(
+            id = 7,
+            title = "公告文档",
+            contentMarkdown = """
+                # 公告 5.16-7.1 期间禁止游玩舞萌DX游戏
+                > [!公告] 2026-05-16 2026-05-20 只在本周显示
+                普通正文不应被识别
+            """.trimIndent()
+        )
+
+        val announcements = PlanningAnnouncementParser.activeAnnouncements(
+            notes = listOf(note),
+            today = LocalDate.of(2026, 5, 16)
+        )
+
+        assertEquals(2, announcements.size)
+        assertEquals("期间禁止游玩舞萌DX游戏", announcements[0].text)
+        assertEquals(LocalDate.of(2026, 5, 16), announcements[0].startDate)
+        assertEquals(LocalDate.of(2026, 7, 1), announcements[0].endDate)
+        assertEquals("只在本周显示", announcements[1].text)
+    }
+
+    @Test
+    fun filtersExpiredAndArchivedAnnouncements() {
+        val active = PlanningNote(
+            id = 1,
+            title = "active",
+            contentMarkdown = "#公告 5.16 今天显示"
+        )
+        val expired = PlanningNote(
+            id = 2,
+            title = "expired",
+            contentMarkdown = "#公告 5.10 过期公告"
+        )
+        val archived = PlanningNote(
+            id = 3,
+            title = "archived",
+            contentMarkdown = "#公告 归档公告",
+            archived = true
+        )
+
+        val announcements = PlanningAnnouncementParser.activeAnnouncements(
+            notes = listOf(active, expired, archived),
+            today = LocalDate.of(2026, 5, 16)
+        )
+
+        assertEquals(listOf("今天显示"), announcements.map { it.text })
+    }
+}

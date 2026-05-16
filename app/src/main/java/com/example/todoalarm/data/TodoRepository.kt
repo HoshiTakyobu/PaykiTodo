@@ -68,6 +68,7 @@ class TodoRepository(
         val note = todoDao.getPlanningNote(noteId) ?: return null
         val updated = note.copy(contentMarkdown = contentMarkdown, updatedAtMillis = System.currentTimeMillis())
         todoDao.updatePlanningNote(updated)
+        notifyItemsChanged()
         return updated
     }
 
@@ -75,6 +76,7 @@ class TodoRepository(
         val note = todoDao.getPlanningNote(noteId) ?: return null
         val updated = note.copy(title = title.trim().ifBlank { note.title }, updatedAtMillis = System.currentTimeMillis())
         todoDao.updatePlanningNote(updated)
+        notifyItemsChanged()
         return updated
     }
 
@@ -82,12 +84,14 @@ class TodoRepository(
         val note = todoDao.getPlanningNote(noteId) ?: return null
         val updated = note.copy(archived = true, updatedAtMillis = System.currentTimeMillis())
         todoDao.updatePlanningNote(updated)
+        notifyItemsChanged()
         return updated
     }
 
     suspend fun deletePlanningNote(noteId: Long) {
         todoDao.deletePlanningMappingsForNote(noteId)
         todoDao.deletePlanningNote(noteId)
+        notifyItemsChanged()
     }
 
     suspend fun syncPlanningMappingStatuses(noteId: Long, markdown: String): PlanningMappingStatusSnapshot {
@@ -195,7 +199,10 @@ class TodoRepository(
             )
         }
 
-        if (afterItems.isNotEmpty()) todoDao.updateAll(afterItems)
+        if (afterItems.isNotEmpty()) {
+            todoDao.updateAll(afterItems)
+            notifyItemsChanged()
+        }
         if (updatedMappings.isNotEmpty()) todoDao.updatePlanningMappings(updatedMappings)
         val message = "已刷新 ${afterItems.size} 条，跳过 $skipped 条已完成/不在范围项，冲突 $conflicts 条，丢失 $orphaned 条"
         return PlanningOperationResult(
@@ -268,7 +275,10 @@ class TodoRepository(
             )
         }
 
-        if (afterItems.isNotEmpty()) todoDao.updateAll(afterItems)
+        if (afterItems.isNotEmpty()) {
+            todoDao.updateAll(afterItems)
+            notifyItemsChanged()
+        }
         if (updatedMappings.isNotEmpty()) todoDao.updatePlanningMappings(updatedMappings)
         val updatedMarkdown = joinPlanningDocumentLines(markdown, mutableLines)
         updatePlanningNoteContent(noteId, updatedMarkdown)
@@ -313,6 +323,7 @@ class TodoRepository(
         val now = System.currentTimeMillis()
         val batchId = UUID.randomUUID().toString()
         todoDao.update(updated)
+        notifyItemsChanged()
         todoDao.updatePlanningMappings(
             listOf(
                 mapping.copy(
@@ -450,6 +461,7 @@ class TodoRepository(
         if (resolvedDraft.recurrence.isRecurring) {
             todoDao.insertTemplate(buildCalendarTemplate(created.first(), resolvedDraft))
         }
+        notifyItemsChanged()
         return created
     }
 
@@ -593,6 +605,7 @@ class TodoRepository(
             )
         }
         todoDao.updateAll(updated)
+        notifyItemsChanged()
         return updated.size
     }
 
@@ -656,7 +669,7 @@ class TodoRepository(
             else -> original.groupId
         }
         val resolvedDraft = draft.copy(groupId = resolvedGroupId)
-        return when {
+        val updatedItems = when {
             !original.isRecurring && resolvedDraft.recurrence.isRecurring -> {
                 convertSingleEventToRecurring(original, resolvedDraft)
             }
@@ -674,6 +687,8 @@ class TodoRepository(
                 listOf(updated)
             }
         }
+        notifyItemsChanged()
+        return updatedItems
     }
 
     suspend fun deleteCalendarEvent(
@@ -682,7 +697,7 @@ class TodoRepository(
     ): List<TodoItem> {
         if (!item.isEvent) return emptyList()
         val seriesId = item.recurringSeriesId
-        return when {
+        val deletedItems = when {
             !item.isRecurring || scope == RecurrenceScope.CURRENT -> {
                 val target = todoDao.getById(item.id) ?: return emptyList()
                 todoDao.deleteById(item.id)
@@ -713,6 +728,8 @@ class TodoRepository(
                 targets
             }
         }
+        if (deletedItems.isNotEmpty()) notifyItemsChanged()
+        return deletedItems
     }
 
     suspend fun getAllGroups(): List<TaskGroup> = todoDao.getAllGroups()
@@ -890,6 +907,7 @@ class TodoRepository(
         val eventItems = affectedItems.filter { it.isEvent }
         if (todoIds.isNotEmpty()) todoDao.deleteByIds(todoIds)
         eventItems.forEach { todoDao.deleteById(it.id) }
+        if (affectedItems.isNotEmpty()) notifyItemsChanged()
         todoDao.deletePlanningMappingBatch(batchId)
         val updatedMarkdown = removeImportedMarkersForMappings(markdown, batch)
         updatePlanningNoteContent(noteId, updatedMarkdown)
@@ -924,7 +942,10 @@ class TodoRepository(
                 lastRefreshedAtMillis = now
             )
         }
-        if (afterItems.isNotEmpty()) todoDao.updateAll(afterItems)
+        if (afterItems.isNotEmpty()) {
+            todoDao.updateAll(afterItems)
+            notifyItemsChanged()
+        }
         if (updatedMappings.isNotEmpty()) todoDao.updatePlanningMappings(updatedMappings)
         val conflictCount = updatedMappings.count { it.status == MappingStatus.CONFLICT }
         return PlanningOperationResult(
@@ -977,7 +998,10 @@ class TodoRepository(
                 status = if (resolvedLineIndex == null) MappingStatus.ORPHANED else MappingStatus.ACTIVE
             )
         }
-        if (afterItems.isNotEmpty()) todoDao.updateAll(afterItems)
+        if (afterItems.isNotEmpty()) {
+            todoDao.updateAll(afterItems)
+            notifyItemsChanged()
+        }
         if (updatedMappings.isNotEmpty()) todoDao.updatePlanningMappings(updatedMappings)
         val updatedMarkdown = joinPlanningDocumentLines(markdown, mutableLines)
         if (afterItems.isNotEmpty()) updatePlanningNoteContent(noteId, updatedMarkdown)

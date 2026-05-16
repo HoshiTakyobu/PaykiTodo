@@ -93,6 +93,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.todoalarm.R
 import com.example.todoalarm.data.CalendarEventDraft
+import com.example.todoalarm.data.DailyBoardSnapshotBuilder
+import com.example.todoalarm.data.PlanningAnnouncementParser
 import com.example.todoalarm.data.PlanningAiProvider
 import com.example.todoalarm.data.PlanningImportCandidate
 import com.example.todoalarm.data.PlanningImportResult
@@ -113,8 +115,6 @@ import kotlinx.coroutines.delay
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
-import java.time.format.DateTimeFormatter
-import java.util.Locale
 
 @Composable
 internal fun DashboardBackgroundBrush(): Brush {
@@ -364,7 +364,6 @@ internal fun DashboardBody(
     onDefaultCalendarReminderModeChange: (ReminderDeliveryMode) -> Unit,
     onReminderAudioStrategyChange: (ReminderAudioChannel, Int, Boolean, Int, Boolean) -> Unit,
     onPlanningAiProvidersChange: (Boolean, List<PlanningAiProvider>) -> Unit,
-    onAnnouncementChange: (String, String, String) -> Unit,
     onResetOnboarding: () -> Unit,
     onDesktopSyncEnabledChange: (Boolean) -> Unit,
     onRotateDesktopSyncToken: () -> Unit,
@@ -452,7 +451,6 @@ internal fun DashboardBody(
                 onDefaultCalendarReminderModeChange = onDefaultCalendarReminderModeChange,
                 onReminderAudioStrategyChange = onReminderAudioStrategyChange,
                 onPlanningAiProvidersChange = onPlanningAiProvidersChange,
-                onAnnouncementChange = onAnnouncementChange,
                 onResetOnboarding = onResetOnboarding,
                 onDesktopSyncEnabledChange = onDesktopSyncEnabledChange,
                 onRotateDesktopSyncToken = onRotateDesktopSyncToken,
@@ -523,28 +521,19 @@ internal fun DashboardBody(
             )
     }
     val allTodayScheduleItems = remember(uiState.calendarItems, boardDate) {
-        uiState.calendarItems.filter { boardEventOverlapsDay(it, boardDate) }
+        uiState.calendarItems.filter { DailyBoardSnapshotBuilder.eventOverlapsDay(it, boardDate) }
             .sortedBy { it.startAtMillis ?: it.dueAtMillis }
     }
     val todayScheduleItems = remember(allTodayScheduleItems, boardMoment) {
-        allTodayScheduleItems.filter { boardEventVisibleForToday(it, boardDate, boardMoment) }
+        allTodayScheduleItems.filter { DailyBoardSnapshotBuilder.eventVisibleForToday(it, boardDate, boardMoment) }
     }
     val tomorrowScheduleItems = remember(uiState.calendarItems, boardDate) {
         val tomorrow = boardDate.plusDays(1)
-        uiState.calendarItems.filter { boardEventOverlapsDay(it, tomorrow) }
+        uiState.calendarItems.filter { DailyBoardSnapshotBuilder.eventOverlapsDay(it, tomorrow) }
             .sortedBy { it.startAtMillis ?: it.dueAtMillis }
     }
-    val announcementVisible = remember(
-        uiState.settings.announcementText,
-        uiState.settings.announcementStartDate,
-        uiState.settings.announcementEndDate,
-        boardDate
-    ) {
-        uiState.settings.announcementText.isNotBlank() && runCatching {
-            val start = LocalDate.parse(uiState.settings.announcementStartDate)
-            val end = LocalDate.parse(uiState.settings.announcementEndDate)
-            !boardDate.isBefore(start) && !boardDate.isAfter(end)
-        }.getOrDefault(false)
+    val activeAnnouncements = remember(uiState.planningNotes, boardDate) {
+        PlanningAnnouncementParser.activeAnnouncements(uiState.planningNotes, boardDate)
     }
 
     LazyColumn(
@@ -556,10 +545,11 @@ internal fun DashboardBody(
     ) {
         when (section) {
             DashboardSection.BOARD -> {
-                if (announcementVisible) {
-                    item {
-                        AnnouncementBanner(text = uiState.settings.announcementText)
-                    }
+                items(activeAnnouncements, key = { "${it.sourceNoteId}-${it.lineNumber}-${it.text}" }) { announcement ->
+                    AnnouncementBanner(
+                        text = announcement.text,
+                        rangeLabel = announcement.rangeLabel()
+                    )
                 }
 
                 item {
@@ -700,7 +690,7 @@ private fun ExpandableSectionHeader(
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun AnnouncementBanner(text: String) {
+private fun AnnouncementBanner(text: String, rangeLabel: String? = null) {
     val dark = isSystemInDarkTheme()
     val background = if (dark) Color(0xFFCC8030) else Color(0xFFFFB347)
     val foreground = Color(0xFF5C3A0E)
@@ -725,7 +715,7 @@ private fun AnnouncementBanner(text: String) {
                 modifier = Modifier.size(20.dp)
             )
             Text(
-                text = text,
+                text = rangeLabel?.takeIf { it.isNotBlank() }?.let { "$it · $text" } ?: text,
                 modifier = Modifier
                     .weight(1f)
                     .basicMarquee(),
@@ -949,7 +939,7 @@ private fun BoardScheduleEventRow(
     onClick: () -> Unit
 ) {
     val tint = item.accentColorHex?.let(::colorFromHex) ?: MaterialTheme.colorScheme.primary
-    val inProgress = now?.let { boardEventInProgress(item, it) } == true
+    val inProgress = now?.let { DailyBoardSnapshotBuilder.eventInProgress(item, it) } == true
     val gold = Color(0xFFFFC94A)
     val rowShape = RoundedCornerShape(18.dp)
     val rowColor = if (inProgress) gold else tint
@@ -998,7 +988,7 @@ private fun BoardScheduleEventRow(
                         overflow = TextOverflow.Ellipsis
                     )
                     Text(
-                        text = boardEventSecondaryText(item),
+                        text = DailyBoardSnapshotBuilder.eventSecondaryText(item),
                         color = MaterialTheme.colorScheme.onSurface,
                         style = MaterialTheme.typography.bodyMedium,
                         fontWeight = FontWeight.Medium,
@@ -1365,42 +1355,6 @@ private fun timeGreeting(): String = when (LocalTime.now().hour) {
     else -> "晚上好"
 }
 
-private fun boardEventOverlapsDay(item: TodoItem, date: LocalDate): Boolean {
-    val start = item.startAtMillis?.let(::reminderAtMillisToDateTime)?.toLocalDate() ?: return false
-    val end = if (item.allDay) {
-        item.endAtMillis?.let(::reminderAtMillisToDateTime)?.toLocalDate()?.minusDays(1) ?: start
-    } else {
-        item.endAtMillis?.let(::reminderAtMillisToDateTime)?.toLocalDate() ?: start
-    }
-    return !date.isBefore(start) && !date.isAfter(end)
-}
-
-private fun boardEventVisibleForToday(item: TodoItem, today: LocalDate, now: LocalDateTime): Boolean {
-    if (!boardEventOverlapsDay(item, today)) return false
-    if (item.allDay) return true
-    val end = item.endAtMillis?.let(::reminderAtMillisToDateTime)
-        ?: item.startAtMillis?.let(::reminderAtMillisToDateTime)
-        ?: return false
-    return end.isAfter(now)
-}
-
-private fun boardEventInProgress(item: TodoItem, now: LocalDateTime): Boolean {
-    val start = item.startAtMillis?.let(::reminderAtMillisToDateTime) ?: return false
-    if (item.allDay) return boardEventOverlapsDay(item, now.toLocalDate())
-    val end = item.endAtMillis?.let(::reminderAtMillisToDateTime) ?: start
-    return !now.isBefore(start) && now.isBefore(end)
-}
-
-private fun boardEventSecondaryText(item: TodoItem): String {
-    return if (item.allDay) {
-        "全天"
-    } else {
-        val start = item.startAtMillis?.let(::reminderAtMillisToDateTime) ?: return "未设置时间"
-        val end = item.endAtMillis?.let(::reminderAtMillisToDateTime) ?: start
-        "${boardClockTime(start)} - ${boardClockTime(end)}"
-    }
-}
-
 private fun boardWeekdayLabel(date: LocalDate): String = when (date.dayOfWeek.value) {
     1 -> "周一"
     2 -> "周二"
@@ -1412,7 +1366,3 @@ private fun boardWeekdayLabel(date: LocalDate): String = when (date.dayOfWeek.va
 }
 
 private fun boardMonthLabel(date: LocalDate): String = "${date.monthValue}月"
-
-private fun boardClockTime(dateTime: LocalDateTime): String {
-    return dateTime.format(DateTimeFormatter.ofPattern("HH:mm", Locale.CHINA))
-}

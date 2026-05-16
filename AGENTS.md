@@ -50,14 +50,27 @@ Avoid making the commit subject/body primarily about:
 
 Commit subjects must not append version-bump tails such as `并升级到1.7.9` or `并升级到 x.x.x`. The subject should describe only the concrete feature or bug-fix behavior. If the app version changed, put that detail in the commit body or the relevant version docs instead of the subject.
 
-Preferred structure for non-trivial commits:
+Required structure for every non-trivial commit body:
 
-1. Chinese subject that includes the affected module and concrete behavior change.
-2. Body paragraphs or bullets describing user-visible feature changes.
-3. Body paragraphs or bullets describing debug / bug-fix reasoning when the work fixes a defect.
-4. Version bump details when the version changes.
+1. Chinese subject line that includes the affected module and concrete behavior change. Do not append version-bump tails.
+2. Empty line, then the literal heading `完成内容概要：`.
+3. Bullet list of concrete behavior changes, one per line, prefixed with `- `. Each bullet must be self-contained — a reader should understand the user-visible change without reading the diff.
+4. The bullet list MUST include a version-bump bullet such as `- 版本升级到 1.8.4 / versionCode 187` when the app version changes.
+5. Bullets must describe user-visible behavior or product surfaces, not file edits or process bookkeeping. Bad: `- 更新 SettingsPanel.kt`. Good: `- 设置 -> AI 调用配置新增「测试连接」按钮，10 秒内反馈成功字数或 HTTP/超时错误`.
 
-Validation commands may be mentioned briefly when useful, but they are secondary and should not dominate the commit message.
+Do not use paragraphs in the body. Do not let validation commands or push status dominate the message; mention them at most as one trailing bullet (e.g. `- 验证：assembleDebug、testDebugUnitTest、node --check 通过`) and only when relevant.
+
+Concrete template:
+
+```
+{Chinese subject}
+
+完成内容概要：
+- {module + concrete behavior change}
+- {module + concrete behavior change}
+- 版本升级到 X.Y.Z / versionCode N
+- 验证：{commands or skipped}
+```
 
 ## Purpose Of The Current Docs
 

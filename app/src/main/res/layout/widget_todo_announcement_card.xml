@@ -5,6 +5,7 @@
     android:layout_height="wrap_content"
     android:minHeight="44dp"
     android:background="@drawable/widget_announcement_background"
+    android:elevation="2dp"
     android:gravity="center_vertical"
     android:orientation="horizontal"
     android:paddingStart="16dp"

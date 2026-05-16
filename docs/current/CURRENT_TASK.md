@@ -11,7 +11,7 @@ The separate `1.9.1` AI 日报 / 周报 goal remains pending and should not be m
 1. Version metadata moved to `1.9.0.1` / `versionCode 194` so the hotfix APK can be installed and distinguished from the prior `1.9.0` build.
 2. Android `今日看板` widget root padding, header height, card spacing, and light/dark scrim strength were adjusted to reduce the generic-list feel.
 3. Widget rows now include a `今日已专注` card that shows today's completed focus minutes, total focus sessions, and completed sessions.
-4. Widget greeting, section, todo, empty, and schedule-card layouts were retuned for stronger rounded-card hierarchy and closer daily-board spacing.
+4. Widget greeting, section, todo, empty, announcement, and schedule-card layouts were retuned for stronger rounded-card hierarchy, lightweight card elevation, higher card-surface opacity, and closer daily-board spacing.
 5. README, CHANGELOG, Wiki, and current-state docs were updated to reflect the widget hotfix.
 
 ## Verification Completed This Round

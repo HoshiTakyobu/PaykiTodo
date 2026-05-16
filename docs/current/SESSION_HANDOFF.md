@@ -17,7 +17,7 @@ Long-running Codex sessions can become unreliable. This file exists so a new ses
 1. Widget version metadata moved to `1.9.0.1` / `versionCode 194` for installable hotfix testing.
 2. Widget root padding, title header size, list spacing, and light/dark scrims were adjusted so the launcher surface feels less like a generic Android list.
 3. A new `今日已专注` RemoteViews card was added to the widget, showing today's completed focus minutes, total focus sessions, and completed session count.
-4. Greeting, section, todo, empty, and schedule-card XML layouts were retuned for stronger rounded-card hierarchy, larger readable title text, and daily-board-like spacing.
+4. Greeting, section, todo, empty, announcement, and schedule-card XML layouts were retuned for stronger rounded-card hierarchy, lightweight card elevation, higher card-surface opacity, larger readable title text, and daily-board-like spacing.
 5. Widget docs were updated in README, CHANGELOG, in-app Wiki, `PROJECT_STATUS`, `FEATURE_LEDGER`, `CURRENT_TASK`, and TODO.
 
 ## Files Most Relevant To This Hotfix
@@ -31,6 +31,11 @@ Long-running Codex sessions can become unreliable. This file exists so a new ses
 - `app/src/main/res/layout/widget_todo_schedule_card.xml`
 - `app/src/main/res/layout/widget_todo_section.xml`
 - `app/src/main/res/layout/widget_todo_empty_card.xml`
+- `app/src/main/res/layout/widget_todo_announcement_card.xml`
+- `app/src/main/res/drawable/widget_todo_item_background.xml`
+- `app/src/main/res/drawable-night/widget_todo_item_background.xml`
+- `app/src/main/res/drawable/widget_schedule_inner_background.xml`
+- `app/src/main/res/drawable-night/widget_schedule_inner_background.xml`
 - `app/src/main/res/drawable/widget_board_scrim.xml`
 - `app/src/main/res/drawable-night/widget_board_scrim.xml`
 - `README.md`

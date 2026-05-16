@@ -2,27 +2,30 @@
 
 ## Active Development Focus
 
-The current round is PaykiTodo `1.8.5` / `versionCode 188`, focused on making Settings -> `AI 调用配置` easier to use with OpenAI-compatible providers:
+The current round is PaykiTodo `1.8.6` / `versionCode 189`, focused on making the Android `今日看板` launcher widget visually match the in-app daily board direction instead of the old thin bordered row list.
 
-1. Let the phone-side AI source dialog fetch available models from the configured Base URL using only Base URL + API Key.
-2. Support common Base URL shapes for model discovery: service root, `/v1`, full `/chat/completions`, and full `/models`.
-3. Show fetched models as a compact dropdown while preserving manual model-name entry as a fallback.
-4. Keep test-connection behavior intact and keep AI recognition explicit-only.
+## Completed In 1.8.6
 
-## Completed In 1.8.5
-
-1. `PlanningAiCaller.fetchModels` now calls OpenAI-compatible `/models` endpoints with the provider API Key.
-2. `PlanningAiCaller.modelEndpointCandidates` resolves:
-   - service root -> `/v1/models`, then `/models`
-   - `/v1` -> `/v1/models`
-   - full `/chat/completions` -> sibling `/models`
-   - full `/models` -> exact URL
-3. Model-list parsing accepts standard `data[].id` responses and simple compatible variants such as top-level arrays / `models` arrays.
-4. Model fetch errors now distinguish HTTP 401/403, 404, non-JSON HTML responses, incompatible JSON, and ordinary network failures with user-readable messages.
-5. The phone AI source dialog now exposes a `获取模型` button after Base URL and API Key.
-6. Fetched models appear in a compact dropdown row; fetching success defaults the model field to the first returned model when the current model is blank or not in the fetched list.
-7. The model-name text field remains available for providers that do not expose `/models` or for custom model aliases.
-8. Version metadata is now `1.8.5` / `versionCode 188`.
+1. The widget root no longer carries a separate compact title/header row; the board title is now part of the same scrollable board content.
+2. Widget rows are split into distinct RemoteViews layouts:
+   - section title
+   - empty-state card
+   - todo card
+   - event card
+   - announcement card
+3. Empty states now use large rounded cards rather than thin bordered list rows.
+4. Event rows now use daily-board-like cards with:
+   - date block
+   - weekday
+   - day number
+   - vertical event color strip
+   - title
+   - time range
+   - location when present
+5. Event row color strips use the event accent color when available, with the current in-progress event still using the gold highlight color.
+6. Dark widget colors were retuned toward the in-app daily board: dark root, deep card surfaces, muted text, and less visible borders.
+7. Todo / event / announcement deep links remain intact.
+8. Version metadata is now `1.8.6` / `versionCode 189`.
 
 ## Verification Completed This Round
 
@@ -35,15 +38,18 @@ The current round is PaykiTodo `1.8.5` / `versionCode 188`, focused on making Se
 
 Before final completion, create a focused local commit with the required `完成内容概要：` bullet-list body. Do not push unless the user explicitly asks.
 
-After installing the `1.8.5` APK on device, verify Settings -> `AI 调用配置`:
+After installing the `1.8.6` APK on device, verify:
 
-1. Valid provider with service root Base URL can fetch models through `/v1/models`.
-2. `/v1` Base URL appends `/models`.
-3. Full `/chat/completions` Base URL converts to the sibling `/models` endpoint.
-4. Full `/models` Base URL is used directly.
-5. Invalid API Key, unsupported `/models`, HTML responses, and incompatible JSON all show readable errors.
-6. A fetched model can be selected from the dropdown, then `测试连接` succeeds with the selected model.
-7. If model fetching fails, the user can still type a model name manually and test/save the provider.
+1. The launcher widget visually resembles the daily board more than the old bordered list.
+2. The sample state from the user screenshot shows:
+   - `今日待办（0）`
+   - empty task card
+   - `今日日程（0）`
+   - empty today schedule card
+   - `明天`
+   - tomorrow event card with date block, blue strip, title, time, and location.
+3. Widget resizing still reveals more content without clipping.
+4. Todo / event / announcement row taps still deep-link to the correct in-app screen.
 
 ## Commit Message Rule
 
@@ -55,7 +61,3 @@ PaykiTodo commit messages must use the `AGENTS.md` body format:
 ```
 
 The subject should describe the behavior change and must not append a version-bump tail.
-
-## Current External Dependency
-
-This round does not require network verification inside the coding environment; real provider `/models` behavior should be checked on device with the user's actual Base URL and API Key.

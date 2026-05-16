@@ -10,8 +10,6 @@ import android.os.Build
 import android.widget.RemoteViews
 import com.example.todoalarm.R
 import com.example.todoalarm.ui.MainActivity
-import java.time.LocalDate
-import java.time.format.DateTimeFormatter
 
 class TodoWidgetProvider : AppWidgetProvider() {
     override fun onUpdate(context: Context, appWidgetManager: AppWidgetManager, appWidgetIds: IntArray) {
@@ -21,8 +19,6 @@ class TodoWidgetProvider : AppWidgetProvider() {
     }
 
     companion object {
-        private val dateFormatter: DateTimeFormatter = DateTimeFormatter.ofPattern("M月d日")
-
         fun notifyWidgetDataChanged(context: Context) {
             val manager = AppWidgetManager.getInstance(context)
             val ids = manager.getAppWidgetIds(ComponentName(context, TodoWidgetProvider::class.java))
@@ -57,8 +53,6 @@ class TodoWidgetProvider : AppWidgetProvider() {
                 data = android.net.Uri.parse(toUri(Intent.URI_INTENT_SCHEME))
             }
             val views = RemoteViews(context.packageName, R.layout.widget_todo).apply {
-                setTextViewText(R.id.widget_title, "今日看板")
-                setTextViewText(R.id.widget_date, LocalDate.now().format(dateFormatter))
                 setRemoteAdapter(R.id.widget_list, serviceIntent)
                 setEmptyView(R.id.widget_list, R.id.widget_empty)
                 setOnClickPendingIntent(R.id.widget_root, openAppIntent)

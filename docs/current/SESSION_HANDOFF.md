@@ -6,34 +6,41 @@ Long-running Codex sessions can become unreliable. This file exists so a new ses
 
 ## Current Handoff Summary
 
-- The project is currently at code version `1.8.5` / `versionCode 188`.
-- Latest debug APK output after final build: `app/build/outputs/apk/debug/PaykiTodo-1.8.5-debug.apk`.
+- The project is currently at code version `1.8.6` / `versionCode 189`.
+- Latest debug APK output after final build: `app/build/outputs/apk/debug/PaykiTodo-1.8.6-debug.apk`.
 - Latest verification in this round:
   - `node --check app/src/main/assets/desktop-web/app.js`
   - `./gradlew.bat testDebugUnitTest`
   - `./gradlew.bat assembleDebug`
   - `git diff --check`
-- This round implements phone-side AI Provider model discovery in Settings -> `AI 调用配置`.
+- This round redesigns the Android `今日看板` launcher widget so it looks closer to the in-app daily board.
 - Do not push to GitHub unless the user explicitly asks.
 
-## Latest Changes In 1.8.5
+## Latest Changes In 1.8.6
 
-1. Upgraded app version metadata to `1.8.5` / `versionCode 188`.
-2. `PlanningAiCaller` now exposes a model-list fetch path for OpenAI-compatible `/models` endpoints.
-3. Model endpoint fallback supports service roots, `/v1`, full `/chat/completions`, and full `/models` Base URLs.
-4. Model responses parse standard `data[].id` values and compatible top-level / `models` arrays.
-5. Model fetch errors are user-readable for invalid keys / permissions, unsupported endpoints, HTML or non-JSON responses, and incompatible JSON formats.
-6. The phone AI source dialog now has a `获取模型` action enabled after Base URL and API Key are filled.
-7. Successfully fetched models appear in a compact dropdown, and the first model is selected automatically when the current model is blank or stale.
-8. Manual model-name entry remains available, so providers without `/models` can still be configured and tested.
-9. Existing `测试连接` behavior remains tied to the currently selected / typed model.
+1. Upgraded app version metadata to `1.8.6` / `versionCode 189`.
+2. The widget now uses multiple RemoteViews row layouts instead of one generic thin bordered row.
+3. Widget section titles are standalone rows, closer to the in-app daily board hierarchy.
+4. Widget empty states are large rounded cards rather than small outlined rows.
+5. Widget event rows now show a date block, weekday, day number, vertical color strip, title, time range, and location.
+6. Widget event strips use the event accent color when available; in-progress events keep a gold highlight color.
+7. Widget dark colors were retuned to deep card surfaces with subtler borders.
+8. Todo, event, and announcement row deep links remain in place.
 
 ## Files Most Relevant To This Round
 
 - `app/build.gradle.kts`
-- `app/src/main/java/com/example/todoalarm/data/PlanningAiCaller.kt`
-- `app/src/main/java/com/example/todoalarm/ui/SettingsPanel.kt`
-- `app/src/test/java/com/example/todoalarm/data/PlanningAiCallerTest.kt`
+- `app/src/main/java/com/example/todoalarm/widget/TodoWidgetProvider.kt`
+- `app/src/main/java/com/example/todoalarm/widget/TodoWidgetService.kt`
+- `app/src/main/res/layout/widget_todo.xml`
+- `app/src/main/res/layout/widget_todo_section.xml`
+- `app/src/main/res/layout/widget_todo_empty_card.xml`
+- `app/src/main/res/layout/widget_todo_task_card.xml`
+- `app/src/main/res/layout/widget_todo_event_card.xml`
+- `app/src/main/res/layout/widget_todo_announcement_card.xml`
+- `app/src/main/res/drawable*/widget_todo_background.xml`
+- `app/src/main/res/drawable*/widget_todo_item_background.xml`
+- `app/src/main/res/values*/colors.xml`
 - `CHANGELOG.md`
 - `README.md`
 - `TODO.md`
@@ -41,33 +48,22 @@ Long-running Codex sessions can become unreliable. This file exists so a new ses
 - `docs/current/FEATURE_LEDGER.md`
 - `docs/current/CURRENT_TASK.md`
 - `docs/current/SESSION_HANDOFF.md`
-- `docs/current/PLANNING_AI_ASSISTANT_DESIGN.md`
-- `docs/current/AI_RECOGNITION_VERIFICATION.md`
-- `app/src/main/assets/wiki/index.html`
 
 ## Current Verification Focus
 
-1. Build `PaykiTodo-1.8.5-debug.apk`.
-2. Device-test Settings -> `AI 调用配置` with real providers:
-   - service root -> `/v1/models`
-   - `/v1` -> `/v1/models`
-   - full `/chat/completions` -> sibling `/models`
-   - full `/models` exact endpoint
-   - invalid API Key / 403
-   - unsupported `/models` / 404
-   - HTML or non-JSON Base URL response
-   - dropdown model selection followed by `测试连接`
-   - manual model entry after model fetch failure
-3. Re-check the carried `1.8.4` surfaces after installing the new APK:
-   - desktop web announcement marquee and system dark mode
-   - widget row deep links and single empty state
-   - data-ready launch hiding
+1. Build `PaykiTodo-1.8.6-debug.apk`.
+2. Verify on a real Android launcher:
+   - widget resembles the in-app daily board more than the old outlined row list;
+   - section titles, empty cards, event card date block, vertical strip, title, time, and location render correctly;
+   - resizing the widget reveals more content cleanly;
+   - todo/event/announcement taps still open the correct in-app target;
+   - dark-mode widget colors remain readable.
+3. Re-check Settings -> `AI 调用配置` model discovery from `1.8.5` if installing this APK for broader QA.
 
 ## Deferred Larger Work
 
-- Planning Desk remains an import + tracked refresh/sync model, not a fully live bidirectional rich editor.
-- Drag-and-drop planning, Gantt chart, AI auto-planning, complex project tree, and deeper desktop parity remain deferred.
-- Provider model discovery is implemented for OpenAI-compatible `/models`; some third-party gateways may still block or customize model-list endpoints, so manual model entry remains intentionally supported.
+- The widget is still implemented with Android RemoteViews, not Compose, so it cannot perfectly reuse the in-app daily board component.
+- Launcher-specific widget padding, scaling, and list scroll behavior still require real-device visual checks.
 
 ## Required Reading For A New Session
 

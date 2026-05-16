@@ -6,12 +6,20 @@ Long-running Codex sessions can become unreliable. This file exists so a new ses
 
 ## Current Handoff Summary
 
-- The project is now being advanced to `1.9.5` / `versionCode 199`.
-- This round carries forward AI 日报 / 周报 after the `1.9.0` focus-mode baseline, applies launcher-widget visual hotfixes, and fixes AI report scheduling when exact-alarm permission is unavailable.
-- Latest debug APK after packaging: `app/build/outputs/apk/debug/PaykiTodo-1.9.5-debug.apk`.
+- The project is now being advanced to `1.9.6` / `versionCode 200`.
+- This round carries forward AI 日报 / 周报 after the `1.9.0` focus-mode baseline, keeps the `1.9.5` exact-alarm fallback, and applies another launcher-widget visual pass for the Android `今日看板` widget.
+- Latest debug APK after packaging: `app/build/outputs/apk/debug/PaykiTodo-1.9.6-debug.apk`.
 - Local commits before this hotfix: `c20d18a` for focus mode and `104c9aa` for AI reports plus the previous widget visual pass.
-- Latest local commit implements the `1.9.5` AI report scheduling fallback.
+- Latest local commit implements the `1.9.6` launcher-widget daily-board visual pass on top of the `1.9.5` AI report scheduling fallback.
 - Do not push to GitHub unless the user explicitly asks.
+
+## Latest 1.9.6 Widget Visual Pass
+
+1. Android `今日看板` launcher widget topbar is now tighter and closer to the in-app daily-board TopBar: circular menu button, `每日看板` title, compact date, and no extra `轻触打开` copy.
+2. Todo widget cards now show the task group tag, notes summary, and `⏰ DDL HH:mm`, while keeping the group-color strip and checkbox-like marker.
+3. Widget card drawables removed heavy strokes and slightly reduced padding / font sizes, so the launcher surface reads more like the app's card stack instead of a system list.
+4. The aggregated schedule card now uses tighter date/event spacing; currently running schedule rows get a gold border with faint gold fill, while ordinary schedule rows remain transparent with vertical color strips.
+5. Version metadata moved to `1.9.6` / `versionCode 200`.
 
 ## Latest 1.9.4 Widget Hotfix Changes
 
@@ -92,6 +100,12 @@ Completed locally:
 17. Tapping the `AI 日报已生成` notification opened `规划台` directly on the `AI 日报` document with the AI auto-report hint visible
 18. Disabling daily reports removed PaykiTodo report alarms from `dumpsys alarm`
 19. Enabling weekly reports registered a Sunday `GENERATE_WEEKLY_REPORT` alarm; reports were then disabled again to leave the emulator clean
+20. `./gradlew.bat :app:mergeDebugResources` after the `1.9.6` widget layout/resource pass
+21. `./gradlew.bat :app:compileDebugKotlin` after the `1.9.6` widget binding changes
+22. `./gradlew.bat assembleDebug`; output metadata reports `PaykiTodo-1.9.6-debug.apk`, `versionCode=200`, `versionName=1.9.6`
+23. `./gradlew.bat testDebugUnitTest`
+24. `node --check app/src/main/assets/desktop-web/app.js`
+25. `git diff --check`
 
 Real launcher verification is still needed for the widget visual pass because RemoteViews rendering varies by launcher.
 
@@ -101,13 +115,13 @@ Local device status observed in this session:
 2. `emulator-5554` is available and was used for the `1.9.5` AI report scheduling verification.
 3. Continue physical-device checks for OEM alarm policy, haptics, launcher widget rendering, and reboot/time-change recovery.
 
-Then verify on a real device after installing `PaykiTodo-1.9.5-debug.apk`:
+Then verify on a real device after installing `PaykiTodo-1.9.6-debug.apk`:
 
 1. confirm the same daily-report flow on the user's real device / OEM ROM;
 2. tap `立即生成一次日报` and confirm `AI 日报` is created / updated;
 3. test Sunday weekly report generation into `AI 周报`;
 4. test boot/time/timezone recovery on device;
-5. test launcher widget rendering from the real launcher picker.
+5. test launcher widget rendering from the real launcher picker, including the tighter topbar, todo group/notes/`⏰ DDL` rows, and in-progress schedule gold treatment.
 
 ## Required Reading For A New Session
 

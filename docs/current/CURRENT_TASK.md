@@ -2,7 +2,7 @@
 
 ## Active Development Focus
 
-The current round is PaykiTodo `1.9.5` / `versionCode 199`, carrying forward the `1.9.1` AI daily / weekly report work, applying launcher-widget visual hotfixes, and fixing AI report scheduling behavior when exact-alarm permission is unavailable.
+The current round is PaykiTodo `1.9.6` / `versionCode 200`, carrying forward the `1.9.1` AI daily / weekly report work, the exact-alarm fallback fix, and applying another launcher-widget visual pass so the Android `今日看板` widget is closer to the in-app daily board.
 
 ## Completed In This Round
 
@@ -20,6 +20,8 @@ The current round is PaykiTodo `1.9.5` / `versionCode 199`, carrying forward the
 12. Version metadata moved to `1.9.4` / `versionCode 198`.
 13. AI 日报 / 周报 scheduling now falls back to system-allowed idle alarms when Android 12+ denies exact-alarm permission, avoiding silent scheduling failure or startup `SecurityException`.
 14. Version metadata moved to `1.9.5` / `versionCode 199`.
+15. Android `今日看板` launcher widget was advanced again for `1.9.6`: the topbar removes `轻触打开`, uses a tighter daily-board-like menu/title/date hierarchy, todo cards show group tag / notes / `⏰ DDL HH:mm`, heavy card strokes are removed, and in-progress schedule rows get a gold border with faint gold fill.
+16. Version metadata moved to `1.9.6` / `versionCode 200`.
 
 ## Verification Completed This Round
 
@@ -42,13 +44,19 @@ The current round is PaykiTodo `1.9.5` / `versionCode 199`, carrying forward the
 17. The generated report posted notification id `91000` on `ai_report_channel`; tapping the notification opened `规划台` directly on the `AI 日报` document with the auto-report hint visible
 18. Turning the daily report switch off removed PaykiTodo report alarms from `dumpsys alarm`
 19. Enabling weekly report registered a Sunday `GENERATE_WEEKLY_REPORT` RTC_WAKEUP alarm; it was then disabled again to leave the emulator clean
+20. `./gradlew.bat :app:mergeDebugResources` for the `1.9.6` widget resource/layout pass
+21. `./gradlew.bat :app:compileDebugKotlin` for the `1.9.6` widget binding changes
+22. `./gradlew.bat assembleDebug`; output metadata reports `PaykiTodo-1.9.6-debug.apk`, `versionCode=200`, `versionName=1.9.6`
+23. `./gradlew.bat testDebugUnitTest`
+24. `node --check app/src/main/assets/desktop-web/app.js`
+25. `git diff --check`
 
 ## Immediate Practical Next Steps
 
-1. Install `app/build/outputs/apk/debug/PaykiTodo-1.9.5-debug.apk` on a real device for the device-only checks below.
+1. Install `app/build/outputs/apk/debug/PaykiTodo-1.9.6-debug.apk` on a real device for the device-only checks below.
 2. Do not push unless the user explicitly asks.
 
-## Device Verification Needed After Installing 1.9.5
+## Device Verification Needed After Installing 1.9.6
 
 1. In Settings -> `AI 调用配置`, enable daily report, set the time to current time + 1 minute, and confirm a report is generated.
 2. Verify disabling the daily switch cancels future daily report alarms.
@@ -69,7 +77,7 @@ The current round is PaykiTodo `1.9.5` / `versionCode 199`, carrying forward the
 - `c20d18a` implements the `1.9.0` focus-mode baseline.
 - `104c9aa` implements the `1.9.1` AI daily / weekly report work and the previous launcher-widget visual pass.
 - `46326df` implements the `1.9.4` launcher-widget visual hotfix.
-- The latest local commit implements the `1.9.5` AI report scheduling fallback and documentation update.
+- The latest local commit implements the `1.9.6` Android launcher-widget daily-board visual pass on top of the `1.9.5` AI report scheduling fallback.
 - `docs/goals/2026-05-17-paykitodo-focus-session-goal.md` and `docs/goals/2026-05-17-paykitodo-ai-daily-report-goal.md` remain untracked goal input files by design.
 
 ## Commit Message Rule

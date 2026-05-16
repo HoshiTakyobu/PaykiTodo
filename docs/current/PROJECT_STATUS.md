@@ -7,18 +7,22 @@
 - Package name: `com.paykitodo.app`
 - Target platform: Android 14 / API 34
 - Current version in code:
-  - `versionName = "1.9.5"`
-  - `versionCode = 199`
+  - `versionName = "1.9.6"`
+  - `versionCode = 200`
 
 ## Current Build Facts
 
 - Latest debug APK output:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.9.5-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.9.6-debug.apk`
 - Minimal verification completed in the latest code round:
-  - `node --check app/src/main/assets/desktop-web/app.js`
-  - `./gradlew.bat testDebugUnitTest`
+  - `./gradlew.bat :app:mergeDebugResources`
+  - `./gradlew.bat :app:compileDebugKotlin`
   - `./gradlew.bat assembleDebug`
+  - `./gradlew.bat testDebugUnitTest`
+  - `node --check app/src/main/assets/desktop-web/app.js`
   - `git diff --check`
+  - `app/build/outputs/apk/debug/output-metadata.json` reports `versionCode=200`, `versionName=1.9.6`, `outputFile=PaykiTodo-1.9.6-debug.apk`
+- Previous `1.9.5` emulator verification:
   - installed `PaykiTodo-1.9.5-debug.apk` on `emulator-5554`
   - verified AI daily-report fallback scheduling while exact-alarm permission is denied, automatic report generation, notification posting, notification deep link to `AI 日报`, disabled-switch cancellation, and weekly-report alarm registration
 - Current build environment expectation:
@@ -27,11 +31,11 @@
 
 ## Current Worktree Reality
 
-The repository is now being advanced to `1.9.5`. It carries forward the `1.9.0` focus-mode baseline, the `1.9.1` AI daily / weekly report generation, the Android launcher-widget visual hotfixes, and adds an AI report scheduling reliability fix for Android devices without exact-alarm permission.
+The repository is now being advanced to `1.9.6`. It carries forward the `1.9.0` focus-mode baseline, the `1.9.1` AI daily / weekly report generation, the Android launcher-widget visual hotfixes, the AI report scheduling reliability fix for Android devices without exact-alarm permission, and a new widget pass to make the launcher `今日看板` read closer to the in-app daily board.
 
 Most important current baseline facts:
 
-- version metadata is `1.9.5 / 199`
+- version metadata is `1.9.6 / 200`
 - Database version is now `12`; `MIGRATION_11_12` creates `focus_sessions`.
 - Settings -> `专注模式` controls default focus duration, extension duration, screen-on behavior, and a documented-only notification-suppression preference.
 - Active todo long-press menus include `开始专注 · X 分钟`; the daily-board focus card can start free focus.
@@ -55,6 +59,7 @@ Most important current baseline facts:
 - Android launcher widget card surfaces now use stronger light/dark opacity, lightweight elevation, retuned scrims, tighter title/card spacing, and daily-board ordering with announcements before greeting so the widget resembles the in-app daily board card stack more than a generic RemoteViews list.
 - Android launcher widget default provider size is now closer to a square / vertical daily-board card instead of a shallow flat list; its header is lighter and the greeting, focus, todo, empty, and schedule cards use more solid rounded daily-board-style surfaces with wider text/strip breathing room.
 - Android launcher widget `1.9.4` visual pass adds a static daily-board-style widget picker preview, raises the default target to a 4x5 vertical board, changes todo rows to include a checkbox-like marker plus `DDL HH:mm` chip, and removes ordinary schedule-row fill so schedule rows read as transparent daily-board rows with vertical color strips rather than small system-list blocks.
+- Android launcher widget `1.9.6` visual pass compresses the topbar to a daily-board-like menu/title/date row, removes the extra `轻触打开` subtitle, makes todo cards show group tag, notes, and `⏰ DDL HH:mm`, removes heavy card strokes, and gives in-progress schedule rows a gold border with a faint gold fill.
 - Tapping a todo row opens that todo, tapping an event row opens Calendar with that event detail, tapping an announcement row opens the source Planning Desk note, and section/empty rows return to the default daily board.
 - Desktop web `/api/snapshot` includes active Planning Desk announcements and the browser console renders them as a top announcement banner. Long announcement text now scrolls only when the combined text exceeds 60 characters, and hover pauses the marquee.
 - Desktop web now follows system dark mode through CSS variables for timeline cards, event cards, modal sheets, summary cards, sidebar cards, tab buttons, Planning Desk, and announcements.
@@ -90,7 +95,7 @@ Recent code inspection and build verification cover:
 
 ## Documentation Health
 
-Current docs are being synchronized for `1.9.5`:
+Current docs are being synchronized for `1.9.6`:
 
 - `README.md`
 - `CHANGELOG.md`

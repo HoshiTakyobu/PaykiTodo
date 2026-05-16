@@ -57,7 +57,7 @@ class TodoWidgetProvider : AppWidgetProvider() {
             }
             val todayLabel = LocalDate.now().format(DateTimeFormatter.ofPattern("M月d日 EEEE", Locale.CHINA))
             val views = RemoteViews(context.packageName, R.layout.widget_todo).apply {
-                setTextViewText(R.id.widget_board_subtitle, "$todayLabel · 轻触打开")
+                setTextViewText(R.id.widget_board_subtitle, todayLabel)
                 setRemoteAdapter(R.id.widget_list, serviceIntent)
                 setEmptyView(R.id.widget_list, R.id.widget_empty)
                 setOnClickPendingIntent(R.id.widget_root, openAppIntent)

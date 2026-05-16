@@ -128,14 +128,19 @@ private class TodoWidgetFactory(
 
     private fun todoViews(row: WidgetBoardRow): RemoteViews {
         return RemoteViews(context.packageName, R.layout.widget_todo_task_card).apply {
+            setTextViewText(R.id.widget_task_group, row.groupName)
             setTextViewText(R.id.widget_task_time, row.meta)
             setTextViewText(R.id.widget_task_title, row.title)
+            setTextViewText(R.id.widget_task_notes, row.notes)
             setTextViewText(R.id.widget_task_badge, row.trailing)
+            setTextColor(R.id.widget_task_group, row.accentColor)
             setTextColor(R.id.widget_task_time, row.metaColor)
             setTextColor(R.id.widget_task_title, row.titleColor)
+            setTextColor(R.id.widget_task_notes, mutedText)
             setTextColor(R.id.widget_task_badge, row.trailingColor)
             setInt(R.id.widget_task_strip, "setColorFilter", row.accentColor)
             setViewVisibility(R.id.widget_task_time, if (row.meta.isBlank()) View.GONE else View.VISIBLE)
+            setViewVisibility(R.id.widget_task_notes, if (row.notes.isBlank()) View.GONE else View.VISIBLE)
             setViewVisibility(R.id.widget_task_badge, if (row.trailing.isBlank()) View.GONE else View.VISIBLE)
         }
     }
@@ -206,6 +211,11 @@ private class TodoWidgetFactory(
             return
         }
         setViewVisibility(rootId, View.VISIBLE)
+        setInt(
+            rootId,
+            "setBackgroundResource",
+            if (row.highlight) R.drawable.widget_schedule_event_active_background else R.drawable.widget_schedule_event_background
+        )
         setTextViewText(titleId, row.title)
         setTextViewText(timeId, row.meta)
         setTextViewText(locationId, row.location)
@@ -286,11 +296,14 @@ private class TodoWidgetFactory(
             output += emptyRow(-2L, "今天还没有安排任务。")
         } else {
             snapshot.todoItems.take(6).forEach { item ->
+                val group = groups.firstOrNull { it.id == item.groupId }
                 output += WidgetBoardRow(
                     stableId = item.id,
                     type = WidgetRowType.TODO,
                     itemId = item.id,
                     title = item.title,
+                    groupName = group?.name ?: "默认",
+                    notes = item.notes.trim(),
                     meta = todoTimeLabel(item),
                     trailing = if (item.missed) "!" else "",
                     titleColor = darkText,
@@ -399,7 +412,7 @@ private class TodoWidgetFactory(
             .atZone(ZoneId.systemDefault())
             .toLocalTime()
             .format(timeFormatter)
-        return "DDL $dueTime"
+        return "⏰ DDL $dueTime"
     }
 
     private fun todoAccentColor(item: TodoItem, groups: List<TaskGroup>): Int {
@@ -482,6 +495,8 @@ private class TodoWidgetFactory(
         val itemId: Long = 0L,
         val sourceNoteId: Long = 0L,
         val title: String,
+        val groupName: String = "",
+        val notes: String = "",
         val meta: String = "",
         val trailing: String = "",
         val location: String = "",

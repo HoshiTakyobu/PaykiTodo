@@ -395,10 +395,11 @@ private class TodoWidgetFactory(
 
     private fun todoTimeLabel(item: TodoItem): String {
         if (!item.hasDueDate) return "待办"
-        return Instant.ofEpochMilli(item.dueAtMillis)
+        val dueTime = Instant.ofEpochMilli(item.dueAtMillis)
             .atZone(ZoneId.systemDefault())
             .toLocalTime()
             .format(timeFormatter)
+        return "DDL $dueTime"
     }
 
     private fun todoAccentColor(item: TodoItem, groups: List<TaskGroup>): Int {

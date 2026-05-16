@@ -14,7 +14,7 @@
 
     <LinearLayout
         android:id="@+id/widget_schedule_date_block"
-        android:layout_width="56dp"
+        android:layout_width="58dp"
         android:layout_height="wrap_content"
         android:gravity="center"
         android:orientation="vertical">
@@ -55,7 +55,7 @@
     <LinearLayout
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:layout_marginStart="16dp"
+        android:layout_marginStart="17dp"
         android:layout_weight="1"
         android:orientation="vertical">
 
@@ -81,15 +81,15 @@
             android:layout_height="wrap_content"
             android:background="@drawable/widget_schedule_event_background"
             android:gravity="top"
-            android:minHeight="66dp"
+            android:minHeight="72dp"
             android:orientation="horizontal"
-            android:paddingTop="11dp"
+            android:paddingTop="12dp"
             android:paddingEnd="8dp"
-            android:paddingBottom="11dp">
+            android:paddingBottom="12dp">
 
             <ImageView
                 android:id="@+id/widget_schedule_today_event_1_strip"
-                android:layout_width="6dp"
+                android:layout_width="5dp"
                 android:layout_height="match_parent"
                 android:contentDescription="@null"
                 android:scaleType="fitXY"
@@ -98,7 +98,7 @@
             <LinearLayout
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="16dp"
+                android:layout_marginStart="15dp"
                 android:layout_weight="1"
                 android:orientation="vertical">
 
@@ -143,15 +143,15 @@
             android:layout_height="wrap_content"
             android:background="@drawable/widget_schedule_event_background"
             android:gravity="top"
-            android:minHeight="66dp"
+            android:minHeight="72dp"
             android:orientation="horizontal"
-            android:paddingTop="11dp"
+            android:paddingTop="12dp"
             android:paddingEnd="8dp"
-            android:paddingBottom="11dp">
+            android:paddingBottom="12dp">
 
             <ImageView
                 android:id="@+id/widget_schedule_today_event_2_strip"
-                android:layout_width="6dp"
+                android:layout_width="5dp"
                 android:layout_height="match_parent"
                 android:contentDescription="@null"
                 android:scaleType="fitXY"
@@ -160,7 +160,7 @@
             <LinearLayout
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="16dp"
+                android:layout_marginStart="15dp"
                 android:layout_weight="1"
                 android:orientation="vertical">
 
@@ -233,15 +233,15 @@
             android:layout_height="wrap_content"
             android:background="@drawable/widget_schedule_event_background"
             android:gravity="top"
-            android:minHeight="66dp"
+            android:minHeight="72dp"
             android:orientation="horizontal"
-            android:paddingTop="11dp"
+            android:paddingTop="12dp"
             android:paddingEnd="8dp"
-            android:paddingBottom="11dp">
+            android:paddingBottom="12dp">
 
             <ImageView
                 android:id="@+id/widget_schedule_tomorrow_event_1_strip"
-                android:layout_width="6dp"
+                android:layout_width="5dp"
                 android:layout_height="match_parent"
                 android:contentDescription="@null"
                 android:scaleType="fitXY"
@@ -250,7 +250,7 @@
             <LinearLayout
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="16dp"
+                android:layout_marginStart="15dp"
                 android:layout_weight="1"
                 android:orientation="vertical">
 
@@ -295,15 +295,15 @@
             android:layout_height="wrap_content"
             android:background="@drawable/widget_schedule_event_background"
             android:gravity="top"
-            android:minHeight="66dp"
+            android:minHeight="72dp"
             android:orientation="horizontal"
-            android:paddingTop="11dp"
+            android:paddingTop="12dp"
             android:paddingEnd="8dp"
-            android:paddingBottom="11dp">
+            android:paddingBottom="12dp">
 
             <ImageView
                 android:id="@+id/widget_schedule_tomorrow_event_2_strip"
-                android:layout_width="6dp"
+                android:layout_width="5dp"
                 android:layout_height="match_parent"
                 android:contentDescription="@null"
                 android:scaleType="fitXY"
@@ -312,7 +312,7 @@
             <LinearLayout
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="16dp"
+                android:layout_marginStart="15dp"
                 android:layout_weight="1"
                 android:orientation="vertical">
 

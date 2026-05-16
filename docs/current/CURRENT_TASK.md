@@ -2,7 +2,7 @@
 
 ## Active Development Focus
 
-The current round is PaykiTodo `1.9.3` / `versionCode 197`, carrying forward the `1.9.1` AI daily / weekly report work and applying a stronger launcher-widget visual hotfix after user review that asks the widget to look like the in-app daily board.
+The current round is PaykiTodo `1.9.4` / `versionCode 198`, carrying forward the `1.9.1` AI daily / weekly report work and applying another launcher-widget visual hotfix after user review that asks the widget to look like the in-app daily board.
 
 ## Completed In This Round
 
@@ -16,7 +16,8 @@ The current round is PaykiTodo `1.9.3` / `versionCode 197`, carrying forward the
 8. Android `今日看板` launcher widget received an extra visual pass after user review: announcements now appear before the greeting like the in-app daily board, card spacing is tighter, and light/dark surfaces are more opaque for launcher readability.
 9. Android `今日看板` launcher widget was advanced again for `1.9.2`: the provider default size is now square / vertical-board oriented, the header is lighter, and greeting / focus / todo / empty / schedule rows use more solid daily-board-style rounded card surfaces with wider strip/text spacing.
 10. Android `今日看板` launcher widget was advanced again for `1.9.3`: the default provider height is taller, the root padding/header/card rhythm is closer to the in-app daily board, light/dark scrims and card surfaces are more opaque, todo strips are wider, and schedule rows have subtle inner card backgrounds.
-11. Version metadata moved to `1.9.3` / `versionCode 197`.
+11. Android `今日看板` launcher widget was advanced again for `1.9.4`: the widget picker now has a static daily-board preview, the default target size is 4x5, todo rows include a checkbox-like marker and `DDL HH:mm` chip, and ordinary schedule rows use transparent daily-board rows with vertical color strips.
+12. Version metadata moved to `1.9.4` / `versionCode 198`.
 
 ## Verification Completed This Round
 
@@ -27,13 +28,17 @@ The current round is PaykiTodo `1.9.3` / `versionCode 197`, carrying forward the
 5. `./gradlew.bat assembleDebug`
 6. `git diff --check`
 7. `./gradlew.bat :app:mergeDebugResources` for the `1.9.3` widget XML/resource pass
+8. `./gradlew.bat :app:mergeDebugResources` for the `1.9.4` widget preview/layout pass
+9. `./gradlew.bat :app:compileDebugKotlin assembleDebug`
+10. `./gradlew.bat testDebugUnitTest`
+11. `git diff --check`
 
 ## Immediate Practical Next Steps
 
-1. Install `app/build/outputs/apk/debug/PaykiTodo-1.9.3-debug.apk` on a real device for the device-only checks below.
+1. Install `app/build/outputs/apk/debug/PaykiTodo-1.9.4-debug.apk` on a real device for the device-only checks below.
 2. Do not push unless the user explicitly asks.
 
-## Device Verification Needed After Installing 1.9.3
+## Device Verification Needed After Installing 1.9.4
 
 1. In Settings -> `AI 调用配置`, enable daily report, set the time to current time + 1 minute, and confirm a report is generated.
 2. Verify disabling the daily switch cancels future daily report alarms.
@@ -54,7 +59,7 @@ The current round is PaykiTodo `1.9.3` / `versionCode 197`, carrying forward the
 
 - `c20d18a` implements the `1.9.0` focus-mode baseline.
 - `104c9aa` implements the `1.9.1` AI daily / weekly report work and the previous launcher-widget visual pass.
-- The current verified work implements the `1.9.3` launcher-widget visual hotfix and should be committed as the next focused commit.
+- The current verified work implements the `1.9.4` launcher-widget visual hotfix and should be committed as the next focused commit.
 - `docs/goals/2026-05-17-paykitodo-focus-session-goal.md` and `docs/goals/2026-05-17-paykitodo-ai-daily-report-goal.md` remain untracked goal input files by design.
 
 ## Commit Message Rule

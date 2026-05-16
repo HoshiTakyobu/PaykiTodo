@@ -181,7 +181,7 @@ This file tracks the product at a practical level for new coding sessions.
 - widget includes a `今日已专注` card with today's completed focus minutes, total sessions, and completed sessions, so the launcher surface follows the in-app daily-board sequence more closely
 - widget greeting, empty, orange announcement, todo, and schedule cards use stronger light/dark card surfaces, lightweight elevation, larger 28dp-style rounding, wider todo color strips, tighter title/card spacing, and daily-board-like ordering with announcements before greeting for better launcher readability
 - widget provider now suggests a more daily-board-like square / vertical default size instead of a shallow list-size widget, and the current card pass uses more solid rounded card surfaces plus wider todo/schedule strip spacing so desktop rendering is less like a generic system list
-- widget `1.9.3` visual pass raises the suggested height, increases outer board padding, makes the header title/date hierarchy closer to the in-app daily board, strengthens light/dark scrims and card opacity, widens todo strips, and gives schedule rows subtle inner card backgrounds
+- widget `1.9.4` visual pass adds a static daily-board-style picker preview, targets a 4x5 vertical board by default, gives todo rows a checkbox-like marker plus `DDL HH:mm` chip, and makes ordinary schedule rows transparent with only the vertical color strip to better match the in-app daily board
 - repository todo mutations and Planning Desk note edits / delete / archive operations notify widget data refresh through the application-level widget callback
 
 ### Data / Backup / Diagnostics

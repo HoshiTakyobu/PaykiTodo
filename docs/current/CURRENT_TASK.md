@@ -2,7 +2,7 @@
 
 ## Active Development Focus
 
-The current round is PaykiTodo `1.9.4` / `versionCode 198`, carrying forward the `1.9.1` AI daily / weekly report work and applying another launcher-widget visual hotfix after user review that asks the widget to look like the in-app daily board.
+The current round is PaykiTodo `1.9.5` / `versionCode 199`, carrying forward the `1.9.1` AI daily / weekly report work, applying launcher-widget visual hotfixes, and fixing AI report scheduling behavior when exact-alarm permission is unavailable.
 
 ## Completed In This Round
 
@@ -18,6 +18,8 @@ The current round is PaykiTodo `1.9.4` / `versionCode 198`, carrying forward the
 10. Android `今日看板` launcher widget was advanced again for `1.9.3`: the default provider height is taller, the root padding/header/card rhythm is closer to the in-app daily board, light/dark scrims and card surfaces are more opaque, todo strips are wider, and schedule rows have subtle inner card backgrounds.
 11. Android `今日看板` launcher widget was advanced again for `1.9.4`: the widget picker now has a static daily-board preview, the default target size is 4x5, todo rows include a checkbox-like marker and `DDL HH:mm` chip, and ordinary schedule rows use transparent daily-board rows with vertical color strips.
 12. Version metadata moved to `1.9.4` / `versionCode 198`.
+13. AI 日报 / 周报 scheduling now falls back to system-allowed idle alarms when Android 12+ denies exact-alarm permission, avoiding silent scheduling failure or startup `SecurityException`.
+14. Version metadata moved to `1.9.5` / `versionCode 199`.
 
 ## Verification Completed This Round
 
@@ -32,13 +34,21 @@ The current round is PaykiTodo `1.9.4` / `versionCode 198`, carrying forward the
 9. `./gradlew.bat :app:compileDebugKotlin assembleDebug`
 10. `./gradlew.bat testDebugUnitTest`
 11. `git diff --check`
+12. `./gradlew.bat :app:compileDebugKotlin assembleDebug` for `1.9.5` after clearing corrupted Kotlin incremental caches
+13. `./gradlew.bat testDebugUnitTest`
+14. `git diff --check`
+15. Installed `PaykiTodo-1.9.5-debug.apk` on `emulator-5554`; package reports `versionCode=199`, `versionName=1.9.5`
+16. With `SCHEDULE_EXACT_ALARM` still denied, enabling daily report at current time +2 minutes registered a fallback `GENERATE_DAILY_REPORT` RTC_WAKEUP alarm and generated a new top `AI 日报` entry at `2026-05-16 周六 21:18`
+17. The generated report posted notification id `91000` on `ai_report_channel`; tapping the notification opened `规划台` directly on the `AI 日报` document with the auto-report hint visible
+18. Turning the daily report switch off removed PaykiTodo report alarms from `dumpsys alarm`
+19. Enabling weekly report registered a Sunday `GENERATE_WEEKLY_REPORT` RTC_WAKEUP alarm; it was then disabled again to leave the emulator clean
 
 ## Immediate Practical Next Steps
 
-1. Install `app/build/outputs/apk/debug/PaykiTodo-1.9.4-debug.apk` on a real device for the device-only checks below.
+1. Install `app/build/outputs/apk/debug/PaykiTodo-1.9.5-debug.apk` on a real device for the device-only checks below.
 2. Do not push unless the user explicitly asks.
 
-## Device Verification Needed After Installing 1.9.4
+## Device Verification Needed After Installing 1.9.5
 
 1. In Settings -> `AI 调用配置`, enable daily report, set the time to current time + 1 minute, and confirm a report is generated.
 2. Verify disabling the daily switch cancels future daily report alarms.
@@ -48,18 +58,18 @@ The current round is PaykiTodo `1.9.4` / `versionCode 198`, carrying forward the
 6. Verify Sunday weekly scheduling writes `AI 周报`.
 7. Reboot / time-change handling should be device-tested because AlarmManager scheduling cannot be fully validated by unit tests.
 
-## Local Device Verification Blocker
+## Local Device Verification Reality
 
-- `adb` exists at `C:\Users\hp\AppData\Local\Android\Sdk\platform-tools\adb.exe`, but no physical device is currently attached.
-- The local `Pixel_8` AVD points to `system-images\android-34\google_apis_playstore\x86_64\`, but that system image directory is missing from the SDK.
-- `sdkmanager.bat` is not present under the local SDK, so this session cannot install the missing emulator system image automatically.
-- Result: device-only verification remains pending until a phone is connected or the missing AVD system image / SDK command-line tools are installed.
+- `adb` is available at `C:\Users\hp\AppData\Local\Android\Sdk\platform-tools\adb.exe`.
+- `emulator-5554` is currently available and was used for the `1.9.5` AI report scheduling fallback verification above.
+- Real physical-device verification is still recommended for OEM alarm behavior, notification shade visuals, haptics, launcher widget rendering, and reboot/time-change recovery.
 
 ## Local Commit State
 
 - `c20d18a` implements the `1.9.0` focus-mode baseline.
 - `104c9aa` implements the `1.9.1` AI daily / weekly report work and the previous launcher-widget visual pass.
-- The current verified work implements the `1.9.4` launcher-widget visual hotfix and should be committed as the next focused commit.
+- `46326df` implements the `1.9.4` launcher-widget visual hotfix.
+- The latest local commit implements the `1.9.5` AI report scheduling fallback and documentation update.
 - `docs/goals/2026-05-17-paykitodo-focus-session-goal.md` and `docs/goals/2026-05-17-paykitodo-ai-daily-report-goal.md` remain untracked goal input files by design.
 
 ## Commit Message Rule

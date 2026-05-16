@@ -48,10 +48,39 @@ object DailyReportScheduler {
         val alarmManager = context.getSystemService(AlarmManager::class.java)
         val pendingIntent = pendingIntent(context, requestCode, action)
         val triggerMillis = triggerAt.toInstant().toEpochMilli()
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerMillis, pendingIntent)
+        val canUseExact = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            alarmManager.canScheduleExactAlarms()
         } else {
-            alarmManager.setExact(AlarmManager.RTC_WAKEUP, triggerMillis, pendingIntent)
+            true
+        }
+        if (!canUseExact) {
+            scheduleInexact(alarmManager, triggerMillis, pendingIntent)
+            return
+        }
+        runCatching {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerMillis, pendingIntent)
+            } else {
+                alarmManager.setExact(AlarmManager.RTC_WAKEUP, triggerMillis, pendingIntent)
+            }
+        }.onFailure { throwable ->
+            if (throwable is SecurityException) {
+                scheduleInexact(alarmManager, triggerMillis, pendingIntent)
+            } else {
+                throw throwable
+            }
+        }
+    }
+
+    private fun scheduleInexact(
+        alarmManager: AlarmManager,
+        triggerMillis: Long,
+        pendingIntent: PendingIntent
+    ) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            alarmManager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerMillis, pendingIntent)
+        } else {
+            alarmManager.set(AlarmManager.RTC_WAKEUP, triggerMillis, pendingIntent)
         }
     }
 

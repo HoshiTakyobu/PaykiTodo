@@ -118,7 +118,7 @@ This file tracks the product at a practical level for new coding sessions.
 - reports are stored in Planning Desk notes named `AI 日报` and `AI 周报`, with the newest entry prepended above older entries
 - archived report notes are restored instead of duplicated when a report is generated again
 - report notifications use a low-priority `ai_report_channel`, skip posting if Android 13+ notification permission is missing, and deep-link to the matching Planning Desk note
-- `DailyReportScheduler` schedules exact daily and Sunday weekly report alarms, cancels disabled schedules, and is invoked on app startup plus boot/time/timezone recovery
+- `DailyReportScheduler` schedules daily and Sunday weekly report alarms, cancels disabled schedules, and is invoked on app startup plus boot/time/timezone recovery; it uses exact alarms when allowed and safely falls back to system-allowed idle scheduling when exact-alarm permission is missing
 - Planning Desk shows a purple auto-report hint when the active document is `AI 日报` or `AI 周报`
 
 ### Calendar System

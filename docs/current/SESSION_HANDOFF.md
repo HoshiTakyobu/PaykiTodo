@@ -6,10 +6,11 @@ Long-running Codex sessions can become unreliable. This file exists so a new ses
 
 ## Current Handoff Summary
 
-- The project is now being advanced to `1.9.4` / `versionCode 198`.
-- This round carries forward AI 日报 / 周报 after the `1.9.0` focus-mode baseline and applies a follow-up launcher-widget visual hotfix to make the widget closer to the in-app daily board.
-- Latest debug APK after packaging: `app/build/outputs/apk/debug/PaykiTodo-1.9.4-debug.apk`.
+- The project is now being advanced to `1.9.5` / `versionCode 199`.
+- This round carries forward AI 日报 / 周报 after the `1.9.0` focus-mode baseline, applies launcher-widget visual hotfixes, and fixes AI report scheduling when exact-alarm permission is unavailable.
+- Latest debug APK after packaging: `app/build/outputs/apk/debug/PaykiTodo-1.9.5-debug.apk`.
 - Local commits before this hotfix: `c20d18a` for focus mode and `104c9aa` for AI reports plus the previous widget visual pass.
+- Latest local commit implements the `1.9.5` AI report scheduling fallback.
 - Do not push to GitHub unless the user explicitly asks.
 
 ## Latest 1.9.4 Widget Hotfix Changes
@@ -19,6 +20,13 @@ Long-running Codex sessions can become unreliable. This file exists so a new ses
 3. Todo widget rows now look closer to active todo cards: group color strip, checkbox-like marker, title, and `DDL HH:mm` chip instead of a separate narrow time column.
 4. Schedule rows inside the aggregated schedule card no longer use ordinary row fill; they return to transparent rows with vertical color strips like the in-app daily-board schedule block.
 5. Version metadata moved to `1.9.4` / `versionCode 198`.
+
+## Latest 1.9.5 AI Report Scheduling Fix
+
+1. `DailyReportScheduler` still uses exact daily / weekly alarms when Android allows exact alarms.
+2. If Android 12+ denies `SCHEDULE_EXACT_ALARM`, AI 日报 / 周报 scheduling now falls back to `setAndAllowWhileIdle` / `set` instead of failing silently or throwing a startup `SecurityException`.
+3. Settings -> `AI 调用配置` -> `AI 日报 / 周报` and the in-app Wiki now explain that missing exact-alarm permission may delay automatic report generation.
+4. Version metadata moved to `1.9.5` / `versionCode 199`.
 
 ## Latest 1.9.1 AI Report Changes
 
@@ -76,25 +84,30 @@ Completed locally:
 9. `./gradlew.bat :app:compileDebugKotlin assembleDebug`
 10. `./gradlew.bat testDebugUnitTest`
 11. `git diff --check`
+12. `./gradlew.bat :app:compileDebugKotlin assembleDebug` after `1.9.5` scheduling fallback and Kotlin cache cleanup
+13. `./gradlew.bat testDebugUnitTest`
+14. `git diff --check`
+15. Installed `PaykiTodo-1.9.5-debug.apk` on `emulator-5554`; installed package reports `versionCode=199`, `versionName=1.9.5`
+16. With `SCHEDULE_EXACT_ALARM` denied, daily report at current time +2 minutes registered a fallback `GENERATE_DAILY_REPORT` alarm, generated a new top `AI 日报` entry, and posted notification id `91000`
+17. Tapping the `AI 日报已生成` notification opened `规划台` directly on the `AI 日报` document with the AI auto-report hint visible
+18. Disabling daily reports removed PaykiTodo report alarms from `dumpsys alarm`
+19. Enabling weekly reports registered a Sunday `GENERATE_WEEKLY_REPORT` alarm; reports were then disabled again to leave the emulator clean
 
 Real launcher verification is still needed for the widget visual pass because RemoteViews rendering varies by launcher.
 
-Local device verification blocker observed in this session:
+Local device status observed in this session:
 
-1. `adb` is available at `C:\Users\hp\AppData\Local\Android\Sdk\platform-tools\adb.exe`, but no device is attached.
-2. `Pixel_8` AVD exists, but its configured system image `system-images\android-34\google_apis_playstore\x86_64\` is missing.
-3. No local `sdkmanager.bat` was found, so the missing system image cannot be installed automatically from this environment.
-4. Continue device-only checks after connecting a phone or repairing the local Android SDK / AVD.
+1. `adb` is available at `C:\Users\hp\AppData\Local\Android\Sdk\platform-tools\adb.exe`.
+2. `emulator-5554` is available and was used for the `1.9.5` AI report scheduling verification.
+3. Continue physical-device checks for OEM alarm policy, haptics, launcher widget rendering, and reboot/time-change recovery.
 
-Then verify on a real device after installing `PaykiTodo-1.9.4-debug.apk`:
+Then verify on a real device after installing `PaykiTodo-1.9.5-debug.apk`:
 
-1. enable daily report at current time + 1 minute and wait for automatic generation;
-2. disable daily report and confirm the next scheduled daily report is canceled;
-3. tap `立即生成一次日报` and confirm `AI 日报` is created / updated;
-4. test with AI disabled or broken to confirm local template fallback;
-5. confirm the notification appears when permission is granted and opens the matching report note;
-6. test Sunday weekly report generation into `AI 周报`;
-7. test boot/time/timezone recovery on device.
+1. confirm the same daily-report flow on the user's real device / OEM ROM;
+2. tap `立即生成一次日报` and confirm `AI 日报` is created / updated;
+3. test Sunday weekly report generation into `AI 周报`;
+4. test boot/time/timezone recovery on device;
+5. test launcher widget rendering from the real launcher picker.
 
 ## Required Reading For A New Session
 

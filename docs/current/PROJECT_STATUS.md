@@ -7,29 +7,31 @@
 - Package name: `com.paykitodo.app`
 - Target platform: Android 14 / API 34
 - Current version in code:
-  - `versionName = "1.9.4"`
-  - `versionCode = 198`
+  - `versionName = "1.9.5"`
+  - `versionCode = 199`
 
 ## Current Build Facts
 
 - Latest debug APK output:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.9.4-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.9.5-debug.apk`
 - Minimal verification completed in the latest code round:
   - `node --check app/src/main/assets/desktop-web/app.js`
   - `./gradlew.bat testDebugUnitTest`
   - `./gradlew.bat assembleDebug`
   - `git diff --check`
+  - installed `PaykiTodo-1.9.5-debug.apk` on `emulator-5554`
+  - verified AI daily-report fallback scheduling while exact-alarm permission is denied, automatic report generation, notification posting, notification deep link to `AI 日报`, disabled-switch cancellation, and weekly-report alarm registration
 - Current build environment expectation:
   - prefer Android Studio bundled `jbr`
   - avoid random system Java overrides when building this repo
 
 ## Current Worktree Reality
 
-The repository is now being advanced to `1.9.4`. It carries forward the `1.9.0` focus-mode baseline, the `1.9.1` AI daily / weekly report generation, and adds another Android launcher-widget visual hotfix after user review that asks the widget to match the in-app daily-board surface more directly.
+The repository is now being advanced to `1.9.5`. It carries forward the `1.9.0` focus-mode baseline, the `1.9.1` AI daily / weekly report generation, the Android launcher-widget visual hotfixes, and adds an AI report scheduling reliability fix for Android devices without exact-alarm permission.
 
 Most important current baseline facts:
 
-- version metadata is `1.9.4 / 198`
+- version metadata is `1.9.5 / 199`
 - Database version is now `12`; `MIGRATION_11_12` creates `focus_sessions`.
 - Settings -> `专注模式` controls default focus duration, extension duration, screen-on behavior, and a documented-only notification-suppression preference.
 - Active todo long-press menus include `开始专注 · X 分钟`; the daily-board focus card can start free focus.
@@ -42,7 +44,7 @@ Most important current baseline facts:
 - Settings -> `AI 调用配置` now includes `AI 日报 / 周报` controls: daily and weekly switches, compact HH:mm time fields, save/re-schedule behavior, and an immediate daily-report generation button for debugging.
 - AI daily reports write into Planning Desk `AI 日报`; weekly reports write into `AI 周报`. Reports collect completed todos, missed todos, events, upcoming DDLs, and focus minutes, call enabled Planning AI providers first, and fall back to a local template if AI is unavailable.
 - AI report notifications use a low-priority `ai_report_channel`; tapping a report notification opens the matching Planning Desk report document.
-- `DailyReportScheduler` schedules exact daily and weekly report alarms, cancels disabled schedules, and is invoked from app startup plus boot/time/timezone recovery.
+- `DailyReportScheduler` schedules daily and Sunday weekly report alarms, cancels disabled schedules, and is invoked from app startup plus boot/time/timezone recovery; it uses exact alarms when allowed and falls back to system-allowed idle scheduling when exact-alarm permission is missing.
 - Planning Desk displays a purple hint when opening `AI 日报` or `AI 周报`, reminding the user that the document is an auto-generated review record.
 - Daily board can show multiple active announcements parsed from unarchived Planning Desk notes. Announcement parsing now accepts explicit lines, checkbox announcement lines, quote-prefixed announcement lines, and inline `#公告` hints; tail `#imported` / hashtag metadata is stripped from display text.
 - Settings no longer exposes or stores a separate announcement editor. The old `AppSettings` announcement fields and backup serialization were removed; old backup JSON fields are ignored and legacy SharedPreferences keys are cleaned once.
@@ -88,7 +90,7 @@ Recent code inspection and build verification cover:
 
 ## Documentation Health
 
-Current docs are being synchronized for `1.9.4`:
+Current docs are being synchronized for `1.9.5`:
 
 - `README.md`
 - `CHANGELOG.md`
@@ -112,9 +114,9 @@ Older versioned docs under `docs/` remain historical references and should not b
 5. Planning Desk announcement syntax, multi-announcement visibility, date-range filtering, long-text marquee, preview highlighting, desktop-web propagation, and widget propagation need real UI verification.
 6. Unit tests currently cover parser / AI / line-matching behavior, but there are still no dedicated repository-level automated tests for refresh/postpone/undo/conflict flows; those are presently covered by code inspection plus build/test success.
 7. Long-running chat sessions can become unreliable, so repository docs must remain the source of truth for future continuation.
-8. 专注模式 requires real-device verification for haptics, screen-on behavior, countdown extension, save-before-exit persistence, and daily-board stat refresh.
-9. AI 日报 / 周报 still needs real-device AlarmManager verification: scheduled minute-ahead daily trigger, disabled-switch cancellation, Sunday weekly trigger, notification tap route, and boot/time-change rescheduling.
-10. Local emulator verification is currently blocked: `Pixel_8` AVD exists but its Android 34 Play Store x86_64 system image is missing, no device is attached through adb, and `sdkmanager.bat` is not present in the local SDK.
+8. 专注模式 still needs broader real-device verification for haptics, screen-on behavior, countdown extension, save-before-exit persistence, and daily-board stat refresh beyond the emulator free-focus path already exercised.
+9. AI 日报 / 周报 `1.9.5` emulator verification covers exact-alarm-denied fallback scheduling, automatic daily generation, local-template fallback, report notification, notification deep link, disabled-switch cancellation, and weekly alarm registration; physical-device verification is still recommended for OEM alarm policies and reboot/time-change recovery.
+10. Android launcher widget rendering still needs real launcher verification because RemoteViews sizing, widget picker previews, resize behavior, dark mode, and row-level PendingIntent handling vary by launcher.
 
 ## How A New Session Should Start
 

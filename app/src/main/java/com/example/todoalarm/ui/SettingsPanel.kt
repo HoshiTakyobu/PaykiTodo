@@ -971,7 +971,7 @@ private fun AiReportPreferencesPanel(
 
     PrefCard("AI 日报 / 周报") {
         Text(
-            text = "日报会在每天设定时间生成并写入规划台「AI 日报」；周报会在每周日设定时间写入「AI 周报」。AI 配置不可用时会用本地模板兜底。",
+            text = "日报会在每天设定时间生成并写入规划台「AI 日报」；周报会在每周日设定时间写入「AI 周报」。AI 配置不可用时会用本地模板兜底。若未开启「精确闹钟」权限，系统可能延后生成。",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )

@@ -43,6 +43,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import com.example.todoalarm.R
 import com.example.todoalarm.data.CalendarEventDraft
+import com.example.todoalarm.data.AiReport
 import com.example.todoalarm.data.PlanningImportCandidate
 import com.example.todoalarm.data.PlanningImportResult
 import com.example.todoalarm.data.PlanningLineMapping
@@ -62,6 +63,7 @@ import com.example.todoalarm.data.ThemeMode
 import com.example.todoalarm.data.TodoDraft
 import com.example.todoalarm.data.TodoItem
 import com.example.todoalarm.data.WeekStartMode
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.time.LocalDate
@@ -83,6 +85,7 @@ private enum class EditorKind {
 @Composable
 fun DashboardScreen(
     uiState: TodoUiState,
+    aiReports: StateFlow<List<AiReport>>,
     permissions: PermissionSnapshot,
     launchRoute: DashboardLaunchRoute? = null,
     launchRouteSerial: Int = 0,
@@ -397,6 +400,7 @@ fun DashboardScreen(
                     targetAiReportSerial = launchRouteSerial,
                     padding = padding,
                     uiState = uiState,
+                    aiReports = aiReports,
                     permissions = permissions,
                     onEdit = { openTodoEditor(it) },
                     onEditCalendarEvent = { openCalendarEventEditor(it) },

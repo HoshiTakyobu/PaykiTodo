@@ -151,6 +151,7 @@ class MainActivity : ComponentActivity() {
             TodoAlarmTheme(themeMode = uiState.settings.themeMode) {
                 DashboardScreen(
                     uiState = uiState,
+                    aiReports = viewModel.aiReports,
                     permissions = permissions,
                     launchRoute = launchRoute,
                     launchRouteSerial = launchRouteSerial,

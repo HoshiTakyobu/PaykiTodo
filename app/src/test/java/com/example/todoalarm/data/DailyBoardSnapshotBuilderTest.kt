@@ -34,6 +34,27 @@ class DailyBoardSnapshotBuilderTest {
         assertEquals(listOf("今天有 DDL", "随手想办的事"), snapshot.todoItems.map { it.title })
     }
 
+    @Test
+    fun noDdlTodosStayInTodayTodosOnLaterDates() {
+        val noDdl = todo(
+            id = 2,
+            title = "随手想办的事",
+            dueAt = null
+        )
+
+        val firstDay = DailyBoardSnapshotBuilder.build(
+            items = listOf(noDdl),
+            now = LocalDateTime.of(2026, 5, 14, 8, 0)
+        )
+        val nextDay = DailyBoardSnapshotBuilder.build(
+            items = listOf(noDdl),
+            now = LocalDateTime.of(2026, 5, 15, 8, 0)
+        )
+
+        assertEquals(listOf("随手想办的事"), firstDay.todoItems.map { it.title })
+        assertEquals(listOf("随手想办的事"), nextDay.todoItems.map { it.title })
+    }
+
     private fun todo(id: Long, title: String, dueAt: LocalDateTime?): TodoItem {
         return TodoItem(
             id = id,

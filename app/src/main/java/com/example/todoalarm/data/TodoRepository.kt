@@ -21,6 +21,9 @@ class TodoRepository(
     fun observePlanningNotes(): Flow<List<PlanningNote>> = todoDao.observePlanningNotes()
     fun observeFocusSessions(): Flow<List<FocusSession>> = todoDao.observeFocusSessions()
     fun observeAiReports(): Flow<List<AiReport>> = todoDao.observeAiReports()
+    fun observeFocusSessionStatsInRange(startMillis: Long, endMillis: Long): Flow<FocusSessionStats> {
+        return todoDao.observeFocusSessionStatsInRange(startMillis, endMillis)
+    }
 
     suspend fun addTodo(item: TodoItem): TodoItem {
         val id = todoDao.insert(item)
@@ -51,6 +54,15 @@ class TodoRepository(
         return todoDao.getFocusSessionsInRange(startMillis, endMillis)
     }
 
+    suspend fun getFocusSessionStatsInRange(startMillis: Long, endMillis: Long): FocusSessionStats {
+        return todoDao.getFocusSessionStatsInRange(startMillis, endMillis)
+    }
+
+    suspend fun getTodayFocusSessionStats(date: LocalDate = LocalDate.now()): FocusSessionStats {
+        val (startMillis, endMillis) = todayRangeMillis(date)
+        return todoDao.getFocusSessionStatsInRange(startMillis, endMillis)
+    }
+
     suspend fun getActiveItemsForBoardRange(now: LocalDate = LocalDate.now()): List<TodoItem> {
         val zone = ZoneId.systemDefault()
         val boardStart = now.atStartOfDay(zone).toInstant().toEpochMilli()
@@ -65,6 +77,7 @@ class TodoRepository(
     }
 
     suspend fun getAllPlanningNotes(): List<PlanningNote> = todoDao.getAllPlanningNotes()
+    suspend fun getActivePlanningNotes(): List<PlanningNote> = todoDao.getActivePlanningNotes()
     suspend fun getPlanningMappingsForNote(noteId: Long): List<PlanningLineMapping> = todoDao.getMappingsForNote(noteId)
 
     suspend fun insertPlanningMappings(mappings: List<PlanningLineMapping>) {

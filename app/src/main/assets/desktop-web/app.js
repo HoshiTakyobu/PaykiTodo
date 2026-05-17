@@ -21,7 +21,8 @@ const state = {
   planningSaving: false,
   planningRenderedNoteId: null,
   planningParsing: false,
-  planningMappings: []
+  planningMappings: [],
+  planningLoaded: false
 };
 
 const els = {
@@ -473,7 +474,9 @@ function syncTopbar() {
   els.viewCaption.textContent = todoMode ? '桌面端每日看板' : eventMode ? '桌面端日程模式' : 'Markdown 规划模式';
   els.openCreate.textContent = todoMode ? '新增待办' : eventMode ? '新增日程' : '新建规划';
   els.openCreate.classList.toggle('hidden', state.currentTab === 'planning');
-  els.snapshotMeta.textContent = state.snapshot ? ('最近刷新：' + formatDateTimeLabel(state.snapshot.generatedAtMillis)) : '连接后即可读取手机端当前数据';
+  els.snapshotMeta.textContent = state.snapshot
+    ? ('最近刷新：' + formatDateTimeLabel(state.snapshot.generatedAtMillis) + (state.snapshot.partial ? ' · 看板轻量数据' : ' · 完整数据'))
+    : '连接后即可读取手机端当前数据';
 }
 
 function ensureSelectedEventDay() {
@@ -482,19 +485,30 @@ function ensureSelectedEventDay() {
 
 async function connect() {
   state.token = els.token.value.trim();
-  await loadSnapshot();
+  state.planningLoaded = false;
+  await loadSnapshot({ full: false, planning: false });
   els.status.textContent = '已连接';
 }
 
-async function loadSnapshot() {
-  state.snapshot = await api('/api/snapshot');
-  await loadPlanningNotes();
+async function loadSnapshot(options = {}) {
+  const full = options.full === true || (
+    options.full !== false &&
+    (state.currentTab === 'events' || (state.snapshot != null && !state.snapshot.partial))
+  );
+  const shouldLoadPlanning = options.planning === true || state.currentTab === 'planning';
+  state.snapshot = await api(full ? '/api/snapshot' : '/api/snapshot?scope=board');
+  if (shouldLoadPlanning) await loadPlanningNotes();
   ensureSelectedEventDay();
   renderTodos();
-  renderEvents();
+  if (!state.snapshot.partial || state.currentTab === 'events') renderEvents();
   renderAnnouncements();
-  renderPlanningNotes();
+  if (state.planningLoaded) renderPlanningNotes();
   syncTopbar();
+}
+
+async function ensureFullSnapshot() {
+  if (state.snapshot && !state.snapshot.partial) return;
+  await loadSnapshot({ full: true, planning: state.currentTab === 'planning' });
 }
 
 function renderAnnouncements() {
@@ -520,6 +534,7 @@ async function loadPlanningNotes() {
   const data = await api('/api/planning/notes');
   state.planningNotes = data.notes || [];
   state.activePlanningNoteId = data.activeNoteId || (state.planningNotes[0] && state.planningNotes[0].id) || null;
+  state.planningLoaded = true;
   await loadPlanningMappings();
 }
 
@@ -534,6 +549,27 @@ async function loadPlanningMappings() {
 }
 
 function renderTodos() {
+  if (state.snapshot?.partial) {
+    renderDesktopDailyBoard();
+    const board = state.snapshot.todayBoard || {};
+    const todoItems = board.todoItems || [];
+    const allTodayEvents = board.allTodayEvents || [];
+    const tomorrowEvents = board.tomorrowEvents || [];
+    els.todoSummary.innerHTML = [
+      renderSummaryCard('今日待办', todoItems.length),
+      renderSummaryCard('今日日程', allTodayEvents.length),
+      renderSummaryCard('明日日程', tomorrowEvents.length),
+      renderSummaryCard('加载模式', '轻量')
+    ].join('');
+    els.todoTimeline.innerHTML = ''
+      + '<div class="empty-state">'
+      +   '<strong>当前仅加载每日看板数据。</strong><br />'
+      +   '为了减少电脑端首屏读取压力，完整待办时间轴会按需加载。'
+      +   '<div class="actions"><button type="button" class="ghost mini" data-load-full-snapshot="true">加载完整待办 / 日程数据</button></div>'
+      + '</div>';
+    bindActions();
+    return;
+  }
   const now = Date.now();
   const today = dayKey(new Date());
   const active = activeTodos().slice().sort((a, b) => (a.hasDueDate ? (a.dueAtMillis || Number.MAX_SAFE_INTEGER) : Number.MAX_SAFE_INTEGER) - (b.hasDueDate ? (b.dueAtMillis || Number.MAX_SAFE_INTEGER) : Number.MAX_SAFE_INTEGER));
@@ -691,6 +727,13 @@ function renderBoardEventRow(item, nowMillis) {
 }
 
 function renderEvents() {
+  if (state.snapshot?.partial) {
+    els.eventDayHeaders.innerHTML = '';
+    els.hourAxis.innerHTML = '';
+    els.eventTimeline.innerHTML = '<div class="empty-state">日程时间轴需要完整数据。请稍等，正在加载。</div>';
+    ensureFullSnapshot().catch(err => els.status.textContent = err.message);
+    return;
+  }
   const events = activeEvents().slice().sort((a, b) => eventStart(a) - eventStart(b));
   const dayMap = new Map();
   events.forEach(item => {
@@ -1626,6 +1669,12 @@ function bindActions() {
       document.querySelector('[data-tab="' + node.dataset.tabJump + '"]')?.click();
     };
   });
+  document.querySelectorAll('[data-load-full-snapshot]').forEach(node => {
+    node.onclick = event => {
+      event.preventDefault();
+      ensureFullSnapshot().catch(err => els.status.textContent = err.message);
+    };
+  });
 }
 
 document.getElementById('todo-has-due')?.addEventListener('change', event => setTodoDueEnabled(event.target.checked));
@@ -1753,6 +1802,16 @@ document.querySelectorAll('[data-tab]').forEach(node => {
     document.getElementById(`${node.dataset.tab}-panel`).classList.add('active');
     node.classList.add('active');
     syncTopbar();
+    if (state.currentTab === 'events') {
+      ensureFullSnapshot().catch(err => els.status.textContent = err.message);
+    } else if (state.currentTab === 'planning') {
+      loadPlanningNotes()
+        .then(() => renderPlanningNotes())
+        .catch(err => els.status.textContent = err.message);
+    } else if (state.currentTab === 'todos') {
+      renderTodos();
+      renderAnnouncements();
+    }
   };
 });
 document.querySelectorAll('[data-close-modal]').forEach(node => {

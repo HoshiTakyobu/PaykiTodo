@@ -124,8 +124,8 @@ class DesktopSyncCoordinator(
         return runCatching {
             when {
                 method == "GET" && path == "/api/status" -> DesktopSyncServer.Response.json(status().toJson())
-                method == "GET" && path == "/api/snapshot" -> {
-                    val snapshot = buildSnapshot()
+                method == "GET" && routePath == "/api/snapshot" -> {
+                    val snapshot = buildSnapshot(boardOnly = queryParam(path, "scope") == "board")
                     DesktopSyncServer.Response.json(snapshot.toJson(snapshot.groups.associateBy { it.id }))
                 }
                 method == "POST" && path == "/api/todos" -> DesktopSyncServer.Response.json(createTodo(JSONObject(body)))
@@ -166,31 +166,47 @@ class DesktopSyncCoordinator(
         return expected.isNotBlank() && provided == expected
     }
 
-    private fun buildSnapshot(): DesktopSyncSnapshot {
+    private fun buildSnapshot(boardOnly: Boolean = false): DesktopSyncSnapshot {
         val groups = runBlocking { app.repository.getAllGroups().ifEmpty { app.repository.ensureDefaultGroups() } }
-        val items = runBlocking { app.repository.getAllTodos() }
-        val notes = runBlocking { app.repository.getAllPlanningNotes() }
-        val announcements = PlanningAnnouncementParser.activeAnnouncements(notes, LocalDate.now())
         val now = LocalDateTime.now()
+        val today = now.toLocalDate()
+        val items = runBlocking {
+            if (boardOnly) app.repository.getActiveItemsForBoardRange(today) else app.repository.getAllTodos()
+        }
+        val notes = runBlocking {
+            if (boardOnly) app.repository.getActivePlanningNotes() else app.repository.getAllPlanningNotes()
+        }
+        val announcements = PlanningAnnouncementParser.activeAnnouncements(notes, today)
         val nowMillis = now.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
         val board = DailyBoardSnapshotBuilder.build(
             items = items,
             planningNotes = notes,
             now = now
         )
-        val focusSessions = runBlocking { app.repository.getTodayFocusSessions() }
+        val focusStats = runBlocking { app.repository.getTodayFocusSessionStats(today) }
+        val snapshotTodos = if (boardOnly) {
+            board.todoItems
+        } else {
+            items.filter { it.isTodo }.sortedBy { it.dueAtMillis }
+        }
+        val snapshotEvents = if (boardOnly) {
+            (board.allTodayEvents + board.tomorrowEvents).distinctBy { it.id }
+        } else {
+            items.filter { it.isEvent }.sortedBy { it.startAtMillis ?: it.dueAtMillis }
+        }
         return DesktopSyncSnapshot(
             generatedAtMillis = System.currentTimeMillis(),
             groups = groups,
-            todos = items.filter { it.isTodo }.sortedBy { it.dueAtMillis },
-            events = items.filter { it.isEvent }.sortedBy { it.startAtMillis ?: it.dueAtMillis },
+            todos = snapshotTodos,
+            events = snapshotEvents,
             announcements = announcements,
             todayBoard = board.toDesktopSyncBoard(
                 nowMillis = nowMillis,
-                todayFocusMinutes = focusSessions.filter { it.completed }.sumOf { it.actualMinutes },
-                todayFocusSessionCount = focusSessions.size,
-                todayCompletedFocusSessionCount = focusSessions.count { it.completed }
-            )
+                todayFocusMinutes = focusStats.completedMinutes,
+                todayFocusSessionCount = focusStats.totalCount,
+                todayCompletedFocusSessionCount = focusStats.completedCount
+            ),
+            partial = boardOnly
         )
     }
 

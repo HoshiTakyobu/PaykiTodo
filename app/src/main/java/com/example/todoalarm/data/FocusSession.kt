@@ -22,3 +22,9 @@ data class FocusSession(
     val completed: Boolean,
     val extensionCount: Int = 0
 )
+
+data class FocusSessionStats(
+    val totalCount: Int = 0,
+    val completedCount: Int = 0,
+    val completedMinutes: Int = 0
+)

@@ -223,6 +223,15 @@ interface TodoDao {
     @Query("SELECT * FROM planning_notes ORDER BY updatedAtMillis DESC, createdAtMillis DESC")
     suspend fun getAllPlanningNotes(): List<PlanningNote>
 
+    @Query(
+        """
+        SELECT * FROM planning_notes
+        WHERE archived = 0
+        ORDER BY updatedAtMillis DESC, createdAtMillis DESC
+        """
+    )
+    suspend fun getActivePlanningNotes(): List<PlanningNote>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertPlanningNote(note: PlanningNote): Long
 
@@ -285,6 +294,30 @@ interface TodoDao {
 
     @Query("SELECT * FROM focus_sessions ORDER BY startedAtMillis DESC")
     fun observeFocusSessions(): Flow<List<FocusSession>>
+
+    @Query(
+        """
+        SELECT
+            COUNT(*) AS totalCount,
+            COALESCE(SUM(CASE WHEN completed = 1 THEN 1 ELSE 0 END), 0) AS completedCount,
+            COALESCE(SUM(CASE WHEN completed = 1 THEN actualMinutes ELSE 0 END), 0) AS completedMinutes
+        FROM focus_sessions
+        WHERE startedAtMillis BETWEEN :startMillis AND :endMillis
+        """
+    )
+    fun observeFocusSessionStatsInRange(startMillis: Long, endMillis: Long): Flow<FocusSessionStats>
+
+    @Query(
+        """
+        SELECT
+            COUNT(*) AS totalCount,
+            COALESCE(SUM(CASE WHEN completed = 1 THEN 1 ELSE 0 END), 0) AS completedCount,
+            COALESCE(SUM(CASE WHEN completed = 1 THEN actualMinutes ELSE 0 END), 0) AS completedMinutes
+        FROM focus_sessions
+        WHERE startedAtMillis BETWEEN :startMillis AND :endMillis
+        """
+    )
+    suspend fun getFocusSessionStatsInRange(startMillis: Long, endMillis: Long): FocusSessionStats
 
     @Query("SELECT * FROM focus_sessions WHERE startedAtMillis BETWEEN :startMillis AND :endMillis ORDER BY startedAtMillis DESC")
     suspend fun getFocusSessionsInRange(startMillis: Long, endMillis: Long): List<FocusSession>

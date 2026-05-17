@@ -182,9 +182,7 @@ internal fun CalendarPanel(
     }
     val currentDateIndex = dayIndexByDate[currentDate] ?: anchorDateIndex
 
-    val allDayEvents = remember(events) {
-        events.filter { it.allDay }.sortedBy { it.startAtMillis ?: it.dueAtMillis }
-    }
+    val eventsByDate = remember(events) { buildEventsByDate(events) }
     val timedEvents = remember(events) {
         events.filter { !it.allDay }
             .sortedBy { it.startAtMillis ?: it.dueAtMillis }
@@ -237,8 +235,6 @@ internal fun CalendarPanel(
                 else -> selectedIndex..(selectedIndex + 2).coerceAtMost(days.lastIndex)
             }
             val visibleDays = remember(days, visibleRange) { days.subList(visibleRange.first, visibleRange.last + 1) }
-            val visibleStart = days[visibleRange.first]
-            val visibleEnd = days[visibleRange.last]
             val timelineHorizontalOffsetPx = effectiveHorizontalOffsetPx
             val hourHeight = 72.dp
             val boardHeight = hourHeight * 24
@@ -248,8 +244,12 @@ internal fun CalendarPanel(
                 CalendarViewMode.THREE_DAY -> timelineFocusDate
                 else -> selectedDate
             }
-            val visibleAllDayEvents = remember(allDayEvents, visibleStart, visibleEnd) {
-                allDayEvents.filter { item -> overlapsDateRange(item, visibleStart, visibleEnd) }
+            val visibleAllDayEvents = remember(eventsByDate, visibleDays) {
+                visibleDays
+                    .flatMap { day -> eventsByDate[day].orEmpty() }
+                    .filter { it.allDay }
+                    .distinctBy { it.id }
+                    .sortedBy { it.startAtMillis ?: it.dueAtMillis }
             }
             val visibleTimedEventPlacements = remember(timedEventPlacementsByDay, visibleDays) {
                 visibleDays.flatMap { day ->
@@ -441,7 +441,7 @@ internal fun CalendarPanel(
                                 selectedDate = selectedDate,
                                 currentDate = currentDate,
                                 weekStartMode = weekStartMode,
-                                events = events,
+                                eventsByDate = eventsByDate,
                                 onSelectDate = ::selectDate,
                                 onOpenThreeDayAt = ::openThreeDayFromDate,
                                 onOpenDetails = ::openDetails
@@ -581,7 +581,7 @@ internal fun CalendarPanel(
                                 selectedDate = selectedDate,
                                 currentDate = currentDate,
                                 weekStartMode = weekStartMode,
-                                events = events,
+                                eventsByDate = eventsByDate,
                                 agendaRefreshing = agendaRefreshing,
                                 onSelectDate = ::selectDate,
                                 onShiftWeek = ::shiftViewBy,
@@ -775,7 +775,7 @@ private fun CalendarMonthGridView(
     selectedDate: LocalDate,
     currentDate: LocalDate,
     weekStartMode: WeekStartMode,
-    events: List<TodoItem>,
+    eventsByDate: Map<LocalDate, List<TodoItem>>,
     onSelectDate: (LocalDate) -> Unit,
     onOpenThreeDayAt: (LocalDate) -> Unit,
     onOpenDetails: (TodoItem) -> Unit
@@ -791,7 +791,6 @@ private fun CalendarMonthGridView(
     }
     val rows = remember(gridDays) { gridDays.chunked(7) }
     val weekdayLabels = weekdayLabels(weekStartMode)
-    val eventsByDate = remember(events) { buildEventsByDate(events) }
 
     Column(
         modifier = Modifier
@@ -961,7 +960,7 @@ private fun CalendarAgendaView(
     selectedDate: LocalDate,
     currentDate: LocalDate,
     weekStartMode: WeekStartMode,
-    events: List<TodoItem>,
+    eventsByDate: Map<LocalDate, List<TodoItem>>,
     agendaRefreshing: Boolean,
     onSelectDate: (LocalDate) -> Unit,
     onShiftWeek: (Long) -> Unit,
@@ -969,9 +968,7 @@ private fun CalendarAgendaView(
 ) {
     val weekStart = startOfWeek(selectedDate, weekStartMode)
     val weekDays = (0..6).map { weekStart.plusDays(it.toLong()) }
-    val grouped = remember(events) {
-        buildEventsByDate(events)
-    }
+    val grouped = eventsByDate
     val agendaDates = remember(weekStart) { weekDays }
 
     Column(
@@ -2406,18 +2403,6 @@ private fun TodoItem.toSegmentForDay(day: LocalDate): TimedEventSegment? {
         startMillis = segmentStart,
         endMillis = segmentEnd
     )
-}
-
-private fun overlapsDateRange(
-    item: TodoItem,
-    startDate: LocalDate,
-    endDate: LocalDate
-): Boolean {
-    val start = item.startAtMillis ?: item.dueAtMillis
-    val end = item.endAtMillis ?: start
-    val itemStartDate = millisToDate(start)
-    val itemEndDate = millisToDate(if (item.allDay) end - 1 else end)
-    return !itemEndDate.isBefore(startDate) && !itemStartDate.isAfter(endDate)
 }
 
 private fun millisToDate(epochMillis: Long): LocalDate {

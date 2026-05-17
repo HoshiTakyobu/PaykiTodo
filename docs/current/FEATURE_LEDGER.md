@@ -252,8 +252,10 @@ This file tracks the product at a practical level for new coding sessions.
 
 - `todo_items` has Room indices for board todo queries, board event range queries, active reminders, group+DDL sorting, and recurring-series lookup.
 - Database version is `14`; `MIGRATION_13_14` creates the `todo_items` performance indices on upgraded installs.
-- Desktop Web snapshot refresh still returns broad datasets and should later be split into narrower board/todo/event/planning endpoints when data volume grows.
-- Main phone UI still observes full focus-session and AI-report lists; a later optimization should replace that with today aggregates and paged/lazy report data.
+- Desktop Web first connection now uses a lightweight board snapshot (`/api/snapshot?scope=board`) and only loads full todos/events when the user opens the event timeline or explicitly requests the complete management view.
+- Main phone board/task UI uses a Room aggregate Flow for today's focus stats instead of observing all focus sessions; AI reports are collected only inside the `AI 报告` section rather than being merged into ordinary `TodoUiState`.
+- Calendar month/list/all-day surfaces reuse one top-level event-by-date index instead of rebuilding date buckets independently in each view.
+- Future large-history work can still add paging for the AI report archive and more granular desktop endpoints for separate todo/event/planning management screens.
 
 ## Implemented But Still Being Polished
 

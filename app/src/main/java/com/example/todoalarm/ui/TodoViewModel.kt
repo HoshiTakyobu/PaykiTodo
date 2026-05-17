@@ -12,10 +12,10 @@ import com.example.todoalarm.alarm.ReminderChainLogger
 import com.example.todoalarm.alarm.ReminderDispatchTracker
 import com.example.todoalarm.alarm.ReminderForegroundService
 import com.example.todoalarm.data.AppSettings
-import com.example.todoalarm.data.AiReport
 import com.example.todoalarm.data.CalendarEventDraft
 import com.example.todoalarm.data.DEFAULT_PLANNING_REMINDER_MINUTES
 import com.example.todoalarm.data.DailyReportGenerator
+import com.example.todoalarm.data.FocusSessionStats
 import com.example.todoalarm.data.PlanningAnnouncement
 import com.example.todoalarm.data.PlanningAnnouncementParser
 import com.example.todoalarm.data.PlanningImportCandidate
@@ -54,9 +54,11 @@ import com.example.todoalarm.sync.DesktopSyncStatus
 import com.example.todoalarm.sync.DesktopSyncService
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.time.Instant
@@ -74,7 +76,6 @@ data class TodoUiState(
     val historyItems: List<TodoItem> = emptyList(),
     val calendarItems: List<TodoItem> = emptyList(),
     val planningNotes: List<PlanningNote> = emptyList(),
-    val aiReports: List<AiReport> = emptyList(),
     val activePlanningNoteId: Long? = null,
     val activePlanningNote: PlanningNote? = null,
     val activeAnnouncements: List<PlanningAnnouncement> = emptyList(),
@@ -106,6 +107,7 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
     private val quoteFlow = MutableStateFlow(QuoteRepository.seedQuotes)
     private val selectedGroupIdFlow = MutableStateFlow<Long?>(null)
     private val desktopSyncRefreshTick = MutableStateFlow(0L)
+    private val todayDateFlow = MutableStateFlow(LocalDate.now())
     private var quoteRefreshJob: Job? = null
 
     init {
@@ -129,18 +131,42 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
                 delay(nextReminderPollDelayMillis())
             }
         }
+        viewModelScope.launch {
+            while (true) {
+                todayDateFlow.value = LocalDate.now()
+                delay(nextDateTickDelayMillis())
+            }
+        }
     }
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    private val todayFocusStats = todayDateFlow
+        .flatMapLatest { date ->
+            val (startMillis, endMillis) = dayRangeMillis(date)
+            repository.observeFocusSessionStatsInRange(startMillis, endMillis)
+        }
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5_000),
+            initialValue = FocusSessionStats()
+        )
+
+    val aiReports = repository.observeAiReports().stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5_000),
+        initialValue = emptyList()
+    )
 
     val uiState = combine(
         repository.observeTodos(),
         repository.observeGroups(),
         repository.observePlanningNotes(),
-        repository.observeFocusSessions(),
-        repository.observeAiReports(),
+        todayFocusStats,
         settingsStore.settingsFlow,
         quoteFlow,
         selectedGroupIdFlow,
-        desktopSyncRefreshTick
+        desktopSyncRefreshTick,
+        todayDateFlow
     ) { values ->
         @Suppress("UNCHECKED_CAST")
         val items = values[0] as List<TodoItem>
@@ -148,16 +174,12 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
         val groups = values[1] as List<TaskGroup>
         @Suppress("UNCHECKED_CAST")
         val planningNotes = values[2] as List<PlanningNote>
+        val focusStats = values[3] as FocusSessionStats
+        val settings = values[4] as AppSettings
         @Suppress("UNCHECKED_CAST")
-        val focusSessions = values[3] as List<com.example.todoalarm.data.FocusSession>
-        @Suppress("UNCHECKED_CAST")
-        val aiReports = values[4] as List<AiReport>
-        val settings = values[5] as AppSettings
-        @Suppress("UNCHECKED_CAST")
-        val quotes = values[6] as List<String>
-        val selectedGroupId = values[7] as Long?
-        val nowMillis = System.currentTimeMillis()
-        val today = Instant.ofEpochMilli(nowMillis).atZone(ZoneId.systemDefault()).toLocalDate()
+        val quotes = values[5] as List<String>
+        val selectedGroupId = values[6] as Long?
+        val today = values[8] as LocalDate
         val availableGroups = if (groups.isEmpty()) repository.ensureDefaultGroups() else groups
         val filteredItems = if (selectedGroupId == null) {
             items
@@ -177,10 +199,6 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
         val currentQuote = availableQuotes[settings.quoteIndex.mod(availableQuotes.size)]
         val activePlanningNote = planningNotes.firstOrNull { it.id == settings.lastOpenedPlanningNoteId }
             ?: planningNotes.firstOrNull()
-        val todayFocusSessions = focusSessions.filter {
-            val startedDate = Instant.ofEpochMilli(it.startedAtMillis).atZone(ZoneId.systemDefault()).toLocalDate()
-            startedDate == today
-        }
 
         TodoUiState(
             groups = availableGroups,
@@ -191,13 +209,12 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
             historyItems = historyItems,
             calendarItems = activeCalendarItems,
             planningNotes = planningNotes,
-            aiReports = aiReports,
             activePlanningNoteId = activePlanningNote?.id,
             activePlanningNote = activePlanningNote,
             activeAnnouncements = PlanningAnnouncementParser.activeAnnouncements(planningNotes, today),
-            todayFocusMinutes = todayFocusSessions.filter { it.completed }.sumOf { it.actualMinutes },
-            todayFocusSessionCount = todayFocusSessions.size,
-            todayCompletedFocusSessionCount = todayFocusSessions.count { it.completed },
+            todayFocusMinutes = focusStats.completedMinutes,
+            todayFocusSessionCount = focusStats.totalCount,
+            todayCompletedFocusSessionCount = focusStats.completedCount,
             reminderChainLogs = repository.getRecentReminderChainLogs(),
             scheduleTemplates = repository.getScheduleTemplates(),
             settings = settings,
@@ -1132,6 +1149,21 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
             untilNext <= 60_000L -> 5_000L
             else -> 15_000L
         }
+    }
+
+    private fun nextDateTickDelayMillis(): Long {
+        val zone = ZoneId.systemDefault()
+        val now = Instant.now()
+        val nextMidnight = LocalDate.now(zone).plusDays(1).atStartOfDay(zone).toInstant()
+        val untilNextDay = nextMidnight.toEpochMilli() - now.toEpochMilli()
+        return untilNextDay.coerceAtLeast(1_000L).coerceAtMost(60_000L)
+    }
+
+    private fun dayRangeMillis(date: LocalDate): Pair<Long, Long> {
+        val zone = ZoneId.systemDefault()
+        val start = date.atStartOfDay(zone).toInstant().toEpochMilli()
+        val end = date.plusDays(1).atStartOfDay(zone).toInstant().toEpochMilli() - 1
+        return start to end
     }
 
     private fun clearReminderArtifacts(items: List<TodoItem>) {

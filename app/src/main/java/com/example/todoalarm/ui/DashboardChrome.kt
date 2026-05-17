@@ -94,7 +94,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.todoalarm.R
+import com.example.todoalarm.data.AiReport
 import com.example.todoalarm.data.CalendarEventDraft
 import com.example.todoalarm.data.DailyBoardSnapshotBuilder
 import com.example.todoalarm.data.PlanningAnnouncementParser
@@ -115,6 +117,7 @@ import com.example.todoalarm.data.TodoItem
 import com.example.todoalarm.data.WeekStartMode
 import com.example.todoalarm.ui.theme.PaykiGreetingFontFamily
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.StateFlow
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
@@ -348,6 +351,7 @@ internal fun DashboardBody(
     targetAiReportSerial: Int = 0,
     padding: PaddingValues,
     uiState: TodoUiState,
+    aiReports: StateFlow<List<AiReport>>,
     permissions: PermissionSnapshot,
     onEdit: (TodoItem) -> Unit,
     onEditCalendarEvent: (TodoItem) -> Unit,
@@ -441,6 +445,7 @@ internal fun DashboardBody(
     }
 
     if (section == DashboardSection.AI_REPORTS) {
+        val reports by aiReports.collectAsStateWithLifecycle()
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -448,7 +453,7 @@ internal fun DashboardBody(
                 .padding(horizontal = 16.dp, vertical = 10.dp)
         ) {
             AiReportPanel(
-                reports = uiState.aiReports,
+                reports = reports,
                 targetReportId = targetAiReportId,
                 targetReportSerial = targetAiReportSerial,
                 onDeleteReport = onDeleteAiReport

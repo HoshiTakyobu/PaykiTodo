@@ -24,7 +24,8 @@ data class DesktopSyncSnapshot(
     val todos: List<TodoItem>,
     val events: List<TodoItem>,
     val announcements: List<PlanningAnnouncement> = emptyList(),
-    val todayBoard: DesktopDailyBoardSnapshot
+    val todayBoard: DesktopDailyBoardSnapshot,
+    val partial: Boolean = false
 )
 
 data class DesktopDailyBoardSnapshot(
@@ -52,6 +53,7 @@ fun DesktopSyncStatus.toJson(): JSONObject {
 fun DesktopSyncSnapshot.toJson(groupsById: Map<Long, TaskGroup>): JSONObject {
     return JSONObject().apply {
         put("generatedAtMillis", generatedAtMillis)
+        put("partial", partial)
         put("groups", JSONArray(groups.map { it.toDesktopJson() }))
         put("todos", JSONArray(todos.map { it.toDesktopJson(groupsById[it.groupId]) }))
         put("events", JSONArray(events.map { it.toDesktopJson(groupsById[it.groupId]) }))

@@ -25,6 +25,11 @@
 - Previous `1.9.5` emulator verification:
   - installed `PaykiTodo-1.9.5-debug.apk` on `emulator-5554`
   - verified AI daily-report fallback scheduling while exact-alarm permission is denied, automatic report generation, notification posting, notification deep link to `AI 日报`, disabled-switch cancellation, and weekly-report alarm registration
+- Latest `1.9.7` emulator smoke verification:
+  - installed `PaykiTodo-1.9.7-debug.apk` on `emulator-5554`
+  - launched the app to Daily Board without startup crash
+  - confirmed Planning Desk shortcut toolbar exposes `公告`
+  - confirmed Settings -> AI 调用配置 -> AI 日报 / 周报 exposes `了解 AI 日报`, and the guide sheet contains the five expected sections
 - Current build environment expectation:
   - prefer Android Studio bundled `jbr`
   - avoid random system Java overrides when building this repo

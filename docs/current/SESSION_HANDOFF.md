@@ -9,7 +9,7 @@ Long-running Codex sessions can become unreliable. This file exists so a new ses
 - The project is now being advanced to `1.9.7` / `versionCode 201`.
 - This round carries forward AI 日报 / 周报 after the `1.9.0` focus-mode baseline, keeps the `1.9.5` exact-alarm fallback and `1.9.6` widget visual baseline, then adds Planning Desk / AI-report usability guidance.
 - Latest debug APK after packaging: `app/build/outputs/apk/debug/PaykiTodo-1.9.7-debug.apk`.
-- Recent local commits: `5d77558` archives completed `1.9.0` / `1.9.1` goal prompts; `67e54bc` adds the Planning Desk `公告` shortcut.
+- Recent local commits: `5d77558` archives completed `1.9.0` / `1.9.1` goal prompts; `67e54bc` adds the Planning Desk `公告` shortcut; `a0c7bb0` adds the AI 日报 guide sheet / 1.9.7 docs; `ad22b3a` archives the 1.9.7 goal prompt.
 - The latest `1.9.7` feature work completes the AI 日报 guide sheet, version bump, documentation synchronization, and workflow-documentation updates.
 - Do not push to GitHub unless the user explicitly asks.
 
@@ -119,6 +119,9 @@ Completed locally:
 28. `./gradlew.bat testDebugUnitTest`
 29. `node --check app/src/main/assets/desktop-web/app.js`
 30. `git diff --check`
+31. Installed `PaykiTodo-1.9.7-debug.apk` on `emulator-5554`; app launched to Daily Board without startup crash
+32. Emulator UI dump confirmed Planning Desk shortcut toolbar exposes `公告` after horizontal scrolling the shortcut row
+33. Emulator UI dump confirmed Settings -> AI 调用配置 -> AI 日报 / 周报 exposes `了解 AI 日报`, and tapping it opens a sheet containing `什么是 AI 日报` / `使用前提` / `启用步骤` / `报告在哪看` / `常见问题`
 
 Real launcher verification is still needed for the widget visual pass because RemoteViews rendering varies by launcher.
 
@@ -127,8 +130,9 @@ Local device status observed in this session:
 1. `adb` is available at `C:\Users\hp\AppData\Local\Android\Sdk\platform-tools\adb.exe`.
 2. `emulator-5554` is available and was used for the `1.9.5` AI report scheduling verification.
 3. The Android Emulator was also useful for phone-side UI smoke tests during the 1.9.x goal audit: it installed `com.paykitodo.app`, launched the Daily Board, opened the free-focus path, displayed `FocusActivity`, showed the early-complete confirmation, and refreshed the daily focus-session count.
-4. Future sessions may use the emulator as a standard pre-phone debugging step for launch crashes, navigation, and visible UI regressions. Tell the user when starting a new emulator window; if one is already running, reuse it.
-5. Continue physical-device checks for OEM alarm policy, haptics, launcher widget rendering, notification shade visuals, and reboot/time-change recovery.
+4. For `1.9.7`, the session reused `emulator-5554`, installed `app/build/outputs/apk/debug/PaykiTodo-1.9.7-debug.apk`, opened Daily Board, opened Planning Desk, confirmed the `公告` shortcut in UI dump, opened Settings -> AI 调用配置, and confirmed the `了解 AI 日报` guide sheet plus its five sections in UI dump.
+5. Future sessions may use the emulator as a standard pre-phone debugging step for launch crashes, navigation, and visible UI regressions. Tell the user when starting a new emulator window; if one is already running, reuse it.
+6. Continue physical-device checks for OEM alarm policy, haptics, launcher widget rendering, notification shade visuals, and reboot/time-change recovery.
 
 Then verify on a real device after installing `PaykiTodo-1.9.7-debug.apk`:
 

@@ -59,6 +59,9 @@ The current round is PaykiTodo `1.9.7` / `versionCode 201`, carrying forward the
 28. `./gradlew.bat testDebugUnitTest`
 29. `node --check app/src/main/assets/desktop-web/app.js`
 30. `git diff --check`
+31. Installed `PaykiTodo-1.9.7-debug.apk` on `emulator-5554`; app launched to Daily Board without startup crash
+32. Emulator UI dump confirmed Planning Desk shortcut toolbar exposes `公告` after horizontal scrolling the shortcut row
+33. Emulator UI dump confirmed Settings -> AI 调用配置 -> AI 日报 / 周报 exposes `了解 AI 日报`, and tapping it opens a sheet containing `什么是 AI 日报` / `使用前提` / `启用步骤` / `报告在哪看` / `常见问题`
 
 ## Immediate Practical Next Steps
 

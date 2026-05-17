@@ -112,10 +112,10 @@ If an Android Emulator is started or reused, record:
 
 This avoids confusion when an emulator window remains on the user's desktop.
 
-Latest recorded emulator use remains the `1.9.8` smoke check:
+Latest recorded emulator use:
 
 - Device id: `emulator-5554`
-- Installed APK: `app/build/outputs/apk/debug/PaykiTodo-1.9.8-debug.apk`
-- Checked flows: app launch, drawer navigation to `AI 报告`, report detail opening, Settings -> AI 调用配置, and `了解 AI 日报`
-- Verified result: `AI 报告` archive is reachable and populated from legacy migration data; the `了解 AI 日报` help surface is centered/readable on the emulator
-- Boundary: this emulator pass does not replace real-phone verification for OEM notification, vibration, lock-screen, widget, alarm, reboot, battery-management behavior, or live desktop-browser verification of `1.9.14`
+- Installed APK: `app/build/outputs/apk/debug/PaykiTodo-1.9.14-debug.apk`
+- Checked flows: app launch, Daily Board UI tree, and logcat fatal-crash scan
+- Verified result: MainActivity displayed, UI tree contained `每日看板` / `今日待办（0）` / `今日日程（0）` / `明天暂无日程`, and no `FATAL EXCEPTION` was found in the checked logcat window
+- Boundary: this emulator pass does not replace real-phone verification for OEM notification, vibration, lock-screen, widget, alarm, reboot, battery-management behavior, Android launcher widget rendering, or live desktop-browser verification of `1.9.14`

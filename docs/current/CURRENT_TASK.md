@@ -97,9 +97,9 @@ Still recommended later:
 
 ## Immediate Practical Next Steps
 
-1. Finish full verification for `1.9.14`.
-2. Build `app/build/outputs/apk/debug/PaykiTodo-1.9.14-debug.apk`.
-3. Commit the verified fix round locally.
+1. Install and test `app/build/outputs/apk/debug/PaykiTodo-1.9.14-debug.apk` on the physical phone.
+2. Focus physical-device verification on no-DDL todos, Android widget refresh, desktop-sync auto-close, real-provider AI source editing, AI report paging, and OEM reminder behavior.
+3. If another performance pass is started, prioritize removing full Planning Desk note observation from ordinary board/task state and splitting desktop management endpoints beyond the current lightweight board snapshot.
 4. Do not push unless the user explicitly asks.
 
 ## Commit Message Rule

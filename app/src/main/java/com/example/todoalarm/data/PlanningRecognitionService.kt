@@ -1,6 +1,8 @@
 package com.example.todoalarm.data
 
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.time.LocalDateTime
 
 object PlanningRecognitionService {
@@ -12,18 +14,24 @@ object PlanningRecognitionService {
         val enabledProviders = settings.planningAiProviders.filter {
             it.enabled && it.baseUrl.isNotBlank() && it.apiKey.isNotBlank() && it.model.isNotBlank()
         }
-        if (!settings.planningAiEnabled) return PlanningMarkdownParser.parse(markdown, now = now)
+        if (!settings.planningAiEnabled) return parseLocal(markdown, now)
         if (enabledProviders.isEmpty()) {
-            return PlanningMarkdownParser.parse(markdown, now = now).copy(message = "AI 配置未完整，已使用本地规则")
+            return parseLocal(markdown, now).copy(message = "AI 配置未完整，已使用本地规则")
         }
         return try {
             PlanningAiRecognizer.recognize(markdown = markdown, providers = enabledProviders, now = now)
         } catch (error: CancellationException) {
             throw error
         } catch (error: Exception) {
-            PlanningMarkdownParser.parse(markdown, now = now).copy(
+            parseLocal(markdown, now).copy(
                 message = "AI 识别失败，已使用本地规则：${error.message?.take(80) ?: "未知错误"}"
             )
+        }
+    }
+
+    private suspend fun parseLocal(markdown: String, now: LocalDateTime): PlanningParseResult {
+        return withContext(Dispatchers.Default) {
+            PlanningMarkdownParser.parse(markdown, now = now)
         }
     }
 }

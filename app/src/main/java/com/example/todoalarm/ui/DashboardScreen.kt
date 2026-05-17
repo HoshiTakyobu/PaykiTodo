@@ -44,6 +44,7 @@ import androidx.compose.ui.unit.dp
 import com.example.todoalarm.R
 import com.example.todoalarm.data.CalendarEventDraft
 import com.example.todoalarm.data.AiReport
+import com.example.todoalarm.data.AiReportType
 import com.example.todoalarm.data.PlanningImportCandidate
 import com.example.todoalarm.data.PlanningImportResult
 import com.example.todoalarm.data.PlanningLineMapping
@@ -56,6 +57,7 @@ import com.example.todoalarm.data.RecurrenceConfig
 import com.example.todoalarm.data.RecurrenceScope
 import com.example.todoalarm.data.ReminderDeliveryMode
 import com.example.todoalarm.data.ReminderAudioChannel
+import com.example.todoalarm.data.ReminderChainLog
 import com.example.todoalarm.data.ScheduleTemplate
 import com.example.todoalarm.data.ScheduleTemplateType
 import com.example.todoalarm.data.storageStringToWeekdays
@@ -64,6 +66,7 @@ import com.example.todoalarm.data.TodoDraft
 import com.example.todoalarm.data.TodoItem
 import com.example.todoalarm.data.WeekStartMode
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.time.LocalDate
@@ -85,7 +88,12 @@ private enum class EditorKind {
 @Composable
 fun DashboardScreen(
     uiState: TodoUiState,
-    aiReports: StateFlow<List<AiReport>>,
+    observeAiReports: (AiReportType?, Int) -> Flow<List<AiReport>>,
+    onGetAiReport: suspend (Long) -> AiReport?,
+    historyItems: StateFlow<List<TodoItem>>,
+    calendarItems: StateFlow<List<TodoItem>>,
+    scheduleTemplates: StateFlow<List<ScheduleTemplate>>,
+    reminderChainLogs: StateFlow<List<ReminderChainLog>>,
     permissions: PermissionSnapshot,
     launchRoute: DashboardLaunchRoute? = null,
     launchRouteSerial: Int = 0,
@@ -99,6 +107,7 @@ fun DashboardScreen(
     onAddCalendarEvent: suspend (com.example.todoalarm.data.CalendarEventDraft) -> String?,
     onImportTodos: suspend (List<TodoDraft>) -> String?,
     onImportCalendarEvents: suspend (List<CalendarEventDraft>) -> String?,
+    onGetTodoById: suspend (Long) -> TodoItem?,
     onUpdateTodo: suspend (TodoItem, TodoDraft, RecurrenceScope) -> String?,
     onUpdateCalendarEvent: suspend (TodoItem, com.example.todoalarm.data.CalendarEventDraft, RecurrenceScope) -> String?,
     onDeleteTodo: (TodoItem) -> Unit,
@@ -215,17 +224,11 @@ fun DashboardScreen(
         }
     }
 
-    LaunchedEffect(
-        launchRouteSerial,
-        uiState.missedItems,
-        uiState.todayItems,
-        uiState.upcomingItems,
-        uiState.historyItems
-    ) {
+    LaunchedEffect(launchRouteSerial, launchRoute?.targetTodoId) {
         val targetTodoId = launchRoute?.targetTodoId ?: return@LaunchedEffect
         if (handledTodoLaunchSerial == launchRouteSerial) return@LaunchedEffect
-        val target = (uiState.missedItems + uiState.todayItems + uiState.upcomingItems + uiState.historyItems)
-            .firstOrNull { it.id == targetTodoId && it.isTodo }
+        val target = onGetTodoById(targetTodoId)
+            ?.takeIf { it.isTodo }
             ?: return@LaunchedEffect
         handledTodoLaunchSerial = launchRouteSerial
         section = if (target.isHistory) DashboardSection.HISTORY else DashboardSection.ACTIVE
@@ -400,7 +403,12 @@ fun DashboardScreen(
                     targetAiReportSerial = launchRouteSerial,
                     padding = padding,
                     uiState = uiState,
-                    aiReports = aiReports,
+                    observeAiReports = observeAiReports,
+                    onGetAiReport = onGetAiReport,
+                    historyItems = historyItems,
+                    calendarItems = calendarItems,
+                    scheduleTemplates = scheduleTemplates,
+                    reminderChainLogs = reminderChainLogs,
                     permissions = permissions,
                     onEdit = { openTodoEditor(it) },
                     onEditCalendarEvent = { openCalendarEventEditor(it) },

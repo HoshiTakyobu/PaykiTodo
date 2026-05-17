@@ -97,6 +97,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.todoalarm.R
 import com.example.todoalarm.data.AiReport
+import com.example.todoalarm.data.AiReportType
 import com.example.todoalarm.data.CalendarEventDraft
 import com.example.todoalarm.data.DailyBoardSnapshotBuilder
 import com.example.todoalarm.data.PlanningAnnouncementParser
@@ -110,6 +111,7 @@ import com.example.todoalarm.data.PlanningPostponeScope
 import com.example.todoalarm.data.PlanningRefreshScope
 import com.example.todoalarm.data.ReminderDeliveryMode
 import com.example.todoalarm.data.ReminderAudioChannel
+import com.example.todoalarm.data.ReminderChainLog
 import com.example.todoalarm.data.ScheduleTemplate
 import com.example.todoalarm.data.TaskGroup
 import com.example.todoalarm.data.ThemeMode
@@ -117,6 +119,7 @@ import com.example.todoalarm.data.TodoItem
 import com.example.todoalarm.data.WeekStartMode
 import com.example.todoalarm.ui.theme.PaykiGreetingFontFamily
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.StateFlow
 import java.time.LocalDate
 import java.time.LocalDateTime
@@ -351,7 +354,12 @@ internal fun DashboardBody(
     targetAiReportSerial: Int = 0,
     padding: PaddingValues,
     uiState: TodoUiState,
-    aiReports: StateFlow<List<AiReport>>,
+    observeAiReports: (AiReportType?, Int) -> Flow<List<AiReport>>,
+    onGetAiReport: suspend (Long) -> AiReport?,
+    historyItems: StateFlow<List<TodoItem>>,
+    calendarItems: StateFlow<List<TodoItem>>,
+    scheduleTemplates: StateFlow<List<ScheduleTemplate>>,
+    reminderChainLogs: StateFlow<List<ReminderChainLog>>,
     permissions: PermissionSnapshot,
     onEdit: (TodoItem) -> Unit,
     onEditCalendarEvent: (TodoItem) -> Unit,
@@ -416,6 +424,8 @@ internal fun DashboardBody(
     onNavigatePlanning: () -> Unit = {}
 ) {
     if (section == DashboardSection.CALENDAR) {
+        val allCalendarItems by calendarItems.collectAsStateWithLifecycle()
+        val templates by scheduleTemplates.collectAsStateWithLifecycle()
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -424,9 +434,9 @@ internal fun DashboardBody(
         ) {
             CalendarPanel(
                 modifier = Modifier.fillMaxSize(),
-                events = uiState.calendarItems,
+                events = allCalendarItems,
                 weekStartMode = uiState.settings.weekStartMode,
-                scheduleTemplates = uiState.scheduleTemplates,
+                scheduleTemplates = templates,
                 targetEventId = targetEventId,
                 targetEventSerial = targetEventSerial,
                 onQuickCreateEvent = onQuickCreateCalendarEvent,
@@ -445,7 +455,6 @@ internal fun DashboardBody(
     }
 
     if (section == DashboardSection.AI_REPORTS) {
-        val reports by aiReports.collectAsStateWithLifecycle()
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -453,7 +462,8 @@ internal fun DashboardBody(
                 .padding(horizontal = 16.dp, vertical = 10.dp)
         ) {
             AiReportPanel(
-                reports = reports,
+                observeReports = observeAiReports,
+                onGetReport = onGetAiReport,
                 targetReportId = targetAiReportId,
                 targetReportSerial = targetAiReportSerial,
                 onDeleteReport = onDeleteAiReport
@@ -463,6 +473,7 @@ internal fun DashboardBody(
     }
 
     if (section == DashboardSection.SETTINGS) {
+        val diagnostics by reminderChainLogs.collectAsStateWithLifecycle()
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -497,7 +508,7 @@ internal fun DashboardBody(
                 onPickSystemReminderTone = onPickSystemReminderTone,
                 onOpenWiki = onOpenWiki,
                 desktopSyncStatus = uiState.desktopSyncStatus,
-                reminderChainLogs = uiState.reminderChainLogs,
+                reminderChainLogs = diagnostics,
                 onRunReminderChainTest = onRunReminderChainTest,
                 onClearReminderDiagnostics = onClearReminderDiagnostics,
                 onPickBackupDirectory = onPickBackupDirectory,
@@ -573,6 +584,11 @@ internal fun DashboardBody(
     }
     val activeAnnouncements = remember(uiState.planningNotes, boardDate) {
         PlanningAnnouncementParser.activeAnnouncements(uiState.planningNotes, boardDate)
+    }
+    val completedHistoryItems = if (section == DashboardSection.HISTORY) {
+        historyItems.collectAsStateWithLifecycle().value
+    } else {
+        emptyList()
     }
     val context = LocalContext.current
 
@@ -710,10 +726,10 @@ internal fun DashboardBody(
             }
 
             DashboardSection.HISTORY -> {
-                if (uiState.historyItems.isEmpty()) {
+                if (completedHistoryItems.isEmpty()) {
                     item { EmptyStateCard("完成后的任务会保存在这里。") }
                 } else {
-                    items(uiState.historyItems, key = { it.id }) { item ->
+                    items(completedHistoryItems, key = { it.id }) { item ->
                         CompletedTodoCard(item, uiState.groups, { onEdit(item) }, { onRestoreTodo(item) })
                     }
                 }

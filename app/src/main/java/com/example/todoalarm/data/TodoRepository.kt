@@ -17,10 +17,23 @@ class TodoRepository(
     private val onItemsChanged: (() -> Unit)? = null
 ) {
     fun observeTodos(): Flow<List<TodoItem>> = todoDao.observeTodos()
+    fun observeActiveTodoItems(groupId: Long?): Flow<List<TodoItem>> = todoDao.observeActiveTodoItems(groupId)
+    fun observeHistoryTodoItems(groupId: Long?): Flow<List<TodoItem>> = todoDao.observeHistoryTodoItems(groupId)
+    fun observeActiveCalendarEvents(): Flow<List<TodoItem>> = todoDao.observeActiveCalendarEvents()
+    fun observeActiveCalendarEventsInRange(rangeStartMillis: Long, rangeEndMillis: Long): Flow<List<TodoItem>> {
+        return todoDao.observeActiveCalendarEventsInRange(rangeStartMillis, rangeEndMillis)
+    }
     fun observeGroups(): Flow<List<TaskGroup>> = todoDao.observeGroups()
     fun observePlanningNotes(): Flow<List<PlanningNote>> = todoDao.observePlanningNotes()
     fun observeFocusSessions(): Flow<List<FocusSession>> = todoDao.observeFocusSessions()
-    fun observeAiReports(): Flow<List<AiReport>> = todoDao.observeAiReports()
+    fun observeAiReports(limit: Int): Flow<List<AiReport>> = todoDao.observeAiReports(limit)
+    fun observeAiReportsByType(type: AiReportType, limit: Int): Flow<List<AiReport>> {
+        return todoDao.observeAiReportsByType(type, limit)
+    }
+    fun observeRecentReminderChainLogs(limit: Int = 80): Flow<List<ReminderChainLog>> {
+        return todoDao.observeRecentReminderChainLogs(limit)
+    }
+    fun observeScheduleTemplates(): Flow<List<ScheduleTemplate>> = todoDao.observeScheduleTemplates()
     fun observeFocusSessionStatsInRange(startMillis: Long, endMillis: Long): Flow<FocusSessionStats> {
         return todoDao.observeFocusSessionStatsInRange(startMillis, endMillis)
     }

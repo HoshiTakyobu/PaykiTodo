@@ -17,6 +17,56 @@ interface TodoDao {
     )
     fun observeTodos(): Flow<List<TodoItem>>
 
+    @Query(
+        """
+        SELECT * FROM todo_items
+        WHERE completed = 0
+        AND canceled = 0
+        AND itemType = 'TODO'
+        AND (:groupId IS NULL OR groupId = :groupId)
+        ORDER BY dueAtMillis ASC, createdAtMillis ASC
+        """
+    )
+    fun observeActiveTodoItems(groupId: Long?): Flow<List<TodoItem>>
+
+    @Query(
+        """
+        SELECT * FROM todo_items
+        WHERE itemType = 'TODO'
+        AND (:groupId IS NULL OR groupId = :groupId)
+        AND (completed = 1 OR canceled = 1)
+        ORDER BY
+            COALESCE(completedAtMillis, canceledAtMillis, missedAtMillis, createdAtMillis) DESC,
+            createdAtMillis DESC
+        """
+    )
+    fun observeHistoryTodoItems(groupId: Long?): Flow<List<TodoItem>>
+
+    @Query(
+        """
+        SELECT * FROM todo_items
+        WHERE completed = 0
+        AND canceled = 0
+        AND itemType = 'EVENT'
+        ORDER BY COALESCE(startAtMillis, dueAtMillis) ASC, createdAtMillis ASC
+        """
+    )
+    fun observeActiveCalendarEvents(): Flow<List<TodoItem>>
+
+    @Query(
+        """
+        SELECT * FROM todo_items
+        WHERE completed = 0
+        AND canceled = 0
+        AND itemType = 'EVENT'
+        AND startAtMillis IS NOT NULL
+        AND startAtMillis < :rangeEndMillis
+        AND COALESCE(endAtMillis, startAtMillis) >= :rangeStartMillis
+        ORDER BY COALESCE(startAtMillis, dueAtMillis) ASC, createdAtMillis ASC
+        """
+    )
+    fun observeActiveCalendarEventsInRange(rangeStartMillis: Long, rangeEndMillis: Long): Flow<List<TodoItem>>
+
     @Query("SELECT * FROM todo_items WHERE id = :id LIMIT 1")
     suspend fun getById(id: Long): TodoItem?
 
@@ -174,6 +224,15 @@ interface TodoDao {
     )
     suspend fun getRecentReminderChainLogs(limit: Int): List<ReminderChainLog>
 
+    @Query(
+        """
+        SELECT * FROM reminder_chain_logs
+        ORDER BY createdAtMillis DESC
+        LIMIT :limit
+        """
+    )
+    fun observeRecentReminderChainLogs(limit: Int): Flow<List<ReminderChainLog>>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertReminderChainLog(log: ReminderChainLog): Long
 
@@ -195,6 +254,9 @@ interface TodoDao {
 
     @Query("SELECT * FROM schedule_templates ORDER BY updatedAtMillis DESC, createdAtMillis DESC")
     suspend fun getScheduleTemplates(): List<ScheduleTemplate>
+
+    @Query("SELECT * FROM schedule_templates ORDER BY updatedAtMillis DESC, createdAtMillis DESC")
+    fun observeScheduleTemplates(): Flow<List<ScheduleTemplate>>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertScheduleTemplate(template: ScheduleTemplate): Long
@@ -337,8 +399,11 @@ interface TodoDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertAiReports(reports: List<AiReport>): List<Long>
 
-    @Query("SELECT * FROM ai_reports ORDER BY generatedAtMillis DESC, id DESC")
-    fun observeAiReports(): Flow<List<AiReport>>
+    @Query("SELECT * FROM ai_reports ORDER BY generatedAtMillis DESC, id DESC LIMIT :limit")
+    fun observeAiReports(limit: Int): Flow<List<AiReport>>
+
+    @Query("SELECT * FROM ai_reports WHERE type = :type ORDER BY generatedAtMillis DESC, id DESC LIMIT :limit")
+    fun observeAiReportsByType(type: AiReportType, limit: Int): Flow<List<AiReport>>
 
     @Query("SELECT * FROM ai_reports ORDER BY generatedAtMillis DESC, id DESC")
     suspend fun getAllAiReports(): List<AiReport>

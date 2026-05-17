@@ -151,7 +151,12 @@ class MainActivity : ComponentActivity() {
             TodoAlarmTheme(themeMode = uiState.settings.themeMode) {
                 DashboardScreen(
                     uiState = uiState,
-                    aiReports = viewModel.aiReports,
+                    observeAiReports = viewModel::observeAiReports,
+                    onGetAiReport = viewModel::getAiReportById,
+                    historyItems = viewModel.historyItems,
+                    calendarItems = viewModel.calendarItems,
+                    scheduleTemplates = viewModel.scheduleTemplates,
+                    reminderChainLogs = viewModel.reminderChainLogs,
                     permissions = permissions,
                     launchRoute = launchRoute,
                     launchRouteSerial = launchRouteSerial,
@@ -165,6 +170,7 @@ class MainActivity : ComponentActivity() {
                     onAddCalendarEvent = viewModel::addCalendarEvent,
                     onImportTodos = viewModel::importTodos,
                     onImportCalendarEvents = viewModel::importCalendarEvents,
+                    onGetTodoById = viewModel::getTodoById,
                     onUpdateTodo = viewModel::updateTodo,
                     onUpdateCalendarEvent = viewModel::updateCalendarEvent,
                     onDeleteTodo = viewModel::deleteTodo,

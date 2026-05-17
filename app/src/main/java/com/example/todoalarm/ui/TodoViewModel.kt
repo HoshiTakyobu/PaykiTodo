@@ -12,6 +12,8 @@ import com.example.todoalarm.alarm.ReminderChainLogger
 import com.example.todoalarm.alarm.ReminderDispatchTracker
 import com.example.todoalarm.alarm.ReminderForegroundService
 import com.example.todoalarm.data.AppSettings
+import com.example.todoalarm.data.AiReport
+import com.example.todoalarm.data.AiReportType
 import com.example.todoalarm.data.CalendarEventDraft
 import com.example.todoalarm.data.DEFAULT_PLANNING_REMINDER_MINUTES
 import com.example.todoalarm.data.DailyReportGenerator
@@ -53,14 +55,17 @@ import com.example.todoalarm.data.toEpochMillis
 import com.example.todoalarm.sync.DesktopSyncStatus
 import com.example.todoalarm.sync.DesktopSyncService
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalDateTime
@@ -73,7 +78,6 @@ data class TodoUiState(
     val missedItems: List<TodoItem> = emptyList(),
     val todayItems: List<TodoItem> = emptyList(),
     val upcomingItems: List<TodoItem> = emptyList(),
-    val historyItems: List<TodoItem> = emptyList(),
     val calendarItems: List<TodoItem> = emptyList(),
     val planningNotes: List<PlanningNote> = emptyList(),
     val activePlanningNoteId: Long? = null,
@@ -82,8 +86,6 @@ data class TodoUiState(
     val todayFocusMinutes: Int = 0,
     val todayFocusSessionCount: Int = 0,
     val todayCompletedFocusSessionCount: Int = 0,
-    val reminderChainLogs: List<ReminderChainLog> = emptyList(),
-    val scheduleTemplates: List<ScheduleTemplate> = emptyList(),
     val settings: AppSettings = AppSettings(),
     val currentQuote: String = QuoteRepository.seedQuotes.first(),
     val dataReady: Boolean = false,
@@ -151,16 +153,59 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
             initialValue = FocusSessionStats()
         )
 
-    val aiReports = repository.observeAiReports().stateIn(
+    @OptIn(ExperimentalCoroutinesApi::class)
+    private val activeTodoItems = selectedGroupIdFlow
+        .flatMapLatest { groupId -> repository.observeActiveTodoItems(groupId) }
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5_000),
+            initialValue = emptyList()
+        )
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    private val boardCalendarItems = todayDateFlow
+        .flatMapLatest { date ->
+            val (startMillis, endMillis) = boardEventRangeMillis(date)
+            repository.observeActiveCalendarEventsInRange(startMillis, endMillis)
+        }
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5_000),
+            initialValue = emptyList()
+        )
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val historyItems = selectedGroupIdFlow
+        .flatMapLatest { groupId -> repository.observeHistoryTodoItems(groupId) }
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5_000),
+            initialValue = emptyList()
+        )
+
+    val calendarItems = repository.observeActiveCalendarEvents().stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5_000),
+        initialValue = emptyList()
+    )
+
+    val scheduleTemplates = repository.observeScheduleTemplates().stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5_000),
+        initialValue = emptyList()
+    )
+
+    val reminderChainLogs = repository.observeRecentReminderChainLogs().stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5_000),
         initialValue = emptyList()
     )
 
     val uiState = combine(
-        repository.observeTodos(),
         repository.observeGroups(),
         repository.observePlanningNotes(),
+        activeTodoItems,
+        boardCalendarItems,
         todayFocusStats,
         settingsStore.settingsFlow,
         quoteFlow,
@@ -169,32 +214,23 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
         todayDateFlow
     ) { values ->
         @Suppress("UNCHECKED_CAST")
-        val items = values[0] as List<TodoItem>
+        val groups = values[0] as List<TaskGroup>
         @Suppress("UNCHECKED_CAST")
-        val groups = values[1] as List<TaskGroup>
+        val planningNotes = values[1] as List<PlanningNote>
         @Suppress("UNCHECKED_CAST")
-        val planningNotes = values[2] as List<PlanningNote>
-        val focusStats = values[3] as FocusSessionStats
-        val settings = values[4] as AppSettings
+        val activeTaskItems = values[2] as List<TodoItem>
         @Suppress("UNCHECKED_CAST")
-        val quotes = values[5] as List<String>
-        val selectedGroupId = values[6] as Long?
-        val today = values[8] as LocalDate
+        val activeCalendarItems = values[3] as List<TodoItem>
+        val focusStats = values[4] as FocusSessionStats
+        val settings = values[5] as AppSettings
+        @Suppress("UNCHECKED_CAST")
+        val quotes = values[6] as List<String>
+        val selectedGroupId = values[7] as Long?
+        val today = values[9] as LocalDate
         val availableGroups = if (groups.isEmpty()) repository.ensureDefaultGroups() else groups
-        val filteredItems = if (selectedGroupId == null) {
-            items
-        } else {
-            items.filter { it.groupId == selectedGroupId }
-        }
-        val activeTaskItems = filteredItems
-            .filter { it.isTodo && it.isActive }
+        val sortedActiveTaskItems = activeTaskItems
             .sortedBy { it.dueAtMillis }
-        val activeCalendarItems = items
-            .filter { it.isEvent && it.isActive }
-            .sortedBy { it.startAtMillis ?: it.dueAtMillis }
-        val historyItems = filteredItems
-            .filter { it.isTodo && it.isHistory }
-            .sortedByDescending { it.completedAtMillis ?: it.canceledAtMillis ?: it.createdAtMillis }
+        val sortedCalendarItems = activeCalendarItems.sortedBy { it.startAtMillis ?: it.dueAtMillis }
         val availableQuotes = quotes.ifEmpty { QuoteRepository.seedQuotes }
         val currentQuote = availableQuotes[settings.quoteIndex.mod(availableQuotes.size)]
         val activePlanningNote = planningNotes.firstOrNull { it.id == settings.lastOpenedPlanningNoteId }
@@ -203,11 +239,10 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
         TodoUiState(
             groups = availableGroups,
             selectedGroupId = selectedGroupId,
-            missedItems = activeTaskItems.filter { it.missed },
-            todayItems = activeTaskItems.filter { !it.missed && (!it.hasDueDate || dueDate(it) == today) },
-            upcomingItems = activeTaskItems.filter { it.hasDueDate && !it.missed && dueDate(it).isAfter(today) },
-            historyItems = historyItems,
-            calendarItems = activeCalendarItems,
+            missedItems = sortedActiveTaskItems.filter { it.missed },
+            todayItems = sortedActiveTaskItems.filter { !it.missed && (!it.hasDueDate || dueDate(it) == today) },
+            upcomingItems = sortedActiveTaskItems.filter { it.hasDueDate && !it.missed && dueDate(it).isAfter(today) },
+            calendarItems = sortedCalendarItems,
             planningNotes = planningNotes,
             activePlanningNoteId = activePlanningNote?.id,
             activePlanningNote = activePlanningNote,
@@ -215,8 +250,6 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
             todayFocusMinutes = focusStats.completedMinutes,
             todayFocusSessionCount = focusStats.totalCount,
             todayCompletedFocusSessionCount = focusStats.completedCount,
-            reminderChainLogs = repository.getRecentReminderChainLogs(),
-            scheduleTemplates = repository.getScheduleTemplates(),
             settings = settings,
             currentQuote = currentQuote,
             dataReady = true,
@@ -237,6 +270,23 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
 
     fun selectGroup(groupId: Long?) {
         selectedGroupIdFlow.value = groupId
+    }
+
+    suspend fun getTodoById(todoId: Long): TodoItem? {
+        return withContext(Dispatchers.IO) { repository.getTodo(todoId) }
+    }
+
+    fun observeAiReports(type: AiReportType?, limit: Int): Flow<List<AiReport>> {
+        val safeLimit = limit.coerceIn(1, 300)
+        return if (type == null) {
+            repository.observeAiReports(safeLimit)
+        } else {
+            repository.observeAiReportsByType(type, safeLimit)
+        }
+    }
+
+    suspend fun getAiReportById(reportId: Long): AiReport? {
+        return withContext(Dispatchers.IO) { repository.getAiReportById(reportId) }
     }
 
     suspend fun parsePlanningMarkdown(markdown: String): PlanningParseResult {
@@ -1164,6 +1214,13 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
         val start = date.atStartOfDay(zone).toInstant().toEpochMilli()
         val end = date.plusDays(1).atStartOfDay(zone).toInstant().toEpochMilli() - 1
         return start to end
+    }
+
+    private fun boardEventRangeMillis(date: LocalDate): Pair<Long, Long> {
+        val zone = ZoneId.systemDefault()
+        val start = date.atStartOfDay(zone).toInstant().toEpochMilli()
+        val endExclusive = date.plusDays(2).atStartOfDay(zone).toInstant().toEpochMilli()
+        return start to endExclusive
     }
 
     private fun clearReminderArtifacts(items: List<TodoItem>) {

@@ -39,6 +39,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -46,43 +47,48 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.todoalarm.data.AiReport
 import com.example.todoalarm.data.AiReportType
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.launch
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
-private enum class AiReportFilter(val label: String) {
-    ALL("全部"),
-    DAILY("日报"),
-    WEEKLY("周报")
+private const val AiReportPageSize = 30
+
+private enum class AiReportFilter(val label: String, val type: AiReportType?) {
+    ALL("全部", null),
+    DAILY("日报", AiReportType.DAILY),
+    WEEKLY("周报", AiReportType.WEEKLY)
 }
 
 @OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
 @Composable
 internal fun AiReportPanel(
-    reports: List<AiReport>,
+    observeReports: (AiReportType?, Int) -> Flow<List<AiReport>>,
+    onGetReport: suspend (Long) -> AiReport?,
     targetReportId: Long?,
     targetReportSerial: Int,
     onDeleteReport: suspend (Long) -> String?
 ) {
-    var filter by remember { mutableStateOf(AiReportFilter.ALL) }
+    var filter by rememberSaveable { mutableStateOf(AiReportFilter.ALL) }
+    var limit by rememberSaveable { mutableStateOf(AiReportPageSize) }
     var selectedReport by remember { mutableStateOf<AiReport?>(null) }
     var pendingDelete by remember { mutableStateOf<AiReport?>(null) }
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
-    val filteredReports = remember(reports, filter) {
-        when (filter) {
-            AiReportFilter.ALL -> reports
-            AiReportFilter.DAILY -> reports.filter { it.type == AiReportType.DAILY }
-            AiReportFilter.WEEKLY -> reports.filter { it.type == AiReportType.WEEKLY }
-        }
+    val reportFlow = remember(filter, limit) {
+        observeReports(filter.type, limit)
     }
+    val reports by reportFlow.collectAsStateWithLifecycle(initialValue = emptyList())
 
-    LaunchedEffect(targetReportSerial, reports) {
-        val target = targetReportId?.let { id -> reports.firstOrNull { it.id == id } }
+    LaunchedEffect(targetReportSerial, targetReportId) {
+        val target = targetReportId?.let { id ->
+            reports.firstOrNull { it.id == id } ?: onGetReport(id)
+        }
         if (target != null) selectedReport = target
     }
 
@@ -109,12 +115,15 @@ internal fun AiReportPanel(
                 AiReportFilterPill(
                     label = option.label,
                     selected = filter == option,
-                    onClick = { filter = option }
+                    onClick = {
+                        filter = option
+                        limit = AiReportPageSize
+                    }
                 )
             }
         }
 
-        if (filteredReports.isEmpty()) {
+        if (reports.isEmpty()) {
             EmptyStateCard(
                 "还没有生成过 AI 报告。可以在 设置 → AI 调用配置 → AI 日报 / 周报 中开启自动生成或立即生成。"
             )
@@ -123,7 +132,7 @@ internal fun AiReportPanel(
                 modifier = Modifier.fillMaxSize(),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                items(filteredReports, key = { it.id }) { report ->
+                items(reports, key = { it.id }) { report ->
                     AiReportCard(
                         report = report,
                         modifier = Modifier.combinedClickable(
@@ -131,6 +140,26 @@ internal fun AiReportPanel(
                             onLongClick = { pendingDelete = report }
                         )
                     )
+                }
+                item {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 4.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Text(
+                            text = "已加载 ${reports.size} 条报告",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        if (reports.size >= limit) {
+                            OutlinedButton(onClick = { limit += AiReportPageSize }) {
+                                Text("加载更多")
+                            }
+                        }
+                    }
                 }
                 item { Spacer(Modifier.height(16.dp)) }
             }

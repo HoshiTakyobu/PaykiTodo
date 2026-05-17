@@ -110,6 +110,7 @@ fun DashboardScreen(
     onImportTodos: suspend (List<TodoDraft>) -> String?,
     onImportCalendarEvents: suspend (List<CalendarEventDraft>) -> String?,
     onGetTodoById: suspend (Long) -> TodoItem?,
+    onCalendarVisibleDateRangeChange: (LocalDate, LocalDate) -> Unit,
     onUpdateTodo: suspend (TodoItem, TodoDraft, RecurrenceScope) -> String?,
     onUpdateCalendarEvent: suspend (TodoItem, com.example.todoalarm.data.CalendarEventDraft, RecurrenceScope) -> String?,
     onDeleteTodo: (TodoItem) -> Unit,
@@ -183,6 +184,7 @@ fun DashboardScreen(
     var lastBackPressedAt by rememberSaveable { mutableLongStateOf(0L) }
     var boardVisited by rememberSaveable { mutableStateOf(false) }
     var handledTodoLaunchSerial by rememberSaveable { mutableStateOf(-1) }
+    var calendarFocusDateEpochDay by rememberSaveable { mutableStateOf<Long?>(null) }
     val defaultReminderRing = if (uiState.settings.workQuietModeEnabled) false else uiState.settings.defaultRingEnabled
     val defaultReminderVibrate = if (uiState.settings.workQuietModeEnabled) true else uiState.settings.defaultVibrateEnabled
 
@@ -213,16 +215,32 @@ fun DashboardScreen(
 
     LaunchedEffect(launchRouteSerial) {
         when {
-            launchRoute?.settingsSectionKey != null -> section = DashboardSection.SETTINGS
-            launchRoute?.openTasks == true -> section = DashboardSection.ACTIVE
-            launchRoute?.openCalendar == true -> section = DashboardSection.CALENDAR
+            launchRoute?.settingsSectionKey != null -> {
+                calendarFocusDateEpochDay = null
+                section = DashboardSection.SETTINGS
+            }
+            launchRoute?.openTasks == true -> {
+                calendarFocusDateEpochDay = null
+                section = DashboardSection.ACTIVE
+            }
+            launchRoute?.openCalendar == true -> {
+                calendarFocusDateEpochDay = null
+                section = DashboardSection.CALENDAR
+            }
             launchRoute?.targetEventId != null -> section = DashboardSection.CALENDAR
             launchRoute?.targetPlanningNoteId != null -> {
+                calendarFocusDateEpochDay = null
                 section = DashboardSection.PLANNING
                 onSelectPlanningNote(launchRoute.targetPlanningNoteId)
             }
-            launchRoute?.targetAiReportId != null -> section = DashboardSection.AI_REPORTS
-            launchRoute?.openBoard == true -> section = DashboardSection.BOARD
+            launchRoute?.targetAiReportId != null -> {
+                calendarFocusDateEpochDay = null
+                section = DashboardSection.AI_REPORTS
+            }
+            launchRoute?.openBoard == true -> {
+                calendarFocusDateEpochDay = null
+                section = DashboardSection.BOARD
+            }
         }
     }
 
@@ -235,6 +253,17 @@ fun DashboardScreen(
         handledTodoLaunchSerial = launchRouteSerial
         section = if (target.isHistory) DashboardSection.HISTORY else DashboardSection.ACTIVE
         openTodoEditor(target)
+    }
+
+    LaunchedEffect(launchRouteSerial, launchRoute?.targetEventId) {
+        val targetEventId = launchRoute?.targetEventId ?: return@LaunchedEffect
+        val target = onGetTodoById(targetEventId)
+            ?.takeIf { it.isEvent }
+            ?: return@LaunchedEffect
+        val targetDate = target.eventStartDate() ?: target.dueDate()
+        calendarFocusDateEpochDay = targetDate.toEpochDay()
+        onCalendarVisibleDateRangeChange(targetDate.minusDays(1), targetDate.plusDays(2))
+        section = DashboardSection.CALENDAR
     }
 
     LaunchedEffect(uiState.dataReady) {
@@ -401,6 +430,8 @@ fun DashboardScreen(
                     settingsInitialSectionSerial = launchRouteSerial,
                     targetEventId = launchRoute?.targetEventId,
                     targetEventSerial = launchRouteSerial,
+                    calendarFocusDate = calendarFocusDateEpochDay?.let(LocalDate::ofEpochDay),
+                    calendarFocusDateSerial = launchRouteSerial,
                     targetAiReportId = launchRoute?.targetAiReportId,
                     targetAiReportSerial = launchRouteSerial,
                     padding = padding,
@@ -411,6 +442,7 @@ fun DashboardScreen(
                     historyItems = historyItems,
                     calendarItems = calendarItems,
                     scheduleTemplates = scheduleTemplates,
+                    onCalendarVisibleDateRangeChange = onCalendarVisibleDateRangeChange,
                     reminderChainLogs = reminderChainLogs,
                     permissions = permissions,
                     onEdit = { openTodoEditor(it) },

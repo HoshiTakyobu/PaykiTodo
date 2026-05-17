@@ -2,7 +2,7 @@
 
 ## Active Development Focus
 
-The current round is PaykiTodo `1.9.19` / `versionCode 213`.
+The current round is PaykiTodo `1.9.20` / `versionCode 214`.
 
 Primary goal: review the recent `1.9.11`+ experience and performance work, close the remaining safe performance / UX gaps found during inspection, and leave the repo in a verified state for user-side phone / browser testing.
 
@@ -40,8 +40,16 @@ Primary goal: review the recent `1.9.11`+ experience and performance work, close
 7. Added database version `16`:
    - `MIGRATION_15_16` creates an index for desktop todo paging / sorting.
    - `MIGRATION_15_16` creates AI report generated-time and type+generated-time indexes.
-8. Version metadata moved to `1.9.19` / `versionCode 213`.
-9. README / CHANGELOG / TODO / Wiki / current docs were synchronized for this `1.9.19` pass.
+8. Hardened the no-DDL todo classification invariant:
+   - active no-DDL todos are classified through a shared `classifyActiveTodoItems` helper.
+   - My Tasks and the ordinary board/task UI now use the same missed / today / upcoming split.
+   - unit tests cover that no-DDL active todos stay in `今日待办` on later dates and never become upcoming.
+9. Reduced phone Calendar subscription scope:
+   - the Calendar page reports its visible date range to the ViewModel.
+   - the ViewModel observes only active events overlapping that padded visible window instead of every active event.
+   - deep links to a far event expand the queried range around the target date before focusing the calendar.
+10. Version metadata moved to `1.9.20` / `versionCode 214`.
+11. README / CHANGELOG / TODO / Wiki / current docs are being synchronized for this `1.9.20` pass.
 
 ## Verification Completed This Round
 
@@ -50,11 +58,13 @@ Completed locally:
 1. `node --check app/src/main/assets/desktop-web/app.js` passed.
 2. `./gradlew.bat :app:compileDebugKotlin testDebugUnitTest assembleDebug` passed.
 3. `git diff --check` passed.
-4. `app/build/outputs/apk/debug/output-metadata.json` reports `versionCode=213`, `versionName=1.9.19`, and `outputFile=PaykiTodo-1.9.19-debug.apk`.
+4. `app/build/outputs/apk/debug/output-metadata.json` reports `versionCode=214`, `versionName=1.9.20`, and `outputFile=PaykiTodo-1.9.20-debug.apk`.
+5. `TodoItemSectionsTest` covers no-DDL active todos staying under today across dates and never entering upcoming.
+6. Emulator smoke on `emulator-5554` installed `app/build/outputs/apk/debug/PaykiTodo-1.9.20-debug.apk`, launched MainActivity, dumped Daily Board / drawer / Calendar UI trees, captured screenshots, and found no PaykiTodo `FATAL EXCEPTION` in the checked logcat window.
 
 ## Verification Still Needed On Device / Browser
 
-1. Install `app/build/outputs/apk/debug/PaykiTodo-1.9.19-debug.apk` on the physical phone.
+1. Install `app/build/outputs/apk/debug/PaykiTodo-1.9.20-debug.apk` on the physical phone.
 2. Browser-test desktop todos:
    - first connection should show `看板轻量数据`.
    - click `加载待办管理列表`; it should request `/api/todos?offset=0&limit=80`.
@@ -96,7 +106,7 @@ Still recommended later:
 
 ## Immediate Practical Next Steps
 
-1. Install and test `app/build/outputs/apk/debug/PaykiTodo-1.9.19-debug.apk` on the physical phone.
+1. Rebuild and install `app/build/outputs/apk/debug/PaykiTodo-1.9.20-debug.apk` on emulator / physical phone.
 2. Browser-test desktop Web with the new paged/searchable todo management list.
 3. Verify the Android widget picker preview and live resized widget on the user's launcher.
 4. Do not push unless the user explicitly asks.

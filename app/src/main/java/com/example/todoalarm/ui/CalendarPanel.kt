@@ -145,6 +145,39 @@ private enum class CalendarViewMode(val label: String) {
     AGENDA("列表视图")
 }
 
+private data class CalendarRequestedEventRange(
+    val startInclusive: LocalDate,
+    val endExclusive: LocalDate
+)
+
+private fun calendarRequestedEventRange(
+    viewMode: CalendarViewMode,
+    selectedDate: LocalDate,
+    visibleDays: List<LocalDate>,
+    weekStartMode: WeekStartMode
+): CalendarRequestedEventRange {
+    return when (viewMode) {
+        CalendarViewMode.THREE_DAY,
+        CalendarViewMode.DAY -> {
+            val start = visibleDays.minOrNull() ?: selectedDate
+            val end = (visibleDays.maxOrNull() ?: selectedDate).plusDays(1)
+            CalendarRequestedEventRange(start, end)
+        }
+        CalendarViewMode.MONTH -> {
+            val monthStart = selectedDate.withDayOfMonth(1)
+            val monthEnd = monthStart.withDayOfMonth(monthStart.lengthOfMonth())
+            CalendarRequestedEventRange(
+                startInclusive = startOfWeek(monthStart, weekStartMode),
+                endExclusive = startOfWeek(monthEnd, weekStartMode).plusDays(7)
+            )
+        }
+        CalendarViewMode.AGENDA -> {
+            val weekStart = startOfWeek(selectedDate, weekStartMode)
+            CalendarRequestedEventRange(weekStart, weekStart.plusDays(7))
+        }
+    }
+}
+
 @Composable
 internal fun CalendarPanel(
     modifier: Modifier = Modifier,
@@ -153,6 +186,9 @@ internal fun CalendarPanel(
     scheduleTemplates: List<ScheduleTemplate>,
     targetEventId: Long? = null,
     targetEventSerial: Int = 0,
+    initialFocusDate: LocalDate? = null,
+    initialFocusDateSerial: Int = 0,
+    onVisibleDateRangeChange: (LocalDate, LocalDate) -> Unit = { _, _ -> },
     onQuickCreateEvent: (LocalDateTime, LocalDateTime) -> Unit,
     onCreateEventAt: (LocalDateTime, LocalDateTime) -> Unit,
     onEditEvent: (TodoItem) -> Unit,
@@ -252,6 +288,14 @@ internal fun CalendarPanel(
                 else -> selectedIndex..(selectedIndex + 2).coerceAtMost(dateWindow.lastIndex)
             }
             val visibleDays = remember(dateWindow, visibleRange) { visibleRange.map(dateWindow::dateAt) }
+            val requestedEventRange = remember(viewMode, selectedDate, visibleDays, weekStartMode) {
+                calendarRequestedEventRange(
+                    viewMode = viewMode,
+                    selectedDate = selectedDate,
+                    visibleDays = visibleDays,
+                    weekStartMode = weekStartMode
+                )
+            }
             val timelineHorizontalOffsetPx = effectiveHorizontalOffsetPx
             val hourHeight = 72.dp
             val boardHeight = hourHeight * 24
@@ -331,6 +375,14 @@ internal fun CalendarPanel(
                 viewMode = CalendarViewMode.THREE_DAY
                 horizontalOffsetPx = ((dateWindow.indexOf(targetDate) ?: anchorDateIndex) * dayColumnWidthPx)
                     .coerceIn(0f, maxHorizontalOffsetPx)
+            }
+
+            LaunchedEffect(requestedEventRange.startInclusive, requestedEventRange.endExclusive) {
+                onVisibleDateRangeChange(requestedEventRange.startInclusive, requestedEventRange.endExclusive)
+            }
+
+            LaunchedEffect(initialFocusDateSerial, initialFocusDate) {
+                initialFocusDate?.let(::revealDate)
             }
 
             fun openDatePicker() {

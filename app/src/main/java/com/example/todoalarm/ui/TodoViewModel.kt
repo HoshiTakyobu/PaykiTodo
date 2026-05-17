@@ -107,6 +107,7 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
     private val selectedGroupIdFlow = MutableStateFlow<Long?>(null)
     private val desktopSyncRefreshTick = MutableStateFlow(0L)
     private val todayDateFlow = MutableStateFlow(LocalDate.now())
+    private val calendarEventWindowFlow = MutableStateFlow(calendarEventWindowAround(LocalDate.now()))
     private var quoteRefreshJob: Job? = null
 
     init {
@@ -180,11 +181,20 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
             initialValue = emptyList()
         )
 
-    val calendarItems = repository.observeActiveCalendarEvents().stateIn(
-        scope = viewModelScope,
-        started = SharingStarted.WhileSubscribed(5_000),
-        initialValue = emptyList()
-    )
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val calendarItems = calendarEventWindowFlow
+        .flatMapLatest { window ->
+            val zone = ZoneId.systemDefault()
+            repository.observeActiveCalendarEventsInRange(
+                rangeStartMillis = window.startInclusive.atStartOfDay(zone).toInstant().toEpochMilli(),
+                rangeEndMillis = window.endExclusive.atStartOfDay(zone).toInstant().toEpochMilli()
+            )
+        }
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5_000),
+            initialValue = emptyList()
+        )
 
     val scheduleTemplates = repository.observeScheduleTemplates().stateIn(
         scope = viewModelScope,
@@ -231,8 +241,7 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
         val selectedGroupId = values[7] as Long?
         val today = values[9] as LocalDate
         val availableGroups = if (groups.isEmpty()) repository.ensureDefaultGroups() else groups
-        val sortedActiveTaskItems = activeTaskItems
-            .sortedBy { it.dueAtMillis }
+        val todoSections = classifyActiveTodoItems(activeTaskItems, today)
         val sortedCalendarItems = activeCalendarItems.sortedBy { it.startAtMillis ?: it.dueAtMillis }
         val availableQuotes = quotes.ifEmpty { QuoteRepository.seedQuotes }
         val currentQuote = availableQuotes[settings.quoteIndex.mod(availableQuotes.size)]
@@ -240,9 +249,9 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
         TodoUiState(
             groups = availableGroups,
             selectedGroupId = selectedGroupId,
-            missedItems = sortedActiveTaskItems.filter { it.missed },
-            todayItems = sortedActiveTaskItems.filter { !it.missed && (!it.hasDueDate || dueDate(it) == today) },
-            upcomingItems = sortedActiveTaskItems.filter { it.hasDueDate && !it.missed && dueDate(it).isAfter(today) },
+            missedItems = todoSections.missedItems,
+            todayItems = todoSections.todayItems,
+            upcomingItems = todoSections.upcomingItems,
             calendarItems = sortedCalendarItems,
             activeAnnouncements = PlanningAnnouncementParser.activeAnnouncements(announcementNotes, today),
             todayFocusMinutes = focusStats.completedMinutes,
@@ -268,6 +277,17 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
 
     fun selectGroup(groupId: Long?) {
         selectedGroupIdFlow.value = groupId
+    }
+
+    fun updateCalendarEventWindow(startInclusive: LocalDate, endExclusive: LocalDate) {
+        if (!startInclusive.isBefore(endExclusive)) return
+        val padded = CalendarEventWindow(
+            startInclusive = startInclusive.minusDays(CalendarWindowPaddingDays),
+            endExclusive = endExclusive.plusDays(CalendarWindowPaddingDays)
+        )
+        if (calendarEventWindowFlow.value != padded) {
+            calendarEventWindowFlow.value = padded
+        }
     }
 
     suspend fun getTodoById(todoId: Long): TodoItem? {
@@ -1247,10 +1267,6 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    private fun dueDate(item: TodoItem): LocalDate {
-        return item.dueDate()
-    }
-
     private fun overlapsWeek(item: TodoItem, weekStart: LocalDate): Boolean {
         val startMillis = item.startAtMillis ?: item.dueAtMillis
         val endMillis = item.endAtMillis ?: startMillis
@@ -1262,5 +1278,18 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
 
     companion object {
         private const val MISSED_THRESHOLD_MILLIS = 60_000L
+        private const val CalendarWindowPaddingDays = 2L
     }
+}
+
+private data class CalendarEventWindow(
+    val startInclusive: LocalDate,
+    val endExclusive: LocalDate
+)
+
+private fun calendarEventWindowAround(date: LocalDate): CalendarEventWindow {
+    return CalendarEventWindow(
+        startInclusive = date.minusDays(2),
+        endExclusive = date.plusDays(8)
+    )
 }

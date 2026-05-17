@@ -283,11 +283,7 @@ interface TodoDao {
         """
         SELECT * FROM planning_notes
         WHERE archived = 0
-        AND (
-            contentMarkdown LIKE '%公告%'
-            OR contentMarkdown LIKE '%[!announcement]%'
-            OR contentMarkdown LIKE '%[! announcement]%'
-        )
+        AND hasAnnouncementHint = 1
         ORDER BY updatedAtMillis DESC, createdAtMillis DESC
         """
     )
@@ -312,11 +308,7 @@ interface TodoDao {
         """
         SELECT * FROM planning_notes
         WHERE archived = 0
-        AND (
-            contentMarkdown LIKE '%公告%'
-            OR contentMarkdown LIKE '%[!announcement]%'
-            OR contentMarkdown LIKE '%[! announcement]%'
-        )
+        AND hasAnnouncementHint = 1
         ORDER BY updatedAtMillis DESC, createdAtMillis DESC
         """
     )

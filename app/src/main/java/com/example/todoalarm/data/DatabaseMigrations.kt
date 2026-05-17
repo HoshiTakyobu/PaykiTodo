@@ -344,6 +344,12 @@ object DatabaseMigrations {
         }
     }
 
+    val MIGRATION_14_15 = object : Migration(14, 15) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            ensurePlanningAnnouncementHintColumn(db)
+        }
+    }
+
     private fun rebuildPlanningNotesTable(db: SupportSQLiteDatabase) {
         db.execSQL("DROP TABLE IF EXISTS `planning_notes_room_expected`")
         createPlanningNotesTable(db, "planning_notes_room_expected")
@@ -352,9 +358,16 @@ object DatabaseMigrations {
                 db.execSQL(
                     """
                     INSERT INTO `planning_notes_room_expected` (
-                        `id`, `title`, `contentMarkdown`, `createdAtMillis`, `updatedAtMillis`, `archived`
+                        `id`, `title`, `contentMarkdown`, `createdAtMillis`, `updatedAtMillis`, `archived`, `hasAnnouncementHint`
                     )
-                    SELECT `id`, `title`, `contentMarkdown`, `createdAtMillis`, `updatedAtMillis`, `archived`
+                    SELECT `id`, `title`, `contentMarkdown`, `createdAtMillis`, `updatedAtMillis`, `archived`,
+                        CASE
+                            WHEN `contentMarkdown` LIKE '%公告%'
+                                OR `contentMarkdown` LIKE '%[!announcement]%'
+                                OR `contentMarkdown` LIKE '%[! announcement]%'
+                            THEN 1
+                            ELSE 0
+                        END
                     FROM `planning_notes`
                     """.trimIndent()
                 )
@@ -373,7 +386,8 @@ object DatabaseMigrations {
                 `contentMarkdown` TEXT NOT NULL,
                 `createdAtMillis` INTEGER NOT NULL,
                 `updatedAtMillis` INTEGER NOT NULL,
-                `archived` INTEGER NOT NULL
+                `archived` INTEGER NOT NULL,
+                `hasAnnouncementHint` INTEGER NOT NULL DEFAULT 0
             )
             """.trimIndent()
         )
@@ -405,5 +419,29 @@ object DatabaseMigrations {
         db.execSQL("CREATE INDEX IF NOT EXISTS `index_todo_items_active_reminders` ON `todo_items` (`completed`, `canceled`, `reminderEnabled`, `dueAtMillis`)")
         db.execSQL("CREATE INDEX IF NOT EXISTS `index_todo_items_group_due` ON `todo_items` (`groupId`, `dueAtMillis`)")
         db.execSQL("CREATE INDEX IF NOT EXISTS `index_todo_items_series_due` ON `todo_items` (`recurringSeriesId`, `dueAtMillis`)")
+    }
+
+    private fun ensurePlanningAnnouncementHintColumn(db: SupportSQLiteDatabase) {
+        if (!tableHasColumns(db, "planning_notes", listOf("hasAnnouncementHint"))) {
+            db.execSQL("ALTER TABLE `planning_notes` ADD COLUMN `hasAnnouncementHint` INTEGER NOT NULL DEFAULT 0")
+        }
+        db.execSQL(
+            """
+            UPDATE `planning_notes`
+            SET `hasAnnouncementHint` = CASE
+                WHEN `contentMarkdown` LIKE '%公告%'
+                    OR `contentMarkdown` LIKE '%[!announcement]%'
+                    OR `contentMarkdown` LIKE '%[! announcement]%'
+                THEN 1
+                ELSE 0
+            END
+            """.trimIndent()
+        )
+        db.execSQL(
+            """
+            CREATE INDEX IF NOT EXISTS `index_planning_notes_announcement_lookup`
+            ON `planning_notes` (`archived`, `hasAnnouncementHint`, `updatedAtMillis`, `createdAtMillis`)
+            """.trimIndent()
+        )
     }
 }

@@ -802,6 +802,7 @@ private fun PlanningNote.toPlanningJson(): JSONObject {
         .put("createdAtMillis", createdAtMillis)
         .put("updatedAtMillis", updatedAtMillis)
         .put("archived", archived)
+        .put("hasAnnouncementHint", hasAnnouncementHint)
 }
 
 private fun com.example.todoalarm.data.PlanningParseResult.toPlanningParseJson(): JSONObject {

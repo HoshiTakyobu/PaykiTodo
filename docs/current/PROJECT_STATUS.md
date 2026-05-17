@@ -7,23 +7,23 @@
 - Package name: `com.paykitodo.app`
 - Target platform: Android 14 / API 34
 - Current version in code:
-  - `versionName = "1.9.15"`
-  - `versionCode = 209`
+  - `versionName = "1.9.16"`
+  - `versionCode = 210`
 
 ## Current Build Facts
 
 - Latest debug APK output after this round is:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.9.15-debug.apk`
-- Verification completed for the final `1.9.15` rebuild:
+  - `app/build/outputs/apk/debug/PaykiTodo-1.9.16-debug.apk`
+- Verification completed for the final `1.9.16` rebuild:
   - `node --check app/src/main/assets/desktop-web/app.js`
   - `./gradlew.bat :app:compileDebugKotlin`
   - `./gradlew.bat testDebugUnitTest`
   - `./gradlew.bat assembleDebug`
   - `git diff --check`
-  - `output-metadata.json` reports `versionCode=209`, `versionName=1.9.15`, `outputFile=PaykiTodo-1.9.15-debug.apk`
+  - `output-metadata.json` reports `versionCode=210`, `versionName=1.9.16`, `outputFile=PaykiTodo-1.9.16-debug.apk`
 - Current emulator smoke:
   - device id: `emulator-5554`
-  - installed APK: `app/build/outputs/apk/debug/PaykiTodo-1.9.15-debug.apk`
+  - installed APK: `app/build/outputs/apk/debug/PaykiTodo-1.9.16-debug.apk`
   - checked: app launch, Daily Board UI tree, logcat fatal-crash scan
   - result: install succeeded, MainActivity displayed, UI tree showed `每日看板` / `今日待办（0）` / `今日日程（0）` / `明天暂无日程`, and no `FATAL EXCEPTION` was found in the checked logcat window
 - Previous emulator verification remains historical:
@@ -36,12 +36,12 @@
 
 ## Current Worktree Reality
 
-The repository is now being advanced to `1.9.15`. It carries forward the `1.9.12` / `1.9.13` no-DDL, widget, desktop lightweight snapshot, and calendar-index fixes, adds the `1.9.14` phone-side screen-scoped subscriptions / Planning Desk parser threading / paged AI-report archive loading, then further removes full Planning Desk note observation from ordinary board/task state.
+The repository is now being advanced to `1.9.16`. It carries forward the `1.9.12` / `1.9.13` no-DDL, widget, desktop lightweight snapshot, and calendar-index fixes, adds the `1.9.14` phone-side screen-scoped subscriptions / Planning Desk parser threading / paged AI-report archive loading, removes full Planning Desk note observation from ordinary board/task state in `1.9.15`, then persists Planning Desk announcement hint state in `1.9.16` so ordinary board / widget / desktop board announcement queries can use an indexed boolean field instead of scanning Markdown bodies.
 
 Most important current baseline facts:
 
-- version metadata is `1.9.15 / 209`
-- Database version remains `14`; `MIGRATION_13_14` creates `todo_items` indices for board, reminder, group, and recurrence lookup paths.
+- version metadata is `1.9.16 / 210`
+- Database version is `15`; `MIGRATION_13_14` creates `todo_items` indices for board, reminder, group, and recurrence lookup paths, and `MIGRATION_14_15` adds / backfills `planning_notes.hasAnnouncementHint` plus the `archived + hasAnnouncementHint + updatedAtMillis + createdAtMillis` lookup index.
 - `MIGRATION_12_13` remains the migration that creates `ai_reports`.
 - Active no-DDL todos are treated as today todos across phone daily board, Android widget board query, desktop daily board, and desktop todo management. They remain reminder-disabled and recurrence-disabled until the user adds a DDL.
 - A unit test now confirms no-DDL active todos remain in `今日待办` across later dates, not only on the creation day.
@@ -55,7 +55,7 @@ Most important current baseline facts:
 - History todos, schedule templates, and reminder-chain diagnostics are collected only from their owning pages (`历史记录`, `日历`, and `设置`) rather than being merged into ordinary board/task state.
 - Full AI report history is no longer merged into ordinary `TodoUiState`; `AI 报告` now uses paged Room queries by filter and limit, and notification deep links can still fetch a target report by ID.
 - Full Planning Desk notes are no longer merged into ordinary `TodoUiState`; the complete planning-note Flow is collected only while the `规划台` page is open.
-- Daily-board announcements in phone UI, Android widget, and desktop `/api/snapshot` use an announcement-hint planning-note query instead of loading every unarchived planning document.
+- Daily-board announcements in phone UI, Android widget, and desktop `/api/snapshot` use an indexed `hasAnnouncementHint` planning-note query instead of loading every unarchived planning document or scanning Markdown bodies with `LIKE`.
 - Planning Desk local-rule recognition runs on `Dispatchers.Default`; AI failure fallback to local parsing also avoids occupying the Compose main thread for long documents.
 - Calendar month view, agenda/list view, and visible all-day rows reuse one top-level event-by-date index instead of rebuilding date buckets independently.
 - Planning Desk local parsing recognizes plain bullets (`- item`, `* item`, `• item`) as no-DDL todo candidates and shows an explicit preview message when doing so.
@@ -63,23 +63,23 @@ Most important current baseline facts:
 - Settings -> `电脑同步` explains both the multi-IP address meaning and the 5-minute no-authorized-client auto-close behavior.
 - Settings -> `AI 调用配置` provider rows use summary cards with visible enable switches and a compact more menu for edit / reorder / delete.
 - Settings -> `AI 调用配置` auto-saves valid provider changes after add/edit/toggle/reorder/delete where possible and shows an in-page warning when enabled providers are incomplete or current edits are not saved.
-- Planning notes, planning mappings, focus sessions, and AI reports are included in backup / restore snapshots.
+- Planning notes, planning mappings, focus sessions, and AI reports are included in backup / restore snapshots; planning-note backup / restore recomputes `hasAnnouncementHint` from Markdown content rather than trusting imported hint state.
 
 ## Recent Checked Areas
 
 Recent code inspection and build verification cover:
 
-- `TodoDao.kt`, `TodoRepository.kt`, `FocusSession.kt`, `TodoViewModel.kt`: today focus aggregate, announcement-hint planning-note query, no-DDL board range, midnight-sensitive today classification.
+- `TodoDao.kt`, `TodoRepository.kt`, `PlanningNote.kt`, `DatabaseMigrations.kt`, `BackupManager.kt`, `FocusSession.kt`, `TodoViewModel.kt`: today focus aggregate, indexed announcement-hint planning-note query, no-DDL board range, midnight-sensitive today classification, and planning-note hint migration / backup behavior.
 - `DesktopSyncCoordinator.kt`, `DesktopSyncModels.kt`, `app/src/main/assets/desktop-web/app.js`, `index.html`: lightweight board snapshot and full-data on-demand loading.
 - `DashboardChrome.kt`, `DashboardScreen.kt`, `MainActivity.kt`, `AiReportPanel.kt`: AI report loading and full Planning Desk note loading moved out of ordinary UI state.
 - `CalendarPanel.kt`: shared event-by-date index across calendar surfaces.
 - `DailyBoardSnapshotBuilderTest.kt`: no-DDL todo stays in today's todo list across later dates.
-- `PlanningAnnouncementParserTest.kt`: announcement-hint helper covers common announcement entry forms without matching ordinary planning text.
-- `README.md`, `CHANGELOG.md`, `TODO.md`, `docs/current/*`, Wiki header: `1.9.15` status synchronization.
+- `PlanningAnnouncementParserTest.kt`: announcement-hint helper covers common announcement entry forms without matching ordinary planning text, and `PlanningNote` defaults compute `hasAnnouncementHint` from content.
+- `README.md`, `CHANGELOG.md`, `TODO.md`, `docs/current/*`, Wiki header: `1.9.16` status synchronization.
 
 ## Documentation Health
 
-Current docs are being synchronized for `1.9.15`:
+Current docs are being synchronized for `1.9.16`:
 
 - `README.md`
 - `CHANGELOG.md`

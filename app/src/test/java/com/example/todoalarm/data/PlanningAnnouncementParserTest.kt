@@ -16,6 +16,21 @@ class PlanningAnnouncementParserTest {
     }
 
     @Test
+    fun planningNoteDefaultsAnnouncementHintFromContent() {
+        val announcementNote = PlanningNote(
+            title = "公告",
+            contentMarkdown = "#公告 5.16 重要提醒"
+        )
+        val ordinaryNote = PlanningNote(
+            title = "普通规划",
+            contentMarkdown = "# 今日计划\n- [ ] 复习数据库"
+        )
+
+        assertTrue(announcementNote.hasAnnouncementHint)
+        assertFalse(ordinaryNote.hasAnnouncementHint)
+    }
+
+    @Test
     fun parsesMultipleActiveAnnouncementsFromPlanningNotes() {
         val note = PlanningNote(
             id = 7,

@@ -239,6 +239,7 @@ private fun PlanningNote.toJson(): JSONObject {
         put("createdAtMillis", createdAtMillis)
         put("updatedAtMillis", updatedAtMillis)
         put("archived", archived)
+        put("hasAnnouncementHint", hasAnnouncementHint)
     }
 }
 
@@ -474,7 +475,8 @@ private fun JSONArray?.toPlanningNotes(): List<PlanningNote> {
                     contentMarkdown = item.optString("contentMarkdown"),
                     createdAtMillis = item.optLong("createdAtMillis", System.currentTimeMillis()),
                     updatedAtMillis = item.optLong("updatedAtMillis", System.currentTimeMillis()),
-                    archived = item.optBoolean("archived", false)
+                    archived = item.optBoolean("archived", false),
+                    hasAnnouncementHint = PlanningAnnouncementParser.mightContainAnnouncement(item.optString("contentMarkdown"))
                 )
             )
         }

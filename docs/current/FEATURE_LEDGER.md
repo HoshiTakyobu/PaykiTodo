@@ -251,11 +251,12 @@ This file tracks the product at a practical level for new coding sessions.
 ### Data / Performance
 
 - `todo_items` has Room indices for board todo queries, board event range queries, active reminders, group+DDL sorting, and recurring-series lookup.
-- Database version is `14`; `MIGRATION_13_14` creates the `todo_items` performance indices on upgraded installs.
+- Database version is `15`; `MIGRATION_13_14` creates the `todo_items` performance indices on upgraded installs, and `MIGRATION_14_15` adds / backfills `planning_notes.hasAnnouncementHint` plus the indexed announcement lookup path.
 - Desktop Web first connection now uses a lightweight board snapshot (`/api/snapshot?scope=board`) and only loads full todos/events when the user opens the event timeline or explicitly requests the complete management view.
 - Main phone board/task UI uses a Room aggregate Flow for today's focus stats, active-todo-only observation, and today/tomorrow event range observation instead of merging full focus sessions, all todos, and full active events into ordinary board/task state.
 - Main phone board/task UI no longer carries the full Planning Desk note list; complete planning notes are collected only while the Planning Desk section is open.
-- Daily-board announcements on phone, Android widget, and desktop lightweight snapshot use an announcement-candidate planning-note query before strict parsing instead of reading every planning document.
+- Daily-board announcements on phone, Android widget, and desktop lightweight snapshot use the indexed `planning_notes.hasAnnouncementHint` candidate query before strict parsing instead of reading every planning document or scanning Markdown bodies with `LIKE`.
+- Planning-note backup / restore recomputes `hasAnnouncementHint` from Markdown content, so imported data does not preserve stale announcement-candidate state.
 - `AI 报告` uses paged Room queries by filter and limit; the archive no longer observes the full report history just to render the first page.
 - Calendar month/list/all-day surfaces reuse one top-level event-by-date index instead of rebuilding date buckets independently in each view.
 - Future large-history work can still add AI-report search/date-range filters and more granular desktop endpoints for separate todo/event/planning management screens.

@@ -53,7 +53,8 @@ class TodoApplication : Application() {
             DatabaseMigrations.MIGRATION_10_11,
             DatabaseMigrations.MIGRATION_11_12,
             DatabaseMigrations.MIGRATION_12_13,
-            DatabaseMigrations.MIGRATION_13_14
+            DatabaseMigrations.MIGRATION_13_14,
+            DatabaseMigrations.MIGRATION_14_15
         )
             .build()
     }

@@ -4,8 +4,8 @@
 
 ### In Progress
 
-- Verify version `1.9.15` on device after the no-DDL, desktop lightweight snapshot, main-state subscription split, planning-announcement narrow query, calendar-index reuse, AI-report paging, desktop-sync auto-shutdown, and AI-provider save-state changes
-- Keep `README.md`, `CHANGELOG.md`, Wiki, in-app help sheets, desktop-web help, and current-state docs aligned with version `1.9.15`
+- Verify version `1.9.16` on device after the no-DDL, desktop lightweight snapshot, main-state subscription split, indexed planning-announcement query, calendar-index reuse, AI-report paging, desktop-sync auto-shutdown, and AI-provider save-state changes
+- Keep `README.md`, `CHANGELOG.md`, Wiki, in-app help sheets, desktop-web help, and current-state docs aligned with version `1.9.16`
 - Continue planning-desk usability polish without expanding into drag/drop, Gantt, AI auto-planning, or complex project trees
 - Improve repo-native handoff so new sessions do not depend on long chat history
 
@@ -45,7 +45,7 @@
 - Reminder DDL 推迟 should accept positive minute increments, same-date clock input, and full date-time input, and should reject targets that are not later than the current DDL
 - Launch screen icon should use the transparent logo asset without a white square background
 - Input help question-mark buttons should open the correct syntax help beside reminder, batch, and snooze fields
-- In-app Wiki should describe the current 1.9.15 settings, reminder, calendar, planning-desk, announcement, widget, focus-mode, desktop daily board, AI report archive, desktop sync, and input syntax accurately
+- In-app Wiki should describe the current 1.9.16 settings, reminder, calendar, planning-desk, announcement, widget, focus-mode, desktop daily board, AI report archive, desktop sync, and input syntax accurately
 - In-app Wiki should keep a left navigation / right article layout on phone-sized screens
 - Daily board should show a separate completion message when today's schedule existed but all events have ended
 - Drawer header icon should stay visually circular and not expose a white rounded-rectangle launcher background
@@ -90,12 +90,12 @@
 - Desktop web system dark mode should be verified in a real browser for timeline cards, event cards, modal sheets, summary cards, tab buttons, sidebar cards, Planning Desk, and announcements.
 - Android desktop widget should be verified in system dark mode and after resizing; text should remain readable and refresh should show announcements, missed/today no-DDL todos, today schedule, and tomorrow board content.
 - Android desktop widget should be device-tested from the launcher widget picker after installing the current `1.9.10` debug APK: add widget, freely resize it, confirm the daily-board background/topbar/card visual direction, confirm the 4x5 default suggested size and static picker preview no longer look like a flat system list, confirm todo cards show group tag / notes / `⏰ DDL`, confirm in-progress schedule rows show the gold treatment, show announcements at the top followed by greeting / today todos / today schedules / tomorrow schedules, confirm todo-area click opens 我的任务, schedule-area click opens 日历, and confirm refresh after todo/event/planning-note changes.
-- No-DDL todos should be device-tested after installing `1.9.15`: new no-DDL todo from the normal editor and no-DDL todo imported from Planning Desk should both appear under 今日待办 on phone, Android widget, and desktop daily board, without enabling reminders or recurrence.
-- Settings -> AI 调用配置 should be device-tested after installing `1.9.15`: adding/editing/toggling/reordering/deleting a complete AI source should persist after leaving and reopening the page; incomplete enabled sources should show the required-field warning.
-- Desktop sync should be device-tested after installing `1.9.15`: enabling sync and not authenticating from desktop for 5 minutes should auto-disable the setting and stop the foreground service; authenticating with the correct token within 5 minutes should keep it running.
-- Desktop web should be device/browser-tested after installing `1.9.15`: first connection should show `看板轻量数据`, the daily board should render immediately, clicking 日程时间轴 or `加载完整待办 / 日程数据` should switch to full data, and todo/event create/edit/delete should refresh without losing the current tab.
-- AI 报告 should be device-tested after installing `1.9.15`: recent reports load first, filter tabs work, `加载更多` appends another page when at least 30 reports exist, and report notifications can still open older reports by ID.
-- Planning Desk announcements should be device-tested after installing `1.9.15`: ordinary board, Android widget, and desktop lightweight snapshot should still show active announcements even though they now read only announcement-candidate planning notes instead of all planning notes.
+- No-DDL todos should be device-tested after installing `1.9.16`: new no-DDL todo from the normal editor and no-DDL todo imported from Planning Desk should both appear under 今日待办 on phone, Android widget, and desktop daily board, without enabling reminders or recurrence.
+- Settings -> AI 调用配置 should be device-tested after installing `1.9.16`: adding/editing/toggling/reordering/deleting a complete AI source should persist after leaving and reopening the page; incomplete enabled sources should show the required-field warning.
+- Desktop sync should be device-tested after installing `1.9.16`: enabling sync and not authenticating from desktop for 5 minutes should auto-disable the setting and stop the foreground service; authenticating with the correct token within 5 minutes should keep it running.
+- Desktop web should be device/browser-tested after installing `1.9.16`: first connection should show `看板轻量数据`, the daily board should render immediately, clicking 日程时间轴 or `加载完整待办 / 日程数据` should switch to full data, and todo/event create/edit/delete should refresh without losing the current tab.
+- AI 报告 should be device-tested after installing `1.9.16`: recent reports load first, filter tabs work, `加载更多` appends another page when at least 30 reports exist, and report notifications can still open older reports by ID.
+- Planning Desk announcements should be device-tested after installing `1.9.16`: ordinary board, Android widget, and desktop lightweight snapshot should still show active announcements after upgrading through `MIGRATION_14_15`, because announcement candidates now use the indexed `hasAnnouncementHint` field instead of scanning every planning note body.
 - 专注模式 should be device-tested after installing `1.9.0`: long-press an active todo, start focus, pause/continue, abandon with confirmation, finish early, let countdown reach zero, extend once, complete, and confirm the daily-board focus minutes/statistics update.
 - 专注模式 settings should be device-tested after installing `1.9.0`: default duration 5-90 minutes, extension duration 1-30 minutes, keep-screen-on behavior, and the documented-only notification-suppression preference.
 - Desktop web Planning Desk should be tested from a real browser connected to the phone after installing `1.8.9`, including auto-save, `Ctrl+S`, `Ctrl+Enter`, select-all / clear-all, no-empty-import guard, the desktop Planning Desk help modal, document delete, editable preview, mixed reminder input, announcement syntax, parser edge cases, import marker write-back, and the mapping refresh/postpone/undo/conflict actions
@@ -107,9 +107,9 @@
 
 - Desktop web UI still needs a deeper phone-parity redesign for advanced event/todo editing beyond this bug-fix round
 - Planning Desk Phase 2 has added document search, editable preview, and automatic `#imported` marking. Later work can add Markdown highlighting, project views, drag-to-date/time, and AI-assisted decomposition only after the local workflow proves useful
-- Calendar still needs real-device smoothness verification and profiling for drag/add/edit/delete under very large event sets; `1.9.15` already reuses one date index across month/list/visible all-day surfaces and avoids loading the full active-event list on the daily board.
-- Desktop Web still needs deeper endpoint-level splitting for very large datasets; `1.9.15` already makes the first board load lightweight and defers full todos/events until the user opens timeline/event management, and board announcements no longer require loading all planning documents.
-- AI report archive now uses paged Room queries in `1.9.15`; future work can add search/date-range filters if the archive grows beyond what paging alone handles well.
+- Calendar still needs real-device smoothness verification and profiling for drag/add/edit/delete under very large event sets; `1.9.16` already reuses one date index across month/list/visible all-day surfaces and avoids loading the full active-event list on the daily board.
+- Desktop Web still needs deeper endpoint-level splitting for very large datasets; `1.9.16` already makes the first board load lightweight, defers full todos/events until the user opens timeline/event management, and makes board announcements use an indexed planning-note hint field.
+- AI report archive now uses paged Room queries in `1.9.16`; future work can add search/date-range filters if the archive grows beyond what paging alone handles well.
 - Lunar calendar support now covers display labels, minimal yearly same-lunar-date recurrence, compact event lunar start/end picking, and wheel-style todo lunar DDL picking; deeper edge-case verification remains pending
 - Android Emulator UI inspection can be used in a later visual QA round; `Pixel_8` AVD exists, but this round could not get a booted emulator listed by `adb devices` for install/screenshot verification
 - Continue improving reminder reliability across foreground / background / lock-screen scenarios

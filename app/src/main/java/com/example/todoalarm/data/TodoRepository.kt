@@ -129,7 +129,11 @@ class TodoRepository(
 
     suspend fun updatePlanningNoteContent(noteId: Long, contentMarkdown: String): PlanningNote? {
         val note = todoDao.getPlanningNote(noteId) ?: return null
-        val updated = note.copy(contentMarkdown = contentMarkdown, updatedAtMillis = System.currentTimeMillis())
+        val updated = note.copy(
+            contentMarkdown = contentMarkdown,
+            updatedAtMillis = System.currentTimeMillis(),
+            hasAnnouncementHint = PlanningAnnouncementParser.mightContainAnnouncement(contentMarkdown)
+        )
         todoDao.updatePlanningNote(updated)
         notifyItemsChanged()
         return updated

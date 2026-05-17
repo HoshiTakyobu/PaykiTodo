@@ -2,9 +2,9 @@
 
 ## Active Development Focus
 
-The current round is PaykiTodo `1.9.15` / `versionCode 209`.
+The current round is PaykiTodo `1.9.16` / `versionCode 210`.
 
-Primary goal: review the recent `1.9.11`-`1.9.13` experience and performance work, close obvious implementation gaps, and leave the repo in a verified state for user-side phone testing.
+Primary goal: review the recent `1.9.11`-`1.9.15` experience and performance work, close obvious implementation gaps, and leave the repo in a verified state for user-side phone testing.
 
 ## Completed In This Round
 
@@ -37,8 +37,14 @@ Primary goal: review the recent `1.9.11`-`1.9.13` experience and performance wor
    - phone board announcements use an announcement-hint planning-note Flow before strict announcement parsing.
    - Android widget and desktop `/api/snapshot` use the same announcement-hint query instead of reading all planning notes.
    - announcement-hint coverage is now unit-tested for common announcement forms and ordinary non-announcement planning text.
-8. Version metadata moved to `1.9.15` / `versionCode 209`.
-9. README / CHANGELOG / TODO / Wiki header / current docs are being synchronized for this `1.9.15` performance review pass.
+8. Added the `1.9.16` indexed Planning Desk announcement lookup:
+   - `planning_notes` now stores `hasAnnouncementHint`, computed from Markdown content.
+   - `MIGRATION_14_15` adds and backfills the hint field for existing planning notes.
+   - the announcement lookup index covers `archived`, `hasAnnouncementHint`, `updatedAtMillis`, and `createdAtMillis`.
+   - phone board, Android widget, and desktop lightweight snapshot announcement candidate queries now use the boolean hint instead of `LIKE` scanning full Markdown bodies.
+   - backup / restore and desktop planning-note JSON include the hint, while restore recomputes it from Markdown content.
+9. Version metadata moved to `1.9.16` / `versionCode 210`.
+10. README / CHANGELOG / TODO / Wiki header / current docs are being synchronized for this `1.9.16` performance review pass.
 
 ## Verification Completed This Round
 
@@ -49,8 +55,8 @@ Completed locally:
 3. `./gradlew.bat testDebugUnitTest` passed.
 4. `./gradlew.bat assembleDebug` passed.
 5. `git diff --check` passed.
-6. `app/build/outputs/apk/debug/output-metadata.json` reports `versionCode=209`, `versionName=1.9.15`, and `outputFile=PaykiTodo-1.9.15-debug.apk`.
-7. Emulator smoke on `emulator-5554` installed `app/build/outputs/apk/debug/PaykiTodo-1.9.15-debug.apk`, launched `com.paykitodo.app`, confirmed the Daily Board UI tree contained `每日看板` / `今日待办（0）` / `今日日程（0）` / `明天暂无日程`, and found no `FATAL EXCEPTION` in the checked logcat window.
+6. `app/build/outputs/apk/debug/output-metadata.json` reports `versionCode=210`, `versionName=1.9.16`, and `outputFile=PaykiTodo-1.9.16-debug.apk`.
+7. Emulator smoke on `emulator-5554` installed `app/build/outputs/apk/debug/PaykiTodo-1.9.16-debug.apk`, launched `com.paykitodo.app`, confirmed the Daily Board UI tree contained `每日看板` / `今日待办（0）` / `今日日程（0）` / `明天暂无日程`, and found no `FATAL EXCEPTION` in the checked logcat window.
 
 ## Verification Still Needed On Device / Browser
 
@@ -100,6 +106,7 @@ Completed locally:
 9. Added paged Room queries for `AI 报告` instead of full archive observation.
 10. Removed full Planning Desk note observation from ordinary board/task state; complete planning docs now load only in the Planning Desk section.
 11. Changed phone board, Android widget, and desktop lightweight snapshot announcements to use a planning-note announcement-hint query before strict parsing.
+12. Persisted Planning Desk announcement hints in `planning_notes.hasAnnouncementHint`, added a Room index and `MIGRATION_14_15`, and changed announcement candidate queries to use the indexed boolean instead of Markdown-body `LIKE` scans.
 
 Still recommended later:
 
@@ -109,9 +116,9 @@ Still recommended later:
 
 ## Immediate Practical Next Steps
 
-1. Install and test `app/build/outputs/apk/debug/PaykiTodo-1.9.15-debug.apk` on the physical phone.
+1. Install and test `app/build/outputs/apk/debug/PaykiTodo-1.9.16-debug.apk` on the physical phone.
 2. Focus physical-device verification on no-DDL todos, Android widget refresh, desktop-sync auto-close, real-provider AI source editing, AI report paging, and OEM reminder behavior.
-3. If another performance pass is started, prioritize removing full Planning Desk note observation from ordinary board/task state and splitting desktop management endpoints beyond the current lightweight board snapshot.
+3. If another performance pass is started, prioritize splitting desktop management endpoints beyond the current lightweight board snapshot and profiling calendar drag/add/edit/delete on a real device with large datasets.
 4. Do not push unless the user explicitly asks.
 
 ## Commit Message Rule

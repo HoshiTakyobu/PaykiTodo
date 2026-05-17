@@ -355,7 +355,7 @@ internal fun DashboardBody(
     padding: PaddingValues,
     uiState: TodoUiState,
     planningNotes: StateFlow<List<PlanningNote>>,
-    observeAiReports: (AiReportType?, Int) -> Flow<List<AiReport>>,
+    observeAiReports: (AiReportType?, Int, String, Long, Long) -> Flow<List<AiReport>>,
     onGetAiReport: suspend (Long) -> AiReport?,
     historyItems: StateFlow<List<TodoItem>>,
     calendarItems: StateFlow<List<TodoItem>>,

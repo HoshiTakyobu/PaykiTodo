@@ -350,6 +350,12 @@ object DatabaseMigrations {
         }
     }
 
+    val MIGRATION_15_16 = object : Migration(15, 16) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            createDesktopAndReportIndexes(db)
+        }
+    }
+
     private fun rebuildPlanningNotesTable(db: SupportSQLiteDatabase) {
         db.execSQL("DROP TABLE IF EXISTS `planning_notes_room_expected`")
         createPlanningNotesTable(db, "planning_notes_room_expected")
@@ -419,6 +425,27 @@ object DatabaseMigrations {
         db.execSQL("CREATE INDEX IF NOT EXISTS `index_todo_items_active_reminders` ON `todo_items` (`completed`, `canceled`, `reminderEnabled`, `dueAtMillis`)")
         db.execSQL("CREATE INDEX IF NOT EXISTS `index_todo_items_group_due` ON `todo_items` (`groupId`, `dueAtMillis`)")
         db.execSQL("CREATE INDEX IF NOT EXISTS `index_todo_items_series_due` ON `todo_items` (`recurringSeriesId`, `dueAtMillis`)")
+    }
+
+    private fun createDesktopAndReportIndexes(db: SupportSQLiteDatabase) {
+        db.execSQL(
+            """
+            CREATE INDEX IF NOT EXISTS `index_todo_items_desktop_todo_paging`
+            ON `todo_items` (`itemType`, `completed`, `canceled`, `missed`, `dueAtMillis`, `createdAtMillis`)
+            """.trimIndent()
+        )
+        db.execSQL(
+            """
+            CREATE INDEX IF NOT EXISTS `index_ai_reports_type_generated_id`
+            ON `ai_reports` (`type`, `generatedAtMillis`, `id`)
+            """.trimIndent()
+        )
+        db.execSQL(
+            """
+            CREATE INDEX IF NOT EXISTS `index_ai_reports_generated_id`
+            ON `ai_reports` (`generatedAtMillis`, `id`)
+            """.trimIndent()
+        )
     }
 
     private fun ensurePlanningAnnouncementHintColumn(db: SupportSQLiteDatabase) {

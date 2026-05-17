@@ -123,7 +123,7 @@ This file tracks the product at a practical level for new coding sessions.
 - report generation tries enabled Planning Desk AI providers in order through `PlanningAiCaller.callWithFallback`; if AI is disabled or fails, a local template still generates a usable report
 - reports are stored in the independent Room `ai_reports` archive rather than Planning Desk notes; the drawer exposes `AI 报告` after `规划台`
 - upgraded installs migrate legacy Planning Desk `AI 日报` / `AI 周报` note entries into `ai_reports`, delete the old report notes, and clear `lastOpenedPlanningNoteId` if it pointed to a removed report note
-- `AI 报告` supports all / daily / weekly filters, card previews, full detail viewing, local-fallback/source pills, empty-state guidance, and delete confirmation from long press or detail view
+- `AI 报告` supports keyword search, all / daily / weekly filters, all-time / recent-7 / recent-30 / recent-90-day range filters, card previews, full detail viewing, local-fallback/source pills, empty-state guidance, and delete confirmation from long press or detail view
 - report notifications use a low-priority `ai_report_channel`, skip posting if Android 13+ notification permission is missing, and deep-link to the matching AI report detail
 - `DailyReportScheduler` schedules daily and Sunday weekly report alarms, cancels disabled schedules, and is invoked on app startup plus boot/time/timezone recovery; it uses exact alarms when allowed and safely falls back to system-allowed idle scheduling when exact-alarm permission is missing
 - backup / restore snapshots include `aiReports`, so exported JSON preserves report history
@@ -237,6 +237,7 @@ This file tracks the product at a practical level for new coding sessions.
 - desktop web `/api/snapshot` includes active Planning Desk announcements and the browser console renders them as a top orange announcement banner
 - desktop web `/api/snapshot` includes a phone-derived `todayBoard` payload, and the browser first tab is now a daily-board view with current/next item, today focus stats, today todos, today schedule, tomorrow schedule, ended-event filtering, and in-progress gold highlighting above the full todo timeline
 - desktop web `/api/snapshot` reuses the groups already loaded in the snapshot JSON path instead of issuing a second Room group read for group-name/color mapping
+- desktop sync server uses bounded client handling and byte-length request-body parsing, so abnormal LAN clients cannot grow threads without bound and Chinese long Planning Desk saves are not truncated by UTF-8 character/byte mismatch
 - desktop web first connection keeps using the lightweight `/api/snapshot?scope=board` daily-board payload, while todo management now loads through paged/searchable `/api/todos?offset=...&limit=...&q=...` only when requested
 - desktop web calendar timeline now loads only the visible date range through `/api/events?start=...&end=...`, and stale event-range responses are ignored when the user switches dates quickly
 - desktop web todo / event mutations and Planning Desk import / refresh / undo paths refresh the current page's needed data instead of reloading one complete snapshot after every operation
@@ -253,16 +254,16 @@ This file tracks the product at a practical level for new coding sessions.
 
 ### Data / Performance
 
-- `todo_items` has Room indices for board todo queries, board event range queries, active reminders, group+DDL sorting, and recurring-series lookup.
-- Database version is `15`; `MIGRATION_13_14` creates the `todo_items` performance indices on upgraded installs, and `MIGRATION_14_15` adds / backfills `planning_notes.hasAnnouncementHint` plus the indexed announcement lookup path.
+- `todo_items` has Room indices for board todo queries, board event range queries, active reminders, group+DDL sorting, recurring-series lookup, and desktop todo paging / sorting.
+- Database version is `16`; `MIGRATION_13_14` creates the initial `todo_items` performance indices on upgraded installs, `MIGRATION_14_15` adds / backfills `planning_notes.hasAnnouncementHint` plus the indexed announcement lookup path, and `MIGRATION_15_16` adds desktop todo paging plus AI-report generated-time/type indices.
 - Desktop Web first connection now uses a lightweight board snapshot (`/api/snapshot?scope=board`); todo management uses paged/searchable `/api/todos?offset=...&limit=...&q=...`, and the event timeline uses visible-range `/api/events?start=...&end=...` instead of sharing one full snapshot for every management tab.
 - Main phone board/task UI uses a Room aggregate Flow for today's focus stats, active-todo-only observation, and today/tomorrow event range observation instead of merging full focus sessions, all todos, and full active events into ordinary board/task state.
 - Main phone board/task UI no longer carries the full Planning Desk note list; complete planning notes are collected only while the Planning Desk section is open.
 - Daily-board announcements on phone, Android widget, and desktop lightweight snapshot use the indexed `planning_notes.hasAnnouncementHint` candidate query before strict parsing instead of reading every planning document or scanning Markdown bodies with `LIKE`.
 - Planning-note backup / restore recomputes `hasAnnouncementHint` from Markdown content, so imported data does not preserve stale announcement-candidate state.
-- `AI 报告` uses paged Room queries by filter and limit; the archive no longer observes the full report history just to render the first page.
-- Calendar month/list/all-day surfaces reuse one top-level event-by-date index instead of rebuilding date buckets independently in each view.
-- Future large-history work can still add AI-report search/date-range filters and real-device calendar profiling; the biggest desktop full-snapshot coupling has been split, and desktop todo management now pages/searches `/api/todos` instead of returning the complete todo list by design.
+- `AI 报告` uses paged Room queries by type, keyword, time range, and limit; the archive no longer observes the full report history just to render or filter the first page.
+- Calendar month/list/all-day surfaces reuse one top-level event-by-date index instead of rebuilding date buckets independently in each view; the timeline date span is represented by a lightweight date window instead of allocating a full long-range date list.
+- Future large-history work can still add real FTS for report content search and real-device calendar profiling; the biggest desktop full-snapshot coupling has been split, and desktop todo management now pages/searches `/api/todos` instead of returning the complete todo list by design.
 
 ## Implemented But Still Being Polished
 

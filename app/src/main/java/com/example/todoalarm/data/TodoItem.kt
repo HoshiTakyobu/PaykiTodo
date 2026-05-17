@@ -30,6 +30,10 @@ import java.time.ZoneId
         Index(
             value = ["recurringSeriesId", "dueAtMillis"],
             name = "index_todo_items_series_due"
+        ),
+        Index(
+            value = ["itemType", "completed", "canceled", "missed", "dueAtMillis", "createdAtMillis"],
+            name = "index_todo_items_desktop_todo_paging"
         )
     ]
 )

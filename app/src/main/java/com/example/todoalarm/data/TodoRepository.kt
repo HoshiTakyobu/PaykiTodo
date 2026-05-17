@@ -31,6 +31,31 @@ class TodoRepository(
     fun observeAiReportsByType(type: AiReportType, limit: Int): Flow<List<AiReport>> {
         return todoDao.observeAiReportsByType(type, limit)
     }
+    fun observeAiReportsFiltered(
+        type: AiReportType?,
+        query: String,
+        startMillis: Long,
+        endMillis: Long,
+        limit: Int
+    ): Flow<List<AiReport>> {
+        val safeQuery = query.trim()
+        return if (type == null) {
+            todoDao.observeAiReportsFiltered(
+                query = safeQuery,
+                startMillis = startMillis,
+                endMillis = endMillis,
+                limit = limit
+            )
+        } else {
+            todoDao.observeAiReportsFilteredByType(
+                type = type,
+                query = safeQuery,
+                startMillis = startMillis,
+                endMillis = endMillis,
+                limit = limit
+            )
+        }
+    }
     fun observeRecentReminderChainLogs(limit: Int = 80): Flow<List<ReminderChainLog>> {
         return todoDao.observeRecentReminderChainLogs(limit)
     }

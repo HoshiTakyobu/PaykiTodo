@@ -13,7 +13,15 @@ enum class AiReportType {
     tableName = "ai_reports",
     indices = [
         Index("generatedAtMillis"),
-        Index("type")
+        Index("type"),
+        Index(
+            value = ["type", "generatedAtMillis", "id"],
+            name = "index_ai_reports_type_generated_id"
+        ),
+        Index(
+            value = ["generatedAtMillis", "id"],
+            name = "index_ai_reports_generated_id"
+        )
     ]
 )
 data class AiReport(

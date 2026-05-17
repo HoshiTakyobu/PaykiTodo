@@ -6,13 +6,13 @@ Long-running Codex sessions can become unreliable. This file exists so a new ses
 
 ## Current Handoff Summary
 
-- The project is now being advanced to `1.9.18` / `versionCode 212`.
+- The project is now being advanced to `1.9.19` / `versionCode 213`.
 - Main user request: review the recent `1.9.11`+ experience / performance work, identify remaining user-facing issues, and implement practical performance improvements where safe.
-- This continuation keeps the no-DDL, widget, desktop lightweight snapshot, AI-provider save-state, calendar-index, phone screen-scoped subscription, Planning Desk parser threading, AI-report paging, and Planning Desk announcement indexing baseline, then finishes desktop todo pagination/search and removes leftover launcher-widget focus-card artifacts.
-- Latest debug APK after packaging: `app/build/outputs/apk/debug/PaykiTodo-1.9.18-debug.apk`.
+- This continuation keeps the no-DDL, widget, desktop lightweight snapshot, AI-provider save-state, calendar-index, phone screen-scoped subscription, Planning Desk parser threading, AI-report paging, and Planning Desk announcement indexing baseline, then hardens desktop-sync serving, adds AI-report search/type/range filtering, reduces calendar date-window allocation, and adds database indices for desktop todo paging plus AI-report filtering.
+- Latest debug APK after packaging: `app/build/outputs/apk/debug/PaykiTodo-1.9.19-debug.apk`.
 - Do not push to GitHub unless the user explicitly asks.
 
-## Latest 1.9.18 Review / Performance Pass
+## Latest 1.9.19 Review / Performance Pass
 
 1. Desktop Web first connection still calls `/api/snapshot?scope=board` so the browser can show the daily board without transferring all todos/events/planning data first.
 2. Desktop Web todo management now loads through `GET /api/todos?offset=...&limit=...&q=...` when the user clicks `加载待办管理列表`, searches, or loads more.
@@ -24,7 +24,14 @@ Long-running Codex sessions can become unreliable. This file exists so a new ses
 8. Android widget runtime no longer has a `FOCUS` row type or `focusViews` branch.
 9. Android widget picker preview no longer shows `今日已专注` / `自由专注`.
 10. Android widget no longer hard-caps visible today todos at six rows; it relies on the broader overall row cap.
-11. `planning_notes.hasAnnouncementHint` remains persisted and indexed through database version 15; `1.9.18` does not change the database schema.
+11. `planning_notes.hasAnnouncementHint` remains persisted and indexed; database version is now 16.
+12. Desktop sync server now uses one accept thread plus a bounded client pool instead of an unbounded cached thread pool.
+13. Desktop sync HTTP requests are read by byte `Content-Length`, fixing UTF-8 Chinese long-body truncation risks in desktop Planning Desk save/import flows.
+14. Desktop sync handles `OPTIONS` preflight before authorization and returns explicit 400/413 JSON errors for malformed or oversized requests.
+15. `AI 报告` archive now supports keyword search, type dropdown, and all-time / recent-7 / recent-30 / recent-90-day range filters.
+16. AI report filtering is pushed into Room queries, with separate typed/untyped paths to preserve better index use.
+17. Calendar timeline uses a lightweight date window rather than allocating the whole long date list and date-index map.
+18. `MIGRATION_15_16` adds `index_todo_items_desktop_todo_paging`, `index_ai_reports_type_generated_id`, and `index_ai_reports_generated_id`.
 
 ## Verification Status
 
@@ -33,13 +40,13 @@ Completed locally in this continuation:
 1. `node --check app/src/main/assets/desktop-web/app.js` passed.
 2. `./gradlew.bat :app:compileDebugKotlin testDebugUnitTest assembleDebug` passed.
 3. `git diff --check` passed.
-4. `app/build/outputs/apk/debug/output-metadata.json` reports `versionCode=212`, `versionName=1.9.18`, and `outputFile=PaykiTodo-1.9.18-debug.apk`.
+4. `app/build/outputs/apk/debug/output-metadata.json` reports `versionCode=213`, `versionName=1.9.19`, and `outputFile=PaykiTodo-1.9.19-debug.apk`.
 
-No `1.9.18` emulator smoke was run in this continuation. The latest recorded emulator smoke remains the previous `1.9.17` app-launch check on `emulator-5554`.
+No `1.9.19` emulator smoke was run in this continuation. The latest recorded emulator smoke remains the previous `1.9.17` app-launch check on `emulator-5554`.
 
 ## Remaining Device / Browser Verification
 
-1. Install `app/build/outputs/apk/debug/PaykiTodo-1.9.18-debug.apk` on the physical phone.
+1. Install `app/build/outputs/apk/debug/PaykiTodo-1.9.19-debug.apk` on the physical phone.
 2. Browser-test desktop todo pagination/search:
    - initial connect shows `看板轻量数据`;
    - `加载待办管理列表` requests `/api/todos?offset=0&limit=80`;
@@ -60,11 +67,13 @@ No `1.9.18` emulator smoke was run in this continuation. The latest recorded emu
 6. Verify desktop sync auto-disables after 5 minutes if no authorized desktop connection occurs, and stays enabled if the browser connects with the correct token within 5 minutes.
 7. Verify Settings -> AI 调用配置 provider changes persist after leaving/reopening the page and real `/models` discovery still behaves correctly.
 8. Verify active Planning Desk announcements still appear on phone board, Android widget, and desktop daily board after upgrading through `MIGRATION_14_15`.
-9. Do not push unless the user explicitly asks.
+9. Verify desktop Planning Desk can save a long Chinese document without body truncation.
+10. Verify `AI 报告` search/type/range filters with enough real reports.
+11. Do not push unless the user explicitly asks.
 
 ## Performance Notes
 
-Fixed locally across `1.9.12`-`1.9.18`:
+Fixed locally across `1.9.12`-`1.9.19`:
 
 1. Added `todo_items` indices for high-frequency board/reminder/group/recurrence queries.
 2. Removed duplicate group reads from desktop `/api/snapshot`.
@@ -79,12 +88,15 @@ Fixed locally across `1.9.12`-`1.9.18`:
 11. Changed phone board, widget, and desktop board announcements to query only indexed announcement-candidate planning notes before parsing.
 12. Split desktop Web management reads into lightweight board snapshot, paged/searchable todo endpoint, and visible-range event endpoint.
 13. Removed remaining widget focus-card runtime and picker-preview artifacts.
+14. Bounded desktop sync client handling and fixed UTF-8 body reading by byte length.
+15. Added AI-report keyword/type/range query pushdown and matching Room indices.
+16. Replaced calendar timeline date-list allocation with a lightweight date window.
 
 Worth doing later:
 
-1. Add AI-report search/date-range filters if the archive becomes too large for simple paging.
-2. Profile calendar drag/add/edit/delete on a real device with a large event set.
-3. Browser-profile desktop todo pagination/search with a large real database to tune page size and indexing if needed.
+1. Profile calendar drag/add/edit/delete on a real device with a large event set.
+2. Browser-profile desktop todo pagination/search with a large real database to tune page size and indexing if needed.
+3. Consider FTS for AI-report content only if keyword search becomes slow with real large archives.
 4. Consider moving desktop Web source to a separate source/build folder only if the static asset grows too large to maintain directly under `app/src/main/assets/desktop-web/`.
 
 ## Files Most Relevant To This Round
@@ -95,7 +107,15 @@ Worth doing later:
 - `app/src/main/assets/wiki/index.html`
 - `app/src/main/java/com/example/todoalarm/data/TodoDao.kt`
 - `app/src/main/java/com/example/todoalarm/data/TodoRepository.kt`
+- `app/src/main/java/com/example/todoalarm/data/AppDatabase.kt`
+- `app/src/main/java/com/example/todoalarm/data/DatabaseMigrations.kt`
+- `app/src/main/java/com/example/todoalarm/data/AiReport.kt`
+- `app/src/main/java/com/example/todoalarm/data/TodoItem.kt`
+- `app/src/main/java/com/example/todoalarm/sync/DesktopSyncServer.kt`
 - `app/src/main/java/com/example/todoalarm/sync/DesktopSyncCoordinator.kt`
+- `app/src/main/java/com/example/todoalarm/ui/AiReportPanel.kt`
+- `app/src/main/java/com/example/todoalarm/ui/CalendarPanel.kt`
+- `app/src/test/java/com/example/todoalarm/sync/DesktopSyncServerTest.kt`
 - `app/src/main/java/com/example/todoalarm/widget/TodoWidgetService.kt`
 - `app/src/main/res/layout/widget_todo_preview.xml`
 - `README.md`

@@ -90,7 +90,7 @@ private enum class EditorKind {
 fun DashboardScreen(
     uiState: TodoUiState,
     planningNotes: StateFlow<List<PlanningNote>>,
-    observeAiReports: (AiReportType?, Int) -> Flow<List<AiReport>>,
+    observeAiReports: (AiReportType?, Int, String, Long, Long) -> Flow<List<AiReport>>,
     onGetAiReport: suspend (Long) -> AiReport?,
     historyItems: StateFlow<List<TodoItem>>,
     calendarItems: StateFlow<List<TodoItem>>,

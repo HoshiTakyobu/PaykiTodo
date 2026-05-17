@@ -7,21 +7,21 @@
 - Package name: `com.paykitodo.app`
 - Target platform: Android 14 / API 34
 - Current version in code:
-  - `versionName = "1.9.18"`
-  - `versionCode = 212`
+  - `versionName = "1.9.19"`
+  - `versionCode = 213`
 
 ## Current Build Facts
 
 - Latest debug APK output after this round is:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.9.18-debug.apk`
-- Verification completed for the final `1.9.18` rebuild:
+  - `app/build/outputs/apk/debug/PaykiTodo-1.9.19-debug.apk`
+- Verification completed for the final `1.9.19` rebuild:
   - `node --check app/src/main/assets/desktop-web/app.js`
   - `./gradlew.bat :app:compileDebugKotlin`
   - `./gradlew.bat testDebugUnitTest`
   - `./gradlew.bat assembleDebug`
   - `git diff --check`
-  - `output-metadata.json` reports `versionCode=212`, `versionName=1.9.18`, `outputFile=PaykiTodo-1.9.18-debug.apk`
-- Latest emulator smoke recorded in docs (historical; not rerun for `1.9.18`):
+  - `output-metadata.json` reports `versionCode=213`, `versionName=1.9.19`, `outputFile=PaykiTodo-1.9.19-debug.apk`
+- Latest emulator smoke recorded in docs (historical; not rerun for `1.9.19`):
   - device id: `emulator-5554`
   - installed APK: `app/build/outputs/apk/debug/PaykiTodo-1.9.17-debug.apk`
   - checked: app launch, Daily Board UI tree, logcat fatal-crash scan
@@ -36,12 +36,12 @@
 
 ## Current Worktree Reality
 
-The repository is now being advanced to `1.9.18`. It carries forward the `1.9.12` / `1.9.13` no-DDL, widget, desktop lightweight snapshot, and calendar-index fixes, adds the `1.9.14` phone-side screen-scoped subscriptions / Planning Desk parser threading / paged AI-report archive loading, removes full Planning Desk note observation from ordinary board/task state in `1.9.15`, persists Planning Desk announcement hint state in `1.9.16`, splits desktop Web todo / event management data into narrower `1.9.17` endpoints, and then makes desktop todo management paged/searchable plus removes remaining launcher-widget focus-card remnants in `1.9.18`.
+The repository is now being advanced to `1.9.19`. It carries forward the `1.9.12`-`1.9.18` no-DDL, widget, desktop lightweight snapshot, desktop paged/searchable todo management, and screen-scoped subscription baseline, then hardens the desktop sync HTTP server, adds AI-report keyword/type/range filtering, reduces calendar date-window allocation, and adds database indices for the new report / desktop paging query paths.
 
 Most important current baseline facts:
 
-- version metadata is `1.9.18 / 212`
-- Database version is `15`; `MIGRATION_13_14` creates `todo_items` indices for board, reminder, group, and recurrence lookup paths, and `MIGRATION_14_15` adds / backfills `planning_notes.hasAnnouncementHint` plus the `archived + hasAnnouncementHint + updatedAtMillis + createdAtMillis` lookup index.
+- version metadata is `1.9.19 / 213`
+- Database version is `16`; `MIGRATION_13_14` creates `todo_items` indices for board, reminder, group, and recurrence lookup paths, `MIGRATION_14_15` adds / backfills `planning_notes.hasAnnouncementHint` plus the `archived + hasAnnouncementHint + updatedAtMillis + createdAtMillis` lookup index, and `MIGRATION_15_16` adds desktop todo paging plus AI-report generated-time/type indices.
 - `MIGRATION_12_13` remains the migration that creates `ai_reports`.
 - Active no-DDL todos are treated as today todos across phone daily board, Android widget board query, desktop daily board, and desktop todo management. They remain reminder-disabled and recurrence-disabled until the user adds a DDL.
 - A unit test now confirms no-DDL active todos remain in `今日待办` across later dates, not only on the creation day.
@@ -54,13 +54,14 @@ Most important current baseline facts:
 - Phone ordinary board/task `TodoUiState` now observes active todos through a dedicated active-todo Flow instead of the full `todo_items` table.
 - Phone daily board now observes only today/tomorrow-range active events, while the full active calendar event list is collected only when the Calendar page is open.
 - History todos, schedule templates, and reminder-chain diagnostics are collected only from their owning pages (`历史记录`, `日历`, and `设置`) rather than being merged into ordinary board/task state.
-- Full AI report history is no longer merged into ordinary `TodoUiState`; `AI 报告` now uses paged Room queries by filter and limit, and notification deep links can still fetch a target report by ID.
+- Full AI report history is no longer merged into ordinary `TodoUiState`; `AI 报告` now uses paged Room queries by keyword, type, time range, and limit, and notification deep links can still fetch a target report by ID.
 - Full Planning Desk notes are no longer merged into ordinary `TodoUiState`; the complete planning-note Flow is collected only while the `规划台` page is open.
 - Daily-board announcements in phone UI, Android widget, and desktop `/api/snapshot` use an indexed `hasAnnouncementHint` planning-note query instead of loading every unarchived planning document or scanning Markdown bodies with `LIKE`.
 - Planning Desk local-rule recognition runs on `Dispatchers.Default`; AI failure fallback to local parsing also avoids occupying the Compose main thread for long documents.
-- Calendar month view, agenda/list view, and visible all-day rows reuse one top-level event-by-date index instead of rebuilding date buckets independently.
+- Calendar month view, agenda/list view, and visible all-day rows reuse one top-level event-by-date index instead of rebuilding date buckets independently; the timeline date span now uses a lightweight date window instead of allocating a full long-range date list and map.
 - Planning Desk local parsing recognizes plain bullets (`- item`, `* item`, `• item`) as no-DDL todo candidates and shows an explicit preview message when doing so.
 - Desktop sync records the first authorized API request as a real desktop connection. If no authorized client connects within 5 minutes after enabling sync, `DesktopSyncService` disables the setting and stops the local server / foreground service.
+- Desktop sync serving uses bounded client threads, handles CORS preflight directly, and reads HTTP request bodies by byte length so Chinese UTF-8 planning documents are not truncated during desktop save / import requests.
 - Settings -> `电脑同步` explains both the multi-IP address meaning and the 5-minute no-authorized-client auto-close behavior.
 - Settings -> `AI 调用配置` provider rows use summary cards with visible enable switches and a compact more menu for edit / reorder / delete.
 - Settings -> `AI 调用配置` auto-saves valid provider changes after add/edit/toggle/reorder/delete where possible and shows an in-page warning when enabled providers are incomplete or current edits are not saved.
@@ -70,17 +71,18 @@ Most important current baseline facts:
 
 Recent code inspection and build verification cover:
 
-- `TodoDao.kt`, `TodoRepository.kt`, `PlanningNote.kt`, `DatabaseMigrations.kt`, `BackupManager.kt`, `FocusSession.kt`, `TodoViewModel.kt`: today focus aggregate, indexed announcement-hint planning-note query, no-DDL board range, midnight-sensitive today classification, and planning-note hint migration / backup behavior.
+- `TodoDao.kt`, `TodoRepository.kt`, `PlanningNote.kt`, `DatabaseMigrations.kt`, `BackupManager.kt`, `FocusSession.kt`, `TodoViewModel.kt`: today focus aggregate, indexed announcement-hint planning-note query, no-DDL board range, midnight-sensitive today classification, planning-note hint migration / backup behavior, AI report filtered queries, and database 15 -> 16 performance-index migration.
 - `DesktopSyncCoordinator.kt`, `DesktopSyncModels.kt`, `app/src/main/assets/desktop-web/app.js`, `index.html`: lightweight board snapshot, paged/searchable `/api/todos`, visible-range `/api/events`, and current-page refresh after desktop mutations.
-- `DashboardChrome.kt`, `DashboardScreen.kt`, `MainActivity.kt`, `AiReportPanel.kt`: AI report loading and full Planning Desk note loading moved out of ordinary UI state.
-- `CalendarPanel.kt`: shared event-by-date index across calendar surfaces.
+- `DashboardChrome.kt`, `DashboardScreen.kt`, `MainActivity.kt`, `AiReportPanel.kt`: AI report loading and full Planning Desk note loading moved out of ordinary UI state; AI report archive now exposes keyword / type / time-range filters.
+- `CalendarPanel.kt`: shared event-by-date index across calendar surfaces plus lightweight date-window indexing for the long timeline span.
+- `DesktopSyncServer.kt`, `DesktopSyncServerTest.kt`: bounded client serving, byte-length UTF-8 body reading, preflight handling, and malformed/oversized request errors.
 - `DailyBoardSnapshotBuilderTest.kt`: no-DDL todo stays in today's todo list across later dates.
 - `PlanningAnnouncementParserTest.kt`: announcement-hint helper covers common announcement entry forms without matching ordinary planning text, and `PlanningNote` defaults compute `hasAnnouncementHint` from content.
-- `README.md`, `CHANGELOG.md`, `TODO.md`, `docs/current/*`, Wiki header: `1.9.18` status synchronization.
+- `README.md`, `CHANGELOG.md`, `TODO.md`, `docs/current/*`, Wiki header: `1.9.19` status synchronization.
 
 ## Documentation Health
 
-Current docs are being synchronized for `1.9.18`:
+Current docs are being synchronized for `1.9.19`:
 
 - `README.md`
 - `CHANGELOG.md`
@@ -104,7 +106,7 @@ Older versioned docs under `docs/` remain historical references and should not b
 5. Unit tests cover parser / AI / line-matching / no-DDL board behavior, but there are still no dedicated repository-level automated tests for Planning Desk refresh/postpone/undo/conflict flows.
 6. 专注模式 still needs broader real-device verification for haptics, screen-on behavior, countdown extension, save-before-exit persistence, and daily-board stat refresh beyond the emulator free-focus path already exercised.
 7. AI 日报 / 周报 physical-device verification is still recommended for OEM alarm policies and reboot/time-change recovery.
-8. Very large datasets may still require AI-report search/date-range filters, deeper desktop browser profiling, and real-device calendar profiling; desktop todo management now has first-pass pagination/search.
+8. Very large datasets may still require full-text AI-report search, deeper desktop browser profiling, and real-device calendar profiling; desktop todo management now has first-pass pagination/search and query-path indexing.
 9. Long-running chat sessions can become unreliable, so repository docs must remain the source of truth for future continuation.
 
 ## How A New Session Should Start

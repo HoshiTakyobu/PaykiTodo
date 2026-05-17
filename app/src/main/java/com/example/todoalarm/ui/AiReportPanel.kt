@@ -4,6 +4,7 @@ import android.widget.Toast
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -19,15 +20,20 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Delete
+import androidx.compose.material.icons.rounded.ExpandMore
 import androidx.compose.material.icons.rounded.Insights
+import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -53,6 +59,7 @@ import com.example.todoalarm.data.AiReportType
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.launch
 import java.time.Instant
+import java.time.LocalDate
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
@@ -65,23 +72,37 @@ private enum class AiReportFilter(val label: String, val type: AiReportType?) {
     WEEKLY("周报", AiReportType.WEEKLY)
 }
 
+private enum class AiReportRangeFilter(val label: String, val days: Long?) {
+    ALL("全部时间", null),
+    LAST_7("近 7 天", 7),
+    LAST_30("近 30 天", 30),
+    LAST_90("近 90 天", 90)
+}
+
 @OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
 @Composable
 internal fun AiReportPanel(
-    observeReports: (AiReportType?, Int) -> Flow<List<AiReport>>,
+    observeReports: (AiReportType?, Int, String, Long, Long) -> Flow<List<AiReport>>,
     onGetReport: suspend (Long) -> AiReport?,
     targetReportId: Long?,
     targetReportSerial: Int,
     onDeleteReport: suspend (Long) -> String?
 ) {
     var filter by rememberSaveable { mutableStateOf(AiReportFilter.ALL) }
+    var rangeFilter by rememberSaveable { mutableStateOf(AiReportRangeFilter.ALL) }
+    var query by rememberSaveable { mutableStateOf("") }
     var limit by rememberSaveable { mutableStateOf(AiReportPageSize) }
     var selectedReport by remember { mutableStateOf<AiReport?>(null) }
     var pendingDelete by remember { mutableStateOf<AiReport?>(null) }
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
-    val reportFlow = remember(filter, limit) {
-        observeReports(filter.type, limit)
+    val zone = ZoneId.systemDefault()
+    val rangeBounds = remember(rangeFilter) {
+        aiReportRangeBounds(rangeFilter, zone)
+    }
+    val safeQuery = query.trim()
+    val reportFlow = remember(filter, rangeFilter, safeQuery, limit) {
+        observeReports(filter.type, limit, safeQuery, rangeBounds.first, rangeBounds.second)
     }
     val reports by reportFlow.collectAsStateWithLifecycle(initialValue = emptyList())
 
@@ -110,13 +131,47 @@ internal fun AiReportPanel(
             )
         }
 
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            AiReportFilter.entries.forEach { option ->
-                AiReportFilterPill(
-                    label = option.label,
-                    selected = filter == option,
-                    onClick = {
-                        filter = option
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            OutlinedTextField(
+                value = query,
+                onValueChange = {
+                    query = it.take(80)
+                    limit = AiReportPageSize
+                },
+                modifier = Modifier.fillMaxWidth(),
+                leadingIcon = { Icon(Icons.Rounded.Search, contentDescription = null) },
+                trailingIcon = {
+                    if (query.isNotBlank()) {
+                        TextButton(
+                            onClick = {
+                                query = ""
+                                limit = AiReportPageSize
+                            }
+                        ) {
+                            Text("清空")
+                        }
+                    }
+                },
+                singleLine = true,
+                shape = RoundedCornerShape(18.dp),
+                placeholder = { Text("搜索报告正文或来源") }
+            )
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                AiReportDropdown(
+                    label = filter.label,
+                    options = AiReportFilter.entries,
+                    optionLabel = { it.label },
+                    onSelect = {
+                        filter = it
+                        limit = AiReportPageSize
+                    }
+                )
+                AiReportDropdown(
+                    label = rangeFilter.label,
+                    options = AiReportRangeFilter.entries,
+                    optionLabel = { it.label },
+                    onSelect = {
+                        rangeFilter = it
                         limit = AiReportPageSize
                     }
                 )
@@ -125,7 +180,11 @@ internal fun AiReportPanel(
 
         if (reports.isEmpty()) {
             EmptyStateCard(
-                "还没有生成过 AI 报告。可以在 设置 → AI 调用配置 → AI 日报 / 周报 中开启自动生成或立即生成。"
+                if (safeQuery.isBlank() && filter == AiReportFilter.ALL && rangeFilter == AiReportRangeFilter.ALL) {
+                    "还没有生成过 AI 报告。可以在 设置 → AI 调用配置 → AI 日报 / 周报 中开启自动生成或立即生成。"
+                } else {
+                    "没有匹配的 AI 报告。可以放宽关键词、类型或时间范围。"
+                }
             )
         } else {
             LazyColumn(
@@ -150,7 +209,7 @@ internal fun AiReportPanel(
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         Text(
-                            text = "已加载 ${reports.size} 条报告",
+                            text = "已加载 ${reports.size} 条报告 · ${filter.label} · ${rangeFilter.label}",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -212,23 +271,52 @@ internal fun AiReportPanel(
 }
 
 @Composable
-private fun AiReportFilterPill(
+private fun <T> AiReportDropdown(
     label: String,
-    selected: Boolean,
-    onClick: () -> Unit
+    options: List<T>,
+    optionLabel: (T) -> String,
+    onSelect: (T) -> Unit
 ) {
-    Surface(
-        onClick = onClick,
-        shape = RoundedCornerShape(999.dp),
-        color = if (selected) MaterialTheme.colorScheme.primary.copy(alpha = 0.16f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.36f)
-    ) {
-        Text(
-            text = label,
-            modifier = Modifier.padding(horizontal = 15.dp, vertical = 8.dp),
-            style = MaterialTheme.typography.labelLarge,
-            fontWeight = FontWeight.Bold,
-            color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
-        )
+    var expanded by remember { mutableStateOf(false) }
+    Box {
+        Surface(
+            onClick = { expanded = true },
+            shape = RoundedCornerShape(999.dp),
+            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.36f)
+        ) {
+            Row(
+                modifier = Modifier.padding(horizontal = 13.dp, vertical = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = label,
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Icon(
+                    imageVector = Icons.Rounded.ExpandMore,
+                    contentDescription = null,
+                    modifier = Modifier.size(17.dp),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+        DropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false }
+        ) {
+            options.forEach { option ->
+                DropdownMenuItem(
+                    text = { Text(optionLabel(option)) },
+                    onClick = {
+                        expanded = false
+                        onSelect(option)
+                    }
+                )
+            }
+        }
     }
 }
 
@@ -379,4 +467,14 @@ private fun formatReportDate(millis: Long): String {
     return Instant.ofEpochMilli(millis)
         .atZone(ZoneId.systemDefault())
         .format(DateTimeFormatter.ofPattern("yyyy-MM-dd EEE HH:mm", Locale.CHINA))
+}
+
+private fun aiReportRangeBounds(filter: AiReportRangeFilter, zone: ZoneId): Pair<Long, Long> {
+    val days = filter.days ?: return Long.MIN_VALUE to Long.MAX_VALUE
+    val start = LocalDate.now(zone)
+        .minusDays(days - 1)
+        .atStartOfDay(zone)
+        .toInstant()
+        .toEpochMilli()
+    return start to Long.MAX_VALUE
 }

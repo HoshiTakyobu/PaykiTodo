@@ -494,6 +494,48 @@ interface TodoDao {
     @Query("SELECT * FROM ai_reports WHERE type = :type ORDER BY generatedAtMillis DESC, id DESC LIMIT :limit")
     fun observeAiReportsByType(type: AiReportType, limit: Int): Flow<List<AiReport>>
 
+    @Query(
+        """
+        SELECT * FROM ai_reports
+        WHERE generatedAtMillis BETWEEN :startMillis AND :endMillis
+        AND (
+            :query = ''
+            OR content LIKE '%' || :query || '%'
+            OR providerName LIKE '%' || :query || '%'
+        )
+        ORDER BY generatedAtMillis DESC, id DESC
+        LIMIT :limit
+        """
+    )
+    fun observeAiReportsFiltered(
+        query: String,
+        startMillis: Long,
+        endMillis: Long,
+        limit: Int
+    ): Flow<List<AiReport>>
+
+    @Query(
+        """
+        SELECT * FROM ai_reports
+        WHERE type = :type
+        AND generatedAtMillis BETWEEN :startMillis AND :endMillis
+        AND (
+            :query = ''
+            OR content LIKE '%' || :query || '%'
+            OR providerName LIKE '%' || :query || '%'
+        )
+        ORDER BY generatedAtMillis DESC, id DESC
+        LIMIT :limit
+        """
+    )
+    fun observeAiReportsFilteredByType(
+        type: AiReportType,
+        query: String,
+        startMillis: Long,
+        endMillis: Long,
+        limit: Int
+    ): Flow<List<AiReport>>
+
     @Query("SELECT * FROM ai_reports ORDER BY generatedAtMillis DESC, id DESC")
     suspend fun getAllAiReports(): List<AiReport>
 

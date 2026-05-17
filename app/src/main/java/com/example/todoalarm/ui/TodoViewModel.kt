@@ -274,12 +274,29 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
         return withContext(Dispatchers.IO) { repository.getTodo(todoId) }
     }
 
-    fun observeAiReports(type: AiReportType?, limit: Int): Flow<List<AiReport>> {
+    fun observeAiReports(
+        type: AiReportType?,
+        limit: Int,
+        query: String = "",
+        startMillis: Long = Long.MIN_VALUE,
+        endMillis: Long = Long.MAX_VALUE
+    ): Flow<List<AiReport>> {
         val safeLimit = limit.coerceIn(1, 300)
-        return if (type == null) {
+        val safeQuery = query.trim().take(80)
+        return if (safeQuery.isBlank() && startMillis == Long.MIN_VALUE && endMillis == Long.MAX_VALUE) {
+            if (type == null) {
             repository.observeAiReports(safeLimit)
         } else {
             repository.observeAiReportsByType(type, safeLimit)
+            }
+        } else {
+            repository.observeAiReportsFiltered(
+                type = type,
+                query = safeQuery,
+                startMillis = startMillis,
+                endMillis = endMillis,
+                limit = safeLimit
+            )
         }
     }
 

@@ -3,6 +3,7 @@ const EVENT_HEADER_HEIGHT = 58;
 const FIFTEEN_MINUTES = 15 * 60 * 1000;
 const THIRTY_MINUTES = 30 * 60 * 1000;
 const DEFAULT_EVENT_COLOR = '#4e87e1';
+const TODO_PAGE_LIMIT = 80;
 const state = {
   token: '',
   snapshot: null,
@@ -24,6 +25,11 @@ const state = {
   planningMappings: [],
   planningLoaded: false,
   todosLoaded: false,
+  todoOffset: 0,
+  todoTotal: 0,
+  todoHasMore: false,
+  todoQuery: '',
+  todoLoading: false,
   eventsLoaded: false,
   eventRangeStart: null,
   eventRangeEnd: null,
@@ -344,6 +350,29 @@ function renderTodoSection(section) {
     + '</section>';
 }
 
+function renderTodoPagerControls() {
+  const loaded = state.snapshot?.todos?.length || 0;
+  const total = state.todoTotal || loaded;
+  const query = state.todoQuery || '';
+  const hasSearch = query.trim().length > 0;
+  const canLoadMore = state.todoHasMore && !state.todoLoading;
+  return ''
+    + '<div class="todo-data-toolbar">'
+    +   '<div class="todo-search-row">'
+    +     '<input type="search" data-todo-search-input="true" value="' + escapeHtml(query) + '" placeholder="搜索标题、备注或地点" />'
+    +     '<button type="button" class="ghost mini" data-search-todos="true">' + (state.todoLoading ? '加载中' : '搜索') + '</button>'
+    +     (hasSearch ? '<button type="button" class="ghost mini" data-clear-todo-search="true">清空</button>' : '')
+    +   '</div>'
+    +   '<div class="todo-page-meta">'
+    +     '已加载 ' + loaded + ' / 共 ' + total + ' 条'
+    +     (hasSearch ? ' · 搜索：' + escapeHtml(query) : '')
+    +   '</div>'
+    +   '<button type="button" class="ghost mini todo-load-more" data-load-more-todos="true" ' + (canLoadMore ? '' : 'disabled') + '>'
+    +     (state.todoLoading ? '加载中…' : (state.todoHasMore ? '加载更多' : '没有更多'))
+    +   '</button>'
+    + '</div>';
+}
+
 function buildEventSegment(item, key) {
   const start = Math.max(eventStart(item), dayStartMillis(key));
   const end = Math.min(eventEnd(item), dayStartMillis(key) + 24 * 60 * 60 * 1000);
@@ -506,6 +535,7 @@ async function loadSnapshot(options = {}) {
   const shouldLoadPlanning = options.planning === true || state.currentTab === 'planning';
   state.snapshot = await api('/api/snapshot?scope=board');
   state.todosLoaded = false;
+  resetTodoPageState();
   state.eventsLoaded = false;
   state.eventRangeStart = null;
   state.eventRangeEnd = null;
@@ -556,13 +586,50 @@ function visibleEventRangeLoaded() {
   return state.eventsLoaded && state.eventRangeStart === range.start && state.eventRangeEnd === range.end;
 }
 
+function resetTodoPageState() {
+  state.todoOffset = 0;
+  state.todoTotal = 0;
+  state.todoHasMore = false;
+  state.todoLoading = false;
+}
+
+function mergeTodosById(existing, incoming) {
+  const merged = [];
+  const seen = new Set();
+  [...(existing || []), ...(incoming || [])].forEach(item => {
+    const key = String(item.id ?? '');
+    if (!key || seen.has(key)) return;
+    seen.add(key);
+    merged.push(item);
+  });
+  return merged;
+}
+
 async function loadDesktopTodos(options = {}) {
-  const data = await api('/api/todos');
-  ensureSnapshotContainer();
-  mergeSnapshotGroups(data.groups || []);
-  state.snapshot.todos = data.todos || [];
-  state.snapshot.generatedAtMillis = data.generatedAtMillis || Date.now();
-  state.todosLoaded = true;
+  const reset = options.reset !== false;
+  if (state.todoLoading) return;
+  state.todoLoading = true;
+  try {
+    const offset = reset ? 0 : state.todoOffset;
+    const query = state.todoQuery.trim();
+    const params = new URLSearchParams({
+      offset: String(offset),
+      limit: String(TODO_PAGE_LIMIT)
+    });
+    if (query) params.set('q', query);
+    const data = await api('/api/todos?' + params.toString());
+    ensureSnapshotContainer();
+    mergeSnapshotGroups(data.groups || []);
+    const incoming = data.todos || [];
+    state.snapshot.todos = reset ? incoming : mergeTodosById(state.snapshot.todos, incoming);
+    state.snapshot.generatedAtMillis = data.generatedAtMillis || Date.now();
+    state.todoOffset = Number(data.offset || offset) + incoming.length;
+    state.todoTotal = Number(data.total || state.snapshot.todos.length);
+    state.todoHasMore = Boolean(data.hasMore);
+    state.todosLoaded = true;
+  } finally {
+    state.todoLoading = false;
+  }
   if (options.render !== false) {
     renderTodos();
     syncTopbar();
@@ -571,9 +638,9 @@ async function loadDesktopTodos(options = {}) {
 
 async function ensureTodoData() {
   if (state.todosLoaded) return;
-  els.status.textContent = '正在加载完整待办列表…';
-  await loadDesktopTodos();
-  els.status.textContent = '已加载完整待办列表';
+  els.status.textContent = '正在加载待办管理列表…';
+  await loadDesktopTodos({ reset: true });
+  els.status.textContent = '已加载待办管理列表';
 }
 
 async function loadDesktopEvents(options = {}) {
@@ -668,7 +735,7 @@ function renderTodos() {
       + '<div class="empty-state">'
       +   '<strong>当前仅加载每日看板数据。</strong><br />'
       +   '为了减少电脑端首屏读取压力，完整待办时间轴会按需加载。'
-      +   '<div class="actions"><button type="button" class="ghost mini" data-load-todos="true">加载完整待办列表</button></div>'
+      +   '<div class="actions"><button type="button" class="ghost mini" data-load-todos="true">加载待办管理列表</button></div>'
       + '</div>';
     bindActions();
     return;
@@ -684,13 +751,16 @@ function renderTodos() {
     { key: 'history', title: '历史记录', empty: '暂无历史记录。', items: history }
   ];
   els.todoSummary.innerHTML = [
-    renderSummaryCard('活动待办', active.length),
-    renderSummaryCard('已错过', sections[0].items.length),
-    renderSummaryCard('今日待办', sections[1].items.length),
-    renderSummaryCard('历史记录', history.length)
+    renderSummaryCard('已加载活动', active.length),
+    renderSummaryCard('已加载今日', sections[1].items.length),
+    renderSummaryCard('已加载历史', history.length),
+    renderSummaryCard('总匹配', state.todoTotal || state.snapshot?.todos?.length || 0)
   ].join('');
   renderDesktopDailyBoard();
-  els.todoTimeline.innerHTML = sections.map(renderTodoSection).join('');
+  els.todoTimeline.innerHTML = ''
+    + renderTodoPagerControls()
+    + sections.map(renderTodoSection).join('')
+    + (state.todoHasMore ? '<div class="todo-bottom-more"><button type="button" class="ghost mini" data-load-more-todos="true">加载更多待办</button></div>' : '');
   bindActions();
 }
 
@@ -1782,6 +1852,46 @@ function bindActions() {
     node.onclick = event => {
       event.preventDefault();
       ensureTodoData().catch(err => els.status.textContent = err.message);
+    };
+  });
+  document.querySelectorAll('[data-search-todos]').forEach(node => {
+    node.onclick = event => {
+      event.preventDefault();
+      const input = document.querySelector('[data-todo-search-input]');
+      state.todoQuery = (input?.value || '').trim();
+      resetTodoPageState();
+      els.status.textContent = state.todoQuery ? '正在搜索待办…' : '正在加载待办管理列表…';
+      loadDesktopTodos({ reset: true })
+        .then(() => { els.status.textContent = state.todoQuery ? '待办搜索完成' : '已加载待办管理列表'; })
+        .catch(err => els.status.textContent = err.message);
+    };
+  });
+  document.querySelectorAll('[data-clear-todo-search]').forEach(node => {
+    node.onclick = event => {
+      event.preventDefault();
+      state.todoQuery = '';
+      resetTodoPageState();
+      els.status.textContent = '正在清空搜索条件…';
+      loadDesktopTodos({ reset: true })
+        .then(() => { els.status.textContent = '已恢复待办管理列表'; })
+        .catch(err => els.status.textContent = err.message);
+    };
+  });
+  document.querySelectorAll('[data-load-more-todos]').forEach(node => {
+    node.onclick = event => {
+      event.preventDefault();
+      if (!state.todoHasMore || state.todoLoading) return;
+      els.status.textContent = '正在加载更多待办…';
+      loadDesktopTodos({ reset: false })
+        .then(() => { els.status.textContent = '已加载更多待办'; })
+        .catch(err => els.status.textContent = err.message);
+    };
+  });
+  document.querySelectorAll('[data-todo-search-input]').forEach(node => {
+    node.onkeydown = event => {
+      if (event.key !== 'Enter') return;
+      event.preventDefault();
+      document.querySelector('[data-search-todos]')?.click();
     };
   });
 }

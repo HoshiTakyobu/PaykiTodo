@@ -49,6 +49,25 @@ class TodoRepository(
     suspend fun getGroup(groupId: Long): TaskGroup? = todoDao.getGroupById(groupId)
     suspend fun getAllTodos(): List<TodoItem> = todoDao.getAllTodos()
     suspend fun getDesktopTodoItems(): List<TodoItem> = todoDao.getDesktopTodoItems()
+    suspend fun getDesktopTodoItemsPaged(
+        query: String,
+        limit: Int,
+        offset: Int,
+        today: LocalDate = LocalDate.now()
+    ): List<TodoItem> {
+        val zone = ZoneId.systemDefault()
+        val todayStartMillis = today.atStartOfDay(zone).toInstant().toEpochMilli()
+        val todayEndMillisExclusive = today.plusDays(1).atStartOfDay(zone).toInstant().toEpochMilli()
+        return todoDao.getDesktopTodoItemsPaged(
+            query = query.trim(),
+            todayStartMillis = todayStartMillis,
+            todayEndMillisExclusive = todayEndMillisExclusive,
+            noDueDateMillis = NO_DUE_DATE_MILLIS,
+            limit = limit,
+            offset = offset
+        )
+    }
+    suspend fun countDesktopTodoItems(query: String): Int = todoDao.countDesktopTodoItems(query.trim())
     suspend fun getActiveCalendarEventsInRangeOnce(rangeStartMillis: Long, rangeEndMillis: Long): List<TodoItem> {
         return todoDao.getActiveCalendarEventsInRangeOnce(rangeStartMillis, rangeEndMillis)
     }

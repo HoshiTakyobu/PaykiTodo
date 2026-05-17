@@ -69,7 +69,6 @@ private class TodoWidgetFactory(
         val row = rows.getOrNull(position) ?: return emptyRowViews(emptyRow(-1L, "今日看板暂无内容"))
         return when (row.type) {
             WidgetRowType.GREETING -> greetingViews(row)
-            WidgetRowType.FOCUS -> focusViews(row)
             WidgetRowType.SECTION -> sectionViews(row)
             WidgetRowType.EMPTY -> emptyRowViews(row)
             WidgetRowType.TODO -> todoViews(row)
@@ -92,16 +91,6 @@ private class TodoWidgetFactory(
             setTextViewText(R.id.widget_greeting_quote, row.meta)
             setTextColor(R.id.widget_greeting_title, darkText)
             setTextColor(R.id.widget_greeting_quote, mutedText)
-        }
-    }
-
-    private fun focusViews(row: WidgetBoardRow): RemoteViews {
-        return RemoteViews(context.packageName, R.layout.widget_todo_focus_card).apply {
-            setTextViewText(R.id.widget_focus_minutes, row.title)
-            setTextViewText(R.id.widget_focus_meta, row.meta)
-            setTextColor(R.id.widget_focus_minutes, headerText)
-            setTextColor(R.id.widget_focus_title, darkText)
-            setTextColor(R.id.widget_focus_meta, mutedText)
         }
     }
 
@@ -279,7 +268,7 @@ private class TodoWidgetFactory(
         if (snapshot.todoItems.isEmpty()) {
             output += emptyRow(-2L, "今天还没有安排任务。")
         } else {
-            snapshot.todoItems.take(6).forEach { item ->
+            snapshot.todoItems.forEach { item ->
                 val group = groups.firstOrNull { it.id == item.groupId }
                 output += WidgetBoardRow(
                     stableId = item.id,
@@ -300,7 +289,7 @@ private class TodoWidgetFactory(
 
         output += sectionRow(-3L, "今日日程（${snapshot.allTodayEvents.size}）", highlight = true)
         output += scheduleRow(snapshot)
-        return output.take(40)
+        return output.take(60)
     }
 
     private fun sectionRow(
@@ -445,7 +434,6 @@ private class TodoWidgetFactory(
                 WidgetRowType.SCHEDULE -> putExtra(MainActivity.EXTRA_OPEN_CALENDAR, true)
                 WidgetRowType.ANNOUNCEMENT -> putExtra(MainActivity.EXTRA_OPEN_PLANNING_NOTE_ID, sourceNoteId)
                 WidgetRowType.GREETING,
-                WidgetRowType.FOCUS,
                 WidgetRowType.SECTION,
                 WidgetRowType.EMPTY -> putExtra(MainActivity.EXTRA_OPEN_BOARD, true)
             }
@@ -464,7 +452,6 @@ private class TodoWidgetFactory(
 
     private enum class WidgetRowType {
         GREETING,
-        FOCUS,
         SECTION,
         EMPTY,
         TODO,

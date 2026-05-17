@@ -51,6 +51,10 @@ import java.util.Collections
 import java.util.Locale
 import java.util.UUID
 
+private const val DESKTOP_TODO_PAGE_LIMIT_DEFAULT = 80
+private const val DESKTOP_TODO_PAGE_LIMIT_MAX = 200
+private const val DESKTOP_TODO_QUERY_MAX_LENGTH = 80
+
 class DesktopSyncCoordinator(
     private val context: Context,
     private val app: TodoApplication,
@@ -128,7 +132,7 @@ class DesktopSyncCoordinator(
                     val snapshot = buildSnapshot(boardOnly = queryParam(path, "scope") == "board")
                     DesktopSyncServer.Response.json(snapshot.toJson(snapshot.groups.associateBy { it.id }))
                 }
-                method == "GET" && path == "/api/todos" -> DesktopSyncServer.Response.json(desktopTodos())
+                method == "GET" && routePath == "/api/todos" -> DesktopSyncServer.Response.json(desktopTodos(path))
                 method == "GET" && routePath == "/api/events" -> DesktopSyncServer.Response.json(desktopEvents(path))
                 method == "POST" && path == "/api/todos" -> DesktopSyncServer.Response.json(createTodo(JSONObject(body)))
                 method == "POST" && path == "/api/events" -> DesktopSyncServer.Response.json(createEvent(JSONObject(body)))
@@ -210,12 +214,21 @@ class DesktopSyncCoordinator(
         )
     }
 
-    private fun desktopTodos(): JSONObject {
+    private fun desktopTodos(path: String): JSONObject {
+        val offset = queryParam(path, "offset")?.toIntOrNull()?.coerceAtLeast(0) ?: 0
+        val limit = queryParam(path, "limit")?.toIntOrNull()?.coerceIn(1, DESKTOP_TODO_PAGE_LIMIT_MAX) ?: DESKTOP_TODO_PAGE_LIMIT_DEFAULT
+        val query = queryParam(path, "q").orEmpty().trim().take(DESKTOP_TODO_QUERY_MAX_LENGTH)
         val groups = runBlocking { app.repository.getAllGroups().ifEmpty { app.repository.ensureDefaultGroups() } }
         val groupsById = groups.associateBy { it.id }
-        val todos = runBlocking { app.repository.getDesktopTodoItems() }
+        val todos = runBlocking { app.repository.getDesktopTodoItemsPaged(query, limit, offset) }
+        val total = runBlocking { app.repository.countDesktopTodoItems(query) }
         return JSONObject()
             .put("generatedAtMillis", System.currentTimeMillis())
+            .put("offset", offset)
+            .put("limit", limit)
+            .put("total", total)
+            .put("hasMore", offset + todos.size < total)
+            .put("query", query)
             .put("groups", JSONArray(groups.map { it.toDesktopJson() }))
             .put("todos", JSONArray(todos.map { it.toDesktopJson(groupsById[it.groupId]) }))
     }

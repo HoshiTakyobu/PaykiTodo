@@ -145,6 +145,52 @@ interface TodoDao {
     @Query(
         """
         SELECT * FROM todo_items
+        WHERE itemType = 'TODO'
+        AND (
+            :query = ''
+            OR title LIKE '%' || :query || '%'
+            OR notes LIKE '%' || :query || '%'
+            OR location LIKE '%' || :query || '%'
+        )
+        ORDER BY
+            CASE
+                WHEN completed = 0 AND canceled = 0 AND (missed = 1 OR (dueAtMillis != :noDueDateMillis AND dueAtMillis < :todayStartMillis)) THEN 0
+                WHEN completed = 0 AND canceled = 0 AND (dueAtMillis = :noDueDateMillis OR (dueAtMillis >= :todayStartMillis AND dueAtMillis < :todayEndMillisExclusive)) THEN 1
+                WHEN completed = 0 AND canceled = 0 THEN 2
+                ELSE 3
+            END ASC,
+            CASE WHEN dueAtMillis = :noDueDateMillis THEN 0 ELSE 1 END ASC,
+            dueAtMillis ASC,
+            createdAtMillis ASC
+        LIMIT :limit OFFSET :offset
+        """
+    )
+    suspend fun getDesktopTodoItemsPaged(
+        query: String,
+        todayStartMillis: Long,
+        todayEndMillisExclusive: Long,
+        noDueDateMillis: Long,
+        limit: Int,
+        offset: Int
+    ): List<TodoItem>
+
+    @Query(
+        """
+        SELECT COUNT(*) FROM todo_items
+        WHERE itemType = 'TODO'
+        AND (
+            :query = ''
+            OR title LIKE '%' || :query || '%'
+            OR notes LIKE '%' || :query || '%'
+            OR location LIKE '%' || :query || '%'
+        )
+        """
+    )
+    suspend fun countDesktopTodoItems(query: String): Int
+
+    @Query(
+        """
+        SELECT * FROM todo_items
         WHERE completed = 0
         AND canceled = 0
         AND itemType = 'EVENT'

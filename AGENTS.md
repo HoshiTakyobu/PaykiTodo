@@ -30,6 +30,33 @@ Then read only the code files directly relevant to the current task.
 9. Git commit messages for this repository should be written in Chinese.
 10. A git commit message should describe the version-relevant feature / behavior changes in that round compared with the previous state, not just generic process wording such as "finalize" or "cleanup".
 
+## Android Emulator Verification
+
+When a change affects phone-side UI, navigation, startup stability, Planning Desk, Settings, focus mode, reminders, or other Android runtime behavior, the Android Emulator is an accepted local verification surface before asking the user to install the debug APK on a physical phone.
+
+Recommended workflow:
+
+1. Check whether a device is already available:
+   - `C:\Users\hp\AppData\Local\Android\Sdk\platform-tools\adb.exe devices`
+2. If an emulator is already running, use it rather than starting another instance.
+3. If no emulator is running and UI/runtime verification is materially useful, it is acceptable to start an AVD from Android Studio or with the Android SDK emulator, then clearly tell the user that an emulator window may appear.
+4. Install the current debug APK when needed:
+   - `adb install -r app/build/outputs/apk/debug/PaykiTodo-<version>-debug.apk`
+5. Use emulator verification for:
+   - app launch / startup crash checks
+   - screen navigation and basic click flows
+   - Compose UI presence through screenshots or `uiautomator dump`
+   - Settings / Planning Desk / Daily Board / FocusActivity smoke tests
+   - notification scheduling smoke tests where Android system services are available
+6. Keep physical-device verification for behavior the emulator cannot prove well:
+   - notification shade icon appearance on the user's OEM ROM
+   - real vibration / haptics
+   - lock-screen and full-screen reminder behavior
+   - launcher widget rendering, resizing, and OEM launcher quirks
+   - background alarm reliability, reboot recovery, and battery-management policies
+
+Do not treat a passing emulator smoke test as complete coverage for OEM-specific behavior. Do record emulator evidence in the final report when it materially reduces the amount of physical-phone testing needed.
+
 ## Git Commit Message Rules
 
 Commit messages are part of the product history. They should primarily describe product behavior changes and bug-fix logic, not process bookkeeping.

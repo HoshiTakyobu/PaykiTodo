@@ -113,7 +113,9 @@ Local device status observed in this session:
 
 1. `adb` is available at `C:\Users\hp\AppData\Local\Android\Sdk\platform-tools\adb.exe`.
 2. `emulator-5554` is available and was used for the `1.9.5` AI report scheduling verification.
-3. Continue physical-device checks for OEM alarm policy, haptics, launcher widget rendering, and reboot/time-change recovery.
+3. The Android Emulator was also useful for phone-side UI smoke tests during the 1.9.x goal audit: it installed `com.paykitodo.app`, launched the Daily Board, opened the free-focus path, displayed `FocusActivity`, showed the early-complete confirmation, and refreshed the daily focus-session count.
+4. Future sessions may use the emulator as a standard pre-phone debugging step for launch crashes, navigation, and visible UI regressions. Tell the user when starting a new emulator window; if one is already running, reuse it.
+5. Continue physical-device checks for OEM alarm policy, haptics, launcher widget rendering, notification shade visuals, and reboot/time-change recovery.
 
 Then verify on a real device after installing `PaykiTodo-1.9.6-debug.apk`:
 

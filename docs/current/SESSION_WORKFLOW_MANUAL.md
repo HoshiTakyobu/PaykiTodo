@@ -57,6 +57,51 @@ The repository bootstrap order is:
 3. If the session discovers that a current doc is stale, have it fix the doc as part of the work.
 4. If the code changes user-visible behavior, versioning, feature status, or project direction, have it update the relevant docs in the same round.
 
+## Android Emulator Debugging Workflow
+
+The Android Emulator is a useful middle step between "the code builds" and "the user installs the APK on a real phone". It should be used when a change needs phone-side visual or runtime confirmation but does not yet require OEM-specific behavior.
+
+Use it for:
+
+- checking whether the APK launches or crashes
+- previewing Daily Board, Planning Desk, Settings, FocusActivity, editor dialogs, and similar phone UI
+- running basic click flows before sending an APK to the user
+- collecting `uiautomator dump` XML or screenshots as evidence for visible UI text and navigation state
+- smoke-testing scheduled-report flows when the emulator has the relevant Android services available
+
+Basic command flow:
+
+```powershell
+# 1. Check whether an emulator or phone is already connected.
+C:\Users\hp\AppData\Local\Android\Sdk\platform-tools\adb.exe devices
+
+# 2. Install the latest debug APK when needed.
+C:\Users\hp\AppData\Local\Android\Sdk\platform-tools\adb.exe install -r app\build\outputs\apk\debug\PaykiTodo-<version>-debug.apk
+
+# 3. Start the app.
+C:\Users\hp\AppData\Local\Android\Sdk\platform-tools\adb.exe shell monkey -p com.paykitodo.app 1
+
+# 4. Dump the current UI tree when screenshots are not enough.
+C:\Users\hp\AppData\Local\Android\Sdk\platform-tools\adb.exe shell uiautomator dump /sdcard/window.xml
+C:\Users\hp\AppData\Local\Android\Sdk\platform-tools\adb.exe pull /sdcard/window.xml .tmp-current-ui.xml
+```
+
+If no emulator is running and this verification would be useful, the session may start an AVD from Android Studio / Android SDK. The session should explicitly tell the user that an Android Emulator window may appear, because it is a visible desktop application.
+
+Current known useful emulator facts from the 1.9.x work:
+
+- `emulator-5554` was used to install and run `com.paykitodo.app`.
+- UI dumps confirmed the Daily Board focus card, free-focus entry, FocusActivity countdown, early-complete confirmation, and focus-session count refresh.
+- The emulator is good enough to catch launch crashes and obvious UI regressions before the user installs the APK on a phone.
+
+Do not overclaim emulator results. A real phone is still required for:
+
+- notification shade icon sizing and color on the user's ROM
+- vibration / haptics
+- lock-screen / full-screen reminder behavior
+- desktop launcher widget rendering and resizing
+- OEM alarm, reboot, battery, and background-execution behavior
+
 ## What To Do Before Ending A Session
 
 Before you stop using a session for the day, it should leave the repository in a recoverable state.

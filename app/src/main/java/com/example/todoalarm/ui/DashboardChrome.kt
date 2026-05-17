@@ -148,7 +148,7 @@ internal enum class DashboardSection(
 ) {
     BOARD("每日看板", Icons.Rounded.ViewAgenda, "每日看板"),
     ACTIVE("我的任务", Icons.Rounded.TaskAlt, "我的任务"),
-    CALENDAR("日历", Icons.Rounded.CalendarMonth, "Schedule"),
+    CALENDAR("日历", Icons.Rounded.CalendarMonth, "日历"),
     PLANNING("规划台", Icons.Rounded.PostAdd, "规划台"),
     AI_REPORTS("AI 报告", Icons.Rounded.Insights, "AI 报告"),
     HISTORY("历史记录", Icons.Rounded.History, "历史记录"),

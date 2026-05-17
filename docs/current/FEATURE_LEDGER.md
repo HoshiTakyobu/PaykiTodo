@@ -141,6 +141,7 @@ This file tracks the product at a practical level for new coding sessions.
 - calendar batch import custom syntax defaults missing dates to today and accepts lightweight date prefixes such as `今天`, `明天`, `5.28`, `5/28`, and `5月28日`
 - week-template and semester-generation related capabilities exist in the codebase and docs history
 - current-time label is wired on the left time axis and remains visible even when today is off-screen, while the red current-time line remains in the schedule area and also stays visible
+- phone Calendar top-bar title is localized as `日历`, avoiding leftover English `Schedule` in the Chinese UI
 - todo editor can pick DDL through a wheel-style lunar date picker while preserving the existing time of day
 - timeline headers, month cells, and agenda/list date surfaces show lunar labels using Android ICU `ChineseCalendar`
 

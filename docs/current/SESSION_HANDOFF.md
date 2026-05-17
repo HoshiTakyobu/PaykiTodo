@@ -6,13 +6,13 @@ Long-running Codex sessions can become unreliable. This file exists so a new ses
 
 ## Current Handoff Summary
 
-- The project is now being advanced to `1.9.20` / `versionCode 214`.
+- The project is now being advanced to `1.9.21` / `versionCode 215`.
 - Main user request: review the recent `1.9.11`+ experience / performance work, identify remaining user-facing issues, and implement practical performance improvements where safe.
-- This continuation keeps the no-DDL, widget, desktop lightweight snapshot, AI-provider save-state, calendar-index, phone screen-scoped subscription, Planning Desk parser threading, AI-report paging, Planning Desk announcement indexing, desktop-sync hardening, AI-report filtering, and calendar date-window baseline, then hardens no-DDL todo sectioning and changes the phone Calendar page to observe only the current visible event range.
-- Latest expected debug APK after packaging: `app/build/outputs/apk/debug/PaykiTodo-1.9.20-debug.apk`.
+- This continuation keeps the no-DDL, widget, desktop lightweight snapshot, AI-provider save-state, calendar-index, phone screen-scoped subscription, Planning Desk parser threading, AI-report paging, Planning Desk announcement indexing, desktop-sync hardening, AI-report filtering, and calendar date-window baseline, then hardens no-DDL todo sectioning, changes the phone Calendar page to observe only the current visible event range, and localizes the phone Calendar top-bar title.
+- Latest expected debug APK after packaging: `app/build/outputs/apk/debug/PaykiTodo-1.9.21-debug.apk`.
 - Do not push to GitHub unless the user explicitly asks.
 
-## Latest 1.9.20 Review / Performance Pass
+## Latest 1.9.21 Review / Performance Pass
 
 1. Desktop Web first connection still calls `/api/snapshot?scope=board` so the browser can show the daily board without transferring all todos/events/planning data first.
 2. Desktop Web todo management now loads through `GET /api/todos?offset=...&limit=...&q=...` when the user clicks `加载待办管理列表`, searches, or loads more.
@@ -35,6 +35,7 @@ Long-running Codex sessions can become unreliable. This file exists so a new ses
 19. Active no-DDL todo sectioning is centralized in `classifyActiveTodoItems`, so phone board/task sections use the same rule: active no-DDL items stay under `今日待办` every day and never become upcoming.
 20. Phone Calendar now reports its visible date window to the ViewModel and observes only overlapping active events in that padded range instead of subscribing to every active event when the Calendar page is open.
 21. Notification / deep-link navigation to a far calendar event first expands the event query around the target event date, then focuses the Calendar page on that date.
+22. Phone Calendar top bar now shows `日历` instead of the leftover English `Schedule`.
 
 ## Verification Status
 
@@ -44,13 +45,13 @@ Completed locally in this continuation:
 2. `./gradlew.bat :app:compileDebugKotlin testDebugUnitTest assembleDebug` passed.
 3. `git diff --check` passed.
 4. Unit tests include `TodoItemSectionsTest`, covering no-DDL active todos staying in today across dates.
-5. `app/build/outputs/apk/debug/output-metadata.json` reports `versionCode=214`, `versionName=1.9.20`, and `outputFile=PaykiTodo-1.9.20-debug.apk`.
+5. `app/build/outputs/apk/debug/output-metadata.json` reports `versionCode=215`, `versionName=1.9.21`, and `outputFile=PaykiTodo-1.9.21-debug.apk`.
 
-Latest emulator smoke installed `app/build/outputs/apk/debug/PaykiTodo-1.9.20-debug.apk` on `emulator-5554`, checked app launch, Daily Board UI tree, drawer UI tree, Calendar UI tree, screenshot capture, and a PaykiTodo fatal-crash logcat scan. MainActivity displayed, Daily Board showed `今日待办（0）` / `今日日程（0）`, drawer showed primary entries, Calendar displayed `2026年5月` with timeline content, and no PaykiTodo `FATAL EXCEPTION` was found in the checked logcat window.
+Latest emulator smoke installed `app/build/outputs/apk/debug/PaykiTodo-1.9.21-debug.apk` on `emulator-5554`, checked app launch, Daily Board UI tree, drawer UI tree, Calendar UI tree, screenshot capture, and a PaykiTodo fatal-crash logcat scan. MainActivity displayed, Daily Board showed `今日待办（0）` / `今日日程（0）`, drawer showed primary entries, Calendar displayed `2026年5月` with timeline content, Calendar top bar showed `日历` rather than `Schedule`, and no PaykiTodo `FATAL EXCEPTION` was found in the checked logcat window.
 
 ## Remaining Device / Browser Verification
 
-1. Install `app/build/outputs/apk/debug/PaykiTodo-1.9.20-debug.apk` on the physical phone.
+1. Install `app/build/outputs/apk/debug/PaykiTodo-1.9.21-debug.apk` on the physical phone.
 2. Browser-test desktop todo pagination/search:
    - initial connect shows `看板轻量数据`;
    - `加载待办管理列表` requests `/api/todos?offset=0&limit=80`;
@@ -77,7 +78,7 @@ Latest emulator smoke installed `app/build/outputs/apk/debug/PaykiTodo-1.9.20-de
 
 ## Performance Notes
 
-Fixed locally across `1.9.12`-`1.9.20`:
+Fixed locally across `1.9.12`-`1.9.21`:
 
 1. Added `todo_items` indices for high-frequency board/reminder/group/recurrence queries.
 2. Removed duplicate group reads from desktop `/api/snapshot`.
@@ -95,6 +96,7 @@ Fixed locally across `1.9.12`-`1.9.20`:
 14. Bounded desktop sync client handling and fixed UTF-8 body reading by byte length.
 15. Added AI-report keyword/type/range query pushdown and matching Room indices.
 16. Replaced calendar timeline date-list allocation with a lightweight date window.
+17. Localized the phone Calendar top-bar title from `Schedule` to `日历`.
 
 Worth doing later:
 

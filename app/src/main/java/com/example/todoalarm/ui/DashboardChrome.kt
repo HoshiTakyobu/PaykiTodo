@@ -39,6 +39,7 @@ import androidx.compose.material.icons.rounded.Campaign
 import androidx.compose.material.icons.rounded.DarkMode
 import androidx.compose.material.icons.rounded.History
 import androidx.compose.material.icons.rounded.Info
+import androidx.compose.material.icons.rounded.Insights
 import androidx.compose.material.icons.rounded.LightMode
 import androidx.compose.material.icons.rounded.Menu
 import androidx.compose.material.icons.rounded.PostAdd
@@ -143,6 +144,7 @@ internal enum class DashboardSection(
     ACTIVE("我的任务", Icons.Rounded.TaskAlt, "我的任务"),
     CALENDAR("日历", Icons.Rounded.CalendarMonth, "Schedule"),
     PLANNING("规划台", Icons.Rounded.PostAdd, "规划台"),
+    AI_REPORTS("AI 报告", Icons.Rounded.Insights, "AI 报告"),
     HISTORY("历史记录", Icons.Rounded.History, "历史记录"),
     GROUPS("分组管理", Icons.Rounded.Folder, "分组管理"),
     SETTINGS("设置", Icons.Rounded.Settings, "设置")
@@ -342,6 +344,8 @@ internal fun DashboardBody(
     settingsInitialSectionSerial: Int = 0,
     targetEventId: Long? = null,
     targetEventSerial: Int = 0,
+    targetAiReportId: Long? = null,
+    targetAiReportSerial: Int = 0,
     padding: PaddingValues,
     uiState: TodoUiState,
     permissions: PermissionSnapshot,
@@ -371,6 +375,7 @@ internal fun DashboardBody(
     onPlanningAiProvidersChange: (Boolean, List<PlanningAiProvider>) -> Unit,
     onReportPreferencesChange: (Boolean, Int, Int, Boolean, Int, Int) -> Unit,
     onGenerateDailyReportNow: suspend () -> String?,
+    onDeleteAiReport: suspend (Long) -> String?,
     onResetOnboarding: () -> Unit,
     onDesktopSyncEnabledChange: (Boolean) -> Unit,
     onRotateDesktopSyncToken: () -> Unit,
@@ -430,6 +435,23 @@ internal fun DashboardBody(
                 onApplyTemplateToWeek = onApplyScheduleTemplateToWeek,
                 onGenerateSemesterFromTemplate = onGenerateSemesterScheduleFromTemplate,
                 onDeleteTemplate = onDeleteScheduleTemplate
+            )
+        }
+        return
+    }
+
+    if (section == DashboardSection.AI_REPORTS) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+                .padding(horizontal = 16.dp, vertical = 10.dp)
+        ) {
+            AiReportPanel(
+                reports = uiState.aiReports,
+                targetReportId = targetAiReportId,
+                targetReportSerial = targetAiReportSerial,
+                onDeleteReport = onDeleteAiReport
             )
         }
         return
@@ -702,6 +724,7 @@ internal fun DashboardBody(
             }
             DashboardSection.CALENDAR -> Unit
             DashboardSection.PLANNING -> Unit
+            DashboardSection.AI_REPORTS -> Unit
             DashboardSection.SETTINGS -> Unit
         }
     }

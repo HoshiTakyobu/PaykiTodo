@@ -132,6 +132,7 @@ fun DashboardScreen(
     onPlanningAiProvidersChange: (Boolean, List<PlanningAiProvider>) -> Unit,
     onReportPreferencesChange: (Boolean, Int, Int, Boolean, Int, Int) -> Unit,
     onGenerateDailyReportNow: suspend () -> String?,
+    onDeleteAiReport: suspend (Long) -> String?,
     onDismissOnboarding: () -> Unit,
     onResetOnboarding: () -> Unit,
     onDesktopSyncEnabledChange: (Boolean) -> Unit,
@@ -204,6 +205,7 @@ fun DashboardScreen(
                 section = DashboardSection.PLANNING
                 onSelectPlanningNote(launchRoute.targetPlanningNoteId)
             }
+            launchRoute?.targetAiReportId != null -> section = DashboardSection.AI_REPORTS
             launchRoute?.openBoard == true -> section = DashboardSection.BOARD
         }
     }
@@ -389,6 +391,8 @@ fun DashboardScreen(
                     settingsInitialSectionSerial = launchRouteSerial,
                     targetEventId = launchRoute?.targetEventId,
                     targetEventSerial = launchRouteSerial,
+                    targetAiReportId = launchRoute?.targetAiReportId,
+                    targetAiReportSerial = launchRouteSerial,
                     padding = padding,
                     uiState = uiState,
                     permissions = permissions,
@@ -491,6 +495,7 @@ fun DashboardScreen(
                     onPlanningAiProvidersChange = onPlanningAiProvidersChange,
                     onReportPreferencesChange = onReportPreferencesChange,
                     onGenerateDailyReportNow = onGenerateDailyReportNow,
+                    onDeleteAiReport = onDeleteAiReport,
                     onResetOnboarding = onResetOnboarding,
                     onDesktopSyncEnabledChange = onDesktopSyncEnabledChange,
                     onRotateDesktopSyncToken = onRotateDesktopSyncToken,

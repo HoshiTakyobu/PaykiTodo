@@ -37,7 +37,7 @@ object DailyReportNotifier {
 
     fun postReportNotification(
         context: Context,
-        noteId: Long,
+        reportId: Long,
         reportTitle: String,
         preview: String,
         weekly: Boolean = false
@@ -50,7 +50,7 @@ object DailyReportNotifier {
         }
         val intent = Intent(context, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
-            putExtra(MainActivity.EXTRA_OPEN_PLANNING_NOTE_ID, noteId)
+            putExtra(MainActivity.EXTRA_OPEN_AI_REPORT_ID, reportId)
         }
         val pendingIntent = PendingIntent.getActivity(
             context,
@@ -58,7 +58,7 @@ object DailyReportNotifier {
             intent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
-        val text = preview.replace(Regex("\\s+"), " ").trim().take(120).ifBlank { "报告已写入规划台。" }
+        val text = preview.replace(Regex("\\s+"), " ").trim().take(120).ifBlank { "报告已写入 AI 报告归档。" }
         val notification = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_stat_payki_todo)
             .setContentTitle(reportTitle)

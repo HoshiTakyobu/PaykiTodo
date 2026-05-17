@@ -218,9 +218,6 @@ interface TodoDao {
     @Query("SELECT * FROM planning_notes WHERE id = :id LIMIT 1")
     suspend fun getPlanningNote(id: Long): PlanningNote?
 
-    @Query("SELECT * FROM planning_notes WHERE title = :title ORDER BY updatedAtMillis DESC LIMIT 1")
-    suspend fun findPlanningNoteByTitle(title: String): PlanningNote?
-
     @Query("SELECT * FROM planning_notes ORDER BY updatedAtMillis DESC, createdAtMillis DESC")
     suspend fun getAllPlanningNotes(): List<PlanningNote>
 
@@ -235,6 +232,9 @@ interface TodoDao {
 
     @Query("DELETE FROM planning_notes WHERE id = :id")
     suspend fun deletePlanningNote(id: Long)
+
+    @Query("DELETE FROM planning_notes WHERE id IN (:ids)")
+    suspend fun deletePlanningNotesByIds(ids: List<Long>)
 
     @Query("DELETE FROM planning_notes")
     suspend fun clearPlanningNotes()
@@ -295,4 +295,28 @@ interface TodoDao {
 
     @Query("DELETE FROM focus_sessions")
     suspend fun clearFocusSessions()
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertAiReport(report: AiReport): Long
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertAiReports(reports: List<AiReport>): List<Long>
+
+    @Query("SELECT * FROM ai_reports ORDER BY generatedAtMillis DESC, id DESC")
+    fun observeAiReports(): Flow<List<AiReport>>
+
+    @Query("SELECT * FROM ai_reports ORDER BY generatedAtMillis DESC, id DESC")
+    suspend fun getAllAiReports(): List<AiReport>
+
+    @Query("SELECT * FROM ai_reports WHERE type = :type ORDER BY generatedAtMillis DESC, id DESC")
+    suspend fun getAiReportsByType(type: AiReportType): List<AiReport>
+
+    @Query("SELECT * FROM ai_reports WHERE id = :id LIMIT 1")
+    suspend fun getAiReportById(id: Long): AiReport?
+
+    @Query("DELETE FROM ai_reports WHERE id = :id")
+    suspend fun deleteAiReport(id: Long)
+
+    @Query("DELETE FROM ai_reports")
+    suspend fun clearAiReports()
 }

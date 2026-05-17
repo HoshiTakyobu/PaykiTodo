@@ -20,6 +20,7 @@ class TodoRepository(
     fun observeGroups(): Flow<List<TaskGroup>> = todoDao.observeGroups()
     fun observePlanningNotes(): Flow<List<PlanningNote>> = todoDao.observePlanningNotes()
     fun observeFocusSessions(): Flow<List<FocusSession>> = todoDao.observeFocusSessions()
+    fun observeAiReports(): Flow<List<AiReport>> = todoDao.observeAiReports()
 
     suspend fun addTodo(item: TodoItem): TodoItem {
         val id = todoDao.insert(item)
@@ -64,29 +65,6 @@ class TodoRepository(
 
     suspend fun getAllPlanningNotes(): List<PlanningNote> = todoDao.getAllPlanningNotes()
     suspend fun getPlanningMappingsForNote(noteId: Long): List<PlanningLineMapping> = todoDao.getMappingsForNote(noteId)
-
-    suspend fun getOrCreateReportNote(title: String): PlanningNote {
-        val normalized = title.trim().ifBlank { "AI 日报" }
-        todoDao.findPlanningNoteByTitle(normalized)?.let { existing ->
-            if (!existing.archived) return existing
-            val restored = existing.copy(archived = false, updatedAtMillis = System.currentTimeMillis())
-            todoDao.updatePlanningNote(restored)
-            notifyItemsChanged()
-            return restored
-        }
-        val now = System.currentTimeMillis()
-        val note = PlanningNote(
-            title = normalized,
-            contentMarkdown = "",
-            createdAtMillis = now,
-            updatedAtMillis = now,
-            archived = false
-        )
-        val id = todoDao.insertPlanningNote(note)
-        val created = note.copy(id = id)
-        notifyItemsChanged()
-        return created
-    }
 
     suspend fun insertPlanningMappings(mappings: List<PlanningLineMapping>) {
         if (mappings.isNotEmpty()) todoDao.insertPlanningMappings(mappings)
@@ -814,6 +792,25 @@ class TodoRepository(
         todoDao.deleteScheduleTemplate(templateId)
     }
 
+    suspend fun saveAiReport(report: AiReport): Long {
+        return todoDao.insertAiReport(report)
+    }
+
+    suspend fun saveAiReports(reports: List<AiReport>): List<Long> {
+        if (reports.isEmpty()) return emptyList()
+        return todoDao.insertAiReports(reports)
+    }
+
+    suspend fun getAllAiReports(): List<AiReport> = todoDao.getAllAiReports()
+
+    suspend fun getAiReportsByType(type: AiReportType): List<AiReport> = todoDao.getAiReportsByType(type)
+
+    suspend fun getAiReportById(id: Long): AiReport? = todoDao.getAiReportById(id)
+
+    suspend fun deleteAiReport(reportId: Long) {
+        todoDao.deleteAiReport(reportId)
+    }
+
     suspend fun exportSnapshot(settings: AppSettings): BackupSnapshot {
         val planningNotes = todoDao.getAllPlanningNotes()
         val planningMappings = mutableListOf<PlanningLineMapping>()
@@ -830,6 +827,7 @@ class TodoRepository(
             scheduleTemplates = todoDao.getScheduleTemplates(),
             planningNotes = planningNotes,
             planningLineMappings = planningMappings,
+            aiReports = todoDao.getAllAiReports(),
             settings = settings
         )
     }
@@ -843,6 +841,7 @@ class TodoRepository(
         todoDao.clearPlanningNotes()
         todoDao.clearPlanningMappings()
         todoDao.clearFocusSessions()
+        todoDao.clearAiReports()
         if (snapshot.groups.isNotEmpty()) {
             todoDao.insertGroups(snapshot.groups)
         } else {
@@ -868,6 +867,9 @@ class TodoRepository(
         }
         if (snapshot.planningLineMappings.isNotEmpty()) {
             todoDao.insertPlanningMappings(snapshot.planningLineMappings)
+        }
+        if (snapshot.aiReports.isNotEmpty()) {
+            todoDao.insertAiReports(snapshot.aiReports)
         }
     }
 

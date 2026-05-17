@@ -323,28 +323,6 @@ internal fun PlanningDeskPanel(
             }
         }
 
-        if (activeNote?.title == "AI 日报" || activeNote?.title == "AI 周报") {
-            Surface(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(18.dp),
-                color = Color(0xFF7E57C2).copy(alpha = 0.14f),
-                border = BorderStroke(1.dp, Color(0xFF7E57C2).copy(alpha = 0.34f))
-            ) {
-                Row(
-                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 11.dp),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(Icons.Rounded.Info, contentDescription = null, tint = Color(0xFF7E57C2), modifier = Modifier.size(18.dp))
-                    Text(
-                        text = "这是 AI 自动生成的报告文档，建议不要手动编辑当前内容；可以在此保留过往日报 / 周报作为复盘记录。",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                }
-            }
-        }
-
         if (markdownEditMode) {
             if (!shortcutBarExpanded) {
                 PlanningShortcutCollapsedHint(onExpand = { shortcutBarExpanded = true })

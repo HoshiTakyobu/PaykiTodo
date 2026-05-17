@@ -10,6 +10,7 @@ import com.example.todoalarm.data.AppDatabase
 import com.example.todoalarm.data.BackupManager
 import com.example.todoalarm.data.AppSettingsStore
 import com.example.todoalarm.data.DatabaseMigrations
+import com.example.todoalarm.data.LegacyAiReportMigration
 import com.example.todoalarm.data.TodoRepository
 import com.example.todoalarm.sync.DesktopSyncCoordinator
 import com.example.todoalarm.sync.DesktopSyncService
@@ -27,6 +28,7 @@ class TodoApplication : Application() {
         DailyReportScheduler.scheduleNext(this)
         CoroutineScope(Dispatchers.IO).launch {
             repository.ensureDefaultGroups()
+            LegacyAiReportMigration.migrateIfNeeded(this@TodoApplication)
             if (settingsStore.currentSettings().desktopSyncEnabled) {
                 DesktopSyncService.start(applicationContext)
             }
@@ -49,7 +51,8 @@ class TodoApplication : Application() {
             DatabaseMigrations.MIGRATION_8_9,
             DatabaseMigrations.MIGRATION_9_10,
             DatabaseMigrations.MIGRATION_10_11,
-            DatabaseMigrations.MIGRATION_11_12
+            DatabaseMigrations.MIGRATION_11_12,
+            DatabaseMigrations.MIGRATION_12_13
         )
             .build()
     }

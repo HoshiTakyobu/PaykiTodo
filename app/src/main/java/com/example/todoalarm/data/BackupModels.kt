@@ -11,5 +11,6 @@ data class BackupSnapshot(
     val scheduleTemplates: List<ScheduleTemplate> = emptyList(),
     val planningNotes: List<PlanningNote> = emptyList(),
     val planningLineMappings: List<PlanningLineMapping> = emptyList(),
+    val aiReports: List<AiReport> = emptyList(),
     val settings: AppSettings
 )

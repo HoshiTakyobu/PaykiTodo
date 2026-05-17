@@ -66,7 +66,8 @@ data class AppSettings(
     val dailyReportMinute: Int = 0,
     val weeklyReportEnabled: Boolean = false,
     val weeklyReportHour: Int = 22,
-    val weeklyReportMinute: Int = 0
+    val weeklyReportMinute: Int = 0,
+    val legacyAiReportMigrated: Boolean = false
 )
 
 class AppSettingsStore(context: Context) {
@@ -259,6 +260,11 @@ class AppSettingsStore(context: Context) {
         refresh()
     }
 
+    fun markLegacyAiReportMigrated() {
+        preferences.edit().putBoolean(KEY_LEGACY_AI_REPORT_MIGRATED, true).apply()
+        refresh()
+    }
+
     fun replaceAll(settings: AppSettings) {
         val mergedPlanningAiProviders = mergePlanningAiApiKeys(settings.planningAiProviders)
         val primaryPlanningAiProvider = mergedPlanningAiProviders.firstOrNull()
@@ -304,6 +310,7 @@ class AppSettingsStore(context: Context) {
             .putBoolean(KEY_WEEKLY_REPORT_ENABLED, settings.weeklyReportEnabled)
             .putInt(KEY_WEEKLY_REPORT_HOUR, settings.weeklyReportHour.coerceIn(0, 23))
             .putInt(KEY_WEEKLY_REPORT_MINUTE, settings.weeklyReportMinute.coerceIn(0, 59))
+            .putBoolean(KEY_LEGACY_AI_REPORT_MIGRATED, settings.legacyAiReportMigrated)
             .apply {
                 val noteId = settings.lastOpenedPlanningNoteId
                 if (noteId == null || noteId <= 0) remove(KEY_LAST_OPENED_PLANNING_NOTE_ID) else putLong(KEY_LAST_OPENED_PLANNING_NOTE_ID, noteId)
@@ -382,7 +389,8 @@ class AppSettingsStore(context: Context) {
             dailyReportMinute = preferences.getInt(KEY_DAILY_REPORT_MINUTE, 0).coerceIn(0, 59),
             weeklyReportEnabled = preferences.getBoolean(KEY_WEEKLY_REPORT_ENABLED, false),
             weeklyReportHour = preferences.getInt(KEY_WEEKLY_REPORT_HOUR, 22).coerceIn(0, 23),
-            weeklyReportMinute = preferences.getInt(KEY_WEEKLY_REPORT_MINUTE, 0).coerceIn(0, 59)
+            weeklyReportMinute = preferences.getInt(KEY_WEEKLY_REPORT_MINUTE, 0).coerceIn(0, 59),
+            legacyAiReportMigrated = preferences.getBoolean(KEY_LEGACY_AI_REPORT_MIGRATED, false)
         )
     }
 
@@ -467,5 +475,6 @@ class AppSettingsStore(context: Context) {
         private const val KEY_WEEKLY_REPORT_ENABLED = "weekly_report_enabled"
         private const val KEY_WEEKLY_REPORT_HOUR = "weekly_report_hour"
         private const val KEY_WEEKLY_REPORT_MINUTE = "weekly_report_minute"
+        private const val KEY_LEGACY_AI_REPORT_MIGRATED = "legacy_ai_report_migrated"
     }
 }

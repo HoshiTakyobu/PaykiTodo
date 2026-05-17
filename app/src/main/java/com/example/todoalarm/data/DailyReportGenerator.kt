@@ -14,50 +14,55 @@ import java.util.Locale
 
 object DailyReportGenerator {
     private val DateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd", Locale.CHINA)
-    private val EntryHeaderFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd EEE HH:mm", Locale.CHINA)
     private val DateTimeLabelFormatter = DateTimeFormatter.ofPattern("M月d日 HH:mm", Locale.CHINA)
     private val ClockFormatter = DateTimeFormatter.ofPattern("HH:mm", Locale.CHINA)
 
-    suspend fun generateDaily(app: TodoApplication): PlanningNote {
+    suspend fun generateDaily(app: TodoApplication): AiReport {
         val today = LocalDate.now()
         val context = collectDailyContext(app, today)
         val aiReport = callAiIfPossible(app, buildDailyPrompt(context), reportType = "日报")
-        val content = aiReport?.trim()?.takeIf { it.isNotBlank() } ?: buildLocalDaily(context)
-        val note = writeToReportNote(
+        val content = aiReport?.content?.trim()?.takeIf { it.isNotBlank() } ?: buildLocalDaily(context)
+        val report = saveReport(
             app = app,
-            title = DAILY_NOTE_TITLE,
-            generatedAt = LocalDateTime.now(),
-            body = content
+            type = AiReportType.DAILY,
+            content = content,
+            providerName = aiReport?.providerName ?: LOCAL_PROVIDER_NAME,
+            isLocalFallback = aiReport == null,
+            periodStartMillis = dayStartMillis(today),
+            periodEndMillis = dayEndMillis(today)
         )
         DailyReportNotifier.postReportNotification(
             context = app.applicationContext,
-            noteId = note.id,
+            reportId = report.id,
             reportTitle = "AI 日报已生成",
             preview = content,
             weekly = false
         )
-        return note
+        return report
     }
 
-    suspend fun generateWeekly(app: TodoApplication): PlanningNote {
+    suspend fun generateWeekly(app: TodoApplication): AiReport {
         val today = LocalDate.now()
         val context = collectWeeklyContext(app, today)
         val aiReport = callAiIfPossible(app, buildWeeklyPrompt(context), reportType = "周报")
-        val content = aiReport?.trim()?.takeIf { it.isNotBlank() } ?: buildLocalWeekly(context)
-        val note = writeToReportNote(
+        val content = aiReport?.content?.trim()?.takeIf { it.isNotBlank() } ?: buildLocalWeekly(context)
+        val report = saveReport(
             app = app,
-            title = WEEKLY_NOTE_TITLE,
-            generatedAt = LocalDateTime.now(),
-            body = content
+            type = AiReportType.WEEKLY,
+            content = content,
+            providerName = aiReport?.providerName ?: LOCAL_PROVIDER_NAME,
+            isLocalFallback = aiReport == null,
+            periodStartMillis = dayStartMillis(context.weekStart),
+            periodEndMillis = dayEndMillis(context.weekEnd)
         )
         DailyReportNotifier.postReportNotification(
             context = app.applicationContext,
-            noteId = note.id,
+            reportId = report.id,
             reportTitle = "AI 周报已生成",
             preview = content,
             weekly = true
         )
-        return note
+        return report
     }
 
     private suspend fun collectDailyContext(app: TodoApplication, date: LocalDate): DailyContext {
@@ -109,36 +114,44 @@ object DailyReportGenerator {
         )
     }
 
-    private suspend fun callAiIfPossible(app: TodoApplication, prompt: String, reportType: String): String? {
+    private suspend fun callAiIfPossible(app: TodoApplication, prompt: String, reportType: String): ReportText? {
         val settings = app.settingsStore.currentSettings()
         if (!settings.planningAiEnabled) return null
         return runCatching {
-            PlanningAiCaller.callWithFallback(
+            val response = PlanningAiCaller.callWithFallback(
                 providers = settings.planningAiProviders,
                 request = PlanningAiRequest(
                     systemPrompt = "你是 PaykiTodo 的温和复盘助手。请输出简短中文$reportType，不要寒暄，不要编造数据。",
                     prompt = prompt
                 )
-            ).content
+            )
+            ReportText(
+                content = response.content,
+                providerName = response.provider.name.ifBlank { response.provider.model }.ifBlank { "AI 源" }
+            )
         }.getOrNull()
     }
 
-    private suspend fun writeToReportNote(
+    private suspend fun saveReport(
         app: TodoApplication,
-        title: String,
-        generatedAt: LocalDateTime,
-        body: String
-    ): PlanningNote {
-        val note = app.repository.getOrCreateReportNote(title)
-        val header = "## ${generatedAt.format(EntryHeaderFormatter)}"
-        val newContent = buildString {
-            append(header)
-            append("\n\n")
-            append(body.trim())
-            append("\n\n---\n\n")
-            append(note.contentMarkdown)
-        }
-        return app.repository.updatePlanningNoteContent(note.id, newContent) ?: note.copy(contentMarkdown = newContent)
+        type: AiReportType,
+        content: String,
+        providerName: String,
+        isLocalFallback: Boolean,
+        periodStartMillis: Long,
+        periodEndMillis: Long
+    ): AiReport {
+        val report = AiReport(
+            type = type,
+            generatedAtMillis = System.currentTimeMillis(),
+            periodStartMillis = periodStartMillis,
+            periodEndMillis = periodEndMillis,
+            content = content.trim(),
+            providerName = providerName,
+            isLocalFallback = isLocalFallback
+        )
+        val id = app.repository.saveAiReport(report)
+        return report.copy(id = id)
     }
 
     private fun buildDailyPrompt(context: DailyContext): String {
@@ -257,6 +270,19 @@ object DailyReportGenerator {
         return Instant.ofEpochMilli(millis).atZone(ZoneId.systemDefault()).toLocalDateTime()
     }
 
+    private fun dayStartMillis(date: LocalDate): Long {
+        return date.atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
+    }
+
+    private fun dayEndMillis(date: LocalDate): Long {
+        return date.plusDays(1).atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli() - 1
+    }
+
+    private data class ReportText(
+        val content: String,
+        val providerName: String
+    )
+
     private data class DailyContext(
         val date: LocalDate,
         val todayCompleted: List<TodoItem>,
@@ -277,6 +303,5 @@ object DailyReportGenerator {
         val focusMinutes: Int
     )
 
-    const val DAILY_NOTE_TITLE = "AI 日报"
-    const val WEEKLY_NOTE_TITLE = "AI 周报"
+    private const val LOCAL_PROVIDER_NAME = "本地模板"
 }

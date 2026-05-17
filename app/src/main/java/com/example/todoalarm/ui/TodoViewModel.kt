@@ -12,6 +12,7 @@ import com.example.todoalarm.alarm.ReminderChainLogger
 import com.example.todoalarm.alarm.ReminderDispatchTracker
 import com.example.todoalarm.alarm.ReminderForegroundService
 import com.example.todoalarm.data.AppSettings
+import com.example.todoalarm.data.AiReport
 import com.example.todoalarm.data.CalendarEventDraft
 import com.example.todoalarm.data.DEFAULT_PLANNING_REMINDER_MINUTES
 import com.example.todoalarm.data.DailyReportGenerator
@@ -73,6 +74,7 @@ data class TodoUiState(
     val historyItems: List<TodoItem> = emptyList(),
     val calendarItems: List<TodoItem> = emptyList(),
     val planningNotes: List<PlanningNote> = emptyList(),
+    val aiReports: List<AiReport> = emptyList(),
     val activePlanningNoteId: Long? = null,
     val activePlanningNote: PlanningNote? = null,
     val activeAnnouncements: List<PlanningAnnouncement> = emptyList(),
@@ -134,6 +136,7 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
         repository.observeGroups(),
         repository.observePlanningNotes(),
         repository.observeFocusSessions(),
+        repository.observeAiReports(),
         settingsStore.settingsFlow,
         quoteFlow,
         selectedGroupIdFlow,
@@ -147,10 +150,12 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
         val planningNotes = values[2] as List<PlanningNote>
         @Suppress("UNCHECKED_CAST")
         val focusSessions = values[3] as List<com.example.todoalarm.data.FocusSession>
-        val settings = values[4] as AppSettings
         @Suppress("UNCHECKED_CAST")
-        val quotes = values[5] as List<String>
-        val selectedGroupId = values[6] as Long?
+        val aiReports = values[4] as List<AiReport>
+        val settings = values[5] as AppSettings
+        @Suppress("UNCHECKED_CAST")
+        val quotes = values[6] as List<String>
+        val selectedGroupId = values[7] as Long?
         val nowMillis = System.currentTimeMillis()
         val today = Instant.ofEpochMilli(nowMillis).atZone(ZoneId.systemDefault()).toLocalDate()
         val availableGroups = if (groups.isEmpty()) repository.ensureDefaultGroups() else groups
@@ -186,6 +191,7 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
             historyItems = historyItems,
             calendarItems = activeCalendarItems,
             planningNotes = planningNotes,
+            aiReports = aiReports,
             activePlanningNoteId = activePlanningNote?.id,
             activePlanningNote = activePlanningNote,
             activeAnnouncements = PlanningAnnouncementParser.activeAnnouncements(planningNotes, today),
@@ -670,9 +676,14 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     suspend fun generateDailyReportNow(): String? {
-        val note = runCatching { DailyReportGenerator.generateDaily(app) }
+        runCatching { DailyReportGenerator.generateDaily(app) }
             .getOrElse { return "日报生成失败：${it.message ?: it::class.java.simpleName}" }
-        settingsStore.updateLastOpenedPlanningNoteId(note.id)
+        autoBackupIfEnabled()
+        return "AI 日报已生成，并写入「AI 报告」归档。"
+    }
+
+    suspend fun deleteAiReport(reportId: Long): String? {
+        repository.deleteAiReport(reportId)
         autoBackupIfEnabled()
         return null
     }

@@ -62,6 +62,7 @@ private fun BackupSnapshot.toJson(): JSONObject {
         put("scheduleTemplates", JSONArray(scheduleTemplates.map { it.toJson() }))
         put("planningNotes", JSONArray(planningNotes.map { it.toJson() }))
         put("planningLineMappings", JSONArray(planningLineMappings.map { it.toJson() }))
+        put("aiReports", JSONArray(aiReports.map { it.toJson() }))
     }
 }
 
@@ -103,6 +104,7 @@ private fun AppSettings.toJson(): JSONObject {
         put("weeklyReportEnabled", weeklyReportEnabled)
         put("weeklyReportHour", weeklyReportHour)
         put("weeklyReportMinute", weeklyReportMinute)
+        put("legacyAiReportMigrated", legacyAiReportMigrated)
     }
 }
 
@@ -259,6 +261,19 @@ private fun PlanningLineMapping.toJson(): JSONObject {
     }
 }
 
+private fun AiReport.toJson(): JSONObject {
+    return JSONObject().apply {
+        put("id", id)
+        put("type", type.name)
+        put("generatedAtMillis", generatedAtMillis)
+        put("periodStartMillis", periodStartMillis)
+        put("periodEndMillis", periodEndMillis)
+        put("content", content)
+        put("providerName", providerName)
+        put("isLocalFallback", isLocalFallback)
+    }
+}
+
 private fun backupSnapshotFromJson(json: JSONObject): BackupSnapshot {
     return BackupSnapshot(
         exportedAtMillis = json.optLong("exportedAtMillis", System.currentTimeMillis()),
@@ -271,6 +286,7 @@ private fun backupSnapshotFromJson(json: JSONObject): BackupSnapshot {
         scheduleTemplates = json.optJSONArray("scheduleTemplates").toScheduleTemplates(),
         planningNotes = json.optJSONArray("planningNotes").toPlanningNotes(),
         planningLineMappings = json.optJSONArray("planningLineMappings").toPlanningLineMappings(),
+        aiReports = json.optJSONArray("aiReports").toAiReports(),
         settings = json.optJSONObject("settings").toSettings()
     )
 }
@@ -492,6 +508,27 @@ private fun JSONArray?.toPlanningLineMappings(): List<PlanningLineMapping> {
     }
 }
 
+private fun JSONArray?.toAiReports(): List<AiReport> {
+    if (this == null) return emptyList()
+    return buildList(length()) {
+        for (index in 0 until length()) {
+            val item = optJSONObject(index) ?: continue
+            add(
+                AiReport(
+                    id = item.optLong("id", 0L),
+                    type = AiReportType.entries.firstOrNull { it.name == item.optString("type") } ?: AiReportType.DAILY,
+                    generatedAtMillis = item.optLong("generatedAtMillis", System.currentTimeMillis()),
+                    periodStartMillis = item.optLong("periodStartMillis", item.optLong("generatedAtMillis", System.currentTimeMillis())),
+                    periodEndMillis = item.optLong("periodEndMillis", item.optLong("generatedAtMillis", System.currentTimeMillis())),
+                    content = item.optString("content"),
+                    providerName = item.optString("providerName", ""),
+                    isLocalFallback = item.optBoolean("isLocalFallback", false)
+                )
+            )
+        }
+    }
+}
+
 private fun JSONObject?.toSettings(): AppSettings {
     if (this == null) return AppSettings()
     return AppSettings(
@@ -535,7 +572,8 @@ private fun JSONObject?.toSettings(): AppSettings {
         dailyReportMinute = optInt("dailyReportMinute", 0),
         weeklyReportEnabled = optBoolean("weeklyReportEnabled", false),
         weeklyReportHour = optInt("weeklyReportHour", 22),
-        weeklyReportMinute = optInt("weeklyReportMinute", 0)
+        weeklyReportMinute = optInt("weeklyReportMinute", 0),
+        legacyAiReportMigrated = optBoolean("legacyAiReportMigrated", false)
     )
 }
 

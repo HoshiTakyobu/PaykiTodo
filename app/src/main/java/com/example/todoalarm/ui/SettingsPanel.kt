@@ -53,7 +53,6 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Slider
@@ -61,7 +60,6 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
@@ -976,7 +974,7 @@ private fun AiReportPreferencesPanel(
 
     PrefCard("AI 日报 / 周报") {
         Text(
-            text = "日报会在每天设定时间生成并写入规划台「AI 日报」；周报会在每周日设定时间写入「AI 周报」。AI 配置不可用时会用本地模板兜底。若未开启「精确闹钟」权限，系统可能延后生成。",
+            text = "日报会在每天设定时间生成并写入「AI 报告」归档（抽屉 → AI 报告）；周报会在每周日设定时间写入同一归档。AI 配置不可用时会用本地模板兜底。若未开启「精确闹钟」权限，系统可能延后生成。",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -1033,7 +1031,7 @@ private fun AiReportPreferencesPanel(
                     runMessage = null
                     try {
                         val message = onGenerateDailyReportNow()
-                        val finalMessage = message ?: "AI 日报已生成，并写入规划台「AI 日报」。"
+                        val finalMessage = message ?: "AI 日报已生成，并写入「AI 报告」归档。"
                         runMessage = finalMessage
                         Toast.makeText(context, finalMessage, Toast.LENGTH_SHORT).show()
                     } finally {
@@ -1060,27 +1058,24 @@ private fun AiReportPreferencesPanel(
 }
 
 @Composable
-@OptIn(ExperimentalMaterial3Api::class)
 private fun AiReportHelpSheet(onDismiss: () -> Unit) {
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-    ModalBottomSheet(
+    AlertDialog(
         onDismissRequest = onDismiss,
-        sheetState = sheetState,
-        containerColor = MaterialTheme.colorScheme.surface
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .verticalScroll(rememberScrollState())
-                .padding(start = 18.dp, end = 18.dp, bottom = 28.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
+        title = {
             Text(
                 text = "AI 日报怎么用",
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSurface
             )
+        },
+        text = {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
             AiReportHelpCard("什么是 AI 日报") {
                 HelpBullet("AI 日报会汇总今天完成的待办、错过的待办、今日和明日日程、明日 DDL、今日专注分钟数。")
                 HelpBullet("它会调用你已配置的 AI 源生成 1-3 段中文总结，并给出「明天先做什么」的建议。")
@@ -1095,12 +1090,12 @@ private fun AiReportHelpSheet(onDismiss: () -> Unit) {
                 HelpBullet("1. 在本卡片打开「日报」开关，设置生成时间，默认 22:00。")
                 HelpBullet("2. 可选：打开「周报」开关。")
                 HelpBullet("3. 首次使用建议点击「立即生成一次日报」验证链路。")
-                HelpBullet("4. 报告生成后会有通知栏推送，点击通知可直达对应文档。")
+                HelpBullet("4. 报告生成后会有通知栏推送，点击通知可直达对应报告详情。")
             }
             AiReportHelpCard("报告在哪看") {
-                HelpBullet("通知栏点击「AI 日报已生成」通知，会自动打开规划台「AI 日报」文档。")
-                HelpBullet("也可以从抽屉进入规划台，再在文档列表中选择「AI 日报」或「AI 周报」。")
-                HelpBullet("报告文档顶部会有紫色提示条，说明这是自动生成的复盘记录。")
+                HelpBullet("通知栏点击「AI 日报已生成」通知，会自动打开对应报告详情。")
+                HelpBullet("也可以从抽屉进入「AI 报告」，再点击列表中的某条日报或周报查看详情。")
+                HelpBullet("报告以归档形式保存，不占用规划台文档列表，可以随时翻看历史。")
             }
             AiReportHelpCard("常见问题") {
                 HelpBullet("没收到报告：检查 AI 源测试连接、通知权限和 Android 12+ 的闹钟权限；手机深度休眠时可能延后，可点「立即生成一次日报」手动触发。")
@@ -1108,7 +1103,13 @@ private fun AiReportHelpSheet(onDismiss: () -> Unit) {
                 HelpBullet("AI 写得不准：报告基于生成时的数据库快照，22:00 之后完成的任务不会进入当天日报；AI 也可能偶尔幻觉，严重错误需要继续改 prompt。")
             }
         }
-    }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text("知道了")
+            }
+        }
+    )
 }
 
 @Composable

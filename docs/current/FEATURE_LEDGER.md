@@ -112,15 +112,16 @@ This file tracks the product at a practical level for new coding sessions.
 ### AI 日报 / 周报
 
 - Settings -> `AI 调用配置` includes an `AI 日报 / 周报` block with compact switches, HH:mm time fields, a save/re-schedule button, `了解 AI 日报`, and `立即生成一次日报`
-- the `了解 AI 日报` sheet explains what daily/weekly reports summarize, AI-source and fallback requirements, Android 12+ exact-alarm caveats, enable steps, report locations, notification deep links, and common failure cases
+- the `了解 AI 日报` guide is a centered dialog explaining what daily/weekly reports summarize, AI-source and fallback requirements, Android 12+ exact-alarm caveats, enable steps, the independent `AI 报告` archive, notification deep links, and common failure cases
 - daily reports collect today's completed todos, missed todos, today's events, tomorrow events, tomorrow DDLs, and today's focus minutes
 - weekly reports collect Monday-Sunday completed todos, missed todos, week events, next-week DDLs, and completed focus minutes for the week
 - report generation tries enabled Planning Desk AI providers in order through `PlanningAiCaller.callWithFallback`; if AI is disabled or fails, a local template still generates a usable report
-- reports are stored in Planning Desk notes named `AI 日报` and `AI 周报`, with the newest entry prepended above older entries
-- archived report notes are restored instead of duplicated when a report is generated again
-- report notifications use a low-priority `ai_report_channel`, skip posting if Android 13+ notification permission is missing, and deep-link to the matching Planning Desk note
+- reports are stored in the independent Room `ai_reports` archive rather than Planning Desk notes; the drawer exposes `AI 报告` after `规划台`
+- upgraded installs migrate legacy Planning Desk `AI 日报` / `AI 周报` note entries into `ai_reports`, delete the old report notes, and clear `lastOpenedPlanningNoteId` if it pointed to a removed report note
+- `AI 报告` supports all / daily / weekly filters, card previews, full detail viewing, local-fallback/source pills, empty-state guidance, and delete confirmation from long press or detail view
+- report notifications use a low-priority `ai_report_channel`, skip posting if Android 13+ notification permission is missing, and deep-link to the matching AI report detail
 - `DailyReportScheduler` schedules daily and Sunday weekly report alarms, cancels disabled schedules, and is invoked on app startup plus boot/time/timezone recovery; it uses exact alarms when allowed and safely falls back to system-allowed idle scheduling when exact-alarm permission is missing
-- Planning Desk shows a purple auto-report hint when the active document is `AI 日报` or `AI 周报`
+- backup / restore snapshots include `aiReports`, so exported JSON preserves report history
 
 ### Calendar System
 

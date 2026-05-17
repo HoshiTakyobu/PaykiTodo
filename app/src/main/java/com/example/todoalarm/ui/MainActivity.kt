@@ -200,6 +200,7 @@ class MainActivity : ComponentActivity() {
                     onPlanningAiProvidersChange = viewModel::updatePlanningAiProviders,
                     onReportPreferencesChange = viewModel::updateReportPreferences,
                     onGenerateDailyReportNow = viewModel::generateDailyReportNow,
+                    onDeleteAiReport = viewModel::deleteAiReport,
                     onDismissOnboarding = viewModel::markOnboardingSeen,
                     onResetOnboarding = {
                         viewModel.resetOnboarding()
@@ -257,14 +258,16 @@ class MainActivity : ComponentActivity() {
         val todoTarget = intent.getLongExtra(EXTRA_OPEN_TODO_ID, 0L).takeIf { it > 0L }
         val eventTarget = intent.getLongExtra(EXTRA_OPEN_EVENT_ID, 0L).takeIf { it > 0L }
         val planningTarget = intent.getLongExtra(EXTRA_OPEN_PLANNING_NOTE_ID, 0L).takeIf { it > 0L }
+        val aiReportTarget = intent.getLongExtra(EXTRA_OPEN_AI_REPORT_ID, 0L).takeIf { it > 0L }
         val openBoard = intent.getBooleanExtra(EXTRA_OPEN_BOARD, false)
-        if (settingsTarget == null && todoTarget == null && eventTarget == null && planningTarget == null && !openBoard) return
+        if (settingsTarget == null && todoTarget == null && eventTarget == null && planningTarget == null && aiReportTarget == null && !openBoard) return
 
         launchRoute = DashboardLaunchRoute(
             settingsSectionKey = settingsTarget,
             targetTodoId = todoTarget,
             targetEventId = eventTarget,
             targetPlanningNoteId = planningTarget,
+            targetAiReportId = aiReportTarget,
             openBoard = openBoard
         )
         launchRouteSerial += 1
@@ -272,6 +275,7 @@ class MainActivity : ComponentActivity() {
         intent.removeExtra(EXTRA_OPEN_TODO_ID)
         intent.removeExtra(EXTRA_OPEN_EVENT_ID)
         intent.removeExtra(EXTRA_OPEN_PLANNING_NOTE_ID)
+        intent.removeExtra(EXTRA_OPEN_AI_REPORT_ID)
         intent.removeExtra(EXTRA_OPEN_BOARD)
     }
 
@@ -547,6 +551,7 @@ class MainActivity : ComponentActivity() {
         const val EXTRA_OPEN_TODO_ID = "com.example.todoalarm.OPEN_TODO_ID"
         const val EXTRA_OPEN_EVENT_ID = "com.example.todoalarm.OPEN_EVENT_ID"
         const val EXTRA_OPEN_PLANNING_NOTE_ID = "com.example.todoalarm.OPEN_PLANNING_NOTE_ID"
+        const val EXTRA_OPEN_AI_REPORT_ID = "com.example.todoalarm.OPEN_AI_REPORT_ID"
         const val SETTINGS_SECTION_DESKTOP_SYNC = "desktop_sync"
     }
 }
@@ -556,5 +561,6 @@ data class DashboardLaunchRoute(
     val targetTodoId: Long? = null,
     val targetEventId: Long? = null,
     val targetPlanningNoteId: Long? = null,
+    val targetAiReportId: Long? = null,
     val openBoard: Boolean = false
 )

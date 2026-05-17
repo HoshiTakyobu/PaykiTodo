@@ -7,21 +7,20 @@
 - Package name: `com.paykitodo.app`
 - Target platform: Android 14 / API 34
 - Current version in code:
-  - `versionName = "1.9.8"`
-  - `versionCode = 202`
+  - `versionName = "1.9.9"`
+  - `versionCode = 203`
 
 ## Current Build Facts
 
 - Latest debug APK output:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.9.8-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.9.9-debug.apk`
 - Minimal verification completed in the latest code round:
-  - `./gradlew.bat :app:mergeDebugResources`
   - `./gradlew.bat :app:compileDebugKotlin`
-  - `./gradlew.bat assembleDebug`
   - `./gradlew.bat testDebugUnitTest`
+  - `./gradlew.bat assembleDebug`
   - `node --check app/src/main/assets/desktop-web/app.js`
   - `git diff --check`
-  - `app/build/outputs/apk/debug/output-metadata.json` reports `versionCode=202`, `versionName=1.9.8`, `outputFile=PaykiTodo-1.9.8-debug.apk`
+  - `app/build/outputs/apk/debug/output-metadata.json` reports `versionCode=203`, `versionName=1.9.9`, `outputFile=PaykiTodo-1.9.9-debug.apk`
 - Previous `1.9.5` emulator verification:
   - installed `PaykiTodo-1.9.5-debug.apk` on `emulator-5554`
   - verified AI daily-report fallback scheduling while exact-alarm permission is denied, automatic report generation, notification posting, notification deep link to `AI 日报`, disabled-switch cancellation, and weekly-report alarm registration
@@ -43,11 +42,11 @@
 
 ## Current Worktree Reality
 
-The repository is now being advanced to `1.9.8`. It carries forward the `1.9.0` focus-mode baseline, the `1.9.1` AI daily / weekly report generation, the Android launcher-widget visual hotfixes, the AI report scheduling reliability fix for Android devices without exact-alarm permission, and moves AI reports into an independent archive instead of Planning Desk.
+The repository is now being advanced to `1.9.9`. It carries forward the `1.9.0` focus-mode baseline, the `1.9.1` AI daily / weekly report generation, the Android launcher-widget visual hotfixes, the AI report scheduling reliability fix for Android devices without exact-alarm permission, the independent AI report archive, and now moves the desktop Web first tab closer to the phone daily-board experience.
 
 Most important current baseline facts:
 
-- version metadata is `1.9.8 / 202`
+- version metadata is `1.9.9 / 203`
 - Database version is now `13`; `MIGRATION_12_13` creates `ai_reports`.
 - Settings -> `专注模式` controls default focus duration, extension duration, screen-on behavior, and a documented-only notification-suppression preference.
 - Active todo long-press menus include `开始专注 · X 分钟`; the daily-board focus card can start free focus.
@@ -88,6 +87,9 @@ Most important current baseline facts:
   - `以文档为准覆盖`: current planning line overwrites the item
   - `以事项为准更新文档`: current item rewrites the source planning line
 - Desktop-web Planning Desk now exposes mapping preview, refresh, postpone, undo, and conflict resolution through `/api/planning/*`, and the desktop UI shows the current note title plus an empty-state hint before parsing.
+- Desktop-web `/api/snapshot` now includes `todayBoard`, built from the same `DailyBoardSnapshotBuilder` used by the phone/widget board. The browser first tab is `每日看板`, with a current/next item card, today focus statistics, today todos, today schedule, tomorrow schedule, phone-like ended-event filtering, and in-progress gold highlighting above the full todo management timeline.
+- Desktop Planning Desk import now accepts edited AI candidates directly when their IDs do not match local-rule `line-*` fallback IDs. This fixes the “AI recognized 1 item but imported 0” path for AI candidates such as `ai-0`.
+- Planning Desk AI group names are explicit-only: `groupName` is preserved only when the source line contains explicit group markers such as `#group`, `分组：`, `项目：`, or `课程：`; ordinary titles such as `16:05-18:00 入党表格填写` keep an empty group.
 - Planning notes, planning mappings, focus sessions, and AI reports are included in backup / restore snapshots.
 
 ## Recent Checked Areas
@@ -109,7 +111,7 @@ Recent code inspection and build verification cover:
 
 ## Documentation Health
 
-Current docs are being synchronized for `1.9.8`:
+Current docs are being synchronized for `1.9.9`:
 
 - `README.md`
 - `CHANGELOG.md`

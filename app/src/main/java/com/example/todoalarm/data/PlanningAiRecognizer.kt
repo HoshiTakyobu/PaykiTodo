@@ -101,7 +101,10 @@ object PlanningAiRecognizer {
 
         val title = item.optString("title").trim()
         val notes = item.optString("notes").trim()
-        val groupName = item.optString("groupName").ifBlank { item.optString("group") }.trim()
+        val groupName = sanitizeAiGroupName(
+            rawGroupName = item.optString("groupName").ifBlank { item.optString("group") },
+            sourceLine = sourceLine
+        )
         val dueAt = parseAiDateTime(item.optNullableString("dueAt"), defaultTime = LocalTime.of(23, 59))
         val startAt = parseAiDateTime(item.optNullableString("startAt"))
         val endAt = parseAiDateTime(item.optNullableString("endAt"))
@@ -196,6 +199,16 @@ object PlanningAiRecognizer {
         }
     }
 
+    private fun sanitizeAiGroupName(rawGroupName: String, sourceLine: String): String {
+        val groupName = rawGroupName.trim()
+        if (groupName.isBlank()) return ""
+        val source = sourceLine.trim()
+        if (Regex("""#(?:group|分组)(?=\s|$)""", RegexOption.IGNORE_CASE).containsMatchIn(source)) return groupName
+        val escaped = Regex.escape(groupName)
+        val explicitPattern = Regex("""(?:分组|项目|课程)\s*[:：]\s*$escaped(?:\s|$|，|,|；|;)""")
+        return if (explicitPattern.containsMatchIn(source)) groupName else ""
+    }
+
     private fun parseAiDateTime(raw: String?, defaultTime: LocalTime? = null): LocalDateTime? {
         val text = raw?.trim()?.trim('"')?.takeIf {
             it.isNotBlank() && !it.equals("null", ignoreCase = true)
@@ -271,7 +284,7 @@ object PlanningAiRecognizer {
             2. todo 表示待办任务；title 必填；dueAt 可以为 null。用户只写日期但没写时间时，dueAt 用当天 23:59:00。没有 DDL 就 dueAt=null 且 reminderOffsetsMinutes=[]。
             3. event 表示有开始和结束时间的日程；startAt/endAt 必填，格式为 yyyy-MM-dd'T'HH:mm:ss。event 默认 createLinkedTodo=true，表示导入时可同时创建一个 DDL 等于日程结束时间的待办。
             4. reminderOffsetsMinutes 表示提前多少分钟提醒。用户没写提醒时，有 DDL 或日程的候选默认 [5]；没有 DDL 的 todo 用 []。
-            5. groupName 是用户明确提到的课程、项目、分组、场景名；不确定就空字符串。
+            5. groupName 只在用户明确写了分组标记时填写，例如“#group 入党”“分组：课程”“项目：保研”。不要从标题里擅自截取词语当分组；例如“入党表格填写”的 groupName 必须是空字符串，标题保持“入党表格填写”。
             6. notes 用于保留上下文、父任务、地点、资料等补充信息；不要把标题重复放进 notes。
             7. 对“每天、每周、每月”等循环表达，暂时不要创建循环规则，只在 message 里写“检测到循环关键词，如需循环请导入后在待办编辑器中设置”。
             8. 已完成、已导入、明显只是标题/说明的内容可以输出 type="skip"。

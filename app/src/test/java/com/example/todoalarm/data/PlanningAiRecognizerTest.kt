@@ -17,7 +17,7 @@ class PlanningAiRecognizerTest {
                     {
                       "type": "todo",
                       "lineNumber": 1,
-                      "sourceLine": "晚上交论文，记得提前提醒我",
+                      "sourceLine": "分组：课程 晚上交论文，记得提前提醒我",
                       "title": "交论文",
                       "notes": "用户随手写的 DDL",
                       "groupName": "课程",
@@ -37,7 +37,7 @@ class PlanningAiRecognizerTest {
                   ]
                 }
             """.trimIndent(),
-            originalMarkdown = "晚上交论文，记得提前提醒我\n明天下午开组会两点到四点",
+            originalMarkdown = "分组：课程 晚上交论文，记得提前提醒我\n明天下午开组会两点到四点",
             providerName = "TestAI",
             now = now
         )
@@ -101,5 +101,35 @@ class PlanningAiRecognizerTest {
         val candidate = result.candidates.single()
         assertEquals(PlanningParsedType.SKIPPED, candidate.type)
         assertTrue(candidate.imported)
+    }
+
+    @Test
+    fun dropsAiInferredGroupNameWhenSourceLineHasNoExplicitGroupMarker() {
+        val result = PlanningAiRecognizer.parseAiContent(
+            content = """
+                {
+                  "items": [
+                    {
+                      "type": "event",
+                      "lineNumber": 1,
+                      "sourceLine": "16:05-18:00 入党表格填写",
+                      "title": "入党表格填写",
+                      "groupName": "入党",
+                      "startAt": "2026-05-15T16:05:00",
+                      "endAt": "2026-05-15T18:00:00"
+                    }
+                  ]
+                }
+            """.trimIndent(),
+            originalMarkdown = "16:05-18:00 入党表格填写",
+            providerName = "TestAI",
+            now = now
+        )
+
+        val event = result.candidates.single()
+        assertEquals("入党表格填写", event.title)
+        assertEquals("", event.groupName)
+        assertEquals(LocalDateTime.of(2026, 5, 15, 16, 5), event.startAt)
+        assertEquals(LocalDateTime.of(2026, 5, 15, 18, 0), event.endAt)
     }
 }

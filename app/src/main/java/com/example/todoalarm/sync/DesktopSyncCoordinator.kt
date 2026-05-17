@@ -8,6 +8,7 @@ import com.example.todoalarm.alarm.ReminderForegroundService
 import com.example.todoalarm.data.AppSettingsStore
 import com.example.todoalarm.data.CalendarEventDraft
 import com.example.todoalarm.data.DEFAULT_PLANNING_REMINDER_MINUTES
+import com.example.todoalarm.data.DailyBoardSnapshotBuilder
 import com.example.todoalarm.data.PlanningImportCandidate
 import com.example.todoalarm.data.PlanningLineMapping
 import com.example.todoalarm.data.PlanningLineMatcher
@@ -29,6 +30,7 @@ import com.example.todoalarm.data.TodoDraft
 import com.example.todoalarm.data.TodoItem
 import com.example.todoalarm.data.parseReminderTextInput
 import com.example.todoalarm.data.reminderTriggerTimesMillis
+import com.example.todoalarm.sync.toDesktopSyncBoard
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -43,6 +45,7 @@ import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
+import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Collections
 import java.util.Locale
@@ -156,12 +159,26 @@ class DesktopSyncCoordinator(
         val items = runBlocking { app.repository.getAllTodos() }
         val notes = runBlocking { app.repository.getAllPlanningNotes() }
         val announcements = PlanningAnnouncementParser.activeAnnouncements(notes, LocalDate.now())
+        val now = LocalDateTime.now()
+        val nowMillis = now.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
+        val board = DailyBoardSnapshotBuilder.build(
+            items = items,
+            planningNotes = notes,
+            now = now
+        )
+        val focusSessions = runBlocking { app.repository.getTodayFocusSessions() }
         return DesktopSyncSnapshot(
             generatedAtMillis = System.currentTimeMillis(),
             groups = groups,
             todos = items.filter { it.isTodo }.sortedBy { it.dueAtMillis },
             events = items.filter { it.isEvent }.sortedBy { it.startAtMillis ?: it.dueAtMillis },
-            announcements = announcements
+            announcements = announcements,
+            todayBoard = board.toDesktopSyncBoard(
+                nowMillis = nowMillis,
+                todayFocusMinutes = focusSessions.filter { it.completed }.sumOf { it.actualMinutes },
+                todayFocusSessionCount = focusSessions.size,
+                todayCompletedFocusSessionCount = focusSessions.count { it.completed }
+            )
         )
     }
 
@@ -814,7 +831,9 @@ private fun JSONArray.toPlanningImportCandidates(fallback: List<PlanningParsedCa
     val fallbackById = fallback.associateBy { it.id }
     return (0 until length()).mapNotNull { index ->
         val json = optJSONObject(index) ?: return@mapNotNull null
-        val base = fallbackById[json.optString("id")]?.toPlanningImportCandidate() ?: return@mapNotNull null
+        val base = fallbackById[json.optString("id")]?.toPlanningImportCandidate()
+            ?: json.toPlanningImportCandidateOrNull(index)
+            ?: return@mapNotNull null
         val reminderRaw = json.optStringOrNull("reminderInputText")
         val edited = base.copy(
             title = json.optString("title", base.title),
@@ -847,6 +866,41 @@ private fun JSONArray.toPlanningImportCandidates(fallback: List<PlanningParsedCa
             }
         }
     }
+}
+
+private fun JSONObject.toPlanningImportCandidateOrNull(index: Int): PlanningImportCandidate? {
+    val type = runCatching { PlanningParsedType.valueOf(optString("type")) }.getOrNull()
+        ?: when (optString("type").lowercase(Locale.ROOT)) {
+            "todo", "task", "待办", "任务" -> PlanningParsedType.TODO
+            "event", "schedule", "calendar", "日程", "事件" -> PlanningParsedType.EVENT
+            "skipped", "skip", "跳过" -> PlanningParsedType.SKIPPED
+            "error", "错误" -> PlanningParsedType.ERROR
+            else -> null
+        }
+        ?: return null
+    val lineNumber = optInt("lineNumber", index + 1).coerceAtLeast(1)
+    val id = optString("id").ifBlank { "desktop-ai-$lineNumber-$index" }
+    return PlanningImportCandidate(
+        id = id,
+        lineNumber = lineNumber,
+        sourceLine = optString("sourceLine").ifBlank { optString("title") },
+        type = type,
+        title = optString("title"),
+        notes = optString("notes"),
+        groupName = optString("groupName"),
+        dueAt = parsePlanningImportDateTime(optStringOrNull("dueAt"), defaultTime = LocalTime.of(23, 59)),
+        startAt = parsePlanningImportDateTime(optStringOrNull("startAt"), defaultTime = null),
+        endAt = parsePlanningImportDateTime(optStringOrNull("endAt"), defaultTime = null),
+        reminderOffsetsMinutes = optJSONArray("reminderOffsetsMinutes")?.toIntList().orEmpty(),
+        reminderInputText = optString("reminderInputText"),
+        createLinkedTodo = optBoolean("createLinkedTodo", type == PlanningParsedType.EVENT),
+        defaultToday = optBoolean("defaultToday", false),
+        imported = optBoolean("imported", false),
+        completed = optBoolean("completed", false),
+        importBlocked = optBoolean("importBlocked", false),
+        parentTitle = optStringOrNull("parentTitle"),
+        message = optString("message")
+    )
 }
 
 private fun PlanningImportCandidate.toPlanningLineMapping(

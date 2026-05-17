@@ -1,6 +1,7 @@
 package com.example.todoalarm.sync
 
 import com.example.todoalarm.data.AppSettings
+import com.example.todoalarm.data.DailyBoardSnapshot
 import com.example.todoalarm.data.PlanningAnnouncement
 import com.example.todoalarm.data.TaskGroup
 import com.example.todoalarm.data.TodoItem
@@ -22,7 +23,20 @@ data class DesktopSyncSnapshot(
     val groups: List<TaskGroup>,
     val todos: List<TodoItem>,
     val events: List<TodoItem>,
-    val announcements: List<PlanningAnnouncement> = emptyList()
+    val announcements: List<PlanningAnnouncement> = emptyList(),
+    val todayBoard: DesktopDailyBoardSnapshot
+)
+
+data class DesktopDailyBoardSnapshot(
+    val date: String,
+    val nowMillis: Long,
+    val todoItems: List<TodoItem>,
+    val allTodayEvents: List<TodoItem>,
+    val visibleTodayEvents: List<TodoItem>,
+    val tomorrowEvents: List<TodoItem>,
+    val todayFocusMinutes: Int,
+    val todayFocusSessionCount: Int,
+    val todayCompletedFocusSessionCount: Int
 )
 
 fun DesktopSyncStatus.toJson(): JSONObject {
@@ -42,6 +56,40 @@ fun DesktopSyncSnapshot.toJson(groupsById: Map<Long, TaskGroup>): JSONObject {
         put("todos", JSONArray(todos.map { it.toDesktopJson(groupsById[it.groupId]) }))
         put("events", JSONArray(events.map { it.toDesktopJson(groupsById[it.groupId]) }))
         put("announcements", JSONArray(announcements.map { it.toDesktopJson() }))
+        put("todayBoard", todayBoard.toDesktopJson(groupsById))
+    }
+}
+
+fun DailyBoardSnapshot.toDesktopSyncBoard(
+    nowMillis: Long,
+    todayFocusMinutes: Int,
+    todayFocusSessionCount: Int,
+    todayCompletedFocusSessionCount: Int
+): DesktopDailyBoardSnapshot {
+    return DesktopDailyBoardSnapshot(
+        date = date.toString(),
+        nowMillis = nowMillis,
+        todoItems = todoItems,
+        allTodayEvents = allTodayEvents,
+        visibleTodayEvents = visibleTodayEvents,
+        tomorrowEvents = tomorrowEvents,
+        todayFocusMinutes = todayFocusMinutes,
+        todayFocusSessionCount = todayFocusSessionCount,
+        todayCompletedFocusSessionCount = todayCompletedFocusSessionCount
+    )
+}
+
+private fun DesktopDailyBoardSnapshot.toDesktopJson(groupsById: Map<Long, TaskGroup>): JSONObject {
+    return JSONObject().apply {
+        put("date", date)
+        put("nowMillis", nowMillis)
+        put("todoItems", JSONArray(todoItems.map { it.toDesktopJson(groupsById[it.groupId]) }))
+        put("allTodayEvents", JSONArray(allTodayEvents.map { it.toDesktopJson(groupsById[it.groupId]) }))
+        put("visibleTodayEvents", JSONArray(visibleTodayEvents.map { it.toDesktopJson(groupsById[it.groupId]) }))
+        put("tomorrowEvents", JSONArray(tomorrowEvents.map { it.toDesktopJson(groupsById[it.groupId]) }))
+        put("todayFocusMinutes", todayFocusMinutes)
+        put("todayFocusSessionCount", todayFocusSessionCount)
+        put("todayCompletedFocusSessionCount", todayCompletedFocusSessionCount)
     }
 }
 

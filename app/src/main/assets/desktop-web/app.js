@@ -27,6 +27,7 @@ const state = {
 const els = {
   token: document.getElementById('token'),
   status: document.getElementById('status'),
+  desktopDailyBoard: document.getElementById('desktop-daily-board'),
   todoSummary: document.getElementById('todo-summary'),
   todoTimeline: document.getElementById('todo-timeline'),
   eventSelectedDate: document.getElementById('event-selected-date'),
@@ -468,8 +469,8 @@ function openEventPreviewById(id) {
 function syncTopbar() {
   const todoMode = state.currentTab === 'todos';
   const eventMode = state.currentTab === 'events';
-  els.panelTitle.textContent = todoMode ? '待办时间轴' : eventMode ? '日程时间轴' : '规划台';
-  els.viewCaption.textContent = todoMode ? '桌面端待办模式' : eventMode ? '桌面端日程模式' : 'Markdown 规划模式';
+  els.panelTitle.textContent = todoMode ? '每日看板' : eventMode ? '日程时间轴' : '规划台';
+  els.viewCaption.textContent = todoMode ? '桌面端每日看板' : eventMode ? '桌面端日程模式' : 'Markdown 规划模式';
   els.openCreate.textContent = todoMode ? '新增待办' : eventMode ? '新增日程' : '新建规划';
   els.openCreate.classList.toggle('hidden', state.currentTab === 'planning');
   els.snapshotMeta.textContent = state.snapshot ? ('最近刷新：' + formatDateTimeLabel(state.snapshot.generatedAtMillis)) : '连接后即可读取手机端当前数据';
@@ -550,8 +551,144 @@ function renderTodos() {
     renderSummaryCard('今日待办', sections[1].items.length),
     renderSummaryCard('历史记录', history.length)
   ].join('');
+  renderDesktopDailyBoard();
   els.todoTimeline.innerHTML = sections.map(renderTodoSection).join('');
   bindActions();
+}
+
+function renderDesktopDailyBoard() {
+  if (!els.desktopDailyBoard) return;
+  const board = state.snapshot?.todayBoard;
+  if (!board) {
+    els.desktopDailyBoard.innerHTML = '<div class="empty-state">连接手机后，这里会显示和手机端一致的每日看板。</div>';
+    return;
+  }
+  const date = dateFromKey(board.date || dayKey(new Date()));
+  const todoItems = board.todoItems || [];
+  const allTodayEvents = board.allTodayEvents || [];
+  const visibleTodayEvents = board.visibleTodayEvents || [];
+  const tomorrowEvents = board.tomorrowEvents || [];
+  const focusMinutes = Number(board.todayFocusMinutes || 0);
+  const focusSessions = Number(board.todayFocusSessionCount || 0);
+  const completedFocusSessions = Number(board.todayCompletedFocusSessionCount || 0);
+  const nowMillis = Number(board.nowMillis || Date.now());
+  const nowCard = renderBoardNowCard(nowMillis, visibleTodayEvents, todoItems);
+  els.desktopDailyBoard.innerHTML = ''
+    + '<section class="desktop-board-hero card-panel">'
+    +   '<div>'
+    +     '<div class="eyebrow">今日看板</div>'
+    +     '<h2>' + escapeHtml(formatFullDateLabel(date)) + '</h2>'
+    +     '<p class="muted">电脑端同步手机端当前看板数据，优先显示现在该处理什么。</p>'
+    +   '</div>'
+    +   nowCard
+    +   '<div class="desktop-focus-metric">'
+    +     '<div class="desktop-focus-minutes">' + escapeHtml(focusMinutes) + '</div>'
+    +     '<div><strong>今日已专注</strong><span>' + escapeHtml(focusSessions + ' 次专注 · ' + completedFocusSessions + ' 次完成') + '</span></div>'
+    +   '</div>'
+    + '</section>'
+    + '<section class="desktop-board-grid">'
+    +   renderBoardTodoCard(todoItems)
+    +   renderBoardScheduleCard(board.date || dayKey(new Date()), nowMillis, allTodayEvents, visibleTodayEvents, tomorrowEvents)
+    + '</section>';
+}
+
+function renderBoardNowCard(nowMillis, visibleTodayEvents, todoItems) {
+  const currentEvent = visibleTodayEvents.find(item => eventStart(item) <= nowMillis && nowMillis < eventEnd(item));
+  if (currentEvent) {
+    return ''
+      + '<button type="button" class="desktop-now-card active" data-event-id="' + escapeHtml(String(currentEvent.id ?? '')) + '" style="--accent:' + escapeHtml(currentEvent.accentColorHex || currentEvent.groupColorHex || '#FFC94A') + '">'
+      +   '<span>正在进行</span>'
+      +   '<strong>' + escapeHtml(currentEvent.title || '未命名日程') + '</strong>'
+      +   '<small>' + escapeHtml(eventTimeText(currentEvent)) + '</small>'
+      + '</button>';
+  }
+  const nextEvent = visibleTodayEvents.find(item => eventStart(item) > nowMillis);
+  if (nextEvent) {
+    return ''
+      + '<button type="button" class="desktop-now-card" data-event-id="' + escapeHtml(String(nextEvent.id ?? '')) + '" style="--accent:' + escapeHtml(nextEvent.accentColorHex || nextEvent.groupColorHex || '#4e87e1') + '">'
+      +   '<span>下一项日程</span>'
+      +   '<strong>' + escapeHtml(nextEvent.title || '未命名日程') + '</strong>'
+      +   '<small>' + escapeHtml(eventTimeText(nextEvent)) + '</small>'
+      + '</button>';
+  }
+  const nextTodo = todoItems.find(item => !item.missed) || todoItems[0];
+  if (nextTodo) {
+    return ''
+      + '<button type="button" class="desktop-now-card" data-todo-id="' + escapeHtml(String(nextTodo.id ?? '')) + '" style="--accent:' + escapeHtml(nextTodo.groupColorHex || nextTodo.accentColorHex || '#4e87e1') + '">'
+      +   '<span>' + escapeHtml(nextTodo.missed ? '已错过待办' : '今日待办') + '</span>'
+      +   '<strong>' + escapeHtml(nextTodo.title || '未命名待办') + '</strong>'
+      +   '<small>' + escapeHtml(nextTodo.hasDueDate ? ('DDL ' + formatDateTimeLabel(nextTodo.dueAtMillis)) : '无 DDL') + '</small>'
+      + '</button>';
+  }
+  return '<div class="desktop-now-card empty"><span>当前状态</span><strong>暂无正在进行的事项</strong><small>可以继续查看下方今日 / 明日日程。</small></div>';
+}
+
+function renderBoardTodoCard(items) {
+  const body = items.length
+    ? items.map(renderBoardTodoRow).join('')
+    : '<div class="board-empty">今天还没有安排任务。</div>';
+  return ''
+    + '<article class="desktop-board-card">'
+    +   '<div class="desktop-board-card-head"><h3>今日待办</h3><span>' + items.length + ' 项</span></div>'
+    +   '<div class="desktop-board-list">' + body + '</div>'
+    + '</article>';
+}
+
+function renderBoardTodoRow(item) {
+  const accent = item.groupColorHex || item.accentColorHex || '#4e87e1';
+  const status = item.missed ? '已错过' : (item.hasDueDate ? formatTimeLabel(item.dueAtMillis) : '无 DDL');
+  const meta = [item.groupName || '未分组', item.hasDueDate ? ('DDL ' + formatDateTimeLabel(item.dueAtMillis)) : '', item.notes || ''].filter(Boolean).join(' · ');
+  return ''
+    + '<button type="button" class="desktop-board-row todo" data-todo-id="' + escapeHtml(String(item.id ?? '')) + '" style="--accent:' + escapeHtml(accent) + '">'
+    +   '<span class="desktop-board-strip"></span>'
+    +   '<span class="desktop-board-row-main">'
+    +     '<strong>' + escapeHtml(item.title) + '</strong>'
+    +     '<small>' + escapeHtml(meta || '无附加信息') + '</small>'
+    +   '</span>'
+    +   '<span class="desktop-board-chip">' + escapeHtml(status) + '</span>'
+    + '</button>';
+}
+
+function renderBoardScheduleCard(dateKey, nowMillis, allTodayEvents, visibleTodayEvents, tomorrowEvents) {
+  const date = dateFromKey(dateKey);
+  const todayBody = visibleTodayEvents.length
+    ? visibleTodayEvents.map(item => renderBoardEventRow(item, nowMillis)).join('')
+    : '<div class="board-empty ' + (allTodayEvents.length ? 'finished' : '') + '">' + escapeHtml(allTodayEvents.length ? '太棒了！今天的日程都结束了~' : '今天暂无日程') + '</div>';
+  const tomorrowBody = tomorrowEvents.length
+    ? tomorrowEvents.slice(0, 4).map(item => renderBoardEventRow(item, null)).join('')
+    : '<button type="button" class="board-empty action" data-tab-jump="planning">明天暂无日程 · 去规划台安排一下？</button>';
+  return ''
+    + '<article class="desktop-board-card schedule">'
+    +   '<div class="desktop-schedule-layout">'
+    +     '<div class="desktop-schedule-date">'
+    +       '<span>' + escapeHtml((date.getMonth() + 1) + '月') + '</span>'
+    +       '<strong>' + escapeHtml(date.getDate()) + '</strong>'
+    +       '<em>' + escapeHtml(formatWeekday(date)) + '</em>'
+    +     '</div>'
+    +     '<div class="desktop-schedule-main">'
+    +       '<div class="desktop-board-card-head"><h3>今日日程</h3><span>' + allTodayEvents.length + ' 项</span></div>'
+    +       '<div class="desktop-board-list">' + todayBody + '</div>'
+    +       '<div class="desktop-tomorrow-title">明天</div>'
+    +       '<div class="desktop-board-list">' + tomorrowBody + '</div>'
+    +     '</div>'
+    +   '</div>'
+    + '</article>';
+}
+
+function renderBoardEventRow(item, nowMillis) {
+  const accent = item.accentColorHex || item.groupColorHex || '#4e87e1';
+  const inProgress = nowMillis != null && eventStart(item) <= nowMillis && nowMillis < eventEnd(item);
+  const classes = 'desktop-board-row event' + (inProgress ? ' in-progress' : '');
+  const meta = [eventTimeText(item), item.location || '', item.notes || ''].filter(Boolean).join(' · ');
+  return ''
+    + '<button type="button" class="' + classes + '" data-event-id="' + escapeHtml(String(item.id ?? '')) + '" style="--accent:' + escapeHtml(accent) + '">'
+    +   '<span class="desktop-board-strip"></span>'
+    +   '<span class="desktop-board-row-main">'
+    +     '<strong>' + escapeHtml(item.title) + '</strong>'
+    +     '<small>' + escapeHtml(meta || '定时日程') + '</small>'
+    +   '</span>'
+    +   (inProgress ? '<span class="desktop-board-chip gold">进行中</span>' : '')
+    + '</button>';
 }
 
 function renderEvents() {
@@ -1475,6 +1612,19 @@ function bindActions() {
       if (todoItem) openTodoPreview(todoItem);
     };
   });
+  document.querySelectorAll('[data-event-id]').forEach(node => {
+    node.onclick = event => {
+      event.preventDefault();
+      event.stopPropagation();
+      openEventEditorById(node.dataset.eventId);
+    };
+  });
+  document.querySelectorAll('[data-tab-jump]').forEach(node => {
+    node.onclick = event => {
+      event.preventDefault();
+      document.querySelector('[data-tab="' + node.dataset.tabJump + '"]')?.click();
+    };
+  });
 }
 
 document.getElementById('todo-has-due')?.addEventListener('change', event => setTodoDueEnabled(event.target.checked));
@@ -1493,7 +1643,7 @@ document.getElementById('jump-today').onclick = () => {
     state.selectedEventDay = dayKey(new Date());
     renderEvents();
   } else {
-    document.getElementById('todo-section-today')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    els.desktopDailyBoard?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 };
 els.eventPrevDay.onclick = () => {

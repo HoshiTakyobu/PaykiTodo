@@ -24,7 +24,7 @@
           <div id="status" class="muted status">尚未连接</div>
         </div>
         <div class="sidebar-card">
-          <button class="ghost tab-btn active" data-tab="todos">待办时间轴</button>
+          <button class="ghost tab-btn active" data-tab="todos">每日看板</button>
           <button class="ghost tab-btn" data-tab="events">日程时间轴</button>
           <button class="ghost tab-btn" data-tab="planning">规划台</button>
         </div>
@@ -33,8 +33,8 @@
     <main class="content">
       <div class="topbar card-panel">
         <div>
-          <div id="view-caption" class="eyebrow">桌面端时间轴模式</div>
-          <div id="panel-title" class="title">待办时间轴</div>
+          <div id="view-caption" class="eyebrow">桌面端每日看板</div>
+          <div id="panel-title" class="title">每日看板</div>
           <div id="snapshot-meta" class="muted">未连接</div>
         </div>
         <div class="toolbar-row">
@@ -46,11 +46,12 @@
       <div id="announcements-banner" class="announcements-banner hidden"></div>
 
       <section id="todos-panel" class="tab active">
+        <div id="desktop-daily-board" class="desktop-board"></div>
         <div id="todo-summary" class="summary-grid"></div>
         <div class="card-panel timeline-panel">
           <div class="panel-head">
             <h2>待办主时间轴</h2>
-            <p class="muted">按已错过、今日、计划中、无 DDL、历史记录分区展示。</p>
+            <p class="muted">每日看板下方保留完整管理视图，按已错过、今日、计划中、无 DDL、历史记录分区展示。</p>
           </div>
           <div id="todo-timeline" class="timeline-root"></div>
         </div>

@@ -34,7 +34,7 @@ object DailyBoardSnapshotBuilder {
         val calendarItems = items
             .filter { it.isEvent && it.isActive }
             .sortedBy { it.startAtMillis ?: it.dueAtMillis }
-        val todayTodos = activeTaskItems.filter { it.hasDueDate && !it.missed && it.dueDate() == today }
+        val todayTodos = activeTaskItems.filter { !it.missed && (!it.hasDueDate || it.dueDate() == today) }
         val missedTodos = activeTaskItems.filter { it.missed }
         val boardTodos = (missedTodos + todayTodos)
             .distinctBy { it.id }

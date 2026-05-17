@@ -10,7 +10,7 @@ This file tracks the product at a practical level for new coding sessions.
 - title / notes / group / deadline / multi-reminder fields
 - Todo editor shows title / DDL / group first for new todos and folds notes / reminder input / reminder delivery mode / recurrence / ring / vibration into 更多选项, auto-expanding when editing existing todos that use advanced state
 - Todo editor can choose reminder delivery mode between full-screen reminder and notification reminder; the selected mode is persisted for todos and recurring todo templates
-- no-deadline todos
+- no-deadline todos; active no-DDL items are treated as `今日待办` across phone board, widget snapshot, desktop board, and desktop todo management
 - lightweight comma-based todo batch import with preview validation
 - todo batch-import DDL supports same-day clock input such as `16:30` / `16：30`, plus Planning Desk-style natural date forms such as `5.28`, `5月28日`, `明天`, and `周五`; date-only values default to `23:59`
 - My Tasks exposes todo batch import beside the bottom-right new-todo button instead of as a top content row
@@ -19,13 +19,13 @@ This file tracks the product at a practical level for new coding sessions.
 - active todo card body opens preview; completion is isolated to the checkbox to avoid accidental completion
 - recurring task support
 - grouped task filtering
-- three-zone home logic: overdue / today / upcoming
+- three-zone home logic: overdue / today / upcoming, with no-DDL active todos included in today rather than hidden in upcoming
 - board-style daily overview entry exists and can show today's todos directly
 
 ### Board / Dashboard
 
 - dedicated daily board entry exists in the drawer and is the default home section
-- board todo block includes missed active todos and today's normal todos
+- board todo block includes missed active todos, today's normal todos, and active no-DDL todos
 - board shows a `今日已专注` focus card with today's completed focus minutes, total focus sessions, completed sessions, and a free-focus entry
 - board view can show today's todos and today's / tomorrow's schedule summary together
 - board today's schedule hides timed events after they have ended
@@ -79,6 +79,7 @@ This file tracks the product at a practical level for new coding sessions.
 - phone Planning Desk editor auto-saves after a short debounce and saves before switching planning documents
 - Enter continuation attempts to keep `- [ ]` task lines flowing without forcing the user to manually type Markdown every time, including when Enter is pressed in the middle of a document
 - shortcut `任务` converts the current line to one checkbox task without duplicating `- [ ]`; shortcut `子任务` inserts a new indented child task line; shortcut `公告` inserts `#公告 ` on a new line for board / web / widget announcements; shortcut chips avoid double-triggering one tap
+- local Planning Desk parsing recognizes plain bullet lines such as `- 想办的事`, `* 整理材料`, and `• 发消息` as no-DDL todo candidates for the collection / scratchpad workflow
 - local rule parser recognizes markdown checkboxes, completed-task skip, subtask parent notes, date headings, DDL tags, lightweight bare `ddl` text such as `任务M ddl 15:00`, unified mixed reminder tags, group tags, schedule tags, and natural schedule ranges
 - local rule parser also recognizes common Chinese natural DDL hints, including date-context fuzzy words such as `晚上交论文`, before-time forms such as `5点前` / `16:30之前` / `明天下午3点前`, and non-checkbox DDL keyword lines such as `交论文 截止明天 23:59`
 - Planning Desk preview warns when a todo DDL is inferred from natural text and flags recurrence hint words such as `每天` / `每周` without auto-creating recurrence rules

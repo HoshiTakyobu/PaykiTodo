@@ -14,14 +14,28 @@ import androidx.core.content.ContextCompat
 import com.example.todoalarm.R
 import com.example.todoalarm.TodoApplication
 import com.example.todoalarm.ui.MainActivity
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 class DesktopSyncService : Service() {
+    private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+    private var autoStopJob: Job? = null
+    private var startedAtMillis: Long = 0L
+
     override fun onCreate() {
         super.onCreate()
-        if (!(application as TodoApplication).settingsStore.currentSettings().desktopSyncEnabled) {
+        val app = application as TodoApplication
+        if (!app.settingsStore.currentSettings().desktopSyncEnabled) {
             stopSelf()
             return
         }
+        startedAtMillis = System.currentTimeMillis()
+        app.desktopSyncCoordinator.resetClientTracking()
         ensureChannel()
         val contentIntent = PendingIntent.getActivity(
             this,
@@ -43,7 +57,8 @@ class DesktopSyncService : Service() {
             .setOngoing(true)
             .build()
         startForeground(NOTIFICATION_ID, notification)
-        (application as TodoApplication).desktopSyncCoordinator.ensureRunning()
+        app.desktopSyncCoordinator.ensureRunning()
+        scheduleAutoStopIfNoClient()
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -54,10 +69,16 @@ class DesktopSyncService : Service() {
             return START_NOT_STICKY
         }
         app.desktopSyncCoordinator.ensureRunning()
+        if (startedAtMillis == 0L) {
+            startedAtMillis = System.currentTimeMillis()
+        }
+        scheduleAutoStopIfNoClient()
         return START_STICKY
     }
 
     override fun onDestroy() {
+        autoStopJob?.cancel()
+        serviceScope.cancel()
         (application as TodoApplication).desktopSyncCoordinator.stop()
         super.onDestroy()
     }
@@ -81,9 +102,26 @@ class DesktopSyncService : Service() {
         )
     }
 
+    private fun scheduleAutoStopIfNoClient() {
+        autoStopJob?.cancel()
+        val start = startedAtMillis.takeIf { it > 0L } ?: System.currentTimeMillis().also { startedAtMillis = it }
+        val remainingMillis = (start + NO_CLIENT_AUTO_STOP_MILLIS - System.currentTimeMillis()).coerceAtLeast(0L)
+        autoStopJob = serviceScope.launch {
+            delay(remainingMillis)
+            val app = application as TodoApplication
+            if (!app.settingsStore.currentSettings().desktopSyncEnabled) return@launch
+            val lastClientAt = app.desktopSyncCoordinator.lastAuthorizedClientAtMillis()
+            if (lastClientAt >= start) return@launch
+            app.settingsStore.updateDesktopSyncEnabled(false)
+            app.desktopSyncCoordinator.stop()
+            stopSelf()
+        }
+    }
+
     companion object {
         private const val CHANNEL_ID = "paykitodo_desktop_sync"
         private const val NOTIFICATION_ID = 42071
+        private const val NO_CLIENT_AUTO_STOP_MILLIS = 5 * 60 * 1000L
 
         fun start(context: Context) {
             ContextCompat.startForegroundService(context, Intent(context, DesktopSyncService::class.java))

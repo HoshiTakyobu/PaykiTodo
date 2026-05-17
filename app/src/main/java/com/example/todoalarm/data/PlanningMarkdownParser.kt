@@ -84,8 +84,11 @@ object PlanningMarkdownParser {
             }
 
             val checkbox = parseCheckbox(line)
-            val content = checkbox?.content?.trim().orEmpty().ifBlank { trimmed }
-            val indentLevel = checkbox?.indentLevel ?: 0
+            val plainBullet = if (checkbox == null) parsePlainListBullet(line) else null
+            val content = checkbox?.content?.trim()
+                ?: plainBullet?.content?.trim()
+                ?: trimmed
+            val indentLevel = checkbox?.indentLevel ?: plainBullet?.indentLevel ?: 0
             val imported = hasSimpleTag(content, "imported")
             if (imported) {
                 candidates += skipped(lineNumber, line, "已带 #imported，默认跳过。", imported = true)
@@ -103,7 +106,7 @@ object PlanningMarkdownParser {
                 content = content,
                 dateContext = dateContext,
                 parentTitle = parent,
-                checkboxPresent = checkbox != null,
+                listItemPresent = checkbox != null || plainBullet != null,
                 now = now
             )
             if (parsed != null) {
@@ -123,7 +126,7 @@ object PlanningMarkdownParser {
         content: String,
         dateContext: LocalDate?,
         parentTitle: String?,
-        checkboxPresent: Boolean,
+        listItemPresent: Boolean,
         now: LocalDateTime
     ): PlanningParsedCandidate? {
         val bareDdl = bareDdlValue(content)
@@ -173,7 +176,7 @@ object PlanningMarkdownParser {
             )
         }
 
-        if (!checkboxPresent && !hasSimpleTag(content, "task") && explicitDdl == null) {
+        if (!listItemPresent && !hasSimpleTag(content, "task") && explicitDdl == null) {
             return parseNaturalTodoHints(
                 lineNumber = lineNumber,
                 sourceLine = sourceLine,
@@ -450,6 +453,12 @@ object PlanningMarkdownParser {
         return ParsedCheckbox(indent, completed, match.groupValues[3])
     }
 
+    private fun parsePlainListBullet(line: String): ParsedPlainListBullet? {
+        val match = PlainListBulletRegex.matchEntire(line) ?: return null
+        val indent = match.groupValues[1].replace("\t", "  ").length / 2
+        return ParsedPlainListBullet(indent, match.groupValues[2])
+    }
+
     private fun headingTextOrNull(trimmed: String): String? {
         val match = HeadingRegex.matchEntire(trimmed) ?: return null
         return match.groupValues[1].trim()
@@ -571,6 +580,7 @@ object PlanningMarkdownParser {
     }
 
     private data class ParsedCheckbox(val indentLevel: Int, val completed: Boolean, val content: String)
+    private data class ParsedPlainListBullet(val indentLevel: Int, val content: String)
     private data class ParsedDate(val date: LocalDate)
     private data class ParsedLeadingDate(val date: LocalDate, val rest: String)
     private data class ParsedNaturalEvent(
@@ -583,6 +593,7 @@ object PlanningMarkdownParser {
 
     private val HeadingRegex = Regex("^#{1,6}\\s+(.+)$")
     private val CheckboxRegex = Regex("^(\\s*)-\\s*\\[([ xX])\\]\\s*(.*)$")
+    private val PlainListBulletRegex = Regex("^(\\s*)[-*•]\\s+(.+)$")
     private val FullDateRegex = Regex("^(\\d{4})[-./](\\d{1,2})[-./](\\d{1,2})$")
     private val FullChineseDateRegex = Regex("^(\\d{4})年(\\d{1,2})月(\\d{1,2})日?$")
     private val MonthDayRegex = Regex("^(\\d{1,2})[-./](\\d{1,2})$")

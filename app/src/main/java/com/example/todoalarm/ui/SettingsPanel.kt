@@ -37,6 +37,7 @@ import androidx.compose.material.icons.rounded.Psychology
 import androidx.compose.material.icons.rounded.Folder
 import androidx.compose.material.icons.rounded.LibraryMusic
 import androidx.compose.material.icons.rounded.ManageSearch
+import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material.icons.rounded.Notifications
 import androidx.compose.material.icons.rounded.Computer
 import androidx.compose.material.icons.rounded.Security
@@ -52,6 +53,7 @@ import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -446,16 +448,30 @@ fun SettingsPanel(
                         }
                     } else {
                         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            desktopSyncStatus.ipAddresses.forEach { ip ->
+                            Text(
+                                "优先使用 192.168.* 这类 Wi-Fi 地址；10.* / 172.16-31.* 通常来自 VPN、热点或虚拟网卡，电脑连不上时可换一个地址试。",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            desktopSyncStatus.ipAddresses.forEachIndexed { index, ip ->
                                 val url = "http://$ip:${desktopSyncStatus.port}"
                                 Surface(shape = RoundedCornerShape(16.dp), color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f)) {
-                                    Row(modifier = Modifier.fillMaxWidth().padding(start = 12.dp, top = 4.dp, bottom = 4.dp, end = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                                        Text(
-                                            text = url,
-                                            modifier = Modifier.weight(1f),
-                                            color = MaterialTheme.colorScheme.onSurface,
-                                            style = MaterialTheme.typography.bodyMedium
-                                        )
+                                    Row(modifier = Modifier.fillMaxWidth().padding(start = 12.dp, top = 6.dp, bottom = 6.dp, end = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                                        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                                            Text(
+                                                text = if (index == 0 && ip.startsWith("192.168.")) "推荐 Wi-Fi 地址" else "可选网络地址",
+                                                color = MaterialTheme.colorScheme.primary,
+                                                style = MaterialTheme.typography.labelSmall,
+                                                fontWeight = FontWeight.SemiBold
+                                            )
+                                            Text(
+                                                text = url,
+                                                color = MaterialTheme.colorScheme.onSurface,
+                                                style = MaterialTheme.typography.bodyMedium,
+                                                maxLines = 1,
+                                                overflow = TextOverflow.Ellipsis
+                                            )
+                                        }
                                         OutlinedButton(onClick = {
                                             val clip = context.getSystemService(android.content.ClipboardManager::class.java)
                                             clip?.setPrimaryClip(android.content.ClipData.newPlainText("url", url))
@@ -1212,6 +1228,8 @@ private fun PlanningAiProviderRow(
     onEdit: () -> Unit,
     onDelete: () -> Unit
 ) {
+    var menuExpanded by remember { mutableStateOf(false) }
+    val isComplete = provider.baseUrl.isNotBlank() && provider.apiKey.isNotBlank() && provider.model.isNotBlank()
     Surface(
         modifier = Modifier
             .fillMaxWidth()
@@ -1223,38 +1241,96 @@ private fun PlanningAiProviderRow(
         color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.24f),
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.28f))
     ) {
-        Row(
+        Column(
             modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
+            verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text("${index + 1}. ${provider.name.ifBlank { "未命名服务" }}", fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
-                Text(
-                    text = provider.baseUrl.ifBlank { "未填写 Base URL" },
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-                Text(
-                    text = provider.model.ifBlank { "未填写模型" },
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.primary
-                )
-            }
-            Switch(checked = provider.enabled, onCheckedChange = onToggle)
-            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                TextButton(onClick = onMoveUp, enabled = index > 0) {
-                    Text("上移")
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text(
+                            "${index + 1}. ${provider.name.ifBlank { "未命名服务" }}",
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f, fill = false)
+                        )
+                        Surface(
+                            shape = RoundedCornerShape(999.dp),
+                            color = if (isComplete) MaterialTheme.colorScheme.primary.copy(alpha = 0.12f) else MaterialTheme.colorScheme.error.copy(alpha = 0.1f)
+                        ) {
+                            Text(
+                                text = if (isComplete) "已配置" else "待补全",
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = if (isComplete) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
+                            )
+                        }
+                    }
+                    Text(
+                        text = provider.baseUrl.ifBlank { "未填写 Base URL" },
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Text(
+                        text = provider.model.ifBlank { "未填写模型；编辑后可先获取模型列表" },
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.primary,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
                 }
-                TextButton(onClick = onMoveDown, enabled = index < total - 1) {
-                    Text("下移")
+                Switch(checked = provider.enabled, onCheckedChange = onToggle)
+                Box {
+                    IconButton(onClick = { menuExpanded = true }) {
+                        Icon(Icons.Rounded.MoreVert, contentDescription = "更多操作")
+                    }
+                    DropdownMenu(expanded = menuExpanded, onDismissRequest = { menuExpanded = false }) {
+                        DropdownMenuItem(
+                            text = { Text("编辑") },
+                            onClick = {
+                                menuExpanded = false
+                                onEdit()
+                            }
+                        )
+                        DropdownMenuItem(
+                            text = { Text("上移") },
+                            enabled = index > 0,
+                            onClick = {
+                                menuExpanded = false
+                                onMoveUp()
+                            }
+                        )
+                        DropdownMenuItem(
+                            text = { Text("下移") },
+                            enabled = index < total - 1,
+                            onClick = {
+                                menuExpanded = false
+                                onMoveDown()
+                            }
+                        )
+                        DropdownMenuItem(
+                            text = { Text("删除", color = MaterialTheme.colorScheme.error) },
+                            onClick = {
+                                menuExpanded = false
+                                onDelete()
+                            }
+                        )
+                    }
                 }
             }
-            TextButton(onClick = onDelete) {
-                Text("删除", color = MaterialTheme.colorScheme.error)
-            }
+            Text(
+                text = if (provider.enabled) "启用后识别时会按列表顺序尝试此源。" else "此源已停用，不参与识别轮询。",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
     }
 }

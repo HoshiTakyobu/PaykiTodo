@@ -59,6 +59,8 @@ class DesktopSyncCoordinator(
     private var server: DesktopSyncServer? = null
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val port = 18765
+    @Volatile
+    private var lastAuthorizedClientAtMillis: Long = 0L
 
     fun ensureRunning() {
         if (!settingsStore.currentSettings().desktopSyncEnabled) {
@@ -75,6 +77,12 @@ class DesktopSyncCoordinator(
         server?.stop()
         server = null
     }
+
+    fun resetClientTracking() {
+        lastAuthorizedClientAtMillis = 0L
+    }
+
+    fun lastAuthorizedClientAtMillis(): Long = lastAuthorizedClientAtMillis
 
     fun shutdown() {
         stop()
@@ -111,6 +119,7 @@ class DesktopSyncCoordinator(
         if (!authorize(headers)) {
             return DesktopSyncServer.Response.json(JSONObject().put("error", "未授权，请填写手机端显示的访问密钥。"), 401)
         }
+        lastAuthorizedClientAtMillis = System.currentTimeMillis()
 
         return runCatching {
             when {
@@ -718,8 +727,17 @@ class DesktopSyncCoordinator(
                 .map { it.hostAddress ?: "" }
                 .filter { it.isNotBlank() }
                 .distinct()
-                .sorted()
+                .sortedWith(compareBy<String> { ipv4Priority(it) }.thenBy { it })
         }.getOrDefault(emptyList())
+    }
+
+    private fun ipv4Priority(address: String): Int {
+        return when {
+            address.startsWith("192.168.") -> 0
+            address.startsWith("10.") -> 1
+            address.matches(Regex("^172\\.(1[6-9]|2\\d|3[0-1])\\..*")) -> 2
+            else -> 3
+        }
     }
 }
 

@@ -7,20 +7,20 @@
 - Package name: `com.paykitodo.app`
 - Target platform: Android 14 / API 34
 - Current version in code:
-  - `versionName = "1.9.10"`
-  - `versionCode = 204`
+  - `versionName = "1.9.11"`
+  - `versionCode = 205`
 
 ## Current Build Facts
 
 - Latest debug APK output:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.9.10-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.9.11-debug.apk`
 - Minimal verification completed in the latest code round:
   - `./gradlew.bat :app:compileDebugKotlin`
   - `./gradlew.bat testDebugUnitTest`
   - `./gradlew.bat assembleDebug`
   - `node --check app/src/main/assets/desktop-web/app.js`
   - `git diff --check`
-  - `app/build/outputs/apk/debug/output-metadata.json` reports `versionCode=204`, `versionName=1.9.10`, `outputFile=PaykiTodo-1.9.10-debug.apk`
+  - `app/build/outputs/apk/debug/output-metadata.json` reports `versionCode=205`, `versionName=1.9.11`, `outputFile=PaykiTodo-1.9.11-debug.apk`
 - Previous `1.9.5` emulator verification:
   - installed `PaykiTodo-1.9.5-debug.apk` on `emulator-5554`
   - verified AI daily-report fallback scheduling while exact-alarm permission is denied, automatic report generation, notification posting, notification deep link to `AI 日报`, disabled-switch cancellation, and weekly-report alarm registration
@@ -42,11 +42,11 @@
 
 ## Current Worktree Reality
 
-The repository is now being advanced to `1.9.10`. It carries forward the `1.9.0` focus-mode baseline, the `1.9.1` AI daily / weekly report generation, the Android launcher-widget visual hotfixes, the AI report scheduling reliability fix for Android devices without exact-alarm permission, the independent AI report archive, the desktop Web daily-board work, and now fixes widget navigation plus todo reminder handling.
+The repository is now being advanced to `1.9.11`. It carries forward the `1.9.0` focus-mode baseline, the `1.9.1` AI daily / weekly report generation, the Android launcher-widget visual hotfixes, the AI report scheduling reliability fix for Android devices without exact-alarm permission, the independent AI report archive, the desktop Web daily-board work, widget navigation plus todo reminder handling, and now no-DDL today semantics plus desktop-sync auto-shutdown.
 
 Most important current baseline facts:
 
-- version metadata is `1.9.10 / 204`
+- version metadata is `1.9.11 / 205`
 - Database version is now `13`; `MIGRATION_12_13` creates `ai_reports`.
 - Settings -> `专注模式` controls default focus duration, extension duration, screen-on behavior, and a documented-only notification-suppression preference.
 - Active todo long-press menus include `开始专注 · X 分钟`; the daily-board focus card can start free focus.
@@ -75,6 +75,11 @@ Most important current baseline facts:
 - Tapping a widget todo area opens the in-app My Tasks section, tapping a widget event / schedule area opens Calendar without forcing a specific editor detail, tapping an announcement row opens the source Planning Desk note, and section/empty rows return to the default daily board.
 - Todo editor now exposes reminder delivery mode for todos, so a todo can be set to full-screen reminder or notification reminder instead of always being stored as full-screen.
 - Desktop Web todo editing also includes the todo reminder delivery mode field and sends it through the sync API.
+- Active no-DDL todos are treated as today todos across phone daily board, Android widget board snapshot, desktop daily board, and desktop todo management. They remain reminder-disabled and recurrence-disabled until the user adds a DDL.
+- Planning Desk local parsing recognizes plain bullets (`- item`, `* item`, `• item`) as no-DDL todo candidates, which fits the collection / scratchpad workflow where the user lists possible tasks before assigning exact times.
+- Desktop sync records the first authorized API request as a real desktop connection. If no authorized client connects within 5 minutes after enabling sync, `DesktopSyncService` disables the setting and stops the local server / foreground service.
+- Desktop sync address listing now sorts likely Wi-Fi `192.168.*` addresses first and documents that `10.*` / `172.*` entries can come from VPN, hotspot, virtual adapters, or other network interfaces rather than localhost.
+- Settings -> AI 调用配置 provider rows now use a less cramped summary-card layout with visible enable switch and a more menu for edit / reorder / delete.
 - Reminder screens now separate snooze from DDL changes: custom snooze only moves the next reminder, while a distinct `DDL 推迟` input validates positive minute increments, same-date clock targets, and full date-time targets against the current DDL.
 - Desktop web `/api/snapshot` includes active Planning Desk announcements and the browser console renders them as a top announcement banner. Long announcement text now scrolls only when the combined text exceeds 60 characters, and hover pauses the marquee.
 - Desktop web now follows system dark mode through CSS variables for timeline cards, event cards, modal sheets, summary cards, sidebar cards, tab buttons, Planning Desk, and announcements.
@@ -114,7 +119,7 @@ Recent code inspection and build verification cover:
 
 ## Documentation Health
 
-Current docs are being synchronized for `1.9.10`:
+Current docs are being synchronized for `1.9.11`:
 
 - `README.md`
 - `CHANGELOG.md`

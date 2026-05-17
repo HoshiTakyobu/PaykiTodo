@@ -63,6 +63,24 @@ class PlanningMarkdownParserTest {
     }
 
     @Test
+    fun parsesPlainBulletsAsNoDdlTodos() {
+        val result = PlanningMarkdownParser.parse(
+            """
+            - 想办的事情
+            * 再整理一下资料
+            • 给导师发消息
+            """.trimIndent(),
+            now = now
+        )
+
+        val todos = result.candidates.filter { it.type == PlanningParsedType.TODO }
+        assertEquals(3, todos.size)
+        assertEquals(listOf("想办的事情", "再整理一下资料", "给导师发消息"), todos.map { it.title })
+        assertTrue(todos.all { it.dueAt == null })
+        assertTrue(todos.all { it.reminderOffsetsMinutes.isEmpty() })
+    }
+
+    @Test
     fun parsesBareDdlKeywordAsLightweightTodo() {
         val result = PlanningMarkdownParser.parse(
             "任务M ddl 15:00",

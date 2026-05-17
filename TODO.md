@@ -4,8 +4,8 @@
 
 ### In Progress
 
-- Verify version `1.9.10` on device after the widget routing and reminder behavior changes: widget todo area should open 我的任务, schedule area should open 日历, the widget should not show focus cards, todo reminder mode should persist, and DDL 推迟 should modify DDL only through the explicit DDL action
-- Keep `README.md`, `CHANGELOG.md`, Wiki, in-app help sheets, desktop-web help, and current-state docs aligned with version `1.9.10`
+- Verify version `1.9.11` on device after the no-DDL today semantics, desktop-sync auto-shutdown, and AI-provider UI changes
+- Keep `README.md`, `CHANGELOG.md`, Wiki, in-app help sheets, desktop-web help, and current-state docs aligned with version `1.9.11`
 - Continue planning-desk usability polish without expanding into drag/drop, Gantt, AI auto-planning, or complex project trees
 - Improve repo-native handoff so new sessions do not depend on long chat history
 
@@ -45,7 +45,7 @@
 - Reminder DDL 推迟 should accept positive minute increments, same-date clock input, and full date-time input, and should reject targets that are not later than the current DDL
 - Launch screen icon should use the transparent logo asset without a white square background
 - Input help question-mark buttons should open the correct syntax help beside reminder, batch, and snooze fields
-- In-app Wiki should describe the current 1.9.10 settings, reminder, calendar, planning-desk, announcement, widget, focus-mode, desktop daily board, AI report archive, and input syntax accurately
+- In-app Wiki should describe the current 1.9.11 settings, reminder, calendar, planning-desk, announcement, widget, focus-mode, desktop daily board, AI report archive, desktop sync, and input syntax accurately
 - In-app Wiki should keep a left navigation / right article layout on phone-sized screens
 - Daily board should show a separate completion message when today's schedule existed but all events have ended
 - Drawer header icon should stay visually circular and not expose a white rounded-rectangle launcher background
@@ -68,6 +68,7 @@
 - Planning Desk refresh/postpone/undo/conflict flows should be device-tested end-to-end on both phone and desktop after at least one real import batch exists
 - Planning Desk `任务M ddl 15:00` and similar bare `ddl` lines should be tested on device to confirm they enter the recognition preview as todos with today's DDL
 - Settings -> AI 调用配置 should be tested on device for multi-source add/edit/delete, enable/disable, up/down priority sorting, validation, save persistence after leaving/reopening Settings, and non-export of API Key in backup JSON
+- Settings -> AI 调用配置 should be device-tested on a narrow phone screen: provider cards should not squeeze Base URL / model / switch / reorder / delete controls into one unreadable row, and the more menu should expose edit / up / down / delete.
 - Settings -> AI 调用配置 should be device-tested for `获取模型`: valid `/models` success, root Base URL fallback to `/v1/models`, `/v1` Base URL append, full `/chat/completions` converted to `/models`, invalid API Key / 404 / HTML response friendly errors, fetched-model dropdown selection, and manual model-name fallback after failure.
 - Settings -> 关于 -> 重新显示新手引导 should be tested on device: after tapping it, returning to 每日看板 should show the onboarding card again
 - Todo editor should be tested on device: new todos default to title/DDL/group only, while existing todos with notes/custom reminders/recurrence/non-default ring or vibration auto-expand 更多选项
@@ -82,12 +83,15 @@
 - Upgrading from a build with Planning Desk `AI 日报` / `AI 周报` notes should migrate historical sections into `AI 报告` and remove those report notes from Planning Desk.
 - AI report scheduling should be device-tested after reboot, timezone change, and time change because AlarmManager behavior cannot be fully validated by local JVM tests.
 - Planning Desk should be device-tested that pressing Enter / editing text only auto-saves and does not trigger AI; desktop import without prior preview should ask the user to click `识别` first.
+- Planning Desk should be device-tested that plain bullets such as `- 想办的事`, `* 整理材料`, and `• 发消息` enter recognition preview as no-DDL todos and appear in 今日待办 after import.
 - Planning Desk announcements should be device-tested for multiple `#公告` / `> [!公告]` lines, active/future/expired ranges, long marquee text, and removal by editing/deleting/archiving the source planning note.
 - Planning Desk announcement parser should be device-tested for `- [ ] #公告 ...`, `> #公告 ...`, inline `#公告 ...`, tail `#imported` cleanup, and recent-date-before-long-running ordering.
 - Desktop web top announcement banner should be verified after writing an active Planning Desk announcement and refreshing `/api/snapshot`; short text should stay still, 60+ character text should scroll, and hover should pause it.
 - Desktop web system dark mode should be verified in a real browser for timeline cards, event cards, modal sheets, summary cards, tab buttons, sidebar cards, Planning Desk, and announcements.
 - Android desktop widget should be verified in system dark mode and after resizing; text should remain readable and refresh should still show focus summary / missed / today / tomorrow board content.
 - Android desktop widget should be device-tested from the launcher widget picker after installing the current `1.9.10` debug APK: add widget, freely resize it, confirm the daily-board background/topbar/card visual direction, confirm the 4x5 default suggested size and static picker preview no longer look like a flat system list, confirm todo cards show group tag / notes / `⏰ DDL`, confirm in-progress schedule rows show the gold treatment, show announcements at the top followed by greeting / today todos / today schedules / tomorrow schedules, confirm todo-area click opens 我的任务, schedule-area click opens 日历, and confirm refresh after todo/event/planning-note changes.
+- No-DDL todos should be device-tested after installing `1.9.11`: new no-DDL todo from the normal editor and no-DDL todo imported from Planning Desk should both appear under 今日待办 on phone, widget, and desktop daily board, without enabling reminders or recurrence.
+- Desktop sync should be device-tested after installing `1.9.11`: enabling sync and not authenticating from desktop for 5 minutes should auto-disable the setting and stop the foreground service; authenticating with the correct token within 5 minutes should keep it running.
 - 专注模式 should be device-tested after installing `1.9.0`: long-press an active todo, start focus, pause/continue, abandon with confirmation, finish early, let countdown reach zero, extend once, complete, and confirm the daily-board focus minutes/statistics update.
 - 专注模式 settings should be device-tested after installing `1.9.0`: default duration 5-90 minutes, extension duration 1-30 minutes, keep-screen-on behavior, and the documented-only notification-suppression preference.
 - Desktop web Planning Desk should be tested from a real browser connected to the phone after installing `1.8.9`, including auto-save, `Ctrl+S`, `Ctrl+Enter`, select-all / clear-all, no-empty-import guard, the desktop Planning Desk help modal, document delete, editable preview, mixed reminder input, announcement syntax, parser edge cases, import marker write-back, and the mapping refresh/postpone/undo/conflict actions

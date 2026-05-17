@@ -686,7 +686,8 @@ private fun PlanningShortcutBar(
         PlanningShortcutSpec("提醒", Icons.Rounded.NotificationsNone, PlanningShortcutAction.Insert(" #remind "), "设置提醒，例如 #remind 5,15,16:30,明天 16:30"),
         PlanningShortcutSpec("分组", Icons.Rounded.Folder, PlanningShortcutAction.Insert(" #group "), "指定分组，例如 #group 课程"),
         PlanningShortcutSpec("今日", Icons.Rounded.Today, PlanningShortcutAction.InsertSection("# 今日计划"), "插入标题分区；下面没写日期的时间段按今天理解"),
-        PlanningShortcutSpec("明日", Icons.Rounded.Event, PlanningShortcutAction.InsertSection("# 明天"), "插入标题分区；下面没写日期的时间段按明天理解")
+        PlanningShortcutSpec("明日", Icons.Rounded.Event, PlanningShortcutAction.InsertSection("# 明天"), "插入标题分区；下面没写日期的时间段按明天理解"),
+        PlanningShortcutSpec("公告", Icons.Rounded.Campaign, PlanningShortcutAction.InsertAnnouncement, "在新行插入 #公告 占位，填上日期范围和正文后会显示在每日看板顶部和桌面小组件")
     )
     Row(
         modifier = Modifier
@@ -1771,6 +1772,7 @@ private sealed interface PlanningShortcutAction {
     data object SubtaskLine : PlanningShortcutAction
     data object Indent : PlanningShortcutAction
     data object Outdent : PlanningShortcutAction
+    data object InsertAnnouncement : PlanningShortcutAction
 }
 
 private fun applyPlanningShortcut(value: TextFieldValue, action: PlanningShortcutAction): TextFieldValue {
@@ -1781,6 +1783,7 @@ private fun applyPlanningShortcut(value: TextFieldValue, action: PlanningShortcu
         PlanningShortcutAction.SubtaskLine -> insertPlanningSubtaskLine(value)
         PlanningShortcutAction.Indent -> indentCurrentPlanningLine(value)
         PlanningShortcutAction.Outdent -> outdentCurrentPlanningLine(value)
+        PlanningShortcutAction.InsertAnnouncement -> insertAnnouncementAtNewLine(value)
     }
 }
 
@@ -1805,6 +1808,19 @@ private fun insertPlanningSection(value: TextFieldValue, heading: String): TextF
     }
     val suffix = if (after.startsWith("\n")) "" else "\n"
     val token = "$prefix$heading\n$suffix"
+    val nextText = before + token + after
+    val cursor = before.length + token.length
+    return value.copy(text = nextText, selection = androidx.compose.ui.text.TextRange(cursor))
+}
+
+private fun insertAnnouncementAtNewLine(value: TextFieldValue): TextFieldValue {
+    val start = value.selection.min
+    val end = value.selection.max
+    val before = value.text.substring(0, start)
+    val after = value.text.substring(end)
+    val lineStart = before.lastIndexOf('\n').let { if (it < 0) 0 else it + 1 }
+    val prefix = if (start == lineStart) "" else "\n"
+    val token = "${prefix}#公告 "
     val nextText = before + token + after
     val cursor = before.length + token.length
     return value.copy(text = nextText, selection = androidx.compose.ui.text.TextRange(cursor))

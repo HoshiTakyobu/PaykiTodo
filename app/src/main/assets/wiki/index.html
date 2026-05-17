@@ -95,7 +95,7 @@
     <aside>
       <div class="brand">
         <h1>PaykiTodo Wiki</h1>
-        <p>版本 1.9.6。本地内置说明，按实际使用路径解释功能，不只是罗列能力。</p>
+        <p>版本 1.9.7。本地内置说明，按实际使用路径解释功能，不只是罗列能力。</p>
       </div>
       <div class="nav-group-title">开始使用</div>
       <nav class="nav" id="nav">
@@ -396,7 +396,7 @@
           <tr><td>分组</td><td>插入 <code>#group </code>。</td></tr>
           <tr><td>今日 / 明日</td><td>插入日期分区标题；下面没写日期的时间段会按该标题理解。</td></tr>
         </table>
-        <p>长按快捷栏按钮会显示简短说明和例子。当前行是 <code>- [ ] 大任务</code> 时，按回车会尽量续写下一行 <code>- [ ] </code>；在文档中间按回车也支持续写。</p>
+        <p>长按快捷栏按钮会显示简短说明和例子。<code>公告</code> 按钮会在新行插入 <code>#公告 </code>，方便继续补日期范围和公告正文。当前行是 <code>- [ ] 大任务</code> 时，按回车会尽量续写下一行 <code>- [ ] </code>；在文档中间按回车也支持续写。</p>
 
         <h2>怎么写待办</h2>
         <pre><code>- [ ] 整理保研材料
@@ -504,7 +504,7 @@
         <h2>AI 识别配置</h2>
         <p>进入 <code>设置 → AI 调用配置</code> 后，可以填写规划台 AI 识别要用的服务名称、Base URL、API Key 和模型名。Base URL 可以填服务根地址、到 <code>/v1</code>、完整 <code>/v1/chat/completions</code>，或完整 <code>/v1/models</code>。编辑单个 AI 源时，可以先只填 Base URL 和 API Key，点 <code>获取模型</code> 从 OpenAI-compatible <code>/models</code> 接口拉取可用模型并下拉选择；如果服务不支持模型列表，仍可手动填写模型名。点 <code>测试连接</code> 会用当前模型测活，成功会显示响应字数，失败会显示 HTTP、超时或非 JSON endpoint 错误。启用后，手机端和电脑端规划台点 <code>识别</code> 都会优先调用已启用的 AI 源，把随手写的内容转成候选；AI 失败、超时或配置不完整时会自动回到本地规则。AI 结果也必须先进入预览确认，不会直接写入正式待办或日程；编辑、换行和自动保存不会自动调用 AI。</p>
         <h2>AI 日报 / 周报</h2>
-        <p><code>设置 → AI 调用配置</code> 里还有 <code>AI 日报 / 周报</code> 区块。你可以启用每天定时日报、每周日周报，使用 <code>HH:mm</code> 格式设置生成时间，也可以点击 <code>立即生成一次日报</code> 进行调试。准点生成依赖系统的「精确闹钟」权限；如果没有开启，PaykiTodo 会降级使用系统允许的后台调度，但可能被系统延后。</p>
+        <p><code>设置 → AI 调用配置</code> 里还有 <code>AI 日报 / 周报</code> 区块。你可以启用每天定时日报、每周日周报，使用 <code>HH:mm</code> 格式设置生成时间，也可以点击 <code>了解 AI 日报</code> 查看分卡片使用指引，或点击 <code>立即生成一次日报</code> 进行调试。准点生成依赖系统的「精确闹钟」权限；如果没有开启，PaykiTodo 会降级使用系统允许的后台调度，但可能被系统延后。</p>
         <ul>
           <li>日报会汇总今天完成待办、错过待办、今日日程、明日日程、明天 DDL 和今日专注分钟。</li>
           <li>周报会汇总本周完成 / 错过待办、本周日程、下周 DDL 和本周专注分钟。</li>
@@ -660,7 +660,7 @@
         <h2>专注模式</h2>
         <p><code>设置 → 专注模式</code> 可以调整默认专注时长、单次延续时长、屏幕常亮和专注期间压制提醒偏好。压制提醒当前只是偏好记录，不会真实拦截系统通知。</p>
         <h2>AI 调用配置</h2>
-        <p>这里用于填写规划台 AI 识别要用的服务名称、Base URL、API Key 和模型名。Base URL 可以填服务根地址、到 <code>/v1</code>、完整 <code>/v1/chat/completions</code>，或完整 <code>/v1/models</code>。单个 AI 源编辑弹窗里有 <code>获取模型</code> 和 <code>测试连接</code>：获取模型会用 Base URL / API Key 调用 <code>/models</code> 并显示模型下拉，失败时仍可手动填写模型；测试连接用于保存前检查当前 Base URL、API Key 和模型是否能正常返回。如果服务返回 HTML 或网页内容，会提示检查 Base URL。启用后，手机端和电脑端规划台“识别”都会按列表顺序调用可用 AI 源；如果 AI 不可用，会回到本地规则识别。AI 日报 / 周报也复用这里的 AI 源，失败时会用本地模板兜底。真实 API Key 只保存在本机设置中，不会写入备份 JSON，导入备份也不会清空本机已有 Key。</p>
+        <p>这里用于填写规划台 AI 识别要用的服务名称、Base URL、API Key 和模型名。Base URL 可以填服务根地址、到 <code>/v1</code>、完整 <code>/v1/chat/completions</code>，或完整 <code>/v1/models</code>。单个 AI 源编辑弹窗里有 <code>获取模型</code> 和 <code>测试连接</code>：获取模型会用 Base URL / API Key 调用 <code>/models</code> 并显示模型下拉，失败时仍可手动填写模型；测试连接用于保存前检查当前 Base URL、API Key 和模型是否能正常返回。如果服务返回 HTML 或网页内容，会提示检查 Base URL。启用后，手机端和电脑端规划台“识别”都会按列表顺序调用可用 AI 源；如果 AI 不可用，会回到本地规则识别。AI 日报 / 周报也复用这里的 AI 源，失败时会用本地模板兜底；设置卡片里的 <code>了解 AI 日报</code> 会解释启用步骤、报告位置、通知跳转和常见问题。真实 API Key 只保存在本机设置中，不会写入备份 JSON，导入备份也不会清空本机已有 Key。</p>
         <h2>提醒声音策略与提示音</h2>
         <ul>
           <li>PaykiTodo 现在把“音色来源”“播放通道”和“App 内部音量”分开配置。</li>

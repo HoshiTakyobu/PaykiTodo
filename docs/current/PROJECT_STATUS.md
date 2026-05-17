@@ -7,13 +7,13 @@
 - Package name: `com.paykitodo.app`
 - Target platform: Android 14 / API 34
 - Current version in code:
-  - `versionName = "1.9.6"`
-  - `versionCode = 200`
+  - `versionName = "1.9.7"`
+  - `versionCode = 201`
 
 ## Current Build Facts
 
 - Latest debug APK output:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.9.6-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.9.7-debug.apk`
 - Minimal verification completed in the latest code round:
   - `./gradlew.bat :app:mergeDebugResources`
   - `./gradlew.bat :app:compileDebugKotlin`
@@ -21,7 +21,7 @@
   - `./gradlew.bat testDebugUnitTest`
   - `node --check app/src/main/assets/desktop-web/app.js`
   - `git diff --check`
-  - `app/build/outputs/apk/debug/output-metadata.json` reports `versionCode=200`, `versionName=1.9.6`, `outputFile=PaykiTodo-1.9.6-debug.apk`
+  - `app/build/outputs/apk/debug/output-metadata.json` reports `versionCode=201`, `versionName=1.9.7`, `outputFile=PaykiTodo-1.9.7-debug.apk`
 - Previous `1.9.5` emulator verification:
   - installed `PaykiTodo-1.9.5-debug.apk` on `emulator-5554`
   - verified AI daily-report fallback scheduling while exact-alarm permission is denied, automatic report generation, notification posting, notification deep link to `AI 日报`, disabled-switch cancellation, and weekly-report alarm registration
@@ -31,11 +31,11 @@
 
 ## Current Worktree Reality
 
-The repository is now being advanced to `1.9.6`. It carries forward the `1.9.0` focus-mode baseline, the `1.9.1` AI daily / weekly report generation, the Android launcher-widget visual hotfixes, the AI report scheduling reliability fix for Android devices without exact-alarm permission, and a new widget pass to make the launcher `今日看板` read closer to the in-app daily board.
+The repository is now being advanced to `1.9.7`. It carries forward the `1.9.0` focus-mode baseline, the `1.9.1` AI daily / weekly report generation, the Android launcher-widget visual hotfixes, the AI report scheduling reliability fix for Android devices without exact-alarm permission, and adds Planning Desk / AI-report usability guidance.
 
 Most important current baseline facts:
 
-- version metadata is `1.9.6 / 200`
+- version metadata is `1.9.7 / 201`
 - Database version is now `12`; `MIGRATION_11_12` creates `focus_sessions`.
 - Settings -> `专注模式` controls default focus duration, extension duration, screen-on behavior, and a documented-only notification-suppression preference.
 - Active todo long-press menus include `开始专注 · X 分钟`; the daily-board focus card can start free focus.
@@ -45,11 +45,12 @@ Most important current baseline facts:
 - Planning Desk AI recognition is now explicit-only: phone recognition still starts from the `识别` button, desktop recognition starts from the `识别` button or `Ctrl+Enter`, and desktop import no longer silently calls parse when no preview exists.
 - Settings -> `AI 调用配置` can fetch a single provider's model list with only Base URL / API Key before saving. Model fetch handles service roots, `/v1`, full `/chat/completions`, and full `/models` URLs, shows a compact dropdown on success, keeps a manual model-name fallback, and reports API-key / endpoint / non-JSON failures in user-readable language.
 - Settings -> `AI 调用配置` can still test a single provider with the currently edited Base URL / API Key / model before saving; root Base URLs try `/v1/chat/completions` first, `/v1` Base URLs append `/chat/completions`, full `/models` URLs convert back to sibling `/chat/completions`, and HTML/non-JSON responses produce a readable Base URL hint.
-- Settings -> `AI 调用配置` now includes `AI 日报 / 周报` controls: daily and weekly switches, compact HH:mm time fields, save/re-schedule behavior, and an immediate daily-report generation button for debugging.
+- Settings -> `AI 调用配置` now includes `AI 日报 / 周报` controls: daily and weekly switches, compact HH:mm time fields, save/re-schedule behavior, `了解 AI 日报` guidance, and an immediate daily-report generation button for debugging.
 - AI daily reports write into Planning Desk `AI 日报`; weekly reports write into `AI 周报`. Reports collect completed todos, missed todos, events, upcoming DDLs, and focus minutes, call enabled Planning AI providers first, and fall back to a local template if AI is unavailable.
 - AI report notifications use a low-priority `ai_report_channel`; tapping a report notification opens the matching Planning Desk report document.
 - `DailyReportScheduler` schedules daily and Sunday weekly report alarms, cancels disabled schedules, and is invoked from app startup plus boot/time/timezone recovery; it uses exact alarms when allowed and falls back to system-allowed idle scheduling when exact-alarm permission is missing.
 - Planning Desk displays a purple hint when opening `AI 日报` or `AI 周报`, reminding the user that the document is an auto-generated review record.
+- Planning Desk shortcut toolbar includes `公告`, which inserts `#公告 ` on a new line so users do not need to manually type the announcement token.
 - Daily board can show multiple active announcements parsed from unarchived Planning Desk notes. Announcement parsing now accepts explicit lines, checkbox announcement lines, quote-prefixed announcement lines, and inline `#公告` hints; tail `#imported` / hashtag metadata is stripped from display text.
 - Settings no longer exposes or stores a separate announcement editor. The old `AppSettings` announcement fields and backup serialization were removed; old backup JSON fields are ignored and legacy SharedPreferences keys are cleaned once.
 - Android launcher widgets now expose a `今日看板` widget backed by Room data: active announcements, today todos, today schedule state, and tomorrow schedule summary share one RemoteViews `ListView`; widget colors support system dark mode and widget refresh uses a board-range query rather than pulling all todos.
@@ -95,7 +96,7 @@ Recent code inspection and build verification cover:
 
 ## Documentation Health
 
-Current docs are being synchronized for `1.9.6`:
+Current docs are being synchronized for `1.9.7`:
 
 - `README.md`
 - `CHANGELOG.md`

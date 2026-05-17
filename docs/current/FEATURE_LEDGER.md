@@ -77,7 +77,7 @@ This file tracks the product at a practical level for new coding sessions.
 - phone Markdown preview renders Planning Desk announcement lines with orange styling, a campaign icon, a `全局公告` pill, and a date-range pill; tapping the line jumps back to the source line
 - phone Planning Desk editor auto-saves after a short debounce and saves before switching planning documents
 - Enter continuation attempts to keep `- [ ]` task lines flowing without forcing the user to manually type Markdown every time, including when Enter is pressed in the middle of a document
-- shortcut `任务` converts the current line to one checkbox task without duplicating `- [ ]`; shortcut `子任务` inserts a new indented child task line; shortcut chips avoid double-triggering one tap
+- shortcut `任务` converts the current line to one checkbox task without duplicating `- [ ]`; shortcut `子任务` inserts a new indented child task line; shortcut `公告` inserts `#公告 ` on a new line for board / web / widget announcements; shortcut chips avoid double-triggering one tap
 - local rule parser recognizes markdown checkboxes, completed-task skip, subtask parent notes, date headings, DDL tags, lightweight bare `ddl` text such as `任务M ddl 15:00`, unified mixed reminder tags, group tags, schedule tags, and natural schedule ranges
 - local rule parser also recognizes common Chinese natural DDL hints, including date-context fuzzy words such as `晚上交论文`, before-time forms such as `5点前` / `16:30之前` / `明天下午3点前`, and non-checkbox DDL keyword lines such as `交论文 截止明天 23:59`
 - Planning Desk preview warns when a todo DDL is inferred from natural text and flags recurrence hint words such as `每天` / `每周` without auto-creating recurrence rules
@@ -111,7 +111,8 @@ This file tracks the product at a practical level for new coding sessions.
 
 ### AI 日报 / 周报
 
-- Settings -> `AI 调用配置` includes an `AI 日报 / 周报` block with compact switches, HH:mm time fields, a save/re-schedule button, and `立即生成一次日报`
+- Settings -> `AI 调用配置` includes an `AI 日报 / 周报` block with compact switches, HH:mm time fields, a save/re-schedule button, `了解 AI 日报`, and `立即生成一次日报`
+- the `了解 AI 日报` sheet explains what daily/weekly reports summarize, AI-source and fallback requirements, Android 12+ exact-alarm caveats, enable steps, report locations, notification deep links, and common failure cases
 - daily reports collect today's completed todos, missed todos, today's events, tomorrow events, tomorrow DDLs, and today's focus minutes
 - weekly reports collect Monday-Sunday completed todos, missed todos, week events, next-week DDLs, and completed focus minutes for the week
 - report generation tries enabled Planning Desk AI providers in order through `PlanningAiCaller.callWithFallback`; if AI is disabled or fails, a local template still generates a usable report

@@ -29,6 +29,7 @@ Then read only the code files directly relevant to the current task.
 8. When reporting completion, tell the user the latest APK path that exists for the current version; if no new APK was built in that round, say so explicitly.
 9. Git commit messages for this repository should be written in Chinese.
 10. A git commit message should describe the version-relevant feature / behavior changes in that round compared with the previous state, not just generic process wording such as "finalize" or "cleanup".
+11. Goal-mode prompt files (under `docs/goals/`) that drove a completed work round must be committed into the repository as a separate archive commit after the feature work itself lands. Subject like `归档 X.Y.Z 目标文档`. Do not commit goal files that contain API keys, tokens, private Base URLs, signing material, or other secrets — redact or keep them outside git instead. See `docs/goals/README.md` for the naming convention.
 
 ## Android Emulator Verification
 
@@ -56,6 +57,8 @@ Recommended workflow:
    - background alarm reliability, reboot recovery, and battery-management policies
 
 Do not treat a passing emulator smoke test as complete coverage for OEM-specific behavior. Do record emulator evidence in the final report when it materially reduces the amount of physical-phone testing needed.
+
+If the session starts or reuses an emulator, record the device id / AVD name, installed APK path, and checked screens or flows in `docs/current/SESSION_HANDOFF.md`. This prevents later confusion when an Android Emulator window is still open on the user's desktop.
 
 ## Git Commit Message Rules
 

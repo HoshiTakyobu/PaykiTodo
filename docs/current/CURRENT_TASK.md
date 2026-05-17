@@ -2,7 +2,7 @@
 
 ## Active Development Focus
 
-The current round is PaykiTodo `1.9.6` / `versionCode 200`, carrying forward the `1.9.1` AI daily / weekly report work, the exact-alarm fallback fix, and applying another launcher-widget visual pass so the Android `今日看板` widget is closer to the in-app daily board.
+The current round is PaykiTodo `1.9.7` / `versionCode 201`, carrying forward the `1.9.1` AI daily / weekly report work, the `1.9.6` launcher-widget visual baseline, and adding Planning Desk / AI-report usability guidance.
 
 ## Completed In This Round
 
@@ -22,6 +22,10 @@ The current round is PaykiTodo `1.9.6` / `versionCode 200`, carrying forward the
 14. Version metadata moved to `1.9.5` / `versionCode 199`.
 15. Android `今日看板` launcher widget was advanced again for `1.9.6`: the topbar removes `轻触打开`, uses a tighter daily-board-like menu/title/date hierarchy, todo cards show group tag / notes / `⏰ DDL HH:mm`, heavy card strokes are removed, and in-progress schedule rows get a gold border with faint gold fill.
 16. Version metadata moved to `1.9.6` / `versionCode 200`.
+17. Archived the completed `1.9.0` focus-mode and `1.9.1` AI daily-report goal prompt files in a separate commit.
+18. Planning Desk shortcut toolbar now includes `公告`, inserting `#公告 ` on a new line for board / web / widget announcements.
+19. Settings -> `AI 调用配置` -> `AI 日报 / 周报` now includes `了解 AI 日报`, opening a multi-card bottom sheet for report purpose, prerequisites, enable steps, locations, and common issues.
+20. Version metadata moved to `1.9.7` / `versionCode 201`.
 
 ## Verification Completed This Round
 
@@ -50,13 +54,18 @@ The current round is PaykiTodo `1.9.6` / `versionCode 200`, carrying forward the
 23. `./gradlew.bat testDebugUnitTest`
 24. `node --check app/src/main/assets/desktop-web/app.js`
 25. `git diff --check`
+26. `./gradlew.bat :app:compileDebugKotlin` after adding the `了解 AI 日报` sheet and before the final `1.9.7` package build
+27. `./gradlew.bat assembleDebug`; output metadata reports `PaykiTodo-1.9.7-debug.apk`, `versionCode=201`, `versionName=1.9.7`
+28. `./gradlew.bat testDebugUnitTest`
+29. `node --check app/src/main/assets/desktop-web/app.js`
+30. `git diff --check`
 
 ## Immediate Practical Next Steps
 
-1. Install `app/build/outputs/apk/debug/PaykiTodo-1.9.6-debug.apk` on a real device for the device-only checks below.
+1. Install `app/build/outputs/apk/debug/PaykiTodo-1.9.7-debug.apk` on a real device for the device-only checks below.
 2. Do not push unless the user explicitly asks.
 
-## Device Verification Needed After Installing 1.9.6
+## Device Verification Needed After Installing 1.9.7
 
 1. In Settings -> `AI 调用配置`, enable daily report, set the time to current time + 1 minute, and confirm a report is generated.
 2. Verify disabling the daily switch cancels future daily report alarms.
@@ -65,6 +74,8 @@ The current round is PaykiTodo `1.9.6` / `versionCode 200`, carrying forward the
 5. Verify report notification appears when notification permission is granted and opens the corresponding Planning Desk report note.
 6. Verify Sunday weekly scheduling writes `AI 周报`.
 7. Reboot / time-change handling should be device-tested because AlarmManager scheduling cannot be fully validated by unit tests.
+8. In Planning Desk, expand the shortcut toolbar, tap `公告`, and confirm it inserts `#公告 ` on a new line with the cursor after the trailing space.
+9. In Settings -> AI 调用配置 -> AI 日报 / 周报, tap `了解 AI 日报` and confirm the guide sheet covers the five expected sections.
 
 ## Local Device Verification Reality
 
@@ -77,8 +88,10 @@ The current round is PaykiTodo `1.9.6` / `versionCode 200`, carrying forward the
 - `c20d18a` implements the `1.9.0` focus-mode baseline.
 - `104c9aa` implements the `1.9.1` AI daily / weekly report work and the previous launcher-widget visual pass.
 - `46326df` implements the `1.9.4` launcher-widget visual hotfix.
-- The latest local commit implements the `1.9.6` Android launcher-widget daily-board visual pass on top of the `1.9.5` AI report scheduling fallback.
-- `docs/goals/2026-05-17-paykitodo-focus-session-goal.md` and `docs/goals/2026-05-17-paykitodo-ai-daily-report-goal.md` remain untracked goal input files by design.
+- `806be59` implements the `1.9.6` Android launcher-widget daily-board visual pass on top of the `1.9.5` AI report scheduling fallback.
+- `5d77558` archives the completed `1.9.0` focus-mode and `1.9.1` AI daily-report goal prompt files.
+- `67e54bc` implements the Planning Desk `公告` shortcut insertion behavior.
+- The final `1.9.7` feature work completes the AI 日报 guide sheet, version bump, documentation synchronization, and workflow-documentation updates.
 
 ## Commit Message Rule
 

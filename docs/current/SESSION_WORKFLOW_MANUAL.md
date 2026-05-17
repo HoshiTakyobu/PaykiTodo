@@ -88,6 +88,8 @@ C:\Users\hp\AppData\Local\Android\Sdk\platform-tools\adb.exe pull /sdcard/window
 
 If no emulator is running and this verification would be useful, the session may start an AVD from Android Studio / Android SDK. The session should explicitly tell the user that an Android Emulator window may appear, because it is a visible desktop application.
 
+When a session starts or reuses an emulator, it should leave a trace in `docs/current/SESSION_HANDOFF.md`: device id / AVD name, installed APK path, screens opened, and what was actually verified. This is required because the emulator window can remain on the user's desktop after the coding session moves on.
+
 Current known useful emulator facts from the 1.9.x work:
 
 - `emulator-5554` was used to install and run `com.paykitodo.app`.

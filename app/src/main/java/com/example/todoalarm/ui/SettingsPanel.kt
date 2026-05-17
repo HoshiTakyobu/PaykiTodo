@@ -49,9 +49,11 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ElevatedCard
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Slider
@@ -59,6 +61,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
@@ -939,6 +942,7 @@ private fun PlanningAiConfigPanel(
 }
 
 @Composable
+@OptIn(ExperimentalMaterial3Api::class)
 private fun AiReportPreferencesPanel(
     settings: AppSettings,
     onChange: (Boolean, Int, Int, Boolean, Int, Int) -> Unit,
@@ -955,6 +959,7 @@ private fun AiReportPreferencesPanel(
     var savedHint by remember { mutableStateOf(false) }
     var runningNow by remember { mutableStateOf(false) }
     var runMessage by remember { mutableStateOf<String?>(null) }
+    var showHelpSheet by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
     val dailyTime = parseReportTime(dailyTimeText)
@@ -1016,6 +1021,12 @@ private fun AiReportPreferencesPanel(
             Text("保存日报 / 周报设置")
         }
         OutlinedButton(
+            onClick = { showHelpSheet = true },
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("了解 AI 日报")
+        }
+        OutlinedButton(
             onClick = {
                 scope.launch {
                     runningNow = true
@@ -1041,6 +1052,96 @@ private fun AiReportPreferencesPanel(
         runMessage?.let {
             Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
         }
+    }
+
+    if (showHelpSheet) {
+        AiReportHelpSheet(onDismiss = { showHelpSheet = false })
+    }
+}
+
+@Composable
+@OptIn(ExperimentalMaterial3Api::class)
+private fun AiReportHelpSheet(onDismiss: () -> Unit) {
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = sheetState,
+        containerColor = MaterialTheme.colorScheme.surface
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .verticalScroll(rememberScrollState())
+                .padding(start = 18.dp, end = 18.dp, bottom = 28.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Text(
+                text = "AI 日报怎么用",
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            AiReportHelpCard("什么是 AI 日报") {
+                HelpBullet("AI 日报会汇总今天完成的待办、错过的待办、今日和明日日程、明日 DDL、今日专注分钟数。")
+                HelpBullet("它会调用你已配置的 AI 源生成 1-3 段中文总结，并给出「明天先做什么」的建议。")
+                HelpBullet("周报在每周日生成，覆盖本周累计数据。")
+            }
+            AiReportHelpCard("使用前提") {
+                HelpBullet("至少配置一个可用的 AI 源，例如 DeepSeek、Qwen 或 OpenAI 兼容服务，并通过「测试连接」。")
+                HelpBullet("如果所有 AI 源都不可用，会自动用本地模板生成简短报告，不会生成空内容。")
+                HelpBullet("Android 12+ 建议授予「闹钟和提醒 / 精确闹钟」权限，否则系统可能延后几小时甚至跳过生成。")
+            }
+            AiReportHelpCard("启用步骤") {
+                HelpBullet("1. 在本卡片打开「日报」开关，设置生成时间，默认 22:00。")
+                HelpBullet("2. 可选：打开「周报」开关。")
+                HelpBullet("3. 首次使用建议点击「立即生成一次日报」验证链路。")
+                HelpBullet("4. 报告生成后会有通知栏推送，点击通知可直达对应文档。")
+            }
+            AiReportHelpCard("报告在哪看") {
+                HelpBullet("通知栏点击「AI 日报已生成」通知，会自动打开规划台「AI 日报」文档。")
+                HelpBullet("也可以从抽屉进入规划台，再在文档列表中选择「AI 日报」或「AI 周报」。")
+                HelpBullet("报告文档顶部会有紫色提示条，说明这是自动生成的复盘记录。")
+            }
+            AiReportHelpCard("常见问题") {
+                HelpBullet("没收到报告：检查 AI 源测试连接、通知权限和 Android 12+ 的闹钟权限；手机深度休眠时可能延后，可点「立即生成一次日报」手动触发。")
+                HelpBullet("报告很简短：通常是 AI 不可用时走了本地模板，只列出完成数量和明天 DDL，检查 AI 配置和网络。")
+                HelpBullet("AI 写得不准：报告基于生成时的数据库快照，22:00 之后完成的任务不会进入当天日报；AI 也可能偶尔幻觉，严重错误需要继续改 prompt。")
+            }
+        }
+    }
+}
+
+@Composable
+private fun AiReportHelpCard(
+    title: String,
+    content: @Composable ColumnScope.() -> Unit
+) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(22.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.32f),
+        tonalElevation = 2.dp
+    ) {
+        Column(
+            modifier = Modifier.padding(15.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Text(title, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface, style = MaterialTheme.typography.titleMedium)
+            content()
+        }
+    }
+}
+
+@Composable
+private fun HelpBullet(text: String) {
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.Top) {
+        Text("•", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+        Text(
+            text = text,
+            modifier = Modifier.weight(1f),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
     }
 }
 

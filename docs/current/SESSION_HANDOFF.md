@@ -6,12 +6,20 @@ Long-running Codex sessions can become unreliable. This file exists so a new ses
 
 ## Current Handoff Summary
 
-- The project is now being advanced to `1.9.6` / `versionCode 200`.
-- This round carries forward AI 日报 / 周报 after the `1.9.0` focus-mode baseline, keeps the `1.9.5` exact-alarm fallback, and applies another launcher-widget visual pass for the Android `今日看板` widget.
-- Latest debug APK after packaging: `app/build/outputs/apk/debug/PaykiTodo-1.9.6-debug.apk`.
-- Local commits before this hotfix: `c20d18a` for focus mode and `104c9aa` for AI reports plus the previous widget visual pass.
-- Latest local commit implements the `1.9.6` launcher-widget daily-board visual pass on top of the `1.9.5` AI report scheduling fallback.
+- The project is now being advanced to `1.9.7` / `versionCode 201`.
+- This round carries forward AI 日报 / 周报 after the `1.9.0` focus-mode baseline, keeps the `1.9.5` exact-alarm fallback and `1.9.6` widget visual baseline, then adds Planning Desk / AI-report usability guidance.
+- Latest debug APK after packaging: `app/build/outputs/apk/debug/PaykiTodo-1.9.7-debug.apk`.
+- Recent local commits: `5d77558` archives completed `1.9.0` / `1.9.1` goal prompts; `67e54bc` adds the Planning Desk `公告` shortcut.
+- The latest `1.9.7` feature work completes the AI 日报 guide sheet, version bump, documentation synchronization, and workflow-documentation updates.
 - Do not push to GitHub unless the user explicitly asks.
+
+## Latest 1.9.7 Planning Desk / AI Report Usability Pass
+
+1. Planning Desk shortcut toolbar now includes `公告`; tapping it inserts `#公告 ` at the start of a new line and leaves the cursor ready for the date range / announcement body.
+2. Settings -> `AI 调用配置` -> `AI 日报 / 周报` now includes `了解 AI 日报`, which opens a bottom sheet explaining what reports summarize, provider/fallback prerequisites, Android 12+ exact-alarm behavior, enable steps, report locations, and common issues.
+3. Completed `1.9.0` focus-mode and `1.9.1` AI-report goal prompt files were archived in a separate commit.
+4. Agent workflow docs now require goal prompt archive commits and Android Emulator verification traces in `SESSION_HANDOFF`.
+5. Version metadata moved to `1.9.7` / `versionCode 201`.
 
 ## Latest 1.9.6 Widget Visual Pass
 
@@ -106,6 +114,11 @@ Completed locally:
 23. `./gradlew.bat testDebugUnitTest`
 24. `node --check app/src/main/assets/desktop-web/app.js`
 25. `git diff --check`
+26. `./gradlew.bat :app:compileDebugKotlin` after adding the `了解 AI 日报` sheet
+27. `./gradlew.bat assembleDebug`; output metadata reports `PaykiTodo-1.9.7-debug.apk`, `versionCode=201`, `versionName=1.9.7`
+28. `./gradlew.bat testDebugUnitTest`
+29. `node --check app/src/main/assets/desktop-web/app.js`
+30. `git diff --check`
 
 Real launcher verification is still needed for the widget visual pass because RemoteViews rendering varies by launcher.
 
@@ -117,13 +130,15 @@ Local device status observed in this session:
 4. Future sessions may use the emulator as a standard pre-phone debugging step for launch crashes, navigation, and visible UI regressions. Tell the user when starting a new emulator window; if one is already running, reuse it.
 5. Continue physical-device checks for OEM alarm policy, haptics, launcher widget rendering, notification shade visuals, and reboot/time-change recovery.
 
-Then verify on a real device after installing `PaykiTodo-1.9.6-debug.apk`:
+Then verify on a real device after installing `PaykiTodo-1.9.7-debug.apk`:
 
 1. confirm the same daily-report flow on the user's real device / OEM ROM;
 2. tap `立即生成一次日报` and confirm `AI 日报` is created / updated;
 3. test Sunday weekly report generation into `AI 周报`;
 4. test boot/time/timezone recovery on device;
 5. test launcher widget rendering from the real launcher picker, including the tighter topbar, todo group/notes/`⏰ DDL` rows, and in-progress schedule gold treatment.
+6. open Planning Desk shortcut toolbar and verify the `公告` shortcut inserts `#公告 ` correctly.
+7. open Settings -> AI 调用配置 -> AI 日报 / 周报 and verify the `了解 AI 日报` sheet is readable and covers the five guide sections.
 
 ## Required Reading For A New Session
 

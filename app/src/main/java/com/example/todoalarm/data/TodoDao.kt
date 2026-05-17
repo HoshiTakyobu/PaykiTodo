@@ -93,6 +93,7 @@ interface TodoDao {
                 itemType = 'TODO'
                 AND (
                     missed = 1
+                    OR dueAtMillis = :noDueDateMillis
                     OR dueAtMillis BETWEEN :todoStartMillis AND :boardEndMillis
                 )
             )
@@ -109,7 +110,8 @@ interface TodoDao {
     suspend fun getActiveItemsForBoardRange(
         todoStartMillis: Long,
         boardStartMillis: Long,
-        boardEndMillis: Long
+        boardEndMillis: Long,
+        noDueDateMillis: Long
     ): List<TodoItem>
 
     @Query("DELETE FROM todo_items")

@@ -59,7 +59,8 @@ class TodoRepository(
         return todoDao.getActiveItemsForBoardRange(
             todoStartMillis = todoStart,
             boardStartMillis = boardStart,
-            boardEndMillis = boardEnd
+            boardEndMillis = boardEnd,
+            noDueDateMillis = NO_DUE_DATE_MILLIS
         )
     }
 

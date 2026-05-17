@@ -10,7 +10,7 @@ This file tracks the product at a practical level for new coding sessions.
 - title / notes / group / deadline / multi-reminder fields
 - Todo editor shows title / DDL / group first for new todos and folds notes / reminder input / reminder delivery mode / recurrence / ring / vibration into 更多选项, auto-expanding when editing existing todos that use advanced state
 - Todo editor can choose reminder delivery mode between full-screen reminder and notification reminder; the selected mode is persisted for todos and recurring todo templates
-- no-deadline todos; active no-DDL items are treated as `今日待办` across phone board, widget snapshot, desktop board, and desktop todo management
+- no-deadline todos; active no-DDL items are treated as `今日待办` across phone board, Android widget board query, desktop board, and desktop todo management
 - lightweight comma-based todo batch import with preview validation
 - todo batch-import DDL supports same-day clock input such as `16:30` / `16：30`, plus Planning Desk-style natural date forms such as `5.28`, `5月28日`, `明天`, and `周五`; date-only values default to `23:59`
 - My Tasks exposes todo batch import beside the bottom-right new-todo button instead of as a top content row
@@ -79,7 +79,7 @@ This file tracks the product at a practical level for new coding sessions.
 - phone Planning Desk editor auto-saves after a short debounce and saves before switching planning documents
 - Enter continuation attempts to keep `- [ ]` task lines flowing without forcing the user to manually type Markdown every time, including when Enter is pressed in the middle of a document
 - shortcut `任务` converts the current line to one checkbox task without duplicating `- [ ]`; shortcut `子任务` inserts a new indented child task line; shortcut `公告` inserts `#公告 ` on a new line for board / web / widget announcements; shortcut chips avoid double-triggering one tap
-- local Planning Desk parsing recognizes plain bullet lines such as `- 想办的事`, `* 整理材料`, and `• 发消息` as no-DDL todo candidates for the collection / scratchpad workflow
+- local Planning Desk parsing recognizes plain bullet lines such as `- 想办的事`, `* 整理材料`, and `• 发消息` as no-DDL todo candidates for the collection / scratchpad workflow; preview candidates explain that ordinary bullets were recognized as no-DDL todos
 - local rule parser recognizes markdown checkboxes, completed-task skip, subtask parent notes, date headings, DDL tags, lightweight bare `ddl` text such as `任务M ddl 15:00`, unified mixed reminder tags, group tags, schedule tags, and natural schedule ranges
 - local rule parser also recognizes common Chinese natural DDL hints, including date-context fuzzy words such as `晚上交论文`, before-time forms such as `5点前` / `16:30之前` / `明天下午3点前`, and non-checkbox DDL keyword lines such as `交论文 截止明天 23:59`
 - Planning Desk preview warns when a todo DDL is inferred from natural text and flags recurrence hint words such as `每天` / `每周` without auto-creating recurrence rules
@@ -107,6 +107,7 @@ This file tracks the product at a practical level for new coding sessions.
 - Planning Desk AI keeps group assignment conservative: AI `groupName` is preserved only when the source line explicitly contains a group marker such as `#group`, `分组：`, `项目：`, or `课程：`, so ordinary titles are not split into accidental groups
 - Desktop Planning Desk import accepts AI-returned preview candidates directly even when their IDs do not match local-parser `line-*` IDs, preventing the browser from showing one AI candidate but importing zero selected items
 - AI source editing can fetch available models from OpenAI-compatible `/models` endpoints using only Base URL and API Key, then show a compact dropdown while preserving manual model-name entry for gateways that do not expose model discovery
+- Settings -> AI 调用配置 uses compact provider summary cards and now tries to persist valid provider add/edit/toggle/reorder/delete changes immediately; incomplete enabled providers show an in-page warning instead of silently relying on the user to remember a separate save step
 - AI provider chat calls accept common OpenAI-compatible endpoint shapes: root Base URL tries `/v1/chat/completions` before `/chat/completions`, `/v1` appends `/chat/completions`, full `/chat/completions` URLs are used directly, and full `/models` URLs convert back to sibling `/chat/completions`; non-JSON HTML responses produce a Base URL hint
 - Planning Desk AI recognition is explicit-only: phone calls it from the `识别` button, desktop calls it from `识别` or `Ctrl+Enter`, and desktop import without preview no longer triggers AI silently
 - AI Provider API Keys are stored locally in settings, deliberately excluded from backup JSON export, and preserved when importing backups without keys
@@ -180,6 +181,7 @@ This file tracks the product at a practical level for new coding sessions.
 - widget provider declares horizontal / vertical resize mode plus min resize dimensions for better launcher compatibility
 - widget day/night colors are resource-backed, with daily-board background art, dark-mode scrims, and text colors for launcher readability
 - widget refresh uses a board-range Room query rather than loading all historical todos, and duplicate `onReceive` update routing has been removed
+- widget board-range query explicitly includes active no-DDL todos, so the launcher widget's 今日待办 block matches the phone daily board instead of dropping no-DDL tasks
 - tapping a todo area opens the in-app My Tasks section, tapping a schedule / event area opens Calendar without forcing an editor detail, tapping an announcement row opens the source Planning Desk note, and header / empty rows return to the default daily board
 - widget empty states now use the same card-style visual direction as the in-app daily board rather than thin bordered rows
 - widget schedule content is aggregated into one card with a left date block, today rows, tomorrow label, and tomorrow rows instead of independent event cards; todo cards use the task group's color strip
@@ -234,6 +236,7 @@ This file tracks the product at a practical level for new coding sessions.
 - desktop web Planning Desk now also shows the current note title, mapping status preview, refresh/postpone/undo controls, and conflict resolution actions for imported planning lines
 - desktop web `/api/snapshot` includes active Planning Desk announcements and the browser console renders them as a top orange announcement banner
 - desktop web `/api/snapshot` includes a phone-derived `todayBoard` payload, and the browser first tab is now a daily-board view with current/next item, today focus stats, today todos, today schedule, tomorrow schedule, ended-event filtering, and in-progress gold highlighting above the full todo timeline
+- desktop web `/api/snapshot` reuses the groups already loaded in the snapshot JSON path instead of issuing a second Room group read for group-name/color mapping
 - desktop web follows system dark mode through CSS variables for timeline cards, event cards, modal sheets, summary cards, tab buttons, sidebar cards, Planning Desk, inputs, and announcement surfaces
 
 ### Destructive Action Safety
@@ -244,6 +247,13 @@ This file tracks the product at a practical level for new coding sessions.
 - group deletion asks for confirmation
 - desktop web delete buttons use the PaykiTodo in-app dangerous-action confirmation modal
 - phone-side delete confirmations share a refined dangerous-action bottom sheet with red icon, message card, and red confirm button
+
+### Data / Performance
+
+- `todo_items` has Room indices for board todo queries, board event range queries, active reminders, group+DDL sorting, and recurring-series lookup.
+- Database version is `14`; `MIGRATION_13_14` creates the `todo_items` performance indices on upgraded installs.
+- Desktop Web snapshot refresh still returns broad datasets and should later be split into narrower board/todo/event/planning endpoints when data volume grows.
+- Main phone UI still observes full focus-session and AI-report lists; a later optimization should replace that with today aggregates and paged/lazy report data.
 
 ## Implemented But Still Being Polished
 

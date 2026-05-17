@@ -424,6 +424,11 @@ fun SettingsPanel(
                     }
                     Switch(checked = settings.desktopSyncEnabled, onCheckedChange = onDesktopSyncEnabledChange)
                 }
+                Text(
+                    "开启后 5 分钟内如果没有电脑端用正确访问密钥完成连接，会自动关闭电脑同步；只打开网页但未通过密钥不算已连接。",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text("访问密钥：${settings.desktopSyncToken}", fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.weight(1f))
                     OutlinedButton(onClick = {
@@ -791,26 +796,44 @@ private fun PlanningAiConfigPanel(
     onReportPreferencesChange: (Boolean, Int, Int, Boolean, Int, Int) -> Unit,
     onGenerateDailyReportNow: suspend () -> String?
 ) {
-    var enabled by remember(settings.planningAiEnabled) { mutableStateOf(settings.planningAiEnabled) }
-    var providers by remember(settings.planningAiProviders) {
-        mutableStateOf(
-            settings.planningAiProviders.ifEmpty {
-                listOf(
-                    PlanningAiProvider(
-                        name = settings.planningAiProviderName.ifBlank { "DeepSeek / Qwen" },
-                        baseUrl = settings.planningAiBaseUrl,
-                        apiKey = settings.planningAiApiKey,
-                        model = settings.planningAiModel,
-                        enabled = settings.planningAiEnabled
-                    )
-                ).filter { it.baseUrl.isNotBlank() || it.apiKey.isNotBlank() || it.model.isNotBlank() }
-            }
-        )
+    val persistedProviders = remember(
+        settings.planningAiProviders,
+        settings.planningAiProviderName,
+        settings.planningAiBaseUrl,
+        settings.planningAiApiKey,
+        settings.planningAiModel,
+        settings.planningAiEnabled
+    ) {
+        settings.planningAiProviders.ifEmpty {
+            listOf(
+                PlanningAiProvider(
+                    name = settings.planningAiProviderName.ifBlank { "DeepSeek / Qwen" },
+                    baseUrl = settings.planningAiBaseUrl,
+                    apiKey = settings.planningAiApiKey,
+                    model = settings.planningAiModel,
+                    enabled = settings.planningAiEnabled
+                )
+            ).filter { it.baseUrl.isNotBlank() || it.apiKey.isNotBlank() || it.model.isNotBlank() }
+        }
     }
+    var enabled by remember(settings.planningAiEnabled) { mutableStateOf(settings.planningAiEnabled) }
+    var providers by remember(persistedProviders) { mutableStateOf(persistedProviders) }
     var editingProvider by remember { mutableStateOf<PlanningAiProvider?>(null) }
     var deleteTarget by remember { mutableStateOf<PlanningAiProvider?>(null) }
     var savedHint by remember { mutableStateOf(false) }
-    val requiredMissing = enabled && providers.filter { it.enabled }.any { it.baseUrl.isBlank() || it.apiKey.isBlank() || it.model.isBlank() }
+    fun hasRequiredMissing(checkEnabled: Boolean, checkProviders: List<PlanningAiProvider>): Boolean {
+        return checkEnabled && checkProviders.filter { it.enabled }.any { it.baseUrl.isBlank() || it.apiKey.isBlank() || it.model.isBlank() }
+    }
+    fun saveIfValid(nextEnabled: Boolean, nextProviders: List<PlanningAiProvider>) {
+        if (hasRequiredMissing(nextEnabled, nextProviders)) {
+            savedHint = false
+            return
+        }
+        onSave(nextEnabled, nextProviders)
+        savedHint = true
+    }
+    val requiredMissing = hasRequiredMissing(enabled, providers)
+    val hasUnsavedChanges = enabled != settings.planningAiEnabled || providers != persistedProviders
 
     Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
         Surface(
@@ -831,7 +854,13 @@ private fun PlanningAiConfigPanel(
                 Text("启用 AI 识别配置", fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
                 Text("识别时会按下方顺序从上到下轮询可用源。", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
-            Switch(checked = enabled, onCheckedChange = { enabled = it; savedHint = false })
+            Switch(
+                checked = enabled,
+                onCheckedChange = { checked ->
+                    enabled = checked
+                    saveIfValid(checked, providers)
+                }
+            )
         }
 
         if (providers.isEmpty()) {
@@ -843,16 +872,19 @@ private fun PlanningAiConfigPanel(
                     total = providers.size,
                     provider = provider,
                     onToggle = { checked ->
-                        providers = providers.map { if (it.id == provider.id) it.copy(enabled = checked) else it }
-                        savedHint = false
+                        val updated = providers.map { if (it.id == provider.id) it.copy(enabled = checked) else it }
+                        providers = updated
+                        saveIfValid(enabled, updated)
                     },
                     onMoveUp = {
-                        providers = providers.moveProvider(index, index - 1)
-                        savedHint = false
+                        val updated = providers.moveProvider(index, index - 1)
+                        providers = updated
+                        saveIfValid(enabled, updated)
                     },
                     onMoveDown = {
-                        providers = providers.moveProvider(index, index + 1)
-                        savedHint = false
+                        val updated = providers.moveProvider(index, index + 1)
+                        providers = updated
+                        saveIfValid(enabled, updated)
                     },
                     onEdit = {
                         editingProvider = provider
@@ -867,6 +899,12 @@ private fun PlanningAiConfigPanel(
         if (requiredMissing) {
             Text(
                 text = "启用的 AI 源需要填写 Base URL、API Key 和模型名。",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.error
+            )
+        } else if (hasUnsavedChanges && !savedHint) {
+            Text(
+                text = "当前有未保存的 AI 配置改动，请保存后再离开此页。",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.error
             )
@@ -921,12 +959,13 @@ private fun PlanningAiConfigPanel(
             provider = provider,
             onDismiss = { editingProvider = null },
             onConfirm = { updated ->
-                providers = if (providers.any { it.id == updated.id }) {
+                val updatedProviders = if (providers.any { it.id == updated.id }) {
                     providers.map { if (it.id == updated.id) updated else it }
                 } else {
                     providers + updated
                 }
-                savedHint = false
+                providers = updatedProviders
+                saveIfValid(enabled, updatedProviders)
                 editingProvider = null
             }
         )
@@ -939,8 +978,9 @@ private fun PlanningAiConfigPanel(
             text = { Text("确定删除「${provider.name.ifBlank { "未命名服务" }}」吗？") },
             confirmButton = {
                 TextButton(onClick = {
-                    providers = providers.filterNot { it.id == provider.id }
-                    savedHint = false
+                    val updated = providers.filterNot { it.id == provider.id }
+                    providers = updated
+                    saveIfValid(enabled, updated)
                     deleteTarget = null
                 }) {
                     Text("删除", color = MaterialTheme.colorScheme.error)

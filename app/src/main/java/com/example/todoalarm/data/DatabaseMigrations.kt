@@ -338,6 +338,12 @@ object DatabaseMigrations {
         }
     }
 
+    val MIGRATION_13_14 = object : Migration(13, 14) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            createTodoItemIndexes(db)
+        }
+    }
+
     private fun rebuildPlanningNotesTable(db: SupportSQLiteDatabase) {
         db.execSQL("DROP TABLE IF EXISTS `planning_notes_room_expected`")
         createPlanningNotesTable(db, "planning_notes_room_expected")
@@ -391,5 +397,13 @@ object DatabaseMigrations {
             }
         }
         return existing.containsAll(columns)
+    }
+
+    private fun createTodoItemIndexes(db: SupportSQLiteDatabase) {
+        db.execSQL("CREATE INDEX IF NOT EXISTS `index_todo_items_board_todos` ON `todo_items` (`completed`, `canceled`, `itemType`, `missed`, `dueAtMillis`)")
+        db.execSQL("CREATE INDEX IF NOT EXISTS `index_todo_items_board_events` ON `todo_items` (`completed`, `canceled`, `itemType`, `startAtMillis`, `endAtMillis`)")
+        db.execSQL("CREATE INDEX IF NOT EXISTS `index_todo_items_active_reminders` ON `todo_items` (`completed`, `canceled`, `reminderEnabled`, `dueAtMillis`)")
+        db.execSQL("CREATE INDEX IF NOT EXISTS `index_todo_items_group_due` ON `todo_items` (`groupId`, `dueAtMillis`)")
+        db.execSQL("CREATE INDEX IF NOT EXISTS `index_todo_items_series_due` ON `todo_items` (`recurringSeriesId`, `dueAtMillis`)")
     }
 }

@@ -1,13 +1,38 @@
 package com.example.todoalarm.data
 
 import androidx.room.Entity
+import androidx.room.Index
 import androidx.room.PrimaryKey
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.ZoneId
 
-@Entity(tableName = "todo_items")
+@Entity(
+    tableName = "todo_items",
+    indices = [
+        Index(
+            value = ["completed", "canceled", "itemType", "missed", "dueAtMillis"],
+            name = "index_todo_items_board_todos"
+        ),
+        Index(
+            value = ["completed", "canceled", "itemType", "startAtMillis", "endAtMillis"],
+            name = "index_todo_items_board_events"
+        ),
+        Index(
+            value = ["completed", "canceled", "reminderEnabled", "dueAtMillis"],
+            name = "index_todo_items_active_reminders"
+        ),
+        Index(
+            value = ["groupId", "dueAtMillis"],
+            name = "index_todo_items_group_due"
+        ),
+        Index(
+            value = ["recurringSeriesId", "dueAtMillis"],
+            name = "index_todo_items_series_due"
+        )
+    ]
+)
 data class TodoItem(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val itemType: String = PlannerItemType.TODO.name,

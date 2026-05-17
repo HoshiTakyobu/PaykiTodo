@@ -107,6 +107,7 @@ object PlanningMarkdownParser {
                 dateContext = dateContext,
                 parentTitle = parent,
                 listItemPresent = checkbox != null || plainBullet != null,
+                plainBulletPresent = plainBullet != null,
                 now = now
             )
             if (parsed != null) {
@@ -127,6 +128,7 @@ object PlanningMarkdownParser {
         dateContext: LocalDate?,
         parentTitle: String?,
         listItemPresent: Boolean,
+        plainBulletPresent: Boolean,
         now: LocalDateTime
     ): PlanningParsedCandidate? {
         val bareDdl = bareDdlValue(content)
@@ -203,6 +205,7 @@ object PlanningMarkdownParser {
         if (ddl != null && !ddl.isAfter(now)) warnings += "DDL 已早于当前时间，导入前请调整。"
         val importBlocked = ddl != null && (!ddl.isAfter(now) || reminder.any { offset -> !ddl.minusMinutes(offset.toLong()).isAfter(now) })
         if (importBlocked && warnings.isEmpty()) warnings += "提醒时间已经过去，请调整 DDL 或提醒时间后再导入。"
+        if (plainBulletPresent && ddl == null) warnings += "普通项目符号已识别为无 DDL 待办。"
         naturalTextMessage(content, naturalDdl != null)?.let { warnings += it }
         val group = tagValue(content, "group").orEmpty()
         val notes = parentTitle?.let { "所属大任务：$it" }.orEmpty()

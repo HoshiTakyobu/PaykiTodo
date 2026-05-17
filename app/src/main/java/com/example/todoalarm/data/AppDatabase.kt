@@ -15,7 +15,7 @@ import androidx.room.RoomDatabase
         FocusSession::class,
         AiReport::class
     ],
-    version = 13,
+    version = 14,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {

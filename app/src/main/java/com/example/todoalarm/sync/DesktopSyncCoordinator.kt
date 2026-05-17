@@ -124,7 +124,10 @@ class DesktopSyncCoordinator(
         return runCatching {
             when {
                 method == "GET" && path == "/api/status" -> DesktopSyncServer.Response.json(status().toJson())
-                method == "GET" && path == "/api/snapshot" -> DesktopSyncServer.Response.json(buildSnapshot().toJson(buildGroupsMap()))
+                method == "GET" && path == "/api/snapshot" -> {
+                    val snapshot = buildSnapshot()
+                    DesktopSyncServer.Response.json(snapshot.toJson(snapshot.groups.associateBy { it.id }))
+                }
                 method == "POST" && path == "/api/todos" -> DesktopSyncServer.Response.json(createTodo(JSONObject(body)))
                 method == "POST" && path == "/api/events" -> DesktopSyncServer.Response.json(createEvent(JSONObject(body)))
                 method == "PUT" && routePath.matches(Regex("/api/todos/\\d+")) -> DesktopSyncServer.Response.json(updateTodo(routePath, JSONObject(body)))
@@ -189,10 +192,6 @@ class DesktopSyncCoordinator(
                 todayCompletedFocusSessionCount = focusSessions.count { it.completed }
             )
         )
-    }
-
-    private fun buildGroupsMap(): Map<Long, com.example.todoalarm.data.TaskGroup> {
-        return runBlocking { app.repository.getAllGroups().ifEmpty { app.repository.ensureDefaultGroups() } }.associateBy { it.id }
     }
 
     private fun createTodo(json: JSONObject): JSONObject {

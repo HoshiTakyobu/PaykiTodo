@@ -78,6 +78,7 @@ class PlanningMarkdownParserTest {
         assertEquals(listOf("想办的事情", "再整理一下资料", "给导师发消息"), todos.map { it.title })
         assertTrue(todos.all { it.dueAt == null })
         assertTrue(todos.all { it.reminderOffsetsMinutes.isEmpty() })
+        assertTrue(todos.all { it.message.contains("普通项目符号已识别为无 DDL 待办") })
     }
 
     @Test

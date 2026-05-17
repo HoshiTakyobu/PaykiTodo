@@ -7,20 +7,20 @@
 - Package name: `com.paykitodo.app`
 - Target platform: Android 14 / API 34
 - Current version in code:
-  - `versionName = "1.9.9"`
-  - `versionCode = 203`
+  - `versionName = "1.9.10"`
+  - `versionCode = 204`
 
 ## Current Build Facts
 
 - Latest debug APK output:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.9.9-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.9.10-debug.apk`
 - Minimal verification completed in the latest code round:
   - `./gradlew.bat :app:compileDebugKotlin`
   - `./gradlew.bat testDebugUnitTest`
   - `./gradlew.bat assembleDebug`
   - `node --check app/src/main/assets/desktop-web/app.js`
   - `git diff --check`
-  - `app/build/outputs/apk/debug/output-metadata.json` reports `versionCode=203`, `versionName=1.9.9`, `outputFile=PaykiTodo-1.9.9-debug.apk`
+  - `app/build/outputs/apk/debug/output-metadata.json` reports `versionCode=204`, `versionName=1.9.10`, `outputFile=PaykiTodo-1.9.10-debug.apk`
 - Previous `1.9.5` emulator verification:
   - installed `PaykiTodo-1.9.5-debug.apk` on `emulator-5554`
   - verified AI daily-report fallback scheduling while exact-alarm permission is denied, automatic report generation, notification posting, notification deep link to `AI 日报`, disabled-switch cancellation, and weekly-report alarm registration
@@ -42,11 +42,11 @@
 
 ## Current Worktree Reality
 
-The repository is now being advanced to `1.9.9`. It carries forward the `1.9.0` focus-mode baseline, the `1.9.1` AI daily / weekly report generation, the Android launcher-widget visual hotfixes, the AI report scheduling reliability fix for Android devices without exact-alarm permission, the independent AI report archive, and now moves the desktop Web first tab closer to the phone daily-board experience.
+The repository is now being advanced to `1.9.10`. It carries forward the `1.9.0` focus-mode baseline, the `1.9.1` AI daily / weekly report generation, the Android launcher-widget visual hotfixes, the AI report scheduling reliability fix for Android devices without exact-alarm permission, the independent AI report archive, the desktop Web daily-board work, and now fixes widget navigation plus todo reminder handling.
 
 Most important current baseline facts:
 
-- version metadata is `1.9.9 / 203`
+- version metadata is `1.9.10 / 204`
 - Database version is now `13`; `MIGRATION_12_13` creates `ai_reports`.
 - Settings -> `专注模式` controls default focus duration, extension duration, screen-on behavior, and a documented-only notification-suppression preference.
 - Active todo long-press menus include `开始专注 · X 分钟`; the daily-board focus card can start free focus.
@@ -66,13 +66,16 @@ Most important current baseline facts:
 - Settings no longer exposes or stores a separate announcement editor. The old `AppSettings` announcement fields and backup serialization were removed; old backup JSON fields are ignored and legacy SharedPreferences keys are cleaned once.
 - Android launcher widgets now expose a `今日看板` widget backed by Room data: active announcements, today todos, today schedule state, and tomorrow schedule summary share one RemoteViews `ListView`; widget colors support system dark mode and widget refresh uses a board-range query rather than pulling all todos.
 - Android launcher widget root now layers the daily-board background art with light/dark scrims and uses a circular menu-button + `每日看板` title area, so the widget reads closer to the in-app daily board rather than a generic list surface.
-- Android launcher widget rows now use distinct RemoteViews layouts for the greeting card, focus summary card, orange announcement banner, section headers, empty cards, todo cards, and an aggregated schedule card. The schedule card mirrors the daily-board structure: one left date block, right-side today rows, tomorrow label, tomorrow rows, and vertical color strips.
-- Android launcher widget now includes a `今日已专注` card with today's completed focus minutes, total sessions, and completed sessions, matching the in-app daily-board ordering more closely.
+- Android launcher widget rows now use distinct RemoteViews layouts for the greeting card, orange announcement banner, section headers, empty cards, todo cards, and an aggregated schedule card. The schedule card mirrors the daily-board structure: one left date block, right-side today rows, tomorrow label, tomorrow rows, and vertical color strips.
+- Android launcher widget no longer includes the `今日已专注` / focus card, so the launcher surface stays focused on announcements, greeting, todos, and today/tomorrow schedules.
 - Android launcher widget card surfaces now use stronger light/dark opacity, lightweight elevation, retuned scrims, tighter title/card spacing, and daily-board ordering with announcements before greeting so the widget resembles the in-app daily board card stack more than a generic RemoteViews list.
 - Android launcher widget default provider size is now closer to a square / vertical daily-board card instead of a shallow flat list; its header is lighter and the greeting, focus, todo, empty, and schedule cards use more solid rounded daily-board-style surfaces with wider text/strip breathing room.
 - Android launcher widget `1.9.4` visual pass adds a static daily-board-style widget picker preview, raises the default target to a 4x5 vertical board, changes todo rows to include a checkbox-like marker plus `DDL HH:mm` chip, and removes ordinary schedule-row fill so schedule rows read as transparent daily-board rows with vertical color strips rather than small system-list blocks.
 - Android launcher widget `1.9.6` visual pass compresses the topbar to a daily-board-like menu/title/date row, removes the extra `轻触打开` subtitle, makes todo cards show group tag, notes, and `⏰ DDL HH:mm`, removes heavy card strokes, and gives in-progress schedule rows a gold border with a faint gold fill.
-- Tapping a todo row opens that todo, tapping an event row opens Calendar with that event detail, tapping an announcement row opens the source Planning Desk note, and section/empty rows return to the default daily board.
+- Tapping a widget todo area opens the in-app My Tasks section, tapping a widget event / schedule area opens Calendar without forcing a specific editor detail, tapping an announcement row opens the source Planning Desk note, and section/empty rows return to the default daily board.
+- Todo editor now exposes reminder delivery mode for todos, so a todo can be set to full-screen reminder or notification reminder instead of always being stored as full-screen.
+- Desktop Web todo editing also includes the todo reminder delivery mode field and sends it through the sync API.
+- Reminder screens now separate snooze from DDL changes: custom snooze only moves the next reminder, while a distinct `DDL 推迟` input validates positive minute increments, same-date clock targets, and full date-time targets against the current DDL.
 - Desktop web `/api/snapshot` includes active Planning Desk announcements and the browser console renders them as a top announcement banner. Long announcement text now scrolls only when the combined text exceeds 60 characters, and hover pauses the marquee.
 - Desktop web now follows system dark mode through CSS variables for timeline cards, event cards, modal sheets, summary cards, sidebar cards, tab buttons, Planning Desk, and announcements.
 - Launch screen now hides as soon as `TodoUiState.dataReady` is true, with an 800 ms fallback cap.
@@ -111,7 +114,7 @@ Recent code inspection and build verification cover:
 
 ## Documentation Health
 
-Current docs are being synchronized for `1.9.9`:
+Current docs are being synchronized for `1.9.10`:
 
 - `README.md`
 - `CHANGELOG.md`

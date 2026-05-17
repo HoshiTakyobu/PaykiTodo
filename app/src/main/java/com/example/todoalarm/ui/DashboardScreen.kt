@@ -200,6 +200,8 @@ fun DashboardScreen(
     LaunchedEffect(launchRouteSerial) {
         when {
             launchRoute?.settingsSectionKey != null -> section = DashboardSection.SETTINGS
+            launchRoute?.openTasks == true -> section = DashboardSection.ACTIVE
+            launchRoute?.openCalendar == true -> section = DashboardSection.CALENDAR
             launchRoute?.targetEventId != null -> section = DashboardSection.CALENDAR
             launchRoute?.targetPlanningNoteId != null -> {
                 section = DashboardSection.PLANNING

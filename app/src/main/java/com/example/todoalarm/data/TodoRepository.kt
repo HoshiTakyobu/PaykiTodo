@@ -609,17 +609,38 @@ class TodoRepository(
     suspend fun snoozeTodo(id: Long, nextReminderMillis: Long): TodoItem? {
         val item = todoDao.getById(id) ?: return null
         if (item.isHistory) return null
-        val updatedDueAtMillis = if (item.isTodo && item.hasDueDate && nextReminderMillis > item.dueAtMillis) {
-            nextReminderMillis
-        } else {
-            item.dueAtMillis
-        }
         val updated = item.copy(
-            dueAtMillis = updatedDueAtMillis,
+            dueAtMillis = item.dueAtMillis,
             reminderAtMillis = nextReminderMillis,
-            reminderOffsetsCsv = if (item.isTodo && item.hasDueDate) "0" else item.reminderOffsetsCsv,
+            reminderOffsetsCsv = if (item.isTodo) "" else item.reminderOffsetsCsv,
             reminderEnabled = true,
-            reminderOffsetMinutes = if (item.isTodo && item.hasDueDate) 0 else item.reminderOffsetMinutes,
+            reminderOffsetMinutes = if (item.isTodo) null else item.reminderOffsetMinutes,
+            missed = false,
+            missedAtMillis = null
+        )
+        todoDao.update(updated)
+        notifyItemsChanged()
+        return updated
+    }
+
+    suspend fun postponeTodoDueAt(id: Long, newDueAtMillis: Long): TodoItem? {
+        val item = todoDao.getById(id) ?: return null
+        if (!item.isTodo || item.isHistory || !item.hasDueDate || newDueAtMillis <= item.dueAtMillis) return null
+        val now = System.currentTimeMillis()
+        val preservedOffsets = item.configuredReminderOffsetsMinutes.ifEmpty { listOf(0) }
+        val futureOffsets = preservedOffsets
+            .filter { offset -> newDueAtMillis - offset * 60_000L > now }
+            .ifEmpty { listOf(0) }
+        val nextReminderMillis = futureOffsets
+            .map { offset -> newDueAtMillis - offset * 60_000L }
+            .filter { it > now }
+            .minOrNull()
+        val updated = item.copy(
+            dueAtMillis = newDueAtMillis,
+            reminderAtMillis = nextReminderMillis,
+            reminderOffsetsCsv = encodeReminderOffsets(futureOffsets),
+            reminderEnabled = nextReminderMillis != null,
+            reminderOffsetMinutes = futureOffsets.firstOrNull(),
             missed = false,
             missedAtMillis = null
         )
@@ -1528,7 +1549,7 @@ class TodoRepository(
             ringEnabled = draft.ringEnabled,
             vibrateEnabled = draft.vibrateEnabled,
             voiceEnabled = false,
-            reminderDeliveryMode = ReminderDeliveryMode.FULLSCREEN.name,
+            reminderDeliveryMode = draft.reminderDeliveryMode.name,
             groupId = draft.groupId,
             categoryKey = existing?.categoryKey ?: TodoCategory.ROUTINE.key,
             completed = existing?.completed == true,
@@ -1695,7 +1716,7 @@ class TodoRepository(
             reminderOffsetsCsv = encodeReminderOffsets(normalizedOffsets),
             ringEnabled = draft.ringEnabled,
             vibrateEnabled = draft.vibrateEnabled,
-            reminderDeliveryMode = ReminderDeliveryMode.FULLSCREEN.name,
+            reminderDeliveryMode = draft.reminderDeliveryMode.name,
             recurrenceType = draft.recurrence.type.name,
             recurrenceWeekdays = draft.recurrence.weeklyDays.toStorageString(),
             recurrenceMonthlyOrdinal = if (draft.recurrence.type == RecurrenceType.MONTHLY_NTH_WEEKDAY) dueDate.nthWeekOrdinal() else null,

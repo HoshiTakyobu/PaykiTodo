@@ -8,7 +8,8 @@ This file tracks the product at a practical level for new coding sessions.
 
 - create, edit, delete todo items
 - title / notes / group / deadline / multi-reminder fields
-- Todo editor shows title / DDL / group first for new todos and folds notes / reminder input / recurrence / ring / vibration into 更多选项, auto-expanding when editing existing todos that use advanced state
+- Todo editor shows title / DDL / group first for new todos and folds notes / reminder input / reminder delivery mode / recurrence / ring / vibration into 更多选项, auto-expanding when editing existing todos that use advanced state
+- Todo editor can choose reminder delivery mode between full-screen reminder and notification reminder; the selected mode is persisted for todos and recurring todo templates
 - no-deadline todos
 - lightweight comma-based todo batch import with preview validation
 - todo batch-import DDL supports same-day clock input such as `16:30` / `16：30`, plus Planning Desk-style natural date forms such as `5.28`, `5月28日`, `明天`, and `周五`; date-only values default to `23:59`
@@ -145,8 +146,8 @@ This file tracks the product at a practical level for new coding sessions.
 
 - `AlarmManager` based scheduling
 - todos and calendar events can store and schedule multiple configured reminder offsets
-- custom snooze input can parse either minutes or a concrete future time
-- custom snooze has no 180-minute cap and moves a todo's DDL when the snooze target is later than the current DDL
+- custom snooze input can parse either minutes or a concrete future time, has no 180-minute cap, and only changes the next reminder rather than silently moving DDL
+- todo reminder screens expose an explicit `DDL 推迟` action; its input accepts positive minute increments, same-date clock targets, and full date-time targets, and rejects any target that is not later than the current DDL
 - notification reminder path
 - full-screen reminder path
 - foreground service and fallback chain work
@@ -174,15 +175,15 @@ This file tracks the product at a practical level for new coding sessions.
 
 - Android launcher exposes a PaykiTodo `今日看板` widget through `TodoWidgetProvider`
 - widget displays active Planning Desk announcements, today todo block, and a combined today/tomorrow schedule board closer to the in-app daily board
-- widget uses RemoteViews `ListView`; rows are adaptive-height, split into greeting / focus-summary / section / empty-card / todo-card / schedule-card / announcement-card types, and no longer limited to five todos, so resizing the launcher widget reveals more board content
+- widget uses RemoteViews `ListView`; rows are adaptive-height, split into greeting / section / empty-card / todo-card / schedule-card / announcement-card types, and no longer limited to five todos, so resizing the launcher widget reveals more board content
 - widget provider declares horizontal / vertical resize mode plus min resize dimensions for better launcher compatibility
 - widget day/night colors are resource-backed, with daily-board background art, dark-mode scrims, and text colors for launcher readability
 - widget refresh uses a board-range Room query rather than loading all historical todos, and duplicate `onReceive` update routing has been removed
-- tapping a todo row opens the matching todo editor, tapping an event row opens the calendar event detail, tapping an announcement row opens the source Planning Desk note, and header / empty rows return to the default daily board
+- tapping a todo area opens the in-app My Tasks section, tapping a schedule / event area opens Calendar without forcing an editor detail, tapping an announcement row opens the source Planning Desk note, and header / empty rows return to the default daily board
 - widget empty states now use the same card-style visual direction as the in-app daily board rather than thin bordered rows
 - widget schedule content is aggregated into one card with a left date block, today rows, tomorrow label, and tomorrow rows instead of independent event cards; todo cards use the task group's color strip
 - widget root now includes a daily-board-style background image layer, lighter/tuned day-night scrims, circular menu-button header, shadowed `每日看板` title, and current-date subtitle, making the launcher widget read closer to the in-app daily board instead of a generic RemoteViews list
-- widget includes a `今日已专注` card with today's completed focus minutes, total sessions, and completed sessions, so the launcher surface follows the in-app daily-board sequence more closely
+- widget no longer includes the `今日已专注` / focus card, keeping the launcher widget focused on announcements, greeting, today todos, and today/tomorrow schedule summaries
 - widget greeting, empty, orange announcement, todo, and schedule cards use stronger light/dark card surfaces, lightweight elevation, larger 28dp-style rounding, wider todo color strips, tighter title/card spacing, and daily-board-like ordering with announcements before greeting for better launcher readability
 - widget provider now suggests a more daily-board-like square / vertical default size instead of a shallow list-size widget, and the current card pass uses more solid rounded card surfaces plus wider todo/schedule strip spacing so desktop rendering is less like a generic system list
 - widget `1.9.4` visual pass adds a static daily-board-style picker preview, targets a 4x5 vertical board by default, gives todo rows a checkbox-like marker plus `DDL HH:mm` chip, and makes ordinary schedule rows transparent with only the vertical color strip to better match the in-app daily board
@@ -210,7 +211,7 @@ This file tracks the product at a practical level for new coding sessions.
 - LAN browser-based desktop sync console exists
 - phone-side HTTP serving model exists
 - browser can perform limited data operations against the phone-side dataset
-- desktop web can edit existing todos with title, notes, DDL, reminder, group, recurrence, ring, and vibration fields
+- desktop web can edit existing todos with title, notes, DDL, reminder, reminder delivery mode, group, recurrence, ring, and vibration fields
 - desktop web todo/event reminder inputs accept AM/PM, Chinese AM/PM, relative-date, weekday, dot/slash-date, Chinese-date, full-width separator, and Chinese-comma reminder syntax in addition to the existing minute and ISO-like forms; placeholders now show these examples
 - desktop web todo cards open a detail preview first; event cards open the editor directly, while destructive actions still require confirmation
 - desktop web todo and event reminder editors accept mixed reminder syntax matching the phone-side examples, including minutes, same-day time, current-year date-time, and full date-time

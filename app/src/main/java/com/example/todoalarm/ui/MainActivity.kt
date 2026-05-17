@@ -260,7 +260,18 @@ class MainActivity : ComponentActivity() {
         val planningTarget = intent.getLongExtra(EXTRA_OPEN_PLANNING_NOTE_ID, 0L).takeIf { it > 0L }
         val aiReportTarget = intent.getLongExtra(EXTRA_OPEN_AI_REPORT_ID, 0L).takeIf { it > 0L }
         val openBoard = intent.getBooleanExtra(EXTRA_OPEN_BOARD, false)
-        if (settingsTarget == null && todoTarget == null && eventTarget == null && planningTarget == null && aiReportTarget == null && !openBoard) return
+        val openTasks = intent.getBooleanExtra(EXTRA_OPEN_TASKS, false)
+        val openCalendar = intent.getBooleanExtra(EXTRA_OPEN_CALENDAR, false)
+        if (
+            settingsTarget == null &&
+            todoTarget == null &&
+            eventTarget == null &&
+            planningTarget == null &&
+            aiReportTarget == null &&
+            !openBoard &&
+            !openTasks &&
+            !openCalendar
+        ) return
 
         launchRoute = DashboardLaunchRoute(
             settingsSectionKey = settingsTarget,
@@ -268,7 +279,9 @@ class MainActivity : ComponentActivity() {
             targetEventId = eventTarget,
             targetPlanningNoteId = planningTarget,
             targetAiReportId = aiReportTarget,
-            openBoard = openBoard
+            openBoard = openBoard,
+            openTasks = openTasks,
+            openCalendar = openCalendar
         )
         launchRouteSerial += 1
         intent.removeExtra(EXTRA_OPEN_SETTINGS_SECTION)
@@ -277,6 +290,8 @@ class MainActivity : ComponentActivity() {
         intent.removeExtra(EXTRA_OPEN_PLANNING_NOTE_ID)
         intent.removeExtra(EXTRA_OPEN_AI_REPORT_ID)
         intent.removeExtra(EXTRA_OPEN_BOARD)
+        intent.removeExtra(EXTRA_OPEN_TASKS)
+        intent.removeExtra(EXTRA_OPEN_CALENDAR)
     }
 
     private fun refreshPermissions() {
@@ -548,6 +563,8 @@ class MainActivity : ComponentActivity() {
     companion object {
         const val EXTRA_OPEN_SETTINGS_SECTION = "com.example.todoalarm.OPEN_SETTINGS_SECTION"
         const val EXTRA_OPEN_BOARD = "com.example.todoalarm.OPEN_BOARD"
+        const val EXTRA_OPEN_TASKS = "com.example.todoalarm.OPEN_TASKS"
+        const val EXTRA_OPEN_CALENDAR = "com.example.todoalarm.OPEN_CALENDAR"
         const val EXTRA_OPEN_TODO_ID = "com.example.todoalarm.OPEN_TODO_ID"
         const val EXTRA_OPEN_EVENT_ID = "com.example.todoalarm.OPEN_EVENT_ID"
         const val EXTRA_OPEN_PLANNING_NOTE_ID = "com.example.todoalarm.OPEN_PLANNING_NOTE_ID"
@@ -562,5 +579,7 @@ data class DashboardLaunchRoute(
     val targetEventId: Long? = null,
     val targetPlanningNoteId: Long? = null,
     val targetAiReportId: Long? = null,
-    val openBoard: Boolean = false
+    val openBoard: Boolean = false,
+    val openTasks: Boolean = false,
+    val openCalendar: Boolean = false
 )

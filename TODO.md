@@ -4,8 +4,8 @@
 
 ### In Progress
 
-- Verify version `1.9.9` on device / desktop browser after moving the desktop Web first tab toward the phone daily-board model and fixing Planning Desk AI import: current-item card, focus stats, today / tomorrow schedule summaries, AI candidate import, and explicit-only AI group names should all work
-- Keep `README.md`, `CHANGELOG.md`, Wiki, in-app help sheets, desktop-web help, and current-state docs aligned with version `1.9.9`
+- Verify version `1.9.10` on device after the widget routing and reminder behavior changes: widget todo area should open 我的任务, schedule area should open 日历, the widget should not show focus cards, todo reminder mode should persist, and DDL 推迟 should modify DDL only through the explicit DDL action
+- Keep `README.md`, `CHANGELOG.md`, Wiki, in-app help sheets, desktop-web help, and current-state docs aligned with version `1.9.10`
 - Continue planning-desk usability polish without expanding into drag/drop, Gantt, AI auto-planning, or complex project trees
 - Improve repo-native handoff so new sessions do not depend on long chat history
 
@@ -41,11 +41,11 @@
 - My Tasks should show only the todo batch-import entry beside the bottom-right `+` button
 - Calendar batch-import should remain available from the calendar surface
 - Todo batch import should use the lightweight `DDL,任务名称,提醒时间` syntax without requiring `|` or key-value fields
-- Full-screen and accessibility snooze custom input should accept minutes or a concrete future time
-- Custom snooze should accept long delays beyond 180 minutes and update todo DDL when the snooze target is later than the current DDL
+- Full-screen and accessibility snooze custom input should accept minutes or a concrete future time without changing DDL
+- Reminder DDL 推迟 should accept positive minute increments, same-date clock input, and full date-time input, and should reject targets that are not later than the current DDL
 - Launch screen icon should use the transparent logo asset without a white square background
 - Input help question-mark buttons should open the correct syntax help beside reminder, batch, and snooze fields
-- In-app Wiki should describe the current 1.9.9 settings, reminder, calendar, planning-desk, announcement, widget, focus-mode, desktop daily board, AI report archive, and input syntax accurately
+- In-app Wiki should describe the current 1.9.10 settings, reminder, calendar, planning-desk, announcement, widget, focus-mode, desktop daily board, AI report archive, and input syntax accurately
 - In-app Wiki should keep a left navigation / right article layout on phone-sized screens
 - Daily board should show a separate completion message when today's schedule existed but all events have ended
 - Drawer header icon should stay visually circular and not expose a white rounded-rectangle launcher background
@@ -87,11 +87,11 @@
 - Desktop web top announcement banner should be verified after writing an active Planning Desk announcement and refreshing `/api/snapshot`; short text should stay still, 60+ character text should scroll, and hover should pause it.
 - Desktop web system dark mode should be verified in a real browser for timeline cards, event cards, modal sheets, summary cards, tab buttons, sidebar cards, Planning Desk, and announcements.
 - Android desktop widget should be verified in system dark mode and after resizing; text should remain readable and refresh should still show focus summary / missed / today / tomorrow board content.
-- Android desktop widget should be device-tested from the launcher widget picker after installing the current `1.9.9` debug APK: add widget, freely resize it, confirm the daily-board background/topbar/card visual direction, confirm the 4x5 default suggested size and static picker preview no longer look like a flat system list, confirm todo cards show group tag / notes / `⏰ DDL`, confirm in-progress schedule rows show the gold treatment, show announcements at the top followed by greeting / focus summary / today todos / today schedules / tomorrow schedules, confirm row-level deep links, and confirm refresh after todo/event/planning-note changes.
+- Android desktop widget should be device-tested from the launcher widget picker after installing the current `1.9.10` debug APK: add widget, freely resize it, confirm the daily-board background/topbar/card visual direction, confirm the 4x5 default suggested size and static picker preview no longer look like a flat system list, confirm todo cards show group tag / notes / `⏰ DDL`, confirm in-progress schedule rows show the gold treatment, show announcements at the top followed by greeting / today todos / today schedules / tomorrow schedules, confirm todo-area click opens 我的任务, schedule-area click opens 日历, and confirm refresh after todo/event/planning-note changes.
 - 专注模式 should be device-tested after installing `1.9.0`: long-press an active todo, start focus, pause/continue, abandon with confirmation, finish early, let countdown reach zero, extend once, complete, and confirm the daily-board focus minutes/statistics update.
 - 专注模式 settings should be device-tested after installing `1.9.0`: default duration 5-90 minutes, extension duration 1-30 minutes, keep-screen-on behavior, and the documented-only notification-suppression preference.
 - Desktop web Planning Desk should be tested from a real browser connected to the phone after installing `1.8.9`, including auto-save, `Ctrl+S`, `Ctrl+Enter`, select-all / clear-all, no-empty-import guard, the desktop Planning Desk help modal, document delete, editable preview, mixed reminder input, announcement syntax, parser edge cases, import marker write-back, and the mapping refresh/postpone/undo/conflict actions
-- Desktop web daily board should be tested from a real browser after installing `1.9.9`: first tab should show current item / next item, focus statistics, today todos, today schedule with ended events hidden, in-progress gold highlight, tomorrow schedule or empty hint, and the old full todo timeline below it
+- Desktop web daily board should be regression-tested from a real browser after installing `1.9.10`: first tab should show current item / next item, focus statistics, today todos, today schedule with ended events hidden, in-progress gold highlight, tomorrow schedule or empty hint, and the old full todo timeline below it
 - Desktop web Planning Desk AI import should be tested with `16:05-18:00 入党表格填写`: preview should keep title `入党表格填写`, group should stay empty unless the source line explicitly contains a group marker, and importing the selected AI candidate should create one event rather than reporting `已导入 0 条`
 - Planning parser should be expanded with dedicated unit tests when the project gains a stable local JVM test harness
 

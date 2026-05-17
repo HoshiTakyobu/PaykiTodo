@@ -9,6 +9,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
+import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.ExpandLess
 import androidx.compose.material.icons.rounded.ExpandMore
 import androidx.compose.foundation.clickable
@@ -52,6 +53,7 @@ import com.example.todoalarm.data.LunarCalendar
 import com.example.todoalarm.data.RecurrenceConfig
 import com.example.todoalarm.data.RecurrencePreviewResult
 import com.example.todoalarm.data.RecurrenceType
+import com.example.todoalarm.data.ReminderDeliveryMode
 import com.example.todoalarm.data.TaskGroup
 import com.example.todoalarm.data.TodoDraft
 import com.example.todoalarm.data.TodoItem
@@ -113,6 +115,9 @@ fun TodoEditorDialog(
     var vibrateEnabled by remember(initialTodo?.id) {
         mutableStateOf(initialTodo?.vibrateEnabled ?: defaultVibrateEnabled)
     }
+    var reminderDeliveryMode by remember(initialTodo?.id) {
+        mutableStateOf(initialTodo?.reminderDeliveryModeEnum ?: ReminderDeliveryMode.FULLSCREEN)
+    }
     var recurringEnabled by remember(initialTodo?.id) { mutableStateOf(initialTodo?.isRecurring == true) }
     var recurrenceType by remember(initialTodo?.id) {
         mutableStateOf(initialTodo?.recurrenceTypeEnum ?: RecurrenceType.DAILY)
@@ -131,6 +136,7 @@ fun TodoEditorDialog(
     }
     var recurrencePreview by remember { mutableStateOf<RecurrencePreviewResult?>(null) }
     var showGroupPicker by remember { mutableStateOf(false) }
+    var showReminderDeliveryPicker by remember { mutableStateOf(false) }
     var helpTopic by remember { mutableStateOf<InputSyntaxHelpTopic?>(null) }
     var activeDateTimeTarget by remember { mutableStateOf<TodoDateTimeTarget?>(null) }
     var showDueLunarPicker by remember { mutableStateOf(false) }
@@ -150,6 +156,7 @@ fun TodoEditorDialog(
         initialTodo != null && (
             initialTodo.notes.isNotBlank() ||
                 initialTodo.configuredReminderOffsetsMinutes.joinToString(",").ifBlank { "5" } != "5" ||
+                initialTodo.reminderDeliveryModeEnum != ReminderDeliveryMode.FULLSCREEN ||
                 initialTodo.recurrenceTypeEnum != RecurrenceType.NONE ||
                 initialTodo.ringEnabled != defaultRingEnabled ||
                 initialTodo.vibrateEnabled != defaultVibrateEnabled
@@ -182,6 +189,7 @@ fun TodoEditorDialog(
                     groupId = groupId,
                     ringEnabled = ringEnabled,
                     vibrateEnabled = vibrateEnabled,
+                    reminderDeliveryMode = reminderDeliveryMode,
                     recurrence = RecurrenceConfig(
                         enabled = !isHistory && hasDueDate && recurringEnabled,
                         type = recurrenceType,
@@ -308,6 +316,11 @@ fun TodoEditorDialog(
                                 }
 
                                 if (reminderEnabled) {
+                                    TodoSelectionRow(
+                                        title = "提醒方式",
+                                        value = reminderDeliveryMode.label,
+                                        onClick = { showReminderDeliveryPicker = true }
+                                    )
                                     Surface(
                                         shape = RoundedCornerShape(18.dp),
                                         color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.24f)
@@ -460,6 +473,7 @@ fun TodoEditorDialog(
                                                     groupId = groupId,
                                                     ringEnabled = ringEnabled,
                                                     vibrateEnabled = vibrateEnabled,
+                                                    reminderDeliveryMode = reminderDeliveryMode,
                                                     recurrence = RecurrenceConfig(
                                                         enabled = true,
                                                         type = recurrenceType,
@@ -511,6 +525,29 @@ fun TodoEditorDialog(
                 TextButton(onClick = { showGroupPicker = false }) { Text("关闭") }
             },
             dismissButton = {}
+        )
+    }
+
+    if (showReminderDeliveryPicker) {
+        TodoSingleChoiceListDialog(
+            title = "选择提醒方式",
+            doneLabel = "完成",
+            options = ReminderDeliveryMode.entries.map { mode ->
+                TodoChoiceItem(
+                    key = mode.name,
+                    title = mode.label,
+                    subtitle = when (mode) {
+                        ReminderDeliveryMode.FULLSCREEN -> "到点直接弹出全屏提醒界面"
+                        ReminderDeliveryMode.NOTIFICATION -> "只走通知栏提醒，不主动弹出全屏界面"
+                    }
+                )
+            },
+            selectedKey = reminderDeliveryMode.name,
+            onSelect = { key ->
+                reminderDeliveryMode = ReminderDeliveryMode.entries.first { it.name == key }
+            },
+            onDismiss = { showReminderDeliveryPicker = false },
+            onDone = { showReminderDeliveryPicker = false }
         )
     }
 
@@ -674,6 +711,58 @@ private fun TodoSelectionRow(
             )
         }
     }
+}
+
+private data class TodoChoiceItem(
+    val key: String,
+    val title: String,
+    val subtitle: String? = null
+)
+
+@Composable
+private fun TodoSingleChoiceListDialog(
+    title: String,
+    doneLabel: String,
+    options: List<TodoChoiceItem>,
+    selectedKey: String,
+    onSelect: (String) -> Unit,
+    onDismiss: () -> Unit,
+    onDone: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(title, fontWeight = FontWeight.Bold) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                options.forEach { option ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { onSelect(option.key) }
+                            .padding(vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                            Text(option.title, color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Medium)
+                            option.subtitle?.let {
+                                Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                        }
+                        if (selectedKey == option.key) {
+                            Icon(Icons.Rounded.Check, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDone) { Text(doneLabel) }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("取消") }
+        }
+    )
 }
 
 @Composable

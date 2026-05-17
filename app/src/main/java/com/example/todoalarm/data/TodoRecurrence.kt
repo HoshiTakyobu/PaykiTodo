@@ -47,6 +47,7 @@ data class TodoDraft(
     val groupId: Long,
     val ringEnabled: Boolean,
     val vibrateEnabled: Boolean,
+    val reminderDeliveryMode: ReminderDeliveryMode = ReminderDeliveryMode.FULLSCREEN,
     val recurrence: RecurrenceConfig = RecurrenceConfig(),
     val reminderOffsetsMinutes: List<Int> = emptyList()
 ) {

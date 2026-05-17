@@ -100,6 +100,7 @@ class ReminderActivity : ComponentActivity() {
                     onComplete = ::completeTodo,
                     onAcknowledge = ::acknowledgeEvent,
                     onSnooze = ::snooze,
+                    onPostponeDueAt = ::postponeDueAt,
                     onCancel = ::cancelTodo
                 )
             }
@@ -202,6 +203,27 @@ class ReminderActivity : ComponentActivity() {
         }
     }
 
+    private fun postponeDueAt(targetDueAt: LocalDateTime) {
+        val item = todoItem ?: return
+        val targetMillis = targetDueAt.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
+        lifecycleScope.launch {
+            ReminderChainLogger.log(
+                context = this@ReminderActivity,
+                todoId = item.id,
+                source = "ReminderActivity",
+                stage = ReminderChainStage.USER_SNOOZE,
+                status = ReminderChainStatus.OK,
+                message = "postponeDueAt=$targetDueAt"
+            )
+            clearReminderArtifacts(listOf(item))
+            val updated = app.repository.postponeTodoDueAt(item.id, targetMillis)
+            if (updated != null) {
+                app.alarmScheduler.schedule(updated)
+            }
+            closeReminder(item.id)
+        }
+    }
+
     private fun cancelTodo(scope: RecurrenceScope) {
         val item = todoItem ?: return
         lifecycleScope.launch {
@@ -265,10 +287,18 @@ private fun ReminderScreen(
     onComplete: () -> Unit,
     onAcknowledge: () -> Unit,
     onSnooze: (Int) -> Unit,
+    onPostponeDueAt: (LocalDateTime) -> Unit,
     onCancel: (RecurrenceScope) -> Unit
 ) {
     var customMinutes by remember(defaultSnoozeMinutes) { mutableStateOf(defaultSnoozeMinutes.toString()) }
     val customSnoozeValidation = remember(customMinutes) { parseSnoozeInput(customMinutes) }
+    var ddlPostponeInput by remember(todoItem?.id) { mutableStateOf("") }
+    val currentDueAt = todoItem
+        ?.takeIf { it.isTodo && it.hasDueDate }
+        ?.dueDateTimeOrNull()
+    val ddlPostponeValidation = remember(ddlPostponeInput, currentDueAt) {
+        currentDueAt?.let { parseDdlPostponeInput(ddlPostponeInput, it) }
+    }
     var helpTopic by remember { mutableStateOf<InputSyntaxHelpTopic?>(null) }
     var showCancelScopeDialog by remember(todoItem?.id) { mutableStateOf(false) }
     val resolvedGroup = taskGroup
@@ -473,10 +503,10 @@ private fun ReminderScreen(
                             Text("取消任务")
                         }
                         FilledTonalButton(
-                            onClick = { onSnooze(defaultSnoozeMinutes) },
+                            onClick = { onSnooze(10) },
                             modifier = Modifier.weight(1f)
                         ) {
-                            Text("延后 $defaultSnoozeMinutes 分钟")
+                            Text("延后 10 分钟")
                         }
                     }
                 }
@@ -493,13 +523,13 @@ private fun ReminderScreen(
                             verticalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
                             Text(
-                                text = "自定义延后 / 改 DDL",
+                                text = "自定义延后提醒",
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold,
                                 color = MaterialTheme.colorScheme.onSurface
                             )
                             Text(
-                                text = "确认后会把下一次提醒设到目标时间；若目标晚于当前 DDL，会同步把 DDL 改到该时间。",
+                                text = "只调整下一次提醒，不改变任务 DDL。",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -536,6 +566,74 @@ private fun ReminderScreen(
                                     modifier = Modifier.widthIn(min = 112.dp)
                                 ) {
                                     Text("确认")
+                                }
+                            }
+                        }
+                    }
+                }
+
+                if (!isEvent && currentDueAt != null) {
+                    Surface(
+                        shape = RoundedCornerShape(22.dp),
+                        color = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.38f)
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            Text(
+                                text = "DDL 推迟",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            Text(
+                                text = "会真正修改任务 DDL；目标必须晚于当前 DDL（${formatLocalDateTime(currentDueAt)}）。",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                OutlinedTextField(
+                                    value = ddlPostponeInput,
+                                    onValueChange = { ddlPostponeInput = it },
+                                    modifier = Modifier.weight(1f),
+                                    label = {
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            Text("新的 DDL")
+                                            InputSyntaxHelpIconButton(
+                                                topic = InputSyntaxHelpTopic.DdlPostpone,
+                                                onClick = { helpTopic = InputSyntaxHelpTopic.DdlPostpone }
+                                            )
+                                        }
+                                    },
+                                    placeholder = { Text("30分钟 或 16:30") },
+                                    isError = ddlPostponeInput.isNotBlank() && ddlPostponeValidation?.isValid == false,
+                                    supportingText = {
+                                        val validation = ddlPostponeValidation
+                                        Text(
+                                            when {
+                                                ddlPostponeInput.isBlank() -> "例：30分钟、往后推45分钟、16:30、2026-05-22 16:30"
+                                                validation?.isValid == true -> validation.message
+                                                else -> validation?.message.orEmpty()
+                                            }
+                                        )
+                                    },
+                                    singleLine = true
+                                )
+                                Button(
+                                    enabled = ddlPostponeValidation?.isValid == true,
+                                    onClick = {
+                                        ddlPostponeValidation?.targetDueAt?.let(onPostponeDueAt)
+                                    },
+                                    modifier = Modifier.widthIn(min = 112.dp)
+                                ) {
+                                    Text("推迟 DDL")
                                 }
                             }
                         }

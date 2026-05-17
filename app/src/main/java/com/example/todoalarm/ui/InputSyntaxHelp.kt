@@ -26,7 +26,8 @@ internal enum class InputSyntaxHelpTopic {
     Reminder,
     TodoBatch,
     CalendarBatch,
-    Snooze
+    Snooze,
+    DdlPostpone
 }
 
 @Composable
@@ -105,6 +106,7 @@ internal fun inputSyntaxHelpTitle(topic: InputSyntaxHelpTopic): String {
         InputSyntaxHelpTopic.TodoBatch -> "待办批量添加怎么填"
         InputSyntaxHelpTopic.CalendarBatch -> "日程批量导入怎么填"
         InputSyntaxHelpTopic.Snooze -> "自定义延后怎么填"
+        InputSyntaxHelpTopic.DdlPostpone -> "DDL 推迟怎么填"
     }
 }
 
@@ -141,7 +143,13 @@ internal fun inputSyntaxHelpLines(topic: InputSyntaxHelpTopic): List<String> {
             "HH:mm 或 2:30 pm 表示今天的具体时刻。",
             "明天 16:30、周五 16:30 表示相对日期或本周对应星期的具体时刻。",
             "MM-DD HH:mm、M.D HH:mm、M/D HH:mm、M月D日 HH:mm 表示当年的日期时间；YYYY-MM-DD 或 YYYY/MM/DD 表示完整日期时间，日期和时间之间也可以用逗号。",
-            "目标时间必须晚于当前时间；若目标晚于当前 DDL，会同步把 DDL 改到目标时间。"
+            "目标时间必须晚于当前时间；这里只改下一次提醒，不修改 DDL。"
+        )
+        InputSyntaxHelpTopic.DdlPostpone -> listOf(
+            "纯数字、XX分钟、往后推XX分钟都表示在当前 DDL 基础上继续往后推。分钟数必须大于 0。",
+            "HH:mm、2:30 pm 或 下午 2:30 表示当前 DDL 所在日期的目标时刻。",
+            "MM-DD HH:mm、M.D HH:mm、M/D HH:mm、M月D日 HH:mm 表示当年的日期时间；YYYY-MM-DD 或 YYYY/MM/DD 表示完整日期时间。",
+            "新的 DDL 必须严格晚于当前 DDL，否则不会允许确认。"
         )
     }
 }
@@ -152,5 +160,6 @@ internal fun inputSyntaxHelpExample(topic: InputSyntaxHelpTopic): String {
         InputSyntaxHelpTopic.TodoBatch -> "16:30,写报告,5\n5/13 09:30,给老师发消息,09:00\n5月14日，09:30,整理保研材料,5\n无DDL,整理 Obsidian 待办"
         InputSyntaxHelpTopic.CalendarBatch -> "13:40-14:40, 学院立德树人优秀教师推荐学生座谈会, @MB-B1-403\n明天: 10:20-11:55, 辅导员助理值班, @MB-B1-412, Remind=5"
         InputSyntaxHelpTopic.Snooze -> "5\n16:30\n2:30 pm\n下午 2:30\n明天 16:30\n周五 16:30"
+        InputSyntaxHelpTopic.DdlPostpone -> "30\n30分钟\n往后推45分钟\n16:30\n2026-05-22 16:30"
     }
 }

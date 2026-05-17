@@ -1403,6 +1403,7 @@ function clearTodoForm() {
   document.getElementById('todo-notes').value = '';
   writeDateTimeValue('todo-due', '');
   document.getElementById('todo-reminder-spec').value = '';
+  document.getElementById('todo-reminder-mode').value = 'FULLSCREEN';
   document.getElementById('todo-recurrence-type').value = 'NONE';
   document.getElementById('todo-recurrence-end').value = '';
   document.getElementById('todo-weekdays').value = '';
@@ -1426,6 +1427,7 @@ function openTodoEditor(item) {
   setTodoDueEnabled(item.hasDueDate !== false);
   writeDateTimeValue('todo-due', item.hasDueDate ? formatDateTimeLocalValue(item.dueAtMillis) : '');
   document.getElementById('todo-reminder-spec').value = item.hasDueDate ? reminderSpecFromOffsets(item, item.dueAtMillis) : '';
+  document.getElementById('todo-reminder-mode').value = item.reminderDeliveryMode || 'FULLSCREEN';
   document.getElementById('todo-recurrence-type').value = recurrenceTypeValue(item);
   document.getElementById('todo-recurrence-end').value = item.recurrenceEndDate || '';
   document.getElementById('todo-weekdays').value = csvValue(item.recurrenceWeekdays);
@@ -1782,6 +1784,7 @@ document.getElementById('create-todo').onclick = async () => {
       groupId: Number(document.getElementById('todo-group').value || 0),
       ringEnabled: document.getElementById('todo-ring').checked,
       vibrateEnabled: document.getElementById('todo-vibrate').checked,
+      reminderDeliveryMode: document.getElementById('todo-reminder-mode').value,
       recurrence: hasDueDate ? recurrencePayload(
         document.getElementById('todo-recurrence-type').value,
         document.getElementById('todo-recurrence-end').value,

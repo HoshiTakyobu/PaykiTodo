@@ -2,53 +2,62 @@
 
 ## Active Development Focus
 
-The current round is PaykiTodo `1.9.9` / `versionCode 203`.
+The current round is PaykiTodo `1.9.10` / `versionCode 204`.
 
-Primary goal: make the desktop Web console less like a pure management backend by giving its first tab a phone-derived daily-board surface, and fix the desktop Planning Desk AI path where a recognized AI candidate could not be imported.
+Primary goal: fix Android widget navigation semantics, remove the widget focus card, add todo reminder delivery-mode selection, and split reminder snooze from explicit DDL postponement.
 
 ## Completed In This Round
 
-1. Desktop sync snapshot now includes a `todayBoard` payload derived from `DailyBoardSnapshotBuilder`, so the browser can reuse the phone-side board logic for today todos, visible today events, tomorrow events, and ended-event filtering.
-2. Desktop Web first tab was renamed from `待办时间轴` to `每日看板`.
-3. Desktop Web daily board now shows the current date, a current/next item card, today's focus minutes/session counts, today todos, today schedule, tomorrow schedule, and an empty hint when tomorrow has no events.
-4. Desktop Web in-progress schedule rows use the same gold emphasis direction as the phone board; finished events are not shown as current items.
-5. The full todo timeline remains below the board as the management surface.
-6. Desktop Planning Desk import no longer requires edited candidates to match local-rule `line-*` IDs. AI candidates such as `ai-0` can be converted directly into import candidates.
-7. Planning Desk AI group parsing is conservative: `groupName` is preserved only when the original line explicitly contains `#group`, `分组：`, `项目：`, or `课程：`.
-8. The AI prompt now explicitly tells providers not to split group names out of normal titles; `16:05-18:00 入党表格填写` should keep title `入党表格填写` and empty group.
-9. Added / updated unit coverage for the AI group-name guard.
-10. Version metadata moved to `1.9.9` / `versionCode 203`.
+1. Android widget todo rows now route to the in-app `我的任务` section instead of opening a specific todo editor.
+2. Android widget event rows and the aggregated schedule card now route to `日历` instead of opening a specific event detail.
+3. Android widget row generation no longer inserts the `今日已专注` / focus card.
+4. `MainActivity` and `DashboardScreen` gained section-level launch routes for widget-driven `我的任务` and `日历` entry.
+5. `TodoDraft` now carries `ReminderDeliveryMode`; todo creation, update, recurring todo templates, and desktop sync todo create/update preserve it.
+6. Phone-side todo editor exposes a compact single-choice `提醒方式` row for `全屏提醒` / `通知栏提醒`.
+7. Desktop Web todo editor exposes the same `提醒方式` select and sends it to the phone sync API.
+8. `snoozeTodo` now only changes the next reminder time and no longer silently moves a todo DDL.
+9. Reminder screens added explicit `DDL 推迟`: positive minute increments, same-date clock input, and full date-time input are accepted only when the resolved DDL is later than the current DDL.
+10. The accessibility reminder overlay mirrors the same quick 10-minute snooze and explicit DDL-postpone path.
+11. Input help, Wiki, README, TODO, CHANGELOG, and current docs were synchronized for the new behavior.
+12. Version metadata moved to `1.9.10` / `versionCode 204`.
 
 ## Verification Completed This Round
 
 1. `node --check app/src/main/assets/desktop-web/app.js` passed.
 2. `./gradlew.bat :app:compileDebugKotlin` passed.
 3. `./gradlew.bat testDebugUnitTest` passed.
-4. `./gradlew.bat assembleDebug` passed and produced `app/build/outputs/apk/debug/PaykiTodo-1.9.9-debug.apk`.
+4. `./gradlew.bat assembleDebug` passed and produced `app/build/outputs/apk/debug/PaykiTodo-1.9.10-debug.apk`.
 5. `git diff --check` passed.
-6. `app/build/outputs/apk/debug/output-metadata.json` confirms `versionCode=203`, `versionName=1.9.9`, and `outputFile=PaykiTodo-1.9.9-debug.apk`.
+6. `app/build/outputs/apk/debug/output-metadata.json` confirms `versionCode=204`, `versionName=1.9.10`, and `outputFile=PaykiTodo-1.9.10-debug.apk`.
 
 ## Immediate Practical Next Steps
 
-1. Install `app/build/outputs/apk/debug/PaykiTodo-1.9.9-debug.apk` on the phone.
-2. Enable desktop sync and open the browser console.
-3. Verify the first tab shows the daily board rather than only the old todo timeline.
-4. In desktop Planning Desk, test `16:05-18:00 入党表格填写` with AI recognition: group should remain empty unless the source line explicitly writes a group marker, and importing the selected candidate should create one event rather than reporting `已导入 0 条`.
+1. Install `app/build/outputs/apk/debug/PaykiTodo-1.9.10-debug.apk` on the phone.
+2. Add or refresh the Android launcher widget and verify:
+   - todo area opens `我的任务`
+   - schedule area opens `日历`
+   - focus / `今日已专注` card is absent
+   - announcements still open the source Planning Desk note
+3. Create or edit a todo and verify `提醒方式` persists for both `全屏提醒` and `通知栏提醒`.
+4. Trigger a todo reminder and verify:
+   - `延后 5 分钟` and `延后 10 分钟` only change the next reminder
+   - `自定义延后提醒` does not change DDL
+   - `DDL 推迟` accepts valid later values and rejects values not later than the current DDL
 5. Do not push unless the user explicitly asks.
 
-## Device / Browser Verification Needed After Installing 1.9.9
+## Device / Browser Verification Needed After Installing 1.9.10
 
-1. Desktop board: current/next item card, focus stats, today todos, today schedule, tomorrow schedule, ended-event filtering, and in-progress gold highlight.
-2. Desktop board interactions: clicking a board todo opens todo preview; clicking a board event opens the event editor.
-3. Desktop Planning Desk AI import: AI candidate IDs should import correctly after preview selection.
-4. AI group guard: ordinary titles should not create accidental groups; explicit `分组：课程 ...` or `#group 课程` should still preserve group names.
-5. Regression: AI report archive from `1.9.8` should still appear under drawer -> `AI 报告`.
+1. Widget behavior on the user's real launcher, including resizing and row click targets.
+2. Full-screen reminder behavior on the user's phone, including DDL postpone validation and subsequent alarm scheduling.
+3. Accessibility overlay behavior if the accessibility fallback is enabled.
+4. Desktop Web todo editor reminder-mode field after enabling desktop sync and refreshing the browser.
+5. Regression: desktop daily-board and Planning Desk AI import behavior from `1.9.9` should still work.
 
 ## Local Device Verification Reality
 
 - `adb` is available at `C:\Users\hp\AppData\Local\Android\Sdk\platform-tools\adb.exe`.
 - `emulator-5554` has been used in recent rounds for pre-phone smoke tests and may still be available.
-- This round has not yet run a browser connected to a live phone after installing `1.9.9`; real desktop-browser verification is still required because the Web UI depends on the phone-hosted LAN server.
+- This round has not run emulator or real-device UI verification yet.
 
 ## Commit Message Rule
 

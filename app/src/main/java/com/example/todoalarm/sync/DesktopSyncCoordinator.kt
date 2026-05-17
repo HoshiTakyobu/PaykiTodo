@@ -200,6 +200,7 @@ class DesktopSyncCoordinator(
             groupId = groupId,
             ringEnabled = json.optBoolean("ringEnabled", true),
             vibrateEnabled = json.optBoolean("vibrateEnabled", true),
+            reminderDeliveryMode = com.example.todoalarm.data.ReminderDeliveryMode.fromStorage(json.optString("reminderDeliveryMode")),
             recurrence = recurrence,
             reminderOffsetsMinutes = reminderOffsets
         )
@@ -228,6 +229,9 @@ class DesktopSyncCoordinator(
             groupId = groupId,
             ringEnabled = json.optBoolean("ringEnabled", original.ringEnabled),
             vibrateEnabled = json.optBoolean("vibrateEnabled", original.vibrateEnabled),
+            reminderDeliveryMode = com.example.todoalarm.data.ReminderDeliveryMode.fromStorage(
+                json.optString("reminderDeliveryMode", original.reminderDeliveryMode)
+            ),
             recurrence = recurrence,
             reminderOffsetsMinutes = reminderOffsets
         )
@@ -551,6 +555,7 @@ class DesktopSyncCoordinator(
         groupId: Long,
         ringEnabled: Boolean,
         vibrateEnabled: Boolean,
+        reminderDeliveryMode: com.example.todoalarm.data.ReminderDeliveryMode,
         recurrence: RecurrenceConfig,
         reminderOffsetsMinutes: List<Int>
     ): TodoDraft {
@@ -566,6 +571,7 @@ class DesktopSyncCoordinator(
             groupId = groupId,
             ringEnabled = ringEnabled,
             vibrateEnabled = vibrateEnabled,
+            reminderDeliveryMode = reminderDeliveryMode,
             recurrence = recurrence,
             reminderOffsetsMinutes = reminderOffsetsMinutes
         )

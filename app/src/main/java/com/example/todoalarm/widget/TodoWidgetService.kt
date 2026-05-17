@@ -51,14 +51,10 @@ private class TodoWidgetFactory(
             val items = app.repository.getActiveItemsForBoardRange()
             val groups = app.repository.getAllGroups()
             val notes = app.repository.getAllPlanningNotes()
-            val focusSessions = app.repository.getTodayFocusSessions()
             val snapshot = DailyBoardSnapshotBuilder.build(items = items, planningNotes = notes)
             buildRows(
                 snapshot = snapshot,
-                groups = groups,
-                focusSessionCount = focusSessions.size,
-                completedFocusCount = focusSessions.count { it.completed },
-                completedFocusMinutes = focusSessions.filter { it.completed }.sumOf { it.actualMinutes }
+                groups = groups
             )
         }
     }
@@ -255,10 +251,7 @@ private class TodoWidgetFactory(
 
     private fun buildRows(
         snapshot: DailyBoardSnapshot,
-        groups: List<TaskGroup>,
-        focusSessionCount: Int,
-        completedFocusCount: Int,
-        completedFocusMinutes: Int
+        groups: List<TaskGroup>
     ): List<WidgetBoardRow> {
         val output = mutableListOf<WidgetBoardRow>()
         val today = snapshot.date
@@ -279,15 +272,6 @@ private class TodoWidgetFactory(
             title = "${timeGreeting(snapshot.now.hour)}，Payki",
             meta = "今天是 ${today.format(fullDateFormatter)}，先处理最关键的一步。",
             titleColor = darkText,
-            metaColor = mutedText
-        )
-
-        output += WidgetBoardRow(
-            stableId = -19_000L,
-            type = WidgetRowType.FOCUS,
-            title = completedFocusMinutes.toString(),
-            meta = "$focusSessionCount 次专注 · $completedFocusCount 次完成",
-            titleColor = headerText,
             metaColor = mutedText
         )
 
@@ -456,12 +440,12 @@ private class TodoWidgetFactory(
     private fun WidgetBoardRow.fillInIntent(): Intent {
         return Intent().apply {
             when (this@fillInIntent.type) {
-                WidgetRowType.TODO -> putExtra(MainActivity.EXTRA_OPEN_TODO_ID, itemId)
-                WidgetRowType.EVENT -> putExtra(MainActivity.EXTRA_OPEN_EVENT_ID, itemId)
+                WidgetRowType.TODO -> putExtra(MainActivity.EXTRA_OPEN_TASKS, true)
+                WidgetRowType.EVENT,
+                WidgetRowType.SCHEDULE -> putExtra(MainActivity.EXTRA_OPEN_CALENDAR, true)
                 WidgetRowType.ANNOUNCEMENT -> putExtra(MainActivity.EXTRA_OPEN_PLANNING_NOTE_ID, sourceNoteId)
                 WidgetRowType.GREETING,
                 WidgetRowType.FOCUS,
-                WidgetRowType.SCHEDULE,
                 WidgetRowType.SECTION,
                 WidgetRowType.EMPTY -> putExtra(MainActivity.EXTRA_OPEN_BOARD, true)
             }

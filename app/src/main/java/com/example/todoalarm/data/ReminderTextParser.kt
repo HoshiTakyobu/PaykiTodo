@@ -122,6 +122,16 @@ internal fun parseSnoozeTextInput(
     return SnoozeTextParseResult(true, minutes = minutes, message = "延后 $minutes 分钟")
 }
 
+internal fun parseConcreteReminderDateTimeText(
+    raw: String,
+    anchor: LocalDateTime,
+    today: LocalDate = LocalDate.now()
+): LocalDateTime? {
+    val token = normalizeSyntaxText(raw).trim()
+    if (token.isBlank() || token.all { it.isDigit() }) return null
+    return parseReminderTriggerToken(token, anchor = anchor, today = today)
+}
+
 private fun parseReminderTriggerToken(token: String, anchor: LocalDateTime, today: LocalDate): LocalDateTime? {
     val text = normalizeSyntaxText(token).trim().replace('T', ' ')
     if (text.isBlank()) return null

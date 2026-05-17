@@ -136,6 +136,29 @@ interface TodoDao {
     @Query(
         """
         SELECT * FROM todo_items
+        WHERE itemType = 'TODO'
+        ORDER BY dueAtMillis ASC, createdAtMillis ASC
+        """
+    )
+    suspend fun getDesktopTodoItems(): List<TodoItem>
+
+    @Query(
+        """
+        SELECT * FROM todo_items
+        WHERE completed = 0
+        AND canceled = 0
+        AND itemType = 'EVENT'
+        AND startAtMillis IS NOT NULL
+        AND startAtMillis < :rangeEndMillis
+        AND COALESCE(endAtMillis, startAtMillis) >= :rangeStartMillis
+        ORDER BY COALESCE(startAtMillis, dueAtMillis) ASC, createdAtMillis ASC
+        """
+    )
+    suspend fun getActiveCalendarEventsInRangeOnce(rangeStartMillis: Long, rangeEndMillis: Long): List<TodoItem>
+
+    @Query(
+        """
+        SELECT * FROM todo_items
         WHERE completed = 0
         AND canceled = 0
         AND (

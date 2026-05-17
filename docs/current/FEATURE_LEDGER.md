@@ -237,6 +237,9 @@ This file tracks the product at a practical level for new coding sessions.
 - desktop web `/api/snapshot` includes active Planning Desk announcements and the browser console renders them as a top orange announcement banner
 - desktop web `/api/snapshot` includes a phone-derived `todayBoard` payload, and the browser first tab is now a daily-board view with current/next item, today focus stats, today todos, today schedule, tomorrow schedule, ended-event filtering, and in-progress gold highlighting above the full todo timeline
 - desktop web `/api/snapshot` reuses the groups already loaded in the snapshot JSON path instead of issuing a second Room group read for group-name/color mapping
+- desktop web first connection keeps using the lightweight `/api/snapshot?scope=board` daily-board payload, while full todo management now loads through `/api/todos` only when requested
+- desktop web calendar timeline now loads only the visible date range through `/api/events?start=...&end=...`, and stale event-range responses are ignored when the user switches dates quickly
+- desktop web todo / event mutations and Planning Desk import / refresh / undo paths refresh the current page's needed data instead of reloading one complete snapshot after every operation
 - desktop web follows system dark mode through CSS variables for timeline cards, event cards, modal sheets, summary cards, tab buttons, sidebar cards, Planning Desk, inputs, and announcement surfaces
 
 ### Destructive Action Safety
@@ -252,14 +255,14 @@ This file tracks the product at a practical level for new coding sessions.
 
 - `todo_items` has Room indices for board todo queries, board event range queries, active reminders, group+DDL sorting, and recurring-series lookup.
 - Database version is `15`; `MIGRATION_13_14` creates the `todo_items` performance indices on upgraded installs, and `MIGRATION_14_15` adds / backfills `planning_notes.hasAnnouncementHint` plus the indexed announcement lookup path.
-- Desktop Web first connection now uses a lightweight board snapshot (`/api/snapshot?scope=board`) and only loads full todos/events when the user opens the event timeline or explicitly requests the complete management view.
+- Desktop Web first connection now uses a lightweight board snapshot (`/api/snapshot?scope=board`); complete todo management uses `/api/todos`, and the event timeline uses visible-range `/api/events?start=...&end=...` instead of sharing one full snapshot for every management tab.
 - Main phone board/task UI uses a Room aggregate Flow for today's focus stats, active-todo-only observation, and today/tomorrow event range observation instead of merging full focus sessions, all todos, and full active events into ordinary board/task state.
 - Main phone board/task UI no longer carries the full Planning Desk note list; complete planning notes are collected only while the Planning Desk section is open.
 - Daily-board announcements on phone, Android widget, and desktop lightweight snapshot use the indexed `planning_notes.hasAnnouncementHint` candidate query before strict parsing instead of reading every planning document or scanning Markdown bodies with `LIKE`.
 - Planning-note backup / restore recomputes `hasAnnouncementHint` from Markdown content, so imported data does not preserve stale announcement-candidate state.
 - `AI 报告` uses paged Room queries by filter and limit; the archive no longer observes the full report history just to render the first page.
 - Calendar month/list/all-day surfaces reuse one top-level event-by-date index instead of rebuilding date buckets independently in each view.
-- Future large-history work can still add AI-report search/date-range filters and more granular desktop endpoints for separate todo/event/planning management screens.
+- Future large-history work can still add desktop todo pagination/search, AI-report search/date-range filters, and real-device calendar profiling; the biggest desktop full-snapshot coupling has been split, but `/api/todos` still returns the complete todo list by design.
 
 ## Implemented But Still Being Polished
 

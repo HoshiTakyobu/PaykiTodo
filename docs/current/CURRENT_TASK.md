@@ -2,9 +2,9 @@
 
 ## Active Development Focus
 
-The current round is PaykiTodo `1.9.16` / `versionCode 210`.
+The current round is PaykiTodo `1.9.17` / `versionCode 211`.
 
-Primary goal: review the recent `1.9.11`-`1.9.15` experience and performance work, close obvious implementation gaps, and leave the repo in a verified state for user-side phone testing.
+Primary goal: review the recent `1.9.11`-`1.9.16` experience and performance work, close obvious implementation gaps, split the remaining desktop Web full-snapshot hot path, and leave the repo in a verified state for user-side phone / browser testing.
 
 ## Completed In This Round
 
@@ -43,8 +43,14 @@ Primary goal: review the recent `1.9.11`-`1.9.15` experience and performance wor
    - the announcement lookup index covers `archived`, `hasAnnouncementHint`, `updatedAtMillis`, and `createdAtMillis`.
    - phone board, Android widget, and desktop lightweight snapshot announcement candidate queries now use the boolean hint instead of `LIKE` scanning full Markdown bodies.
    - backup / restore and desktop planning-note JSON include the hint, while restore recomputes it from Markdown content.
-9. Version metadata moved to `1.9.16` / `versionCode 210`.
-10. README / CHANGELOG / TODO / Wiki header / current docs are being synchronized for this `1.9.16` performance review pass.
+9. Added the `1.9.17` desktop Web data split:
+   - desktop Web still starts from `/api/snapshot?scope=board` for the daily board.
+   - complete desktop todo management now loads through `/api/todos`.
+   - calendar timeline data now loads through `/api/events?start=...&end=...` for the visible date range.
+   - todo / event mutations and Planning Desk import / refresh / undo paths refresh only the currently needed page data instead of reloading one complete snapshot.
+   - event range loading uses a request serial so fast date switching cannot let an older response overwrite the latest range.
+10. Version metadata moved to `1.9.17` / `versionCode 211`.
+11. README / CHANGELOG / TODO / Wiki header / current docs are being synchronized for this `1.9.17` performance review pass.
 
 ## Verification Completed This Round
 
@@ -55,8 +61,8 @@ Completed locally:
 3. `./gradlew.bat testDebugUnitTest` passed.
 4. `./gradlew.bat assembleDebug` passed.
 5. `git diff --check` passed.
-6. `app/build/outputs/apk/debug/output-metadata.json` reports `versionCode=210`, `versionName=1.9.16`, and `outputFile=PaykiTodo-1.9.16-debug.apk`.
-7. Emulator smoke on `emulator-5554` installed `app/build/outputs/apk/debug/PaykiTodo-1.9.16-debug.apk`, launched `com.paykitodo.app`, confirmed the Daily Board UI tree contained `每日看板` / `今日待办（0）` / `今日日程（0）` / `明天暂无日程`, and found no `FATAL EXCEPTION` in the checked logcat window.
+6. `app/build/outputs/apk/debug/output-metadata.json` reports `versionCode=211`, `versionName=1.9.17`, and `outputFile=PaykiTodo-1.9.17-debug.apk`.
+7. Emulator smoke on `emulator-5554` installed `app/build/outputs/apk/debug/PaykiTodo-1.9.17-debug.apk`, launched `com.paykitodo.app`, confirmed the Daily Board UI tree contained `每日看板` / `今日已专注` / `今日待办（0）` / `今日日程（0）` / `明天暂无日程 · 去规划台安排一下？`, and found no `FATAL EXCEPTION` in the checked logcat window.
 
 ## Verification Still Needed On Device / Browser
 
@@ -76,7 +82,9 @@ Completed locally:
 4. Browser-test desktop lightweight snapshot:
    - first connection should show `看板轻量数据`.
    - daily board should render without full timeline data.
-   - entering `日程时间轴` or clicking `加载完整待办 / 日程数据` should load full data and switch the status to `完整数据`.
+   - clicking `加载完整待办列表` should load only `/api/todos` and switch the status to `待办按需数据`.
+   - entering `日程时间轴` should load only `/api/events?start=...&end=...` for the visible range and switch the status to `日程范围数据`.
+   - fast event-date switching should not leave stale events from an older range on screen.
    - todo/event create/edit/delete should refresh without losing the current tab.
 5. Device-test Settings -> AI 调用配置:
    - add/edit/toggle/reorder/delete a complete provider and leave/reopen the page; changes should persist.
@@ -107,19 +115,21 @@ Completed locally:
 10. Removed full Planning Desk note observation from ordinary board/task state; complete planning docs now load only in the Planning Desk section.
 11. Changed phone board, Android widget, and desktop lightweight snapshot announcements to use a planning-note announcement-hint query before strict parsing.
 12. Persisted Planning Desk announcement hints in `planning_notes.hasAnnouncementHint`, added a Room index and `MIGRATION_14_15`, and changed announcement candidate queries to use the indexed boolean instead of Markdown-body `LIKE` scans.
+13. Added desktop `/api/todos` and visible-range `/api/events?start=...&end=...`, and changed desktop Web current-page mutation refresh to avoid reloading complete snapshots after ordinary operations.
 
 Still recommended later:
 
-1. Add deeper desktop endpoint splitting for very large datasets: separate todo/event/planning management endpoints rather than using one full snapshot for all management tabs.
+1. Add desktop pagination/search if the full todo list itself becomes too large for `/api/todos`; `1.9.17` removes the biggest snapshot coupling but does not yet paginate todos.
 2. Profile calendar drag/add/edit/delete on a real device with a large event set; this round reduced data subscription and redundant grouping but did not run a full runtime profiling专项.
 3. Consider search/date-range filters for `AI 报告` if the archive becomes long enough that paging alone is not enough.
 
 ## Immediate Practical Next Steps
 
-1. Install and test `app/build/outputs/apk/debug/PaykiTodo-1.9.16-debug.apk` on the physical phone.
+1. Install and test `app/build/outputs/apk/debug/PaykiTodo-1.9.17-debug.apk` on the physical phone.
 2. Focus physical-device verification on no-DDL todos, Android widget refresh, desktop-sync auto-close, real-provider AI source editing, AI report paging, and OEM reminder behavior.
-3. If another performance pass is started, prioritize splitting desktop management endpoints beyond the current lightweight board snapshot and profiling calendar drag/add/edit/delete on a real device with large datasets.
-4. Do not push unless the user explicitly asks.
+3. Browser-test desktop Web with the new split endpoints: first board load, loading complete todos, switching event ranges, and todo/event mutation refresh.
+4. If another performance pass is started, prioritize desktop todo pagination/search and profiling calendar drag/add/edit/delete on a real device with large datasets.
+5. Do not push unless the user explicitly asks.
 
 ## Commit Message Rule
 

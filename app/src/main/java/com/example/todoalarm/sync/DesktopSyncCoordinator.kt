@@ -128,6 +128,8 @@ class DesktopSyncCoordinator(
                     val snapshot = buildSnapshot(boardOnly = queryParam(path, "scope") == "board")
                     DesktopSyncServer.Response.json(snapshot.toJson(snapshot.groups.associateBy { it.id }))
                 }
+                method == "GET" && path == "/api/todos" -> DesktopSyncServer.Response.json(desktopTodos())
+                method == "GET" && routePath == "/api/events" -> DesktopSyncServer.Response.json(desktopEvents(path))
                 method == "POST" && path == "/api/todos" -> DesktopSyncServer.Response.json(createTodo(JSONObject(body)))
                 method == "POST" && path == "/api/events" -> DesktopSyncServer.Response.json(createEvent(JSONObject(body)))
                 method == "PUT" && routePath.matches(Regex("/api/todos/\\d+")) -> DesktopSyncServer.Response.json(updateTodo(routePath, JSONObject(body)))
@@ -206,6 +208,36 @@ class DesktopSyncCoordinator(
             ),
             partial = boardOnly
         )
+    }
+
+    private fun desktopTodos(): JSONObject {
+        val groups = runBlocking { app.repository.getAllGroups().ifEmpty { app.repository.ensureDefaultGroups() } }
+        val groupsById = groups.associateBy { it.id }
+        val todos = runBlocking { app.repository.getDesktopTodoItems() }
+        return JSONObject()
+            .put("generatedAtMillis", System.currentTimeMillis())
+            .put("groups", JSONArray(groups.map { it.toDesktopJson() }))
+            .put("todos", JSONArray(todos.map { it.toDesktopJson(groupsById[it.groupId]) }))
+    }
+
+    private fun desktopEvents(path: String): JSONObject {
+        val groups = runBlocking { app.repository.getAllGroups().ifEmpty { app.repository.ensureDefaultGroups() } }
+        val groupsById = groups.associateBy { it.id }
+        val today = LocalDate.now()
+        val startDate = queryParam(path, "start")?.let(LocalDate::parse) ?: today
+        val endDate = queryParam(path, "end")?.let(LocalDate::parse) ?: startDate.plusDays(10)
+        val zone = ZoneId.systemDefault()
+        val rangeStartMillis = startDate.atStartOfDay(zone).toInstant().toEpochMilli()
+        val rangeEndMillis = endDate.atStartOfDay(zone).toInstant().toEpochMilli()
+        val events = runBlocking {
+            app.repository.getActiveCalendarEventsInRangeOnce(rangeStartMillis, rangeEndMillis)
+        }
+        return JSONObject()
+            .put("generatedAtMillis", System.currentTimeMillis())
+            .put("rangeStart", startDate.toString())
+            .put("rangeEnd", endDate.toString())
+            .put("groups", JSONArray(groups.map { it.toDesktopJson() }))
+            .put("events", JSONArray(events.map { it.toDesktopJson(groupsById[it.groupId]) }))
     }
 
     private fun createTodo(json: JSONObject): JSONObject {

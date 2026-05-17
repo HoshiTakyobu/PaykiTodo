@@ -105,7 +105,7 @@ private fun PlanningAnnouncement.toDesktopJson(): JSONObject {
     }
 }
 
-private fun TaskGroup.toDesktopJson(): JSONObject {
+fun TaskGroup.toDesktopJson(): JSONObject {
     return JSONObject().apply {
         put("id", id)
         put("name", name)
@@ -114,7 +114,7 @@ private fun TaskGroup.toDesktopJson(): JSONObject {
     }
 }
 
-private fun TodoItem.toDesktopJson(group: TaskGroup?): JSONObject {
+fun TodoItem.toDesktopJson(group: TaskGroup?): JSONObject {
     val zone = ZoneId.systemDefault()
     return JSONObject().apply {
         put("id", id)

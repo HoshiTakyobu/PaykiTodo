@@ -7,25 +7,25 @@
 - Package name: `com.paykitodo.app`
 - Target platform: Android 14 / API 34
 - Current version in code:
-  - `versionName = "1.9.16"`
-  - `versionCode = 210`
+  - `versionName = "1.9.17"`
+  - `versionCode = 211`
 
 ## Current Build Facts
 
 - Latest debug APK output after this round is:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.9.16-debug.apk`
-- Verification completed for the final `1.9.16` rebuild:
+  - `app/build/outputs/apk/debug/PaykiTodo-1.9.17-debug.apk`
+- Verification completed for the final `1.9.17` rebuild:
   - `node --check app/src/main/assets/desktop-web/app.js`
   - `./gradlew.bat :app:compileDebugKotlin`
   - `./gradlew.bat testDebugUnitTest`
   - `./gradlew.bat assembleDebug`
   - `git diff --check`
-  - `output-metadata.json` reports `versionCode=210`, `versionName=1.9.16`, `outputFile=PaykiTodo-1.9.16-debug.apk`
+  - `output-metadata.json` reports `versionCode=211`, `versionName=1.9.17`, `outputFile=PaykiTodo-1.9.17-debug.apk`
 - Current emulator smoke:
   - device id: `emulator-5554`
-  - installed APK: `app/build/outputs/apk/debug/PaykiTodo-1.9.16-debug.apk`
+  - installed APK: `app/build/outputs/apk/debug/PaykiTodo-1.9.17-debug.apk`
   - checked: app launch, Daily Board UI tree, logcat fatal-crash scan
-  - result: install succeeded, MainActivity displayed, UI tree showed `每日看板` / `今日待办（0）` / `今日日程（0）` / `明天暂无日程`, and no `FATAL EXCEPTION` was found in the checked logcat window
+  - result: install succeeded, MainActivity displayed, UI tree showed `每日看板` / `今日已专注` / `今日待办（0）` / `今日日程（0）` / `明天暂无日程 · 去规划台安排一下？`, and no `FATAL EXCEPTION` was found in the checked logcat window
 - Previous emulator verification remains historical:
   - `1.9.5` checked AI report scheduling fallback on `emulator-5554`
   - `1.9.7` checked Planning Desk announcement shortcut and AI report guide on `emulator-5554`
@@ -36,19 +36,20 @@
 
 ## Current Worktree Reality
 
-The repository is now being advanced to `1.9.16`. It carries forward the `1.9.12` / `1.9.13` no-DDL, widget, desktop lightweight snapshot, and calendar-index fixes, adds the `1.9.14` phone-side screen-scoped subscriptions / Planning Desk parser threading / paged AI-report archive loading, removes full Planning Desk note observation from ordinary board/task state in `1.9.15`, then persists Planning Desk announcement hint state in `1.9.16` so ordinary board / widget / desktop board announcement queries can use an indexed boolean field instead of scanning Markdown bodies.
+The repository is now being advanced to `1.9.17`. It carries forward the `1.9.12` / `1.9.13` no-DDL, widget, desktop lightweight snapshot, and calendar-index fixes, adds the `1.9.14` phone-side screen-scoped subscriptions / Planning Desk parser threading / paged AI-report archive loading, removes full Planning Desk note observation from ordinary board/task state in `1.9.15`, persists Planning Desk announcement hint state in `1.9.16`, and then splits desktop Web todo / event management data into narrower `1.9.17` endpoints so ordinary desktop refreshes no longer pull one complete snapshot for every operation.
 
 Most important current baseline facts:
 
-- version metadata is `1.9.16 / 210`
+- version metadata is `1.9.17 / 211`
 - Database version is `15`; `MIGRATION_13_14` creates `todo_items` indices for board, reminder, group, and recurrence lookup paths, and `MIGRATION_14_15` adds / backfills `planning_notes.hasAnnouncementHint` plus the `archived + hasAnnouncementHint + updatedAtMillis + createdAtMillis` lookup index.
 - `MIGRATION_12_13` remains the migration that creates `ai_reports`.
 - Active no-DDL todos are treated as today todos across phone daily board, Android widget board query, desktop daily board, and desktop todo management. They remain reminder-disabled and recurrence-disabled until the user adds a DDL.
 - A unit test now confirms no-DDL active todos remain in `今日待办` across later dates, not only on the creation day.
 - Android launcher widget board queries include no-DDL todos and continue to use board-range data rather than scanning all history.
-- Desktop web first connection requests `/api/snapshot?scope=board`, returning lightweight daily-board data first.
-- Desktop web loads full todos/events only when the user enters the event timeline or explicitly clicks `加载完整待办 / 日程数据`.
-- Desktop web status text distinguishes `看板轻量数据` from `完整数据`.
+- Desktop web first connection still requests `/api/snapshot?scope=board`, returning lightweight daily-board data first.
+- Desktop web loads the full todo list only through `/api/todos` when the user clicks `加载完整待办列表`.
+- Desktop web loads calendar timeline data only through `/api/events?start=...&end=...` for the currently visible date range, and ignores stale event responses if the user switches dates quickly.
+- Desktop web status text distinguishes `看板轻量数据`, `待办按需数据`, and `日程范围数据`.
 - Phone ordinary board/task `TodoUiState` uses a Room aggregate Flow for today's focus stats instead of observing the full `focus_sessions` table.
 - Phone ordinary board/task `TodoUiState` now observes active todos through a dedicated active-todo Flow instead of the full `todo_items` table.
 - Phone daily board now observes only today/tomorrow-range active events, while the full active calendar event list is collected only when the Calendar page is open.
@@ -70,16 +71,16 @@ Most important current baseline facts:
 Recent code inspection and build verification cover:
 
 - `TodoDao.kt`, `TodoRepository.kt`, `PlanningNote.kt`, `DatabaseMigrations.kt`, `BackupManager.kt`, `FocusSession.kt`, `TodoViewModel.kt`: today focus aggregate, indexed announcement-hint planning-note query, no-DDL board range, midnight-sensitive today classification, and planning-note hint migration / backup behavior.
-- `DesktopSyncCoordinator.kt`, `DesktopSyncModels.kt`, `app/src/main/assets/desktop-web/app.js`, `index.html`: lightweight board snapshot and full-data on-demand loading.
+- `DesktopSyncCoordinator.kt`, `DesktopSyncModels.kt`, `app/src/main/assets/desktop-web/app.js`, `index.html`: lightweight board snapshot, `/api/todos`, visible-range `/api/events`, and current-page refresh after desktop mutations.
 - `DashboardChrome.kt`, `DashboardScreen.kt`, `MainActivity.kt`, `AiReportPanel.kt`: AI report loading and full Planning Desk note loading moved out of ordinary UI state.
 - `CalendarPanel.kt`: shared event-by-date index across calendar surfaces.
 - `DailyBoardSnapshotBuilderTest.kt`: no-DDL todo stays in today's todo list across later dates.
 - `PlanningAnnouncementParserTest.kt`: announcement-hint helper covers common announcement entry forms without matching ordinary planning text, and `PlanningNote` defaults compute `hasAnnouncementHint` from content.
-- `README.md`, `CHANGELOG.md`, `TODO.md`, `docs/current/*`, Wiki header: `1.9.16` status synchronization.
+- `README.md`, `CHANGELOG.md`, `TODO.md`, `docs/current/*`, Wiki header: `1.9.17` status synchronization.
 
 ## Documentation Health
 
-Current docs are being synchronized for `1.9.16`:
+Current docs are being synchronized for `1.9.17`:
 
 - `README.md`
 - `CHANGELOG.md`
@@ -97,13 +98,13 @@ Older versioned docs under `docs/` remain historical references and should not b
 ## Current Risk Areas
 
 1. Device-side verification is still required for Android widget no-DDL display because RemoteViews / launcher refresh behavior varies by launcher.
-2. Desktop browser verification is required for the lightweight snapshot flow: first load, full-data transition, event/todo editing from partial data, and tab retention after mutations.
+2. Desktop browser verification is required for the lightweight snapshot and split-endpoint flow: first load, `/api/todos`, visible-range `/api/events`, fast date switching, event/todo editing from partial data, and tab retention after mutations.
 3. Settings -> AI 调用配置 model discovery still needs device-side verification with real providers: valid `/models`, root and `/v1` Base URLs, full `/chat/completions` conversion, invalid keys, unsupported `/models`, HTML responses, dropdown selection, and manual fallback.
 4. Planning Desk announcement syntax, multi-announcement visibility, date-range filtering, long-text marquee, preview highlighting, desktop-web propagation, and widget propagation need real UI verification.
 5. Unit tests cover parser / AI / line-matching / no-DDL board behavior, but there are still no dedicated repository-level automated tests for Planning Desk refresh/postpone/undo/conflict flows.
 6. 专注模式 still needs broader real-device verification for haptics, screen-on behavior, countdown extension, save-before-exit persistence, and daily-board stat refresh beyond the emulator free-focus path already exercised.
 7. AI 日报 / 周报 physical-device verification is still recommended for OEM alarm policies and reboot/time-change recovery.
-8. Very large datasets may still require deeper endpoint-level desktop splitting, AI-report search/date-range filters, and real-device calendar profiling.
+8. Very large datasets may still require desktop pagination/search beyond the current `/api/todos` and visible-range `/api/events` split, plus AI-report search/date-range filters and real-device calendar profiling.
 9. Long-running chat sessions can become unreliable, so repository docs must remain the source of truth for future continuation.
 
 ## How A New Session Should Start

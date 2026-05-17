@@ -48,6 +48,10 @@ class TodoRepository(
     suspend fun getTodo(id: Long): TodoItem? = todoDao.getById(id)
     suspend fun getGroup(groupId: Long): TaskGroup? = todoDao.getGroupById(groupId)
     suspend fun getAllTodos(): List<TodoItem> = todoDao.getAllTodos()
+    suspend fun getDesktopTodoItems(): List<TodoItem> = todoDao.getDesktopTodoItems()
+    suspend fun getActiveCalendarEventsInRangeOnce(rangeStartMillis: Long, rangeEndMillis: Long): List<TodoItem> {
+        return todoDao.getActiveCalendarEventsInRangeOnce(rangeStartMillis, rangeEndMillis)
+    }
     suspend fun saveFocusSession(session: FocusSession): Long {
         val id = todoDao.insertFocusSession(session)
         notifyItemsChanged()

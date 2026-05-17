@@ -22,7 +22,12 @@ const state = {
   planningRenderedNoteId: null,
   planningParsing: false,
   planningMappings: [],
-  planningLoaded: false
+  planningLoaded: false,
+  todosLoaded: false,
+  eventsLoaded: false,
+  eventRangeStart: null,
+  eventRangeEnd: null,
+  eventLoadSerial: 0
 };
 
 const els = {
@@ -474,8 +479,15 @@ function syncTopbar() {
   els.viewCaption.textContent = todoMode ? '桌面端每日看板' : eventMode ? '桌面端日程模式' : 'Markdown 规划模式';
   els.openCreate.textContent = todoMode ? '新增待办' : eventMode ? '新增日程' : '新建规划';
   els.openCreate.classList.toggle('hidden', state.currentTab === 'planning');
+  const dataMode = todoMode && state.todosLoaded
+    ? '待办按需数据'
+    : eventMode && visibleEventRangeLoaded()
+      ? '日程范围数据'
+      : state.snapshot?.partial
+        ? '看板轻量数据'
+        : '完整数据';
   els.snapshotMeta.textContent = state.snapshot
-    ? ('最近刷新：' + formatDateTimeLabel(state.snapshot.generatedAtMillis) + (state.snapshot.partial ? ' · 看板轻量数据' : ' · 完整数据'))
+    ? ('最近刷新：' + formatDateTimeLabel(state.snapshot.generatedAtMillis) + ' · ' + dataMode)
     : '连接后即可读取手机端当前数据';
 }
 
@@ -486,29 +498,120 @@ function ensureSelectedEventDay() {
 async function connect() {
   state.token = els.token.value.trim();
   state.planningLoaded = false;
-  await loadSnapshot({ full: false, planning: false });
+  await loadSnapshot({ planning: false });
   els.status.textContent = '已连接';
 }
 
 async function loadSnapshot(options = {}) {
-  const full = options.full === true || (
-    options.full !== false &&
-    (state.currentTab === 'events' || (state.snapshot != null && !state.snapshot.partial))
-  );
   const shouldLoadPlanning = options.planning === true || state.currentTab === 'planning';
-  state.snapshot = await api(full ? '/api/snapshot' : '/api/snapshot?scope=board');
+  state.snapshot = await api('/api/snapshot?scope=board');
+  state.todosLoaded = false;
+  state.eventsLoaded = false;
+  state.eventRangeStart = null;
+  state.eventRangeEnd = null;
+  state.eventLoadSerial += 1;
   if (shouldLoadPlanning) await loadPlanningNotes();
   ensureSelectedEventDay();
+  if (options.todos === true) await loadDesktopTodos({ render: false });
+  if (options.events === true) await loadDesktopEvents({ render: false });
   renderTodos();
-  if (!state.snapshot.partial || state.currentTab === 'events') renderEvents();
+  if (state.currentTab === 'events') renderEvents();
   renderAnnouncements();
   if (state.planningLoaded) renderPlanningNotes();
   syncTopbar();
 }
 
 async function ensureFullSnapshot() {
-  if (state.snapshot && !state.snapshot.partial) return;
-  await loadSnapshot({ full: true, planning: state.currentTab === 'planning' });
+  await Promise.all([ensureTodoData(), ensureEventData()]);
+}
+
+function ensureSnapshotContainer() {
+  if (state.snapshot) return;
+  state.snapshot = {
+    generatedAtMillis: Date.now(),
+    partial: true,
+    groups: [],
+    todos: [],
+    events: [],
+    announcements: [],
+    todayBoard: null
+  };
+}
+
+function mergeSnapshotGroups(groups) {
+  if (!Array.isArray(groups) || !groups.length) return;
+  ensureSnapshotContainer();
+  state.snapshot.groups = groups;
+}
+
+function currentEventRange() {
+  const keys = getVisibleEventKeys();
+  const start = keys[0] || dayKey(new Date());
+  const end = addDays(keys[keys.length - 1] || start, 1);
+  return { start, end };
+}
+
+function visibleEventRangeLoaded() {
+  const range = currentEventRange();
+  return state.eventsLoaded && state.eventRangeStart === range.start && state.eventRangeEnd === range.end;
+}
+
+async function loadDesktopTodos(options = {}) {
+  const data = await api('/api/todos');
+  ensureSnapshotContainer();
+  mergeSnapshotGroups(data.groups || []);
+  state.snapshot.todos = data.todos || [];
+  state.snapshot.generatedAtMillis = data.generatedAtMillis || Date.now();
+  state.todosLoaded = true;
+  if (options.render !== false) {
+    renderTodos();
+    syncTopbar();
+  }
+}
+
+async function ensureTodoData() {
+  if (state.todosLoaded) return;
+  els.status.textContent = '正在加载完整待办列表…';
+  await loadDesktopTodos();
+  els.status.textContent = '已加载完整待办列表';
+}
+
+async function loadDesktopEvents(options = {}) {
+  const range = currentEventRange();
+  const requestSerial = ++state.eventLoadSerial;
+  const data = await api('/api/events?start=' + encodeURIComponent(range.start) + '&end=' + encodeURIComponent(range.end));
+  if (requestSerial !== state.eventLoadSerial) return false;
+  ensureSnapshotContainer();
+  mergeSnapshotGroups(data.groups || []);
+  state.snapshot.events = data.events || [];
+  state.snapshot.generatedAtMillis = data.generatedAtMillis || Date.now();
+  state.eventsLoaded = true;
+  state.eventRangeStart = data.rangeStart || range.start;
+  state.eventRangeEnd = data.rangeEnd || range.end;
+  if (options.render !== false) {
+    renderEvents();
+    syncTopbar();
+  }
+  return true;
+}
+
+async function ensureEventData() {
+  if (visibleEventRangeLoaded()) return;
+  els.status.textContent = '正在加载当前日程范围…';
+  const applied = await loadDesktopEvents();
+  if (applied !== false) els.status.textContent = '已加载当前日程范围';
+}
+
+async function refreshCurrentData() {
+  await loadSnapshot({
+    planning: state.currentTab === 'planning',
+    todos: state.currentTab === 'todos' && state.todosLoaded,
+    events: state.currentTab === 'events'
+  });
+}
+
+async function refreshAfterMutation() {
+  await refreshCurrentData();
 }
 
 function renderAnnouncements() {
@@ -549,7 +652,7 @@ async function loadPlanningMappings() {
 }
 
 function renderTodos() {
-  if (state.snapshot?.partial) {
+  if (state.snapshot?.partial && !state.todosLoaded) {
     renderDesktopDailyBoard();
     const board = state.snapshot.todayBoard || {};
     const todoItems = board.todoItems || [];
@@ -565,7 +668,7 @@ function renderTodos() {
       + '<div class="empty-state">'
       +   '<strong>当前仅加载每日看板数据。</strong><br />'
       +   '为了减少电脑端首屏读取压力，完整待办时间轴会按需加载。'
-      +   '<div class="actions"><button type="button" class="ghost mini" data-load-full-snapshot="true">加载完整待办 / 日程数据</button></div>'
+      +   '<div class="actions"><button type="button" class="ghost mini" data-load-todos="true">加载完整待办列表</button></div>'
       + '</div>';
     bindActions();
     return;
@@ -727,11 +830,11 @@ function renderBoardEventRow(item, nowMillis) {
 }
 
 function renderEvents() {
-  if (state.snapshot?.partial) {
+  if (!visibleEventRangeLoaded()) {
     els.eventDayHeaders.innerHTML = '';
     els.hourAxis.innerHTML = '';
-    els.eventTimeline.innerHTML = '<div class="empty-state">日程时间轴需要完整数据。请稍等，正在加载。</div>';
-    ensureFullSnapshot().catch(err => els.status.textContent = err.message);
+    els.eventTimeline.innerHTML = '<div class="empty-state">日程时间轴正在加载当前可见日期范围。</div>';
+    ensureEventData().catch(err => els.status.textContent = err.message);
     return;
   }
   const events = activeEvents().slice().sort((a, b) => eventStart(a) - eventStart(b));
@@ -981,7 +1084,7 @@ async function resolvePlanningConflictDocument(mappingId) {
     state.planningDirty = false;
   }
   await loadPlanningMappings();
-  await loadSnapshot();
+  await refreshAfterMutation();
   renderPlanningNotes();
   els.status.textContent = result.message || '已按文档内容覆盖事项';
 }
@@ -1139,7 +1242,7 @@ async function importSelectedPlanning() {
   }
   els.status.textContent = '已导入 ' + (result.imported || 0) + ' 条规划内容';
   await loadPlanningNotes();
-  await loadSnapshot();
+  await refreshAfterMutation();
 }
 
 async function refreshPlanningImported() {
@@ -1216,7 +1319,7 @@ async function undoPlanningLastOperation() {
     await savePlanningNote(true);
   }
   await loadPlanningMappings();
-  await loadSnapshot();
+  await refreshAfterMutation();
   renderPlanningNotes();
   els.status.textContent = result.message || '撤销完成';
 }
@@ -1675,6 +1778,12 @@ function bindActions() {
       ensureFullSnapshot().catch(err => els.status.textContent = err.message);
     };
   });
+  document.querySelectorAll('[data-load-todos]').forEach(node => {
+    node.onclick = event => {
+      event.preventDefault();
+      ensureTodoData().catch(err => els.status.textContent = err.message);
+    };
+  });
 }
 
 document.getElementById('todo-has-due')?.addEventListener('change', event => setTodoDueEnabled(event.target.checked));
@@ -1684,7 +1793,7 @@ els.token.addEventListener('keydown', event => {
   event.preventDefault();
   connect().catch(err => els.status.textContent = err.message);
 });
-document.getElementById('refresh').onclick = () => loadSnapshot().catch(err => els.status.textContent = err.message);
+document.getElementById('refresh').onclick = () => refreshCurrentData().catch(err => els.status.textContent = err.message);
 window.addEventListener('resize', () => {
   if (state.currentTab === 'events' && state.snapshot) renderEvents();
 });
@@ -1803,7 +1912,7 @@ document.querySelectorAll('[data-tab]').forEach(node => {
     node.classList.add('active');
     syncTopbar();
     if (state.currentTab === 'events') {
-      ensureFullSnapshot().catch(err => els.status.textContent = err.message);
+      ensureEventData().catch(err => els.status.textContent = err.message);
     } else if (state.currentTab === 'planning') {
       loadPlanningNotes()
         .then(() => renderPlanningNotes())
@@ -1856,7 +1965,7 @@ document.getElementById('create-todo').onclick = async () => {
     }
     clearTodoForm();
     closeModal('todo-modal');
-    await loadSnapshot();
+    await refreshAfterMutation();
   } catch (error) {
     setInputInvalid('todo-reminder-spec', true);
     els.status.textContent = error.message || '保存待办失败';
@@ -1869,7 +1978,7 @@ document.getElementById('delete-todo').onclick = async () => {
   await api(`/api/items/${state.editingTodoId}`, { method: 'DELETE' });
   clearTodoForm();
   closeModal('todo-modal');
-  await loadSnapshot();
+  await refreshAfterMutation();
 };
 
 document.getElementById('preview-todo-edit').onclick = () => {
@@ -1883,14 +1992,14 @@ document.getElementById('preview-todo-complete').onclick = async () => {
   if (!state.previewTodoId) return;
   await api(`/api/items/${state.previewTodoId}/complete`, { method: 'POST' });
   closeModal('todo-preview-modal');
-  await loadSnapshot();
+  await refreshAfterMutation();
 };
 
 document.getElementById('preview-todo-cancel').onclick = async () => {
   if (!state.previewTodoId) return;
   await api(`/api/items/${state.previewTodoId}/cancel`, { method: 'POST' });
   closeModal('todo-preview-modal');
-  await loadSnapshot();
+  await refreshAfterMutation();
 };
 
 document.getElementById('preview-todo-delete').onclick = async () => {
@@ -1898,7 +2007,7 @@ document.getElementById('preview-todo-delete').onclick = async () => {
   if (!await confirmDanger('确认删除待办', '删除后无法恢复。')) return;
   await api(`/api/items/${state.previewTodoId}`, { method: 'DELETE' });
   closeModal('todo-preview-modal');
-  await loadSnapshot();
+  await refreshAfterMutation();
 };
 
 document.getElementById('save-event').onclick = async () => {
@@ -1933,7 +2042,7 @@ document.getElementById('save-event').onclick = async () => {
     }
     clearEventForm();
     closeModal('event-modal');
-    await loadSnapshot();
+    await refreshAfterMutation();
   } catch (error) {
     setInputInvalid('event-reminder-offsets', true);
     els.status.textContent = error.message || '保存日程失败';
@@ -1946,7 +2055,7 @@ document.getElementById('delete-event').onclick = async () => {
   await api(`/api/items/${state.editingEventId}`, { method: 'DELETE' });
   clearEventForm();
   closeModal('event-modal');
-  await loadSnapshot();
+  await refreshAfterMutation();
 };
 
 document.getElementById('preview-event-edit').onclick = () => {
@@ -1961,7 +2070,7 @@ document.getElementById('preview-event-delete').onclick = async () => {
   if (!await confirmDanger('确认删除日程', '删除后无法恢复。')) return;
   await api(`/api/items/${state.previewEventId}`, { method: 'DELETE' });
   closeModal('event-preview-modal');
-  await loadSnapshot();
+  await refreshAfterMutation();
 };
 
 document.addEventListener('click', event => {

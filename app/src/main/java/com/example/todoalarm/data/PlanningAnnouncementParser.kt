@@ -29,6 +29,13 @@ data class PlanningAnnouncement(
 }
 
 object PlanningAnnouncementParser {
+    fun mightContainAnnouncement(contentMarkdown: String): Boolean {
+        val normalized = normalize(contentMarkdown)
+        return normalized.contains("公告", ignoreCase = true) ||
+            normalized.contains("[!announcement]", ignoreCase = true) ||
+            normalized.contains("[! announcement]", ignoreCase = true)
+    }
+
     fun activeAnnouncements(
         notes: List<PlanningNote>,
         today: LocalDate = LocalDate.now()

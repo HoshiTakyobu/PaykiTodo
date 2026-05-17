@@ -79,9 +79,6 @@ data class TodoUiState(
     val todayItems: List<TodoItem> = emptyList(),
     val upcomingItems: List<TodoItem> = emptyList(),
     val calendarItems: List<TodoItem> = emptyList(),
-    val planningNotes: List<PlanningNote> = emptyList(),
-    val activePlanningNoteId: Long? = null,
-    val activePlanningNote: PlanningNote? = null,
     val activeAnnouncements: List<PlanningAnnouncement> = emptyList(),
     val todayFocusMinutes: Int = 0,
     val todayFocusSessionCount: Int = 0,
@@ -201,9 +198,15 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
         initialValue = emptyList()
     )
 
+    val planningNotes = repository.observePlanningNotes().stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5_000),
+        initialValue = emptyList()
+    )
+
     val uiState = combine(
         repository.observeGroups(),
-        repository.observePlanningNotes(),
+        repository.observePlanningNotesWithAnnouncementHints(),
         activeTodoItems,
         boardCalendarItems,
         todayFocusStats,
@@ -216,7 +219,7 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
         @Suppress("UNCHECKED_CAST")
         val groups = values[0] as List<TaskGroup>
         @Suppress("UNCHECKED_CAST")
-        val planningNotes = values[1] as List<PlanningNote>
+        val announcementNotes = values[1] as List<PlanningNote>
         @Suppress("UNCHECKED_CAST")
         val activeTaskItems = values[2] as List<TodoItem>
         @Suppress("UNCHECKED_CAST")
@@ -233,8 +236,6 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
         val sortedCalendarItems = activeCalendarItems.sortedBy { it.startAtMillis ?: it.dueAtMillis }
         val availableQuotes = quotes.ifEmpty { QuoteRepository.seedQuotes }
         val currentQuote = availableQuotes[settings.quoteIndex.mod(availableQuotes.size)]
-        val activePlanningNote = planningNotes.firstOrNull { it.id == settings.lastOpenedPlanningNoteId }
-            ?: planningNotes.firstOrNull()
 
         TodoUiState(
             groups = availableGroups,
@@ -243,10 +244,7 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
             todayItems = sortedActiveTaskItems.filter { !it.missed && (!it.hasDueDate || dueDate(it) == today) },
             upcomingItems = sortedActiveTaskItems.filter { it.hasDueDate && !it.missed && dueDate(it).isAfter(today) },
             calendarItems = sortedCalendarItems,
-            planningNotes = planningNotes,
-            activePlanningNoteId = activePlanningNote?.id,
-            activePlanningNote = activePlanningNote,
-            activeAnnouncements = PlanningAnnouncementParser.activeAnnouncements(planningNotes, today),
+            activeAnnouncements = PlanningAnnouncementParser.activeAnnouncements(announcementNotes, today),
             todayFocusMinutes = focusStats.completedMinutes,
             todayFocusSessionCount = focusStats.totalCount,
             todayCompletedFocusSessionCount = focusStats.completedCount,

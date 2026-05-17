@@ -279,6 +279,20 @@ interface TodoDao {
     )
     fun observePlanningNotes(): Flow<List<PlanningNote>>
 
+    @Query(
+        """
+        SELECT * FROM planning_notes
+        WHERE archived = 0
+        AND (
+            contentMarkdown LIKE '%公告%'
+            OR contentMarkdown LIKE '%[!announcement]%'
+            OR contentMarkdown LIKE '%[! announcement]%'
+        )
+        ORDER BY updatedAtMillis DESC, createdAtMillis DESC
+        """
+    )
+    fun observePlanningNotesWithAnnouncementHints(): Flow<List<PlanningNote>>
+
     @Query("SELECT * FROM planning_notes WHERE id = :id LIMIT 1")
     suspend fun getPlanningNote(id: Long): PlanningNote?
 
@@ -293,6 +307,20 @@ interface TodoDao {
         """
     )
     suspend fun getActivePlanningNotes(): List<PlanningNote>
+
+    @Query(
+        """
+        SELECT * FROM planning_notes
+        WHERE archived = 0
+        AND (
+            contentMarkdown LIKE '%公告%'
+            OR contentMarkdown LIKE '%[!announcement]%'
+            OR contentMarkdown LIKE '%[! announcement]%'
+        )
+        ORDER BY updatedAtMillis DESC, createdAtMillis DESC
+        """
+    )
+    suspend fun getPlanningNotesWithAnnouncementHints(): List<PlanningNote>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertPlanningNote(note: PlanningNote): Long

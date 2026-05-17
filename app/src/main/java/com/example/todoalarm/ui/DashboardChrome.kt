@@ -100,11 +100,11 @@ import com.example.todoalarm.data.AiReport
 import com.example.todoalarm.data.AiReportType
 import com.example.todoalarm.data.CalendarEventDraft
 import com.example.todoalarm.data.DailyBoardSnapshotBuilder
-import com.example.todoalarm.data.PlanningAnnouncementParser
 import com.example.todoalarm.data.PlanningAiProvider
 import com.example.todoalarm.data.PlanningImportCandidate
 import com.example.todoalarm.data.PlanningImportResult
 import com.example.todoalarm.data.PlanningLineMapping
+import com.example.todoalarm.data.PlanningNote
 import com.example.todoalarm.data.PlanningOperationResult
 import com.example.todoalarm.data.PlanningParseResult
 import com.example.todoalarm.data.PlanningPostponeScope
@@ -354,6 +354,7 @@ internal fun DashboardBody(
     targetAiReportSerial: Int = 0,
     padding: PaddingValues,
     uiState: TodoUiState,
+    planningNotes: StateFlow<List<PlanningNote>>,
     observeAiReports: (AiReportType?, Int) -> Flow<List<AiReport>>,
     onGetAiReport: suspend (Long) -> AiReport?,
     historyItems: StateFlow<List<TodoItem>>,
@@ -523,14 +524,16 @@ internal fun DashboardBody(
     }
 
     if (section == DashboardSection.PLANNING) {
+        val notes by planningNotes.collectAsStateWithLifecycle()
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
         ) {
             PlanningDeskPanel(
-                notes = uiState.planningNotes,
-                activeNote = uiState.activePlanningNote,
+                notes = notes,
+                activeNote = notes.firstOrNull { it.id == uiState.settings.lastOpenedPlanningNoteId }
+                    ?: notes.firstOrNull(),
                 onSelectNote = onSelectPlanningNote,
                 onCreateNote = onCreatePlanningNote,
                 onSaveNote = onSavePlanningNote,
@@ -582,9 +585,7 @@ internal fun DashboardBody(
         uiState.calendarItems.filter { DailyBoardSnapshotBuilder.eventOverlapsDay(it, tomorrow) }
             .sortedBy { it.startAtMillis ?: it.dueAtMillis }
     }
-    val activeAnnouncements = remember(uiState.planningNotes, boardDate) {
-        PlanningAnnouncementParser.activeAnnouncements(uiState.planningNotes, boardDate)
-    }
+    val activeAnnouncements = uiState.activeAnnouncements
     val completedHistoryItems = if (section == DashboardSection.HISTORY) {
         historyItems.collectAsStateWithLifecycle().value
     } else {

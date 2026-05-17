@@ -48,6 +48,7 @@ import com.example.todoalarm.data.AiReportType
 import com.example.todoalarm.data.PlanningImportCandidate
 import com.example.todoalarm.data.PlanningImportResult
 import com.example.todoalarm.data.PlanningLineMapping
+import com.example.todoalarm.data.PlanningNote
 import com.example.todoalarm.data.PlanningOperationResult
 import com.example.todoalarm.data.PlanningParseResult
 import com.example.todoalarm.data.PlanningAiProvider
@@ -88,6 +89,7 @@ private enum class EditorKind {
 @Composable
 fun DashboardScreen(
     uiState: TodoUiState,
+    planningNotes: StateFlow<List<PlanningNote>>,
     observeAiReports: (AiReportType?, Int) -> Flow<List<AiReport>>,
     onGetAiReport: suspend (Long) -> AiReport?,
     historyItems: StateFlow<List<TodoItem>>,
@@ -403,6 +405,7 @@ fun DashboardScreen(
                     targetAiReportSerial = launchRouteSerial,
                     padding = padding,
                     uiState = uiState,
+                    planningNotes = planningNotes,
                     observeAiReports = observeAiReports,
                     onGetAiReport = onGetAiReport,
                     historyItems = historyItems,

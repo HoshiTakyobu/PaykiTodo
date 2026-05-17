@@ -50,7 +50,7 @@ private class TodoWidgetFactory(
         rows = runBlocking {
             val items = app.repository.getActiveItemsForBoardRange()
             val groups = app.repository.getAllGroups()
-            val notes = app.repository.getAllPlanningNotes()
+            val notes = app.repository.getPlanningNotesWithAnnouncementHints()
             val snapshot = DailyBoardSnapshotBuilder.build(items = items, planningNotes = notes)
             buildRows(
                 snapshot = snapshot,

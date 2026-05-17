@@ -1,10 +1,20 @@
 package com.example.todoalarm.data
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.time.LocalDate
 
 class PlanningAnnouncementParserTest {
+    @Test
+    fun announcementHintHelperMatchesSupportedEntryForms() {
+        assertTrue(PlanningAnnouncementParser.mightContainAnnouncement("#公告 5.16 重要提醒"))
+        assertTrue(PlanningAnnouncementParser.mightContainAnnouncement("> [!announcement] long running notice"))
+        assertTrue(PlanningAnnouncementParser.mightContainAnnouncement("- [ ] 公告：长期提醒"))
+        assertFalse(PlanningAnnouncementParser.mightContainAnnouncement("# 今日计划\n- [ ] 复习数据库"))
+    }
+
     @Test
     fun parsesMultipleActiveAnnouncementsFromPlanningNotes() {
         val note = PlanningNote(

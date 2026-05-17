@@ -25,6 +25,7 @@ class TodoRepository(
     }
     fun observeGroups(): Flow<List<TaskGroup>> = todoDao.observeGroups()
     fun observePlanningNotes(): Flow<List<PlanningNote>> = todoDao.observePlanningNotes()
+    fun observePlanningNotesWithAnnouncementHints(): Flow<List<PlanningNote>> = todoDao.observePlanningNotesWithAnnouncementHints()
     fun observeFocusSessions(): Flow<List<FocusSession>> = todoDao.observeFocusSessions()
     fun observeAiReports(limit: Int): Flow<List<AiReport>> = todoDao.observeAiReports(limit)
     fun observeAiReportsByType(type: AiReportType, limit: Int): Flow<List<AiReport>> {
@@ -91,6 +92,7 @@ class TodoRepository(
 
     suspend fun getAllPlanningNotes(): List<PlanningNote> = todoDao.getAllPlanningNotes()
     suspend fun getActivePlanningNotes(): List<PlanningNote> = todoDao.getActivePlanningNotes()
+    suspend fun getPlanningNotesWithAnnouncementHints(): List<PlanningNote> = todoDao.getPlanningNotesWithAnnouncementHints()
     suspend fun getPlanningMappingsForNote(noteId: Long): List<PlanningLineMapping> = todoDao.getMappingsForNote(noteId)
 
     suspend fun insertPlanningMappings(mappings: List<PlanningLineMapping>) {

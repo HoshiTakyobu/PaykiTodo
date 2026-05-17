@@ -6,13 +6,13 @@ Long-running Codex sessions can become unreliable. This file exists so a new ses
 
 ## Current Handoff Summary
 
-- The project is now being advanced to `1.9.14` / `versionCode 208`.
+- The project is now being advanced to `1.9.15` / `versionCode 209`.
 - Main user request: review the recent `1.9.11`-`1.9.13` experience fixes, identify remaining user-facing issues, and implement practical performance improvements where safe.
-- This continuation keeps the no-DDL, widget, desktop lightweight snapshot, AI-provider save-state, and calendar-index fixes, then adds phone screen-scoped subscriptions, Planning Desk parser threading, and AI-report archive paging.
-- Latest debug APK target after packaging: `app/build/outputs/apk/debug/PaykiTodo-1.9.14-debug.apk`.
+- This continuation keeps the no-DDL, widget, desktop lightweight snapshot, AI-provider save-state, and calendar-index fixes, then adds phone screen-scoped subscriptions, Planning Desk parser threading, AI-report archive paging, and an announcement-only Planning Desk query for ordinary board/widget/desktop board surfaces.
+- Latest debug APK target after packaging: `app/build/outputs/apk/debug/PaykiTodo-1.9.15-debug.apk`.
 - Do not push to GitHub unless the user explicitly asks.
 
-## Latest 1.9.14 Review / Performance Pass
+## Latest 1.9.15 Review / Performance Pass
 
 1. Desktop Web first connection still calls `/api/snapshot?scope=board` so the browser can show the daily board without transferring all todos/events/planning data first.
 2. Desktop Web can still load full data on demand when the user opens `日程时间轴` or clicks `加载完整待办 / 日程数据`; the topbar distinguishes `看板轻量数据` and `完整数据`.
@@ -25,7 +25,10 @@ Long-running Codex sessions can become unreliable. This file exists so a new ses
 9. Planning Desk local-rule recognition runs on `Dispatchers.Default`; AI failure fallback local parsing also avoids occupying the Compose main thread for long documents.
 10. Calendar month view, agenda/list view, and visible all-day rows reuse one top-level event-by-date index instead of rebuilding date buckets independently.
 11. `DailyBoardSnapshotBuilderTest.noDdlTodosStayInTodayTodosOnLaterDates` confirms a no-DDL active todo remains in `今日待办` across later days.
-12. Version metadata moved to `1.9.14` / `versionCode 208`.
+12. Ordinary board/task `TodoUiState` no longer carries the full Planning Desk note list; complete planning notes are collected only while the `规划台` page is open.
+13. Phone board announcements, Android widget board rows, and desktop `/api/snapshot` now read only planning notes with announcement hints before strict announcement parsing.
+14. `PlanningAnnouncementParserTest.announcementHintHelperMatchesSupportedEntryForms` covers common announcement hint forms and ordinary non-announcement planning text.
+15. Version metadata moved to `1.9.15` / `versionCode 209`.
 
 ## Verification Status
 
@@ -36,12 +39,12 @@ Completed locally in this continuation:
 3. `./gradlew.bat testDebugUnitTest` passed.
 4. `./gradlew.bat assembleDebug` passed.
 5. `git diff --check` passed.
-6. `output-metadata.json` reports `versionCode=208`, `versionName=1.9.14`, and `outputFile=PaykiTodo-1.9.14-debug.apk`.
-7. Emulator smoke on `emulator-5554` installed `app/build/outputs/apk/debug/PaykiTodo-1.9.14-debug.apk`, launched `com.paykitodo.app`, confirmed the Daily Board UI tree contained `每日看板` / `今日待办（0）` / `今日日程（0）` / `明天暂无日程`, and found no `FATAL EXCEPTION` in the checked logcat window.
+6. `output-metadata.json` reports `versionCode=209`, `versionName=1.9.15`, and `outputFile=PaykiTodo-1.9.15-debug.apk`.
+7. Emulator smoke on `emulator-5554` installed `app/build/outputs/apk/debug/PaykiTodo-1.9.15-debug.apk`, launched `com.paykitodo.app`, confirmed the Daily Board UI tree contained `每日看板` / `今日待办（0）` / `今日日程（0）` / `明天暂无日程`, and found no `FATAL EXCEPTION` in the checked logcat window.
 
 Remaining after local completion:
 
-1. Install `app/build/outputs/apk/debug/PaykiTodo-1.9.14-debug.apk` on the user's physical phone.
+1. Install `app/build/outputs/apk/debug/PaykiTodo-1.9.15-debug.apk` on the user's physical phone.
 2. Verify a normal no-DDL todo appears under `今日待办`, does not enable reminders, and does not enable recurrence.
 3. Verify Planning Desk plain bullets import as no-DDL todos and appear under `今日待办`; preview should show the no-DDL explanation.
 4. Verify Android widget, phone daily board, desktop daily board, and desktop todo list all show no-DDL todos in today's todo block.
@@ -50,11 +53,12 @@ Remaining after local completion:
 7. Verify Settings -> AI 调用配置 provider changes persist after leaving/reopening the page.
 8. Verify desktop browser lightweight snapshot flow: initial `看板轻量数据`, full-data transition, and create/edit/delete refresh behavior.
 9. Verify `AI 报告` paging and notification deep-link detail opening on a real device with enough reports.
-10. Do not push unless the user explicitly asks.
+10. Verify active Planning Desk announcements still appear on phone board, Android widget, and desktop daily board after the announcement-hint query split.
+11. Do not push unless the user explicitly asks.
 
 ## Performance Notes
 
-Fixed locally across `1.9.12`-`1.9.14`:
+Fixed locally across `1.9.12`-`1.9.15`:
 
 1. Added `todo_items` indices for high-frequency board/reminder/group/recurrence queries.
 2. Removed duplicate group reads from desktop `/api/snapshot`.
@@ -65,6 +69,8 @@ Fixed locally across `1.9.12`-`1.9.14`:
 7. Paged the `AI 报告` archive instead of observing all reports.
 8. Reduced calendar recomputation by reusing a single event-by-date index across month/list/visible all-day surfaces.
 9. Moved Planning Desk local parsing off the Compose main thread.
+10. Removed full Planning Desk note observation from ordinary board/task state; full notes now load only in the Planning Desk section.
+11. Changed phone board, widget, and desktop board announcements to query only announcement-candidate planning notes before parsing.
 
 Worth doing later:
 
@@ -76,6 +82,7 @@ Worth doing later:
 
 - `app/build.gradle.kts`
 - `app/src/main/assets/wiki/index.html`
+- `app/src/main/java/com/example/todoalarm/data/PlanningAnnouncementParser.kt`
 - `app/src/main/java/com/example/todoalarm/data/PlanningRecognitionService.kt`
 - `app/src/main/java/com/example/todoalarm/data/TodoDao.kt`
 - `app/src/main/java/com/example/todoalarm/data/TodoRepository.kt`
@@ -84,6 +91,7 @@ Worth doing later:
 - `app/src/main/java/com/example/todoalarm/ui/DashboardScreen.kt`
 - `app/src/main/java/com/example/todoalarm/ui/MainActivity.kt`
 - `app/src/main/java/com/example/todoalarm/ui/AiReportPanel.kt`
+- `app/src/main/java/com/example/todoalarm/widget/TodoWidgetService.kt`
 - `README.md`
 - `TODO.md`
 - `CHANGELOG.md`
@@ -115,7 +123,7 @@ This avoids confusion when an emulator window remains on the user's desktop.
 Latest recorded emulator use:
 
 - Device id: `emulator-5554`
-- Installed APK: `app/build/outputs/apk/debug/PaykiTodo-1.9.14-debug.apk`
+- Installed APK: `app/build/outputs/apk/debug/PaykiTodo-1.9.15-debug.apk`
 - Checked flows: app launch, Daily Board UI tree, and logcat fatal-crash scan
 - Verified result: MainActivity displayed, UI tree contained `每日看板` / `今日待办（0）` / `今日日程（0）` / `明天暂无日程`, and no `FATAL EXCEPTION` was found in the checked logcat window
-- Boundary: this emulator pass does not replace real-phone verification for OEM notification, vibration, lock-screen, widget, alarm, reboot, battery-management behavior, Android launcher widget rendering, or live desktop-browser verification of `1.9.14`
+- Boundary: this emulator pass does not replace real-phone verification for OEM notification, vibration, lock-screen, widget, alarm, reboot, battery-management behavior, Android launcher widget rendering, or live desktop-browser verification of `1.9.15`

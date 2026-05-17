@@ -173,14 +173,12 @@ class DesktopSyncCoordinator(
         val items = runBlocking {
             if (boardOnly) app.repository.getActiveItemsForBoardRange(today) else app.repository.getAllTodos()
         }
-        val notes = runBlocking {
-            if (boardOnly) app.repository.getActivePlanningNotes() else app.repository.getAllPlanningNotes()
-        }
-        val announcements = PlanningAnnouncementParser.activeAnnouncements(notes, today)
+        val announcementNotes = runBlocking { app.repository.getPlanningNotesWithAnnouncementHints() }
+        val announcements = PlanningAnnouncementParser.activeAnnouncements(announcementNotes, today)
         val nowMillis = now.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
         val board = DailyBoardSnapshotBuilder.build(
             items = items,
-            planningNotes = notes,
+            planningNotes = announcementNotes,
             now = now
         )
         val focusStats = runBlocking { app.repository.getTodayFocusSessionStats(today) }

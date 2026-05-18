@@ -1256,6 +1256,15 @@ private fun PlanningAiProviderRow(
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
+                    if (provider.supportsVision) {
+                        Text(
+                            text = "已开启图片识别支持",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.tertiary,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
                 }
                 Switch(checked = provider.enabled, onCheckedChange = onToggle)
                 Box {
@@ -1324,6 +1333,7 @@ private fun PlanningAiProviderDialog(
     var apiKey by remember(provider.id) { mutableStateOf(provider.apiKey) }
     var model by remember(provider.id) { mutableStateOf(provider.model) }
     var enabled by remember(provider.id) { mutableStateOf(provider.enabled) }
+    var supportsVision by remember(provider.id) { mutableStateOf(provider.supportsVision) }
     var showApiKey by remember { mutableStateOf(false) }
     var testing by remember { mutableStateOf(false) }
     var testResult by remember { mutableStateOf<PlanningAiTestResult?>(null) }
@@ -1363,6 +1373,21 @@ private fun PlanningAiProviderDialog(
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                     Text("启用此源", fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
                     Switch(checked = enabled, onCheckedChange = { enabled = it; clearTestResult() })
+                }
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                        Text("此服务支持图片识别", fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
+                        Text(
+                            "只有确认模型支持视觉输入时再开启；规划台识图只会调用已开启此项的 AI 源。",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Switch(checked = supportsVision, onCheckedChange = { supportsVision = it; clearTestResult() })
                 }
                 OutlinedTextField(
                     value = name,
@@ -1540,7 +1565,8 @@ private fun PlanningAiProviderDialog(
                             baseUrl = baseUrl,
                             apiKey = apiKey,
                             model = model,
-                            enabled = enabled
+                            enabled = enabled,
+                            supportsVision = supportsVision
                         ).normalized()
                     )
                 },

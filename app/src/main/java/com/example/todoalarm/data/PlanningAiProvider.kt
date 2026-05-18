@@ -10,7 +10,8 @@ data class PlanningAiProvider(
     val baseUrl: String,
     val apiKey: String,
     val model: String,
-    val enabled: Boolean = true
+    val enabled: Boolean = true,
+    val supportsVision: Boolean = false
 ) {
     fun normalized(): PlanningAiProvider {
         return copy(
@@ -32,6 +33,7 @@ fun planningAiProvidersToJson(providers: List<PlanningAiProvider>, includeApiKey
                 if (includeApiKey) put("apiKey", provider.apiKey)
                 put("model", provider.model)
                 put("enabled", provider.enabled)
+                put("supportsVision", provider.supportsVision)
             }
         }
     ).toString()
@@ -50,7 +52,8 @@ fun planningAiProvidersFromJson(raw: String?): List<PlanningAiProvider> {
                     baseUrl = item.optString("baseUrl"),
                     apiKey = item.optString("apiKey"),
                     model = item.optString("model"),
-                    enabled = item.optBoolean("enabled", true)
+                    enabled = item.optBoolean("enabled", true),
+                    supportsVision = item.optBoolean("supportsVision", false)
                 ).normalized()
                 if (provider.name.isNotBlank() || provider.baseUrl.isNotBlank() || provider.model.isNotBlank()) {
                     add(provider)

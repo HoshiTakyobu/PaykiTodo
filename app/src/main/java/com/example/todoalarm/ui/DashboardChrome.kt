@@ -533,6 +533,7 @@ internal fun DashboardBody(
                 notes = notes,
                 activeNote = notes.firstOrNull { it.id == uiState.settings.lastOpenedPlanningNoteId }
                     ?: notes.firstOrNull(),
+                planningAiProviders = uiState.settings.planningAiProviders,
                 onSelectNote = onSelectPlanningNote,
                 onCreateNote = onCreatePlanningNote,
                 onSaveNote = onSavePlanningNote,

@@ -17,6 +17,13 @@ data class PlanningAiRequest(
     val systemPrompt: String = ""
 )
 
+data class PlanningAiVisionRequest(
+    val prompt: String,
+    val systemPrompt: String,
+    val imageBase64: String,
+    val imageMimeType: String
+)
+
 data class PlanningAiResponse(
     val content: String,
     val provider: PlanningAiProvider
@@ -58,6 +65,32 @@ object PlanningAiCaller {
             }
         }
         throw lastRetryable ?: IllegalStateException("没有可用的 AI 源，请检查 Base URL、API Key 和模型名。")
+    }
+
+    suspend fun callVisionWithFallback(
+        providers: List<PlanningAiProvider>,
+        request: PlanningAiVisionRequest
+    ): PlanningAiResponse {
+        var lastRetryable: Exception? = null
+        val usableProviders = providers
+            .map { it.normalized() }
+            .filter {
+                it.enabled &&
+                    it.supportsVision &&
+                    it.baseUrl.isNotBlank() &&
+                    it.apiKey.isNotBlank() &&
+                    it.model.isNotBlank()
+            }
+        for (provider in usableProviders) {
+            try {
+                return callVisionSingle(provider, request)
+            } catch (error: Exception) {
+                if (error is CancellationException) throw error
+                if (!isRetryable(error)) throw error
+                lastRetryable = error
+            }
+        }
+        throw lastRetryable ?: IllegalStateException("请在设置中为某个 AI 源开启图片识别支持")
     }
 
     suspend fun testProvider(provider: PlanningAiProvider): PlanningAiTestResult {
@@ -138,6 +171,68 @@ object PlanningAiCaller {
                         put(JSONObject().put("role", "system").put("content", request.systemPrompt))
                     }
                     put(JSONObject().put("role", "user").put("content", request.prompt))
+                }
+            )
+        }.toString()
+
+        var lastError: Exception? = null
+        val endpoints = endpointCandidates(provider.baseUrl)
+        for ((index, endpoint) in endpoints.withIndex()) {
+            try {
+                return@withContext postChatCompletion(
+                    endpoint = endpoint,
+                    provider = provider,
+                    body = body,
+                    connectTimeoutMs = connectTimeoutMs,
+                    readTimeoutMs = readTimeoutMs,
+                    allowBlankContent = true
+                )
+            } catch (error: Exception) {
+                if (error is CancellationException) throw error
+                lastError = error
+                if (index >= endpoints.lastIndex || !shouldTryNextEndpoint(error)) {
+                    throw error
+                }
+            }
+        }
+        throw lastError ?: IOException("没有可用的 AI 接口地址。")
+    }
+
+    private suspend fun callVisionSingle(
+        provider: PlanningAiProvider,
+        request: PlanningAiVisionRequest,
+        connectTimeoutMs: Int = 15_000,
+        readTimeoutMs: Int = 60_000
+    ): PlanningAiResponse = withContext(Dispatchers.IO) {
+        val body = JSONObject().apply {
+            put("model", provider.model)
+            put(
+                "messages",
+                JSONArray().apply {
+                    if (request.systemPrompt.isNotBlank()) {
+                        put(JSONObject().put("role", "system").put("content", request.systemPrompt))
+                    }
+                    put(
+                        JSONObject()
+                            .put("role", "user")
+                            .put(
+                                "content",
+                                JSONArray().apply {
+                                    put(JSONObject().put("type", "text").put("text", request.prompt))
+                                    put(
+                                        JSONObject()
+                                            .put("type", "image_url")
+                                            .put(
+                                                "image_url",
+                                                JSONObject().put(
+                                                    "url",
+                                                    "data:${request.imageMimeType};base64,${request.imageBase64}"
+                                                )
+                                            )
+                                    )
+                                }
+                            )
+                    )
                 }
             )
         }.toString()
@@ -314,7 +409,8 @@ object PlanningAiCaller {
         provider: PlanningAiProvider,
         body: String,
         connectTimeoutMs: Int,
-        readTimeoutMs: Int
+        readTimeoutMs: Int,
+        allowBlankContent: Boolean = false
     ): PlanningAiResponse {
         val connection = (URL(endpoint).openConnection() as HttpURLConnection).apply {
             requestMethod = "POST"
@@ -353,7 +449,7 @@ object PlanningAiCaller {
                 ?.optJSONObject("message")
                 ?.optString("content")
                 .orEmpty()
-            if (content.isBlank()) {
+            if (content.isBlank() && !allowBlankContent) {
                 throw IOException("服务已返回 JSON，但不是 OpenAI-compatible chat/completions 响应格式。")
             }
             return PlanningAiResponse(content = content, provider = provider)

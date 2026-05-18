@@ -1,6 +1,13 @@
 package com.example.todoalarm.ui
 
+import android.content.Context
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.net.Uri
+import android.util.Base64
 import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
@@ -27,6 +34,7 @@ import androidx.compose.material.icons.rounded.Campaign
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.ExpandLess
 import androidx.compose.material.icons.rounded.ExpandMore
+import androidx.compose.material.icons.rounded.Image
 import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material.icons.rounded.PlaylistAdd
@@ -36,6 +44,7 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ElevatedCard
@@ -70,10 +79,14 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.example.todoalarm.data.PlanningAiCaller
+import com.example.todoalarm.data.PlanningAiProvider
+import com.example.todoalarm.data.PlanningAiVisionRequest
 import com.example.todoalarm.data.PlanningNote
 import com.example.todoalarm.data.PlanningAnnouncementParser
 import com.example.todoalarm.data.PlanningImportCandidate
@@ -88,19 +101,26 @@ import com.example.todoalarm.data.PlanningRefreshScope
 import com.example.todoalarm.data.RecurrenceConfig
 import com.example.todoalarm.data.RecurrenceType
 import com.example.todoalarm.data.toPlanningImportCandidate
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import java.io.ByteArrayOutputStream
+import java.io.IOException
 import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import java.util.Locale
+import kotlin.math.max
+import kotlin.math.roundToInt
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun PlanningDeskPanel(
     notes: List<PlanningNote>,
     activeNote: PlanningNote?,
+    planningAiProviders: List<PlanningAiProvider>,
     onSelectNote: (Long) -> Unit,
     onCreateNote: suspend (String) -> String?,
     onSaveNote: suspend (Long, String) -> String?,
@@ -139,10 +159,57 @@ internal fun PlanningDeskPanel(
     var postponeSheetVisible by remember { mutableStateOf(false) }
     var undoConfirmVisible by remember { mutableStateOf(false) }
     var operationRunning by remember { mutableStateOf(false) }
+    var visionRecognizing by remember { mutableStateOf(false) }
     val selectedIds = remember { mutableStateMapOf<String, Boolean>() }
     val editableCandidates = remember { mutableStateListOf<PlanningImportCandidate>() }
     val hasUnsavedChanges = activeNote != null && editorValue.text != activeNote.contentMarkdown
     val latestUndoSummary = remember(mappingStates) { latestPlanningUndoSummary(mappingStates) }
+    val visionProviders = remember(planningAiProviders) {
+        planningAiProviders
+            .map { it.normalized() }
+            .filter { it.enabled && it.supportsVision && it.baseUrl.isNotBlank() && it.apiKey.isNotBlank() && it.model.isNotBlank() }
+    }
+    val imagePicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+        if (uri == null) return@rememberLauncherForActivityResult
+        scope.launch {
+            visionRecognizing = true
+            try {
+                val encodedImage = compressPlanningVisionImage(context, uri)
+                val response = PlanningAiCaller.callVisionWithFallback(
+                    providers = planningAiProviders,
+                    request = PlanningAiVisionRequest(
+                        systemPrompt = PlanningVisionSystemPrompt,
+                        prompt = PlanningVisionUserPrompt,
+                        imageBase64 = encodedImage.base64,
+                        imageMimeType = encodedImage.mimeType
+                    )
+                )
+                val recognizedMarkdown = response.content
+                    .replace("\r\n", "\n")
+                    .replace('\r', '\n')
+                    .lines()
+                    .map { it.trim() }
+                    .filter { it.isNotBlank() && !it.startsWith("```") }
+                    .joinToString("\n")
+                    .trim()
+                if (recognizedMarkdown.isBlank()) {
+                    Toast.makeText(context, "未能从图中识别出日程", Toast.LENGTH_SHORT).show()
+                    return@launch
+                }
+                val updated = appendPlanningMarkdown(editorValue.text, recognizedMarkdown)
+                editorValue = TextFieldValue(text = updated, selection = TextRange(updated.length))
+                markdownEditMode = true
+                val lineCount = recognizedMarkdown.lines().count { it.isNotBlank() }
+                Toast.makeText(context, "已追加 $lineCount 条识别结果，请检查后用「识别」按钮进入预览导入", Toast.LENGTH_LONG).show()
+            } catch (error: PlanningVisionImageException) {
+                Toast.makeText(context, error.message ?: "图片过大，请裁剪后重试", Toast.LENGTH_LONG).show()
+            } catch (error: Exception) {
+                Toast.makeText(context, "图片识别失败：${error.message ?: "未知错误"}", Toast.LENGTH_LONG).show()
+            } finally {
+                visionRecognizing = false
+            }
+        }
+    }
 
     LaunchedEffect(activeNote?.id) {
         editorValue = TextFieldValue(activeNote?.contentMarkdown.orEmpty())
@@ -271,6 +338,22 @@ internal fun PlanningDeskPanel(
                         DropdownMenuItem(
                             text = { Text("使用说明") },
                             onClick = { overflowMenuExpanded = false; helpSheetVisible = true }
+                        )
+                        DropdownMenuItem(
+                            text = { Text("从图片识别日程") },
+                            leadingIcon = { Icon(Icons.Rounded.Image, contentDescription = null) },
+                            onClick = {
+                                overflowMenuExpanded = false
+                                focusManager.clearFocus()
+                                if (activeNote == null) {
+                                    Toast.makeText(context, "请先创建或打开一个规划文档", Toast.LENGTH_SHORT).show()
+                                } else if (visionProviders.isEmpty()) {
+                                    Toast.makeText(context, "请在设置中为某个 AI 源开启图片识别支持", Toast.LENGTH_LONG).show()
+                                } else {
+                                    imagePicker.launch("image/*")
+                                }
+                            },
+                            enabled = activeNote != null && !visionRecognizing
                         )
                         DropdownMenuItem(
                             text = { Text(if (shortcutBarExpanded) "隐藏快捷输入栏" else "显示快捷输入栏") },
@@ -461,6 +544,28 @@ internal fun PlanningDeskPanel(
                 }
             )
         }
+    }
+
+    if (visionRecognizing) {
+        AlertDialog(
+            onDismissRequest = {},
+            title = { Text("AI 识别中") },
+            text = {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(14.dp)
+                ) {
+                    CircularProgressIndicator(modifier = Modifier.size(28.dp))
+                    Text(
+                        text = "AI 识别中…可能需要 10-30 秒",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                }
+            },
+            confirmButton = {}
+        )
     }
 
     if (newDialog) {
@@ -2144,6 +2249,89 @@ private fun togglePlanningCheckbox(markdown: String, lineNumber: Int): String {
     }.joinToString("\n")
     return if (hasTrailingNewline && !updated.endsWith("\n")) "$updated\n" else updated
 }
+
+private data class PlanningVisionImagePayload(
+    val base64: String,
+    val mimeType: String = "image/jpeg"
+)
+
+private class PlanningVisionImageException(message: String) : IOException(message)
+
+private suspend fun compressPlanningVisionImage(
+    context: Context,
+    uri: Uri
+): PlanningVisionImagePayload = withContext(Dispatchers.IO) {
+    val resolver = context.contentResolver
+    val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+    resolver.openInputStream(uri)?.use { BitmapFactory.decodeStream(it, null, bounds) }
+        ?: throw PlanningVisionImageException("图片过大，请裁剪后重试")
+    val originalLongSide = max(bounds.outWidth, bounds.outHeight)
+    if (originalLongSide <= 0) throw PlanningVisionImageException("图片过大，请裁剪后重试")
+
+    val decodeOptions = BitmapFactory.Options().apply {
+        inSampleSize = calculatePlanningVisionSampleSize(originalLongSide, PlanningVisionMaxLongSide)
+    }
+    val decoded = resolver.openInputStream(uri)?.use { BitmapFactory.decodeStream(it, null, decodeOptions) }
+        ?: throw PlanningVisionImageException("图片过大，请裁剪后重试")
+    val scaled = scalePlanningVisionBitmap(decoded)
+    if (scaled !== decoded) decoded.recycle()
+
+    val bytes = ByteArrayOutputStream().use { output ->
+        val ok = scaled.compress(Bitmap.CompressFormat.JPEG, PlanningVisionJpegQuality, output)
+        scaled.recycle()
+        if (!ok) throw PlanningVisionImageException("图片过大，请裁剪后重试")
+        output.toByteArray()
+    }
+    if (bytes.isEmpty() || bytes.size > PlanningVisionMaxEncodedBytes) {
+        throw PlanningVisionImageException("图片过大，请裁剪后重试")
+    }
+    PlanningVisionImagePayload(Base64.encodeToString(bytes, Base64.NO_WRAP))
+}
+
+private fun calculatePlanningVisionSampleSize(originalLongSide: Int, targetLongSide: Int): Int {
+    var sample = 1
+    while (originalLongSide / (sample * 2) >= targetLongSide) {
+        sample *= 2
+    }
+    return sample.coerceAtLeast(1)
+}
+
+private fun scalePlanningVisionBitmap(bitmap: Bitmap): Bitmap {
+    val longSide = max(bitmap.width, bitmap.height)
+    if (longSide <= PlanningVisionMaxLongSide) return bitmap
+    val ratio = PlanningVisionMaxLongSide.toFloat() / longSide.toFloat()
+    val width = (bitmap.width * ratio).roundToInt().coerceAtLeast(1)
+    val height = (bitmap.height * ratio).roundToInt().coerceAtLeast(1)
+    return Bitmap.createScaledBitmap(bitmap, width, height, true)
+}
+
+private fun appendPlanningMarkdown(current: String, appended: String): String {
+    val base = current.trimEnd()
+    val addition = appended.trim()
+    if (base.isBlank()) return addition
+    return "$base\n\n$addition"
+}
+
+private const val PlanningVisionMaxLongSide = 1600
+private const val PlanningVisionJpegQuality = 80
+private const val PlanningVisionMaxEncodedBytes = 4 * 1024 * 1024
+
+private const val PlanningVisionUserPrompt = "请识别图中的所有日程。"
+
+private val PlanningVisionSystemPrompt = """
+    你是一个课表/日程识图助手。用户给你一张课表或日程截图，请你识别其中所有的课程或日程，按以下格式逐行输出 Markdown，不要任何解释，不要 code fence：
+
+    H:MM-HH:MM, 课程名, @地点
+    H:MM-HH:MM, 课程名, @地点
+
+    规则：
+    1. 一行一个日程
+    2. 时间段用 24 小时制，连字符分隔
+    3. 地点前加 @，地点不存在就省略 @ 段
+    4. 课程名保持简洁，去掉教师名等冗余信息
+    5. 如果识别到的日程跨多个工作日（例如每周一三五），在每行末尾加 "（每周X）" 或 "（周一/三/五）" 等中文标注
+    6. 看不清的内容用 "?" 占位，不要凭空编造
+""".trimIndent()
 
 private fun planningTags(content: String): List<String> {
     return TagPreviewRegex.findAll(content)

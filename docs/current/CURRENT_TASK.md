@@ -142,6 +142,15 @@ Do not push to GitHub unless the user explicitly asks.
 3. Desktop sync snapshot, todo/event CRUD, event check-in, item completion/cancel/delete, Planning Desk notes/import/refresh/postpone/undo/conflict, group resolution, reminder scheduling cleanup, and group-tag lookup now call repository suspend APIs directly instead of wrapping each operation in `runBlocking`.
 4. Static search confirms `DesktopSyncCoordinator.kt` no longer contains `runBlocking`; the only remaining sync-server `runBlocking` is the intended socket-thread boundary in `DesktopSyncServer.kt`.
 
+### V1-V6 Planning Desk image recognition slice
+
+1. Phone Planning Desk overflow menu now includes `从图片识别日程` and launches the Android image picker instead of adding another shortcut-bar button.
+2. Selected images are decoded off the main thread, resized to a maximum 1600px long side, JPEG-compressed at quality 80, and rejected with `图片过大，请裁剪后重试` if still too large.
+3. AI Provider settings now persist `supportsVision` and expose a compact switch labeled `此服务支持图片识别`; provider summary cards show when image recognition is enabled.
+4. `PlanningAiCaller.callVisionWithFallback` sends OpenAI-compatible vision chat-completion messages only through enabled, complete, vision-capable providers, preserving the existing endpoint fallback behavior.
+5. Image recognition uses the fixed timetable/schedule OCR prompt, shows the non-cancel progress dialog `AI 识别中…可能需要 10-30 秒`, appends returned Markdown to the current planning note, moves the cursor to the end, and asks the user to use the existing `识别` button for preview import.
+6. Empty AI output, missing vision-capable providers, compression failure, and network/API failures now produce the required user-facing toasts without writing partial text into the planning document.
+
 ## Verification Completed
 
 ### Widget slice
@@ -259,6 +268,13 @@ Do not push to GitHub unless the user explicitly asks.
 3. `git diff --check` passed after code and docs synchronization.
 4. No new APK has been built for this slice yet.
 
+### V1-V6 Planning Desk image recognition slice
+
+1. `./gradlew.bat :app:compileDebugKotlin` passed after adding Provider vision support, the vision caller, Settings switch, image picker, compression, progress dialog, and append-to-note flow.
+2. Static search confirmed the new `supportsVision`, `callVisionWithFallback`, `从图片识别日程`, `ActivityResultContracts.GetContent`, image compression helper, and `AI 识别中…可能需要 10-30 秒` surfaces exist in the expected files.
+3. `git diff --check` passed after code synchronization.
+4. No new APK has been built for this slice yet.
+
 ## Verification Still Needed On Device / Browser
 
 1. Install `app/build/outputs/apk/debug/PaykiTodo-1.10.3-debug.apk` on the physical phone if validating the latest built widget APK.
@@ -271,6 +287,5 @@ Do not push to GitHub unless the user explicitly asks.
 
 The full goal remains active. Major remaining slices:
 
-1. V1-V6: Planning Desk image recognition through vision-capable AI providers.
-2. P1/P2/P3: R8/resource shrinking, WebP conversion, icon dependency audit, release launch verification, and final APK-size check.
-3. Final version bump to `1.11.0 / versionCode 222`.
+1. P1/P2/P3: R8/resource shrinking, WebP conversion, icon dependency audit, release launch verification, and final APK-size check.
+2. Final version bump to `1.11.0 / versionCode 222`.

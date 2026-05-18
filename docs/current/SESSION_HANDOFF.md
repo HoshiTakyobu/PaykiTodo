@@ -33,7 +33,8 @@ Long-running Codex sessions can become unreliable. This file exists so a new ses
   19. Phone Planning Desk shortcut toolbar is now reduced to `子任务` and `公告`; task, DDL, reminder, group, date, and schedule input remain natural-text / tag parser workflows instead of visible shortcut buttons.
   20. AI daily/weekly reports, schedule-template saving, and desktop Planning Desk note operations now use narrower DAO queries instead of full-table or full-note-list scans.
   21. Desktop sync business request handling now uses suspend route handlers; the only remaining `runBlocking` is the intentional socket-thread response boundary in `DesktopSyncServer`.
-  22. Full `1.11.0 / versionCode 222` version bump is still pending.
+  22. Phone Planning Desk now supports `更多 -> 从图片识别日程`, using only vision-capable AI providers, appending recognized Markdown to the active note, and preserving the existing preview/import gate before database writes.
+  23. Full `1.11.0 / versionCode 222` version bump is still pending.
 - Latest published signed release APK:
   - `app/build/outputs/apk/release/PaykiTodo-1.10.2-release.apk`
   - GitHub Release: `https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.10.2`
@@ -177,6 +178,14 @@ Long-running Codex sessions can become unreliable. This file exists so a new ses
 3. Snapshot, todo/event CRUD, event check-in, item completion/cancel/delete, Planning Desk notes/import/refresh/postpone/undo/conflict, group resolution, reminder cleanup, and group-tag lookup call repository suspend APIs directly.
 4. Static search should show no `runBlocking` in `DesktopSyncCoordinator.kt`; `DesktopSyncServer.kt` keeps the single socket-boundary `runBlocking`.
 
+## Latest Planning Desk Image Recognition Pass
+
+1. `PlanningAiProvider` now persists `supportsVision`; Settings -> `AI 调用配置` provider editing exposes a compact `此服务支持图片识别` switch and provider cards show when image recognition is enabled.
+2. `PlanningAiCaller.callVisionWithFallback` sends OpenAI-compatible vision chat-completion messages only through enabled, complete, vision-capable providers while preserving endpoint fallback behavior.
+3. Phone Planning Desk overflow menu now includes `从图片识别日程`; it opens the Android image picker, compresses the selected image to a long side no greater than 1600px as JPEG quality 80, and rejects oversized/failing images with `图片过大，请裁剪后重试`.
+4. Image recognition uses the fixed timetable/schedule prompt, shows the non-cancel `AI 识别中…可能需要 10-30 秒` progress dialog, appends non-empty returned Markdown to the current note, moves the cursor to the end, and tells the user to use the existing `识别` button for preview import.
+5. Missing vision-capable providers, empty AI output, compression failure, and network/API failure all surface as user-facing toasts without creating official todos/events or writing partial database items.
+
 ## Previous 1.10.3 Planning Desk Fix Pass
 
 1. Local Planning Markdown parsing recognizes inline `@地点`, quoted `"@地点"`, and `地点：...` event locations.
@@ -318,6 +327,13 @@ Desktop sync suspend handler slice:
 3. Fresh `git diff --check` passed after code and docs synchronization.
 4. No new APK has been built for this slice yet.
 
+Planning Desk image recognition slice:
+
+1. Fresh `./gradlew.bat :app:compileDebugKotlin` passed after adding Provider vision support, the vision caller, Settings switch, image picker, compression, progress dialog, and append-to-note flow.
+2. Static search found the expected `supportsVision`, `callVisionWithFallback`, `从图片识别日程`, image picker, compression helper, and `AI 识别中…可能需要 10-30 秒` surfaces.
+3. Fresh `git diff --check` passed after code and docs synchronization.
+4. No new APK has been built for this slice yet.
+
 Secret / release safety checks already performed:
 
 1. `git check-ignore -v keystore.properties release/PaykiTodo-release.jks app/build/outputs/apk/release/PaykiTodo-1.10.3-release.apk app/build/outputs/apk/debug/PaykiTodo-1.10.3-debug.apk` confirmed local signing material and APK outputs are ignored.
@@ -341,6 +357,7 @@ Secret / release safety checks already performed:
 13. Verify event-reminder check-in on device: create a check-in-enabled event reminder, trigger the full-screen reminder, tap `签到`, and confirm the reminder closes while the event details / board show an active check-in.
 14. Verify tracked-event completion on device: complete a check-in-enabled event with an active check-in, confirm automatic checkout, completion summary values, and final total invested minutes.
 15. In desktop browser, verify event check-in end to end: enable check-in for an event, sign in / sign out multiple times from the preview card, confirm total minutes, backup / restore `eventCheckIns`, and test the desktop check-in endpoints.
+16. Verify Planning Desk image recognition on device: mark a real vision model Provider as `此服务支持图片识别`, pick a course/schedule image through `更多 -> 从图片识别日程`, confirm Markdown is appended to the current note, then run the normal `识别` preview flow.
 
 ## Performance Notes
 
@@ -367,12 +384,15 @@ Secret / release safety checks already performed:
 - `app/src/main/java/com/example/todoalarm/data/BackupManager.kt`
 - `app/src/main/java/com/example/todoalarm/data/BackupModels.kt`
 - `app/src/main/java/com/example/todoalarm/data/DailyReportGenerator.kt`
+- `app/src/main/java/com/example/todoalarm/data/PlanningAiCaller.kt`
+- `app/src/main/java/com/example/todoalarm/data/PlanningAiProvider.kt`
 - `app/src/main/java/com/example/todoalarm/sync/DesktopSyncCoordinator.kt`
 - `app/src/main/java/com/example/todoalarm/sync/DesktopSyncModels.kt`
 - `app/src/main/java/com/example/todoalarm/ui/DashboardChrome.kt`
 - `app/src/main/java/com/example/todoalarm/ui/DashboardScreen.kt`
 - `app/src/main/java/com/example/todoalarm/ui/MainActivity.kt`
 - `app/src/main/java/com/example/todoalarm/ui/SettingsPanel.kt`
+- `app/src/main/java/com/example/todoalarm/ui/PlanningDeskPanel.kt`
 - `app/src/main/java/com/example/todoalarm/ui/TodoCards.kt`
 - `app/src/main/java/com/example/todoalarm/ui/TodoViewModel.kt`
 - `app/src/main/java/com/example/todoalarm/widget/TodoWidgetService.kt`

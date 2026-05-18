@@ -1141,7 +1141,7 @@ private fun planningTutorialPages(): List<PlanningTutorialPage> {
             title = "8. 其他导入方式",
             subtitle = "已整理好的大量待办/日程",
             lines = listOf(
-                "已整理好的大量待办，可以去「我的任务 → 右下角 + 长按 → 批量导入」一次性录入。",
+                "已整理好的大量待办，可以去「待办 → 右下角批量待办」一次性录入。",
                 "日程批量导入在「日历 → 顶部工具栏 → 批量导入」。",
                 "批量导入使用逗号分隔的结构化格式，适合从 Excel 或其他工具粘贴。"
             )

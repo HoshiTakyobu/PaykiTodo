@@ -17,7 +17,8 @@ Long-running Codex sessions can become unreliable. This file exists so a new ses
   3. `MIGRATION_17_18` drops `focus_sessions`, creates `event_check_ins`, creates `todo_group_tags`, adds `checkInEnabled` and `totalCheckInMinutes`, backfills group tags, and merges the old default `专注` group into `例行`.
   4. Room schema export is enabled and schema `18.json` is generated.
   5. AI report retention, debug-only Compose preview tooling, and application-scope non-fatal startup logging are implemented.
-  6. Full `1.11.0 / versionCode 222` version bump is still pending.
+  6. Drawer navigation now shows a single-line `待办`, with group filtering and group maintenance moved into the todo page chip bar.
+  7. Full `1.11.0 / versionCode 222` version bump is still pending.
 - Latest published signed release APK:
   - `app/build/outputs/apk/release/PaykiTodo-1.10.2-release.apk`
   - GitHub Release: `https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.10.2`
@@ -54,6 +55,14 @@ Long-running Codex sessions can become unreliable. This file exists so a new ses
 5. Backup / restore preserves the report-retention preference but still does not export AI API Keys.
 6. App startup initialization uses an application-level `SupervisorJob` scope and records non-fatal initialization failures through `CrashLogger.recordNonFatal`.
 7. Desktop sync already has the 4 MB request-body limit from the previous sync hardening; oversized requests return HTTP 413 and this should be treated as satisfied for P11.
+
+## Latest Drawer / Todo Navigation Pass
+
+1. Drawer entry `我的任务` was renamed to single-line `待办`.
+2. The drawer no longer expands a group list and no longer exposes a standalone `分组管理` section.
+3. The todo page now renders `TodoFilterBar` above the existing `已错过 / 今日待办 / 计划中` sections.
+4. `TodoFilterBar` supports `全部`, sorted group chips, `新建`, tap-to-filter / tap-selected-to-clear, and long-press group edit / delete actions.
+5. Planning Desk tutorial text, README, TODO, Wiki, and current-state docs were updated to describe `待办` and in-page group management.
 
 ## Previous 1.10.3 Planning Desk Fix Pass
 
@@ -102,6 +111,12 @@ Performance / robustness slice:
 2. `git diff --check` passed.
 3. No new APK has been built for this slice yet.
 
+Drawer / todo navigation slice:
+
+1. Fresh `./gradlew.bat :app:compileDebugKotlin` passed after moving group filtering / management into the todo page.
+2. Fresh `git diff --check` passed after docs sync.
+3. No new APK has been built for this slice yet.
+
 Secret / release safety checks already performed:
 
 1. `git check-ignore -v keystore.properties release/PaykiTodo-release.jks app/build/outputs/apk/release/PaykiTodo-1.10.3-release.apk app/build/outputs/apk/debug/PaykiTodo-1.10.3-debug.apk` confirmed local signing material and APK outputs are ignored.
@@ -118,6 +133,7 @@ Secret / release safety checks already performed:
 6. Verify manually enabled linked todo uses event end time as DDL and has no fixed generated note.
 7. Verify desktop-web event color swatches save correctly.
 8. After a focus-removal APK is built, confirm no user-facing focus / pomodoro entry remains in app UI, widgets, desktop web, backup, or AI reports.
+9. Verify drawer / todo navigation on device: drawer has single-line `待办`, no expanded group list, no standalone `分组管理`, and the todo page chip bar can filter, create, edit, and delete groups.
 
 ## Performance Notes
 

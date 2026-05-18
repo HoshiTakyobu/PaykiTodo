@@ -332,29 +332,10 @@ fun DashboardScreen(
         drawerContent = {
             DashboardDrawer(
                 current = section,
-                groups = uiState.groups,
-                selectedGroupId = uiState.selectedGroupId,
                 selectedThemeMode = uiState.settings.themeMode,
                 onSelectSection = { next ->
                     scope.launch {
                         section = next
-                        drawerState.close()
-                    }
-                },
-                onActivateTasksSection = {
-                    section = DashboardSection.ACTIVE
-                },
-                onSelectAllTasks = {
-                    scope.launch {
-                        section = DashboardSection.ACTIVE
-                        onSelectGroup(null)
-                        drawerState.close()
-                    }
-                },
-                onSelectGroup = {
-                    scope.launch {
-                        section = DashboardSection.ACTIVE
-                        onSelectGroup(it)
                         drawerState.close()
                     }
                 },
@@ -531,6 +512,7 @@ fun DashboardScreen(
                             onDeleteCalendarEvent(item, RecurrenceScope.CURRENT)
                         }
                     },
+                    onSelectGroup = onSelectGroup,
                     onCreateGroup = onCreateGroup,
                     onUpdateGroup = onUpdateGroup,
                     onDeleteGroup = onDeleteGroup,

@@ -37,6 +37,14 @@ Do not push to GitHub unless the user explicitly asks.
 6. Generating a daily or weekly report purges older archived AI reports according to the selected retention policy.
 7. Backup / restore preserves the AI report retention policy while still excluding AI API Keys.
 
+### M1/M5 drawer / todo group navigation slice
+
+1. Drawer navigation renames `我的任务` to the shorter single-line `待办`.
+2. The drawer no longer expands task groups and no longer exposes a standalone `分组管理` section.
+3. Group filtering and group management moved into the todo page through a top horizontal chip bar.
+4. The todo page chip bar exposes `全部`, sorted group chips, and `新建`; tapping a group filters todos, tapping the selected group clears the filter, and long-pressing a group chip opens edit/delete actions.
+5. Planning Desk tutorial text, README, TODO, Wiki, and current-state docs now describe the new `待办` entry and in-page group management path.
+
 ## Verification Completed
 
 ### Widget slice
@@ -60,6 +68,12 @@ Do not push to GitHub unless the user explicitly asks.
 2. `git diff --check` passed after the slice.
 3. No new APK has been built for this slice yet.
 
+### M1/M5 drawer / todo group navigation slice
+
+1. `./gradlew.bat :app:compileDebugKotlin` passed after moving group filtering / management into the todo page.
+2. `git diff --check` passed after docs sync.
+3. No new APK has been built for this slice yet.
+
 ## Verification Still Needed On Device / Browser
 
 1. Install `app/build/outputs/apk/debug/PaykiTodo-1.10.3-debug.apk` on the physical phone if validating the latest built widget APK.
@@ -71,11 +85,10 @@ Do not push to GitHub unless the user explicitly asks.
 
 The full goal remains active. Major remaining slices:
 
-1. M1/M5: drawer simplification and moving group management into the todo page.
-2. M3/M2/M4/M6/M7: multi-group todo data model, intersection filter chips, multi-select editor, desktop sync support, and backup support.
-3. C1-C7: event check-in / time tracking across phone UI, widgets, desktop web, backup, and AI reports.
-4. V1-V6: Planning Desk image recognition through vision-capable AI providers.
-5. T1-T3: Planning Desk shortcut bar simplification and help update.
-6. P6/P7/P9/P10/P8: narrow database queries, countdown widget update metadata, and desktop-sync suspend handler cleanup.
-7. P1/P2/P3: R8/resource shrinking, WebP conversion, icon dependency audit, release launch verification, and final APK-size check.
-8. Final version bump to `1.11.0 / versionCode 222`.
+1. M3/M2/M4/M6/M7: multi-group todo data model, intersection filter chips, multi-select editor, desktop sync support, and backup support.
+2. C1-C7: event check-in / time tracking across phone UI, widgets, desktop web, backup, and AI reports.
+3. V1-V6: Planning Desk image recognition through vision-capable AI providers.
+4. T1-T3: Planning Desk shortcut bar simplification and help update.
+5. P6/P7/P9/P10/P8: narrow database queries, countdown widget update metadata, and desktop-sync suspend handler cleanup.
+6. P1/P2/P3: R8/resource shrinking, WebP conversion, icon dependency audit, release launch verification, and final APK-size check.
+7. Final version bump to `1.11.0 / versionCode 222`.

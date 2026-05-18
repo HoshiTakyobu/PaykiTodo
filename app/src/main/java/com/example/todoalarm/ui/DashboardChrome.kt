@@ -46,7 +46,6 @@ import androidx.compose.material.icons.rounded.PostAdd
 import androidx.compose.material.icons.rounded.ExpandLess
 import androidx.compose.material.icons.rounded.ExpandMore
 import androidx.compose.material.icons.rounded.ChevronRight
-import androidx.compose.material.icons.rounded.Folder
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material.icons.rounded.TaskAlt
 import androidx.compose.material.icons.rounded.ViewAgenda
@@ -150,28 +149,21 @@ internal enum class DashboardSection(
     val topBarTitle: String
 ) {
     BOARD("每日看板", Icons.Rounded.ViewAgenda, "每日看板"),
-    ACTIVE("我的任务", Icons.Rounded.TaskAlt, "我的任务"),
+    ACTIVE("待办", Icons.Rounded.TaskAlt, "待办"),
     CALENDAR("日历", Icons.Rounded.CalendarMonth, "日历"),
     PLANNING("规划台", Icons.Rounded.PostAdd, "规划台"),
     AI_REPORTS("AI 报告", Icons.Rounded.Insights, "AI 报告"),
     HISTORY("历史记录", Icons.Rounded.History, "历史记录"),
-    GROUPS("分组管理", Icons.Rounded.Folder, "分组管理"),
     SETTINGS("设置", Icons.Rounded.Settings, "设置")
 }
 
 @Composable
 internal fun DashboardDrawer(
     current: DashboardSection,
-    groups: List<TaskGroup>,
-    selectedGroupId: Long?,
     selectedThemeMode: ThemeMode,
     onSelectSection: (DashboardSection) -> Unit,
-    onActivateTasksSection: () -> Unit,
-    onSelectAllTasks: () -> Unit,
-    onSelectGroup: (Long) -> Unit,
     onThemeModeChange: (ThemeMode) -> Unit
 ) {
-    var taskExpanded by rememberSaveable { mutableStateOf(true) }
     ModalDrawerSheet(
         modifier = Modifier
             .fillMaxHeight()
@@ -230,33 +222,12 @@ internal fun DashboardDrawer(
                         selected = current == DashboardSection.BOARD,
                         onClick = { onSelectSection(DashboardSection.BOARD) }
                     )
-                    DrawerExpandableHeader(
-                        icon = Icons.Rounded.TaskAlt,
-                        title = "我的任务",
+                    DrawerSectionButton(
+                        section = DashboardSection.ACTIVE,
                         selected = current == DashboardSection.ACTIVE,
-                        expanded = taskExpanded,
-                        onClick = {
-                            taskExpanded = !taskExpanded
-                            onActivateTasksSection()
-                        }
+                        onClick = { onSelectSection(DashboardSection.ACTIVE) }
                     )
-                    if (taskExpanded) {
-                        DrawerTaskItem(
-                            label = "全部任务",
-                            selected = current == DashboardSection.ACTIVE && selectedGroupId == null,
-                            colorHex = null,
-                            onClick = onSelectAllTasks
-                        )
-                        groups.forEach { group ->
-                            DrawerTaskItem(
-                                label = group.name,
-                                selected = current == DashboardSection.ACTIVE && selectedGroupId == group.id,
-                                colorHex = group.colorHex,
-                                onClick = { onSelectGroup(group.id) }
-                            )
-                        }
-                    }
-                    DashboardSection.entries.filter { it != DashboardSection.ACTIVE && it != DashboardSection.BOARD }.forEach { section ->
+                    DashboardSection.entries.filter { it != DashboardSection.BOARD && it != DashboardSection.ACTIVE }.forEach { section ->
                         DrawerSectionButton(
                             section = section,
                             selected = current == section,
@@ -377,6 +348,7 @@ internal fun DashboardBody(
     onCancelTodo: (TodoItem) -> Unit,
     onDeleteTodo: (TodoItem) -> Unit,
     onDeleteCalendarEvent: (TodoItem) -> Unit,
+    onSelectGroup: (Long?) -> Unit,
     onCreateGroup: suspend (String, String) -> String?,
     onUpdateGroup: suspend (TaskGroup) -> String?,
     onDeleteGroup: suspend (Long) -> String?,
@@ -677,6 +649,17 @@ internal fun DashboardBody(
             }
 
             DashboardSection.ACTIVE -> {
+                item {
+                    TodoFilterBar(
+                        groups = uiState.groups,
+                        selectedGroupId = uiState.selectedGroupId,
+                        onSelectGroup = onSelectGroup,
+                        onCreateGroup = onCreateGroup,
+                        onUpdateGroup = onUpdateGroup,
+                        onDeleteGroup = onDeleteGroup
+                    )
+                }
+
                 if (uiState.missedItems.isNotEmpty()) {
                     item {
                         ExpandableSectionHeader(
@@ -735,15 +718,6 @@ internal fun DashboardBody(
                         CompletedTodoCard(item, uiState.groups, { onEdit(item) }, { onRestoreTodo(item) })
                     }
                 }
-            }
-
-            DashboardSection.GROUPS -> item {
-                GroupManagementPanel(
-                    groups = uiState.groups,
-                    onCreateGroup = onCreateGroup,
-                    onUpdateGroup = onUpdateGroup,
-                    onDeleteGroup = onDeleteGroup
-                )
             }
             DashboardSection.CALENDAR -> Unit
             DashboardSection.PLANNING -> Unit
@@ -1462,84 +1436,6 @@ private fun DrawerSectionButton(
                 color = if (selected) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
-    }
-}
-
-@Composable
-private fun DrawerExpandableHeader(
-    icon: ImageVector,
-    title: String,
-    selected: Boolean,
-    expanded: Boolean,
-    onClick: () -> Unit
-) {
-    Surface(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick),
-        shape = RoundedCornerShape(18.dp),
-        color = if (selected) MaterialTheme.colorScheme.primary.copy(alpha = 0.14f) else Color.Transparent
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 12.dp, vertical = 12.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(14.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(
-                    imageVector = icon,
-                    contentDescription = null,
-                    modifier = Modifier.size(24.dp),
-                    tint = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.titleMedium.copy(fontSize = 19.sp),
-                    fontWeight = FontWeight.Bold,
-                    color = if (selected) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-            Icon(
-                imageVector = if (expanded) Icons.Rounded.ExpandLess else Icons.Rounded.ExpandMore,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
-    }
-}
-
-@Composable
-private fun DrawerTaskItem(
-    label: String,
-    selected: Boolean,
-    colorHex: String?,
-    onClick: () -> Unit
-) {
-    val tint = colorHex?.let(::colorFromHex) ?: MaterialTheme.colorScheme.primary
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .padding(start = 20.dp, end = 8.dp, top = 2.dp, bottom = 2.dp),
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Box(
-            modifier = Modifier
-                .size(10.dp)
-                .background(tint, CircleShape)
-        )
-        Text(
-            text = label,
-            style = MaterialTheme.typography.bodyLarge.copy(fontSize = 17.sp),
-            fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
-            color = if (selected) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant
-        )
     }
 }
 

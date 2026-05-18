@@ -9,6 +9,7 @@
 - Room schema 导出已开启，`app/schemas/com.example.todoalarm.data.AppDatabase/18.json` 记录数据库 18 结构；`ui-tooling-preview` 改为 debug-only 依赖，避免 release 继续携带预览工具依赖
 - AI 日报 / 周报设置新增“报告保留时长”下拉项（30 天 / 90 天 / 365 天 / 永久），生成新报告后会按设置清理过期归档；该设置会进入备份但不导出 API Key
 - 应用启动初始化改用带 `SupervisorJob` 和非致命异常记录的 application scope，避免裸 `CoroutineScope(Dispatchers.IO)` 静默吞掉初始化失败
+- 抽屉导航把“我的任务”收口为单行“待办”，删除展开分组列表和独立“分组管理”入口；待办页顶部新增横向分组筛选 chip，支持点选筛选、长按编辑分组和新建分组
 - 验证：`./gradlew.bat :app:compileDebugKotlin`、`git diff --check` 通过；本条仍是开发中 checkpoint，尚未生成新的可安装 APK
 
 ## v1.10.3

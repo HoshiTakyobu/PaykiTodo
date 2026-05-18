@@ -14,7 +14,8 @@ This file tracks the product at a practical level for new coding sessions.
 - no-deadline todos; active no-DDL items are treated as `今日待办` across phone board, Android widget board query, desktop board, and desktop todo management
 - lightweight comma-based todo batch import with preview validation
 - todo batch-import DDL supports same-day clock input such as `16:30` / `16：30`, plus Planning Desk-style natural date forms such as `5.28`, `5月28日`, `明天`, and `周五`; date-only values default to `23:59`
-- My Tasks exposes todo batch import beside the bottom-right new-todo button instead of as a top content row
+- Todo page exposes todo batch import beside the bottom-right new-todo button instead of as a top content row
+- drawer navigation exposes a single-line `待办` entry; group filtering and group management live in the todo page chip bar instead of an expandable drawer group list or standalone group page
 - complete / cancel / restore flows
 - active todo preview now uses the same bottom-sheet visual language as calendar event preview
 - active todo card body opens preview; completion is isolated to the checkbox to avoid accidental completion
@@ -177,7 +178,7 @@ This file tracks the product at a practical level for new coding sessions.
 - widget day/night colors are resource-backed, with daily-board background art, dark-mode scrims, and text colors for launcher readability
 - widget refresh uses a board-range Room query rather than loading all historical todos, and duplicate `onReceive` update routing has been removed
 - widget board-range query explicitly includes active no-DDL todos, so the launcher widget's 今日待办 block matches the phone daily board instead of dropping no-DDL tasks
-- tapping a todo area opens the in-app My Tasks section, tapping a schedule / event area opens Calendar without forcing an editor detail, tapping an announcement row opens the source Planning Desk note, and header / empty rows return to the default daily board
+- tapping a todo area opens the in-app `待办` section, tapping a schedule / event area opens Calendar without forcing an editor detail, tapping an announcement row opens the source Planning Desk note, and header / empty rows return to the default daily board
 - widget empty states now use the same card-style visual direction as the in-app daily board rather than thin bordered rows
 - widget schedule content is aggregated into one card with a left date block, today rows, tomorrow label, and tomorrow rows instead of independent event cards; todo cards use the task group's color strip
 - widget root includes a daily-board-style background image layer plus tuned day-night scrims; the fixed menu/title/date header has been removed so the launcher widget opens directly into board content and cannot show a stale header date

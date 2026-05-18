@@ -41,7 +41,7 @@
 
 ## Current Worktree Reality
 
-The repository is implementing the larger `1.11.0 / versionCode 222` goal from the current `1.10.3 / 221` baseline. The Android widget requirements have already landed in the current baseline. The first `1.11.0` goal slice removes the former focus / pomodoro mode and prepares the database for later check-in and multi-group todo work. The second small `1.11.0` slice adds database schema export, debug-only Compose tooling, structured startup initialization, and AI-report retention cleanup. The full `1.11.0` version bump is still pending.
+The repository is implementing the larger `1.11.0 / versionCode 222` goal from the current `1.10.3 / 221` baseline. The Android widget requirements have already landed in the current baseline. The first `1.11.0` goal slice removes the former focus / pomodoro mode and prepares the database for later check-in and multi-group todo work. The second small `1.11.0` slice adds database schema export, debug-only Compose tooling, structured startup initialization, and AI-report retention cleanup. The current navigation slice renames the drawer task entry to single-line `待办`, removes the drawer group expansion and standalone `分组管理` entry, and moves group filtering / group maintenance into the todo page chip bar. The full `1.11.0` version bump is still pending.
 
 Most important current baseline facts:
 
@@ -64,7 +64,9 @@ Most important current baseline facts:
 - Backup / restore preserves the AI report retention policy while still excluding AI API Keys.
 - Application startup initialization uses an application-level `SupervisorJob` scope and records non-fatal initialization failures through `CrashLogger.recordNonFatal`.
 - Desktop sync keeps the 4 MB request-body limit and returns HTTP 413 for oversized requests.
-- `./gradlew.bat :app:compileDebugKotlin` and `git diff --check` have passed for the schema / report-retention / startup-scope slice; no new APK has been built after that slice yet.
+- Drawer navigation now shows `待办` as a simple module entry instead of expandable `我的任务`.
+- Group filtering and group management now live in the todo page top chip bar: `全部`, each sorted group, and `新建`; long-pressing a group chip opens edit / delete behavior.
+- `./gradlew.bat :app:compileDebugKotlin` and `git diff --check` have passed for both the schema / report-retention / startup-scope slice and the drawer / todo navigation slice.
 
 ## Immediate Manual Verification Targets
 
@@ -83,3 +85,7 @@ Most important current baseline facts:
 5. Regression:
    - normal event import does not create an unwanted todo;
    - manually linked todo has DDL equal to event end time and no fixed generated note.
+6. Drawer / todo navigation:
+   - drawer shows a single-line `待办`;
+   - drawer has no expanded group list and no standalone `分组管理`;
+   - todo page chip bar filters by group, `新建` creates a group, and long-press edits / deletes a group.

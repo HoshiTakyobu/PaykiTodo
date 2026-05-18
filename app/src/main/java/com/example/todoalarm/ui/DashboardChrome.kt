@@ -50,6 +50,7 @@ import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material.icons.rounded.TaskAlt
 import androidx.compose.material.icons.rounded.ViewAgenda
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ElevatedCard
@@ -61,6 +62,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalDrawerSheet
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -68,6 +70,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -83,6 +86,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -117,9 +121,11 @@ import com.example.todoalarm.data.ThemeMode
 import com.example.todoalarm.data.TodoItem
 import com.example.todoalarm.data.WeekStartMode
 import com.example.todoalarm.ui.theme.PaykiGreetingFontFamily
+import android.widget.Toast
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.launch
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalDateTime
@@ -652,6 +658,9 @@ internal fun DashboardBody(
                         todayEvents = todayScheduleItems,
                         tomorrowEvents = tomorrowScheduleItems,
                         onOpenEvent = onEditCalendarEvent,
+                        onGetEventCheckIns = onGetEventCheckIns,
+                        onCheckInEvent = onCheckInCalendarEvent,
+                        onCheckOutEvent = onCheckOutCalendarEvent,
                         onNavigatePlanning = onNavigatePlanning
                     )
                 }
@@ -1072,6 +1081,9 @@ private fun TodayScheduleBoardCard(
     todayEvents: List<TodoItem>,
     tomorrowEvents: List<TodoItem>,
     onOpenEvent: (TodoItem) -> Unit,
+    onGetEventCheckIns: suspend (Long) -> List<EventCheckIn>,
+    onCheckInEvent: suspend (Long) -> String?,
+    onCheckOutEvent: suspend (Long) -> String?,
     onNavigatePlanning: () -> Unit = {}
 ) {
     ElevatedCard(
@@ -1132,6 +1144,9 @@ private fun TodayScheduleBoardCard(
                         BoardScheduleEventRow(
                             item = item,
                             now = now,
+                            onGetEventCheckIns = onGetEventCheckIns,
+                            onCheckInEvent = onCheckInEvent,
+                            onCheckOutEvent = onCheckOutEvent,
                             onClick = { onOpenEvent(item) }
                         )
                     }
@@ -1170,10 +1185,38 @@ private fun TodayScheduleBoardCard(
 private fun BoardScheduleEventRow(
     item: TodoItem,
     now: LocalDateTime?,
+    onGetEventCheckIns: (suspend (Long) -> List<EventCheckIn>)? = null,
+    onCheckInEvent: (suspend (Long) -> String?)? = null,
+    onCheckOutEvent: (suspend (Long) -> String?)? = null,
     onClick: () -> Unit
 ) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
     val tint = item.accentColorHex?.let(::colorFromHex) ?: MaterialTheme.colorScheme.primary
     val inProgress = now?.let { DailyBoardSnapshotBuilder.eventInProgress(item, it) } == true
+    var refreshSerial by remember(item.id) { mutableStateOf(0) }
+    var actionRunning by remember(item.id) { mutableStateOf(false) }
+    val checkIns by produceState(
+        initialValue = emptyList<EventCheckIn>(),
+        item.id,
+        item.checkInEnabled,
+        inProgress,
+        refreshSerial
+    ) {
+        value = if (item.checkInEnabled && inProgress && onGetEventCheckIns != null) {
+            onGetEventCheckIns(item.id)
+        } else {
+            emptyList()
+        }
+    }
+    val activeCheckIn = checkIns.firstOrNull { it.checkOutAtMillis == null }
+    val checkInStatus = remember(item.checkInEnabled, inProgress, activeCheckIn, now) {
+        when {
+            !item.checkInEnabled || !inProgress -> null
+            activeCheckIn == null -> "未签到"
+            else -> "签到中 · 已 ${formatBoardCheckInMinutes(activeCheckIn, now)}"
+        }
+    }
     val gold = Color(0xFFFFC94A)
     val rowShape = RoundedCornerShape(18.dp)
     val rowColor = if (inProgress) gold else tint
@@ -1238,9 +1281,63 @@ private fun BoardScheduleEventRow(
                             overflow = TextOverflow.Ellipsis
                         )
                     }
+                    if (checkInStatus != null) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text(
+                                text = checkInStatus,
+                                color = if (activeCheckIn == null) MaterialTheme.colorScheme.onSurfaceVariant else gold,
+                                style = MaterialTheme.typography.bodySmall,
+                                fontWeight = FontWeight.SemiBold,
+                                modifier = Modifier.weight(1f)
+                            )
+                            if (onCheckInEvent != null && onCheckOutEvent != null) {
+                                TextButton(
+                                    enabled = !actionRunning,
+                                    colors = ButtonDefaults.textButtonColors(
+                                        contentColor = if (activeCheckIn == null) Color(0xFF2E7D32) else Color(0xFFD14343)
+                                    ),
+                                    onClick = {
+                                        scope.launch {
+                                            actionRunning = true
+                                            val message = if (activeCheckIn == null) {
+                                                onCheckInEvent(item.id)
+                                            } else {
+                                                onCheckOutEvent(item.id)
+                                            }
+                                            Toast.makeText(
+                                                context,
+                                                message ?: if (activeCheckIn == null) "已签到" else "已签退",
+                                                Toast.LENGTH_SHORT
+                                            ).show()
+                                            if (message == null) refreshSerial += 1
+                                            actionRunning = false
+                                        }
+                                    }
+                                ) {
+                                    Text(if (activeCheckIn == null) "签到" else "签退")
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }
+    }
+}
+
+private fun formatBoardCheckInMinutes(checkIn: EventCheckIn, now: LocalDateTime?): String {
+    val nowMillis = now?.atZone(ZoneId.systemDefault())?.toInstant()?.toEpochMilli() ?: System.currentTimeMillis()
+    val minutes = ((nowMillis - checkIn.checkInAtMillis).coerceAtLeast(0L) / 60_000L).toInt()
+    val hours = minutes / 60
+    val rest = minutes % 60
+    return when {
+        hours > 0 && rest > 0 -> "${hours}h${rest}m"
+        hours > 0 -> "${hours}h"
+        else -> "${rest}m"
     }
 }
 

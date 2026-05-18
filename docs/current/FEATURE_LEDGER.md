@@ -39,6 +39,7 @@ This file tracks the product at a practical level for new coding sessions.
 - board schedule rows align the left color strip to the measured height of the event text block
 - board schedule rows keep normal and in-progress color strips in one aligned column
 - normal board schedule rows have no outer fill or border, while in-progress rows use a gold border with only subtle inner highlight
+- board in-progress schedule rows show check-in status for check-in-enabled events and expose compact `签到` / `签退` actions
 - daily board shows a distinct completion message when today's schedule existed but all events have already ended
 - daily board always shows the tomorrow schedule section, including `明天暂无日程` when tomorrow has no events
 - daily board onboarding card is readable in dark mode, can be dismissed, and can be reset from Settings -> About -> 使用说明

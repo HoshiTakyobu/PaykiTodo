@@ -75,6 +75,12 @@ Do not push to GitHub unless the user explicitly asks.
 2. The details card loads event check-in records, shows total invested time, highlights an active check-in as `签到中`, and lists closed / active segments.
 3. The details card can execute `签到` and `签退`, then refresh both the displayed event statistics and check-in records.
 
+### C5 phone daily-board check-in status slice
+
+1. Phone daily board in-progress schedule rows now show `未签到` for check-in-enabled events with no active record.
+2. Phone daily board in-progress schedule rows now show `签到中 · 已 Xm` while a check-in is active.
+3. The in-progress row exposes a compact `签到` / `签退` action and refreshes the row state after a successful operation.
+
 ## Verification Completed
 
 ### Widget slice
@@ -129,6 +135,12 @@ Do not push to GitHub unless the user explicitly asks.
 2. `git diff --check` passed after the slice.
 3. No new APK has been built for this slice yet.
 
+### C5 phone daily-board check-in status slice
+
+1. `./gradlew.bat :app:compileDebugKotlin` passed after adding daily-board in-progress event check-in status and compact sign-in / sign-out actions.
+2. `git diff --check` passed after the slice.
+3. No new APK has been built for this slice yet.
+
 ## Verification Still Needed On Device / Browser
 
 1. Install `app/build/outputs/apk/debug/PaykiTodo-1.10.3-debug.apk` on the physical phone if validating the latest built widget APK.
@@ -141,7 +153,7 @@ Do not push to GitHub unless the user explicitly asks.
 
 The full goal remains active. Major remaining slices:
 
-1. C3-C7 remaining: event check-in / time tracking still needs daily-board row status/button, full-screen reminder button, completion statistics, settings switches, widget status, desktop web UI, and AI report integration.
+1. C3-C7 remaining: event check-in / time tracking still needs full-screen reminder button, completion statistics, settings switches, widget status, desktop web UI, and AI report integration.
 2. V1-V6: Planning Desk image recognition through vision-capable AI providers.
 3. T1-T3: Planning Desk shortcut bar simplification and help update.
 4. P6/P7/P9/P10/P8: narrow database queries, countdown widget update metadata, and desktop-sync suspend handler cleanup.

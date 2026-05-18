@@ -22,7 +22,8 @@ Long-running Codex sessions can become unreliable. This file exists so a new ses
   8. Event check-in data and desktop-sync API foundations are implemented: events can persist `checkInEnabled`, check-in records can be created / checked out / totaled, backup includes `eventCheckIns`, and desktop sync exposes check-in endpoints.
   9. Phone calendar-event editor now exposes the `打卡追踪` switch and preserves `checkInEnabled` when events are moved.
   10. Phone calendar-event details sheet now has a `打卡追踪` card for enabled events, with record loading, total invested time, active check-in status, `签到`, and `签退`.
-  11. Full `1.11.0 / versionCode 222` version bump is still pending.
+  11. Phone daily-board in-progress schedule rows show check-in status for enabled events and expose compact `签到` / `签退` actions.
+  12. Full `1.11.0 / versionCode 222` version bump is still pending.
 - Latest published signed release APK:
   - `app/build/outputs/apk/release/PaykiTodo-1.10.2-release.apk`
   - GitHub Release: `https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.10.2`
@@ -97,6 +98,12 @@ Long-running Codex sessions can become unreliable. This file exists so a new ses
 1. Calendar event details bottom sheet shows a `打卡追踪` card only for events with `checkInEnabled = true`.
 2. The card loads event check-in records, shows total invested time, marks active records as `签到中`, and lists closed / active segments.
 3. The card can perform `签到` and `签退`, then refresh both the displayed event statistics and record list.
+
+## Latest Phone Daily-Board Check-In Pass
+
+1. In-progress schedule rows on the phone daily board show `未签到` for check-in-enabled events with no active record.
+2. In-progress schedule rows show `签到中 · 已 Xm` while a check-in is active.
+3. The in-progress row exposes a compact `签到` / `签退` action and refreshes the row state after a successful operation.
 
 ## Previous 1.10.3 Planning Desk Fix Pass
 
@@ -173,6 +180,12 @@ Phone event editor check-in switch slice:
 Phone event details check-in operation slice:
 
 1. Fresh `./gradlew.bat :app:compileDebugKotlin` passed after wiring phone event details to check-in record loading, sign-in, and sign-out operations.
+2. Fresh `git diff --check` passed after the slice.
+3. No new APK has been built for this slice yet.
+
+Phone daily-board check-in status slice:
+
+1. Fresh `./gradlew.bat :app:compileDebugKotlin` passed after adding daily-board in-progress event check-in status and compact sign-in / sign-out actions.
 2. Fresh `git diff --check` passed after the slice.
 3. No new APK has been built for this slice yet.
 

@@ -4,8 +4,8 @@
 
 ### In Progress
 
-- Verify version `1.10.2` on device after the countdown remaining-time rewrite, ended-event count fix, launcher widget picker labels/previews, independent countdown widget refresh/deep-links, and independent focus page/widget split
-- Keep `README.md`, `CHANGELOG.md`, Wiki, in-app help sheets, desktop-web help, and current-state docs aligned with version `1.10.2`
+- Verify version `1.10.3` on device after the planning-desk location parsing, linked-todo default, linked-todo notes, and desktop event color preset fixes
+- Keep `README.md`, `CHANGELOG.md`, Wiki, in-app help sheets, desktop-web help, and current-state docs aligned with version `1.10.3`
 - Continue planning-desk usability polish without expanding into drag/drop, Gantt, AI auto-planning, or complex project trees
 - Improve repo-native handoff so new sessions do not depend on long chat history
 
@@ -45,7 +45,7 @@
 - Reminder DDL 推迟 should accept positive minute increments, same-date clock input, and full date-time input, and should reject targets that are not later than the current DDL
 - Launch screen icon should use the transparent logo asset without a white square background
 - Input help question-mark buttons should open the correct syntax help beside reminder, batch, and snooze fields
-- In-app Wiki should describe the current 1.10.2 settings, reminder, calendar, planning-desk, announcement, countdown-day, widget, focus-mode, desktop daily board, AI report archive, desktop sync, and input syntax accurately
+- In-app Wiki should describe the current 1.10.3 settings, reminder, calendar, planning-desk, announcement, countdown-day, widget, focus-mode, desktop daily board, AI report archive, desktop sync, and input syntax accurately
 - In-app Wiki should keep a left navigation / right article layout on phone-sized screens
 - Daily board should show a separate completion message when today's schedule existed but all events have ended
 - Drawer header icon should stay visually circular and not expose a white rounded-rectangle launcher background
@@ -102,15 +102,17 @@
 - 专注模式 settings should be regression-tested after installing `1.10.2`: default duration 5-90 minutes, extension duration 1-30 minutes, keep-screen-on behavior, and the documented-only notification-suppression preference.
 - Desktop web Planning Desk should be tested from a real browser connected to the phone after installing `1.8.9`, including auto-save, `Ctrl+S`, `Ctrl+Enter`, select-all / clear-all, no-empty-import guard, the desktop Planning Desk help modal, document delete, editable preview, mixed reminder input, announcement syntax, parser edge cases, import marker write-back, and the mapping refresh/postpone/undo/conflict actions
 - Desktop web daily board should be regression-tested from a real browser after installing `1.10.2`: first tab should show current item / next item, countdown targets, today todos, today schedule with ended events hidden and not counted, in-progress gold highlight, tomorrow schedule or empty hint, and no focus statistics block in the board surface.
-- Desktop web Planning Desk AI import should be tested with `16:05-18:00 入党表格填写`: preview should keep title `入党表格填写`, group should stay empty unless the source line explicitly contains a group marker, and importing the selected AI candidate should create one event rather than reporting `已导入 0 条`
+- Desktop web Planning Desk AI import should be tested with `16:05-18:00 入党表格填写` and `10:00-12:00, 【课程】习思想，"@主楼B1-412"`: preview should keep titles clean, group should stay empty unless the source line explicitly contains a group marker, location should enter the event location field, importing the selected AI candidate should create one event rather than reporting `已导入 0 条`, and linked todo should stay unchecked unless the user enables it.
+- Planning Desk linked-todo import should be regression-tested after installing `1.10.3`: a normal event import should not create a todo; a manually checked linked todo should use the event end time as DDL and should not contain the old fixed note `由规划台日程自动生成...`.
+- Desktop web event editor should be regression-tested after installing `1.10.3`: the event color field should show the same eight compact preset colors as phone, selecting a swatch should update the saved event color, and custom color input should still work.
 - Planning parser should be expanded with dedicated unit tests when the project gains a stable local JVM test harness
 
 ## Mid-Term Follow-Ups
 
 - Desktop web UI still needs a deeper phone-parity redesign for advanced event/todo editing beyond this bug-fix round
 - Planning Desk Phase 2 has added document search, editable preview, and automatic `#imported` marking. Later work can add Markdown highlighting, project views, drag-to-date/time, and AI-assisted decomposition only after the local workflow proves useful
-- Calendar still needs real-device smoothness verification and profiling for drag/add/edit/delete under very large event sets; current `1.10.2` baseline reuses one date index across month/list/visible all-day surfaces, avoids loading the full active-event list on the daily board, uses a lightweight date window instead of allocating the whole long date list, subscribes phone calendar events by current visible date range instead of observing every active event, and keeps the Calendar top-bar title localized as `日历`.
-- Desktop Web still needs real-browser verification with a large dataset; current `1.10.2` baseline keeps lightweight first board load, visible-range `/api/events?start=...&end=...`, paged/searchable `/api/todos`, indexed desktop todo paging, daily-board countdown display, and Planning Desk preview fields for event location / all-day / countdown / recurrence while phone Calendar now also subscribes only to its visible event range.
+- Calendar still needs real-device smoothness verification and profiling for drag/add/edit/delete under very large event sets; current `1.10.3` baseline reuses one date index across month/list/visible all-day surfaces, avoids loading the full active-event list on the daily board, uses a lightweight date window instead of allocating the whole long date list, subscribes phone calendar events by current visible date range instead of observing every active event, keeps the Calendar top-bar title localized as `日历`, and adds desktop event color presets.
+- Desktop Web still needs real-browser verification with a large dataset; current `1.10.3` baseline keeps lightweight first board load, visible-range `/api/events?start=...&end=...`, paged/searchable `/api/todos`, indexed desktop todo paging, daily-board countdown display, Planning Desk preview fields for event location / all-day / countdown / recurrence, default-off linked todo, and desktop event color presets while phone Calendar now also subscribes only to its visible event range.
 - AI report archive now uses paged Room queries plus keyword/type/range filters backed by generated-time/type indices; future work should move to FTS only if full-text report search becomes a real bottleneck.
 - Lunar calendar support now covers display labels, minimal yearly same-lunar-date recurrence, compact event lunar start/end picking, and wheel-style todo lunar DDL picking; deeper edge-case verification remains pending
 - Android Emulator UI inspection can be used in a later visual QA round; `Pixel_8` AVD exists, but this round could not get a booted emulator listed by `adb devices` for install/screenshot verification

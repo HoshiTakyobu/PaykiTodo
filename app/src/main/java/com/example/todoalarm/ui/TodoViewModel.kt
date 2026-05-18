@@ -1037,10 +1037,7 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
         val ddl = requireNotNull(endAt) { "Linked todo requires event end time" }
         return TodoDraft(
             title = title,
-            notes = listOfNotNull(
-                "由规划台日程自动生成，DDL 为日程结束时间。",
-                notes.takeIf { it.isNotBlank() }
-            ).joinToString("\n"),
+            notes = notes,
             dueAt = ddl,
             reminderAt = null,
             groupId = resolvePlanningGroupId(groupName, groups),

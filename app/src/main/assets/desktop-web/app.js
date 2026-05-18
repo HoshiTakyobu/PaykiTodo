@@ -3,6 +3,7 @@ const EVENT_HEADER_HEIGHT = 58;
 const FIFTEEN_MINUTES = 15 * 60 * 1000;
 const THIRTY_MINUTES = 30 * 60 * 1000;
 const DEFAULT_EVENT_COLOR = '#4e87e1';
+const EVENT_COLOR_PRESETS = ['#4E87E1', '#4CB782', '#FF6B4A', '#BF7B4D', '#8B5CF6', '#0F766E', '#D97706', '#E11D48'];
 const TODO_PAGE_LIMIT = 80;
 const state = {
   token: '',
@@ -1205,7 +1206,7 @@ function renderPlanningPreview() {
     const editable = item.type === 'TODO' || item.type === 'EVENT';
     const importable = editable ? (!item.imported && !item.completed) : (item.importable && !item.imported);
     const checked = importable && !item.importBlocked ? ' checked' : '';
-    const linked = item.type === 'EVENT' ? '<label class="planning-linked"><input type="checkbox" data-planning-linked="' + escapeHtml(item.id) + '"' + (item.createLinkedTodo ? ' checked' : '') + ' /> 同时创建待办</label>' : '';
+    const linked = item.type === 'EVENT' ? '<label class="planning-linked"><input type="checkbox" data-planning-linked="' + escapeHtml(item.id) + '"' + (item.createLinkedTodo ? ' checked' : '') + ' /> 同步创建以日程结束时间为 DDL 的待办任务</label>' : '';
     const editFields = editable ? (
       '<div class="planning-edit-grid">'
       + planningEditableField(item.id, 'title', '标题', item.title || '', '任务标题')
@@ -1775,7 +1776,7 @@ function clearEventForm() {
   document.getElementById('save-event').textContent = '创建日程';
   document.getElementById('delete-event').classList.add('hidden');
   document.getElementById('event-title').value = '';
-  document.getElementById('event-color').value = DEFAULT_EVENT_COLOR;
+  setEventColor(DEFAULT_EVENT_COLOR);
   document.getElementById('event-location').value = '';
   document.getElementById('event-notes').value = '';
   writeDateTimeValue('event-start', '');
@@ -1811,6 +1812,42 @@ function csvValue(value) {
   if (Array.isArray(value)) return value.join(',');
   return String(value || '');
 }
+
+function normalizeHexColor(value) {
+  return String(value || '').trim().toLowerCase();
+}
+
+function setEventColor(value) {
+  const input = document.getElementById('event-color');
+  if (!input) return;
+  input.value = normalizeHexColor(value || DEFAULT_EVENT_COLOR);
+  syncEventColorPresets();
+}
+
+function syncEventColorPresets() {
+  const input = document.getElementById('event-color');
+  const current = normalizeHexColor(input && input.value);
+  document.querySelectorAll('[data-event-color-preset]').forEach(node => {
+    node.classList.toggle('active', normalizeHexColor(node.dataset.eventColorPreset) === current);
+  });
+}
+
+function bindEventColorPresets() {
+  const host = document.getElementById('event-color-presets');
+  const input = document.getElementById('event-color');
+  if (!host || !input) return;
+  host.innerHTML = EVENT_COLOR_PRESETS.map(color => (
+    '<button type="button" class="color-swatch" data-event-color-preset="' + escapeHtml(color) + '" style="--swatch:' + escapeHtml(color) + '" aria-label="选择颜色 ' + escapeHtml(color) + '"></button>'
+  )).join('');
+  host.addEventListener('click', event => {
+    const swatch = event.target.closest?.('[data-event-color-preset]');
+    if (!swatch) return;
+    setEventColor(swatch.dataset.eventColorPreset || DEFAULT_EVENT_COLOR);
+  });
+  input.addEventListener('input', syncEventColorPresets);
+  syncEventColorPresets();
+}
+
 function openEventEditor(item) {
   state.editingEventId = item.id;
   state.pendingEventSeed = null;
@@ -1819,7 +1856,7 @@ function openEventEditor(item) {
   document.getElementById('save-event').textContent = '保存修改';
   document.getElementById('delete-event').classList.remove('hidden');
   document.getElementById('event-title').value = item.title || '';
-  document.getElementById('event-color').value = item.accentColorHex || item.groupColorHex || DEFAULT_EVENT_COLOR;
+  setEventColor(item.accentColorHex || item.groupColorHex || DEFAULT_EVENT_COLOR);
   document.getElementById('event-location').value = item.location || '';
   document.getElementById('event-notes').value = item.notes || '';
   writeDateTimeValue('event-start', formatDateTimeLocalValue(item.startAtMillis));
@@ -2313,4 +2350,5 @@ document.addEventListener('click', event => {
 });
 
 bindDigitInputs();
+bindEventColorPresets();
 syncTopbar();

@@ -1019,7 +1019,7 @@ private fun JSONObject.toPlanningImportCandidateOrNull(index: Int): PlanningImpo
             },
             RecurrenceConfig()
         ),
-        createLinkedTodo = optBoolean("createLinkedTodo", type == PlanningParsedType.EVENT),
+        createLinkedTodo = optBoolean("createLinkedTodo", false),
         defaultToday = optBoolean("defaultToday", false),
         imported = optBoolean("imported", false),
         completed = optBoolean("completed", false),
@@ -1123,10 +1123,7 @@ private fun PlanningImportCandidate.toPlanningLinkedTodoDraft(groups: List<com.e
     val ddl = requireNotNull(endAt) { "日程结束时间不存在" }
     return TodoDraft(
         title = title,
-        notes = listOfNotNull(
-            "由规划台日程自动生成，DDL 为日程结束时间。",
-            notes.takeIf { it.isNotBlank() }
-        ).joinToString("\n"),
+        notes = notes,
         dueAt = ddl,
         reminderAt = null,
         groupId = resolvePlanningGroupId(groupName, groups),

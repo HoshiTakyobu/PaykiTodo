@@ -235,7 +235,14 @@
       <div class="form-grid editor-grid">
         <div class="span-2"><label>标题</label><input id="event-title" class="primary-editor-field" placeholder="标题" /></div>
         <div><label>分组</label><select id="event-group"></select></div>
-        <div><label>日程颜色</label><input id="event-color" type="color" value="#4e87e1" /></div>
+        <div class="event-color-field">
+          <label>日程颜色</label>
+          <div id="event-color-presets" class="color-swatch-row" aria-label="日程颜色预设"></div>
+          <div class="color-custom-row">
+            <span>自定义</span>
+            <input id="event-color" type="color" value="#4e87e1" />
+          </div>
+        </div>
         <div><label>地点</label><input id="event-location" placeholder="地点" /></div>
         <div><label>提醒方式</label><select id="event-reminder-mode"><option value="NOTIFICATION">通知栏提醒</option><option value="FULLSCREEN">全屏提醒</option></select></div>
         <div class="span-2"><label>备注</label><textarea id="event-notes" placeholder="备注"></textarea></div>

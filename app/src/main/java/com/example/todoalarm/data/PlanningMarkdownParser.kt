@@ -159,7 +159,7 @@ object PlanningMarkdownParser {
             }
             val reminder = reminderResult?.offsetsMinutes ?: listOf(DEFAULT_PLANNING_REMINDER_MINUTES)
             val group = tagValue(content, "group").orEmpty()
-            val location = extractLocation(content)
+            val location = event.location.ifBlank { extractLocation(content) }
             val warnings = mutableListOf<String>()
             if (event.defaultToday) warnings += "未写日期，默认今天。"
             val importBlocked = reminder.any { offset -> !event.startAt.minusMinutes(offset.toLong()).isAfter(now) }
@@ -176,7 +176,7 @@ object PlanningMarkdownParser {
                 startAt = event.startAt,
                 endAt = event.endAt,
                 reminderOffsetsMinutes = reminder,
-                createLinkedTodo = true,
+                createLinkedTodo = false,
                 defaultToday = event.defaultToday,
                 importBlocked = importBlocked,
                 parentTitle = parentTitle,
@@ -352,14 +352,16 @@ object PlanningMarkdownParser {
         if (endNextDay || !endAt.isAfter(startAt)) {
             endAt = endAt.plusDays(1)
         }
-        val title = listOf(
+        val titleSource = listOf(
             rest.substring(0, match.range.first).trim(),
             rest.substring(match.range.last + 1).trim()
         ).filter { it.isNotBlank() }.joinToString(" ")
+        val titleLocation = splitTitleAndLocation(titleSource)
         return ParsedNaturalEvent(
             startAt = startAt,
             endAt = endAt,
-            title = cleanTitle(title),
+            title = cleanTitle(titleLocation.title),
+            location = titleLocation.location,
             matchedText = rest.substring(match.range),
             defaultToday = defaultToday
         )
@@ -478,7 +480,10 @@ object PlanningMarkdownParser {
         listOf("schedule", "ddl", "remind", "group", "location", "loc", "place", "地点").forEach { tag ->
             text = text.replace(Regex("(?:^|\\s)#$tag\\s*[^#]+"), " ")
         }
+        text = text.replace(NamedLocationRegex, " ")
+        text = text.replace(QuotedLocationRegex, " ")
         text = text.replace(InlineLocationRegex, " ")
+        text = text.trim().trim(',', '，', '；', ';')
         text = text.replace(BareDdlRegex, " ")
         text = text.replace(BeforeTimeRegex, " ")
         listOf("task", "imported").forEach { tag ->
@@ -495,8 +500,38 @@ object PlanningMarkdownParser {
     private fun extractLocation(content: String): String {
         val tagged = listOf("location", "loc", "place", "地点")
             .firstNotNullOfOrNull { tag -> tagValue(content, tag) }
-        if (!tagged.isNullOrBlank()) return tagged.trim()
+        if (!tagged.isNullOrBlank()) return normalizeLocationToken(tagged)
+        NamedLocationRegex.find(content)?.groupValues?.getOrNull(2)?.let { return normalizeLocationToken(it) }
+        QuotedLocationRegex.find(content)?.groupValues?.getOrNull(1)?.let { return normalizeLocationToken(it) }
         return InlineLocationRegex.find(content)?.groupValues?.getOrNull(1)?.trim().orEmpty()
+    }
+
+    private fun splitTitleAndLocation(raw: String): TitleLocation {
+        val text = raw.trim().trim(',', '，', '；', ';')
+        if (text.isBlank()) return TitleLocation()
+        NamedLocationRegex.find(text)?.let { match ->
+            val title = (text.substring(0, match.range.first) + " " + text.substring(match.range.last + 1))
+                .trim()
+                .trim(',', '，', '；', ';')
+            return TitleLocation(title = title, location = normalizeLocationToken(match.groupValues[2]))
+        }
+        QuotedLocationRegex.find(text)?.let { match ->
+            val title = (text.substring(0, match.range.first) + " " + text.substring(match.range.last + 1))
+                .trim()
+                .trim(',', '，', '；', ';')
+            return TitleLocation(title = title, location = normalizeLocationToken(match.groupValues[1]))
+        }
+        InlineLocationRegex.find(text)?.let { match ->
+            val title = (text.substring(0, match.range.first) + " " + text.substring(match.range.last + 1))
+                .trim()
+                .trim(',', '，', '；', ';')
+            return TitleLocation(title = title, location = normalizeLocationToken(match.groupValues[1]))
+        }
+        return TitleLocation(title = text)
+    }
+
+    private fun normalizeLocationToken(raw: String): String {
+        return raw.trim().trim('"', '\'', '“', '”', '‘', '’', ',', '，', '；', ';')
     }
 
     private fun bareDdlValue(content: String): String? {
@@ -604,8 +639,13 @@ object PlanningMarkdownParser {
         val startAt: LocalDateTime,
         val endAt: LocalDateTime,
         val title: String,
+        val location: String,
         val matchedText: String,
         val defaultToday: Boolean
+    )
+    private data class TitleLocation(
+        val title: String = "",
+        val location: String = ""
     )
 
     private val HeadingRegex = Regex("^#{1,6}\\s+(.+)$")
@@ -621,7 +661,9 @@ object PlanningMarkdownParser {
     private val LeadingDateRegex = Regex("^(今天|今日|明天|明日|后天|周[一二三四五六日天]|星期[一二三四五六日天]|礼拜[一二三四五六日天]|\\d{4}[-./]\\d{1,2}[-./]\\d{1,2}|\\d{4}年\\d{1,2}月\\d{1,2}日?|\\d{1,2}[-./]\\d{1,2}|\\d{1,2}月\\d{1,2}日?)")
     private val BareDdlRegex = Regex("(?:^|\\s)ddl\\s+([^#]+)", RegexOption.IGNORE_CASE)
     private val DdlKeywordRegex = Regex("(截止|deadline|ddl)", RegexOption.IGNORE_CASE)
-    private val InlineLocationRegex = Regex("(?:^|\\s)(@[^\\s#，,；;]+)")
+    private val InlineLocationRegex = Regex("(?:^|[\\s,，；;])(@[^\\s#\"'“”‘’，,；;]+)")
+    private val QuotedLocationRegex = Regex("[\"“”'‘’](@[^\"“”'‘’#]+)[\"“”'‘’]")
+    private val NamedLocationRegex = Regex("(?:^|[\\s,，；;])(地点|location|loc|place)\\s*[:：]\\s*(\"[^\"]+\"|“[^”]+”|'[^']+'|‘[^’]+’|[^#，,；;]+)", RegexOption.IGNORE_CASE)
     private val BeforeTimeRegex = Regex("(\\d{1,2})(?::(\\d{2})|点)(?:前|之前)")
     private val ChineseDayPeriodRegex = Regex("(早上|上午|中午|下午|晚上)")
     private val FuzzyPeriodDeadlineRegex = Regex("(早上|上午|中午|下午|晚上)")

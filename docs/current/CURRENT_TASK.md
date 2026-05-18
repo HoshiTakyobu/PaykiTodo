@@ -2,67 +2,53 @@
 
 ## Active Development Focus
 
-The current round is PaykiTodo `1.10.2` / `versionCode 220`.
+The current round is PaykiTodo `1.10.3` / `versionCode 221`.
 
-Primary goal: fix real-device feedback after the first countdown/widget pass:
+Primary goal: fix Planning Desk and desktop-web issues found after publishing the `1.10.2` release:
 
-1. countdown text should use true remaining days/hours/minutes, without seconds or total-hour expansion;
-2. ended daily-board events should not keep inflating the visible `今日日程` count;
-3. the independent `倒数日` widget should be a compact target list, not a second titled board;
-4. launcher widget picker entries should have clear names, descriptions, suggested sizes, and static previews;
-5. free-focus should move out of `每日看板` into a dedicated focus surface.
+1. Planning Desk must extract event locations such as `@图书馆3楼` and `"@主楼B1-412"` into the event location field instead of leaving them in the title.
+2. Planning Desk event import must not auto-create a linked todo unless the user explicitly enables that preview option.
+3. A manually enabled linked todo must not receive the old fixed note `由规划台日程自动生成，DDL 为日程结束时间。`.
+4. Desktop-web event editing should offer the same compact preset event colors as the phone editor while keeping custom color input.
+5. Documentation and tests should reflect the default-off linked-todo behavior.
 
 ## Completed In This Round
 
-1. Phone, desktop, and widget countdown rendering now use shared day/hour/minute decomposition:
-   - `>= 1 day`: `Nd` plus `xh ym`;
-   - `< 1 day`: `Nh` plus `xm`;
-   - `< 1 hour`: `Nm`;
-   - seconds are not shown.
-2. Countdown targets whose exact target time has passed are filtered out, not just targets whose target date is before today.
-3. Phone daily-board countdown event rows no longer prefix the event time with `日程`.
-4. Phone daily-board, desktop daily-board, and Android 今日看板 widget `今日日程` counts now use visible / unfinished today events; when all today events ended, the count is `0` and the completion message remains.
-5. Android independent `倒数日` widget no longer shows title/date/count header text; rows show remaining time, color strip, target title, and a todo-only completion circle.
-6. Android independent `倒数日` widget row clicks now deep-link to the exact todo/event detail instead of only opening My Tasks or Calendar.
-7. Android independent `倒数日` widget schedules minute ticks so displayed minute text refreshes more frequently than the platform default widget period.
-8. Android 今日看板 widget section titles now use the primary text color rather than the orange header color, fixing the light-mode brown-title mismatch.
-9. Daily board no longer shows the focus stats/free-focus card, and board todo cards no longer expose the focus long-press action.
-10. A new drawer section `专注` hosts the focus stats card and free-focus entry.
-11. A new Android `专注` widget shows today's focus stats and starts free focus directly.
-12. Android widget picker metadata now gives 今日看板 / 倒数日 / 专注 widgets distinct labels, descriptions, suggested sizes, and static preview layouts.
-13. Version metadata moved to `1.10.2 / 220`.
+1. Local Planning Markdown parsing now recognizes inline `@地点`, quoted `"@地点"`, and `地点：...` event locations without polluting event titles.
+2. Local natural-event candidates now default `createLinkedTodo=false`.
+3. AI recognition now defaults event `createLinkedTodo=false` and the system prompt only allows linked todos when the user explicitly asks for them.
+4. AI recognition adds local cleanup for imperfect model output: if an event title/source contains an `@地点` and the AI omitted `location`, PaykiTodo moves it into the location field and removes it from the title.
+5. Phone-side Planning Desk import and desktop-sync Planning Desk import no longer write the fixed auto-generated note into linked todos.
+6. Desktop-web Planning Desk preview uses the clearer label `同步创建以日程结束时间为 DDL 的待办任务`.
+7. Desktop-web event editor now renders the same eight compact color swatches as the phone event editor and syncs the active swatch with the color input.
+8. Unit tests cover default-off linked todos, comma-separated quoted locations, `@图书馆3楼` cleanup, and AI group sanitization.
+9. Version metadata moved to `1.10.3 / 221`.
 
 ## Verification Completed This Round
 
 Completed locally:
 
-1. `./gradlew.bat :app:compileDebugKotlin` passed.
-2. `node --check app/src/main/assets/desktop-web/app.js` passed.
-3. `./gradlew.bat :app:testDebugUnitTest` passed.
-4. `./gradlew.bat :app:assembleDebug` passed and produced `app/build/outputs/apk/debug/PaykiTodo-1.10.2-debug.apk`.
-5. `git diff --check` passed.
-6. APK metadata confirms `versionName = 1.10.2`, `versionCode = 220`.
-7. `git check-ignore -v keystore.properties release/PaykiTodo-release.jks app/build/outputs/apk/debug/PaykiTodo-1.10.2-debug.apk` confirmed signing material and APK artifacts are ignored.
+1. `node --check app/src/main/assets/desktop-web/app.js` passed.
+2. `./gradlew.bat :app:testDebugUnitTest` passed.
+3. `git diff --check` passed.
+4. `./gradlew.bat :app:assembleRelease` passed and produced `app/build/outputs/apk/release/PaykiTodo-1.10.3-release.apk`.
+5. Release APK metadata confirms `versionName = 1.10.3`, `versionCode = 221`.
+6. `apksigner verify --verbose --print-certs app/build/outputs/apk/release/PaykiTodo-1.10.3-release.apk` passed with one v2 signer.
+7. `git check-ignore -v keystore.properties release/PaykiTodo-release.jks app/build/outputs/apk/release/PaykiTodo-1.10.3-release.apk app/build/outputs/apk/debug/PaykiTodo-1.10.2-debug.apk` confirmed signing material and APK outputs are ignored.
+
+Not completed:
+
+- `./gradlew.bat :app:assembleDebug` is blocked because QQ process `53028` holds an open handle on `app/build/outputs/apk/debug/PaykiTodo-1.10.2-debug.apk`, preventing Gradle from deleting the old debug output directory. Close the QQ file preview / transfer that opened this APK, then rerun debug build.
 
 ## Verification Still Needed On Device / Browser
 
-1. Install `app/build/outputs/apk/debug/PaykiTodo-1.10.2-debug.apk` on the physical phone.
-2. Phone-test daily board:
-   - countdown rows show day/hour/minute text without seconds;
-   - event countdown metadata shows only the event time, not redundant `日程`;
-   - ended today events reduce `今日日程` count to 0 while showing the completion message;
-   - focus stats/free-focus no longer appear on the daily board.
-3. Device-test widgets:
-   - widget picker shows clear labels/descriptions/previews for 每日看板, 倒数日, and 专注;
-   - 今日看板 widget section titles are readable in light mode and no focus/countdown sections appear;
-   - 倒数日 widget has no header/date/count text, refreshes minute-level countdown text, and row clicks open exact todo/event details;
-   - 专注 widget opens the focus page from the root and starts free focus from the action area.
-4. Browser-test desktop daily board:
-   - countdown rows use the same day/hour/minute format;
-   - visible today-event count ignores events already ended;
-   - the old focus stats block is absent from the daily-board hero.
-
-## Immediate Practical Next Steps
-
-1. Create a focused local commit.
-2. Do not push unless the user explicitly asks.
+1. Install `app/build/outputs/apk/debug/PaykiTodo-1.10.3-debug.apk` on the physical phone.
+2. In Planning Desk, test:
+   - `10:00-12:00 自习 @图书馆3楼`
+   - `10:00-12:00, 【课程】习思想，"@主楼B1-412"`
+   - `10:00-12:00 自习 地点：图书馆3楼`
+3. Confirm those lines import as events with clean titles and correct locations.
+4. Confirm a normal event import creates only the event.
+5. Confirm manually enabling linked todo creates a todo with DDL equal to event end time and no fixed auto-generated note.
+6. In desktop web, confirm the same Planning Desk cases work through AI preview and local fallback.
+7. In desktop web event editor, confirm preset colors and custom color both save correctly.

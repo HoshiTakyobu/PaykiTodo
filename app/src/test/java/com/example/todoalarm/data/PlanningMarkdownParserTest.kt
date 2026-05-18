@@ -1,6 +1,7 @@
 package com.example.todoalarm.data
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.time.LocalDateTime
@@ -9,7 +10,7 @@ class PlanningMarkdownParserTest {
     private val now = LocalDateTime.of(2026, 5, 14, 8, 0)
 
     @Test
-    fun parsesNaturalScheduleWithDateContextAndLinkedTodoDefault() {
+    fun parsesNaturalScheduleWithDateContextWithoutLinkedTodoDefault() {
         val result = PlanningMarkdownParser.parse(
             """
             # 明天
@@ -24,7 +25,7 @@ class PlanningMarkdownParserTest {
         assertEquals(LocalDateTime.of(2026, 5, 15, 9, 0), event.startAt)
         assertEquals(LocalDateTime.of(2026, 5, 15, 10, 30), event.endAt)
         assertEquals("课程", event.groupName)
-        assertTrue(event.createLinkedTodo)
+        assertFalse(event.createLinkedTodo)
         assertEquals(listOf(5), event.reminderOffsetsMinutes)
     }
 
@@ -226,8 +227,26 @@ class PlanningMarkdownParserTest {
         assertEquals(PlanningParsedType.EVENT, event.type)
         assertEquals("入党表格填写", event.title)
         assertEquals("@主楼B1-412", event.location)
+        assertFalse(event.createLinkedTodo)
         assertEquals(LocalDateTime.of(2026, 5, 14, 16, 5), event.startAt)
         assertEquals(LocalDateTime.of(2026, 5, 14, 18, 0), event.endAt)
+    }
+
+    @Test
+    fun parsesCommaSeparatedQuotedLocationWithoutPollutingEventTitle() {
+        val result = PlanningMarkdownParser.parse(
+            "- [ ] 10:00-12:00, 【课程】习思想，\"@主楼B1-412\"",
+            now = now
+        )
+
+        val event = result.candidates.single()
+        assertEquals(PlanningParsedType.EVENT, event.type)
+        assertEquals("【课程】习思想", event.title)
+        assertEquals("@主楼B1-412", event.location)
+        assertFalse(event.createLinkedTodo)
+        assertEquals("", event.groupName)
+        assertEquals(LocalDateTime.of(2026, 5, 14, 10, 0), event.startAt)
+        assertEquals(LocalDateTime.of(2026, 5, 14, 12, 0), event.endAt)
     }
 
     @Test

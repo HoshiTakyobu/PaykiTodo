@@ -206,6 +206,8 @@ This file tracks the product at a practical level for new coding sessions.
 - widget `1.10.2` pass removes the independent `倒数日` widget header/date/count block, makes rows deep-link to exact todo/event details, changes countdown text to day/hour/minute without seconds, schedules minute-level refresh ticks, and counts only unfinished today events in 今日看板 widget section titles
 - widget `1.10.2` adds distinct launcher-picker labels/descriptions/static previews for 今日看板, 倒数日, and the new 专注 widget
 - widget `1.10.2` adds an independent PaykiTodo `专注` widget that shows today's focus stats and starts free focus directly
+- planning-desk `1.10.3` pass changes event import to default event-only, keeps linked todo creation behind an explicit preview checkbox, removes the fixed generated linked-todo note, and parses `@地点` / quoted `@地点` / `地点：...` into the event location field
+- desktop-web `1.10.3` pass adds compact event color preset swatches matching the phone event editor while preserving custom color input
 - repository todo mutations and Planning Desk note edits / delete / archive operations notify widget data refresh through the application-level widget callback
 
 ### Data / Backup / Diagnostics

@@ -1,6 +1,7 @@
 package com.example.todoalarm.data
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.time.DayOfWeek
@@ -174,5 +175,64 @@ class PlanningAiRecognizerTest {
         assertEquals(RecurrenceType.WEEKLY, event.recurrence.type)
         assertEquals(setOf(DayOfWeek.WEDNESDAY), event.recurrence.weeklyDays)
         assertEquals(LocalDate.of(2026, 6, 30), event.recurrence.endDate)
+    }
+
+    @Test
+    fun eventCreateLinkedTodoDefaultsToFalseAndPreservesQuotedAtLocation() {
+        val result = PlanningAiRecognizer.parseAiContent(
+            content = """
+                {
+                  "items": [
+                    {
+                      "type": "event",
+                      "lineNumber": 1,
+                      "sourceLine": "10:00-12:00, 【课程】习思想，\"@主楼B1-412\"",
+                      "title": "【课程】习思想",
+                      "location": "@主楼B1-412",
+                      "groupName": "课程",
+                      "startAt": "2026-05-15T10:00:00",
+                      "endAt": "2026-05-15T12:00:00"
+                    }
+                  ]
+                }
+            """.trimIndent(),
+            originalMarkdown = "10:00-12:00, 【课程】习思想，\"@主楼B1-412\"",
+            providerName = "TestAI",
+            now = now
+        )
+
+        val event = result.candidates.single()
+        assertEquals("【课程】习思想", event.title)
+        assertEquals("@主楼B1-412", event.location)
+        assertEquals("", event.groupName)
+        assertFalse(event.createLinkedTodo)
+    }
+
+    @Test
+    fun movesAtLocationOutOfAiEventTitleWhenModelMissesLocationField() {
+        val result = PlanningAiRecognizer.parseAiContent(
+            content = """
+                {
+                  "items": [
+                    {
+                      "type": "event",
+                      "lineNumber": 1,
+                      "sourceLine": "10:00-12:00 自习 @图书馆3楼",
+                      "title": "自习 @图书馆3楼",
+                      "startAt": "2026-05-15T10:00:00",
+                      "endAt": "2026-05-15T12:00:00"
+                    }
+                  ]
+                }
+            """.trimIndent(),
+            originalMarkdown = "10:00-12:00 自习 @图书馆3楼",
+            providerName = "TestAI",
+            now = now
+        )
+
+        val event = result.candidates.single()
+        assertEquals("自习", event.title)
+        assertEquals("@图书馆3楼", event.location)
+        assertFalse(event.createLinkedTodo)
     }
 }

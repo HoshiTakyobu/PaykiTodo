@@ -1689,7 +1689,7 @@ private fun PlanningCandidateCard(
                 FilterChip(
                     selected = candidate.createLinkedTodo,
                     onClick = { onCandidateChange(candidate.copy(createLinkedTodo = !candidate.createLinkedTodo)) },
-                    label = { Text("同时创建待办，DDL = 日程结束时间") }
+                    label = { Text("同步创建以日程结束时间为 DDL 的待办任务") }
                 )
             }
             if (validation != null) Text(validation, color = MaterialTheme.colorScheme.error)

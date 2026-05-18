@@ -6,60 +6,62 @@ Long-running Codex sessions can become unreliable. This file exists so a new ses
 
 ## Current Handoff Summary
 
-- The project has been advanced to `1.10.2` / `versionCode 220`.
+- The project is being advanced to `1.10.3` / `versionCode 221`.
 - Main user request for this continuation:
-  1. Countdown rows must stop showing total hours/seconds and use days/hours/minutes correctly.
-  2. App and widgets must not count ended today events as visible `今日日程`.
-  3. The independent `倒数日` widget should not show a redundant header/date/count block and should deep-link to exact items.
-  4. Daily board should not carry free-focus UI; focus should become its own surface.
-  5. Widget picker entries need clear labels, descriptions, suggested sizes, and static previews.
-- Latest debug APK built:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.10.2-debug.apk`
-- Latest signed release APK:
+  1. Planning Desk and AI recognition must extract `@图书馆3楼` / `"@主楼B1-412"` as event locations, not title text.
+  2. Event import must not auto-create linked todos unless the user explicitly enables that preview option.
+  3. Linked todos must not receive the old fixed note `由规划台日程自动生成，DDL 为日程结束时间。`.
+  4. Desktop-web event color editing should match the phone editor's preset color choices.
+  5. Previously published `1.10.2` and earlier commits were pushed and tagged.
+- Latest published signed release APK:
   - `app/build/outputs/apk/release/PaykiTodo-1.10.2-release.apk`
+  - GitHub Release: `https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.10.2`
+- Expected next debug APK after verification:
+  - `app/build/outputs/apk/debug/PaykiTodo-1.10.3-debug.apk`
 - Do not push to GitHub unless the user explicitly asks.
 - Keep `keystore.properties`, `release/`, APK/AAB outputs, API keys, tokens, and private Base URLs out of Git.
 
-## Latest 1.10.2 Fix Pass
+## Latest 1.10.3 Fix Pass
 
-1. `DailyBoardSnapshotBuilder` now filters countdown targets by exact target millis and exposes shared remaining-time text without seconds.
-2. Phone App countdown rows use `Nd` + `xh ym`, `Nh` + `xm`, or `Nm`; event rows show only the schedule time.
-3. Desktop daily-board countdown rows use the same remaining-time format and no longer show the focus stat block.
-4. Phone daily board / desktop daily board / Android widget counts for `今日日程` use unfinished visible events rather than all today-overlapping events.
-5. Android `倒数日` widget is now a compact target list with no title/date/count header and with item-level deep links.
-6. Android `倒数日` widget schedules minute ticks for more accurate minute-level text.
-7. Android 今日看板 widget section titles use primary text color rather than the orange header color, fixing the light-mode brown-title mismatch.
-8. Countdown widget event rows deep-link to the exact event editor, not only the Calendar section.
-9. Daily board no longer displays the free-focus card, and board todo long-press no longer offers start-focus.
-10. Drawer now includes a dedicated `专注` page with focus stats and free-focus entry.
-11. Android includes a new `专注` widget for focus stats and free-focus launch.
-12. Widget picker metadata and preview layouts were added or refreshed for 今日看板, 倒数日, and 专注.
+1. Local Planning Markdown parsing recognizes inline `@地点`, quoted `"@地点"`, and `地点：...` event locations.
+2. Natural event candidates now default `createLinkedTodo=false`.
+3. AI recognition now defaults event `createLinkedTodo=false` and the prompt only permits linked todos when the user explicitly asks.
+4. AI result cleanup moves `@地点` out of event titles when the model forgot the `location` field.
+5. Phone-side and desktop-sync Planning Desk linked todo creation no longer adds a fixed generated note.
+6. Desktop-web Planning Desk preview uses the explicit label `同步创建以日程结束时间为 DDL 的待办任务`.
+7. Desktop-web event editor renders the same eight compact color swatches as the phone editor while preserving custom color input.
+8. Tests were added for location extraction, default-off linked todos, AI cleanup, and group sanitization.
 
 ## Verification Status
 
-Completed locally:
+Completed locally for `1.10.3`:
 
-1. `./gradlew.bat :app:compileDebugKotlin` passed.
-2. `node --check app/src/main/assets/desktop-web/app.js` passed.
-3. `./gradlew.bat :app:testDebugUnitTest` passed.
-4. `./gradlew.bat :app:assembleDebug` passed.
-5. `git diff --check` passed.
-6. `app/build/outputs/apk/debug/output-metadata.json` confirms `1.10.2 / 220`.
-7. `git check-ignore -v keystore.properties release/PaykiTodo-release.jks app/build/outputs/apk/debug/PaykiTodo-1.10.2-debug.apk app/build/outputs/apk/release/PaykiTodo-1.10.2-release.apk` confirmed local signing material and APK outputs stay ignored.
-8. `./gradlew.bat :app:assembleRelease` passed.
-9. `app/build/outputs/apk/release/output-metadata.json` confirms release `1.10.2 / 220`.
-10. `apksigner verify --verbose --print-certs app/build/outputs/apk/release/PaykiTodo-1.10.2-release.apk` passed with one v2 signer.
-11. Git history scan over 181 commits found no committed signing config, keystore/JKS/env secret files, private-key blocks, common live token prefixes, or non-placeholder password/API-key literals. The remaining keyword matches were code identifiers, settings keys, templates, editor insertion tokens, or test example URLs.
+1. `node --check app/src/main/assets/desktop-web/app.js` passed.
+2. `./gradlew.bat :app:testDebugUnitTest` passed.
+3. `git diff --check` passed.
+4. `./gradlew.bat :app:assembleRelease` passed.
+5. `app/build/outputs/apk/release/output-metadata.json` confirms `1.10.3 / 221`.
+6. `apksigner verify --verbose --print-certs app/build/outputs/apk/release/PaykiTodo-1.10.3-release.apk` passed with one v2 signer.
+7. `git check-ignore -v keystore.properties release/PaykiTodo-release.jks app/build/outputs/apk/release/PaykiTodo-1.10.3-release.apk app/build/outputs/apk/debug/PaykiTodo-1.10.2-debug.apk` confirmed local signing material and APK outputs stay ignored.
 
-Latest emulator smoke remains historical from `1.9.21`; this `1.10.2` continuation has not started or reused an emulator.
+Not completed:
+
+- `./gradlew.bat :app:assembleDebug` is blocked because QQ process `53028` holds `app/build/outputs/apk/debug/PaykiTodo-1.10.2-debug.apk` open, so Gradle cannot delete the old debug output directory. Close the QQ file preview / transfer before rerunning debug build.
+
+Already completed for the published `1.10.2` release:
+
+1. `./gradlew.bat :app:assembleRelease` passed.
+2. `app/build/outputs/apk/release/output-metadata.json` confirmed `1.10.2 / 220`.
+3. `apksigner verify --verbose --print-certs app/build/outputs/apk/release/PaykiTodo-1.10.2-release.apk` passed with one v2 signer.
+4. Git history scan over 181 commits found no committed signing config, keystore/JKS/env secret files, private-key blocks, common live token prefixes, or non-placeholder password/API-key literals. The remaining keyword matches were code identifiers, settings keys, templates, editor insertion tokens, or test example URLs.
 
 ## Remaining Device / Browser Verification
 
-1. Install `app/build/outputs/apk/debug/PaykiTodo-1.10.2-debug.apk`.
-2. Verify daily-board countdown text and ended-event count on the phone.
-3. Verify widget picker labels/previews and launcher rendering for 今日看板, 倒数日, and 专注.
-4. Verify countdown widget minute refresh and item deep links on the physical launcher.
-5. Verify desktop daily-board countdown/count/focus removal from a real browser.
+1. Install `app/build/outputs/apk/release/PaykiTodo-1.10.3-release.apk`, or close QQ and rebuild debug before installing `PaykiTodo-1.10.3-debug.apk`.
+2. Verify Planning Desk imports for `@地点`, quoted `@地点`, and `地点：...`.
+3. Verify ordinary event import creates only an event.
+4. Verify manually enabled linked todo uses event end time as DDL and has no fixed generated note.
+5. Verify desktop-web event color swatches save correctly.
 
 ## Performance Notes
 

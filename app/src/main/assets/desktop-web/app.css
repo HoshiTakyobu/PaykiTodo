@@ -387,6 +387,12 @@ button.ghost {
 .switch-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
 .switch-row label { display: inline-flex; align-items: center; gap: 8px; margin: 0; padding: 9px 12px; border-radius: 999px; background: rgba(53,104,212,.08); color: #2f4c78; }
 .switch-row input { width: auto; margin: 0; }
+.event-color-field { display: flex; flex-direction: column; gap: 10px; }
+.color-swatch-row { display: flex; align-items: center; gap: 9px; flex-wrap: wrap; }
+.color-swatch { width: 28px; height: 28px; min-width: 28px; padding: 0; border-radius: 50%; border: 2px solid transparent; background: var(--swatch); box-shadow: inset 0 0 0 1px rgba(255,255,255,.55), 0 4px 12px rgba(46,64,98,.14); cursor: pointer; }
+.color-swatch.active { border-color: var(--strong-text); transform: scale(1.08); }
+.color-custom-row { display: inline-flex; align-items: center; gap: 10px; color: var(--muted); font-size: 13px; font-weight: 800; }
+.color-custom-row input[type="color"] { width: 48px; height: 34px; padding: 2px; }
 .planning-panel { padding: 18px; }
 .planning-toolbar { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 16px; flex-wrap: wrap; }
 .planning-toolbar h2 { font-size: 24px; font-weight: 900; margin-bottom: 6px; }

@@ -30,6 +30,7 @@ Then read only the code files directly relevant to the current task.
 9. Git commit messages for this repository should be written in Chinese.
 10. A git commit message should describe the version-relevant feature / behavior changes in that round compared with the previous state, not just generic process wording such as "finalize" or "cleanup".
 11. Goal-mode prompt files (under `docs/goals/`) that drove a completed work round must be committed into the repository as a separate archive commit after the feature work itself lands. Subject like `归档 X.Y.Z 目标文档`. Do not commit goal files that contain API keys, tokens, private Base URLs, signing material, or other secrets — redact or keep them outside git instead. See `docs/goals/README.md` for the naming convention.
+12. Version numbers must always be written with standard ASCII digits and dots, such as `v1.10.3`, `1.10.3`, or `1.11.0 / versionCode 222`. Never write version numbers as Chinese numerals or mixed text such as `一一零三`, `一零三`, or `一.一零.三` in chat-facing summaries, docs, commit messages, release notes, or APK build reports.
 
 ## Release Signing And Secret Handling
 

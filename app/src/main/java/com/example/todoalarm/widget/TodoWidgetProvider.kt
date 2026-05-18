@@ -42,6 +42,7 @@ class TodoWidgetProvider : AppWidgetProvider() {
                 manager.notifyAppWidgetViewDataChanged(id, R.id.widget_list)
             }
             CountdownWidgetProvider.notifyWidgetDataChanged(context)
+            FocusWidgetProvider.notifyWidgetDataChanged(context)
         }
 
         private fun updateWidget(context: Context, manager: AppWidgetManager, appWidgetId: Int) {

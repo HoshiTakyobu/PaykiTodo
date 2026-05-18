@@ -92,6 +92,80 @@ class DailyBoardSnapshotBuilderTest {
         assertEquals(6L, DailyBoardSnapshotBuilder.countdownDays(futureExam, now.toLocalDate()))
     }
 
+    @Test
+    fun countdownItemsExcludeTargetsEarlierToday() {
+        val pastEvent = event(
+            id = 20,
+            title = "上午考试",
+            startAt = LocalDateTime.of(2026, 5, 14, 7, 0),
+            countdownEnabled = true
+        )
+        val futureEvent = event(
+            id = 21,
+            title = "下午考试",
+            startAt = LocalDateTime.of(2026, 5, 14, 15, 0),
+            countdownEnabled = true
+        )
+
+        val snapshot = DailyBoardSnapshotBuilder.build(
+            items = listOf(pastEvent, futureEvent),
+            now = now
+        )
+
+        assertEquals(listOf("下午考试"), snapshot.countdownItems.map { it.title })
+    }
+
+    @Test
+    fun countdownDisplayUsesDaysHoursAndMinutesWithoutSeconds() {
+        val target = LocalDateTime.of(2026, 5, 20, 10, 36)
+        val display = DailyBoardSnapshotBuilder.countdownRemainingDisplay(
+            target = target,
+            now = now
+        )
+        val hourDisplay = DailyBoardSnapshotBuilder.countdownRemainingDisplay(
+            target = LocalDateTime.of(2026, 5, 14, 23, 23),
+            now = now
+        )
+        val minuteDisplay = DailyBoardSnapshotBuilder.countdownRemainingDisplay(
+            target = LocalDateTime.of(2026, 5, 14, 8, 15),
+            now = now
+        )
+
+        assertEquals("6d", display.primary)
+        assertEquals("2h 36m", display.secondary)
+        assertEquals("15h", hourDisplay.primary)
+        assertEquals("23m", hourDisplay.secondary)
+        assertEquals("15m", minuteDisplay.primary)
+        assertEquals("", minuteDisplay.secondary)
+    }
+
+    @Test
+    fun visibleTodayEventsExcludeTimedEventsAfterTheyEnd() {
+        val ended = event(
+            id = 30,
+            title = "上午已结束",
+            startAt = LocalDateTime.of(2026, 5, 14, 7, 0)
+        )
+        val running = event(
+            id = 31,
+            title = "正在进行",
+            startAt = LocalDateTime.of(2026, 5, 14, 7, 30)
+        )
+        val upcoming = event(
+            id = 32,
+            title = "下午会议",
+            startAt = LocalDateTime.of(2026, 5, 14, 15, 0)
+        )
+
+        val snapshot = DailyBoardSnapshotBuilder.build(
+            items = listOf(ended, running, upcoming),
+            now = now
+        )
+
+        assertEquals(listOf("上午已结束", "正在进行", "下午会议"), snapshot.allTodayEvents.map { it.title })
+        assertEquals(listOf("正在进行", "下午会议"), snapshot.visibleTodayEvents.map { it.title })
+    }
+
     private fun todo(
         id: Long,
         title: String,

@@ -1,6 +1,7 @@
 package com.example.todoalarm.data
 
 import java.time.Instant
+import java.time.Duration
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.ZoneId
@@ -16,6 +17,11 @@ data class DailyBoardSnapshot(
     val allTodayEvents: List<TodoItem>,
     val visibleTodayEvents: List<TodoItem>,
     val tomorrowEvents: List<TodoItem>
+)
+
+data class CountdownRemainingDisplay(
+    val primary: String,
+    val secondary: String
 )
 
 object DailyBoardSnapshotBuilder {
@@ -35,9 +41,10 @@ object DailyBoardSnapshotBuilder {
         val calendarItems = items
             .filter { it.isEvent && it.isActive }
             .sortedBy { it.startAtMillis ?: it.dueAtMillis }
+        val nowMillis = now.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
         val countdownItems = items
             .filter { it.isActive && it.countdownEnabled }
-            .filter { item -> countdownTargetDate(item)?.let { !it.isBefore(today) } == true }
+            .filter { item -> countdownTargetMillis(item)?.let { it >= nowMillis } == true }
             .distinctBy { it.id }
             .sortedWith(
                 compareBy<TodoItem> { countdownTargetMillis(it) ?: Long.MAX_VALUE }
@@ -123,6 +130,40 @@ object DailyBoardSnapshotBuilder {
         return java.time.temporal.ChronoUnit.DAYS.between(today, targetDate)
     }
 
+    fun countdownRemainingDisplay(item: TodoItem, now: LocalDateTime): CountdownRemainingDisplay? {
+        val target = countdownTargetMillis(item)?.let(::millisToLocalDateTime) ?: return null
+        return countdownRemainingDisplay(target = target, now = now)
+    }
+
+    fun countdownRemainingDisplay(target: LocalDateTime, now: LocalDateTime): CountdownRemainingDisplay {
+        val remaining = Duration.between(now, target).takeIf { !it.isNegative } ?: Duration.ZERO
+        val totalMinutes = remaining.toMinutes()
+        return when {
+            totalMinutes >= MinutesPerDay -> {
+                val days = totalMinutes / MinutesPerDay
+                val remainder = totalMinutes % MinutesPerDay
+                val hours = remainder / 60
+                val minutes = remainder % 60
+                CountdownRemainingDisplay(
+                    primary = "${days}d",
+                    secondary = "${hours}h ${minutes}m"
+                )
+            }
+            totalMinutes >= 60 -> {
+                val hours = totalMinutes / 60
+                val minutes = totalMinutes % 60
+                CountdownRemainingDisplay(
+                    primary = "${hours}h",
+                    secondary = "${minutes}m"
+                )
+            }
+            else -> CountdownRemainingDisplay(
+                primary = "${totalMinutes}m",
+                secondary = ""
+            )
+        }
+    }
+
     fun clockTime(dateTime: LocalDateTime): String {
         return dateTime.format(TimeFormatter)
     }
@@ -134,4 +175,5 @@ object DailyBoardSnapshotBuilder {
     }
 
     private val TimeFormatter: DateTimeFormatter = DateTimeFormatter.ofPattern("HH:mm", Locale.CHINA)
+    private const val MinutesPerDay = 24L * 60L
 }

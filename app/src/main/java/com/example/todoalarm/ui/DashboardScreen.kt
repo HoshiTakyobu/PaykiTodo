@@ -184,6 +184,7 @@ fun DashboardScreen(
     var lastBackPressedAt by rememberSaveable { mutableLongStateOf(0L) }
     var boardVisited by rememberSaveable { mutableStateOf(false) }
     var handledTodoLaunchSerial by rememberSaveable { mutableStateOf(-1) }
+    var handledEventLaunchSerial by rememberSaveable { mutableStateOf(-1) }
     var calendarFocusDateEpochDay by rememberSaveable { mutableStateOf<Long?>(null) }
     val defaultReminderRing = if (uiState.settings.workQuietModeEnabled) false else uiState.settings.defaultRingEnabled
     val defaultReminderVibrate = if (uiState.settings.workQuietModeEnabled) true else uiState.settings.defaultVibrateEnabled
@@ -227,6 +228,10 @@ fun DashboardScreen(
                 calendarFocusDateEpochDay = null
                 section = DashboardSection.CALENDAR
             }
+            launchRoute?.openFocus == true -> {
+                calendarFocusDateEpochDay = null
+                section = DashboardSection.FOCUS
+            }
             launchRoute?.targetEventId != null -> section = DashboardSection.CALENDAR
             launchRoute?.targetPlanningNoteId != null -> {
                 calendarFocusDateEpochDay = null
@@ -257,13 +262,16 @@ fun DashboardScreen(
 
     LaunchedEffect(launchRouteSerial, launchRoute?.targetEventId) {
         val targetEventId = launchRoute?.targetEventId ?: return@LaunchedEffect
+        if (handledEventLaunchSerial == launchRouteSerial) return@LaunchedEffect
         val target = onGetTodoById(targetEventId)
             ?.takeIf { it.isEvent }
             ?: return@LaunchedEffect
+        handledEventLaunchSerial = launchRouteSerial
         val targetDate = target.eventStartDate() ?: target.dueDate()
         calendarFocusDateEpochDay = targetDate.toEpochDay()
         onCalendarVisibleDateRangeChange(targetDate.minusDays(1), targetDate.plusDays(2))
         section = DashboardSection.CALENDAR
+        openCalendarEventEditor(target)
     }
 
     LaunchedEffect(uiState.dataReady) {

@@ -98,7 +98,7 @@ private class TodoWidgetFactory(
         return RemoteViews(context.packageName, R.layout.widget_todo_section).apply {
             setTextViewText(R.id.widget_section_title, row.title)
             setTextViewText(R.id.widget_section_meta, row.meta)
-            setTextColor(R.id.widget_section_title, if (row.highlight) headerText else darkText)
+            setTextColor(R.id.widget_section_title, darkText)
             setTextColor(R.id.widget_section_meta, mutedText)
             setViewVisibility(R.id.widget_section_meta, if (row.meta.isBlank()) View.GONE else View.VISIBLE)
         }
@@ -287,7 +287,7 @@ private class TodoWidgetFactory(
             }
         }
 
-        output += sectionRow(-3L, "今日日程（${snapshot.allTodayEvents.size}）", highlight = true)
+        output += sectionRow(-3L, "今日日程（${snapshot.visibleTodayEvents.size}）", highlight = true)
         output += scheduleRow(snapshot)
         return output.take(60)
     }
@@ -303,7 +303,7 @@ private class TodoWidgetFactory(
             type = WidgetRowType.SECTION,
             title = title,
             meta = meta,
-            titleColor = if (highlight) headerText else darkText,
+            titleColor = darkText,
             metaColor = mutedText,
             highlight = highlight
         )

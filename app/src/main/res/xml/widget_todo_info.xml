@@ -2,6 +2,7 @@
 <appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
     android:initialLayout="@layout/widget_todo"
     android:previewLayout="@layout/widget_todo_preview"
+    android:description="@string/widget_todo_description"
     android:minWidth="300dp"
     android:minHeight="420dp"
     android:minResizeWidth="260dp"

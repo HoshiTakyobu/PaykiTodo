@@ -9,65 +9,39 @@
     <ImageView
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:alpha="0.22"
+        android:alpha="0.28"
+        android:contentDescription="@null"
         android:scaleType="centerCrop"
         android:src="@drawable/widget_dashboard_bg_image" />
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="@drawable/widget_board_scrim"
+        android:includeFontPadding="false"
+        android:text="" />
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent"
+        android:gravity="center_vertical"
         android:orientation="vertical"
-        android:padding="12dp">
-
-        <TextView
-            android:id="@+id/widget_countdown_title"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="倒数日"
-            android:textColor="@color/widget_text_primary"
-            android:textSize="20sp"
-            android:textStyle="bold" />
-
-        <TextView
-            android:id="@+id/widget_countdown_subtitle"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="2dp"
-            android:text="关键目标不要等到最后一天"
-            android:textColor="@color/widget_text_muted"
-            android:textSize="12sp" />
-
-        <TextView
-            android:id="@+id/widget_countdown_count"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:background="@drawable/widget_task_meta_background"
-            android:includeFontPadding="false"
-            android:paddingStart="8dp"
-            android:paddingTop="4dp"
-            android:paddingEnd="8dp"
-            android:paddingBottom="4dp"
-            android:text="0 项"
-            android:textColor="@color/widget_header"
-            android:textSize="11sp"
-            android:textStyle="bold" />
+        android:padding="10dp">
 
         <TextView
             android:id="@+id/widget_countdown_empty"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="14dp"
             android:background="@drawable/widget_todo_soft_card_background"
             android:padding="14dp"
-            android:text="还没有设置倒数日。编辑待办或日程时打开倒数日开关。"
+            android:text="还没有设置倒数目标。编辑待办或日程时打开倒数日开关。"
             android:textColor="@color/widget_text_muted"
             android:textSize="13sp" />
 
         <LinearLayout
             android:id="@+id/widget_countdown_row_1"
             style="@style/WidgetCountdownRow"
-            android:layout_marginTop="12dp">
+            android:layout_marginTop="0dp">
 
             <TextView
                 android:id="@+id/widget_countdown_check_1"

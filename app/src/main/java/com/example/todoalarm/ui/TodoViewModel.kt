@@ -262,6 +262,7 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
         val sortedCalendarItems = activeCalendarItems.sortedBy { it.startAtMillis ?: it.dueAtMillis }
         val availableQuotes = quotes.ifEmpty { QuoteRepository.seedQuotes }
         val currentQuote = availableQuotes[settings.quoteIndex.mod(availableQuotes.size)]
+        val nowMillis = System.currentTimeMillis()
 
         TodoUiState(
             groups = availableGroups,
@@ -271,7 +272,7 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
             upcomingItems = todoSections.upcomingItems,
             calendarItems = sortedCalendarItems,
             countdownItems = activeCountdownItems
-                .filter { item -> DailyBoardSnapshotBuilder.countdownTargetDate(item)?.let { !it.isBefore(today) } == true }
+                .filter { item -> DailyBoardSnapshotBuilder.countdownTargetMillis(item)?.let { it >= nowMillis } == true }
                 .sortedBy { DailyBoardSnapshotBuilder.countdownTargetMillis(it) ?: Long.MAX_VALUE },
             activeAnnouncements = PlanningAnnouncementParser.activeAnnouncements(announcementNotes, today),
             todayFocusMinutes = focusStats.completedMinutes,

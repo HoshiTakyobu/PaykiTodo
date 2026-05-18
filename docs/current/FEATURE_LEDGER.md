@@ -27,9 +27,9 @@ This file tracks the product at a practical level for new coding sessions.
 
 - dedicated daily board entry exists in the drawer and is the default home section
 - board todo block includes missed active todos, today's normal todos, and active no-DDL todos
-- board shows a `今日已专注` focus card with today's completed focus minutes, total focus sessions, completed sessions, and a free-focus entry
+- board intentionally does not show focus stats or free-focus controls; focus lives in the dedicated `专注` drawer section and `专注` widget
 - board view can show today's todos and today's / tomorrow's schedule summary together
-- board can show a `倒数日` card for active countdown-enabled todos / events; todos count down to DDL dates, events count down to event start dates, expired targets are hidden, and tapping rows opens the corresponding todo / event editor
+- board can show a `倒数日` card for active countdown-enabled todos / events; todos count down to DDL times, events count down to event start times, exact-time expired targets are hidden, and tapping rows opens the corresponding todo / event editor
 - board today's schedule hides timed events after they have ended
 - board currently running events can be visually highlighted with a gold outline and subtle glow
 - board greeting card supports compact collapse / expand behavior
@@ -46,8 +46,9 @@ This file tracks the product at a practical level for new coding sessions.
 ### Focus Mode
 
 - active todo cards expose `开始专注 · X 分钟` from the long-press action sheet while destructive delete remains confirmation-gated
-- daily board exposes free focus from the `今日已专注` card instead of adding a generic board FAB, preserving the board as a read-only overview surface
+- daily board no longer exposes free focus or focus stats; focus is separated into the `专注` drawer section and independent `专注` widget so the board remains a read-only overview surface
 - full-screen `FocusActivity` supports todo-bound and free-focus countdown sessions
+- drawer section `专注` shows today's focus stats and the free-focus entry outside the daily board
 - focus countdown shows circular progress, large monospace `MM:SS`, elapsed minutes, extension count, and pause / continue, complete, and abandon controls
 - countdown completion vibrates with a short / gap / long pattern and asks the user to complete, extend by the configured duration, or abandon
 - early completion and abandon both require confirmation; completed sessions show a short success feedback page before returning
@@ -137,7 +138,7 @@ This file tracks the product at a practical level for new coding sessions.
 - day / multi-day / month / agenda style views exist in code, with ongoing refinement
 - normal events, all-day events, and recurring events
 - event location / notes / color / reminder settings
-- event editor can mark important events as `倒数日`; the countdown target is the event start date and it appears on board / desktop / widget countdown surfaces
+- event editor can mark important events as `倒数日`; the countdown target is the event start time and it appears on board / desktop / widget countdown surfaces
 - calendar reminder editing accepts the same comma-separated multi-reminder syntax as todos
 - event preview keeps showing configured reminder offsets after reminder acknowledgement
 - timeline pending event draft can be canceled by long-pressing blank timeline space and is cleared when opening an existing event
@@ -202,6 +203,9 @@ This file tracks the product at a practical level for new coding sessions.
 - widget event locations display saved text directly; display code no longer prepends `@`, so user-entered `@地点` is not duplicated
 - widget `1.10.0` pass registers an independent PaykiTodo `倒数日` widget that shows the nearest 3 active countdown targets; tapping a todo target opens My Tasks and tapping an event target opens Calendar
 - widget `1.10.1` pass removes the countdown section from the existing `今日看板` widget; countdown targets now belong to the independent `倒数日` widget, whose rows use `Nd` plus remaining time, show a checkbox-like circle only for todos, and show full event time metadata for events
+- widget `1.10.2` pass removes the independent `倒数日` widget header/date/count block, makes rows deep-link to exact todo/event details, changes countdown text to day/hour/minute without seconds, schedules minute-level refresh ticks, and counts only unfinished today events in 今日看板 widget section titles
+- widget `1.10.2` adds distinct launcher-picker labels/descriptions/static previews for 今日看板, 倒数日, and the new 专注 widget
+- widget `1.10.2` adds an independent PaykiTodo `专注` widget that shows today's focus stats and starts free focus directly
 - repository todo mutations and Planning Desk note edits / delete / archive operations notify widget data refresh through the application-level widget callback
 
 ### Data / Backup / Diagnostics
@@ -247,7 +251,7 @@ This file tracks the product at a practical level for new coding sessions.
 - desktop web Planning Desk uses phone-local `/api/planning/*` routes, edits the same Room planning notes as the phone UI, saves before switching documents, blocks empty selected imports, writes back `#imported` markers after import, and reuses the same AI recognition / local fallback path as the phone Planning Desk
 - desktop web Planning Desk now also shows the current note title, mapping status preview, refresh/postpone/undo controls, and conflict resolution actions for imported planning lines
 - desktop web `/api/snapshot` includes active Planning Desk announcements and the browser console renders them as a top orange announcement banner
-- desktop web `/api/snapshot` includes a phone-derived `todayBoard` payload, and the browser first tab is now a daily-board view with current/next item, today focus stats, today todos, today schedule, tomorrow schedule, ended-event filtering, and in-progress gold highlighting above the full todo timeline
+- desktop web `/api/snapshot` includes a phone-derived `todayBoard` payload, and the browser first tab is now a daily-board view with current/next item, countdown targets, today todos, today schedule, tomorrow schedule, ended-event filtering, and in-progress gold highlighting above the full todo timeline; focus stats are kept out of the daily-board surface
 - desktop web `/api/snapshot` reuses the groups already loaded in the snapshot JSON path instead of issuing a second Room group read for group-name/color mapping
 - desktop sync server uses bounded client handling and byte-length request-body parsing, so abnormal LAN clients cannot grow threads without bound and Chinese long Planning Desk saves are not truncated by UTF-8 character/byte mismatch
 - desktop web first connection keeps using the lightweight `/api/snapshot?scope=board` daily-board payload, while todo management now loads through paged/searchable `/api/todos?offset=...&limit=...&q=...` only when requested
@@ -277,7 +281,7 @@ This file tracks the product at a practical level for new coding sessions.
 - `AI 报告` uses paged Room queries by type, keyword, time range, and limit; the archive no longer observes the full report history just to render or filter the first page.
 - Calendar month/list/all-day surfaces reuse one top-level event-by-date index instead of rebuilding date buckets independently in each view; the timeline date span is represented by a lightweight date window instead of allocating a full long-range date list.
 - Phone Calendar subscribes only to active events overlapping the current padded visible date range, while notification / deep-link navigation to a far event expands that query range before focusing the target date.
-- Countdown-enabled todos / events are included in phone board, independent countdown widget, and desktop board data without requiring a full historical scan; past countdown targets are filtered out before rendering.
+- Countdown-enabled todos / events are included in phone board, independent countdown widget, and desktop board data without requiring a full historical scan; exact-time past countdown targets are filtered out before rendering.
 - Future large-history work can still add real FTS for report content search and real-device calendar profiling; the biggest desktop full-snapshot coupling has been split, and desktop todo management now pages/searches `/api/todos` instead of returning the complete todo list by design.
 
 ## Implemented But Still Being Polished

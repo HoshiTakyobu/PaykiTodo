@@ -7,23 +7,23 @@
 - Package name: `com.paykitodo.app`
 - Target platform: Android 14 / API 34
 - Current version in code:
-  - `versionName = "1.10.1"`
-  - `versionCode = 219`
+  - `versionName = "1.10.2"`
+  - `versionCode = 220`
 
 ## Current Build Facts
 
-- Latest debug APK output after this round:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.10.1-debug.apk`
+- Latest debug APK built in this round:
+  - `app/build/outputs/apk/debug/PaykiTodo-1.10.2-debug.apk`
 - Latest signed release APK remains the previous release artifact unless a new release build is requested:
   - `app/build/outputs/apk/release/PaykiTodo-1.9.23-release.apk`
-- Verification completed for this `1.10.1` continuation:
-  - `node --check app/src/main/assets/desktop-web/app.js`
+- Verification completed for this `1.10.2` continuation:
   - `./gradlew.bat :app:compileDebugKotlin`
+  - `node --check app/src/main/assets/desktop-web/app.js`
   - `./gradlew.bat :app:testDebugUnitTest`
   - `./gradlew.bat :app:assembleDebug`
   - `git diff --check`
-  - `git check-ignore -v keystore.properties release/PaykiTodo-release.jks app/build/outputs/apk/debug/PaykiTodo-1.10.1-debug.apk`
-  - debug `output-metadata.json` reports `versionCode=219`, `versionName=1.10.1`, `outputFile=PaykiTodo-1.10.1-debug.apk`
+  - APK metadata inspected: `versionName = 1.10.2`, `versionCode = 220`, output `PaykiTodo-1.10.2-debug.apk`
+  - `git check-ignore -v keystore.properties release/PaykiTodo-release.jks app/build/outputs/apk/debug/PaykiTodo-1.10.2-debug.apk` confirmed local signing material and APK outputs are ignored
 - Release-signing privacy:
   - local `keystore.properties`, `release/PaykiTodo-release.jks`, APK/AAB outputs, API keys, tokens, and private Base URLs must stay out of Git
 - Current build environment expectation:
@@ -32,22 +32,28 @@
 
 ## Current Worktree Reality
 
-The repository is now at `1.10.1 / 219` after the countdown/widget and desktop Planning Desk parity fix pass.
+The repository is now being advanced from `1.10.1 / 219` to `1.10.2 / 220` for countdown formatting, visible-event counts, widget picker metadata, and focus-surface separation.
 
 Most important current baseline facts:
 
 - Database version remains `17`.
 - `MIGRATION_16_17` still adds countdown support for todos and recurring templates.
 - Active no-DDL todos are still treated as today todos across phone daily board, Android widget board query, desktop board, and desktop todo management.
-- Countdown-enabled todos use their DDL date as the target; countdown-enabled events use their start time.
-- Expired countdown targets are filtered out before board / widget / desktop rendering.
+- Countdown-enabled todos use their DDL time as the target; countdown-enabled events use their start time.
+- Countdown targets whose exact target time has passed are filtered out before board / widget / desktop rendering.
 - Phone daily board still has a countdown card for active countdown targets.
 - Desktop daily board still renders countdown targets.
+- Phone and desktop daily-board countdown text uses day/hour/minute decomposition and does not display seconds.
+- Phone daily board, desktop daily board, and Android 今日看板 widget count only visible unfinished today events in `今日日程`.
+- Phone daily board no longer displays focus stats or free-focus entry; focus has a dedicated drawer page.
 - Android `今日看板` widget no longer includes a countdown section; it remains focused on announcements, greeting, today todos, and today/tomorrow schedules.
+- Android `今日看板` widget section titles use the primary dark/light text color instead of the orange header color, fixing the light-mode brown section-title readability mismatch.
 - Android independent `倒数日` widget shows nearest countdown targets and distinguishes todo/event semantics:
-  - todo rows show a checkbox-like circle and open My Tasks;
-  - event rows hide the circle and open Calendar.
-- Countdown rows now use `Nd` plus remaining hours/minutes/seconds instead of `D-N`; event rows show full start/end time metadata.
+  - todo rows show a checkbox-like circle and deep-link to the exact todo;
+  - event rows hide the circle and deep-link to the exact event editor.
+- Android independent `倒数日` widget has no header/date/count block and schedules minute-level refresh ticks.
+- Android includes a dedicated `专注` widget for focus stats and free-focus launch.
+- Android widget picker metadata now gives 今日看板 / 倒数日 / 专注 separate names, descriptions, suggested sizes, and static previews.
 - Planning Desk parsed/import candidates now carry location, all-day, countdown, and recurrence fields.
 - Phone and desktop Planning Desk previews can edit those fields before import.
 - Desktop Planning Desk AI prompt tells models to return `location` separately and not to turn normal title words into groups.
@@ -61,7 +67,7 @@ Most important current baseline facts:
 
 ## Documentation Health
 
-Current docs synchronized for `1.10.1`:
+Current docs being synchronized for `1.10.2`:
 
 - `README.md`
 - `CHANGELOG.md`
@@ -78,9 +84,9 @@ Older versioned docs under `docs/archive/historical/` remain historical referenc
 
 ## Current Risk Areas
 
-1. Android launcher widget rendering, resizing, stale launcher cache behavior, light/dark readability, and date/time refresh still require physical launcher verification.
-2. The independent `倒数日` widget displays seconds based on the latest widget refresh; Android launcher widgets are not guaranteed to tick every second.
-3. Browser verification is required for desktop Planning Desk location / recurrence preview and import behavior with real AI output.
+1. Android launcher widget rendering, resizing, picker metadata, stale launcher cache behavior, light/dark readability, and date/time refresh still require physical launcher verification.
+2. The independent `倒数日` widget now schedules minute-level refreshes, but OEM launchers and battery policies may still delay widget updates.
+3. Browser verification is required for desktop daily-board countdown/count/focus changes and Planning Desk location / recurrence import behavior with real AI output.
 4. Settings -> AI 调用配置 model discovery still needs device-side verification with real providers.
 5. Strong reminder behavior still needs real-device verification for OEM notification, vibration, lock-screen, reboot, and battery policies.
 6. Very large datasets may still require further profiling; desktop split endpoints and indexed board paths remain the current performance baseline.

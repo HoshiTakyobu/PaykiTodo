@@ -2,67 +2,65 @@
 
 ## Active Development Focus
 
-The current round is PaykiTodo `1.10.1` / `versionCode 219`.
+The current round is PaykiTodo `1.10.2` / `versionCode 220`.
 
-Primary goal: fix the first `1.10.0` countdown/widget and desktop Planning Desk feedback:
+Primary goal: fix real-device feedback after the first countdown/widget pass:
 
-1. desktop Planning Desk AI preview/import must carry the same key event fields as the phone-side event flow, especially location, all-day, countdown, and recurrence;
-2. the existing Android `今日看板` widget must not embed countdown-day rows;
-3. countdown-day targets should live in the independent `倒数日` widget and use the App daily-board visual language more closely;
-4. App / desktop countdown rows should stop using `D-N` wording and show full event time metadata.
+1. countdown text should use true remaining days/hours/minutes, without seconds or total-hour expansion;
+2. ended daily-board events should not keep inflating the visible `今日日程` count;
+3. the independent `倒数日` widget should be a compact target list, not a second titled board;
+4. launcher widget picker entries should have clear names, descriptions, suggested sizes, and static previews;
+5. free-focus should move out of `每日看板` into a dedicated focus surface.
 
 ## Completed In This Round
 
-1. Planning Desk candidate models now carry:
-   - `location`
-   - `allDay`
-   - `countdownEnabled`
-   - `recurrence`
-2. Planning Desk AI prompt and parser now ask for / read `location` and `recurrence`; AI is explicitly told not to put locations into notes and not to add an extra `@`.
-3. Local Planning Desk natural event parsing can extract `@地点` or `#location` / `#地点` as an event location while keeping the saved text unchanged.
-4. Phone Planning Desk preview cards now expose event location, all-day, countdown, and recurrence editing before import.
-5. Desktop Web Planning Desk preview now exposes event location, all-day, countdown, recurrence type, recurrence end date, and weekly-days fields, and sends them back to `/api/planning/import`.
-6. Planning Desk imports now persist those fields into `TodoDraft` / `CalendarEventDraft` on both phone and desktop paths.
-7. Android `今日看板` widget no longer builds or routes countdown rows.
-8. Independent Android `倒数日` widget now:
-   - shows todo targets with a checkbox-like circle;
-   - hides the circle for event targets;
-   - uses `10d` style day text plus an `xh ym zs` remaining-time subline;
-   - shows full event time such as `5月28日 10:20-12:20`;
-   - removes redundant item-level `倒数日` wording.
-9. App daily-board countdown rows and desktop daily-board countdown rows now use the same `Nd` direction and fuller event-time metadata.
-10. Version metadata moved to `1.10.1 / 219`.
+1. Phone, desktop, and widget countdown rendering now use shared day/hour/minute decomposition:
+   - `>= 1 day`: `Nd` plus `xh ym`;
+   - `< 1 day`: `Nh` plus `xm`;
+   - `< 1 hour`: `Nm`;
+   - seconds are not shown.
+2. Countdown targets whose exact target time has passed are filtered out, not just targets whose target date is before today.
+3. Phone daily-board countdown event rows no longer prefix the event time with `日程`.
+4. Phone daily-board, desktop daily-board, and Android 今日看板 widget `今日日程` counts now use visible / unfinished today events; when all today events ended, the count is `0` and the completion message remains.
+5. Android independent `倒数日` widget no longer shows title/date/count header text; rows show remaining time, color strip, target title, and a todo-only completion circle.
+6. Android independent `倒数日` widget row clicks now deep-link to the exact todo/event detail instead of only opening My Tasks or Calendar.
+7. Android independent `倒数日` widget schedules minute ticks so displayed minute text refreshes more frequently than the platform default widget period.
+8. Android 今日看板 widget section titles now use the primary text color rather than the orange header color, fixing the light-mode brown-title mismatch.
+9. Daily board no longer shows the focus stats/free-focus card, and board todo cards no longer expose the focus long-press action.
+10. A new drawer section `专注` hosts the focus stats card and free-focus entry.
+11. A new Android `专注` widget shows today's focus stats and starts free focus directly.
+12. Android widget picker metadata now gives 今日看板 / 倒数日 / 专注 widgets distinct labels, descriptions, suggested sizes, and static preview layouts.
+13. Version metadata moved to `1.10.2 / 220`.
 
 ## Verification Completed This Round
 
 Completed locally:
 
-1. `node --check app/src/main/assets/desktop-web/app.js` passed.
-2. `./gradlew.bat :app:compileDebugKotlin` passed.
+1. `./gradlew.bat :app:compileDebugKotlin` passed.
+2. `node --check app/src/main/assets/desktop-web/app.js` passed.
 3. `./gradlew.bat :app:testDebugUnitTest` passed.
-4. `./gradlew.bat :app:assembleDebug` passed.
+4. `./gradlew.bat :app:assembleDebug` passed and produced `app/build/outputs/apk/debug/PaykiTodo-1.10.2-debug.apk`.
 5. `git diff --check` passed.
-6. `git check-ignore -v keystore.properties release/PaykiTodo-release.jks app/build/outputs/apk/debug/PaykiTodo-1.10.1-debug.apk` confirms local signing material and APK output are ignored.
-7. Debug `output-metadata.json` reports `versionCode=219`, `versionName=1.10.1`, and `outputFile=PaykiTodo-1.10.1-debug.apk`.
-
-Latest debug APK:
-
-- `app/build/outputs/apk/debug/PaykiTodo-1.10.1-debug.apk`
+6. APK metadata confirms `versionName = 1.10.2`, `versionCode = 220`.
+7. `git check-ignore -v keystore.properties release/PaykiTodo-release.jks app/build/outputs/apk/debug/PaykiTodo-1.10.2-debug.apk` confirmed signing material and APK artifacts are ignored.
 
 ## Verification Still Needed On Device / Browser
 
-1. Install `app/build/outputs/apk/debug/PaykiTodo-1.10.1-debug.apk` on the physical phone.
-2. Phone-test countdown:
-   - App daily-board countdown row shows `Nd` and full event time.
-   - Todo countdown opens todo editing; event countdown opens event editing.
+1. Install `app/build/outputs/apk/debug/PaykiTodo-1.10.2-debug.apk` on the physical phone.
+2. Phone-test daily board:
+   - countdown rows show day/hour/minute text without seconds;
+   - event countdown metadata shows only the event time, not redundant `日程`;
+   - ended today events reduce `今日日程` count to 0 while showing the completion message;
+   - focus stats/free-focus no longer appear on the daily board.
 3. Device-test widgets:
-   - `今日看板` widget shows announcements, greeting, today todos, and today/tomorrow schedules, but no countdown section.
-   - Independent `倒数日` widget shows nearest targets; todo rows have a circle, event rows do not.
-   - Light/dark text remains readable after launcher resize.
-4. Browser-test desktop Planning Desk:
-   - AI or local preview of an event can edit location, all-day, countdown, and recurrence.
-   - Import creates an event with location in the event location field, not notes.
-   - A source like `16:05-18:00 入党表格填写` still keeps group empty unless an explicit group marker exists.
+   - widget picker shows clear labels/descriptions/previews for 每日看板, 倒数日, and 专注;
+   - 今日看板 widget section titles are readable in light mode and no focus/countdown sections appear;
+   - 倒数日 widget has no header/date/count text, refreshes minute-level countdown text, and row clicks open exact todo/event details;
+   - 专注 widget opens the focus page from the root and starts free focus from the action area.
+4. Browser-test desktop daily board:
+   - countdown rows use the same day/hour/minute format;
+   - visible today-event count ignores events already ended;
+   - the old focus stats block is absent from the daily-board hero.
 
 ## Immediate Practical Next Steps
 

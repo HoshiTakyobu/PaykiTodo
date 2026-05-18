@@ -1,5 +1,6 @@
 package com.example.todoalarm.widget
 
+import android.app.AlarmManager
 import android.app.PendingIntent
 import android.appwidget.AppWidgetManager
 import android.appwidget.AppWidgetProvider
@@ -18,63 +19,68 @@ import com.example.todoalarm.data.TaskGroup
 import com.example.todoalarm.data.TodoItem
 import com.example.todoalarm.ui.MainActivity
 import kotlinx.coroutines.runBlocking
-import java.time.Duration
-import java.time.Instant
-import java.time.LocalDate
 import java.time.LocalDateTime
-import java.time.ZoneId
-import java.time.format.DateTimeFormatter
-import java.util.Locale
 
 class CountdownWidgetProvider : AppWidgetProvider() {
     override fun onUpdate(context: Context, appWidgetManager: AppWidgetManager, appWidgetIds: IntArray) {
         appWidgetIds.forEach { appWidgetId ->
             updateWidget(context, appWidgetManager, appWidgetId)
         }
+        scheduleNextMinuteTick(context)
     }
 
     override fun onReceive(context: Context, intent: Intent) {
         super.onReceive(context, intent)
         when (intent.action) {
+            ACTION_MINUTE_TICK,
             Intent.ACTION_DATE_CHANGED,
             Intent.ACTION_TIME_CHANGED,
             Intent.ACTION_TIMEZONE_CHANGED,
-            Intent.ACTION_MY_PACKAGE_REPLACED -> notifyWidgetDataChanged(context)
+            Intent.ACTION_MY_PACKAGE_REPLACED -> {
+                notifyWidgetDataChanged(context)
+                scheduleNextMinuteTick(context)
+            }
         }
     }
 
+    override fun onDisabled(context: Context) {
+        super.onDisabled(context)
+        cancelMinuteTick(context)
+    }
+
     companion object {
-        private val MonthDayFormatter: DateTimeFormatter = DateTimeFormatter.ofPattern("M月d日", Locale.CHINA)
-        private val MonthDayTimeFormatter: DateTimeFormatter = DateTimeFormatter.ofPattern("M月d日 HH:mm", Locale.CHINA)
-        private val TimeFormatter: DateTimeFormatter = DateTimeFormatter.ofPattern("HH:mm", Locale.CHINA)
+        private const val ACTION_MINUTE_TICK = "com.example.todoalarm.widget.COUNTDOWN_MINUTE_TICK"
 
         fun notifyWidgetDataChanged(context: Context) {
             val manager = AppWidgetManager.getInstance(context)
             val ids = manager.getAppWidgetIds(ComponentName(context, CountdownWidgetProvider::class.java))
             ids.forEach { updateWidget(context, manager, it) }
+            if (ids.isNotEmpty()) {
+                scheduleNextMinuteTick(context)
+            } else {
+                cancelMinuteTick(context)
+            }
         }
 
         private fun updateWidget(context: Context, manager: AppWidgetManager, appWidgetId: Int) {
-            val today = LocalDate.now()
+            val now = LocalDateTime.now()
             val (items, groups) = loadCountdownData(context)
             val targets = items
-                .filter { item -> DailyBoardSnapshotBuilder.countdownTargetDate(item)?.let { !it.isBefore(today) } == true }
+                .filter { item -> DailyBoardSnapshotBuilder.countdownTargetMillis(item)?.let { it >= System.currentTimeMillis() } == true }
                 .sortedBy { DailyBoardSnapshotBuilder.countdownTargetMillis(it) ?: Long.MAX_VALUE }
                 .take(3)
             val views = RemoteViews(context.packageName, R.layout.widget_countdown).apply {
-                setTextViewText(R.id.widget_countdown_subtitle, "今天是 ${today.format(MonthDayFormatter)}")
-                setTextViewText(R.id.widget_countdown_count, "${targets.size} 项")
                 if (targets.isEmpty()) {
                     setViewVisibility(R.id.widget_countdown_empty, View.VISIBLE)
                 } else {
                     setViewVisibility(R.id.widget_countdown_empty, View.GONE)
                 }
-                bindCountdownRow(context, appWidgetId, 0, targets.getOrNull(0), groups, today)
-                bindCountdownRow(context, appWidgetId, 1, targets.getOrNull(1), groups, today)
-                bindCountdownRow(context, appWidgetId, 2, targets.getOrNull(2), groups, today)
+                bindCountdownRow(context, appWidgetId, 0, targets.getOrNull(0), groups, now)
+                bindCountdownRow(context, appWidgetId, 1, targets.getOrNull(1), groups, now)
+                bindCountdownRow(context, appWidgetId, 2, targets.getOrNull(2), groups, now)
                 setOnClickPendingIntent(
                     R.id.widget_countdown_root,
-                    openIntent(context, appWidgetId, openCalendar = false, requestSalt = 90_000)
+                    openBoardIntent(context, appWidgetId, requestSalt = 90_000)
                 )
             }
             manager.updateAppWidget(appWidgetId, views)
@@ -96,7 +102,7 @@ class CountdownWidgetProvider : AppWidgetProvider() {
             index: Int,
             item: TodoItem?,
             groups: List<TaskGroup>,
-            today: LocalDate
+            now: LocalDateTime
         ) {
             val rowId = RowIds[index]
             val stripId = StripIds[index]
@@ -109,62 +115,29 @@ class CountdownWidgetProvider : AppWidgetProvider() {
                 setViewVisibility(rowId, View.GONE)
                 return
             }
-            val targetDate = DailyBoardSnapshotBuilder.countdownTargetDate(item)
-            val days = DailyBoardSnapshotBuilder.countdownDays(item, today)
-            if (targetDate == null || days == null) {
+            val remaining = DailyBoardSnapshotBuilder.countdownRemainingDisplay(item, now)
+            if (remaining == null) {
                 setViewVisibility(rowId, View.GONE)
                 return
             }
             val accent = countdownAccentColor(context, item, groups)
             setViewVisibility(rowId, View.VISIBLE)
             setViewVisibility(checkId, if (item.isTodo) View.VISIBLE else View.GONE)
-            setTextViewText(daysId, "${days.coerceAtLeast(0)}d")
-            setTextViewText(remainingId, remainingCountdownText(item))
+            setTextViewText(daysId, remaining.primary)
+            setTextViewText(remainingId, remaining.secondary)
             setTextViewText(titleId, item.title)
-            setTextViewText(metaId, countdownMetaText(item))
+            setTextViewText(metaId, "")
             setTextColor(daysId, accent)
             setTextColor(remainingId, ContextCompat.getColor(context, R.color.widget_text_muted))
             setTextColor(titleId, ContextCompat.getColor(context, R.color.widget_text_primary))
             setTextColor(metaId, ContextCompat.getColor(context, R.color.widget_text_muted))
             setInt(stripId, "setColorFilter", accent)
+            setViewVisibility(remainingId, if (remaining.secondary.isBlank()) View.GONE else View.VISIBLE)
+            setViewVisibility(metaId, View.GONE)
             setOnClickPendingIntent(
                 rowId,
-                openIntent(context, appWidgetId, openCalendar = item.isEvent, requestSalt = index)
+                openItemIntent(context, appWidgetId, item, requestSalt = index)
             )
-        }
-
-        private fun remainingCountdownText(item: TodoItem): String {
-            val targetMillis = DailyBoardSnapshotBuilder.countdownTargetMillis(item) ?: return "--"
-            val remaining = Duration.ofMillis((targetMillis - System.currentTimeMillis()).coerceAtLeast(0L))
-            val hours = remaining.toHours()
-            val minutes = remaining.minusHours(hours).toMinutes()
-            val seconds = remaining.minusHours(hours).minusMinutes(minutes).seconds
-            return "${hours}h ${minutes}m ${seconds}s"
-        }
-
-        private fun countdownMetaText(item: TodoItem): String {
-            return if (item.isEvent) {
-                val start = item.startAtMillis?.toLocalDateTime() ?: item.dueAtMillis.toLocalDateTime()
-                val end = item.endAtMillis?.toLocalDateTime()
-                val time = when {
-                    item.allDay && end != null && end.toLocalDate().minusDays(1).isAfter(start.toLocalDate()) ->
-                        "${start.format(MonthDayFormatter)}-${end.toLocalDate().minusDays(1).format(MonthDayFormatter)} 全天"
-                    item.allDay -> "${start.format(MonthDayFormatter)} 全天"
-                    end != null && end.toLocalDate() != start.toLocalDate() ->
-                        "${start.format(MonthDayTimeFormatter)}-${end.format(MonthDayTimeFormatter)}"
-                    end != null -> "${start.format(MonthDayTimeFormatter)}-${end.format(TimeFormatter)}"
-                    else -> start.format(MonthDayTimeFormatter)
-                }
-                "日程 · $time"
-            } else {
-                "待办 · DDL ${item.dueAtMillis.toLocalDateTime().format(MonthDayTimeFormatter)}"
-            }
-        }
-
-        private fun Long.toLocalDateTime(): LocalDateTime {
-            return Instant.ofEpochMilli(this)
-                .atZone(ZoneId.systemDefault())
-                .toLocalDateTime()
         }
 
         private fun countdownAccentColor(context: Context, item: TodoItem, groups: List<TaskGroup>): Int {
@@ -179,10 +152,10 @@ class CountdownWidgetProvider : AppWidgetProvider() {
                 ?: ContextCompat.getColor(context, if (item.isEvent) R.color.widget_event_blue else R.color.widget_todo_green)
         }
 
-        private fun openIntent(
+        private fun openItemIntent(
             context: Context,
             appWidgetId: Int,
-            openCalendar: Boolean,
+            item: TodoItem,
             requestSalt: Int
         ): PendingIntent {
             val flags = PendingIntent.FLAG_UPDATE_CURRENT or
@@ -192,11 +165,72 @@ class CountdownWidgetProvider : AppWidgetProvider() {
                 appWidgetId * 100 + requestSalt,
                 Intent(context, MainActivity::class.java).apply {
                     addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
-                    if (openCalendar) {
-                        putExtra(MainActivity.EXTRA_OPEN_CALENDAR, true)
+                    if (item.isEvent) {
+                        putExtra(MainActivity.EXTRA_OPEN_EVENT_ID, item.id)
                     } else {
-                        putExtra(MainActivity.EXTRA_OPEN_TASKS, true)
+                        putExtra(MainActivity.EXTRA_OPEN_TODO_ID, item.id)
                     }
+                },
+                flags
+            )
+        }
+
+        private fun openBoardIntent(
+            context: Context,
+            appWidgetId: Int,
+            requestSalt: Int
+        ): PendingIntent {
+            val flags = PendingIntent.FLAG_UPDATE_CURRENT or
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) PendingIntent.FLAG_IMMUTABLE else 0
+            return PendingIntent.getActivity(
+                context,
+                appWidgetId * 100 + requestSalt,
+                Intent(context, MainActivity::class.java).apply {
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+                    putExtra(MainActivity.EXTRA_OPEN_BOARD, true)
+                },
+                flags
+            )
+        }
+
+        private fun scheduleNextMinuteTick(context: Context) {
+            val manager = AppWidgetManager.getInstance(context)
+            val ids = manager.getAppWidgetIds(ComponentName(context, CountdownWidgetProvider::class.java))
+            if (ids.isEmpty()) {
+                cancelMinuteTick(context)
+                return
+            }
+            val alarmManager = context.getSystemService(AlarmManager::class.java) ?: return
+            val pendingIntent = minuteTickPendingIntent(context)
+            val now = System.currentTimeMillis()
+            val nextMinute = now - (now % 60_000L) + 60_000L
+            try {
+                if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S || alarmManager.canScheduleExactAlarms()) {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                        alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, nextMinute, pendingIntent)
+                    } else {
+                        alarmManager.setExact(AlarmManager.RTC_WAKEUP, nextMinute, pendingIntent)
+                    }
+                } else {
+                    alarmManager.set(AlarmManager.RTC_WAKEUP, nextMinute, pendingIntent)
+                }
+            } catch (_: SecurityException) {
+                alarmManager.set(AlarmManager.RTC_WAKEUP, nextMinute, pendingIntent)
+            }
+        }
+
+        private fun cancelMinuteTick(context: Context) {
+            context.getSystemService(AlarmManager::class.java)?.cancel(minuteTickPendingIntent(context))
+        }
+
+        private fun minuteTickPendingIntent(context: Context): PendingIntent {
+            val flags = PendingIntent.FLAG_UPDATE_CURRENT or
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) PendingIntent.FLAG_IMMUTABLE else 0
+            return PendingIntent.getBroadcast(
+                context,
+                91_001,
+                Intent(context, CountdownWidgetProvider::class.java).apply {
+                    action = ACTION_MINUTE_TICK
                 },
                 flags
             )

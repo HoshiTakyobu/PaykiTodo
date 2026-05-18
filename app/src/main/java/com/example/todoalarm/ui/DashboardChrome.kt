@@ -121,7 +121,6 @@ import com.example.todoalarm.ui.theme.PaykiGreetingFontFamily
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.StateFlow
-import java.time.Duration
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalDateTime
@@ -154,6 +153,7 @@ internal enum class DashboardSection(
     BOARD("每日看板", Icons.Rounded.ViewAgenda, "每日看板"),
     ACTIVE("我的任务", Icons.Rounded.TaskAlt, "我的任务"),
     CALENDAR("日历", Icons.Rounded.CalendarMonth, "日历"),
+    FOCUS("专注", Icons.Rounded.Timer, "专注"),
     PLANNING("规划台", Icons.Rounded.PostAdd, "规划台"),
     AI_REPORTS("AI 报告", Icons.Rounded.Insights, "AI 报告"),
     HISTORY("历史记录", Icons.Rounded.History, "历史记录"),
@@ -591,6 +591,12 @@ internal fun DashboardBody(
     val todayScheduleItems = remember(allTodayScheduleItems, boardMoment) {
         allTodayScheduleItems.filter { DailyBoardSnapshotBuilder.eventVisibleForToday(it, boardDate, boardMoment) }
     }
+    val visibleCountdownItems = remember(uiState.countdownItems, boardMoment) {
+        uiState.countdownItems
+            .filter { item -> DailyBoardSnapshotBuilder.countdownTargetMillis(item)?.let { it >= System.currentTimeMillis() } == true }
+            .sortedBy { DailyBoardSnapshotBuilder.countdownTargetMillis(it) ?: Long.MAX_VALUE }
+            .take(5)
+    }
     val tomorrowScheduleItems = remember(uiState.calendarItems, boardDate) {
         val tomorrow = boardDate.plusDays(1)
         uiState.calendarItems.filter { DailyBoardSnapshotBuilder.eventOverlapsDay(it, tomorrow) }
@@ -641,26 +647,16 @@ internal fun DashboardBody(
                     }
                 }
 
-                if (uiState.countdownItems.isNotEmpty()) {
+                if (visibleCountdownItems.isNotEmpty()) {
                     item {
                         CountdownBoardCard(
-                            items = uiState.countdownItems.take(5),
-                            today = boardDate,
+                            items = visibleCountdownItems,
                             now = boardMoment,
                             groups = uiState.groups,
                             onOpenTodo = onEdit,
                             onOpenEvent = onEditCalendarEvent
                         )
                     }
-                }
-
-                item {
-                    TodayFocusCard(
-                        minutes = uiState.todayFocusMinutes,
-                        sessionCount = uiState.todayFocusSessionCount,
-                        completedCount = uiState.todayCompletedFocusSessionCount,
-                        onStartFreeFocus = { startFocus() }
-                    )
                 }
 
                 item {
@@ -677,14 +673,13 @@ internal fun DashboardBody(
                             onComplete = { onCompleteTodo(item) },
                             onCancel = { onCancelTodo(item) },
                             onDelete = { onDeleteTodo(item) },
-                            focusDefaultMinutes = uiState.settings.focusDefaultMinutes,
-                            onStartFocus = { startFocus(item) }
+                            focusDefaultMinutes = uiState.settings.focusDefaultMinutes
                         )
                     }
                 }
 
                 item {
-                    BoardBlockTitle("今日日程（${allTodayScheduleItems.size}）")
+                    BoardBlockTitle("今日日程（${todayScheduleItems.size}）")
                 }
                 item {
                     TodayScheduleBoardCard(
@@ -748,6 +743,16 @@ internal fun DashboardBody(
                         }
                     }
                 }
+            }
+
+            DashboardSection.FOCUS -> item {
+                FocusHomePanel(
+                    minutes = uiState.todayFocusMinutes,
+                    sessionCount = uiState.todayFocusSessionCount,
+                    completedCount = uiState.todayCompletedFocusSessionCount,
+                    defaultMinutes = uiState.settings.focusDefaultMinutes,
+                    onStartFreeFocus = { startFocus() }
+                )
             }
 
             DashboardSection.HISTORY -> {
@@ -926,7 +931,6 @@ private fun OnboardingCard(onDismiss: () -> Unit) {
 @Composable
 private fun CountdownBoardCard(
     items: List<TodoItem>,
-    today: LocalDate,
     now: LocalDateTime,
     groups: List<TaskGroup>,
     onOpenTodo: (TodoItem) -> Unit,
@@ -976,7 +980,6 @@ private fun CountdownBoardCard(
             items.forEach { item ->
                 CountdownTargetRow(
                     item = item,
-                    today = today,
                     now = now,
                     groups = groups,
                     onClick = {
@@ -991,15 +994,14 @@ private fun CountdownBoardCard(
 @Composable
 private fun CountdownTargetRow(
     item: TodoItem,
-    today: LocalDate,
     now: LocalDateTime,
     groups: List<TaskGroup>,
     onClick: () -> Unit
 ) {
     val group = resolveTaskGroup(item, groups)
     val accent = colorFromHex(if (item.isEvent) item.accentColorHex ?: group.colorHex else group.colorHex)
-    val days = DailyBoardSnapshotBuilder.countdownDays(item, today) ?: return
     DailyBoardSnapshotBuilder.countdownTargetDate(item) ?: return
+    val remaining = DailyBoardSnapshotBuilder.countdownRemainingDisplay(item, now) ?: return
     Surface(
         modifier = Modifier
             .fillMaxWidth()
@@ -1015,18 +1017,20 @@ private fun CountdownTargetRow(
         ) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Text(
-                    text = "${days.coerceAtLeast(0)}d",
+                    text = remaining.primary,
                     color = accent,
                     fontWeight = FontWeight.ExtraBold,
                     style = MaterialTheme.typography.titleLarge,
                     maxLines = 1
                 )
-                Text(
-                    text = countdownRemainingText(item, now),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    style = MaterialTheme.typography.labelSmall,
-                    fontWeight = FontWeight.SemiBold
-                )
+                if (remaining.secondary.isNotBlank()) {
+                    Text(
+                        text = remaining.secondary,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
             }
             Box(
                 modifier = Modifier
@@ -1058,15 +1062,6 @@ private fun CountdownTargetRow(
     }
 }
 
-private fun countdownRemainingText(item: TodoItem, now: LocalDateTime): String {
-    val target = DailyBoardSnapshotBuilder.countdownTargetMillis(item)?.toLocalDateTime() ?: return "--"
-    val remaining = Duration.between(now, target).takeIf { !it.isNegative } ?: Duration.ZERO
-    val hours = remaining.toHours()
-    val minutes = remaining.minusHours(hours).toMinutes()
-    val seconds = remaining.minusHours(hours).minusMinutes(minutes).seconds
-    return "${hours}h ${minutes}m ${seconds}s"
-}
-
 private fun countdownMetaText(item: TodoItem, group: ResolvedTaskGroup): String {
     return if (item.isEvent) {
         val start = item.startAtMillis?.toLocalDateTime() ?: item.dueAtMillis.toLocalDateTime()
@@ -1080,9 +1075,9 @@ private fun countdownMetaText(item: TodoItem, group: ResolvedTaskGroup): String 
             end != null -> "${start.format(CountdownDateTimeFormatter)}-${end.format(CountdownTimeFormatter)}"
             else -> start.format(CountdownDateTimeFormatter)
         }
-        "日程 · $time"
+        time
     } else {
-        "待办 · DDL ${item.dueAtMillis.toLocalDateTime().format(CountdownDateTimeFormatter)} · ${group.name}"
+        "DDL ${item.dueAtMillis.toLocalDateTime().format(CountdownDateTimeFormatter)} · ${group.name}"
     }
 }
 
@@ -1165,6 +1160,47 @@ private fun TodayFocusCard(
                     Icon(Icons.Rounded.Timer, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
                     Text("自由专注", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelLarge)
                 }
+            }
+        }
+    }
+}
+
+@Composable
+private fun FocusHomePanel(
+    minutes: Int,
+    sessionCount: Int,
+    completedCount: Int,
+    defaultMinutes: Int,
+    onStartFreeFocus: () -> Unit
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+        TodayFocusCard(
+            minutes = minutes,
+            sessionCount = sessionCount,
+            completedCount = completedCount,
+            onStartFreeFocus = onStartFreeFocus
+        )
+        ElevatedCard(
+            shape = RoundedCornerShape(26.dp),
+            colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.96f))
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(18.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Text(
+                    text = "专注入口已从每日看板移出",
+                    color = MaterialTheme.colorScheme.onSurface,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    text = "每日看板只负责预览待办和日程；自由专注统一在这里启动。默认时长为 $defaultMinutes 分钟，待办绑定专注仍可从「我的任务」里的待办卡片进入。",
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    style = MaterialTheme.typography.bodyMedium
+                )
             }
         }
     }

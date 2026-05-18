@@ -738,11 +738,11 @@ function renderTodos() {
     renderDesktopDailyBoard();
     const board = state.snapshot.todayBoard || {};
     const todoItems = board.todoItems || [];
-    const allTodayEvents = board.allTodayEvents || [];
+    const visibleTodayEvents = board.visibleTodayEvents || [];
     const tomorrowEvents = board.tomorrowEvents || [];
     els.todoSummary.innerHTML = [
       renderSummaryCard('今日待办', todoItems.length),
-      renderSummaryCard('今日日程', allTodayEvents.length),
+      renderSummaryCard('今日日程', visibleTodayEvents.length),
       renderSummaryCard('明日日程', tomorrowEvents.length),
       renderSummaryCard('加载模式', '轻量')
     ].join('');
@@ -792,9 +792,6 @@ function renderDesktopDailyBoard() {
   const allTodayEvents = board.allTodayEvents || [];
   const visibleTodayEvents = board.visibleTodayEvents || [];
   const tomorrowEvents = board.tomorrowEvents || [];
-  const focusMinutes = Number(board.todayFocusMinutes || 0);
-  const focusSessions = Number(board.todayFocusSessionCount || 0);
-  const completedFocusSessions = Number(board.todayCompletedFocusSessionCount || 0);
   const nowMillis = Number(board.nowMillis || Date.now());
   const nowCard = renderBoardNowCard(nowMillis, visibleTodayEvents, todoItems);
   els.desktopDailyBoard.innerHTML = ''
@@ -805,10 +802,6 @@ function renderDesktopDailyBoard() {
     +     '<p class="muted">电脑端同步手机端当前看板数据，优先显示现在该处理什么。</p>'
     +   '</div>'
     +   nowCard
-    +   '<div class="desktop-focus-metric">'
-    +     '<div class="desktop-focus-minutes">' + escapeHtml(focusMinutes) + '</div>'
-    +     '<div><strong>今日已专注</strong><span>' + escapeHtml(focusSessions + ' 次专注 · ' + completedFocusSessions + ' 次完成') + '</span></div>'
-    +   '</div>'
     + '</section>'
     + '<section class="desktop-board-grid">'
     +   renderBoardCountdownCard(countdownItems, board.date || dayKey(new Date()))
@@ -871,16 +864,14 @@ function renderBoardCountdownCard(items, boardDateKey) {
 
 function renderBoardCountdownRow(item, boardDateKey) {
   const accent = item.itemType === 'EVENT' ? (item.accentColorHex || item.groupColorHex || '#4e87e1') : (item.groupColorHex || '#4CB782');
-  const days = countdownDays(item, boardDateKey);
   const target = countdownTargetMillis(item);
-  const label = String(Math.max(0, days || 0)) + 'd';
-  const remain = target ? remainingCountdownText(target) : '--';
+  const remain = target ? remainingCountdownDisplay(target) : { primary: '--', secondary: '' };
   const rowAttr = item.itemType === 'EVENT'
     ? 'data-event-id="' + escapeHtml(String(item.id ?? '')) + '"'
     : 'data-todo-id="' + escapeHtml(String(item.id ?? '')) + '"';
   const meta = item.itemType === 'EVENT'
-    ? '日程 · ' + eventCountdownTimeText(item)
-    : ['待办', target ? ('DDL ' + formatDateTimeLabel(target)) : '', item.groupName || ''].filter(Boolean).join(' · ');
+    ? eventCountdownTimeText(item)
+    : [target ? ('DDL ' + formatDateTimeLabel(target)) : '', item.groupName || ''].filter(Boolean).join(' · ');
   return ''
     + '<button type="button" class="desktop-board-row countdown" ' + rowAttr + ' style="--accent:' + escapeHtml(accent) + '">'
     +   '<span class="desktop-board-strip"></span>'
@@ -888,17 +879,22 @@ function renderBoardCountdownRow(item, boardDateKey) {
     +     '<strong>' + escapeHtml(item.title || '未命名目标') + '</strong>'
     +     '<small>' + escapeHtml(meta) + '</small>'
     +   '</span>'
-    +   '<span class="desktop-board-chip">' + escapeHtml(label) + '<small>' + escapeHtml(remain) + '</small></span>'
+    +   '<span class="desktop-board-chip">' + escapeHtml(remain.primary) + (remain.secondary ? '<small>' + escapeHtml(remain.secondary) + '</small>' : '') + '</span>'
     + '</button>';
 }
 
-function remainingCountdownText(targetMillis) {
+function remainingCountdownDisplay(targetMillis) {
   const remaining = Math.max(0, Number(targetMillis || 0) - Date.now());
-  const totalSeconds = Math.floor(remaining / 1000);
-  const hours = Math.floor(totalSeconds / 3600);
-  const minutes = Math.floor((totalSeconds % 3600) / 60);
-  const seconds = totalSeconds % 60;
-  return hours + 'h ' + minutes + 'm ' + seconds + 's';
+  const totalMinutes = Math.floor(remaining / 60000);
+  if (totalMinutes >= 1440) {
+    const days = Math.floor(totalMinutes / 1440);
+    const rest = totalMinutes % 1440;
+    return { primary: days + 'd', secondary: Math.floor(rest / 60) + 'h ' + (rest % 60) + 'm' };
+  }
+  if (totalMinutes >= 60) {
+    return { primary: Math.floor(totalMinutes / 60) + 'h', secondary: (totalMinutes % 60) + 'm' };
+  }
+  return { primary: totalMinutes + 'm', secondary: '' };
 }
 
 function eventCountdownTimeText(item) {
@@ -949,7 +945,7 @@ function renderBoardScheduleCard(dateKey, nowMillis, allTodayEvents, visibleToda
     +       '<em>' + escapeHtml(formatWeekday(date)) + '</em>'
     +     '</div>'
     +     '<div class="desktop-schedule-main">'
-    +       '<div class="desktop-board-card-head"><h3>今日日程</h3><span>' + allTodayEvents.length + ' 项</span></div>'
+      +       '<div class="desktop-board-card-head"><h3>今日日程</h3><span>' + visibleTodayEvents.length + ' 项</span></div>'
     +       '<div class="desktop-board-list">' + todayBody + '</div>'
     +       '<div class="desktop-tomorrow-title">明天</div>'
     +       '<div class="desktop-board-list">' + tomorrowBody + '</div>'

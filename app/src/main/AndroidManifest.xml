@@ -101,7 +101,8 @@
 
         <receiver
             android:name=".widget.TodoWidgetProvider"
-            android:exported="true">
+            android:exported="true"
+            android:label="@string/widget_todo_name">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
                 <action android:name="android.intent.action.DATE_CHANGED" />
@@ -116,7 +117,8 @@
 
         <receiver
             android:name=".widget.CountdownWidgetProvider"
-            android:exported="true">
+            android:exported="true"
+            android:label="@string/widget_countdown_name">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
                 <action android:name="android.intent.action.DATE_CHANGED" />
@@ -127,6 +129,22 @@
             <meta-data
                 android:name="android.appwidget.provider"
                 android:resource="@xml/widget_countdown_info" />
+        </receiver>
+
+        <receiver
+            android:name=".widget.FocusWidgetProvider"
+            android:exported="true"
+            android:label="@string/widget_focus_name">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="android.intent.action.DATE_CHANGED" />
+                <action android:name="android.intent.action.TIME_SET" />
+                <action android:name="android.intent.action.TIMEZONE_CHANGED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_focus_info" />
         </receiver>
 
         <receiver

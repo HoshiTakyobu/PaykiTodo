@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/widget_board_background"
+    android:padding="10dp">
+
+    <ImageView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:alpha="0.28"
+        android:contentDescription="@null"
+        android:scaleType="centerCrop"
+        android:src="@drawable/widget_dashboard_bg_image" />
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="@drawable/widget_board_scrim"
+        android:includeFontPadding="false"
+        android:text="" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:gravity="center_vertical"
+        android:orientation="vertical"
+        android:padding="10dp">
+
+        <LinearLayout
+            style="@style/WidgetCountdownRow"
+            android:layout_marginTop="0dp">
+
+            <TextView
+                style="@style/WidgetCountdownCheck"
+                android:visibility="gone" />
+
+            <LinearLayout style="@style/WidgetCountdownTimeBlock">
+
+                <TextView
+                    style="@style/WidgetCountdownDays"
+                    android:text="9d" />
+
+                <TextView
+                    style="@style/WidgetCountdownRemaining"
+                    android:text="20h 36m" />
+            </LinearLayout>
+
+            <ImageView
+                style="@style/WidgetCountdownStrip"
+                android:tint="@color/widget_event_blue" />
+
+            <LinearLayout style="@style/WidgetCountdownTextBlock">
+
+                <TextView
+                    style="@style/WidgetCountdownItemTitle"
+                    android:text="【考】系统软件原理与设计 III" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <LinearLayout style="@style/WidgetCountdownRow">
+
+            <TextView style="@style/WidgetCountdownCheck" />
+
+            <LinearLayout style="@style/WidgetCountdownTimeBlock">
+
+                <TextView
+                    style="@style/WidgetCountdownDays"
+                    android:text="23h" />
+
+                <TextView
+                    style="@style/WidgetCountdownRemaining"
+                    android:text="15m" />
+            </LinearLayout>
+
+            <ImageView
+                style="@style/WidgetCountdownStrip"
+                android:tint="@color/widget_todo_green" />
+
+            <LinearLayout style="@style/WidgetCountdownTextBlock">
+
+                <TextView
+                    style="@style/WidgetCountdownItemTitle"
+                    android:text="提交课程作业" />
+            </LinearLayout>
+        </LinearLayout>
+    </LinearLayout>
+</FrameLayout>

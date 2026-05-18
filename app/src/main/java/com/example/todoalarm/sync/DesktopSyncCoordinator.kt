@@ -38,7 +38,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
 import org.json.JSONArray
 import org.json.JSONObject
 import java.net.Inet4Address
@@ -108,7 +107,7 @@ class DesktopSyncCoordinator(
         )
     }
 
-    private fun handleRequest(
+    private suspend fun handleRequest(
         method: String,
         path: String,
         body: String,
@@ -185,14 +184,12 @@ class DesktopSyncCoordinator(
         return expected.isNotBlank() && provided == expected
     }
 
-    private fun buildSnapshot(boardOnly: Boolean = false): DesktopSyncSnapshot {
-        val groups = runBlocking { app.repository.getAllGroups().ifEmpty { app.repository.ensureDefaultGroups() } }
+    private suspend fun buildSnapshot(boardOnly: Boolean = false): DesktopSyncSnapshot {
+        val groups = app.repository.getAllGroups().ifEmpty { app.repository.ensureDefaultGroups() }
         val now = LocalDateTime.now()
         val today = now.toLocalDate()
-        val items = runBlocking {
-            if (boardOnly) app.repository.getActiveItemsForBoardRange(today) else app.repository.getAllTodos()
-        }
-        val announcementNotes = runBlocking { app.repository.getPlanningNotesWithAnnouncementHints() }
+        val items = if (boardOnly) app.repository.getActiveItemsForBoardRange(today) else app.repository.getAllTodos()
+        val announcementNotes = app.repository.getPlanningNotesWithAnnouncementHints()
         val announcements = PlanningAnnouncementParser.activeAnnouncements(announcementNotes, today)
         val nowMillis = now.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
         val board = DailyBoardSnapshotBuilder.build(
@@ -221,15 +218,15 @@ class DesktopSyncCoordinator(
         )
     }
 
-    private fun desktopTodos(path: String): JSONObject {
+    private suspend fun desktopTodos(path: String): JSONObject {
         val offset = queryParam(path, "offset")?.toIntOrNull()?.coerceAtLeast(0) ?: 0
         val limit = queryParam(path, "limit")?.toIntOrNull()?.coerceIn(1, DESKTOP_TODO_PAGE_LIMIT_MAX) ?: DESKTOP_TODO_PAGE_LIMIT_DEFAULT
         val query = queryParam(path, "q").orEmpty().trim().take(DESKTOP_TODO_QUERY_MAX_LENGTH)
-        val groups = runBlocking { app.repository.getAllGroups().ifEmpty { app.repository.ensureDefaultGroups() } }
+        val groups = app.repository.getAllGroups().ifEmpty { app.repository.ensureDefaultGroups() }
         val groupsById = groups.associateBy { it.id }
-        val todos = runBlocking { app.repository.getDesktopTodoItemsPaged(query, limit, offset) }
+        val todos = app.repository.getDesktopTodoItemsPaged(query, limit, offset)
         val groupIdsByTodoId = todoGroupIdsByTodoId()
-        val total = runBlocking { app.repository.countDesktopTodoItems(query) }
+        val total = app.repository.countDesktopTodoItems(query)
         return JSONObject()
             .put("generatedAtMillis", System.currentTimeMillis())
             .put("offset", offset)
@@ -241,8 +238,8 @@ class DesktopSyncCoordinator(
             .put("todos", JSONArray(todos.map { it.toDesktopJson(groupsById[it.groupId], groupIdsByTodoId[it.id].orEmpty()) }))
     }
 
-    private fun desktopEvents(path: String): JSONObject {
-        val groups = runBlocking { app.repository.getAllGroups().ifEmpty { app.repository.ensureDefaultGroups() } }
+    private suspend fun desktopEvents(path: String): JSONObject {
+        val groups = app.repository.getAllGroups().ifEmpty { app.repository.ensureDefaultGroups() }
         val groupsById = groups.associateBy { it.id }
         val today = LocalDate.now()
         val startDate = queryParam(path, "start")?.let(LocalDate::parse) ?: today
@@ -250,9 +247,7 @@ class DesktopSyncCoordinator(
         val zone = ZoneId.systemDefault()
         val rangeStartMillis = startDate.atStartOfDay(zone).toInstant().toEpochMilli()
         val rangeEndMillis = endDate.atStartOfDay(zone).toInstant().toEpochMilli()
-        val events = runBlocking {
-            app.repository.getActiveCalendarEventsInRangeOnce(rangeStartMillis, rangeEndMillis)
-        }
+        val events = app.repository.getActiveCalendarEventsInRangeOnce(rangeStartMillis, rangeEndMillis)
         return JSONObject()
             .put("generatedAtMillis", System.currentTimeMillis())
             .put("rangeStart", startDate.toString())
@@ -261,7 +256,7 @@ class DesktopSyncCoordinator(
             .put("events", JSONArray(events.map { it.toDesktopJson(groupsById[it.groupId]) }))
     }
 
-    private fun createTodo(json: JSONObject): JSONObject {
+    private suspend fun createTodo(json: JSONObject): JSONObject {
         val groupIds = resolveGroupIds(json)
         val groupId = groupIds.firstOrNull() ?: resolveGroupId(json)
         val dueAt = json.optStringOrNull("dueAt")?.let(LocalDateTime::parse)
@@ -283,15 +278,15 @@ class DesktopSyncCoordinator(
             groupIds = groupIds
         )
         require(draft.title.isNotBlank()) { "标题不能为空" }
-        val created = runBlocking { app.repository.createFromDraft(draft) }
-        created.forEach(::scheduleReminderOrDisable)
+        val created = app.repository.createFromDraft(draft)
+        created.forEach { scheduleReminderOrDisable(it) }
         autoBackupIfNeeded()
         return JSONObject().put("created", created.size)
     }
 
-    private fun updateTodo(path: String, json: JSONObject): JSONObject {
+    private suspend fun updateTodo(path: String, json: JSONObject): JSONObject {
         val id = path.substringAfter("/api/todos/").toLong()
-        val original = runBlocking { app.repository.getTodo(id) } ?: return JSONObject().put("ok", false)
+        val original = app.repository.getTodo(id) ?: return JSONObject().put("ok", false)
         require(original.isTodo) { "仅支持更新待办" }
 
         val groupIds = resolveGroupIds(json)
@@ -318,15 +313,15 @@ class DesktopSyncCoordinator(
         )
         require(draft.title.isNotBlank()) { "标题不能为空" }
         validateTodoDraft(draft = draft, original = original)?.let { error(it) }
-        val affected = runBlocking { app.repository.getActiveItemsForScope(original, RecurrenceScope.CURRENT) }
+        val affected = app.repository.getActiveItemsForScope(original, RecurrenceScope.CURRENT)
         clearReminderArtifacts(affected.ifEmpty { listOf(original) })
-        val updated = runBlocking { app.repository.updateFromDraft(original, draft, RecurrenceScope.CURRENT) }
-        updated.forEach(::scheduleReminderOrDisable)
+        val updated = app.repository.updateFromDraft(original, draft, RecurrenceScope.CURRENT)
+        updated.forEach { scheduleReminderOrDisable(it) }
         autoBackupIfNeeded()
         return JSONObject().put("ok", updated.isNotEmpty())
     }
 
-    private fun createEvent(json: JSONObject): JSONObject {
+    private suspend fun createEvent(json: JSONObject): JSONObject {
         val groupId = resolveGroupId(json)
         val startAt = LocalDateTime.parse(json.getString("startAt"))
         val endAt = LocalDateTime.parse(json.getString("endAt"))
@@ -350,15 +345,15 @@ class DesktopSyncCoordinator(
             groupId = groupId
         )
         require(draft.title.isNotBlank()) { "日程标题不能为空" }
-        val created = runBlocking { app.repository.createCalendarEventFromDraft(draft) }
-        created.forEach(::scheduleReminderOrDisable)
+        val created = app.repository.createCalendarEventFromDraft(draft)
+        created.forEach { scheduleReminderOrDisable(it) }
         autoBackupIfNeeded()
         return JSONObject().put("created", created.size)
     }
 
-    private fun updateEvent(path: String, json: JSONObject): JSONObject {
+    private suspend fun updateEvent(path: String, json: JSONObject): JSONObject {
         val id = path.substringAfter("/api/events/").toLong()
-        val original = runBlocking { app.repository.getTodo(id) } ?: return JSONObject().put("ok", false)
+        val original = app.repository.getTodo(id) ?: return JSONObject().put("ok", false)
         require(original.isEvent) { "仅支持更新日程" }
 
         val groupId = resolveGroupId(json)
@@ -384,17 +379,17 @@ class DesktopSyncCoordinator(
             groupId = groupId
         )
         require(draft.title.isNotBlank()) { "日程标题不能为空" }
-        val updated = runBlocking { app.repository.updateCalendarEventFromDraft(original, draft, RecurrenceScope.CURRENT) }
-        updated.forEach(::scheduleReminderOrDisable)
+        val updated = app.repository.updateCalendarEventFromDraft(original, draft, RecurrenceScope.CURRENT)
+        updated.forEach { scheduleReminderOrDisable(it) }
         autoBackupIfNeeded()
         return JSONObject().put("ok", updated.isNotEmpty())
     }
 
-    private fun eventCheckIns(path: String): JSONObject {
+    private suspend fun eventCheckIns(path: String): JSONObject {
         val id = path.substringAfter("/api/events/").substringBefore('/').toLong()
-        val event = runBlocking { app.repository.getTodo(id) } ?: return JSONObject().put("error", "日程不存在").put("checkIns", JSONArray())
+        val event = app.repository.getTodo(id) ?: return JSONObject().put("error", "日程不存在").put("checkIns", JSONArray())
         require(event.isEvent) { "仅支持日程打卡" }
-        val checkIns = runBlocking { app.repository.getCheckInsForEvent(id) }
+        val checkIns = app.repository.getCheckInsForEvent(id)
         val active = checkIns.firstOrNull { it.checkOutAtMillis == null }
         return JSONObject()
             .put("eventId", id)
@@ -404,19 +399,19 @@ class DesktopSyncCoordinator(
             .put("checkIns", JSONArray(checkIns.map { it.toDesktopJson() }))
     }
 
-    private fun checkInEvent(path: String): JSONObject {
+    private suspend fun checkInEvent(path: String): JSONObject {
         val id = path.substringAfter("/api/events/").substringBefore('/').toLong()
-        val checkIn = runBlocking { app.repository.checkInEvent(id) }
+        val checkIn = app.repository.checkInEvent(id)
         autoBackupIfNeeded()
         return JSONObject()
             .put("ok", checkIn != null)
             .put("checkIn", checkIn?.toDesktopJson())
     }
 
-    private fun checkOutEvent(path: String): JSONObject {
+    private suspend fun checkOutEvent(path: String): JSONObject {
         val id = path.substringAfter("/api/events/").substringBefore('/').toLong()
-        val checkOut = runBlocking { app.repository.checkOutEvent(id) }
-        val updated = runBlocking { app.repository.getTodo(id) }
+        val checkOut = app.repository.checkOutEvent(id)
+        val updated = app.repository.getTodo(id)
         autoBackupIfNeeded()
         return JSONObject()
             .put("ok", checkOut != null)
@@ -424,16 +419,14 @@ class DesktopSyncCoordinator(
             .put("totalCheckInMinutes", updated?.totalCheckInMinutes ?: 0)
     }
 
-    private fun markCompleted(path: String): JSONObject {
+    private suspend fun markCompleted(path: String): JSONObject {
         val id = path.substringAfter("/api/items/").substringBefore('/').toLong()
         val settings = settingsStore.currentSettings()
-        val result = runBlocking {
-            app.repository.setCompletedWithResult(
-                id = id,
-                completed = true,
-                autoCheckOutEventOnEnd = settings.autoCheckOutEventOnEnd
-            )
-        }
+        val result = app.repository.setCompletedWithResult(
+            id = id,
+            completed = true,
+            autoCheckOutEventOnEnd = settings.autoCheckOutEventOnEnd
+        )
         val updated = result?.item
         updated?.let { clearReminderArtifacts(listOf(it)) }
         autoBackupIfNeeded()
@@ -447,86 +440,84 @@ class DesktopSyncCoordinator(
             )
     }
 
-    private fun cancelItem(path: String): JSONObject {
+    private suspend fun cancelItem(path: String): JSONObject {
         val id = path.substringAfter("/api/items/").substringBefore('/').toLong()
-        val item = runBlocking { app.repository.getTodo(id) } ?: return JSONObject().put("ok", false)
+        val item = app.repository.getTodo(id) ?: return JSONObject().put("ok", false)
         val canceled = if (item.isEvent) {
-            runBlocking { app.repository.deleteCalendarEvent(item, RecurrenceScope.CURRENT) }
+            app.repository.deleteCalendarEvent(item, RecurrenceScope.CURRENT)
         } else {
-            runBlocking { app.repository.cancelTodo(item, RecurrenceScope.CURRENT) }
+            app.repository.cancelTodo(item, RecurrenceScope.CURRENT)
         }
         clearReminderArtifacts(canceled.ifEmpty { listOf(item) })
         autoBackupIfNeeded()
         return JSONObject().put("ok", true)
     }
 
-    private fun deleteItem(path: String): JSONObject {
+    private suspend fun deleteItem(path: String): JSONObject {
         val id = path.substringAfter("/api/items/").toLong()
-        val item = runBlocking { app.repository.getTodo(id) } ?: return JSONObject().put("ok", false)
+        val item = app.repository.getTodo(id) ?: return JSONObject().put("ok", false)
         if (item.isEvent) {
-            runBlocking { app.repository.deleteCalendarEvent(item, RecurrenceScope.CURRENT) }
+            app.repository.deleteCalendarEvent(item, RecurrenceScope.CURRENT)
         } else {
-            runBlocking { app.repository.deleteTodo(id) }
+            app.repository.deleteTodo(id)
         }
         clearReminderArtifacts(listOf(item))
         autoBackupIfNeeded()
         return JSONObject().put("ok", true)
     }
 
-    private fun planningNotes(): JSONObject {
-        val notes = runBlocking { app.repository.getAllPlanningNotes() }.filter { !it.archived }
+    private suspend fun planningNotes(): JSONObject {
+        val notes = app.repository.getAllPlanningNotes().filter { !it.archived }
         val activeId = settingsStore.currentSettings().lastOpenedPlanningNoteId ?: notes.firstOrNull()?.id
         return JSONObject()
             .put("activeNoteId", activeId)
             .put("notes", JSONArray(notes.map { it.toPlanningJson() }))
     }
 
-    private fun createPlanningNote(json: JSONObject): JSONObject {
-        val note = runBlocking { app.repository.createPlanningNote(json.optString("title", "新的规划")) }
+    private suspend fun createPlanningNote(json: JSONObject): JSONObject {
+        val note = app.repository.createPlanningNote(json.optString("title", "新的规划"))
         settingsStore.updateLastOpenedPlanningNoteId(note.id)
         autoBackupIfNeeded()
         return JSONObject().put("note", note.toPlanningJson())
     }
 
-    private fun updatePlanningNote(path: String, json: JSONObject): JSONObject {
+    private suspend fun updatePlanningNote(path: String, json: JSONObject): JSONObject {
         val id = path.substringAfter("/api/planning/notes/").toLong()
         val title = json.optStringOrNull("title")
         val content = json.optStringOrNull("contentMarkdown")
-        val updatedTitle = if (title != null) runBlocking { app.repository.renamePlanningNote(id, title) } else runBlocking { app.repository.getPlanningNote(id) }
-        val updated = if (content != null) runBlocking { app.repository.updatePlanningNoteContent(id, content) } else updatedTitle
+        val updatedTitle = if (title != null) app.repository.renamePlanningNote(id, title) else app.repository.getPlanningNote(id)
+        val updated = if (content != null) app.repository.updatePlanningNoteContent(id, content) else updatedTitle
         require(updated != null) { "规划文档不存在" }
         settingsStore.updateLastOpenedPlanningNoteId(id)
         autoBackupIfNeeded()
         return JSONObject().put("note", updated.toPlanningJson())
     }
 
-    private fun deletePlanningNote(path: String): JSONObject {
+    private suspend fun deletePlanningNote(path: String): JSONObject {
         val id = path.substringAfter("/api/planning/notes/").toLong()
-        runBlocking { app.repository.deletePlanningNote(id) }
-        val fallback = runBlocking { app.repository.ensureDefaultPlanningNote() }
+        app.repository.deletePlanningNote(id)
+        val fallback = app.repository.ensureDefaultPlanningNote()
         settingsStore.updateLastOpenedPlanningNoteId(fallback.id)
         autoBackupIfNeeded()
         return JSONObject().put("ok", true)
     }
 
-    private fun parsePlanning(json: JSONObject): JSONObject {
+    private suspend fun parsePlanning(json: JSONObject): JSONObject {
         val markdown = json.optString("markdown")
-        val result = runBlocking {
-            PlanningRecognitionService.recognize(
-                markdown = markdown,
-                settings = settingsStore.currentSettings()
-            )
-        }
+        val result = PlanningRecognitionService.recognize(
+            markdown = markdown,
+            settings = settingsStore.currentSettings()
+        )
         return result.toPlanningParseJson()
     }
 
-    private fun importPlanning(json: JSONObject): JSONObject {
+    private suspend fun importPlanning(json: JSONObject): JSONObject {
         val markdown = json.optString("markdown")
         val selectedIds = json.optJSONArray("selectedIds")?.toStringSet().orEmpty()
         val result = PlanningMarkdownParser.parse(markdown)
         val editedCandidates = json.optJSONArray("candidates")?.toPlanningImportCandidates(result.candidates).orEmpty()
         val sourceCandidates = if (editedCandidates.isNotEmpty()) editedCandidates else result.candidates.map { it.toPlanningImportCandidate() }
-        val groups = runBlocking { app.repository.getAllGroups().ifEmpty { app.repository.ensureDefaultGroups() } }
+        val groups = app.repository.getAllGroups().ifEmpty { app.repository.ensureDefaultGroups() }
         val selected = sourceCandidates.filter { it.id in selectedIds && it.importable }
         require(selected.isNotEmpty()) { "没有可导入的规划条目" }
         selected.forEachIndexed { index, candidate ->
@@ -541,21 +532,21 @@ class DesktopSyncCoordinator(
             val sourceLine = markdownLines.getOrNull(candidate.lineNumber - 1) ?: candidate.sourceLine
             when (candidate.type) {
                 PlanningParsedType.TODO -> {
-                    val created = runBlocking { app.repository.createFromDraft(candidate.toPlanningTodoDraft(groups)) }
-                    created.forEach(::scheduleReminderOrDisable)
+                    val created = app.repository.createFromDraft(candidate.toPlanningTodoDraft(groups))
+                    created.forEach { scheduleReminderOrDisable(it) }
                     mappings += created.mapNotNull { item ->
                         candidate.toPlanningLineMapping(noteId, item, sourceLine, batchId, importAtMillis)
                     }
                 }
                 PlanningParsedType.EVENT -> {
-                    val created = runBlocking { app.repository.createCalendarEventFromDraft(candidate.toPlanningEventDraft(groups)) }
-                    created.forEach(::scheduleReminderOrDisable)
+                    val created = app.repository.createCalendarEventFromDraft(candidate.toPlanningEventDraft(groups))
+                    created.forEach { scheduleReminderOrDisable(it) }
                     mappings += created.mapNotNull { item ->
                         candidate.toPlanningLineMapping(noteId, item, sourceLine, batchId, importAtMillis)
                     }
                     if (candidate.createLinkedTodo) {
-                        val linked = runBlocking { app.repository.createFromDraft(candidate.toPlanningLinkedTodoDraft(groups)) }
-                        linked.forEach(::scheduleReminderOrDisable)
+                        val linked = app.repository.createFromDraft(candidate.toPlanningLinkedTodoDraft(groups))
+                        linked.forEach { scheduleReminderOrDisable(it) }
                         mappings += linked.mapNotNull { item ->
                             candidate.toPlanningLineMapping(noteId, item, sourceLine, batchId, importAtMillis)
                         }
@@ -566,8 +557,8 @@ class DesktopSyncCoordinator(
         }
         val updatedMarkdown = PlanningMarkdownParser.markImportedLines(markdown, selected.map { it.lineNumber }.toSet())
         if (noteId != null) {
-            runBlocking { app.repository.insertPlanningMappings(mappings) }
-            runBlocking { app.repository.updatePlanningNoteContent(noteId, updatedMarkdown) }
+            app.repository.insertPlanningMappings(mappings)
+            app.repository.updatePlanningNoteContent(noteId, updatedMarkdown)
             settingsStore.updateLastOpenedPlanningNoteId(noteId)
         }
         autoBackupIfNeeded()
@@ -576,97 +567,93 @@ class DesktopSyncCoordinator(
             .put("updatedMarkdown", updatedMarkdown)
     }
 
-    private fun planningMappings(path: String): JSONObject {
+    private suspend fun planningMappings(path: String): JSONObject {
         val noteId = queryParam(path, "noteId")?.toLongOrNull() ?: error("缺少 noteId")
-        val note = runBlocking { app.repository.getPlanningNote(noteId) } ?: error("规划文档不存在")
-        val synced = runBlocking { app.repository.syncPlanningMappingStatuses(noteId, note.contentMarkdown) }
+        val note = app.repository.getPlanningNote(noteId) ?: error("规划文档不存在")
+        val synced = app.repository.syncPlanningMappingStatuses(noteId, note.contentMarkdown)
         return JSONObject()
             .put("changed", synced.changedCount)
             .put("mappings", JSONArray(synced.mappings.map { it.toPlanningMappingJson() }))
     }
 
-    private fun refreshPlanning(json: JSONObject): JSONObject {
+    private suspend fun refreshPlanning(json: JSONObject): JSONObject {
         val noteId = json.optLong("noteId", 0L).takeIf { it > 0L } ?: error("缺少 noteId")
         val markdown = json.optString("markdown")
         val scope = PlanningRefreshScope.fromStorage(json.optString("scope", PlanningRefreshScope.CURRENT_SECTION.name))
         val cursorLineNumber = json.optInt("cursorLineNumber", 0).takeIf { it > 0 }
-        val result = runBlocking {
-            app.repository.refreshPlanningImportedItems(
-                noteId = noteId,
-                markdown = markdown,
-                wholeDocument = scope == PlanningRefreshScope.WHOLE_DOCUMENT,
-                cursorLineNumber = cursorLineNumber
-            )
-        }
+        val result = app.repository.refreshPlanningImportedItems(
+            noteId = noteId,
+            markdown = markdown,
+            wholeDocument = scope == PlanningRefreshScope.WHOLE_DOCUMENT,
+            cursorLineNumber = cursorLineNumber
+        )
         reschedulePlanningOperationItems(result)
         autoBackupIfNeeded()
         return result.toPlanningOperationJson()
     }
 
-    private fun postponePlanning(json: JSONObject): JSONObject {
+    private suspend fun postponePlanning(json: JSONObject): JSONObject {
         val noteId = json.optLong("noteId", 0L).takeIf { it > 0L } ?: error("缺少 noteId")
         val markdown = json.optString("markdown")
         val mappingId = json.optLong("mappingId", 0L).takeIf { it > 0L }
         val offsetMinutes = json.optInt("offsetMinutes", 0)
         val scope = PlanningPostponeScope.fromStorage(json.optString("scope", PlanningPostponeScope.FROM_ITEM_TO_SECTION_END.name))
-        val result = runBlocking {
-            app.repository.postponePlanningImportedItems(
-                noteId = noteId,
-                markdown = markdown,
-                startMappingId = mappingId,
-                offsetMinutes = offsetMinutes,
-                scope = scope
-            )
-        }
+        val result = app.repository.postponePlanningImportedItems(
+            noteId = noteId,
+            markdown = markdown,
+            startMappingId = mappingId,
+            offsetMinutes = offsetMinutes,
+            scope = scope
+        )
         reschedulePlanningOperationItems(result)
         autoBackupIfNeeded()
         return result.toPlanningOperationJson()
     }
 
-    private fun undoPlanning(json: JSONObject): JSONObject {
+    private suspend fun undoPlanning(json: JSONObject): JSONObject {
         val noteId = json.optLong("noteId", 0L).takeIf { it > 0L } ?: error("缺少 noteId")
         val markdown = json.optString("markdown")
-        val result = runBlocking { app.repository.undoLastPlanningOperation(noteId, markdown) }
+        val result = app.repository.undoLastPlanningOperation(noteId, markdown)
         clearReminderArtifacts(result.affectedBeforeItems)
-        result.affectedAfterItems.forEach(::scheduleReminderOrDisable)
+        result.affectedAfterItems.forEach { scheduleReminderOrDisable(it) }
         autoBackupIfNeeded()
         return result.toPlanningOperationJson()
     }
 
-    private fun resolvePlanningConflictDocument(json: JSONObject): JSONObject {
+    private suspend fun resolvePlanningConflictDocument(json: JSONObject): JSONObject {
         val noteId = json.optLong("noteId", 0L).takeIf { it > 0L } ?: error("缺少 noteId")
         val markdown = json.optString("markdown")
         val mappingId = json.optLong("mappingId", 0L).takeIf { it > 0L } ?: error("缺少 mappingId")
-        val result = runBlocking { app.repository.resolvePlanningConflictWithDocument(noteId, markdown, mappingId) }
+        val result = app.repository.resolvePlanningConflictWithDocument(noteId, markdown, mappingId)
         reschedulePlanningOperationItems(result)
         autoBackupIfNeeded()
         return result.toPlanningOperationJson()
     }
 
-    private fun resolvePlanningConflictItem(json: JSONObject): JSONObject {
+    private suspend fun resolvePlanningConflictItem(json: JSONObject): JSONObject {
         val noteId = json.optLong("noteId", 0L).takeIf { it > 0L } ?: error("缺少 noteId")
         val markdown = json.optString("markdown")
         val mappingId = json.optLong("mappingId", 0L).takeIf { it > 0L } ?: error("缺少 mappingId")
-        val result = runBlocking { app.repository.resolvePlanningConflictWithItem(noteId, markdown, mappingId) }
+        val result = app.repository.resolvePlanningConflictWithItem(noteId, markdown, mappingId)
         autoBackupIfNeeded()
         return result.toPlanningOperationJson()
     }
 
-    private fun resolveGroupId(json: JSONObject): Long {
-        val groups = runBlocking { app.repository.getAllGroups().ifEmpty { app.repository.ensureDefaultGroups() } }
+    private suspend fun resolveGroupId(json: JSONObject): Long {
+        val groups = app.repository.getAllGroups().ifEmpty { app.repository.ensureDefaultGroups() }
         val groupId = json.optLong("groupId", 0L)
         if (groupId > 0 && groups.any { it.id == groupId }) return groupId
         val requestedName = json.optString("groupName").trim()
         if (requestedName.isNotBlank()) {
             val existing = groups.firstOrNull { it.name == requestedName }
             if (existing != null) return existing.id
-            return runBlocking { app.repository.createGroup(requestedName, json.optString("groupColorHex", "#4E87E1")).id }
+            return app.repository.createGroup(requestedName, json.optString("groupColorHex", "#4E87E1")).id
         }
         return groups.firstOrNull { it.name == "例行" }?.id ?: groups.firstOrNull()?.id ?: 0L
     }
 
-    private fun resolveGroupIds(json: JSONObject): List<Long> {
-        val groups = runBlocking { app.repository.getAllGroups().ifEmpty { app.repository.ensureDefaultGroups() } }
+    private suspend fun resolveGroupIds(json: JSONObject): List<Long> {
+        val groups = app.repository.getAllGroups().ifEmpty { app.repository.ensureDefaultGroups() }
         val validIds = groups.map { it.id }.toSet()
         val explicitIds = json.optJSONArray("groupIds")
             ?.toLongList()
@@ -820,11 +807,11 @@ class DesktopSyncCoordinator(
         )
     }
 
-    private fun scheduleReminderOrDisable(item: TodoItem) {
+    private suspend fun scheduleReminderOrDisable(item: TodoItem) {
         if (item.isTodo && !item.hasDueDate) {
             if (item.reminderEnabled || item.reminderAtMillis != null) {
                 ReminderDispatchTracker.clear(context, item.id)
-                runBlocking { app.repository.updateTodo(item.copy(reminderEnabled = false, reminderAtMillis = null)) }
+                app.repository.updateTodo(item.copy(reminderEnabled = false, reminderAtMillis = null))
             }
             return
         }
@@ -832,7 +819,7 @@ class DesktopSyncCoordinator(
         ReminderDispatchTracker.clear(context, item.id)
         val message = app.alarmScheduler.schedule(item)
         if (message != null) {
-            runBlocking { app.repository.updateTodo(item.copy(reminderEnabled = false)) }
+            app.repository.updateTodo(item.copy(reminderEnabled = false))
         }
     }
 
@@ -846,9 +833,9 @@ class DesktopSyncCoordinator(
         context.stopService(android.content.Intent(context, ReminderForegroundService::class.java))
     }
 
-    private fun reschedulePlanningOperationItems(result: PlanningOperationResult) {
+    private suspend fun reschedulePlanningOperationItems(result: PlanningOperationResult) {
         clearReminderArtifacts(result.affectedBeforeItems)
-        result.affectedAfterItems.forEach(::scheduleReminderOrDisable)
+        result.affectedAfterItems.forEach { scheduleReminderOrDisable(it) }
     }
 
     private fun autoBackupIfNeeded() {
@@ -863,8 +850,8 @@ class DesktopSyncCoordinator(
         }
     }
 
-    private fun todoGroupIdsByTodoId(): Map<Long, List<Long>> {
-        return runBlocking { app.repository.getAllTodoGroupTags() }
+    private suspend fun todoGroupIdsByTodoId(): Map<Long, List<Long>> {
+        return app.repository.getAllTodoGroupTags()
             .groupBy { it.todoId }
             .mapValues { entry -> entry.value.map { it.groupId }.filter { it > 0 }.distinct().sorted() }
     }

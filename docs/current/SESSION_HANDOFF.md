@@ -32,7 +32,8 @@ Long-running Codex sessions can become unreliable. This file exists so a new ses
   18. Desktop Web event editor exposes `打卡追踪`, and the event preview sheet can load check-in records plus perform `签到` / `签退`.
   19. Phone Planning Desk shortcut toolbar is now reduced to `子任务` and `公告`; task, DDL, reminder, group, date, and schedule input remain natural-text / tag parser workflows instead of visible shortcut buttons.
   20. AI daily/weekly reports, schedule-template saving, and desktop Planning Desk note operations now use narrower DAO queries instead of full-table or full-note-list scans.
-  21. Full `1.11.0 / versionCode 222` version bump is still pending.
+  21. Desktop sync business request handling now uses suspend route handlers; the only remaining `runBlocking` is the intentional socket-thread response boundary in `DesktopSyncServer`.
+  22. Full `1.11.0 / versionCode 222` version bump is still pending.
 - Latest published signed release APK:
   - `app/build/outputs/apk/release/PaykiTodo-1.10.2-release.apk`
   - GitHub Release: `https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.10.2`
@@ -169,6 +170,13 @@ Long-running Codex sessions can become unreliable. This file exists so a new ses
 5. Desktop sync Planning Desk note update and mapping refresh read a single planning note by ID instead of loading the full planning-note list and filtering it.
 6. `widget_countdown_info.xml` already declares `android:updatePeriodMillis="0"`, so P10 is satisfied by the existing provider-owned minute-refresh design rather than a new XML change.
 
+## Latest Desktop Sync Suspend Handler Pass
+
+1. `DesktopSyncServer` accepts a suspend request handler and wraps it exactly once at the per-client socket thread where a response must be written synchronously.
+2. `DesktopSyncCoordinator.handleRequest` and repository-backed desktop routes are suspend functions.
+3. Snapshot, todo/event CRUD, event check-in, item completion/cancel/delete, Planning Desk notes/import/refresh/postpone/undo/conflict, group resolution, reminder cleanup, and group-tag lookup call repository suspend APIs directly.
+4. Static search should show no `runBlocking` in `DesktopSyncCoordinator.kt`; `DesktopSyncServer.kt` keeps the single socket-boundary `runBlocking`.
+
 ## Previous 1.10.3 Planning Desk Fix Pass
 
 1. Local Planning Markdown parsing recognizes inline `@地点`, quoted `"@地点"`, and `地点：...` event locations.
@@ -303,6 +311,13 @@ Narrow query performance slice:
 2. Fresh `git diff --check` passed after code and docs synchronization.
 3. No new APK has been built for this slice yet.
 
+Desktop sync suspend handler slice:
+
+1. Fresh `./gradlew.bat :app:compileDebugKotlin` passed after converting desktop sync route handling to suspend.
+2. Static `runBlocking` search confirms no `runBlocking` remains in `DesktopSyncCoordinator.kt`; only `DesktopSyncServer.kt` keeps the intended socket response boundary.
+3. Fresh `git diff --check` passed after code and docs synchronization.
+4. No new APK has been built for this slice yet.
+
 Secret / release safety checks already performed:
 
 1. `git check-ignore -v keystore.properties release/PaykiTodo-release.jks app/build/outputs/apk/release/PaykiTodo-1.10.3-release.apk app/build/outputs/apk/debug/PaykiTodo-1.10.3-debug.apk` confirmed local signing material and APK outputs are ignored.
@@ -336,6 +351,7 @@ Secret / release safety checks already performed:
 - Schema export gives future migrations a concrete Room reference file for database version 18.
 - AI report retention prevents the `ai_reports` archive from growing without limit once reports are generated regularly.
 - AI daily/weekly report generation now uses range-limited todo/event reads; schedule-template saving uses a week-overlap event query; desktop Planning Desk note operations use single-note lookup by ID.
+- Desktop sync business routes now call suspend repository APIs directly; only the socket client thread boundary uses `runBlocking` while waiting to write an HTTP response.
 
 ## Files Most Relevant To The Current Goal
 

@@ -135,6 +135,13 @@ Do not push to GitHub unless the user explicitly asks.
 4. Desktop sync Planning Desk note update and mapping refresh now read a single planning note by ID instead of loading every planning note and filtering in memory.
 5. `widget_countdown_info.xml` was rechecked and already declares `android:updatePeriodMillis="0"`, so the independent countdown widget remains on provider-owned minute ticks rather than the system widget update floor.
 
+### P8 desktop-sync suspend handler slice
+
+1. `DesktopSyncServer` now accepts a suspend request handler and keeps the single `runBlocking` boundary inside the per-client socket thread where the HTTP response must wait.
+2. `DesktopSyncCoordinator.handleRequest` and repository-backed desktop sync route handlers are now suspend functions.
+3. Desktop sync snapshot, todo/event CRUD, event check-in, item completion/cancel/delete, Planning Desk notes/import/refresh/postpone/undo/conflict, group resolution, reminder scheduling cleanup, and group-tag lookup now call repository suspend APIs directly instead of wrapping each operation in `runBlocking`.
+4. Static search confirms `DesktopSyncCoordinator.kt` no longer contains `runBlocking`; the only remaining sync-server `runBlocking` is the intended socket-thread boundary in `DesktopSyncServer.kt`.
+
 ## Verification Completed
 
 ### Widget slice
@@ -245,6 +252,13 @@ Do not push to GitHub unless the user explicitly asks.
 2. `git diff --check` passed after code and docs synchronization.
 3. No new APK has been built for this slice yet.
 
+### P8 desktop-sync suspend handler slice
+
+1. `./gradlew.bat :app:compileDebugKotlin` passed after converting desktop sync handlers to suspend.
+2. Static search confirmed `runBlocking` appears only in `DesktopSyncServer.kt` at the socket response boundary and no longer appears in `DesktopSyncCoordinator.kt`.
+3. `git diff --check` passed after code and docs synchronization.
+4. No new APK has been built for this slice yet.
+
 ## Verification Still Needed On Device / Browser
 
 1. Install `app/build/outputs/apk/debug/PaykiTodo-1.10.3-debug.apk` on the physical phone if validating the latest built widget APK.
@@ -258,6 +272,5 @@ Do not push to GitHub unless the user explicitly asks.
 The full goal remains active. Major remaining slices:
 
 1. V1-V6: Planning Desk image recognition through vision-capable AI providers.
-2. P8: desktop-sync suspend handler cleanup.
-3. P1/P2/P3: R8/resource shrinking, WebP conversion, icon dependency audit, release launch verification, and final APK-size check.
-4. Final version bump to `1.11.0 / versionCode 222`.
+2. P1/P2/P3: R8/resource shrinking, WebP conversion, icon dependency audit, release launch verification, and final APK-size check.
+3. Final version bump to `1.11.0 / versionCode 222`.

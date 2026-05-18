@@ -1,6 +1,7 @@
 package com.example.todoalarm.sync
 
 import org.json.JSONObject
+import kotlinx.coroutines.runBlocking
 import java.io.ByteArrayOutputStream
 import java.io.OutputStream
 import java.net.InetSocketAddress
@@ -17,7 +18,7 @@ import java.util.concurrent.atomic.AtomicBoolean
 
 class DesktopSyncServer(
     private val port: Int,
-    private val requestHandler: (method: String, path: String, body: String, headers: Map<String, String>) -> Response
+    private val requestHandler: suspend (method: String, path: String, body: String, headers: Map<String, String>) -> Response
 ) {
     private val running = AtomicBoolean(false)
     private val acceptExecutor = Executors.newSingleThreadExecutor { runnable ->
@@ -80,7 +81,7 @@ class DesktopSyncServer(
                 if (request.method == "OPTIONS") {
                     Response.noContent()
                 } else {
-                    requestHandler(request.method, request.path, request.body, request.headers)
+                    runBlocking { requestHandler(request.method, request.path, request.body, request.headers) }
                 }
             } catch (error: HttpRequestException) {
                 Response.json(JSONObject().put("error", error.message), error.statusCode)

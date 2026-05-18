@@ -192,6 +192,8 @@ This file tracks the product at a practical level for new coding sessions.
 - widget provider now suggests a more daily-board-like square / vertical default size instead of a shallow list-size widget, and the current card pass uses more solid rounded card surfaces plus wider todo/schedule strip spacing so desktop rendering is less like a generic system list
 - widget `1.9.4` visual pass adds a static daily-board-style picker preview, targets a 4x5 vertical board by default, gives todo rows a checkbox-like marker plus `DDL HH:mm` chip, and makes ordinary schedule rows transparent with only the vertical color strip to better match the in-app daily board
 - widget `1.9.6` visual pass removes the extra `轻触打开` header copy, compresses the topbar toward the in-app daily-board TopBar, shows todo group tags / notes / `⏰ DDL HH:mm`, removes heavy card strokes, and gives currently running schedule rows a gold border plus faint gold fill
+- widget `1.9.22` refresh pass updates both the header and RemoteViews `ListView` rows on normal widget updates, date changes, time/timezone changes, and app replacement; the RemoteAdapter cache key includes the current date to reduce stale launcher row reuse
+- widget `1.9.22` light-mode pass uses more opaque warm card surfaces plus darker primary/muted/accent colors so text remains readable over the light board background
 - repository todo mutations and Planning Desk note edits / delete / archive operations notify widget data refresh through the application-level widget callback
 
 ### Data / Backup / Diagnostics

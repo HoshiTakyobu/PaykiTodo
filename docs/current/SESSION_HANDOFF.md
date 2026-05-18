@@ -6,13 +6,13 @@ Long-running Codex sessions can become unreliable. This file exists so a new ses
 
 ## Current Handoff Summary
 
-- The project is now being advanced to `1.9.21` / `versionCode 215`.
+- The project is now being advanced to `1.9.22` / `versionCode 216`.
 - Main user request: review the recent `1.9.11`+ experience / performance work, identify remaining user-facing issues, and implement practical performance improvements where safe.
-- This continuation keeps the no-DDL, widget, desktop lightweight snapshot, AI-provider save-state, calendar-index, phone screen-scoped subscription, Planning Desk parser threading, AI-report paging, Planning Desk announcement indexing, desktop-sync hardening, AI-report filtering, and calendar date-window baseline, then hardens no-DDL todo sectioning, changes the phone Calendar page to observe only the current visible event range, and localizes the phone Calendar top-bar title.
-- Latest expected debug APK after packaging: `app/build/outputs/apk/debug/PaykiTodo-1.9.21-debug.apk`.
+- This continuation keeps the no-DDL, widget, desktop lightweight snapshot, AI-provider save-state, calendar-index, phone screen-scoped subscription, Planning Desk parser threading, AI-report paging, Planning Desk announcement indexing, desktop-sync hardening, AI-report filtering, calendar date-window, visible-range phone Calendar, and Calendar top-bar localization baseline, then fixes Android launcher widget date/list refresh and light-mode readability.
+- Latest expected debug APK after packaging: `app/build/outputs/apk/debug/PaykiTodo-1.9.22-debug.apk`.
 - Do not push to GitHub unless the user explicitly asks.
 
-## Latest 1.9.21 Review / Performance Pass
+## Latest 1.9.22 Widget Refresh / Readability Pass
 
 1. Desktop Web first connection still calls `/api/snapshot?scope=board` so the browser can show the daily board without transferring all todos/events/planning data first.
 2. Desktop Web todo management now loads through `GET /api/todos?offset=...&limit=...&q=...` when the user clicks `加载待办管理列表`, searches, or loads more.
@@ -36,6 +36,10 @@ Long-running Codex sessions can become unreliable. This file exists so a new ses
 20. Phone Calendar now reports its visible date window to the ViewModel and observes only overlapping active events in that padded range instead of subscribing to every active event when the Calendar page is open.
 21. Notification / deep-link navigation to a far calendar event first expands the event query around the target event date, then focuses the Calendar page on that date.
 22. Phone Calendar top bar now shows `日历` instead of the leftover English `Schedule`.
+23. Android widget `onUpdate` now also calls `notifyAppWidgetViewDataChanged`, so the header and `ListView` rows refresh together rather than only updating the static header.
+24. Android widget receiver listens for `DATE_CHANGED`, `TIME_SET`, `TIMEZONE_CHANGED`, and `MY_PACKAGE_REPLACED`, then refreshes all widget instances.
+25. Android widget RemoteAdapter data URI includes the current date, reducing launcher-side reuse of yesterday's collection factory/cache.
+26. Android widget light-mode surfaces were made more opaque and text/accent colors were darkened for better contrast over the light daily-board background.
 
 ## Verification Status
 
@@ -45,13 +49,13 @@ Completed locally in this continuation:
 2. `./gradlew.bat :app:compileDebugKotlin testDebugUnitTest assembleDebug` passed.
 3. `git diff --check` passed.
 4. Unit tests include `TodoItemSectionsTest`, covering no-DDL active todos staying in today across dates.
-5. `app/build/outputs/apk/debug/output-metadata.json` reports `versionCode=215`, `versionName=1.9.21`, and `outputFile=PaykiTodo-1.9.21-debug.apk`.
+5. `app/build/outputs/apk/debug/output-metadata.json` reports `versionCode=216`, `versionName=1.9.22`, and `outputFile=PaykiTodo-1.9.22-debug.apk`.
 
-Latest emulator smoke installed `app/build/outputs/apk/debug/PaykiTodo-1.9.21-debug.apk` on `emulator-5554`, checked app launch, Daily Board UI tree, drawer UI tree, Calendar UI tree, screenshot capture, and a PaykiTodo fatal-crash logcat scan. MainActivity displayed, Daily Board showed `今日待办（0）` / `今日日程（0）`, drawer showed primary entries, Calendar displayed `2026年5月` with timeline content, Calendar top bar showed `日历` rather than `Schedule`, and no PaykiTodo `FATAL EXCEPTION` was found in the checked logcat window.
+Latest emulator smoke installed `app/build/outputs/apk/debug/PaykiTodo-1.9.21-debug.apk` on `emulator-5554`, checked app launch, Daily Board UI tree, drawer UI tree, Calendar UI tree, screenshot capture, and a PaykiTodo fatal-crash logcat scan. MainActivity displayed, Daily Board showed `今日待办（0）` / `今日日程（0）`, drawer showed primary entries, Calendar displayed `2026年5月` with timeline content, Calendar top bar showed `日历` rather than `Schedule`, and no PaykiTodo `FATAL EXCEPTION` was found in the checked logcat window. The `1.9.22` widget change has compile/build verification, but final launcher rendering still needs physical-device testing.
 
 ## Remaining Device / Browser Verification
 
-1. Install `app/build/outputs/apk/debug/PaykiTodo-1.9.21-debug.apk` on the physical phone.
+1. Install `app/build/outputs/apk/debug/PaykiTodo-1.9.22-debug.apk` on the physical phone.
 2. Browser-test desktop todo pagination/search:
    - initial connect shows `看板轻量数据`;
    - `加载待办管理列表` requests `/api/todos?offset=0&limit=80`;
@@ -65,6 +69,8 @@ Latest emulator smoke installed `app/build/outputs/apk/debug/PaykiTodo-1.9.21-de
    - widget picker preview should not show `今日已专注` or `自由专注`;
    - live widget should show announcements, greeting, today todos, and today/tomorrow schedule content only;
    - resizing larger should reveal more than six today todos when enough data exists.
+   - after midnight, manual date/time change, timezone change, or app replacement, the widget header date and list-card date/greeting should update together;
+   - light-mode cards/text should remain readable over the board background; if the launcher keeps old focus-card rows after app upgrade, remove and re-add the widget once to clear stale launcher state.
 5. Device-test no-DDL todos:
    - normal no-DDL todo appears under `今日待办`;
    - Planning Desk plain bullets import as no-DDL todos and appear under `今日待办`;
@@ -78,7 +84,7 @@ Latest emulator smoke installed `app/build/outputs/apk/debug/PaykiTodo-1.9.21-de
 
 ## Performance Notes
 
-Fixed locally across `1.9.12`-`1.9.21`:
+Fixed locally across `1.9.12`-`1.9.22`:
 
 1. Added `todo_items` indices for high-frequency board/reminder/group/recurrence queries.
 2. Removed duplicate group reads from desktop `/api/snapshot`.
@@ -97,6 +103,7 @@ Fixed locally across `1.9.12`-`1.9.21`:
 15. Added AI-report keyword/type/range query pushdown and matching Room indices.
 16. Replaced calendar timeline date-list allocation with a lightweight date window.
 17. Localized the phone Calendar top-bar title from `Schedule` to `日历`.
+18. Fixed Android widget stale list refresh across date/time/timezone/app-replacement events and made light-mode widget cards/text more readable.
 
 Worth doing later:
 

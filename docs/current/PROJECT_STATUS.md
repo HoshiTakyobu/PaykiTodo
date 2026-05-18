@@ -7,19 +7,19 @@
 - Package name: `com.paykitodo.app`
 - Target platform: Android 14 / API 34
 - Current version in code:
-  - `versionName = "1.9.21"`
-  - `versionCode = 215`
+  - `versionName = "1.9.22"`
+  - `versionCode = 216`
 
 ## Current Build Facts
 
 - Latest debug APK output after this round is:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.9.21-debug.apk`
-- Verification completed for the final `1.9.21` rebuild:
+  - `app/build/outputs/apk/debug/PaykiTodo-1.9.22-debug.apk`
+- Verification completed for the final `1.9.22` rebuild:
   - `node --check app/src/main/assets/desktop-web/app.js`
   - `./gradlew.bat :app:compileDebugKotlin testDebugUnitTest assembleDebug`
   - `git diff --check`
-  - `output-metadata.json` reports `versionCode=215`, `versionName=1.9.21`, `outputFile=PaykiTodo-1.9.21-debug.apk`
-- Latest emulator smoke recorded for `1.9.21`:
+  - `output-metadata.json` reports `versionCode=216`, `versionName=1.9.22`, `outputFile=PaykiTodo-1.9.22-debug.apk`
+- Latest emulator smoke recorded for `1.9.21` remains historical:
   - device id: `emulator-5554`
   - installed APK: `app/build/outputs/apk/debug/PaykiTodo-1.9.21-debug.apk`
   - checked: app launch, Daily Board UI tree, drawer UI tree, Calendar page UI tree, screenshot capture, and logcat fatal-crash scan
@@ -34,17 +34,19 @@
 
 ## Current Worktree Reality
 
-The repository is now being advanced to `1.9.21`. It carries forward the `1.9.12`-`1.9.19` no-DDL, widget, desktop lightweight snapshot, desktop paged/searchable todo management, screen-scoped subscription, desktop-sync stability, AI-report filtering, and calendar date-window baseline, then hardens no-DDL section classification for My Tasks, changes the phone Calendar page to subscribe only to the currently visible event date range, and fixes the phone Calendar top-bar English title leftover.
+The repository is now being advanced to `1.9.22`. It carries forward the `1.9.12`-`1.9.21` no-DDL, widget, desktop lightweight snapshot, desktop paged/searchable todo management, screen-scoped subscription, desktop-sync stability, AI-report filtering, calendar date-window, visible-range phone Calendar, and Calendar title-localization baseline, then fixes a real-device Android launcher widget issue where the header date could update to today while the RemoteViews list still showed yesterday's board content.
 
 Most important current baseline facts:
 
-- version metadata is `1.9.21 / 215`
+- version metadata is `1.9.22 / 216`
 - Database version is `16`; `MIGRATION_13_14` creates `todo_items` indices for board, reminder, group, and recurrence lookup paths, `MIGRATION_14_15` adds / backfills `planning_notes.hasAnnouncementHint` plus the `archived + hasAnnouncementHint + updatedAtMillis + createdAtMillis` lookup index, and `MIGRATION_15_16` adds desktop todo paging plus AI-report generated-time/type indices.
 - `MIGRATION_12_13` remains the migration that creates `ai_reports`.
 - Active no-DDL todos are treated as today todos across phone daily board, Android widget board query, desktop daily board, and desktop todo management. They remain reminder-disabled and recurrence-disabled until the user adds a DDL.
 - A unit test now confirms no-DDL active todos remain in `今日待办` across later dates, not only on the creation day.
 - Phone My Tasks and the ordinary board/task UI use the shared active-todo section classifier, so no-DDL active todos stay in `今日待办` every day rather than depending on a one-off filter.
 - Android launcher widget board queries include no-DDL todos and continue to use board-range data rather than scanning all history.
+- Android launcher widget now refreshes its RemoteViews list when the widget updates, the date changes, the time or timezone changes, or the app package is replaced; the RemoteAdapter cache key also includes the current date so launcher caches are less likely to reuse yesterday's list rows.
+- Android launcher widget light-mode cards now use more opaque warm surfaces and darker text/accent colors so the board remains readable over the light daily-board background.
 - Desktop web first connection still requests `/api/snapshot?scope=board`, returning lightweight daily-board data first.
 - Desktop web loads the todo management list through paged/searchable `/api/todos?offset=...&limit=...&q=...` when the user clicks `加载待办管理列表`, searches, or loads more.
 - Desktop web loads calendar timeline data only through `/api/events?start=...&end=...` for the currently visible date range, and ignores stale event responses if the user switches dates quickly.
@@ -79,11 +81,11 @@ Recent code inspection and build verification cover:
 - `DesktopSyncServer.kt`, `DesktopSyncServerTest.kt`: bounded client serving, byte-length UTF-8 body reading, preflight handling, and malformed/oversized request errors.
 - `DailyBoardSnapshotBuilderTest.kt`: no-DDL todo stays in today's todo list across later dates.
 - `PlanningAnnouncementParserTest.kt`: announcement-hint helper covers common announcement entry forms without matching ordinary planning text, and `PlanningNote` defaults compute `hasAnnouncementHint` from content.
-- `README.md`, `CHANGELOG.md`, `TODO.md`, Wiki header, and `docs/current/*`: `1.9.21` status synchronization is complete for this round.
+- `README.md`, `CHANGELOG.md`, `TODO.md`, Wiki header, and `docs/current/*`: `1.9.22` status synchronization is complete for this round.
 
 ## Documentation Health
 
-Current docs are being synchronized for `1.9.21`:
+Current docs are being synchronized for `1.9.22`:
 
 - `README.md`
 - `CHANGELOG.md`
@@ -100,7 +102,7 @@ Older versioned docs under `docs/` remain historical references and should not b
 
 ## Current Risk Areas
 
-1. Device-side verification is still required for Android widget no-DDL display because RemoteViews / launcher refresh behavior varies by launcher.
+1. Device-side verification is still required for Android widget no-DDL display, midnight/date-change refresh, stale launcher cache behavior, and light-mode readability because RemoteViews / launcher rendering varies by launcher.
 2. Desktop browser verification is required for the lightweight snapshot and split-endpoint flow: first load, `/api/todos` first page, todo search, todo load-more pagination, visible-range `/api/events`, fast date switching, event/todo editing from partial data, and tab retention after mutations.
 3. Settings -> AI 调用配置 model discovery still needs device-side verification with real providers: valid `/models`, root and `/v1` Base URLs, full `/chat/completions` conversion, invalid keys, unsupported `/models`, HTML responses, dropdown selection, and manual fallback.
 4. Planning Desk announcement syntax, multi-announcement visibility, date-range filtering, long-text marquee, preview highlighting, desktop-web propagation, and widget propagation need real UI verification.

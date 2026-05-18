@@ -19,6 +19,7 @@ import com.example.todoalarm.data.CalendarEventDraft
 import com.example.todoalarm.data.DEFAULT_PLANNING_REMINDER_MINUTES
 import com.example.todoalarm.data.DailyReportGenerator
 import com.example.todoalarm.data.DailyBoardSnapshotBuilder
+import com.example.todoalarm.data.EventCheckIn
 import com.example.todoalarm.data.PlanningAnnouncement
 import com.example.todoalarm.data.PlanningAnnouncementParser
 import com.example.todoalarm.data.PlanningImportCandidate
@@ -303,6 +304,24 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
 
     suspend fun getTodoGroupIds(todoId: Long): List<Long> {
         return withContext(Dispatchers.IO) { repository.getGroupIdsForTodo(todoId) }
+    }
+
+    suspend fun getEventCheckIns(eventId: Long): List<EventCheckIn> {
+        return withContext(Dispatchers.IO) { repository.getCheckInsForEvent(eventId) }
+    }
+
+    suspend fun checkInCalendarEvent(eventId: Long): String? {
+        val checkIn = withContext(Dispatchers.IO) { repository.checkInEvent(eventId) }
+        if (checkIn == null) return "无法签到：请确认日程未结束且已开启打卡追踪"
+        autoBackupIfEnabled()
+        return null
+    }
+
+    suspend fun checkOutCalendarEvent(eventId: Long): String? {
+        val checkOut = withContext(Dispatchers.IO) { repository.checkOutEvent(eventId) }
+        if (checkOut == null) return "当前没有进行中的签到"
+        autoBackupIfEnabled()
+        return null
     }
 
     fun observeAiReports(

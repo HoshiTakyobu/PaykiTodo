@@ -69,6 +69,12 @@ Do not push to GitHub unless the user explicitly asks.
 2. Creating or editing an event persists `checkInEnabled` through `CalendarEventDraft`.
 3. Dragging / moving an event preserves both `countdownEnabled` and `checkInEnabled` instead of silently resetting these optional markers.
 
+### C3 phone event details check-in operation slice
+
+1. Phone calendar-event details bottom sheet now shows a `打卡追踪` card for events with `checkInEnabled = true`.
+2. The details card loads event check-in records, shows total invested time, highlights an active check-in as `签到中`, and lists closed / active segments.
+3. The details card can execute `签到` and `签退`, then refresh both the displayed event statistics and check-in records.
+
 ## Verification Completed
 
 ### Widget slice
@@ -117,6 +123,12 @@ Do not push to GitHub unless the user explicitly asks.
 2. `git diff --check` passed after the slice.
 3. No new APK has been built for this slice yet.
 
+### C3 phone event details check-in operation slice
+
+1. `./gradlew.bat :app:compileDebugKotlin` passed after wiring phone event details to check-in record loading, sign-in, and sign-out operations.
+2. `git diff --check` passed after the slice.
+3. No new APK has been built for this slice yet.
+
 ## Verification Still Needed On Device / Browser
 
 1. Install `app/build/outputs/apk/debug/PaykiTodo-1.10.3-debug.apk` on the physical phone if validating the latest built widget APK.
@@ -129,7 +141,7 @@ Do not push to GitHub unless the user explicitly asks.
 
 The full goal remains active. Major remaining slices:
 
-1. C3-C7: event check-in / time tracking UI across phone event preview, daily board, widgets, desktop web, settings, and AI reports.
+1. C3-C7 remaining: event check-in / time tracking still needs daily-board row status/button, full-screen reminder button, completion statistics, settings switches, widget status, desktop web UI, and AI report integration.
 2. V1-V6: Planning Desk image recognition through vision-capable AI providers.
 3. T1-T3: Planning Desk shortcut bar simplification and help update.
 4. P6/P7/P9/P10/P8: narrow database queries, countdown widget update metadata, and desktop-sync suspend handler cleanup.

@@ -47,6 +47,8 @@ import androidx.compose.material.icons.rounded.ViewAgenda
 import androidx.compose.material.icons.rounded.ViewDay
 import androidx.compose.material.icons.rounded.ViewWeek
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.IconButton
@@ -95,6 +97,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.todoalarm.data.EventCheckIn
 import com.example.todoalarm.data.LunarCalendar
 import com.example.todoalarm.data.ScheduleTemplate
 import com.example.todoalarm.data.ScheduleTemplateType
@@ -192,6 +195,10 @@ internal fun CalendarPanel(
     onQuickCreateEvent: (LocalDateTime, LocalDateTime) -> Unit,
     onCreateEventAt: (LocalDateTime, LocalDateTime) -> Unit,
     onEditEvent: (TodoItem) -> Unit,
+    onGetEventById: suspend (Long) -> TodoItem?,
+    onGetEventCheckIns: suspend (Long) -> List<EventCheckIn>,
+    onCheckInEvent: suspend (Long) -> String?,
+    onCheckOutEvent: suspend (Long) -> String?,
     onMoveEvent: (TodoItem, LocalDateTime, LocalDateTime) -> Unit,
     onDeleteEvent: (TodoItem) -> Unit,
     onOpenBatchImport: () -> Unit,
@@ -665,6 +672,10 @@ internal fun CalendarPanel(
     detailsTarget?.let { item ->
         CalendarEventDetailsDialog(
             item = item,
+            onGetEventById = onGetEventById,
+            onGetEventCheckIns = onGetEventCheckIns,
+            onCheckInEvent = onCheckInEvent,
+            onCheckOutEvent = onCheckOutEvent,
             onDismiss = { detailsTarget = null },
             onEdit = {
                 detailsTarget = null
@@ -2191,11 +2202,60 @@ private fun CurrentTimeLine(
 @Composable
 private fun CalendarEventDetailsDialog(
     item: TodoItem,
+    onGetEventById: suspend (Long) -> TodoItem?,
+    onGetEventCheckIns: suspend (Long) -> List<EventCheckIn>,
+    onCheckInEvent: suspend (Long) -> String?,
+    onCheckOutEvent: suspend (Long) -> String?,
     onDismiss: () -> Unit,
     onEdit: () -> Unit,
     onDelete: () -> Unit
 ) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
     val tint = item.accentColorHex?.let(::colorFromHex) ?: MaterialTheme.colorScheme.primary
+    var displayItem by remember(item.id) { mutableStateOf(item) }
+    var checkIns by remember(item.id) { mutableStateOf<List<EventCheckIn>>(emptyList()) }
+    var checkInLoading by remember(item.id) { mutableStateOf(item.checkInEnabled) }
+    var actionRunning by remember(item.id) { mutableStateOf(false) }
+    var refreshSerial by remember(item.id) { mutableStateOf(0) }
+    val activeCheckIn = checkIns.firstOrNull { it.checkOutAtMillis == null }
+    val nowMillis by produceState(initialValue = System.currentTimeMillis(), activeCheckIn?.id) {
+        while (activeCheckIn != null) {
+            delay(60_000L)
+            value = System.currentTimeMillis()
+        }
+    }
+    val activeMinutes = activeCheckIn?.let { checkIn ->
+        ((nowMillis - checkIn.checkInAtMillis).coerceAtLeast(0L) / 60_000L).toInt()
+    } ?: 0
+    val closedMinutes = maxOf(
+        displayItem.totalCheckInMinutes,
+        checkIns.filter { it.checkOutAtMillis != null }.sumOf { it.durationMinutes }
+    )
+    val totalInvestedMinutes = closedMinutes + activeMinutes
+
+    LaunchedEffect(item.id, refreshSerial) {
+        if (!item.checkInEnabled) return@LaunchedEffect
+        checkInLoading = true
+        checkIns = onGetEventCheckIns(item.id)
+        displayItem = onGetEventById(item.id) ?: displayItem
+        checkInLoading = false
+    }
+
+    fun refreshAfterAction(successMessage: String, operation: suspend () -> String?) {
+        scope.launch {
+            actionRunning = true
+            val message = operation()
+            if (message == null) {
+                Toast.makeText(context, successMessage, Toast.LENGTH_SHORT).show()
+                refreshSerial += 1
+            } else {
+                Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+            }
+            actionRunning = false
+        }
+    }
+
     PaykiBottomSheet(
         onDismiss = onDismiss,
         showDragHandle = false,
@@ -2271,6 +2331,28 @@ private fun CalendarEventDetailsDialog(
                 )
             }
 
+            if (displayItem.checkInEnabled) {
+                EventCheckInSection(
+                    tint = tint,
+                    checkIns = checkIns,
+                    activeCheckIn = activeCheckIn,
+                    totalInvestedMinutes = totalInvestedMinutes,
+                    nowMillis = nowMillis,
+                    loading = checkInLoading,
+                    actionRunning = actionRunning,
+                    onCheckIn = {
+                        refreshAfterAction("已签到") {
+                            onCheckInEvent(displayItem.id)
+                        }
+                    },
+                    onCheckOut = {
+                        refreshAfterAction("已签退") {
+                            onCheckOutEvent(displayItem.id)
+                        }
+                    }
+                )
+            }
+
             item.notes.takeIf { it.isNotBlank() }?.let {
                 Surface(
                     shape = RoundedCornerShape(18.dp),
@@ -2308,6 +2390,87 @@ private fun EventInfoRow(
     }
 }
 
+@Composable
+private fun EventCheckInSection(
+    tint: Color,
+    checkIns: List<EventCheckIn>,
+    activeCheckIn: EventCheckIn?,
+    totalInvestedMinutes: Int,
+    nowMillis: Long,
+    loading: Boolean,
+    actionRunning: Boolean,
+    onCheckIn: () -> Unit,
+    onCheckOut: () -> Unit
+) {
+    Surface(
+        shape = RoundedCornerShape(20.dp),
+        color = tint.copy(alpha = if (MaterialTheme.colorScheme.surface.luminance() > 0.5f) 0.10f else 0.18f)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Text("打卡追踪", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+                    Text(
+                        text = if (activeCheckIn == null) "未签到" else "签到中 · 已 ${formatCheckInMinutes(activeRunningMinutes(activeCheckIn, nowMillis))}",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
+                Text(
+                    text = "总投入 ${formatCheckInMinutes(totalInvestedMinutes)}",
+                    color = tint,
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
+
+            if (loading) {
+                Text("正在读取打卡记录…", color = MaterialTheme.colorScheme.onSurfaceVariant)
+            } else if (checkIns.isEmpty()) {
+                Text("还没有签到记录。", color = MaterialTheme.colorScheme.onSurfaceVariant)
+            } else {
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    checkIns.forEach { checkIn ->
+                        Text(
+                            text = formatCheckInRecord(checkIn, nowMillis),
+                            color = MaterialTheme.colorScheme.onSurface,
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    }
+                }
+            }
+
+            if (activeCheckIn == null) {
+                Button(
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = !loading && !actionRunning,
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2E7D32)),
+                    onClick = onCheckIn
+                ) {
+                    Text(if (actionRunning) "处理中…" else "签到")
+                }
+            } else {
+                Button(
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = !loading && !actionRunning,
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFD14343)),
+                    onClick = onCheckOut
+                ) {
+                    Text(if (actionRunning) "处理中…" else "签退")
+                }
+            }
+        }
+    }
+}
+
 private fun recurrencePreviewLine(item: TodoItem): String? {
     if (!item.isRecurring) return null
     val start = item.startAtMillis?.let(::reminderAtMillisToDateTime) ?: return null
@@ -2342,6 +2505,32 @@ private fun reminderOffsetLabel(minutes: Int): String {
         minutes % (24 * 60) == 0 -> "提前${minutes / (24 * 60)}天"
         minutes % 60 == 0 -> "提前${minutes / 60}小时"
         else -> "提前${minutes}分钟"
+    }
+}
+
+private fun formatCheckInRecord(checkIn: EventCheckIn, nowMillis: Long): String {
+    val start = formatClockTime(reminderAtMillisToDateTime(checkIn.checkInAtMillis))
+    val endMillis = checkIn.checkOutAtMillis
+    return if (endMillis == null) {
+        "● $start-进行中 已 ${formatCheckInMinutes(activeRunningMinutes(checkIn, nowMillis))}"
+    } else {
+        val end = formatClockTime(reminderAtMillisToDateTime(endMillis))
+        "● $start-$end ${formatCheckInMinutes(checkIn.durationMinutes)}"
+    }
+}
+
+private fun activeRunningMinutes(checkIn: EventCheckIn, nowMillis: Long): Int {
+    return ((nowMillis - checkIn.checkInAtMillis).coerceAtLeast(0L) / 60_000L).toInt()
+}
+
+private fun formatCheckInMinutes(minutes: Int): String {
+    val safeMinutes = minutes.coerceAtLeast(0)
+    val hours = safeMinutes / 60
+    val restMinutes = safeMinutes % 60
+    return when {
+        hours > 0 && restMinutes > 0 -> "${hours}h${restMinutes}m"
+        hours > 0 -> "${hours}h"
+        else -> "${restMinutes}m"
     }
 }
 

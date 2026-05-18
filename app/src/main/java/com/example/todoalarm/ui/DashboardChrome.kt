@@ -98,6 +98,7 @@ import com.example.todoalarm.data.AiReportType
 import com.example.todoalarm.data.AiReportRetention
 import com.example.todoalarm.data.CalendarEventDraft
 import com.example.todoalarm.data.DailyBoardSnapshotBuilder
+import com.example.todoalarm.data.EventCheckIn
 import com.example.todoalarm.data.PlanningAiProvider
 import com.example.todoalarm.data.PlanningImportCandidate
 import com.example.todoalarm.data.PlanningImportResult
@@ -333,6 +334,10 @@ internal fun DashboardBody(
     planningNotes: StateFlow<List<PlanningNote>>,
     observeAiReports: (AiReportType?, Int, String, Long, Long) -> Flow<List<AiReport>>,
     onGetAiReport: suspend (Long) -> AiReport?,
+    onGetTodoById: suspend (Long) -> TodoItem?,
+    onGetEventCheckIns: suspend (Long) -> List<EventCheckIn>,
+    onCheckInCalendarEvent: suspend (Long) -> String?,
+    onCheckOutCalendarEvent: suspend (Long) -> String?,
     historyItems: StateFlow<List<TodoItem>>,
     calendarItems: StateFlow<List<TodoItem>>,
     scheduleTemplates: StateFlow<List<ScheduleTemplate>>,
@@ -423,6 +428,10 @@ internal fun DashboardBody(
                 onQuickCreateEvent = onQuickCreateCalendarEvent,
                 onCreateEventAt = onQuickCreateCalendarEvent,
                 onEditEvent = onEditCalendarEvent,
+                onGetEventById = onGetTodoById,
+                onGetEventCheckIns = onGetEventCheckIns,
+                onCheckInEvent = onCheckInCalendarEvent,
+                onCheckOutEvent = onCheckOutCalendarEvent,
                 onMoveEvent = onMoveCalendarEvent,
                 onDeleteEvent = onDeleteCalendarEvent,
                 onOpenBatchImport = onOpenCalendarBatchImport,

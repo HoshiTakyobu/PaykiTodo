@@ -46,6 +46,7 @@ import com.example.todoalarm.data.CalendarEventDraft
 import com.example.todoalarm.data.AiReport
 import com.example.todoalarm.data.AiReportType
 import com.example.todoalarm.data.AiReportRetention
+import com.example.todoalarm.data.EventCheckIn
 import com.example.todoalarm.data.PlanningImportCandidate
 import com.example.todoalarm.data.PlanningImportResult
 import com.example.todoalarm.data.PlanningLineMapping
@@ -112,6 +113,9 @@ fun DashboardScreen(
     onImportCalendarEvents: suspend (List<CalendarEventDraft>) -> String?,
     onGetTodoById: suspend (Long) -> TodoItem?,
     onGetTodoGroupIds: suspend (Long) -> List<Long>,
+    onGetEventCheckIns: suspend (Long) -> List<EventCheckIn>,
+    onCheckInCalendarEvent: suspend (Long) -> String?,
+    onCheckOutCalendarEvent: suspend (Long) -> String?,
     onCalendarVisibleDateRangeChange: (LocalDate, LocalDate) -> Unit,
     onUpdateTodo: suspend (TodoItem, TodoDraft, RecurrenceScope) -> String?,
     onUpdateCalendarEvent: suspend (TodoItem, com.example.todoalarm.data.CalendarEventDraft, RecurrenceScope) -> String?,
@@ -436,6 +440,10 @@ fun DashboardScreen(
                     planningNotes = planningNotes,
                     observeAiReports = observeAiReports,
                     onGetAiReport = onGetAiReport,
+                    onGetTodoById = onGetTodoById,
+                    onGetEventCheckIns = onGetEventCheckIns,
+                    onCheckInCalendarEvent = onCheckInCalendarEvent,
+                    onCheckOutCalendarEvent = onCheckOutCalendarEvent,
                     historyItems = historyItems,
                     calendarItems = calendarItems,
                     scheduleTemplates = scheduleTemplates,

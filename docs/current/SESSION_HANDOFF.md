@@ -21,7 +21,8 @@ Long-running Codex sessions can become unreliable. This file exists so a new ses
   7. Todo multi-group relationships are implemented across phone UI, repository queries, backup / restore, desktop sync, and desktop Web todo management.
   8. Event check-in data and desktop-sync API foundations are implemented: events can persist `checkInEnabled`, check-in records can be created / checked out / totaled, backup includes `eventCheckIns`, and desktop sync exposes check-in endpoints.
   9. Phone calendar-event editor now exposes the `打卡追踪` switch and preserves `checkInEnabled` when events are moved.
-  10. Full `1.11.0 / versionCode 222` version bump is still pending.
+  10. Phone calendar-event details sheet now has a `打卡追踪` card for enabled events, with record loading, total invested time, active check-in status, `签到`, and `签退`.
+  11. Full `1.11.0 / versionCode 222` version bump is still pending.
 - Latest published signed release APK:
   - `app/build/outputs/apk/release/PaykiTodo-1.10.2-release.apk`
   - GitHub Release: `https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.10.2`
@@ -90,6 +91,12 @@ Long-running Codex sessions can become unreliable. This file exists so a new ses
 1. Phone calendar-event editor groups `倒数日` and `打卡追踪` under `日程标记`.
 2. The `打卡追踪` switch persists into `CalendarEventDraft` when creating or editing an event.
 3. Moving an event preserves `countdownEnabled` and `checkInEnabled` instead of resetting optional event markers.
+
+## Latest Phone Event Details Check-In Pass
+
+1. Calendar event details bottom sheet shows a `打卡追踪` card only for events with `checkInEnabled = true`.
+2. The card loads event check-in records, shows total invested time, marks active records as `签到中`, and lists closed / active segments.
+3. The card can perform `签到` and `签退`, then refresh both the displayed event statistics and record list.
 
 ## Previous 1.10.3 Planning Desk Fix Pass
 
@@ -160,6 +167,12 @@ Event check-in data / API foundation slice:
 Phone event editor check-in switch slice:
 
 1. Fresh `./gradlew.bat :app:compileDebugKotlin` passed after adding the phone event-editor check-in switch and preserving marker fields during event moves.
+2. Fresh `git diff --check` passed after the slice.
+3. No new APK has been built for this slice yet.
+
+Phone event details check-in operation slice:
+
+1. Fresh `./gradlew.bat :app:compileDebugKotlin` passed after wiring phone event details to check-in record loading, sign-in, and sign-out operations.
 2. Fresh `git diff --check` passed after the slice.
 3. No new APK has been built for this slice yet.
 

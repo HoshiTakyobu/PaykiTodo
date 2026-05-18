@@ -420,7 +420,14 @@ fun SettingsPanel(
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                     Column(modifier = Modifier.weight(1f)) {
                         Text("启用电脑同步", fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
-                        Text(if (desktopSyncStatus.running) "当前服务正在运行" else "当前服务未运行", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(
+                            when {
+                                desktopSyncStatus.running -> "当前服务正在运行"
+                                settings.desktopSyncEnabled -> "正在启动服务，请稍候刷新连接地址"
+                                else -> "当前服务未运行"
+                            },
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                     }
                     Switch(checked = settings.desktopSyncEnabled, onCheckedChange = onDesktopSyncEnabledChange)
                 }
@@ -441,7 +448,7 @@ fun SettingsPanel(
                 if (settings.desktopSyncEnabled) {
                     Text("连接地址", fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
                     if (!desktopSyncStatus.running) {
-                        Text("电脑同步服务未运行。", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text("电脑同步服务正在启动。如果几秒后仍没有出现地址，请关闭再重新开启电脑同步。", color = MaterialTheme.colorScheme.onSurfaceVariant)
                     } else if (!desktopSyncAddressesExpanded) {
                         OutlinedButton(onClick = { desktopSyncAddressesExpanded = true }, modifier = Modifier.fillMaxWidth()) {
                             Text("显示连接地址")

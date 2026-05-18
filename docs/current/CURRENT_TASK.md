@@ -2,7 +2,7 @@
 
 ## Active Development Focus
 
-The current round is PaykiTodo `1.9.22` / `versionCode 216`.
+The current round is PaykiTodo `1.9.23` / `versionCode 217`.
 
 Primary goal: review the recent `1.9.11`+ experience and performance work, close the remaining safe performance / UX gaps found during inspection, and leave the repo in a verified state for user-side phone / browser testing.
 
@@ -52,29 +52,38 @@ Primary goal: review the recent `1.9.11`+ experience and performance work, close
 11. Emulator UI review found the phone Calendar top bar still using the English label `Schedule`; the title is now localized to `日历`.
 12. User real-device screenshot found the Android launcher widget header date could show today while list rows still showed yesterday's greeting/date and old focus content. The widget provider now refreshes the collection list on widget update, date/time/timezone changes, and app replacement, and its RemoteAdapter cache key includes the current date.
 13. Widget light-mode cards now use more opaque warm surfaces and darker text/accent colors to avoid unreadable white-on-white cards over the board background.
-14. README / CHANGELOG / TODO / Wiki / current docs are being synchronized for this `1.9.22` pass.
-15. Release-readiness cleanup started:
+14. Widget event locations now display the saved location exactly as stored instead of prepending `@`, so `@主楼B1-412` no longer becomes `@@主楼B1-412`.
+15. Desktop sync enabling now immediately starts / self-starts the LAN server and the Settings copy explains short "正在启动" states instead of only saying the service is not running.
+16. README / CHANGELOG / TODO / Wiki / current docs are being synchronized for this `1.9.23` pass.
+17. Release-readiness cleanup started:
    - old versioned docs were moved to `docs/archive/historical/`.
    - safe templates now live under `docs/templates/`.
    - release signing uses ignored root-level `keystore.properties` plus ignored `release/` keystore output.
    - Gradle release builds now fail clearly if signing is incomplete.
+18. Release packaging completed after the user filled local `keystore.properties`:
+   - generated ignored `release/PaykiTodo-release.jks`.
+   - removed stale `drawable-night/widget_focus_action_background.xml` left from the deleted widget focus-card path.
+   - built and verified `app/build/outputs/apk/release/PaykiTodo-1.9.23-release.apk`.
 
 ## Verification Completed This Round
 
 Completed locally:
 
 1. `node --check app/src/main/assets/desktop-web/app.js` passed.
-2. `./gradlew.bat :app:compileDebugKotlin testDebugUnitTest assembleDebug` passed.
-3. `git diff --check` passed.
-4. `app/build/outputs/apk/debug/output-metadata.json` reports `versionCode=216`, `versionName=1.9.22`, and `outputFile=PaykiTodo-1.9.22-debug.apk`.
-5. `TodoItemSectionsTest` covers no-DDL active todos staying under today across dates and never entering upcoming.
-6. Emulator smoke on `emulator-5554` installed `app/build/outputs/apk/debug/PaykiTodo-1.9.21-debug.apk`, launched MainActivity, dumped Daily Board / drawer / Calendar UI trees, captured screenshots, confirmed the Calendar top bar shows `日历` rather than `Schedule`, and found no PaykiTodo `FATAL EXCEPTION` in the checked logcat window.
-7. Release-signing guard verification: `./gradlew.bat assembleRelease` currently fails early as designed because local `keystore.properties` still contains placeholders / no generated keystore exists.
-8. `git check-ignore -v` confirms `keystore.properties`, `release/PaykiTodo-release.jks`, and built APK outputs are ignored.
+2. `./gradlew.bat :app:compileDebugKotlin` passed.
+3. `./gradlew.bat :app:testDebugUnitTest` passed.
+4. `./gradlew.bat assembleRelease` passed.
+5. `G:\Android\SDK\build-tools\37.0.0\apksigner.bat verify --verbose --print-certs app\build\outputs\apk\release\PaykiTodo-1.9.23-release.apk` passed.
+6. `git diff --check` passed.
+7. release `output-metadata.json` reports `versionCode=217`, `versionName=1.9.23`, and `outputFile=PaykiTodo-1.9.23-release.apk`.
+8. `TodoItemSectionsTest` covers no-DDL active todos staying under today across dates and never entering upcoming.
+9. Debug packaging note: `:app:assembleDebug` was blocked by a Windows file lock on the previous `PaykiTodo-1.9.22-debug.apk`; use the signed release APK from this round for distribution.
+10. `git check-ignore -v` confirms `keystore.properties`, `release/PaykiTodo-release.jks`, and built APK outputs are ignored.
+11. Emulator smoke on `emulator-5554` installed `app/build/outputs/apk/debug/PaykiTodo-1.9.21-debug.apk`, launched MainActivity, dumped Daily Board / drawer / Calendar UI trees, captured screenshots, confirmed the Calendar top bar shows `日历` rather than `Schedule`, and found no PaykiTodo `FATAL EXCEPTION` in the checked logcat window.
 
 ## Verification Still Needed On Device / Browser
 
-1. Install `app/build/outputs/apk/debug/PaykiTodo-1.9.22-debug.apk` on the physical phone.
+1. Install `app/build/outputs/apk/release/PaykiTodo-1.9.23-release.apk` on the physical phone.
 2. Browser-test desktop todos:
    - first connection should show `看板轻量数据`.
    - click `加载待办管理列表`; it should request `/api/todos?offset=0&limit=80`.
@@ -120,8 +129,8 @@ Still recommended later:
 
 ## Immediate Practical Next Steps
 
-1. Rebuild and install `app/build/outputs/apk/debug/PaykiTodo-1.9.22-debug.apk` on emulator / physical phone.
+1. Install `app/build/outputs/apk/release/PaykiTodo-1.9.23-release.apk` on the physical phone.
 2. Browser-test desktop Web with the new paged/searchable todo management list.
 3. Verify the Android widget picker preview and live resized widget on the user's launcher.
 4. Do not push unless the user explicitly asks.
-5. After the user fills root `keystore.properties` locally, generate `release/PaykiTodo-release.jks`, run `assembleRelease`, verify the APK signature, and share the local release APK path.
+5. Keep `keystore.properties`, `release/`, and built APK artifacts out of Git unless the user explicitly changes that policy.

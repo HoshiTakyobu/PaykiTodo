@@ -6,14 +6,14 @@ Long-running Codex sessions can become unreliable. This file exists so a new ses
 
 ## Current Handoff Summary
 
-- The project is now being advanced to `1.9.22` / `versionCode 216`.
+- The project is now being advanced to `1.9.23` / `versionCode 217`.
 - Main user request: review the recent `1.9.11`+ experience / performance work, identify remaining user-facing issues, and implement practical performance improvements where safe.
 - This continuation keeps the no-DDL, widget, desktop lightweight snapshot, AI-provider save-state, calendar-index, phone screen-scoped subscription, Planning Desk parser threading, AI-report paging, Planning Desk announcement indexing, desktop-sync hardening, AI-report filtering, calendar date-window, visible-range phone Calendar, and Calendar top-bar localization baseline, then fixes Android launcher widget date/list refresh and light-mode readability.
-- Latest expected debug APK after packaging: `app/build/outputs/apk/debug/PaykiTodo-1.9.22-debug.apk`.
+- Latest signed release APK after packaging: `app/build/outputs/apk/release/PaykiTodo-1.9.23-release.apk`.
 - Do not push to GitHub unless the user explicitly asks.
 - Current continuation is preparing a safe first-release workflow: historical docs are being archived, signing templates are kept safe to commit, and real signing values stay only in ignored root-level files.
 
-## Latest 1.9.22 Widget Refresh / Readability Pass
+## Latest 1.9.23 Widget Location / Desktop Sync Release Pass
 
 1. Desktop Web first connection still calls `/api/snapshot?scope=board` so the browser can show the daily board without transferring all todos/events/planning data first.
 2. Desktop Web todo management now loads through `GET /api/todos?offset=...&limit=...&q=...` when the user clicks `加载待办管理列表`, searches, or loads more.
@@ -41,20 +41,26 @@ Long-running Codex sessions can become unreliable. This file exists so a new ses
 24. Android widget receiver listens for `DATE_CHANGED`, `TIME_SET`, `TIMEZONE_CHANGED`, and `MY_PACKAGE_REPLACED`, then refreshes all widget instances.
 25. Android widget RemoteAdapter data URI includes the current date, reducing launcher-side reuse of yesterday's collection factory/cache.
 26. Android widget light-mode surfaces were made more opaque and text/accent colors were darkened for better contrast over the light daily-board background.
+27. Android widget event locations now render saved text directly; the widget no longer prepends `@` to locations, so user-entered `@地点` remains exactly one `@`.
+28. Desktop sync enabling now immediately ensures the LAN server starts, and Settings shows a "正在启动" hint instead of a dead "服务未运行" state while addresses are being prepared.
+29. Release lint cleanup removed the stale night-only `widget_focus_action_background` resource left after the widget focus-card removal, allowing `lintVitalRelease` to pass.
 
 ## Verification Status
 
 Completed locally in this continuation:
 
 1. `node --check app/src/main/assets/desktop-web/app.js` passed.
-2. `./gradlew.bat :app:compileDebugKotlin testDebugUnitTest assembleDebug` passed.
-3. `git diff --check` passed.
-4. Unit tests include `TodoItemSectionsTest`, covering no-DDL active todos staying in today across dates.
-5. `app/build/outputs/apk/debug/output-metadata.json` reports `versionCode=216`, `versionName=1.9.22`, and `outputFile=PaykiTodo-1.9.22-debug.apk`.
-6. Release-signing guard verification passed by failing safely: `./gradlew.bat assembleRelease` stops with the expected "Release signing is not configured" message while local `keystore.properties` still contains placeholders / no generated keystore exists.
-7. `git check-ignore -v` confirms `keystore.properties`, `release/PaykiTodo-release.jks`, and built APK outputs are ignored.
+2. `./gradlew.bat :app:compileDebugKotlin` passed.
+3. `./gradlew.bat :app:testDebugUnitTest` passed.
+4. `./gradlew.bat assembleRelease` passed.
+5. `G:\Android\SDK\build-tools\37.0.0\apksigner.bat verify --verbose --print-certs app\build\outputs\apk\release\PaykiTodo-1.9.23-release.apk` passed.
+6. `git diff --check` passed.
+7. Unit tests include `TodoItemSectionsTest`, covering no-DDL active todos staying in today across dates.
+8. release `output-metadata.json` reports `versionCode=217`, `versionName=1.9.23`, and `outputFile=PaykiTodo-1.9.23-release.apk`.
+9. `git check-ignore -v` confirms `keystore.properties`, `release/PaykiTodo-release.jks`, and built APK outputs are ignored.
+10. Debug packaging note: `:app:assembleDebug` was blocked by a Windows file lock on the previous `PaykiTodo-1.9.22-debug.apk`; use the signed release APK for distribution.
 
-Latest emulator smoke installed `app/build/outputs/apk/debug/PaykiTodo-1.9.21-debug.apk` on `emulator-5554`, checked app launch, Daily Board UI tree, drawer UI tree, Calendar UI tree, screenshot capture, and a PaykiTodo fatal-crash logcat scan. MainActivity displayed, Daily Board showed `今日待办（0）` / `今日日程（0）`, drawer showed primary entries, Calendar displayed `2026年5月` with timeline content, Calendar top bar showed `日历` rather than `Schedule`, and no PaykiTodo `FATAL EXCEPTION` was found in the checked logcat window. The `1.9.22` widget change has compile/build verification, but final launcher rendering still needs physical-device testing.
+Latest emulator smoke installed `app/build/outputs/apk/debug/PaykiTodo-1.9.21-debug.apk` on `emulator-5554`, checked app launch, Daily Board UI tree, drawer UI tree, Calendar UI tree, screenshot capture, and a PaykiTodo fatal-crash logcat scan. MainActivity displayed, Daily Board showed `今日待办（0）` / `今日日程（0）`, drawer showed primary entries, Calendar displayed `2026年5月` with timeline content, Calendar top bar showed `日历` rather than `Schedule`, and no PaykiTodo `FATAL EXCEPTION` was found in the checked logcat window. The `1.9.23` widget change has compile/build verification, but final launcher rendering still needs physical-device testing.
 
 ## Release Signing / Docs Archive Continuation
 
@@ -69,12 +75,16 @@ requested. If any required field is blank / still a placeholder, or if the
 configured keystore file is missing, release tasks fail with a clear message
 instead of producing an unsigned or wrong-signed release APK.
 
+For this round, the user filled local `keystore.properties`, `release/PaykiTodo-release.jks`
+was generated locally, `assembleRelease` passed, and `PaykiTodo-1.9.23-release.apk`
+was verified with `apksigner`. These files remain ignored and must not be committed.
+
 Important: do not commit `keystore.properties`, `release/`, or built APK/AAB
 artifacts unless the user explicitly changes that policy.
 
 ## Remaining Device / Browser Verification
 
-1. Install `app/build/outputs/apk/debug/PaykiTodo-1.9.22-debug.apk` on the physical phone.
+1. Install `app/build/outputs/apk/release/PaykiTodo-1.9.23-release.apk` on the physical phone.
 2. Browser-test desktop todo pagination/search:
    - initial connect shows `看板轻量数据`;
    - `加载待办管理列表` requests `/api/todos?offset=0&limit=80`;
@@ -100,11 +110,11 @@ artifacts unless the user explicitly changes that policy.
 9. Verify desktop Planning Desk can save a long Chinese document without body truncation.
 10. Verify `AI 报告` search/type/range filters with enough real reports.
 11. Do not push unless the user explicitly asks.
-12. After the user fills local `keystore.properties`, generate the release keystore with `keytool`, run `./gradlew.bat assembleRelease`, verify the APK signature with `apksigner`, and report the local APK path.
+12. Keep `keystore.properties`, `release/`, and generated APK/AAB artifacts out of Git unless the user explicitly changes that policy.
 
 ## Performance Notes
 
-Fixed locally across `1.9.12`-`1.9.22`:
+Fixed locally across `1.9.12`-`1.9.23`:
 
 1. Added `todo_items` indices for high-frequency board/reminder/group/recurrence queries.
 2. Removed duplicate group reads from desktop `/api/snapshot`.

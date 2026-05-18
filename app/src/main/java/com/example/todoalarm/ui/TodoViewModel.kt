@@ -802,6 +802,7 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
         settingsStore.updateDesktopSyncEnabled(enabled)
         if (enabled) {
             DesktopSyncService.start(app)
+            app.desktopSyncCoordinator.ensureRunning()
         } else {
             app.stopService(Intent(app, DesktopSyncService::class.java))
             app.desktopSyncCoordinator.stop()

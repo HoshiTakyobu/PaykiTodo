@@ -7,21 +7,27 @@
 - Package name: `com.paykitodo.app`
 - Target platform: Android 14 / API 34
 - Current version in code:
-  - `versionName = "1.9.22"`
-  - `versionCode = 216`
+  - `versionName = "1.9.23"`
+  - `versionCode = 217`
 
 ## Current Build Facts
 
-- Latest debug APK output after this round is:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.9.22-debug.apk`
-- Verification completed for the final `1.9.22` rebuild:
+- Latest release APK output after this round is:
+  - `app/build/outputs/apk/release/PaykiTodo-1.9.23-release.apk`
+- Verification completed for the final `1.9.23` release:
   - `node --check app/src/main/assets/desktop-web/app.js`
-  - `./gradlew.bat :app:compileDebugKotlin testDebugUnitTest assembleDebug`
+  - `./gradlew.bat :app:compileDebugKotlin`
+  - `./gradlew.bat :app:testDebugUnitTest`
+  - `./gradlew.bat assembleRelease`
+  - `G:\Android\SDK\build-tools\37.0.0\apksigner.bat verify --verbose --print-certs app\build\outputs\apk\release\PaykiTodo-1.9.23-release.apk`
   - `git diff --check`
-  - `output-metadata.json` reports `versionCode=216`, `versionName=1.9.22`, `outputFile=PaykiTodo-1.9.22-debug.apk`
-- Release-signing guard verification:
-  - `./gradlew.bat assembleRelease` currently fails early as designed while local signing fields / keystore are incomplete
-  - `git check-ignore -v` confirms local signing config, keystore output, and built package artifacts are ignored
+  - release `output-metadata.json` reports `versionCode=217`, `versionName=1.9.23`, `outputFile=PaykiTodo-1.9.23-release.apk`
+  - `apksigner` verifies the release APK with APK Signature Scheme v2 and one RSA signer
+- Debug packaging note:
+  - `:app:compileDebugKotlin` and `:app:testDebugUnitTest` pass
+  - `:app:assembleDebug` was blocked by a Windows file lock on the previous `PaykiTodo-1.9.22-debug.apk` output, so the current distributable artifact for this round is the signed release APK
+- Release-signing privacy:
+  - local `keystore.properties`, `release/PaykiTodo-release.jks`, and built package artifacts are ignored by Git
 - Latest emulator smoke recorded for `1.9.21` remains historical:
   - device id: `emulator-5554`
   - installed APK: `app/build/outputs/apk/debug/PaykiTodo-1.9.21-debug.apk`
@@ -42,11 +48,11 @@
 
 ## Current Worktree Reality
 
-The repository is now being advanced to `1.9.22`. It carries forward the `1.9.12`-`1.9.21` no-DDL, widget, desktop lightweight snapshot, desktop paged/searchable todo management, screen-scoped subscription, desktop-sync stability, AI-report filtering, calendar date-window, visible-range phone Calendar, and Calendar title-localization baseline, then fixes a real-device Android launcher widget issue where the header date could update to today while the RemoteViews list still showed yesterday's board content.
+The repository is now being advanced to `1.9.23`. It carries forward the `1.9.12`-`1.9.21` no-DDL, widget, desktop lightweight snapshot, desktop paged/searchable todo management, screen-scoped subscription, desktop-sync stability, AI-report filtering, calendar date-window, visible-range phone Calendar, and Calendar title-localization baseline, then fixes a real-device Android launcher widget issue where the header date could update to today while the RemoteViews list still showed yesterday's board content.
 
 Most important current baseline facts:
 
-- version metadata is `1.9.22 / 216`
+- version metadata is `1.9.23 / 217`
 - Database version is `16`; `MIGRATION_13_14` creates `todo_items` indices for board, reminder, group, and recurrence lookup paths, `MIGRATION_14_15` adds / backfills `planning_notes.hasAnnouncementHint` plus the `archived + hasAnnouncementHint + updatedAtMillis + createdAtMillis` lookup index, and `MIGRATION_15_16` adds desktop todo paging plus AI-report generated-time/type indices.
 - `MIGRATION_12_13` remains the migration that creates `ai_reports`.
 - Active no-DDL todos are treated as today todos across phone daily board, Android widget board query, desktop daily board, and desktop todo management. They remain reminder-disabled and recurrence-disabled until the user adds a DDL.
@@ -55,6 +61,7 @@ Most important current baseline facts:
 - Android launcher widget board queries include no-DDL todos and continue to use board-range data rather than scanning all history.
 - Android launcher widget now refreshes its RemoteViews list when the widget updates, the date changes, the time or timezone changes, or the app package is replaced; the RemoteAdapter cache key also includes the current date so launcher caches are less likely to reuse yesterday's list rows.
 - Android launcher widget light-mode cards now use more opaque warm surfaces and darker text/accent colors so the board remains readable over the light daily-board background.
+- Android launcher widget event locations now render the saved location text directly and no longer auto-prepend `@`; user-entered `@主楼B1-412` stays exactly one `@`.
 - Desktop web first connection still requests `/api/snapshot?scope=board`, returning lightweight daily-board data first.
 - Desktop web loads the todo management list through paged/searchable `/api/todos?offset=...&limit=...&q=...` when the user clicks `加载待办管理列表`, searches, or loads more.
 - Desktop web loads calendar timeline data only through `/api/events?start=...&end=...` for the currently visible date range, and ignores stale event responses if the user switches dates quickly.
@@ -72,6 +79,7 @@ Most important current baseline facts:
 - Calendar month view, agenda/list view, and visible all-day rows reuse one top-level event-by-date index instead of rebuilding date buckets independently; the timeline date span now uses a lightweight date window instead of allocating a full long-range date list and map.
 - Planning Desk local parsing recognizes plain bullets (`- item`, `* item`, `• item`) as no-DDL todo candidates and shows an explicit preview message when doing so.
 - Desktop sync records the first authorized API request as a real desktop connection. If no authorized client connects within 5 minutes after enabling sync, `DesktopSyncService` disables the setting and stops the local server / foreground service.
+- Desktop sync enable now immediately ensures the phone-side LAN server is started and status reads can self-start the server when the setting is enabled, so Settings should expose addresses after opening sync rather than waiting for a desktop connection first.
 - Desktop sync serving uses bounded client threads, handles CORS preflight directly, and reads HTTP request bodies by byte length so Chinese UTF-8 planning documents are not truncated during desktop save / import requests.
 - Settings -> `电脑同步` explains both the multi-IP address meaning and the 5-minute no-authorized-client auto-close behavior.
 - Settings -> `AI 调用配置` provider rows use summary cards with visible enable switches and a compact more menu for edit / reorder / delete.
@@ -79,6 +87,7 @@ Most important current baseline facts:
 - Planning notes, planning mappings, focus sessions, and AI reports are included in backup / restore snapshots; planning-note backup / restore recomputes `hasAnnouncementHint` from Markdown content rather than trusting imported hint state.
 - Historical versioned docs now live under `docs/archive/historical/`; current docs and code remain the source of truth.
 - Safe release-signing explanations live under `docs/templates/`; real signing values must stay only in ignored root-level `keystore.properties`.
+- Release APK `PaykiTodo-1.9.23-release.apk` is signed and verified; the signing key and keystore remain local-only ignored files.
 
 ## Recent Checked Areas
 
@@ -91,11 +100,11 @@ Recent code inspection and build verification cover:
 - `DesktopSyncServer.kt`, `DesktopSyncServerTest.kt`: bounded client serving, byte-length UTF-8 body reading, preflight handling, and malformed/oversized request errors.
 - `DailyBoardSnapshotBuilderTest.kt`: no-DDL todo stays in today's todo list across later dates.
 - `PlanningAnnouncementParserTest.kt`: announcement-hint helper covers common announcement entry forms without matching ordinary planning text, and `PlanningNote` defaults compute `hasAnnouncementHint` from content.
-- `README.md`, `CHANGELOG.md`, `TODO.md`, Wiki header, and `docs/current/*`: `1.9.22` status synchronization is complete for this round.
+- `README.md`, `CHANGELOG.md`, `TODO.md`, Wiki header, and `docs/current/*`: `1.9.23` status synchronization is complete for this round.
 
 ## Documentation Health
 
-Current docs are being synchronized for `1.9.22`:
+Current docs are being synchronized for `1.9.23`:
 
 - `README.md`
 - `CHANGELOG.md`

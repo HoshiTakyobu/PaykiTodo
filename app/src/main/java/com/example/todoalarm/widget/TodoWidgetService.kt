@@ -332,7 +332,7 @@ private class TodoWidgetFactory(
             itemId = item.id,
             title = item.title,
             meta = DailyBoardSnapshotBuilder.eventSecondaryText(item),
-            location = item.location.takeIf { it.isNotBlank() }?.let { "@$it" }.orEmpty(),
+            location = item.location.trim(),
             date = date,
             dayLabel = dayLabel,
             titleColor = if (inProgress) orange else darkText,

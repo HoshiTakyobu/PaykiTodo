@@ -95,6 +95,9 @@ class DesktopSyncCoordinator(
 
     fun status(): DesktopSyncStatus {
         val settings = settingsStore.currentSettings()
+        if (settings.desktopSyncEnabled && server == null) {
+            ensureRunning()
+        }
         val enabledAndRunning = settings.desktopSyncEnabled && server != null
         return settings.toDesktopSyncStatus(
             running = enabledAndRunning,

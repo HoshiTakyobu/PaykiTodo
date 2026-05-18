@@ -195,6 +195,7 @@ This file tracks the product at a practical level for new coding sessions.
 - widget `1.9.6` visual pass removes the extra `轻触打开` header copy, compresses the topbar toward the in-app daily-board TopBar, shows todo group tags / notes / `⏰ DDL HH:mm`, removes heavy card strokes, and gives currently running schedule rows a gold border plus faint gold fill
 - widget `1.9.22` refresh pass updates both the header and RemoteViews `ListView` rows on normal widget updates, date changes, time/timezone changes, and app replacement; the RemoteAdapter cache key includes the current date to reduce stale launcher row reuse
 - widget `1.9.22` light-mode pass uses more opaque warm card surfaces plus darker primary/muted/accent colors so text remains readable over the light board background
+- widget event locations display saved text directly; display code no longer prepends `@`, so user-entered `@地点` is not duplicated
 - repository todo mutations and Planning Desk note edits / delete / archive operations notify widget data refresh through the application-level widget callback
 
 ### Data / Backup / Diagnostics
@@ -235,6 +236,7 @@ This file tracks the product at a practical level for new coding sessions.
 - desktop web event timeline no longer shows the separate all-day strip above the timeline
 - desktop web shows the installed APK version in the brand block and uses runtime versioned CSS / JS URLs
 - desktop sync service self-stops if Android restarts it while desktop sync is disabled in Settings
+- desktop sync enable immediately starts the phone-side LAN server, and status reads self-start the server when the setting is enabled so Settings can show connection addresses without requiring a desktop to connect first
 - desktop web has a `规划台` tab with textarea editor, document selector, auto-save, `Ctrl+S` save, `Ctrl+Enter` parse, editable parse preview, selected import, and a help modal that explains the same DDL/reminder syntax as the phone-side Planning Desk help
 - desktop web Planning Desk uses phone-local `/api/planning/*` routes, edits the same Room planning notes as the phone UI, saves before switching documents, blocks empty selected imports, writes back `#imported` markers after import, and reuses the same AI recognition / local fallback path as the phone Planning Desk
 - desktop web Planning Desk now also shows the current note title, mapping status preview, refresh/postpone/undo controls, and conflict resolution actions for imported planning lines

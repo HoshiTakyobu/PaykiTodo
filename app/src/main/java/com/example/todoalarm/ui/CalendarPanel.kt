@@ -38,6 +38,7 @@ import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.CalendarMonth
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.Edit
+import androidx.compose.material.icons.rounded.Done
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
 import androidx.compose.material.icons.rounded.MoreHoriz
 import androidx.compose.material.icons.rounded.NotificationsNone
@@ -98,6 +99,7 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.todoalarm.data.EventCheckIn
+import com.example.todoalarm.data.EventCheckInCompletionSummary
 import com.example.todoalarm.data.LunarCalendar
 import com.example.todoalarm.data.ScheduleTemplate
 import com.example.todoalarm.data.ScheduleTemplateType
@@ -199,6 +201,7 @@ internal fun CalendarPanel(
     onGetEventCheckIns: suspend (Long) -> List<EventCheckIn>,
     onCheckInEvent: suspend (Long) -> String?,
     onCheckOutEvent: suspend (Long) -> String?,
+    onCompleteEvent: suspend (Long) -> EventCheckInCompletionSummary?,
     onMoveEvent: (TodoItem, LocalDateTime, LocalDateTime) -> Unit,
     onDeleteEvent: (TodoItem) -> Unit,
     onOpenBatchImport: () -> Unit,
@@ -676,6 +679,7 @@ internal fun CalendarPanel(
             onGetEventCheckIns = onGetEventCheckIns,
             onCheckInEvent = onCheckInEvent,
             onCheckOutEvent = onCheckOutEvent,
+            onCompleteEvent = onCompleteEvent,
             onDismiss = { detailsTarget = null },
             onEdit = {
                 detailsTarget = null
@@ -2206,6 +2210,7 @@ private fun CalendarEventDetailsDialog(
     onGetEventCheckIns: suspend (Long) -> List<EventCheckIn>,
     onCheckInEvent: suspend (Long) -> String?,
     onCheckOutEvent: suspend (Long) -> String?,
+    onCompleteEvent: suspend (Long) -> EventCheckInCompletionSummary?,
     onDismiss: () -> Unit,
     onEdit: () -> Unit,
     onDelete: () -> Unit
@@ -2218,6 +2223,7 @@ private fun CalendarEventDetailsDialog(
     var checkInLoading by remember(item.id) { mutableStateOf(item.checkInEnabled) }
     var actionRunning by remember(item.id) { mutableStateOf(false) }
     var refreshSerial by remember(item.id) { mutableStateOf(0) }
+    var completionSummary by remember(item.id) { mutableStateOf<EventCheckInCompletionSummary?>(null) }
     val activeCheckIn = checkIns.firstOrNull { it.checkOutAtMillis == null }
     val nowMillis by produceState(initialValue = System.currentTimeMillis(), activeCheckIn?.id) {
         while (activeCheckIn != null) {
@@ -2256,6 +2262,26 @@ private fun CalendarEventDetailsDialog(
         }
     }
 
+    val canCompleteTrackedEvent = displayItem.checkInEnabled && !displayItem.completed
+
+    fun completeEvent() {
+        if (!canCompleteTrackedEvent || actionRunning) return
+        scope.launch {
+            actionRunning = true
+            try {
+                val summary = onCompleteEvent(displayItem.id)
+                completionSummary = summary
+                displayItem = onGetEventById(displayItem.id) ?: displayItem.copy(completed = true)
+                if (displayItem.checkInEnabled) {
+                    checkIns = onGetEventCheckIns(displayItem.id)
+                }
+                Toast.makeText(context, "日程已完成", Toast.LENGTH_SHORT).show()
+            } finally {
+                actionRunning = false
+            }
+        }
+    }
+
     PaykiBottomSheet(
         onDismiss = onDismiss,
         showDragHandle = false,
@@ -2272,6 +2298,14 @@ private fun CalendarEventDetailsDialog(
                     Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "返回", tint = MaterialTheme.colorScheme.onSurface)
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
+                    if (canCompleteTrackedEvent) {
+                        IconButton(
+                            enabled = !actionRunning,
+                            onClick = { completeEvent() }
+                        ) {
+                            Icon(Icons.Rounded.Done, contentDescription = "完成日程", tint = MaterialTheme.colorScheme.primary)
+                        }
+                    }
                     IconButton(onClick = onDelete) {
                         Icon(Icons.Rounded.Delete, contentDescription = "删除", tint = Color(0xFFD14343))
                     }
@@ -2317,6 +2351,10 @@ private fun CalendarEventDetailsDialog(
 
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.22f))
 
+            completionSummary?.let { summary ->
+                EventCompletionSummaryCard(summary = summary, tint = tint)
+            }
+
             item.location.takeIf { it.isNotBlank() }?.let {
                 EventInfoRow(
                     icon = { Icon(Icons.Rounded.Place, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant) },
@@ -2353,6 +2391,17 @@ private fun CalendarEventDetailsDialog(
                 )
             }
 
+            if (canCompleteTrackedEvent) {
+                OutlinedButton(
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = !actionRunning,
+                    onClick = { completeEvent() }
+                ) {
+                    Icon(Icons.Rounded.Done, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                    Text(if (actionRunning) "处理中…" else "完成日程")
+                }
+            }
+
             item.notes.takeIf { it.isNotBlank() }?.let {
                 Surface(
                     shape = RoundedCornerShape(18.dp),
@@ -2366,6 +2415,81 @@ private fun CalendarEventDetailsDialog(
                     )
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun EventCompletionSummaryCard(
+    summary: EventCheckInCompletionSummary,
+    tint: Color
+) {
+    Surface(
+        shape = RoundedCornerShape(20.dp),
+        color = tint.copy(alpha = if (MaterialTheme.colorScheme.surface.luminance() > 0.5f) 0.12f else 0.20f)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Text("投入统计", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+            if (summary.autoCheckedOut) {
+                Text(
+                    "已自动签退进行中的签到。",
+                    color = tint,
+                    style = MaterialTheme.typography.bodySmall,
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                EventCompletionMetric(
+                    modifier = Modifier.weight(1f),
+                    label = "计划",
+                    value = formatCheckInMinutes(summary.plannedMinutes)
+                )
+                EventCompletionMetric(
+                    modifier = Modifier.weight(1f),
+                    label = "实际",
+                    value = formatCheckInMinutes(summary.investedMinutes)
+                )
+                EventCompletionMetric(
+                    modifier = Modifier.weight(1f),
+                    label = "投入率",
+                    value = summary.investmentRatePercent?.let { "$it%" } ?: "-"
+                )
+            }
+            Text(
+                "签到 ${summary.checkInCount} 次",
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                style = MaterialTheme.typography.bodySmall
+            )
+        }
+    }
+}
+
+@Composable
+private fun EventCompletionMetric(
+    modifier: Modifier = Modifier,
+    label: String,
+    value: String
+) {
+    Surface(
+        modifier = modifier,
+        shape = RoundedCornerShape(14.dp),
+        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.62f)
+    ) {
+        Column(
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 9.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(label, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelSmall)
+            Text(value, color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Bold)
         }
     }
 }

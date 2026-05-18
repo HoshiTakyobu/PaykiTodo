@@ -133,6 +133,7 @@ This file tracks the product at a practical level for new coding sessions.
 - event editor exposes an optional `打卡追踪` switch under `日程标记`; moving an event preserves both countdown and check-in marker state
 - event data now supports optional check-in tracking fields and accumulated invested minutes; repository and desktop-sync APIs can create check-ins, check out active records, list event check-ins, and recompute total event investment time
 - event details bottom sheet shows a `打卡追踪` card for enabled events, including total invested time, active `签到中` status, closed / active segment rows, and direct `签到` / `签退` actions
+- event details bottom sheet exposes `完成日程` for check-in-enabled events; completion marks the event complete, can automatically check out an active record, and can show a summary card with planned time, actual invested time, check-in count, and investment rate
 - check-in-enabled event reminders expose `签到` directly on the full-screen reminder page and the accessibility fallback overlay; signing in also acknowledges the current event reminder so the strong-reminder surface closes
 - Settings -> `日历与提醒` exposes event check-in behavior switches for automatic checkout when completing an event and showing investment statistics after completion; both default to on and persist locally
 - calendar reminder editing accepts the same comma-separated multi-reminder syntax as todos
@@ -240,7 +241,7 @@ This file tracks the product at a practical level for new coding sessions.
 - desktop web todo and event reminder editors accept mixed reminder syntax matching the phone-side examples, including minutes, same-day time, current-year date-time, and full date-time
 - desktop sync API accepts todo `reminderOffsetsMinutes`, allowing desktop-created / edited todos to persist multiple reminders
 - desktop sync API exposes and accepts todo `groupIds`, so desktop-created / edited todos preserve phone-side multi-group relationships
-- desktop sync API exposes event `checkInEnabled` / `totalCheckInMinutes` and provides initial event check-in endpoints for listing records, checking in, and checking out
+- desktop sync API exposes event `checkInEnabled` / `totalCheckInMinutes`, provides initial event check-in endpoints for listing records / checking in / checking out, and returns `eventCheckInSummary` from item completion when event completion statistics are enabled
 - desktop web todo / event editors use a bottom-sheet-like visual structure with cancel / centered title / save actions
 - desktop web editor fields are card-styled, and timeline / event card buttons are lighter and less form-like
 - desktop Web UI resources are separated under `app/src/main/assets/desktop-web/`, while Android sync service code stays in `sync/`

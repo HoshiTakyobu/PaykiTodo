@@ -10,6 +10,7 @@ import com.example.todoalarm.data.CalendarEventDraft
 import com.example.todoalarm.data.DEFAULT_PLANNING_REMINDER_MINUTES
 import com.example.todoalarm.data.DailyBoardSnapshotBuilder
 import com.example.todoalarm.data.EventCheckIn
+import com.example.todoalarm.data.EventCheckInCompletionSummary
 import com.example.todoalarm.data.PlanningImportCandidate
 import com.example.todoalarm.data.PlanningLineMapping
 import com.example.todoalarm.data.PlanningLineMatcher
@@ -425,10 +426,25 @@ class DesktopSyncCoordinator(
 
     private fun markCompleted(path: String): JSONObject {
         val id = path.substringAfter("/api/items/").substringBefore('/').toLong()
-        val updated = runBlocking { app.repository.setCompleted(id, true) }
+        val settings = settingsStore.currentSettings()
+        val result = runBlocking {
+            app.repository.setCompletedWithResult(
+                id = id,
+                completed = true,
+                autoCheckOutEventOnEnd = settings.autoCheckOutEventOnEnd
+            )
+        }
+        val updated = result?.item
         updated?.let { clearReminderArtifacts(listOf(it)) }
         autoBackupIfNeeded()
-        return JSONObject().put("ok", updated != null)
+        return JSONObject()
+            .put("ok", updated != null)
+            .put(
+                "eventCheckInSummary",
+                result?.eventCheckInSummary
+                    ?.takeIf { settings.showEventCheckInStatsOnComplete }
+                    ?.toDesktopJson()
+            )
     }
 
     private fun cancelItem(path: String): JSONObject {
@@ -1244,4 +1260,15 @@ private fun EventCheckIn.toDesktopJson(): JSONObject {
         .put("checkInAtMillis", checkInAtMillis)
         .put("checkOutAtMillis", checkOutAtMillis)
         .put("durationMinutes", durationMinutes)
+}
+
+private fun EventCheckInCompletionSummary.toDesktopJson(): JSONObject {
+    return JSONObject()
+        .put("eventId", eventId)
+        .put("title", title)
+        .put("plannedMinutes", plannedMinutes)
+        .put("investedMinutes", investedMinutes)
+        .put("checkInCount", checkInCount)
+        .put("investmentRatePercent", investmentRatePercent)
+        .put("autoCheckedOut", autoCheckedOut)
 }

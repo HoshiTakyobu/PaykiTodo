@@ -26,7 +26,9 @@ Long-running Codex sessions can become unreliable. This file exists so a new ses
   12. Phone daily-board in-progress schedule rows show check-in status for enabled events and expose compact `签到` / `签退` actions.
   13. Android `今日看板` widget in-progress schedule rows show active check-in status without launcher-side sign-in / sign-out buttons.
   14. Settings -> `日历与提醒` stores the event check-in behavior preferences `日程结束时自动签退` and `完成日程时显示投入统计`; both default on and are preserved in backup / restore.
-  15. Full `1.11.0 / versionCode 222` version bump is still pending.
+  15. Calendar event details can complete check-in-enabled events, auto-checkout active records according to settings, and show planned/actual/check-in-count/investment-rate completion statistics when enabled.
+  16. Desktop sync item completion now uses the same event-completion path and can return `eventCheckInSummary`.
+  17. Full `1.11.0 / versionCode 222` version bump is still pending.
 - Latest published signed release APK:
   - `app/build/outputs/apk/release/PaykiTodo-1.10.2-release.apk`
   - GitHub Release: `https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.10.2`
@@ -125,6 +127,14 @@ Long-running Codex sessions can become unreliable. This file exists so a new ses
 1. Settings -> `日历与提醒` now includes compact switches for `日程结束时自动签退` and `完成日程时显示投入统计`.
 2. Both switches default to on and persist through `AppSettingsStore`.
 3. Backup JSON export / import preserves both event check-in behavior preferences.
+
+## Latest Event Completion Statistics Pass
+
+1. Check-in-enabled calendar events now expose a `完成日程` action in the event details sheet.
+2. Completing a tracked event marks it complete through the repository, clears reminder artifacts, and triggers auto-backup.
+3. If `日程结束时自动签退` is enabled, completion automatically checks out any active event check-in before totals are calculated.
+4. If `完成日程时显示投入统计` is enabled, the phone details sheet shows planned minutes, actual invested minutes, check-in count, investment rate, and automatic-checkout status.
+5. Desktop sync `/api/items/{id}/complete` uses the same completion logic and returns `eventCheckInSummary` when statistics display is enabled.
 
 ## Previous 1.10.3 Planning Desk Fix Pass
 
@@ -228,6 +238,12 @@ Event check-in settings slice:
 2. Fresh `git diff --check` passed after code and docs synchronization.
 3. No new APK has been built for this slice yet.
 
+Event completion statistics slice:
+
+1. Fresh `./gradlew.bat :app:compileDebugKotlin` passed after wiring tracked-event completion, automatic checkout, and completion summary display.
+2. Fresh `git diff --check` passed after code and docs synchronization.
+3. No new APK has been built for this slice yet.
+
 Secret / release safety checks already performed:
 
 1. `git check-ignore -v keystore.properties release/PaykiTodo-release.jks app/build/outputs/apk/release/PaykiTodo-1.10.3-release.apk app/build/outputs/apk/debug/PaykiTodo-1.10.3-debug.apk` confirmed local signing material and APK outputs are ignored.
@@ -249,7 +265,8 @@ Secret / release safety checks already performed:
 11. Verify multi-group todos in desktop browser: `/api/todos` exposes `groupIds`, the editor preserves all selected groups, cards / previews / board rows show all group labels, and selecting multiple filter chips uses intersection filtering.
 12. Verify backup / restore: fresh backups include `todoGroupTags`, restored data keeps all selected groups, and old backups without `todoGroupTags` backfill from each todo's `groupId`.
 13. Verify event-reminder check-in on device: create a check-in-enabled event reminder, trigger the full-screen reminder, tap `签到`, and confirm the reminder closes while the event details / board show an active check-in.
-14. After the remaining desktop UI is added, verify event check-in end to end: enable check-in for an event, sign in / sign out multiple times, confirm total minutes, backup / restore `eventCheckIns`, and test the desktop check-in endpoints from a browser.
+14. Verify tracked-event completion on device: complete a check-in-enabled event with an active check-in, confirm automatic checkout, completion summary values, and final total invested minutes.
+15. After the remaining desktop UI is added, verify event check-in end to end: enable check-in for an event, sign in / sign out multiple times, confirm total minutes, backup / restore `eventCheckIns`, and test the desktop check-in endpoints from a browser.
 
 ## Performance Notes
 

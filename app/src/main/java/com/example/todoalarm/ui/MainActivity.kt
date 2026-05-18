@@ -176,6 +176,7 @@ class MainActivity : ComponentActivity() {
                     onGetEventCheckIns = viewModel::getEventCheckIns,
                     onCheckInCalendarEvent = viewModel::checkInCalendarEvent,
                     onCheckOutCalendarEvent = viewModel::checkOutCalendarEvent,
+                    onCompleteCalendarEvent = viewModel::completeCalendarEvent,
                     onCalendarVisibleDateRangeChange = viewModel::updateCalendarEventWindow,
                     onUpdateTodo = viewModel::updateTodo,
                     onUpdateCalendarEvent = viewModel::updateCalendarEvent,

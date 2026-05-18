@@ -11,6 +11,7 @@ import java.time.YearMonth
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.UUID
+import kotlin.math.roundToInt
 
 class TodoRepository(
     private val todoDao: TodoDao,
@@ -710,8 +711,34 @@ class TodoRepository(
     }
 
     suspend fun setCompleted(id: Long, completed: Boolean): TodoItem? {
+        return setCompletedWithResult(id = id, completed = completed)?.item
+    }
+
+    suspend fun setCompletedWithResult(
+        id: Long,
+        completed: Boolean,
+        autoCheckOutEventOnEnd: Boolean = false
+    ): CompletedItemResult? {
         val item = todoDao.getById(id) ?: return null
         val now = System.currentTimeMillis()
+        var autoCheckedOut = false
+        if (completed && autoCheckOutEventOnEnd && item.isEvent && item.checkInEnabled) {
+            val active = todoDao.getActiveCheckIn(item.id)
+            if (active != null) {
+                val durationMinutes = ((now - active.checkInAtMillis).coerceAtLeast(0L) / 60_000L).toInt()
+                todoDao.checkOutEvent(
+                    id = active.id,
+                    checkOutAtMillis = now,
+                    durationMinutes = durationMinutes
+                )
+                autoCheckedOut = true
+            }
+        }
+        val totalCheckInMinutes = if (item.isEvent && item.checkInEnabled) {
+            todoDao.getTotalCheckInMinutesForEvent(item.id)
+        } else {
+            item.totalCheckInMinutes
+        }
         val updated = item.copy(
             completed = completed,
             completedAtMillis = if (completed) now else null,
@@ -719,6 +746,7 @@ class TodoRepository(
             canceledAtMillis = null,
             missed = if (completed) false else item.missed,
             missedAtMillis = if (completed) null else item.missedAtMillis,
+            totalCheckInMinutes = totalCheckInMinutes,
             reminderEnabled = if (completed) {
                 false
             } else {
@@ -727,7 +755,19 @@ class TodoRepository(
         )
         todoDao.update(updated)
         notifyItemsChanged()
-        return updated
+        return CompletedItemResult(
+            item = updated,
+            eventCheckInSummary = if (completed && updated.isEvent && updated.checkInEnabled) {
+                val checkIns = todoDao.getCheckInsForEvent(updated.id)
+                updated.toEventCheckInCompletionSummary(
+                    investedMinutes = totalCheckInMinutes,
+                    checkInCount = checkIns.size,
+                    autoCheckedOut = autoCheckedOut
+                )
+            } else {
+                null
+            }
+        )
     }
 
     suspend fun snoozeTodo(id: Long, nextReminderMillis: Long): TodoItem? {
@@ -2194,6 +2234,28 @@ class TodoRepository(
             draft.endAt
         }
         return end.toEpochMillis()
+    }
+
+    private fun TodoItem.toEventCheckInCompletionSummary(
+        investedMinutes: Int,
+        checkInCount: Int,
+        autoCheckedOut: Boolean
+    ): EventCheckInCompletionSummary {
+        val start = startAtMillis ?: dueAtMillis
+        val end = endAtMillis ?: start
+        val plannedMinutes = ((end - start).coerceAtLeast(0L) / 60_000L).toInt()
+        val safeInvested = investedMinutes.coerceAtLeast(0)
+        return EventCheckInCompletionSummary(
+            eventId = id,
+            title = title,
+            plannedMinutes = plannedMinutes,
+            investedMinutes = safeInvested,
+            checkInCount = checkInCount,
+            investmentRatePercent = plannedMinutes.takeIf { it > 0 }?.let {
+                ((safeInvested.toDouble() / it.toDouble()) * 100.0).roundToInt()
+            },
+            autoCheckedOut = autoCheckedOut
+        )
     }
 
     private fun notifyItemsChanged() {

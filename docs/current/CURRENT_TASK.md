@@ -99,6 +99,14 @@ Do not push to GitHub unless the user explicitly asks.
 2. Both switches default to on and persist through `AppSettingsStore`.
 3. Backup export / import preserves both event check-in behavior preferences.
 
+### C4 event completion statistics slice
+
+1. Calendar-event details now expose `完成日程` only for events with `打卡追踪` enabled.
+2. Completing a check-in-enabled event uses the shared repository completion path, marks the event completed, clears reminder artifacts, and triggers auto-backup.
+3. If `日程结束时自动签退` is enabled, completing the event automatically checks out any active check-in before calculating totals.
+4. If `完成日程时显示投入统计` is enabled, the phone details sheet shows a completion summary card with planned time, actual invested time, check-in count, investment rate, and automatic-checkout status.
+5. Desktop sync `/api/items/{id}/complete` now uses the same completion path and returns `eventCheckInSummary` when completion statistics are enabled.
+
 ## Verification Completed
 
 ### Widget slice
@@ -177,6 +185,12 @@ Do not push to GitHub unless the user explicitly asks.
 2. `git diff --check` passed after the code and docs sync.
 3. No new APK has been built for this slice yet.
 
+### C4 event completion statistics slice
+
+1. `./gradlew.bat :app:compileDebugKotlin` passed after adding check-in-enabled event completion, automatic checkout, and completion statistics.
+2. `git diff --check` passed after the code and docs sync.
+3. No new APK has been built for this slice yet.
+
 ## Verification Still Needed On Device / Browser
 
 1. Install `app/build/outputs/apk/debug/PaykiTodo-1.10.3-debug.apk` on the physical phone if validating the latest built widget APK.
@@ -189,7 +203,7 @@ Do not push to GitHub unless the user explicitly asks.
 
 The full goal remains active. Major remaining slices:
 
-1. C3-C7 remaining: event check-in / time tracking still needs completion auto-checkout/statistics behavior, desktop web UI, and AI report integration.
+1. C7 / desktop remaining: event check-in / time tracking still needs desktop web UI and AI report integration.
 2. V1-V6: Planning Desk image recognition through vision-capable AI providers.
 3. T1-T3: Planning Desk shortcut bar simplification and help update.
 4. P6/P7/P9/P10/P8: narrow database queries, countdown widget update metadata, and desktop-sync suspend handler cleanup.

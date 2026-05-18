@@ -20,6 +20,7 @@ import com.example.todoalarm.data.DEFAULT_PLANNING_REMINDER_MINUTES
 import com.example.todoalarm.data.DailyReportGenerator
 import com.example.todoalarm.data.DailyBoardSnapshotBuilder
 import com.example.todoalarm.data.EventCheckIn
+import com.example.todoalarm.data.EventCheckInCompletionSummary
 import com.example.todoalarm.data.PlanningAnnouncement
 import com.example.todoalarm.data.PlanningAnnouncementParser
 import com.example.todoalarm.data.PlanningImportCandidate
@@ -322,6 +323,20 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
         if (checkOut == null) return "当前没有进行中的签到"
         autoBackupIfEnabled()
         return null
+    }
+
+    suspend fun completeCalendarEvent(eventId: Long): EventCheckInCompletionSummary? {
+        val settings = settingsStore.currentSettings()
+        val result = withContext(Dispatchers.IO) {
+            repository.setCompletedWithResult(
+                id = eventId,
+                completed = true,
+                autoCheckOutEventOnEnd = settings.autoCheckOutEventOnEnd
+            )
+        } ?: return null
+        clearReminderArtifacts(listOf(result.item))
+        autoBackupIfEnabled()
+        return result.eventCheckInSummary.takeIf { settings.showEventCheckInStatsOnComplete }
     }
 
     fun observeAiReports(

@@ -103,6 +103,7 @@ import com.example.todoalarm.data.AiReportRetention
 import com.example.todoalarm.data.CalendarEventDraft
 import com.example.todoalarm.data.DailyBoardSnapshotBuilder
 import com.example.todoalarm.data.EventCheckIn
+import com.example.todoalarm.data.EventCheckInCompletionSummary
 import com.example.todoalarm.data.PlanningAiProvider
 import com.example.todoalarm.data.PlanningImportCandidate
 import com.example.todoalarm.data.PlanningImportResult
@@ -344,6 +345,7 @@ internal fun DashboardBody(
     onGetEventCheckIns: suspend (Long) -> List<EventCheckIn>,
     onCheckInCalendarEvent: suspend (Long) -> String?,
     onCheckOutCalendarEvent: suspend (Long) -> String?,
+    onCompleteCalendarEvent: suspend (Long) -> EventCheckInCompletionSummary?,
     historyItems: StateFlow<List<TodoItem>>,
     calendarItems: StateFlow<List<TodoItem>>,
     scheduleTemplates: StateFlow<List<ScheduleTemplate>>,
@@ -439,6 +441,7 @@ internal fun DashboardBody(
                 onGetEventCheckIns = onGetEventCheckIns,
                 onCheckInEvent = onCheckInCalendarEvent,
                 onCheckOutEvent = onCheckOutCalendarEvent,
+                onCompleteEvent = onCompleteCalendarEvent,
                 onMoveEvent = onMoveCalendarEvent,
                 onDeleteEvent = onDeleteCalendarEvent,
                 onOpenBatchImport = onOpenCalendarBatchImport,

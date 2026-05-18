@@ -29,8 +29,9 @@ Long-running Codex sessions can become unreliable. This file exists so a new ses
   15. Calendar event details can complete check-in-enabled events, auto-checkout active records according to settings, and show planned/actual/check-in-count/investment-rate completion statistics when enabled.
   16. Desktop sync item completion now uses the same event-completion path and can return `eventCheckInSummary`.
   17. AI daily reports now include today's event check-in investment minutes in both the AI prompt and local fallback report.
-  18. Phone Planning Desk shortcut toolbar is now reduced to `子任务` and `公告`; task, DDL, reminder, group, date, and schedule input remain natural-text / tag parser workflows instead of visible shortcut buttons.
-  19. Full `1.11.0 / versionCode 222` version bump is still pending.
+  18. Desktop Web event editor exposes `打卡追踪`, and the event preview sheet can load check-in records plus perform `签到` / `签退`.
+  19. Phone Planning Desk shortcut toolbar is now reduced to `子任务` and `公告`; task, DDL, reminder, group, date, and schedule input remain natural-text / tag parser workflows instead of visible shortcut buttons.
+  20. Full `1.11.0 / versionCode 222` version bump is still pending.
 - Latest published signed release APK:
   - `app/build/outputs/apk/release/PaykiTodo-1.10.2-release.apk`
   - GitHub Release: `https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.10.2`
@@ -143,6 +144,13 @@ Long-running Codex sessions can become unreliable. This file exists so a new ses
 1. Daily-report context now reads today's event check-in total from `event_check_ins`.
 2. The AI daily-report prompt includes `今日日程投入：Y 分钟`.
 3. The local daily-report fallback also writes today's event investment minutes, so the value remains visible when AI is disabled or fails.
+
+## Latest Desktop Web Event Check-In UI Pass
+
+1. Desktop Web event editor now includes a `打卡追踪` checkbox and sends `checkInEnabled` during event create / update.
+2. Desktop Web event preview now renders a `打卡追踪` card for enabled events, including total invested time, active segment state, and closed / active record rows.
+3. The preview card can call existing desktop sync endpoints to `签到` / `签退`, then reload the record card.
+4. Events without check-in tracking show `未开启` and do not expose sign-in controls.
 
 ## Latest Planning Desk Shortcut Simplification Pass
 
@@ -265,6 +273,13 @@ AI daily report event-investment slice:
 2. Fresh `git diff --check` passed after code and docs synchronization.
 3. No new APK has been built for this slice yet.
 
+Desktop Web event check-in UI slice:
+
+1. Fresh `node --check app/src/main/assets/desktop-web/app.js` passed after adding the Web check-in card and operations.
+2. Fresh `./gradlew.bat :app:compileDebugKotlin` passed after the desktop Web asset update.
+3. Fresh `git diff --check` passed after code and docs synchronization.
+4. No new APK has been built for this slice yet.
+
 Planning Desk shortcut simplification slice:
 
 1. Fresh `./gradlew.bat :app:compileDebugKotlin` passed after removing extra phone shortcut entries.
@@ -294,7 +309,7 @@ Secret / release safety checks already performed:
 12. Verify backup / restore: fresh backups include `todoGroupTags`, restored data keeps all selected groups, and old backups without `todoGroupTags` backfill from each todo's `groupId`.
 13. Verify event-reminder check-in on device: create a check-in-enabled event reminder, trigger the full-screen reminder, tap `签到`, and confirm the reminder closes while the event details / board show an active check-in.
 14. Verify tracked-event completion on device: complete a check-in-enabled event with an active check-in, confirm automatic checkout, completion summary values, and final total invested minutes.
-15. After the remaining desktop UI is added, verify event check-in end to end: enable check-in for an event, sign in / sign out multiple times, confirm total minutes, backup / restore `eventCheckIns`, and test the desktop check-in endpoints from a browser.
+15. In desktop browser, verify event check-in end to end: enable check-in for an event, sign in / sign out multiple times from the preview card, confirm total minutes, backup / restore `eventCheckIns`, and test the desktop check-in endpoints.
 
 ## Performance Notes
 

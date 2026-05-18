@@ -348,6 +348,20 @@ button.ghost {
 .preview-actions button, .preview-head-actions button { width: auto !important; min-width: 0; border-radius: 999px !important; padding: 9px 13px !important; }
 .secondary-action { background: rgba(98,114,133,.1) !important; color: var(--notes-text) !important; border: 1px solid rgba(98,114,133,.14) !important; }
 .success-action { background: rgba(29,143,90,.12) !important; color: var(--action-success-text) !important; border: 1px solid rgba(29,143,90,.2) !important; }
+.event-checkin-panel { border-radius: 22px; border: 1px solid color-mix(in srgb, var(--accent, var(--primary)) 28%, var(--card-border)); background: color-mix(in srgb, var(--accent, var(--primary)) 8%, var(--card-bg-strong)); padding: 14px; }
+.event-checkin-panel-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.event-checkin-title { color: var(--strong-text); font-size: 16px; font-weight: 900; }
+.event-checkin-subtitle { margin-top: 3px; color: var(--notes-text); font-size: 13px; font-weight: 800; }
+.event-checkin-subtitle.error { color: var(--action-danger-text); }
+.event-checkin-total { min-width: 82px; text-align: right; color: color-mix(in srgb, var(--accent, var(--primary)) 76%, var(--text)); font-size: 22px; font-weight: 950; line-height: 1; }
+.event-checkin-total span { display: block; margin-top: 5px; color: var(--muted); font-size: 11px; font-weight: 800; }
+.event-checkin-records { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
+.event-checkin-record { display: flex; align-items: center; gap: 8px; border-radius: 14px; background: rgba(255,255,255,.48); padding: 8px 10px; color: var(--notes-text); font-size: 13px; font-weight: 800; }
+.event-checkin-record.active { color: var(--strong-text); background: color-mix(in srgb, var(--accent, var(--primary)) 13%, rgba(255,255,255,.62)); }
+.event-checkin-dot { width: 8px; height: 8px; flex: 0 0 auto; border-radius: 999px; background: var(--accent, var(--primary)); }
+.event-checkin-empty { color: var(--muted); font-size: 13px; line-height: 1.5; }
+.event-checkin-actions { display: flex; justify-content: flex-end; margin-top: 12px; }
+.event-checkin-actions button { width: auto !important; min-width: 96px; border-radius: 999px !important; padding: 9px 14px !important; font-weight: 900; }
 .danger-lite-action { background: rgba(214,60,60,.1) !important; color: var(--action-danger-text) !important; border: 1px solid rgba(214,60,60,.2) !important; }
 .confirm-danger-icon { width: 58px; height: 58px; border-radius: 50%; display: grid; place-items: center; margin: 6px auto 10px; color: var(--action-danger-text); background: rgba(214,60,60,.12); font-size: 30px; font-weight: 900; }
 .confirm-sheet h2 { font-size: 24px; font-weight: 900; margin-bottom: 8px; }

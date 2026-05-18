@@ -242,7 +242,8 @@ This file tracks the product at a practical level for new coding sessions.
 - desktop web todo and event reminder editors accept mixed reminder syntax matching the phone-side examples, including minutes, same-day time, current-year date-time, and full date-time
 - desktop sync API accepts todo `reminderOffsetsMinutes`, allowing desktop-created / edited todos to persist multiple reminders
 - desktop sync API exposes and accepts todo `groupIds`, so desktop-created / edited todos preserve phone-side multi-group relationships
-- desktop sync API exposes event `checkInEnabled` / `totalCheckInMinutes`, provides initial event check-in endpoints for listing records / checking in / checking out, and returns `eventCheckInSummary` from item completion when event completion statistics are enabled
+- desktop sync API exposes event `checkInEnabled` / `totalCheckInMinutes`, provides event check-in endpoints for listing records / checking in / checking out, and returns `eventCheckInSummary` from item completion when event completion statistics are enabled
+- desktop Web event editor exposes `打卡追踪`; event preview renders a check-in card for enabled events, lists records, shows total invested time / active segment state, and can call `签到` / `签退`
 - desktop web todo / event editors use a bottom-sheet-like visual structure with cancel / centered title / save actions
 - desktop web editor fields are card-styled, and timeline / event card buttons are lighter and less form-like
 - desktop Web UI resources are separated under `app/src/main/assets/desktop-web/`, while Android sync service code stays in `sync/`

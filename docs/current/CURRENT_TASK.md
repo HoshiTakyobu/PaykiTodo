@@ -113,6 +113,13 @@ Do not push to GitHub unless the user explicitly asks.
 2. The AI daily-report prompt includes `今日日程投入：Y 分钟`.
 3. The local daily-report fallback also writes today's event investment minutes, so the field is visible even when AI is disabled or fails.
 
+### C5 desktop web event check-in UI slice
+
+1. Desktop Web event editor now exposes a `打卡追踪` checkbox and persists `checkInEnabled` through the existing event create / update API.
+2. Desktop Web event preview now shows a check-in card for check-in-enabled events, including total invested time, active segment state, and closed / active record rows.
+3. Desktop Web event preview can call the existing `POST /api/events/{id}/check-in` and `POST /api/events/{id}/check-out` endpoints, then reload the record card.
+4. Events without `打卡追踪` enabled show a simple `未开启` row instead of exposing sign-in controls.
+
 ### T1-T3 Planning Desk shortcut simplification slice
 
 1. Phone Planning Desk shortcut toolbar now exposes only `子任务` and `公告`.
@@ -210,6 +217,13 @@ Do not push to GitHub unless the user explicitly asks.
 2. `git diff --check` passed after the code and docs sync.
 3. No new APK has been built for this slice yet.
 
+### C5 desktop web event check-in UI slice
+
+1. `node --check app/src/main/assets/desktop-web/app.js` passed after adding the Web check-in card and operations.
+2. `./gradlew.bat :app:compileDebugKotlin` passed after the desktop Web asset update.
+3. `git diff --check` passed after the code and docs sync.
+4. No new APK has been built for this slice yet.
+
 ### T1-T3 Planning Desk shortcut simplification slice
 
 1. `./gradlew.bat :app:compileDebugKotlin` passed after removing the extra shortcut entries.
@@ -229,8 +243,7 @@ Do not push to GitHub unless the user explicitly asks.
 
 The full goal remains active. Major remaining slices:
 
-1. Desktop remaining: event check-in / time tracking still needs desktop web UI.
-2. V1-V6: Planning Desk image recognition through vision-capable AI providers.
-3. P6/P7/P9/P10/P8: narrow database queries, countdown widget update metadata, and desktop-sync suspend handler cleanup.
-4. P1/P2/P3: R8/resource shrinking, WebP conversion, icon dependency audit, release launch verification, and final APK-size check.
-5. Final version bump to `1.11.0 / versionCode 222`.
+1. V1-V6: Planning Desk image recognition through vision-capable AI providers.
+2. P6/P7/P9/P10/P8: narrow database queries, countdown widget update metadata, and desktop-sync suspend handler cleanup.
+3. P1/P2/P3: R8/resource shrinking, WebP conversion, icon dependency audit, release launch verification, and final APK-size check.
+4. Final version bump to `1.11.0 / versionCode 222`.

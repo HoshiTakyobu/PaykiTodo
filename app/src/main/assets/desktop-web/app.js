@@ -35,7 +35,8 @@ const state = {
   eventsLoaded: false,
   eventRangeStart: null,
   eventRangeEnd: null,
-  eventLoadSerial: 0
+  eventLoadSerial: 0,
+  eventCheckInLoadSerial: 0
 };
 
 const els = {
@@ -442,6 +443,29 @@ function eventTimeText(item) {
   const endKey = dayKeyFromMillis(end);
   if (startKey === endKey) return formatCompactDateLabel(startKey) + ' ' + formatTimeLabel(start) + ' - ' + formatTimeLabel(end);
   return formatDateTimeLabel(start) + ' - ' + formatDateTimeLabel(end);
+}
+
+function formatDurationMinutes(minutes) {
+  const total = Math.max(0, Number(minutes || 0));
+  const hours = Math.floor(total / 60);
+  const rest = total % 60;
+  if (hours > 0 && rest > 0) return hours + 'h ' + rest + 'm';
+  if (hours > 0) return hours + 'h';
+  return rest + 'm';
+}
+
+function checkInDurationMinutes(checkIn, now = Date.now()) {
+  if (!checkIn) return 0;
+  if (checkIn.checkOutAtMillis) return Number(checkIn.durationMinutes || 0);
+  const start = Number(checkIn.checkInAtMillis || 0);
+  return Math.max(0, Math.floor((now - start) / 60000));
+}
+
+function checkInRangeText(checkIn, now = Date.now()) {
+  const start = formatTimeLabel(checkIn.checkInAtMillis);
+  const duration = formatDurationMinutes(checkInDurationMinutes(checkIn, now));
+  if (!checkIn.checkOutAtMillis) return start + '-进行中 · 已 ' + duration;
+  return start + '-' + formatTimeLabel(checkIn.checkOutAtMillis) + ' · ' + duration;
 }
 
 function countdownTargetMillis(item) {
@@ -951,7 +975,7 @@ function renderBoardNowCard(nowMillis, visibleTodayEvents, todoItems) {
   const currentEvent = visibleTodayEvents.find(item => eventStart(item) <= nowMillis && nowMillis < eventEnd(item));
   if (currentEvent) {
     return ''
-      + '<button type="button" class="desktop-now-card active" data-event-id="' + escapeHtml(String(currentEvent.id ?? '')) + '" style="--accent:' + escapeHtml(currentEvent.accentColorHex || currentEvent.groupColorHex || '#FFC94A') + '">'
+      + '<button type="button" class="desktop-now-card active" data-event-preview-id="' + escapeHtml(String(currentEvent.id ?? '')) + '" style="--accent:' + escapeHtml(currentEvent.accentColorHex || currentEvent.groupColorHex || '#FFC94A') + '">'
       +   '<span>正在进行</span>'
       +   '<strong>' + escapeHtml(currentEvent.title || '未命名日程') + '</strong>'
       +   '<small>' + escapeHtml(eventTimeText(currentEvent)) + '</small>'
@@ -960,7 +984,7 @@ function renderBoardNowCard(nowMillis, visibleTodayEvents, todoItems) {
   const nextEvent = visibleTodayEvents.find(item => eventStart(item) > nowMillis);
   if (nextEvent) {
     return ''
-      + '<button type="button" class="desktop-now-card" data-event-id="' + escapeHtml(String(nextEvent.id ?? '')) + '" style="--accent:' + escapeHtml(nextEvent.accentColorHex || nextEvent.groupColorHex || '#4e87e1') + '">'
+      + '<button type="button" class="desktop-now-card" data-event-preview-id="' + escapeHtml(String(nextEvent.id ?? '')) + '" style="--accent:' + escapeHtml(nextEvent.accentColorHex || nextEvent.groupColorHex || '#4e87e1') + '">'
       +   '<span>下一项日程</span>'
       +   '<strong>' + escapeHtml(nextEvent.title || '未命名日程') + '</strong>'
       +   '<small>' + escapeHtml(eventTimeText(nextEvent)) + '</small>'
@@ -1004,7 +1028,7 @@ function renderBoardCountdownRow(item, boardDateKey) {
   const target = countdownTargetMillis(item);
   const remain = target ? remainingCountdownDisplay(target) : { primary: '--', secondary: '' };
   const rowAttr = item.itemType === 'EVENT'
-    ? 'data-event-id="' + escapeHtml(String(item.id ?? '')) + '"'
+    ? 'data-event-preview-id="' + escapeHtml(String(item.id ?? '')) + '"'
     : 'data-todo-id="' + escapeHtml(String(item.id ?? '')) + '"';
   const meta = item.itemType === 'EVENT'
     ? eventCountdownTimeText(item)
@@ -1097,7 +1121,7 @@ function renderBoardEventRow(item, nowMillis) {
   const classes = 'desktop-board-row event' + (inProgress ? ' in-progress' : '');
   const meta = [eventTimeText(item), item.location || '', item.notes || ''].filter(Boolean).join(' · ');
   return ''
-    + '<button type="button" class="' + classes + '" data-event-id="' + escapeHtml(String(item.id ?? '')) + '" style="--accent:' + escapeHtml(accent) + '">'
+    + '<button type="button" class="' + classes + '" data-event-preview-id="' + escapeHtml(String(item.id ?? '')) + '" style="--accent:' + escapeHtml(accent) + '">'
     +   '<span class="desktop-board-strip"></span>'
     +   '<span class="desktop-board-row-main">'
     +     '<strong>' + escapeHtml(item.title) + '</strong>'
@@ -1654,7 +1678,88 @@ function sameId(left, right) {
 }
 
 function findEventById(id) {
-  return (state.snapshot?.events || []).find(item => sameId(item.id, id));
+  const board = state.snapshot?.todayBoard || {};
+  const boardEvents = [
+    ...(board.allTodayEvents || []),
+    ...(board.visibleTodayEvents || []),
+    ...(board.tomorrowEvents || []),
+    ...(board.countdownItems || []).filter(item => item.itemType === 'EVENT')
+  ];
+  return [
+    ...(state.snapshot?.events || []),
+    ...boardEvents
+  ].find(item => sameId(item.id, id));
+}
+
+function renderEventCheckInPanelLoading(eventId, accent) {
+  return ''
+    + '<section id="event-checkin-panel" class="event-checkin-panel" data-checkin-panel-event-id="' + escapeHtml(eventId) + '" style="--accent:' + escapeHtml(accent || DEFAULT_EVENT_COLOR) + '">'
+    +   '<div class="event-checkin-panel-head">'
+    +     '<div>'
+    +       '<div class="event-checkin-title">打卡追踪</div>'
+    +       '<div class="event-checkin-subtitle">正在读取打卡记录…</div>'
+    +     '</div>'
+    +   '</div>'
+    + '</section>';
+}
+
+function renderEventCheckInPanel(data, eventItem) {
+  const panel = document.getElementById('event-checkin-panel');
+  if (!panel || !sameId(panel.dataset.checkinPanelEventId, data.eventId)) return;
+  const now = Date.now();
+  const checkIns = Array.isArray(data.checkIns) ? data.checkIns : [];
+  const active = checkIns.find(item => item.checkOutAtMillis == null);
+  const savedTotal = Math.max(0, Number(data.totalCheckInMinutes || eventItem?.totalCheckInMinutes || 0));
+  const activeMinutes = active ? checkInDurationMinutes(active, now) : 0;
+  const displayTotal = savedTotal + activeMinutes;
+  const records = checkIns.length
+    ? checkIns.slice().reverse().map(item => (
+      '<div class="event-checkin-record ' + (item.checkOutAtMillis ? '' : 'active') + '">'
+      + '<span class="event-checkin-dot"></span>'
+      + '<span>' + escapeHtml(checkInRangeText(item, now)) + '</span>'
+      + '</div>'
+    )).join('')
+    : '<div class="event-checkin-empty">还没有打卡记录。</div>';
+  panel.innerHTML = ''
+    + '<div class="event-checkin-panel-head">'
+    +   '<div>'
+    +     '<div class="event-checkin-title">打卡追踪</div>'
+    +     '<div class="event-checkin-subtitle">' + (active ? '签到中 · 当前段 ' + formatDurationMinutes(activeMinutes) : '当前未签到') + '</div>'
+    +   '</div>'
+    +   '<div class="event-checkin-total">' + escapeHtml(formatDurationMinutes(displayTotal)) + '<span>总投入</span></div>'
+    + '</div>'
+    + '<div class="event-checkin-records">' + records + '</div>'
+    + '<div class="event-checkin-actions">'
+    +   '<button type="button" class="' + (active ? 'danger-lite-action' : 'success-action') + '" data-event-checkin-action="' + (active ? 'check-out' : 'check-in') + '" data-event-checkin-id="' + escapeHtml(String(data.eventId)) + '">'
+    +     (active ? '签退' : '签到')
+    +   '</button>'
+    + '</div>';
+}
+
+function renderEventCheckInPanelError(eventId, message) {
+  const panel = document.getElementById('event-checkin-panel');
+  if (!panel || !sameId(panel.dataset.checkinPanelEventId, eventId)) return;
+  panel.innerHTML = ''
+    + '<div class="event-checkin-panel-head">'
+    +   '<div>'
+    +     '<div class="event-checkin-title">打卡追踪</div>'
+    +     '<div class="event-checkin-subtitle error">' + escapeHtml(message || '打卡记录加载失败') + '</div>'
+    +   '</div>'
+    + '</div>';
+}
+
+async function loadEventCheckInPanel(eventId) {
+  const serial = ++state.eventCheckInLoadSerial;
+  try {
+    const data = await api(`/api/events/${eventId}/check-ins`);
+    if (serial !== state.eventCheckInLoadSerial || !sameId(state.previewEventId, eventId)) return;
+    const eventItem = findEventById(eventId);
+    if (eventItem) eventItem.totalCheckInMinutes = data.totalCheckInMinutes || eventItem.totalCheckInMinutes || 0;
+    renderEventCheckInPanel(data, eventItem);
+  } catch (error) {
+    if (serial !== state.eventCheckInLoadSerial) return;
+    renderEventCheckInPanelError(eventId, error.message || '打卡记录加载失败');
+  }
 }
 
 function parseLocalDateTimeMillis(text, fallbackDate) {
@@ -1923,6 +2028,7 @@ function clearEventForm() {
   document.getElementById('event-recurrence-end').value = '';
   document.getElementById('event-weekdays').value = '';
   document.getElementById('event-countdown').checked = false;
+  document.getElementById('event-check-in').checked = false;
   document.getElementById('event-all-day').checked = false;
   document.getElementById('event-ring').checked = true;
   document.getElementById('event-vibrate').checked = true;
@@ -2003,6 +2109,7 @@ function openEventEditor(item) {
   document.getElementById('event-recurrence-end').value = item.recurrenceEndDate || '';
   document.getElementById('event-weekdays').value = csvValue(item.recurrenceWeekdays);
   document.getElementById('event-countdown').checked = item.countdownEnabled === true;
+  document.getElementById('event-check-in').checked = item.checkInEnabled === true;
   document.getElementById('event-all-day').checked = item.allDay === true;
   document.getElementById('event-ring').checked = item.ringEnabled !== false;
   document.getElementById('event-vibrate').checked = item.vibrateEnabled !== false;
@@ -2049,8 +2156,10 @@ function openEventPreview(item) {
     + previewRow('循', '重复', recurrenceLabel(item))
     + previewRow('地', '地点', item.location || '未填写')
     + previewRow('铃', '提醒', reminderText(item))
-    + (item.notes ? previewRow('记', '备注', item.notes) : '');
+    + (item.notes ? previewRow('记', '备注', item.notes) : '')
+    + (item.checkInEnabled ? renderEventCheckInPanelLoading(item.id, accent) : previewRow('打', '打卡追踪', '未开启'));
   openModal('event-preview-modal');
+  if (item.checkInEnabled) loadEventCheckInPanel(item.id);
 }
 
 function bindDigitInputs() {
@@ -2146,6 +2255,13 @@ function bindActions() {
       event.preventDefault();
       event.stopPropagation();
       openEventEditorById(node.dataset.eventId);
+    };
+  });
+  document.querySelectorAll('[data-event-preview-id]').forEach(node => {
+    node.onclick = event => {
+      event.preventDefault();
+      event.stopPropagation();
+      openEventPreviewById(node.dataset.eventPreviewId);
     };
   });
   document.querySelectorAll('[data-tab-jump]').forEach(node => {
@@ -2452,6 +2568,7 @@ document.getElementById('save-event').onclick = async () => {
       accentColorHex: document.getElementById('event-color').value || DEFAULT_EVENT_COLOR,
       reminderOffsetsMinutes: parseReminderSpecs(document.getElementById('event-reminder-offsets').value, startAtMillis),
       countdownEnabled: document.getElementById('event-countdown').checked,
+      checkInEnabled: document.getElementById('event-check-in').checked,
       ringEnabled: document.getElementById('event-ring').checked,
       vibrateEnabled: document.getElementById('event-vibrate').checked,
       reminderDeliveryMode: document.getElementById('event-reminder-mode').value,
@@ -2498,6 +2615,28 @@ document.getElementById('preview-event-delete').onclick = async () => {
   closeModal('event-preview-modal');
   await refreshAfterMutation();
 };
+
+document.addEventListener('click', async event => {
+  const actionNode = event.target.closest?.('[data-event-checkin-action]');
+  if (!actionNode) return;
+  event.preventDefault();
+  const eventId = actionNode.dataset.eventCheckinId;
+  if (!eventId) return;
+  actionNode.disabled = true;
+  try {
+    const action = actionNode.dataset.eventCheckinAction;
+    const result = await api(`/api/events/${eventId}/${action === 'check-out' ? 'check-out' : 'check-in'}`, { method: 'POST' });
+    const eventItem = findEventById(eventId);
+    if (eventItem && result.totalCheckInMinutes != null) eventItem.totalCheckInMinutes = result.totalCheckInMinutes;
+    await loadEventCheckInPanel(eventId);
+    els.status.textContent = action === 'check-out' ? '已签退' : '已签到';
+  } catch (error) {
+    els.status.textContent = error.message || '打卡操作失败';
+    renderEventCheckInPanelError(eventId, error.message || '打卡操作失败');
+  } finally {
+    actionNode.disabled = false;
+  }
+});
 
 document.addEventListener('click', event => {
   const dayHeader = event.target.closest?.('[data-day]');

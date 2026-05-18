@@ -151,6 +151,13 @@ Do not push to GitHub unless the user explicitly asks.
 5. Image recognition uses the fixed timetable/schedule OCR prompt, shows the non-cancel progress dialog `AI 识别中…可能需要 10-30 秒`, appends returned Markdown to the current planning note, moves the cursor to the end, and asks the user to use the existing `识别` button for preview import.
 6. Empty AI output, missing vision-capable providers, compression failure, and network/API failures now produce the required user-facing toasts without writing partial text into the planning document.
 
+### P1-P3 release size optimization slice
+
+1. Release builds now enable R8 minification and Android resource shrinking.
+2. The three dashboard background JPG resources in `drawable-nodpi` were replaced by same-name WebP resources at quality 80, preserving existing `R.drawable.dashboard_bg*` references.
+3. The release APK built successfully after R8/resource shrink and the output size is `4.83 MB`, below the goal threshold of 13 MB.
+4. The release APK archive contains no `androidx/compose/material/icons` entries after R8, so `material-icons-extended` does not need to be replaced in this slice.
+
 ## Verification Completed
 
 ### Widget slice
@@ -275,6 +282,14 @@ Do not push to GitHub unless the user explicitly asks.
 3. `git diff --check` passed after code synchronization.
 4. No new APK has been built for this slice yet.
 
+### P1-P3 release size optimization slice
+
+1. `./gradlew.bat :app:assembleRelease` passed after enabling R8 minification and resource shrinking.
+2. Release APK size was inspected at `4.83 MB` for `app/build/outputs/apk/release/PaykiTodo-1.10.3-release.apk`.
+3. ZIP-level package inspection found `0` `androidx/compose/material/icons` entries in the release APK, so the icon dependency is already removed by R8.
+4. Dashboard background resources now exist as `dashboard_bg.webp` (`19.1 KB`), `dashboard_bg_light.webp` (`45.1 KB`), and `dashboard_bg_dark.webp` (`37.8 KB`).
+5. No new debug APK has been built for this slice yet.
+
 ## Verification Still Needed On Device / Browser
 
 1. Install `app/build/outputs/apk/debug/PaykiTodo-1.10.3-debug.apk` on the physical phone if validating the latest built widget APK.
@@ -287,5 +302,5 @@ Do not push to GitHub unless the user explicitly asks.
 
 The full goal remains active. Major remaining slices:
 
-1. P1/P2/P3: R8/resource shrinking, WebP conversion, icon dependency audit, release launch verification, and final APK-size check.
-2. Final version bump to `1.11.0 / versionCode 222`.
+1. Final version bump to `1.11.0 / versionCode 222`.
+2. Release APK startup / main-surface verification after the version bump.

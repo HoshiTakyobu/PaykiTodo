@@ -181,6 +181,7 @@ This file tracks the product at a practical level for new coding sessions.
 - picture launcher art is opaque pure white and scaled down inside the 512px canvas to reduce desktop mask crowding
 - release-signing information template exists under `docs/templates/PaykiTodo-Release-Signing-Template.md`; real signing values belong only in ignored root-level `keystore.properties`
 - release builds read local `keystore.properties` and fail early with a clear error when the release keystore or required signing fields are missing, preventing unsigned or accidentally debug-signed release artifacts
+- release builds enable R8 minification and Android resource shrinking; the dashboard background images are stored as WebP resources so the signed release APK can stay below the 13 MB release-size target
 
 ### Android Desktop Widget
 

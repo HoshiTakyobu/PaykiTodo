@@ -186,6 +186,14 @@ Long-running Codex sessions can become unreliable. This file exists so a new ses
 4. Image recognition uses the fixed timetable/schedule prompt, shows the non-cancel `AI 识别中…可能需要 10-30 秒` progress dialog, appends non-empty returned Markdown to the current note, moves the cursor to the end, and tells the user to use the existing `识别` button for preview import.
 5. Missing vision-capable providers, empty AI output, compression failure, and network/API failure all surface as user-facing toasts without creating official todos/events or writing partial database items.
 
+## Latest Release Size Optimization Pass
+
+1. Release builds now enable R8 minification and Android resource shrinking.
+2. `dashboard_bg.jpg`, `dashboard_bg_light.jpg`, and `dashboard_bg_dark.jpg` were replaced by same-name WebP resources in `drawable-nodpi`, preserving existing `R.drawable.dashboard_bg*` references.
+3. `./gradlew.bat :app:assembleRelease` passed with R8/resource shrinking enabled.
+4. The current signed release APK size is `4.83 MB`, below the 13 MB target.
+5. ZIP-level release APK inspection found `0` `androidx/compose/material/icons` entries, so `material-icons-extended` is currently eliminated by R8 and does not need replacement.
+
 ## Previous 1.10.3 Planning Desk Fix Pass
 
 1. Local Planning Markdown parsing recognizes inline `@地点`, quoted `"@地点"`, and `地点：...` event locations.
@@ -334,6 +342,14 @@ Planning Desk image recognition slice:
 3. Fresh `git diff --check` passed after code and docs synchronization.
 4. No new APK has been built for this slice yet.
 
+Release size optimization slice:
+
+1. Fresh `./gradlew.bat :app:assembleRelease` passed after enabling R8 minification and resource shrinking.
+2. APK size inspection reported `app/build/outputs/apk/release/PaykiTodo-1.10.3-release.apk` at `4.83 MB`.
+3. ZIP-level package inspection found no `androidx/compose/material/icons` entries in the release APK.
+4. Dashboard background files are now WebP resources: `dashboard_bg.webp` (`19.1 KB`), `dashboard_bg_light.webp` (`45.1 KB`), and `dashboard_bg_dark.webp` (`37.8 KB`).
+5. Fresh `git diff --check` passed after code and docs synchronization.
+
 Secret / release safety checks already performed:
 
 1. `git check-ignore -v keystore.properties release/PaykiTodo-release.jks app/build/outputs/apk/release/PaykiTodo-1.10.3-release.apk app/build/outputs/apk/debug/PaykiTodo-1.10.3-debug.apk` confirmed local signing material and APK outputs are ignored.
@@ -369,6 +385,7 @@ Secret / release safety checks already performed:
 - AI report retention prevents the `ai_reports` archive from growing without limit once reports are generated regularly.
 - AI daily/weekly report generation now uses range-limited todo/event reads; schedule-template saving uses a week-overlap event query; desktop Planning Desk note operations use single-note lookup by ID.
 - Desktop sync business routes now call suspend repository APIs directly; only the socket client thread boundary uses `runBlocking` while waiting to write an HTTP response.
+- R8 and Android resource shrinking are enabled for release builds; the current release package is under the goal size and `material-icons-extended` is not retained as package entries after shrinking.
 
 ## Files Most Relevant To The Current Goal
 

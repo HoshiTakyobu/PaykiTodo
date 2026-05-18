@@ -884,6 +884,12 @@ class TodoRepository(
         todoDao.deleteAiReport(reportId)
     }
 
+    suspend fun purgeAiReportsOlderThan(retention: AiReportRetention): Int {
+        val days = retention.days ?: return 0
+        val cutoffMillis = System.currentTimeMillis() - days.toLong() * 24L * 60L * 60L * 1000L
+        return todoDao.purgeAiReportsBefore(cutoffMillis)
+    }
+
     suspend fun exportSnapshot(settings: AppSettings): BackupSnapshot {
         val planningNotes = todoDao.getAllPlanningNotes()
         val planningMappings = mutableListOf<PlanningLineMapping>()

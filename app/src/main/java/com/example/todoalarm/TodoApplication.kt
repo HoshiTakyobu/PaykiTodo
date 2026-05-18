@@ -16,17 +16,25 @@ import com.example.todoalarm.sync.DesktopSyncCoordinator
 import com.example.todoalarm.sync.DesktopSyncService
 import com.example.todoalarm.ui.QuoteRepository
 import com.example.todoalarm.widget.TodoWidgetProvider
+import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 
 class TodoApplication : Application() {
+    private val appScope = CoroutineScope(
+        SupervisorJob() + Dispatchers.IO + CoroutineExceptionHandler { _, error ->
+            CrashLogger.recordNonFatal(error)
+        }
+    )
+
     override fun onCreate() {
         super.onCreate()
         CrashLogger.install(this)
         DailyReportNotifier.ensureChannel(this)
         DailyReportScheduler.scheduleNext(this)
-        CoroutineScope(Dispatchers.IO).launch {
+        appScope.launch {
             repository.ensureDefaultGroups()
             LegacyAiReportMigration.migrateIfNeeded(this@TodoApplication)
             if (settingsStore.currentSettings().desktopSyncEnabled) {

@@ -41,7 +41,7 @@
 
 ## Current Worktree Reality
 
-The repository is implementing the larger `1.11.0 / versionCode 222` goal from the current `1.10.3 / 221` baseline. The Android widget requirements have already landed in the current baseline. The first `1.11.0` goal slice removes the former focus / pomodoro mode and prepares the database for later check-in and multi-group todo work. The full `1.11.0` version bump is still pending.
+The repository is implementing the larger `1.11.0 / versionCode 222` goal from the current `1.10.3 / 221` baseline. The Android widget requirements have already landed in the current baseline. The first `1.11.0` goal slice removes the former focus / pomodoro mode and prepares the database for later check-in and multi-group todo work. The second small `1.11.0` slice adds database schema export, debug-only Compose tooling, structured startup initialization, and AI-report retention cleanup. The full `1.11.0` version bump is still pending.
 
 Most important current baseline facts:
 
@@ -58,7 +58,13 @@ Most important current baseline facts:
 - Independent `倒数日` widget is now a scrollable `RemoteViewsService` / `ListView` widget rather than three fixed rows, with multi-line daily-board-style rows and direct todo/event detail deep links.
 - Former focus / pomodoro mode is removed from the working tree: no drawer entry, settings block, FocusActivity, focus widget, focus DAO/repository API, desktop sync focus stats, AI-report focus fields, or backup focus-session export remains.
 - Existing old backups that contain `focusSessions` are ignored rather than failing import.
-- `./gradlew.bat :app:compileDebugKotlin` has passed for the focus-removal slice; no new APK has been built after that slice yet.
+- Room schema export is enabled and `app/schemas/com.example.todoalarm.data.AppDatabase/18.json` records the database-18 structure.
+- Compose `ui-tooling-preview` is now scoped to `debugImplementation`, so release builds do not carry the preview tooling dependency.
+- AI 日报 / 周报 settings include a report-retention dropdown; generating a report purges older archived reports according to 30-day / 90-day / 365-day / forever retention.
+- Backup / restore preserves the AI report retention policy while still excluding AI API Keys.
+- Application startup initialization uses an application-level `SupervisorJob` scope and records non-fatal initialization failures through `CrashLogger.recordNonFatal`.
+- Desktop sync keeps the 4 MB request-body limit and returns HTTP 413 for oversized requests.
+- `./gradlew.bat :app:compileDebugKotlin` and `git diff --check` have passed for the schema / report-retention / startup-scope slice; no new APK has been built after that slice yet.
 
 ## Immediate Manual Verification Targets
 

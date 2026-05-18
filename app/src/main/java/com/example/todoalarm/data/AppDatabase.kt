@@ -17,7 +17,7 @@ import androidx.room.RoomDatabase
         TodoGroupTag::class
     ],
     version = 18,
-    exportSchema = false
+    exportSchema = true
 )
 abstract class AppDatabase : RoomDatabase() {
     abstract fun todoDao(): TodoDao

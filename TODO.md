@@ -77,6 +77,7 @@
 - Planning Desk AI recognition should be device-tested with at least one enabled AI source: free-form text should produce preview candidates, provider failure should fall back to the next source or local rules, and import should still require preview confirmation
 - Settings -> AI 调用配置 should be device-tested for the single-provider `测试连接` button: success, HTTP 401/403, timeout/unreachable Base URL, root Base URL fallback to `/v1/chat/completions`, non-JSON HTML response, and result auto-clear after field edits or time.
 - Settings -> AI 调用配置 should be device-tested for AI 日报 / 周报: daily and weekly switches, HH:mm validation, save/re-schedule behavior, the centered `了解 AI 日报` dialog, immediate daily generation, and disabled-switch cancellation.
+- Settings -> AI 调用配置 should be regression-tested for AI report retention: 30 天 / 90 天 / 365 天 / 永久 selections should persist, generated reports should trigger cleanup only for expired archive rows, and backup / restore should preserve the retention choice while still excluding API Keys.
 - AI 日报 should be device-tested with AI enabled and with AI disabled/broken: both paths should write a new top entry into drawer -> `AI 报告`, not Planning Desk.
 - AI report notification should be device-tested: when notification permission is granted, generated reports should post a low-priority notification and tapping it should open the matching `AI 报告` detail.
 - AI 周报 should be tested by forcing or waiting for Sunday scheduling; it should write into `AI 报告` with type `周报` rather than a Planning Desk note.

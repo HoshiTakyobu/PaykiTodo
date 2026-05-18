@@ -45,6 +45,7 @@ import com.example.todoalarm.R
 import com.example.todoalarm.data.CalendarEventDraft
 import com.example.todoalarm.data.AiReport
 import com.example.todoalarm.data.AiReportType
+import com.example.todoalarm.data.AiReportRetention
 import com.example.todoalarm.data.PlanningImportCandidate
 import com.example.todoalarm.data.PlanningImportResult
 import com.example.todoalarm.data.PlanningLineMapping
@@ -144,7 +145,7 @@ fun DashboardScreen(
     onDefaultCalendarReminderModeChange: (ReminderDeliveryMode) -> Unit,
     onReminderAudioStrategyChange: (ReminderAudioChannel, Int, Boolean, Int, Boolean) -> Unit,
     onPlanningAiProvidersChange: (Boolean, List<PlanningAiProvider>) -> Unit,
-    onReportPreferencesChange: (Boolean, Int, Int, Boolean, Int, Int) -> Unit,
+    onReportPreferencesChange: (Boolean, Int, Int, Boolean, Int, Int, AiReportRetention) -> Unit,
     onGenerateDailyReportNow: suspend () -> String?,
     onDeleteAiReport: suspend (Long) -> String?,
     onDismissOnboarding: () -> Unit,

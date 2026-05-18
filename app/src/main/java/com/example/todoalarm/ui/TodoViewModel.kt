@@ -13,6 +13,7 @@ import com.example.todoalarm.alarm.ReminderDispatchTracker
 import com.example.todoalarm.alarm.ReminderForegroundService
 import com.example.todoalarm.data.AppSettings
 import com.example.todoalarm.data.AiReport
+import com.example.todoalarm.data.AiReportRetention
 import com.example.todoalarm.data.AiReportType
 import com.example.todoalarm.data.CalendarEventDraft
 import com.example.todoalarm.data.DEFAULT_PLANNING_REMINDER_MINUTES
@@ -760,7 +761,8 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
         dailyMinute: Int,
         weeklyEnabled: Boolean,
         weeklyHour: Int,
-        weeklyMinute: Int
+        weeklyMinute: Int,
+        retention: AiReportRetention
     ) {
         settingsStore.updateReportPreferences(
             dailyEnabled = dailyEnabled,
@@ -768,7 +770,8 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
             dailyMinute = dailyMinute,
             weeklyEnabled = weeklyEnabled,
             weeklyHour = weeklyHour,
-            weeklyMinute = weeklyMinute
+            weeklyMinute = weeklyMinute,
+            retention = retention
         )
         DailyReportScheduler.scheduleNext(app)
     }

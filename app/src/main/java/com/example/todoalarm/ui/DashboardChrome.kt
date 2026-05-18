@@ -96,6 +96,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.todoalarm.R
 import com.example.todoalarm.data.AiReport
 import com.example.todoalarm.data.AiReportType
+import com.example.todoalarm.data.AiReportRetention
 import com.example.todoalarm.data.CalendarEventDraft
 import com.example.todoalarm.data.DailyBoardSnapshotBuilder
 import com.example.todoalarm.data.PlanningAiProvider
@@ -390,7 +391,7 @@ internal fun DashboardBody(
     onDefaultCalendarReminderModeChange: (ReminderDeliveryMode) -> Unit,
     onReminderAudioStrategyChange: (ReminderAudioChannel, Int, Boolean, Int, Boolean) -> Unit,
     onPlanningAiProvidersChange: (Boolean, List<PlanningAiProvider>) -> Unit,
-    onReportPreferencesChange: (Boolean, Int, Int, Boolean, Int, Int) -> Unit,
+    onReportPreferencesChange: (Boolean, Int, Int, Boolean, Int, Int, AiReportRetention) -> Unit,
     onGenerateDailyReportNow: suspend () -> String?,
     onDeleteAiReport: suspend (Long) -> String?,
     onResetOnboarding: () -> Unit,

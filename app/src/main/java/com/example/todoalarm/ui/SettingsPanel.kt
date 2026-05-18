@@ -84,6 +84,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.core.content.pm.PackageInfoCompat
 import com.example.todoalarm.data.AppSettings
+import com.example.todoalarm.data.AiReportRetention
 import com.example.todoalarm.data.PlanningAiCaller
 import com.example.todoalarm.data.PlanningAiModelFetchResult
 import com.example.todoalarm.data.PlanningAiProvider
@@ -129,7 +130,7 @@ fun SettingsPanel(
     onDefaultCalendarReminderModeChange: (ReminderDeliveryMode) -> Unit,
     onReminderAudioStrategyChange: (ReminderAudioChannel, Int, Boolean, Int, Boolean) -> Unit,
     onPlanningAiProvidersChange: (Boolean, List<PlanningAiProvider>) -> Unit,
-    onReportPreferencesChange: (Boolean, Int, Int, Boolean, Int, Int) -> Unit,
+    onReportPreferencesChange: (Boolean, Int, Int, Boolean, Int, Int, AiReportRetention) -> Unit,
     onGenerateDailyReportNow: suspend () -> String?,
     onResetOnboarding: () -> Unit,
     onDesktopSyncEnabledChange: (Boolean) -> Unit,
@@ -686,7 +687,7 @@ private fun PercentSettingRow(
 private fun PlanningAiConfigPanel(
     settings: AppSettings,
     onSave: (Boolean, List<PlanningAiProvider>) -> Unit,
-    onReportPreferencesChange: (Boolean, Int, Int, Boolean, Int, Int) -> Unit,
+    onReportPreferencesChange: (Boolean, Int, Int, Boolean, Int, Int, AiReportRetention) -> Unit,
     onGenerateDailyReportNow: suspend () -> String?
 ) {
     val persistedProviders = remember(
@@ -892,7 +893,7 @@ private fun PlanningAiConfigPanel(
 @OptIn(ExperimentalMaterial3Api::class)
 private fun AiReportPreferencesPanel(
     settings: AppSettings,
-    onChange: (Boolean, Int, Int, Boolean, Int, Int) -> Unit,
+    onChange: (Boolean, Int, Int, Boolean, Int, Int, AiReportRetention) -> Unit,
     onGenerateDailyReportNow: suspend () -> String?
 ) {
     var dailyEnabled by remember(settings.dailyReportEnabled) { mutableStateOf(settings.dailyReportEnabled) }
@@ -903,6 +904,7 @@ private fun AiReportPreferencesPanel(
     var weeklyTimeText by remember(settings.weeklyReportHour, settings.weeklyReportMinute) {
         mutableStateOf(formatReportTime(settings.weeklyReportHour, settings.weeklyReportMinute))
     }
+    var retention by remember(settings.aiReportRetention) { mutableStateOf(settings.aiReportRetention) }
     var savedHint by remember { mutableStateOf(false) }
     var runningNow by remember { mutableStateOf(false) }
     var runMessage by remember { mutableStateOf<String?>(null) }
@@ -916,7 +918,7 @@ private fun AiReportPreferencesPanel(
     fun save() {
         val daily = dailyTime ?: (settings.dailyReportHour to settings.dailyReportMinute)
         val weekly = weeklyTime ?: (settings.weeklyReportHour to settings.weeklyReportMinute)
-        onChange(dailyEnabled, daily.first, daily.second, weeklyEnabled, weekly.first, weekly.second)
+        onChange(dailyEnabled, daily.first, daily.second, weeklyEnabled, weekly.first, weekly.second, retention)
         savedHint = true
         runMessage = null
     }
@@ -956,6 +958,16 @@ private fun AiReportPreferencesPanel(
                 weeklyTimeText = it
                 savedHint = false
             }
+        )
+        CompactDropdownSetting(
+            title = "报告保留时长",
+            value = retention.label,
+            options = AiReportRetention.entries.map { it.label },
+            onSelect = { label ->
+                retention = AiReportRetention.entries.firstOrNull { it.label == label } ?: AiReportRetention.DAYS_90
+                savedHint = false
+            },
+            summary = "超过保留期的 AI 日报 / 周报会在生成新报告后自动清理；选“永久”则不自动删除。"
         )
         if (invalid) {
             Text("时间格式需要是 HH:mm，例如 22:00。", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)

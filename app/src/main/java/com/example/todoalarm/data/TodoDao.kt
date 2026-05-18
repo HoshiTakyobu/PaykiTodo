@@ -525,6 +525,9 @@ interface TodoDao {
     @Query("DELETE FROM ai_reports WHERE id = :id")
     suspend fun deleteAiReport(id: Long)
 
+    @Query("DELETE FROM ai_reports WHERE generatedAtMillis < :cutoffMillis")
+    suspend fun purgeAiReportsBefore(cutoffMillis: Long): Int
+
     @Query("DELETE FROM ai_reports")
     suspend fun clearAiReports()
 }

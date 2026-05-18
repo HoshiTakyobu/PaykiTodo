@@ -148,6 +148,7 @@ object DailyReportGenerator {
             isLocalFallback = isLocalFallback
         )
         val id = app.repository.saveAiReport(report)
+        app.repository.purgeAiReportsOlderThan(app.settingsStore.currentSettings().aiReportRetention)
         return report.copy(id = id)
     }
 

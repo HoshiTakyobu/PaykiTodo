@@ -99,6 +99,7 @@ private fun AppSettings.toJson(): JSONObject {
         put("weeklyReportEnabled", weeklyReportEnabled)
         put("weeklyReportHour", weeklyReportHour)
         put("weeklyReportMinute", weeklyReportMinute)
+        put("aiReportRetention", aiReportRetention.name)
         put("legacyAiReportMigrated", legacyAiReportMigrated)
     }
 }
@@ -533,6 +534,7 @@ private fun JSONObject?.toSettings(): AppSettings {
         weeklyReportEnabled = optBoolean("weeklyReportEnabled", false),
         weeklyReportHour = optInt("weeklyReportHour", 22),
         weeklyReportMinute = optInt("weeklyReportMinute", 0),
+        aiReportRetention = AiReportRetention.fromStorage(optString("aiReportRetention", AiReportRetention.DAYS_90.name)),
         legacyAiReportMigrated = optBoolean("legacyAiReportMigrated", false)
     )
 }

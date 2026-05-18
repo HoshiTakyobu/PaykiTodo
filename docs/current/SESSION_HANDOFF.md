@@ -15,7 +15,9 @@ Long-running Codex sessions can become unreliable. This file exists so a new ses
   1. Former focus / pomodoro mode has been removed from app code, manifest, UI routes, settings, widgets, backup, desktop sync, and AI reports.
   2. Database version is now `18` in the working tree.
   3. `MIGRATION_17_18` drops `focus_sessions`, creates `event_check_ins`, creates `todo_group_tags`, adds `checkInEnabled` and `totalCheckInMinutes`, backfills group tags, and merges the old default `专注` group into `例行`.
-  4. Full `1.11.0 / versionCode 222` version bump is still pending.
+  4. Room schema export is enabled and schema `18.json` is generated.
+  5. AI report retention, debug-only Compose preview tooling, and application-scope non-fatal startup logging are implemented.
+  6. Full `1.11.0 / versionCode 222` version bump is still pending.
 - Latest published signed release APK:
   - `app/build/outputs/apk/release/PaykiTodo-1.10.2-release.apk`
   - GitHub Release: `https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.10.2`
@@ -42,6 +44,16 @@ Long-running Codex sessions can become unreliable. This file exists so a new ses
 5. Removed focus fields from desktop sync board payloads.
 6. Removed focus stats from AI daily/weekly report generation.
 7. The old default group label `专注` is no longer seeded; old rows are migrated to `例行`.
+
+## Latest Performance / Robustness Pass
+
+1. Room schema export is enabled through KSP and `app/schemas/com.example.todoalarm.data.AppDatabase/18.json` is present as the database-18 reference.
+2. `androidx.compose.ui:ui-tooling-preview` is scoped to `debugImplementation`, so release builds do not carry that preview dependency.
+3. Settings -> `AI 调用配置` -> `AI 日报 / 周报` has a compact `报告保留时长` dropdown: 30 天 / 90 天 / 365 天 / 永久.
+4. Generating a daily or weekly AI report purges archived reports older than the selected retention period; `永久` skips automatic deletion.
+5. Backup / restore preserves the report-retention preference but still does not export AI API Keys.
+6. App startup initialization uses an application-level `SupervisorJob` scope and records non-fatal initialization failures through `CrashLogger.recordNonFatal`.
+7. Desktop sync already has the 4 MB request-body limit from the previous sync hardening; oversized requests return HTTP 413 and this should be treated as satisfied for P11.
 
 ## Previous 1.10.3 Planning Desk Fix Pass
 
@@ -81,8 +93,14 @@ Previous Planning Desk continuation:
 Focus removal slice:
 
 1. `./gradlew.bat :app:compileDebugKotlin` passed after code cleanup.
-2. A fresh `compileDebugKotlin` and `git diff --check` should be run before committing because current docs were updated afterward.
+2. Fresh `./gradlew.bat :app:compileDebugKotlin` and `git diff --check` passed after docs were updated.
 3. No new APK has been built after focus removal yet.
+
+Performance / robustness slice:
+
+1. `./gradlew.bat :app:compileDebugKotlin` passed after schema export, report retention, and startup-scope changes.
+2. `git diff --check` passed.
+3. No new APK has been built for this slice yet.
 
 Secret / release safety checks already performed:
 
@@ -107,6 +125,8 @@ Secret / release safety checks already performed:
 - The independent `倒数日` widget is no longer limited to three fixed rows; it is now a scrollable RemoteViews ListView capped at 60 active countdown targets.
 - Minute-level widget refresh is scheduled by `AlarmManager`; OEM launchers and battery policies may still delay widget refreshes under aggressive power management.
 - Removing focus mode reduces board/settings/widget/report data surface before adding event check-in.
+- Schema export gives future migrations a concrete Room reference file for database version 18.
+- AI report retention prevents the `ai_reports` archive from growing without limit once reports are generated regularly.
 
 ## Files Most Relevant To The Current Goal
 

@@ -10,16 +10,33 @@ import java.util.Locale
 object CrashLogger {
     private const val CRASH_DIR = "crash_logs"
     private const val LAST_CRASH_FILE = "last_crash.txt"
+    private const val NON_FATAL_FILE = "last_non_fatal.txt"
     private const val PREFS_NAME = "paykitodo_crash_state"
     private const val KEY_LAST_STABLE_LAUNCH_AT = "last_stable_launch_at"
     private const val KEY_LAST_CRASH_NOTICE_AT = "last_crash_notice_at"
 
+    @Volatile
+    private var installedContext: Context? = null
+
     fun install(context: Context) {
         val appContext = context.applicationContext
+        installedContext = appContext
         val previousHandler = Thread.getDefaultUncaughtExceptionHandler()
         Thread.setDefaultUncaughtExceptionHandler { thread, throwable ->
             runCatching { writeCrash(appContext, thread, throwable) }
             previousHandler?.uncaughtException(thread, throwable)
+        }
+    }
+
+    fun recordNonFatal(throwable: Throwable) {
+        val context = installedContext ?: return
+        runCatching {
+            writeThrowable(
+                context = context,
+                fileName = NON_FATAL_FILE,
+                threadName = Thread.currentThread().name,
+                throwable = throwable
+            )
         }
     }
 
@@ -70,8 +87,17 @@ object CrashLogger {
     }
 
     private fun writeCrash(context: Context, thread: Thread, throwable: Throwable) {
+        writeThrowable(
+            context = context,
+            fileName = LAST_CRASH_FILE,
+            threadName = thread.name,
+            throwable = throwable
+        )
+    }
+
+    private fun writeThrowable(context: Context, fileName: String, threadName: String, throwable: Throwable) {
         val dir = context.getDir(CRASH_DIR, Context.MODE_PRIVATE)
-        val file = dir.resolve(LAST_CRASH_FILE)
+        val file = dir.resolve(fileName)
         val formatter = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
         val stackTrace = StringWriter().also { writer ->
             throwable.printStackTrace(PrintWriter(writer))
@@ -79,7 +105,7 @@ object CrashLogger {
 
         val payload = buildString {
             appendLine("time=${formatter.format(Date())}")
-            appendLine("thread=${thread.name}")
+            appendLine("thread=$threadName")
             appendLine("exception=${throwable::class.java.name}")
             appendLine()
             append(stackTrace)

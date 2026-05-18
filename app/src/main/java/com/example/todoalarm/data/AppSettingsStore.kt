@@ -29,6 +29,19 @@ enum class ReminderAudioChannel(val label: String) {
     }
 }
 
+enum class AiReportRetention(val label: String, val days: Int?) {
+    DAYS_30("30 天", 30),
+    DAYS_90("90 天", 90),
+    DAYS_365("365 天", 365),
+    FOREVER("永久", null);
+
+    companion object {
+        fun fromStorage(value: String?): AiReportRetention {
+            return entries.firstOrNull { it.name == value } ?: DAYS_90
+        }
+    }
+}
+
 data class AppSettings(
     val themeMode: ThemeMode = ThemeMode.SYSTEM,
     val weekStartMode: WeekStartMode = WeekStartMode.MONDAY,
@@ -63,6 +76,7 @@ data class AppSettings(
     val weeklyReportEnabled: Boolean = false,
     val weeklyReportHour: Int = 22,
     val weeklyReportMinute: Int = 0,
+    val aiReportRetention: AiReportRetention = AiReportRetention.DAYS_90,
     val legacyAiReportMigrated: Boolean = false
 )
 
@@ -228,7 +242,8 @@ class AppSettingsStore(context: Context) {
         dailyMinute: Int,
         weeklyEnabled: Boolean,
         weeklyHour: Int,
-        weeklyMinute: Int
+        weeklyMinute: Int,
+        retention: AiReportRetention
     ) {
         preferences.edit()
             .putBoolean(KEY_DAILY_REPORT_ENABLED, dailyEnabled)
@@ -237,6 +252,7 @@ class AppSettingsStore(context: Context) {
             .putBoolean(KEY_WEEKLY_REPORT_ENABLED, weeklyEnabled)
             .putInt(KEY_WEEKLY_REPORT_HOUR, weeklyHour.coerceIn(0, 23))
             .putInt(KEY_WEEKLY_REPORT_MINUTE, weeklyMinute.coerceIn(0, 59))
+            .putString(KEY_AI_REPORT_RETENTION, retention.name)
             .apply()
         refresh()
     }
@@ -287,6 +303,7 @@ class AppSettingsStore(context: Context) {
             .putBoolean(KEY_WEEKLY_REPORT_ENABLED, settings.weeklyReportEnabled)
             .putInt(KEY_WEEKLY_REPORT_HOUR, settings.weeklyReportHour.coerceIn(0, 23))
             .putInt(KEY_WEEKLY_REPORT_MINUTE, settings.weeklyReportMinute.coerceIn(0, 59))
+            .putString(KEY_AI_REPORT_RETENTION, settings.aiReportRetention.name)
             .putBoolean(KEY_LEGACY_AI_REPORT_MIGRATED, settings.legacyAiReportMigrated)
             .apply {
                 val noteId = settings.lastOpenedPlanningNoteId
@@ -363,6 +380,7 @@ class AppSettingsStore(context: Context) {
             weeklyReportEnabled = preferences.getBoolean(KEY_WEEKLY_REPORT_ENABLED, false),
             weeklyReportHour = preferences.getInt(KEY_WEEKLY_REPORT_HOUR, 22).coerceIn(0, 23),
             weeklyReportMinute = preferences.getInt(KEY_WEEKLY_REPORT_MINUTE, 0).coerceIn(0, 59),
+            aiReportRetention = AiReportRetention.fromStorage(preferences.getString(KEY_AI_REPORT_RETENTION, null)),
             legacyAiReportMigrated = preferences.getBoolean(KEY_LEGACY_AI_REPORT_MIGRATED, false)
         )
     }
@@ -444,6 +462,7 @@ class AppSettingsStore(context: Context) {
         private const val KEY_WEEKLY_REPORT_ENABLED = "weekly_report_enabled"
         private const val KEY_WEEKLY_REPORT_HOUR = "weekly_report_hour"
         private const val KEY_WEEKLY_REPORT_MINUTE = "weekly_report_minute"
+        private const val KEY_AI_REPORT_RETENTION = "ai_report_retention"
         private const val KEY_LEGACY_AI_REPORT_MIGRATED = "legacy_ai_report_migrated"
     }
 }

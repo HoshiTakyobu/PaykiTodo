@@ -6,7 +6,10 @@
 - 数据库迁移进入 `17 → 18`：升级时删除旧 `focus_sessions` 表，并把旧默认“专注”分组并入“例行”，避免已删除功能继续出现在分组 UI 中
 - 备份恢复不再导出或恢复专注记录 / 专注设置；旧备份中残留的 `focusSessions` 字段会被静默忽略
 - 为后续 1.11.0 日程打卡与待办多分组功能预置 `event_check_ins`、`todo_group_tags` 表和 `todo_items.checkInEnabled / totalCheckInMinutes` 字段
-- 验证：`./gradlew.bat :app:compileDebugKotlin` 通过；本条仍是开发中 checkpoint，尚未生成新的可安装 APK
+- Room schema 导出已开启，`app/schemas/com.example.todoalarm.data.AppDatabase/18.json` 记录数据库 18 结构；`ui-tooling-preview` 改为 debug-only 依赖，避免 release 继续携带预览工具依赖
+- AI 日报 / 周报设置新增“报告保留时长”下拉项（30 天 / 90 天 / 365 天 / 永久），生成新报告后会按设置清理过期归档；该设置会进入备份但不导出 API Key
+- 应用启动初始化改用带 `SupervisorJob` 和非致命异常记录的 application scope，避免裸 `CoroutineScope(Dispatchers.IO)` 静默吞掉初始化失败
+- 验证：`./gradlew.bat :app:compileDebugKotlin`、`git diff --check` 通过；本条仍是开发中 checkpoint，尚未生成新的可安装 APK
 
 ## v1.10.3
 

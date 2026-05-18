@@ -27,6 +27,16 @@ Do not push to GitHub unless the user explicitly asks.
 7. `MIGRATION_17_18` drops `focus_sessions`, creates `event_check_ins`, creates `todo_group_tags`, adds `checkInEnabled` and `totalCheckInMinutes` to `todo_items`, backfills todo group tags, and merges the old default `专注` group into `例行`.
 8. Old backup JSON that still contains `focusSessions` is ignored instead of being restored.
 
+### P4/P5/P11/P12/P13 performance / robustness slice
+
+1. Room schema export is enabled and `app/schemas/com.example.todoalarm.data.AppDatabase/18.json` records the database-18 schema.
+2. Compose `ui-tooling-preview` is now debug-only instead of being included in release dependencies.
+3. Desktop sync keeps the existing 4 MB request-body limit and returns HTTP 413 for oversized requests.
+4. Application startup initialization now uses an application-level `SupervisorJob` scope with non-fatal exception logging through `CrashLogger.recordNonFatal`.
+5. Settings -> `AI 调用配置` -> `AI 日报 / 周报` adds a report-retention dropdown for 30 days / 90 days / 365 days / forever.
+6. Generating a daily or weekly report purges older archived AI reports according to the selected retention policy.
+7. Backup / restore preserves the AI report retention policy while still excluding AI API Keys.
+
 ## Verification Completed
 
 ### Widget slice
@@ -44,6 +54,12 @@ Do not push to GitHub unless the user explicitly asks.
 3. Fresh `git diff --check` passed after docs were updated.
 4. No new APK has been built after the focus-removal slice yet.
 
+### P4/P5/P11/P12/P13 performance / robustness slice
+
+1. `./gradlew.bat :app:compileDebugKotlin` passed after the schema / report-retention / startup-scope changes.
+2. `git diff --check` passed after the slice.
+3. No new APK has been built for this slice yet.
+
 ## Verification Still Needed On Device / Browser
 
 1. Install `app/build/outputs/apk/debug/PaykiTodo-1.10.3-debug.apk` on the physical phone if validating the latest built widget APK.
@@ -55,12 +71,11 @@ Do not push to GitHub unless the user explicitly asks.
 
 The full goal remains active. Major remaining slices:
 
-1. P5/P4/P11/P12/P13: Room schema export, debug-only tooling preview, desktop-sync request size limit, structured application coroutine scope, and AI-report retention.
-2. M1/M5: drawer simplification and moving group management into the todo page.
-3. M3/M2/M4/M6/M7: multi-group todo data model, intersection filter chips, multi-select editor, desktop sync support, and backup support.
-4. C1-C7: event check-in / time tracking across phone UI, widgets, desktop web, backup, and AI reports.
-5. V1-V6: Planning Desk image recognition through vision-capable AI providers.
-6. T1-T3: Planning Desk shortcut bar simplification and help update.
-7. P6/P7/P9/P10/P8: narrow database queries, countdown widget update metadata, and desktop-sync suspend handler cleanup.
-8. P1/P2/P3: R8/resource shrinking, WebP conversion, icon dependency audit, release launch verification, and final APK-size check.
-9. Final version bump to `1.11.0 / versionCode 222`.
+1. M1/M5: drawer simplification and moving group management into the todo page.
+2. M3/M2/M4/M6/M7: multi-group todo data model, intersection filter chips, multi-select editor, desktop sync support, and backup support.
+3. C1-C7: event check-in / time tracking across phone UI, widgets, desktop web, backup, and AI reports.
+4. V1-V6: Planning Desk image recognition through vision-capable AI providers.
+5. T1-T3: Planning Desk shortcut bar simplification and help update.
+6. P6/P7/P9/P10/P8: narrow database queries, countdown widget update metadata, and desktop-sync suspend handler cleanup.
+7. P1/P2/P3: R8/resource shrinking, WebP conversion, icon dependency audit, release launch verification, and final APK-size check.
+8. Final version bump to `1.11.0 / versionCode 222`.

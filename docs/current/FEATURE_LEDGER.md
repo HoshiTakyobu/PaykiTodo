@@ -107,17 +107,18 @@ This file tracks the product at a practical level for new coding sessions.
 
 ### AI 日报 / 周报
 
-- Settings -> `AI 调用配置` includes an `AI 日报 / 周报` block with compact switches, HH:mm time fields, a save/re-schedule button, `了解 AI 日报`, and `立即生成一次日报`
+- Settings -> `AI 调用配置` includes an `AI 日报 / 周报` block with compact switches, HH:mm time fields, a report-retention dropdown, a save/re-schedule button, `了解 AI 日报`, and `立即生成一次日报`
 - the `了解 AI 日报` guide is a centered dialog explaining what daily/weekly reports summarize, AI-source and fallback requirements, Android 12+ exact-alarm caveats, enable steps, the independent `AI 报告` archive, notification deep links, and common failure cases
-- daily reports collect today's completed todos, missed todos, today's events, tomorrow events, tomorrow DDLs, and today's focus minutes
-- weekly reports collect Monday-Sunday completed todos, missed todos, week events, next-week DDLs, and completed focus minutes for the week
+- daily reports collect today's completed todos, missed todos, today's events, tomorrow events, and tomorrow DDLs
+- weekly reports collect Monday-Sunday completed todos, missed todos, week events, and next-week DDLs
 - report generation tries enabled Planning Desk AI providers in order through `PlanningAiCaller.callWithFallback`; if AI is disabled or fails, a local template still generates a usable report
 - reports are stored in the independent Room `ai_reports` archive rather than Planning Desk notes; the drawer exposes `AI 报告` after `规划台`
 - upgraded installs migrate legacy Planning Desk `AI 日报` / `AI 周报` note entries into `ai_reports`, delete the old report notes, and clear `lastOpenedPlanningNoteId` if it pointed to a removed report note
 - `AI 报告` supports keyword search, all / daily / weekly filters, all-time / recent-7 / recent-30 / recent-90-day range filters, card previews, full detail viewing, local-fallback/source pills, empty-state guidance, and delete confirmation from long press or detail view
+- AI report retention can be set to 30 days / 90 days / 365 days / forever; generating a new report purges older archived reports according to the current setting
 - report notifications use a low-priority `ai_report_channel`, skip posting if Android 13+ notification permission is missing, and deep-link to the matching AI report detail
 - `DailyReportScheduler` schedules daily and Sunday weekly report alarms, cancels disabled schedules, and is invoked on app startup plus boot/time/timezone recovery; it uses exact alarms when allowed and safely falls back to system-allowed idle scheduling when exact-alarm permission is missing
-- backup / restore snapshots include `aiReports`, so exported JSON preserves report history
+- backup / restore snapshots include `aiReports` and the report-retention preference, so exported JSON preserves report history and cleanup policy while still excluding AI API keys
 
 ### Calendar System
 
@@ -260,14 +261,17 @@ This file tracks the product at a practical level for new coding sessions.
 ### Data / Performance
 
 - `todo_items` has Room indices for board todo queries, board event range queries, active reminders, group+DDL sorting, recurring-series lookup, desktop todo paging / sorting, and active countdown lookup.
-- Database version is `17`; `MIGRATION_13_14` creates the initial `todo_items` performance indices on upgraded installs, `MIGRATION_14_15` adds / backfills `planning_notes.hasAnnouncementHint` plus the indexed announcement lookup path, `MIGRATION_15_16` adds desktop todo paging plus AI-report generated-time/type indices, and `MIGRATION_16_17` adds countdown fields / indices for todos and recurring templates.
+- Database version is `18`; `MIGRATION_13_14` creates the initial `todo_items` performance indices on upgraded installs, `MIGRATION_14_15` adds / backfills `planning_notes.hasAnnouncementHint` plus the indexed announcement lookup path, `MIGRATION_15_16` adds desktop todo paging plus AI-report generated-time/type indices, `MIGRATION_16_17` adds countdown fields / indices for todos and recurring templates, and `MIGRATION_17_18` removes `focus_sessions` while adding `event_check_ins`, `todo_group_tags`, and todo check-in fields.
+- Room schema export is enabled and `app/schemas/com.example.todoalarm.data.AppDatabase/18.json` is committed as the database-18 reference schema.
 - Desktop Web first connection now uses a lightweight board snapshot (`/api/snapshot?scope=board`); todo management uses paged/searchable `/api/todos?offset=...&limit=...&q=...`, and the event timeline uses visible-range `/api/events?start=...&end=...` instead of sharing one full snapshot for every management tab.
-- Main phone board/task UI uses a Room aggregate Flow for today's focus stats, active-todo-only observation, and today/tomorrow event range observation instead of merging full focus sessions, all todos, and full active events into ordinary board/task state.
+- Main phone board/task UI uses active-todo-only observation and today/tomorrow event range observation instead of merging all todos and full active events into ordinary board/task state.
 - Main phone board/task UI uses the shared active-todo section classifier for missed / today / upcoming lists, so no-DDL active todos keep the same "today every day" behavior in My Tasks and the board.
 - Main phone board/task UI no longer carries the full Planning Desk note list; complete planning notes are collected only while the Planning Desk section is open.
 - Daily-board announcements on phone, Android widget, and desktop lightweight snapshot use the indexed `planning_notes.hasAnnouncementHint` candidate query before strict parsing instead of reading every planning document or scanning Markdown bodies with `LIKE`.
 - Planning-note backup / restore recomputes `hasAnnouncementHint` from Markdown content, so imported data does not preserve stale announcement-candidate state.
 - `AI 报告` uses paged Room queries by type, keyword, time range, and limit; the archive no longer observes the full report history just to render or filter the first page.
+- Desktop sync rejects request bodies larger than 4 MB with HTTP 413, preventing abnormal LAN clients from forcing unbounded request-body reads.
+- Application startup initialization uses an application-level `SupervisorJob` scope and records non-fatal initialization failures through `CrashLogger.recordNonFatal`.
 - Calendar month/list/all-day surfaces reuse one top-level event-by-date index instead of rebuilding date buckets independently in each view; the timeline date span is represented by a lightweight date window instead of allocating a full long-range date list.
 - Phone Calendar subscribes only to active events overlapping the current padded visible date range, while notification / deep-link navigation to a far event expands that query range before focusing the target date.
 - Countdown-enabled todos / events are included in phone board, independent countdown widget, and desktop board data without requiring a full historical scan; exact-time past countdown targets are filtered out before rendering.

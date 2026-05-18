@@ -6,97 +6,89 @@ Long-running Codex sessions can become unreliable. This file exists so a new ses
 
 ## Current Handoff Summary
 
-- The project is now being advanced to `1.10.0` / `versionCode 218`.
-- Main user request: add countdown-day mode for important DDL / schedule targets, expose it on the phone board, desktop board, the existing 今日看板 widget, and an independent 倒数日 widget; keep the existing widget visually aligned with the in-app daily board and do not show the focus card there.
-- Latest debug APK after this round: `app/build/outputs/apk/debug/PaykiTodo-1.10.0-debug.apk`.
+- The project is now at `1.10.1` / `versionCode 219`.
+- Main user request for this continuation:
+  1. Desktop Planning Desk AI preview/import must expose event location and phone-side key fields instead of putting location into notes.
+  2. The existing Android `今日看板` widget must not include countdown-day rows.
+  3. Countdown-day targets should be shown in the independent `倒数日` widget with App daily-board-like wording and layout.
+  4. Event countdown rows should not show a completion circle and should show full event time.
+- Latest debug APK after build:
+  - `app/build/outputs/apk/debug/PaykiTodo-1.10.1-debug.apk`
 - Latest signed release APK remains the previous `1.9.23` release artifact unless the user asks for a new release build.
 - Do not push to GitHub unless the user explicitly asks.
 - Keep `keystore.properties`, `release/`, APK/AAB outputs, API keys, tokens, and private Base URLs out of Git.
 
-## Latest 1.10.0 Countdown / Widget Pass
+## Latest 1.10.1 Fix Pass
 
-1. Database version is now `17`.
-2. `MIGRATION_16_17` adds `countdownEnabled` to `todo_items` and `recurring_task_templates`.
-3. `MIGRATION_16_17` creates `index_todo_items_countdown`.
-4. Todo countdown targets use DDL dates; no-DDL todos are not valid countdown targets.
-5. Event countdown targets use event start dates.
-6. Expired countdown targets are filtered out from phone board, desktop board, and widgets.
-7. Todo editor exposes a 倒数日 block when DDL is enabled; turning off DDL clears countdown state.
-8. Calendar event editor exposes a 倒数日 block and persists it through normal event saves and recurring event draft previews.
-9. Daily board renders a `CountdownBoardCard` above ordinary todo / schedule content.
-10. Desktop `/api/snapshot` includes `todayBoard.countdownItems`.
-11. Desktop Web daily board renders countdown targets and todo/event edit forms save `countdownEnabled`.
-12. Android 今日看板 widget inserts a countdown section after greeting and before today todos.
-13. Android 今日看板 widget still omits the focus card / 专注一下 content.
-14. New `CountdownWidgetProvider` registers an independent PaykiTodo 倒数日 widget.
-15. The independent 倒数日 widget shows the nearest 3 countdown targets and routes todo targets to My Tasks, event targets to Calendar.
-16. Backup / restore JSON and desktop sync JSON preserve `countdownEnabled`.
-17. `DailyBoardSnapshotBuilderTest` covers active future/today countdown targets, expired target exclusion, and no-DDL exclusion.
+1. `PlanningParsedCandidate` and `PlanningImportCandidate` now include `location`, `allDay`, `countdownEnabled`, and `recurrence`.
+2. `PlanningAiRecognizer` prompt/schema now asks for `location` and `recurrence`, keeps `@地点` as literal user text, and keeps conservative group assignment.
+3. Local Planning Desk parser extracts `@地点` / `#location` / `#地点` into event location without adding another `@`.
+4. Phone Planning Desk preview cards can edit event location, all-day, countdown, and recurrence before import.
+5. Desktop Web Planning Desk preview can edit event location, all-day, countdown, recurrence type, recurrence end date, and weekly days before import.
+6. Phone and desktop Planning Desk import paths persist these fields into `TodoDraft` / `CalendarEventDraft`.
+7. Android `今日看板` widget no longer builds or routes countdown rows.
+8. Android independent `倒数日` widget:
+   - keeps a checkbox-like circle for todo targets;
+   - hides the circle for event targets;
+   - uses `10d` style day text plus remaining `xh ym zs`;
+   - shows full event time metadata;
+   - removes redundant item-level `倒数日` text.
+9. App daily-board and desktop daily-board countdown rows now use `Nd` wording and fuller event-time metadata.
+10. Version metadata is `1.10.1 / 219`.
 
 ## Verification Status
 
-Completed locally in this continuation:
+Completed locally:
 
 1. `node --check app/src/main/assets/desktop-web/app.js` passed.
 2. `./gradlew.bat :app:compileDebugKotlin` passed.
 3. `./gradlew.bat :app:testDebugUnitTest` passed.
 4. `./gradlew.bat :app:assembleDebug` passed.
-5. Debug `output-metadata.json` reports `versionCode=218`, `versionName=1.10.0`, and `outputFile=PaykiTodo-1.10.0-debug.apk`.
+5. `git diff --check` passed.
+6. `git check-ignore -v keystore.properties release/PaykiTodo-release.jks app/build/outputs/apk/debug/PaykiTodo-1.10.1-debug.apk` confirmed signing material and APK output are ignored.
+7. Debug `output-metadata.json` reports `versionCode=219`, `versionName=1.10.1`, and `outputFile=PaykiTodo-1.10.1-debug.apk`.
 
-Also checked:
-
-1. `git diff --check` passed.
-2. `git status --short` was reviewed.
-3. `git check-ignore -v` confirmed `keystore.properties`, `release/PaykiTodo-release.jks`, and `app/build/outputs/apk/debug/PaykiTodo-1.10.0-debug.apk` are ignored.
-
-Latest emulator smoke remains historical from `1.9.21`; this `1.10.0` widget pass has local build/unit verification but no emulator or physical launcher verification yet.
+Latest emulator smoke remains historical from `1.9.21`; this `1.10.1` continuation has not started or reused an emulator.
 
 ## Remaining Device / Browser Verification
 
-1. Install `app/build/outputs/apk/debug/PaykiTodo-1.10.0-debug.apk` on the physical phone.
+1. Install `app/build/outputs/apk/debug/PaykiTodo-1.10.1-debug.apk` on the physical phone.
 2. Phone-test countdown:
-   - enabling 倒数日 on a DDL todo shows it on 每日看板.
-   - disabling DDL clears countdown.
-   - enabling 倒数日 on an event shows it on 每日看板.
-   - expired targets disappear.
+   - App daily-board countdown row shows `Nd` and full event time.
+   - Todo countdown opens todo editing; event countdown opens event editing.
 3. Device-test widgets:
-   - 今日看板 widget shows announcements, greeting, countdown, today todos, and today/tomorrow schedule content.
-   - 今日看板 widget does not show focus statistics or 专注一下.
-   - 倒数日 widget shows the nearest 3 targets.
-   - light/dark mode text and row layout remain readable after resizing.
+   - `今日看板` widget has no countdown section.
+   - Independent `倒数日` widget shows nearest 3 targets.
+   - Todo rows show a circle; event rows do not.
+   - Light/dark mode text remains readable after resizing.
 4. Browser-test desktop Web:
-   - first lightweight snapshot renders countdown targets when present.
-   - desktop todo/event editors preserve countdown state.
-   - desktop board countdown rows open the right item type.
+   - AI/local Planning Desk preview exposes location, all-day, countdown, and recurrence.
+   - Import persists location into the event location field, not notes.
+   - `16:05-18:00 入党表格填写` remains title `入党表格填写` with empty group unless a group marker is present.
 
 ## Performance Notes
 
-- Countdown data is stored as a boolean marker on existing todos/events rather than a separate table.
-- Board / widget snapshots include countdown-enabled items through indexed query paths, then filter expired targets before rendering.
-- The independent 倒数日 widget takes only the nearest 3 targets.
-- Existing desktop split loading remains in place: lightweight board snapshot first, paged/searchable todos on demand, visible-range events on demand.
+- Countdown data still uses the existing `countdownEnabled` marker and indexed board/widget lookup paths.
+- Removing countdown rows from `TodoWidgetService` reduces the existing `今日看板` widget row count and keeps that widget focused on board content.
+- The independent `倒数日` widget still renders only the nearest 3 targets.
+- Widget seconds are snapshot text from the last widget refresh; Android launcher widgets are not guaranteed to tick once per second.
 
 ## Files Most Relevant To This Round
 
 - `app/build.gradle.kts`
-- `app/src/main/java/com/example/todoalarm/data/TodoItem.kt`
-- `app/src/main/java/com/example/todoalarm/data/RecurringTaskTemplate.kt`
-- `app/src/main/java/com/example/todoalarm/data/TodoRecurrence.kt`
-- `app/src/main/java/com/example/todoalarm/data/CalendarEventDraft.kt`
-- `app/src/main/java/com/example/todoalarm/data/DailyBoardSnapshot.kt`
-- `app/src/main/java/com/example/todoalarm/data/DatabaseMigrations.kt`
-- `app/src/main/java/com/example/todoalarm/data/TodoDao.kt`
-- `app/src/main/java/com/example/todoalarm/data/TodoRepository.kt`
-- `app/src/main/java/com/example/todoalarm/ui/TodoEditorDialog.kt`
-- `app/src/main/java/com/example/todoalarm/ui/CalendarEventEditorDialog.kt`
-- `app/src/main/java/com/example/todoalarm/ui/DashboardChrome.kt`
+- `app/src/main/java/com/example/todoalarm/data/PlanningMarkdownParser.kt`
+- `app/src/main/java/com/example/todoalarm/data/PlanningImportCandidate.kt`
+- `app/src/main/java/com/example/todoalarm/data/PlanningAiRecognizer.kt`
+- `app/src/main/java/com/example/todoalarm/sync/DesktopSyncCoordinator.kt`
+- `app/src/main/java/com/example/todoalarm/ui/PlanningDeskPanel.kt`
 - `app/src/main/java/com/example/todoalarm/ui/TodoViewModel.kt`
+- `app/src/main/java/com/example/todoalarm/ui/DashboardChrome.kt`
 - `app/src/main/java/com/example/todoalarm/widget/TodoWidgetService.kt`
 - `app/src/main/java/com/example/todoalarm/widget/CountdownWidgetProvider.kt`
 - `app/src/main/res/layout/widget_countdown.xml`
-- `app/src/main/res/xml/widget_countdown_info.xml`
-- `app/src/test/java/com/example/todoalarm/data/DailyBoardSnapshotBuilderTest.kt`
+- `app/src/main/res/values/styles.xml`
 - `app/src/main/assets/desktop-web/app.js`
+- `app/src/main/assets/desktop-web/app.css`
 - `app/src/main/assets/wiki/index.html`
 - `README.md`
 - `CHANGELOG.md`

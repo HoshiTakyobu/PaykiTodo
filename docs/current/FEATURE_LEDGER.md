@@ -107,6 +107,7 @@ This file tracks the product at a practical level for new coding sessions.
 - planning mapping records are also included in JSON backup / restore snapshots
 - AI recognition for Planning Desk is now an optional Provider-based enhancement for DeepSeek / Qwen / OpenAI-compatible APIs; Settings exposes ordered multi-provider Base URL/API Key/model configuration, single-provider model-list fetching, single-provider connection testing, both phone and desktop Planning Desk recognition call enabled sources in order, local rules remain the fallback, and AI output enters preview before import
 - Planning Desk AI keeps group assignment conservative: AI `groupName` is preserved only when the source line explicitly contains a group marker such as `#group`, `分组：`, `项目：`, or `课程：`, so ordinary titles are not split into accidental groups
+- Planning Desk AI / preview candidates carry event location, all-day, countdown, and recurrence fields; phone and desktop previews can edit those fields before import, and imports persist them into the final todo/event drafts
 - Desktop Planning Desk import accepts AI-returned preview candidates directly even when their IDs do not match local-parser `line-*` IDs, preventing the browser from showing one AI candidate but importing zero selected items
 - AI source editing can fetch available models from OpenAI-compatible `/models` endpoints using only Base URL and API Key, then show a compact dropdown while preserving manual model-name entry for gateways that do not expose model discovery
 - Settings -> AI 调用配置 uses compact provider summary cards and now tries to persist valid provider add/edit/toggle/reorder/delete changes immediately; incomplete enabled providers show an in-page warning instead of silently relying on the user to remember a separate save step
@@ -181,7 +182,7 @@ This file tracks the product at a practical level for new coding sessions.
 ### Android Desktop Widget
 
 - Android launcher exposes a PaykiTodo `今日看板` widget through `TodoWidgetProvider`
-- widget displays active Planning Desk announcements, countdown targets, today todo block, and a combined today/tomorrow schedule board closer to the in-app daily board
+- widget displays active Planning Desk announcements, today todo block, and a combined today/tomorrow schedule board closer to the in-app daily board
 - widget uses RemoteViews `ListView`; rows are adaptive-height, split into greeting / section / empty-card / todo-card / schedule-card / announcement-card types, and no longer limited to five todos, so resizing the launcher widget reveals more board content
 - widget provider declares horizontal / vertical resize mode plus min resize dimensions for better launcher compatibility
 - widget day/night colors are resource-backed, with daily-board background art, dark-mode scrims, and text colors for launcher readability
@@ -199,7 +200,8 @@ This file tracks the product at a practical level for new coding sessions.
 - widget `1.9.22` refresh pass updates both the header and RemoteViews `ListView` rows on normal widget updates, date changes, time/timezone changes, and app replacement; the RemoteAdapter cache key includes the current date to reduce stale launcher row reuse
 - widget `1.9.22` light-mode pass uses more opaque warm card surfaces plus darker primary/muted/accent colors so text remains readable over the light board background
 - widget event locations display saved text directly; display code no longer prepends `@`, so user-entered `@地点` is not duplicated
-- widget `1.10.0` pass adds a countdown section to the 今日看板 widget and registers an independent PaykiTodo `倒数日` widget that shows the nearest 3 active countdown targets; tapping a todo target opens My Tasks and tapping an event target opens Calendar
+- widget `1.10.0` pass registers an independent PaykiTodo `倒数日` widget that shows the nearest 3 active countdown targets; tapping a todo target opens My Tasks and tapping an event target opens Calendar
+- widget `1.10.1` pass removes the countdown section from the existing `今日看板` widget; countdown targets now belong to the independent `倒数日` widget, whose rows use `Nd` plus remaining time, show a checkbox-like circle only for todos, and show full event time metadata for events
 - repository todo mutations and Planning Desk note edits / delete / archive operations notify widget data refresh through the application-level widget callback
 
 ### Data / Backup / Diagnostics
@@ -275,7 +277,7 @@ This file tracks the product at a practical level for new coding sessions.
 - `AI 报告` uses paged Room queries by type, keyword, time range, and limit; the archive no longer observes the full report history just to render or filter the first page.
 - Calendar month/list/all-day surfaces reuse one top-level event-by-date index instead of rebuilding date buckets independently in each view; the timeline date span is represented by a lightweight date window instead of allocating a full long-range date list.
 - Phone Calendar subscribes only to active events overlapping the current padded visible date range, while notification / deep-link navigation to a far event expands that query range before focusing the target date.
-- Countdown-enabled todos / events are included in board/widget/desktop board data without requiring a full historical scan; past countdown targets are filtered out before rendering.
+- Countdown-enabled todos / events are included in phone board, independent countdown widget, and desktop board data without requiring a full historical scan; past countdown targets are filtered out before rendering.
 - Future large-history work can still add real FTS for report content search and real-device calendar profiling; the biggest desktop full-snapshot coupling has been split, and desktop todo management now pages/searches `/api/todos` instead of returning the complete todo list by design.
 
 ## Implemented But Still Being Polished

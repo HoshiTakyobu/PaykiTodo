@@ -219,6 +219,18 @@ class PlanningMarkdownParserTest {
     }
 
     @Test
+    fun parsesInlineLocationWithoutPollutingEventTitle() {
+        val result = PlanningMarkdownParser.parse("- [ ] 16:05-18:00 入党表格填写 @主楼B1-412", now = now)
+
+        val event = result.candidates.single()
+        assertEquals(PlanningParsedType.EVENT, event.type)
+        assertEquals("入党表格填写", event.title)
+        assertEquals("@主楼B1-412", event.location)
+        assertEquals(LocalDateTime.of(2026, 5, 14, 16, 5), event.startAt)
+        assertEquals(LocalDateTime.of(2026, 5, 14, 18, 0), event.endAt)
+    }
+
+    @Test
     fun eventParentTitleIsAppliedToSubtasks() {
         val result = PlanningMarkdownParser.parse(
             """

@@ -873,11 +873,14 @@ function renderBoardCountdownRow(item, boardDateKey) {
   const accent = item.itemType === 'EVENT' ? (item.accentColorHex || item.groupColorHex || '#4e87e1') : (item.groupColorHex || '#4CB782');
   const days = countdownDays(item, boardDateKey);
   const target = countdownTargetMillis(item);
-  const label = days === 0 ? 'D-Day' : ('D-' + days);
+  const label = String(Math.max(0, days || 0)) + 'd';
+  const remain = target ? remainingCountdownText(target) : '--';
   const rowAttr = item.itemType === 'EVENT'
     ? 'data-event-id="' + escapeHtml(String(item.id ?? '')) + '"'
     : 'data-todo-id="' + escapeHtml(String(item.id ?? '')) + '"';
-  const meta = [(item.itemType === 'EVENT' ? '日程' : 'DDL'), target ? formatShortDateLabel(target) : '', item.groupName || ''].filter(Boolean).join(' · ');
+  const meta = item.itemType === 'EVENT'
+    ? '日程 · ' + eventCountdownTimeText(item)
+    : ['待办', target ? ('DDL ' + formatDateTimeLabel(target)) : '', item.groupName || ''].filter(Boolean).join(' · ');
   return ''
     + '<button type="button" class="desktop-board-row countdown" ' + rowAttr + ' style="--accent:' + escapeHtml(accent) + '">'
     +   '<span class="desktop-board-strip"></span>'
@@ -885,8 +888,33 @@ function renderBoardCountdownRow(item, boardDateKey) {
     +     '<strong>' + escapeHtml(item.title || '未命名目标') + '</strong>'
     +     '<small>' + escapeHtml(meta) + '</small>'
     +   '</span>'
-    +   '<span class="desktop-board-chip">' + escapeHtml(label) + '</span>'
+    +   '<span class="desktop-board-chip">' + escapeHtml(label) + '<small>' + escapeHtml(remain) + '</small></span>'
     + '</button>';
+}
+
+function remainingCountdownText(targetMillis) {
+  const remaining = Math.max(0, Number(targetMillis || 0) - Date.now());
+  const totalSeconds = Math.floor(remaining / 1000);
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+  return hours + 'h ' + minutes + 'm ' + seconds + 's';
+}
+
+function eventCountdownTimeText(item) {
+  const start = item.startAtMillis || item.dueAtMillis;
+  const end = item.endAtMillis;
+  if (!start) return '未设置时间';
+  if (item.allDay) return formatShortDateLabel(start) + ' 全天';
+  if (end && !sameLocalDate(start, end)) return formatDateTimeLabel(start) + '-' + formatDateTimeLabel(end);
+  if (end) return formatDateTimeLabel(start) + '-' + formatTimeLabel(end);
+  return formatDateTimeLabel(start);
+}
+
+function sameLocalDate(leftMillis, rightMillis) {
+  const left = new Date(leftMillis);
+  const right = new Date(rightMillis);
+  return left.getFullYear() === right.getFullYear() && left.getMonth() === right.getMonth() && left.getDate() === right.getDate();
 }
 
 function renderBoardTodoRow(item) {
@@ -1080,6 +1108,30 @@ function planningEditableField(id, field, label, value, placeholder) {
   return '<label class="planning-edit-field"><span>' + escapeHtml(label) + '</span><input data-planning-field="' + escapeHtml(field) + '" data-planning-id="' + escapeHtml(id) + '" value="' + escapeHtml(value || '') + '" placeholder="' + escapeHtml(placeholder || '') + '" /></label>';
 }
 
+function planningEditableSelect(id, field, label, value, options) {
+  return '<label class="planning-edit-field"><span>' + escapeHtml(label) + '</span><select data-planning-field="' + escapeHtml(field) + '" data-planning-id="' + escapeHtml(id) + '">'
+    + options.map(option => '<option value="' + escapeHtml(option.value) + '"' + (option.value === value ? ' selected' : '') + '>' + escapeHtml(option.label) + '</option>').join('')
+    + '</select></label>';
+}
+
+function planningRecurrenceFields(item) {
+  const recurrence = item.recurrence || {};
+  const type = recurrence.enabled ? (recurrence.type || 'NONE') : 'NONE';
+  const weeklyDays = Array.isArray(recurrence.weeklyDays) ? recurrence.weeklyDays.join(',') : '';
+  return ''
+    + planningEditableSelect(item.id, 'recurrenceType', '重复', type, [
+      { value: 'NONE', label: '不重复' },
+      { value: 'DAILY', label: '每天' },
+      { value: 'WEEKLY', label: '每周' },
+      { value: 'MONTHLY_NTH_WEEKDAY', label: '每月第几个星期几' },
+      { value: 'MONTHLY_DAY', label: '每月D日' },
+      { value: 'YEARLY_DATE', label: '每年M月D日' },
+      { value: 'YEARLY_LUNAR_DATE', label: '每年同农历月日' }
+    ])
+    + planningEditableField(item.id, 'recurrenceEndDate', '重复截止', recurrence.endDate || '', '2026-06-30')
+    + planningEditableField(item.id, 'recurrenceWeekdays', '每周周几', weeklyDays, '1,3,5');
+}
+
 function planningMappingStatusLabel(status) {
   if (status === 'ACTIVE') return '已导入';
   if (status === 'COMPLETED') return '✓ 已完成';
@@ -1164,10 +1216,15 @@ function renderPlanningPreview() {
       + planningEditableField(item.id, 'groupName', '分组', item.groupName || '', '例行')
       + (item.type === 'TODO'
         ? planningEditableField(item.id, 'dueAt', 'DDL', editableDateTimeValue(item.dueAt), '2026-05-28 14:30')
-        : planningEditableField(item.id, 'startAt', '开始', editableDateTimeValue(item.startAt), '2026-05-28 10:00') + planningEditableField(item.id, 'endAt', '结束', editableDateTimeValue(item.endAt), '2026-05-28 12:00'))
+        : planningEditableField(item.id, 'location', '地点', item.location || '', '@主楼B1-412') + planningEditableField(item.id, 'startAt', '开始', editableDateTimeValue(item.startAt), '2026-05-28 10:00') + planningEditableField(item.id, 'endAt', '结束', editableDateTimeValue(item.endAt), '2026-05-28 12:00'))
       + planningEditableField(item.id, 'reminders', '提醒', item.reminderInputText || (item.reminderOffsetsMinutes || []).join(','), '5,15,16:30,05-10 15:00')
+      + planningRecurrenceFields(item)
       + '</div>'
       + '<label class="planning-edit-field full"><span>备注</span><textarea data-planning-field="notes" data-planning-id="' + escapeHtml(item.id) + '" rows="2">' + escapeHtml(item.notes || '') + '</textarea></label>'
+      + '<div class="planning-preview-options">'
+      +   (item.type === 'EVENT' ? '<label class="planning-linked"><input type="checkbox" data-planning-flag="allDay" data-planning-id="' + escapeHtml(item.id) + '"' + (item.allDay ? ' checked' : '') + ' /> 全天</label>' : '')
+      +   '<label class="planning-linked"><input type="checkbox" data-planning-flag="countdownEnabled" data-planning-id="' + escapeHtml(item.id) + '"' + (item.countdownEnabled ? ' checked' : '') + ' /> 倒数日</label>'
+      + '</div>'
     ) : '';
     return ''
       + '<article class="planning-candidate ' + String(item.type || '').toLowerCase() + '">'
@@ -1241,9 +1298,23 @@ function collectPlanningCandidates() {
       const trimmed = value.trim();
       const parsedMillis = trimmed ? parseLocalDateTimeMillis(trimmed, new Date()) : null;
       item[node.dataset.planningField] = trimmed ? (parsedMillis == null ? trimmed.replace(' ', 'T') : formatDateTimeLocalValue(parsedMillis)) : null;
+    } else if (node.dataset.planningField === 'recurrenceType') {
+      item.recurrence = item.recurrence || {};
+      item.recurrence.type = value || 'NONE';
+      item.recurrence.enabled = !!value && value !== 'NONE';
+    } else if (node.dataset.planningField === 'recurrenceEndDate') {
+      item.recurrence = item.recurrence || {};
+      item.recurrence.endDate = value.trim() || null;
+    } else if (node.dataset.planningField === 'recurrenceWeekdays') {
+      item.recurrence = item.recurrence || {};
+      item.recurrence.weeklyDays = parseWeekdays(value);
     } else {
       item[node.dataset.planningField] = value;
     }
+  });
+  document.querySelectorAll('[data-planning-flag]').forEach(node => {
+    const item = byId.get(String(node.dataset.planningId));
+    if (item) item[node.dataset.planningFlag] = node.checked;
   });
   document.querySelectorAll('[data-planning-linked]').forEach(node => {
     const item = byId.get(String(node.dataset.planningLinked));

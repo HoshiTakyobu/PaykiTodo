@@ -29,11 +29,15 @@ data class PlanningParsedCandidate(
     val type: PlanningParsedType,
     val title: String = "",
     val notes: String = "",
+    val location: String = "",
     val groupName: String = "",
     val dueAt: LocalDateTime? = null,
     val startAt: LocalDateTime? = null,
     val endAt: LocalDateTime? = null,
+    val allDay: Boolean = false,
+    val countdownEnabled: Boolean = false,
     val reminderOffsetsMinutes: List<Int> = listOf(DEFAULT_PLANNING_REMINDER_MINUTES),
+    val recurrence: RecurrenceConfig = RecurrenceConfig(),
     val createLinkedTodo: Boolean = false,
     val defaultToday: Boolean = false,
     val imported: Boolean = false,
@@ -155,6 +159,7 @@ object PlanningMarkdownParser {
             }
             val reminder = reminderResult?.offsetsMinutes ?: listOf(DEFAULT_PLANNING_REMINDER_MINUTES)
             val group = tagValue(content, "group").orEmpty()
+            val location = extractLocation(content)
             val warnings = mutableListOf<String>()
             if (event.defaultToday) warnings += "未写日期，默认今天。"
             val importBlocked = reminder.any { offset -> !event.startAt.minusMinutes(offset.toLong()).isAfter(now) }
@@ -166,6 +171,7 @@ object PlanningMarkdownParser {
                 type = PlanningParsedType.EVENT,
                 title = title,
                 notes = parentTitle?.let { "所属大任务：$it" }.orEmpty(),
+                location = location,
                 groupName = group,
                 startAt = event.startAt,
                 endAt = event.endAt,
@@ -469,9 +475,10 @@ object PlanningMarkdownParser {
 
     private fun cleanTitle(raw: String): String {
         var text = raw
-        listOf("schedule", "ddl", "remind", "group").forEach { tag ->
+        listOf("schedule", "ddl", "remind", "group", "location", "loc", "place", "地点").forEach { tag ->
             text = text.replace(Regex("(?:^|\\s)#$tag\\s*[^#]+"), " ")
         }
+        text = text.replace(InlineLocationRegex, " ")
         text = text.replace(BareDdlRegex, " ")
         text = text.replace(BeforeTimeRegex, " ")
         listOf("task", "imported").forEach { tag ->
@@ -483,6 +490,13 @@ object PlanningMarkdownParser {
     private fun tagValue(content: String, tag: String): String? {
         val match = Regex("(?:^|\\s)#$tag\\s*([^#]+)").find(content) ?: return null
         return match.groupValues[1].trim().takeIf { it.isNotBlank() }
+    }
+
+    private fun extractLocation(content: String): String {
+        val tagged = listOf("location", "loc", "place", "地点")
+            .firstNotNullOfOrNull { tag -> tagValue(content, tag) }
+        if (!tagged.isNullOrBlank()) return tagged.trim()
+        return InlineLocationRegex.find(content)?.groupValues?.getOrNull(1)?.trim().orEmpty()
     }
 
     private fun bareDdlValue(content: String): String? {
@@ -607,6 +621,7 @@ object PlanningMarkdownParser {
     private val LeadingDateRegex = Regex("^(今天|今日|明天|明日|后天|周[一二三四五六日天]|星期[一二三四五六日天]|礼拜[一二三四五六日天]|\\d{4}[-./]\\d{1,2}[-./]\\d{1,2}|\\d{4}年\\d{1,2}月\\d{1,2}日?|\\d{1,2}[-./]\\d{1,2}|\\d{1,2}月\\d{1,2}日?)")
     private val BareDdlRegex = Regex("(?:^|\\s)ddl\\s+([^#]+)", RegexOption.IGNORE_CASE)
     private val DdlKeywordRegex = Regex("(截止|deadline|ddl)", RegexOption.IGNORE_CASE)
+    private val InlineLocationRegex = Regex("(?:^|\\s)(@[^\\s#，,；;]+)")
     private val BeforeTimeRegex = Regex("(\\d{1,2})(?::(\\d{2})|点)(?:前|之前)")
     private val ChineseDayPeriodRegex = Regex("(早上|上午|中午|下午|晚上)")
     private val FuzzyPeriodDeadlineRegex = Regex("(早上|上午|中午|下午|晚上)")

@@ -1026,7 +1026,8 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
             groupId = resolvePlanningGroupId(groupName, groups),
             ringEnabled = true,
             vibrateEnabled = true,
-            recurrence = RecurrenceConfig(),
+            countdownEnabled = countdownEnabled && dueAt != null,
+            recurrence = recurrence,
             reminderOffsetsMinutes = if (dueAt == null) emptyList() else normalizedReminderOffsets().ifEmpty { listOf(DEFAULT_PLANNING_REMINDER_MINUTES) }
         )
     }
@@ -1054,17 +1055,18 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
         return CalendarEventDraft(
             title = title,
             notes = notes,
-            location = "",
+            location = location,
             startAt = requireNotNull(startAt) { "Event requires startAt" },
             endAt = requireNotNull(endAt) { "Event requires endAt" },
-            allDay = false,
+            allDay = allDay,
             accentColorHex = groups.firstOrNull { it.name == groupName }?.colorHex ?: "#4E87E1",
             reminderMinutesBefore = offsets.firstOrNull() ?: DEFAULT_PLANNING_REMINDER_MINUTES,
             reminderOffsetsMinutes = offsets,
             ringEnabled = true,
             vibrateEnabled = true,
             reminderDeliveryMode = ReminderDeliveryMode.FULLSCREEN,
-            recurrence = RecurrenceConfig(),
+            countdownEnabled = countdownEnabled,
+            recurrence = recurrence,
             groupId = resolvePlanningGroupId(groupName, groups)
         )
     }

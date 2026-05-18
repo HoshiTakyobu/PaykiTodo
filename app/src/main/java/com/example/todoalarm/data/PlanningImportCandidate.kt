@@ -9,13 +9,17 @@ data class PlanningImportCandidate(
     val type: PlanningParsedType,
     val title: String = "",
     val notes: String = "",
+    val location: String = "",
     val groupName: String = "",
     val dueAt: LocalDateTime? = null,
     val startAt: LocalDateTime? = null,
     val endAt: LocalDateTime? = null,
+    val allDay: Boolean = false,
+    val countdownEnabled: Boolean = false,
     val reminderOffsetsMinutes: List<Int> = listOf(DEFAULT_PLANNING_REMINDER_MINUTES),
     val reminderInputText: String = "",
     val reminderInputError: String = "",
+    val recurrence: RecurrenceConfig = RecurrenceConfig(),
     val createLinkedTodo: Boolean = false,
     val defaultToday: Boolean = false,
     val imported: Boolean = false,
@@ -40,6 +44,8 @@ data class PlanningImportCandidate(
                 } else if (offsets.isNotEmpty()) {
                     return "未设置 DDL 的待办不能设置提醒"
                 }
+                recurrenceError(anchor = dueAt, label = "循环待办")?.let { return it }
+                if (countdownEnabled && dueAt == null) return "无 DDL 待办不能启用倒数日"
                 null
             }
             PlanningParsedType.EVENT -> {
@@ -47,6 +53,7 @@ data class PlanningImportCandidate(
                 val end = endAt ?: return "日程结束时间不能为空"
                 if (!end.isAfter(start)) return "日程结束时间必须晚于开始时间"
                 if (offsets.any { !start.minusMinutes(it.toLong()).isAfter(now) }) return "提醒时间必须晚于当前时间"
+                recurrenceError(anchor = start, label = "循环日程")?.let { return it }
                 null
             }
             else -> "该条目不可导入"
@@ -60,6 +67,16 @@ data class PlanningImportCandidate(
             .distinct()
             .sortedDescending()
     }
+
+    private fun recurrenceError(anchor: LocalDateTime?, label: String): String? {
+        if (!recurrence.enabled) return null
+        val start = anchor ?: return "$label 必须先设置时间"
+        if (recurrence.type == RecurrenceType.NONE) return "请选择循环规则"
+        val endDate = recurrence.endDate ?: return "请设置循环截止日期"
+        if (endDate.isBefore(start.toLocalDate())) return "循环截止日期不能早于首次日期"
+        if (recurrence.type == RecurrenceType.WEEKLY && recurrence.weeklyDays.isEmpty()) return "每周循环至少选择一天"
+        return null
+    }
 }
 
 fun PlanningParsedCandidate.toPlanningImportCandidate(): PlanningImportCandidate {
@@ -70,12 +87,16 @@ fun PlanningParsedCandidate.toPlanningImportCandidate(): PlanningImportCandidate
         type = type,
         title = title,
         notes = notes,
+        location = location,
         groupName = groupName,
         dueAt = dueAt,
         startAt = startAt,
         endAt = endAt,
+        allDay = allDay,
+        countdownEnabled = countdownEnabled,
         reminderOffsetsMinutes = reminderOffsetsMinutes,
         reminderInputText = reminderOffsetsMinutes.joinToString(","),
+        recurrence = recurrence,
         createLinkedTodo = createLinkedTodo,
         defaultToday = defaultToday,
         imported = imported,
@@ -94,11 +115,15 @@ fun PlanningImportCandidate.toParsedCandidate(): PlanningParsedCandidate {
         type = type,
         title = title,
         notes = notes,
+        location = location,
         groupName = groupName,
         dueAt = dueAt,
         startAt = startAt,
         endAt = endAt,
+        allDay = allDay,
+        countdownEnabled = countdownEnabled,
         reminderOffsetsMinutes = normalizedReminderOffsets(),
+        recurrence = recurrence,
         createLinkedTodo = createLinkedTodo,
         defaultToday = defaultToday,
         imported = imported,

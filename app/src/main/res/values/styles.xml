@@ -7,33 +7,61 @@
         <item name="android:background">@drawable/widget_todo_soft_card_background</item>
         <item name="android:gravity">center_vertical</item>
         <item name="android:orientation">horizontal</item>
-        <item name="android:paddingStart">10dp</item>
+        <item name="android:paddingStart">12dp</item>
         <item name="android:paddingTop">10dp</item>
         <item name="android:paddingEnd">12dp</item>
         <item name="android:paddingBottom">10dp</item>
     </style>
 
+    <style name="WidgetCountdownCheck">
+        <item name="android:layout_width">22dp</item>
+        <item name="android:layout_height">22dp</item>
+        <item name="android:layout_marginEnd">8dp</item>
+        <item name="android:background">@drawable/widget_checkbox_ring</item>
+        <item name="android:gravity">center</item>
+        <item name="android:includeFontPadding">false</item>
+    </style>
+
+    <style name="WidgetCountdownTimeBlock">
+        <item name="android:layout_width">58dp</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:gravity">center</item>
+        <item name="android:orientation">vertical</item>
+    </style>
+
     <style name="WidgetCountdownStrip">
-        <item name="android:layout_width">5dp</item>
-        <item name="android:layout_height">42dp</item>
+        <item name="android:layout_width">4dp</item>
+        <item name="android:layout_height">48dp</item>
+        <item name="android:layout_marginStart">8dp</item>
+        <item name="android:layout_marginEnd">10dp</item>
         <item name="android:src">@drawable/widget_vertical_pill</item>
     </style>
 
     <style name="WidgetCountdownDays">
-        <item name="android:layout_width">56dp</item>
+        <item name="android:layout_width">match_parent</item>
         <item name="android:layout_height">wrap_content</item>
-        <item name="android:layout_marginStart">10dp</item>
         <item name="android:gravity">center</item>
         <item name="android:maxLines">1</item>
         <item name="android:textColor">@color/widget_accent</item>
-        <item name="android:textSize">18sp</item>
+        <item name="android:textSize">19sp</item>
+        <item name="android:textStyle">bold</item>
+    </style>
+
+    <style name="WidgetCountdownRemaining">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:layout_marginTop">2dp</item>
+        <item name="android:ellipsize">end</item>
+        <item name="android:gravity">center</item>
+        <item name="android:maxLines">1</item>
+        <item name="android:textColor">@color/widget_text_muted</item>
+        <item name="android:textSize">9sp</item>
         <item name="android:textStyle">bold</item>
     </style>
 
     <style name="WidgetCountdownTextBlock">
         <item name="android:layout_width">0dp</item>
         <item name="android:layout_height">wrap_content</item>
-        <item name="android:layout_marginStart">8dp</item>
         <item name="android:layout_weight">1</item>
         <item name="android:orientation">vertical</item>
     </style>

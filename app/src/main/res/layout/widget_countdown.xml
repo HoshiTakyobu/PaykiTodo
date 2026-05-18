@@ -38,6 +38,22 @@
             android:textSize="12sp" />
 
         <TextView
+            android:id="@+id/widget_countdown_count"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:background="@drawable/widget_task_meta_background"
+            android:includeFontPadding="false"
+            android:paddingStart="8dp"
+            android:paddingTop="4dp"
+            android:paddingEnd="8dp"
+            android:paddingBottom="4dp"
+            android:text="0 项"
+            android:textColor="@color/widget_header"
+            android:textSize="11sp"
+            android:textStyle="bold" />
+
+        <TextView
             android:id="@+id/widget_countdown_empty"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -53,13 +69,24 @@
             style="@style/WidgetCountdownRow"
             android:layout_marginTop="12dp">
 
+            <TextView
+                android:id="@+id/widget_countdown_check_1"
+                style="@style/WidgetCountdownCheck" />
+
+            <LinearLayout style="@style/WidgetCountdownTimeBlock">
+
+                <TextView
+                    android:id="@+id/widget_countdown_days_1"
+                    style="@style/WidgetCountdownDays" />
+
+                <TextView
+                    android:id="@+id/widget_countdown_remaining_1"
+                    style="@style/WidgetCountdownRemaining" />
+            </LinearLayout>
+
             <ImageView
                 android:id="@+id/widget_countdown_strip_1"
                 style="@style/WidgetCountdownStrip" />
-
-            <TextView
-                android:id="@+id/widget_countdown_days_1"
-                style="@style/WidgetCountdownDays" />
 
             <LinearLayout style="@style/WidgetCountdownTextBlock">
 
@@ -77,13 +104,24 @@
             android:id="@+id/widget_countdown_row_2"
             style="@style/WidgetCountdownRow">
 
+            <TextView
+                android:id="@+id/widget_countdown_check_2"
+                style="@style/WidgetCountdownCheck" />
+
+            <LinearLayout style="@style/WidgetCountdownTimeBlock">
+
+                <TextView
+                    android:id="@+id/widget_countdown_days_2"
+                    style="@style/WidgetCountdownDays" />
+
+                <TextView
+                    android:id="@+id/widget_countdown_remaining_2"
+                    style="@style/WidgetCountdownRemaining" />
+            </LinearLayout>
+
             <ImageView
                 android:id="@+id/widget_countdown_strip_2"
                 style="@style/WidgetCountdownStrip" />
-
-            <TextView
-                android:id="@+id/widget_countdown_days_2"
-                style="@style/WidgetCountdownDays" />
 
             <LinearLayout style="@style/WidgetCountdownTextBlock">
 
@@ -101,13 +139,24 @@
             android:id="@+id/widget_countdown_row_3"
             style="@style/WidgetCountdownRow">
 
+            <TextView
+                android:id="@+id/widget_countdown_check_3"
+                style="@style/WidgetCountdownCheck" />
+
+            <LinearLayout style="@style/WidgetCountdownTimeBlock">
+
+                <TextView
+                    android:id="@+id/widget_countdown_days_3"
+                    style="@style/WidgetCountdownDays" />
+
+                <TextView
+                    android:id="@+id/widget_countdown_remaining_3"
+                    style="@style/WidgetCountdownRemaining" />
+            </LinearLayout>
+
             <ImageView
                 android:id="@+id/widget_countdown_strip_3"
                 style="@style/WidgetCountdownStrip" />
-
-            <TextView
-                android:id="@+id/widget_countdown_days_3"
-                style="@style/WidgetCountdownDays" />
 
             <LinearLayout style="@style/WidgetCountdownTextBlock">
 

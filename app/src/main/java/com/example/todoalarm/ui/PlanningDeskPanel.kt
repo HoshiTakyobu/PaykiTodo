@@ -93,6 +93,8 @@ import com.example.todoalarm.data.PlanningParseResult
 import com.example.todoalarm.data.PlanningParsedType
 import com.example.todoalarm.data.PlanningPostponeScope
 import com.example.todoalarm.data.PlanningRefreshScope
+import com.example.todoalarm.data.RecurrenceConfig
+import com.example.todoalarm.data.RecurrenceType
 import com.example.todoalarm.data.toPlanningImportCandidate
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -1633,6 +1635,16 @@ private fun PlanningCandidateCard(
                         )
                     }
                 }
+                if (candidate.type == PlanningParsedType.EVENT) {
+                    OutlinedTextField(
+                        value = candidate.location,
+                        onValueChange = { onCandidateChange(candidate.copy(location = it)) },
+                        modifier = Modifier.fillMaxWidth(),
+                        label = { Text("地点") },
+                        placeholder = { Text("@主楼B1-412") },
+                        singleLine = true
+                    )
+                }
                 OutlinedTextField(
                     value = candidate.groupName,
                     onValueChange = { onCandidateChange(candidate.copy(groupName = it)) },
@@ -1664,6 +1676,14 @@ private fun PlanningCandidateCard(
                     }
                 )
                 Text("提醒默认全屏 · 响铃 + 震动", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                PlanningCandidateOptionRow(
+                    candidate = candidate,
+                    onCandidateChange = onCandidateChange
+                )
+                PlanningRecurrenceEditor(
+                    recurrence = candidate.recurrence,
+                    onChange = { onCandidateChange(candidate.copy(recurrence = it)) }
+                )
             }
             if (candidate.type == PlanningParsedType.EVENT) {
                 FilterChip(
@@ -1674,6 +1694,95 @@ private fun PlanningCandidateCard(
             }
             if (validation != null) Text(validation, color = MaterialTheme.colorScheme.error)
             if (validation == null && candidate.message.isNotBlank()) Text(candidate.message, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+    }
+}
+
+@Composable
+private fun PlanningCandidateOptionRow(
+    candidate: PlanningImportCandidate,
+    onCandidateChange: (PlanningImportCandidate) -> Unit
+) {
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+        if (candidate.type == PlanningParsedType.EVENT) {
+            FilterChip(
+                selected = candidate.allDay,
+                onClick = { onCandidateChange(candidate.copy(allDay = !candidate.allDay)) },
+                label = { Text("全天") }
+            )
+        }
+        val canCountdown = candidate.type == PlanningParsedType.EVENT || candidate.dueAt != null
+        FilterChip(
+            selected = candidate.countdownEnabled,
+            onClick = {
+                if (canCountdown) onCandidateChange(candidate.copy(countdownEnabled = !candidate.countdownEnabled))
+            },
+            enabled = canCountdown,
+            label = { Text("倒数日") }
+        )
+    }
+}
+
+@Composable
+private fun PlanningRecurrenceEditor(
+    recurrence: RecurrenceConfig,
+    onChange: (RecurrenceConfig) -> Unit
+) {
+    var expanded by remember { mutableStateOf(false) }
+    val type = if (recurrence.enabled) recurrence.type else RecurrenceType.NONE
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+        FilterChip(
+            selected = type != RecurrenceType.NONE,
+            onClick = { expanded = true },
+            label = { Text("重复：${type.label}") }
+        )
+        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            RecurrenceType.entries.forEach { option ->
+                DropdownMenuItem(
+                    text = { Text(option.label) },
+                    onClick = {
+                        expanded = false
+                        onChange(
+                            if (option == RecurrenceType.NONE) {
+                                RecurrenceConfig()
+                            } else {
+                                recurrence.copy(enabled = true, type = option)
+                            }
+                        )
+                    }
+                )
+            }
+        }
+        if (type != RecurrenceType.NONE) {
+            var endDateText by remember(recurrence.endDate) { mutableStateOf(recurrence.endDate?.toString().orEmpty()) }
+            OutlinedTextField(
+                value = endDateText,
+                onValueChange = { raw ->
+                    endDateText = raw
+                    onChange(recurrence.copy(endDate = runCatching { LocalDate.parse(raw.trim()) }.getOrNull()))
+                },
+                modifier = Modifier.fillMaxWidth(),
+                label = { Text("循环截止日期") },
+                placeholder = { Text("2026-06-30") },
+                singleLine = true,
+                isError = endDateText.isNotBlank() && runCatching { LocalDate.parse(endDateText.trim()) }.isFailure
+            )
+            if (type == RecurrenceType.WEEKLY) {
+                var weekdaysText by remember(recurrence.weeklyDays) {
+                    mutableStateOf(recurrence.weeklyDays.map { it.value }.sorted().joinToString(","))
+                }
+                OutlinedTextField(
+                    value = weekdaysText,
+                    onValueChange = { raw ->
+                        weekdaysText = raw
+                        onChange(recurrence.copy(weeklyDays = parsePlanningWeekdays(raw)))
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text("每周循环的周几") },
+                    placeholder = { Text("1,3,5") },
+                    singleLine = true
+                )
+            }
         }
     }
 }
@@ -2247,6 +2356,12 @@ private fun PlanningImportCandidate.withPlanningReminderInput(raw: String): Plan
 
 private fun PlanningImportCandidate.revalidatePlanningReminderInput(): PlanningImportCandidate {
     return if (reminderInputText.isBlank()) this else withPlanningReminderInput(reminderInputText)
+}
+
+private fun parsePlanningWeekdays(raw: String): Set<DayOfWeek> {
+    return raw.split(',', '，')
+        .mapNotNull { token -> token.trim().toIntOrNull()?.let { runCatching { DayOfWeek.of(it) }.getOrNull() } }
+        .toSet()
 }
 
 private fun planningMillisLabel(value: Long): String {

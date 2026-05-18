@@ -18,7 +18,11 @@ import com.example.todoalarm.data.TaskGroup
 import com.example.todoalarm.data.TodoItem
 import com.example.todoalarm.ui.MainActivity
 import kotlinx.coroutines.runBlocking
+import java.time.Duration
+import java.time.Instant
 import java.time.LocalDate
+import java.time.LocalDateTime
+import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
@@ -41,6 +45,8 @@ class CountdownWidgetProvider : AppWidgetProvider() {
 
     companion object {
         private val MonthDayFormatter: DateTimeFormatter = DateTimeFormatter.ofPattern("M月d日", Locale.CHINA)
+        private val MonthDayTimeFormatter: DateTimeFormatter = DateTimeFormatter.ofPattern("M月d日 HH:mm", Locale.CHINA)
+        private val TimeFormatter: DateTimeFormatter = DateTimeFormatter.ofPattern("HH:mm", Locale.CHINA)
 
         fun notifyWidgetDataChanged(context: Context) {
             val manager = AppWidgetManager.getInstance(context)
@@ -57,6 +63,7 @@ class CountdownWidgetProvider : AppWidgetProvider() {
                 .take(3)
             val views = RemoteViews(context.packageName, R.layout.widget_countdown).apply {
                 setTextViewText(R.id.widget_countdown_subtitle, "今天是 ${today.format(MonthDayFormatter)}")
+                setTextViewText(R.id.widget_countdown_count, "${targets.size} 项")
                 if (targets.isEmpty()) {
                     setViewVisibility(R.id.widget_countdown_empty, View.VISIBLE)
                 } else {
@@ -93,7 +100,9 @@ class CountdownWidgetProvider : AppWidgetProvider() {
         ) {
             val rowId = RowIds[index]
             val stripId = StripIds[index]
+            val checkId = CheckIds[index]
             val daysId = DaysIds[index]
+            val remainingId = RemainingIds[index]
             val titleId = TitleIds[index]
             val metaId = MetaIds[index]
             if (item == null) {
@@ -108,10 +117,13 @@ class CountdownWidgetProvider : AppWidgetProvider() {
             }
             val accent = countdownAccentColor(context, item, groups)
             setViewVisibility(rowId, View.VISIBLE)
-            setTextViewText(daysId, if (days == 0L) "D-Day" else "D-$days")
+            setViewVisibility(checkId, if (item.isTodo) View.VISIBLE else View.GONE)
+            setTextViewText(daysId, "${days.coerceAtLeast(0)}d")
+            setTextViewText(remainingId, remainingCountdownText(item))
             setTextViewText(titleId, item.title)
-            setTextViewText(metaId, "${if (item.isEvent) "日程" else "DDL"} · ${targetDate.format(MonthDayFormatter)}")
+            setTextViewText(metaId, countdownMetaText(item))
             setTextColor(daysId, accent)
+            setTextColor(remainingId, ContextCompat.getColor(context, R.color.widget_text_muted))
             setTextColor(titleId, ContextCompat.getColor(context, R.color.widget_text_primary))
             setTextColor(metaId, ContextCompat.getColor(context, R.color.widget_text_muted))
             setInt(stripId, "setColorFilter", accent)
@@ -119,6 +131,40 @@ class CountdownWidgetProvider : AppWidgetProvider() {
                 rowId,
                 openIntent(context, appWidgetId, openCalendar = item.isEvent, requestSalt = index)
             )
+        }
+
+        private fun remainingCountdownText(item: TodoItem): String {
+            val targetMillis = DailyBoardSnapshotBuilder.countdownTargetMillis(item) ?: return "--"
+            val remaining = Duration.ofMillis((targetMillis - System.currentTimeMillis()).coerceAtLeast(0L))
+            val hours = remaining.toHours()
+            val minutes = remaining.minusHours(hours).toMinutes()
+            val seconds = remaining.minusHours(hours).minusMinutes(minutes).seconds
+            return "${hours}h ${minutes}m ${seconds}s"
+        }
+
+        private fun countdownMetaText(item: TodoItem): String {
+            return if (item.isEvent) {
+                val start = item.startAtMillis?.toLocalDateTime() ?: item.dueAtMillis.toLocalDateTime()
+                val end = item.endAtMillis?.toLocalDateTime()
+                val time = when {
+                    item.allDay && end != null && end.toLocalDate().minusDays(1).isAfter(start.toLocalDate()) ->
+                        "${start.format(MonthDayFormatter)}-${end.toLocalDate().minusDays(1).format(MonthDayFormatter)} 全天"
+                    item.allDay -> "${start.format(MonthDayFormatter)} 全天"
+                    end != null && end.toLocalDate() != start.toLocalDate() ->
+                        "${start.format(MonthDayTimeFormatter)}-${end.format(MonthDayTimeFormatter)}"
+                    end != null -> "${start.format(MonthDayTimeFormatter)}-${end.format(TimeFormatter)}"
+                    else -> start.format(MonthDayTimeFormatter)
+                }
+                "日程 · $time"
+            } else {
+                "待办 · DDL ${item.dueAtMillis.toLocalDateTime().format(MonthDayTimeFormatter)}"
+            }
+        }
+
+        private fun Long.toLocalDateTime(): LocalDateTime {
+            return Instant.ofEpochMilli(this)
+                .atZone(ZoneId.systemDefault())
+                .toLocalDateTime()
         }
 
         private fun countdownAccentColor(context: Context, item: TodoItem, groups: List<TaskGroup>): Int {
@@ -166,10 +212,20 @@ class CountdownWidgetProvider : AppWidgetProvider() {
             R.id.widget_countdown_strip_2,
             R.id.widget_countdown_strip_3
         )
+        private val CheckIds = intArrayOf(
+            R.id.widget_countdown_check_1,
+            R.id.widget_countdown_check_2,
+            R.id.widget_countdown_check_3
+        )
         private val DaysIds = intArrayOf(
             R.id.widget_countdown_days_1,
             R.id.widget_countdown_days_2,
             R.id.widget_countdown_days_3
+        )
+        private val RemainingIds = intArrayOf(
+            R.id.widget_countdown_remaining_1,
+            R.id.widget_countdown_remaining_2,
+            R.id.widget_countdown_remaining_3
         )
         private val TitleIds = intArrayOf(
             R.id.widget_countdown_title_1,

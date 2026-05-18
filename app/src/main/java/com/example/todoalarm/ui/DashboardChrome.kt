@@ -121,9 +121,14 @@ import com.example.todoalarm.ui.theme.PaykiGreetingFontFamily
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.StateFlow
+import java.time.Duration
+import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+import java.util.Locale
 
 @Composable
 internal fun DashboardBackgroundBrush(): Brush {
@@ -641,6 +646,7 @@ internal fun DashboardBody(
                         CountdownBoardCard(
                             items = uiState.countdownItems.take(5),
                             today = boardDate,
+                            now = boardMoment,
                             groups = uiState.groups,
                             onOpenTodo = onEdit,
                             onOpenEvent = onEditCalendarEvent
@@ -921,6 +927,7 @@ private fun OnboardingCard(onDismiss: () -> Unit) {
 private fun CountdownBoardCard(
     items: List<TodoItem>,
     today: LocalDate,
+    now: LocalDateTime,
     groups: List<TaskGroup>,
     onOpenTodo: (TodoItem) -> Unit,
     onOpenEvent: (TodoItem) -> Unit
@@ -970,6 +977,7 @@ private fun CountdownBoardCard(
                 CountdownTargetRow(
                     item = item,
                     today = today,
+                    now = now,
                     groups = groups,
                     onClick = {
                         if (item.isEvent) onOpenEvent(item) else onOpenTodo(item)
@@ -984,13 +992,14 @@ private fun CountdownBoardCard(
 private fun CountdownTargetRow(
     item: TodoItem,
     today: LocalDate,
+    now: LocalDateTime,
     groups: List<TaskGroup>,
     onClick: () -> Unit
 ) {
     val group = resolveTaskGroup(item, groups)
-    val accent = colorFromHex(group.colorHex)
+    val accent = colorFromHex(if (item.isEvent) item.accentColorHex ?: group.colorHex else group.colorHex)
     val days = DailyBoardSnapshotBuilder.countdownDays(item, today) ?: return
-    val targetDate = DailyBoardSnapshotBuilder.countdownTargetDate(item) ?: return
+    DailyBoardSnapshotBuilder.countdownTargetDate(item) ?: return
     Surface(
         modifier = Modifier
             .fillMaxWidth()
@@ -1006,14 +1015,14 @@ private fun CountdownTargetRow(
         ) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Text(
-                    text = if (days == 0L) "D-Day" else "D-$days",
+                    text = "${days.coerceAtLeast(0)}d",
                     color = accent,
                     fontWeight = FontWeight.ExtraBold,
                     style = MaterialTheme.typography.titleLarge,
                     maxLines = 1
                 )
                 Text(
-                    text = if (days == 0L) "就是今天" else "还剩 ${days} 天",
+                    text = countdownRemainingText(item, now),
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     style = MaterialTheme.typography.labelSmall,
                     fontWeight = FontWeight.SemiBold
@@ -1038,7 +1047,7 @@ private fun CountdownTargetRow(
                     overflow = TextOverflow.Ellipsis
                 )
                 Text(
-                    text = "${if (item.isEvent) "日程" else "DDL"} · ${targetDate.monthValue}月${targetDate.dayOfMonth}日 · ${group.name}",
+                    text = countdownMetaText(item, group),
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     style = MaterialTheme.typography.bodySmall,
                     maxLines = 1,
@@ -1048,6 +1057,44 @@ private fun CountdownTargetRow(
         }
     }
 }
+
+private fun countdownRemainingText(item: TodoItem, now: LocalDateTime): String {
+    val target = DailyBoardSnapshotBuilder.countdownTargetMillis(item)?.toLocalDateTime() ?: return "--"
+    val remaining = Duration.between(now, target).takeIf { !it.isNegative } ?: Duration.ZERO
+    val hours = remaining.toHours()
+    val minutes = remaining.minusHours(hours).toMinutes()
+    val seconds = remaining.minusHours(hours).minusMinutes(minutes).seconds
+    return "${hours}h ${minutes}m ${seconds}s"
+}
+
+private fun countdownMetaText(item: TodoItem, group: ResolvedTaskGroup): String {
+    return if (item.isEvent) {
+        val start = item.startAtMillis?.toLocalDateTime() ?: item.dueAtMillis.toLocalDateTime()
+        val end = item.endAtMillis?.toLocalDateTime()
+        val time = when {
+            item.allDay && end != null && end.toLocalDate().minusDays(1).isAfter(start.toLocalDate()) ->
+                "${start.format(CountdownMonthDayFormatter)}-${end.toLocalDate().minusDays(1).format(CountdownMonthDayFormatter)} 全天"
+            item.allDay -> "${start.format(CountdownMonthDayFormatter)} 全天"
+            end != null && end.toLocalDate() != start.toLocalDate() ->
+                "${start.format(CountdownDateTimeFormatter)}-${end.format(CountdownDateTimeFormatter)}"
+            end != null -> "${start.format(CountdownDateTimeFormatter)}-${end.format(CountdownTimeFormatter)}"
+            else -> start.format(CountdownDateTimeFormatter)
+        }
+        "日程 · $time"
+    } else {
+        "待办 · DDL ${item.dueAtMillis.toLocalDateTime().format(CountdownDateTimeFormatter)} · ${group.name}"
+    }
+}
+
+private fun Long.toLocalDateTime(): LocalDateTime {
+    return Instant.ofEpochMilli(this)
+        .atZone(ZoneId.systemDefault())
+        .toLocalDateTime()
+}
+
+private val CountdownMonthDayFormatter: DateTimeFormatter = DateTimeFormatter.ofPattern("M月d日", Locale.CHINA)
+private val CountdownDateTimeFormatter: DateTimeFormatter = DateTimeFormatter.ofPattern("M月d日 HH:mm", Locale.CHINA)
+private val CountdownTimeFormatter: DateTimeFormatter = DateTimeFormatter.ofPattern("HH:mm", Locale.CHINA)
 
 @Composable
 private fun TodayFocusCard(

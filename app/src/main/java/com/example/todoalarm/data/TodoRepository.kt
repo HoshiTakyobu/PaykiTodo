@@ -1001,6 +1001,7 @@ class TodoRepository(
                     reminderOffsetMinutes = reminderOffsets.firstOrNull(),
                     reminderAtMillis = candidate.dueAt?.let { due -> reminderOffsets.minOrNull()?.let { due.minusMinutes(it.toLong()).toEpochMillis() } },
                     reminderEnabled = reminderOffsets.isNotEmpty(),
+                    countdownEnabled = candidate.countdownEnabled && candidate.dueAt != null,
                     missed = false,
                     missedAtMillis = null
                 )
@@ -1012,14 +1013,17 @@ class TodoRepository(
                 val updated = item.copy(
                     title = candidate.title.trim(),
                     notes = candidate.notes.trim(),
+                    location = candidate.location.trim(),
                     dueAtMillis = startMillis,
                     startAtMillis = startMillis,
                     endAtMillis = endMillis,
+                    allDay = candidate.allDay,
                     groupId = groupId,
                     reminderOffsetsCsv = encodeReminderOffsets(offsets, DEFAULT_PLANNING_REMINDER_MINUTES),
                     reminderOffsetMinutes = offsets.firstOrNull(),
                     reminderAtMillis = offsets.minOrNull()?.let { candidate.startAt.minusMinutes(it.toLong()).toEpochMillis() },
                     reminderEnabled = offsets.isNotEmpty(),
+                    countdownEnabled = candidate.countdownEnabled,
                     missed = false,
                     missedAtMillis = null
                 )

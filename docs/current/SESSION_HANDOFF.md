@@ -6,13 +6,12 @@ Long-running Codex sessions can become unreliable. This file exists so a new ses
 
 ## Current Handoff Summary
 
-- The project is being advanced to `1.10.3` / `versionCode 221`.
-- Main user request for this continuation:
-  1. Planning Desk and AI recognition must extract `@图书馆3楼` / `"@主楼B1-412"` as event locations, not title text.
-  2. Event import must not auto-create linked todos unless the user explicitly enables that preview option.
-  3. Linked todos must not receive the old fixed note `由规划台日程自动生成，DDL 为日程结束时间。`.
-  4. Desktop-web event color editing should match the phone editor's preset color choices.
-  5. Previously published `1.10.2` and earlier commits were pushed and tagged.
+- Active goal: implement `docs/goals/2026-05-18-paykitodo-1.11.0-revised-goal.md` from the current `1.10.3` / `versionCode 221` baseline, plus the user's extra Android widget requirements.
+- First completed slice:
+  1. `今日看板` widget removes the top menu/title/date header.
+  2. `今日看板` widget and `倒数日` widget refresh through provider-owned minute ticks instead of relying on `updatePeriodMillis`.
+  3. Independent `倒数日` widget is now a scrollable RemoteViews `ListView` with larger daily-board-style rows, dynamic accent strips, multi-line text, and direct row deep links.
+  4. Full `1.11.0 / versionCode 222` version bump and database migration are still pending.
 - Latest published signed release APK:
   - `app/build/outputs/apk/release/PaykiTodo-1.10.2-release.apk`
   - GitHub Release: `https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.10.2`
@@ -21,7 +20,15 @@ Long-running Codex sessions can become unreliable. This file exists so a new ses
 - Do not push to GitHub unless the user explicitly asks.
 - Keep `keystore.properties`, `release/`, APK/AAB outputs, API keys, tokens, and private Base URLs out of Git.
 
-## Latest 1.10.3 Fix Pass
+## Latest Widget Fix Pass
+
+1. `widget_todo.xml` and `widget_todo_preview.xml` no longer contain the menu icon / `每日看板` / date header.
+2. `TodoWidgetProvider` schedules minute ticks through `AlarmManager`, refreshes the `widget_list` collection, and `widget_todo_info.xml` now declares `updatePeriodMillis=0`.
+3. `CountdownWidgetProvider` now binds a `ListView` to `CountdownWidgetService` and refreshes `widget_countdown_list` on minute ticks.
+4. `CountdownWidgetService` loads active countdown targets through the existing board-range repository path and renders scrollable rows with dynamic accent color, larger countdown text, multi-line title/meta text, and exact todo/event deep links.
+5. `widget_countdown_preview.xml` now shows the new daily-board-style row layout.
+
+## Previous 1.10.3 Planning Desk Fix Pass
 
 1. Local Planning Markdown parsing recognizes inline `@地点`, quoted `"@地点"`, and `地点：...` event locations.
 2. Natural event candidates now default `createLinkedTodo=false`.
@@ -35,6 +42,16 @@ Long-running Codex sessions can become unreliable. This file exists so a new ses
 ## Verification Status
 
 Completed locally for `1.10.3`:
+
+Widget continuation:
+
+1. `./gradlew.bat :app:compileDebugKotlin` passed.
+2. Static search confirmed removed widget header IDs and old fixed countdown row IDs are no longer referenced in `app/src/main/java` or `app/src/main/res`.
+3. `git diff --check` passed.
+4. `./gradlew.bat :app:assembleDebug` passed.
+5. `app/build/outputs/apk/debug/output-metadata.json` confirms `1.10.3 / 221`.
+
+Previous Planning Desk continuation:
 
 1. `node --check app/src/main/assets/desktop-web/app.js` passed.
 2. `./gradlew.bat :app:testDebugUnitTest` passed.
@@ -56,16 +73,18 @@ Already completed for the published `1.10.2` release:
 ## Remaining Device / Browser Verification
 
 1. Install `app/build/outputs/apk/debug/PaykiTodo-1.10.3-debug.apk` on the user's phone; share `app/build/outputs/apk/release/PaykiTodo-1.10.3-release.apk` with external testers if needed.
-2. Verify Planning Desk imports for `@地点`, quoted `@地点`, and `地点：...`.
-3. Verify ordinary event import creates only an event.
-4. Verify manually enabled linked todo uses event end time as DDL and has no fixed generated note.
-5. Verify desktop-web event color swatches save correctly.
+2. Add / resize the `今日看板` widget and confirm the top header is gone, content remains readable, and cross-day / minute refresh updates the list.
+3. Add / resize the `倒数日` widget and confirm scroll behavior, multi-line row readability, and exact todo/event row deep links.
+4. Verify Planning Desk imports for `@地点`, quoted `@地点`, and `地点：...`.
+5. Verify ordinary event import creates only an event.
+6. Verify manually enabled linked todo uses event end time as DDL and has no fixed generated note.
+7. Verify desktop-web event color swatches save correctly.
 
 ## Performance Notes
 
 - Countdown data still uses the existing `countdownEnabled` marker and indexed board/widget lookup paths.
-- The independent `倒数日` widget still renders only the nearest 3 targets.
-- Minute-level countdown widget refresh is scheduled by `AlarmManager`; OEM launchers and battery policies may still delay widget refreshes under aggressive power management.
+- The independent `倒数日` widget is no longer limited to 3 fixed rows; it is now a scrollable RemoteViews ListView capped at 60 active countdown targets.
+- Minute-level widget refresh is scheduled by `AlarmManager`; OEM launchers and battery policies may still delay widget refreshes under aggressive power management.
 - Removing focus from the daily-board surface reduces ordinary board UI density; focus stats now live in the dedicated Focus page/widget.
 
 ## Files Most Relevant To This Round
@@ -77,6 +96,7 @@ Already completed for the published `1.10.2` release:
 - `app/src/main/java/com/example/todoalarm/ui/MainActivity.kt`
 - `app/src/main/java/com/example/todoalarm/widget/TodoWidgetService.kt`
 - `app/src/main/java/com/example/todoalarm/widget/CountdownWidgetProvider.kt`
+- `app/src/main/java/com/example/todoalarm/widget/CountdownWidgetService.kt`
 - `app/src/main/java/com/example/todoalarm/widget/FocusWidgetProvider.kt`
 - `app/src/main/res/layout/widget_countdown.xml`
 - `app/src/main/res/layout/widget_countdown_preview.xml`

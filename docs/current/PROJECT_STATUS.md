@@ -29,6 +29,10 @@
   - `git check-ignore -v keystore.properties release/PaykiTodo-release.jks app/build/outputs/apk/release/PaykiTodo-1.10.3-release.apk app/build/outputs/apk/debug/PaykiTodo-1.10.2-debug.apk` confirmed local signing material and APK outputs are ignored
   - `./gradlew.bat :app:assembleDebug`
   - Debug APK metadata inspected: `versionName = 1.10.3`, `versionCode = 221`, output `PaykiTodo-1.10.3-debug.apk`
+  - Widget continuation: `./gradlew.bat :app:compileDebugKotlin`
+  - Widget continuation: static search confirmed removed widget header IDs and old fixed countdown-row IDs are no longer referenced
+  - Widget continuation: `git diff --check`
+  - Widget continuation: `./gradlew.bat :app:assembleDebug`
 - Release-signing privacy:
   - local `keystore.properties`, `release/PaykiTodo-release.jks`, APK/AAB outputs, API keys, tokens, and private Base URLs must stay out of Git
 - Current build environment expectation:
@@ -37,7 +41,7 @@
 
 ## Current Worktree Reality
 
-The repository is being advanced from `1.10.2 / 220` to `1.10.3 / 221` for Planning Desk import correctness and desktop-web event color parity.
+The repository is starting the larger `1.11.0 / versionCode 222` goal from the current `1.10.3 / 221` baseline. The first completed slice addresses the user's immediate Android widget requirements; the full `1.11.0` version bump and database migration are still pending.
 
 Most important current baseline facts:
 
@@ -49,17 +53,24 @@ Most important current baseline facts:
 - Planning Desk linked todos no longer receive a fixed auto-generated note.
 - Planning Desk local parser and AI cleanup both treat `@地点` as event location text, not a required prefix or title content.
 - Desktop-web event editor now exposes compact preset color swatches matching the phone editor.
+- `今日看板` Android widget no longer renders its fixed top menu/title/date header; the RemoteViews list fills the widget body.
+- `今日看板` and independent `倒数日` widgets both set `updatePeriodMillis=0` and use provider-owned `AlarmManager` minute ticks to refresh RemoteViews collections.
+- Independent `倒数日` widget is now a scrollable `RemoteViewsService` / `ListView` widget rather than three fixed rows, with multi-line daily-board-style rows and direct todo/event detail deep links.
 
 ## Immediate Manual Verification Targets
 
-1. Planning Desk local rule import:
+1. Android launcher widgets:
+   - Add / resize `今日看板` and confirm there is no top header row.
+   - Confirm `今日看板` content updates after minute ticks and across date changes.
+   - Add / resize `倒数日` and confirm rows scroll, long titles wrap, and row taps open the matching todo / event detail.
+2. Planning Desk local rule import:
    - `10:00-12:00 自习 @图书馆3楼`
    - `10:00-12:00, 【课程】习思想，"@主楼B1-412"`
    - `10:00-12:00 自习 地点：图书馆3楼`
-2. Planning Desk AI import:
+3. Planning Desk AI import:
    - verify title, location, group, and linked-todo checkbox defaults.
-3. Desktop web:
+4. Desktop web:
    - event color preset swatches update the color input and persist after saving.
-4. Regression:
+5. Regression:
    - normal event import does not create an unwanted todo;
    - manually linked todo has DDL equal to event end time and no fixed generated note.

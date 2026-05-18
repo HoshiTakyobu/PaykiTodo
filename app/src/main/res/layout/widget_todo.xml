@@ -33,69 +33,6 @@
         android:paddingEnd="14dp"
         android:paddingBottom="14dp">
 
-        <LinearLayout
-            android:id="@+id/widget_board_header"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:gravity="center_vertical"
-            android:orientation="horizontal"
-            android:paddingStart="0dp"
-            android:paddingEnd="2dp"
-            android:paddingBottom="10dp">
-
-            <FrameLayout
-                android:layout_width="36dp"
-                android:layout_height="36dp"
-                android:background="@drawable/widget_topbar_button_background"
-                android:padding="8dp">
-
-                <ImageView
-                    android:layout_width="match_parent"
-                    android:layout_height="match_parent"
-                    android:contentDescription="@null"
-                    android:scaleType="centerInside"
-                    android:src="@drawable/ic_widget_menu" />
-            </FrameLayout>
-
-            <LinearLayout
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="12dp"
-                android:layout_weight="1"
-                android:orientation="vertical">
-
-                <TextView
-                    android:id="@+id/widget_board_title"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:includeFontPadding="false"
-                    android:shadowColor="#26000000"
-                    android:shadowDx="0"
-                    android:shadowDy="1"
-                    android:shadowRadius="4"
-                    android:text="每日看板"
-                    android:textColor="@color/widget_text_primary"
-                    android:textSize="22sp"
-                    android:textStyle="bold" />
-
-                <TextView
-                    android:id="@+id/widget_board_subtitle"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="2dp"
-                    android:ellipsize="end"
-                    android:includeFontPadding="false"
-                    android:shadowColor="#1F000000"
-                    android:shadowDx="0"
-                    android:shadowDy="1"
-                    android:shadowRadius="3"
-                    android:singleLine="true"
-                    android:textColor="@color/widget_text_muted"
-                    android:textSize="11sp"
-                    android:textStyle="bold" />
-            </LinearLayout>
-        </LinearLayout>
-
         <FrameLayout
             android:layout_width="match_parent"
             android:layout_height="0dp"

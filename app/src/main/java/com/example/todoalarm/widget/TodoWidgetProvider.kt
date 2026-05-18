@@ -1,5 +1,6 @@
 package com.example.todoalarm.widget
 
+import android.app.AlarmManager
 import android.app.PendingIntent
 import android.appwidget.AppWidgetManager
 import android.appwidget.AppWidgetProvider
@@ -12,8 +13,6 @@ import android.widget.RemoteViews
 import com.example.todoalarm.R
 import com.example.todoalarm.ui.MainActivity
 import java.time.LocalDate
-import java.time.format.DateTimeFormatter
-import java.util.Locale
 
 class TodoWidgetProvider : AppWidgetProvider() {
     override fun onUpdate(context: Context, appWidgetManager: AppWidgetManager, appWidgetIds: IntArray) {
@@ -21,25 +20,42 @@ class TodoWidgetProvider : AppWidgetProvider() {
             updateWidget(context, appWidgetManager, appWidgetId)
             appWidgetManager.notifyAppWidgetViewDataChanged(appWidgetId, R.id.widget_list)
         }
+        scheduleNextMinuteTick(context)
     }
 
     override fun onReceive(context: Context, intent: Intent) {
         super.onReceive(context, intent)
         when (intent.action) {
+            ACTION_MINUTE_TICK,
             Intent.ACTION_DATE_CHANGED,
             Intent.ACTION_TIME_CHANGED,
             Intent.ACTION_TIMEZONE_CHANGED,
-            Intent.ACTION_MY_PACKAGE_REPLACED -> notifyWidgetDataChanged(context)
+            Intent.ACTION_MY_PACKAGE_REPLACED -> {
+                notifyWidgetDataChanged(context)
+                scheduleNextMinuteTick(context)
+            }
         }
     }
 
+    override fun onDisabled(context: Context) {
+        super.onDisabled(context)
+        cancelMinuteTick(context)
+    }
+
     companion object {
+        private const val ACTION_MINUTE_TICK = "com.example.todoalarm.widget.TODO_MINUTE_TICK"
+
         fun notifyWidgetDataChanged(context: Context) {
             val manager = AppWidgetManager.getInstance(context)
             val ids = manager.getAppWidgetIds(ComponentName(context, TodoWidgetProvider::class.java))
             ids.forEach { id ->
                 updateWidget(context, manager, id)
                 manager.notifyAppWidgetViewDataChanged(id, R.id.widget_list)
+            }
+            if (ids.isNotEmpty()) {
+                scheduleNextMinuteTick(context)
+            } else {
+                cancelMinuteTick(context)
             }
             CountdownWidgetProvider.notifyWidgetDataChanged(context)
             FocusWidgetProvider.notifyWidgetDataChanged(context)
@@ -71,15 +87,56 @@ class TodoWidgetProvider : AppWidgetProvider() {
                 putExtra(EXTRA_WIDGET_DAY, today.toString())
                 data = Uri.parse("paykitodo://widget/$appWidgetId/${today}")
             }
-            val todayLabel = today.format(DateTimeFormatter.ofPattern("M月d日 EEEE", Locale.CHINA))
             val views = RemoteViews(context.packageName, R.layout.widget_todo).apply {
-                setTextViewText(R.id.widget_board_subtitle, todayLabel)
                 setRemoteAdapter(R.id.widget_list, serviceIntent)
                 setEmptyView(R.id.widget_list, R.id.widget_empty)
                 setOnClickPendingIntent(R.id.widget_root, openAppIntent)
                 setPendingIntentTemplate(R.id.widget_list, rowTemplateIntent)
             }
             manager.updateAppWidget(appWidgetId, views)
+        }
+
+        private fun scheduleNextMinuteTick(context: Context) {
+            val manager = AppWidgetManager.getInstance(context)
+            val ids = manager.getAppWidgetIds(ComponentName(context, TodoWidgetProvider::class.java))
+            if (ids.isEmpty()) {
+                cancelMinuteTick(context)
+                return
+            }
+            val alarmManager = context.getSystemService(AlarmManager::class.java) ?: return
+            val pendingIntent = minuteTickPendingIntent(context)
+            val now = System.currentTimeMillis()
+            val nextMinute = now - (now % 60_000L) + 60_000L
+            try {
+                if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S || alarmManager.canScheduleExactAlarms()) {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                        alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, nextMinute, pendingIntent)
+                    } else {
+                        alarmManager.setExact(AlarmManager.RTC_WAKEUP, nextMinute, pendingIntent)
+                    }
+                } else {
+                    alarmManager.set(AlarmManager.RTC_WAKEUP, nextMinute, pendingIntent)
+                }
+            } catch (_: SecurityException) {
+                alarmManager.set(AlarmManager.RTC_WAKEUP, nextMinute, pendingIntent)
+            }
+        }
+
+        private fun cancelMinuteTick(context: Context) {
+            context.getSystemService(AlarmManager::class.java)?.cancel(minuteTickPendingIntent(context))
+        }
+
+        private fun minuteTickPendingIntent(context: Context): PendingIntent {
+            val flags = PendingIntent.FLAG_UPDATE_CURRENT or
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) PendingIntent.FLAG_IMMUTABLE else 0
+            return PendingIntent.getBroadcast(
+                context,
+                90_001,
+                Intent(context, TodoWidgetProvider::class.java).apply {
+                    action = ACTION_MINUTE_TICK
+                },
+                flags
+            )
         }
 
         private const val EXTRA_WIDGET_DAY = "paykitodo_widget_day"

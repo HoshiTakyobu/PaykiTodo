@@ -76,6 +76,8 @@ private fun AppSettings.toJson(): JSONObject {
         put("defaultVibrateEnabled", defaultVibrateEnabled)
         put("defaultVoiceEnabled", defaultVoiceEnabled)
         put("defaultCalendarReminderMode", defaultCalendarReminderMode.name)
+        put("autoCheckOutEventOnEnd", autoCheckOutEventOnEnd)
+        put("showEventCheckInStatsOnComplete", showEventCheckInStatsOnComplete)
         put("reminderToneUri", reminderToneUri)
         put("reminderToneName", reminderToneName)
         put("reminderAudioChannel", reminderAudioChannel.name)
@@ -566,6 +568,8 @@ private fun JSONObject?.toSettings(): AppSettings {
         defaultCalendarReminderMode = ReminderDeliveryMode.fromStorage(
             optString("defaultCalendarReminderMode", ReminderDeliveryMode.NOTIFICATION.name)
         ),
+        autoCheckOutEventOnEnd = optBoolean("autoCheckOutEventOnEnd", true),
+        showEventCheckInStatsOnComplete = optBoolean("showEventCheckInStatsOnComplete", true),
         reminderToneUri = optStringOrNull("reminderToneUri"),
         reminderToneName = optStringOrNull("reminderToneName"),
         reminderAudioChannel = ReminderAudioChannel.fromStorage(optString("reminderAudioChannel", ReminderAudioChannel.ALARM.name)),

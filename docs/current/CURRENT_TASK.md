@@ -93,6 +93,12 @@ Do not push to GitHub unless the user explicitly asks.
 2. In-progress widget schedule rows with an active check-in show `⏱ 签到中 Xm` in the event card using the event accent color.
 3. Widget schedule rows remain display-only for check-in state; no sign-in / sign-out buttons are exposed on the launcher widget.
 
+### C6 event check-in settings slice
+
+1. Settings -> `日历与提醒` now includes `日程结束时自动签退` and `完成日程时显示投入统计` switches.
+2. Both switches default to on and persist through `AppSettingsStore`.
+3. Backup export / import preserves both event check-in behavior preferences.
+
 ## Verification Completed
 
 ### Widget slice
@@ -165,6 +171,12 @@ Do not push to GitHub unless the user explicitly asks.
 2. `git diff --check` passed after the slice.
 3. No new APK has been built for this slice yet.
 
+### C6 event check-in settings slice
+
+1. `./gradlew.bat :app:compileDebugKotlin` passed after adding the event check-in preference switches and persistence.
+2. `git diff --check` passed after the code and docs sync.
+3. No new APK has been built for this slice yet.
+
 ## Verification Still Needed On Device / Browser
 
 1. Install `app/build/outputs/apk/debug/PaykiTodo-1.10.3-debug.apk` on the physical phone if validating the latest built widget APK.
@@ -177,7 +189,7 @@ Do not push to GitHub unless the user explicitly asks.
 
 The full goal remains active. Major remaining slices:
 
-1. C3-C7 remaining: event check-in / time tracking still needs completion statistics, settings switches, desktop web UI, and AI report integration.
+1. C3-C7 remaining: event check-in / time tracking still needs completion auto-checkout/statistics behavior, desktop web UI, and AI report integration.
 2. V1-V6: Planning Desk image recognition through vision-capable AI providers.
 3. T1-T3: Planning Desk shortcut bar simplification and help update.
 4. P6/P7/P9/P10/P8: narrow database queries, countdown widget update metadata, and desktop-sync suspend handler cleanup.

@@ -745,6 +745,16 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
         settingsStore.updateDefaultCalendarReminderMode(mode)
     }
 
+    fun updateEventCheckInPreferences(
+        autoCheckOutOnEnd: Boolean,
+        showStatsOnComplete: Boolean
+    ) {
+        settingsStore.updateEventCheckInPreferences(
+            autoCheckOutOnEnd = autoCheckOutOnEnd,
+            showStatsOnComplete = showStatsOnComplete
+        )
+    }
+
     fun updateReminderAudioStrategy(
         channel: com.example.todoalarm.data.ReminderAudioChannel,
         internalVolumePercent: Int,

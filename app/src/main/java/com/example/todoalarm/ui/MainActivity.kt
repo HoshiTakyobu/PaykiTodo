@@ -208,6 +208,7 @@ class MainActivity : ComponentActivity() {
                     onNextQuote = viewModel::showNextQuote,
                     onDefaultSnoozeChange = viewModel::updateDefaultSnooze,
                     onDefaultCalendarReminderModeChange = viewModel::updateDefaultCalendarReminderMode,
+                    onEventCheckInPreferencesChange = viewModel::updateEventCheckInPreferences,
                     onReminderAudioStrategyChange = viewModel::updateReminderAudioStrategy,
                     onPlanningAiProvidersChange = viewModel::updatePlanningAiProviders,
                     onReportPreferencesChange = viewModel::updateReportPreferences,

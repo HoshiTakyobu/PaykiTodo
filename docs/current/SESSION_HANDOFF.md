@@ -25,7 +25,8 @@ Long-running Codex sessions can become unreliable. This file exists so a new ses
   11. Full-screen event reminders and the accessibility fallback reminder overlay show `签到` for check-in-enabled events; signing in acknowledges and closes the current reminder.
   12. Phone daily-board in-progress schedule rows show check-in status for enabled events and expose compact `签到` / `签退` actions.
   13. Android `今日看板` widget in-progress schedule rows show active check-in status without launcher-side sign-in / sign-out buttons.
-  14. Full `1.11.0 / versionCode 222` version bump is still pending.
+  14. Settings -> `日历与提醒` stores the event check-in behavior preferences `日程结束时自动签退` and `完成日程时显示投入统计`; both default on and are preserved in backup / restore.
+  15. Full `1.11.0 / versionCode 222` version bump is still pending.
 - Latest published signed release APK:
   - `app/build/outputs/apk/release/PaykiTodo-1.10.2-release.apk`
   - GitHub Release: `https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.10.2`
@@ -118,6 +119,12 @@ Long-running Codex sessions can become unreliable. This file exists so a new ses
 1. `今日看板` widget now batch-loads active check-in records for visible in-progress calendar events.
 2. In-progress widget schedule rows with an active check-in show `⏱ 签到中 Xm` in the event accent color.
 3. Widget check-in state is display-only; the launcher widget still does not expose sign-in / sign-out buttons.
+
+## Latest Event Check-In Settings Pass
+
+1. Settings -> `日历与提醒` now includes compact switches for `日程结束时自动签退` and `完成日程时显示投入统计`.
+2. Both switches default to on and persist through `AppSettingsStore`.
+3. Backup JSON export / import preserves both event check-in behavior preferences.
 
 ## Previous 1.10.3 Planning Desk Fix Pass
 
@@ -213,6 +220,12 @@ Android widget check-in status slice:
 
 1. Fresh `./gradlew.bat :app:compileDebugKotlin` passed after adding widget active check-in status loading and rendering.
 2. Fresh `git diff --check` passed after the slice.
+3. No new APK has been built for this slice yet.
+
+Event check-in settings slice:
+
+1. Fresh `./gradlew.bat :app:compileDebugKotlin` passed after adding event check-in preference switches and persistence.
+2. Fresh `git diff --check` passed after code and docs synchronization.
 3. No new APK has been built for this slice yet.
 
 Secret / release safety checks already performed:

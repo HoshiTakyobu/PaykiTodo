@@ -50,6 +50,8 @@ data class AppSettings(
     val defaultVibrateEnabled: Boolean = true,
     val defaultVoiceEnabled: Boolean = false,
     val defaultCalendarReminderMode: ReminderDeliveryMode = ReminderDeliveryMode.NOTIFICATION,
+    val autoCheckOutEventOnEnd: Boolean = true,
+    val showEventCheckInStatsOnComplete: Boolean = true,
     val reminderToneUri: String? = null,
     val reminderToneName: String? = null,
     val reminderAudioChannel: ReminderAudioChannel = ReminderAudioChannel.ALARM,
@@ -114,6 +116,17 @@ class AppSettingsStore(context: Context) {
 
     fun updateDefaultCalendarReminderMode(mode: ReminderDeliveryMode) {
         preferences.edit().putString(KEY_DEFAULT_CALENDAR_REMINDER_MODE, mode.name).apply()
+        refresh()
+    }
+
+    fun updateEventCheckInPreferences(
+        autoCheckOutOnEnd: Boolean,
+        showStatsOnComplete: Boolean
+    ) {
+        preferences.edit()
+            .putBoolean(KEY_EVENT_AUTO_CHECK_OUT_ON_END, autoCheckOutOnEnd)
+            .putBoolean(KEY_EVENT_SHOW_CHECK_IN_STATS_ON_COMPLETE, showStatsOnComplete)
+            .apply()
         refresh()
     }
 
@@ -278,6 +291,8 @@ class AppSettingsStore(context: Context) {
             .putBoolean(KEY_DEFAULT_VIBRATE, settings.defaultVibrateEnabled)
             .putBoolean(KEY_DEFAULT_VOICE, settings.defaultVoiceEnabled)
             .putString(KEY_DEFAULT_CALENDAR_REMINDER_MODE, settings.defaultCalendarReminderMode.name)
+            .putBoolean(KEY_EVENT_AUTO_CHECK_OUT_ON_END, settings.autoCheckOutEventOnEnd)
+            .putBoolean(KEY_EVENT_SHOW_CHECK_IN_STATS_ON_COMPLETE, settings.showEventCheckInStatsOnComplete)
             .putString(KEY_REMINDER_TONE_URI, settings.reminderToneUri)
             .putString(KEY_REMINDER_TONE_NAME, settings.reminderToneName)
             .putString(KEY_REMINDER_AUDIO_CHANNEL, settings.reminderAudioChannel.name)
@@ -354,6 +369,8 @@ class AppSettingsStore(context: Context) {
             defaultCalendarReminderMode = ReminderDeliveryMode.fromStorage(
                 preferences.getString(KEY_DEFAULT_CALENDAR_REMINDER_MODE, ReminderDeliveryMode.NOTIFICATION.name)
             ),
+            autoCheckOutEventOnEnd = preferences.getBoolean(KEY_EVENT_AUTO_CHECK_OUT_ON_END, true),
+            showEventCheckInStatsOnComplete = preferences.getBoolean(KEY_EVENT_SHOW_CHECK_IN_STATS_ON_COMPLETE, true),
             reminderToneUri = preferences.getString(KEY_REMINDER_TONE_URI, null),
             reminderToneName = preferences.getString(KEY_REMINDER_TONE_NAME, null),
             reminderAudioChannel = ReminderAudioChannel.fromStorage(preferences.getString(KEY_REMINDER_AUDIO_CHANNEL, null)),
@@ -435,6 +452,8 @@ class AppSettingsStore(context: Context) {
         private const val KEY_DEFAULT_VIBRATE = "default_vibrate_enabled"
         private const val KEY_DEFAULT_VOICE = "default_voice_enabled"
         private const val KEY_DEFAULT_CALENDAR_REMINDER_MODE = "default_calendar_reminder_mode"
+        private const val KEY_EVENT_AUTO_CHECK_OUT_ON_END = "event_auto_check_out_on_end"
+        private const val KEY_EVENT_SHOW_CHECK_IN_STATS_ON_COMPLETE = "event_show_check_in_stats_on_complete"
         private const val KEY_REMINDER_TONE_URI = "reminder_tone_uri"
         private const val KEY_REMINDER_TONE_NAME = "reminder_tone_name"
         private const val KEY_REMINDER_AUDIO_CHANNEL = "reminder_audio_channel"

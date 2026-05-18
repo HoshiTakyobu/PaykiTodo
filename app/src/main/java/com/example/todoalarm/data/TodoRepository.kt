@@ -128,6 +128,18 @@ class TodoRepository(
     suspend fun getActiveCalendarEventsInRangeOnce(rangeStartMillis: Long, rangeEndMillis: Long): List<TodoItem> {
         return todoDao.getActiveCalendarEventsInRangeOnce(rangeStartMillis, rangeEndMillis)
     }
+    suspend fun getCompletedTodosInRange(startMillis: Long, endMillis: Long): List<TodoItem> {
+        return todoDao.getCompletedTodosInRange(startMillis, endMillis)
+    }
+    suspend fun getMissedTodosDueInRange(startMillis: Long, endMillis: Long): List<TodoItem> {
+        return todoDao.getMissedTodosDueInRange(startMillis, endMillis)
+    }
+    suspend fun getActiveTodosDueInRange(startMillis: Long, endMillis: Long): List<TodoItem> {
+        return todoDao.getActiveTodosDueInRange(startMillis, endMillis, NO_DUE_DATE_MILLIS)
+    }
+    suspend fun getActiveEventsOverlappingRange(rangeStartMillis: Long, rangeEndMillis: Long): List<TodoItem> {
+        return todoDao.getActiveEventsOverlappingRange(rangeStartMillis, rangeEndMillis)
+    }
 
     suspend fun getActiveItemsForBoardRange(now: LocalDate = LocalDate.now()): List<TodoItem> {
         val zone = ZoneId.systemDefault()
@@ -143,6 +155,7 @@ class TodoRepository(
     }
 
     suspend fun getAllPlanningNotes(): List<PlanningNote> = todoDao.getAllPlanningNotes()
+    suspend fun getPlanningNote(noteId: Long): PlanningNote? = todoDao.getPlanningNote(noteId)
     suspend fun getActivePlanningNotes(): List<PlanningNote> = todoDao.getActivePlanningNotes()
     suspend fun getPlanningNotesWithAnnouncementHints(): List<PlanningNote> = todoDao.getPlanningNotesWithAnnouncementHints()
     suspend fun getPlanningMappingsForNote(noteId: Long): List<PlanningLineMapping> = todoDao.getMappingsForNote(noteId)

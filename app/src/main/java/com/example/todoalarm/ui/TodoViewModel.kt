@@ -950,8 +950,10 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
     ): String? {
         if (templateName.isBlank()) return "模板名称不能为空"
         val groups = repository.getAllGroups().ifEmpty { repository.ensureDefaultGroups() }
-        val weekEvents = repository.getAllTodos()
-            .filter { it.isEvent && it.isActive }
+        val zone = ZoneId.systemDefault()
+        val weekStartMillis = weekStart.atStartOfDay(zone).toInstant().toEpochMilli()
+        val weekEndExclusiveMillis = weekStart.plusDays(7).atStartOfDay(zone).toInstant().toEpochMilli()
+        val weekEvents = repository.getActiveEventsOverlappingRange(weekStartMillis, weekEndExclusiveMillis)
             .filter { overlapsWeek(it, weekStart) }
         if (weekEvents.isEmpty()) return "当前这一周没有可保存的日程"
 

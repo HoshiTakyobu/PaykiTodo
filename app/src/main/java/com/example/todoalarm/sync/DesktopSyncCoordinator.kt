@@ -492,7 +492,7 @@ class DesktopSyncCoordinator(
         val id = path.substringAfter("/api/planning/notes/").toLong()
         val title = json.optStringOrNull("title")
         val content = json.optStringOrNull("contentMarkdown")
-        val updatedTitle = if (title != null) runBlocking { app.repository.renamePlanningNote(id, title) } else runBlocking { app.repository.getAllPlanningNotes().firstOrNull { it.id == id } }
+        val updatedTitle = if (title != null) runBlocking { app.repository.renamePlanningNote(id, title) } else runBlocking { app.repository.getPlanningNote(id) }
         val updated = if (content != null) runBlocking { app.repository.updatePlanningNoteContent(id, content) } else updatedTitle
         require(updated != null) { "规划文档不存在" }
         settingsStore.updateLastOpenedPlanningNoteId(id)
@@ -578,7 +578,7 @@ class DesktopSyncCoordinator(
 
     private fun planningMappings(path: String): JSONObject {
         val noteId = queryParam(path, "noteId")?.toLongOrNull() ?: error("缺少 noteId")
-        val note = runBlocking { app.repository.getAllPlanningNotes().firstOrNull { it.id == noteId } } ?: error("规划文档不存在")
+        val note = runBlocking { app.repository.getPlanningNote(noteId) } ?: error("规划文档不存在")
         val synced = runBlocking { app.repository.syncPlanningMappingStatuses(noteId, note.contentMarkdown) }
         return JSONObject()
             .put("changed", synced.changedCount)

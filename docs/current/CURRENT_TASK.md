@@ -127,6 +127,14 @@ Do not push to GitHub unless the user explicitly asks.
 3. Planning Desk tutorial, README, in-app Wiki, and current design docs now say top-level tasks, DDL, reminders, groups, dates, and schedules should be written naturally or with explicit tags instead of through a button grid.
 4. Bottom parser and preview behavior are preserved; this slice only reduces the visible shortcut UI and synchronizes documentation.
 
+### P6/P7/P9/P10 narrow query / widget metadata slice
+
+1. `TodoDao` and `TodoRepository` now expose narrow one-shot queries for completed todos in a time range, missed todos due in a time range, active DDL-backed todos in a time range, and active events overlapping a time range.
+2. AI daily-report and weekly-report context collection no longer loads the complete todo table before in-memory filtering; it reads only the date windows needed for today, tomorrow, this week, and the next DDL window.
+3. Saving a week as a schedule template now queries active events overlapping the target week instead of scanning all todo items.
+4. Desktop sync Planning Desk note update and mapping refresh now read a single planning note by ID instead of loading every planning note and filtering in memory.
+5. `widget_countdown_info.xml` was rechecked and already declares `android:updatePeriodMillis="0"`, so the independent countdown widget remains on provider-owned minute ticks rather than the system widget update floor.
+
 ## Verification Completed
 
 ### Widget slice
@@ -231,6 +239,12 @@ Do not push to GitHub unless the user explicitly asks.
 3. `git diff --check` passed after the code and docs sync.
 4. No new APK has been built for this slice yet.
 
+### P6/P7/P9/P10 narrow query / widget metadata slice
+
+1. `./gradlew.bat :app:compileDebugKotlin` passed after adding the narrow DAO / repository queries and updating call sites.
+2. `git diff --check` passed after code and docs synchronization.
+3. No new APK has been built for this slice yet.
+
 ## Verification Still Needed On Device / Browser
 
 1. Install `app/build/outputs/apk/debug/PaykiTodo-1.10.3-debug.apk` on the physical phone if validating the latest built widget APK.
@@ -244,6 +258,6 @@ Do not push to GitHub unless the user explicitly asks.
 The full goal remains active. Major remaining slices:
 
 1. V1-V6: Planning Desk image recognition through vision-capable AI providers.
-2. P6/P7/P9/P10/P8: narrow database queries, countdown widget update metadata, and desktop-sync suspend handler cleanup.
+2. P8: desktop-sync suspend handler cleanup.
 3. P1/P2/P3: R8/resource shrinking, WebP conversion, icon dependency audit, release launch verification, and final APK-size check.
 4. Final version bump to `1.11.0 / versionCode 222`.

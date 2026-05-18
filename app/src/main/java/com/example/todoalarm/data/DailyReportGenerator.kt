@@ -70,21 +70,21 @@ object DailyReportGenerator {
         val dayStart = date.atStartOfDay(zone).toInstant().toEpochMilli()
         val dayEndExclusive = date.plusDays(1).atStartOfDay(zone).toInstant().toEpochMilli()
         val tomorrowEndExclusive = date.plusDays(2).atStartOfDay(zone).toInstant().toEpochMilli()
-        val items = app.repository.getAllTodos()
         return DailyContext(
             date = date,
             todayEventCheckInMinutes = app.repository.getTodayEventCheckInMinutes(date),
-            todayCompleted = items.filter { it.isTodo && it.completed && it.completedAtMillis?.let { completedAt -> completedAt in dayStart until dayEndExclusive } == true }
+            todayCompleted = app.repository.getCompletedTodosInRange(dayStart, dayEndExclusive)
                 .sortedBy { it.completedAtMillis ?: it.dueAtMillis },
-            todayMissed = items.filter { it.isTodo && it.missed && it.dueAtMillis in dayStart until dayEndExclusive }
+            todayMissed = app.repository.getMissedTodosDueInRange(dayStart, dayEndExclusive)
                 .sortedBy { it.dueAtMillis },
-            todayEvents = items.filter { it.isEvent && DailyBoardSnapshotBuilder.eventOverlapsDay(it, date) }
+            todayEvents = app.repository.getActiveEventsOverlappingRange(dayStart, dayEndExclusive)
+                .filter { DailyBoardSnapshotBuilder.eventOverlapsDay(it, date) }
                 .sortedBy { it.startAtMillis ?: it.dueAtMillis },
-            tomorrowEvents = items.filter { it.isEvent && it.isActive && DailyBoardSnapshotBuilder.eventOverlapsDay(it, date.plusDays(1)) }
+            tomorrowEvents = app.repository.getActiveEventsOverlappingRange(dayEndExclusive, tomorrowEndExclusive)
+                .filter { DailyBoardSnapshotBuilder.eventOverlapsDay(it, date.plusDays(1)) }
                 .sortedBy { it.startAtMillis ?: it.dueAtMillis },
-            tomorrowDdls = items.filter {
-                it.isTodo && it.isActive && it.hasDueDate && it.dueAtMillis in dayEndExclusive until tomorrowEndExclusive
-            }.sortedBy { it.dueAtMillis }
+            tomorrowDdls = app.repository.getActiveTodosDueInRange(dayEndExclusive, tomorrowEndExclusive)
+                .sortedBy { it.dueAtMillis }
         )
     }
 
@@ -94,21 +94,19 @@ object DailyReportGenerator {
         val weekEnd = today.with(TemporalAdjusters.nextOrSame(DayOfWeek.SUNDAY))
         val startMillis = weekStart.atStartOfDay(zone).toInstant().toEpochMilli()
         val endExclusiveMillis = weekEnd.plusDays(1).atStartOfDay(zone).toInstant().toEpochMilli()
-        val items = app.repository.getAllTodos()
+        val nextWeekEndExclusiveMillis = weekEnd.plusDays(8).atStartOfDay(zone).toInstant().toEpochMilli()
         return WeeklyContext(
             weekStart = weekStart,
             weekEnd = weekEnd,
-            completedTodos = items.filter { it.isTodo && it.completed && it.completedAtMillis?.let { completedAt -> completedAt in startMillis until endExclusiveMillis } == true }
+            completedTodos = app.repository.getCompletedTodosInRange(startMillis, endExclusiveMillis)
                 .sortedBy { it.completedAtMillis ?: it.dueAtMillis },
-            missedTodos = items.filter { it.isTodo && it.missed && it.dueAtMillis in startMillis until endExclusiveMillis }
+            missedTodos = app.repository.getMissedTodosDueInRange(startMillis, endExclusiveMillis)
                 .sortedBy { it.dueAtMillis },
-            events = items.filter { item ->
-                item.isEvent && (0..6).any { DailyBoardSnapshotBuilder.eventOverlapsDay(item, weekStart.plusDays(it.toLong())) }
-            }.sortedBy { it.startAtMillis ?: it.dueAtMillis },
-            upcomingDdls = items.filter {
-                it.isTodo && it.isActive && it.hasDueDate && it.dueAtMillis >= endExclusiveMillis &&
-                    it.dueAtMillis < weekEnd.plusDays(8).atStartOfDay(zone).toInstant().toEpochMilli()
-            }.sortedBy { it.dueAtMillis }
+            events = app.repository.getActiveEventsOverlappingRange(startMillis, endExclusiveMillis)
+                .filter { item -> (0..6).any { DailyBoardSnapshotBuilder.eventOverlapsDay(item, weekStart.plusDays(it.toLong())) } }
+                .sortedBy { it.startAtMillis ?: it.dueAtMillis },
+            upcomingDdls = app.repository.getActiveTodosDueInRange(endExclusiveMillis, nextWeekEndExclusiveMillis)
+                .sortedBy { it.dueAtMillis }
         )
     }
 

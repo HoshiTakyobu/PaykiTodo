@@ -183,6 +183,63 @@ interface TodoDao {
         """
         SELECT * FROM todo_items
         WHERE itemType = 'TODO'
+        AND completed = 1
+        AND completedAtMillis IS NOT NULL
+        AND completedAtMillis >= :startMillis
+        AND completedAtMillis < :endMillis
+        ORDER BY completedAtMillis ASC, dueAtMillis ASC, createdAtMillis ASC
+        """
+    )
+    suspend fun getCompletedTodosInRange(startMillis: Long, endMillis: Long): List<TodoItem>
+
+    @Query(
+        """
+        SELECT * FROM todo_items
+        WHERE itemType = 'TODO'
+        AND missed = 1
+        AND dueAtMillis >= :startMillis
+        AND dueAtMillis < :endMillis
+        ORDER BY dueAtMillis ASC, createdAtMillis ASC
+        """
+    )
+    suspend fun getMissedTodosDueInRange(startMillis: Long, endMillis: Long): List<TodoItem>
+
+    @Query(
+        """
+        SELECT * FROM todo_items
+        WHERE itemType = 'TODO'
+        AND completed = 0
+        AND canceled = 0
+        AND dueAtMillis != :noDueDateMillis
+        AND dueAtMillis >= :startMillis
+        AND dueAtMillis < :endMillis
+        ORDER BY dueAtMillis ASC, createdAtMillis ASC
+        """
+    )
+    suspend fun getActiveTodosDueInRange(
+        startMillis: Long,
+        endMillis: Long,
+        noDueDateMillis: Long
+    ): List<TodoItem>
+
+    @Query(
+        """
+        SELECT * FROM todo_items
+        WHERE itemType = 'EVENT'
+        AND completed = 0
+        AND canceled = 0
+        AND startAtMillis IS NOT NULL
+        AND startAtMillis < :rangeEndMillis
+        AND COALESCE(endAtMillis, startAtMillis) >= :rangeStartMillis
+        ORDER BY COALESCE(startAtMillis, dueAtMillis) ASC, createdAtMillis ASC
+        """
+    )
+    suspend fun getActiveEventsOverlappingRange(rangeStartMillis: Long, rangeEndMillis: Long): List<TodoItem>
+
+    @Query(
+        """
+        SELECT * FROM todo_items
+        WHERE itemType = 'TODO'
         ORDER BY dueAtMillis ASC, createdAtMillis ASC
         """
     )

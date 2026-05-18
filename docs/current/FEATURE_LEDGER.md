@@ -112,9 +112,10 @@ This file tracks the product at a practical level for new coding sessions.
 
 - Settings -> `AI 调用配置` includes an `AI 日报 / 周报` block with compact switches, HH:mm time fields, a report-retention dropdown, a save/re-schedule button, `了解 AI 日报`, and `立即生成一次日报`
 - the `了解 AI 日报` guide is a centered dialog explaining what daily/weekly reports summarize, AI-source and fallback requirements, Android 12+ exact-alarm caveats, enable steps, the independent `AI 报告` archive, notification deep links, and common failure cases
-- daily reports collect today's completed todos, missed todos, today's events, tomorrow events, and tomorrow DDLs
+- daily reports collect today's completed todos, missed todos, today's events, today's event check-in investment minutes, tomorrow events, and tomorrow DDLs
 - weekly reports collect Monday-Sunday completed todos, missed todos, week events, and next-week DDLs
 - report generation tries enabled Planning Desk AI providers in order through `PlanningAiCaller.callWithFallback`; if AI is disabled or fails, a local template still generates a usable report
+- daily-report prompts and the local fallback report include `今日日程投入：Y 分钟`, sourced from the `event_check_ins` daily total
 - reports are stored in the independent Room `ai_reports` archive rather than Planning Desk notes; the drawer exposes `AI 报告` after `规划台`
 - upgraded installs migrate legacy Planning Desk `AI 日报` / `AI 周报` note entries into `ai_reports`, delete the old report notes, and clear `lastOpenedPlanningNoteId` if it pointed to a removed report note
 - `AI 报告` supports keyword search, all / daily / weekly filters, all-time / recent-7 / recent-30 / recent-90-day range filters, card previews, full detail viewing, local-fallback/source pills, empty-state guidance, and delete confirmation from long press or detail view

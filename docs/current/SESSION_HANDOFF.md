@@ -28,7 +28,8 @@ Long-running Codex sessions can become unreliable. This file exists so a new ses
   14. Settings -> `日历与提醒` stores the event check-in behavior preferences `日程结束时自动签退` and `完成日程时显示投入统计`; both default on and are preserved in backup / restore.
   15. Calendar event details can complete check-in-enabled events, auto-checkout active records according to settings, and show planned/actual/check-in-count/investment-rate completion statistics when enabled.
   16. Desktop sync item completion now uses the same event-completion path and can return `eventCheckInSummary`.
-  17. Full `1.11.0 / versionCode 222` version bump is still pending.
+  17. AI daily reports now include today's event check-in investment minutes in both the AI prompt and local fallback report.
+  18. Full `1.11.0 / versionCode 222` version bump is still pending.
 - Latest published signed release APK:
   - `app/build/outputs/apk/release/PaykiTodo-1.10.2-release.apk`
   - GitHub Release: `https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.10.2`
@@ -136,6 +137,12 @@ Long-running Codex sessions can become unreliable. This file exists so a new ses
 4. If `完成日程时显示投入统计` is enabled, the phone details sheet shows planned minutes, actual invested minutes, check-in count, investment rate, and automatic-checkout status.
 5. Desktop sync `/api/items/{id}/complete` uses the same completion logic and returns `eventCheckInSummary` when statistics display is enabled.
 
+## Latest AI Daily Report Event-Investment Pass
+
+1. Daily-report context now reads today's event check-in total from `event_check_ins`.
+2. The AI daily-report prompt includes `今日日程投入：Y 分钟`.
+3. The local daily-report fallback also writes today's event investment minutes, so the value remains visible when AI is disabled or fails.
+
 ## Previous 1.10.3 Planning Desk Fix Pass
 
 1. Local Planning Markdown parsing recognizes inline `@地点`, quoted `"@地点"`, and `地点：...` event locations.
@@ -241,6 +248,12 @@ Event check-in settings slice:
 Event completion statistics slice:
 
 1. Fresh `./gradlew.bat :app:compileDebugKotlin` passed after wiring tracked-event completion, automatic checkout, and completion summary display.
+2. Fresh `git diff --check` passed after code and docs synchronization.
+3. No new APK has been built for this slice yet.
+
+AI daily report event-investment slice:
+
+1. Fresh `./gradlew.bat :app:compileDebugKotlin` passed after adding `今日日程投入` to daily-report context and fallback text.
 2. Fresh `git diff --check` passed after code and docs synchronization.
 3. No new APK has been built for this slice yet.
 

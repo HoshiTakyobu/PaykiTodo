@@ -73,6 +73,7 @@ object DailyReportGenerator {
         val items = app.repository.getAllTodos()
         return DailyContext(
             date = date,
+            todayEventCheckInMinutes = app.repository.getTodayEventCheckInMinutes(date),
             todayCompleted = items.filter { it.isTodo && it.completed && it.completedAtMillis?.let { completedAt -> completedAt in dayStart until dayEndExclusive } == true }
                 .sortedBy { it.completedAtMillis ?: it.dueAtMillis },
             todayMissed = items.filter { it.isTodo && it.missed && it.dueAtMillis in dayStart until dayEndExclusive }
@@ -166,6 +167,8 @@ object DailyReportGenerator {
             今天的日程（${context.todayEvents.size} 条）：
             ${context.todayEvents.toBulletList { "${it.title}（${eventTimeLabel(it)}）" }}
 
+            今日日程投入：${context.todayEventCheckInMinutes} 分钟
+
             明天的日程（${context.tomorrowEvents.size} 条）：
             ${context.tomorrowEvents.toBulletList { "${it.title}（${eventTimeLabel(it)}）" }}
 
@@ -205,6 +208,7 @@ object DailyReportGenerator {
         return buildString {
             append("今天完成 ${context.todayCompleted.size} 条待办")
             append("。")
+            append("今日日程投入 ${context.todayEventCheckInMinutes} 分钟。")
             if (context.todayMissed.isNotEmpty()) {
                 append("有 ${context.todayMissed.size} 条待办错过，需要尽快重新安排。")
             }
@@ -277,6 +281,7 @@ object DailyReportGenerator {
 
     private data class DailyContext(
         val date: LocalDate,
+        val todayEventCheckInMinutes: Int,
         val todayCompleted: List<TodoItem>,
         val todayMissed: List<TodoItem>,
         val todayEvents: List<TodoItem>,

@@ -107,6 +107,12 @@ Do not push to GitHub unless the user explicitly asks.
 4. If `完成日程时显示投入统计` is enabled, the phone details sheet shows a completion summary card with planned time, actual invested time, check-in count, investment rate, and automatic-checkout status.
 5. Desktop sync `/api/items/{id}/complete` now uses the same completion path and returns `eventCheckInSummary` when completion statistics are enabled.
 
+### C7 AI daily report event investment slice
+
+1. AI daily-report context now includes today's event check-in total from `event_check_ins`.
+2. The AI daily-report prompt includes `今日日程投入：Y 分钟`.
+3. The local daily-report fallback also writes today's event investment minutes, so the field is visible even when AI is disabled or fails.
+
 ## Verification Completed
 
 ### Widget slice
@@ -191,6 +197,12 @@ Do not push to GitHub unless the user explicitly asks.
 2. `git diff --check` passed after the code and docs sync.
 3. No new APK has been built for this slice yet.
 
+### C7 AI daily report event investment slice
+
+1. `./gradlew.bat :app:compileDebugKotlin` passed after adding `今日日程投入` to AI daily-report context and fallback text.
+2. `git diff --check` passed after the code and docs sync.
+3. No new APK has been built for this slice yet.
+
 ## Verification Still Needed On Device / Browser
 
 1. Install `app/build/outputs/apk/debug/PaykiTodo-1.10.3-debug.apk` on the physical phone if validating the latest built widget APK.
@@ -203,7 +215,7 @@ Do not push to GitHub unless the user explicitly asks.
 
 The full goal remains active. Major remaining slices:
 
-1. C7 / desktop remaining: event check-in / time tracking still needs desktop web UI and AI report integration.
+1. Desktop remaining: event check-in / time tracking still needs desktop web UI.
 2. V1-V6: Planning Desk image recognition through vision-capable AI providers.
 3. T1-T3: Planning Desk shortcut bar simplification and help update.
 4. P6/P7/P9/P10/P8: narrow database queries, countdown widget update metadata, and desktop-sync suspend handler cleanup.

@@ -2,7 +2,7 @@
 
 ## Active Development Focus
 
-Active goal: implement `docs/goals/2026-05-18-paykitodo-1.11.0-revised-goal.md` from the current `1.10.3 / versionCode 221` baseline, plus the user's additional Android widget requirements.
+Active goal: complete the final verification and handoff for `docs/goals/2026-05-18-paykitodo-1.11.0-revised-goal.md`, plus the user's additional Android widget requirements. Code now builds as `1.11.0 / versionCode 222`.
 
 Do not push to GitHub unless the user explicitly asks.
 
@@ -155,8 +155,17 @@ Do not push to GitHub unless the user explicitly asks.
 
 1. Release builds now enable R8 minification and Android resource shrinking.
 2. The three dashboard background JPG resources in `drawable-nodpi` were replaced by same-name WebP resources at quality 80, preserving existing `R.drawable.dashboard_bg*` references.
-3. The release APK built successfully after R8/resource shrink and the output size is `4.83 MB`, below the goal threshold of 13 MB.
+3. The final `1.11.0` release APK built successfully after R8/resource shrink and the output size is `4.83 MB`, below the goal threshold of 13 MB.
 4. The release APK archive contains no `androidx/compose/material/icons` entries after R8, so `material-icons-extended` does not need to be replaced in this slice.
+
+### Final 1.11.0 build / signing slice
+
+1. App version metadata is now `1.11.0 / versionCode 222`.
+2. `./gradlew.bat :app:assembleRelease` produced `app/build/outputs/apk/release/PaykiTodo-1.11.0-release.apk`.
+3. `./gradlew.bat :app:assembleDebug` produced `app/build/outputs/apk/debug/PaykiTodo-1.11.0-debug.apk`.
+4. Release APK metadata confirms `versionName = 1.11.0`, `versionCode = 222`, output `PaykiTodo-1.11.0-release.apk`.
+5. Debug APK metadata confirms `versionName = 1.11.0`, `versionCode = 222`, output `PaykiTodo-1.11.0-debug.apk`.
+6. `apksigner verify --verbose --print-certs app/build/outputs/apk/release/PaykiTodo-1.11.0-release.apk` passed with one v2 signer.
 
 ## Verification Completed
 
@@ -165,8 +174,8 @@ Do not push to GitHub unless the user explicitly asks.
 1. `./gradlew.bat :app:compileDebugKotlin` passed.
 2. Static search confirmed removed widget header IDs and old fixed countdown row IDs are no longer referenced in `app/src/main/java` or `app/src/main/res`.
 3. `git diff --check` passed.
-4. `./gradlew.bat :app:assembleDebug` passed and produced `app/build/outputs/apk/debug/PaykiTodo-1.10.3-debug.apk`.
-5. Debug APK metadata confirms `versionName = 1.10.3`, `versionCode = 221`.
+4. Pre-final widget validation used `./gradlew.bat :app:assembleDebug` and produced `app/build/outputs/apk/debug/PaykiTodo-1.10.3-debug.apk`.
+5. That pre-final debug APK metadata confirmed `versionName = 1.10.3`, `versionCode = 221`; the final 1.11.0 APK metadata is recorded in the final build / signing verification section below.
 
 ### Focus removal slice
 
@@ -285,22 +294,29 @@ Do not push to GitHub unless the user explicitly asks.
 ### P1-P3 release size optimization slice
 
 1. `./gradlew.bat :app:assembleRelease` passed after enabling R8 minification and resource shrinking.
-2. Release APK size was inspected at `4.83 MB` for `app/build/outputs/apk/release/PaykiTodo-1.10.3-release.apk`.
+2. Release APK size was inspected at `4.83 MB` for `app/build/outputs/apk/release/PaykiTodo-1.11.0-release.apk`.
 3. ZIP-level package inspection found `0` `androidx/compose/material/icons` entries in the release APK, so the icon dependency is already removed by R8.
 4. Dashboard background resources now exist as `dashboard_bg.webp` (`19.1 KB`), `dashboard_bg_light.webp` (`45.1 KB`), and `dashboard_bg_dark.webp` (`37.8 KB`).
-5. No new debug APK has been built for this slice yet.
+
+### Final 1.11.0 build / signing verification
+
+1. `./gradlew.bat :app:assembleRelease` passed for `1.11.0 / versionCode 222`.
+2. `./gradlew.bat :app:assembleDebug` passed for `1.11.0 / versionCode 222`.
+3. `app/build/outputs/apk/release/output-metadata.json` confirms `versionName = 1.11.0`, `versionCode = 222`, output `PaykiTodo-1.11.0-release.apk`.
+4. `app/build/outputs/apk/debug/output-metadata.json` confirms `versionName = 1.11.0`, `versionCode = 222`, output `PaykiTodo-1.11.0-debug.apk`.
+5. APK sizes: release `4.83 MB`; debug `22.12 MB`.
+6. `apksigner verify --verbose --print-certs app/build/outputs/apk/release/PaykiTodo-1.11.0-release.apk` passed with one v2 signer.
+7. `Pixel_8` AVD was started as `emulator-5554`; an older differently signed `com.paykitodo.app` install was removed from the emulator, then `app/build/outputs/apk/release/PaykiTodo-1.11.0-release.apk` installed successfully.
+8. Release startup smoke test passed on `emulator-5554`: `MainActivity` opened, the daily board UI tree was readable, the drawer exposed `每日看板 / 待办 / 日历 / 规划台 / AI 报告 / 历史记录 / 设置` and did not expose a focus entry, and the `待办` / `日历` / `规划台` / `AI 报告` / `设置` main surfaces opened without an app `FATAL EXCEPTION` in logcat.
 
 ## Verification Still Needed On Device / Browser
 
-1. Install `app/build/outputs/apk/debug/PaykiTodo-1.10.3-debug.apk` on the physical phone if validating the latest built widget APK.
+1. Install `app/build/outputs/apk/debug/PaykiTodo-1.11.0-debug.apk` on the physical phone if validating the latest built widget APK.
 2. Add / resize the `今日看板` widget and confirm the removed top header, minute refresh, and cross-day date/list update behavior on the launcher.
 3. Add / resize the `倒数日` widget and confirm scroll behavior, readable multi-line rows, and row deep links on the launcher.
-4. After a later focus-removal APK build, confirm the app opens without any focus / pomodoro entry in the drawer, settings, todo long-press menu, desktop web, AI report, or widgets.
+4. Confirm on the physical phone that no user-facing focus / pomodoro entry remains in settings, todo long-press menu, desktop web, AI report, or widgets; the emulator drawer check already found no focus entry.
 5. In a real desktop browser, verify todo multi-group behavior: selecting multiple filter chips uses intersection filtering, editing a todo preserves all selected groups, and the card / preview labels show all groups.
 
-## Remaining 1.11.0 Work
+## Remaining 1.11.0 Verification Work
 
-The full goal remains active. Major remaining slices:
-
-1. Final version bump to `1.11.0 / versionCode 222`.
-2. Release APK startup / main-surface verification after the version bump.
+No known code slice remains. Release startup / main-surface smoke verification passed on `Pixel_8 / emulator-5554`; launcher-widget rendering, real notification / vibration / lock-screen behavior, real vision-AI calls, and desktop-browser sync still need physical-device or real-browser verification.

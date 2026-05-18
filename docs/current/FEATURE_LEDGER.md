@@ -317,7 +317,7 @@ This file tracks the product at a practical level for new coding sessions.
 
 - stronger reminder reliability across vendor ROM differences
 - more complete desktop-side operations
-- final release packaging after the local ignored keystore fields are filled and the release keystore is generated
+- GitHub Release publishing / public distribution remains a manual step and requires explicit user authorization
 - tighter documentation so a new session can reconstruct state without old transcripts
 
 ## Notes

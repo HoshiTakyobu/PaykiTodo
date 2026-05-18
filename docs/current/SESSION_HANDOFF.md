@@ -6,7 +6,7 @@ Long-running Codex sessions can become unreliable. This file exists so a new ses
 
 ## Current Handoff Summary
 
-- Active goal: implement `docs/goals/2026-05-18-paykitodo-1.11.0-revised-goal.md` from the current `1.10.3` / `versionCode 221` baseline, plus the user's extra Android widget requirements.
+- Active goal: complete final verification and handoff for `docs/goals/2026-05-18-paykitodo-1.11.0-revised-goal.md`, plus the user's extra Android widget requirements. The app now builds as `1.11.0 / versionCode 222`.
 - Already completed baseline widget slice:
   1. `今日看板` widget removes the top menu/title/date header.
   2. `今日看板` widget and `倒数日` widget refresh through provider-owned minute ticks instead of relying on `updatePeriodMillis`.
@@ -34,13 +34,14 @@ Long-running Codex sessions can become unreliable. This file exists so a new ses
   20. AI daily/weekly reports, schedule-template saving, and desktop Planning Desk note operations now use narrower DAO queries instead of full-table or full-note-list scans.
   21. Desktop sync business request handling now uses suspend route handlers; the only remaining `runBlocking` is the intentional socket-thread response boundary in `DesktopSyncServer`.
   22. Phone Planning Desk now supports `更多 -> 从图片识别日程`, using only vision-capable AI providers, appending recognized Markdown to the active note, and preserving the existing preview/import gate before database writes.
-  23. Full `1.11.0 / versionCode 222` version bump is still pending.
+  23. Version metadata has been bumped to `1.11.0 / versionCode 222`.
+  24. Final release/debug APKs were rebuilt for `1.11.0`; release signing passed v2 verification.
 - Latest published signed release APK:
   - `app/build/outputs/apk/release/PaykiTodo-1.10.2-release.apk`
   - GitHub Release: `https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.10.2`
 - Latest locally built APKs:
-  - Debug: `app/build/outputs/apk/debug/PaykiTodo-1.10.3-debug.apk`
-  - Release: `app/build/outputs/apk/release/PaykiTodo-1.10.3-release.apk`
+  - Debug: `app/build/outputs/apk/debug/PaykiTodo-1.11.0-debug.apk`
+  - Release: `app/build/outputs/apk/release/PaykiTodo-1.11.0-release.apk`
 - Do not push to GitHub unless the user explicitly asks.
 - Keep `keystore.properties`, `release/`, APK/AAB outputs, API keys, tokens, and private Base URLs out of Git.
 
@@ -345,27 +346,38 @@ Planning Desk image recognition slice:
 Release size optimization slice:
 
 1. Fresh `./gradlew.bat :app:assembleRelease` passed after enabling R8 minification and resource shrinking.
-2. APK size inspection reported `app/build/outputs/apk/release/PaykiTodo-1.10.3-release.apk` at `4.83 MB`.
+2. APK size inspection reported `app/build/outputs/apk/release/PaykiTodo-1.11.0-release.apk` at `4.83 MB`.
 3. ZIP-level package inspection found no `androidx/compose/material/icons` entries in the release APK.
 4. Dashboard background files are now WebP resources: `dashboard_bg.webp` (`19.1 KB`), `dashboard_bg_light.webp` (`45.1 KB`), and `dashboard_bg_dark.webp` (`37.8 KB`).
 5. Fresh `git diff --check` passed after code and docs synchronization.
 
+Final 1.11.0 build / signing slice:
+
+1. `./gradlew.bat :app:assembleRelease` passed for `1.11.0 / versionCode 222`.
+2. `./gradlew.bat :app:assembleDebug` passed for `1.11.0 / versionCode 222`.
+3. `app/build/outputs/apk/release/output-metadata.json` confirms `versionName = 1.11.0`, `versionCode = 222`, output `PaykiTodo-1.11.0-release.apk`.
+4. `app/build/outputs/apk/debug/output-metadata.json` confirms `versionName = 1.11.0`, `versionCode = 222`, output `PaykiTodo-1.11.0-debug.apk`.
+5. APK sizes: release `4.83 MB`; debug `22.12 MB`.
+6. `apksigner verify --verbose --print-certs app/build/outputs/apk/release/PaykiTodo-1.11.0-release.apk` passed with one v2 signer.
+7. `Pixel_8` AVD was started as `emulator-5554`; an older differently signed `com.paykitodo.app` install was removed from the emulator, then `app/build/outputs/apk/release/PaykiTodo-1.11.0-release.apk` installed successfully.
+8. Release startup / main-surface smoke test passed on `emulator-5554`: `MainActivity` opened, the daily-board UI tree was readable, the drawer exposed `每日看板 / 待办 / 日历 / 规划台 / AI 报告 / 历史记录 / 设置` and did not expose a focus entry, and `待办` / `日历` / `规划台` / `AI 报告` / `设置` main surfaces opened without an app `FATAL EXCEPTION` in logcat.
+
 Secret / release safety checks already performed:
 
-1. `git check-ignore -v keystore.properties release/PaykiTodo-release.jks app/build/outputs/apk/release/PaykiTodo-1.10.3-release.apk app/build/outputs/apk/debug/PaykiTodo-1.10.3-debug.apk` confirmed local signing material and APK outputs are ignored.
+1. `git check-ignore -v keystore.properties release/PaykiTodo-release.jks app/build/outputs/apk/release/PaykiTodo-1.11.0-release.apk app/build/outputs/apk/debug/PaykiTodo-1.11.0-debug.apk` confirmed local signing material and APK outputs are ignored.
 2. `git ls-files` only reports `keystore.properties.example` for keystore-like tracked files.
 3. Git history search found no committed real keystore/JKS/env/private-key files or common live token prefixes; keyword-like matches are code identifiers, templates, placeholder examples, or test URLs.
 
 ## Remaining Device / Browser Verification
 
-1. Install `app/build/outputs/apk/debug/PaykiTodo-1.10.3-debug.apk` on the user's phone if validating the latest built widget APK.
+1. Install `app/build/outputs/apk/debug/PaykiTodo-1.11.0-debug.apk` on the user's phone if validating the latest built widget APK.
 2. Add / resize the `今日看板` widget and confirm the top header is gone, content remains readable, cross-day / minute refresh updates the list, and an active checked-in in-progress event shows `⏱ 签到中 Xm`.
 3. Add / resize the `倒数日` widget and confirm scroll behavior, multi-line row readability, and exact todo/event row deep links.
 4. Verify Planning Desk imports for `@地点`, quoted `@地点`, and `地点：...`.
 5. Verify ordinary event import creates only an event.
 6. Verify manually enabled linked todo uses event end time as DDL and has no fixed generated note.
 7. Verify desktop-web event color swatches save correctly.
-8. After a focus-removal APK is built, confirm no user-facing focus / pomodoro entry remains in app UI, widgets, desktop web, backup, or AI reports.
+8. Confirm no user-facing focus / pomodoro entry remains in app UI, widgets, desktop web, backup, or AI reports.
 9. Verify drawer / todo navigation on device: drawer has single-line `待办`, no expanded group list, no standalone `分组管理`, and the todo page chip bar can filter, create, edit, and delete groups.
 10. Verify multi-group todos on device: creating / editing a todo with multiple groups preserves all selected chips after reopening, selecting multiple group filters uses intersection semantics, and group edit / delete does not silently drop unrelated memberships.
 11. Verify multi-group todos in desktop browser: `/api/todos` exposes `groupIds`, the editor preserves all selected groups, cards / previews / board rows show all group labels, and selecting multiple filter chips uses intersection filtering.
@@ -429,6 +441,13 @@ Secret / release safety checks already performed:
 - Version numbers must be written exactly as `v1.10.3`, `1.10.3`, or `1.11.0 / versionCode 222`; never write Chinese-numeral forms.
 
 ## Android Emulator Verification Rule
+
+Latest emulator trace for this handoff:
+
+- Device: `Pixel_8` AVD as `emulator-5554`.
+- Installed APK: `app/build/outputs/apk/release/PaykiTodo-1.11.0-release.apk`.
+- Checked flows: app launch / `MainActivity`, daily board UI tree, drawer entries, `待办`, `日历`, `规划台`, `AI 报告`, and `设置`.
+- Result: release smoke test passed without an app `FATAL EXCEPTION` in logcat. This does not cover launcher-widget rendering, real notification/vibration/lock-screen behavior, physical-device alarm reliability, real AI vision calls, or real desktop-browser sync.
 
 If an Android Emulator is started or reused, record:
 

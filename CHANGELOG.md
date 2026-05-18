@@ -1,19 +1,27 @@
 # Changelog
 
-## v1.11.0 (开发中)
+## v1.11.0
 
 - 删除番茄钟式专注模式：抽屉入口、全屏专注页面、专注小组件、待办长按“开始专注”、设置里的专注配置、电脑端看板专注统计和 AI 日报专注字段都已移除
 - 数据库迁移进入 `17 → 18`：升级时删除旧 `focus_sessions` 表，并把旧默认“专注”分组并入“例行”，避免已删除功能继续出现在分组 UI 中
 - 备份恢复不再导出或恢复专注记录 / 专注设置；旧备份中残留的 `focusSessions` 字段会被静默忽略
-- 为后续 1.11.0 日程打卡功能预置 `event_check_ins` 表和 `todo_items.checkInEnabled / totalCheckInMinutes` 字段；待办多分组已通过 `todo_group_tags` 落地
+- 日程打卡追踪完整落地：日程编辑器可开启 `打卡追踪`，日程详情、全屏提醒、无障碍提醒、每日看板和电脑端 Web 都能查看或触发签到 / 签退
+- 完成已开启打卡的日程时可自动签退，并按设置显示计划时长、实际投入、签到次数和投入率统计；AI 日报同步新增 `今日日程投入`
+- 待办多分组通过 `todo_group_tags` 落地：手机端和电脑端都可给待办选择多个分组，筛选多个分组时按交集显示
 - Room schema 导出已开启，`app/schemas/com.example.todoalarm.data.AppDatabase/18.json` 记录数据库 18 结构；`ui-tooling-preview` 改为 debug-only 依赖，避免 release 继续携带预览工具依赖
 - AI 日报 / 周报设置新增“报告保留时长”下拉项（30 天 / 90 天 / 365 天 / 永久），生成新报告后会按设置清理过期归档；该设置会进入备份但不导出 API Key
 - 应用启动初始化改用带 `SupervisorJob` 和非致命异常记录的 application scope，避免裸 `CoroutineScope(Dispatchers.IO)` 静默吞掉初始化失败
 - 抽屉导航把“我的任务”收口为单行“待办”，删除展开分组列表和独立“分组管理”入口；待办页顶部新增横向分组筛选 chip，支持点选筛选、长按编辑分组和新建分组
-- 待办支持多分组归属：手机端和电脑端都可为同一待办选择多个分组，选择多个筛选 chip 时按交集显示“同时属于这些分组”的待办
 - 备份导出 / 导入新增 `todoGroupTags`，旧备份会按原 `groupId` 回填多分组关联，避免升级或恢复后丢失原有分组颜色和筛选结果
-- 电脑同步 `/api/todos` 和 `/api/snapshot` 输出并接受 `groupIds`，电脑端 Web 待办编辑器、筛选 chip、卡片、预览和每日看板行都会保留并展示全部分组
-- 验证：`node --check app/src/main/assets/desktop-web/app.js`、`./gradlew.bat :app:compileDebugKotlin`、`git diff --check` 通过；本条仍是开发中 checkpoint，尚未生成新的可安装 APK
+- 电脑同步 `/api/todos` 和 `/api/snapshot` 输出并接受 `groupIds`，电脑端 Web 待办编辑器、筛选 chip、卡片、预览和每日看板行都会保留并展示全部分组；桌面端日程预览也可查看打卡记录并执行签到 / 签退
+- 规划台快捷栏精简为 `子任务` 和 `公告`，日程 / DDL / 提醒 / 分组继续通过自然文本和标签输入，避免快捷栏变回按钮堆
+- 规划台新增 `从图片识别日程`：可选择课表 / 日程截图，调用标记为支持图片识别的 AI 源，把识别出的 Markdown 追加到当前规划文档，再由现有“识别”预览流程导入
+- AI 源配置新增 `此服务支持图片识别` 能力位；图片识别按 OpenAI-compatible vision 消息格式调用，失败时按 Provider 顺序回退
+- AI 日报 / 周报、课表模板、桌面规划台等热路径改用范围查询或单条查询，电脑同步业务路由改成 suspend handler，避免在业务层到处 `runBlocking`
+- Android `今日看板` 小组件去掉顶部三横线 / 标题 / 日期栏，独立 `倒数日` 小组件改成可滚动每日看板风格列表；两个小组件都由 Provider 自己按分钟刷新，`updatePeriodMillis=0`
+- release 构建启用 R8 和资源收缩，三张看板背景图改为 WebP；当前 `PaykiTodo-1.11.0-release.apk` 为 `4.83 MB`
+- 版本号升级到 `1.11.0` / `versionCode 222`
+- 验证：`./gradlew.bat :app:assembleRelease`、`./gradlew.bat :app:assembleDebug`、release APK 元数据检查、`apksigner verify`、`git check-ignore` 和 `Pixel_8 / emulator-5554` release 启动 / 主入口 smoke test 通过
 
 ## v1.10.3
 

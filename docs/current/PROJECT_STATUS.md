@@ -7,28 +7,31 @@
 - Package name: `com.paykitodo.app`
 - Target platform: Android 14 / API 34
 - Current version in code:
-  - `versionName = "1.10.3"`
-  - `versionCode = 221`
+  - `versionName = "1.11.0"`
+  - `versionCode = 222`
 
 ## Current Build Facts
 
 - Latest `1.10.2` signed release APK:
   - `app/build/outputs/apk/release/PaykiTodo-1.10.2-release.apk`
   - Published as GitHub Release tag `v1.10.2`
-- Latest signed release APK built in this round:
-  - `app/build/outputs/apk/release/PaykiTodo-1.10.3-release.apk`
-- Latest debug APK built in this round:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.10.3-debug.apk`
-- Verification completed for this `1.10.3` continuation:
+- Latest signed release APK built locally:
+  - `app/build/outputs/apk/release/PaykiTodo-1.11.0-release.apk`
+- Latest debug APK built locally:
+  - `app/build/outputs/apk/debug/PaykiTodo-1.11.0-debug.apk`
+- Verification completed for the `1.11.0 / versionCode 222` build:
   - `node --check app/src/main/assets/desktop-web/app.js`
   - `./gradlew.bat :app:testDebugUnitTest`
   - `git diff --check`
   - `./gradlew.bat :app:assembleRelease`
-  - APK metadata inspected: `versionName = 1.10.3`, `versionCode = 221`, output `PaykiTodo-1.10.3-release.apk`
-  - `apksigner verify --verbose --print-certs app/build/outputs/apk/release/PaykiTodo-1.10.3-release.apk` passed with one v2 signer
-  - `git check-ignore -v keystore.properties release/PaykiTodo-release.jks app/build/outputs/apk/release/PaykiTodo-1.10.3-release.apk app/build/outputs/apk/debug/PaykiTodo-1.10.2-debug.apk` confirmed local signing material and APK outputs are ignored
+  - Release APK metadata inspected: `versionName = 1.11.0`, `versionCode = 222`, output `PaykiTodo-1.11.0-release.apk`
+  - `apksigner verify --verbose --print-certs app/build/outputs/apk/release/PaykiTodo-1.11.0-release.apk` passed with one v2 signer
   - `./gradlew.bat :app:assembleDebug`
-  - Debug APK metadata inspected: `versionName = 1.10.3`, `versionCode = 221`, output `PaykiTodo-1.10.3-debug.apk`
+  - Debug APK metadata inspected: `versionName = 1.11.0`, `versionCode = 222`, output `PaykiTodo-1.11.0-debug.apk`
+  - APK size inspection: release `4.83 MB`, debug `22.12 MB`
+  - `Pixel_8` AVD was started as `emulator-5554`; after removing an older differently signed emulator install, `PaykiTodo-1.11.0-release.apk` installed and launched successfully
+  - Release smoke test opened `MainActivity`, read the daily-board UI tree, opened the drawer, and loaded `待办` / `日历` / `规划台` / `AI 报告` / `设置` without an app `FATAL EXCEPTION` in logcat
+  - `git check-ignore -v keystore.properties release/PaykiTodo-release.jks app/build/outputs/apk/release/PaykiTodo-1.11.0-release.apk app/build/outputs/apk/debug/PaykiTodo-1.11.0-debug.apk` confirmed local signing material and APK outputs are ignored
   - Widget continuation: `./gradlew.bat :app:compileDebugKotlin`
   - Widget continuation: static search confirmed removed widget header IDs and old fixed countdown-row IDs are no longer referenced
   - Widget continuation: `git diff --check`
@@ -41,7 +44,7 @@
 
 ## Current Worktree Reality
 
-The repository is implementing the larger `1.11.0 / versionCode 222` goal from the current `1.10.3 / 221` baseline. The Android widget requirements have already landed in the current baseline. The first `1.11.0` goal slice removes the former focus / pomodoro mode and prepares the database for later check-in and multi-group todo work. The second small `1.11.0` slice adds database schema export, debug-only Compose tooling, structured startup initialization, and AI-report retention cleanup. The navigation slice renames the drawer task entry to single-line `待办`, removes the drawer group expansion and standalone `分组管理` entry, and moves group filtering / group maintenance into the todo page chip bar. The multi-group slice implements multi-group todo relationships across phone UI, repository queries, backup/restore, desktop sync, and desktop Web todo management. The event check-in foundation slice adds event check-in data, backup, repository, and initial desktop-sync API foundations. Phone check-in work now includes the event-editor `打卡追踪` switch, preserving optional event markers when moving events, a calendar-event details card that can load records, show total invested time, and perform `签到` / `签退`, full-screen / accessibility fallback event reminder surfaces that can start a check-in, plus daily-board in-progress event rows that show check-in state and expose compact `签到` / `签退` actions. Desktop Web now also exposes the event-editor `打卡追踪` checkbox and a preview-side check-in card that lists records and performs `签到` / `签退` through the desktop sync endpoints. The Android `今日看板` widget now also shows active in-progress event check-in status without exposing launcher-side sign-in / sign-out buttons. Settings -> `日历与提醒` now stores the two event check-in behavior preferences for automatic checkout on event completion and showing investment statistics on completion. Completing a check-in-enabled event now uses those settings to auto-checkout any active record and show the phone-side investment summary, while desktop sync item-completion responses can include the same summary JSON. AI daily reports now include today's event check-in investment minutes in both the AI prompt and local fallback report. Phone Planning Desk shortcut UI has also been simplified to `子任务` and `公告`, with normal task / DDL / reminder / group / schedule input staying in natural text and parser tags. The latest performance slices replace several full-table reads with narrow range / single-row queries and move desktop sync business handlers to suspend calls, leaving only one `runBlocking` boundary in the socket client thread. Phone Planning Desk can now call vision-capable AI providers from `更多 -> 从图片识别日程`, append recognized schedule Markdown to the current note, and still require the normal preview/import flow before writing database items. Release builds now enable R8/resource shrinking and use WebP dashboard backgrounds; the latest signed release APK size check is `4.83 MB`. The full `1.11.0` version bump is still pending.
+The repository now builds the larger `1.11.0 / versionCode 222` goal. The Android widget requirements have landed. The first `1.11.0` goal slice removes the former focus / pomodoro mode and prepares the database for later check-in and multi-group todo work. The second small `1.11.0` slice adds database schema export, debug-only Compose tooling, structured startup initialization, and AI-report retention cleanup. The navigation slice renames the drawer task entry to single-line `待办`, removes the drawer group expansion and standalone `分组管理` entry, and moves group filtering / group maintenance into the todo page chip bar. The multi-group slice implements multi-group todo relationships across phone UI, repository queries, backup/restore, desktop sync, and desktop Web todo management. The event check-in foundation slice adds event check-in data, backup, repository, and initial desktop-sync API foundations. Phone check-in work now includes the event-editor `打卡追踪` switch, preserving optional event markers when moving events, a calendar-event details card that can load records, show total invested time, and perform `签到` / `签退`, full-screen / accessibility fallback event reminder surfaces that can start a check-in, plus daily-board in-progress event rows that show check-in state and expose compact `签到` / `签退` actions. Desktop Web now also exposes the event-editor `打卡追踪` checkbox and a preview-side check-in card that lists records and performs `签到` / `签退` through the desktop sync endpoints. The Android `今日看板` widget now also shows active in-progress event check-in status without exposing launcher-side sign-in / sign-out buttons. Settings -> `日历与提醒` now stores the two event check-in behavior preferences for automatic checkout on event completion and showing investment statistics on completion. Completing a check-in-enabled event now uses those settings to auto-checkout any active record and show the phone-side investment summary, while desktop sync item-completion responses can include the same summary JSON. AI daily reports now include today's event check-in investment minutes in both the AI prompt and local fallback report. Phone Planning Desk shortcut UI has also been simplified to `子任务` and `公告`, with normal task / DDL / reminder / group / schedule input staying in natural text and parser tags. The latest performance slices replace several full-table reads with narrow range / single-row queries and move desktop sync business handlers to suspend calls, leaving only one `runBlocking` boundary in the socket client thread. Phone Planning Desk can now call vision-capable AI providers from `更多 -> 从图片识别日程`, append recognized schedule Markdown to the current note, and still require the normal preview/import flow before writing database items. Release builds now enable R8/resource shrinking and use WebP dashboard backgrounds; the latest signed `PaykiTodo-1.11.0-release.apk` size check is `4.83 MB`, and release startup / main-surface smoke testing passed on `Pixel_8 / emulator-5554`.
 
 Most important current baseline facts:
 
@@ -85,7 +88,7 @@ Most important current baseline facts:
 - Phone Planning Desk shortcut toolbar now defaults to a minimal `子任务` / `公告` pair; task, DDL, reminder, group, date, and schedule entry are intentionally handled through natural text, explicit tags, and the preview parser instead of a crowded button grid.
 - Phone Planning Desk overflow now supports `从图片识别日程`; image recognition uses only AI providers marked as supporting vision, compresses selected images before upload, appends Markdown recognition output to the current note, and avoids direct database writes until the user runs the normal `识别` preview/import flow.
 - Settings -> `AI 调用配置` provider editing includes a compact `此服务支持图片识别` switch, persisted as `supportsVision` and excluded from any need to discover provider capabilities automatically.
-- Release builds now enable R8 minification and resource shrinking; `assembleRelease` succeeded with this configuration and produced a `4.83 MB` APK for the current `1.10.3 / 221` baseline.
+- Release builds now enable R8 minification and resource shrinking; `assembleRelease` succeeded with this configuration and produced `app/build/outputs/apk/release/PaykiTodo-1.11.0-release.apk` at `4.83 MB`.
 - The dashboard background art under `drawable-nodpi` is now stored as WebP resources (`dashboard_bg.webp`, `dashboard_bg_light.webp`, `dashboard_bg_dark.webp`) while existing resource names remain stable for app and widget references.
 - ZIP-level inspection found no `androidx/compose/material/icons` entries in the release APK after R8, so `material-icons-extended` is currently shrunk out sufficiently and does not need replacement.
 - AI daily-report and weekly-report context collection now uses range-limited DAO queries for completed todos, missed todos, active DDL-backed todos, and overlapping active events instead of loading the full todo table.

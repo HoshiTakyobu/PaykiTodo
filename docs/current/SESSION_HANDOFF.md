@@ -29,7 +29,8 @@ Long-running Codex sessions can become unreliable. This file exists so a new ses
   15. Calendar event details can complete check-in-enabled events, auto-checkout active records according to settings, and show planned/actual/check-in-count/investment-rate completion statistics when enabled.
   16. Desktop sync item completion now uses the same event-completion path and can return `eventCheckInSummary`.
   17. AI daily reports now include today's event check-in investment minutes in both the AI prompt and local fallback report.
-  18. Full `1.11.0 / versionCode 222` version bump is still pending.
+  18. Phone Planning Desk shortcut toolbar is now reduced to `子任务` and `公告`; task, DDL, reminder, group, date, and schedule input remain natural-text / tag parser workflows instead of visible shortcut buttons.
+  19. Full `1.11.0 / versionCode 222` version bump is still pending.
 - Latest published signed release APK:
   - `app/build/outputs/apk/release/PaykiTodo-1.10.2-release.apk`
   - GitHub Release: `https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.10.2`
@@ -142,6 +143,13 @@ Long-running Codex sessions can become unreliable. This file exists so a new ses
 1. Daily-report context now reads today's event check-in total from `event_check_ins`.
 2. The AI daily-report prompt includes `今日日程投入：Y 分钟`.
 3. The local daily-report fallback also writes today's event investment minutes, so the value remains visible when AI is disabled or fails.
+
+## Latest Planning Desk Shortcut Simplification Pass
+
+1. Phone Planning Desk shortcut toolbar now exposes only `子任务` and `公告`.
+2. The toolbar no longer shows task, indent/outdent, DDL, schedule, reminder, group, today, or tomorrow shortcut buttons.
+3. Planning Desk tutorial, README, in-app Wiki, feature ledger, design doc, and examples now describe natural-text / tag input as the main path for tasks, DDL, reminders, groups, dates, and schedules.
+4. The parser and preview workflows are unchanged; this pass reduces visible UI density and prevents the shortcut bar from becoming a button grid again.
 
 ## Previous 1.10.3 Planning Desk Fix Pass
 
@@ -256,6 +264,13 @@ AI daily report event-investment slice:
 1. Fresh `./gradlew.bat :app:compileDebugKotlin` passed after adding `今日日程投入` to daily-report context and fallback text.
 2. Fresh `git diff --check` passed after code and docs synchronization.
 3. No new APK has been built for this slice yet.
+
+Planning Desk shortcut simplification slice:
+
+1. Fresh `./gradlew.bat :app:compileDebugKotlin` passed after removing extra phone shortcut entries.
+2. Static search found no remaining phone `PlanningShortcutSpec` entries for task, DDL, schedule, group, today, tomorrow, or indent shortcuts.
+3. Fresh `git diff --check` passed after code and docs synchronization.
+4. No new APK has been built for this slice yet.
 
 Secret / release safety checks already performed:
 

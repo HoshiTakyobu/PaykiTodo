@@ -113,6 +113,13 @@ Do not push to GitHub unless the user explicitly asks.
 2. The AI daily-report prompt includes `今日日程投入：Y 分钟`.
 3. The local daily-report fallback also writes today's event investment minutes, so the field is visible even when AI is disabled or fails.
 
+### T1-T3 Planning Desk shortcut simplification slice
+
+1. Phone Planning Desk shortcut toolbar now exposes only `子任务` and `公告`.
+2. Removed the crowded shortcut entries for task, indent/outdent, DDL, schedule, reminder, group, today, and tomorrow from the phone toolbar.
+3. Planning Desk tutorial, README, in-app Wiki, and current design docs now say top-level tasks, DDL, reminders, groups, dates, and schedules should be written naturally or with explicit tags instead of through a button grid.
+4. Bottom parser and preview behavior are preserved; this slice only reduces the visible shortcut UI and synchronizes documentation.
+
 ## Verification Completed
 
 ### Widget slice
@@ -203,6 +210,13 @@ Do not push to GitHub unless the user explicitly asks.
 2. `git diff --check` passed after the code and docs sync.
 3. No new APK has been built for this slice yet.
 
+### T1-T3 Planning Desk shortcut simplification slice
+
+1. `./gradlew.bat :app:compileDebugKotlin` passed after removing the extra shortcut entries.
+2. Static search found no remaining phone `PlanningShortcutSpec` entries for task, DDL, schedule, group, today, tomorrow, or indent shortcuts.
+3. `git diff --check` passed after the code and docs sync.
+4. No new APK has been built for this slice yet.
+
 ## Verification Still Needed On Device / Browser
 
 1. Install `app/build/outputs/apk/debug/PaykiTodo-1.10.3-debug.apk` on the physical phone if validating the latest built widget APK.
@@ -217,7 +231,6 @@ The full goal remains active. Major remaining slices:
 
 1. Desktop remaining: event check-in / time tracking still needs desktop web UI.
 2. V1-V6: Planning Desk image recognition through vision-capable AI providers.
-3. T1-T3: Planning Desk shortcut bar simplification and help update.
-4. P6/P7/P9/P10/P8: narrow database queries, countdown widget update metadata, and desktop-sync suspend handler cleanup.
-5. P1/P2/P3: R8/resource shrinking, WebP conversion, icon dependency audit, release launch verification, and final APK-size check.
-6. Final version bump to `1.11.0 / versionCode 222`.
+3. P6/P7/P9/P10/P8: narrow database queries, countdown widget update metadata, and desktop-sync suspend handler cleanup.
+4. P1/P2/P3: R8/resource shrinking, WebP conversion, icon dependency audit, release launch verification, and final APK-size check.
+5. Final version bump to `1.11.0 / versionCode 222`.

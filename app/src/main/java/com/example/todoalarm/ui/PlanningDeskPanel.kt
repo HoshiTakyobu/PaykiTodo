@@ -23,22 +23,14 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Archive
 import androidx.compose.material.icons.rounded.Article
-import androidx.compose.material.icons.rounded.CalendarMonth
 import androidx.compose.material.icons.rounded.Campaign
-import androidx.compose.material.icons.rounded.CheckBox
 import androidx.compose.material.icons.rounded.Delete
-import androidx.compose.material.icons.rounded.Event
 import androidx.compose.material.icons.rounded.ExpandLess
 import androidx.compose.material.icons.rounded.ExpandMore
-import androidx.compose.material.icons.rounded.Folder
-import androidx.compose.material.icons.rounded.FormatIndentDecrease
-import androidx.compose.material.icons.rounded.FormatIndentIncrease
 import androidx.compose.material.icons.rounded.Info
-import androidx.compose.material.icons.rounded.NotificationsNone
 import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material.icons.rounded.PlaylistAdd
 import androidx.compose.material.icons.rounded.Search
-import androidx.compose.material.icons.rounded.Today
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -657,16 +649,7 @@ private fun PlanningShortcutBar(
     onHelp: (String, String) -> Unit
 ) {
     val chips = listOf(
-        PlanningShortcutSpec("任务", Icons.Rounded.CheckBox, PlanningShortcutAction.TaskLine, "把当前行变成一条待办；同一行不会重复插入 - [ ]"),
         PlanningShortcutSpec("子任务", Icons.Rounded.PlaylistAdd, PlanningShortcutAction.SubtaskLine, "在当前行下面新建一条缩进子任务"),
-        PlanningShortcutSpec("缩进", Icons.Rounded.FormatIndentIncrease, PlanningShortcutAction.Indent, "当前行增加一级缩进"),
-        PlanningShortcutSpec("减少缩进", Icons.Rounded.FormatIndentDecrease, PlanningShortcutAction.Outdent, "当前行减少一级缩进"),
-        PlanningShortcutSpec("DDL", Icons.Rounded.Event, PlanningShortcutAction.Insert(" #ddl "), "设置截止时间，例如 #ddl 5.28 23:59 或 #ddl 明天 16:30"),
-        PlanningShortcutSpec("日程", Icons.Rounded.CalendarMonth, PlanningShortcutAction.Insert(" #schedule "), "显式声明日程时间段"),
-        PlanningShortcutSpec("提醒", Icons.Rounded.NotificationsNone, PlanningShortcutAction.Insert(" #remind "), "设置提醒，例如 #remind 5,15,16:30,明天 16:30"),
-        PlanningShortcutSpec("分组", Icons.Rounded.Folder, PlanningShortcutAction.Insert(" #group "), "指定分组，例如 #group 课程"),
-        PlanningShortcutSpec("今日", Icons.Rounded.Today, PlanningShortcutAction.InsertSection("# 今日计划"), "插入标题分区；下面没写日期的时间段按今天理解"),
-        PlanningShortcutSpec("明日", Icons.Rounded.Event, PlanningShortcutAction.InsertSection("# 明天"), "插入标题分区；下面没写日期的时间段按明天理解"),
         PlanningShortcutSpec("公告", Icons.Rounded.Campaign, PlanningShortcutAction.InsertAnnouncement, "在新行插入 #公告 占位，填上日期范围和正文后会显示在每日看板顶部和桌面小组件")
     )
     Row(
@@ -1061,17 +1044,18 @@ private fun planningTutorialPages(): List<PlanningTutorialPage> {
             """.trimIndent()
         ),
         PlanningTutorialPage(
-            title = "2. 点图标可以快速变成任务",
-            subtitle = "不用手敲 - [ ]",
+            title = "2. 快捷栏只保留高频入口",
+            subtitle = "写作区优先",
             lines = listOf(
-                "把光标放在一行文字里，点“任务”图标，这一行会变成待办。",
-                "点“子任务”会在当前行下面新建缩进任务。",
-                "长按任意快捷图标，可以看它的用途说明。"
+                "规划台鼓励直接自然书写，不需要为了按钮去打断思路。",
+                "点“子任务”会在当前行下面新建缩进任务，适合拆解大任务。",
+                "点“公告”会在新行插入 #公告，占位后继续补日期范围和正文。",
+                "长按快捷图标，可以看它的用途说明。"
             ),
             example = """
-                整理材料
-                点“任务”后：
                 - [ ] 整理材料
+                  - [ ] 扫描获奖证明
+                  - [ ] 汇总课程成绩
             """.trimIndent()
         ),
         PlanningTutorialPage(

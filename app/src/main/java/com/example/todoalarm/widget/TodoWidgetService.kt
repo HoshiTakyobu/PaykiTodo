@@ -72,6 +72,7 @@ private class TodoWidgetFactory(
             WidgetRowType.SECTION -> sectionViews(row)
             WidgetRowType.EMPTY -> emptyRowViews(row)
             WidgetRowType.TODO -> todoViews(row)
+            WidgetRowType.COUNTDOWN -> countdownViews(row)
             WidgetRowType.SCHEDULE -> scheduleViews(row)
             WidgetRowType.EVENT -> eventViews(row)
             WidgetRowType.ANNOUNCEMENT -> announcementViews(row)
@@ -123,6 +124,25 @@ private class TodoWidgetFactory(
             setTextColor(R.id.widget_task_title, row.titleColor)
             setTextColor(R.id.widget_task_notes, mutedText)
             setTextColor(R.id.widget_task_badge, row.trailingColor)
+            setInt(R.id.widget_task_strip, "setColorFilter", row.accentColor)
+            setViewVisibility(R.id.widget_task_time, if (row.meta.isBlank()) View.GONE else View.VISIBLE)
+            setViewVisibility(R.id.widget_task_notes, if (row.notes.isBlank()) View.GONE else View.VISIBLE)
+            setViewVisibility(R.id.widget_task_badge, if (row.trailing.isBlank()) View.GONE else View.VISIBLE)
+        }
+    }
+
+    private fun countdownViews(row: WidgetBoardRow): RemoteViews {
+        return RemoteViews(context.packageName, R.layout.widget_todo_task_card).apply {
+            setTextViewText(R.id.widget_task_group, row.groupName)
+            setTextViewText(R.id.widget_task_time, row.meta)
+            setTextViewText(R.id.widget_task_title, row.title)
+            setTextViewText(R.id.widget_task_notes, row.notes)
+            setTextViewText(R.id.widget_task_badge, row.trailing)
+            setTextColor(R.id.widget_task_group, row.accentColor)
+            setTextColor(R.id.widget_task_time, mutedText)
+            setTextColor(R.id.widget_task_title, darkText)
+            setTextColor(R.id.widget_task_notes, mutedText)
+            setTextColor(R.id.widget_task_badge, row.accentColor)
             setInt(R.id.widget_task_strip, "setColorFilter", row.accentColor)
             setViewVisibility(R.id.widget_task_time, if (row.meta.isBlank()) View.GONE else View.VISIBLE)
             setViewVisibility(R.id.widget_task_notes, if (row.notes.isBlank()) View.GONE else View.VISIBLE)
@@ -263,6 +283,33 @@ private class TodoWidgetFactory(
             titleColor = darkText,
             metaColor = mutedText
         )
+
+        if (snapshot.countdownItems.isNotEmpty()) {
+            output += sectionRow(-30_000L, "倒数日（${snapshot.countdownItems.size}）", highlight = true)
+            snapshot.countdownItems.take(3).forEach { item ->
+                val targetDate = DailyBoardSnapshotBuilder.countdownTargetDate(item)
+                val days = DailyBoardSnapshotBuilder.countdownDays(item, today)
+                if (targetDate != null && days != null) {
+                    val group = groups.firstOrNull { it.id == item.groupId }
+                    val accent = if (item.isEvent) eventAccentColor(item) else todoAccentColor(item, groups)
+                    output += WidgetBoardRow(
+                        stableId = 3_000_000L + item.id,
+                        type = WidgetRowType.COUNTDOWN,
+                        itemId = item.id,
+                        title = item.title,
+                        groupName = if (days == 0L) "D-Day" else "D-$days",
+                        meta = "${if (item.isEvent) "日程" else "DDL"} · ${targetDate.format(fullDateFormatter)}",
+                        notes = group?.name.orEmpty(),
+                        trailing = "倒数日",
+                        titleColor = darkText,
+                        metaColor = mutedText,
+                        trailingColor = accent,
+                        accentColor = accent,
+                        opensCalendar = item.isEvent
+                    )
+                }
+            }
+        }
 
         output += sectionRow(-1L, "今日待办（${snapshot.todoItems.size}）", highlight = true)
         if (snapshot.todoItems.isEmpty()) {
@@ -430,6 +477,13 @@ private class TodoWidgetFactory(
         return Intent().apply {
             when (this@fillInIntent.type) {
                 WidgetRowType.TODO -> putExtra(MainActivity.EXTRA_OPEN_TASKS, true)
+                WidgetRowType.COUNTDOWN -> {
+                    if (opensCalendar) {
+                        putExtra(MainActivity.EXTRA_OPEN_CALENDAR, true)
+                    } else {
+                        putExtra(MainActivity.EXTRA_OPEN_TASKS, true)
+                    }
+                }
                 WidgetRowType.EVENT,
                 WidgetRowType.SCHEDULE -> putExtra(MainActivity.EXTRA_OPEN_CALENDAR, true)
                 WidgetRowType.ANNOUNCEMENT -> putExtra(MainActivity.EXTRA_OPEN_PLANNING_NOTE_ID, sourceNoteId)
@@ -455,6 +509,7 @@ private class TodoWidgetFactory(
         SECTION,
         EMPTY,
         TODO,
+        COUNTDOWN,
         SCHEDULE,
         EVENT,
         ANNOUNCEMENT
@@ -478,6 +533,7 @@ private class TodoWidgetFactory(
         val trailingColor: Int = 0,
         val accentColor: Int = 0,
         val highlight: Boolean = false,
+        val opensCalendar: Boolean = false,
         val events: List<WidgetBoardRow> = emptyList(),
         val tomorrowEvents: List<WidgetBoardRow> = emptyList()
     )

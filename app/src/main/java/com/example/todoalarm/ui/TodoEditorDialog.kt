@@ -118,6 +118,9 @@ fun TodoEditorDialog(
     var reminderDeliveryMode by remember(initialTodo?.id) {
         mutableStateOf(initialTodo?.reminderDeliveryModeEnum ?: ReminderDeliveryMode.FULLSCREEN)
     }
+    var countdownEnabled by remember(initialTodo?.id) {
+        mutableStateOf(initialTodo?.countdownEnabled == true)
+    }
     var recurringEnabled by remember(initialTodo?.id) { mutableStateOf(initialTodo?.isRecurring == true) }
     var recurrenceType by remember(initialTodo?.id) {
         mutableStateOf(initialTodo?.recurrenceTypeEnum ?: RecurrenceType.DAILY)
@@ -190,6 +193,7 @@ fun TodoEditorDialog(
                     ringEnabled = ringEnabled,
                     vibrateEnabled = vibrateEnabled,
                     reminderDeliveryMode = reminderDeliveryMode,
+                    countdownEnabled = countdownEnabled && hasDueDate,
                     recurrence = RecurrenceConfig(
                         enabled = !isHistory && hasDueDate && recurringEnabled,
                         type = recurrenceType,
@@ -227,6 +231,7 @@ fun TodoEditorDialog(
                                 if (!checked) {
                                     reminderEnabled = false
                                     recurringEnabled = false
+                                    countdownEnabled = false
                                 }
                             },
                             thumbContent = null
@@ -254,6 +259,26 @@ fun TodoEditorDialog(
                         value = groups.firstOrNull { it.id == groupId }?.name ?: "未分组",
                         onClick = { showGroupPicker = true }
                     )
+                }
+
+                if (hasDueDate) {
+                    TodoEditorBlock(title = "倒数日") {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                                Text("在每日看板显示倒数日", fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
+                                Text("适合考试、报名截止、论文提交等关键目标。", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+                            }
+                            Switch(
+                                checked = countdownEnabled,
+                                onCheckedChange = { countdownEnabled = it },
+                                thumbContent = null
+                            )
+                        }
+                    }
                 }
 
                 MoreOptionsToggle(

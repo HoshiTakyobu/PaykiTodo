@@ -16,6 +16,7 @@ data class CalendarEventDraft(
     val ringEnabled: Boolean,
     val vibrateEnabled: Boolean,
     val reminderDeliveryMode: ReminderDeliveryMode = ReminderDeliveryMode.NOTIFICATION,
+    val countdownEnabled: Boolean = false,
     val recurrence: RecurrenceConfig = RecurrenceConfig(),
     val groupId: Long = 0,
     val groupName: String = ""

@@ -128,6 +128,7 @@ private fun RecurringTaskTemplate.toJson(): JSONObject {
         put("notes", notes)
         put("location", location)
         put("accentColorHex", accentColorHex)
+        put("countdownEnabled", countdownEnabled)
         put("allDay", allDay)
         put("groupId", groupId)
         put("dueHour", dueHour)
@@ -163,6 +164,7 @@ private fun TodoItem.toJson(): JSONObject {
         put("allDay", allDay)
         put("location", location)
         put("accentColorHex", accentColorHex)
+        put("countdownEnabled", countdownEnabled)
         put("reminderAtMillis", reminderAtMillis)
         put("reminderOffsetsCsv", reminderOffsetsCsv)
         put("reminderEnabled", reminderEnabled)
@@ -325,6 +327,7 @@ private fun JSONArray?.toTemplates(): List<RecurringTaskTemplate> {
                     notes = item.optString("notes"),
                     location = item.optString("location", ""),
                     accentColorHex = item.optStringOrNull("accentColorHex"),
+                    countdownEnabled = item.optBoolean("countdownEnabled", false),
                     allDay = item.optBoolean("allDay", false),
                     groupId = item.optLong("groupId", 0L),
                     dueHour = item.optInt("dueHour"),
@@ -368,6 +371,7 @@ private fun JSONArray?.toTasks(): List<TodoItem> {
                     allDay = item.optBoolean("allDay", false),
                     location = item.optString("location", ""),
                     accentColorHex = item.optStringOrNull("accentColorHex"),
+                    countdownEnabled = item.optBoolean("countdownEnabled", false),
                     reminderAtMillis = item.optLongOrNull("reminderAtMillis"),
                     reminderOffsetsCsv = item.optString("reminderOffsetsCsv", item.optIntOrNull("reminderOffsetMinutes")?.toString().orEmpty()),
                     reminderEnabled = item.optBoolean("reminderEnabled", false),

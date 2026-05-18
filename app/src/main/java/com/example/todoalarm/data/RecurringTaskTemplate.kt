@@ -16,6 +16,7 @@ data class RecurringTaskTemplate(
     val notes: String = "",
     val location: String = "",
     val accentColorHex: String? = null,
+    val countdownEnabled: Boolean = false,
     val allDay: Boolean = false,
     val groupId: Long,
     val dueHour: Int,

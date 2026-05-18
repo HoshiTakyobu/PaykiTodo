@@ -10,6 +10,7 @@ This file tracks the product at a practical level for new coding sessions.
 - title / notes / group / deadline / multi-reminder fields
 - Todo editor shows title / DDL / group first for new todos and folds notes / reminder input / reminder delivery mode / recurrence / ring / vibration into 更多选项, auto-expanding when editing existing todos that use advanced state
 - Todo editor can choose reminder delivery mode between full-screen reminder and notification reminder; the selected mode is persisted for todos and recurring todo templates
+- Todo editor can mark a DDL-backed task as `倒数日`; the task then uses its DDL date as the countdown target and appears on board / desktop / widget countdown surfaces
 - no-deadline todos; active no-DDL items are treated as `今日待办` across phone board, Android widget board query, desktop board, and desktop todo management
 - lightweight comma-based todo batch import with preview validation
 - todo batch-import DDL supports same-day clock input such as `16:30` / `16：30`, plus Planning Desk-style natural date forms such as `5.28`, `5月28日`, `明天`, and `周五`; date-only values default to `23:59`
@@ -28,6 +29,7 @@ This file tracks the product at a practical level for new coding sessions.
 - board todo block includes missed active todos, today's normal todos, and active no-DDL todos
 - board shows a `今日已专注` focus card with today's completed focus minutes, total focus sessions, completed sessions, and a free-focus entry
 - board view can show today's todos and today's / tomorrow's schedule summary together
+- board can show a `倒数日` card for active countdown-enabled todos / events; todos count down to DDL dates, events count down to event start dates, expired targets are hidden, and tapping rows opens the corresponding todo / event editor
 - board today's schedule hides timed events after they have ended
 - board currently running events can be visually highlighted with a gold outline and subtle glow
 - board greeting card supports compact collapse / expand behavior
@@ -134,6 +136,7 @@ This file tracks the product at a practical level for new coding sessions.
 - day / multi-day / month / agenda style views exist in code, with ongoing refinement
 - normal events, all-day events, and recurring events
 - event location / notes / color / reminder settings
+- event editor can mark important events as `倒数日`; the countdown target is the event start date and it appears on board / desktop / widget countdown surfaces
 - calendar reminder editing accepts the same comma-separated multi-reminder syntax as todos
 - event preview keeps showing configured reminder offsets after reminder acknowledgement
 - timeline pending event draft can be canceled by long-pressing blank timeline space and is cleared when opening an existing event
@@ -178,7 +181,7 @@ This file tracks the product at a practical level for new coding sessions.
 ### Android Desktop Widget
 
 - Android launcher exposes a PaykiTodo `今日看板` widget through `TodoWidgetProvider`
-- widget displays active Planning Desk announcements, today todo block, and a combined today/tomorrow schedule board closer to the in-app daily board
+- widget displays active Planning Desk announcements, countdown targets, today todo block, and a combined today/tomorrow schedule board closer to the in-app daily board
 - widget uses RemoteViews `ListView`; rows are adaptive-height, split into greeting / section / empty-card / todo-card / schedule-card / announcement-card types, and no longer limited to five todos, so resizing the launcher widget reveals more board content
 - widget provider declares horizontal / vertical resize mode plus min resize dimensions for better launcher compatibility
 - widget day/night colors are resource-backed, with daily-board background art, dark-mode scrims, and text colors for launcher readability
@@ -196,6 +199,7 @@ This file tracks the product at a practical level for new coding sessions.
 - widget `1.9.22` refresh pass updates both the header and RemoteViews `ListView` rows on normal widget updates, date changes, time/timezone changes, and app replacement; the RemoteAdapter cache key includes the current date to reduce stale launcher row reuse
 - widget `1.9.22` light-mode pass uses more opaque warm card surfaces plus darker primary/muted/accent colors so text remains readable over the light board background
 - widget event locations display saved text directly; display code no longer prepends `@`, so user-entered `@地点` is not duplicated
+- widget `1.10.0` pass adds a countdown section to the 今日看板 widget and registers an independent PaykiTodo `倒数日` widget that shows the nearest 3 active countdown targets; tapping a todo target opens My Tasks and tapping an event target opens Calendar
 - repository todo mutations and Planning Desk note edits / delete / archive operations notify widget data refresh through the application-level widget callback
 
 ### Data / Backup / Diagnostics
@@ -260,8 +264,8 @@ This file tracks the product at a practical level for new coding sessions.
 
 ### Data / Performance
 
-- `todo_items` has Room indices for board todo queries, board event range queries, active reminders, group+DDL sorting, recurring-series lookup, and desktop todo paging / sorting.
-- Database version is `16`; `MIGRATION_13_14` creates the initial `todo_items` performance indices on upgraded installs, `MIGRATION_14_15` adds / backfills `planning_notes.hasAnnouncementHint` plus the indexed announcement lookup path, and `MIGRATION_15_16` adds desktop todo paging plus AI-report generated-time/type indices.
+- `todo_items` has Room indices for board todo queries, board event range queries, active reminders, group+DDL sorting, recurring-series lookup, desktop todo paging / sorting, and active countdown lookup.
+- Database version is `17`; `MIGRATION_13_14` creates the initial `todo_items` performance indices on upgraded installs, `MIGRATION_14_15` adds / backfills `planning_notes.hasAnnouncementHint` plus the indexed announcement lookup path, `MIGRATION_15_16` adds desktop todo paging plus AI-report generated-time/type indices, and `MIGRATION_16_17` adds countdown fields / indices for todos and recurring templates.
 - Desktop Web first connection now uses a lightweight board snapshot (`/api/snapshot?scope=board`); todo management uses paged/searchable `/api/todos?offset=...&limit=...&q=...`, and the event timeline uses visible-range `/api/events?start=...&end=...` instead of sharing one full snapshot for every management tab.
 - Main phone board/task UI uses a Room aggregate Flow for today's focus stats, active-todo-only observation, and today/tomorrow event range observation instead of merging full focus sessions, all todos, and full active events into ordinary board/task state.
 - Main phone board/task UI uses the shared active-todo section classifier for missed / today / upcoming lists, so no-DDL active todos keep the same "today every day" behavior in My Tasks and the board.
@@ -271,6 +275,7 @@ This file tracks the product at a practical level for new coding sessions.
 - `AI 报告` uses paged Room queries by type, keyword, time range, and limit; the archive no longer observes the full report history just to render or filter the first page.
 - Calendar month/list/all-day surfaces reuse one top-level event-by-date index instead of rebuilding date buckets independently in each view; the timeline date span is represented by a lightweight date window instead of allocating a full long-range date list.
 - Phone Calendar subscribes only to active events overlapping the current padded visible date range, while notification / deep-link navigation to a far event expands that query range before focusing the target date.
+- Countdown-enabled todos / events are included in board/widget/desktop board data without requiring a full historical scan; past countdown targets are filtered out before rendering.
 - Future large-history work can still add real FTS for report content search and real-device calendar profiling; the biggest desktop full-snapshot coupling has been split, and desktop todo management now pages/searches `/api/todos` instead of returning the complete todo list by design.
 
 ## Implemented But Still Being Polished

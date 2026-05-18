@@ -34,6 +34,10 @@ import java.time.ZoneId
         Index(
             value = ["itemType", "completed", "canceled", "missed", "dueAtMillis", "createdAtMillis"],
             name = "index_todo_items_desktop_todo_paging"
+        ),
+        Index(
+            value = ["completed", "canceled", "countdownEnabled", "itemType", "dueAtMillis", "startAtMillis"],
+            name = "index_todo_items_countdown"
         )
     ]
 )
@@ -48,6 +52,7 @@ data class TodoItem(
     val allDay: Boolean = false,
     val location: String = "",
     val accentColorHex: String? = null,
+    val countdownEnabled: Boolean = false,
     val reminderAtMillis: Long?,
     val reminderOffsetsCsv: String = "",
     val reminderEnabled: Boolean,

@@ -31,6 +31,7 @@ data class DesktopSyncSnapshot(
 data class DesktopDailyBoardSnapshot(
     val date: String,
     val nowMillis: Long,
+    val countdownItems: List<TodoItem>,
     val todoItems: List<TodoItem>,
     val allTodayEvents: List<TodoItem>,
     val visibleTodayEvents: List<TodoItem>,
@@ -71,6 +72,7 @@ fun DailyBoardSnapshot.toDesktopSyncBoard(
     return DesktopDailyBoardSnapshot(
         date = date.toString(),
         nowMillis = nowMillis,
+        countdownItems = countdownItems,
         todoItems = todoItems,
         allTodayEvents = allTodayEvents,
         visibleTodayEvents = visibleTodayEvents,
@@ -85,6 +87,7 @@ private fun DesktopDailyBoardSnapshot.toDesktopJson(groupsById: Map<Long, TaskGr
     return JSONObject().apply {
         put("date", date)
         put("nowMillis", nowMillis)
+        put("countdownItems", JSONArray(countdownItems.map { it.toDesktopJson(groupsById[it.groupId]) }))
         put("todoItems", JSONArray(todoItems.map { it.toDesktopJson(groupsById[it.groupId]) }))
         put("allTodayEvents", JSONArray(allTodayEvents.map { it.toDesktopJson(groupsById[it.groupId]) }))
         put("visibleTodayEvents", JSONArray(visibleTodayEvents.map { it.toDesktopJson(groupsById[it.groupId]) }))
@@ -129,6 +132,7 @@ fun TodoItem.toDesktopJson(group: TaskGroup?): JSONObject {
         put("canceled", canceled)
         put("missed", missed)
         put("allDay", allDay)
+        put("countdownEnabled", countdownEnabled)
         put("isRecurring", isRecurring)
         put("recurringSeriesId", recurringSeriesId)
         put("hasDueDate", hasDueDate)

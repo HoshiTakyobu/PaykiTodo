@@ -161,6 +161,9 @@ internal fun CalendarEventEditorDialog(
     var reminderDeliveryMode by remember(initialEvent?.id, seedDraft) {
         mutableStateOf(initialEvent?.reminderDeliveryModeEnum ?: seedDraft?.reminderDeliveryMode ?: defaultReminderDeliveryMode)
     }
+    var countdownEnabled by remember(initialEvent?.id, seedDraft) {
+        mutableStateOf(initialEvent?.countdownEnabled == true || seedDraft?.countdownEnabled == true)
+    }
     var recurringEnabled by remember(initialEvent?.id, seedDraft) { mutableStateOf(initialEvent?.isRecurring == true || seedDraft?.recurrence?.enabled == true) }
     var recurrenceType by remember(initialEvent?.id, seedDraft) {
         mutableStateOf(initialEvent?.recurrenceTypeEnum ?: seedDraft?.recurrence?.type ?: RecurrenceType.DAILY)
@@ -222,6 +225,7 @@ internal fun CalendarEventEditorDialog(
                     ringEnabled = ringEnabled,
                     vibrateEnabled = vibrateEnabled,
                     reminderDeliveryMode = reminderDeliveryMode,
+                    countdownEnabled = countdownEnabled,
                     recurrence = RecurrenceConfig(
                         enabled = recurringEnabled,
                         type = recurrenceType,
@@ -352,6 +356,27 @@ internal fun CalendarEventEditorDialog(
                         modifier = Modifier.fillMaxWidth(),
                         minLines = 3
                     )
+                }
+
+                EditorBlock(title = "倒数日") {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Column(
+                            modifier = Modifier.weight(1f),
+                            verticalArrangement = Arrangement.spacedBy(2.dp)
+                        ) {
+                            Text("在每日看板显示倒数日", fontWeight = FontWeight.SemiBold)
+                            Text("适合期末考试、面试、报名截止等重大日程。", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                        Switch(
+                            checked = countdownEnabled,
+                            onCheckedChange = { countdownEnabled = it },
+                            thumbContent = null
+                        )
+                    }
                 }
 
                 EditorBlock(title = "提醒") {
@@ -544,6 +569,7 @@ internal fun CalendarEventEditorDialog(
                                         ringEnabled = ringEnabled,
                                         vibrateEnabled = vibrateEnabled,
                                         reminderDeliveryMode = reminderDeliveryMode,
+                                        countdownEnabled = countdownEnabled,
                                         recurrence = RecurrenceConfig(
                                             enabled = true,
                                             type = recurrenceType,

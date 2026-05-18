@@ -67,6 +67,21 @@ interface TodoDao {
     )
     fun observeActiveCalendarEventsInRange(rangeStartMillis: Long, rangeEndMillis: Long): Flow<List<TodoItem>>
 
+    @Query(
+        """
+        SELECT * FROM todo_items
+        WHERE completed = 0
+        AND canceled = 0
+        AND countdownEnabled = 1
+        AND (
+            (itemType = 'TODO' AND dueAtMillis != :noDueDateMillis AND dueAtMillis >= :minTargetMillis)
+            OR (itemType = 'EVENT' AND startAtMillis IS NOT NULL AND startAtMillis >= :minTargetMillis)
+        )
+        ORDER BY COALESCE(startAtMillis, dueAtMillis) ASC, createdAtMillis ASC
+        """
+    )
+    fun observeActiveCountdownItems(noDueDateMillis: Long, minTargetMillis: Long): Flow<List<TodoItem>>
+
     @Query("SELECT * FROM todo_items WHERE id = :id LIMIT 1")
     suspend fun getById(id: Long): TodoItem?
 
@@ -221,6 +236,13 @@ interface TodoDao {
                 AND startAtMillis IS NOT NULL
                 AND startAtMillis < :boardEndMillis
                 AND COALESCE(endAtMillis, startAtMillis) >= :boardStartMillis
+            )
+            OR (
+                countdownEnabled = 1
+                AND (
+                    (itemType = 'TODO' AND dueAtMillis != :noDueDateMillis AND dueAtMillis >= :boardStartMillis)
+                    OR (itemType = 'EVENT' AND startAtMillis IS NOT NULL AND startAtMillis >= :boardStartMillis)
+                )
             )
         )
         ORDER BY dueAtMillis ASC, createdAtMillis ASC

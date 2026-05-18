@@ -11,6 +11,7 @@ data class DailyBoardSnapshot(
     val date: LocalDate,
     val now: LocalDateTime,
     val announcements: List<PlanningAnnouncement>,
+    val countdownItems: List<TodoItem>,
     val todoItems: List<TodoItem>,
     val allTodayEvents: List<TodoItem>,
     val visibleTodayEvents: List<TodoItem>,
@@ -34,6 +35,14 @@ object DailyBoardSnapshotBuilder {
         val calendarItems = items
             .filter { it.isEvent && it.isActive }
             .sortedBy { it.startAtMillis ?: it.dueAtMillis }
+        val countdownItems = items
+            .filter { it.isActive && it.countdownEnabled }
+            .filter { item -> countdownTargetDate(item)?.let { !it.isBefore(today) } == true }
+            .distinctBy { it.id }
+            .sortedWith(
+                compareBy<TodoItem> { countdownTargetMillis(it) ?: Long.MAX_VALUE }
+                    .thenBy { it.createdAtMillis }
+            )
         val todayTodos = activeTaskItems.filter { !it.missed && (!it.hasDueDate || it.dueDate() == today) }
         val missedTodos = activeTaskItems.filter { it.missed }
         val boardTodos = (missedTodos + todayTodos)
@@ -51,6 +60,7 @@ object DailyBoardSnapshotBuilder {
             date = today,
             now = now,
             announcements = PlanningAnnouncementParser.activeAnnouncements(planningNotes, today),
+            countdownItems = countdownItems,
             todoItems = boardTodos,
             allTodayEvents = allTodayEvents,
             visibleTodayEvents = visibleTodayEvents,
@@ -92,6 +102,25 @@ object DailyBoardSnapshotBuilder {
             val end = item.endAtMillis?.let(::millisToLocalDateTime) ?: start
             "${clockTime(start)} - ${clockTime(end)}"
         }
+    }
+
+    fun countdownTargetMillis(item: TodoItem): Long? {
+        return when {
+            item.isEvent -> item.startAtMillis ?: item.dueAtMillis
+            item.isTodo && item.hasDueDate -> item.dueAtMillis
+            else -> null
+        }
+    }
+
+    fun countdownTargetDate(item: TodoItem): LocalDate? {
+        return countdownTargetMillis(item)
+            ?.let(::millisToLocalDateTime)
+            ?.toLocalDate()
+    }
+
+    fun countdownDays(item: TodoItem, today: LocalDate): Long? {
+        val targetDate = countdownTargetDate(item) ?: return null
+        return java.time.temporal.ChronoUnit.DAYS.between(today, targetDate)
     }
 
     fun clockTime(dateTime: LocalDateTime): String {

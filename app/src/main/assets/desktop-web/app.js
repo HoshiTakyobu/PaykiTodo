@@ -311,6 +311,21 @@ function eventTimeText(item) {
   return formatDateTimeLabel(start) + ' - ' + formatDateTimeLabel(end);
 }
 
+function countdownTargetMillis(item) {
+  if (!item || item.countdownEnabled !== true) return null;
+  if (item.itemType === 'EVENT') return item.startAtMillis || item.dueAtMillis || null;
+  return item.hasDueDate ? item.dueAtMillis : null;
+}
+
+function countdownDays(item, boardDateKey) {
+  const target = countdownTargetMillis(item);
+  if (!target) return null;
+  const start = dayStartMillis(boardDateKey || dayKey(new Date()));
+  const targetKey = dayKeyFromMillis(target);
+  const targetStart = dayStartMillis(targetKey);
+  return Math.round((targetStart - start) / (24 * 60 * 60 * 1000));
+}
+
 function renderSummaryCard(label, value) {
   return '<div class="summary-card"><div class="summary-label">' + escapeHtml(label) + '</div><div class="summary-value">' + value + '</div></div>';
 }
@@ -773,6 +788,7 @@ function renderDesktopDailyBoard() {
   }
   const date = dateFromKey(board.date || dayKey(new Date()));
   const todoItems = board.todoItems || [];
+  const countdownItems = board.countdownItems || [];
   const allTodayEvents = board.allTodayEvents || [];
   const visibleTodayEvents = board.visibleTodayEvents || [];
   const tomorrowEvents = board.tomorrowEvents || [];
@@ -795,6 +811,7 @@ function renderDesktopDailyBoard() {
     +   '</div>'
     + '</section>'
     + '<section class="desktop-board-grid">'
+    +   renderBoardCountdownCard(countdownItems, board.date || dayKey(new Date()))
     +   renderBoardTodoCard(todoItems)
     +   renderBoardScheduleCard(board.date || dayKey(new Date()), nowMillis, allTodayEvents, visibleTodayEvents, tomorrowEvents)
     + '</section>';
@@ -840,6 +857,36 @@ function renderBoardTodoCard(items) {
     +   '<div class="desktop-board-card-head"><h3>今日待办</h3><span>' + items.length + ' 项</span></div>'
     +   '<div class="desktop-board-list">' + body + '</div>'
     + '</article>';
+}
+
+function renderBoardCountdownCard(items, boardDateKey) {
+  const visible = (items || []).filter(item => countdownDays(item, boardDateKey) != null && countdownDays(item, boardDateKey) >= 0).slice(0, 5);
+  if (!visible.length) return '';
+  return ''
+    + '<article class="desktop-board-card countdown">'
+    +   '<div class="desktop-board-card-head"><h3>倒数日</h3><span>' + visible.length + ' 项</span></div>'
+    +   '<div class="desktop-board-list">' + visible.map(item => renderBoardCountdownRow(item, boardDateKey)).join('') + '</div>'
+    + '</article>';
+}
+
+function renderBoardCountdownRow(item, boardDateKey) {
+  const accent = item.itemType === 'EVENT' ? (item.accentColorHex || item.groupColorHex || '#4e87e1') : (item.groupColorHex || '#4CB782');
+  const days = countdownDays(item, boardDateKey);
+  const target = countdownTargetMillis(item);
+  const label = days === 0 ? 'D-Day' : ('D-' + days);
+  const rowAttr = item.itemType === 'EVENT'
+    ? 'data-event-id="' + escapeHtml(String(item.id ?? '')) + '"'
+    : 'data-todo-id="' + escapeHtml(String(item.id ?? '')) + '"';
+  const meta = [(item.itemType === 'EVENT' ? '日程' : 'DDL'), target ? formatShortDateLabel(target) : '', item.groupName || ''].filter(Boolean).join(' · ');
+  return ''
+    + '<button type="button" class="desktop-board-row countdown" ' + rowAttr + ' style="--accent:' + escapeHtml(accent) + '">'
+    +   '<span class="desktop-board-strip"></span>'
+    +   '<span class="desktop-board-row-main">'
+    +     '<strong>' + escapeHtml(item.title || '未命名目标') + '</strong>'
+    +     '<small>' + escapeHtml(meta) + '</small>'
+    +   '</span>'
+    +   '<span class="desktop-board-chip">' + escapeHtml(label) + '</span>'
+    + '</button>';
 }
 
 function renderBoardTodoRow(item) {
@@ -1622,6 +1669,7 @@ function clearTodoForm() {
   document.getElementById('todo-recurrence-type').value = 'NONE';
   document.getElementById('todo-recurrence-end').value = '';
   document.getElementById('todo-weekdays').value = '';
+  document.getElementById('todo-countdown').checked = false;
   document.getElementById('todo-ring').checked = true;
   document.getElementById('todo-vibrate').checked = true;
   const hasDueCheckbox = document.getElementById('todo-has-due');
@@ -1646,6 +1694,7 @@ function openTodoEditor(item) {
   document.getElementById('todo-recurrence-type').value = recurrenceTypeValue(item);
   document.getElementById('todo-recurrence-end').value = item.recurrenceEndDate || '';
   document.getElementById('todo-weekdays').value = csvValue(item.recurrenceWeekdays);
+  document.getElementById('todo-countdown').checked = item.countdownEnabled === true;
   document.getElementById('todo-ring').checked = item.ringEnabled !== false;
   document.getElementById('todo-vibrate').checked = item.vibrateEnabled !== false;
   openModal('todo-modal');
@@ -1669,6 +1718,7 @@ function clearEventForm() {
   document.getElementById('event-recurrence-type').value = 'NONE';
   document.getElementById('event-recurrence-end').value = '';
   document.getElementById('event-weekdays').value = '';
+  document.getElementById('event-countdown').checked = false;
   document.getElementById('event-all-day').checked = false;
   document.getElementById('event-ring').checked = true;
   document.getElementById('event-vibrate').checked = true;
@@ -1712,6 +1762,7 @@ function openEventEditor(item) {
   document.getElementById('event-recurrence-type').value = recurrenceTypeValue(item);
   document.getElementById('event-recurrence-end').value = item.recurrenceEndDate || '';
   document.getElementById('event-weekdays').value = csvValue(item.recurrenceWeekdays);
+  document.getElementById('event-countdown').checked = item.countdownEnabled === true;
   document.getElementById('event-all-day').checked = item.allDay === true;
   document.getElementById('event-ring').checked = item.ringEnabled !== false;
   document.getElementById('event-vibrate').checked = item.vibrateEnabled !== false;
@@ -1733,6 +1784,7 @@ function openTodoPreview(item) {
     + '</div>'
     + previewRow('分', '分组', item.groupName || '未分组')
     + previewRow('时', 'DDL', todoDueText(item))
+    + previewRow('倒', '倒数日', item.countdownEnabled ? '已显示在每日看板倒数日' : '未开启')
     + previewRow('循', '循环', recurrenceLabel(item))
     + previewRow('铃', '提醒', reminderText(item))
     + (item.notes ? previewRow('记', '备注', item.notes) : '');
@@ -1753,6 +1805,7 @@ function openEventPreview(item) {
     +   '<div class="preview-main-title">' + escapeHtml(item.title) + '</div>'
     + '</div>'
     + previewRow('时', '时间', eventTimeText(item))
+    + previewRow('倒', '倒数日', item.countdownEnabled ? '已显示在每日看板倒数日' : '未开启')
     + previewRow('循', '重复', recurrenceLabel(item))
     + previewRow('地', '地点', item.location || '未填写')
     + previewRow('铃', '提醒', reminderText(item))
@@ -2059,6 +2112,7 @@ document.getElementById('create-todo').onclick = async () => {
       reminderAt: null,
       reminderOffsetsMinutes: reminderOffsets,
       groupId: Number(document.getElementById('todo-group').value || 0),
+      countdownEnabled: hasDueDate && document.getElementById('todo-countdown').checked,
       ringEnabled: document.getElementById('todo-ring').checked,
       vibrateEnabled: document.getElementById('todo-vibrate').checked,
       reminderDeliveryMode: document.getElementById('todo-reminder-mode').value,
@@ -2136,6 +2190,7 @@ document.getElementById('save-event').onclick = async () => {
       allDay: document.getElementById('event-all-day').checked,
       accentColorHex: document.getElementById('event-color').value || DEFAULT_EVENT_COLOR,
       reminderOffsetsMinutes: parseReminderSpecs(document.getElementById('event-reminder-offsets').value, startAtMillis),
+      countdownEnabled: document.getElementById('event-countdown').checked,
       ringEnabled: document.getElementById('event-ring').checked,
       vibrateEnabled: document.getElementById('event-vibrate').checked,
       reminderDeliveryMode: document.getElementById('event-reminder-mode').value,

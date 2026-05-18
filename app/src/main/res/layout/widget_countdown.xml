@@ -1,0 +1,124 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_countdown_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/widget_board_background"
+    android:padding="10dp">
+
+    <ImageView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:alpha="0.22"
+        android:scaleType="centerCrop"
+        android:src="@drawable/widget_dashboard_bg_image" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        android:padding="12dp">
+
+        <TextView
+            android:id="@+id/widget_countdown_title"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="倒数日"
+            android:textColor="@color/widget_text_primary"
+            android:textSize="20sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/widget_countdown_subtitle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:text="关键目标不要等到最后一天"
+            android:textColor="@color/widget_text_muted"
+            android:textSize="12sp" />
+
+        <TextView
+            android:id="@+id/widget_countdown_empty"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="14dp"
+            android:background="@drawable/widget_todo_soft_card_background"
+            android:padding="14dp"
+            android:text="还没有设置倒数日。编辑待办或日程时打开倒数日开关。"
+            android:textColor="@color/widget_text_muted"
+            android:textSize="13sp" />
+
+        <LinearLayout
+            android:id="@+id/widget_countdown_row_1"
+            style="@style/WidgetCountdownRow"
+            android:layout_marginTop="12dp">
+
+            <ImageView
+                android:id="@+id/widget_countdown_strip_1"
+                style="@style/WidgetCountdownStrip" />
+
+            <TextView
+                android:id="@+id/widget_countdown_days_1"
+                style="@style/WidgetCountdownDays" />
+
+            <LinearLayout style="@style/WidgetCountdownTextBlock">
+
+                <TextView
+                    android:id="@+id/widget_countdown_title_1"
+                    style="@style/WidgetCountdownItemTitle" />
+
+                <TextView
+                    android:id="@+id/widget_countdown_meta_1"
+                    style="@style/WidgetCountdownItemMeta" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/widget_countdown_row_2"
+            style="@style/WidgetCountdownRow">
+
+            <ImageView
+                android:id="@+id/widget_countdown_strip_2"
+                style="@style/WidgetCountdownStrip" />
+
+            <TextView
+                android:id="@+id/widget_countdown_days_2"
+                style="@style/WidgetCountdownDays" />
+
+            <LinearLayout style="@style/WidgetCountdownTextBlock">
+
+                <TextView
+                    android:id="@+id/widget_countdown_title_2"
+                    style="@style/WidgetCountdownItemTitle" />
+
+                <TextView
+                    android:id="@+id/widget_countdown_meta_2"
+                    style="@style/WidgetCountdownItemMeta" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/widget_countdown_row_3"
+            style="@style/WidgetCountdownRow">
+
+            <ImageView
+                android:id="@+id/widget_countdown_strip_3"
+                style="@style/WidgetCountdownStrip" />
+
+            <TextView
+                android:id="@+id/widget_countdown_days_3"
+                style="@style/WidgetCountdownDays" />
+
+            <LinearLayout style="@style/WidgetCountdownTextBlock">
+
+                <TextView
+                    android:id="@+id/widget_countdown_title_3"
+                    style="@style/WidgetCountdownItemTitle" />
+
+                <TextView
+                    android:id="@+id/widget_countdown_meta_3"
+                    style="@style/WidgetCountdownItemMeta" />
+            </LinearLayout>
+        </LinearLayout>
+    </LinearLayout>
+</FrameLayout>

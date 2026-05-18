@@ -356,6 +356,12 @@ object DatabaseMigrations {
         }
     }
 
+    val MIGRATION_16_17 = object : Migration(16, 17) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            ensureCountdownColumns(db)
+        }
+    }
+
     private fun rebuildPlanningNotesTable(db: SupportSQLiteDatabase) {
         db.execSQL("DROP TABLE IF EXISTS `planning_notes_room_expected`")
         createPlanningNotesTable(db, "planning_notes_room_expected")
@@ -444,6 +450,21 @@ object DatabaseMigrations {
             """
             CREATE INDEX IF NOT EXISTS `index_ai_reports_generated_id`
             ON `ai_reports` (`generatedAtMillis`, `id`)
+            """.trimIndent()
+        )
+    }
+
+    private fun ensureCountdownColumns(db: SupportSQLiteDatabase) {
+        if (!tableHasColumns(db, "todo_items", listOf("countdownEnabled"))) {
+            db.execSQL("ALTER TABLE `todo_items` ADD COLUMN `countdownEnabled` INTEGER NOT NULL DEFAULT 0")
+        }
+        if (!tableHasColumns(db, "recurring_task_templates", listOf("countdownEnabled"))) {
+            db.execSQL("ALTER TABLE `recurring_task_templates` ADD COLUMN `countdownEnabled` INTEGER NOT NULL DEFAULT 0")
+        }
+        db.execSQL(
+            """
+            CREATE INDEX IF NOT EXISTS `index_todo_items_countdown`
+            ON `todo_items` (`completed`, `canceled`, `countdownEnabled`, `itemType`, `dueAtMillis`, `startAtMillis`)
             """.trimIndent()
         )
     }

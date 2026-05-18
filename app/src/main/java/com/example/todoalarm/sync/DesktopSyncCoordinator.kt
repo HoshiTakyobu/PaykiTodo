@@ -271,6 +271,7 @@ class DesktopSyncCoordinator(
             ringEnabled = json.optBoolean("ringEnabled", true),
             vibrateEnabled = json.optBoolean("vibrateEnabled", true),
             reminderDeliveryMode = com.example.todoalarm.data.ReminderDeliveryMode.fromStorage(json.optString("reminderDeliveryMode")),
+            countdownEnabled = json.optBoolean("countdownEnabled", false),
             recurrence = recurrence,
             reminderOffsetsMinutes = reminderOffsets
         )
@@ -302,6 +303,7 @@ class DesktopSyncCoordinator(
             reminderDeliveryMode = com.example.todoalarm.data.ReminderDeliveryMode.fromStorage(
                 json.optString("reminderDeliveryMode", original.reminderDeliveryMode)
             ),
+            countdownEnabled = json.optBoolean("countdownEnabled", original.countdownEnabled),
             recurrence = recurrence,
             reminderOffsetsMinutes = reminderOffsets
         )
@@ -333,6 +335,7 @@ class DesktopSyncCoordinator(
             ringEnabled = json.optBoolean("ringEnabled", true),
             vibrateEnabled = json.optBoolean("vibrateEnabled", true),
             reminderDeliveryMode = com.example.todoalarm.data.ReminderDeliveryMode.fromStorage(json.optString("reminderDeliveryMode")),
+            countdownEnabled = json.optBoolean("countdownEnabled", false),
             recurrence = recurrence,
             groupId = groupId
         )
@@ -365,6 +368,7 @@ class DesktopSyncCoordinator(
             ringEnabled = json.optBoolean("ringEnabled", true),
             vibrateEnabled = json.optBoolean("vibrateEnabled", true),
             reminderDeliveryMode = com.example.todoalarm.data.ReminderDeliveryMode.fromStorage(json.optString("reminderDeliveryMode")),
+            countdownEnabled = json.optBoolean("countdownEnabled", original.countdownEnabled),
             recurrence = recurrence,
             groupId = groupId
         )
@@ -626,6 +630,7 @@ class DesktopSyncCoordinator(
         ringEnabled: Boolean,
         vibrateEnabled: Boolean,
         reminderDeliveryMode: com.example.todoalarm.data.ReminderDeliveryMode,
+        countdownEnabled: Boolean,
         recurrence: RecurrenceConfig,
         reminderOffsetsMinutes: List<Int>
     ): TodoDraft {
@@ -642,6 +647,7 @@ class DesktopSyncCoordinator(
             ringEnabled = ringEnabled,
             vibrateEnabled = vibrateEnabled,
             reminderDeliveryMode = reminderDeliveryMode,
+            countdownEnabled = countdownEnabled,
             recurrence = recurrence,
             reminderOffsetsMinutes = reminderOffsetsMinutes
         )
@@ -706,6 +712,7 @@ class DesktopSyncCoordinator(
         ringEnabled: Boolean,
         vibrateEnabled: Boolean,
         reminderDeliveryMode: com.example.todoalarm.data.ReminderDeliveryMode,
+        countdownEnabled: Boolean,
         recurrence: RecurrenceConfig,
         groupId: Long
     ): CalendarEventDraft {
@@ -722,6 +729,7 @@ class DesktopSyncCoordinator(
             ringEnabled = ringEnabled,
             vibrateEnabled = vibrateEnabled,
             reminderDeliveryMode = reminderDeliveryMode,
+            countdownEnabled = countdownEnabled,
             recurrence = recurrence,
             groupId = groupId
         )

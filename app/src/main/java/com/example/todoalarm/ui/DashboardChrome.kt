@@ -636,6 +636,18 @@ internal fun DashboardBody(
                     }
                 }
 
+                if (uiState.countdownItems.isNotEmpty()) {
+                    item {
+                        CountdownBoardCard(
+                            items = uiState.countdownItems.take(5),
+                            today = boardDate,
+                            groups = uiState.groups,
+                            onOpenTodo = onEdit,
+                            onOpenEvent = onEditCalendarEvent
+                        )
+                    }
+                }
+
                 item {
                     TodayFocusCard(
                         minutes = uiState.todayFocusMinutes,
@@ -900,6 +912,138 @@ private fun OnboardingCard(onDismiss: () -> Unit) {
                 ) {
                     Text("知道了", modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp), color = MaterialTheme.colorScheme.onPrimary, fontWeight = FontWeight.SemiBold)
                 }
+            }
+        }
+    }
+}
+
+@Composable
+private fun CountdownBoardCard(
+    items: List<TodoItem>,
+    today: LocalDate,
+    groups: List<TaskGroup>,
+    onOpenTodo: (TodoItem) -> Unit,
+    onOpenEvent: (TodoItem) -> Unit
+) {
+    ElevatedCard(
+        shape = RoundedCornerShape(28.dp),
+        colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.96f))
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 18.dp, vertical = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                    Text(
+                        text = "倒数日",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Text(
+                        text = "关键目标不要等到最后一天才想起来",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                Surface(
+                    shape = RoundedCornerShape(999.dp),
+                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
+                ) {
+                    Text(
+                        text = "${items.size} 项",
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
+                        color = MaterialTheme.colorScheme.primary,
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+            items.forEach { item ->
+                CountdownTargetRow(
+                    item = item,
+                    today = today,
+                    groups = groups,
+                    onClick = {
+                        if (item.isEvent) onOpenEvent(item) else onOpenTodo(item)
+                    }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun CountdownTargetRow(
+    item: TodoItem,
+    today: LocalDate,
+    groups: List<TaskGroup>,
+    onClick: () -> Unit
+) {
+    val group = resolveTaskGroup(item, groups)
+    val accent = colorFromHex(group.colorHex)
+    val days = DailyBoardSnapshotBuilder.countdownDays(item, today) ?: return
+    val targetDate = DailyBoardSnapshotBuilder.countdownTargetDate(item) ?: return
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick),
+        shape = RoundedCornerShape(20.dp),
+        color = accent.copy(alpha = if (isSystemInDarkTheme()) 0.18f else 0.10f),
+        border = BorderStroke(0.8.dp, accent.copy(alpha = 0.32f))
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
+            horizontalArrangement = Arrangement.spacedBy(14.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(
+                    text = if (days == 0L) "D-Day" else "D-$days",
+                    color = accent,
+                    fontWeight = FontWeight.ExtraBold,
+                    style = MaterialTheme.typography.titleLarge,
+                    maxLines = 1
+                )
+                Text(
+                    text = if (days == 0L) "就是今天" else "还剩 ${days} 天",
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
+            Box(
+                modifier = Modifier
+                    .width(4.dp)
+                    .height(44.dp)
+                    .background(accent, RoundedCornerShape(999.dp))
+            )
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                Text(
+                    text = item.title,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Text(
+                    text = "${if (item.isEvent) "日程" else "DDL"} · ${targetDate.monthValue}月${targetDate.dayOfMonth}日 · ${group.name}",
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    style = MaterialTheme.typography.bodySmall,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
             }
         }
     }

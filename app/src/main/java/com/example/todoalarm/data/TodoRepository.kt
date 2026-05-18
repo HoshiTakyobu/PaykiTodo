@@ -23,6 +23,9 @@ class TodoRepository(
     fun observeActiveCalendarEventsInRange(rangeStartMillis: Long, rangeEndMillis: Long): Flow<List<TodoItem>> {
         return todoDao.observeActiveCalendarEventsInRange(rangeStartMillis, rangeEndMillis)
     }
+    fun observeActiveCountdownItems(minTargetMillis: Long): Flow<List<TodoItem>> {
+        return todoDao.observeActiveCountdownItems(NO_DUE_DATE_MILLIS, minTargetMillis)
+    }
     fun observeGroups(): Flow<List<TaskGroup>> = todoDao.observeGroups()
     fun observePlanningNotes(): Flow<List<PlanningNote>> = todoDao.observePlanningNotes()
     fun observePlanningNotesWithAnnouncementHints(): Flow<List<PlanningNote>> = todoDao.observePlanningNotesWithAnnouncementHints()
@@ -1624,6 +1627,7 @@ class TodoRepository(
             allDay = false,
             location = "",
             accentColorHex = null,
+            countdownEnabled = draft.countdownEnabled && draft.dueAt != null,
             reminderAtMillis = reminderAtMillis,
             reminderOffsetsCsv = reminderOffsetsCsv,
             reminderEnabled = normalizedOffsets.isNotEmpty(),
@@ -1713,6 +1717,7 @@ class TodoRepository(
             allDay = draft.allDay,
             location = draft.location.trim(),
             accentColorHex = draft.accentColorHex,
+            countdownEnabled = draft.countdownEnabled,
             reminderAtMillis = reminderAtMillis,
             reminderOffsetsCsv = reminderOffsetsCsv,
             reminderEnabled = normalizedOffsets.isNotEmpty(),
@@ -1788,6 +1793,7 @@ class TodoRepository(
             notes = draft.notes.trim(),
             location = "",
             accentColorHex = null,
+            countdownEnabled = draft.countdownEnabled,
             allDay = false,
             groupId = draft.groupId,
             dueHour = dueAt.hour,
@@ -1829,6 +1835,7 @@ class TodoRepository(
             notes = draft.notes.trim(),
             location = draft.location.trim(),
             accentColorHex = draft.accentColorHex,
+            countdownEnabled = draft.countdownEnabled,
             allDay = draft.allDay,
             groupId = draft.groupId,
             dueHour = draft.startAt.hour,

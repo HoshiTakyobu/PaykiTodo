@@ -35,10 +35,7 @@ data class DesktopDailyBoardSnapshot(
     val todoItems: List<TodoItem>,
     val allTodayEvents: List<TodoItem>,
     val visibleTodayEvents: List<TodoItem>,
-    val tomorrowEvents: List<TodoItem>,
-    val todayFocusMinutes: Int,
-    val todayFocusSessionCount: Int,
-    val todayCompletedFocusSessionCount: Int
+    val tomorrowEvents: List<TodoItem>
 )
 
 fun DesktopSyncStatus.toJson(): JSONObject {
@@ -63,12 +60,7 @@ fun DesktopSyncSnapshot.toJson(groupsById: Map<Long, TaskGroup>): JSONObject {
     }
 }
 
-fun DailyBoardSnapshot.toDesktopSyncBoard(
-    nowMillis: Long,
-    todayFocusMinutes: Int,
-    todayFocusSessionCount: Int,
-    todayCompletedFocusSessionCount: Int
-): DesktopDailyBoardSnapshot {
+fun DailyBoardSnapshot.toDesktopSyncBoard(nowMillis: Long): DesktopDailyBoardSnapshot {
     return DesktopDailyBoardSnapshot(
         date = date.toString(),
         nowMillis = nowMillis,
@@ -76,10 +68,7 @@ fun DailyBoardSnapshot.toDesktopSyncBoard(
         todoItems = todoItems,
         allTodayEvents = allTodayEvents,
         visibleTodayEvents = visibleTodayEvents,
-        tomorrowEvents = tomorrowEvents,
-        todayFocusMinutes = todayFocusMinutes,
-        todayFocusSessionCount = todayFocusSessionCount,
-        todayCompletedFocusSessionCount = todayCompletedFocusSessionCount
+        tomorrowEvents = tomorrowEvents
     )
 }
 
@@ -92,9 +81,6 @@ private fun DesktopDailyBoardSnapshot.toDesktopJson(groupsById: Map<Long, TaskGr
         put("allTodayEvents", JSONArray(allTodayEvents.map { it.toDesktopJson(groupsById[it.groupId]) }))
         put("visibleTodayEvents", JSONArray(visibleTodayEvents.map { it.toDesktopJson(groupsById[it.groupId]) }))
         put("tomorrowEvents", JSONArray(tomorrowEvents.map { it.toDesktopJson(groupsById[it.groupId]) }))
-        put("todayFocusMinutes", todayFocusMinutes)
-        put("todayFocusSessionCount", todayFocusSessionCount)
-        put("todayCompletedFocusSessionCount", todayCompletedFocusSessionCount)
     }
 }
 

@@ -1133,7 +1133,7 @@ private fun planningTutorialPages(): List<PlanningTutorialPage> {
             ),
             example = """
                 #公告 5.16-7.1 期间禁止游玩舞萌DX游戏
-                #公告 2026-05-16 2026-05-20 本周专注保研材料
+                #公告 2026-05-16 2026-05-20 本周推进保研材料
                 > [!公告] 长期提醒：先完成今天三件大事
             """.trimIndent()
         ),

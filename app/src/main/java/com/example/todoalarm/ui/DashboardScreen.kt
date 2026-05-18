@@ -143,7 +143,6 @@ fun DashboardScreen(
     onDefaultSnoozeChange: (Int) -> Unit,
     onDefaultCalendarReminderModeChange: (ReminderDeliveryMode) -> Unit,
     onReminderAudioStrategyChange: (ReminderAudioChannel, Int, Boolean, Int, Boolean) -> Unit,
-    onFocusPreferencesChange: (Int, Int, Boolean, Boolean) -> Unit,
     onPlanningAiProvidersChange: (Boolean, List<PlanningAiProvider>) -> Unit,
     onReportPreferencesChange: (Boolean, Int, Int, Boolean, Int, Int) -> Unit,
     onGenerateDailyReportNow: suspend () -> String?,
@@ -227,10 +226,6 @@ fun DashboardScreen(
             launchRoute?.openCalendar == true -> {
                 calendarFocusDateEpochDay = null
                 section = DashboardSection.CALENDAR
-            }
-            launchRoute?.openFocus == true -> {
-                calendarFocusDateEpochDay = null
-                section = DashboardSection.FOCUS
             }
             launchRoute?.targetEventId != null -> section = DashboardSection.CALENDAR
             launchRoute?.targetPlanningNoteId != null -> {
@@ -548,7 +543,6 @@ fun DashboardScreen(
                     onDefaultSnoozeChange = onDefaultSnoozeChange,
                     onDefaultCalendarReminderModeChange = onDefaultCalendarReminderModeChange,
                     onReminderAudioStrategyChange = onReminderAudioStrategyChange,
-                    onFocusPreferencesChange = onFocusPreferencesChange,
                     onPlanningAiProvidersChange = onPlanningAiProvidersChange,
                     onReportPreferencesChange = onReportPreferencesChange,
                     onGenerateDailyReportNow = onGenerateDailyReportNow,

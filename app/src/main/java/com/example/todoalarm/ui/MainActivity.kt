@@ -205,7 +205,6 @@ class MainActivity : ComponentActivity() {
                     onDefaultSnoozeChange = viewModel::updateDefaultSnooze,
                     onDefaultCalendarReminderModeChange = viewModel::updateDefaultCalendarReminderMode,
                     onReminderAudioStrategyChange = viewModel::updateReminderAudioStrategy,
-                    onFocusPreferencesChange = viewModel::updateFocusPreferences,
                     onPlanningAiProvidersChange = viewModel::updatePlanningAiProviders,
                     onReportPreferencesChange = viewModel::updateReportPreferences,
                     onGenerateDailyReportNow = viewModel::generateDailyReportNow,
@@ -271,7 +270,6 @@ class MainActivity : ComponentActivity() {
         val openBoard = intent.getBooleanExtra(EXTRA_OPEN_BOARD, false)
         val openTasks = intent.getBooleanExtra(EXTRA_OPEN_TASKS, false)
         val openCalendar = intent.getBooleanExtra(EXTRA_OPEN_CALENDAR, false)
-        val openFocus = intent.getBooleanExtra(EXTRA_OPEN_FOCUS, false)
         if (
             settingsTarget == null &&
             todoTarget == null &&
@@ -280,8 +278,7 @@ class MainActivity : ComponentActivity() {
             aiReportTarget == null &&
             !openBoard &&
             !openTasks &&
-            !openCalendar &&
-            !openFocus
+            !openCalendar
         ) return
 
         launchRoute = DashboardLaunchRoute(
@@ -292,8 +289,7 @@ class MainActivity : ComponentActivity() {
             targetAiReportId = aiReportTarget,
             openBoard = openBoard,
             openTasks = openTasks,
-            openCalendar = openCalendar,
-            openFocus = openFocus
+            openCalendar = openCalendar
         )
         launchRouteSerial += 1
         intent.removeExtra(EXTRA_OPEN_SETTINGS_SECTION)
@@ -304,7 +300,6 @@ class MainActivity : ComponentActivity() {
         intent.removeExtra(EXTRA_OPEN_BOARD)
         intent.removeExtra(EXTRA_OPEN_TASKS)
         intent.removeExtra(EXTRA_OPEN_CALENDAR)
-        intent.removeExtra(EXTRA_OPEN_FOCUS)
     }
 
     private fun refreshPermissions() {
@@ -578,7 +573,6 @@ class MainActivity : ComponentActivity() {
         const val EXTRA_OPEN_BOARD = "com.example.todoalarm.OPEN_BOARD"
         const val EXTRA_OPEN_TASKS = "com.example.todoalarm.OPEN_TASKS"
         const val EXTRA_OPEN_CALENDAR = "com.example.todoalarm.OPEN_CALENDAR"
-        const val EXTRA_OPEN_FOCUS = "com.example.todoalarm.OPEN_FOCUS"
         const val EXTRA_OPEN_TODO_ID = "com.example.todoalarm.OPEN_TODO_ID"
         const val EXTRA_OPEN_EVENT_ID = "com.example.todoalarm.OPEN_EVENT_ID"
         const val EXTRA_OPEN_PLANNING_NOTE_ID = "com.example.todoalarm.OPEN_PLANNING_NOTE_ID"
@@ -595,6 +589,5 @@ data class DashboardLaunchRoute(
     val targetAiReportId: Long? = null,
     val openBoard: Boolean = false,
     val openTasks: Boolean = false,
-    val openCalendar: Boolean = false,
-    val openFocus: Boolean = false
+    val openCalendar: Boolean = false
 )

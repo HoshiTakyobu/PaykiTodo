@@ -190,7 +190,6 @@ class DesktopSyncCoordinator(
             planningNotes = announcementNotes,
             now = now
         )
-        val focusStats = runBlocking { app.repository.getTodayFocusSessionStats(today) }
         val snapshotTodos = if (boardOnly) {
             board.todoItems
         } else {
@@ -207,12 +206,7 @@ class DesktopSyncCoordinator(
             todos = snapshotTodos,
             events = snapshotEvents,
             announcements = announcements,
-            todayBoard = board.toDesktopSyncBoard(
-                nowMillis = nowMillis,
-                todayFocusMinutes = focusStats.completedMinutes,
-                todayFocusSessionCount = focusStats.totalCount,
-                todayCompletedFocusSessionCount = focusStats.completedCount
-            ),
+            todayBoard = board.toDesktopSyncBoard(nowMillis = nowMillis),
             partial = boardOnly
         )
     }

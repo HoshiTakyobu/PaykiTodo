@@ -64,7 +64,7 @@ The Android Emulator is a useful middle step between "the code builds" and "the 
 Use it for:
 
 - checking whether the APK launches or crashes
-- previewing Daily Board, Planning Desk, Settings, FocusActivity, editor dialogs, and similar phone UI
+- previewing Daily Board, Planning Desk, Settings, editor dialogs, and similar phone UI
 - running basic click flows before sending an APK to the user
 - collecting `uiautomator dump` XML or screenshots as evidence for visible UI text and navigation state
 - smoke-testing scheduled-report flows when the emulator has the relevant Android services available
@@ -90,10 +90,10 @@ If no emulator is running and this verification would be useful, the session may
 
 When a session starts or reuses an emulator, it should leave a trace in `docs/current/SESSION_HANDOFF.md`: device id / AVD name, installed APK path, screens opened, and what was actually verified. This is required because the emulator window can remain on the user's desktop after the coding session moves on.
 
-Current known useful emulator facts from the 1.9.x work:
+Historical useful emulator facts from the 1.9.x work:
 
 - `emulator-5554` was used to install and run `com.paykitodo.app`.
-- UI dumps confirmed the Daily Board focus card, free-focus entry, FocusActivity countdown, early-complete confirmation, and focus-session count refresh.
+- UI dumps confirmed then-current phone UI flows. Focus / pomodoro screens from that historical pass have since been removed in the `1.11.0` goal.
 - The emulator is good enough to catch launch crashes and obvious UI regressions before the user installs the APK on a phone.
 
 Do not overclaim emulator results. A real phone is still required for:

@@ -18,7 +18,6 @@ import com.example.todoalarm.data.CalendarEventDraft
 import com.example.todoalarm.data.DEFAULT_PLANNING_REMINDER_MINUTES
 import com.example.todoalarm.data.DailyReportGenerator
 import com.example.todoalarm.data.DailyBoardSnapshotBuilder
-import com.example.todoalarm.data.FocusSessionStats
 import com.example.todoalarm.data.PlanningAnnouncement
 import com.example.todoalarm.data.PlanningAnnouncementParser
 import com.example.todoalarm.data.PlanningImportCandidate
@@ -82,9 +81,6 @@ data class TodoUiState(
     val calendarItems: List<TodoItem> = emptyList(),
     val countdownItems: List<TodoItem> = emptyList(),
     val activeAnnouncements: List<PlanningAnnouncement> = emptyList(),
-    val todayFocusMinutes: Int = 0,
-    val todayFocusSessionCount: Int = 0,
-    val todayCompletedFocusSessionCount: Int = 0,
     val settings: AppSettings = AppSettings(),
     val currentQuote: String = QuoteRepository.seedQuotes.first(),
     val dataReady: Boolean = false,
@@ -140,18 +136,6 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
             }
         }
     }
-
-    @OptIn(ExperimentalCoroutinesApi::class)
-    private val todayFocusStats = todayDateFlow
-        .flatMapLatest { date ->
-            val (startMillis, endMillis) = dayRangeMillis(date)
-            repository.observeFocusSessionStatsInRange(startMillis, endMillis)
-        }
-        .stateIn(
-            scope = viewModelScope,
-            started = SharingStarted.WhileSubscribed(5_000),
-            initialValue = FocusSessionStats()
-        )
 
     @OptIn(ExperimentalCoroutinesApi::class)
     private val activeTodoItems = selectedGroupIdFlow
@@ -234,7 +218,6 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
         activeTodoItems,
         boardCalendarItems,
         countdownItems,
-        todayFocusStats,
         settingsStore.settingsFlow,
         quoteFlow,
         selectedGroupIdFlow,
@@ -251,12 +234,11 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
         val activeCalendarItems = values[3] as List<TodoItem>
         @Suppress("UNCHECKED_CAST")
         val activeCountdownItems = values[4] as List<TodoItem>
-        val focusStats = values[5] as FocusSessionStats
-        val settings = values[6] as AppSettings
+        val settings = values[5] as AppSettings
         @Suppress("UNCHECKED_CAST")
-        val quotes = values[7] as List<String>
-        val selectedGroupId = values[8] as Long?
-        val today = values[10] as LocalDate
+        val quotes = values[6] as List<String>
+        val selectedGroupId = values[7] as Long?
+        val today = values[9] as LocalDate
         val availableGroups = if (groups.isEmpty()) repository.ensureDefaultGroups() else groups
         val todoSections = classifyActiveTodoItems(activeTaskItems, today)
         val sortedCalendarItems = activeCalendarItems.sortedBy { it.startAtMillis ?: it.dueAtMillis }
@@ -275,9 +257,6 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
                 .filter { item -> DailyBoardSnapshotBuilder.countdownTargetMillis(item)?.let { it >= nowMillis } == true }
                 .sortedBy { DailyBoardSnapshotBuilder.countdownTargetMillis(it) ?: Long.MAX_VALUE },
             activeAnnouncements = PlanningAnnouncementParser.activeAnnouncements(announcementNotes, today),
-            todayFocusMinutes = focusStats.completedMinutes,
-            todayFocusSessionCount = focusStats.totalCount,
-            todayCompletedFocusSessionCount = focusStats.completedCount,
             settings = settings,
             currentQuote = currentQuote,
             dataReady = true,
@@ -773,10 +752,6 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
         providers: List<com.example.todoalarm.data.PlanningAiProvider>
     ) {
         settingsStore.updatePlanningAiProviders(enabled, providers)
-    }
-
-    fun updateFocusPreferences(defaultMinutes: Int, extensionMinutes: Int, keepScreenOn: Boolean, blockNotifications: Boolean) {
-        settingsStore.updateFocusPreferences(defaultMinutes, extensionMinutes, keepScreenOn, blockNotifications)
     }
 
     fun updateReportPreferences(

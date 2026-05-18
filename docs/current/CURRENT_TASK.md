@@ -4,37 +4,30 @@
 
 Active goal: implement `docs/goals/2026-05-18-paykitodo-1.11.0-revised-goal.md` from the current `1.10.3 / versionCode 221` baseline, plus the user's additional Android widget requirements.
 
-The first completed slice focuses on the visible widget regressions before the larger `1.11.0` feature work:
+Do not push to GitHub unless the user explicitly asks.
 
-1. `今日看板` Android widget removes the top menu/title/date header.
-2. `今日看板` Android widget uses provider-owned minute refresh instead of relying on the system `updatePeriodMillis` floor.
-3. Independent `倒数日` widget becomes a scrollable RemoteViews list instead of three fixed rows.
-4. Independent `倒数日` widget uses larger readable countdown/title text, multi-line title/meta support, dynamic accent strips, and row deep links.
-5. Do not push to GitHub unless the user explicitly asks.
+## Completed Goal Slices
 
-## Completed In This Round
+### Android widget slice
 
-### Widget slice
+1. `今日看板` widget removed the top menu/title/date header.
+2. `今日看板` widget uses provider-owned minute refresh instead of relying on the system `updatePeriodMillis` floor.
+3. Independent `倒数日` widget was converted to a scrollable `RemoteViewsService` / `ListView` widget instead of three fixed rows.
+4. Independent `倒数日` widget rows use daily-board-style soft cards, dynamic accent strips, larger readable countdown text, multi-line title/meta text, and direct todo/event deep links.
+5. `倒数日` widget picker preview matches the new card structure.
 
-1. `今日看板` widget actual layout and launcher preview no longer show the three-line icon, `每日看板` title, or date subtitle.
-2. `今日看板` widget now schedules minute ticks through `AlarmManager`, refreshes the RemoteViews collection on each tick, and declares `updatePeriodMillis=0`.
-3. `倒数日` widget was converted from three hard-coded rows to `CountdownWidgetService` + `ListView`.
-4. `倒数日` widget rows now use a soft daily-board-style card, dynamic accent strip / countdown color, larger countdown text, multi-line title and meta text, and direct row deep links to the todo / event detail.
-5. `倒数日` widget picker preview now matches the new card structure.
+### D1-D10 focus / pomodoro removal slice
 
-### Previous `1.10.3` Planning Desk pass
+1. Removed `FocusActivity`, `FocusSession`, `FocusWidgetProvider`, focus widget layouts, and focus widget XML.
+2. Removed `FocusActivity` and `FocusWidgetProvider` manifest declarations.
+3. Removed focus entities, DAO methods, repository APIs, settings fields, and backup export/import fields.
+4. Removed focus entry points from the drawer, dashboard body, settings, todo long-press menu, and board UI.
+5. Removed focus stats from desktop sync and AI report generation.
+6. Database version is now `18` in the working tree.
+7. `MIGRATION_17_18` drops `focus_sessions`, creates `event_check_ins`, creates `todo_group_tags`, adds `checkInEnabled` and `totalCheckInMinutes` to `todo_items`, backfills todo group tags, and merges the old default `专注` group into `例行`.
+8. Old backup JSON that still contains `focusSessions` is ignored instead of being restored.
 
-1. Local Planning Markdown parsing recognizes inline `@地点`, quoted `"@地点"`, and `地点：...` event locations without polluting event titles.
-2. Local natural-event candidates default `createLinkedTodo=false`.
-3. AI recognition defaults event `createLinkedTodo=false` and the system prompt only allows linked todos when the user explicitly asks.
-4. AI result cleanup moves `@地点` out of event titles when the model forgot the `location` field.
-5. Phone-side Planning Desk import and desktop-sync Planning Desk import no longer write the fixed auto-generated note into linked todos.
-6. Desktop-web Planning Desk preview uses the clearer label `同步创建以日程结束时间为 DDL 的待办任务`.
-7. Desktop-web event editor renders the same eight compact color swatches as the phone event editor and syncs the active swatch with the color input.
-8. Unit tests cover default-off linked todos, comma-separated quoted locations, `@图书馆3楼` cleanup, and AI group sanitization.
-9. Version metadata remains `1.10.3 / 221`; the full `1.11.0` version bump is still pending.
-
-## Verification Completed This Round
+## Verification Completed
 
 ### Widget slice
 
@@ -44,36 +37,30 @@ The first completed slice focuses on the visible widget regressions before the l
 4. `./gradlew.bat :app:assembleDebug` passed and produced `app/build/outputs/apk/debug/PaykiTodo-1.10.3-debug.apk`.
 5. Debug APK metadata confirms `versionName = 1.10.3`, `versionCode = 221`.
 
-### Previous `1.10.3` Planning Desk pass
+### Focus removal slice
 
-1. `node --check app/src/main/assets/desktop-web/app.js` passed.
-2. `./gradlew.bat :app:testDebugUnitTest` passed.
-3. `./gradlew.bat :app:assembleRelease` passed and produced `app/build/outputs/apk/release/PaykiTodo-1.10.3-release.apk`.
-4. Release APK metadata confirms `versionName = 1.10.3`, `versionCode = 221`.
-5. `apksigner verify --verbose --print-certs app/build/outputs/apk/release/PaykiTodo-1.10.3-release.apk` passed with one v2 signer.
-6. `git check-ignore -v keystore.properties release/PaykiTodo-release.jks app/build/outputs/apk/release/PaykiTodo-1.10.3-release.apk app/build/outputs/apk/debug/PaykiTodo-1.10.2-debug.apk` confirmed signing material and APK outputs are ignored.
+1. `./gradlew.bat :app:compileDebugKotlin` passed after the focus-removal code cleanup.
+2. Fresh `./gradlew.bat :app:compileDebugKotlin` passed again after docs were updated.
+3. Fresh `git diff --check` passed after docs were updated.
+4. No new APK has been built after the focus-removal slice yet.
 
 ## Verification Still Needed On Device / Browser
 
-1. Install `app/build/outputs/apk/debug/PaykiTodo-1.10.3-debug.apk` on the physical phone.
+1. Install `app/build/outputs/apk/debug/PaykiTodo-1.10.3-debug.apk` on the physical phone if validating the latest built widget APK.
 2. Add / resize the `今日看板` widget and confirm the removed top header, minute refresh, and cross-day date/list update behavior on the launcher.
 3. Add / resize the `倒数日` widget and confirm scroll behavior, readable multi-line rows, and row deep links on the launcher.
-4. In Planning Desk, test:
-   - `10:00-12:00 自习 @图书馆3楼`
-   - `10:00-12:00, 【课程】习思想，"@主楼B1-412"`
-   - `10:00-12:00 自习 地点：图书馆3楼`
-5. Confirm those lines import as events with clean titles and correct locations.
-6. Confirm a normal event import creates only the event.
-7. Confirm manually enabling linked todo creates a todo with DDL equal to event end time and no fixed generated note.
-8. In desktop web, confirm the same Planning Desk cases work through AI preview and local fallback.
-9. In desktop web event editor, confirm preset colors and custom color both save correctly.
+4. After a later focus-removal APK build, confirm the app opens without any focus / pomodoro entry in the drawer, settings, todo long-press menu, desktop web, AI report, or widgets.
 
 ## Remaining 1.11.0 Work
 
 The full goal remains active. Major remaining slices:
 
-1. Remove focus mode entirely.
-2. Add event check-in / time tracking.
-3. Add Planning Desk AI image recognition and simplify shortcut bar.
-4. Redesign drawer / todo page around multi-group filtering.
-5. Complete performance / robustness tasks, R8 release validation, docs, schema, and version bump to `1.11.0 / versionCode 222`.
+1. P5/P4/P11/P12/P13: Room schema export, debug-only tooling preview, desktop-sync request size limit, structured application coroutine scope, and AI-report retention.
+2. M1/M5: drawer simplification and moving group management into the todo page.
+3. M3/M2/M4/M6/M7: multi-group todo data model, intersection filter chips, multi-select editor, desktop sync support, and backup support.
+4. C1-C7: event check-in / time tracking across phone UI, widgets, desktop web, backup, and AI reports.
+5. V1-V6: Planning Desk image recognition through vision-capable AI providers.
+6. T1-T3: Planning Desk shortcut bar simplification and help update.
+7. P6/P7/P9/P10/P8: narrow database queries, countdown widget update metadata, and desktop-sync suspend handler cleanup.
+8. P1/P2/P3: R8/resource shrinking, WebP conversion, icon dependency audit, release launch verification, and final APK-size check.
+9. Final version bump to `1.11.0 / versionCode 222`.

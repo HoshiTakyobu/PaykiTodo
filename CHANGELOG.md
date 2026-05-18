@@ -1,5 +1,13 @@
 # Changelog
 
+## v1.11.0 (开发中)
+
+- 删除番茄钟式专注模式：抽屉入口、全屏专注页面、专注小组件、待办长按“开始专注”、设置里的专注配置、电脑端看板专注统计和 AI 日报专注字段都已移除
+- 数据库迁移进入 `17 → 18`：升级时删除旧 `focus_sessions` 表，并把旧默认“专注”分组并入“例行”，避免已删除功能继续出现在分组 UI 中
+- 备份恢复不再导出或恢复专注记录 / 专注设置；旧备份中残留的 `focusSessions` 字段会被静默忽略
+- 为后续 1.11.0 日程打卡与待办多分组功能预置 `event_check_ins`、`todo_group_tags` 表和 `todo_items.checkInEnabled / totalCheckInMinutes` 字段
+- 验证：`./gradlew.bat :app:compileDebugKotlin` 通过；本条仍是开发中 checkpoint，尚未生成新的可安装 APK
+
 ## v1.10.3
 
 - 规划台轻量日程默认不再同步创建待办；只有在预览中显式勾选“同步创建以日程结束时间为 DDL 的待办任务”时才会额外生成待办

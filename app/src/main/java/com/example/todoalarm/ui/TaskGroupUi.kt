@@ -26,7 +26,7 @@ fun resolveTaskGroup(item: TodoItem, groups: List<TaskGroup>): ResolvedTaskGroup
     val fallback = when (TodoCategory.fromKey(item.categoryKey)) {
         TodoCategory.IMPORTANT -> ResolvedTaskGroup(0, "重要", "#BF7B4D")
         TodoCategory.URGENT -> ResolvedTaskGroup(0, "紧急", "#FF6B4A")
-        TodoCategory.FOCUS -> ResolvedTaskGroup(0, "专注", "#4E87E1")
+        TodoCategory.FOCUS -> ResolvedTaskGroup(0, "例行", "#4CB782")
         TodoCategory.ROUTINE -> ResolvedTaskGroup(0, "例行", "#4CB782")
     }
     return fallback
@@ -49,7 +49,6 @@ fun TaskGroup.toResolvedTaskGroup(): ResolvedTaskGroup = ResolvedTaskGroup(
 fun taskGroupEmoji(group: ResolvedTaskGroup): String = when (group.name) {
     "重要" -> "\u2B50"
     "紧急" -> "\u26A0\uFE0F"
-    "专注" -> "\uD83C\uDFAF"
     "例行" -> "\uD83E\uDDFD"
     "全天" -> "\uD83C\uDF1E"
     "日程" -> "\uD83D\uDDD3\uFE0F"

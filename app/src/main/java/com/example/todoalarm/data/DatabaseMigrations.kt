@@ -159,8 +159,7 @@ object DatabaseMigrations {
                 VALUES
                 (1, '重要', '#BF7B4D', 0, 1, $now),
                 (2, '紧急', '#FF6B4A', 1, 1, $now),
-                (3, '专注', '#4E87E1', 2, 1, $now),
-                (4, '例行', '#4CB782', 3, 1, $now)
+                (3, '例行', '#4CB782', 2, 1, $now)
                 """.trimIndent()
             )
 
@@ -170,7 +169,7 @@ object DatabaseMigrations {
             db.execSQL(
                 """
                 UPDATE todo_items
-                SET groupId = 4
+                SET groupId = 3
                 WHERE groupId = 0 OR categoryKey = 'routine'
                 """.trimIndent()
             )
@@ -362,6 +361,16 @@ object DatabaseMigrations {
         }
     }
 
+    val MIGRATION_17_18 = object : Migration(17, 18) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("DROP TABLE IF EXISTS `focus_sessions`")
+            mergeDefaultFocusGroupIntoRoutine(db)
+            ensureEventCheckInTable(db)
+            ensureTodoGroupTagsTable(db)
+            ensureCheckInColumns(db)
+        }
+    }
+
     private fun rebuildPlanningNotesTable(db: SupportSQLiteDatabase) {
         db.execSQL("DROP TABLE IF EXISTS `planning_notes_room_expected`")
         createPlanningNotesTable(db, "planning_notes_room_expected")
@@ -467,6 +476,80 @@ object DatabaseMigrations {
             ON `todo_items` (`completed`, `canceled`, `countdownEnabled`, `itemType`, `dueAtMillis`, `startAtMillis`)
             """.trimIndent()
         )
+    }
+
+    private fun ensureEventCheckInTable(db: SupportSQLiteDatabase) {
+        db.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS `event_check_ins` (
+                `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                `eventId` INTEGER NOT NULL,
+                `checkInAtMillis` INTEGER NOT NULL,
+                `checkOutAtMillis` INTEGER,
+                `durationMinutes` INTEGER NOT NULL
+            )
+            """.trimIndent()
+        )
+        db.execSQL("CREATE INDEX IF NOT EXISTS `index_event_check_ins_eventId` ON `event_check_ins` (`eventId`)")
+    }
+
+    private fun ensureTodoGroupTagsTable(db: SupportSQLiteDatabase) {
+        db.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS `todo_group_tags` (
+                `todoId` INTEGER NOT NULL,
+                `groupId` INTEGER NOT NULL,
+                PRIMARY KEY(`todoId`, `groupId`)
+            )
+            """.trimIndent()
+        )
+        db.execSQL("CREATE INDEX IF NOT EXISTS `index_todo_group_tags_todoId` ON `todo_group_tags` (`todoId`)")
+        db.execSQL("CREATE INDEX IF NOT EXISTS `index_todo_group_tags_groupId` ON `todo_group_tags` (`groupId`)")
+        db.execSQL(
+            """
+            INSERT OR IGNORE INTO `todo_group_tags` (`todoId`, `groupId`)
+            SELECT `id`, `groupId`
+            FROM `todo_items`
+            WHERE `groupId` != 0 AND `itemType` = 'TODO'
+            """.trimIndent()
+        )
+    }
+
+    private fun ensureCheckInColumns(db: SupportSQLiteDatabase) {
+        if (!tableHasColumns(db, "todo_items", listOf("checkInEnabled"))) {
+            db.execSQL("ALTER TABLE `todo_items` ADD COLUMN `checkInEnabled` INTEGER NOT NULL DEFAULT 0")
+        }
+        if (!tableHasColumns(db, "todo_items", listOf("totalCheckInMinutes"))) {
+            db.execSQL("ALTER TABLE `todo_items` ADD COLUMN `totalCheckInMinutes` INTEGER NOT NULL DEFAULT 0")
+        }
+    }
+
+    private fun mergeDefaultFocusGroupIntoRoutine(db: SupportSQLiteDatabase) {
+        db.execSQL(
+            """
+            INSERT INTO `task_groups` (`name`, `colorHex`, `sortOrder`, `isDefault`, `createdAtMillis`)
+            SELECT '例行', '#4CB782', 2, 1, ${System.currentTimeMillis()}
+            WHERE NOT EXISTS (
+                SELECT 1 FROM `task_groups` WHERE `name` = '例行'
+            )
+            """.trimIndent()
+        )
+        db.execSQL(
+            """
+            UPDATE `todo_items`
+            SET `groupId` = (
+                SELECT `id` FROM `task_groups`
+                WHERE `name` = '例行'
+                ORDER BY `isDefault` DESC, `sortOrder` ASC, `id` ASC
+                LIMIT 1
+            )
+            WHERE `groupId` IN (
+                SELECT `id` FROM `task_groups`
+                WHERE `name` = '专注' AND `isDefault` = 1
+            )
+            """.trimIndent()
+        )
+        db.execSQL("DELETE FROM `task_groups` WHERE `name` = '专注' AND `isDefault` = 1")
     }
 
     private fun ensurePlanningAnnouncementHintColumn(db: SupportSQLiteDatabase) {

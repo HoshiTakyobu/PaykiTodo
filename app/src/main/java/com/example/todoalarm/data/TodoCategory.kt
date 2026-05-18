@@ -6,7 +6,7 @@ enum class TodoCategory(
 ) {
     IMPORTANT("important", "重要"),
     URGENT("urgent", "紧急"),
-    FOCUS("focus", "专注"),
+    FOCUS("focus", "例行"),
     ROUTINE("routine", "例行");
 
     companion object {

@@ -24,7 +24,6 @@ import androidx.compose.material.icons.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.Edit
-import androidx.compose.material.icons.rounded.Timer
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ElevatedCard
@@ -75,9 +74,7 @@ internal fun ActiveTodoCard(
     onEdit: () -> Unit,
     onComplete: () -> Unit,
     onCancel: () -> Unit,
-    onDelete: () -> Unit,
-    focusDefaultMinutes: Int = 25,
-    onStartFocus: (() -> Unit)? = null
+    onDelete: () -> Unit
 ) {
     var completing by remember(item.id) { mutableStateOf(false) }
     var showDetails by remember(item.id) { mutableStateOf(false) }
@@ -184,17 +181,6 @@ internal fun ActiveTodoCard(
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis
                 )
-                if (onStartFocus != null) {
-                    TodoActionRow(
-                        icon = Icons.Rounded.Timer,
-                        title = "开始专注 · ${focusDefaultMinutes.coerceIn(5, 90)} 分钟",
-                        tint = MaterialTheme.colorScheme.primary,
-                        onClick = {
-                            showActionSheet = false
-                            onStartFocus()
-                        }
-                    )
-                }
                 TodoActionRow(
                     icon = Icons.Rounded.Delete,
                     title = "删除",
@@ -656,7 +642,6 @@ private fun categoryColor(group: ResolvedTaskGroup): Color {
         when (group.name) {
             "重要" -> Clay
             "紧急" -> Signal
-            "专注" -> Ocean
             else -> Leaf
         }
     }

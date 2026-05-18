@@ -459,51 +459,6 @@ interface TodoDao {
     @Query("DELETE FROM planning_line_mappings")
     suspend fun clearPlanningMappings()
 
-    @Insert
-    suspend fun insertFocusSession(session: FocusSession): Long
-
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertFocusSessions(sessions: List<FocusSession>): List<Long>
-
-    @Query("SELECT * FROM focus_sessions ORDER BY startedAtMillis DESC")
-    fun observeFocusSessions(): Flow<List<FocusSession>>
-
-    @Query(
-        """
-        SELECT
-            COUNT(*) AS totalCount,
-            COALESCE(SUM(CASE WHEN completed = 1 THEN 1 ELSE 0 END), 0) AS completedCount,
-            COALESCE(SUM(CASE WHEN completed = 1 THEN actualMinutes ELSE 0 END), 0) AS completedMinutes
-        FROM focus_sessions
-        WHERE startedAtMillis BETWEEN :startMillis AND :endMillis
-        """
-    )
-    fun observeFocusSessionStatsInRange(startMillis: Long, endMillis: Long): Flow<FocusSessionStats>
-
-    @Query(
-        """
-        SELECT
-            COUNT(*) AS totalCount,
-            COALESCE(SUM(CASE WHEN completed = 1 THEN 1 ELSE 0 END), 0) AS completedCount,
-            COALESCE(SUM(CASE WHEN completed = 1 THEN actualMinutes ELSE 0 END), 0) AS completedMinutes
-        FROM focus_sessions
-        WHERE startedAtMillis BETWEEN :startMillis AND :endMillis
-        """
-    )
-    suspend fun getFocusSessionStatsInRange(startMillis: Long, endMillis: Long): FocusSessionStats
-
-    @Query("SELECT * FROM focus_sessions WHERE startedAtMillis BETWEEN :startMillis AND :endMillis ORDER BY startedAtMillis DESC")
-    suspend fun getFocusSessionsInRange(startMillis: Long, endMillis: Long): List<FocusSession>
-
-    @Query("SELECT COALESCE(SUM(actualMinutes), 0) FROM focus_sessions WHERE completed = 1 AND startedAtMillis BETWEEN :startMillis AND :endMillis")
-    suspend fun getCompletedFocusMinutesInRange(startMillis: Long, endMillis: Long): Int
-
-    @Query("SELECT * FROM focus_sessions ORDER BY startedAtMillis DESC")
-    suspend fun getAllFocusSessions(): List<FocusSession>
-
-    @Query("DELETE FROM focus_sessions")
-    suspend fun clearFocusSessions()
-
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertAiReport(report: AiReport): Long
 

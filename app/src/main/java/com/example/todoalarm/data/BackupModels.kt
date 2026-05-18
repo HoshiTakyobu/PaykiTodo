@@ -5,7 +5,6 @@ data class BackupSnapshot(
     val groups: List<TaskGroup>,
     val templates: List<RecurringTaskTemplate>,
     val tasks: List<TodoItem>,
-    val focusSessions: List<FocusSession> = emptyList(),
     val pendingQuoteVersion: Int = 1,
     val reminderChainLogs: List<ReminderChainLog> = emptyList(),
     val scheduleTemplates: List<ScheduleTemplate> = emptyList(),

@@ -57,10 +57,6 @@ data class AppSettings(
     val planningAiModel: String = "",
     val planningAiProviders: List<PlanningAiProvider> = emptyList(),
     val hasSeenOnboarding: Boolean = false,
-    val focusDefaultMinutes: Int = 25,
-    val focusExtensionMinutes: Int = 5,
-    val focusKeepScreenOn: Boolean = true,
-    val focusBlockNotifications: Boolean = false,
     val dailyReportEnabled: Boolean = false,
     val dailyReportHour: Int = 22,
     val dailyReportMinute: Int = 0,
@@ -226,21 +222,6 @@ class AppSettingsStore(context: Context) {
         refresh()
     }
 
-    fun updateFocusPreferences(
-        defaultMinutes: Int,
-        extensionMinutes: Int,
-        keepScreenOn: Boolean,
-        blockNotifications: Boolean
-    ) {
-        preferences.edit()
-            .putInt(KEY_FOCUS_DEFAULT_MINUTES, defaultMinutes.coerceIn(5, 90))
-            .putInt(KEY_FOCUS_EXTENSION_MINUTES, extensionMinutes.coerceIn(1, 30))
-            .putBoolean(KEY_FOCUS_KEEP_SCREEN_ON, keepScreenOn)
-            .putBoolean(KEY_FOCUS_BLOCK_NOTIFICATIONS, blockNotifications)
-            .apply()
-        refresh()
-    }
-
     fun updateReportPreferences(
         dailyEnabled: Boolean,
         dailyHour: Int,
@@ -300,10 +281,6 @@ class AppSettingsStore(context: Context) {
             .putString(KEY_PLANNING_AI_MODEL, primaryPlanningAiProvider?.model ?: settings.planningAiModel)
             .putString(KEY_PLANNING_AI_PROVIDERS_JSON, planningAiProvidersToJson(mergedPlanningAiProviders))
             .putBoolean(KEY_HAS_SEEN_ONBOARDING, settings.hasSeenOnboarding)
-            .putInt(KEY_FOCUS_DEFAULT_MINUTES, settings.focusDefaultMinutes.coerceIn(5, 90))
-            .putInt(KEY_FOCUS_EXTENSION_MINUTES, settings.focusExtensionMinutes.coerceIn(1, 30))
-            .putBoolean(KEY_FOCUS_KEEP_SCREEN_ON, settings.focusKeepScreenOn)
-            .putBoolean(KEY_FOCUS_BLOCK_NOTIFICATIONS, settings.focusBlockNotifications)
             .putBoolean(KEY_DAILY_REPORT_ENABLED, settings.dailyReportEnabled)
             .putInt(KEY_DAILY_REPORT_HOUR, settings.dailyReportHour.coerceIn(0, 23))
             .putInt(KEY_DAILY_REPORT_MINUTE, settings.dailyReportMinute.coerceIn(0, 59))
@@ -380,10 +357,6 @@ class AppSettingsStore(context: Context) {
             planningAiModel = primaryPlanningAiProvider?.model ?: legacyModel,
             planningAiProviders = planningAiProviders,
             hasSeenOnboarding = preferences.getBoolean(KEY_HAS_SEEN_ONBOARDING, false),
-            focusDefaultMinutes = preferences.getInt(KEY_FOCUS_DEFAULT_MINUTES, 25).coerceIn(5, 90),
-            focusExtensionMinutes = preferences.getInt(KEY_FOCUS_EXTENSION_MINUTES, 5).coerceIn(1, 30),
-            focusKeepScreenOn = preferences.getBoolean(KEY_FOCUS_KEEP_SCREEN_ON, true),
-            focusBlockNotifications = preferences.getBoolean(KEY_FOCUS_BLOCK_NOTIFICATIONS, false),
             dailyReportEnabled = preferences.getBoolean(KEY_DAILY_REPORT_ENABLED, false),
             dailyReportHour = preferences.getInt(KEY_DAILY_REPORT_HOUR, 22).coerceIn(0, 23),
             dailyReportMinute = preferences.getInt(KEY_DAILY_REPORT_MINUTE, 0).coerceIn(0, 59),
@@ -465,10 +438,6 @@ class AppSettingsStore(context: Context) {
         private const val KEY_PLANNING_AI_PROVIDERS_JSON = "planning_ai_providers_json"
         private const val KEY_LEGACY_ANNOUNCEMENT_CLEANED = "legacy_announcement_cleaned"
         private const val KEY_HAS_SEEN_ONBOARDING = "has_seen_onboarding"
-        private const val KEY_FOCUS_DEFAULT_MINUTES = "focus_default_minutes"
-        private const val KEY_FOCUS_EXTENSION_MINUTES = "focus_extension_minutes"
-        private const val KEY_FOCUS_KEEP_SCREEN_ON = "focus_keep_screen_on"
-        private const val KEY_FOCUS_BLOCK_NOTIFICATIONS = "focus_block_notifications"
         private const val KEY_DAILY_REPORT_ENABLED = "daily_report_enabled"
         private const val KEY_DAILY_REPORT_HOUR = "daily_report_hour"
         private const val KEY_DAILY_REPORT_MINUTE = "daily_report_minute"

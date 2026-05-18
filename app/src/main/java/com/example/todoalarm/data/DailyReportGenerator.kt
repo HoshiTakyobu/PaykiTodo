@@ -83,8 +83,7 @@ object DailyReportGenerator {
                 .sortedBy { it.startAtMillis ?: it.dueAtMillis },
             tomorrowDdls = items.filter {
                 it.isTodo && it.isActive && it.hasDueDate && it.dueAtMillis in dayEndExclusive until tomorrowEndExclusive
-            }.sortedBy { it.dueAtMillis },
-            focusMinutes = app.repository.getTodayFocusMinutes()
+            }.sortedBy { it.dueAtMillis }
         )
     }
 
@@ -95,7 +94,6 @@ object DailyReportGenerator {
         val startMillis = weekStart.atStartOfDay(zone).toInstant().toEpochMilli()
         val endExclusiveMillis = weekEnd.plusDays(1).atStartOfDay(zone).toInstant().toEpochMilli()
         val items = app.repository.getAllTodos()
-        val focusSessions = app.repository.getFocusSessionsInRange(startMillis, endExclusiveMillis - 1)
         return WeeklyContext(
             weekStart = weekStart,
             weekEnd = weekEnd,
@@ -109,8 +107,7 @@ object DailyReportGenerator {
             upcomingDdls = items.filter {
                 it.isTodo && it.isActive && it.hasDueDate && it.dueAtMillis >= endExclusiveMillis &&
                     it.dueAtMillis < weekEnd.plusDays(8).atStartOfDay(zone).toInstant().toEpochMilli()
-            }.sortedBy { it.dueAtMillis },
-            focusMinutes = focusSessions.filter { it.completed }.sumOf { it.actualMinutes }
+            }.sortedBy { it.dueAtMillis }
         )
     }
 
@@ -174,8 +171,6 @@ object DailyReportGenerator {
             明天 DDL（${context.tomorrowDdls.size} 条）：
             ${context.tomorrowDdls.toBulletList { "${it.title}（${formatMillis(it.dueAtMillis)}）" }}
 
-            今日专注：${context.focusMinutes} 分钟
-
             格式要求：
             1. 第一段 1-2 句，总结今天并肯定已完成部分。
             2. 第二段 1-2 句，提示明天最紧要的 DDL 和日程。
@@ -201,8 +196,6 @@ object DailyReportGenerator {
             下周 DDL（${context.upcomingDdls.size} 条）：
             ${context.upcomingDdls.take(12).toBulletList { "${it.title}（${formatMillis(it.dueAtMillis)}）" }}
 
-            本周专注：${context.focusMinutes} 分钟
-
             请输出自然段落：先总结本周，再指出下周优先事项，最后给一句温和建议。不要使用 Markdown 标题。
         """.trimIndent()
     }
@@ -210,7 +203,6 @@ object DailyReportGenerator {
     private fun buildLocalDaily(context: DailyContext): String {
         return buildString {
             append("今天完成 ${context.todayCompleted.size} 条待办")
-            if (context.focusMinutes > 0) append("，专注 ${context.focusMinutes} 分钟")
             append("。")
             if (context.todayMissed.isNotEmpty()) {
                 append("有 ${context.todayMissed.size} 条待办错过，需要尽快重新安排。")
@@ -232,7 +224,6 @@ object DailyReportGenerator {
     private fun buildLocalWeekly(context: WeeklyContext): String {
         return buildString {
             append("本周完成 ${context.completedTodos.size} 条待办")
-            if (context.focusMinutes > 0) append("，本周专注 ${context.focusMinutes} 分钟")
             append("。")
             if (context.missedTodos.isNotEmpty()) append("本周有 ${context.missedTodos.size} 条错过待办，建议在下周开头重新排期。")
             append("\n\n")
@@ -289,8 +280,7 @@ object DailyReportGenerator {
         val todayMissed: List<TodoItem>,
         val todayEvents: List<TodoItem>,
         val tomorrowEvents: List<TodoItem>,
-        val tomorrowDdls: List<TodoItem>,
-        val focusMinutes: Int
+        val tomorrowDdls: List<TodoItem>
     )
 
     private data class WeeklyContext(
@@ -299,8 +289,7 @@ object DailyReportGenerator {
         val completedTodos: List<TodoItem>,
         val missedTodos: List<TodoItem>,
         val events: List<TodoItem>,
-        val upcomingDdls: List<TodoItem>,
-        val focusMinutes: Int
+        val upcomingDdls: List<TodoItem>
     )
 
     private const val LOCAL_PROVIDER_NAME = "本地模板"

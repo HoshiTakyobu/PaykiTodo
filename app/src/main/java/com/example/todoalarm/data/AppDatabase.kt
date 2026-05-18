@@ -12,10 +12,11 @@ import androidx.room.RoomDatabase
         ScheduleTemplate::class,
         PlanningNote::class,
         PlanningLineMapping::class,
-        FocusSession::class,
-        AiReport::class
+        AiReport::class,
+        EventCheckIn::class,
+        TodoGroupTag::class
     ],
-    version = 17,
+    version = 18,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {

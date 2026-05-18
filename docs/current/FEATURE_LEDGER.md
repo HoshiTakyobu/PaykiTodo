@@ -27,7 +27,7 @@ This file tracks the product at a practical level for new coding sessions.
 
 - dedicated daily board entry exists in the drawer and is the default home section
 - board todo block includes missed active todos, today's normal todos, and active no-DDL todos
-- board intentionally does not show focus stats or free-focus controls; focus lives in the dedicated `专注` drawer section and `专注` widget
+- board intentionally stays a read-only overview for todos, schedules, announcements, and countdown targets
 - board view can show today's todos and today's / tomorrow's schedule summary together
 - board can show a `倒数日` card for active countdown-enabled todos / events; todos count down to DDL times, events count down to event start times, exact-time expired targets are hidden, and tapping rows opens the corresponding todo / event editor
 - board today's schedule hides timed events after they have ended
@@ -42,19 +42,6 @@ This file tracks the product at a practical level for new coding sessions.
 - daily board onboarding card is readable in dark mode, can be dismissed, and can be reset from Settings -> About -> 使用说明
 - daily board floating block titles have stronger dark-theme text shadow so they stay readable over the dark wallpaper background
 - board surface intentionally does not expose add / batch-add buttons
-
-### Focus Mode
-
-- active todo cards expose `开始专注 · X 分钟` from the long-press action sheet while destructive delete remains confirmation-gated
-- daily board no longer exposes free focus or focus stats; focus is separated into the `专注` drawer section and independent `专注` widget so the board remains a read-only overview surface
-- full-screen `FocusActivity` supports todo-bound and free-focus countdown sessions
-- drawer section `专注` shows today's focus stats and the free-focus entry outside the daily board
-- focus countdown shows circular progress, large monospace `MM:SS`, elapsed minutes, extension count, and pause / continue, complete, and abandon controls
-- countdown completion vibrates with a short / gap / long pattern and asks the user to complete, extend by the configured duration, or abandon
-- early completion and abandon both require confirmation; completed sessions show a short success feedback page before returning
-- focus records are saved before the focus screen exits, reducing the chance of losing completed or abandoned sessions during Activity finish
-- Settings -> `专注模式` controls default focus duration, extension duration, screen-on behavior, and a documented-only notification-suppression preference
-- focus sessions are stored in Room table `focus_sessions`, included in JSON backup / restore, and contribute completed minutes to today's board statistics
 
 ### Board Announcements
 
@@ -193,7 +180,7 @@ This file tracks the product at a practical level for new coding sessions.
 - widget empty states now use the same card-style visual direction as the in-app daily board rather than thin bordered rows
 - widget schedule content is aggregated into one card with a left date block, today rows, tomorrow label, and tomorrow rows instead of independent event cards; todo cards use the task group's color strip
 - widget root includes a daily-board-style background image layer plus tuned day-night scrims; the fixed menu/title/date header has been removed so the launcher widget opens directly into board content and cannot show a stale header date
-- widget no longer includes the `今日已专注` / focus card, keeping the launcher widget focused on announcements, greeting, today todos, and today/tomorrow schedule summaries
+- widget keeps the launcher surface focused on announcements, greeting, today todos, and today/tomorrow schedule summaries
 - widget greeting, empty, orange announcement, todo, and schedule cards use stronger light/dark card surfaces, lightweight elevation, larger 28dp-style rounding, wider todo color strips, tighter title/card spacing, and daily-board-like ordering with announcements before greeting for better launcher readability
 - widget provider now suggests a more daily-board-like square / vertical default size instead of a shallow list-size widget, and the current card pass uses more solid rounded card surfaces plus wider todo/schedule strip spacing so desktop rendering is less like a generic system list
 - widget `1.9.4` visual pass adds a static daily-board-style picker preview, targets a 4x5 vertical board by default, gives todo rows a checkbox-like marker plus `DDL HH:mm` chip, and makes ordinary schedule rows transparent with only the vertical color strip to better match the in-app daily board
@@ -204,8 +191,7 @@ This file tracks the product at a practical level for new coding sessions.
 - widget `1.10.0` pass registers an independent PaykiTodo `倒数日` widget that shows the nearest 3 active countdown targets; tapping a todo target opens My Tasks and tapping an event target opens Calendar
 - widget `1.10.1` pass removes the countdown section from the existing `今日看板` widget; countdown targets now belong to the independent `倒数日` widget, whose rows use `Nd` plus remaining time, show a checkbox-like circle only for todos, and show full event time metadata for events
 - widget `1.10.2` pass removes the independent `倒数日` widget header/date/count block, makes rows deep-link to exact todo/event details, changes countdown text to day/hour/minute without seconds, schedules minute-level refresh ticks, and counts only unfinished today events in 今日看板 widget section titles
-- widget `1.10.2` adds distinct launcher-picker labels/descriptions/static previews for 今日看板, 倒数日, and the new 专注 widget
-- widget `1.10.2` adds an independent PaykiTodo `专注` widget that shows today's focus stats and starts free focus directly
+- widget `1.10.2` adds distinct launcher-picker labels/descriptions/static previews for 今日看板 and 倒数日
 - widget `1.10.3` continuation removes the 今日看板 widget top menu/title/date header, converts the independent 倒数日 widget into a scrollable RemoteViews ListView, gives countdown rows daily-board-style soft cards with dynamic accent strips and larger multi-line text, and makes both 今日看板 / 倒数日 widgets refresh RemoteViews collections through provider-owned minute ticks with `updatePeriodMillis=0`
 - planning-desk `1.10.3` pass changes event import to default event-only, keeps linked todo creation behind an explicit preview checkbox, removes the fixed generated linked-todo note, and parses `@地点` / quoted `@地点` / `地点：...` into the event location field
 - desktop-web `1.10.3` pass adds compact event color preset swatches matching the phone event editor while preserving custom color input

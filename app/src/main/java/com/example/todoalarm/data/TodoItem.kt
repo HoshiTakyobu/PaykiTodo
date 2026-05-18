@@ -53,6 +53,8 @@ data class TodoItem(
     val location: String = "",
     val accentColorHex: String? = null,
     val countdownEnabled: Boolean = false,
+    val checkInEnabled: Boolean = false,
+    val totalCheckInMinutes: Int = 0,
     val reminderAtMillis: Long?,
     val reminderOffsetsCsv: String = "",
     val reminderEnabled: Boolean,

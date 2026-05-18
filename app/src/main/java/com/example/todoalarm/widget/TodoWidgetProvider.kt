@@ -58,7 +58,6 @@ class TodoWidgetProvider : AppWidgetProvider() {
                 cancelMinuteTick(context)
             }
             CountdownWidgetProvider.notifyWidgetDataChanged(context)
-            FocusWidgetProvider.notifyWidgetDataChanged(context)
         }
 
         private fun updateWidget(context: Context, manager: AppWidgetManager, appWidgetId: Int) {

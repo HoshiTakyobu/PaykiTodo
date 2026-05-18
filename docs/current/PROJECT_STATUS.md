@@ -41,11 +41,11 @@
 
 ## Current Worktree Reality
 
-The repository is starting the larger `1.11.0 / versionCode 222` goal from the current `1.10.3 / 221` baseline. The first completed slice addresses the user's immediate Android widget requirements; the full `1.11.0` version bump and database migration are still pending.
+The repository is implementing the larger `1.11.0 / versionCode 222` goal from the current `1.10.3 / 221` baseline. The Android widget requirements have already landed in the current baseline. The first `1.11.0` goal slice removes the former focus / pomodoro mode and prepares the database for later check-in and multi-group todo work. The full `1.11.0` version bump is still pending.
 
 Most important current baseline facts:
 
-- Database version remains `17`; no migration is required for this round.
+- Database version is now `18` in the working tree. `MIGRATION_17_18` drops the old `focus_sessions` table, creates `event_check_ins`, creates `todo_group_tags`, adds `checkInEnabled` and `totalCheckInMinutes` to `todo_items`, backfills todo group tags, and merges the old default `专注` group into `例行`.
 - Active no-DDL todos are still treated as today todos across phone daily board, Android widget board query, desktop board, and desktop todo management.
 - Countdown-enabled todos use their DDL time as the target; countdown-enabled events use their start time.
 - Countdown targets whose exact target time has passed are filtered out before board / widget / desktop rendering.
@@ -56,6 +56,9 @@ Most important current baseline facts:
 - `今日看板` Android widget no longer renders its fixed top menu/title/date header; the RemoteViews list fills the widget body.
 - `今日看板` and independent `倒数日` widgets both set `updatePeriodMillis=0` and use provider-owned `AlarmManager` minute ticks to refresh RemoteViews collections.
 - Independent `倒数日` widget is now a scrollable `RemoteViewsService` / `ListView` widget rather than three fixed rows, with multi-line daily-board-style rows and direct todo/event detail deep links.
+- Former focus / pomodoro mode is removed from the working tree: no drawer entry, settings block, FocusActivity, focus widget, focus DAO/repository API, desktop sync focus stats, AI-report focus fields, or backup focus-session export remains.
+- Existing old backups that contain `focusSessions` are ignored rather than failing import.
+- `./gradlew.bat :app:compileDebugKotlin` has passed for the focus-removal slice; no new APK has been built after that slice yet.
 
 ## Immediate Manual Verification Targets
 

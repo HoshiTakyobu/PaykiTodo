@@ -45,6 +45,15 @@ Do not push to GitHub unless the user explicitly asks.
 4. The todo page chip bar exposes `全部`, sorted group chips, and `新建`; tapping a group filters todos, tapping the selected group clears the filter, and long-pressing a group chip opens edit/delete actions.
 5. Planning Desk tutorial text, README, TODO, Wiki, and current-state docs now describe the new `待办` entry and in-page group management path.
 
+### M2/M3/M4/M6/M7 multi-group todo slice
+
+1. `todo_group_tags` is now used as the persistent multi-group relationship for todos, with old single `groupId` data backfilled into the join table.
+2. Phone-side todo filtering now supports multi-select group chips with intersection semantics: selecting multiple groups shows only todos that belong to every selected group.
+3. Phone-side todo editing now uses compact multi-select group chips while still preserving a primary `groupId` for compatibility.
+4. Backup export/import includes `todoGroupTags`; old backups without explicit tags are restored by backfilling from each todo's original `groupId`.
+5. Desktop sync `/api/todos` and `/api/snapshot` now expose todo `groupIds`, accept `groupIds` during create/update, and keep the primary `groupId` aligned with the first selected group.
+6. Desktop Web todo management now has compact multi-select group filter chips, multi-select group chips in the todo editor, multi-group labels in cards/previews/board rows, and saves `groupIds` without collapsing phone-side multi-group relationships.
+
 ## Verification Completed
 
 ### Widget slice
@@ -74,21 +83,28 @@ Do not push to GitHub unless the user explicitly asks.
 2. `git diff --check` passed after docs sync.
 3. No new APK has been built for this slice yet.
 
+### M2/M3/M4/M6/M7 multi-group todo slice
+
+1. `node --check app/src/main/assets/desktop-web/app.js` passed after the desktop Web multi-group UI changes.
+2. `./gradlew.bat :app:compileDebugKotlin` passed after the repository / sync / phone UI / desktop Web multi-group changes.
+3. `git diff --check` passed after the multi-group slice.
+4. No new APK has been built for this slice yet.
+
 ## Verification Still Needed On Device / Browser
 
 1. Install `app/build/outputs/apk/debug/PaykiTodo-1.10.3-debug.apk` on the physical phone if validating the latest built widget APK.
 2. Add / resize the `今日看板` widget and confirm the removed top header, minute refresh, and cross-day date/list update behavior on the launcher.
 3. Add / resize the `倒数日` widget and confirm scroll behavior, readable multi-line rows, and row deep links on the launcher.
 4. After a later focus-removal APK build, confirm the app opens without any focus / pomodoro entry in the drawer, settings, todo long-press menu, desktop web, AI report, or widgets.
+5. In a real desktop browser, verify todo multi-group behavior: selecting multiple filter chips uses intersection filtering, editing a todo preserves all selected groups, and the card / preview labels show all groups.
 
 ## Remaining 1.11.0 Work
 
 The full goal remains active. Major remaining slices:
 
-1. M3/M2/M4/M6/M7: multi-group todo data model, intersection filter chips, multi-select editor, desktop sync support, and backup support.
-2. C1-C7: event check-in / time tracking across phone UI, widgets, desktop web, backup, and AI reports.
-3. V1-V6: Planning Desk image recognition through vision-capable AI providers.
-4. T1-T3: Planning Desk shortcut bar simplification and help update.
-5. P6/P7/P9/P10/P8: narrow database queries, countdown widget update metadata, and desktop-sync suspend handler cleanup.
-6. P1/P2/P3: R8/resource shrinking, WebP conversion, icon dependency audit, release launch verification, and final APK-size check.
-7. Final version bump to `1.11.0 / versionCode 222`.
+1. C1-C7: event check-in / time tracking across phone UI, widgets, desktop web, backup, and AI reports.
+2. V1-V6: Planning Desk image recognition through vision-capable AI providers.
+3. T1-T3: Planning Desk shortcut bar simplification and help update.
+4. P6/P7/P9/P10/P8: narrow database queries, countdown widget update metadata, and desktop-sync suspend handler cleanup.
+5. P1/P2/P3: R8/resource shrinking, WebP conversion, icon dependency audit, release launch verification, and final APK-size check.
+6. Final version bump to `1.11.0 / versionCode 222`.

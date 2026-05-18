@@ -652,7 +652,7 @@ internal fun DashboardBody(
                 item {
                     TodoFilterBar(
                         groups = uiState.groups,
-                        selectedGroupId = uiState.selectedGroupId,
+                        selectedGroupIds = uiState.selectedGroupIds,
                         onSelectGroup = onSelectGroup,
                         onCreateGroup = onCreateGroup,
                         onUpdateGroup = onUpdateGroup,

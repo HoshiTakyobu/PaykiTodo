@@ -30,6 +30,7 @@ const state = {
   todoTotal: 0,
   todoHasMore: false,
   todoQuery: '',
+  selectedTodoGroupIds: [],
   todoLoading: false,
   eventsLoaded: false,
   eventRangeStart: null,
@@ -153,6 +154,137 @@ function fillGroupSelect(selectId, selectedId) {
   if (!node) return;
   node.innerHTML = groupOptionsHtml(selectedId);
   if (!node.value && node.options.length) node.value = node.options[0].value;
+}
+
+function sortedGroups() {
+  return (state.snapshot?.groups || []).slice().sort((a, b) => {
+    if (a.isDefault !== b.isDefault) return a.isDefault ? -1 : 1;
+    return String(a.name || '').localeCompare(String(b.name || ''), 'zh-CN');
+  });
+}
+
+function groupById(id) {
+  return (state.snapshot?.groups || []).find(group => Number(group.id) === Number(id)) || null;
+}
+
+function todoGroupIds(item) {
+  const raw = Array.isArray(item?.groupIds) && item.groupIds.length ? item.groupIds : [item?.groupId];
+  return Array.from(new Set(raw.map(value => Number(value)).filter(value => Number.isFinite(value) && value > 0)));
+}
+
+function todoGroupNames(item) {
+  const names = todoGroupIds(item)
+    .map(id => groupById(id)?.name)
+    .filter(Boolean);
+  if (names.length) return names;
+  return [item?.groupName || '未分组'];
+}
+
+function todoGroupLabel(item) {
+  return todoGroupNames(item).join(' / ');
+}
+
+function todoGroupAccent(item) {
+  const primaryGroup = groupById(todoGroupIds(item)[0]);
+  return item?.groupColorHex || primaryGroup?.colorHex || item?.accentColorHex || '#4e87e1';
+}
+
+function todoMatchesSelectedGroups(item) {
+  const selected = state.selectedTodoGroupIds || [];
+  if (!selected.length) return true;
+  const ids = new Set(todoGroupIds(item).map(String));
+  return selected.every(id => ids.has(String(id)));
+}
+
+function normalizeSelectedTodoGroupFilters() {
+  const validIds = new Set(sortedGroups().map(group => String(group.id)));
+  if (!validIds.size) {
+    state.selectedTodoGroupIds = [];
+    return;
+  }
+  state.selectedTodoGroupIds = Array.from(new Set((state.selectedTodoGroupIds || [])
+    .map(Number)
+    .filter(id => Number.isFinite(id) && id > 0 && validIds.has(String(id)))));
+}
+
+function defaultTodoGroupIds() {
+  const groups = sortedGroups();
+  return groups.length ? [Number(groups[0].id)] : [];
+}
+
+function setTodoEditorGroupIds(groupIds) {
+  const normalized = Array.from(new Set((groupIds || []).map(Number).filter(value => Number.isFinite(value) && value > 0)));
+  const selected = normalized.length ? normalized : defaultTodoGroupIds();
+  const primary = selected[0] || 0;
+  fillGroupSelect('todo-group', primary);
+  const select = document.getElementById('todo-group');
+  if (select && primary) select.value = String(primary);
+  renderTodoGroupChips(selected);
+}
+
+function readTodoEditorGroupIds() {
+  const chips = Array.from(document.querySelectorAll('#todo-group-chips [data-todo-group-editor].active'));
+  const selected = chips.map(node => Number(node.dataset.todoGroupEditor)).filter(value => Number.isFinite(value) && value > 0);
+  if (selected.length) return Array.from(new Set(selected));
+  const fallback = Number(document.getElementById('todo-group')?.value || 0);
+  return fallback > 0 ? [fallback] : [];
+}
+
+function renderTodoGroupChips(selectedIds) {
+  const host = document.getElementById('todo-group-chips');
+  if (!host) return;
+  const selected = new Set((selectedIds || []).map(String));
+  const groups = sortedGroups();
+  if (!groups.length) {
+    host.innerHTML = '<span class="group-chip-empty">暂无分组</span>';
+    return;
+  }
+  host.innerHTML = groups.map(group => {
+    const active = selected.has(String(group.id));
+    const color = group.colorHex || '#4e87e1';
+    return ''
+      + '<button type="button" class="group-chip editor-chip' + (active ? ' active' : '') + '" data-todo-group-editor="' + escapeHtml(String(group.id)) + '" style="--chip-color:' + escapeHtml(color) + '">'
+      +   '<span class="group-chip-dot"></span>'
+      +   '<span>' + escapeHtml(group.name || '未分组') + '</span>'
+      + '</button>';
+  }).join('');
+  host.querySelectorAll('[data-todo-group-editor]').forEach(node => {
+    node.onclick = event => {
+      event.preventDefault();
+      toggleTodoEditorGroup(node.dataset.todoGroupEditor);
+    };
+  });
+}
+
+function toggleTodoEditorGroup(groupId) {
+  const selected = readTodoEditorGroupIds();
+  const key = Number(groupId);
+  const next = selected.includes(key)
+    ? selected.filter(id => id !== key)
+    : [...selected, key];
+  setTodoEditorGroupIds(next.length ? next : [key]);
+}
+
+function renderTodoGroupFilterChips() {
+  normalizeSelectedTodoGroupFilters();
+  const groups = sortedGroups();
+  if (!groups.length) return '';
+  const selected = new Set((state.selectedTodoGroupIds || []).map(String));
+  return ''
+    + '<div class="todo-filter-row" aria-label="待办分组筛选">'
+    +   '<button type="button" class="group-chip filter-chip' + (!selected.size ? ' active' : '') + '" data-todo-group-filter="all">'
+    +     '<span>全部</span>'
+    +   '</button>'
+    +   groups.map(group => {
+      const color = group.colorHex || '#4e87e1';
+      const active = selected.has(String(group.id));
+      return ''
+        + '<button type="button" class="group-chip filter-chip' + (active ? ' active' : '') + '" data-todo-group-filter="' + escapeHtml(String(group.id)) + '" style="--chip-color:' + escapeHtml(color) + '">'
+        +   '<span class="group-chip-dot"></span>'
+        +   '<span>' + escapeHtml(group.name || '未分组') + '</span>'
+        + '</button>';
+    }).join('')
+    + '</div>';
 }
 
 function toDateTimeLocalParts(value) {
@@ -332,9 +464,9 @@ function renderSummaryCard(label, value) {
 }
 
 function renderTodoItem(item) {
-  const accent = item.groupColorHex || item.accentColorHex || '#4e87e1';
+  const accent = todoGroupAccent(item);
   const marker = todoMarker(item);
-  const meta = [item.groupName || '未分组', item.location || '', item.isRecurring ? '循环' : ''].filter(Boolean).join(' · ');
+  const meta = [todoGroupLabel(item), item.location || '', item.isRecurring ? '循环' : ''].filter(Boolean).join(' · ');
   return ''
     + '<article class="timeline-item" style="--accent:' + accent + '">'
     +   '<div class="timeline-marker">'
@@ -369,10 +501,12 @@ function renderTodoSection(section) {
 function renderTodoPagerControls() {
   const loaded = state.snapshot?.todos?.length || 0;
   const total = state.todoTotal || loaded;
+  const visibleLoaded = (state.snapshot?.todos || []).filter(todoMatchesSelectedGroups).length;
   const query = state.todoQuery || '';
   const hasSearch = query.trim().length > 0;
   const canLoadMore = state.todoHasMore && !state.todoLoading;
   return ''
+    + renderTodoGroupFilterChips()
     + '<div class="todo-data-toolbar">'
     +   '<div class="todo-search-row">'
     +     '<input type="search" data-todo-search-input="true" value="' + escapeHtml(query) + '" placeholder="搜索标题、备注或地点" />'
@@ -380,7 +514,7 @@ function renderTodoPagerControls() {
     +     (hasSearch ? '<button type="button" class="ghost mini" data-clear-todo-search="true">清空</button>' : '')
     +   '</div>'
     +   '<div class="todo-page-meta">'
-    +     '已加载 ' + loaded + ' / 共 ' + total + ' 条'
+    +     '显示 ' + visibleLoaded + ' / 已加载 ' + loaded + ' / 共 ' + total + ' 条'
     +     (hasSearch ? ' · 搜索：' + escapeHtml(query) : '')
     +   '</div>'
     +   '<button type="button" class="ghost mini todo-load-more" data-load-more-todos="true" ' + (canLoadMore ? '' : 'disabled') + '>'
@@ -758,8 +892,10 @@ function renderTodos() {
   }
   const now = Date.now();
   const today = dayKey(new Date());
-  const active = activeTodos().slice().sort((a, b) => (a.hasDueDate ? (a.dueAtMillis || Number.MAX_SAFE_INTEGER) : Number.MAX_SAFE_INTEGER) - (b.hasDueDate ? (b.dueAtMillis || Number.MAX_SAFE_INTEGER) : Number.MAX_SAFE_INTEGER));
-  const history = historyTodos().slice().sort((a, b) => (b.completedAtMillis || b.canceledAtMillis || b.missedAtMillis || b.dueAtMillis || 0) - (a.completedAtMillis || a.canceledAtMillis || a.missedAtMillis || a.dueAtMillis || 0));
+  const activeAll = activeTodos();
+  const historyAll = historyTodos();
+  const active = activeAll.filter(todoMatchesSelectedGroups).slice().sort((a, b) => (a.hasDueDate ? (a.dueAtMillis || Number.MAX_SAFE_INTEGER) : Number.MAX_SAFE_INTEGER) - (b.hasDueDate ? (b.dueAtMillis || Number.MAX_SAFE_INTEGER) : Number.MAX_SAFE_INTEGER));
+  const history = historyAll.filter(todoMatchesSelectedGroups).slice().sort((a, b) => (b.completedAtMillis || b.canceledAtMillis || b.missedAtMillis || b.dueAtMillis || 0) - (a.completedAtMillis || a.canceledAtMillis || a.missedAtMillis || a.dueAtMillis || 0));
   const sections = [
     { key: 'missed', title: '已错过', empty: '当前没有已错过的待办。', items: active.filter(item => item.missed || (item.hasDueDate && (item.dueAtMillis || 0) < now && dayKeyFromMillis(item.dueAtMillis) < today)) },
     { key: 'today', title: '今日待办', empty: '今天暂时没有待办。', items: active.filter(item => !item.missed && (!item.hasDueDate || dayKeyFromMillis(item.dueAtMillis) === today)) },
@@ -767,9 +903,9 @@ function renderTodos() {
     { key: 'history', title: '历史记录', empty: '暂无历史记录。', items: history }
   ];
   els.todoSummary.innerHTML = [
-    renderSummaryCard('已加载活动', active.length),
+    renderSummaryCard('已加载活动', activeAll.length),
     renderSummaryCard('已加载今日', sections[1].items.length),
-    renderSummaryCard('已加载历史', history.length),
+    renderSummaryCard('已加载历史', historyAll.length),
     renderSummaryCard('总匹配', state.todoTotal || state.snapshot?.todos?.length || 0)
   ].join('');
   renderDesktopDailyBoard();
@@ -833,7 +969,7 @@ function renderBoardNowCard(nowMillis, visibleTodayEvents, todoItems) {
   const nextTodo = todoItems.find(item => !item.missed) || todoItems[0];
   if (nextTodo) {
     return ''
-      + '<button type="button" class="desktop-now-card" data-todo-id="' + escapeHtml(String(nextTodo.id ?? '')) + '" style="--accent:' + escapeHtml(nextTodo.groupColorHex || nextTodo.accentColorHex || '#4e87e1') + '">'
+      + '<button type="button" class="desktop-now-card" data-todo-id="' + escapeHtml(String(nextTodo.id ?? '')) + '" style="--accent:' + escapeHtml(todoGroupAccent(nextTodo)) + '">'
       +   '<span>' + escapeHtml(nextTodo.missed ? '已错过待办' : '今日待办') + '</span>'
       +   '<strong>' + escapeHtml(nextTodo.title || '未命名待办') + '</strong>'
       +   '<small>' + escapeHtml(nextTodo.hasDueDate ? ('DDL ' + formatDateTimeLabel(nextTodo.dueAtMillis)) : '无 DDL') + '</small>'
@@ -864,7 +1000,7 @@ function renderBoardCountdownCard(items, boardDateKey) {
 }
 
 function renderBoardCountdownRow(item, boardDateKey) {
-  const accent = item.itemType === 'EVENT' ? (item.accentColorHex || item.groupColorHex || '#4e87e1') : (item.groupColorHex || '#4CB782');
+  const accent = item.itemType === 'EVENT' ? (item.accentColorHex || item.groupColorHex || '#4e87e1') : todoGroupAccent(item);
   const target = countdownTargetMillis(item);
   const remain = target ? remainingCountdownDisplay(target) : { primary: '--', secondary: '' };
   const rowAttr = item.itemType === 'EVENT'
@@ -872,7 +1008,7 @@ function renderBoardCountdownRow(item, boardDateKey) {
     : 'data-todo-id="' + escapeHtml(String(item.id ?? '')) + '"';
   const meta = item.itemType === 'EVENT'
     ? eventCountdownTimeText(item)
-    : [target ? ('DDL ' + formatDateTimeLabel(target)) : '', item.groupName || ''].filter(Boolean).join(' · ');
+    : [target ? ('DDL ' + formatDateTimeLabel(target)) : '', todoGroupLabel(item)].filter(Boolean).join(' · ');
   return ''
     + '<button type="button" class="desktop-board-row countdown" ' + rowAttr + ' style="--accent:' + escapeHtml(accent) + '">'
     +   '<span class="desktop-board-strip"></span>'
@@ -915,9 +1051,9 @@ function sameLocalDate(leftMillis, rightMillis) {
 }
 
 function renderBoardTodoRow(item) {
-  const accent = item.groupColorHex || item.accentColorHex || '#4e87e1';
+  const accent = todoGroupAccent(item);
   const status = item.missed ? '已错过' : (item.hasDueDate ? formatTimeLabel(item.dueAtMillis) : '无 DDL');
-  const meta = [item.groupName || '未分组', item.hasDueDate ? ('DDL ' + formatDateTimeLabel(item.dueAtMillis)) : '', item.notes || ''].filter(Boolean).join(' · ');
+  const meta = [todoGroupLabel(item), item.hasDueDate ? ('DDL ' + formatDateTimeLabel(item.dueAtMillis)) : '', item.notes || ''].filter(Boolean).join(' · ');
   return ''
     + '<button type="button" class="desktop-board-row todo" data-todo-id="' + escapeHtml(String(item.id ?? '')) + '" style="--accent:' + escapeHtml(accent) + '">'
     +   '<span class="desktop-board-strip"></span>'
@@ -1725,7 +1861,7 @@ function setTodoDueEnabled(enabled) {
 }
 function clearTodoForm() {
   state.editingTodoId = null;
-  fillGroupSelect('todo-group');
+  setTodoEditorGroupIds(defaultTodoGroupIds());
   document.getElementById('todo-modal-title').textContent = '新增待办';
   document.getElementById('create-todo').textContent = '创建待办';
   document.getElementById('delete-todo').classList.add('hidden');
@@ -1747,7 +1883,7 @@ function clearTodoForm() {
 
 function openTodoEditor(item) {
   state.editingTodoId = item.id;
-  fillGroupSelect('todo-group', item.groupId);
+  setTodoEditorGroupIds(todoGroupIds(item));
   document.getElementById('todo-modal-title').textContent = '编辑待办';
   document.getElementById('create-todo').textContent = '保存修改';
   document.getElementById('delete-todo').classList.remove('hidden');
@@ -1875,7 +2011,7 @@ function openEventEditor(item) {
 
 function openTodoPreview(item) {
   state.previewTodoId = item.id;
-  const accent = item.groupColorHex || item.accentColorHex || DEFAULT_EVENT_COLOR;
+  const accent = todoGroupAccent(item);
   const body = document.getElementById('todo-preview-body');
   const completeButton = document.getElementById('preview-todo-complete');
   const cancelButton = document.getElementById('preview-todo-cancel');
@@ -1886,7 +2022,7 @@ function openTodoPreview(item) {
     +   '<div class="preview-main-title">' + escapeHtml(item.title) + '</div>'
     +   '<div class="pill">' + escapeHtml(todoStateLabel(item)) + '</div>'
     + '</div>'
-    + previewRow('分', '分组', item.groupName || '未分组')
+    + previewRow('分', '分组', todoGroupLabel(item))
     + previewRow('时', 'DDL', todoDueText(item))
     + previewRow('倒', '倒数日', item.countdownEnabled ? '已显示在每日看板倒数日' : '未开启')
     + previewRow('循', '循环', recurrenceLabel(item))
@@ -1979,6 +2115,25 @@ function confirmDanger(title, message, confirmLabel = '删除') {
   });
 }
 function bindActions() {
+  document.querySelectorAll('[data-todo-group-filter]').forEach(node => {
+    node.onclick = event => {
+      event.preventDefault();
+      const value = node.dataset.todoGroupFilter;
+      if (value === 'all') {
+        state.selectedTodoGroupIds = [];
+      } else {
+        const groupId = Number(value);
+        const selected = new Set((state.selectedTodoGroupIds || []).map(Number));
+        if (selected.has(groupId)) {
+          selected.delete(groupId);
+        } else if (Number.isFinite(groupId) && groupId > 0) {
+          selected.add(groupId);
+        }
+        state.selectedTodoGroupIds = Array.from(selected);
+      }
+      renderTodos();
+    };
+  });
   document.querySelectorAll('[data-todo-id]').forEach(node => {
     node.onclick = event => {
       event.stopPropagation();
@@ -2209,13 +2364,15 @@ document.getElementById('create-todo').onclick = async () => {
     const dueAt = hasDueDate ? readDateTimeValue('todo-due') : null;
     const dueAtMillis = dueAt ? new Date(dueAt).getTime() : null;
     const reminderOffsets = hasDueDate ? parseReminderSpecs(document.getElementById('todo-reminder-spec').value, dueAtMillis) : [];
+    const groupIds = readTodoEditorGroupIds();
     const payload = {
       title: document.getElementById('todo-title').value,
       notes: document.getElementById('todo-notes').value,
       dueAt: dueAt,
       reminderAt: null,
       reminderOffsetsMinutes: reminderOffsets,
-      groupId: Number(document.getElementById('todo-group').value || 0),
+      groupId: groupIds[0] || Number(document.getElementById('todo-group').value || 0),
+      groupIds: groupIds,
       countdownEnabled: hasDueDate && document.getElementById('todo-countdown').checked,
       ringEnabled: document.getElementById('todo-ring').checked,
       vibrateEnabled: document.getElementById('todo-vibrate').checked,

@@ -133,7 +133,12 @@ class DesktopSyncCoordinator(
                 method == "GET" && path == "/api/status" -> DesktopSyncServer.Response.json(status().toJson())
                 method == "GET" && routePath == "/api/snapshot" -> {
                     val snapshot = buildSnapshot(boardOnly = queryParam(path, "scope") == "board")
-                    DesktopSyncServer.Response.json(snapshot.toJson(snapshot.groups.associateBy { it.id }))
+                    DesktopSyncServer.Response.json(
+                        snapshot.toJson(
+                            groupsById = snapshot.groups.associateBy { it.id },
+                            todoGroupIdsByTodoId = todoGroupIdsByTodoId()
+                        )
+                    )
                 }
                 method == "GET" && routePath == "/api/todos" -> DesktopSyncServer.Response.json(desktopTodos(path))
                 method == "GET" && routePath == "/api/events" -> DesktopSyncServer.Response.json(desktopEvents(path))
@@ -218,6 +223,7 @@ class DesktopSyncCoordinator(
         val groups = runBlocking { app.repository.getAllGroups().ifEmpty { app.repository.ensureDefaultGroups() } }
         val groupsById = groups.associateBy { it.id }
         val todos = runBlocking { app.repository.getDesktopTodoItemsPaged(query, limit, offset) }
+        val groupIdsByTodoId = todoGroupIdsByTodoId()
         val total = runBlocking { app.repository.countDesktopTodoItems(query) }
         return JSONObject()
             .put("generatedAtMillis", System.currentTimeMillis())
@@ -227,7 +233,7 @@ class DesktopSyncCoordinator(
             .put("hasMore", offset + todos.size < total)
             .put("query", query)
             .put("groups", JSONArray(groups.map { it.toDesktopJson() }))
-            .put("todos", JSONArray(todos.map { it.toDesktopJson(groupsById[it.groupId]) }))
+            .put("todos", JSONArray(todos.map { it.toDesktopJson(groupsById[it.groupId], groupIdsByTodoId[it.id].orEmpty()) }))
     }
 
     private fun desktopEvents(path: String): JSONObject {
@@ -251,7 +257,8 @@ class DesktopSyncCoordinator(
     }
 
     private fun createTodo(json: JSONObject): JSONObject {
-        val groupId = resolveGroupId(json)
+        val groupIds = resolveGroupIds(json)
+        val groupId = groupIds.firstOrNull() ?: resolveGroupId(json)
         val dueAt = json.optStringOrNull("dueAt")?.let(LocalDateTime::parse)
         val reminderAt = json.optStringOrNull("reminderAt")?.let(LocalDateTime::parse)
         val reminderOffsets = json.optJSONArray("reminderOffsetsMinutes")?.toIntList().orEmpty()
@@ -267,7 +274,8 @@ class DesktopSyncCoordinator(
             reminderDeliveryMode = com.example.todoalarm.data.ReminderDeliveryMode.fromStorage(json.optString("reminderDeliveryMode")),
             countdownEnabled = json.optBoolean("countdownEnabled", false),
             recurrence = recurrence,
-            reminderOffsetsMinutes = reminderOffsets
+            reminderOffsetsMinutes = reminderOffsets,
+            groupIds = groupIds
         )
         require(draft.title.isNotBlank()) { "标题不能为空" }
         val created = runBlocking { app.repository.createFromDraft(draft) }
@@ -281,7 +289,8 @@ class DesktopSyncCoordinator(
         val original = runBlocking { app.repository.getTodo(id) } ?: return JSONObject().put("ok", false)
         require(original.isTodo) { "仅支持更新待办" }
 
-        val groupId = resolveGroupId(json)
+        val groupIds = resolveGroupIds(json)
+        val groupId = groupIds.firstOrNull() ?: resolveGroupId(json)
         val dueAt = json.optStringOrNull("dueAt")?.let(LocalDateTime::parse)
         val reminderAt = json.optStringOrNull("reminderAt")?.let(LocalDateTime::parse)
         val reminderOffsets = json.optJSONArray("reminderOffsetsMinutes")?.toIntList().orEmpty()
@@ -299,7 +308,8 @@ class DesktopSyncCoordinator(
             ),
             countdownEnabled = json.optBoolean("countdownEnabled", original.countdownEnabled),
             recurrence = recurrence,
-            reminderOffsetsMinutes = reminderOffsets
+            reminderOffsetsMinutes = reminderOffsets,
+            groupIds = groupIds
         )
         require(draft.title.isNotBlank()) { "标题不能为空" }
         validateTodoDraft(draft = draft, original = original)?.let { error(it) }
@@ -598,6 +608,18 @@ class DesktopSyncCoordinator(
         return groups.firstOrNull { it.name == "例行" }?.id ?: groups.firstOrNull()?.id ?: 0L
     }
 
+    private fun resolveGroupIds(json: JSONObject): List<Long> {
+        val groups = runBlocking { app.repository.getAllGroups().ifEmpty { app.repository.ensureDefaultGroups() } }
+        val validIds = groups.map { it.id }.toSet()
+        val explicitIds = json.optJSONArray("groupIds")
+            ?.toLongList()
+            .orEmpty()
+            .filter { it > 0 && it in validIds }
+            .distinct()
+        if (explicitIds.isNotEmpty()) return explicitIds
+        return listOf(resolveGroupId(json)).filter { it > 0 }
+    }
+
     private fun parseRecurrence(json: JSONObject?, anchorDate: LocalDate?): RecurrenceConfig {
         if (json == null || !json.optBoolean("enabled", false)) return RecurrenceConfig()
         val type = RecurrenceType.fromStorage(json.optString("type"))
@@ -626,7 +648,8 @@ class DesktopSyncCoordinator(
         reminderDeliveryMode: com.example.todoalarm.data.ReminderDeliveryMode,
         countdownEnabled: Boolean,
         recurrence: RecurrenceConfig,
-        reminderOffsetsMinutes: List<Int>
+        reminderOffsetsMinutes: List<Int>,
+        groupIds: List<Long> = emptyList()
     ): TodoDraft {
         val now = LocalDateTime.now()
         val reminder = reminderAt?.takeIf { candidate ->
@@ -643,7 +666,8 @@ class DesktopSyncCoordinator(
             reminderDeliveryMode = reminderDeliveryMode,
             countdownEnabled = countdownEnabled,
             recurrence = recurrence,
-            reminderOffsetsMinutes = reminderOffsetsMinutes
+            reminderOffsetsMinutes = reminderOffsetsMinutes,
+            groupIds = groupIds
         )
     }
 
@@ -780,6 +804,12 @@ class DesktopSyncCoordinator(
         }
     }
 
+    private fun todoGroupIdsByTodoId(): Map<Long, List<Long>> {
+        return runBlocking { app.repository.getAllTodoGroupTags() }
+            .groupBy { it.todoId }
+            .mapValues { entry -> entry.value.map { it.groupId }.filter { it > 0 }.distinct().sorted() }
+    }
+
     private fun currentIpv4Addresses(): List<String> {
         return runCatching {
             Collections.list(NetworkInterface.getNetworkInterfaces())
@@ -813,6 +843,14 @@ private fun JSONArray.toIntList(): List<Int> {
     return buildList(length()) {
         for (index in 0 until length()) {
             add(optInt(index))
+        }
+    }
+}
+
+private fun JSONArray.toLongList(): List<Long> {
+    return buildList(length()) {
+        for (index in 0 until length()) {
+            add(optLong(index))
         }
     }
 }

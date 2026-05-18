@@ -62,6 +62,7 @@ private fun BackupSnapshot.toJson(): JSONObject {
         put("planningNotes", JSONArray(planningNotes.map { it.toJson() }))
         put("planningLineMappings", JSONArray(planningLineMappings.map { it.toJson() }))
         put("aiReports", JSONArray(aiReports.map { it.toJson() }))
+        put("todoGroupTags", JSONArray(todoGroupTags.map { it.toJson() }))
     }
 }
 
@@ -259,6 +260,13 @@ private fun AiReport.toJson(): JSONObject {
     }
 }
 
+private fun TodoGroupTag.toJson(): JSONObject {
+    return JSONObject().apply {
+        put("todoId", todoId)
+        put("groupId", groupId)
+    }
+}
+
 private fun backupSnapshotFromJson(json: JSONObject): BackupSnapshot {
     return BackupSnapshot(
         exportedAtMillis = json.optLong("exportedAtMillis", System.currentTimeMillis()),
@@ -271,6 +279,7 @@ private fun backupSnapshotFromJson(json: JSONObject): BackupSnapshot {
         planningNotes = json.optJSONArray("planningNotes").toPlanningNotes(),
         planningLineMappings = json.optJSONArray("planningLineMappings").toPlanningLineMappings(),
         aiReports = json.optJSONArray("aiReports").toAiReports(),
+        todoGroupTags = json.optJSONArray("todoGroupTags").toTodoGroupTags(),
         settings = json.optJSONObject("settings").toSettings()
     )
 }
@@ -490,6 +499,20 @@ private fun JSONArray?.toAiReports(): List<AiReport> {
                     isLocalFallback = item.optBoolean("isLocalFallback", false)
                 )
             )
+        }
+    }
+}
+
+private fun JSONArray?.toTodoGroupTags(): List<TodoGroupTag> {
+    if (this == null) return emptyList()
+    return buildList(length()) {
+        for (index in 0 until length()) {
+            val item = optJSONObject(index) ?: continue
+            val todoId = item.optLong("todoId", 0L)
+            val groupId = item.optLong("groupId", 0L)
+            if (todoId > 0 && groupId > 0) {
+                add(TodoGroupTag(todoId = todoId, groupId = groupId))
+            }
         }
     }
 }

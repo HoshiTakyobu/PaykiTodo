@@ -7,7 +7,7 @@ This file tracks the product at a practical level for new coding sessions.
 ### Task / Todo System
 
 - create, edit, delete todo items
-- title / notes / group / deadline / multi-reminder fields
+- title / notes / multi-group tags / deadline / multi-reminder fields
 - Todo editor shows title / DDL / group first for new todos and folds notes / reminder input / reminder delivery mode / recurrence / ring / vibration into 更多选项, auto-expanding when editing existing todos that use advanced state
 - Todo editor can choose reminder delivery mode between full-screen reminder and notification reminder; the selected mode is persisted for todos and recurring todo templates
 - Todo editor can mark a DDL-backed task as `倒数日`; the task then uses its DDL date as the countdown target and appears on board / desktop / widget countdown surfaces
@@ -16,11 +16,12 @@ This file tracks the product at a practical level for new coding sessions.
 - todo batch-import DDL supports same-day clock input such as `16:30` / `16：30`, plus Planning Desk-style natural date forms such as `5.28`, `5月28日`, `明天`, and `周五`; date-only values default to `23:59`
 - Todo page exposes todo batch import beside the bottom-right new-todo button instead of as a top content row
 - drawer navigation exposes a single-line `待办` entry; group filtering and group management live in the todo page chip bar instead of an expandable drawer group list or standalone group page
+- todos support multiple group tags through `todo_group_tags`; phone-side group filtering is multi-select intersection filtering, and the todo editor uses compact multi-select group chips while preserving the first group as the primary display color
 - complete / cancel / restore flows
 - active todo preview now uses the same bottom-sheet visual language as calendar event preview
 - active todo card body opens preview; completion is isolated to the checkbox to avoid accidental completion
 - recurring task support
-- grouped task filtering
+- grouped task filtering, including multi-group intersection filtering
 - three-zone home logic: overdue / today / upcoming, with no-DDL active todos included in today rather than hidden in upcoming
 - board-style daily overview entry exists and can show today's todos directly
 
@@ -203,6 +204,7 @@ This file tracks the product at a practical level for new coding sessions.
 
 - Room-based local storage
 - JSON import / export
+- backup / restore includes `todoGroupTags`; old backups without explicit multi-group tags are restored by backfilling each todo's original `groupId`
 - auto-backup related support
 - crash log viewing / copying
 - in-app wiki assets
@@ -220,11 +222,13 @@ This file tracks the product at a practical level for new coding sessions.
 - LAN browser-based desktop sync console exists
 - phone-side HTTP serving model exists
 - browser can perform limited data operations against the phone-side dataset
-- desktop web can edit existing todos with title, notes, DDL, reminder, reminder delivery mode, group, recurrence, ring, and vibration fields
+- desktop web can edit existing todos with title, notes, DDL, reminder, reminder delivery mode, multi-group tags, recurrence, ring, and vibration fields
+- desktop web todo management has compact multi-select group filter chips with intersection semantics, and todo cards / previews / board rows display all group names instead of collapsing to one group
 - desktop web todo/event reminder inputs accept AM/PM, Chinese AM/PM, relative-date, weekday, dot/slash-date, Chinese-date, full-width separator, and Chinese-comma reminder syntax in addition to the existing minute and ISO-like forms; placeholders now show these examples
 - desktop web todo cards open a detail preview first; event cards open the editor directly, while destructive actions still require confirmation
 - desktop web todo and event reminder editors accept mixed reminder syntax matching the phone-side examples, including minutes, same-day time, current-year date-time, and full date-time
 - desktop sync API accepts todo `reminderOffsetsMinutes`, allowing desktop-created / edited todos to persist multiple reminders
+- desktop sync API exposes and accepts todo `groupIds`, so desktop-created / edited todos preserve phone-side multi-group relationships
 - desktop web todo / event editors use a bottom-sheet-like visual structure with cancel / centered title / save actions
 - desktop web editor fields are card-styled, and timeline / event card buttons are lighter and less form-like
 - desktop Web UI resources are separated under `app/src/main/assets/desktop-web/`, while Android sync service code stays in `sync/`
@@ -262,7 +266,7 @@ This file tracks the product at a practical level for new coding sessions.
 ### Data / Performance
 
 - `todo_items` has Room indices for board todo queries, board event range queries, active reminders, group+DDL sorting, recurring-series lookup, desktop todo paging / sorting, and active countdown lookup.
-- Database version is `18`; `MIGRATION_13_14` creates the initial `todo_items` performance indices on upgraded installs, `MIGRATION_14_15` adds / backfills `planning_notes.hasAnnouncementHint` plus the indexed announcement lookup path, `MIGRATION_15_16` adds desktop todo paging plus AI-report generated-time/type indices, `MIGRATION_16_17` adds countdown fields / indices for todos and recurring templates, and `MIGRATION_17_18` removes `focus_sessions` while adding `event_check_ins`, `todo_group_tags`, and todo check-in fields.
+- Database version is `18`; `MIGRATION_13_14` creates the initial `todo_items` performance indices on upgraded installs, `MIGRATION_14_15` adds / backfills `planning_notes.hasAnnouncementHint` plus the indexed announcement lookup path, `MIGRATION_15_16` adds desktop todo paging plus AI-report generated-time/type indices, `MIGRATION_16_17` adds countdown fields / indices for todos and recurring templates, and `MIGRATION_17_18` removes `focus_sessions` while adding `event_check_ins`, `todo_group_tags`, todo check-in fields, and a backfill from existing todo `groupId` values into the multi-group join table.
 - Room schema export is enabled and `app/schemas/com.example.todoalarm.data.AppDatabase/18.json` is committed as the database-18 reference schema.
 - Desktop Web first connection now uses a lightweight board snapshot (`/api/snapshot?scope=board`); todo management uses paged/searchable `/api/todos?offset=...&limit=...&q=...`, and the event timeline uses visible-range `/api/events?start=...&end=...` instead of sharing one full snapshot for every management tab.
 - Main phone board/task UI uses active-todo-only observation and today/tomorrow event range observation instead of merging all todos and full active events into ordinary board/task state.

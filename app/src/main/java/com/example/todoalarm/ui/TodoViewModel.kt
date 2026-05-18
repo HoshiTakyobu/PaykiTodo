@@ -75,7 +75,7 @@ import java.util.UUID
 
 data class TodoUiState(
     val groups: List<TaskGroup> = emptyList(),
-    val selectedGroupId: Long? = null,
+    val selectedGroupIds: Set<Long> = emptySet(),
     val missedItems: List<TodoItem> = emptyList(),
     val todayItems: List<TodoItem> = emptyList(),
     val upcomingItems: List<TodoItem> = emptyList(),
@@ -103,7 +103,7 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
     private val quoteRepository = app.quoteRepository
 
     private val quoteFlow = MutableStateFlow(QuoteRepository.seedQuotes)
-    private val selectedGroupIdFlow = MutableStateFlow<Long?>(null)
+    private val selectedGroupIdsFlow = MutableStateFlow<Set<Long>>(emptySet())
     private val desktopSyncRefreshTick = MutableStateFlow(0L)
     private val todayDateFlow = MutableStateFlow(LocalDate.now())
     private val calendarEventWindowFlow = MutableStateFlow(calendarEventWindowAround(LocalDate.now()))
@@ -139,8 +139,8 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     @OptIn(ExperimentalCoroutinesApi::class)
-    private val activeTodoItems = selectedGroupIdFlow
-        .flatMapLatest { groupId -> repository.observeActiveTodoItems(groupId) }
+    private val activeTodoItems = selectedGroupIdsFlow
+        .flatMapLatest { groupIds -> repository.observeActiveTodoItems(groupIds) }
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5_000),
@@ -172,8 +172,8 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
     )
 
     @OptIn(ExperimentalCoroutinesApi::class)
-    val historyItems = selectedGroupIdFlow
-        .flatMapLatest { groupId -> repository.observeHistoryTodoItems(groupId) }
+    val historyItems = selectedGroupIdsFlow
+        .flatMapLatest { groupIds -> repository.observeHistoryTodoItems(groupIds) }
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5_000),
@@ -221,7 +221,7 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
         countdownItems,
         settingsStore.settingsFlow,
         quoteFlow,
-        selectedGroupIdFlow,
+        selectedGroupIdsFlow,
         desktopSyncRefreshTick,
         todayDateFlow
     ) { values ->
@@ -238,7 +238,8 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
         val settings = values[5] as AppSettings
         @Suppress("UNCHECKED_CAST")
         val quotes = values[6] as List<String>
-        val selectedGroupId = values[7] as Long?
+        @Suppress("UNCHECKED_CAST")
+        val selectedGroupIds = values[7] as Set<Long>
         val today = values[9] as LocalDate
         val availableGroups = if (groups.isEmpty()) repository.ensureDefaultGroups() else groups
         val todoSections = classifyActiveTodoItems(activeTaskItems, today)
@@ -249,7 +250,7 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
 
         TodoUiState(
             groups = availableGroups,
-            selectedGroupId = selectedGroupId,
+            selectedGroupIds = selectedGroupIds,
             missedItems = todoSections.missedItems,
             todayItems = todoSections.todayItems,
             upcomingItems = todoSections.upcomingItems,
@@ -277,7 +278,12 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun selectGroup(groupId: Long?) {
-        selectedGroupIdFlow.value = groupId
+        selectedGroupIdsFlow.value = if (groupId == null) {
+            emptySet()
+        } else {
+            val current = selectedGroupIdsFlow.value
+            if (groupId in current) current - groupId else current + groupId
+        }
     }
 
     fun updateCalendarEventWindow(startInclusive: LocalDate, endExclusive: LocalDate) {
@@ -293,6 +299,10 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
 
     suspend fun getTodoById(todoId: Long): TodoItem? {
         return withContext(Dispatchers.IO) { repository.getTodo(todoId) }
+    }
+
+    suspend fun getTodoGroupIds(todoId: Long): List<Long> {
+        return withContext(Dispatchers.IO) { repository.getGroupIdsForTodo(todoId) }
     }
 
     fun observeAiReports(
@@ -842,9 +852,7 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
     suspend fun deleteGroup(groupId: Long): String? {
         val deleted = repository.deleteGroup(groupId)
         if (!deleted) return "该分组下仍有关联任务，暂时不能直接删除"
-        if (selectedGroupIdFlow.value == groupId) {
-            selectedGroupIdFlow.value = null
-        }
+        selectedGroupIdsFlow.value = selectedGroupIdsFlow.value - groupId
         autoBackupIfEnabled()
         return null
     }
@@ -978,7 +986,7 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
             val snapshot = app.backupManager.importFromUri(sourceUri)
             repository.importSnapshot(snapshot)
             settingsStore.replaceAll(snapshot.settings)
-            selectedGroupIdFlow.value = null
+            selectedGroupIdsFlow.value = emptySet()
             refreshTaskStates()
             repository.futureReminderItems(System.currentTimeMillis()).forEach(app.alarmScheduler::schedule)
             "导入完成"

@@ -11,5 +11,6 @@ data class BackupSnapshot(
     val planningNotes: List<PlanningNote> = emptyList(),
     val planningLineMappings: List<PlanningLineMapping> = emptyList(),
     val aiReports: List<AiReport> = emptyList(),
+    val todoGroupTags: List<TodoGroupTag> = emptyList(),
     val settings: AppSettings
 )

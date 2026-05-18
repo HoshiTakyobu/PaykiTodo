@@ -252,6 +252,13 @@ button.ghost {
 .timeline-panel, .schedule-panel { padding: 18px; }
 .panel-head { margin-bottom: 16px; }
 .timeline-root { display: flex; flex-direction: column; gap: 18px; }
+.todo-filter-row, .group-chip-row { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.todo-filter-row { padding: 10px 12px; border-radius: 20px; background: var(--subtle-bg); border: 1px solid var(--panel-border); }
+.todo-group-editor { margin-top: 2px; }
+.group-chip { width: auto !important; min-width: 0; display: inline-flex; align-items: center; gap: 7px; padding: 7px 11px; border-radius: 999px; border: 1px solid color-mix(in srgb, var(--chip-color, var(--primary)) 20%, var(--card-border)); background: color-mix(in srgb, var(--chip-color, var(--primary)) 7%, var(--card-bg-strong)); color: var(--notes-text); font-size: 13px; font-weight: 850; box-shadow: none; }
+.group-chip.active { background: color-mix(in srgb, var(--chip-color, var(--primary)) 18%, var(--card-bg-strong)); border-color: color-mix(in srgb, var(--chip-color, var(--primary)) 52%, var(--card-border)); color: var(--strong-text); }
+.group-chip-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--chip-color, var(--primary)); flex: 0 0 auto; }
+.group-chip-empty { color: var(--muted); font-size: 13px; font-weight: 750; }
 .todo-data-toolbar { display: grid; grid-template-columns: minmax(220px, 1fr) auto auto; align-items: center; gap: 10px; padding: 12px; border-radius: 20px; background: var(--subtle-bg); border: 1px solid var(--panel-border); }
 .todo-search-row { min-width: 0; display: flex; align-items: center; gap: 8px; }
 .todo-search-row input { min-width: 0; flex: 1 1 260px; margin: 0; }

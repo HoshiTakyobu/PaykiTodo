@@ -111,6 +111,7 @@ fun DashboardScreen(
     onImportTodos: suspend (List<TodoDraft>) -> String?,
     onImportCalendarEvents: suspend (List<CalendarEventDraft>) -> String?,
     onGetTodoById: suspend (Long) -> TodoItem?,
+    onGetTodoGroupIds: suspend (Long) -> List<Long>,
     onCalendarVisibleDateRangeChange: (LocalDate, LocalDate) -> Unit,
     onUpdateTodo: suspend (TodoItem, TodoDraft, RecurrenceScope) -> String?,
     onUpdateCalendarEvent: suspend (TodoItem, com.example.todoalarm.data.CalendarEventDraft, RecurrenceScope) -> String?,
@@ -175,6 +176,7 @@ fun DashboardScreen(
     var editorVisible by remember { mutableStateOf(false) }
     var editorKind by remember { mutableStateOf(EditorKind.TODO) }
     var editingItem by remember { mutableStateOf<TodoItem?>(null) }
+    var editingTodoGroupIds by remember { mutableStateOf<List<Long>>(emptyList()) }
     var calendarDraftSeed by remember { mutableStateOf<CalendarEventDraft?>(null) }
     var todoBatchImportVisible by remember { mutableStateOf(false) }
     var batchImportVisible by remember { mutableStateOf(false) }
@@ -304,6 +306,7 @@ fun DashboardScreen(
             editorVisible -> {
                 editorVisible = false
                 editingItem = null
+                editingTodoGroupIds = emptyList()
                 calendarDraftSeed = null
             }
             todoBatchImportVisible -> todoBatchImportVisible = false
@@ -319,6 +322,15 @@ fun DashboardScreen(
                     Toast.makeText(context, "再按一次退出应用", Toast.LENGTH_SHORT).show()
                 }
             }
+        }
+    }
+
+    LaunchedEffect(editorVisible, editorKind, editingItem?.id) {
+        val target = editingItem?.takeIf { editorVisible && editorKind == EditorKind.TODO && it.isTodo }
+        editingTodoGroupIds = if (target == null) {
+            emptyList()
+        } else {
+            onGetTodoGroupIds(target.id).ifEmpty { listOf(target.groupId).filter { it > 0 } }
         }
     }
 
@@ -619,11 +631,13 @@ fun DashboardScreen(
         TodoEditorDialog(
             initialTodo = editingItem?.takeIf { it.isTodo },
             groups = uiState.groups,
+            initialGroupIds = editingTodoGroupIds,
             defaultRingEnabled = editingItem?.ringEnabled ?: defaultReminderRing,
             defaultVibrateEnabled = editingItem?.vibrateEnabled ?: defaultReminderVibrate,
             onDismiss = {
                 editorVisible = false
                 editingItem = null
+                editingTodoGroupIds = emptyList()
             },
             onConfirm = { draft ->
                 scope.launch {
@@ -637,6 +651,7 @@ fun DashboardScreen(
                     if (message == null) {
                         editorVisible = false
                         editingItem = null
+                        editingTodoGroupIds = emptyList()
                         Toast.makeText(
                             context,
                             if (current == null) "任务已创建" else "任务已更新",

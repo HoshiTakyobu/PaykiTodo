@@ -50,7 +50,8 @@ data class TodoDraft(
     val reminderDeliveryMode: ReminderDeliveryMode = ReminderDeliveryMode.FULLSCREEN,
     val countdownEnabled: Boolean = false,
     val recurrence: RecurrenceConfig = RecurrenceConfig(),
-    val reminderOffsetsMinutes: List<Int> = emptyList()
+    val reminderOffsetsMinutes: List<Int> = emptyList(),
+    val groupIds: List<Long> = emptyList()
 ) {
     val normalizedReminderOffsetsMinutes: List<Int>
         get() {

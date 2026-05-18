@@ -172,6 +172,7 @@ class MainActivity : ComponentActivity() {
                     onImportTodos = viewModel::importTodos,
                     onImportCalendarEvents = viewModel::importCalendarEvents,
                     onGetTodoById = viewModel::getTodoById,
+                    onGetTodoGroupIds = viewModel::getTodoGroupIds,
                     onCalendarVisibleDateRangeChange = viewModel::updateCalendarEventWindow,
                     onUpdateTodo = viewModel::updateTodo,
                     onUpdateCalendarEvent = viewModel::updateCalendarEvent,

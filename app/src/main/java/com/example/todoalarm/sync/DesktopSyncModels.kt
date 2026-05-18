@@ -48,15 +48,18 @@ fun DesktopSyncStatus.toJson(): JSONObject {
     }
 }
 
-fun DesktopSyncSnapshot.toJson(groupsById: Map<Long, TaskGroup>): JSONObject {
+fun DesktopSyncSnapshot.toJson(
+    groupsById: Map<Long, TaskGroup>,
+    todoGroupIdsByTodoId: Map<Long, List<Long>> = emptyMap()
+): JSONObject {
     return JSONObject().apply {
         put("generatedAtMillis", generatedAtMillis)
         put("partial", partial)
         put("groups", JSONArray(groups.map { it.toDesktopJson() }))
-        put("todos", JSONArray(todos.map { it.toDesktopJson(groupsById[it.groupId]) }))
+        put("todos", JSONArray(todos.map { it.toDesktopJson(groupsById[it.groupId], todoGroupIdsByTodoId[it.id].orEmpty()) }))
         put("events", JSONArray(events.map { it.toDesktopJson(groupsById[it.groupId]) }))
         put("announcements", JSONArray(announcements.map { it.toDesktopJson() }))
-        put("todayBoard", todayBoard.toDesktopJson(groupsById))
+        put("todayBoard", todayBoard.toDesktopJson(groupsById, todoGroupIdsByTodoId))
     }
 }
 
@@ -72,12 +75,15 @@ fun DailyBoardSnapshot.toDesktopSyncBoard(nowMillis: Long): DesktopDailyBoardSna
     )
 }
 
-private fun DesktopDailyBoardSnapshot.toDesktopJson(groupsById: Map<Long, TaskGroup>): JSONObject {
+private fun DesktopDailyBoardSnapshot.toDesktopJson(
+    groupsById: Map<Long, TaskGroup>,
+    todoGroupIdsByTodoId: Map<Long, List<Long>> = emptyMap()
+): JSONObject {
     return JSONObject().apply {
         put("date", date)
         put("nowMillis", nowMillis)
-        put("countdownItems", JSONArray(countdownItems.map { it.toDesktopJson(groupsById[it.groupId]) }))
-        put("todoItems", JSONArray(todoItems.map { it.toDesktopJson(groupsById[it.groupId]) }))
+        put("countdownItems", JSONArray(countdownItems.map { it.toDesktopJson(groupsById[it.groupId], todoGroupIdsByTodoId[it.id].orEmpty()) }))
+        put("todoItems", JSONArray(todoItems.map { it.toDesktopJson(groupsById[it.groupId], todoGroupIdsByTodoId[it.id].orEmpty()) }))
         put("allTodayEvents", JSONArray(allTodayEvents.map { it.toDesktopJson(groupsById[it.groupId]) }))
         put("visibleTodayEvents", JSONArray(visibleTodayEvents.map { it.toDesktopJson(groupsById[it.groupId]) }))
         put("tomorrowEvents", JSONArray(tomorrowEvents.map { it.toDesktopJson(groupsById[it.groupId]) }))
@@ -103,8 +109,11 @@ fun TaskGroup.toDesktopJson(): JSONObject {
     }
 }
 
-fun TodoItem.toDesktopJson(group: TaskGroup?): JSONObject {
+fun TodoItem.toDesktopJson(group: TaskGroup?, groupIds: List<Long> = emptyList()): JSONObject {
     val zone = ZoneId.systemDefault()
+    val normalizedGroupIds = (groupIds.ifEmpty { listOf(groupId) })
+        .filter { it > 0 }
+        .distinct()
     return JSONObject().apply {
         put("id", id)
         put("itemType", itemType)
@@ -112,6 +121,7 @@ fun TodoItem.toDesktopJson(group: TaskGroup?): JSONObject {
         put("notes", notes)
         put("location", location)
         put("groupId", groupId)
+        put("groupIds", JSONArray(normalizedGroupIds))
         put("groupName", group?.name)
         put("groupColorHex", group?.colorHex)
         put("completed", completed)

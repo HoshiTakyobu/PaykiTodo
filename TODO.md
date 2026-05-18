@@ -6,6 +6,7 @@
 
 - Verify version `1.10.3` on device after the planning-desk location parsing, linked-todo default, linked-todo notes, and desktop event color preset fixes
 - Keep `README.md`, `CHANGELOG.md`, Wiki, in-app help sheets, desktop-web help, and current-state docs aligned with version `1.10.3`
+- Verify the current 1.11.0 multi-group todo slice on device and desktop browser before the final version bump: phone editor reopen preserves all selected groups, selecting multiple group chips uses intersection filtering, desktop Web edit preserves all groups, and backup export/import keeps `todoGroupTags`
 - Continue planning-desk usability polish without expanding into drag/drop, Gantt, AI auto-planning, or complex project trees
 - Improve repo-native handoff so new sessions do not depend on long chat history
 
@@ -78,6 +79,9 @@
 - Settings -> AI 调用配置 should be device-tested for the single-provider `测试连接` button: success, HTTP 401/403, timeout/unreachable Base URL, root Base URL fallback to `/v1/chat/completions`, non-JSON HTML response, and result auto-clear after field edits or time.
 - Settings -> AI 调用配置 should be device-tested for AI 日报 / 周报: daily and weekly switches, HH:mm validation, save/re-schedule behavior, the centered `了解 AI 日报` dialog, immediate daily generation, and disabled-switch cancellation.
 - Settings -> AI 调用配置 should be regression-tested for AI report retention: 30 天 / 90 天 / 365 天 / 永久 selections should persist, generated reports should trigger cleanup only for expired archive rows, and backup / restore should preserve the retention choice while still excluding API Keys.
+- Todo multi-group behavior should be device-tested: creating a todo with multiple groups should reopen with the same selected chips, selecting two or more group filters should show only todos that belong to every selected group, and deleting / editing a group should update the chip bar without losing todo memberships.
+- Desktop Web todo multi-group behavior should be browser-tested: `/api/todos` items expose `groupIds`, the editor preserves all selected groups on save, cards / previews / daily-board rows show all group names, and multi-chip filtering uses intersection semantics.
+- Backup / restore should be tested for multi-group todos: a fresh backup must include `todoGroupTags`, restore should keep all selected groups, and old backups without `todoGroupTags` should backfill from each todo's `groupId`.
 - AI 日报 should be device-tested with AI enabled and with AI disabled/broken: both paths should write a new top entry into drawer -> `AI 报告`, not Planning Desk.
 - AI report notification should be device-tested: when notification permission is granted, generated reports should post a low-priority notification and tapping it should open the matching `AI 报告` detail.
 - AI 周报 should be tested by forcing or waiting for Sunday scheduling; it should write into `AI 报告` with type `周报` rather than a Planning Desk note.

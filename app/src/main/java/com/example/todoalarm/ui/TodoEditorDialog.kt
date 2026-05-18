@@ -69,6 +69,7 @@ import java.util.Locale
 fun TodoEditorDialog(
     initialTodo: TodoItem?,
     groups: List<TaskGroup>,
+    initialGroupIds: List<Long> = emptyList(),
     defaultRingEnabled: Boolean,
     defaultVibrateEnabled: Boolean,
     onDismiss: () -> Unit,
@@ -85,9 +86,19 @@ fun TodoEditorDialog(
     val defaultGroupId = remember(groups) {
         groups.firstOrNull { it.name == "例行" }?.id ?: groups.firstOrNull()?.id ?: 0L
     }
-    var groupId by remember(initialTodo?.id, groups) {
-        mutableStateOf(initialTodo?.groupId?.takeIf { it > 0 } ?: defaultGroupId)
+    var selectedGroupIds by remember(initialTodo?.id, initialGroupIds, groups) {
+        val validGroupIds = groups.map { it.id }.toSet()
+        val fallback = initialGroupIds.ifEmpty {
+            listOf(initialTodo?.groupId?.takeIf { it > 0 } ?: defaultGroupId)
+        }
+        mutableStateOf(
+            fallback
+                .filter { it > 0 && it in validGroupIds }
+                .distinct()
+                .ifEmpty { listOf(defaultGroupId).filter { it > 0 } }
+        )
     }
+    val primaryGroupId = selectedGroupIds.firstOrNull() ?: defaultGroupId
     var hasDueDate by remember(initialTodo?.id) {
         mutableStateOf(initialTodo?.hasDueDate ?: true)
     }
@@ -138,7 +149,6 @@ fun TodoEditorDialog(
         mutableStateOf(initialTodo?.recurrenceEndDate ?: dueAt.toLocalDate().plusDays(90))
     }
     var recurrencePreview by remember { mutableStateOf<RecurrencePreviewResult?>(null) }
-    var showGroupPicker by remember { mutableStateOf(false) }
     var showReminderDeliveryPicker by remember { mutableStateOf(false) }
     var helpTopic by remember { mutableStateOf<InputSyntaxHelpTopic?>(null) }
     var activeDateTimeTarget by remember { mutableStateOf<TodoDateTimeTarget?>(null) }
@@ -189,7 +199,7 @@ fun TodoEditorDialog(
                     notes = notes,
                     dueAt = dueAt.takeIf { hasDueDate },
                     reminderAt = parsedReminderTimes.minOrNull(),
-                    groupId = groupId,
+                    groupId = primaryGroupId,
                     ringEnabled = ringEnabled,
                     vibrateEnabled = vibrateEnabled,
                     reminderDeliveryMode = reminderDeliveryMode,
@@ -200,7 +210,8 @@ fun TodoEditorDialog(
                         weeklyDays = weeklyDays,
                         endDate = recurrenceEndDate
                     ),
-                    reminderOffsetsMinutes = parsedReminderOffsets
+                    reminderOffsetsMinutes = parsedReminderOffsets,
+                    groupIds = selectedGroupIds
                 )
             )
         }
@@ -254,11 +265,33 @@ fun TodoEditorDialog(
                 }
 
                 TodoEditorBlock(title = "分组") {
-                    TodoSelectionRow(
-                        title = "所属分组",
-                        value = groups.firstOrNull { it.id == groupId }?.name ?: "未分组",
-                        onClick = { showGroupPicker = true }
-                    )
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text(
+                            text = "可多选；第一个选中的分组作为主分组和颜色来源。",
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .horizontalScroll(rememberScrollState()),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            groups.sortedWith(compareBy<TaskGroup> { it.sortOrder }.thenBy { it.id }).forEach { group ->
+                                FilterChip(
+                                    selected = group.id in selectedGroupIds,
+                                    onClick = {
+                                        selectedGroupIds = toggleTodoEditorGroup(
+                                            selected = selectedGroupIds,
+                                            groupId = group.id,
+                                            fallbackGroupId = defaultGroupId
+                                        )
+                                    },
+                                    label = { Text(group.name) }
+                                )
+                            }
+                        }
+                    }
                 }
 
                 if (hasDueDate) {
@@ -495,7 +528,7 @@ fun TodoEditorDialog(
                                                     notes = notes,
                                                     dueAt = dueAt,
                                                     reminderAt = if (reminderEnabled && reminderValidation.isValid) reminderValidation.triggerTimes.minOrNull() else null,
-                                                    groupId = groupId,
+                                                    groupId = primaryGroupId,
                                                     ringEnabled = ringEnabled,
                                                     vibrateEnabled = vibrateEnabled,
                                                     reminderDeliveryMode = reminderDeliveryMode,
@@ -505,7 +538,8 @@ fun TodoEditorDialog(
                                                         weeklyDays = weeklyDays,
                                                         endDate = recurrenceEndDate
                                                     ),
-                                                    reminderOffsetsMinutes = if (reminderEnabled && reminderValidation.isValid) reminderValidation.offsetsMinutes else emptyList()
+                                                    reminderOffsetsMinutes = if (reminderEnabled && reminderValidation.isValid) reminderValidation.offsetsMinutes else emptyList(),
+                                                    groupIds = selectedGroupIds
                                                 )
                                             )
                                         },
@@ -525,31 +559,6 @@ fun TodoEditorDialog(
             title = "循环任务预览",
             preview = preview,
             onDismiss = { recurrencePreview = null }
-        )
-    }
-
-    if (showGroupPicker) {
-        AlertDialog(
-            onDismissRequest = { showGroupPicker = false },
-            title = { Text("选择分组", fontWeight = FontWeight.Bold) },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                    groups.forEach { item ->
-                        TodoSelectionRow(
-                            title = item.name,
-                            value = if (groupId == item.id) "当前分组" else "",
-                            onClick = {
-                                groupId = item.id
-                                showGroupPicker = false
-                            }
-                        )
-                    }
-                }
-            },
-            confirmButton = {
-                TextButton(onClick = { showGroupPicker = false }) { Text("关闭") }
-            },
-            dismissButton = {}
         )
     }
 
@@ -867,6 +876,22 @@ private fun todoEditorDateLine(date: LocalDate): String {
     val nowYear = LocalDate.now().year
     val pattern = if (date.year == nowYear) "M月d日" else "yyyy年M月d日"
     return date.format(DateTimeFormatter.ofPattern(pattern, Locale.CHINA)) + "（农历${LunarCalendar.labelFor(date).displayText}） · " + date.dayOfWeek.shortLabel()
+}
+
+private fun toggleTodoEditorGroup(
+    selected: List<Long>,
+    groupId: Long,
+    fallbackGroupId: Long
+): List<Long> {
+    val next = if (groupId in selected) {
+        selected - groupId
+    } else {
+        selected + groupId
+    }
+    return next
+        .filter { it > 0 }
+        .distinct()
+        .ifEmpty { listOf(fallbackGroupId).filter { it > 0 } }
 }
 
 private fun showDatePicker(

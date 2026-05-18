@@ -31,6 +31,21 @@ interface TodoDao {
 
     @Query(
         """
+        SELECT t.* FROM todo_items t
+        INNER JOIN todo_group_tags g ON t.id = g.todoId
+        WHERE t.completed = 0
+        AND t.canceled = 0
+        AND t.itemType = 'TODO'
+        AND g.groupId IN (:groupIds)
+        GROUP BY t.id
+        HAVING COUNT(DISTINCT g.groupId) = :requiredCount
+        ORDER BY t.dueAtMillis ASC, t.createdAtMillis ASC
+        """
+    )
+    fun observeActiveTodoItemsByGroupIntersection(groupIds: List<Long>, requiredCount: Int): Flow<List<TodoItem>>
+
+    @Query(
+        """
         SELECT * FROM todo_items
         WHERE itemType = 'TODO'
         AND (:groupId IS NULL OR groupId = :groupId)
@@ -41,6 +56,22 @@ interface TodoDao {
         """
     )
     fun observeHistoryTodoItems(groupId: Long?): Flow<List<TodoItem>>
+
+    @Query(
+        """
+        SELECT t.* FROM todo_items t
+        INNER JOIN todo_group_tags g ON t.id = g.todoId
+        WHERE t.itemType = 'TODO'
+        AND (t.completed = 1 OR t.canceled = 1)
+        AND g.groupId IN (:groupIds)
+        GROUP BY t.id
+        HAVING COUNT(DISTINCT g.groupId) = :requiredCount
+        ORDER BY
+            COALESCE(t.completedAtMillis, t.canceledAtMillis, t.missedAtMillis, t.createdAtMillis) DESC,
+            t.createdAtMillis DESC
+        """
+    )
+    fun observeHistoryTodoItemsByGroupIntersection(groupIds: List<Long>, requiredCount: Int): Flow<List<TodoItem>>
 
     @Query(
         """
@@ -279,8 +310,35 @@ interface TodoDao {
     @Query("DELETE FROM task_groups WHERE id = :groupId")
     suspend fun deleteGroup(groupId: Long)
 
-    @Query("SELECT COUNT(*) FROM todo_items WHERE groupId = :groupId")
+    @Query(
+        """
+        SELECT COUNT(DISTINCT todoId)
+        FROM todo_group_tags
+        WHERE groupId = :groupId
+        """
+    )
     suspend fun countTasksInGroup(groupId: Long): Int
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertTodoGroupTags(tags: List<TodoGroupTag>)
+
+    @Query("SELECT * FROM todo_group_tags ORDER BY todoId ASC, groupId ASC")
+    suspend fun getAllTodoGroupTags(): List<TodoGroupTag>
+
+    @Query("SELECT groupId FROM todo_group_tags WHERE todoId = :todoId ORDER BY groupId ASC")
+    suspend fun getGroupIdsForTodo(todoId: Long): List<Long>
+
+    @Query("DELETE FROM todo_group_tags WHERE todoId = :todoId")
+    suspend fun clearTodoGroupTags(todoId: Long)
+
+    @Query("DELETE FROM todo_group_tags WHERE todoId IN (:todoIds)")
+    suspend fun clearTodoGroupTagsForTodos(todoIds: List<Long>)
+
+    @Query("DELETE FROM todo_group_tags WHERE groupId = :groupId")
+    suspend fun clearTagsByGroup(groupId: Long)
+
+    @Query("DELETE FROM todo_group_tags")
+    suspend fun clearTodoGroupTags()
 
     @Query("SELECT * FROM recurring_task_templates ORDER BY createdAtMillis ASC")
     suspend fun getAllRecurringTemplates(): List<RecurringTaskTemplate>

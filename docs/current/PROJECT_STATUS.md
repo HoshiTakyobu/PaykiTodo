@@ -41,7 +41,7 @@
 
 ## Current Worktree Reality
 
-The repository is implementing the larger `1.11.0 / versionCode 222` goal from the current `1.10.3 / 221` baseline. The Android widget requirements have already landed in the current baseline. The first `1.11.0` goal slice removes the former focus / pomodoro mode and prepares the database for later check-in and multi-group todo work. The second small `1.11.0` slice adds database schema export, debug-only Compose tooling, structured startup initialization, and AI-report retention cleanup. The current navigation slice renames the drawer task entry to single-line `待办`, removes the drawer group expansion and standalone `分组管理` entry, and moves group filtering / group maintenance into the todo page chip bar. The full `1.11.0` version bump is still pending.
+The repository is implementing the larger `1.11.0 / versionCode 222` goal from the current `1.10.3 / 221` baseline. The Android widget requirements have already landed in the current baseline. The first `1.11.0` goal slice removes the former focus / pomodoro mode and prepares the database for later check-in and multi-group todo work. The second small `1.11.0` slice adds database schema export, debug-only Compose tooling, structured startup initialization, and AI-report retention cleanup. The navigation slice renames the drawer task entry to single-line `待办`, removes the drawer group expansion and standalone `分组管理` entry, and moves group filtering / group maintenance into the todo page chip bar. The latest completed slice implements multi-group todo relationships across phone UI, repository queries, backup/restore, desktop sync, and desktop Web todo management. The full `1.11.0` version bump is still pending.
 
 Most important current baseline facts:
 
@@ -66,7 +66,10 @@ Most important current baseline facts:
 - Desktop sync keeps the 4 MB request-body limit and returns HTTP 413 for oversized requests.
 - Drawer navigation now shows `待办` as a simple module entry instead of expandable `我的任务`.
 - Group filtering and group management now live in the todo page top chip bar: `全部`, each sorted group, and `新建`; long-pressing a group chip opens edit / delete behavior.
-- `./gradlew.bat :app:compileDebugKotlin` and `git diff --check` have passed for both the schema / report-retention / startup-scope slice and the drawer / todo navigation slice.
+- Todos now support multiple group tags through `todo_group_tags`; phone and desktop todo filters use multi-select intersection semantics, while todo editors keep a primary `groupId` plus the full `groupIds` tag set.
+- Backup / restore now includes `todoGroupTags`, and old backups without explicit tags are restored by backfilling from each todo's original `groupId`.
+- Desktop sync todo payloads now expose and accept `groupIds`; desktop Web todo cards, previews, board rows, filter chips, and editor chips preserve multi-group relationships instead of collapsing them to one group.
+- `node --check app/src/main/assets/desktop-web/app.js`, `./gradlew.bat :app:compileDebugKotlin`, and `git diff --check` have passed for the multi-group todo slice.
 
 ## Immediate Manual Verification Targets
 
@@ -82,6 +85,7 @@ Most important current baseline facts:
    - verify title, location, group, and linked-todo checkbox defaults.
 4. Desktop web:
    - event color preset swatches update the color input and persist after saving.
+   - todo multi-group filter chips use intersection filtering; editing a todo preserves all selected groups and cards / previews show all group names.
 5. Regression:
    - normal event import does not create an unwanted todo;
    - manually linked todo has DDL equal to event end time and no fixed generated note.

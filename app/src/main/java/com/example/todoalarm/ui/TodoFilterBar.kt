@@ -48,7 +48,7 @@ private val TodoGroupColorPalette = listOf(
 @Composable
 internal fun TodoFilterBar(
     groups: List<TaskGroup>,
-    selectedGroupId: Long?,
+    selectedGroupIds: Set<Long>,
     onSelectGroup: (Long?) -> Unit,
     onCreateGroup: suspend (String, String) -> String?,
     onUpdateGroup: suspend (TaskGroup) -> String?,
@@ -75,7 +75,7 @@ internal fun TodoFilterBar(
             TodoGroupChip(
                 label = "全部",
                 color = MaterialTheme.colorScheme.primary,
-                selected = selectedGroupId == null,
+                selected = selectedGroupIds.isEmpty(),
                 leadingIcon = true,
                 onClick = { onSelectGroup(null) }
             )
@@ -83,8 +83,8 @@ internal fun TodoFilterBar(
                 TodoGroupChip(
                     label = group.name,
                     color = colorFromHex(group.colorHex),
-                    selected = selectedGroupId == group.id,
-                    onClick = { onSelectGroup(if (selectedGroupId == group.id) null else group.id) },
+                    selected = group.id in selectedGroupIds,
+                    onClick = { onSelectGroup(group.id) },
                     onLongClick = { editingGroup = group }
                 )
             }
@@ -97,7 +97,7 @@ internal fun TodoFilterBar(
             )
         }
         Text(
-            text = "点击分组筛选；长按分组可重命名、改色或删除。",
+            text = "可多选；多选时只显示同时属于这些分组的待办。长按分组可重命名、改色或删除。",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )

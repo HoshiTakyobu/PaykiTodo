@@ -18,7 +18,8 @@ Long-running Codex sessions can become unreliable. This file exists so a new ses
   4. Room schema export is enabled and schema `18.json` is generated.
   5. AI report retention, debug-only Compose preview tooling, and application-scope non-fatal startup logging are implemented.
   6. Drawer navigation now shows a single-line `待办`, with group filtering and group maintenance moved into the todo page chip bar.
-  7. Full `1.11.0 / versionCode 222` version bump is still pending.
+  7. Todo multi-group relationships are implemented across phone UI, repository queries, backup / restore, desktop sync, and desktop Web todo management.
+  8. Full `1.11.0 / versionCode 222` version bump is still pending.
 - Latest published signed release APK:
   - `app/build/outputs/apk/release/PaykiTodo-1.10.2-release.apk`
   - GitHub Release: `https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.10.2`
@@ -63,6 +64,15 @@ Long-running Codex sessions can become unreliable. This file exists so a new ses
 3. The todo page now renders `TodoFilterBar` above the existing `已错过 / 今日待办 / 计划中` sections.
 4. `TodoFilterBar` supports `全部`, sorted group chips, `新建`, tap-to-filter / tap-selected-to-clear, and long-press group edit / delete actions.
 5. Planning Desk tutorial text, README, TODO, Wiki, and current-state docs were updated to describe `待办` and in-page group management.
+
+## Latest Multi-Group Todo Pass
+
+1. `todo_group_tags` is now the persistent multi-group relation for active todos; existing `todo_items.groupId` values are backfilled into the join table during migration and old backup restore.
+2. Phone-side todo filters now support multi-select intersection semantics: selecting multiple group chips shows only todos that belong to every selected group.
+3. Phone-side todo editing uses compact multi-select group chips and still stores the first selected group as the primary `groupId` for color / compatibility.
+4. Backup export / import includes `todoGroupTags`; old backups without explicit tags are restored by rebuilding tags from each todo's legacy `groupId`.
+5. Desktop sync `/api/todos` and `/api/snapshot` expose todo `groupIds`; create / update APIs accept `groupIds` and keep primary `groupId` aligned with the first selected group.
+6. Desktop Web todo management has compact multi-select group filters, multi-select group chips in the todo editor, and multi-group labels in cards, previews, and daily-board todo rows.
 
 ## Previous 1.10.3 Planning Desk Fix Pass
 
@@ -117,6 +127,13 @@ Drawer / todo navigation slice:
 2. Fresh `git diff --check` passed after docs sync.
 3. No new APK has been built for this slice yet.
 
+Multi-group todo slice:
+
+1. Fresh `node --check app/src/main/assets/desktop-web/app.js` passed after desktop Web multi-group UI changes.
+2. Fresh `./gradlew.bat :app:compileDebugKotlin` passed after repository / sync / phone UI / desktop Web multi-group changes.
+3. Fresh `git diff --check` passed after docs and Wiki synchronization.
+4. No new APK has been built for this slice yet.
+
 Secret / release safety checks already performed:
 
 1. `git check-ignore -v keystore.properties release/PaykiTodo-release.jks app/build/outputs/apk/release/PaykiTodo-1.10.3-release.apk app/build/outputs/apk/debug/PaykiTodo-1.10.3-debug.apk` confirmed local signing material and APK outputs are ignored.
@@ -134,6 +151,9 @@ Secret / release safety checks already performed:
 7. Verify desktop-web event color swatches save correctly.
 8. After a focus-removal APK is built, confirm no user-facing focus / pomodoro entry remains in app UI, widgets, desktop web, backup, or AI reports.
 9. Verify drawer / todo navigation on device: drawer has single-line `待办`, no expanded group list, no standalone `分组管理`, and the todo page chip bar can filter, create, edit, and delete groups.
+10. Verify multi-group todos on device: creating / editing a todo with multiple groups preserves all selected chips after reopening, selecting multiple group filters uses intersection semantics, and group edit / delete does not silently drop unrelated memberships.
+11. Verify multi-group todos in desktop browser: `/api/todos` exposes `groupIds`, the editor preserves all selected groups, cards / previews / board rows show all group labels, and selecting multiple filter chips uses intersection filtering.
+12. Verify backup / restore: fresh backups include `todoGroupTags`, restored data keeps all selected groups, and old backups without `todoGroupTags` backfill from each todo's `groupId`.
 
 ## Performance Notes
 

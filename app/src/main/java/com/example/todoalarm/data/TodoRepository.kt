@@ -17,8 +17,22 @@ class TodoRepository(
     private val onItemsChanged: (() -> Unit)? = null
 ) {
     fun observeTodos(): Flow<List<TodoItem>> = todoDao.observeTodos()
-    fun observeActiveTodoItems(groupId: Long?): Flow<List<TodoItem>> = todoDao.observeActiveTodoItems(groupId)
-    fun observeHistoryTodoItems(groupId: Long?): Flow<List<TodoItem>> = todoDao.observeHistoryTodoItems(groupId)
+    fun observeActiveTodoItems(groupId: Long?): Flow<List<TodoItem>> = observeActiveTodoItems(groupId?.let(::setOf).orEmpty())
+    fun observeActiveTodoItems(groupIds: Set<Long>): Flow<List<TodoItem>> {
+        val ids = groupIds.filter { it > 0 }.distinct().sorted()
+        return when (ids.size) {
+            0 -> todoDao.observeActiveTodoItems(null)
+            else -> todoDao.observeActiveTodoItemsByGroupIntersection(ids, ids.size)
+        }
+    }
+    fun observeHistoryTodoItems(groupId: Long?): Flow<List<TodoItem>> = observeHistoryTodoItems(groupId?.let(::setOf).orEmpty())
+    fun observeHistoryTodoItems(groupIds: Set<Long>): Flow<List<TodoItem>> {
+        val ids = groupIds.filter { it > 0 }.distinct().sorted()
+        return when (ids.size) {
+            0 -> todoDao.observeHistoryTodoItems(null)
+            else -> todoDao.observeHistoryTodoItemsByGroupIntersection(ids, ids.size)
+        }
+    }
     fun observeActiveCalendarEvents(): Flow<List<TodoItem>> = todoDao.observeActiveCalendarEvents()
     fun observeActiveCalendarEventsInRange(rangeStartMillis: Long, rangeEndMillis: Long): Flow<List<TodoItem>> {
         return todoDao.observeActiveCalendarEventsInRange(rangeStartMillis, rangeEndMillis)
@@ -71,6 +85,8 @@ class TodoRepository(
 
     suspend fun getTodo(id: Long): TodoItem? = todoDao.getById(id)
     suspend fun getGroup(groupId: Long): TaskGroup? = todoDao.getGroupById(groupId)
+    suspend fun getGroupIdsForTodo(todoId: Long): List<Long> = todoDao.getGroupIdsForTodo(todoId)
+    suspend fun getAllTodoGroupTags(): List<TodoGroupTag> = todoDao.getAllTodoGroupTags()
     suspend fun getAllTodos(): List<TodoItem> = todoDao.getAllTodos()
     suspend fun getDesktopTodoItems(): List<TodoItem> = todoDao.getDesktopTodoItems()
     suspend fun getDesktopTodoItemsPaged(
@@ -495,7 +511,7 @@ class TodoRepository(
     }
 
     suspend fun deleteTodo(id: Long) {
-        todoDao.deleteById(id)
+        deleteItemsByIds(listOf(id))
         notifyItemsChanged()
     }
 
@@ -509,20 +525,23 @@ class TodoRepository(
 
     suspend fun createFromDraft(draft: TodoDraft): List<TodoItem> {
         val now = System.currentTimeMillis()
-        val groupId = draft.groupId.takeIf { it > 0 } ?: defaultGroupId()
+        val groupIds = resolveTodoGroupIds(draft)
+        val groupId = groupIds.first()
+        val resolvedDraft = draft.copy(groupId = groupId, groupIds = groupIds)
         val generated = if (draft.recurrence.isRecurring) {
             generateRecurringItems(
-                draft = draft.copy(groupId = groupId),
+                draft = resolvedDraft,
                 seriesId = UUID.randomUUID().toString(),
                 now = now
             )
         } else {
-            listOf(buildTaskItem(draft.copy(groupId = groupId), now = now))
+            listOf(buildTaskItem(resolvedDraft, now = now))
         }
         val ids = todoDao.insertAll(generated)
         val created = generated.zip(ids) { item, id -> item.copy(id = id) }
+        replaceGroupTags(created, groupIds)
         if (draft.recurrence.isRecurring) {
-            val template = buildTemplate(created.first(), draft.copy(groupId = groupId))
+            val template = buildTemplate(created.first(), resolvedDraft)
             todoDao.insertTemplate(template)
         }
         notifyItemsChanged()
@@ -556,7 +575,8 @@ class TodoRepository(
         draft: TodoDraft,
         scope: RecurrenceScope = RecurrenceScope.CURRENT
     ): List<TodoItem> {
-        val resolvedDraft = draft.copy(groupId = draft.groupId.takeIf { it > 0 } ?: original.groupId)
+        val groupIds = resolveTodoGroupIds(draft, original)
+        val resolvedDraft = draft.copy(groupId = groupIds.first(), groupIds = groupIds)
         val updatedItems = when {
             !original.isRecurring && resolvedDraft.recurrence.isRecurring -> {
                 convertSingleTodoToRecurring(original, resolvedDraft)
@@ -575,6 +595,7 @@ class TodoRepository(
                 listOf(updated)
             }
         }
+        replaceGroupTags(updatedItems.filter { it.isTodo }, groupIds)
         notifyItemsChanged()
         return updatedItems
     }
@@ -807,7 +828,7 @@ class TodoRepository(
         val deletedItems = when {
             !item.isRecurring || scope == RecurrenceScope.CURRENT -> {
                 val target = todoDao.getById(item.id) ?: return emptyList()
-                todoDao.deleteById(item.id)
+                deleteItemsByIds(listOf(item.id))
                 listOf(target)
             }
             seriesId == null -> emptyList()
@@ -821,7 +842,7 @@ class TodoRepository(
                     }
                 }
                 if (targets.isEmpty()) return emptyList()
-                todoDao.deleteByIds(targets.map { it.id })
+                deleteItemsByIds(targets.map { it.id })
                 when (scope) {
                     RecurrenceScope.CURRENT -> Unit
                     RecurrenceScope.CURRENT_AND_FUTURE -> truncateTemplateBefore(
@@ -906,11 +927,13 @@ class TodoRepository(
             planningNotes = planningNotes,
             planningLineMappings = planningMappings,
             aiReports = todoDao.getAllAiReports(),
+            todoGroupTags = todoDao.getAllTodoGroupTags(),
             settings = settings
         )
     }
 
     suspend fun importSnapshot(snapshot: BackupSnapshot) {
+        todoDao.clearTodoGroupTags()
         todoDao.clearTodos()
         todoDao.clearTemplates()
         todoDao.clearGroups()
@@ -930,6 +953,10 @@ class TodoRepository(
         if (snapshot.tasks.isNotEmpty()) {
             todoDao.insertAll(snapshot.tasks)
         }
+        val restoredTags = restoredTodoGroupTags(snapshot)
+        if (restoredTags.isNotEmpty()) {
+            todoDao.insertTodoGroupTags(restoredTags)
+        }
         if (snapshot.reminderChainLogs.isNotEmpty()) {
             todoDao.insertReminderChainLogs(snapshot.reminderChainLogs)
         }
@@ -945,6 +972,19 @@ class TodoRepository(
         if (snapshot.aiReports.isNotEmpty()) {
             todoDao.insertAiReports(snapshot.aiReports)
         }
+    }
+
+    private fun restoredTodoGroupTags(snapshot: BackupSnapshot): List<TodoGroupTag> {
+        val todoIds = snapshot.tasks.filter { it.isTodo }.map { it.id }.toSet()
+        val groupIds = snapshot.groups.map { it.id }.toSet()
+        val explicitTags = snapshot.todoGroupTags
+            .filter { it.todoId in todoIds && it.groupId in groupIds }
+            .distinct()
+        if (explicitTags.isNotEmpty()) return explicitTags
+        return snapshot.tasks
+            .filter { it.isTodo && it.id > 0 && it.groupId > 0 && it.groupId in groupIds }
+            .map { TodoGroupTag(todoId = it.id, groupId = it.groupId) }
+            .distinct()
     }
 
     private suspend fun updateItemFromPlanningCandidate(
@@ -1046,8 +1086,7 @@ class TodoRepository(
         val affectedItems = batch.mapNotNull { it.itemId?.let { id -> todoDao.getById(id) } }
         val todoIds = affectedItems.filter { it.isTodo }.map { it.id }
         val eventItems = affectedItems.filter { it.isEvent }
-        if (todoIds.isNotEmpty()) todoDao.deleteByIds(todoIds)
-        eventItems.forEach { todoDao.deleteById(it.id) }
+        deleteItemsByIds(todoIds + eventItems.map { it.id })
         if (affectedItems.isNotEmpty()) notifyItemsChanged()
         todoDao.deletePlanningMappingBatch(batchId)
         val updatedMarkdown = removeImportedMarkersForMappings(markdown, batch)
@@ -1287,7 +1326,7 @@ class TodoRepository(
             }
 
             RecurrenceScope.CURRENT_AND_FUTURE -> {
-                todoDao.deleteByIds(targets.map { it.id })
+                deleteItemsByIds(targets.map { it.id })
                 truncateTemplateBefore(seriesId, template, activeSeries, original.dueDate())
 
                 if (draft.recurrence.isRecurring) {
@@ -1369,7 +1408,7 @@ class TodoRepository(
             }
 
             RecurrenceScope.CURRENT_AND_FUTURE -> {
-                todoDao.deleteByIds(targets.map { it.id })
+                deleteItemsByIds(targets.map { it.id })
                 truncateTemplateBefore(seriesId, template, seriesItems, original.dueDate())
                 if (draft.recurrence.isRecurring) {
                     val branchSeriesId = UUID.randomUUID().toString()
@@ -1505,7 +1544,7 @@ class TodoRepository(
         targetSeriesId: String,
         deleteTemplateSeriesId: String?
     ): List<TodoItem> {
-        todoDao.deleteByIds(targets.map { it.id })
+        deleteItemsByIds(targets.map { it.id })
 
         val replacement = if (draft.recurrence.isRecurring) {
             generateRecurringItems(
@@ -1530,7 +1569,9 @@ class TodoRepository(
         }
 
         val ids = todoDao.insertAll(replacement)
-        return replacement.zip(ids) { item, id -> item.copy(id = id) }
+        val created = replacement.zip(ids) { item, id -> item.copy(id = id) }
+        replaceGroupTags(created, draft.groupIds.ifEmpty { listOf(draft.groupId) })
+        return created
     }
 
     private suspend fun replaceRecurringCalendarTargets(
@@ -1540,7 +1581,7 @@ class TodoRepository(
         targetSeriesId: String,
         deleteTemplateSeriesId: String?
     ): List<TodoItem> {
-        todoDao.deleteByIds(targets.map { it.id })
+        deleteItemsByIds(targets.map { it.id })
         val replacement = if (draft.recurrence.isRecurring) {
             generateRecurringEventItems(
                 draft = draft,
@@ -2004,6 +2045,49 @@ class TodoRepository(
     private suspend fun defaultGroupId(): Long {
         val groups = ensureDefaultGroups()
         return groups.firstOrNull { it.name == "例行" }?.id ?: groups.firstOrNull()?.id ?: 0L
+    }
+
+    private suspend fun resolveTodoGroupIds(draft: TodoDraft, original: TodoItem? = null): List<Long> {
+        val groups = ensureDefaultGroups()
+        val validGroupIds = groups.map { it.id }.toSet()
+        val originalTagIds = original?.let { todoDao.getGroupIdsForTodo(it.id) }.orEmpty()
+        val candidates = buildList {
+            addAll(draft.groupIds)
+            if (draft.groupId > 0) add(draft.groupId)
+            if (isEmpty()) addAll(originalTagIds)
+            if (original?.groupId != null && original.groupId > 0) add(original.groupId)
+        }.filter { it > 0 && it in validGroupIds }.distinct()
+
+        val primary = when {
+            draft.groupId > 0 && draft.groupId in validGroupIds -> draft.groupId
+            original?.groupId != null && original.groupId > 0 && original.groupId in validGroupIds -> original.groupId
+            candidates.isNotEmpty() -> candidates.first()
+            else -> defaultGroupId()
+        }
+        return (listOf(primary) + candidates.filter { it != primary })
+            .filter { it > 0 && it in validGroupIds }
+            .distinct()
+            .ifEmpty { listOf(defaultGroupId()) }
+    }
+
+    private suspend fun replaceGroupTags(items: List<TodoItem>, groupIds: List<Long>) {
+        val todoItems = items.filter { it.isTodo }
+        if (todoItems.isEmpty()) return
+        val distinctGroupIds = groupIds.filter { it > 0 }.distinct()
+        todoDao.clearTodoGroupTagsForTodos(todoItems.map { it.id })
+        if (distinctGroupIds.isEmpty()) return
+        todoDao.insertTodoGroupTags(
+            todoItems.flatMap { item ->
+                distinctGroupIds.map { groupId -> TodoGroupTag(todoId = item.id, groupId = groupId) }
+            }
+        )
+    }
+
+    private suspend fun deleteItemsByIds(ids: List<Long>) {
+        val distinctIds = ids.filter { it > 0 }.distinct()
+        if (distinctIds.isEmpty()) return
+        todoDao.clearTodoGroupTagsForTodos(distinctIds)
+        todoDao.deleteByIds(distinctIds)
     }
 
     private suspend fun resolveCalendarGroupId(draft: CalendarEventDraft): Long {

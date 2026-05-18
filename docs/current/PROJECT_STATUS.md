@@ -14,8 +14,8 @@
 
 - Latest debug APK built in this round:
   - `app/build/outputs/apk/debug/PaykiTodo-1.10.2-debug.apk`
-- Latest signed release APK remains the previous release artifact unless a new release build is requested:
-  - `app/build/outputs/apk/release/PaykiTodo-1.9.23-release.apk`
+- Latest signed release APK built in this round:
+  - `app/build/outputs/apk/release/PaykiTodo-1.10.2-release.apk`
 - Verification completed for this `1.10.2` continuation:
   - `./gradlew.bat :app:compileDebugKotlin`
   - `node --check app/src/main/assets/desktop-web/app.js`
@@ -23,7 +23,9 @@
   - `./gradlew.bat :app:assembleDebug`
   - `git diff --check`
   - APK metadata inspected: `versionName = 1.10.2`, `versionCode = 220`, output `PaykiTodo-1.10.2-debug.apk`
-  - `git check-ignore -v keystore.properties release/PaykiTodo-release.jks app/build/outputs/apk/debug/PaykiTodo-1.10.2-debug.apk` confirmed local signing material and APK outputs are ignored
+  - Release APK metadata inspected: `versionName = 1.10.2`, `versionCode = 220`, output `PaykiTodo-1.10.2-release.apk`
+  - `apksigner verify --verbose --print-certs app/build/outputs/apk/release/PaykiTodo-1.10.2-release.apk` passed with one v2 signer
+  - `git check-ignore -v keystore.properties release/PaykiTodo-release.jks app/build/outputs/apk/debug/PaykiTodo-1.10.2-debug.apk app/build/outputs/apk/release/PaykiTodo-1.10.2-release.apk` confirmed local signing material and APK outputs are ignored
 - Release-signing privacy:
   - local `keystore.properties`, `release/PaykiTodo-release.jks`, APK/AAB outputs, API keys, tokens, and private Base URLs must stay out of Git
 - Current build environment expectation:
@@ -64,6 +66,7 @@ Most important current baseline facts:
 - Desktop calendar timeline still loads only visible-range `/api/events?start=...&end=...`.
 - Desktop sync enable still starts the phone-side LAN server immediately and auto-disables if no authorized client connects within 5 minutes.
 - Safe release-signing explanations live under `docs/templates/`; real signing values must stay only in ignored root-level `keystore.properties`.
+- Git history scan on 181 commits did not find committed `keystore.properties`, `.jks/.keystore/.env` files, private-key blocks, common live token prefixes, or non-placeholder password/API-key literals. Broad keyword hits were reviewed as code field names, templates, generated setting keys, editor text tokens, or `https://example.com/v1` test data.
 
 ## Documentation Health
 

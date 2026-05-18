@@ -15,7 +15,8 @@ Long-running Codex sessions can become unreliable. This file exists so a new ses
   5. Widget picker entries need clear labels, descriptions, suggested sizes, and static previews.
 - Latest debug APK built:
   - `app/build/outputs/apk/debug/PaykiTodo-1.10.2-debug.apk`
-- Latest signed release APK remains the previous `1.9.23` release artifact unless the user asks for a new release build.
+- Latest signed release APK:
+  - `app/build/outputs/apk/release/PaykiTodo-1.10.2-release.apk`
 - Do not push to GitHub unless the user explicitly asks.
 - Keep `keystore.properties`, `release/`, APK/AAB outputs, API keys, tokens, and private Base URLs out of Git.
 
@@ -44,7 +45,11 @@ Completed locally:
 4. `./gradlew.bat :app:assembleDebug` passed.
 5. `git diff --check` passed.
 6. `app/build/outputs/apk/debug/output-metadata.json` confirms `1.10.2 / 220`.
-7. `git check-ignore -v keystore.properties release/PaykiTodo-release.jks app/build/outputs/apk/debug/PaykiTodo-1.10.2-debug.apk` confirmed local signing material and APK outputs stay ignored.
+7. `git check-ignore -v keystore.properties release/PaykiTodo-release.jks app/build/outputs/apk/debug/PaykiTodo-1.10.2-debug.apk app/build/outputs/apk/release/PaykiTodo-1.10.2-release.apk` confirmed local signing material and APK outputs stay ignored.
+8. `./gradlew.bat :app:assembleRelease` passed.
+9. `app/build/outputs/apk/release/output-metadata.json` confirms release `1.10.2 / 220`.
+10. `apksigner verify --verbose --print-certs app/build/outputs/apk/release/PaykiTodo-1.10.2-release.apk` passed with one v2 signer.
+11. Git history scan over 181 commits found no committed signing config, keystore/JKS/env secret files, private-key blocks, common live token prefixes, or non-placeholder password/API-key literals. The remaining keyword matches were code identifiers, settings keys, templates, editor insertion tokens, or test example URLs.
 
 Latest emulator smoke remains historical from `1.9.21`; this `1.10.2` continuation has not started or reused an emulator.
 

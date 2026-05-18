@@ -19,6 +19,9 @@
   - `./gradlew.bat :app:compileDebugKotlin testDebugUnitTest assembleDebug`
   - `git diff --check`
   - `output-metadata.json` reports `versionCode=216`, `versionName=1.9.22`, `outputFile=PaykiTodo-1.9.22-debug.apk`
+- Release-signing guard verification:
+  - `./gradlew.bat assembleRelease` currently fails early as designed while local signing fields / keystore are incomplete
+  - `git check-ignore -v` confirms local signing config, keystore output, and built package artifacts are ignored
 - Latest emulator smoke recorded for `1.9.21` remains historical:
   - device id: `emulator-5554`
   - installed APK: `app/build/outputs/apk/debug/PaykiTodo-1.9.21-debug.apk`
@@ -31,6 +34,11 @@
 - Current build environment expectation:
   - prefer Android Studio bundled `jbr`
   - avoid random system Java overrides when building this repo
+- Release-signing baseline:
+  - safe template: `keystore.properties.example`
+  - real local config: ignored root-level `keystore.properties`
+  - generated keystore location: ignored root-level `release/`
+  - Gradle release tasks fail early if required signing fields or the keystore file are missing
 
 ## Current Worktree Reality
 
@@ -69,6 +77,8 @@ Most important current baseline facts:
 - Settings -> `AI 调用配置` provider rows use summary cards with visible enable switches and a compact more menu for edit / reorder / delete.
 - Settings -> `AI 调用配置` auto-saves valid provider changes after add/edit/toggle/reorder/delete where possible and shows an in-page warning when enabled providers are incomplete or current edits are not saved.
 - Planning notes, planning mappings, focus sessions, and AI reports are included in backup / restore snapshots; planning-note backup / restore recomputes `hasAnnouncementHint` from Markdown content rather than trusting imported hint state.
+- Historical versioned docs now live under `docs/archive/historical/`; current docs and code remain the source of truth.
+- Safe release-signing explanations live under `docs/templates/`; real signing values must stay only in ignored root-level `keystore.properties`.
 
 ## Recent Checked Areas
 
@@ -97,8 +107,11 @@ Current docs are being synchronized for `1.9.22`:
 - `docs/current/SESSION_HANDOFF.md`
 - `docs/current/PAYKITODO_SESSION_LEDGER.md`
 - `docs/current/PLANNING_AI_ASSISTANT_DESIGN.md`
+- `docs/README.md`
+- `docs/templates/PaykiTodo-Release-Signing-Template.md`
 
-Older versioned docs under `docs/` remain historical references and should not be treated as the live baseline unless a current doc explicitly points to them.
+Older versioned docs under `docs/archive/historical/` remain historical references and should not be treated as the live baseline unless a current doc explicitly points to them.
+Those historical files now live under `docs/archive/historical/`; checking out older Git commits still shows their old paths.
 
 ## Current Risk Areas
 

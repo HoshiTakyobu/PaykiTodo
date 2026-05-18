@@ -53,6 +53,11 @@ Primary goal: review the recent `1.9.11`+ experience and performance work, close
 12. User real-device screenshot found the Android launcher widget header date could show today while list rows still showed yesterday's greeting/date and old focus content. The widget provider now refreshes the collection list on widget update, date/time/timezone changes, and app replacement, and its RemoteAdapter cache key includes the current date.
 13. Widget light-mode cards now use more opaque warm surfaces and darker text/accent colors to avoid unreadable white-on-white cards over the board background.
 14. README / CHANGELOG / TODO / Wiki / current docs are being synchronized for this `1.9.22` pass.
+15. Release-readiness cleanup started:
+   - old versioned docs were moved to `docs/archive/historical/`.
+   - safe templates now live under `docs/templates/`.
+   - release signing uses ignored root-level `keystore.properties` plus ignored `release/` keystore output.
+   - Gradle release builds now fail clearly if signing is incomplete.
 
 ## Verification Completed This Round
 
@@ -64,6 +69,8 @@ Completed locally:
 4. `app/build/outputs/apk/debug/output-metadata.json` reports `versionCode=216`, `versionName=1.9.22`, and `outputFile=PaykiTodo-1.9.22-debug.apk`.
 5. `TodoItemSectionsTest` covers no-DDL active todos staying under today across dates and never entering upcoming.
 6. Emulator smoke on `emulator-5554` installed `app/build/outputs/apk/debug/PaykiTodo-1.9.21-debug.apk`, launched MainActivity, dumped Daily Board / drawer / Calendar UI trees, captured screenshots, confirmed the Calendar top bar shows `日历` rather than `Schedule`, and found no PaykiTodo `FATAL EXCEPTION` in the checked logcat window.
+7. Release-signing guard verification: `./gradlew.bat assembleRelease` currently fails early as designed because local `keystore.properties` still contains placeholders / no generated keystore exists.
+8. `git check-ignore -v` confirms `keystore.properties`, `release/PaykiTodo-release.jks`, and built APK outputs are ignored.
 
 ## Verification Still Needed On Device / Browser
 
@@ -100,9 +107,9 @@ Completed locally:
 4. Android widget no longer keeps a dead focus-card view type or preview block.
 5. Android widget collection refresh now handles date/time/timezone/app-replacement events and uses a date-specific adapter cache key.
 6. Android widget light-mode cards and text colors have stronger contrast.
-5. Existing phone-side performance work remains in place: active-todo-only main observation, today focus aggregate, range-scoped board events, paged/searchable AI reports, indexed Planning Desk announcement lookup, and off-main-thread Planning Desk parsing.
-6. Desktop sync now avoids unbounded client thread growth and reads request bodies by UTF-8 byte length.
-7. Calendar timeline date handling avoids creating a 1461-item date list and lookup map on entry.
+7. Existing phone-side performance work remains in place: active-todo-only main observation, today focus aggregate, range-scoped board events, paged/searchable AI reports, indexed Planning Desk announcement lookup, and off-main-thread Planning Desk parsing.
+8. Desktop sync now avoids unbounded client thread growth and reads request bodies by UTF-8 byte length.
+9. Calendar timeline date handling avoids creating a 1461-item date list and lookup map on entry.
 
 Still recommended later:
 
@@ -117,3 +124,4 @@ Still recommended later:
 2. Browser-test desktop Web with the new paged/searchable todo management list.
 3. Verify the Android widget picker preview and live resized widget on the user's launcher.
 4. Do not push unless the user explicitly asks.
+5. After the user fills root `keystore.properties` locally, generate `release/PaykiTodo-release.jks`, run `assembleRelease`, verify the APK signature, and share the local release APK path.

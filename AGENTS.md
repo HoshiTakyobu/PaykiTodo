@@ -21,7 +21,7 @@ Then read only the code files directly relevant to the current task.
 
 1. Do not use old chat memory as the source of truth when repository files say otherwise.
 2. Do not scan the whole `G:\Workspace`; stay inside this repository unless the current task explicitly requires an external file.
-3. Treat older versioned docs under `docs/` as historical reference, not the current product baseline, unless a current doc explicitly points to them.
+3. Treat older versioned docs under `docs/archive/historical/` as historical reference, not the current product baseline, unless a current doc explicitly points to them.
 4. Prefer updating the `docs/current/` files when project intent, status, or task scope changes.
 5. If code changes affect product behavior, version status, implementation status, or current priorities, update the relevant docs in the same round rather than leaving them stale.
 6. Before ending a work round, update `docs/current/SESSION_HANDOFF.md` and any other affected docs.
@@ -30,6 +30,17 @@ Then read only the code files directly relevant to the current task.
 9. Git commit messages for this repository should be written in Chinese.
 10. A git commit message should describe the version-relevant feature / behavior changes in that round compared with the previous state, not just generic process wording such as "finalize" or "cleanup".
 11. Goal-mode prompt files (under `docs/goals/`) that drove a completed work round must be committed into the repository as a separate archive commit after the feature work itself lands. Subject like `归档 X.Y.Z 目标文档`. Do not commit goal files that contain API keys, tokens, private Base URLs, signing material, or other secrets — redact or keep them outside git instead. See `docs/goals/README.md` for the naming convention.
+
+## Release Signing And Secret Handling
+
+Release signing secrets never belong in `docs/` or in Git history.
+
+- Safe, commit-ready explanations and examples live under `docs/templates/`.
+- The real local signing config must be the ignored root-level file `keystore.properties`, usually copied from `keystore.properties.example`.
+- The generated keystore should live under the ignored root-level `release/` directory.
+- Do not echo keystore passwords, API keys, tokens, or private Base URLs into chat, docs, commit messages, or logs.
+- Before committing release-related work, verify `git check-ignore -v keystore.properties release/PaykiTodo-release.jks` and confirm no signing material appears in `git status --short`.
+- Release APK / AAB artifacts are local distribution outputs and should not be committed unless the user explicitly asks for artifact tracking.
 
 ## Android Emulator Verification
 

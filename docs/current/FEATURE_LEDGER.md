@@ -172,7 +172,8 @@ This file tracks the product at a practical level for new coding sessions.
 - drawer header icon is clipped into its circular header surface to avoid exposing the launcher icon's white rounded-rectangle background
 - launch screen uses a transparent-logo variant so the mountain / sun background remains visible behind the logo
 - picture launcher art is opaque pure white and scaled down inside the 512px canvas to reduce desktop mask crowding
-- release-signing information template exists under `docs/PaykiTodo-Release-Signing-Template.md`
+- release-signing information template exists under `docs/templates/PaykiTodo-Release-Signing-Template.md`; real signing values belong only in ignored root-level `keystore.properties`
+- release builds read local `keystore.properties` and fail early with a clear error when the release keystore or required signing fields are missing, preventing unsigned or accidentally debug-signed release artifacts
 
 ### Android Desktop Widget
 
@@ -284,7 +285,7 @@ This file tracks the product at a practical level for new coding sessions.
 
 - stronger reminder reliability across vendor ROM differences
 - more complete desktop-side operations
-- cleaner release / signing / versioning process
+- final release packaging after the local ignored keystore fields are filled and the release keystore is generated
 - tighter documentation so a new session can reconstruct state without old transcripts
 
 ## Notes

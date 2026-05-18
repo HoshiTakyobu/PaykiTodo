@@ -1,3 +1,6 @@
+import org.gradle.api.GradleException
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
@@ -8,6 +11,42 @@ val paykiVersionName = "1.9.22"
 val paykiVersionCode = 216
 
 project.setProperty("archivesBaseName", "PaykiTodo-$paykiVersionName")
+
+val releaseKeystorePropertiesFile = rootProject.file("keystore.properties")
+val releaseKeystoreProperties = Properties().apply {
+    if (releaseKeystorePropertiesFile.isFile) {
+        releaseKeystorePropertiesFile.inputStream().use(::load)
+    }
+}
+
+fun releaseSigningProperty(name: String): String {
+    return releaseKeystoreProperties.getProperty(name)?.trim().orEmpty()
+}
+
+val releaseStoreFile = releaseSigningProperty("storeFile")
+val releaseSigningConfigured = listOf(
+    "storeFile",
+    "storePassword",
+    "keyAlias",
+    "keyPassword"
+).all { key ->
+    val value = releaseSigningProperty(key)
+    value.isNotBlank() && !value.startsWith("REPLACE_WITH_")
+} && releaseStoreFile.isNotBlank() && rootProject.file(releaseStoreFile).isFile
+
+val releaseTaskRequested = gradle.startParameter.taskNames.any { taskName ->
+    val simpleTaskName = taskName.substringAfterLast(":")
+    simpleTaskName.equals("assemble", ignoreCase = true) ||
+        simpleTaskName.equals("bundle", ignoreCase = true) ||
+        simpleTaskName.contains("Release", ignoreCase = true)
+}
+
+if (releaseTaskRequested && !releaseSigningConfigured) {
+    throw GradleException(
+        "Release signing is not configured. Fill local keystore.properties and generate the keystore first. " +
+            "Use keystore.properties.example as the safe template; do not commit keystore.properties or release/*.jks."
+    )
+}
 
 android {
     namespace = "com.example.todoalarm"
@@ -23,8 +62,22 @@ android {
         vectorDrawables { useSupportLibrary = true }
     }
 
+    signingConfigs {
+        if (releaseSigningConfigured) {
+            create("release") {
+                storeFile = rootProject.file(releaseStoreFile)
+                storePassword = releaseSigningProperty("storePassword")
+                keyAlias = releaseSigningProperty("keyAlias")
+                keyPassword = releaseSigningProperty("keyPassword")
+            }
+        }
+    }
+
     buildTypes {
         release {
+            if (releaseSigningConfigured) {
+                signingConfig = signingConfigs.getByName("release")
+            }
             isMinifyEnabled = false
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }

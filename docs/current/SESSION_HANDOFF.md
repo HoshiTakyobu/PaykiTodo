@@ -11,6 +11,7 @@ Long-running Codex sessions can become unreliable. This file exists so a new ses
 - This continuation keeps the no-DDL, widget, desktop lightweight snapshot, AI-provider save-state, calendar-index, phone screen-scoped subscription, Planning Desk parser threading, AI-report paging, Planning Desk announcement indexing, desktop-sync hardening, AI-report filtering, calendar date-window, visible-range phone Calendar, and Calendar top-bar localization baseline, then fixes Android launcher widget date/list refresh and light-mode readability.
 - Latest expected debug APK after packaging: `app/build/outputs/apk/debug/PaykiTodo-1.9.22-debug.apk`.
 - Do not push to GitHub unless the user explicitly asks.
+- Current continuation is preparing a safe first-release workflow: historical docs are being archived, signing templates are kept safe to commit, and real signing values stay only in ignored root-level files.
 
 ## Latest 1.9.22 Widget Refresh / Readability Pass
 
@@ -50,8 +51,26 @@ Completed locally in this continuation:
 3. `git diff --check` passed.
 4. Unit tests include `TodoItemSectionsTest`, covering no-DDL active todos staying in today across dates.
 5. `app/build/outputs/apk/debug/output-metadata.json` reports `versionCode=216`, `versionName=1.9.22`, and `outputFile=PaykiTodo-1.9.22-debug.apk`.
+6. Release-signing guard verification passed by failing safely: `./gradlew.bat assembleRelease` stops with the expected "Release signing is not configured" message while local `keystore.properties` still contains placeholders / no generated keystore exists.
+7. `git check-ignore -v` confirms `keystore.properties`, `release/PaykiTodo-release.jks`, and built APK outputs are ignored.
 
 Latest emulator smoke installed `app/build/outputs/apk/debug/PaykiTodo-1.9.21-debug.apk` on `emulator-5554`, checked app launch, Daily Board UI tree, drawer UI tree, Calendar UI tree, screenshot capture, and a PaykiTodo fatal-crash logcat scan. MainActivity displayed, Daily Board showed `今日待办（0）` / `今日日程（0）`, drawer showed primary entries, Calendar displayed `2026年5月` with timeline content, Calendar top bar showed `日历` rather than `Schedule`, and no PaykiTodo `FATAL EXCEPTION` was found in the checked logcat window. The `1.9.22` widget change has compile/build verification, but final launcher rendering still needs physical-device testing.
+
+## Release Signing / Docs Archive Continuation
+
+This continuation moves old versioned root docs to `docs/archive/historical/`,
+adds `docs/README.md`, moves the release-signing explanation template to
+`docs/templates/PaykiTodo-Release-Signing-Template.md`, and keeps actual signing
+values out of Git through ignored root-level `keystore.properties` plus ignored
+`release/` output.
+
+The Gradle release build reads `keystore.properties` only when release tasks are
+requested. If any required field is blank / still a placeholder, or if the
+configured keystore file is missing, release tasks fail with a clear message
+instead of producing an unsigned or wrong-signed release APK.
+
+Important: do not commit `keystore.properties`, `release/`, or built APK/AAB
+artifacts unless the user explicitly changes that policy.
 
 ## Remaining Device / Browser Verification
 
@@ -81,6 +100,7 @@ Latest emulator smoke installed `app/build/outputs/apk/debug/PaykiTodo-1.9.21-de
 9. Verify desktop Planning Desk can save a long Chinese document without body truncation.
 10. Verify `AI 报告` search/type/range filters with enough real reports.
 11. Do not push unless the user explicitly asks.
+12. After the user fills local `keystore.properties`, generate the release keystore with `keytool`, run `./gradlew.bat assembleRelease`, verify the APK signature with `apksigner`, and report the local APK path.
 
 ## Performance Notes
 
@@ -147,6 +167,7 @@ Worth doing later:
 - Existing untracked temp UI dumps such as `.tmp-*.xml` and `.tmp-paykitodo-1913-*` were present before this round and should not be committed unless intentionally needed.
 - An untracked user note named `当前使用中存在的问题.md` may exist in the repo root; do not commit or modify it unless the user asks.
 - Goal prompt files under `docs/goals/` should remain separate archive commits after secret scanning.
+- `keystore.properties`, `release/`, APK/AAB outputs, and private signing material are ignored and must stay out of commits.
 
 ## Android Emulator Verification Rule
 

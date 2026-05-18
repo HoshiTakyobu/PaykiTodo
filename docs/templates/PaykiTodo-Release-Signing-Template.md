@@ -1,6 +1,18 @@
 # PaykiTodo Release Signing Template
 
-这个文件是 **签名信息填写模板**。你把它按实际情况填好之后，我下一步就可以据此：
+这个文件是 **可提交的签名说明模板**。不要在这个文件里填写真实密码或私钥信息。
+
+真正需要填写的本地文件是项目根目录的：
+
+```text
+keystore.properties
+```
+
+它已经被 `.gitignore` 忽略，不会进入 Git。可以从根目录的
+`keystore.properties.example` 复制，也可以直接填写我生成的本地
+`keystore.properties`。
+
+你把本地 `keystore.properties` 按实际情况填好之后，我下一步就可以据此：
 
 1. 为 PaykiTodo 生成正式 release keystore；
 2. 生成本地 `keystore.properties`；
@@ -11,9 +23,10 @@
 
 ## 一、填写说明
 
-- 下面带 `[待填写]` 的内容，请你后续改成真实信息。
+- 下面带 `[待填写]` 的内容只用于解释字段含义。
 - **密码、私钥、keystore 文件不要提交到 Git 仓库。**
-- 这个模板文件可以提交；但如果你把真实密码写进来，建议改成仅本地保存。
+- 不要把真实密码写进 `docs/` 下的任何文件。
+- 本地填写位置：项目根目录 `keystore.properties`。
 
 ---
 
@@ -69,6 +82,13 @@ storeFile=release/PaykiTodo-release.jks
 storePassword=REPLACE_WITH_STORE_PASSWORD
 keyAlias=paykitodo
 keyPassword=REPLACE_WITH_KEY_PASSWORD
+validityDays=10000
+dnameCN=REPLACE_WITH_DEVELOPER_OR_PROJECT_NAME
+dnameOU=PaykiTodo
+dnameO=Personal
+dnameL=REPLACE_WITH_CITY
+dnameST=REPLACE_WITH_PROVINCE
+dnameC=CN
 ```
 
 如果你后续决定换路径或 alias，我会同步改成你的实际值。

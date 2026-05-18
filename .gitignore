@@ -10,15 +10,31 @@ captures/
 # Local-only study / maintenance notes
 LOCAL_STUDY_PLAN.md
 00_先看这里_Codex维护PaykiTodo.md
+当前使用中存在的问题.md
+*.local.md
+.tmp-*
 
-# Local media overrides
-Remind_Vocal.mp3
+# Local media overrides. Keep the committed app resource
+# app/src/main/res/raw/remind_vocal.mp3 trackable.
+/Remind_Vocal.mp3
 
 # Release signing secrets and local release materials
 keystore.properties
-release/*.jks
-release/*.keystore
-release/*.p12
-release/*.pem
-release/*.der
-release/*.key
+release/
+*.apk
+*.aab
+*.apks
+*.idsig
+*.jks
+*.keystore
+*.p12
+*.pem
+*.der
+*.key
+*.mobileprovision
+
+# Local environment / secrets
+.env
+.env.*
+*.secret
+*.secrets

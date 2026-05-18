@@ -23,7 +23,8 @@ Long-running Codex sessions can become unreliable. This file exists so a new ses
   9. Phone calendar-event editor now exposes the `打卡追踪` switch and preserves `checkInEnabled` when events are moved.
   10. Phone calendar-event details sheet now has a `打卡追踪` card for enabled events, with record loading, total invested time, active check-in status, `签到`, and `签退`.
   11. Phone daily-board in-progress schedule rows show check-in status for enabled events and expose compact `签到` / `签退` actions.
-  12. Full `1.11.0 / versionCode 222` version bump is still pending.
+  12. Android `今日看板` widget in-progress schedule rows show active check-in status without launcher-side sign-in / sign-out buttons.
+  13. Full `1.11.0 / versionCode 222` version bump is still pending.
 - Latest published signed release APK:
   - `app/build/outputs/apk/release/PaykiTodo-1.10.2-release.apk`
   - GitHub Release: `https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.10.2`
@@ -104,6 +105,12 @@ Long-running Codex sessions can become unreliable. This file exists so a new ses
 1. In-progress schedule rows on the phone daily board show `未签到` for check-in-enabled events with no active record.
 2. In-progress schedule rows show `签到中 · 已 Xm` while a check-in is active.
 3. The in-progress row exposes a compact `签到` / `签退` action and refreshes the row state after a successful operation.
+
+## Latest Android Widget Check-In Status Pass
+
+1. `今日看板` widget now batch-loads active check-in records for visible in-progress calendar events.
+2. In-progress widget schedule rows with an active check-in show `⏱ 签到中 Xm` in the event accent color.
+3. Widget check-in state is display-only; the launcher widget still does not expose sign-in / sign-out buttons.
 
 ## Previous 1.10.3 Planning Desk Fix Pass
 
@@ -189,6 +196,12 @@ Phone daily-board check-in status slice:
 2. Fresh `git diff --check` passed after the slice.
 3. No new APK has been built for this slice yet.
 
+Android widget check-in status slice:
+
+1. Fresh `./gradlew.bat :app:compileDebugKotlin` passed after adding widget active check-in status loading and rendering.
+2. Fresh `git diff --check` passed after the slice.
+3. No new APK has been built for this slice yet.
+
 Secret / release safety checks already performed:
 
 1. `git check-ignore -v keystore.properties release/PaykiTodo-release.jks app/build/outputs/apk/release/PaykiTodo-1.10.3-release.apk app/build/outputs/apk/debug/PaykiTodo-1.10.3-debug.apk` confirmed local signing material and APK outputs are ignored.
@@ -198,7 +211,7 @@ Secret / release safety checks already performed:
 ## Remaining Device / Browser Verification
 
 1. Install `app/build/outputs/apk/debug/PaykiTodo-1.10.3-debug.apk` on the user's phone if validating the latest built widget APK.
-2. Add / resize the `今日看板` widget and confirm the top header is gone, content remains readable, and cross-day / minute refresh updates the list.
+2. Add / resize the `今日看板` widget and confirm the top header is gone, content remains readable, cross-day / minute refresh updates the list, and an active checked-in in-progress event shows `⏱ 签到中 Xm`.
 3. Add / resize the `倒数日` widget and confirm scroll behavior, multi-line row readability, and exact todo/event row deep links.
 4. Verify Planning Desk imports for `@地点`, quoted `@地点`, and `地点：...`.
 5. Verify ordinary event import creates only an event.
@@ -242,6 +255,7 @@ Secret / release safety checks already performed:
 - `app/src/main/java/com/example/todoalarm/ui/SettingsPanel.kt`
 - `app/src/main/java/com/example/todoalarm/ui/TodoCards.kt`
 - `app/src/main/java/com/example/todoalarm/ui/TodoViewModel.kt`
+- `app/src/main/java/com/example/todoalarm/widget/TodoWidgetService.kt`
 - `app/src/main/java/com/example/todoalarm/widget/TodoWidgetProvider.kt`
 - `app/src/main/assets/desktop-web/app.js`
 - `app/src/main/assets/wiki/index.html`

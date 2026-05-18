@@ -89,6 +89,14 @@ class TodoRepository(
     suspend fun getAllTodoGroupTags(): List<TodoGroupTag> = todoDao.getAllTodoGroupTags()
     suspend fun getCheckInsForEvent(eventId: Long): List<EventCheckIn> = todoDao.getCheckInsForEvent(eventId)
     suspend fun getActiveCheckIn(eventId: Long): EventCheckIn? = todoDao.getActiveCheckIn(eventId)
+    suspend fun getActiveCheckInsForEvents(eventIds: List<Long>): List<EventCheckIn> {
+        val ids = eventIds.filter { it > 0 }.distinct()
+        return if (ids.isEmpty()) {
+            emptyList()
+        } else {
+            todoDao.getActiveCheckInsForEvents(ids).distinctBy { it.eventId }
+        }
+    }
     suspend fun getTodayEventCheckInMinutes(date: LocalDate = LocalDate.now()): Int {
         val zone = ZoneId.systemDefault()
         val startMillis = date.atStartOfDay(zone).toInstant().toEpochMilli()

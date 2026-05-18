@@ -311,6 +311,9 @@ interface TodoDao {
     @Query("SELECT * FROM event_check_ins WHERE eventId = :eventId AND checkOutAtMillis IS NULL ORDER BY checkInAtMillis DESC LIMIT 1")
     suspend fun getActiveCheckIn(eventId: Long): EventCheckIn?
 
+    @Query("SELECT * FROM event_check_ins WHERE eventId IN (:eventIds) AND checkOutAtMillis IS NULL ORDER BY checkInAtMillis DESC")
+    suspend fun getActiveCheckInsForEvents(eventIds: List<Long>): List<EventCheckIn>
+
     @Query("SELECT * FROM event_check_ins ORDER BY eventId ASC, checkInAtMillis ASC")
     suspend fun getAllEventCheckIns(): List<EventCheckIn>
 

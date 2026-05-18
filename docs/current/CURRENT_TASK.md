@@ -81,6 +81,12 @@ Do not push to GitHub unless the user explicitly asks.
 2. Phone daily board in-progress schedule rows now show `签到中 · 已 Xm` while a check-in is active.
 3. The in-progress row exposes a compact `签到` / `签退` action and refreshes the row state after a successful operation.
 
+### C5 Android widget check-in status slice
+
+1. `今日看板` widget now batch-loads active check-in records for visible in-progress calendar events.
+2. In-progress widget schedule rows with an active check-in show `⏱ 签到中 Xm` in the event card using the event accent color.
+3. Widget schedule rows remain display-only for check-in state; no sign-in / sign-out buttons are exposed on the launcher widget.
+
 ## Verification Completed
 
 ### Widget slice
@@ -141,6 +147,12 @@ Do not push to GitHub unless the user explicitly asks.
 2. `git diff --check` passed after the slice.
 3. No new APK has been built for this slice yet.
 
+### C5 Android widget check-in status slice
+
+1. `./gradlew.bat :app:compileDebugKotlin` passed after adding widget active check-in status loading and rendering.
+2. `git diff --check` passed after the slice.
+3. No new APK has been built for this slice yet.
+
 ## Verification Still Needed On Device / Browser
 
 1. Install `app/build/outputs/apk/debug/PaykiTodo-1.10.3-debug.apk` on the physical phone if validating the latest built widget APK.
@@ -153,7 +165,7 @@ Do not push to GitHub unless the user explicitly asks.
 
 The full goal remains active. Major remaining slices:
 
-1. C3-C7 remaining: event check-in / time tracking still needs full-screen reminder button, completion statistics, settings switches, widget status, desktop web UI, and AI report integration.
+1. C3-C7 remaining: event check-in / time tracking still needs full-screen reminder button, completion statistics, settings switches, desktop web UI, and AI report integration.
 2. V1-V6: Planning Desk image recognition through vision-capable AI providers.
 3. T1-T3: Planning Desk shortcut bar simplification and help update.
 4. P6/P7/P9/P10/P8: narrow database queries, countdown widget update metadata, and desktop-sync suspend handler cleanup.

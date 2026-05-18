@@ -41,7 +41,7 @@
 
 ## Current Worktree Reality
 
-The repository is implementing the larger `1.11.0 / versionCode 222` goal from the current `1.10.3 / 221` baseline. The Android widget requirements have already landed in the current baseline. The first `1.11.0` goal slice removes the former focus / pomodoro mode and prepares the database for later check-in and multi-group todo work. The second small `1.11.0` slice adds database schema export, debug-only Compose tooling, structured startup initialization, and AI-report retention cleanup. The navigation slice renames the drawer task entry to single-line `待办`, removes the drawer group expansion and standalone `分组管理` entry, and moves group filtering / group maintenance into the todo page chip bar. The multi-group slice implements multi-group todo relationships across phone UI, repository queries, backup/restore, desktop sync, and desktop Web todo management. The event check-in foundation slice adds event check-in data, backup, repository, and initial desktop-sync API foundations. Phone check-in work now includes the event-editor `打卡追踪` switch, preserving optional event markers when moving events, a calendar-event details card that can load records, show total invested time, and perform `签到` / `签退`, plus daily-board in-progress event rows that show check-in state and expose compact `签到` / `签退` actions. The full `1.11.0` version bump is still pending.
+The repository is implementing the larger `1.11.0 / versionCode 222` goal from the current `1.10.3 / 221` baseline. The Android widget requirements have already landed in the current baseline. The first `1.11.0` goal slice removes the former focus / pomodoro mode and prepares the database for later check-in and multi-group todo work. The second small `1.11.0` slice adds database schema export, debug-only Compose tooling, structured startup initialization, and AI-report retention cleanup. The navigation slice renames the drawer task entry to single-line `待办`, removes the drawer group expansion and standalone `分组管理` entry, and moves group filtering / group maintenance into the todo page chip bar. The multi-group slice implements multi-group todo relationships across phone UI, repository queries, backup/restore, desktop sync, and desktop Web todo management. The event check-in foundation slice adds event check-in data, backup, repository, and initial desktop-sync API foundations. Phone check-in work now includes the event-editor `打卡追踪` switch, preserving optional event markers when moving events, a calendar-event details card that can load records, show total invested time, and perform `签到` / `签退`, plus daily-board in-progress event rows that show check-in state and expose compact `签到` / `签退` actions. The Android `今日看板` widget now also shows active in-progress event check-in status without exposing launcher-side check-in buttons. The full `1.11.0` version bump is still pending.
 
 Most important current baseline facts:
 
@@ -75,11 +75,13 @@ Most important current baseline facts:
 - Phone calendar-event editor now shows `打卡追踪` under `日程标记`; event move operations preserve both `countdownEnabled` and `checkInEnabled`.
 - Phone calendar-event details now shows a `打卡追踪` card for enabled events, including total invested time, active `签到中` status, closed / active segment rows, and direct `签到` / `签退` actions.
 - Phone daily-board in-progress schedule rows now show `未签到` / `签到中 · 已 Xm` for check-in-enabled events and expose compact `签到` / `签退` actions.
+- Android `今日看板` widget in-progress schedule rows now batch-load active check-ins and show `⏱ 签到中 Xm` in the event accent color while keeping widget check-in state display-only.
 - `node --check app/src/main/assets/desktop-web/app.js`, `./gradlew.bat :app:compileDebugKotlin`, and `git diff --check` have passed for the multi-group todo slice.
 - `./gradlew.bat :app:compileDebugKotlin` and `git diff --check` have passed for the event check-in data / API foundation slice.
 - `./gradlew.bat :app:compileDebugKotlin` and `git diff --check` have passed for the phone event-editor check-in switch slice.
 - `./gradlew.bat :app:compileDebugKotlin` and `git diff --check` have passed for the phone event-details check-in operation slice.
 - `./gradlew.bat :app:compileDebugKotlin` and `git diff --check` have passed for the phone daily-board check-in status slice.
+- `./gradlew.bat :app:compileDebugKotlin` and `git diff --check` have passed for the Android widget check-in status slice.
 
 ## Immediate Manual Verification Targets
 

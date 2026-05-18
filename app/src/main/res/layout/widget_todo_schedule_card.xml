@@ -134,6 +134,18 @@
                     android:singleLine="true"
                     android:textColor="@color/widget_text_muted"
                     android:textSize="12sp" />
+
+                <TextView
+                    android:id="@+id/widget_schedule_today_event_1_status"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="5dp"
+                    android:ellipsize="end"
+                    android:includeFontPadding="false"
+                    android:singleLine="true"
+                    android:textColor="@color/widget_accent"
+                    android:textSize="12sp"
+                    android:textStyle="bold" />
             </LinearLayout>
         </LinearLayout>
 
@@ -197,6 +209,18 @@
                     android:singleLine="true"
                     android:textColor="@color/widget_text_muted"
                     android:textSize="12sp" />
+
+                <TextView
+                    android:id="@+id/widget_schedule_today_event_2_status"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="5dp"
+                    android:ellipsize="end"
+                    android:includeFontPadding="false"
+                    android:singleLine="true"
+                    android:textColor="@color/widget_accent"
+                    android:textSize="12sp"
+                    android:textStyle="bold" />
             </LinearLayout>
         </LinearLayout>
 
@@ -288,6 +312,18 @@
                     android:singleLine="true"
                     android:textColor="@color/widget_text_muted"
                     android:textSize="12sp" />
+
+                <TextView
+                    android:id="@+id/widget_schedule_tomorrow_event_1_status"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="5dp"
+                    android:ellipsize="end"
+                    android:includeFontPadding="false"
+                    android:singleLine="true"
+                    android:textColor="@color/widget_accent"
+                    android:textSize="12sp"
+                    android:textStyle="bold" />
             </LinearLayout>
         </LinearLayout>
 
@@ -351,6 +387,18 @@
                     android:singleLine="true"
                     android:textColor="@color/widget_text_muted"
                     android:textSize="12sp" />
+
+                <TextView
+                    android:id="@+id/widget_schedule_tomorrow_event_2_status"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="5dp"
+                    android:ellipsize="end"
+                    android:includeFontPadding="false"
+                    android:singleLine="true"
+                    android:textColor="@color/widget_accent"
+                    android:textSize="12sp"
+                    android:textStyle="bold" />
             </LinearLayout>
         </LinearLayout>
     </LinearLayout>

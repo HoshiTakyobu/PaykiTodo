@@ -289,6 +289,49 @@ interface TodoDao {
     @Query("DELETE FROM todo_items")
     suspend fun clearTodos()
 
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertCheckIn(checkIn: EventCheckIn): Long
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertCheckIns(checkIns: List<EventCheckIn>): List<Long>
+
+    @Query(
+        """
+        UPDATE event_check_ins
+        SET checkOutAtMillis = :checkOutAtMillis,
+            durationMinutes = :durationMinutes
+        WHERE id = :id
+        """
+    )
+    suspend fun checkOutEvent(id: Long, checkOutAtMillis: Long, durationMinutes: Int)
+
+    @Query("SELECT * FROM event_check_ins WHERE eventId = :eventId ORDER BY checkInAtMillis ASC")
+    suspend fun getCheckInsForEvent(eventId: Long): List<EventCheckIn>
+
+    @Query("SELECT * FROM event_check_ins WHERE eventId = :eventId AND checkOutAtMillis IS NULL ORDER BY checkInAtMillis DESC LIMIT 1")
+    suspend fun getActiveCheckIn(eventId: Long): EventCheckIn?
+
+    @Query("SELECT * FROM event_check_ins ORDER BY eventId ASC, checkInAtMillis ASC")
+    suspend fun getAllEventCheckIns(): List<EventCheckIn>
+
+    @Query("SELECT COALESCE(SUM(durationMinutes), 0) FROM event_check_ins WHERE eventId = :eventId")
+    suspend fun getTotalCheckInMinutesForEvent(eventId: Long): Int
+
+    @Query("UPDATE todo_items SET totalCheckInMinutes = :minutes WHERE id = :id")
+    suspend fun updateTotalCheckInMinutes(id: Long, minutes: Int)
+
+    @Query("SELECT COALESCE(SUM(durationMinutes), 0) FROM event_check_ins WHERE checkInAtMillis >= :startMillis AND checkInAtMillis < :endMillis")
+    suspend fun getTotalCheckInMinutesInRange(startMillis: Long, endMillis: Long): Int
+
+    @Query("DELETE FROM event_check_ins WHERE eventId = :eventId")
+    suspend fun clearCheckInsForEvent(eventId: Long)
+
+    @Query("DELETE FROM event_check_ins WHERE eventId IN (:eventIds)")
+    suspend fun clearCheckInsForEvents(eventIds: List<Long>)
+
+    @Query("DELETE FROM event_check_ins")
+    suspend fun clearEventCheckIns()
+
     @Query("SELECT * FROM task_groups ORDER BY sortOrder ASC, createdAtMillis ASC")
     fun observeGroups(): Flow<List<TaskGroup>>
 

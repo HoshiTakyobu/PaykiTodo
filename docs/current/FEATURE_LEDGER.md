@@ -129,6 +129,7 @@ This file tracks the product at a practical level for new coding sessions.
 - normal events, all-day events, and recurring events
 - event location / notes / color / reminder settings
 - event editor can mark important events as `倒数日`; the countdown target is the event start time and it appears on board / desktop / widget countdown surfaces
+- event data now supports optional check-in tracking fields and accumulated invested minutes; repository and desktop-sync APIs can create check-ins, check out active records, list event check-ins, and recompute total event investment time
 - calendar reminder editing accepts the same comma-separated multi-reminder syntax as todos
 - event preview keeps showing configured reminder offsets after reminder acknowledgement
 - timeline pending event draft can be canceled by long-pressing blank timeline space and is cleared when opening an existing event
@@ -205,6 +206,7 @@ This file tracks the product at a practical level for new coding sessions.
 - Room-based local storage
 - JSON import / export
 - backup / restore includes `todoGroupTags`; old backups without explicit multi-group tags are restored by backfilling each todo's original `groupId`
+- backup / restore includes `eventCheckIns`, and todo/event rows preserve `checkInEnabled` plus `totalCheckInMinutes`
 - auto-backup related support
 - crash log viewing / copying
 - in-app wiki assets
@@ -229,6 +231,7 @@ This file tracks the product at a practical level for new coding sessions.
 - desktop web todo and event reminder editors accept mixed reminder syntax matching the phone-side examples, including minutes, same-day time, current-year date-time, and full date-time
 - desktop sync API accepts todo `reminderOffsetsMinutes`, allowing desktop-created / edited todos to persist multiple reminders
 - desktop sync API exposes and accepts todo `groupIds`, so desktop-created / edited todos preserve phone-side multi-group relationships
+- desktop sync API exposes event `checkInEnabled` / `totalCheckInMinutes` and provides initial event check-in endpoints for listing records, checking in, and checking out
 - desktop web todo / event editors use a bottom-sheet-like visual structure with cancel / centered title / save actions
 - desktop web editor fields are card-styled, and timeline / event card buttons are lighter and less form-like
 - desktop Web UI resources are separated under `app/src/main/assets/desktop-web/`, while Android sync service code stays in `sync/`

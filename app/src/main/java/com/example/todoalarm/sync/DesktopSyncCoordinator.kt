@@ -9,6 +9,7 @@ import com.example.todoalarm.data.AppSettingsStore
 import com.example.todoalarm.data.CalendarEventDraft
 import com.example.todoalarm.data.DEFAULT_PLANNING_REMINDER_MINUTES
 import com.example.todoalarm.data.DailyBoardSnapshotBuilder
+import com.example.todoalarm.data.EventCheckIn
 import com.example.todoalarm.data.PlanningImportCandidate
 import com.example.todoalarm.data.PlanningLineMapping
 import com.example.todoalarm.data.PlanningLineMatcher
@@ -146,6 +147,9 @@ class DesktopSyncCoordinator(
                 method == "POST" && path == "/api/events" -> DesktopSyncServer.Response.json(createEvent(JSONObject(body)))
                 method == "PUT" && routePath.matches(Regex("/api/todos/\\d+")) -> DesktopSyncServer.Response.json(updateTodo(routePath, JSONObject(body)))
                 method == "PUT" && routePath.matches(Regex("/api/events/\\d+")) -> DesktopSyncServer.Response.json(updateEvent(routePath, JSONObject(body)))
+                method == "GET" && routePath.matches(Regex("/api/events/\\d+/check-ins")) -> DesktopSyncServer.Response.json(eventCheckIns(routePath))
+                method == "POST" && routePath.matches(Regex("/api/events/\\d+/check-in")) -> DesktopSyncServer.Response.json(checkInEvent(routePath))
+                method == "POST" && routePath.matches(Regex("/api/events/\\d+/check-out")) -> DesktopSyncServer.Response.json(checkOutEvent(routePath))
                 method == "GET" && path == "/api/planning/notes" -> DesktopSyncServer.Response.json(planningNotes())
                 method == "POST" && path == "/api/planning/notes" -> DesktopSyncServer.Response.json(createPlanningNote(JSONObject(body)))
                 method == "PUT" && routePath.matches(Regex("/api/planning/notes/\\d+")) -> DesktopSyncServer.Response.json(updatePlanningNote(routePath, JSONObject(body)))
@@ -340,6 +344,7 @@ class DesktopSyncCoordinator(
             vibrateEnabled = json.optBoolean("vibrateEnabled", true),
             reminderDeliveryMode = com.example.todoalarm.data.ReminderDeliveryMode.fromStorage(json.optString("reminderDeliveryMode")),
             countdownEnabled = json.optBoolean("countdownEnabled", false),
+            checkInEnabled = json.optBoolean("checkInEnabled", false),
             recurrence = recurrence,
             groupId = groupId
         )
@@ -373,6 +378,7 @@ class DesktopSyncCoordinator(
             vibrateEnabled = json.optBoolean("vibrateEnabled", true),
             reminderDeliveryMode = com.example.todoalarm.data.ReminderDeliveryMode.fromStorage(json.optString("reminderDeliveryMode")),
             countdownEnabled = json.optBoolean("countdownEnabled", original.countdownEnabled),
+            checkInEnabled = json.optBoolean("checkInEnabled", original.checkInEnabled),
             recurrence = recurrence,
             groupId = groupId
         )
@@ -382,6 +388,41 @@ class DesktopSyncCoordinator(
         autoBackupIfNeeded()
         return JSONObject().put("ok", updated.isNotEmpty())
     }
+
+    private fun eventCheckIns(path: String): JSONObject {
+        val id = path.substringAfter("/api/events/").substringBefore('/').toLong()
+        val event = runBlocking { app.repository.getTodo(id) } ?: return JSONObject().put("error", "日程不存在").put("checkIns", JSONArray())
+        require(event.isEvent) { "仅支持日程打卡" }
+        val checkIns = runBlocking { app.repository.getCheckInsForEvent(id) }
+        val active = checkIns.firstOrNull { it.checkOutAtMillis == null }
+        return JSONObject()
+            .put("eventId", id)
+            .put("checkInEnabled", event.checkInEnabled)
+            .put("totalCheckInMinutes", event.totalCheckInMinutes)
+            .put("activeCheckInId", active?.id)
+            .put("checkIns", JSONArray(checkIns.map { it.toDesktopJson() }))
+    }
+
+    private fun checkInEvent(path: String): JSONObject {
+        val id = path.substringAfter("/api/events/").substringBefore('/').toLong()
+        val checkIn = runBlocking { app.repository.checkInEvent(id) }
+        autoBackupIfNeeded()
+        return JSONObject()
+            .put("ok", checkIn != null)
+            .put("checkIn", checkIn?.toDesktopJson())
+    }
+
+    private fun checkOutEvent(path: String): JSONObject {
+        val id = path.substringAfter("/api/events/").substringBefore('/').toLong()
+        val checkOut = runBlocking { app.repository.checkOutEvent(id) }
+        val updated = runBlocking { app.repository.getTodo(id) }
+        autoBackupIfNeeded()
+        return JSONObject()
+            .put("ok", checkOut != null)
+            .put("checkIn", checkOut?.toDesktopJson())
+            .put("totalCheckInMinutes", updated?.totalCheckInMinutes ?: 0)
+    }
+
     private fun markCompleted(path: String): JSONObject {
         val id = path.substringAfter("/api/items/").substringBefore('/').toLong()
         val updated = runBlocking { app.repository.setCompleted(id, true) }
@@ -731,6 +772,7 @@ class DesktopSyncCoordinator(
         vibrateEnabled: Boolean,
         reminderDeliveryMode: com.example.todoalarm.data.ReminderDeliveryMode,
         countdownEnabled: Boolean,
+        checkInEnabled: Boolean,
         recurrence: RecurrenceConfig,
         groupId: Long
     ): CalendarEventDraft {
@@ -748,6 +790,7 @@ class DesktopSyncCoordinator(
             vibrateEnabled = vibrateEnabled,
             reminderDeliveryMode = reminderDeliveryMode,
             countdownEnabled = countdownEnabled,
+            checkInEnabled = checkInEnabled,
             recurrence = recurrence,
             groupId = groupId
         )
@@ -1192,4 +1235,13 @@ private fun resolvePlanningGroupId(groupName: String, groups: List<com.example.t
         groups.firstOrNull { it.name.equals(groupName.trim(), ignoreCase = true) }?.let { return it.id }
     }
     return groups.firstOrNull { it.name == "例行" }?.id ?: groups.firstOrNull()?.id ?: 0L
+}
+
+private fun EventCheckIn.toDesktopJson(): JSONObject {
+    return JSONObject()
+        .put("id", id)
+        .put("eventId", eventId)
+        .put("checkInAtMillis", checkInAtMillis)
+        .put("checkOutAtMillis", checkOutAtMillis)
+        .put("durationMinutes", durationMinutes)
 }

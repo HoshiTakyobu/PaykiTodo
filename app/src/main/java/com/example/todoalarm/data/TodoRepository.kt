@@ -87,6 +87,14 @@ class TodoRepository(
     suspend fun getGroup(groupId: Long): TaskGroup? = todoDao.getGroupById(groupId)
     suspend fun getGroupIdsForTodo(todoId: Long): List<Long> = todoDao.getGroupIdsForTodo(todoId)
     suspend fun getAllTodoGroupTags(): List<TodoGroupTag> = todoDao.getAllTodoGroupTags()
+    suspend fun getCheckInsForEvent(eventId: Long): List<EventCheckIn> = todoDao.getCheckInsForEvent(eventId)
+    suspend fun getActiveCheckIn(eventId: Long): EventCheckIn? = todoDao.getActiveCheckIn(eventId)
+    suspend fun getTodayEventCheckInMinutes(date: LocalDate = LocalDate.now()): Int {
+        val zone = ZoneId.systemDefault()
+        val startMillis = date.atStartOfDay(zone).toInstant().toEpochMilli()
+        val endMillis = date.plusDays(1).atStartOfDay(zone).toInstant().toEpochMilli()
+        return todoDao.getTotalCheckInMinutesInRange(startMillis, endMillis)
+    }
     suspend fun getAllTodos(): List<TodoItem> = todoDao.getAllTodos()
     suspend fun getDesktopTodoItems(): List<TodoItem> = todoDao.getDesktopTodoItems()
     suspend fun getDesktopTodoItemsPaged(
@@ -523,6 +531,41 @@ class TodoRepository(
         return updated
     }
 
+    suspend fun checkInEvent(eventId: Long, nowMillis: Long = System.currentTimeMillis()): EventCheckIn? {
+        val item = todoDao.getById(eventId) ?: return null
+        if (!item.isEvent || !item.checkInEnabled || item.completed || item.canceled) return null
+        val active = todoDao.getActiveCheckIn(eventId)
+        if (active != null) return active
+        val checkIn = EventCheckIn(
+            eventId = eventId,
+            checkInAtMillis = nowMillis,
+            checkOutAtMillis = null,
+            durationMinutes = 0
+        )
+        val id = todoDao.insertCheckIn(checkIn)
+        notifyItemsChanged()
+        return checkIn.copy(id = id)
+    }
+
+    suspend fun checkOutEvent(eventId: Long, nowMillis: Long = System.currentTimeMillis()): EventCheckIn? {
+        val active = todoDao.getActiveCheckIn(eventId) ?: return null
+        val durationMinutes = ((nowMillis - active.checkInAtMillis).coerceAtLeast(0L) / 60_000L).toInt()
+        todoDao.checkOutEvent(
+            id = active.id,
+            checkOutAtMillis = nowMillis,
+            durationMinutes = durationMinutes
+        )
+        val totalMinutes = todoDao.getTotalCheckInMinutesForEvent(eventId)
+        todoDao.updateTotalCheckInMinutes(eventId, totalMinutes)
+        notifyItemsChanged()
+        return active.copy(checkOutAtMillis = nowMillis, durationMinutes = durationMinutes)
+    }
+
+    suspend fun autoCheckOutEventIfNeeded(eventId: Long, nowMillis: Long = System.currentTimeMillis()): TodoItem? {
+        checkOutEvent(eventId, nowMillis)
+        return todoDao.getById(eventId)
+    }
+
     suspend fun createFromDraft(draft: TodoDraft): List<TodoItem> {
         val now = System.currentTimeMillis()
         val groupIds = resolveTodoGroupIds(draft)
@@ -928,12 +971,14 @@ class TodoRepository(
             planningLineMappings = planningMappings,
             aiReports = todoDao.getAllAiReports(),
             todoGroupTags = todoDao.getAllTodoGroupTags(),
+            eventCheckIns = todoDao.getAllEventCheckIns(),
             settings = settings
         )
     }
 
     suspend fun importSnapshot(snapshot: BackupSnapshot) {
         todoDao.clearTodoGroupTags()
+        todoDao.clearEventCheckIns()
         todoDao.clearTodos()
         todoDao.clearTemplates()
         todoDao.clearGroups()
@@ -956,6 +1001,10 @@ class TodoRepository(
         val restoredTags = restoredTodoGroupTags(snapshot)
         if (restoredTags.isNotEmpty()) {
             todoDao.insertTodoGroupTags(restoredTags)
+        }
+        val restoredCheckIns = restoredEventCheckIns(snapshot)
+        if (restoredCheckIns.isNotEmpty()) {
+            todoDao.insertCheckIns(restoredCheckIns)
         }
         if (snapshot.reminderChainLogs.isNotEmpty()) {
             todoDao.insertReminderChainLogs(snapshot.reminderChainLogs)
@@ -985,6 +1034,13 @@ class TodoRepository(
             .filter { it.isTodo && it.id > 0 && it.groupId > 0 && it.groupId in groupIds }
             .map { TodoGroupTag(todoId = it.id, groupId = it.groupId) }
             .distinct()
+    }
+
+    private fun restoredEventCheckIns(snapshot: BackupSnapshot): List<EventCheckIn> {
+        val eventIds = snapshot.tasks.filter { it.isEvent }.map { it.id }.toSet()
+        return snapshot.eventCheckIns
+            .filter { it.eventId in eventIds && it.checkInAtMillis > 0 }
+            .distinctBy { it.id.takeIf { id -> id > 0 } ?: "${it.eventId}-${it.checkInAtMillis}-${it.checkOutAtMillis}" }
     }
 
     private suspend fun updateItemFromPlanningCandidate(
@@ -1732,6 +1788,8 @@ class TodoRepository(
             location = draft.location.trim(),
             accentColorHex = draft.accentColorHex,
             countdownEnabled = draft.countdownEnabled,
+            checkInEnabled = draft.checkInEnabled,
+            totalCheckInMinutes = existing?.totalCheckInMinutes ?: 0,
             reminderAtMillis = reminderAtMillis,
             reminderOffsetsCsv = reminderOffsetsCsv,
             reminderEnabled = normalizedOffsets.isNotEmpty(),
@@ -2087,6 +2145,7 @@ class TodoRepository(
         val distinctIds = ids.filter { it > 0 }.distinct()
         if (distinctIds.isEmpty()) return
         todoDao.clearTodoGroupTagsForTodos(distinctIds)
+        todoDao.clearCheckInsForEvents(distinctIds)
         todoDao.deleteByIds(distinctIds)
     }
 

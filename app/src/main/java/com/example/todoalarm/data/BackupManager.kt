@@ -63,6 +63,7 @@ private fun BackupSnapshot.toJson(): JSONObject {
         put("planningLineMappings", JSONArray(planningLineMappings.map { it.toJson() }))
         put("aiReports", JSONArray(aiReports.map { it.toJson() }))
         put("todoGroupTags", JSONArray(todoGroupTags.map { it.toJson() }))
+        put("eventCheckIns", JSONArray(eventCheckIns.map { it.toJson() }))
     }
 }
 
@@ -162,6 +163,8 @@ private fun TodoItem.toJson(): JSONObject {
         put("location", location)
         put("accentColorHex", accentColorHex)
         put("countdownEnabled", countdownEnabled)
+        put("checkInEnabled", checkInEnabled)
+        put("totalCheckInMinutes", totalCheckInMinutes)
         put("reminderAtMillis", reminderAtMillis)
         put("reminderOffsetsCsv", reminderOffsetsCsv)
         put("reminderEnabled", reminderEnabled)
@@ -267,6 +270,16 @@ private fun TodoGroupTag.toJson(): JSONObject {
     }
 }
 
+private fun EventCheckIn.toJson(): JSONObject {
+    return JSONObject().apply {
+        put("id", id)
+        put("eventId", eventId)
+        put("checkInAtMillis", checkInAtMillis)
+        put("checkOutAtMillis", checkOutAtMillis)
+        put("durationMinutes", durationMinutes)
+    }
+}
+
 private fun backupSnapshotFromJson(json: JSONObject): BackupSnapshot {
     return BackupSnapshot(
         exportedAtMillis = json.optLong("exportedAtMillis", System.currentTimeMillis()),
@@ -280,6 +293,7 @@ private fun backupSnapshotFromJson(json: JSONObject): BackupSnapshot {
         planningLineMappings = json.optJSONArray("planningLineMappings").toPlanningLineMappings(),
         aiReports = json.optJSONArray("aiReports").toAiReports(),
         todoGroupTags = json.optJSONArray("todoGroupTags").toTodoGroupTags(),
+        eventCheckIns = json.optJSONArray("eventCheckIns").toEventCheckIns(),
         settings = json.optJSONObject("settings").toSettings()
     )
 }
@@ -362,6 +376,8 @@ private fun JSONArray?.toTasks(): List<TodoItem> {
                     location = item.optString("location", ""),
                     accentColorHex = item.optStringOrNull("accentColorHex"),
                     countdownEnabled = item.optBoolean("countdownEnabled", false),
+                    checkInEnabled = item.optBoolean("checkInEnabled", false),
+                    totalCheckInMinutes = item.optInt("totalCheckInMinutes", 0),
                     reminderAtMillis = item.optLongOrNull("reminderAtMillis"),
                     reminderOffsetsCsv = item.optString("reminderOffsetsCsv", item.optIntOrNull("reminderOffsetMinutes")?.toString().orEmpty()),
                     reminderEnabled = item.optBoolean("reminderEnabled", false),
@@ -513,6 +529,27 @@ private fun JSONArray?.toTodoGroupTags(): List<TodoGroupTag> {
             if (todoId > 0 && groupId > 0) {
                 add(TodoGroupTag(todoId = todoId, groupId = groupId))
             }
+        }
+    }
+}
+
+private fun JSONArray?.toEventCheckIns(): List<EventCheckIn> {
+    if (this == null) return emptyList()
+    return buildList(length()) {
+        for (index in 0 until length()) {
+            val item = optJSONObject(index) ?: continue
+            val eventId = item.optLong("eventId", 0L)
+            val checkInAtMillis = item.optLong("checkInAtMillis", 0L)
+            if (eventId <= 0 || checkInAtMillis <= 0) continue
+            add(
+                EventCheckIn(
+                    id = item.optLong("id", 0L),
+                    eventId = eventId,
+                    checkInAtMillis = checkInAtMillis,
+                    checkOutAtMillis = item.optLongOrNull("checkOutAtMillis"),
+                    durationMinutes = item.optInt("durationMinutes", 0).coerceAtLeast(0)
+                )
+            )
         }
     }
 }

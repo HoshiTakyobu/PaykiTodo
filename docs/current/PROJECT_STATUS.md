@@ -41,7 +41,7 @@
 
 ## Current Worktree Reality
 
-The repository is implementing the larger `1.11.0 / versionCode 222` goal from the current `1.10.3 / 221` baseline. The Android widget requirements have already landed in the current baseline. The first `1.11.0` goal slice removes the former focus / pomodoro mode and prepares the database for later check-in and multi-group todo work. The second small `1.11.0` slice adds database schema export, debug-only Compose tooling, structured startup initialization, and AI-report retention cleanup. The navigation slice renames the drawer task entry to single-line `待办`, removes the drawer group expansion and standalone `分组管理` entry, and moves group filtering / group maintenance into the todo page chip bar. The latest completed slice implements multi-group todo relationships across phone UI, repository queries, backup/restore, desktop sync, and desktop Web todo management. The full `1.11.0` version bump is still pending.
+The repository is implementing the larger `1.11.0 / versionCode 222` goal from the current `1.10.3 / 221` baseline. The Android widget requirements have already landed in the current baseline. The first `1.11.0` goal slice removes the former focus / pomodoro mode and prepares the database for later check-in and multi-group todo work. The second small `1.11.0` slice adds database schema export, debug-only Compose tooling, structured startup initialization, and AI-report retention cleanup. The navigation slice renames the drawer task entry to single-line `待办`, removes the drawer group expansion and standalone `分组管理` entry, and moves group filtering / group maintenance into the todo page chip bar. The multi-group slice implements multi-group todo relationships across phone UI, repository queries, backup/restore, desktop sync, and desktop Web todo management. The latest completed slice adds event check-in data, backup, repository, and initial desktop-sync API foundations. The full `1.11.0` version bump is still pending.
 
 Most important current baseline facts:
 
@@ -69,7 +69,11 @@ Most important current baseline facts:
 - Todos now support multiple group tags through `todo_group_tags`; phone and desktop todo filters use multi-select intersection semantics, while todo editors keep a primary `groupId` plus the full `groupIds` tag set.
 - Backup / restore now includes `todoGroupTags`, and old backups without explicit tags are restored by backfilling from each todo's original `groupId`.
 - Desktop sync todo payloads now expose and accept `groupIds`; desktop Web todo cards, previews, board rows, filter chips, and editor chips preserve multi-group relationships instead of collapsing them to one group.
+- Calendar-event persistence now carries `checkInEnabled` and `totalCheckInMinutes`; repository APIs can check in, check out, list event check-ins, recompute total invested minutes, and query today's invested event minutes.
+- Backup / restore now includes `eventCheckIns`, and deleting events clears their related check-in rows.
+- Desktop sync event payloads now expose `checkInEnabled` / `totalCheckInMinutes`, and initial check-in endpoints exist at `GET /api/events/{id}/check-ins`, `POST /api/events/{id}/check-in`, and `POST /api/events/{id}/check-out`.
 - `node --check app/src/main/assets/desktop-web/app.js`, `./gradlew.bat :app:compileDebugKotlin`, and `git diff --check` have passed for the multi-group todo slice.
+- `./gradlew.bat :app:compileDebugKotlin` and `git diff --check` have passed for the event check-in data / API foundation slice.
 
 ## Immediate Manual Verification Targets
 

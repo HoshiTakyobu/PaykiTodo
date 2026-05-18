@@ -19,7 +19,8 @@ Long-running Codex sessions can become unreliable. This file exists so a new ses
   5. AI report retention, debug-only Compose preview tooling, and application-scope non-fatal startup logging are implemented.
   6. Drawer navigation now shows a single-line `待办`, with group filtering and group maintenance moved into the todo page chip bar.
   7. Todo multi-group relationships are implemented across phone UI, repository queries, backup / restore, desktop sync, and desktop Web todo management.
-  8. Full `1.11.0 / versionCode 222` version bump is still pending.
+  8. Event check-in data and desktop-sync API foundations are implemented: events can persist `checkInEnabled`, check-in records can be created / checked out / totaled, backup includes `eventCheckIns`, and desktop sync exposes check-in endpoints.
+  9. Full `1.11.0 / versionCode 222` version bump is still pending.
 - Latest published signed release APK:
   - `app/build/outputs/apk/release/PaykiTodo-1.10.2-release.apk`
   - GitHub Release: `https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.10.2`
@@ -73,6 +74,15 @@ Long-running Codex sessions can become unreliable. This file exists so a new ses
 4. Backup export / import includes `todoGroupTags`; old backups without explicit tags are restored by rebuilding tags from each todo's legacy `groupId`.
 5. Desktop sync `/api/todos` and `/api/snapshot` expose todo `groupIds`; create / update APIs accept `groupIds` and keep primary `groupId` aligned with the first selected group.
 6. Desktop Web todo management has compact multi-select group filters, multi-select group chips in the todo editor, and multi-group labels in cards, previews, and daily-board todo rows.
+
+## Latest Event Check-In Data / API Pass
+
+1. Calendar-event drafts and saved events now carry `checkInEnabled`; editing an existing event preserves its accumulated `totalCheckInMinutes`.
+2. Repository support exists for event check-in, check-out, active-record lookup, per-event records, per-event total recomputation, and today's total event-check-in minutes.
+3. Deleting events clears related `event_check_ins` rows.
+4. Backup JSON now exports / imports `eventCheckIns`, plus `checkInEnabled` and `totalCheckInMinutes` on todo/event rows.
+5. Desktop sync event JSON exposes `checkInEnabled` and `totalCheckInMinutes`.
+6. Desktop sync exposes initial event check-in endpoints: `GET /api/events/{id}/check-ins`, `POST /api/events/{id}/check-in`, and `POST /api/events/{id}/check-out`.
 
 ## Previous 1.10.3 Planning Desk Fix Pass
 
@@ -134,6 +144,12 @@ Multi-group todo slice:
 3. Fresh `git diff --check` passed after docs and Wiki synchronization.
 4. No new APK has been built for this slice yet.
 
+Event check-in data / API foundation slice:
+
+1. Fresh `./gradlew.bat :app:compileDebugKotlin` passed after adding event check-in repository, backup, and desktop-sync API support.
+2. Fresh `git diff --check` passed after the slice.
+3. No new APK has been built for this slice yet.
+
 Secret / release safety checks already performed:
 
 1. `git check-ignore -v keystore.properties release/PaykiTodo-release.jks app/build/outputs/apk/release/PaykiTodo-1.10.3-release.apk app/build/outputs/apk/debug/PaykiTodo-1.10.3-debug.apk` confirmed local signing material and APK outputs are ignored.
@@ -154,6 +170,7 @@ Secret / release safety checks already performed:
 10. Verify multi-group todos on device: creating / editing a todo with multiple groups preserves all selected chips after reopening, selecting multiple group filters uses intersection semantics, and group edit / delete does not silently drop unrelated memberships.
 11. Verify multi-group todos in desktop browser: `/api/todos` exposes `groupIds`, the editor preserves all selected groups, cards / previews / board rows show all group labels, and selecting multiple filter chips uses intersection filtering.
 12. Verify backup / restore: fresh backups include `todoGroupTags`, restored data keeps all selected groups, and old backups without `todoGroupTags` backfill from each todo's `groupId`.
+13. After the phone / desktop UI is added, verify event check-in end to end: enable check-in for an event, sign in / sign out multiple times, confirm total minutes, backup / restore `eventCheckIns`, and test the desktop check-in endpoints from a browser.
 
 ## Performance Notes
 

@@ -43,10 +43,8 @@ Completed locally for `1.10.3`:
 5. `app/build/outputs/apk/release/output-metadata.json` confirms `1.10.3 / 221`.
 6. `apksigner verify --verbose --print-certs app/build/outputs/apk/release/PaykiTodo-1.10.3-release.apk` passed with one v2 signer.
 7. `git check-ignore -v keystore.properties release/PaykiTodo-release.jks app/build/outputs/apk/release/PaykiTodo-1.10.3-release.apk app/build/outputs/apk/debug/PaykiTodo-1.10.2-debug.apk` confirmed local signing material and APK outputs stay ignored.
-
-Not completed:
-
-- `./gradlew.bat :app:assembleDebug` is blocked because QQ process `53028` holds `app/build/outputs/apk/debug/PaykiTodo-1.10.2-debug.apk` open, so Gradle cannot delete the old debug output directory. Close the QQ file preview / transfer before rerunning debug build.
+8. After QQ released the old debug APK handle, `./gradlew.bat :app:assembleDebug` passed.
+9. `app/build/outputs/apk/debug/output-metadata.json` confirms `1.10.3 / 221`.
 
 Already completed for the published `1.10.2` release:
 
@@ -57,7 +55,7 @@ Already completed for the published `1.10.2` release:
 
 ## Remaining Device / Browser Verification
 
-1. Install `app/build/outputs/apk/release/PaykiTodo-1.10.3-release.apk`, or close QQ and rebuild debug before installing `PaykiTodo-1.10.3-debug.apk`.
+1. Install `app/build/outputs/apk/debug/PaykiTodo-1.10.3-debug.apk` on the user's phone; share `app/build/outputs/apk/release/PaykiTodo-1.10.3-release.apk` with external testers if needed.
 2. Verify Planning Desk imports for `@地点`, quoted `@地点`, and `地点：...`.
 3. Verify ordinary event import creates only an event.
 4. Verify manually enabled linked todo uses event end time as DDL and has no fixed generated note.

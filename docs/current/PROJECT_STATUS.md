@@ -17,6 +17,8 @@
   - Published as GitHub Release tag `v1.10.2`
 - Latest signed release APK built in this round:
   - `app/build/outputs/apk/release/PaykiTodo-1.10.3-release.apk`
+- Latest debug APK built in this round:
+  - `app/build/outputs/apk/debug/PaykiTodo-1.10.3-debug.apk`
 - Verification completed for this `1.10.3` continuation:
   - `node --check app/src/main/assets/desktop-web/app.js`
   - `./gradlew.bat :app:testDebugUnitTest`
@@ -25,8 +27,8 @@
   - APK metadata inspected: `versionName = 1.10.3`, `versionCode = 221`, output `PaykiTodo-1.10.3-release.apk`
   - `apksigner verify --verbose --print-certs app/build/outputs/apk/release/PaykiTodo-1.10.3-release.apk` passed with one v2 signer
   - `git check-ignore -v keystore.properties release/PaykiTodo-release.jks app/build/outputs/apk/release/PaykiTodo-1.10.3-release.apk app/build/outputs/apk/debug/PaykiTodo-1.10.2-debug.apk` confirmed local signing material and APK outputs are ignored
-- Debug APK build note:
-  - `./gradlew.bat :app:assembleDebug` is currently blocked by QQ process `53028` holding `app/build/outputs/apk/debug/PaykiTodo-1.10.2-debug.apk` open. Close the QQ file preview / transfer to allow Gradle to delete the old debug output directory.
+  - `./gradlew.bat :app:assembleDebug`
+  - Debug APK metadata inspected: `versionName = 1.10.3`, `versionCode = 221`, output `PaykiTodo-1.10.3-debug.apk`
 - Release-signing privacy:
   - local `keystore.properties`, `release/PaykiTodo-release.jks`, APK/AAB outputs, API keys, tokens, and private Base URLs must stay out of Git
 - Current build environment expectation:

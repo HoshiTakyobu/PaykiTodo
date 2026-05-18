@@ -35,10 +35,8 @@ Completed locally:
 5. Release APK metadata confirms `versionName = 1.10.3`, `versionCode = 221`.
 6. `apksigner verify --verbose --print-certs app/build/outputs/apk/release/PaykiTodo-1.10.3-release.apk` passed with one v2 signer.
 7. `git check-ignore -v keystore.properties release/PaykiTodo-release.jks app/build/outputs/apk/release/PaykiTodo-1.10.3-release.apk app/build/outputs/apk/debug/PaykiTodo-1.10.2-debug.apk` confirmed signing material and APK outputs are ignored.
-
-Not completed:
-
-- `./gradlew.bat :app:assembleDebug` is blocked because QQ process `53028` holds an open handle on `app/build/outputs/apk/debug/PaykiTodo-1.10.2-debug.apk`, preventing Gradle from deleting the old debug output directory. Close the QQ file preview / transfer that opened this APK, then rerun debug build.
+8. After QQ released the old debug APK handle, `./gradlew.bat :app:assembleDebug` passed and produced `app/build/outputs/apk/debug/PaykiTodo-1.10.3-debug.apk`.
+9. Debug APK metadata confirms `versionName = 1.10.3`, `versionCode = 221`.
 
 ## Verification Still Needed On Device / Browser
 

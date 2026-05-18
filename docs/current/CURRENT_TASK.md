@@ -75,6 +75,12 @@ Do not push to GitHub unless the user explicitly asks.
 2. The details card loads event check-in records, shows total invested time, highlights an active check-in as `签到中`, and lists closed / active segments.
 3. The details card can execute `签到` and `签退`, then refresh both the displayed event statistics and check-in records.
 
+### C3 full-screen reminder check-in slice
+
+1. Full-screen event reminders now show a `签到` action when the event has `打卡追踪` enabled.
+2. Tapping `签到` starts or reuses the active event check-in, acknowledges the current event reminder, and closes the reminder surface.
+3. The accessibility fallback reminder overlay exposes the same `签到` action for check-in-enabled event reminders.
+
 ### C5 phone daily-board check-in status slice
 
 1. Phone daily board in-progress schedule rows now show `未签到` for check-in-enabled events with no active record.
@@ -141,6 +147,12 @@ Do not push to GitHub unless the user explicitly asks.
 2. `git diff --check` passed after the slice.
 3. No new APK has been built for this slice yet.
 
+### C3 full-screen reminder check-in slice
+
+1. `./gradlew.bat :app:compileDebugKotlin` passed after adding `签到` to full-screen event reminders and the accessibility fallback overlay.
+2. `git diff --check` passed after the slice.
+3. No new APK has been built for this slice yet.
+
 ### C5 phone daily-board check-in status slice
 
 1. `./gradlew.bat :app:compileDebugKotlin` passed after adding daily-board in-progress event check-in status and compact sign-in / sign-out actions.
@@ -165,7 +177,7 @@ Do not push to GitHub unless the user explicitly asks.
 
 The full goal remains active. Major remaining slices:
 
-1. C3-C7 remaining: event check-in / time tracking still needs full-screen reminder button, completion statistics, settings switches, desktop web UI, and AI report integration.
+1. C3-C7 remaining: event check-in / time tracking still needs completion statistics, settings switches, desktop web UI, and AI report integration.
 2. V1-V6: Planning Desk image recognition through vision-capable AI providers.
 3. T1-T3: Planning Desk shortcut bar simplification and help update.
 4. P6/P7/P9/P10/P8: narrow database queries, countdown widget update metadata, and desktop-sync suspend handler cleanup.

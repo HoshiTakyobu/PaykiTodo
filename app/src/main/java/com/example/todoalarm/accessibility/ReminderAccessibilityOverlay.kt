@@ -304,6 +304,14 @@ class ReminderAccessibilityOverlay(
                 },
                 weightedParams()
             )
+        } else if (item.checkInEnabled) {
+            actionRow.addView(spaceView())
+            actionRow.addView(
+                filledButton("签到", accent).apply {
+                    setOnClickListener { checkInEvent(item.id) }
+                },
+                weightedParams()
+            )
         }
         card.addView(actionRow)
 
@@ -491,6 +499,41 @@ class ReminderAccessibilityOverlay(
                 .cancel(ReminderNotifier.notificationId(todoId))
             hide(todoId)
             Toast.makeText(service, "日程提醒已确认", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private fun checkInEvent(todoId: Long) {
+        serviceScope.launch {
+            val success = withContext(Dispatchers.IO) {
+                val item = app.repository.getTodo(todoId) ?: return@withContext false
+                val checkIn = app.repository.checkInEvent(item.id)
+                if (checkIn != null) {
+                    app.repository.acknowledgeCalendarEvent(item.id)
+                }
+                ReminderChainLogger.log(
+                    context = service,
+                    todoId = item.id,
+                    source = "ReminderAccessibilityOverlay",
+                    stage = ReminderChainStage.USER_COMPLETE,
+                    status = if (checkIn == null) ReminderChainStatus.WARN else ReminderChainStatus.OK,
+                    message = if (checkIn == null) "event_check_in_failed" else "event_check_in"
+                )
+                if (checkIn == null) return@withContext false
+                app.alarmScheduler.cancel(item.id)
+                app.reminderNotifier.cancel(item.id)
+                ActiveReminderStore.clearIfMatches(service, item.id)
+                ActiveReminderStore.clearActivityHandoff(service, item.id)
+                true
+            }
+            if (success) {
+                service.stopService(Intent(service, ReminderForegroundService::class.java))
+                service.getSystemService(NotificationManager::class.java)
+                    .cancel(ReminderNotifier.notificationId(todoId))
+                hide(todoId)
+                Toast.makeText(service, "已签到", Toast.LENGTH_SHORT).show()
+            } else {
+                Toast.makeText(service, "无法签到：请确认日程已开启打卡追踪", Toast.LENGTH_SHORT).show()
+            }
         }
     }
 

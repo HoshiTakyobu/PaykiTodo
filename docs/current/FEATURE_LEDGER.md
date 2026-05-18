@@ -133,6 +133,7 @@ This file tracks the product at a practical level for new coding sessions.
 - event editor exposes an optional `打卡追踪` switch under `日程标记`; moving an event preserves both countdown and check-in marker state
 - event data now supports optional check-in tracking fields and accumulated invested minutes; repository and desktop-sync APIs can create check-ins, check out active records, list event check-ins, and recompute total event investment time
 - event details bottom sheet shows a `打卡追踪` card for enabled events, including total invested time, active `签到中` status, closed / active segment rows, and direct `签到` / `签退` actions
+- check-in-enabled event reminders expose `签到` directly on the full-screen reminder page and the accessibility fallback overlay; signing in also acknowledges the current event reminder so the strong-reminder surface closes
 - calendar reminder editing accepts the same comma-separated multi-reminder syntax as todos
 - event preview keeps showing configured reminder offsets after reminder acknowledgement
 - timeline pending event draft can be canceled by long-pressing blank timeline space and is cleared when opening an existing event
@@ -152,9 +153,11 @@ This file tracks the product at a practical level for new coding sessions.
 - todo reminder screens expose an explicit `DDL 推迟` action; its input accepts positive minute increments, same-date clock targets, and full date-time targets, and rejects any target that is not later than the current DDL
 - notification reminder path
 - full-screen reminder path
+- full-screen event reminders can start an event check-in when `打卡追踪` is enabled
 - foreground service and fallback chain work
 - reboot / time change / timezone change recovery
 - accessibility fallback path
+- accessibility fallback event reminders can start an event check-in when `打卡追踪` is enabled
 - reminder diagnostics and settings-side tooling exist
 - reminder and desktop-sync foreground notifications both use the dedicated `ic_stat_payki_todo` small icon resource
 - calendar event acknowledgement preserves the configured reminder offsets instead of clearing the event's reminder setup

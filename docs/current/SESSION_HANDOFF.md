@@ -22,9 +22,10 @@ Long-running Codex sessions can become unreliable. This file exists so a new ses
   8. Event check-in data and desktop-sync API foundations are implemented: events can persist `checkInEnabled`, check-in records can be created / checked out / totaled, backup includes `eventCheckIns`, and desktop sync exposes check-in endpoints.
   9. Phone calendar-event editor now exposes the `打卡追踪` switch and preserves `checkInEnabled` when events are moved.
   10. Phone calendar-event details sheet now has a `打卡追踪` card for enabled events, with record loading, total invested time, active check-in status, `签到`, and `签退`.
-  11. Phone daily-board in-progress schedule rows show check-in status for enabled events and expose compact `签到` / `签退` actions.
-  12. Android `今日看板` widget in-progress schedule rows show active check-in status without launcher-side sign-in / sign-out buttons.
-  13. Full `1.11.0 / versionCode 222` version bump is still pending.
+  11. Full-screen event reminders and the accessibility fallback reminder overlay show `签到` for check-in-enabled events; signing in acknowledges and closes the current reminder.
+  12. Phone daily-board in-progress schedule rows show check-in status for enabled events and expose compact `签到` / `签退` actions.
+  13. Android `今日看板` widget in-progress schedule rows show active check-in status without launcher-side sign-in / sign-out buttons.
+  14. Full `1.11.0 / versionCode 222` version bump is still pending.
 - Latest published signed release APK:
   - `app/build/outputs/apk/release/PaykiTodo-1.10.2-release.apk`
   - GitHub Release: `https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.10.2`
@@ -99,6 +100,12 @@ Long-running Codex sessions can become unreliable. This file exists so a new ses
 1. Calendar event details bottom sheet shows a `打卡追踪` card only for events with `checkInEnabled = true`.
 2. The card loads event check-in records, shows total invested time, marks active records as `签到中`, and lists closed / active segments.
 3. The card can perform `签到` and `签退`, then refresh both the displayed event statistics and record list.
+
+## Latest Full-Screen Reminder Check-In Pass
+
+1. Full-screen event reminders show a `签到` action when the event has `打卡追踪` enabled.
+2. Tapping `签到` starts or reuses the active event check-in, acknowledges the current event reminder, clears reminder artifacts, and closes the reminder screen.
+3. The accessibility fallback reminder overlay exposes the same `签到` action and closes itself after successful sign-in.
 
 ## Latest Phone Daily-Board Check-In Pass
 
@@ -190,6 +197,12 @@ Phone event details check-in operation slice:
 2. Fresh `git diff --check` passed after the slice.
 3. No new APK has been built for this slice yet.
 
+Full-screen reminder check-in slice:
+
+1. Fresh `./gradlew.bat :app:compileDebugKotlin` passed after adding event check-in to the full-screen reminder activity and accessibility fallback overlay.
+2. Fresh `git diff --check` passed after the slice.
+3. No new APK has been built for this slice yet.
+
 Phone daily-board check-in status slice:
 
 1. Fresh `./gradlew.bat :app:compileDebugKotlin` passed after adding daily-board in-progress event check-in status and compact sign-in / sign-out actions.
@@ -222,7 +235,8 @@ Secret / release safety checks already performed:
 10. Verify multi-group todos on device: creating / editing a todo with multiple groups preserves all selected chips after reopening, selecting multiple group filters uses intersection semantics, and group edit / delete does not silently drop unrelated memberships.
 11. Verify multi-group todos in desktop browser: `/api/todos` exposes `groupIds`, the editor preserves all selected groups, cards / previews / board rows show all group labels, and selecting multiple filter chips uses intersection filtering.
 12. Verify backup / restore: fresh backups include `todoGroupTags`, restored data keeps all selected groups, and old backups without `todoGroupTags` backfill from each todo's `groupId`.
-13. After the phone / desktop UI is added, verify event check-in end to end: enable check-in for an event, sign in / sign out multiple times, confirm total minutes, backup / restore `eventCheckIns`, and test the desktop check-in endpoints from a browser.
+13. Verify event-reminder check-in on device: create a check-in-enabled event reminder, trigger the full-screen reminder, tap `签到`, and confirm the reminder closes while the event details / board show an active check-in.
+14. After the remaining desktop UI is added, verify event check-in end to end: enable check-in for an event, sign in / sign out multiple times, confirm total minutes, backup / restore `eventCheckIns`, and test the desktop check-in endpoints from a browser.
 
 ## Performance Notes
 

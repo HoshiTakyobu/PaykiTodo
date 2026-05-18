@@ -6,6 +6,7 @@ import android.content.Context
 import android.content.Intent
 import android.os.Build
 import android.os.Bundle
+import android.widget.Toast
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.OnBackPressedCallback
@@ -99,6 +100,7 @@ class ReminderActivity : ComponentActivity() {
                     defaultSnoozeMinutes = settings.defaultSnoozeMinutes,
                     onComplete = ::completeTodo,
                     onAcknowledge = ::acknowledgeEvent,
+                    onCheckInEvent = ::checkInEvent,
                     onSnooze = ::snooze,
                     onPostponeDueAt = ::postponeDueAt,
                     onCancel = ::cancelTodo
@@ -180,6 +182,30 @@ class ReminderActivity : ComponentActivity() {
             app.repository.acknowledgeCalendarEvent(item.id)
             clearReminderArtifacts(listOf(item))
             closeReminder(item.id)
+        }
+    }
+
+    private fun checkInEvent() {
+        val item = todoItem ?: return
+        lifecycleScope.launch {
+            val checkIn = app.repository.checkInEvent(item.id)
+            if (checkIn != null) {
+                app.repository.acknowledgeCalendarEvent(item.id)
+            }
+            ReminderChainLogger.log(
+                context = this@ReminderActivity,
+                todoId = item.id,
+                source = "ReminderActivity",
+                stage = ReminderChainStage.USER_COMPLETE,
+                status = if (checkIn == null) ReminderChainStatus.WARN else ReminderChainStatus.OK,
+                message = if (checkIn == null) "event_check_in_failed" else "event_check_in"
+            )
+            if (checkIn != null) {
+                clearReminderArtifacts(listOf(item))
+                closeReminder(item.id)
+            } else {
+                Toast.makeText(this@ReminderActivity, "无法签到：请确认日程已开启打卡追踪", Toast.LENGTH_SHORT).show()
+            }
         }
     }
 
@@ -286,6 +312,7 @@ private fun ReminderScreen(
     defaultSnoozeMinutes: Int,
     onComplete: () -> Unit,
     onAcknowledge: () -> Unit,
+    onCheckInEvent: () -> Unit,
     onSnooze: (Int) -> Unit,
     onPostponeDueAt: (LocalDateTime) -> Unit,
     onCancel: (RecurrenceScope) -> Unit
@@ -481,6 +508,17 @@ private fun ReminderScreen(
                             modifier = Modifier.weight(1f)
                         ) {
                             Text("延后 5 分钟")
+                        }
+                    } else if (todoItem?.checkInEnabled == true) {
+                        FilledTonalButton(
+                            onClick = onCheckInEvent,
+                            modifier = Modifier.weight(1f),
+                            colors = ButtonDefaults.filledTonalButtonColors(
+                                containerColor = accent.copy(alpha = 0.14f),
+                                contentColor = accent
+                            )
+                        ) {
+                            Text("签到")
                         }
                     }
                 }

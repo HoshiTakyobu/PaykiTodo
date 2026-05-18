@@ -164,6 +164,9 @@ internal fun CalendarEventEditorDialog(
     var countdownEnabled by remember(initialEvent?.id, seedDraft) {
         mutableStateOf(initialEvent?.countdownEnabled == true || seedDraft?.countdownEnabled == true)
     }
+    var checkInEnabled by remember(initialEvent?.id, seedDraft) {
+        mutableStateOf(initialEvent?.checkInEnabled == true || seedDraft?.checkInEnabled == true)
+    }
     var recurringEnabled by remember(initialEvent?.id, seedDraft) { mutableStateOf(initialEvent?.isRecurring == true || seedDraft?.recurrence?.enabled == true) }
     var recurrenceType by remember(initialEvent?.id, seedDraft) {
         mutableStateOf(initialEvent?.recurrenceTypeEnum ?: seedDraft?.recurrence?.type ?: RecurrenceType.DAILY)
@@ -226,6 +229,7 @@ internal fun CalendarEventEditorDialog(
                     vibrateEnabled = vibrateEnabled,
                     reminderDeliveryMode = reminderDeliveryMode,
                     countdownEnabled = countdownEnabled,
+                    checkInEnabled = checkInEnabled,
                     recurrence = RecurrenceConfig(
                         enabled = recurringEnabled,
                         type = recurrenceType,
@@ -358,7 +362,7 @@ internal fun CalendarEventEditorDialog(
                     )
                 }
 
-                EditorBlock(title = "倒数日") {
+                EditorBlock(title = "日程标记") {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically,
@@ -374,6 +378,24 @@ internal fun CalendarEventEditorDialog(
                         Switch(
                             checked = countdownEnabled,
                             onCheckedChange = { countdownEnabled = it },
+                            thumbContent = null
+                        )
+                    }
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Column(
+                            modifier = Modifier.weight(1f),
+                            verticalArrangement = Arrangement.spacedBy(2.dp)
+                        ) {
+                            Text("打卡追踪", fontWeight = FontWeight.SemiBold)
+                            Text("开启后可在日程进行期间签到/签退，记录实际投入时间。", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                        Switch(
+                            checked = checkInEnabled,
+                            onCheckedChange = { checkInEnabled = it },
                             thumbContent = null
                         )
                     }
@@ -570,6 +592,7 @@ internal fun CalendarEventEditorDialog(
                                         vibrateEnabled = vibrateEnabled,
                                         reminderDeliveryMode = reminderDeliveryMode,
                                         countdownEnabled = countdownEnabled,
+                                        checkInEnabled = checkInEnabled,
                                         recurrence = RecurrenceConfig(
                                             enabled = true,
                                             type = recurrenceType,

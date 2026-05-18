@@ -63,6 +63,12 @@ Do not push to GitHub unless the user explicitly asks.
 5. Desktop sync event payloads expose `checkInEnabled` and `totalCheckInMinutes`.
 6. Desktop sync now has initial check-in endpoints: `GET /api/events/{id}/check-ins`, `POST /api/events/{id}/check-in`, and `POST /api/events/{id}/check-out`.
 
+### C2 phone event editor check-in switch slice
+
+1. Phone calendar-event editor now shows a compact `打卡追踪` switch in the same `日程标记` block as `倒数日`.
+2. Creating or editing an event persists `checkInEnabled` through `CalendarEventDraft`.
+3. Dragging / moving an event preserves both `countdownEnabled` and `checkInEnabled` instead of silently resetting these optional markers.
+
 ## Verification Completed
 
 ### Widget slice
@@ -105,6 +111,12 @@ Do not push to GitHub unless the user explicitly asks.
 2. `git diff --check` passed after the slice.
 3. No new APK has been built for this slice yet.
 
+### C2 phone event editor check-in switch slice
+
+1. `./gradlew.bat :app:compileDebugKotlin` passed after adding the phone event-editor check-in switch and preserving marker fields during event moves.
+2. `git diff --check` passed after the slice.
+3. No new APK has been built for this slice yet.
+
 ## Verification Still Needed On Device / Browser
 
 1. Install `app/build/outputs/apk/debug/PaykiTodo-1.10.3-debug.apk` on the physical phone if validating the latest built widget APK.
@@ -117,7 +129,7 @@ Do not push to GitHub unless the user explicitly asks.
 
 The full goal remains active. Major remaining slices:
 
-1. C2-C7: event check-in / time tracking UI across phone editor, event preview, daily board, widgets, desktop web, settings, and AI reports.
+1. C3-C7: event check-in / time tracking UI across phone event preview, daily board, widgets, desktop web, settings, and AI reports.
 2. V1-V6: Planning Desk image recognition through vision-capable AI providers.
 3. T1-T3: Planning Desk shortcut bar simplification and help update.
 4. P6/P7/P9/P10/P8: narrow database queries, countdown widget update metadata, and desktop-sync suspend handler cleanup.

@@ -490,6 +490,8 @@ fun DashboardScreen(
                                 ringEnabled = item.ringEnabled,
                                 vibrateEnabled = item.vibrateEnabled,
                                 reminderDeliveryMode = item.reminderDeliveryModeEnum,
+                                countdownEnabled = item.countdownEnabled,
+                                checkInEnabled = item.checkInEnabled,
                                 recurrence = recurrence,
                                 groupId = item.groupId
                             )

@@ -7,8 +7,8 @@
 - Package name: `com.paykitodo.app`
 - Target platform: Android 14 / API 34
 - Current version in code:
-  - `versionName = "1.11.3"`
-  - `versionCode = 225`
+  - `versionName = "1.11.4"`
+  - `versionCode = 226`
 
 ## Current Build Facts
 
@@ -18,7 +18,12 @@
 - Latest signed release APK built locally:
   - `app/build/outputs/apk/release/PaykiTodo-1.11.0-release.apk`
 - Latest fully built debug APK:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.11.2-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.11.4-debug.apk`
+- Current `1.11.4 / versionCode 226` verification completed:
+  - `./gradlew.bat :app:compileDebugKotlin`
+  - `git diff --check`
+  - `./gradlew.bat :app:assembleDebug`
+  - Debug APK metadata inspected: `versionName = 1.11.4`, `versionCode = 226`, output `PaykiTodo-1.11.4-debug.apk`
 - Current `1.11.2 / versionCode 224` verification completed:
   - `node --check app/src/main/assets/desktop-web/app.js`
   - `./gradlew.bat :app:compileDebugKotlin`
@@ -50,7 +55,7 @@
 
 ## Current Worktree Reality
 
-The repository now targets the `1.11.2 / versionCode 224` workline. The Android widget requirements have landed. The first `1.11.0` goal slice removes the former focus / pomodoro mode and prepares the database for later check-in and multi-group todo work. The second small `1.11.0` slice adds database schema export, debug-only Compose tooling, structured startup initialization, and AI-report retention cleanup. The navigation slice renames the drawer task entry to single-line `待办`, removes the drawer group expansion and standalone `分组管理` entry, and moves group filtering / group maintenance into the todo page chip bar. The multi-group slice implements multi-group todo relationships across phone UI, repository queries, backup/restore, desktop sync, and desktop Web todo management. The event check-in foundation slice adds event check-in data, backup, repository, and initial desktop-sync API foundations. Phone check-in work now includes the event-editor `打卡追踪` switch, preserving optional event markers when moving events, a calendar-event details card that can load records, show total invested time, and perform `签到` / `签退`, full-screen / accessibility fallback event reminder surfaces that can start a check-in, plus daily-board in-progress event rows that show check-in state and expose compact `签到` / `签退` actions. Desktop Web now also exposes the event-editor `打卡追踪` checkbox and a preview-side check-in card that lists records and performs `签到` / `签退` through the desktop sync endpoints. The Android `今日看板` widget now also shows active in-progress event check-in status without exposing launcher-side sign-in / sign-out buttons. Settings -> `日历与提醒` now stores the event check-in behavior preferences for automatic checkout on event completion, showing investment statistics on completion, and idle auto-checkout. Completing a check-in-enabled event now uses those settings to auto-checkout any active record and show the phone-side investment summary, while desktop sync item-completion responses can include the same summary JSON. AI daily reports now include today's event check-in investment minutes in both the AI prompt and local fallback report. Phone Planning Desk shortcut UI has also been simplified to `子任务` and `公告`, with normal task / DDL / reminder / group / schedule input staying in natural text and parser tags. Phone Planning Desk can call vision-capable AI providers from `更多 -> 从图片识别日程`, append recognized schedule Markdown to the current note, and now auto-open the preview sheet when the returned Markdown produces candidates. Release builds enable R8/resource shrinking and use WebP dashboard backgrounds; the latest signed `PaykiTodo-1.11.0-release.apk` size check is `4.83 MB`, and release startup / main-surface smoke testing passed on `Pixel_8 / emulator-5554`. The `1.11.1` patch further tightens daily-board first-screen hierarchy, todo batch import defaults, Planning Desk starter placeholder text, todo group filter copy, and calendar timezone copy. The `1.11.2` UX round adds daily-board card collapse, drawer “更多”, todo filter intersection/union switching, Planning Desk bulk preview settings, today-note date context, quick check-in, idle auto-checkout, and desktop-sync WiFi/wake keepalive.
+The repository now targets the `1.11.4 / versionCode 226` workline. The Android widget requirements have landed. The first `1.11.0` goal slice removes the former focus / pomodoro mode and prepares the database for later check-in and multi-group todo work. The second small `1.11.0` slice adds database schema export, debug-only Compose tooling, structured startup initialization, and AI-report retention cleanup. The navigation slice renames the drawer task entry to single-line `待办`, removes the drawer group expansion and standalone `分组管理` entry, and moves group filtering / group maintenance into the todo page chip bar. The multi-group slice implements multi-group todo relationships across phone UI, repository queries, backup/restore, desktop sync, and desktop Web todo management. Phone check-in work now includes the event-editor `打卡追踪` switch, calendar-event details card, full-screen / accessibility fallback event reminder sign-in actions, daily-board check-in state display, and the independent `CheckInActivity` full-screen sign-in surface. `1.11.4` specifically fixes the `1.11.3` check-in refactor regressions: a signed-out event can be signed in again, successful sign-in/out triggers automatic backup when enabled, and returning from the check-in surface refreshes board/detail check-in state. Desktop Web still exposes the event-editor `打卡追踪` checkbox and a preview-side check-in card through desktop sync endpoints. The Android `今日看板` widget shows active in-progress event check-in status without exposing launcher-side sign-in / sign-out buttons. Settings -> `日历与提醒` stores the event check-in behavior preferences for automatic checkout on event completion, showing investment statistics on completion, and idle auto-checkout. AI daily reports include today's event check-in investment minutes in both the AI prompt and local fallback report. Phone Planning Desk shortcut UI has also been simplified to `子任务` and `公告`, with normal task / DDL / reminder / group / schedule input staying in natural text and parser tags. Phone Planning Desk can call vision-capable AI providers from `更多 -> 从图片识别日程`, append recognized schedule Markdown to the current note, and now auto-open the preview sheet when the returned Markdown produces candidates. Release builds enable R8/resource shrinking and use WebP dashboard backgrounds; the latest signed `PaykiTodo-1.11.0-release.apk` size check is `4.83 MB`, and release startup / main-surface smoke testing passed on `Pixel_8 / emulator-5554`.
 
 Most important current baseline facts:
 
@@ -85,7 +90,7 @@ Most important current baseline facts:
 - Phone calendar-event editor now shows `打卡追踪` under `日程标记`; event move operations preserve both `countdownEnabled` and `checkInEnabled`.
 - Phone calendar-event details now shows a `打卡追踪` card for enabled events, including total invested time, active `签到中` status, closed / active segment rows, and direct `签到` / `签退` actions.
 - Full-screen event reminders and the accessibility fallback reminder overlay now show a `签到` action for check-in-enabled events; signing in acknowledges the current event reminder and closes the reminder surface.
-- Phone daily-board in-progress schedule rows now show `未签到` / `签到中 · 已 Xm` for check-in-enabled events, expose compact `签到` / `签退` actions, and the board can create an immediate quick-check-in event from the `快速签到` sheet.
+- Phone daily-board in-progress schedule rows now show `未签到` / `签到中 · 已 Xm` for check-in-enabled events and route `去签到` / `查看` to the independent full-screen check-in surface.
 - Android `今日看板` widget in-progress schedule rows now batch-load active check-ins and show `⏱ 签到中 Xm` in the event accent color while keeping widget check-in state display-only.
 - Settings -> `日历与提醒` includes `日程结束时自动签退`, `完成日程时显示投入统计`, and `闲置自动签退阈值`; defaults persist locally and are preserved in backup / restore snapshots.
 - Phone calendar-event details exposes `完成日程` only for check-in-enabled events; completion can auto-checkout the active record and, when enabled, show planned minutes, actual invested minutes, check-in count, investment rate, and auto-checkout status.

@@ -73,6 +73,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateOf
@@ -103,7 +104,10 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.example.todoalarm.R
 import com.example.todoalarm.data.AiReport
 import com.example.todoalarm.data.AiReportType
@@ -1374,11 +1378,23 @@ private fun BoardScheduleEventRow(
 ) {
     val tint = item.accentColorHex?.let(::colorFromHex) ?: MaterialTheme.colorScheme.primary
     val inProgress = now?.let { DailyBoardSnapshotBuilder.eventInProgress(item, it) } == true
+    val lifecycleOwner = LocalLifecycleOwner.current
+    var refreshSerial by remember(item.id) { mutableStateOf(0) }
+    DisposableEffect(lifecycleOwner, item.id, item.checkInEnabled, inProgress) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME && item.checkInEnabled && inProgress) {
+                refreshSerial += 1
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
     val checkIns by produceState(
         initialValue = emptyList<EventCheckIn>(),
         item.id,
         item.checkInEnabled,
-        inProgress
+        inProgress,
+        refreshSerial
     ) {
         value = if (item.checkInEnabled && inProgress && onGetEventCheckIns != null) {
             onGetEventCheckIns(item.id)

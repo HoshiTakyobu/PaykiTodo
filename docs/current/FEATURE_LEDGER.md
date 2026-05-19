@@ -41,7 +41,7 @@ This file tracks the product at a practical level for new coding sessions.
 - board schedule rows keep normal and in-progress color strips in one aligned column
 - normal board schedule rows have no outer fill or border, while in-progress rows use a gold border with only subtle inner highlight
 - board in-progress schedule rows show check-in status for check-in-enabled events and expose compact `签到` / `签退` actions
-- board schedule area includes `快速签到`, which creates a check-in-enabled event starting now, starts the first check-in record immediately, remembers last title / location / duration, and lets the user sign out from the board
+- board in-progress schedule rows route check-in-enabled events to the independent full-screen check-in surface through `去签到` / `查看`, keeping the board focused on overview rather than inline operations
 - daily board shows a distinct completion message when today's schedule existed but all events have already ended
 - daily board always shows the tomorrow schedule section, including `明天暂无日程` when tomorrow has no events
 - daily board onboarding card is readable in dark mode, can be dismissed, and can be reset from Settings -> About -> 使用说明
@@ -140,8 +140,9 @@ This file tracks the product at a practical level for new coding sessions.
 - event editor can mark important events as `倒数日`; the countdown target is the event start time and it appears on board / desktop / widget countdown surfaces
 - event editor exposes an optional `打卡追踪` switch under `日程标记`; moving an event preserves both countdown and check-in marker state
 - event data now supports optional check-in tracking fields and accumulated invested minutes; repository and desktop-sync APIs can create check-ins, check out active records, list event check-ins, and recompute total event investment time
-- event details bottom sheet shows a `打卡追踪` card for enabled events, including total invested time, active `签到中` status, closed / active segment rows, and direct `签到` / `签退` actions
+- event details bottom sheet shows a `打卡追踪` card for enabled events, including total invested time, active `签到中` status, closed / active segment rows, and a `去签到` / `查看签到` jump into the full-screen check-in surface
 - event details bottom sheet exposes `完成日程` for check-in-enabled events; completion marks the event complete, can automatically check out an active record, and can show a summary card with planned time, actual invested time, check-in count, and investment rate
+- phone check-in operations now have an independent full-screen `CheckInActivity` with event title, live clock, large state button, sign-out confirmation, multi-segment re-check-in support, auto-backup after successful sign-in/out, and main-surface refresh after returning
 - event check-in has an idle auto-checkout watchdog with a configurable threshold; app startup / resume and widget refresh can close stale active records at the event end time and send a low-priority auto-checkout notification
 - check-in-enabled event reminders expose `签到` directly on the full-screen reminder page and the accessibility fallback overlay; signing in also acknowledges the current event reminder so the strong-reminder surface closes
 - Settings -> `日历与提醒` exposes event check-in behavior switches for automatic checkout when completing an event and showing investment statistics after completion; both default to on and persist locally

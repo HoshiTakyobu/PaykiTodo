@@ -2,11 +2,19 @@
 
 ## Active Development Focus
 
-Active goal: `1.11.3` check-in UI refactor committed. Code targets `1.11.3 / versionCode 225`. Next: scan for remaining UI style inconsistencies.
+Active goal: commit the `1.11.4` check-in regression patch. Code targets `1.11.4 / versionCode 226`; verification has passed for the functional issues found while auditing the `1.11.3` full-screen check-in refactor.
 
 Do not push to GitHub unless the user explicitly asks.
 
 ## Completed Goal Slices
+
+### v1.11.4 check-in regression patch
+
+1. Full-screen `CheckInActivity` no longer locks the user out after one sign-out; the same check-in-enabled event can be signed in again.
+2. Successful sign-in and sign-out from `CheckInActivity` now trigger automatic backup when auto-backup is enabled.
+3. Returning from the full-screen check-in surface refreshes the daily-board event row and calendar-event details check-in section, so `未签到` / `签到中` / total investment state does not stay stale.
+4. App version metadata is `1.11.4 / versionCode 226`.
+5. Verification passed: `./gradlew.bat :app:compileDebugKotlin`, `git diff --check`, and `./gradlew.bat :app:assembleDebug`; debug APK metadata confirms `PaykiTodo-1.11.4-debug.apk`.
 
 ### v1.11.2 UX round
 
@@ -335,7 +343,7 @@ Do not push to GitHub unless the user explicitly asks.
 
 ## Verification Still Needed On Device / Browser
 
-1. Install `app/build/outputs/apk/debug/PaykiTodo-1.11.2-debug.apk` on the physical phone if validating the latest built debug APK.
+1. Install `app/build/outputs/apk/debug/PaykiTodo-1.11.4-debug.apk` on the physical phone if validating the latest built debug APK.
 2. Add / resize the `今日看板` widget and confirm the removed top header, minute refresh, and cross-day date/list update behavior on the launcher.
 3. Add / resize the `倒数日` widget and confirm scroll behavior, readable multi-line rows, and row deep links on the launcher.
 4. Confirm on the physical phone that no user-facing focus / pomodoro entry remains in settings, todo long-press menu, desktop web, AI report, or widgets; the emulator drawer check already found no focus entry.

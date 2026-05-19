@@ -6,7 +6,13 @@ Long-running Codex sessions can become unreliable. This file exists so a new ses
 
 ## Current Handoff Summary
 
-- Current workline is `1.11.3 / versionCode 225`.
+- Current workline is `1.11.4 / versionCode 226`.
+- `1.11.4` check-in regression patch is implemented and verified:
+  1. `CheckInActivity` now allows a check-in-enabled event to be signed in again after a previous sign-out instead of disabling the main button forever.
+  2. Successful sign-in / sign-out from `CheckInActivity` runs the same auto-backup path when auto-backup is enabled.
+  3. Daily-board event rows and calendar-event details listen for app resume and reload check-in records after returning from `CheckInActivity`.
+  4. Verification passed: `./gradlew.bat :app:compileDebugKotlin`, `git diff --check`, and `./gradlew.bat :app:assembleDebug`.
+  5. Debug APK metadata confirms `versionName = 1.11.4`, `versionCode = 226`, output `PaykiTodo-1.11.4-debug.apk`.
 - `1.11.3` check-in UI refactor implemented in the working tree:
   1. New `CheckInActivity` full-screen sign-in surface: shows event title, live HH:MM:SS clock, large round status button (blue 签到 → green 已签到 → red 已签退), confirmation dialog before sign-out, and "已计入打卡时间" running total.
   2. Daily board's previous "快速签到" button, BottomSheet, and post-checkout AlertDialog are removed; in-progress event rows now route the user to `CheckInActivity` through a "去签到" / "查看" text button.
@@ -32,7 +38,7 @@ Long-running Codex sessions can become unreliable. This file exists so a new ses
   - `./gradlew.bat :app:assembleDebug`
   - Debug APK metadata confirms `versionName = 1.11.2`, `versionCode = 224`, output `PaykiTodo-1.11.2-debug.apk`
 - Latest debug APK:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.11.2-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.11.4-debug.apk`
 - Latest closed UX cleanup in `1.11.1 / versionCode 223`:
   1. Todo batch import now opens with an empty editor and placeholder examples instead of stale prefilled examples that can immediately fail validation.
   2. Todo page bottom actions now keep single-item `+` creation as the visual primary action; batch todo import is a compact secondary FAB.
@@ -41,7 +47,7 @@ Long-running Codex sessions can become unreliable. This file exists so a new ses
   5. Todo group filter helper text is shortened.
   6. Calendar timezone label now says local time with UTC offset instead of raw `GMT+0` style text.
   7. Version metadata has been bumped to `1.11.1 / versionCode 223`; debug build verification passed.
-- Active goal: the `1.11.2 / versionCode 224` UX round is implemented and verified; remaining local work is only creating the required commits.
+- Active goal: `1.11.4 / versionCode 226` check-in regression patch is ready to commit; do not push unless the user explicitly asks.
 - Already completed baseline widget slice:
   1. `今日看板` widget removes the top menu/title/date header.
   2. `今日看板` widget and `倒数日` widget refresh through provider-owned minute ticks instead of relying on `updatePeriodMillis`.
@@ -75,7 +81,7 @@ Long-running Codex sessions can become unreliable. This file exists so a new ses
   - `app/build/outputs/apk/release/PaykiTodo-1.10.2-release.apk`
   - GitHub Release: `https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.10.2`
 - Latest locally built APKs:
-  - Debug: `app/build/outputs/apk/debug/PaykiTodo-1.11.2-debug.apk`
+  - Debug: `app/build/outputs/apk/debug/PaykiTodo-1.11.4-debug.apk`
   - Release: `app/build/outputs/apk/release/PaykiTodo-1.11.0-release.apk`
 - Do not push to GitHub unless the user explicitly asks.
 - Keep `keystore.properties`, `release/`, APK/AAB outputs, API keys, tokens, and private Base URLs out of Git.
@@ -405,7 +411,7 @@ Secret / release safety checks already performed:
 
 ## Remaining Device / Browser Verification
 
-1. Install `app/build/outputs/apk/debug/PaykiTodo-1.11.2-debug.apk` on the user's phone if validating the latest built debug APK.
+1. Install `app/build/outputs/apk/debug/PaykiTodo-1.11.4-debug.apk` on the user's phone if validating the latest built debug APK.
 2. Add / resize the `今日看板` widget and confirm the top header is gone, content remains readable, cross-day / minute refresh updates the list, and an active checked-in in-progress event shows `⏱ 签到中 Xm`.
 3. Add / resize the `倒数日` widget and confirm scroll behavior, multi-line row readability, and exact todo/event row deep links.
 4. Verify Planning Desk imports for `@地点`, quoted `@地点`, and `地点：...`.

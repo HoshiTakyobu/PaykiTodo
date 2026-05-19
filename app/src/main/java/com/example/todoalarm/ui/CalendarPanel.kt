@@ -62,6 +62,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
@@ -98,6 +99,9 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.example.todoalarm.data.EventCheckIn
 import com.example.todoalarm.data.EventCheckInCompletionSummary
 import com.example.todoalarm.data.LunarCalendar
@@ -2218,6 +2222,7 @@ private fun CalendarEventDetailsDialog(
     var actionRunning by remember(item.id) { mutableStateOf(false) }
     var refreshSerial by remember(item.id) { mutableStateOf(0) }
     var completionSummary by remember(item.id) { mutableStateOf<EventCheckInCompletionSummary?>(null) }
+    val lifecycleOwner = LocalLifecycleOwner.current
     val activeCheckIn = checkIns.firstOrNull { it.checkOutAtMillis == null }
     val nowMillis by produceState(initialValue = System.currentTimeMillis(), activeCheckIn?.id) {
         while (activeCheckIn != null) {
@@ -2240,6 +2245,16 @@ private fun CalendarEventDetailsDialog(
         checkIns = onGetEventCheckIns(item.id)
         displayItem = onGetEventById(item.id) ?: displayItem
         checkInLoading = false
+    }
+
+    DisposableEffect(lifecycleOwner, item.id, item.checkInEnabled) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME && item.checkInEnabled) {
+                refreshSerial += 1
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
     fun refreshAfterAction(successMessage: String, operation: suspend () -> String?) {

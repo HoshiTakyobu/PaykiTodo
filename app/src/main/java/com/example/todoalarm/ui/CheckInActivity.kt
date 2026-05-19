@@ -48,8 +48,10 @@ import com.example.todoalarm.TodoApplication
 import com.example.todoalarm.data.EventCheckIn
 import com.example.todoalarm.data.TodoItem
 import com.example.todoalarm.ui.theme.TodoAlarmTheme
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.time.Instant
 import java.time.LocalDateTime
 import java.time.ZoneId
@@ -70,8 +72,16 @@ class CheckInActivity : ComponentActivity() {
                     loadEvent = { app.repository.getTodo(eventId) },
                     loadActiveCheckIn = { app.repository.getActiveCheckIn(eventId) },
                     loadCheckIns = { app.repository.getCheckInsForEvent(eventId) },
-                    onCheckIn = { app.repository.checkInEvent(eventId) },
-                    onCheckOut = { app.repository.checkOutEvent(eventId) },
+                    onCheckIn = {
+                        app.repository.checkInEvent(eventId)?.also {
+                            autoBackupIfEnabled(app)
+                        }
+                    },
+                    onCheckOut = {
+                        app.repository.checkOutEvent(eventId)?.also {
+                            autoBackupIfEnabled(app)
+                        }
+                    },
                     onBack = { finish() }
                 )
             }
@@ -157,7 +167,7 @@ private fun CheckInScreen(
     val buttonText = when (state) {
         CheckInState.NOT_CHECKED_IN -> "签到"
         CheckInState.CHECKED_IN -> "已签到"
-        CheckInState.CHECKED_OUT -> "已签退"
+        CheckInState.CHECKED_OUT -> "再次签到"
     }
 
     Scaffold(
@@ -207,7 +217,8 @@ private fun CheckInScreen(
             Button(
                 onClick = {
                     when (state) {
-                        CheckInState.NOT_CHECKED_IN -> {
+                        CheckInState.NOT_CHECKED_IN,
+                        CheckInState.CHECKED_OUT -> {
                             scope.launch {
                                 operating = true
                                 val result = onCheckIn()
@@ -221,10 +232,9 @@ private fun CheckInScreen(
                         CheckInState.CHECKED_IN -> {
                             showCheckOutDialog = true
                         }
-                        CheckInState.CHECKED_OUT -> {}
                     }
                 },
-                enabled = state != CheckInState.CHECKED_OUT && !operating,
+                enabled = !operating,
                 modifier = Modifier.size(200.dp),
                 shape = RoundedCornerShape(100.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = buttonColor)
@@ -273,5 +283,17 @@ private fun CheckInScreen(
                 TextButton(onClick = { showCheckOutDialog = false }) { Text("取消") }
             }
         )
+    }
+}
+
+private suspend fun autoBackupIfEnabled(app: TodoApplication) {
+    val settings = app.settingsStore.currentSettings()
+    if (!settings.autoBackupEnabled) return
+    val directoryUri = settings.backupDirectoryUri ?: return
+    runCatching {
+        withContext(Dispatchers.IO) {
+            val snapshot = app.repository.exportSnapshot(settings)
+            app.backupManager.autoBackupToDirectory(directoryUri, snapshot)
+        }
     }
 }

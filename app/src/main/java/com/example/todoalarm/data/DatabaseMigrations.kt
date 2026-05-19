@@ -371,6 +371,12 @@ object DatabaseMigrations {
         }
     }
 
+    val MIGRATION_18_19 = object : Migration(18, 19) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            ensurePlanningDocumentDateColumn(db)
+        }
+    }
+
     private fun rebuildPlanningNotesTable(db: SupportSQLiteDatabase) {
         db.execSQL("DROP TABLE IF EXISTS `planning_notes_room_expected`")
         createPlanningNotesTable(db, "planning_notes_room_expected")
@@ -574,5 +580,11 @@ object DatabaseMigrations {
             ON `planning_notes` (`archived`, `hasAnnouncementHint`, `updatedAtMillis`, `createdAtMillis`)
             """.trimIndent()
         )
+    }
+
+    private fun ensurePlanningDocumentDateColumn(db: SupportSQLiteDatabase) {
+        if (!tableHasColumns(db, "planning_notes", listOf("documentDateEpochDay"))) {
+            db.execSQL("ALTER TABLE `planning_notes` ADD COLUMN `documentDateEpochDay` INTEGER DEFAULT NULL")
+        }
     }
 }

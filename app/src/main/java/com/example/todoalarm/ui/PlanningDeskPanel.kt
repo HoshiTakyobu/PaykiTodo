@@ -12,6 +12,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -74,7 +75,9 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.FontFamily
@@ -100,6 +103,7 @@ import com.example.todoalarm.data.PlanningPostponeScope
 import com.example.todoalarm.data.PlanningRefreshScope
 import com.example.todoalarm.data.RecurrenceConfig
 import com.example.todoalarm.data.RecurrenceType
+import com.example.todoalarm.data.TaskGroup
 import com.example.todoalarm.data.toPlanningImportCandidate
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -120,6 +124,7 @@ import kotlin.math.roundToInt
 internal fun PlanningDeskPanel(
     notes: List<PlanningNote>,
     activeNote: PlanningNote?,
+    groups: List<TaskGroup>,
     planningAiProviders: List<PlanningAiProvider>,
     onSelectNote: (Long) -> Unit,
     onCreateNote: suspend (String) -> String?,
@@ -127,7 +132,8 @@ internal fun PlanningDeskPanel(
     onRenameNote: suspend (Long, String) -> String?,
     onDeleteNote: suspend (Long) -> String?,
     onArchiveNote: suspend (Long) -> String?,
-    onParse: suspend (String) -> PlanningParseResult,
+    onOpenTodayNote: suspend () -> Long,
+    onParse: suspend (String, Long?) -> PlanningParseResult,
     onImport: suspend (List<PlanningImportCandidate>, Set<String>, String, Long?) -> PlanningImportResult,
     onSyncMappings: suspend (Long, String) -> List<PlanningLineMapping>,
     onGetMappings: suspend (Long) -> List<PlanningLineMapping>,
@@ -160,6 +166,7 @@ internal fun PlanningDeskPanel(
     var undoConfirmVisible by remember { mutableStateOf(false) }
     var operationRunning by remember { mutableStateOf(false) }
     var visionRecognizing by remember { mutableStateOf(false) }
+    var latestVisionImageUri by remember { mutableStateOf<Uri?>(null) }
     val selectedIds = remember { mutableStateMapOf<String, Boolean>() }
     val editableCandidates = remember { mutableStateListOf<PlanningImportCandidate>() }
     val hasUnsavedChanges = activeNote != null && editorValue.text != activeNote.contentMarkdown
@@ -196,11 +203,28 @@ internal fun PlanningDeskPanel(
                     Toast.makeText(context, "未能从图中识别出日程", Toast.LENGTH_SHORT).show()
                     return@launch
                 }
-                val updated = appendPlanningMarkdown(editorValue.text, recognizedMarkdown)
+                val previousMarkdown = editorValue.text
+                val visionParseMarkdown = planningVisionParseMarkdown(previousMarkdown, recognizedMarkdown)
+                val updated = appendPlanningMarkdown(previousMarkdown, recognizedMarkdown)
                 editorValue = TextFieldValue(text = updated, selection = TextRange(updated.length))
                 markdownEditMode = true
-                val lineCount = recognizedMarkdown.lines().count { it.isNotBlank() }
-                Toast.makeText(context, "已追加 $lineCount 条识别结果，请检查后用「识别」按钮进入预览导入", Toast.LENGTH_LONG).show()
+                latestVisionImageUri = uri
+                val result = onParse(visionParseMarkdown, activeNote?.id)
+                parseResult = result
+                selectedIds.clear()
+                editableCandidates.clear()
+                result.candidates.forEach { candidate ->
+                    val editable = candidate.toPlanningImportCandidate()
+                    editableCandidates += editable
+                    selectedIds[editable.id] = editable.validate() == null
+                }
+                if (result.importableCount > 0) {
+                    previewSheetVisible = true
+                    Toast.makeText(context, "图片识别完成，已自动打开预览。", Toast.LENGTH_SHORT).show()
+                } else {
+                    val lineCount = recognizedMarkdown.lines().count { it.isNotBlank() }
+                    Toast.makeText(context, "已追加 $lineCount 条识别结果，请检查格式后手动点「识别」", Toast.LENGTH_LONG).show()
+                }
             } catch (error: PlanningVisionImageException) {
                 Toast.makeText(context, error.message ?: "图片过大，请裁剪后重试", Toast.LENGTH_LONG).show()
             } catch (error: Exception) {
@@ -266,6 +290,18 @@ internal fun PlanningDeskPanel(
                     modifier = Modifier.height(40.dp),
                     onClick = {
                         focusManager.clearFocus()
+                        scope.launch {
+                            val noteId = onOpenTodayNote()
+                            onSelectNote(noteId)
+                        }
+                    }
+                ) {
+                    Text("今日")
+                }
+                OutlinedButton(
+                    modifier = Modifier.height(40.dp),
+                    onClick = {
+                        focusManager.clearFocus()
                         markdownEditMode = !markdownEditMode
                     }
                 ) {
@@ -279,7 +315,7 @@ internal fun PlanningDeskPanel(
                         scope.launch {
                             parsing = true
                             try {
-                                val result = onParse(editorValue.text)
+                            val result = onParse(editorValue.text, activeNote?.id)
                                 parseResult = result
                                 selectedIds.clear()
                                 editableCandidates.clear()
@@ -552,6 +588,13 @@ internal fun PlanningDeskPanel(
                             previewSheetVisible = false
                         }
                     }
+                },
+                groups = groups,
+                latestVisionImageUri = latestVisionImageUri,
+                onBackToEditor = {
+                    previewSheetVisible = false
+                    markdownEditMode = true
+                    editorValue = editorValue.copy(selection = TextRange(editorValue.text.length))
                 }
             )
         }
@@ -1604,11 +1647,18 @@ private fun PlanningPreviewSheet(
     candidates: List<PlanningImportCandidate>,
     selectedIds: MutableMap<String, Boolean>,
     onCandidateChange: (PlanningImportCandidate) -> Unit,
-    onImport: () -> Unit
+    onImport: () -> Unit,
+    groups: List<TaskGroup>,
+    latestVisionImageUri: Uri?,
+    onBackToEditor: () -> Unit
 ) {
+    val context = LocalContext.current
     val invalidSelected = candidates.any { candidate -> selectedIds[candidate.id] == true && candidate.validate() != null }
     val selectedCount = candidates.count { selectedIds[it.id] == true }
     val validCandidates = candidates.filter { it.validate() == null }
+    var batchExpanded by remember { mutableStateOf(false) }
+    var imagePreviewDialogVisible by remember { mutableStateOf(false) }
+    val previewBitmap = remember(latestVisionImageUri, context) { latestVisionImageUri?.loadPreviewBitmap(context) }
     Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 14.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             Surface(
@@ -1631,6 +1681,63 @@ private fun PlanningPreviewSheet(
             }
             Button(onClick = onImport, enabled = selectedCount > 0 && !invalidSelected) { Text("导入") }
         }
+        if (latestVisionImageUri != null) {
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp),
+                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.28f),
+                onClick = { if (previewBitmap != null) imagePreviewDialogVisible = true }
+            ) {
+                Column(
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Icon(Icons.Rounded.Image, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                        Text(
+                            text = "已保留本次识图来源，点缩略图可放大核对。",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                    previewBitmap?.let { bitmap ->
+                        Image(
+                            bitmap = bitmap.asImageBitmap(),
+                            contentDescription = "本次识图原图缩略图",
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(168.dp),
+                            contentScale = ContentScale.Fit
+                        )
+                    }
+                }
+            }
+        }
+        if (imagePreviewDialogVisible && previewBitmap != null) {
+            AlertDialog(
+                onDismissRequest = { imagePreviewDialogVisible = false },
+                title = { Text("识图原图") },
+                text = {
+                    Image(
+                        bitmap = previewBitmap.asImageBitmap(),
+                        contentDescription = "本次识图原图放大预览",
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(420.dp),
+                        contentScale = ContentScale.Fit
+                    )
+                },
+                confirmButton = {
+                    TextButton(onClick = { imagePreviewDialogVisible = false }) {
+                        Text("关闭")
+                    }
+                }
+            )
+        }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
             OutlinedButton(
                 onClick = {
@@ -1639,6 +1746,91 @@ private fun PlanningPreviewSheet(
                 enabled = validCandidates.isNotEmpty()
             ) { Text("全选可导入项") }
             TextButton(onClick = { candidates.forEach { selectedIds[it.id] = false } }, enabled = selectedCount > 0) { Text("全不选") }
+            TextButton(onClick = onBackToEditor) { Text("返回编辑器修改") }
+        }
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(16.dp),
+            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.22f),
+            onClick = { batchExpanded = !batchExpanded }
+        ) {
+            Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text("批量设置", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                    Icon(
+                        imageVector = if (batchExpanded) Icons.Rounded.ExpandLess else Icons.Rounded.ExpandMore,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                if (batchExpanded) {
+                    val selectedCandidates = candidates.filter { selectedIds[it.id] == true }
+                    val selectedTodoCountdownCandidates = selectedCandidates.filter { it.type == PlanningParsedType.TODO && it.dueAt != null }
+                    val selectedEventCandidates = selectedCandidates.filter { it.type == PlanningParsedType.EVENT }
+                    PlanningBatchSwitchRow(
+                        title = "全部加入倒数日",
+                        summary = "只影响已勾选且带 DDL 的待办候选",
+                        checked = selectedTodoCountdownCandidates.isNotEmpty() && selectedTodoCountdownCandidates.all { it.countdownEnabled },
+                        enabled = selectedTodoCountdownCandidates.isNotEmpty(),
+                        onCheckedChange = { checked ->
+                            selectedTodoCountdownCandidates.forEach { candidate ->
+                                onCandidateChange(candidate.copy(countdownEnabled = checked))
+                            }
+                        }
+                    )
+                    PlanningBatchSwitchRow(
+                        title = "全部创建待办",
+                        summary = "只影响已勾选的日程候选",
+                        checked = selectedEventCandidates.isNotEmpty() && selectedEventCandidates.all { it.createLinkedTodo },
+                        enabled = selectedEventCandidates.isNotEmpty(),
+                        onCheckedChange = { checked ->
+                            selectedEventCandidates.forEach { candidate ->
+                                onCandidateChange(candidate.copy(createLinkedTodo = checked))
+                            }
+                        }
+                    )
+                    PlanningBatchSwitchRow(
+                        title = "全部启用打卡",
+                        summary = "只影响已勾选的日程候选",
+                        checked = selectedEventCandidates.isNotEmpty() && selectedEventCandidates.all { it.checkInEnabled },
+                        enabled = selectedEventCandidates.isNotEmpty(),
+                        onCheckedChange = { checked ->
+                            selectedEventCandidates.forEach { candidate ->
+                                onCandidateChange(candidate.copy(checkInEnabled = checked))
+                            }
+                        }
+                    )
+                    if (groups.isNotEmpty()) {
+                        Text(
+                            text = "统一分组",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .horizontalScroll(rememberScrollState()),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            groups.forEach { group ->
+                                FilterChip(
+                                    selected = false,
+                                    onClick = {
+                                        selectedCandidates.forEach { candidate ->
+                                            onCandidateChange(candidate.copy(groupName = group.name))
+                                        }
+                                    },
+                                    label = { Text(group.name) }
+                                )
+                            }
+                        }
+                    }
+                }
+            }
         }
         LazyColumn(modifier = Modifier.fillMaxWidth().fillMaxHeight(0.72f), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             items(candidates, key = { it.id }) { candidate ->
@@ -1649,6 +1841,49 @@ private fun PlanningPreviewSheet(
                     onCandidateChange = onCandidateChange
                 )
             }
+        }
+    }
+}
+
+@Composable
+private fun PlanningBatchSwitchRow(
+    title: String,
+    summary: String,
+    checked: Boolean,
+    enabled: Boolean,
+    onCheckedChange: (Boolean) -> Unit
+) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(14.dp),
+        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.72f),
+        border = BorderStroke(0.6.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.38f))
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = if (enabled) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Text(
+                    text = summary,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            Switch(
+                checked = checked,
+                onCheckedChange = onCheckedChange,
+                enabled = enabled
+            )
         }
     }
 }
@@ -1820,6 +2055,13 @@ private fun PlanningCandidateOptionRow(
             enabled = canCountdown,
             label = { Text("倒数日") }
         )
+        if (candidate.type == PlanningParsedType.EVENT) {
+            FilterChip(
+                selected = candidate.checkInEnabled,
+                onClick = { onCandidateChange(candidate.copy(checkInEnabled = !candidate.checkInEnabled)) },
+                label = { Text("打卡追踪") }
+            )
+        }
     }
 }
 
@@ -2268,6 +2510,14 @@ private data class PlanningVisionImagePayload(
 
 private class PlanningVisionImageException(message: String) : IOException(message)
 
+private fun Uri.loadPreviewBitmap(context: Context): Bitmap? {
+    return runCatching {
+        context.contentResolver.openInputStream(this)?.use { stream ->
+            BitmapFactory.decodeStream(stream)
+        }
+    }.getOrNull()
+}
+
 private suspend fun compressPlanningVisionImage(
     context: Context,
     uri: Uri
@@ -2321,6 +2571,18 @@ private fun appendPlanningMarkdown(current: String, appended: String): String {
     val addition = appended.trim()
     if (base.isBlank()) return addition
     return "$base\n\n$addition"
+}
+
+private fun planningVisionParseMarkdown(current: String, appended: String): String {
+    val addition = appended.trim()
+    if (current.trimEnd().isBlank()) return addition
+    val existingLineCount = current.trimEnd().replace("\r\n", "\n").replace('\r', '\n').lines().size
+    return buildString {
+        repeat(existingLineCount + 1) {
+            append('\n')
+        }
+        append(addition)
+    }
 }
 
 private const val PlanningVisionMaxLongSide = 1600

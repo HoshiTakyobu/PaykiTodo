@@ -5,6 +5,7 @@ import androidx.room.Room
 import com.example.todoalarm.alarm.AlarmScheduler
 import com.example.todoalarm.alarm.DailyReportNotifier
 import com.example.todoalarm.alarm.DailyReportScheduler
+import com.example.todoalarm.alarm.EventCheckInWatchdog
 import com.example.todoalarm.alarm.ReminderNotifier
 import com.example.todoalarm.data.AppDatabase
 import com.example.todoalarm.data.BackupManager
@@ -20,10 +21,11 @@ import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 class TodoApplication : Application() {
-    private val appScope = CoroutineScope(
+    val applicationScope = CoroutineScope(
         SupervisorJob() + Dispatchers.IO + CoroutineExceptionHandler { _, error ->
             CrashLogger.recordNonFatal(error)
         }
@@ -34,12 +36,14 @@ class TodoApplication : Application() {
         CrashLogger.install(this)
         DailyReportNotifier.ensureChannel(this)
         DailyReportScheduler.scheduleNext(this)
-        appScope.launch {
+        applicationScope.launch {
             repository.ensureDefaultGroups()
             LegacyAiReportMigration.migrateIfNeeded(this@TodoApplication)
             if (settingsStore.currentSettings().desktopSyncEnabled) {
                 DesktopSyncService.start(applicationContext)
             }
+            delay(5_000L)
+            EventCheckInWatchdog.runOnce(applicationContext)
         }
     }
 
@@ -65,7 +69,8 @@ class TodoApplication : Application() {
             DatabaseMigrations.MIGRATION_14_15,
             DatabaseMigrations.MIGRATION_15_16,
             DatabaseMigrations.MIGRATION_16_17,
-            DatabaseMigrations.MIGRATION_17_18
+            DatabaseMigrations.MIGRATION_17_18,
+            DatabaseMigrations.MIGRATION_18_19
         )
             .build()
     }

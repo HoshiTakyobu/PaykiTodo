@@ -7,8 +7,10 @@ import android.app.PendingIntent
 import android.app.Service
 import android.content.Context
 import android.content.Intent
+import android.net.wifi.WifiManager
 import android.os.Build
 import android.os.IBinder
+import android.os.PowerManager
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
 import com.example.todoalarm.R
@@ -26,6 +28,8 @@ class DesktopSyncService : Service() {
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private var autoStopJob: Job? = null
     private var startedAtMillis: Long = 0L
+    private var wifiLock: WifiManager.WifiLock? = null
+    private var wakeLock: PowerManager.WakeLock? = null
 
     override fun onCreate() {
         super.onCreate()
@@ -49,15 +53,17 @@ class DesktopSyncService : Service() {
             },
             PendingIntent.FLAG_UPDATE_CURRENT or immutableFlag()
         )
+        val keepAlive = app.settingsStore.currentSettings().desktopSyncWifiKeepAlive
         val notification = NotificationCompat.Builder(this, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_stat_payki_todo)
             .setContentTitle("PaykiTodo 电脑同步已运行")
-            .setContentText("同局域网电脑可通过浏览器连接此手机，直接编辑待办与日程。")
+            .setContentText(if (keepAlive) "桌面端连接中 · 已保持网络唤醒" else "桌面端连接中")
             .setContentIntent(contentIntent)
             .setOngoing(true)
             .build()
         startForeground(NOTIFICATION_ID, notification)
         app.desktopSyncCoordinator.ensureRunning()
+        updateKeepAliveLocks(keepAlive)
         scheduleAutoStopIfNoClient()
     }
 
@@ -72,12 +78,14 @@ class DesktopSyncService : Service() {
         if (startedAtMillis == 0L) {
             startedAtMillis = System.currentTimeMillis()
         }
+        updateKeepAliveLocks(app.settingsStore.currentSettings().desktopSyncWifiKeepAlive)
         scheduleAutoStopIfNoClient()
         return START_STICKY
     }
 
     override fun onDestroy() {
         autoStopJob?.cancel()
+        releaseLocks()
         serviceScope.cancel()
         (application as TodoApplication).desktopSyncCoordinator.stop()
         super.onDestroy()
@@ -116,6 +124,36 @@ class DesktopSyncService : Service() {
             app.desktopSyncCoordinator.stop()
             stopSelf()
         }
+    }
+
+    private fun updateKeepAliveLocks(enabled: Boolean) {
+        if (!enabled) {
+            releaseLocks()
+            return
+        }
+        if (wifiLock?.isHeld != true) {
+            val wifiManager = applicationContext.getSystemService(WIFI_SERVICE) as? WifiManager
+            wifiLock = wifiManager
+                ?.createWifiLock(WifiManager.WIFI_MODE_FULL_HIGH_PERF, "PaykiTodo:DesktopSync")
+                ?.apply { acquire() }
+        }
+        if (wakeLock?.isHeld != true) {
+            val powerManager = applicationContext.getSystemService(POWER_SERVICE) as? PowerManager
+            wakeLock = powerManager
+                ?.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "PaykiTodo:DesktopSync")
+                ?.apply { acquire() }
+        }
+    }
+
+    private fun releaseLocks() {
+        if (wakeLock?.isHeld == true) {
+            wakeLock?.release()
+        }
+        wakeLock = null
+        if (wifiLock?.isHeld == true) {
+            wifiLock?.release()
+        }
+        wifiLock = null
     }
 
     companion object {

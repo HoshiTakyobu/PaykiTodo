@@ -1550,9 +1550,10 @@ async function parsePlanningEditor() {
   state.planningParsing = true;
   renderPlanningPreview();
   try {
+    const active = activePlanningNote();
     state.planningParseResult = await api('/api/planning/parse', {
       method: 'POST',
-      body: JSON.stringify({ markdown: els.planningEditor.value })
+      body: JSON.stringify({ markdown: els.planningEditor.value, noteId: active && active.id })
     });
     renderPlanningPreview();
   } finally {

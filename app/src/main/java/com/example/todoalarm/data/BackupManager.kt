@@ -78,6 +78,7 @@ private fun AppSettings.toJson(): JSONObject {
         put("defaultCalendarReminderMode", defaultCalendarReminderMode.name)
         put("autoCheckOutEventOnEnd", autoCheckOutEventOnEnd)
         put("showEventCheckInStatsOnComplete", showEventCheckInStatsOnComplete)
+        put("eventCheckInIdleAutoCheckOutHours", eventCheckInIdleAutoCheckOutHours)
         put("reminderToneUri", reminderToneUri)
         put("reminderToneName", reminderToneName)
         put("reminderAudioChannel", reminderAudioChannel.name)
@@ -90,7 +91,16 @@ private fun AppSettings.toJson(): JSONObject {
         put("autoBackupEnabled", autoBackupEnabled)
         put("desktopSyncEnabled", desktopSyncEnabled)
         put("desktopSyncToken", desktopSyncToken)
+        put("desktopSyncWifiKeepAlive", desktopSyncWifiKeepAlive)
         put("lastOpenedPlanningNoteId", lastOpenedPlanningNoteId)
+        put("lastQuickCheckInTitle", lastQuickCheckInTitle)
+        put("lastQuickCheckInLocation", lastQuickCheckInLocation)
+        put("lastQuickCheckInMinutes", lastQuickCheckInMinutes)
+        put("boardCountdownCollapsed", boardCountdownCollapsed)
+        put("boardTodayTodosCollapsed", boardTodayTodosCollapsed)
+        put("boardTodayEventsCollapsed", boardTodayEventsCollapsed)
+        put("boardTomorrowEventsCollapsed", boardTomorrowEventsCollapsed)
+        put("boardAnnouncementCollapsed", boardAnnouncementCollapsed)
         put("planningAiEnabled", planningAiEnabled)
         put("planningAiProviderName", planningAiProviderName)
         put("planningAiBaseUrl", planningAiBaseUrl)
@@ -229,6 +239,7 @@ private fun PlanningNote.toJson(): JSONObject {
         put("createdAtMillis", createdAtMillis)
         put("updatedAtMillis", updatedAtMillis)
         put("archived", archived)
+        put("documentDateEpochDay", documentDateEpochDay)
         put("hasAnnouncementHint", hasAnnouncementHint)
     }
 }
@@ -466,6 +477,7 @@ private fun JSONArray?.toPlanningNotes(): List<PlanningNote> {
                     createdAtMillis = item.optLong("createdAtMillis", System.currentTimeMillis()),
                     updatedAtMillis = item.optLong("updatedAtMillis", System.currentTimeMillis()),
                     archived = item.optBoolean("archived", false),
+                    documentDateEpochDay = item.optLongOrNull("documentDateEpochDay"),
                     hasAnnouncementHint = PlanningAnnouncementParser.mightContainAnnouncement(item.optString("contentMarkdown"))
                 )
             )
@@ -570,6 +582,7 @@ private fun JSONObject?.toSettings(): AppSettings {
         ),
         autoCheckOutEventOnEnd = optBoolean("autoCheckOutEventOnEnd", true),
         showEventCheckInStatsOnComplete = optBoolean("showEventCheckInStatsOnComplete", true),
+        eventCheckInIdleAutoCheckOutHours = optInt("eventCheckInIdleAutoCheckOutHours", 2).coerceIn(0, 8),
         reminderToneUri = optStringOrNull("reminderToneUri"),
         reminderToneName = optStringOrNull("reminderToneName"),
         reminderAudioChannel = ReminderAudioChannel.fromStorage(optString("reminderAudioChannel", ReminderAudioChannel.ALARM.name)),
@@ -582,7 +595,16 @@ private fun JSONObject?.toSettings(): AppSettings {
         autoBackupEnabled = optBoolean("autoBackupEnabled", false),
         desktopSyncEnabled = optBoolean("desktopSyncEnabled", false),
         desktopSyncToken = optString("desktopSyncToken", ""),
+        desktopSyncWifiKeepAlive = optBoolean("desktopSyncWifiKeepAlive", true),
         lastOpenedPlanningNoteId = optLongOrNull("lastOpenedPlanningNoteId")?.takeIf { it > 0 },
+        lastQuickCheckInTitle = optString("lastQuickCheckInTitle", "自习").ifBlank { "自习" },
+        lastQuickCheckInLocation = optString("lastQuickCheckInLocation", ""),
+        lastQuickCheckInMinutes = optInt("lastQuickCheckInMinutes", 60).coerceIn(1, 24 * 60),
+        boardCountdownCollapsed = optBoolean("boardCountdownCollapsed", false),
+        boardTodayTodosCollapsed = optBoolean("boardTodayTodosCollapsed", false),
+        boardTodayEventsCollapsed = optBoolean("boardTodayEventsCollapsed", false),
+        boardTomorrowEventsCollapsed = optBoolean("boardTomorrowEventsCollapsed", false),
+        boardAnnouncementCollapsed = optBoolean("boardAnnouncementCollapsed", false),
         planningAiEnabled = optBoolean("planningAiEnabled", false),
         planningAiProviderName = optString("planningAiProviderName", ""),
         planningAiBaseUrl = optString("planningAiBaseUrl", ""),

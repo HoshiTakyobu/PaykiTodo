@@ -37,6 +37,7 @@ import com.example.todoalarm.TodoApplication
 import com.example.todoalarm.accessibility.ReminderAccessibilityService
 import com.example.todoalarm.alarm.ActiveReminderStore
 import com.example.todoalarm.alarm.AlarmScheduler
+import com.example.todoalarm.alarm.EventCheckInWatchdog
 import com.example.todoalarm.data.ReminderAudioChannel
 import com.example.todoalarm.ui.theme.TodoAlarmTheme
 import kotlinx.coroutines.launch
@@ -186,6 +187,7 @@ class MainActivity : ComponentActivity() {
                     onRestoreTodo = viewModel::restoreTodo,
                     onCancelTodo = viewModel::cancelTodo,
                     onSelectGroup = viewModel::selectGroup,
+                    onToggleGroupFilterMode = viewModel::toggleGroupFilterMode,
                     onCreateGroup = viewModel::createGroup,
                     onUpdateGroup = viewModel::updateGroup,
                     onDeleteGroup = viewModel::deleteGroup,
@@ -195,6 +197,7 @@ class MainActivity : ComponentActivity() {
                     onRenamePlanningNote = viewModel::renamePlanningNote,
                     onDeletePlanningNote = viewModel::deletePlanningNote,
                     onArchivePlanningNote = viewModel::archivePlanningNote,
+                    onOpenTodayPlanningNote = viewModel::openOrCreateTodayPlanningNote,
                     onParsePlanningMarkdown = viewModel::parsePlanningMarkdown,
                     onImportPlanningCandidates = viewModel::importPlanningCandidates,
                     onSyncPlanningMappings = viewModel::syncPlanningMappings,
@@ -210,17 +213,27 @@ class MainActivity : ComponentActivity() {
                     onDefaultSnoozeChange = viewModel::updateDefaultSnooze,
                     onDefaultCalendarReminderModeChange = viewModel::updateDefaultCalendarReminderMode,
                     onEventCheckInPreferencesChange = viewModel::updateEventCheckInPreferences,
+                    onEventCheckInIdleAutoCheckOutHoursChange = {
+                        viewModel.updateEventCheckInPreferences(
+                            autoCheckOutOnEnd = viewModel.uiState.value.settings.autoCheckOutEventOnEnd,
+                            showStatsOnComplete = viewModel.uiState.value.settings.showEventCheckInStatsOnComplete,
+                            idleAutoCheckOutHours = it
+                        )
+                    },
                     onReminderAudioStrategyChange = viewModel::updateReminderAudioStrategy,
                     onPlanningAiProvidersChange = viewModel::updatePlanningAiProviders,
                     onReportPreferencesChange = viewModel::updateReportPreferences,
                     onGenerateDailyReportNow = viewModel::generateDailyReportNow,
                     onDeleteAiReport = viewModel::deleteAiReport,
+                    onQuickCheckInEvent = viewModel::quickCheckInEvent,
+                    onAdjustCalendarEventEndTime = viewModel::adjustCalendarEventEndTime,
                     onDismissOnboarding = viewModel::markOnboardingSeen,
                     onResetOnboarding = {
                         viewModel.resetOnboarding()
                         Toast.makeText(this, "下次打开看板时会显示引导卡", Toast.LENGTH_SHORT).show()
                     },
                     onDesktopSyncEnabledChange = viewModel::updateDesktopSyncEnabled,
+                    onDesktopSyncWifiKeepAliveChange = viewModel::updateDesktopSyncWifiKeepAlive,
                     onRotateDesktopSyncToken = viewModel::rotateDesktopSyncToken,
                     onUseBuiltInReminderTone = {
                         viewModel.useBuiltInReminderTone()
@@ -245,7 +258,8 @@ class MainActivity : ComponentActivity() {
                     onPickBackupDirectory = { backupDirectoryLauncher.launch(null) },
                     onExportBackup = { exportBackupLauncher.launch("PaykiTodo-backup.json") },
                     onImportBackup = { importBackupLauncher.launch(arrayOf("application/json")) },
-                    onAutoBackupChange = viewModel::updateAutoBackupEnabled
+                    onAutoBackupChange = viewModel::updateAutoBackupEnabled,
+                    onBoardCollapseStateChange = viewModel::updateBoardCollapseState
                 )
             }
         }
@@ -256,6 +270,7 @@ class MainActivity : ComponentActivity() {
         CrashLogger.markLaunchSuccessful(this)
         refreshPermissions()
         viewModel.refreshTaskStates()
+        EventCheckInWatchdog.runOnce(applicationContext)
         maybeRouteToReminder()
     }
 

@@ -22,6 +22,8 @@ data class PlanningNote(
     val createdAtMillis: Long = System.currentTimeMillis(),
     val updatedAtMillis: Long = System.currentTimeMillis(),
     val archived: Boolean = false,
+    @ColumnInfo(defaultValue = "NULL")
+    val documentDateEpochDay: Long? = null,
     @ColumnInfo(defaultValue = "0")
     val hasAnnouncementHint: Boolean = PlanningAnnouncementParser.mightContainAnnouncement(contentMarkdown)
 )

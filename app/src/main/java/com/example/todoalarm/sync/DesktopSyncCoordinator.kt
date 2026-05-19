@@ -475,7 +475,14 @@ class DesktopSyncCoordinator(
     }
 
     private suspend fun createPlanningNote(json: JSONObject): JSONObject {
-        val note = app.repository.createPlanningNote(json.optString("title", "新的规划"))
+        val documentDateEpochDay = json.optLong("documentDateEpochDay", Long.MIN_VALUE)
+            .takeIf { it != Long.MIN_VALUE }
+            ?.let(LocalDate::ofEpochDay)
+        val note = if (documentDateEpochDay != null) {
+            app.repository.createPlanningNote(json.optString("title", "新的规划"), documentDateEpochDay)
+        } else {
+            app.repository.createPlanningNote(json.optString("title", "新的规划"))
+        }
         settingsStore.updateLastOpenedPlanningNoteId(note.id)
         autoBackupIfNeeded()
         return JSONObject().put("note", note.toPlanningJson())
@@ -504,9 +511,14 @@ class DesktopSyncCoordinator(
 
     private suspend fun parsePlanning(json: JSONObject): JSONObject {
         val markdown = json.optString("markdown")
+        val noteId = json.optLong("noteId", 0L).takeIf { it > 0L }
+        val defaultDate = noteId
+            ?.let { app.repository.getPlanningNote(it)?.documentDateEpochDay }
+            ?.let(LocalDate::ofEpochDay)
         val result = PlanningRecognitionService.recognize(
             markdown = markdown,
-            settings = settingsStore.currentSettings()
+            settings = settingsStore.currentSettings(),
+            defaultDate = defaultDate
         )
         return result.toPlanningParseJson()
     }
@@ -514,7 +526,11 @@ class DesktopSyncCoordinator(
     private suspend fun importPlanning(json: JSONObject): JSONObject {
         val markdown = json.optString("markdown")
         val selectedIds = json.optJSONArray("selectedIds")?.toStringSet().orEmpty()
-        val result = PlanningMarkdownParser.parse(markdown)
+        val noteId = json.optLong("noteId", 0L).takeIf { it > 0L }
+        val defaultDate = noteId
+            ?.let { app.repository.getPlanningNote(it)?.documentDateEpochDay }
+            ?.let(LocalDate::ofEpochDay)
+        val result = PlanningMarkdownParser.parse(markdown, documentDate = defaultDate)
         val editedCandidates = json.optJSONArray("candidates")?.toPlanningImportCandidates(result.candidates).orEmpty()
         val sourceCandidates = if (editedCandidates.isNotEmpty()) editedCandidates else result.candidates.map { it.toPlanningImportCandidate() }
         val groups = app.repository.getAllGroups().ifEmpty { app.repository.ensureDefaultGroups() }
@@ -523,7 +539,6 @@ class DesktopSyncCoordinator(
         selected.forEachIndexed { index, candidate ->
             candidate.validate()?.let { error("第 ${index + 1} 条：$it") }
         }
-        val noteId = json.optLong("noteId", 0L).takeIf { it > 0L }
         val batchId = UUID.randomUUID().toString()
         val importAtMillis = System.currentTimeMillis()
         val markdownLines = planningDocumentLines(markdown)
@@ -944,6 +959,7 @@ private fun PlanningNote.toPlanningJson(): JSONObject {
         .put("createdAtMillis", createdAtMillis)
         .put("updatedAtMillis", updatedAtMillis)
         .put("archived", archived)
+        .put("documentDateEpochDay", documentDateEpochDay)
         .put("hasAnnouncementHint", hasAnnouncementHint)
 }
 
@@ -969,6 +985,7 @@ private fun PlanningParsedCandidate.toPlanningCandidateJson(): JSONObject {
         .put("endAt", endAt?.toString())
         .put("allDay", allDay)
         .put("countdownEnabled", countdownEnabled)
+        .put("checkInEnabled", checkInEnabled)
         .put("reminderOffsetsMinutes", JSONArray(reminderOffsetsMinutes))
         .put("reminderInputText", reminderOffsetsMinutes.joinToString(","))
         .put("recurrence", recurrence.toPlanningJson())
@@ -1029,6 +1046,7 @@ private fun JSONArray.toPlanningImportCandidates(fallback: List<PlanningParsedCa
             endAt = parsePlanningImportDateTime(json.optStringOrNull("endAt"), defaultTime = null),
             allDay = json.optBoolean("allDay", base.allDay),
             countdownEnabled = json.optBoolean("countdownEnabled", base.countdownEnabled),
+            checkInEnabled = json.optBoolean("checkInEnabled", base.checkInEnabled),
             reminderOffsetsMinutes = json.optJSONArray("reminderOffsetsMinutes")?.toIntList().orEmpty(),
             reminderInputText = reminderRaw.orEmpty(),
             recurrence = parsePlanningRecurrence(json.optJSONObject("recurrence"), when (base.type) {
@@ -1086,6 +1104,7 @@ private fun JSONObject.toPlanningImportCandidateOrNull(index: Int): PlanningImpo
         endAt = parsePlanningImportDateTime(optStringOrNull("endAt"), defaultTime = null),
         allDay = optBoolean("allDay", false),
         countdownEnabled = optBoolean("countdownEnabled", false),
+        checkInEnabled = optBoolean("checkInEnabled", false),
         reminderOffsetsMinutes = optJSONArray("reminderOffsetsMinutes")?.toIntList().orEmpty(),
         reminderInputText = optString("reminderInputText"),
         recurrence = parsePlanningRecurrence(
@@ -1228,6 +1247,7 @@ private fun PlanningImportCandidate.toPlanningEventDraft(groups: List<com.exampl
         vibrateEnabled = true,
         reminderDeliveryMode = com.example.todoalarm.data.ReminderDeliveryMode.FULLSCREEN,
         countdownEnabled = countdownEnabled,
+        checkInEnabled = checkInEnabled,
         recurrence = recurrence,
         groupId = resolvePlanningGroupId(groupName, groups)
     )

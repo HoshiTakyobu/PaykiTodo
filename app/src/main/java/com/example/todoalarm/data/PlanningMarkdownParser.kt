@@ -36,6 +36,7 @@ data class PlanningParsedCandidate(
     val endAt: LocalDateTime? = null,
     val allDay: Boolean = false,
     val countdownEnabled: Boolean = false,
+    val checkInEnabled: Boolean = false,
     val reminderOffsetsMinutes: List<Int> = listOf(DEFAULT_PLANNING_REMINDER_MINUTES),
     val recurrence: RecurrenceConfig = RecurrenceConfig(),
     val createLinkedTodo: Boolean = false,
@@ -68,10 +69,11 @@ object PlanningMarkdownParser {
 
     fun parse(
         markdown: String,
-        now: LocalDateTime = LocalDateTime.now()
+        now: LocalDateTime = LocalDateTime.now(),
+        documentDate: LocalDate? = null
     ): PlanningParseResult {
         val candidates = mutableListOf<PlanningParsedCandidate>()
-        var dateContext: LocalDate? = null
+        var dateContext: LocalDate? = documentDate
         var topLevelTaskTitle: String? = null
 
         markdown.lineSequence().forEachIndexed { index, rawLine ->
@@ -82,7 +84,7 @@ object PlanningMarkdownParser {
 
             val headingText = headingTextOrNull(trimmed)
             if (headingText != null) {
-                dateContext = parseHeadingDateContext(headingText, now.toLocalDate())?.date
+                dateContext = parseHeadingDateContext(headingText, now.toLocalDate())?.date ?: documentDate
                 topLevelTaskTitle = null
                 return@forEachIndexed
             }

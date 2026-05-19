@@ -47,6 +47,7 @@ import com.example.todoalarm.data.ThemeMode
 import com.example.todoalarm.data.WeekStartMode
 import com.example.todoalarm.data.TodoDraft
 import com.example.todoalarm.data.TodoItem
+import com.example.todoalarm.data.TodoRepository.GroupFilterMode
 import com.example.todoalarm.data.RecurrenceConfig
 import com.example.todoalarm.data.buildScheduleTemplatePayload
 import com.example.todoalarm.data.parseScheduleTemplatePayload
@@ -78,6 +79,7 @@ import java.util.UUID
 data class TodoUiState(
     val groups: List<TaskGroup> = emptyList(),
     val selectedGroupIds: Set<Long> = emptySet(),
+    val groupFilterMode: GroupFilterMode = GroupFilterMode.INTERSECTION,
     val missedItems: List<TodoItem> = emptyList(),
     val todayItems: List<TodoItem> = emptyList(),
     val upcomingItems: List<TodoItem> = emptyList(),
@@ -106,6 +108,7 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
 
     private val quoteFlow = MutableStateFlow(QuoteRepository.seedQuotes)
     private val selectedGroupIdsFlow = MutableStateFlow<Set<Long>>(emptySet())
+    private val groupFilterModeFlow = MutableStateFlow(GroupFilterMode.INTERSECTION)
     private val desktopSyncRefreshTick = MutableStateFlow(0L)
     private val todayDateFlow = MutableStateFlow(LocalDate.now())
     private val calendarEventWindowFlow = MutableStateFlow(calendarEventWindowAround(LocalDate.now()))
@@ -141,8 +144,8 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     @OptIn(ExperimentalCoroutinesApi::class)
-    private val activeTodoItems = selectedGroupIdsFlow
-        .flatMapLatest { groupIds -> repository.observeActiveTodoItems(groupIds) }
+    private val activeTodoItems = combine(selectedGroupIdsFlow, groupFilterModeFlow) { groupIds, mode -> groupIds to mode }
+        .flatMapLatest { (groupIds, mode) -> repository.observeActiveTodoItems(groupIds, mode) }
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5_000),
@@ -174,8 +177,8 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
     )
 
     @OptIn(ExperimentalCoroutinesApi::class)
-    val historyItems = selectedGroupIdsFlow
-        .flatMapLatest { groupIds -> repository.observeHistoryTodoItems(groupIds) }
+    val historyItems = combine(selectedGroupIdsFlow, groupFilterModeFlow) { groupIds, mode -> groupIds to mode }
+        .flatMapLatest { (groupIds, mode) -> repository.observeHistoryTodoItems(groupIds, mode) }
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5_000),
@@ -224,6 +227,7 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
         settingsStore.settingsFlow,
         quoteFlow,
         selectedGroupIdsFlow,
+        groupFilterModeFlow,
         desktopSyncRefreshTick,
         todayDateFlow
     ) { values ->
@@ -242,7 +246,8 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
         val quotes = values[6] as List<String>
         @Suppress("UNCHECKED_CAST")
         val selectedGroupIds = values[7] as Set<Long>
-        val today = values[9] as LocalDate
+        val groupFilterMode = values[8] as GroupFilterMode
+        val today = values[10] as LocalDate
         val availableGroups = if (groups.isEmpty()) repository.ensureDefaultGroups() else groups
         val todoSections = classifyActiveTodoItems(activeTaskItems, today)
         val sortedCalendarItems = activeCalendarItems.sortedBy { it.startAtMillis ?: it.dueAtMillis }
@@ -253,6 +258,7 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
         TodoUiState(
             groups = availableGroups,
             selectedGroupIds = selectedGroupIds,
+            groupFilterMode = groupFilterMode,
             missedItems = todoSections.missedItems,
             todayItems = todoSections.todayItems,
             upcomingItems = todoSections.upcomingItems,
@@ -285,6 +291,16 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
         } else {
             val current = selectedGroupIdsFlow.value
             if (groupId in current) current - groupId else current + groupId
+        }
+        if (selectedGroupIdsFlow.value.size < 2) {
+            groupFilterModeFlow.value = GroupFilterMode.INTERSECTION
+        }
+    }
+
+    fun toggleGroupFilterMode() {
+        groupFilterModeFlow.value = when (groupFilterModeFlow.value) {
+            GroupFilterMode.INTERSECTION -> GroupFilterMode.UNION
+            GroupFilterMode.UNION -> GroupFilterMode.INTERSECTION
         }
     }
 
@@ -321,6 +337,23 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
     suspend fun checkOutCalendarEvent(eventId: Long): String? {
         val checkOut = withContext(Dispatchers.IO) { repository.checkOutEvent(eventId) }
         if (checkOut == null) return "当前没有进行中的签到"
+        autoBackupIfEnabled()
+        return null
+    }
+
+    suspend fun adjustCalendarEventEndTime(eventId: Long, endAtMillis: Long): String? {
+        val event = withContext(Dispatchers.IO) { repository.getTodo(eventId) }
+            ?: return "日程不存在"
+        if (!event.isEvent || event.startAtMillis == null || endAtMillis <= event.startAtMillis) {
+            return "结束时间必须晚于开始时间"
+        }
+        val updated = event.copy(
+            dueAtMillis = event.startAtMillis,
+            endAtMillis = endAtMillis,
+            reminderEnabled = event.reminderTriggerTimesMillis().any { it > System.currentTimeMillis() }
+        )
+        withContext(Dispatchers.IO) { repository.updateTodo(updated) }
+        scheduleReminderOrDisable(updated)
         autoBackupIfEnabled()
         return null
     }
@@ -369,8 +402,15 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
         return withContext(Dispatchers.IO) { repository.getAiReportById(reportId) }
     }
 
-    suspend fun parsePlanningMarkdown(markdown: String): PlanningParseResult {
-        return PlanningRecognitionService.recognize(markdown = markdown, settings = settingsStore.currentSettings())
+    suspend fun parsePlanningMarkdown(markdown: String, activeNoteId: Long? = null): PlanningParseResult {
+        val documentDate = activeNoteId
+            ?.let { repository.getPlanningNote(it)?.documentDateEpochDay }
+            ?.let(LocalDate::ofEpochDay)
+        return PlanningRecognitionService.recognize(
+            markdown = markdown,
+            settings = settingsStore.currentSettings(),
+            defaultDate = documentDate
+        )
     }
 
     fun selectPlanningNote(noteId: Long) {
@@ -380,6 +420,60 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
     suspend fun createPlanningNote(title: String): String? {
         val note = repository.createPlanningNote(title)
         settingsStore.updateLastOpenedPlanningNoteId(note.id)
+        autoBackupIfEnabled()
+        return null
+    }
+
+    suspend fun openOrCreateTodayPlanningNote(): Long {
+        val today = LocalDate.now()
+        val existing = repository.getPlanningNoteByDocumentDate(today)
+            ?: repository.getAllPlanningNotes()
+                .filter { !it.archived }
+                .firstOrNull { note -> planningTitleMatchesDate(note.title, today) }
+            ?: repository.createPlanningNote("${today.monthValue}月${today.dayOfMonth}日", today)
+        settingsStore.updateLastOpenedPlanningNoteId(existing.id)
+        autoBackupIfEnabled()
+        return existing.id
+    }
+
+    suspend fun quickCheckInEvent(
+        title: String,
+        location: String,
+        minutes: Int,
+        groupId: Long
+    ): String? {
+        val now = LocalDateTime.now()
+        val durationMinutes = minutes.coerceIn(1, 24 * 60)
+        val groups = repository.getAllGroups().ifEmpty { repository.ensureDefaultGroups() }
+        val resolvedGroupId = groupId.takeIf { it > 0 }
+            ?: groups.firstOrNull { it.name == "例行" }?.id
+            ?: groups.firstOrNull()?.id
+            ?: 0L
+        val draft = CalendarEventDraft(
+            title = title.trim().ifBlank { "自习" },
+            notes = "",
+            location = location.trim(),
+            startAt = now,
+            endAt = now.plusMinutes(durationMinutes.toLong()),
+            allDay = false,
+            accentColorHex = groups.firstOrNull { it.id == resolvedGroupId }?.colorHex ?: "#4CB782",
+            reminderMinutesBefore = DEFAULT_PLANNING_REMINDER_MINUTES,
+            reminderOffsetsMinutes = listOf(DEFAULT_PLANNING_REMINDER_MINUTES),
+            ringEnabled = true,
+            vibrateEnabled = true,
+            reminderDeliveryMode = ReminderDeliveryMode.FULLSCREEN,
+            countdownEnabled = false,
+            checkInEnabled = true,
+            recurrence = RecurrenceConfig(),
+            groupId = resolvedGroupId
+        )
+        val event = withContext(Dispatchers.IO) {
+            repository.createCalendarEventFromDraft(draft).firstOrNull()
+        } ?: return "快速签到日程创建失败"
+        withContext(Dispatchers.IO) { repository.checkInEvent(event.id) }
+            ?: return "快速签到创建成功，但签到启动失败"
+        settingsStore.updateQuickCheckInDefaults(draft.title, draft.location, durationMinutes)
+        scheduleReminderOrDisable(event)
         autoBackupIfEnabled()
         return null
     }
@@ -762,11 +856,37 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
 
     fun updateEventCheckInPreferences(
         autoCheckOutOnEnd: Boolean,
-        showStatsOnComplete: Boolean
+        showStatsOnComplete: Boolean,
+        idleAutoCheckOutHours: Int = settingsStore.currentSettings().eventCheckInIdleAutoCheckOutHours
     ) {
         settingsStore.updateEventCheckInPreferences(
             autoCheckOutOnEnd = autoCheckOutOnEnd,
-            showStatsOnComplete = showStatsOnComplete
+            showStatsOnComplete = showStatsOnComplete,
+            idleAutoCheckOutHours = idleAutoCheckOutHours
+        )
+    }
+
+    fun updateDesktopSyncWifiKeepAlive(enabled: Boolean) {
+        settingsStore.updateDesktopSyncWifiKeepAlive(enabled)
+        if (settingsStore.currentSettings().desktopSyncEnabled) {
+            DesktopSyncService.start(app)
+        }
+        desktopSyncRefreshTick.value = System.currentTimeMillis()
+    }
+
+    fun updateBoardCollapseState(
+        countdown: Boolean = settingsStore.currentSettings().boardCountdownCollapsed,
+        todayTodos: Boolean = settingsStore.currentSettings().boardTodayTodosCollapsed,
+        todayEvents: Boolean = settingsStore.currentSettings().boardTodayEventsCollapsed,
+        tomorrowEvents: Boolean = settingsStore.currentSettings().boardTomorrowEventsCollapsed,
+        announcement: Boolean = settingsStore.currentSettings().boardAnnouncementCollapsed
+    ) {
+        settingsStore.updateBoardCollapseState(
+            countdown = countdown,
+            todayTodos = todayTodos,
+            todayEvents = todayEvents,
+            tomorrowEvents = tomorrowEvents,
+            announcement = announcement
         )
     }
 
@@ -1096,6 +1216,7 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
             vibrateEnabled = true,
             reminderDeliveryMode = ReminderDeliveryMode.FULLSCREEN,
             countdownEnabled = countdownEnabled,
+            checkInEnabled = checkInEnabled,
             recurrence = recurrence,
             groupId = resolvePlanningGroupId(groupName, groups)
         )
@@ -1345,4 +1466,16 @@ private fun calendarEventWindowAround(date: LocalDate): CalendarEventWindow {
         startInclusive = date.minusDays(2),
         endExclusive = date.plusDays(8)
     )
+}
+
+private fun planningTitleMatchesDate(title: String, date: LocalDate): Boolean {
+    val normalized = title.trim()
+    if (normalized.isBlank()) return false
+    val candidates = setOf(
+        "${date.monthValue}月${date.dayOfMonth}日",
+        "%04d-%02d-%02d".format(date.year, date.monthValue, date.dayOfMonth),
+        "${date.monthValue}.${date.dayOfMonth}",
+        "${date.monthValue}/${date.dayOfMonth}"
+    )
+    return candidates.any { normalized.contains(it) }
 }

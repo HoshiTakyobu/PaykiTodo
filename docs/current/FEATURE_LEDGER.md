@@ -21,7 +21,7 @@ This file tracks the product at a practical level for new coding sessions.
 - active todo preview now uses the same bottom-sheet visual language as calendar event preview
 - active todo card body opens preview; completion is isolated to the checkbox to avoid accidental completion
 - recurring task support
-- grouped task filtering, including multi-group intersection filtering
+- grouped task filtering, including multi-group intersection filtering and a phone-side intersection / union switch when multiple groups are selected
 - three-zone home logic: overdue / today / upcoming, with no-DDL active todos included in today rather than hidden in upcoming
 - board-style daily overview entry exists and can show today's todos directly
 
@@ -35,11 +35,13 @@ This file tracks the product at a practical level for new coding sessions.
 - board today's schedule hides timed events after they have ended
 - board currently running events can be visually highlighted with a gold outline and subtle glow
 - board greeting card supports compact collapse / expand behavior
+- board announcement, countdown, today-todo, today-schedule, and tomorrow-schedule cards support collapse / expand controls with locally persisted state
 - board background now uses separate light and dark image resources
 - board schedule rows align the left color strip to the measured height of the event text block
 - board schedule rows keep normal and in-progress color strips in one aligned column
 - normal board schedule rows have no outer fill or border, while in-progress rows use a gold border with only subtle inner highlight
 - board in-progress schedule rows show check-in status for check-in-enabled events and expose compact `签到` / `签退` actions
+- board schedule area includes `快速签到`, which creates a check-in-enabled event starting now, starts the first check-in record immediately, remembers last title / location / duration, and lets the user sign out from the board
 - daily board shows a distinct completion message when today's schedule existed but all events have already ended
 - daily board always shows the tomorrow schedule section, including `明天暂无日程` when tomorrow has no events
 - daily board onboarding card is readable in dark mode, can be dismissed, and can be reset from Settings -> About -> 使用说明
@@ -84,6 +86,7 @@ This file tracks the product at a practical level for new coding sessions.
 - natural schedule import can create both a calendar event and a linked todo whose DDL equals the event end time
 - planning import is preview-first and selection-based, not immediate database writes; import is disabled until at least one valid candidate is selected
 - planning preview cards are editable before import for title, group, notes, DDL/start/end times, mixed reminder input, and event linked-todo creation; preview has select-all / clear-all controls
+- planning recognition preview has a collapsible batch-settings area that can apply countdown, linked-todo creation, check-in, and unified group changes to the currently selected candidates
 - successful planning import appends `#imported` to imported source lines and immediately saves the active planning note to reduce duplicate imports
 - imported planning lines now also create stable `planning_line_mappings` entries that link the source line to the created todo/event item
 - mapping relocation uses normalized fingerprints plus fuzzy text matching, so the planning linkage is not purely a stored line number
@@ -96,6 +99,7 @@ This file tracks the product at a practical level for new coding sessions.
 - default Planning Desk import reminder is 5 minutes before, full-screen, ring + vibration
 - planning notes are included in JSON backup / restore snapshots
 - planning mapping records are also included in JSON backup / restore snapshots
+- Planning Desk supports a `今日` document shortcut; notes can carry `documentDateEpochDay`, and undated schedule lines in that note are parsed against the document date while explicit dates still win
 - AI recognition for Planning Desk is now an optional Provider-based enhancement for DeepSeek / Qwen / OpenAI-compatible APIs; Settings exposes ordered multi-provider Base URL/API Key/model configuration, single-provider model-list fetching, single-provider connection testing, both phone and desktop Planning Desk recognition call enabled sources in order, local rules remain the fallback, and AI output enters preview before import
 - Planning Desk AI keeps group assignment conservative: AI `groupName` is preserved only when the source line explicitly contains a group marker such as `#group`, `分组：`, `项目：`, or `课程：`, so ordinary titles are not split into accidental groups
 - Planning Desk AI / preview candidates carry event location, all-day, countdown, and recurrence fields; phone and desktop previews can edit those fields before import, and imports persist them into the final todo/event drafts
@@ -105,7 +109,8 @@ This file tracks the product at a practical level for new coding sessions.
 - Settings -> AI 调用配置 uses compact provider summary cards and now tries to persist valid provider add/edit/toggle/reorder/delete changes immediately; incomplete enabled providers show an in-page warning instead of silently relying on the user to remember a separate save step
 - AI provider chat calls accept common OpenAI-compatible endpoint shapes: root Base URL tries `/v1/chat/completions` before `/chat/completions`, `/v1` appends `/chat/completions`, full `/chat/completions` URLs are used directly, and full `/models` URLs convert back to sibling `/chat/completions`; non-JSON HTML responses produce a Base URL hint
 - Planning Desk AI recognition is explicit-only: phone calls it from the `识别` button, desktop calls it from `识别` or `Ctrl+Enter`, and desktop import without preview no longer triggers AI silently
-- Phone Planning Desk overflow menu includes `从图片识别日程`: it opens the system image picker, compresses the selected image to a 1600px-long-side JPEG, sends an OpenAI-compatible vision request through vision-capable providers, appends the returned Markdown to the current planning note, and still requires the existing `识别` preview/import flow before database writes
+- Phone Planning Desk overflow menu includes `从图片识别日程`: it opens the system image picker, compresses the selected image to a 1600px-long-side JPEG, sends an OpenAI-compatible vision request through vision-capable providers, appends the returned Markdown to the current planning note, auto-opens preview when candidates are parsed, and still requires preview/import confirmation before database writes
+- phone Planning Desk image recognition preview shows a clickable source-image thumbnail so the user can enlarge the original image and compare it with the parsed candidate list
 - AI Provider API Keys are stored locally in settings, deliberately excluded from backup JSON export, and preserved when importing backups without keys
 - Planning Desk database migration is repaired in `1.7.5`: database version `10` includes `MIGRATION_9_10` to rebuild `planning_notes` tables created by the mismatched `1.7.0`-`1.7.4` migration
 - Planning Desk database version is now `11`; `MIGRATION_10_11` creates the `planning_line_mappings` table and indices
@@ -137,8 +142,10 @@ This file tracks the product at a practical level for new coding sessions.
 - event data now supports optional check-in tracking fields and accumulated invested minutes; repository and desktop-sync APIs can create check-ins, check out active records, list event check-ins, and recompute total event investment time
 - event details bottom sheet shows a `打卡追踪` card for enabled events, including total invested time, active `签到中` status, closed / active segment rows, and direct `签到` / `签退` actions
 - event details bottom sheet exposes `完成日程` for check-in-enabled events; completion marks the event complete, can automatically check out an active record, and can show a summary card with planned time, actual invested time, check-in count, and investment rate
+- event check-in has an idle auto-checkout watchdog with a configurable threshold; app startup / resume and widget refresh can close stale active records at the event end time and send a low-priority auto-checkout notification
 - check-in-enabled event reminders expose `签到` directly on the full-screen reminder page and the accessibility fallback overlay; signing in also acknowledges the current event reminder so the strong-reminder surface closes
 - Settings -> `日历与提醒` exposes event check-in behavior switches for automatic checkout when completing an event and showing investment statistics after completion; both default to on and persist locally
+- Settings -> `日历与提醒` also exposes `闲置自动签退阈值`, defaulting to 2 hours, with backup / restore preservation
 - calendar reminder editing accepts the same comma-separated multi-reminder syntax as todos
 - event preview keeps showing configured reminder offsets after reminder acknowledgement
 - timeline pending event draft can be canceled by long-pressing blank timeline space and is cleared when opening an existing event
@@ -260,6 +267,7 @@ This file tracks the product at a practical level for new coding sessions.
 - desktop web shows the installed APK version in the brand block and uses runtime versioned CSS / JS URLs
 - desktop sync service self-stops if Android restarts it while desktop sync is disabled in Settings
 - desktop sync enable immediately starts the phone-side LAN server, and status reads self-start the server when the setting is enabled so Settings can show connection addresses without requiring a desktop to connect first
+- desktop sync can keep WiFi and a partial wake lock while the foreground service is running; the default-on `桌面同步期间保持网络唤醒` setting is surfaced in Settings and reflected in the foreground notification copy
 - desktop web has a `规划台` tab with textarea editor, document selector, auto-save, `Ctrl+S` save, `Ctrl+Enter` parse, editable parse preview, selected import, and a help modal that explains the same DDL/reminder syntax as the phone-side Planning Desk help
 - desktop web Planning Desk uses phone-local `/api/planning/*` routes, edits the same Room planning notes as the phone UI, saves before switching documents, blocks empty selected imports, writes back `#imported` markers after import, and reuses the same AI recognition / local fallback path as the phone Planning Desk
 - desktop web Planning Desk now also shows the current note title, mapping status preview, refresh/postpone/undo controls, and conflict resolution actions for imported planning lines
@@ -284,8 +292,8 @@ This file tracks the product at a practical level for new coding sessions.
 ### Data / Performance
 
 - `todo_items` has Room indices for board todo queries, board event range queries, active reminders, group+DDL sorting, recurring-series lookup, desktop todo paging / sorting, and active countdown lookup.
-- Database version is `18`; `MIGRATION_13_14` creates the initial `todo_items` performance indices on upgraded installs, `MIGRATION_14_15` adds / backfills `planning_notes.hasAnnouncementHint` plus the indexed announcement lookup path, `MIGRATION_15_16` adds desktop todo paging plus AI-report generated-time/type indices, `MIGRATION_16_17` adds countdown fields / indices for todos and recurring templates, and `MIGRATION_17_18` removes `focus_sessions` while adding `event_check_ins`, `todo_group_tags`, todo check-in fields, and a backfill from existing todo `groupId` values into the multi-group join table.
-- Room schema export is enabled and `app/schemas/com.example.todoalarm.data.AppDatabase/18.json` is committed as the database-18 reference schema.
+- Database version is `19`; `MIGRATION_13_14` creates the initial `todo_items` performance indices on upgraded installs, `MIGRATION_14_15` adds / backfills `planning_notes.hasAnnouncementHint` plus the indexed announcement lookup path, `MIGRATION_15_16` adds desktop todo paging plus AI-report generated-time/type indices, `MIGRATION_16_17` adds countdown fields / indices for todos and recurring templates, `MIGRATION_17_18` removes `focus_sessions` while adding `event_check_ins`, `todo_group_tags`, todo check-in fields, and a backfill from existing todo `groupId` values into the multi-group join table, and `MIGRATION_18_19` adds `planning_notes.documentDateEpochDay` for today-note date context.
+- Room schema export is enabled and `app/schemas/com.example.todoalarm.data.AppDatabase/19.json` is committed as the database-19 reference schema.
 - Desktop Web first connection now uses a lightweight board snapshot (`/api/snapshot?scope=board`); todo management uses paged/searchable `/api/todos?offset=...&limit=...&q=...`, and the event timeline uses visible-range `/api/events?start=...&end=...` instead of sharing one full snapshot for every management tab.
 - Main phone board/task UI uses active-todo-only observation and today/tomorrow event range observation instead of merging all todos and full active events into ordinary board/task state.
 - Main phone board/task UI uses the shared active-todo section classifier for missed / today / upcoming lists, so no-DDL active todos keep the same "today every day" behavior in My Tasks and the board.

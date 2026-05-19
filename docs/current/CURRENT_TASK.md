@@ -2,11 +2,26 @@
 
 ## Active Development Focus
 
-Active goal: continue post-`1.11.0` polish and verification. Code now builds as `1.11.1 / versionCode 223` after the latest UX cleanup.
+Active goal: commit the `1.11.2` UX round. Code targets `1.11.2 / versionCode 224`; the feature scope is implemented, docs are synchronized, and final debug verification has passed.
 
 Do not push to GitHub unless the user explicitly asks.
 
 ## Completed Goal Slices
+
+### v1.11.2 UX round
+
+1. Daily-board cards for announcements, countdown, today todos, today schedule, and tomorrow schedule can collapse / expand and persist those states through settings and backup.
+2. Drawer navigation keeps five primary entries and moves `AI 报告` / `历史记录` into `更多 / 归档与历史`.
+3. Todo multi-group filtering can switch between intersection and union when at least two groups are selected, with an empty-state action to switch to union.
+4. Planning Desk preview adds batch settings for selected candidates: countdown, linked todo creation, check-in, and unified group.
+5. Planning Desk image recognition appends AI Markdown and auto-opens preview when parsed candidates exist; the preview keeps a clickable source-image thumbnail.
+6. Planning Desk today notes store `documentDateEpochDay`, desktop sync carries the field, and undated schedule lines can parse against the note date.
+7. Daily board quick check-in creates a check-in-enabled event starting now, starts a check-in record, remembers defaults, and supports sign-out/result handling from the board.
+8. Event check-in idle watchdog can auto-checkout stale active records at event end time and notify the user; Settings exposes the threshold.
+9. Desktop sync can hold WiFi and partial wake locks while the foreground service runs, controlled by a default-on Settings switch.
+10. Database version is now `19`; schema `app/schemas/com.example.todoalarm.data.AppDatabase/19.json` is present.
+11. Verification passed: `node --check app/src/main/assets/desktop-web/app.js`, `./gradlew.bat :app:compileDebugKotlin`, `git diff --check`, and `./gradlew.bat :app:assembleDebug`.
+12. Debug APK metadata confirms `PaykiTodo-1.11.2-debug.apk` with `versionName = 1.11.2` and `versionCode = 224`.
 
 ### Android widget slice
 
@@ -320,7 +335,7 @@ Do not push to GitHub unless the user explicitly asks.
 
 ## Verification Still Needed On Device / Browser
 
-1. Install `app/build/outputs/apk/debug/PaykiTodo-1.11.1-debug.apk` on the physical phone if validating the latest built debug APK.
+1. Install `app/build/outputs/apk/debug/PaykiTodo-1.11.2-debug.apk` on the physical phone if validating the latest built debug APK.
 2. Add / resize the `今日看板` widget and confirm the removed top header, minute refresh, and cross-day date/list update behavior on the launcher.
 3. Add / resize the `倒数日` widget and confirm scroll behavior, readable multi-line rows, and row deep links on the launcher.
 4. Confirm on the physical phone that no user-facing focus / pomodoro entry remains in settings, todo long-press menu, desktop web, AI report, or widgets; the emulator drawer check already found no focus entry.

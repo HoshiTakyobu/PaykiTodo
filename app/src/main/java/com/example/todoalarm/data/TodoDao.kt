@@ -46,6 +46,19 @@ interface TodoDao {
 
     @Query(
         """
+        SELECT DISTINCT t.* FROM todo_items t
+        INNER JOIN todo_group_tags g ON t.id = g.todoId
+        WHERE t.completed = 0
+        AND t.canceled = 0
+        AND t.itemType = 'TODO'
+        AND g.groupId IN (:groupIds)
+        ORDER BY t.dueAtMillis ASC, t.createdAtMillis ASC
+        """
+    )
+    fun observeActiveTodoItemsByGroupUnion(groupIds: List<Long>): Flow<List<TodoItem>>
+
+    @Query(
+        """
         SELECT * FROM todo_items
         WHERE itemType = 'TODO'
         AND (:groupId IS NULL OR groupId = :groupId)
@@ -72,6 +85,20 @@ interface TodoDao {
         """
     )
     fun observeHistoryTodoItemsByGroupIntersection(groupIds: List<Long>, requiredCount: Int): Flow<List<TodoItem>>
+
+    @Query(
+        """
+        SELECT DISTINCT t.* FROM todo_items t
+        INNER JOIN todo_group_tags g ON t.id = g.todoId
+        WHERE t.itemType = 'TODO'
+        AND (t.completed = 1 OR t.canceled = 1)
+        AND g.groupId IN (:groupIds)
+        ORDER BY
+            COALESCE(t.completedAtMillis, t.canceledAtMillis, t.missedAtMillis, t.createdAtMillis) DESC,
+            t.createdAtMillis DESC
+        """
+    )
+    fun observeHistoryTodoItemsByGroupUnion(groupIds: List<Long>): Flow<List<TodoItem>>
 
     @Query(
         """
@@ -374,6 +401,9 @@ interface TodoDao {
     @Query("SELECT * FROM event_check_ins ORDER BY eventId ASC, checkInAtMillis ASC")
     suspend fun getAllEventCheckIns(): List<EventCheckIn>
 
+    @Query("SELECT * FROM event_check_ins WHERE checkOutAtMillis IS NULL ORDER BY checkInAtMillis ASC")
+    suspend fun getAllActiveEventCheckIns(): List<EventCheckIn>
+
     @Query("SELECT COALESCE(SUM(durationMinutes), 0) FROM event_check_ins WHERE eventId = :eventId")
     suspend fun getTotalCheckInMinutesForEvent(eventId: Long): Int
 
@@ -543,6 +573,9 @@ interface TodoDao {
 
     @Query("SELECT * FROM planning_notes WHERE id = :id LIMIT 1")
     suspend fun getPlanningNote(id: Long): PlanningNote?
+
+    @Query("SELECT * FROM planning_notes WHERE archived = 0 AND documentDateEpochDay = :epochDay ORDER BY updatedAtMillis DESC LIMIT 1")
+    suspend fun getActivePlanningNoteByDocumentDate(epochDay: Long): PlanningNote?
 
     @Query("SELECT * FROM planning_notes ORDER BY updatedAtMillis DESC, createdAtMillis DESC")
     suspend fun getAllPlanningNotes(): List<PlanningNote>

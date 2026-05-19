@@ -17,21 +17,38 @@ class TodoRepository(
     private val todoDao: TodoDao,
     private val onItemsChanged: (() -> Unit)? = null
 ) {
+    enum class GroupFilterMode {
+        INTERSECTION,
+        UNION
+    }
+
     fun observeTodos(): Flow<List<TodoItem>> = todoDao.observeTodos()
     fun observeActiveTodoItems(groupId: Long?): Flow<List<TodoItem>> = observeActiveTodoItems(groupId?.let(::setOf).orEmpty())
-    fun observeActiveTodoItems(groupIds: Set<Long>): Flow<List<TodoItem>> {
+    fun observeActiveTodoItems(
+        groupIds: Set<Long>,
+        mode: GroupFilterMode = GroupFilterMode.INTERSECTION
+    ): Flow<List<TodoItem>> {
         val ids = groupIds.filter { it > 0 }.distinct().sorted()
         return when (ids.size) {
             0 -> todoDao.observeActiveTodoItems(null)
-            else -> todoDao.observeActiveTodoItemsByGroupIntersection(ids, ids.size)
+            else -> when (mode) {
+                GroupFilterMode.INTERSECTION -> todoDao.observeActiveTodoItemsByGroupIntersection(ids, ids.size)
+                GroupFilterMode.UNION -> todoDao.observeActiveTodoItemsByGroupUnion(ids)
+            }
         }
     }
     fun observeHistoryTodoItems(groupId: Long?): Flow<List<TodoItem>> = observeHistoryTodoItems(groupId?.let(::setOf).orEmpty())
-    fun observeHistoryTodoItems(groupIds: Set<Long>): Flow<List<TodoItem>> {
+    fun observeHistoryTodoItems(
+        groupIds: Set<Long>,
+        mode: GroupFilterMode = GroupFilterMode.INTERSECTION
+    ): Flow<List<TodoItem>> {
         val ids = groupIds.filter { it > 0 }.distinct().sorted()
         return when (ids.size) {
             0 -> todoDao.observeHistoryTodoItems(null)
-            else -> todoDao.observeHistoryTodoItemsByGroupIntersection(ids, ids.size)
+            else -> when (mode) {
+                GroupFilterMode.INTERSECTION -> todoDao.observeHistoryTodoItemsByGroupIntersection(ids, ids.size)
+                GroupFilterMode.UNION -> todoDao.observeHistoryTodoItemsByGroupUnion(ids)
+            }
         }
     }
     fun observeActiveCalendarEvents(): Flow<List<TodoItem>> = todoDao.observeActiveCalendarEvents()
@@ -90,6 +107,7 @@ class TodoRepository(
     suspend fun getAllTodoGroupTags(): List<TodoGroupTag> = todoDao.getAllTodoGroupTags()
     suspend fun getCheckInsForEvent(eventId: Long): List<EventCheckIn> = todoDao.getCheckInsForEvent(eventId)
     suspend fun getActiveCheckIn(eventId: Long): EventCheckIn? = todoDao.getActiveCheckIn(eventId)
+    suspend fun getAllActiveEventCheckIns(): List<EventCheckIn> = todoDao.getAllActiveEventCheckIns()
     suspend fun getActiveCheckInsForEvents(eventIds: List<Long>): List<EventCheckIn> {
         val ids = eventIds.filter { it > 0 }.distinct()
         return if (ids.isEmpty()) {
@@ -156,6 +174,7 @@ class TodoRepository(
 
     suspend fun getAllPlanningNotes(): List<PlanningNote> = todoDao.getAllPlanningNotes()
     suspend fun getPlanningNote(noteId: Long): PlanningNote? = todoDao.getPlanningNote(noteId)
+    suspend fun getPlanningNoteByDocumentDate(date: LocalDate): PlanningNote? = todoDao.getActivePlanningNoteByDocumentDate(date.toEpochDay())
     suspend fun getActivePlanningNotes(): List<PlanningNote> = todoDao.getActivePlanningNotes()
     suspend fun getPlanningNotesWithAnnouncementHints(): List<PlanningNote> = todoDao.getPlanningNotesWithAnnouncementHints()
     suspend fun getPlanningMappingsForNote(noteId: Long): List<PlanningLineMapping> = todoDao.getMappingsForNote(noteId)
@@ -187,6 +206,20 @@ class TodoRepository(
             createdAtMillis = now,
             updatedAtMillis = now,
             archived = false
+        )
+        val id = todoDao.insertPlanningNote(note)
+        return note.copy(id = id)
+    }
+
+    suspend fun createPlanningNote(title: String, documentDate: LocalDate?): PlanningNote {
+        val now = System.currentTimeMillis()
+        val note = PlanningNote(
+            title = title.trim().ifBlank { "新的规划" },
+            contentMarkdown = "",
+            createdAtMillis = now,
+            updatedAtMillis = now,
+            archived = false,
+            documentDateEpochDay = documentDate?.toEpochDay()
         )
         val id = todoDao.insertPlanningNote(note)
         return note.copy(id = id)
@@ -581,6 +614,19 @@ class TodoRepository(
         todoDao.updateTotalCheckInMinutes(eventId, totalMinutes)
         notifyItemsChanged()
         return active.copy(checkOutAtMillis = nowMillis, durationMinutes = durationMinutes)
+    }
+
+    suspend fun checkOutEventCheckIn(checkIn: EventCheckIn, checkOutMillis: Long): EventCheckIn {
+        val durationMinutes = ((checkOutMillis - checkIn.checkInAtMillis).coerceAtLeast(0L) / 60_000L).toInt()
+        todoDao.checkOutEvent(
+            id = checkIn.id,
+            checkOutAtMillis = checkOutMillis,
+            durationMinutes = durationMinutes
+        )
+        val totalMinutes = todoDao.getTotalCheckInMinutesForEvent(checkIn.eventId)
+        todoDao.updateTotalCheckInMinutes(checkIn.eventId, totalMinutes)
+        notifyItemsChanged()
+        return checkIn.copy(checkOutAtMillis = checkOutMillis, durationMinutes = durationMinutes)
     }
 
     suspend fun autoCheckOutEventIfNeeded(eventId: Long, nowMillis: Long = System.currentTimeMillis()): TodoItem? {

@@ -52,6 +52,7 @@ data class AppSettings(
     val defaultCalendarReminderMode: ReminderDeliveryMode = ReminderDeliveryMode.NOTIFICATION,
     val autoCheckOutEventOnEnd: Boolean = true,
     val showEventCheckInStatsOnComplete: Boolean = true,
+    val eventCheckInIdleAutoCheckOutHours: Int = 2,
     val reminderToneUri: String? = null,
     val reminderToneName: String? = null,
     val reminderAudioChannel: ReminderAudioChannel = ReminderAudioChannel.ALARM,
@@ -64,7 +65,16 @@ data class AppSettings(
     val autoBackupEnabled: Boolean = false,
     val desktopSyncEnabled: Boolean = false,
     val desktopSyncToken: String = "",
+    val desktopSyncWifiKeepAlive: Boolean = true,
     val lastOpenedPlanningNoteId: Long? = null,
+    val lastQuickCheckInTitle: String = "自习",
+    val lastQuickCheckInLocation: String = "",
+    val lastQuickCheckInMinutes: Int = 60,
+    val boardCountdownCollapsed: Boolean = false,
+    val boardTodayTodosCollapsed: Boolean = false,
+    val boardTodayEventsCollapsed: Boolean = false,
+    val boardTomorrowEventsCollapsed: Boolean = false,
+    val boardAnnouncementCollapsed: Boolean = false,
     val planningAiEnabled: Boolean = false,
     val planningAiProviderName: String = "",
     val planningAiBaseUrl: String = "",
@@ -121,11 +131,13 @@ class AppSettingsStore(context: Context) {
 
     fun updateEventCheckInPreferences(
         autoCheckOutOnEnd: Boolean,
-        showStatsOnComplete: Boolean
+        showStatsOnComplete: Boolean,
+        idleAutoCheckOutHours: Int = currentSettings().eventCheckInIdleAutoCheckOutHours
     ) {
         preferences.edit()
             .putBoolean(KEY_EVENT_AUTO_CHECK_OUT_ON_END, autoCheckOutOnEnd)
             .putBoolean(KEY_EVENT_SHOW_CHECK_IN_STATS_ON_COMPLETE, showStatsOnComplete)
+            .putInt(KEY_EVENT_CHECK_IN_IDLE_AUTO_CHECK_OUT_HOURS, idleAutoCheckOutHours.coerceIn(0, 8))
             .apply()
         refresh()
     }
@@ -183,6 +195,11 @@ class AppSettingsStore(context: Context) {
         refresh()
     }
 
+    fun updateDesktopSyncWifiKeepAlive(enabled: Boolean) {
+        preferences.edit().putBoolean(KEY_DESKTOP_SYNC_WIFI_KEEP_ALIVE, enabled).apply()
+        refresh()
+    }
+
     fun rotateDesktopSyncToken(): String {
         val token = generateDesktopSyncToken()
         preferences.edit().putString(KEY_DESKTOP_SYNC_TOKEN, token).apply()
@@ -198,6 +215,32 @@ class AppSettingsStore(context: Context) {
                 putLong(KEY_LAST_OPENED_PLANNING_NOTE_ID, noteId)
             }
         }.apply()
+        refresh()
+    }
+
+    fun updateQuickCheckInDefaults(title: String, location: String, minutes: Int) {
+        preferences.edit()
+            .putString(KEY_LAST_QUICK_CHECK_IN_TITLE, title.trim().ifBlank { "自习" })
+            .putString(KEY_LAST_QUICK_CHECK_IN_LOCATION, location.trim())
+            .putInt(KEY_LAST_QUICK_CHECK_IN_MINUTES, minutes.coerceIn(1, 24 * 60))
+            .apply()
+        refresh()
+    }
+
+    fun updateBoardCollapseState(
+        countdown: Boolean = currentSettings().boardCountdownCollapsed,
+        todayTodos: Boolean = currentSettings().boardTodayTodosCollapsed,
+        todayEvents: Boolean = currentSettings().boardTodayEventsCollapsed,
+        tomorrowEvents: Boolean = currentSettings().boardTomorrowEventsCollapsed,
+        announcement: Boolean = currentSettings().boardAnnouncementCollapsed
+    ) {
+        preferences.edit()
+            .putBoolean(KEY_BOARD_COUNTDOWN_COLLAPSED, countdown)
+            .putBoolean(KEY_BOARD_TODAY_TODOS_COLLAPSED, todayTodos)
+            .putBoolean(KEY_BOARD_TODAY_EVENTS_COLLAPSED, todayEvents)
+            .putBoolean(KEY_BOARD_TOMORROW_EVENTS_COLLAPSED, tomorrowEvents)
+            .putBoolean(KEY_BOARD_ANNOUNCEMENT_COLLAPSED, announcement)
+            .apply()
         refresh()
     }
 
@@ -293,6 +336,7 @@ class AppSettingsStore(context: Context) {
             .putString(KEY_DEFAULT_CALENDAR_REMINDER_MODE, settings.defaultCalendarReminderMode.name)
             .putBoolean(KEY_EVENT_AUTO_CHECK_OUT_ON_END, settings.autoCheckOutEventOnEnd)
             .putBoolean(KEY_EVENT_SHOW_CHECK_IN_STATS_ON_COMPLETE, settings.showEventCheckInStatsOnComplete)
+            .putInt(KEY_EVENT_CHECK_IN_IDLE_AUTO_CHECK_OUT_HOURS, settings.eventCheckInIdleAutoCheckOutHours.coerceIn(0, 8))
             .putString(KEY_REMINDER_TONE_URI, settings.reminderToneUri)
             .putString(KEY_REMINDER_TONE_NAME, settings.reminderToneName)
             .putString(KEY_REMINDER_AUDIO_CHANNEL, settings.reminderAudioChannel.name)
@@ -305,6 +349,15 @@ class AppSettingsStore(context: Context) {
             .putBoolean(KEY_AUTO_BACKUP_ENABLED, settings.autoBackupEnabled)
             .putBoolean(KEY_DESKTOP_SYNC_ENABLED, settings.desktopSyncEnabled)
             .putString(KEY_DESKTOP_SYNC_TOKEN, settings.desktopSyncToken)
+            .putBoolean(KEY_DESKTOP_SYNC_WIFI_KEEP_ALIVE, settings.desktopSyncWifiKeepAlive)
+            .putString(KEY_LAST_QUICK_CHECK_IN_TITLE, settings.lastQuickCheckInTitle.ifBlank { "自习" })
+            .putString(KEY_LAST_QUICK_CHECK_IN_LOCATION, settings.lastQuickCheckInLocation)
+            .putInt(KEY_LAST_QUICK_CHECK_IN_MINUTES, settings.lastQuickCheckInMinutes.coerceIn(1, 24 * 60))
+            .putBoolean(KEY_BOARD_COUNTDOWN_COLLAPSED, settings.boardCountdownCollapsed)
+            .putBoolean(KEY_BOARD_TODAY_TODOS_COLLAPSED, settings.boardTodayTodosCollapsed)
+            .putBoolean(KEY_BOARD_TODAY_EVENTS_COLLAPSED, settings.boardTodayEventsCollapsed)
+            .putBoolean(KEY_BOARD_TOMORROW_EVENTS_COLLAPSED, settings.boardTomorrowEventsCollapsed)
+            .putBoolean(KEY_BOARD_ANNOUNCEMENT_COLLAPSED, settings.boardAnnouncementCollapsed)
             .putBoolean(KEY_PLANNING_AI_ENABLED, settings.planningAiEnabled)
             .putString(KEY_PLANNING_AI_PROVIDER_NAME, primaryPlanningAiProvider?.name ?: settings.planningAiProviderName)
             .putString(KEY_PLANNING_AI_BASE_URL, primaryPlanningAiProvider?.baseUrl ?: settings.planningAiBaseUrl)
@@ -371,6 +424,7 @@ class AppSettingsStore(context: Context) {
             ),
             autoCheckOutEventOnEnd = preferences.getBoolean(KEY_EVENT_AUTO_CHECK_OUT_ON_END, true),
             showEventCheckInStatsOnComplete = preferences.getBoolean(KEY_EVENT_SHOW_CHECK_IN_STATS_ON_COMPLETE, true),
+            eventCheckInIdleAutoCheckOutHours = preferences.getInt(KEY_EVENT_CHECK_IN_IDLE_AUTO_CHECK_OUT_HOURS, 2).coerceIn(0, 8),
             reminderToneUri = preferences.getString(KEY_REMINDER_TONE_URI, null),
             reminderToneName = preferences.getString(KEY_REMINDER_TONE_NAME, null),
             reminderAudioChannel = ReminderAudioChannel.fromStorage(preferences.getString(KEY_REMINDER_AUDIO_CHANNEL, null)),
@@ -383,7 +437,16 @@ class AppSettingsStore(context: Context) {
             autoBackupEnabled = preferences.getBoolean(KEY_AUTO_BACKUP_ENABLED, false),
             desktopSyncEnabled = preferences.getBoolean(KEY_DESKTOP_SYNC_ENABLED, false),
             desktopSyncToken = syncToken,
+            desktopSyncWifiKeepAlive = preferences.getBoolean(KEY_DESKTOP_SYNC_WIFI_KEEP_ALIVE, true),
             lastOpenedPlanningNoteId = preferences.getLong(KEY_LAST_OPENED_PLANNING_NOTE_ID, 0L).takeIf { it > 0 },
+            lastQuickCheckInTitle = preferences.getString(KEY_LAST_QUICK_CHECK_IN_TITLE, "自习").orEmpty().ifBlank { "自习" },
+            lastQuickCheckInLocation = preferences.getString(KEY_LAST_QUICK_CHECK_IN_LOCATION, "").orEmpty(),
+            lastQuickCheckInMinutes = preferences.getInt(KEY_LAST_QUICK_CHECK_IN_MINUTES, 60).coerceIn(1, 24 * 60),
+            boardCountdownCollapsed = preferences.getBoolean(KEY_BOARD_COUNTDOWN_COLLAPSED, false),
+            boardTodayTodosCollapsed = preferences.getBoolean(KEY_BOARD_TODAY_TODOS_COLLAPSED, false),
+            boardTodayEventsCollapsed = preferences.getBoolean(KEY_BOARD_TODAY_EVENTS_COLLAPSED, false),
+            boardTomorrowEventsCollapsed = preferences.getBoolean(KEY_BOARD_TOMORROW_EVENTS_COLLAPSED, false),
+            boardAnnouncementCollapsed = preferences.getBoolean(KEY_BOARD_ANNOUNCEMENT_COLLAPSED, false),
             planningAiEnabled = planningAiEnabled,
             planningAiProviderName = primaryPlanningAiProvider?.name ?: legacyProviderName,
             planningAiBaseUrl = primaryPlanningAiProvider?.baseUrl ?: legacyBaseUrl,
@@ -454,6 +517,7 @@ class AppSettingsStore(context: Context) {
         private const val KEY_DEFAULT_CALENDAR_REMINDER_MODE = "default_calendar_reminder_mode"
         private const val KEY_EVENT_AUTO_CHECK_OUT_ON_END = "event_auto_check_out_on_end"
         private const val KEY_EVENT_SHOW_CHECK_IN_STATS_ON_COMPLETE = "event_show_check_in_stats_on_complete"
+        private const val KEY_EVENT_CHECK_IN_IDLE_AUTO_CHECK_OUT_HOURS = "event_check_in_idle_auto_check_out_hours"
         private const val KEY_REMINDER_TONE_URI = "reminder_tone_uri"
         private const val KEY_REMINDER_TONE_NAME = "reminder_tone_name"
         private const val KEY_REMINDER_AUDIO_CHANNEL = "reminder_audio_channel"
@@ -466,7 +530,16 @@ class AppSettingsStore(context: Context) {
         private const val KEY_AUTO_BACKUP_ENABLED = "auto_backup_enabled"
         private const val KEY_DESKTOP_SYNC_ENABLED = "desktop_sync_enabled"
         private const val KEY_DESKTOP_SYNC_TOKEN = "desktop_sync_token"
+        private const val KEY_DESKTOP_SYNC_WIFI_KEEP_ALIVE = "desktop_sync_wifi_keep_alive"
         private const val KEY_LAST_OPENED_PLANNING_NOTE_ID = "last_opened_planning_note_id"
+        private const val KEY_LAST_QUICK_CHECK_IN_TITLE = "last_quick_check_in_title"
+        private const val KEY_LAST_QUICK_CHECK_IN_LOCATION = "last_quick_check_in_location"
+        private const val KEY_LAST_QUICK_CHECK_IN_MINUTES = "last_quick_check_in_minutes"
+        private const val KEY_BOARD_COUNTDOWN_COLLAPSED = "board_countdown_collapsed"
+        private const val KEY_BOARD_TODAY_TODOS_COLLAPSED = "board_today_todos_collapsed"
+        private const val KEY_BOARD_TODAY_EVENTS_COLLAPSED = "board_today_events_collapsed"
+        private const val KEY_BOARD_TOMORROW_EVENTS_COLLAPSED = "board_tomorrow_events_collapsed"
+        private const val KEY_BOARD_ANNOUNCEMENT_COLLAPSED = "board_announcement_collapsed"
         private const val KEY_PLANNING_AI_ENABLED = "planning_ai_enabled"
         private const val KEY_PLANNING_AI_PROVIDER_NAME = "planning_ai_provider_name"
         private const val KEY_PLANNING_AI_BASE_URL = "planning_ai_base_url"

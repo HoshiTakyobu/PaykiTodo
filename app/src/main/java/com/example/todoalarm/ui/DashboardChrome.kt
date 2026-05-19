@@ -7,6 +7,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -49,24 +50,31 @@ import androidx.compose.material.icons.rounded.ChevronRight
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material.icons.rounded.TaskAlt
 import androidx.compose.material.icons.rounded.ViewAgenda
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.ModalDrawerSheet
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
@@ -120,6 +128,7 @@ import com.example.todoalarm.data.ScheduleTemplate
 import com.example.todoalarm.data.TaskGroup
 import com.example.todoalarm.data.ThemeMode
 import com.example.todoalarm.data.TodoItem
+import com.example.todoalarm.data.TodoRepository
 import com.example.todoalarm.data.WeekStartMode
 import com.example.todoalarm.ui.theme.PaykiGreetingFontFamily
 import android.widget.Toast
@@ -134,6 +143,14 @@ import java.time.LocalTime
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
+
+private data class QuickCheckInResult(
+    val eventId: Long,
+    val title: String,
+    val investedMinutes: Int,
+    val checkOutAtMillis: Long,
+    val shouldOfferEndAdjust: Boolean
+)
 
 @Composable
 internal fun DashboardBackgroundBrush(): Brush {
@@ -172,6 +189,7 @@ internal fun DashboardDrawer(
     onSelectSection: (DashboardSection) -> Unit,
     onThemeModeChange: (ThemeMode) -> Unit
 ) {
+    var moreExpanded by rememberSaveable { mutableStateOf(false) }
     ModalDrawerSheet(
         modifier = Modifier
             .fillMaxHeight()
@@ -225,22 +243,60 @@ internal fun DashboardDrawer(
                     modifier = Modifier.padding(top = 6.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    DrawerSectionButton(
-                        section = DashboardSection.BOARD,
-                        selected = current == DashboardSection.BOARD,
-                        onClick = { onSelectSection(DashboardSection.BOARD) }
-                    )
-                    DrawerSectionButton(
-                        section = DashboardSection.ACTIVE,
-                        selected = current == DashboardSection.ACTIVE,
-                        onClick = { onSelectSection(DashboardSection.ACTIVE) }
-                    )
-                    DashboardSection.entries.filter { it != DashboardSection.BOARD && it != DashboardSection.ACTIVE }.forEach { section ->
+                    listOf(
+                        DashboardSection.BOARD,
+                        DashboardSection.ACTIVE,
+                        DashboardSection.CALENDAR,
+                        DashboardSection.PLANNING,
+                        DashboardSection.SETTINGS
+                    ).forEach { section ->
                         DrawerSectionButton(
                             section = section,
                             selected = current == section,
                             onClick = { onSelectSection(section) }
                         )
+                    }
+                    Surface(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(18.dp),
+                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.26f),
+                        onClick = { moreExpanded = !moreExpanded }
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 14.dp, vertical = 12.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            Icon(
+                                imageVector = if (moreExpanded) Icons.Rounded.ExpandLess else Icons.Rounded.ExpandMore,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                                Text(
+                                    text = "更多",
+                                    style = MaterialTheme.typography.titleSmall,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                                Text(
+                                    text = "归档与历史",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                    }
+                    if (moreExpanded) {
+                        listOf(DashboardSection.AI_REPORTS, DashboardSection.HISTORY).forEach { section ->
+                            DrawerSectionButton(
+                                section = section,
+                                selected = current == section,
+                                onClick = { onSelectSection(section) }
+                            )
+                        }
                     }
                 }
             }
@@ -362,6 +418,7 @@ internal fun DashboardBody(
     onDeleteTodo: (TodoItem) -> Unit,
     onDeleteCalendarEvent: (TodoItem) -> Unit,
     onSelectGroup: (Long?) -> Unit,
+    onToggleGroupFilterMode: () -> Unit,
     onCreateGroup: suspend (String, String) -> String?,
     onUpdateGroup: suspend (TaskGroup) -> String?,
     onDeleteGroup: suspend (Long) -> String?,
@@ -375,13 +432,17 @@ internal fun DashboardBody(
     onDefaultSnoozeChange: (Int) -> Unit,
     onDefaultCalendarReminderModeChange: (ReminderDeliveryMode) -> Unit,
     onEventCheckInPreferencesChange: (Boolean, Boolean) -> Unit,
+    onEventCheckInIdleAutoCheckOutHoursChange: (Int) -> Unit,
     onReminderAudioStrategyChange: (ReminderAudioChannel, Int, Boolean, Int, Boolean) -> Unit,
     onPlanningAiProvidersChange: (Boolean, List<PlanningAiProvider>) -> Unit,
     onReportPreferencesChange: (Boolean, Int, Int, Boolean, Int, Int, AiReportRetention) -> Unit,
     onGenerateDailyReportNow: suspend () -> String?,
     onDeleteAiReport: suspend (Long) -> String?,
+    onQuickCheckInEvent: suspend (String, String, Int, Long) -> String?,
+    onAdjustCalendarEventEndTime: suspend (Long, Long) -> String?,
     onResetOnboarding: () -> Unit,
     onDesktopSyncEnabledChange: (Boolean) -> Unit,
+    onDesktopSyncWifiKeepAliveChange: (Boolean) -> Unit,
     onRotateDesktopSyncToken: () -> Unit,
     onUseBuiltInReminderTone: () -> Unit,
     onPickSystemReminderTone: () -> Unit,
@@ -403,7 +464,8 @@ internal fun DashboardBody(
     onRenamePlanningNote: suspend (Long, String) -> String?,
     onDeletePlanningNote: suspend (Long) -> String?,
     onArchivePlanningNote: suspend (Long) -> String?,
-    onParsePlanningMarkdown: suspend (String) -> PlanningParseResult,
+    onOpenTodayPlanningNote: suspend () -> Long,
+    onParsePlanningMarkdown: suspend (String, Long?) -> PlanningParseResult,
     onImportPlanningCandidates: suspend (List<PlanningImportCandidate>, Set<String>, String, Long?) -> PlanningImportResult,
     onSyncPlanningMappings: suspend (Long, String) -> List<PlanningLineMapping>,
     onGetPlanningMappings: suspend (Long) -> List<PlanningLineMapping>,
@@ -413,7 +475,8 @@ internal fun DashboardBody(
     onApplyPlanningConflictDocument: suspend (Long, String, Long) -> PlanningOperationResult,
     onApplyPlanningConflictItem: suspend (Long, String, Long) -> PlanningOperationResult,
     onDismissOnboarding: () -> Unit = {},
-    onNavigatePlanning: () -> Unit = {}
+    onNavigatePlanning: () -> Unit = {},
+    onBoardCollapseStateChange: (Boolean, Boolean, Boolean, Boolean, Boolean) -> Unit = { _, _, _, _, _ -> }
 ) {
     if (section == DashboardSection.CALENDAR) {
         val allCalendarItems by calendarItems.collectAsStateWithLifecycle()
@@ -497,12 +560,14 @@ internal fun DashboardBody(
                 onDefaultSnoozeChange = onDefaultSnoozeChange,
                 onDefaultCalendarReminderModeChange = onDefaultCalendarReminderModeChange,
                 onEventCheckInPreferencesChange = onEventCheckInPreferencesChange,
+                onEventCheckInIdleAutoCheckOutHoursChange = onEventCheckInIdleAutoCheckOutHoursChange,
                 onReminderAudioStrategyChange = onReminderAudioStrategyChange,
                 onPlanningAiProvidersChange = onPlanningAiProvidersChange,
                 onReportPreferencesChange = onReportPreferencesChange,
                 onGenerateDailyReportNow = onGenerateDailyReportNow,
                 onResetOnboarding = onResetOnboarding,
                 onDesktopSyncEnabledChange = onDesktopSyncEnabledChange,
+                onDesktopSyncWifiKeepAliveChange = onDesktopSyncWifiKeepAliveChange,
                 onRotateDesktopSyncToken = onRotateDesktopSyncToken,
                 onUseBuiltInReminderTone = onUseBuiltInReminderTone,
                 onPickSystemReminderTone = onPickSystemReminderTone,
@@ -533,6 +598,7 @@ internal fun DashboardBody(
                 notes = notes,
                 activeNote = notes.firstOrNull { it.id == uiState.settings.lastOpenedPlanningNoteId }
                     ?: notes.firstOrNull(),
+                groups = uiState.groups,
                 planningAiProviders = uiState.settings.planningAiProviders,
                 onSelectNote = onSelectPlanningNote,
                 onCreateNote = onCreatePlanningNote,
@@ -540,6 +606,7 @@ internal fun DashboardBody(
                 onRenameNote = onRenamePlanningNote,
                 onDeleteNote = onDeletePlanningNote,
                 onArchiveNote = onArchivePlanningNote,
+                onOpenTodayNote = onOpenTodayPlanningNote,
                 onParse = onParsePlanningMarkdown,
                 onImport = onImportPlanningCandidates,
                 onSyncMappings = onSyncPlanningMappings,
@@ -558,11 +625,31 @@ internal fun DashboardBody(
     var missedExpanded by rememberSaveable { mutableStateOf(true) }
     var todayExpanded by rememberSaveable { mutableStateOf(true) }
     var upcomingExpanded by rememberSaveable(uiState.todayItems.isEmpty()) { mutableStateOf(uiState.todayItems.isEmpty()) }
+    var countdownCollapsed by rememberSaveable { mutableStateOf(uiState.settings.boardCountdownCollapsed) }
+    var boardTodosCollapsed by rememberSaveable { mutableStateOf(uiState.settings.boardTodayTodosCollapsed) }
+    var boardTodayEventsCollapsed by rememberSaveable { mutableStateOf(uiState.settings.boardTodayEventsCollapsed) }
+    var boardTomorrowEventsCollapsed by rememberSaveable { mutableStateOf(uiState.settings.boardTomorrowEventsCollapsed) }
+    var boardAnnouncementCollapsed by rememberSaveable { mutableStateOf(uiState.settings.boardAnnouncementCollapsed) }
     val boardMoment by produceState(initialValue = LocalDateTime.now()) {
         while (true) {
             delay(30_000L)
             value = LocalDateTime.now()
         }
+    }
+    LaunchedEffect(
+        countdownCollapsed,
+        boardTodosCollapsed,
+        boardTodayEventsCollapsed,
+        boardTomorrowEventsCollapsed,
+        boardAnnouncementCollapsed
+    ) {
+        onBoardCollapseStateChange(
+            countdownCollapsed,
+            boardTodosCollapsed,
+            boardTodayEventsCollapsed,
+            boardTomorrowEventsCollapsed,
+            boardAnnouncementCollapsed
+        )
     }
     val boardDate = boardMoment.toLocalDate()
     val boardTodoItems = remember(uiState.missedItems, uiState.todayItems) {
@@ -586,6 +673,15 @@ internal fun DashboardBody(
             .sortedBy { DailyBoardSnapshotBuilder.countdownTargetMillis(it) ?: Long.MAX_VALUE }
             .take(5)
     }
+    val quickCheckInCandidateEvents = remember(allTodayScheduleItems, boardMoment) {
+        val nowMillis = boardMoment.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
+        allTodayScheduleItems.filter { item ->
+            item.checkInEnabled &&
+                !item.completed &&
+                !item.canceled &&
+                (item.startAtMillis ?: item.dueAtMillis) <= nowMillis
+        }
+    }
     val tomorrowScheduleItems = remember(uiState.calendarItems, boardDate) {
         val tomorrow = boardDate.plusDays(1)
         uiState.calendarItems.filter { DailyBoardSnapshotBuilder.eventOverlapsDay(it, tomorrow) }
@@ -606,11 +702,23 @@ internal fun DashboardBody(
     ) {
         when (section) {
             DashboardSection.BOARD -> {
-                items(activeAnnouncements, key = { "${it.sourceNoteId}-${it.lineNumber}-${it.text}" }) { announcement ->
-                    AnnouncementBanner(
-                        text = announcement.text,
-                        rangeLabel = announcement.rangeLabel()
-                    )
+                if (activeAnnouncements.isNotEmpty()) {
+                    item {
+                        CollapsibleBoardCard(
+                            title = "公告（${activeAnnouncements.size}）",
+                            collapsed = boardAnnouncementCollapsed,
+                            onToggle = { boardAnnouncementCollapsed = !boardAnnouncementCollapsed }
+                        ) {
+                            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                                activeAnnouncements.forEach { announcement ->
+                                    AnnouncementBanner(
+                                        text = announcement.text,
+                                        rangeLabel = announcement.rangeLabel()
+                                    )
+                                }
+                            }
+                        }
+                    }
                 }
 
                 item {
@@ -619,50 +727,80 @@ internal fun DashboardBody(
 
                 if (visibleCountdownItems.isNotEmpty()) {
                     item {
-                        CountdownBoardCard(
-                            items = visibleCountdownItems,
-                            now = boardMoment,
-                            groups = uiState.groups,
-                            onOpenTodo = onEdit,
-                            onOpenEvent = onEditCalendarEvent
-                        )
+                        CollapsibleBoardCard(
+                            title = "倒数日（${visibleCountdownItems.size}）",
+                            collapsed = countdownCollapsed,
+                            onToggle = { countdownCollapsed = !countdownCollapsed }
+                        ) {
+                            CountdownBoardCard(
+                                items = visibleCountdownItems,
+                                now = boardMoment,
+                                groups = uiState.groups,
+                                onOpenTodo = onEdit,
+                                onOpenEvent = onEditCalendarEvent
+                            )
+                        }
                     }
                 }
 
                 item {
-                    BoardBlockTitle("今日待办（${boardTodoItems.size}）")
-                }
-                if (boardTodoItems.isEmpty()) {
-                    item { EmptyStateCard("今天还没有安排任务。") }
-                } else {
-                    items(boardTodoItems, key = { it.id }) { item ->
-                        ActiveTodoCard(
-                            item = item,
-                            groups = uiState.groups,
-                            onEdit = { onEdit(item) },
-                            onComplete = { onCompleteTodo(item) },
-                            onCancel = { onCancelTodo(item) },
-                            onDelete = { onDeleteTodo(item) }
-                        )
-                    }
-                }
-
-                item {
-                    BoardBlockTitle("今日日程（${todayScheduleItems.size}）")
-                }
-                item {
-                    TodayScheduleBoardCard(
-                        today = boardDate,
-                        now = boardMoment,
-                        hasTodayEvents = allTodayScheduleItems.isNotEmpty(),
-                        todayEvents = todayScheduleItems,
-                        tomorrowEvents = tomorrowScheduleItems,
-                        onOpenEvent = onEditCalendarEvent,
-                        onGetEventCheckIns = onGetEventCheckIns,
-                        onCheckInEvent = onCheckInCalendarEvent,
-                        onCheckOutEvent = onCheckOutCalendarEvent,
-                        onNavigatePlanning = onNavigatePlanning
+                    BoardBlockTitle(
+                        title = "今日待办（${boardTodoItems.size}）",
+                        collapsed = boardTodosCollapsed,
+                        onToggle = { boardTodosCollapsed = !boardTodosCollapsed }
                     )
+                }
+                if (!boardTodosCollapsed) {
+                    if (boardTodoItems.isEmpty()) {
+                        item { EmptyStateCard("今天还没有安排任务。") }
+                    } else {
+                        items(boardTodoItems, key = { it.id }) { item ->
+                            ActiveTodoCard(
+                                item = item,
+                                groups = uiState.groups,
+                                onEdit = { onEdit(item) },
+                                onComplete = { onCompleteTodo(item) },
+                                onCancel = { onCancelTodo(item) },
+                                onDelete = { onDeleteTodo(item) }
+                            )
+                        }
+                    }
+                }
+
+                item {
+                    BoardBlockTitle(
+                        title = "今日日程（${todayScheduleItems.size}）",
+                        collapsed = boardTodayEventsCollapsed,
+                        onToggle = { boardTodayEventsCollapsed = !boardTodayEventsCollapsed }
+                    )
+                }
+                if (!boardTodayEventsCollapsed || !boardTomorrowEventsCollapsed) {
+                    item {
+                        TodayScheduleBoardCard(
+                            today = boardDate,
+                            now = boardMoment,
+                            hasTodayEvents = allTodayScheduleItems.isNotEmpty(),
+                            todayEvents = todayScheduleItems,
+                            tomorrowEvents = tomorrowScheduleItems,
+                            quickCheckInDefaults = Triple(
+                                uiState.settings.lastQuickCheckInTitle,
+                                uiState.settings.lastQuickCheckInLocation,
+                                uiState.settings.lastQuickCheckInMinutes
+                            ),
+                                quickCheckInCandidateEvents = quickCheckInCandidateEvents,
+                            todayCollapsed = boardTodayEventsCollapsed,
+                            tomorrowCollapsed = boardTomorrowEventsCollapsed,
+                            onToggleTomorrow = { boardTomorrowEventsCollapsed = !boardTomorrowEventsCollapsed },
+                            onOpenEvent = onEditCalendarEvent,
+                            onGetEventCheckIns = onGetEventCheckIns,
+                            onCheckInEvent = onCheckInCalendarEvent,
+                            onCheckOutEvent = onCheckOutCalendarEvent,
+                            onQuickCheckInEvent = onQuickCheckInEvent,
+                            onAdjustCalendarEventEndTime = onAdjustCalendarEventEndTime,
+                            groups = uiState.groups,
+                            onNavigatePlanning = onNavigatePlanning
+                        )
+                    }
                 }
 
                 if (!uiState.settings.hasSeenOnboarding) {
@@ -677,11 +815,29 @@ internal fun DashboardBody(
                     TodoFilterBar(
                         groups = uiState.groups,
                         selectedGroupIds = uiState.selectedGroupIds,
+                        groupFilterMode = uiState.groupFilterMode,
                         onSelectGroup = onSelectGroup,
+                        onToggleGroupFilterMode = onToggleGroupFilterMode,
                         onCreateGroup = onCreateGroup,
                         onUpdateGroup = onUpdateGroup,
                         onDeleteGroup = onDeleteGroup
                     )
+                }
+
+                if (
+                    uiState.selectedGroupIds.size >= 2 &&
+                    uiState.groupFilterMode == TodoRepository.GroupFilterMode.INTERSECTION &&
+                    uiState.missedItems.isEmpty() &&
+                    uiState.todayItems.isEmpty() &&
+                    uiState.upcomingItems.isEmpty()
+                ) {
+                    item {
+                        EmptyStateCard(
+                            text = "当前没有同时属于所有选中分组的待办",
+                            actionLabel = "切换为并集显示",
+                            onAction = onToggleGroupFilterMode
+                        )
+                    }
                 }
 
                 if (uiState.missedItems.isNotEmpty()) {
@@ -1061,23 +1217,58 @@ private val CountdownDateTimeFormatter: DateTimeFormatter = DateTimeFormatter.of
 private val CountdownTimeFormatter: DateTimeFormatter = DateTimeFormatter.ofPattern("HH:mm", Locale.CHINA)
 
 @Composable
-private fun BoardBlockTitle(title: String) {
+private fun BoardBlockTitle(
+    title: String,
+    collapsed: Boolean? = null,
+    onToggle: (() -> Unit)? = null
+) {
     val isDarkTheme = MaterialTheme.colorScheme.background.luminance() < 0.3f
-    Text(
-        text = title,
-        style = MaterialTheme.typography.titleLarge.copy(
-            fontSize = 22.sp,
-            shadow = Shadow(
-                color = Color.Black.copy(alpha = if (isDarkTheme) 0.55f else 0.14f),
-                offset = Offset(0f, 1.5f),
-                blurRadius = if (isDarkTheme) 10f else 4f
-            )
-        ),
-        fontWeight = FontWeight.Bold,
-        color = MaterialTheme.colorScheme.onSurface
-    )
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = title,
+            style = MaterialTheme.typography.titleLarge.copy(
+                fontSize = 22.sp,
+                shadow = Shadow(
+                    color = Color.Black.copy(alpha = if (isDarkTheme) 0.55f else 0.14f),
+                    offset = Offset(0f, 1.5f),
+                    blurRadius = if (isDarkTheme) 10f else 4f
+                )
+            ),
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onSurface
+        )
+        if (collapsed != null && onToggle != null) {
+            IconButton(onClick = onToggle) {
+                Icon(
+                    imageVector = if (collapsed) Icons.Rounded.ExpandMore else Icons.Rounded.ExpandLess,
+                    contentDescription = if (collapsed) "展开$title" else "收起$title",
+                    tint = MaterialTheme.colorScheme.onSurface
+                )
+            }
+        }
+    }
 }
 
+@Composable
+private fun CollapsibleBoardCard(
+    title: String,
+    collapsed: Boolean,
+    onToggle: () -> Unit,
+    content: @Composable () -> Unit
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        BoardBlockTitle(title = title, collapsed = collapsed, onToggle = onToggle)
+        if (!collapsed) {
+            content()
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun TodayScheduleBoardCard(
     today: LocalDate,
@@ -1085,12 +1276,67 @@ private fun TodayScheduleBoardCard(
     hasTodayEvents: Boolean,
     todayEvents: List<TodoItem>,
     tomorrowEvents: List<TodoItem>,
+    quickCheckInDefaults: Triple<String, String, Int>,
+    quickCheckInCandidateEvents: List<TodoItem>,
+    todayCollapsed: Boolean,
+    tomorrowCollapsed: Boolean,
+    onToggleTomorrow: () -> Unit,
     onOpenEvent: (TodoItem) -> Unit,
     onGetEventCheckIns: suspend (Long) -> List<EventCheckIn>,
     onCheckInEvent: suspend (Long) -> String?,
     onCheckOutEvent: suspend (Long) -> String?,
+    onQuickCheckInEvent: suspend (String, String, Int, Long) -> String?,
+    onAdjustCalendarEventEndTime: suspend (Long, Long) -> String?,
+    groups: List<TaskGroup>,
     onNavigatePlanning: () -> Unit = {}
 ) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val quickDurationPresets = remember { listOf(30, 60, 90, 120) }
+    var quickSheetVisible by remember { mutableStateOf(false) }
+    var quickRunning by remember { mutableStateOf(false) }
+    var quickTitle by remember(quickCheckInDefaults.first) { mutableStateOf(quickCheckInDefaults.first) }
+    var quickLocation by remember(quickCheckInDefaults.second) { mutableStateOf(quickCheckInDefaults.second) }
+    var quickMinutes by remember(quickCheckInDefaults.third) { mutableStateOf(quickCheckInDefaults.third) }
+    var quickCustomMinutesText by remember(quickCheckInDefaults.third) { mutableStateOf(quickCheckInDefaults.third.toString()) }
+    var quickGroupId by remember(groups) {
+        mutableStateOf(groups.firstOrNull { it.name == "例行" }?.id ?: groups.firstOrNull()?.id ?: 0L)
+    }
+    var quickResult by remember { mutableStateOf<QuickCheckInResult?>(null) }
+    val quickActiveCheckIns by produceState(
+        initialValue = emptyList<EventCheckIn>(),
+        quickCheckInCandidateEvents
+    ) {
+        val activeRecords = quickCheckInCandidateEvents.mapNotNull { event ->
+            onGetEventCheckIns(event.id)
+                .firstOrNull { it.checkOutAtMillis == null }
+        }
+        value = activeRecords
+    }
+    val quickActiveCheckIn = quickActiveCheckIns.firstOrNull { it.checkOutAtMillis == null }
+    val quickCheckInActiveEvent = remember(quickCheckInCandidateEvents, quickActiveCheckIn) {
+        quickCheckInActiveEventFor(quickCheckInCandidateEvents, quickActiveCheckIn)
+    }
+    val quickButtonLabel = remember(quickActiveCheckIn, now) {
+        if (quickActiveCheckIn == null) {
+            "⏱ 快速签到"
+        } else {
+            "⏱ 签到中 · 已 ${formatBoardCheckInMinutes(quickActiveCheckIn, now)}"
+        }
+    }
+
+    LaunchedEffect(quickSheetVisible, quickCheckInDefaults, groups) {
+        if (quickSheetVisible) {
+            quickTitle = quickCheckInDefaults.first
+            quickLocation = quickCheckInDefaults.second
+            quickMinutes = quickCheckInDefaults.third
+            quickCustomMinutesText = quickCheckInDefaults.third.toString()
+            if (groups.none { it.id == quickGroupId }) {
+                quickGroupId = groups.firstOrNull { it.name == "例行" }?.id ?: groups.firstOrNull()?.id ?: 0L
+            }
+        }
+    }
+
     ElevatedCard(
         shape = RoundedCornerShape(28.dp),
         colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.96f))
@@ -1131,58 +1377,269 @@ private fun TodayScheduleBoardCard(
                 modifier = Modifier.weight(1f),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                if (todayEvents.isEmpty()) {
-                    Surface(
-                        shape = RoundedCornerShape(18.dp),
-                        color = if (hasTodayEvents) Color(0xFFFFC94A).copy(alpha = 0.12f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.22f),
-                        border = if (hasTodayEvents) BorderStroke(0.8.dp, Color(0xFFFFC94A).copy(alpha = 0.46f)) else null
-                    ) {
-                        Text(
-                            text = if (hasTodayEvents) "太棒了！今天的日程都结束了~" else "今天暂无日程",
-                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
-                            color = if (hasTodayEvents) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
-                            style = MaterialTheme.typography.bodyLarge
-                        )
+                Surface(
+                    shape = RoundedCornerShape(18.dp),
+                    color = if (quickActiveCheckIn == null) Color(0xFF4CB782).copy(alpha = 0.14f) else Color(0xFFD14343).copy(alpha = 0.10f),
+                    border = BorderStroke(
+                        1.dp,
+                        if (quickActiveCheckIn == null) Color(0xFF4CB782).copy(alpha = 0.45f) else Color(0xFFD14343).copy(alpha = 0.38f)
+                    ),
+                    onClick = {
+                        if (quickActiveCheckIn == null) {
+                            quickSheetVisible = true
+                        } else {
+                            scope.launch {
+                                val event = quickCheckInActiveEvent ?: return@launch
+                                val active = quickActiveCheckIn
+                                val checkOutAtMillis = System.currentTimeMillis()
+                                val message = onCheckOutEvent(event.id)
+                                Toast.makeText(context, message ?: "已签退", Toast.LENGTH_SHORT).show()
+                                if (message == null) {
+                                    val investedMinutes = ((checkOutAtMillis - active.checkInAtMillis).coerceAtLeast(0L) / 60_000L).toInt()
+                                    val plannedEnd = event.endAtMillis
+                                    quickResult = QuickCheckInResult(
+                                        eventId = event.id,
+                                        title = event.title,
+                                        investedMinutes = investedMinutes,
+                                        checkOutAtMillis = checkOutAtMillis,
+                                        shouldOfferEndAdjust = plannedEnd != null && checkOutAtMillis - plannedEnd > 15 * 60_000L
+                                    )
+                                }
+                            }
+                        }
                     }
-                } else {
-                    todayEvents.forEach { item ->
-                        BoardScheduleEventRow(
-                            item = item,
-                            now = now,
-                            onGetEventCheckIns = onGetEventCheckIns,
-                            onCheckInEvent = onCheckInEvent,
-                            onCheckOutEvent = onCheckOutEvent,
-                            onClick = { onOpenEvent(item) }
-                        )
+                ) {
+                    Text(
+                        text = quickButtonLabel,
+                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+                        color = if (quickActiveCheckIn == null) Color(0xFF2E7D32) else Color(0xFFD14343),
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+
+                if (!todayCollapsed) {
+                    if (todayEvents.isEmpty()) {
+                        Surface(
+                            shape = RoundedCornerShape(18.dp),
+                            color = if (hasTodayEvents) Color(0xFFFFC94A).copy(alpha = 0.12f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.22f),
+                            border = if (hasTodayEvents) BorderStroke(0.8.dp, Color(0xFFFFC94A).copy(alpha = 0.46f)) else null
+                        ) {
+                            Text(
+                                text = if (hasTodayEvents) "太棒了！今天的日程都结束了~" else "今天暂无日程",
+                                modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
+                                color = if (hasTodayEvents) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
+                                style = MaterialTheme.typography.bodyLarge
+                            )
+                        }
+                    } else {
+                        todayEvents.forEach { item ->
+                            BoardScheduleEventRow(
+                                item = item,
+                                now = now,
+                                onGetEventCheckIns = onGetEventCheckIns,
+                                onCheckInEvent = onCheckInEvent,
+                                onCheckOutEvent = onCheckOutEvent,
+                                onClick = { onOpenEvent(item) }
+                            )
+                        }
                     }
                 }
 
-                Text(
-                    text = "明天",
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold
-                )
-                if (tomorrowEvents.isEmpty()) {
-                    Surface(
-                        shape = RoundedCornerShape(16.dp),
-                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.18f),
-                        onClick = onNavigatePlanning
-                    ) {
-                        Text(
-                            text = "明天暂无日程 · 去规划台安排一下？",
-                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
-                            color = MaterialTheme.colorScheme.primary,
-                            style = MaterialTheme.typography.bodyMedium
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "明天",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    IconButton(onClick = onToggleTomorrow) {
+                        Icon(
+                            imageVector = if (tomorrowCollapsed) Icons.Rounded.ExpandMore else Icons.Rounded.ExpandLess,
+                            contentDescription = if (tomorrowCollapsed) "展开明日日程" else "收起明日日程",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
-                } else {
-                    tomorrowEvents.take(2).forEach { item ->
-                        BoardScheduleEventRow(item = item, now = null, onClick = { onOpenEvent(item) })
+                }
+                if (!tomorrowCollapsed) {
+                    if (tomorrowEvents.isEmpty()) {
+                        Surface(
+                            shape = RoundedCornerShape(16.dp),
+                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.18f),
+                            onClick = onNavigatePlanning
+                        ) {
+                            Text(
+                                text = "明天暂无日程 · 去规划台安排一下？",
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+                                color = MaterialTheme.colorScheme.primary,
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                        }
+                    } else {
+                        tomorrowEvents.take(2).forEach { item ->
+                            BoardScheduleEventRow(item = item, now = null, onClick = { onOpenEvent(item) })
+                        }
                     }
                 }
             }
         }
+    }
+
+    if (quickSheetVisible) {
+        ModalBottomSheet(
+            onDismissRequest = { quickSheetVisible = false },
+            sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 18.dp, vertical = 14.dp),
+                verticalArrangement = Arrangement.spacedBy(14.dp)
+            ) {
+                Text(
+                    text = "快速签到",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold
+                )
+                OutlinedTextField(
+                    value = quickTitle,
+                    onValueChange = { quickTitle = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text("标题") },
+                    placeholder = { Text("做什么？") },
+                    singleLine = true
+                )
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        text = "时长",
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        quickDurationPresets.forEach { preset ->
+                            FilterChip(
+                                selected = quickMinutes == preset,
+                                onClick = {
+                                    quickMinutes = preset
+                                    quickCustomMinutesText = preset.toString()
+                                },
+                                label = { Text("${preset}min") }
+                            )
+                        }
+                    }
+                    OutlinedTextField(
+                        value = quickCustomMinutesText,
+                        onValueChange = { raw ->
+                            val filtered = raw.filter(Char::isDigit)
+                            quickCustomMinutesText = filtered
+                            filtered.toIntOrNull()?.let { value ->
+                                quickMinutes = value.coerceIn(1, 24 * 60)
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        label = { Text("自定义时长（分钟）") },
+                        singleLine = true
+                    )
+                }
+                OutlinedTextField(
+                    value = quickLocation,
+                    onValueChange = { quickLocation = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text("地点") },
+                    singleLine = true
+                )
+                if (groups.isNotEmpty()) {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text(
+                            text = "分组",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .horizontalScroll(rememberScrollState()),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            groups.forEach { group ->
+                                FilterChip(
+                                    selected = quickGroupId == group.id,
+                                    onClick = { quickGroupId = group.id },
+                                    label = { Text(group.name) }
+                                )
+                            }
+                        }
+                    }
+                }
+                Button(
+                    onClick = {
+                        scope.launch {
+                            quickRunning = true
+                            val minutes = quickCustomMinutesText.toIntOrNull()?.coerceIn(1, 24 * 60) ?: quickMinutes
+                            val message = onQuickCheckInEvent(quickTitle, quickLocation, minutes, quickGroupId)
+                            Toast.makeText(context, message ?: "快速签到已开始", Toast.LENGTH_SHORT).show()
+                            if (message == null) {
+                                quickSheetVisible = false
+                            }
+                            quickRunning = false
+                        }
+                    },
+                    enabled = !quickRunning && quickCustomMinutesText.toIntOrNull()?.coerceIn(1, 24 * 60) != null,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(if (quickRunning) "启动中" else "立即开始")
+                }
+            }
+        }
+    }
+    quickResult?.let { result ->
+        AlertDialog(
+            onDismissRequest = { quickResult = null },
+            title = { Text("快速签到已结束") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("「${result.title}」本次投入 ${formatDurationMinutes(result.investedMinutes)}。")
+                    if (result.shouldOfferEndAdjust) {
+                        Text(
+                            "实际签退时间已超过原计划 15 分钟以上，是否把日程结束时间调整为本次签退时间？",
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                if (result.shouldOfferEndAdjust) {
+                    TextButton(
+                        onClick = {
+                            scope.launch {
+                                val message = onAdjustCalendarEventEndTime(result.eventId, result.checkOutAtMillis)
+                                Toast.makeText(context, message ?: "已调整日程结束时间", Toast.LENGTH_SHORT).show()
+                                if (message == null) quickResult = null
+                            }
+                        }
+                    ) {
+                        Text("调整结束时间")
+                    }
+                } else {
+                    TextButton(onClick = { quickResult = null }) { Text("知道了") }
+                }
+            },
+            dismissButton = {
+                if (result.shouldOfferEndAdjust) {
+                    TextButton(onClick = { quickResult = null }) { Text("不调整") }
+                }
+            }
+        )
     }
 }
 
@@ -1236,7 +1693,12 @@ private fun BoardScheduleEventRow(
         Surface(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(start = if (inProgress) 2.dp else 0.dp, top = if (inProgress) 8.dp else 3.dp, end = if (inProgress) 5.dp else 0.dp, bottom = if (inProgress) 8.dp else 3.dp),
+                .padding(
+                    start = if (inProgress) 2.dp else 0.dp,
+                    top = if (inProgress) 8.dp else 3.dp,
+                    end = if (inProgress) 5.dp else 0.dp,
+                    bottom = if (inProgress) 8.dp else 3.dp
+                ),
             shape = RoundedCornerShape(14.dp),
             color = if (inProgress) rowColor.copy(alpha = 0.015f) else Color.Transparent
         ) {
@@ -1346,6 +1808,22 @@ private fun formatBoardCheckInMinutes(checkIn: EventCheckIn, now: LocalDateTime?
     }
 }
 
+private fun quickCheckInActiveEventFor(events: List<TodoItem>, activeCheckIn: EventCheckIn?): TodoItem? {
+    if (activeCheckIn == null) return null
+    return events.firstOrNull { it.id == activeCheckIn.eventId }
+}
+
+private fun formatDurationMinutes(minutes: Int): String {
+    val safeMinutes = minutes.coerceAtLeast(0)
+    val hours = safeMinutes / 60
+    val rest = safeMinutes % 60
+    return when {
+        hours > 0 && rest > 0 -> "${hours} 小时 ${rest} 分钟"
+        hours > 0 -> "${hours} 小时"
+        else -> "${rest} 分钟"
+    }
+}
+
 @Composable
 internal fun SectionTitle(title: String) {
     Text(
@@ -1365,16 +1843,29 @@ internal fun SectionTitle(title: String) {
 }
 
 @Composable
-internal fun EmptyStateCard(text: String) {
+internal fun EmptyStateCard(
+    text: String,
+    actionLabel: String? = null,
+    onAction: (() -> Unit)? = null
+) {
     ElevatedCard(shape = RoundedCornerShape(22.dp)) {
-        Text(
-            text,
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(20.dp),
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            style = MaterialTheme.typography.bodyLarge
-        )
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Text(
+                text,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                style = MaterialTheme.typography.bodyLarge
+            )
+            if (!actionLabel.isNullOrBlank() && onAction != null) {
+                TextButton(onClick = onAction) {
+                    Text(actionLabel)
+                }
+            }
+        }
     }
 }
 

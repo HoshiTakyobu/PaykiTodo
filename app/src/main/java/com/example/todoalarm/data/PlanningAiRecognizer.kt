@@ -124,6 +124,7 @@ object PlanningAiRecognizer {
         val recurrence = parseAiRecurrence(item.optJSONObject("recurrence"), if (type == PlanningParsedType.TODO) dueAt else startAt)
         val allDay = item.optBoolean("allDay", false)
         val countdownEnabled = item.optBoolean("countdownEnabled", false)
+        val checkInEnabled = item.optBoolean("checkInEnabled", false)
         val messages = mutableListOf("AI 识别结果，建议确认")
         item.optString("message").takeIf { it.isNotBlank() }?.let { messages += it.trim() }
         providerName.takeIf { it.isNotBlank() }?.let { messages += "来源：$it" }
@@ -161,6 +162,7 @@ object PlanningAiRecognizer {
                 endAt = endAt,
                 allDay = allDay,
                 countdownEnabled = countdownEnabled,
+                checkInEnabled = checkInEnabled,
                 recurrence = recurrence,
                 message = structuralError
             )
@@ -189,6 +191,7 @@ object PlanningAiRecognizer {
             endAt = if (type == PlanningParsedType.EVENT) endAt else null,
             allDay = if (type == PlanningParsedType.EVENT) allDay else false,
             countdownEnabled = countdownEnabled && (type == PlanningParsedType.EVENT || dueAt != null),
+            checkInEnabled = if (type == PlanningParsedType.EVENT) checkInEnabled else false,
             reminderOffsetsMinutes = reminderOffsets,
             recurrence = recurrence,
             createLinkedTodo = if (type == PlanningParsedType.EVENT) item.optBoolean("createLinkedTodo", false) else false,

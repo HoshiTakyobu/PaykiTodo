@@ -6,7 +6,27 @@ Long-running Codex sessions can become unreliable. This file exists so a new ses
 
 ## Current Handoff Summary
 
-- Latest UX cleanup in `1.11.1 / versionCode 223`:
+- Current workline is `1.11.2 / versionCode 224`.
+- `1.11.2` UX round implemented in the working tree:
+  1. Daily-board announcement / countdown / today-todo / today-schedule / tomorrow-schedule cards can collapse and persist their state.
+  2. Drawer primary entries are reduced to five; `AI 报告` and `历史记录` live under `更多 / 归档与历史`.
+  3. Todo multi-group filtering can switch between intersection and union, including an empty-state action.
+  4. Planning Desk preview has batch settings for selected candidates: countdown, linked todo creation, check-in, and unified group.
+  5. Planning Desk image recognition appends Markdown and auto-opens preview when candidates exist; preview includes a clickable source image thumbnail.
+  6. Planning Desk `今日` notes store `documentDateEpochDay`, and parser / desktop sync paths use that date context.
+  7. Daily board quick check-in can create a check-in-enabled event starting now, start sign-in immediately, remember defaults, and sign out from the board.
+  8. Event check-in idle watchdog can auto-checkout stale active records at event end time, with a configurable threshold and low-priority notification.
+  9. Desktop sync can hold WiFi and partial wake locks during the foreground service when the default-on keepalive setting is enabled.
+  10. Database version is `19`; schema file `app/schemas/com.example.todoalarm.data.AppDatabase/19.json` is present.
+- Verification completed for `1.11.2`:
+  - `node --check app/src/main/assets/desktop-web/app.js`
+  - `./gradlew.bat :app:compileDebugKotlin`
+  - `git diff --check`
+  - `./gradlew.bat :app:assembleDebug`
+  - Debug APK metadata confirms `versionName = 1.11.2`, `versionCode = 224`, output `PaykiTodo-1.11.2-debug.apk`
+- Latest debug APK:
+  - `app/build/outputs/apk/debug/PaykiTodo-1.11.2-debug.apk`
+- Latest closed UX cleanup in `1.11.1 / versionCode 223`:
   1. Todo batch import now opens with an empty editor and placeholder examples instead of stale prefilled examples that can immediately fail validation.
   2. Todo page bottom actions now keep single-item `+` creation as the visual primary action; batch todo import is a compact secondary FAB.
   3. Daily board greeting is collapsed by default, and the first-use hint card is moved below today's todo/schedule content with shorter copy.
@@ -14,7 +34,7 @@ Long-running Codex sessions can become unreliable. This file exists so a new ses
   5. Todo group filter helper text is shortened.
   6. Calendar timezone label now says local time with UTC offset instead of raw `GMT+0` style text.
   7. Version metadata has been bumped to `1.11.1 / versionCode 223`; debug build verification passed.
-- Active goal: continue post-`1.11.0` polish and verification. The app now builds as `1.11.1 / versionCode 223`.
+- Active goal: the `1.11.2 / versionCode 224` UX round is implemented and verified; remaining local work is only creating the required commits.
 - Already completed baseline widget slice:
   1. `今日看板` widget removes the top menu/title/date header.
   2. `今日看板` widget and `倒数日` widget refresh through provider-owned minute ticks instead of relying on `updatePeriodMillis`.
@@ -48,7 +68,7 @@ Long-running Codex sessions can become unreliable. This file exists so a new ses
   - `app/build/outputs/apk/release/PaykiTodo-1.10.2-release.apk`
   - GitHub Release: `https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.10.2`
 - Latest locally built APKs:
-  - Debug: `app/build/outputs/apk/debug/PaykiTodo-1.11.1-debug.apk`
+  - Debug: `app/build/outputs/apk/debug/PaykiTodo-1.11.2-debug.apk`
   - Release: `app/build/outputs/apk/release/PaykiTodo-1.11.0-release.apk`
 - Do not push to GitHub unless the user explicitly asks.
 - Keep `keystore.properties`, `release/`, APK/AAB outputs, API keys, tokens, and private Base URLs out of Git.
@@ -378,7 +398,7 @@ Secret / release safety checks already performed:
 
 ## Remaining Device / Browser Verification
 
-1. Install `app/build/outputs/apk/debug/PaykiTodo-1.11.1-debug.apk` on the user's phone if validating the latest built debug APK.
+1. Install `app/build/outputs/apk/debug/PaykiTodo-1.11.2-debug.apk` on the user's phone if validating the latest built debug APK.
 2. Add / resize the `今日看板` widget and confirm the top header is gone, content remains readable, cross-day / minute refresh updates the list, and an active checked-in in-progress event shows `⏱ 签到中 Xm`.
 3. Add / resize the `倒数日` widget and confirm scroll behavior, multi-line row readability, and exact todo/event row deep links.
 4. Verify Planning Desk imports for `@地点`, quoted `@地点`, and `地点：...`.

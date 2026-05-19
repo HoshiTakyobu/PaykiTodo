@@ -11,6 +11,7 @@ import android.net.Uri
 import android.os.Build
 import android.widget.RemoteViews
 import com.example.todoalarm.R
+import com.example.todoalarm.alarm.EventCheckInWatchdog
 import com.example.todoalarm.ui.MainActivity
 import java.time.LocalDate
 
@@ -31,6 +32,7 @@ class TodoWidgetProvider : AppWidgetProvider() {
             Intent.ACTION_TIME_CHANGED,
             Intent.ACTION_TIMEZONE_CHANGED,
             Intent.ACTION_MY_PACKAGE_REPLACED -> {
+                EventCheckInWatchdog.runOnce(context.applicationContext)
                 notifyWidgetDataChanged(context)
                 scheduleNextMinuteTick(context)
             }

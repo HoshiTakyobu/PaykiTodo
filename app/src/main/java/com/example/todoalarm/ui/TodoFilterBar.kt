@@ -19,6 +19,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.TaskAlt
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -38,6 +39,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.todoalarm.data.TaskGroup
+import com.example.todoalarm.data.TodoRepository
 import kotlinx.coroutines.launch
 
 private val TodoGroupColorPalette = listOf(
@@ -49,7 +51,9 @@ private val TodoGroupColorPalette = listOf(
 internal fun TodoFilterBar(
     groups: List<TaskGroup>,
     selectedGroupIds: Set<Long>,
+    groupFilterMode: TodoRepository.GroupFilterMode,
     onSelectGroup: (Long?) -> Unit,
+    onToggleGroupFilterMode: () -> Unit,
     onCreateGroup: suspend (String, String) -> String?,
     onUpdateGroup: suspend (TaskGroup) -> String?,
     onDeleteGroup: suspend (Long) -> String?
@@ -95,9 +99,25 @@ internal fun TodoFilterBar(
                 leadingAddIcon = true,
                 onClick = { creating = true }
             )
+            if (selectedGroupIds.size >= 2) {
+                FilterChip(
+                    selected = true,
+                    onClick = onToggleGroupFilterMode,
+                    label = {
+                        Text(
+                            if (groupFilterMode == TodoRepository.GroupFilterMode.INTERSECTION) "∩ 交集"
+                            else "∪ 并集"
+                        )
+                    }
+                )
+            }
         }
         Text(
-            text = "多选按交集筛选；长按可管理分组。",
+            text = if (selectedGroupIds.size >= 2) {
+                "当前多选：${if (groupFilterMode == TodoRepository.GroupFilterMode.INTERSECTION) "交集" else "并集"}；长按可管理分组。"
+            } else {
+                "长按可管理分组。"
+            },
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )

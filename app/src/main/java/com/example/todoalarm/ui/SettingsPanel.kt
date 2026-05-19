@@ -129,12 +129,14 @@ fun SettingsPanel(
     onDefaultSnoozeChange: (Int) -> Unit,
     onDefaultCalendarReminderModeChange: (ReminderDeliveryMode) -> Unit,
     onEventCheckInPreferencesChange: (Boolean, Boolean) -> Unit,
+    onEventCheckInIdleAutoCheckOutHoursChange: (Int) -> Unit,
     onReminderAudioStrategyChange: (ReminderAudioChannel, Int, Boolean, Int, Boolean) -> Unit,
     onPlanningAiProvidersChange: (Boolean, List<PlanningAiProvider>) -> Unit,
     onReportPreferencesChange: (Boolean, Int, Int, Boolean, Int, Int, AiReportRetention) -> Unit,
     onGenerateDailyReportNow: suspend () -> String?,
     onResetOnboarding: () -> Unit,
     onDesktopSyncEnabledChange: (Boolean) -> Unit,
+    onDesktopSyncWifiKeepAliveChange: (Boolean) -> Unit,
     onRotateDesktopSyncToken: () -> Unit,
     onUseBuiltInReminderTone: () -> Unit,
     onPickSystemReminderTone: () -> Unit,
@@ -356,6 +358,30 @@ fun SettingsPanel(
                         )
                     }
                 )
+                CompactDropdownSetting(
+                    title = "闲置自动签退阈值",
+                    value = when (settings.eventCheckInIdleAutoCheckOutHours) {
+                        0 -> "关闭"
+                        1 -> "1 小时"
+                        2 -> "2 小时"
+                        4 -> "4 小时"
+                        8 -> "8 小时"
+                        else -> "2 小时"
+                    },
+                    options = listOf("关闭", "1 小时", "2 小时", "4 小时", "8 小时"),
+                    onSelect = { label ->
+                        onEventCheckInIdleAutoCheckOutHoursChange(
+                            when (label) {
+                                "关闭" -> 0
+                                "1 小时" -> 1
+                                "2 小时" -> 2
+                                "4 小时" -> 4
+                                "8 小时" -> 8
+                                else -> 2
+                            }
+                        )
+                    }
+                )
             }
         }
 
@@ -454,6 +480,12 @@ fun SettingsPanel(
                     }) { Text("复制") }
                 }
                 OutlinedButton(onClick = onRotateDesktopSyncToken) { Text("重新生成访问密钥") }
+                SettingsSwitchRow(
+                    title = "桌面同步期间保持网络唤醒",
+                    summary = "保证浏览器在你熄屏时仍能连接，会增加少量电量消耗。",
+                    checked = settings.desktopSyncWifiKeepAlive,
+                    onCheckedChange = onDesktopSyncWifiKeepAliveChange
+                )
                 if (settings.desktopSyncEnabled) {
                     Text("连接地址", fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
                     if (!desktopSyncStatus.running) {

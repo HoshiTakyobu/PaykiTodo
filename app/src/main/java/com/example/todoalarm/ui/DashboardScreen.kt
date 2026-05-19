@@ -127,6 +127,7 @@ fun DashboardScreen(
     onRestoreTodo: (TodoItem) -> Unit,
     onCancelTodo: (TodoItem, RecurrenceScope) -> Unit,
     onSelectGroup: (Long?) -> Unit,
+    onToggleGroupFilterMode: () -> Unit,
     onCreateGroup: suspend (String, String) -> String?,
     onUpdateGroup: suspend (com.example.todoalarm.data.TaskGroup) -> String?,
     onDeleteGroup: suspend (Long) -> String?,
@@ -136,7 +137,8 @@ fun DashboardScreen(
     onRenamePlanningNote: suspend (Long, String) -> String?,
     onDeletePlanningNote: suspend (Long) -> String?,
     onArchivePlanningNote: suspend (Long) -> String?,
-    onParsePlanningMarkdown: suspend (String) -> PlanningParseResult,
+    onOpenTodayPlanningNote: suspend () -> Long,
+    onParsePlanningMarkdown: suspend (String, Long?) -> PlanningParseResult,
     onImportPlanningCandidates: suspend (List<PlanningImportCandidate>, Set<String>, String, Long?) -> PlanningImportResult,
     onSyncPlanningMappings: suspend (Long, String) -> List<PlanningLineMapping>,
     onGetPlanningMappings: suspend (Long) -> List<PlanningLineMapping>,
@@ -151,14 +153,18 @@ fun DashboardScreen(
     onDefaultSnoozeChange: (Int) -> Unit,
     onDefaultCalendarReminderModeChange: (ReminderDeliveryMode) -> Unit,
     onEventCheckInPreferencesChange: (Boolean, Boolean) -> Unit,
+    onEventCheckInIdleAutoCheckOutHoursChange: (Int) -> Unit,
     onReminderAudioStrategyChange: (ReminderAudioChannel, Int, Boolean, Int, Boolean) -> Unit,
     onPlanningAiProvidersChange: (Boolean, List<PlanningAiProvider>) -> Unit,
     onReportPreferencesChange: (Boolean, Int, Int, Boolean, Int, Int, AiReportRetention) -> Unit,
     onGenerateDailyReportNow: suspend () -> String?,
     onDeleteAiReport: suspend (Long) -> String?,
+    onQuickCheckInEvent: suspend (String, String, Int, Long) -> String?,
+    onAdjustCalendarEventEndTime: suspend (Long, Long) -> String?,
     onDismissOnboarding: () -> Unit,
     onResetOnboarding: () -> Unit,
     onDesktopSyncEnabledChange: (Boolean) -> Unit,
+    onDesktopSyncWifiKeepAliveChange: (Boolean) -> Unit,
     onRotateDesktopSyncToken: () -> Unit,
     onUseBuiltInReminderTone: () -> Unit,
     onPickSystemReminderTone: () -> Unit,
@@ -172,7 +178,8 @@ fun DashboardScreen(
     onPickBackupDirectory: () -> Unit,
     onExportBackup: () -> Unit,
     onImportBackup: () -> Unit,
-    onAutoBackupChange: (Boolean) -> Unit
+    onAutoBackupChange: (Boolean) -> Unit,
+    onBoardCollapseStateChange: (Boolean, Boolean, Boolean, Boolean, Boolean) -> Unit
 ) {
     val drawerState = rememberDrawerState(DrawerValue.Closed)
     val context = LocalContext.current
@@ -541,6 +548,7 @@ fun DashboardScreen(
                         }
                     },
                     onSelectGroup = onSelectGroup,
+                    onToggleGroupFilterMode = onToggleGroupFilterMode,
                     onCreateGroup = onCreateGroup,
                     onUpdateGroup = onUpdateGroup,
                     onDeleteGroup = onDeleteGroup,
@@ -554,13 +562,17 @@ fun DashboardScreen(
                     onDefaultSnoozeChange = onDefaultSnoozeChange,
                     onDefaultCalendarReminderModeChange = onDefaultCalendarReminderModeChange,
                     onEventCheckInPreferencesChange = onEventCheckInPreferencesChange,
+                    onEventCheckInIdleAutoCheckOutHoursChange = onEventCheckInIdleAutoCheckOutHoursChange,
                     onReminderAudioStrategyChange = onReminderAudioStrategyChange,
                     onPlanningAiProvidersChange = onPlanningAiProvidersChange,
                     onReportPreferencesChange = onReportPreferencesChange,
                     onGenerateDailyReportNow = onGenerateDailyReportNow,
                     onDeleteAiReport = onDeleteAiReport,
+                    onQuickCheckInEvent = onQuickCheckInEvent,
+                    onAdjustCalendarEventEndTime = onAdjustCalendarEventEndTime,
                     onResetOnboarding = onResetOnboarding,
                     onDesktopSyncEnabledChange = onDesktopSyncEnabledChange,
+                    onDesktopSyncWifiKeepAliveChange = onDesktopSyncWifiKeepAliveChange,
                     onRotateDesktopSyncToken = onRotateDesktopSyncToken,
                     onUseBuiltInReminderTone = onUseBuiltInReminderTone,
                     onPickSystemReminderTone = onPickSystemReminderTone,
@@ -582,6 +594,7 @@ fun DashboardScreen(
                     onRenamePlanningNote = onRenamePlanningNote,
                     onDeletePlanningNote = onDeletePlanningNote,
                     onArchivePlanningNote = onArchivePlanningNote,
+                    onOpenTodayPlanningNote = onOpenTodayPlanningNote,
                     onParsePlanningMarkdown = onParsePlanningMarkdown,
                     onImportPlanningCandidates = onImportPlanningCandidates,
                     onSyncPlanningMappings = onSyncPlanningMappings,
@@ -592,7 +605,8 @@ fun DashboardScreen(
                     onApplyPlanningConflictDocument = onApplyPlanningConflictDocument,
                     onApplyPlanningConflictItem = onApplyPlanningConflictItem,
                     onDismissOnboarding = onDismissOnboarding,
-                    onNavigatePlanning = { section = DashboardSection.PLANNING }
+                    onNavigatePlanning = { section = DashboardSection.PLANNING },
+                    onBoardCollapseStateChange = onBoardCollapseStateChange
                 )
             }
         }

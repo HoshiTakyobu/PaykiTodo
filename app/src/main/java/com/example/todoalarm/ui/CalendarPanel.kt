@@ -2795,7 +2795,7 @@ private fun timezoneShortLabel(): String {
     val hours = absMinutes / 60
     val minutes = absMinutes % 60
     val suffix = if (minutes == 0) "UTC$sign$hours" else "UTC$sign$hours:${minutes.toString().padStart(2, '0')}"
-    return "本地时间（$suffix）"
+    return "本地时间 $suffix"
 }
 
 private fun formatClockTime(dateTime: LocalDateTime): String {

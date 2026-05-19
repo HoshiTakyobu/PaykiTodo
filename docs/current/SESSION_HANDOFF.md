@@ -6,7 +6,14 @@ Long-running Codex sessions can become unreliable. This file exists so a new ses
 
 ## Current Handoff Summary
 
-- Current workline is `1.11.2 / versionCode 224`.
+- Current workline is `1.11.3 / versionCode 225`.
+- `1.11.3` check-in UI refactor implemented in the working tree:
+  1. New `CheckInActivity` full-screen sign-in surface: shows event title, live HH:MM:SS clock, large round status button (blue 签到 → green 已签到 → red 已签退), confirmation dialog before sign-out, and "已计入打卡时间" running total.
+  2. Daily board's previous "快速签到" button, BottomSheet, and post-checkout AlertDialog are removed; in-progress event rows now route the user to `CheckInActivity` through a "去签到" / "查看" text button.
+  3. Calendar event details drops inline 签到 / 签退 buttons in favor of a single "去签到 / 查看签到" button that launches `CheckInActivity` with `displayItem.id`.
+  4. `TodoViewModel` no longer carries `quickCheckInEvent`, `adjustCalendarEventEndTime`, `checkInCalendarEvent`, or `checkOutCalendarEvent`; check-in / check-out happen directly through `repository.checkInEvent` / `repository.checkOutEvent` from `CheckInActivity`.
+  5. `AppSettings`, `AppSettingsStore` keys, and backup JSON drop `lastQuickCheckInTitle` / `lastQuickCheckInLocation` / `lastQuickCheckInMinutes`; old backups silently ignore those fields.
+  6. Manifest registers `.ui.CheckInActivity` (non-exported, default theme).
 - `1.11.2` UX round implemented in the working tree:
   1. Daily-board announcement / countdown / today-todo / today-schedule / tomorrow-schedule cards can collapse and persist their state.
   2. Drawer primary entries are reduced to five; `AI 报告` and `历史记录` live under `更多 / 归档与历史`.

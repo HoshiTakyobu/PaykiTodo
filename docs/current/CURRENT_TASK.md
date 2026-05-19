@@ -2,7 +2,7 @@
 
 ## Active Development Focus
 
-Active goal: commit the `1.11.2` UX round. Code targets `1.11.2 / versionCode 224`; the feature scope is implemented, docs are synchronized, and final debug verification has passed.
+Active goal: `1.11.3` check-in UI refactor committed. Code targets `1.11.3 / versionCode 225`. Next: scan for remaining UI style inconsistencies.
 
 Do not push to GitHub unless the user explicitly asks.
 

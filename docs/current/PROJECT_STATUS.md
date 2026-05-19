@@ -7,8 +7,8 @@
 - Package name: `com.paykitodo.app`
 - Target platform: Android 14 / API 34
 - Current version in code:
-  - `versionName = "1.11.2"`
-  - `versionCode = 224`
+  - `versionName = "1.11.3"`
+  - `versionCode = 225`
 
 ## Current Build Facts
 

@@ -50,5 +50,5 @@ No known code requirement from `2026-05-19-paykitodo-capture-and-outliner-goal.m
 ## Git / Release Notes
 
 - Branch remains `main`, ahead of `origin/main`; do not push without explicit user authorization.
-- `docs/goals/2026-05-19-paykitodo-capture-and-outliner-goal.md` is the active goal prompt and should be committed as a separate archive commit after the feature commit if the final audit confirms it contains no secrets.
+- `docs/goals/2026-05-19-paykitodo-capture-and-outliner-goal.md` has been checked for obvious secret patterns and is being archived in a separate goal-document commit after the feature commit.
 - Local signing files, APK outputs, API keys, tokens, and private Base URLs must remain out of Git.

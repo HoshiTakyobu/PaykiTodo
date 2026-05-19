@@ -139,7 +139,7 @@ No known code requirement from the active goal is intentionally left unimplement
 
 ## Git State Notes
 
-- Worktree is dirty.
+- Worktree is dirty only if this handoff is read before the separate goal-document archive commit completes.
 - Branch is ahead of `origin/main`.
-- `docs/goals/2026-05-19-paykitodo-capture-and-outliner-goal.md` is untracked and should be committed only as a separate goal-archive commit after the feature commit, assuming the final secret check finds no private material.
+- `docs/goals/2026-05-19-paykitodo-capture-and-outliner-goal.md` has been checked for obvious secret patterns and is being archived in a separate goal-document commit after the feature commit.
 - Do not commit local signing material, APK outputs, API keys, tokens, or private Base URLs.

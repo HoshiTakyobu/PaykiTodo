@@ -28,6 +28,10 @@ import com.example.todoalarm.data.PlanningImportResult
 import com.example.todoalarm.data.PlanningLineMapping
 import com.example.todoalarm.data.PlanningLineMatcher
 import com.example.todoalarm.data.PlanningMarkdownParser
+import com.example.todoalarm.data.PlanningNode
+import com.example.todoalarm.data.PlanningNodeChangeResult
+import com.example.todoalarm.data.PlanningNodeDraft
+import com.example.todoalarm.data.PlanningNodeEdit
 import com.example.todoalarm.data.PlanningNote
 import com.example.todoalarm.data.PlanningParseResult
 import com.example.todoalarm.data.PlanningParsedType
@@ -408,6 +412,68 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
     suspend fun savePlanningNoteContent(noteId: Long, contentMarkdown: String): String? {
         val updated = repository.updatePlanningNoteContent(noteId, contentMarkdown) ?: return "规划文档不存在"
         settingsStore.updateLastOpenedPlanningNoteId(updated.id)
+        autoBackupIfEnabled()
+        return null
+    }
+
+    fun observePlanningNodes(noteId: Long): Flow<List<PlanningNode>> {
+        return repository.observePlanningNodesForNote(noteId)
+    }
+
+    suspend fun createPlanningNode(draft: PlanningNodeDraft): String? {
+        if (draft.text.isBlank()) return "事项不能为空"
+        val result = repository.createPlanningNode(draft) ?: return "规划节点创建失败"
+        handlePlanningNodeChange(result)
+        settingsStore.updateLastOpenedPlanningNoteId(result.node.noteId)
+        autoBackupIfEnabled()
+        return null
+    }
+
+    suspend fun updatePlanningNode(node: PlanningNode, edit: PlanningNodeEdit): String? {
+        if (edit.text.isBlank()) return "事项不能为空"
+        val beforeLinked = node.linkedTodoId?.let { repository.getTodo(it) }
+        val result = repository.updatePlanningNode(node.id, edit) ?: return "规划节点更新失败"
+        beforeLinked?.let { clearReminderArtifacts(listOf(it)) }
+        result.deletedLinkedItem?.let { clearReminderArtifacts(listOf(it)) }
+        handlePlanningNodeChange(result)
+        settingsStore.updateLastOpenedPlanningNoteId(result.node.noteId)
+        autoBackupIfEnabled()
+        return null
+    }
+
+    suspend fun togglePlanningNodeCompleted(node: PlanningNode): String? {
+        val result = repository.togglePlanningNodeCompleted(node.id) ?: return "规划节点不存在"
+        if (result.node.completed) {
+            result.linkedItem?.let { clearReminderArtifacts(listOf(it)) }
+        } else {
+            result.linkedItem?.let { scheduleReminderOrDisable(it) }
+        }
+        autoBackupIfEnabled()
+        return null
+    }
+
+    suspend fun deletePlanningNode(node: PlanningNode): String? {
+        val deletedItems = repository.deletePlanningNodeTree(node.id)
+        clearReminderArtifacts(deletedItems)
+        autoBackupIfEnabled()
+        return null
+    }
+
+    suspend fun reorderPlanningNodes(noteId: Long, parentNodeId: Long?, orderedNodeIds: List<Long>): String? {
+        repository.reorderPlanningNodes(noteId, parentNodeId, orderedNodeIds)
+        autoBackupIfEnabled()
+        return null
+    }
+
+    suspend fun exportPlanningNodesMarkdown(noteId: Long): String {
+        return repository.exportPlanningNodesToMarkdown(noteId)
+    }
+
+    suspend fun replacePlanningNodesFromMarkdown(noteId: Long, markdown: String): String? {
+        val result = repository.replacePlanningNodesFromMarkdown(noteId, markdown)
+        clearReminderArtifacts(result.deletedLinkedItems)
+        result.created.forEach { change -> handlePlanningNodeChange(change) }
+        settingsStore.updateLastOpenedPlanningNoteId(noteId)
         autoBackupIfEnabled()
         return null
     }
@@ -1194,6 +1260,16 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
     private suspend fun reschedulePlanningOperationItems(result: PlanningOperationResult) {
         clearReminderArtifacts(result.affectedBeforeItems)
         result.affectedAfterItems.forEach { scheduleReminderOrDisable(it) }
+    }
+
+    private suspend fun handlePlanningNodeChange(result: PlanningNodeChangeResult) {
+        result.deletedLinkedItem?.let { clearReminderArtifacts(listOf(it)) }
+        val linked = result.linkedItem ?: return
+        if (linked.completed || linked.canceled) {
+            clearReminderArtifacts(listOf(linked))
+        } else {
+            scheduleReminderOrDisable(linked)
+        }
     }
 
     private fun resolvePlanningGroupId(groupName: String, groups: List<TaskGroup>): Long {

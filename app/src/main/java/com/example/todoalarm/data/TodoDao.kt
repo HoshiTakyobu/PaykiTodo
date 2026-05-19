@@ -653,6 +653,55 @@ interface TodoDao {
     @Query("DELETE FROM planning_line_mappings")
     suspend fun clearPlanningMappings()
 
+    @Query("SELECT * FROM planning_nodes WHERE noteId = :noteId ORDER BY parentNodeId ASC, sortOrder ASC, id ASC")
+    fun observePlanningNodesForNote(noteId: Long): Flow<List<PlanningNode>>
+
+    @Query("SELECT * FROM planning_nodes WHERE noteId = :noteId ORDER BY parentNodeId ASC, sortOrder ASC, id ASC")
+    suspend fun getPlanningNodesForNote(noteId: Long): List<PlanningNode>
+
+    @Query("SELECT * FROM planning_nodes ORDER BY noteId ASC, parentNodeId ASC, sortOrder ASC, id ASC")
+    suspend fun getAllPlanningNodes(): List<PlanningNode>
+
+    @Query("SELECT * FROM planning_nodes WHERE id = :nodeId LIMIT 1")
+    suspend fun getPlanningNode(nodeId: Long): PlanningNode?
+
+    @Query("SELECT * FROM planning_nodes WHERE linkedTodoId = :linkedTodoId ORDER BY id ASC")
+    suspend fun getPlanningNodesByLinkedTodo(linkedTodoId: Long): List<PlanningNode>
+
+    @Query(
+        """
+        SELECT COALESCE(MAX(sortOrder), -1)
+        FROM planning_nodes
+        WHERE noteId = :noteId
+        AND (
+            (:parentNodeId IS NULL AND parentNodeId IS NULL)
+            OR parentNodeId = :parentNodeId
+        )
+        """
+    )
+    suspend fun getMaxPlanningNodeSortOrder(noteId: Long, parentNodeId: Long?): Int
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertPlanningNode(node: PlanningNode): Long
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertPlanningNodes(nodes: List<PlanningNode>): List<Long>
+
+    @Update
+    suspend fun updatePlanningNode(node: PlanningNode)
+
+    @Update
+    suspend fun updatePlanningNodes(nodes: List<PlanningNode>)
+
+    @Query("DELETE FROM planning_nodes WHERE id = :nodeId")
+    suspend fun deletePlanningNode(nodeId: Long)
+
+    @Query("DELETE FROM planning_nodes WHERE noteId = :noteId")
+    suspend fun deletePlanningNodesForNote(noteId: Long)
+
+    @Query("DELETE FROM planning_nodes")
+    suspend fun clearPlanningNodes()
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertAiReport(report: AiReport): Long
 

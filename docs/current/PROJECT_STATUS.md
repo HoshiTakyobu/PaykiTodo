@@ -7,8 +7,8 @@
 - Package name: `com.paykitodo.app`
 - Target platform: Android 14 / API 34
 - Current version in code:
-  - `versionName = "1.12.0"`
-  - `versionCode = 227`
+  - `versionName = "1.12.1"`
+  - `versionCode = 228`
 
 ## Current Build Facts
 
@@ -18,7 +18,14 @@
 - Latest signed release APK built locally:
   - `app/build/outputs/apk/release/PaykiTodo-1.11.0-release.apk`
 - Latest fully built debug APK:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.12.0-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.12.1-debug.apk`
+- Current `1.12.1 / versionCode 228` verification completed:
+  - `./gradlew.bat :app:compileDebugKotlin`
+  - `./gradlew.bat :app:testDebugUnitTest`
+  - `node --check app/src/main/assets/desktop-web/app.js`
+  - `git diff --check`
+  - `./gradlew.bat :app:assembleDebug`
+  - Debug APK metadata inspected: `versionName = 1.12.1`, `versionCode = 228`, output `PaykiTodo-1.12.1-debug.apk`
 - Current `1.12.0 / versionCode 227` verification completed:
   - `./gradlew.bat :app:compileDebugKotlin`
   - `node --check app/src/main/assets/desktop-web/app.js`
@@ -61,12 +68,13 @@
 
 ## Current Worktree Reality
 
-The repository now targets the `1.12.0 / versionCode 227` workline. Phase 1 of the capture + outliner goal is implemented: Android share targets accept text / image shares into a capture preview, launcher shortcuts expose `拍照添加` and `语音添加`, photo capture uses FileProvider + the system camera, voice capture uses Android SpeechRecognizer with zh-CN partial results, and background capture recognition posts a `capture_processing` notification that opens the same preview surface. The Planning Desk phone `识别` button now starts background recognition instead of blocking the editor, while desktop Web recognition remains synchronous. Database version remains `19`; the `planning_nodes` Outliner schema and migration are still pending Phase 2. The earlier Android widget, multi-group todo, event check-in, Planning Desk image recognition, release-size, and `1.11.4` check-in regression fixes remain in the working tree. Release builds enable R8/resource shrinking and use WebP dashboard backgrounds; the latest signed `PaykiTodo-1.11.0-release.apk` size check is `4.83 MB`, and release startup / main-surface smoke testing passed on `Pixel_8 / emulator-5554`.
+The repository now targets the `1.12.1 / versionCode 228` workline. Phase 1 of the capture + outliner goal is implemented: Android share targets accept text / image shares into a capture preview, launcher shortcuts expose `拍照添加` and `语音添加`, photo capture uses FileProvider + the system camera, voice capture uses Android SpeechRecognizer with zh-CN partial results, and background capture recognition posts a `capture_processing` notification that opens the same preview surface. The Planning Desk phone `识别` button starts background recognition instead of blocking the editor, while desktop Web recognition remains synchronous. Phase 2 Outliner is only partially implemented: database version is now `20`, `planning_nodes` schema / migration / backup / repository APIs exist, but the phone outline editor, desktop node APIs / Web UI, and capture-to-node bridge are still pending and must not be treated as complete. The earlier Android widget, multi-group todo, event check-in, Planning Desk image recognition, release-size, and `1.11.4` check-in regression fixes remain in the working tree. Release builds enable R8/resource shrinking and use WebP dashboard backgrounds; the latest signed `PaykiTodo-1.11.0-release.apk` size check is `4.83 MB`, and release startup / main-surface smoke testing passed on `Pixel_8 / emulator-5554`.
 
 Most important current baseline facts:
 
-- Database version is now `19` in the working tree. `MIGRATION_17_18` drops the old `focus_sessions` table, creates `event_check_ins`, creates `todo_group_tags`, adds `checkInEnabled` and `totalCheckInMinutes` to `todo_items`, backfills todo group tags, and merges the old default `专注` group into `例行`; `MIGRATION_18_19` adds `planning_notes.documentDateEpochDay`.
-- Phase 1 quick capture is implemented without schema changes: `ShareReceiverActivity`, `CaptureActivity`, `VoiceCaptureActivity`, `BackgroundCaptureProcessor`, shortcuts XML, FileProvider paths, and capture preview storage exist; `planning_nodes` is not created yet.
+- Database version is now `20` in the working tree. `MIGRATION_17_18` drops the old `focus_sessions` table, creates `event_check_ins`, creates `todo_group_tags`, adds `checkInEnabled` and `totalCheckInMinutes` to `todo_items`, backfills todo group tags, and merges the old default `专注` group into `例行`; `MIGRATION_18_19` adds `planning_notes.documentDateEpochDay`; `MIGRATION_19_20` creates `planning_nodes` and migrates existing planning Markdown lines into node records.
+- Phase 1 quick capture is implemented: `ShareReceiverActivity`, `CaptureActivity`, `VoiceCaptureActivity`, `BackgroundCaptureProcessor`, shortcuts XML, FileProvider paths, and capture preview storage exist.
+- Phase 2 Outliner data foundation is partial: `PlanningNode`, DAO methods, repository CRUD / Markdown import-export helpers, backup / restore, and schema `20.json` exist; the visible phone outline editor and desktop browser node editor are not wired yet.
 - Active no-DDL todos are still treated as today todos across phone daily board, Android widget board query, desktop board, and desktop todo management.
 - Countdown-enabled todos use their DDL time as the target; countdown-enabled events use their start time.
 - Countdown targets whose exact target time has passed are filtered out before board / widget / desktop rendering.
@@ -79,7 +87,7 @@ Most important current baseline facts:
 - Independent `倒数日` widget is now a scrollable `RemoteViewsService` / `ListView` widget rather than three fixed rows, with multi-line daily-board-style rows and direct todo/event detail deep links.
 - Former focus / pomodoro mode is removed from the working tree: no drawer entry, settings block, FocusActivity, focus widget, focus DAO/repository API, desktop sync focus stats, AI-report focus fields, or backup focus-session export remains.
 - Existing old backups that contain `focusSessions` are ignored rather than failing import.
-- Room schema export is enabled and `app/schemas/com.example.todoalarm.data.AppDatabase/19.json` records the database-19 structure.
+- Room schema export is enabled and `app/schemas/com.example.todoalarm.data.AppDatabase/20.json` records the database-20 structure.
 - Compose `ui-tooling-preview` is now scoped to `debugImplementation`, so release builds do not carry the preview tooling dependency.
 - AI 日报 / 周报 settings include a report-retention dropdown; generating a report purges older archived reports according to 30-day / 90-day / 365-day / forever retention.
 - Backup / restore preserves the AI report retention policy while still excluding AI API Keys.

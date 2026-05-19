@@ -70,7 +70,8 @@ class TodoApplication : Application() {
             DatabaseMigrations.MIGRATION_15_16,
             DatabaseMigrations.MIGRATION_16_17,
             DatabaseMigrations.MIGRATION_17_18,
-            DatabaseMigrations.MIGRATION_18_19
+            DatabaseMigrations.MIGRATION_18_19,
+            DatabaseMigrations.MIGRATION_19_20
         )
             .build()
     }

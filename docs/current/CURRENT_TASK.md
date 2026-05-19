@@ -2,7 +2,7 @@
 
 ## Active Development Focus
 
-Active goal: implement `docs/goals/2026-05-19-paykitodo-capture-and-outliner-goal.md`. Phase 1 quick capture is implemented and verified in `1.12.0 / versionCode 227`; Phase 2 Outliner (`planning_nodes`, migration 19 -> 20, outline editor, bidirectional todo sync, desktop node APIs) is still pending and must not be treated as complete.
+Active goal: implement `docs/goals/2026-05-19-paykitodo-capture-and-outliner-goal.md`. Phase 1 quick capture is implemented and verified in `1.12.0 / versionCode 227`. The worktree is now bumped to `1.12.1 / versionCode 228` with a partial Phase 2 Outliner data foundation: `planning_nodes`, migration `19 -> 20`, backup / restore, repository APIs, and ViewModel callbacks exist, but the phone outline editor, desktop node APIs / Web UI, and capture-to-node bridge are still pending and must not be treated as complete.
 
 Do not push to GitHub unless the user explicitly asks.
 
@@ -17,6 +17,17 @@ Do not push to GitHub unless the user explicitly asks.
 5. Database version remains `19`; no `planning_nodes` schema exists yet.
 6. App version metadata is `1.12.0 / versionCode 227`.
 7. Verification passed: `./gradlew.bat :app:compileDebugKotlin`, `node --check app/src/main/assets/desktop-web/app.js`, `git diff --check`, and `./gradlew.bat :app:assembleDebug`; debug APK metadata confirms `PaykiTodo-1.12.0-debug.apk`.
+
+### v1.12.1 partial Outliner data foundation
+
+1. `planning_nodes` Room entity / DAO methods / repository CRUD and Markdown import-export helpers exist.
+2. `MIGRATION_19_20` creates `planning_nodes` and migrates existing Planning Desk Markdown lines into node rows.
+3. Backup / restore includes `planningNodes` and sanitizes invalid note / linked-item / parent references.
+4. `TodoViewModel` exposes planning-node callbacks and schedules / clears linked reminders through the existing reminder path.
+5. `DashboardScreen` / `MainActivity` now pass those callbacks far enough for the project to compile again.
+6. Phone `PlanningDeskPanel` does not yet render or edit the node tree; the passed node callbacks are currently unused at the UI boundary.
+7. Desktop sync has no `/api/planning/nodes` routes yet, and desktop Web still uses the legacy Markdown Planning Desk.
+8. Verification passed after the compile repair: `./gradlew.bat :app:compileDebugKotlin`, `./gradlew.bat :app:testDebugUnitTest`, `node --check app/src/main/assets/desktop-web/app.js`, `git diff --check`, and `./gradlew.bat :app:assembleDebug`; debug APK metadata confirms `PaykiTodo-1.12.1-debug.apk`.
 
 ### v1.11.4 check-in regression patch
 

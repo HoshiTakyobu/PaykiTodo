@@ -10,6 +10,7 @@ data class BackupSnapshot(
     val scheduleTemplates: List<ScheduleTemplate> = emptyList(),
     val planningNotes: List<PlanningNote> = emptyList(),
     val planningLineMappings: List<PlanningLineMapping> = emptyList(),
+    val planningNodes: List<PlanningNode> = emptyList(),
     val aiReports: List<AiReport> = emptyList(),
     val todoGroupTags: List<TodoGroupTag> = emptyList(),
     val eventCheckIns: List<EventCheckIn> = emptyList(),

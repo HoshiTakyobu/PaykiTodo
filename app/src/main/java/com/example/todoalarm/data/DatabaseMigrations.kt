@@ -377,6 +377,13 @@ object DatabaseMigrations {
         }
     }
 
+    val MIGRATION_19_20 = object : Migration(19, 20) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            ensurePlanningNodesTable(db)
+            migratePlanningMarkdownToNodes(db)
+        }
+    }
+
     private fun rebuildPlanningNotesTable(db: SupportSQLiteDatabase) {
         db.execSQL("DROP TABLE IF EXISTS `planning_notes_room_expected`")
         createPlanningNotesTable(db, "planning_notes_room_expected")
@@ -587,4 +594,268 @@ object DatabaseMigrations {
             db.execSQL("ALTER TABLE `planning_notes` ADD COLUMN `documentDateEpochDay` INTEGER DEFAULT NULL")
         }
     }
+
+    private fun ensurePlanningNodesTable(db: SupportSQLiteDatabase) {
+        db.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS `planning_nodes` (
+                `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                `noteId` INTEGER NOT NULL,
+                `parentNodeId` INTEGER,
+                `sortOrder` INTEGER NOT NULL,
+                `text` TEXT NOT NULL,
+                `createdAtMillis` INTEGER NOT NULL,
+                `updatedAtMillis` INTEGER NOT NULL,
+                `startAtMillis` INTEGER,
+                `endAtMillis` INTEGER,
+                `dueAtMillis` INTEGER,
+                `location` TEXT,
+                `linkedTodoId` INTEGER,
+                `collapsed` INTEGER NOT NULL DEFAULT 0,
+                `completed` INTEGER NOT NULL DEFAULT 0,
+                `completedAtMillis` INTEGER,
+                FOREIGN KEY(`noteId`) REFERENCES `planning_notes`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE,
+                FOREIGN KEY(`parentNodeId`) REFERENCES `planning_nodes`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE,
+                FOREIGN KEY(`linkedTodoId`) REFERENCES `todo_items`(`id`) ON UPDATE NO ACTION ON DELETE SET NULL
+            )
+            """.trimIndent()
+        )
+        db.execSQL("CREATE INDEX IF NOT EXISTS `index_planning_nodes_noteId` ON `planning_nodes` (`noteId`)")
+        db.execSQL("CREATE INDEX IF NOT EXISTS `index_planning_nodes_parentNodeId` ON `planning_nodes` (`parentNodeId`)")
+        db.execSQL("CREATE INDEX IF NOT EXISTS `index_planning_nodes_linkedTodoId` ON `planning_nodes` (`linkedTodoId`)")
+    }
+
+    private fun migratePlanningMarkdownToNodes(db: SupportSQLiteDatabase) {
+        if (!tableExists(db, "planning_notes") || !tableExists(db, "planning_nodes")) return
+        db.query(
+            """
+            SELECT `id`, `contentMarkdown`, `createdAtMillis`, `updatedAtMillis`, `documentDateEpochDay`
+            FROM `planning_notes`
+            ORDER BY `id` ASC
+            """.trimIndent()
+        ).use { cursor ->
+            val idIndex = cursor.getColumnIndexOrThrow("id")
+            val contentIndex = cursor.getColumnIndexOrThrow("contentMarkdown")
+            val createdIndex = cursor.getColumnIndexOrThrow("createdAtMillis")
+            val updatedIndex = cursor.getColumnIndexOrThrow("updatedAtMillis")
+            val documentDateIndex = cursor.getColumnIndex("documentDateEpochDay")
+            while (cursor.moveToNext()) {
+                val noteId = cursor.getLong(idIndex)
+                val content = cursor.getString(contentIndex).orEmpty()
+                if (content.isBlank()) continue
+                val createdAt = cursor.getLong(createdIndex)
+                val updatedAt = cursor.getLong(updatedIndex)
+                val documentDate = if (documentDateIndex >= 0 && !cursor.isNull(documentDateIndex)) {
+                    LocalDate.ofEpochDay(cursor.getLong(documentDateIndex))
+                } else {
+                    null
+                }
+                migratePlanningNoteNodes(
+                    db = db,
+                    noteId = noteId,
+                    markdown = content,
+                    createdAtMillis = createdAt,
+                    updatedAtMillis = updatedAt,
+                    documentDate = documentDate
+                )
+            }
+        }
+    }
+
+    private fun migratePlanningNoteNodes(
+        db: SupportSQLiteDatabase,
+        noteId: Long,
+        markdown: String,
+        createdAtMillis: Long,
+        updatedAtMillis: Long,
+        documentDate: LocalDate?
+    ) {
+        val mappings = loadPlanningMappingsByLine(db, noteId)
+        val parseMarkdown = markdown.replace(Regex("\\s+#imported(?=\\s|$)"), "")
+        val parsedByLine = PlanningMarkdownParser.parse(
+            markdown = parseMarkdown,
+            documentDate = documentDate
+        ).candidates.associateBy { it.lineNumber }
+        val lastNodeByDepth = mutableMapOf<Int, Long>()
+        val sortOrderByParent = mutableMapOf<Long, Int>()
+        markdown.replace("\r\n", "\n")
+            .replace('\r', '\n')
+            .lines()
+            .forEachIndexed { index, rawLine ->
+                val lineNumber = index + 1
+                val trimmed = rawLine.trim()
+                if (trimmed.isBlank()) return@forEachIndexed
+                val outlineLine = planningOutlineLine(rawLine) ?: return@forEachIndexed
+                val parentId = if (outlineLine.depth > 0) {
+                    ((outlineLine.depth - 1) downTo 0).firstNotNullOfOrNull { lastNodeByDepth[it] }
+                } else {
+                    null
+                }
+                val parentKey = parentId ?: 0L
+                val sortOrder = sortOrderByParent.getOrDefault(parentKey, 0)
+                sortOrderByParent[parentKey] = sortOrder + 1
+                val parsed = parsedByLine[lineNumber]?.takeIf { it.type == PlanningParsedType.TODO || it.type == PlanningParsedType.EVENT }
+                val mapping = mappings[lineNumber]
+                val nodeId = insertPlanningNode(
+                    db = db,
+                    noteId = noteId,
+                    parentNodeId = parentId,
+                    sortOrder = sortOrder,
+                    text = parsed?.title?.ifBlank { outlineLine.text } ?: outlineLine.text,
+                    createdAtMillis = createdAtMillis,
+                    updatedAtMillis = updatedAtMillis,
+                    startAtMillis = parsed?.startAt?.toEpochMillis(),
+                    endAtMillis = parsed?.endAt?.toEpochMillis(),
+                    dueAtMillis = parsed?.dueAt?.toEpochMillis(),
+                    location = parsed?.location?.takeIf { it.isNotBlank() },
+                    linkedTodoId = mapping?.linkedTodoId?.takeIf { planningLinkedItemExists(db, it) },
+                    completed = outlineLine.completed || mapping?.completed == true,
+                    completedAtMillis = if (outlineLine.completed || mapping?.completed == true) updatedAtMillis else null
+                )
+                lastNodeByDepth[outlineLine.depth] = nodeId
+                lastNodeByDepth.keys.filter { it > outlineLine.depth }.toList().forEach(lastNodeByDepth::remove)
+            }
+    }
+
+    private fun loadPlanningMappingsByLine(
+        db: SupportSQLiteDatabase,
+        noteId: Long
+    ): Map<Int, PlanningMigrationMapping> {
+        if (!tableExists(db, "planning_line_mappings")) return emptyMap()
+        val result = mutableMapOf<Int, PlanningMigrationMapping>()
+        db.query(
+            """
+            SELECT `lastKnownLineNumber`, `todoId`, `eventId`, `status`
+            FROM `planning_line_mappings`
+            WHERE `noteId` = ?
+            ORDER BY `id` ASC
+            """.trimIndent(),
+            arrayOf(noteId)
+        ).use { cursor ->
+            val lineIndex = cursor.getColumnIndexOrThrow("lastKnownLineNumber")
+            val todoIndex = cursor.getColumnIndexOrThrow("todoId")
+            val eventIndex = cursor.getColumnIndexOrThrow("eventId")
+            val statusIndex = cursor.getColumnIndexOrThrow("status")
+            while (cursor.moveToNext()) {
+                val line = cursor.getInt(lineIndex)
+                if (line <= 0) continue
+                val linkedTodoId = when {
+                    !cursor.isNull(todoIndex) -> cursor.getLong(todoIndex)
+                    !cursor.isNull(eventIndex) -> cursor.getLong(eventIndex)
+                    else -> null
+                }
+                val status = cursor.getString(statusIndex).orEmpty()
+                result[line] = PlanningMigrationMapping(
+                    linkedTodoId = linkedTodoId,
+                    completed = status == MappingStatus.COMPLETED.name
+                )
+            }
+        }
+        return result
+    }
+
+    private fun insertPlanningNode(
+        db: SupportSQLiteDatabase,
+        noteId: Long,
+        parentNodeId: Long?,
+        sortOrder: Int,
+        text: String,
+        createdAtMillis: Long,
+        updatedAtMillis: Long,
+        startAtMillis: Long?,
+        endAtMillis: Long?,
+        dueAtMillis: Long?,
+        location: String?,
+        linkedTodoId: Long?,
+        completed: Boolean,
+        completedAtMillis: Long?
+    ): Long {
+        db.execSQL(
+            """
+            INSERT INTO `planning_nodes` (
+                `noteId`, `parentNodeId`, `sortOrder`, `text`, `createdAtMillis`, `updatedAtMillis`,
+                `startAtMillis`, `endAtMillis`, `dueAtMillis`, `location`, `linkedTodoId`,
+                `collapsed`, `completed`, `completedAtMillis`
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?)
+            """.trimIndent(),
+            arrayOf(
+                noteId,
+                parentNodeId,
+                sortOrder,
+                text,
+                createdAtMillis,
+                updatedAtMillis,
+                startAtMillis,
+                endAtMillis,
+                dueAtMillis,
+                location,
+                linkedTodoId,
+                if (completed) 1 else 0,
+                completedAtMillis
+            )
+        )
+        db.query("SELECT last_insert_rowid()").use { cursor ->
+            return if (cursor.moveToFirst()) cursor.getLong(0) else 0L
+        }
+    }
+
+    private fun planningOutlineLine(rawLine: String): PlanningMigrationLine? {
+        val leadingSpaces = rawLine.takeWhile { it == ' ' || it == '\t' }
+            .fold(0) { total, char -> total + if (char == '\t') 4 else 1 }
+        val trimmed = rawLine.trim()
+        val heading = Regex("^#{1,6}\\s+(.+)$").matchEntire(trimmed)
+        if (heading != null) {
+            val depth = trimmed.takeWhile { it == '#' }.length - 1
+            return PlanningMigrationLine(
+                depth = depth.coerceAtLeast(0),
+                text = stripPlanningNodeNoise(heading.groupValues[1]),
+                completed = false
+            )
+        }
+        val checkbox = Regex("^[-*+]\\s+\\[([ xX])\\]\\s+(.+)$").matchEntire(trimmed)
+        if (checkbox != null) {
+            return PlanningMigrationLine(
+                depth = (leadingSpaces / 2).coerceAtLeast(0),
+                text = stripPlanningNodeNoise(checkbox.groupValues[2]),
+                completed = checkbox.groupValues[1].equals("x", ignoreCase = true)
+            )
+        }
+        val bullet = Regex("^[-*+•]\\s+(.+)$").matchEntire(trimmed)
+        if (bullet != null) {
+            return PlanningMigrationLine(
+                depth = (leadingSpaces / 2).coerceAtLeast(0),
+                text = stripPlanningNodeNoise(bullet.groupValues[1]),
+                completed = false
+            )
+        }
+        return PlanningMigrationLine(
+            depth = (leadingSpaces / 2).coerceAtLeast(0),
+            text = stripPlanningNodeNoise(trimmed),
+            completed = false
+        )
+    }
+
+    private fun stripPlanningNodeNoise(text: String): String {
+        return text
+            .replace(Regex("\\s+#imported(?=\\s|$)"), "")
+            .trim()
+    }
+
+    private fun planningLinkedItemExists(db: SupportSQLiteDatabase, itemId: Long): Boolean {
+        if (itemId <= 0) return false
+        db.query("SELECT 1 FROM `todo_items` WHERE `id` = ? LIMIT 1", arrayOf(itemId)).use { cursor ->
+            return cursor.moveToFirst()
+        }
+    }
+
+    private data class PlanningMigrationLine(
+        val depth: Int,
+        val text: String,
+        val completed: Boolean
+    )
+
+    private data class PlanningMigrationMapping(
+        val linkedTodoId: Long?,
+        val completed: Boolean
+    )
 }

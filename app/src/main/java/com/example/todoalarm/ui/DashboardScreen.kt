@@ -51,6 +51,9 @@ import com.example.todoalarm.data.EventCheckInCompletionSummary
 import com.example.todoalarm.data.PlanningImportCandidate
 import com.example.todoalarm.data.PlanningImportResult
 import com.example.todoalarm.data.PlanningLineMapping
+import com.example.todoalarm.data.PlanningNode
+import com.example.todoalarm.data.PlanningNodeDraft
+import com.example.todoalarm.data.PlanningNodeEdit
 import com.example.todoalarm.data.PlanningNote
 import com.example.todoalarm.data.PlanningOperationResult
 import com.example.todoalarm.data.PlanningParseResult
@@ -136,6 +139,13 @@ fun DashboardScreen(
     onDeletePlanningNote: suspend (Long) -> String?,
     onArchivePlanningNote: suspend (Long) -> String?,
     onOpenTodayPlanningNote: suspend () -> Long,
+    observePlanningNodes: (Long) -> Flow<List<PlanningNode>>,
+    onCreatePlanningNode: suspend (PlanningNodeDraft) -> String?,
+    onUpdatePlanningNode: suspend (PlanningNode, PlanningNodeEdit) -> String?,
+    onTogglePlanningNode: suspend (PlanningNode) -> String?,
+    onDeletePlanningNode: suspend (PlanningNode) -> String?,
+    onExportPlanningNodesMarkdown: suspend (Long) -> String,
+    onReplacePlanningNodesFromMarkdown: suspend (Long, String) -> String?,
     onParsePlanningMarkdown: suspend (String, Long?) -> PlanningParseResult,
     onImportPlanningCandidates: suspend (List<PlanningImportCandidate>, Set<String>, String, Long?) -> PlanningImportResult,
     onSyncPlanningMappings: suspend (Long, String) -> List<PlanningLineMapping>,
@@ -589,6 +599,13 @@ fun DashboardScreen(
                     onDeletePlanningNote = onDeletePlanningNote,
                     onArchivePlanningNote = onArchivePlanningNote,
                     onOpenTodayPlanningNote = onOpenTodayPlanningNote,
+                    observePlanningNodes = observePlanningNodes,
+                    onCreatePlanningNode = onCreatePlanningNode,
+                    onUpdatePlanningNode = onUpdatePlanningNode,
+                    onTogglePlanningNode = onTogglePlanningNode,
+                    onDeletePlanningNode = onDeletePlanningNode,
+                    onExportPlanningNodesMarkdown = onExportPlanningNodesMarkdown,
+                    onReplacePlanningNodesFromMarkdown = onReplacePlanningNodesFromMarkdown,
                     onParsePlanningMarkdown = onParsePlanningMarkdown,
                     onImportPlanningCandidates = onImportPlanningCandidates,
                     onSyncPlanningMappings = onSyncPlanningMappings,

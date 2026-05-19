@@ -120,6 +120,9 @@ import com.example.todoalarm.data.PlanningAiProvider
 import com.example.todoalarm.data.PlanningImportCandidate
 import com.example.todoalarm.data.PlanningImportResult
 import com.example.todoalarm.data.PlanningLineMapping
+import com.example.todoalarm.data.PlanningNode
+import com.example.todoalarm.data.PlanningNodeDraft
+import com.example.todoalarm.data.PlanningNodeEdit
 import com.example.todoalarm.data.PlanningNote
 import com.example.todoalarm.data.PlanningOperationResult
 import com.example.todoalarm.data.PlanningParseResult
@@ -458,6 +461,13 @@ internal fun DashboardBody(
     onDeletePlanningNote: suspend (Long) -> String?,
     onArchivePlanningNote: suspend (Long) -> String?,
     onOpenTodayPlanningNote: suspend () -> Long,
+    observePlanningNodes: (Long) -> Flow<List<PlanningNode>>,
+    onCreatePlanningNode: suspend (PlanningNodeDraft) -> String?,
+    onUpdatePlanningNode: suspend (PlanningNode, PlanningNodeEdit) -> String?,
+    onTogglePlanningNode: suspend (PlanningNode) -> String?,
+    onDeletePlanningNode: suspend (PlanningNode) -> String?,
+    onExportPlanningNodesMarkdown: suspend (Long) -> String,
+    onReplacePlanningNodesFromMarkdown: suspend (Long, String) -> String?,
     onParsePlanningMarkdown: suspend (String, Long?) -> PlanningParseResult,
     onImportPlanningCandidates: suspend (List<PlanningImportCandidate>, Set<String>, String, Long?) -> PlanningImportResult,
     onSyncPlanningMappings: suspend (Long, String) -> List<PlanningLineMapping>,

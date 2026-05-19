@@ -1,5 +1,16 @@
 # Changelog
 
+## v1.12.1
+
+- 新增规划台 Outliner 数据基础：数据库升级到 20，新增 `planning_nodes` 表，用于保存规划文档里的树形节点、父子关系、完成状态、时间、地点和关联待办 / 日程
+- 新增规划台节点迁移：升级时会把旧 Planning Desk Markdown 中的标题、任务行、子任务行迁移为节点记录，并尽量保留原有导入映射关联
+- 新增规划台节点备份 / 恢复：JSON 备份包含 `planningNodes`，恢复时会过滤无效文档、无效关联项和循环父节点，避免脏数据破坏树结构
+- 新增规划台节点仓库能力：Repository / ViewModel 已具备节点创建、更新、完成切换、删除子树、排序、Markdown 导出和从 Markdown 替换导入的基础 API
+- 修复 1.12.1 半成品接线导致的编译失败：`MainActivity`、`DashboardScreen`、`DashboardBody` 的规划节点回调已对齐，项目恢复可编译和可打包
+- 注意：手机端 Outliner 树形编辑器、桌面端 `/api/planning/nodes` API / Web UI、捕获结果直接写入节点仍未完成，本版本不能视为完整 Outliner 功能闭环
+- 版本号升级到 `1.12.1` / `versionCode 228`
+- 验证：`./gradlew.bat :app:compileDebugKotlin`、`./gradlew.bat :app:testDebugUnitTest`、`node --check app/src/main/assets/desktop-web/app.js`、`git diff --check`、`./gradlew.bat :app:assembleDebug` 通过；debug APK 元数据确认 `1.12.1 / 228`
+
 ## v1.12.0
 
 - 新增系统分享捕获入口：从其他应用分享文字或图片到“添加到 PaykiTodo”后，会进入捕获识别预览并复用规划台导入管线写入待办 / 日程

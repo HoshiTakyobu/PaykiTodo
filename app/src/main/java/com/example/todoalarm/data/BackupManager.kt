@@ -61,6 +61,7 @@ private fun BackupSnapshot.toJson(): JSONObject {
         put("scheduleTemplates", JSONArray(scheduleTemplates.map { it.toJson() }))
         put("planningNotes", JSONArray(planningNotes.map { it.toJson() }))
         put("planningLineMappings", JSONArray(planningLineMappings.map { it.toJson() }))
+        put("planningNodes", JSONArray(planningNodes.map { it.toJson() }))
         put("aiReports", JSONArray(aiReports.map { it.toJson() }))
         put("todoGroupTags", JSONArray(todoGroupTags.map { it.toJson() }))
         put("eventCheckIns", JSONArray(eventCheckIns.map { it.toJson() }))
@@ -260,6 +261,26 @@ private fun PlanningLineMapping.toJson(): JSONObject {
     }
 }
 
+private fun PlanningNode.toJson(): JSONObject {
+    return JSONObject().apply {
+        put("id", id)
+        put("noteId", noteId)
+        put("parentNodeId", parentNodeId)
+        put("sortOrder", sortOrder)
+        put("text", text)
+        put("createdAtMillis", createdAtMillis)
+        put("updatedAtMillis", updatedAtMillis)
+        put("startAtMillis", startAtMillis)
+        put("endAtMillis", endAtMillis)
+        put("dueAtMillis", dueAtMillis)
+        put("location", location)
+        put("linkedTodoId", linkedTodoId)
+        put("collapsed", collapsed)
+        put("completed", completed)
+        put("completedAtMillis", completedAtMillis)
+    }
+}
+
 private fun AiReport.toJson(): JSONObject {
     return JSONObject().apply {
         put("id", id)
@@ -301,6 +322,7 @@ private fun backupSnapshotFromJson(json: JSONObject): BackupSnapshot {
         scheduleTemplates = json.optJSONArray("scheduleTemplates").toScheduleTemplates(),
         planningNotes = json.optJSONArray("planningNotes").toPlanningNotes(),
         planningLineMappings = json.optJSONArray("planningLineMappings").toPlanningLineMappings(),
+        planningNodes = json.optJSONArray("planningNodes").toPlanningNodes(),
         aiReports = json.optJSONArray("aiReports").toAiReports(),
         todoGroupTags = json.optJSONArray("todoGroupTags").toTodoGroupTags(),
         eventCheckIns = json.optJSONArray("eventCheckIns").toEventCheckIns(),
@@ -503,6 +525,37 @@ private fun JSONArray?.toPlanningLineMappings(): List<PlanningLineMapping> {
                     status = MappingStatus.entries.firstOrNull { it.name == item.optString("status") } ?: MappingStatus.ACTIVE,
                     postponeOffsetMinutes = item.optInt("postponeOffsetMinutes", 0),
                     lastKnownLineNumber = item.optInt("lastKnownLineNumber", 0)
+                )
+            )
+        }
+    }
+}
+
+private fun JSONArray?.toPlanningNodes(): List<PlanningNode> {
+    if (this == null) return emptyList()
+    return buildList(length()) {
+        for (index in 0 until length()) {
+            val item = optJSONObject(index) ?: continue
+            val noteId = item.optLong("noteId", 0L)
+            val text = item.optString("text").trim()
+            if (noteId <= 0 || text.isBlank()) continue
+            add(
+                PlanningNode(
+                    id = item.optLong("id", 0L),
+                    noteId = noteId,
+                    parentNodeId = item.optLongOrNull("parentNodeId"),
+                    sortOrder = item.optInt("sortOrder", index),
+                    text = text,
+                    createdAtMillis = item.optLong("createdAtMillis", System.currentTimeMillis()),
+                    updatedAtMillis = item.optLong("updatedAtMillis", System.currentTimeMillis()),
+                    startAtMillis = item.optLongOrNull("startAtMillis"),
+                    endAtMillis = item.optLongOrNull("endAtMillis"),
+                    dueAtMillis = item.optLongOrNull("dueAtMillis"),
+                    location = item.optStringOrNull("location"),
+                    linkedTodoId = item.optLongOrNull("linkedTodoId"),
+                    collapsed = item.optBoolean("collapsed", false),
+                    completed = item.optBoolean("completed", false),
+                    completedAtMillis = item.optLongOrNull("completedAtMillis")
                 )
             )
         }

@@ -590,6 +590,15 @@ internal fun DashboardBody(
 
     if (section == DashboardSection.PLANNING) {
         val notes by planningNotes.collectAsStateWithLifecycle()
+        val activeNote = notes.firstOrNull { it.id == uiState.settings.lastOpenedPlanningNoteId }
+            ?: notes.firstOrNull()
+        val planningNodes by produceState(initialValue = emptyList<PlanningNode>(), activeNote?.id) {
+            val noteId = activeNote?.id ?: run {
+                value = emptyList()
+                return@produceState
+            }
+            observePlanningNodes(noteId).collect { value = it }
+        }
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -597,8 +606,8 @@ internal fun DashboardBody(
         ) {
             PlanningDeskPanel(
                 notes = notes,
-                activeNote = notes.firstOrNull { it.id == uiState.settings.lastOpenedPlanningNoteId }
-                    ?: notes.firstOrNull(),
+                activeNote = activeNote,
+                nodes = planningNodes,
                 groups = uiState.groups,
                 planningAiProviders = uiState.settings.planningAiProviders,
                 onSelectNote = onSelectPlanningNote,
@@ -608,6 +617,12 @@ internal fun DashboardBody(
                 onDeleteNote = onDeletePlanningNote,
                 onArchiveNote = onArchivePlanningNote,
                 onOpenTodayNote = onOpenTodayPlanningNote,
+                onCreateNode = onCreatePlanningNode,
+                onUpdateNode = onUpdatePlanningNode,
+                onToggleNode = onTogglePlanningNode,
+                onDeleteNode = onDeletePlanningNode,
+                onExportNodesMarkdown = onExportPlanningNodesMarkdown,
+                onReplaceNodesFromMarkdown = onReplacePlanningNodesFromMarkdown,
                 onParse = onParsePlanningMarkdown,
                 onImport = onImportPlanningCandidates,
                 onSyncMappings = onSyncPlanningMappings,

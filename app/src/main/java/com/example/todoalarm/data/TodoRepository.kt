@@ -200,10 +200,17 @@ class TodoRepository(
         val resolved = resolvePlanningNodeDraft(
             note = note,
             text = draft.text,
+            notes = draft.notes,
+            groupId = draft.groupId,
+            groupName = draft.groupName,
             dueAt = draft.dueAt,
             startAt = draft.startAt,
             endAt = draft.endAt,
-            location = draft.location
+            location = draft.location,
+            reminderOffsetsMinutes = draft.reminderOffsetsMinutes,
+            allDay = draft.allDay,
+            countdownEnabled = draft.countdownEnabled,
+            checkInEnabled = draft.checkInEnabled
         ) ?: return null
         val sortOrder = draft.sortOrder
             ?: (todoDao.getMaxPlanningNodeSortOrder(note.id, parentId) + 1)
@@ -282,34 +289,39 @@ class TodoRepository(
         val node = todoDao.getPlanningNode(nodeId) ?: return null
         val nextCompleted = completed ?: !node.completed
         val now = System.currentTimeMillis()
-        val updatedNode = node.copy(
-            completed = nextCompleted,
-            completedAtMillis = if (nextCompleted) now else null,
-            updatedAtMillis = now
-        )
-        todoDao.updatePlanningNode(updatedNode)
-        val linked = node.linkedTodoId?.let { id ->
-            todoDao.getById(id)?.let { item ->
-                val updatedItem = item.copy(
-                    completed = nextCompleted,
-                    completedAtMillis = if (nextCompleted) now else null,
-                    canceled = false,
-                    canceledAtMillis = null,
-                    missed = if (nextCompleted) false else item.missed,
-                    missedAtMillis = if (nextCompleted) null else item.missedAtMillis,
-                    reminderEnabled = if (nextCompleted) {
-                        false
-                    } else {
-                        item.reminderTriggerTimesMillis().any { it > now }
-                    }
-                )
-                todoDao.update(updatedItem)
-                updatedItem
-            }
+        val allNodes = todoDao.getPlanningNodesForNote(node.noteId)
+        val targetNodes = if (nextCompleted) {
+            planningNodeSubtree(node, allNodes)
+        } else {
+            listOf(node)
         }
+        val updatedNodes = targetNodes.map { target ->
+            target.copy(
+                completed = nextCompleted,
+                completedAtMillis = if (nextCompleted) now else null,
+                updatedAtMillis = now
+            )
+        }
+        todoDao.updatePlanningNodes(updatedNodes)
+        val linked = updatedNodes.mapNotNull { target ->
+            target.linkedTodoId?.let { id -> updateLinkedItemCompletion(id, nextCompleted, now) }
+        }.toMutableList()
+        linked += updateAncestorCompletionStates(
+            changedNode = updatedNodes.firstOrNull { it.id == node.id } ?: node,
+            allNodes = allNodes,
+            now = now
+        )
         updatePlanningNoteNodeLegacyMarkdown(node.noteId)
         notifyItemsChanged()
-        return PlanningNodeChangeResult(node = updatedNode, linkedItem = linked)
+        return PlanningNodeChangeResult(
+            node = updatedNodes.firstOrNull { it.id == node.id } ?: node.copy(
+                completed = nextCompleted,
+                completedAtMillis = if (nextCompleted) now else null,
+                updatedAtMillis = now
+            ),
+            linkedItem = linked.firstOrNull { it.id == node.linkedTodoId },
+            affectedLinkedItems = linked
+        )
     }
 
     suspend fun deletePlanningNodeTree(nodeId: Long): List<TodoItem> {
@@ -910,6 +922,7 @@ class TodoRepository(
             }
         }
         replaceGroupTags(updatedItems.filter { it.isTodo }, groupIds)
+        updatedItems.forEach { syncPlanningNodeFromItem(it) }
         notifyItemsChanged()
         return updatedItems
     }
@@ -1169,6 +1182,7 @@ class TodoRepository(
                 listOf(updated)
             }
         }
+        updatedItems.forEach { syncPlanningNodeFromItem(it) }
         notifyItemsChanged()
         return updatedItems
     }
@@ -1422,10 +1436,17 @@ class TodoRepository(
     private suspend fun resolvePlanningNodeDraft(
         note: PlanningNote,
         text: String,
+        notes: String = "",
+        groupId: Long = 0,
+        groupName: String = "",
         dueAt: LocalDateTime?,
         startAt: LocalDateTime?,
         endAt: LocalDateTime?,
-        location: String?
+        location: String?,
+        reminderOffsetsMinutes: List<Int>? = null,
+        allDay: Boolean = false,
+        countdownEnabled: Boolean = false,
+        checkInEnabled: Boolean = false
     ): ResolvedPlanningNodeDraft? {
         val normalizedText = cleanPlanningNodeText(text)
         if (normalizedText.isBlank()) return null
@@ -1439,39 +1460,67 @@ class TodoRepository(
             return ResolvedPlanningNodeDraft(
                 type = PlanningNodeResolvedType.EVENT,
                 title = parsed?.title?.ifBlank { normalizedText } ?: normalizedText,
+                notes = notes,
+                groupId = groupId,
+                groupName = groupName,
                 dueAt = null,
                 startAt = startAt,
                 endAt = endAt,
-                location = explicitLocation ?: parsed?.location?.takeIf { it.isNotBlank() }
+                location = explicitLocation ?: parsed?.location?.takeIf { it.isNotBlank() },
+                reminderOffsetsMinutes = reminderOffsetsMinutes,
+                allDay = allDay,
+                countdownEnabled = countdownEnabled,
+                checkInEnabled = checkInEnabled
             )
         }
         if (dueAt != null) {
             return ResolvedPlanningNodeDraft(
                 type = PlanningNodeResolvedType.TODO,
                 title = parsed?.title?.ifBlank { normalizedText } ?: normalizedText,
+                notes = notes,
+                groupId = groupId,
+                groupName = groupName,
                 dueAt = dueAt,
                 startAt = null,
                 endAt = null,
-                location = explicitLocation
+                location = explicitLocation,
+                reminderOffsetsMinutes = reminderOffsetsMinutes,
+                allDay = allDay,
+                countdownEnabled = countdownEnabled,
+                checkInEnabled = checkInEnabled
             )
         }
         if (parsed?.type == PlanningParsedType.EVENT && parsed.startAt != null && parsed.endAt != null) {
             return ResolvedPlanningNodeDraft(
                 type = PlanningNodeResolvedType.EVENT,
                 title = parsed.title.ifBlank { normalizedText },
+                notes = notes.ifBlank { parsed.notes },
+                groupId = groupId,
+                groupName = groupName.ifBlank { parsed.groupName },
                 dueAt = null,
                 startAt = parsed.startAt,
                 endAt = parsed.endAt,
-                location = explicitLocation ?: parsed.location.takeIf { it.isNotBlank() }
+                location = explicitLocation ?: parsed.location.takeIf { it.isNotBlank() },
+                reminderOffsetsMinutes = reminderOffsetsMinutes ?: parsed.reminderOffsetsMinutes,
+                allDay = allDay || parsed.allDay,
+                countdownEnabled = countdownEnabled || parsed.countdownEnabled,
+                checkInEnabled = checkInEnabled || parsed.checkInEnabled
             )
         }
         return ResolvedPlanningNodeDraft(
             type = PlanningNodeResolvedType.TODO,
             title = parsed?.title?.ifBlank { normalizedText } ?: normalizedText,
+            notes = notes.ifBlank { parsed?.notes.orEmpty() },
+            groupId = groupId,
+            groupName = groupName.ifBlank { parsed?.groupName.orEmpty() },
             dueAt = parsed?.dueAt,
             startAt = null,
             endAt = null,
-            location = explicitLocation
+            location = explicitLocation,
+            reminderOffsetsMinutes = reminderOffsetsMinutes ?: parsed?.reminderOffsetsMinutes,
+            allDay = allDay || (parsed?.allDay == true),
+            countdownEnabled = countdownEnabled || (parsed?.countdownEnabled == true),
+            checkInEnabled = checkInEnabled || (parsed?.checkInEnabled == true)
         )
     }
 
@@ -1480,19 +1529,24 @@ class TodoRepository(
         completed: Boolean,
         now: Long
     ): TodoItem? {
-        val groupId = defaultGroupId()
+        val groupId = resolvePlanningNodeGroupId(resolved)
+        val reminderOffsets = resolved.reminderOffsetsMinutes
+            ?.map { it.coerceAtLeast(0) }
+            ?.distinct()
+            ?.sortedDescending()
         val item = when (resolved.type) {
             PlanningNodeResolvedType.TODO -> {
                 val draft = TodoDraft(
                     title = resolved.title,
-                    notes = "",
+                    notes = resolved.notes,
                     dueAt = resolved.dueAt,
                     reminderAt = null,
                     groupId = groupId,
                     ringEnabled = true,
                     vibrateEnabled = true,
                     reminderDeliveryMode = ReminderDeliveryMode.FULLSCREEN,
-                    reminderOffsetsMinutes = resolved.dueAt?.let { listOf(DEFAULT_PLANNING_REMINDER_MINUTES) }.orEmpty()
+                    countdownEnabled = resolved.countdownEnabled && resolved.dueAt != null,
+                    reminderOffsetsMinutes = resolved.dueAt?.let { reminderOffsets ?: listOf(DEFAULT_PLANNING_REMINDER_MINUTES) }.orEmpty()
                 )
                 buildTaskItem(draft, now = now)
             }
@@ -1502,17 +1556,19 @@ class TodoRepository(
                 val group = todoDao.getGroupById(groupId)
                 val draft = CalendarEventDraft(
                     title = resolved.title,
-                    notes = "",
+                    notes = resolved.notes,
                     location = resolved.location.orEmpty(),
                     startAt = start,
                     endAt = end,
-                    allDay = false,
+                    allDay = resolved.allDay,
                     accentColorHex = group?.colorHex ?: "#4E87E1",
-                    reminderMinutesBefore = DEFAULT_PLANNING_REMINDER_MINUTES,
-                    reminderOffsetsMinutes = listOf(DEFAULT_PLANNING_REMINDER_MINUTES),
+                    reminderMinutesBefore = reminderOffsets?.firstOrNull() ?: DEFAULT_PLANNING_REMINDER_MINUTES,
+                    reminderOffsetsMinutes = reminderOffsets ?: listOf(DEFAULT_PLANNING_REMINDER_MINUTES),
                     ringEnabled = true,
                     vibrateEnabled = true,
                     reminderDeliveryMode = ReminderDeliveryMode.FULLSCREEN,
+                    countdownEnabled = resolved.countdownEnabled,
+                    checkInEnabled = resolved.checkInEnabled,
                     groupId = groupId
                 )
                 buildCalendarEventItem(draft, now = now)
@@ -1606,16 +1662,125 @@ class TodoRepository(
     private suspend fun syncPlanningNodeCompletionFromItem(item: TodoItem, now: Long = System.currentTimeMillis()) {
         val nodes = todoDao.getPlanningNodesByLinkedTodo(item.id)
         if (nodes.isEmpty()) return
-        todoDao.updatePlanningNodes(
-            nodes.map { node ->
-                node.copy(
-                    completed = item.completed,
-                    completedAtMillis = if (item.completed) item.completedAtMillis ?: now else null,
-                    updatedAtMillis = now
-                )
+        val allNodesByNote = nodes.map { it.noteId }.distinct().associateWith { noteId ->
+            todoDao.getPlanningNodesForNote(noteId)
+        }
+        val directUpdates = nodes.map { node ->
+            node.copy(
+                completed = item.completed,
+                completedAtMillis = if (item.completed) item.completedAtMillis ?: now else null,
+                updatedAtMillis = now
+            )
+        }
+        todoDao.updatePlanningNodes(directUpdates)
+        directUpdates.forEach { node ->
+            allNodesByNote[node.noteId]?.let { allNodes ->
+                updateAncestorCompletionStates(node, allNodes, now)
+            }
+        }
+        nodes.map { it.noteId }.distinct().forEach { noteId -> updatePlanningNoteNodeLegacyMarkdown(noteId) }
+    }
+
+    private suspend fun syncPlanningNodeFromItem(item: TodoItem, now: Long = System.currentTimeMillis()) {
+        val nodes = todoDao.getPlanningNodesByLinkedTodo(item.id)
+        if (nodes.isEmpty()) return
+        val allNodesByNote = nodes.map { it.noteId }.distinct().associateWith { noteId ->
+            todoDao.getPlanningNodesForNote(noteId)
+        }
+        val updatedNodes = nodes.map { node ->
+            node.copy(
+                text = item.title,
+                updatedAtMillis = now,
+                startAtMillis = item.startAtMillis.takeIf { item.isEvent },
+                endAtMillis = item.endAtMillis.takeIf { item.isEvent },
+                dueAtMillis = item.dueAtMillis.takeIf { item.isTodo && item.hasDueDate },
+                location = item.location.takeIf { item.isEvent && it.isNotBlank() },
+                completed = item.completed,
+                completedAtMillis = if (item.completed) item.completedAtMillis ?: now else null
+            )
+        }
+        todoDao.updatePlanningNodes(updatedNodes)
+        updatedNodes.forEach { node ->
+            allNodesByNote[node.noteId]?.let { allNodes ->
+                updateAncestorCompletionStates(node, allNodes, now)
+            }
+        }
+        nodes.map { it.noteId }.distinct().forEach { noteId -> updatePlanningNoteNodeLegacyMarkdown(noteId) }
+    }
+
+    private fun planningNodeSubtree(root: PlanningNode, allNodes: List<PlanningNode>): List<PlanningNode> {
+        val childrenByParent = allNodes.groupBy { it.parentNodeId }
+        return buildList {
+            fun visit(node: PlanningNode) {
+                add(node)
+                childrenByParent[node.id].orEmpty().forEach(::visit)
+            }
+            visit(root)
+        }
+    }
+
+    private suspend fun updateLinkedItemCompletion(
+        itemId: Long,
+        completed: Boolean,
+        now: Long
+    ): TodoItem? {
+        val item = todoDao.getById(itemId) ?: return null
+        val updated = item.copy(
+            completed = completed,
+            completedAtMillis = if (completed) now else null,
+            canceled = false,
+            canceledAtMillis = null,
+            missed = if (completed) false else item.missed,
+            missedAtMillis = if (completed) null else item.missedAtMillis,
+            reminderEnabled = if (completed) {
+                false
+            } else {
+                item.reminderTriggerTimesMillis().any { it > now }
             }
         )
-        nodes.map { it.noteId }.distinct().forEach { noteId -> updatePlanningNoteNodeLegacyMarkdown(noteId) }
+        todoDao.update(updated)
+        return updated
+    }
+
+    private suspend fun updateAncestorCompletionStates(
+        changedNode: PlanningNode,
+        allNodes: List<PlanningNode>,
+        now: Long
+    ): List<TodoItem> {
+        val nodesById = allNodes.associateBy { it.id }.toMutableMap()
+        nodesById[changedNode.id] = changedNode
+        val childrenByParent = allNodes.groupBy { it.parentNodeId }
+        var parentId = changedNode.parentNodeId
+        val updates = mutableListOf<PlanningNode>()
+        val linkedUpdates = mutableListOf<TodoItem>()
+        while (parentId != null) {
+            val parent = nodesById[parentId] ?: break
+            val children = childrenByParent[parent.id].orEmpty()
+            if (children.isEmpty()) {
+                parentId = parent.parentNodeId
+                continue
+            }
+            val allChildrenCompleted = children.all { child ->
+                nodesById[child.id]?.completed ?: child.completed
+            }
+            val nextParent = parent.copy(
+                completed = allChildrenCompleted,
+                completedAtMillis = if (allChildrenCompleted) parent.completedAtMillis ?: now else null,
+                updatedAtMillis = now
+            )
+            if (nextParent.completed != parent.completed || nextParent.completedAtMillis != parent.completedAtMillis) {
+                updates += nextParent
+                nodesById[parent.id] = nextParent
+                parent.linkedTodoId?.let { itemId ->
+                    updateLinkedItemCompletion(itemId, allChildrenCompleted, now)?.let(linkedUpdates::add)
+                }
+            }
+            parentId = parent.parentNodeId
+        }
+        if (updates.isNotEmpty()) {
+            todoDao.updatePlanningNodes(updates)
+        }
+        return linkedUpdates
     }
 
     private suspend fun updatePlanningNoteNodeLegacyMarkdown(noteId: Long) {
@@ -1707,10 +1872,17 @@ class TodoRepository(
     private data class ResolvedPlanningNodeDraft(
         val type: PlanningNodeResolvedType,
         val title: String,
+        val notes: String,
+        val groupId: Long,
+        val groupName: String,
         val dueAt: LocalDateTime?,
         val startAt: LocalDateTime?,
         val endAt: LocalDateTime?,
-        val location: String?
+        val location: String?,
+        val reminderOffsetsMinutes: List<Int>?,
+        val allDay: Boolean,
+        val countdownEnabled: Boolean,
+        val checkInEnabled: Boolean
     )
 
     private data class PlanningNodeLinkedSync(
@@ -2836,6 +3008,14 @@ class TodoRepository(
         return when {
             draft.groupId > 0 -> draft.groupId
             draft.groupName.isNotBlank() -> resolveGroupIdByNameOrCreate(draft.groupName)
+            else -> defaultGroupId()
+        }
+    }
+
+    private suspend fun resolvePlanningNodeGroupId(resolved: ResolvedPlanningNodeDraft): Long {
+        return when {
+            resolved.groupId > 0 -> resolved.groupId
+            resolved.groupName.isNotBlank() -> resolveGroupIdByNameOrCreate(resolved.groupName)
             else -> defaultGroupId()
         }
     }

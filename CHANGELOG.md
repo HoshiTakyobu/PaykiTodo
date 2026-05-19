@@ -1,5 +1,14 @@
 # Changelog
 
+## v1.12.2
+
+- 修复规划台 Outliner 完成父节点时的提醒同步漏洞：手机端和电脑端现在都会处理所有受影响子节点关联的待办 / 日程，而不是只清理当前节点的一个提醒
+- 修复分享 / 拍照 / 语音捕获直写节点后的假提醒状态：如果系统拒绝排提醒，会把对应事项的 `reminderEnabled` 写回关闭，避免界面显示有提醒但实际没有闹钟
+- 规划台 Outliner 当前已具备手机树形编辑入口、桌面 `/api/planning/nodes` 接口、桌面节点编辑 UI、捕获结果直写节点和 Markdown 导入 / 导出兼容入口
+- 注意：手机端 Outliner 的 Enter / Tab / Shift+Tab / Backspace 键盘编辑、长按设置时间 / 地点菜单，以及桌面端真实拖拽 / 上下移动排序仍需继续补齐；本版本不应视为整个 Outliner 目标完成
+- 版本号升级到 `1.12.2` / `versionCode 229`
+- 验证：`./gradlew.bat :app:compileDebugKotlin`、`./gradlew.bat :app:testDebugUnitTest`、`node --check app/src/main/assets/desktop-web/app.js`、`git diff --check`、`./gradlew.bat :app:assembleDebug` 通过
+
 ## v1.12.1
 
 - 新增规划台 Outliner 数据基础：数据库升级到 20，新增 `planning_nodes` 表，用于保存规划文档里的树形节点、父子关系、完成状态、时间、地点和关联待办 / 日程

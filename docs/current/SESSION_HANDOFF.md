@@ -6,15 +6,18 @@ Long-running Codex sessions can become unreliable. This file exists so a new ses
 
 ## Current Handoff Summary
 
-- Current workline is `1.12.1 / versionCode 228`.
-- Current `1.12.1` state is a partial Phase 2 Outliner data-foundation pass, not a complete Outliner release:
+- Current workline is `1.12.2 / versionCode 229`.
+- Current `1.12.2` state is a partial but user-facing Phase 2 Outliner pass, not the complete Outliner goal:
   1. `planning_nodes` Room entity, migration `19 -> 20`, schema `20.json`, backup / restore, repository CRUD, Markdown import-export helpers, and ViewModel callbacks exist.
-  2. `DashboardScreen` / `MainActivity` / `DashboardBody` callback wiring has been repaired so the project compiles again.
-  3. The phone `PlanningDeskPanel` still does not render / edit the node tree; the new planning-node callbacks are currently unused at the UI boundary.
-  4. Desktop sync still has no `/api/planning/nodes` API routes, and desktop Web still uses the legacy Markdown Planning Desk.
-  5. Capture/share/photo/voice flows still enter the preview/import pipeline rather than directly creating nodes.
-  6. Verification completed after the repair: `./gradlew.bat :app:compileDebugKotlin`, `./gradlew.bat :app:testDebugUnitTest`, `node --check app/src/main/assets/desktop-web/app.js`, `git diff --check`, and `./gradlew.bat :app:assembleDebug`.
-  7. Latest debug APK metadata confirms `versionName = 1.12.1`, `versionCode = 228`, output `app/build/outputs/apk/debug/PaykiTodo-1.12.1-debug.apk`.
+  2. Phone `PlanningDeskPanel` now renders the node tree by default and keeps Markdown compatibility mode behind the toolbar.
+  3. Desktop sync exposes `/api/planning/nodes` create / update / delete / reorder routes, and desktop Web has a basic Planning Desk node editor.
+  4. Share / photo / voice / Planning Desk background recognition now direct-inserts recognized candidates as planning nodes and linked official todos/events instead of defaulting to preview/import.
+  5. Creating nodes preserves candidate fields such as notes, group, reminder offsets, all-day, countdown, and check-in flags where available.
+  6. Editing linked official todos/events syncs title/time/location/completion back to matching planning nodes.
+  7. Completing a parent node cascades completion into subtree nodes and linked official items; both phone and desktop reminder scheduling now handle all affected linked items, not only the current node.
+  8. Capture-created linked items now disable `reminderEnabled` if Android rejects reminder scheduling, avoiding false reminder state.
+  9. Remaining Outliner gaps: phone Enter / Tab / Shift+Tab / Backspace inline keyboard editing, long-press time/location editing, polished desktop reorder, stricter migration/runtime QA, and cleanup of legacy capture preview dead code.
+  10. Verification completed for the 1.12.2 audit patch: `./gradlew.bat :app:compileDebugKotlin`, `./gradlew.bat :app:testDebugUnitTest`, `node --check app/src/main/assets/desktop-web/app.js`, `git diff --check`, and `./gradlew.bat :app:assembleDebug` passed; debug APK metadata confirms `PaykiTodo-1.12.2-debug.apk`.
 - `1.12.0` quick capture phase is implemented and verified:
   1. System share target `ShareReceiverActivity` accepts shared text and images under the label `添加到 PaykiTodo`, recognizes content, shows a capture preview, and imports through the same Planning Desk import pipeline.
   2. Launcher shortcuts `拍照添加` and `语音添加` are declared in `res/xml/shortcuts.xml`; photo capture uses FileProvider + system camera, and voice capture requests `RECORD_AUDIO` then uses zh-CN SpeechRecognizer partial results.
@@ -54,7 +57,7 @@ Long-running Codex sessions can become unreliable. This file exists so a new ses
   - `./gradlew.bat :app:assembleDebug`
   - Debug APK metadata confirms `versionName = 1.11.2`, `versionCode = 224`, output `PaykiTodo-1.11.2-debug.apk`
 - Latest debug APK:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.12.1-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.12.2-debug.apk`
 - Latest closed UX cleanup in `1.11.1 / versionCode 223`:
   1. Todo batch import now opens with an empty editor and placeholder examples instead of stale prefilled examples that can immediately fail validation.
   2. Todo page bottom actions now keep single-item `+` creation as the visual primary action; batch todo import is a compact secondary FAB.

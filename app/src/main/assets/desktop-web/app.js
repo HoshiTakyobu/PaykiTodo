@@ -16,6 +16,8 @@ const state = {
   previewEventId: null,
   pendingEventSeed: null,
   planningNotes: [],
+  planningNodes: [],
+  planningNodesMarkdown: '',
   activePlanningNoteId: null,
   planningParseResult: null,
   planningSaveTimer: null,
@@ -25,6 +27,7 @@ const state = {
   planningParsing: false,
   planningMappings: [],
   planningLoaded: false,
+  planningNodesLoaded: false,
   todosLoaded: false,
   todoOffset: 0,
   todoTotal: 0,
@@ -62,6 +65,8 @@ const els = {
   applyEventDay: document.getElementById('apply-event-day'),
   planningNoteSelect: document.getElementById('planning-note-select'),
   planningEditor: document.getElementById('planning-editor'),
+  planningOutline: document.getElementById('planning-outline'),
+  planningRootInput: document.getElementById('planning-root-input'),
   planningActiveTitle: document.getElementById('planning-active-title'),
   planningPreview: document.getElementById('planning-preview'),
   planningPreviewMeta: document.getElementById('planning-preview-meta')
@@ -879,7 +884,22 @@ async function loadPlanningNotes() {
   state.planningNotes = data.notes || [];
   state.activePlanningNoteId = data.activeNoteId || (state.planningNotes[0] && state.planningNotes[0].id) || null;
   state.planningLoaded = true;
+  await loadPlanningNodes();
   await loadPlanningMappings();
+}
+
+async function loadPlanningNodes() {
+  const active = activePlanningNote();
+  if (!active) {
+    state.planningNodes = [];
+    state.planningNodesMarkdown = '';
+    state.planningNodesLoaded = false;
+    return;
+  }
+  const data = await api('/api/planning/nodes?noteId=' + encodeURIComponent(active.id));
+  state.planningNodes = data.nodes || [];
+  state.planningNodesMarkdown = data.markdown || '';
+  state.planningNodesLoaded = true;
 }
 
 async function loadPlanningMappings() {
@@ -1224,7 +1244,7 @@ function renderPlanningNotes() {
     state.activePlanningNoteId = active.id;
     els.planningNoteSelect.value = String(active.id);
     if (activeChanged || !state.planningDirty) {
-      els.planningEditor.value = active.contentMarkdown || '';
+      els.planningEditor.value = state.planningNodesMarkdown || active.contentMarkdown || '';
       state.planningDirty = false;
     }
     if (els.planningActiveTitle) els.planningActiveTitle.textContent = active.title || '我的规划';
@@ -1234,7 +1254,195 @@ function renderPlanningNotes() {
   }
   const undoButton = document.getElementById('planning-undo');
   if (undoButton) undoButton.disabled = !latestPlanningUndoSummary();
+  renderPlanningOutline();
   renderPlanningPreview();
+}
+
+function applyPlanningNodeResponse(data) {
+  if (!data) return;
+  if (Array.isArray(data.nodes)) state.planningNodes = data.nodes;
+  if (typeof data.markdown === 'string') state.planningNodesMarkdown = data.markdown;
+  if (!state.planningDirty && els.planningEditor) {
+    els.planningEditor.value = state.planningNodesMarkdown || '';
+  }
+  renderPlanningOutline();
+}
+
+function planningNodeById(id) {
+  return (state.planningNodes || []).find(node => sameId(node.id, id)) || null;
+}
+
+function flattenPlanningNodes(nodes) {
+  const children = new Map();
+  (nodes || []).forEach(node => {
+    const key = node.parentNodeId == null ? 'root' : String(node.parentNodeId);
+    if (!children.has(key)) children.set(key, []);
+    children.get(key).push(node);
+  });
+  children.forEach(list => list.sort((a, b) => (Number(a.sortOrder || 0) - Number(b.sortOrder || 0)) || (Number(a.id || 0) - Number(b.id || 0))));
+  const result = [];
+  const visiting = new Set();
+  const append = (node, depth) => {
+    if (!node || visiting.has(String(node.id))) return;
+    visiting.add(String(node.id));
+    const childList = children.get(String(node.id)) || [];
+    result.push({ node, depth, hasChildren: childList.length > 0 });
+    if (!node.collapsed) childList.forEach(child => append(child, Math.min(depth + 1, 8)));
+    visiting.delete(String(node.id));
+  };
+  (children.get('root') || []).forEach(node => append(node, 0));
+  return result;
+}
+
+function planningNodeMetaText(node) {
+  if (!node) return '';
+  const location = String(node.location || '').trim();
+  let time = '';
+  if (node.startAtMillis && node.endAtMillis) {
+    time = '日程 ' + editableDateTimeValue(node.startAtMillis).replace('T', ' ') + ' - ' + editableDateTimeValue(node.endAtMillis).replace('T', ' ');
+  } else if (node.dueAtMillis) {
+    time = 'DDL ' + editableDateTimeValue(node.dueAtMillis).replace('T', ' ');
+  } else {
+    time = '无 DDL 待办';
+  }
+  return [time, location].filter(Boolean).join(' · ');
+}
+
+function planningNodeHeaderHint(text) {
+  const value = String(text || '');
+  const hasTime = /\d{1,2}[:：]\d{2}|ddl|截止|今天|明天|后天|周[一二三四五六日天]/i.test(value);
+  const hasLocation = /@\S+|地点[:：]/.test(value);
+  const token = (label, active) => '<span class="' + (active ? 'active' : '') + '">' + escapeHtml(label) + '</span>';
+  return '<div class="planning-node-hint">' + token('时间', hasTime) + '<b>|</b>' + token('事项', value.trim().length > 0) + '<b>|</b>' + token('地点', hasLocation) + '</div>';
+}
+
+function renderPlanningOutline() {
+  if (!els.planningOutline) return;
+  const active = activePlanningNote();
+  if (!active) {
+    els.planningOutline.innerHTML = '<div class="empty-state">请先新建或打开一个规划文档。</div>';
+    return;
+  }
+  const flattened = flattenPlanningNodes(state.planningNodes || []);
+  if (!flattened.length) {
+    els.planningOutline.innerHTML = '<div class="empty-state">写下第一件事，比如：入党资料要写完，或 10:00-12:00 写论文 @图书馆3楼。</div>';
+    return;
+  }
+  els.planningOutline.innerHTML = flattened.map(item => {
+    const node = item.node;
+    const completedClass = node.completed ? ' completed' : '';
+    const hasChildrenClass = item.hasChildren ? ' has-children' : '';
+    const collapseText = item.hasChildren ? (node.collapsed ? '▶' : '▼') : '·';
+    const dueAt = editableDateTimeValue(node.dueAtMillis).replace('T', ' ');
+    const startAt = editableDateTimeValue(node.startAtMillis).replace('T', ' ');
+    const endAt = editableDateTimeValue(node.endAtMillis).replace('T', ' ');
+    return ''
+      + '<article class="planning-node-row' + completedClass + hasChildrenClass + '" style="--depth:' + Number(item.depth || 0) + '" data-planning-node-row="' + escapeHtml(node.id) + '">'
+      +   planningNodeHeaderHint(node.text)
+      +   '<div class="planning-node-main">'
+      +     '<button type="button" class="planning-node-icon" data-node-collapse="' + escapeHtml(node.id) + '"' + (item.hasChildren ? '' : ' disabled') + '>' + escapeHtml(collapseText) + '</button>'
+      +     '<button type="button" class="planning-node-check" data-node-complete="' + escapeHtml(node.id) + '">' + (node.completed ? '✓' : '○') + '</button>'
+      +     '<input class="planning-node-text" data-node-text="' + escapeHtml(node.id) + '" value="' + escapeHtml(node.text || '') + '" placeholder="写下事项、DDL 或日程" />'
+      +     '<button type="button" class="ghost mini" data-node-child="' + escapeHtml(node.id) + '">子项</button>'
+      +     '<button type="button" class="ghost mini danger-lite-action" data-node-delete="' + escapeHtml(node.id) + '">删除</button>'
+      +   '</div>'
+      +   '<div class="planning-node-meta">' + escapeHtml(planningNodeMetaText(node)) + '</div>'
+      +   '<div class="planning-node-fields">'
+      +     '<label>DDL<input data-node-field="dueAt" data-node-id="' + escapeHtml(node.id) + '" value="' + escapeHtml(dueAt) + '" placeholder="明天 16:30 / 5.28 23:59" /></label>'
+      +     '<label>开始<input data-node-field="startAt" data-node-id="' + escapeHtml(node.id) + '" value="' + escapeHtml(startAt) + '" placeholder="10:00" /></label>'
+      +     '<label>结束<input data-node-field="endAt" data-node-id="' + escapeHtml(node.id) + '" value="' + escapeHtml(endAt) + '" placeholder="12:00" /></label>'
+      +     '<label>地点<input data-node-field="location" data-node-id="' + escapeHtml(node.id) + '" value="' + escapeHtml(node.location || '') + '" placeholder="@图书馆3楼" /></label>'
+      +   '</div>'
+      + '</article>';
+  }).join('');
+}
+
+async function createPlanningOutlineNode(text, parentNodeId = null) {
+  const active = activePlanningNote();
+  const clean = String(text || '').trim();
+  if (!active) throw new Error('没有可写入的规划文档');
+  if (!clean) throw new Error('事项不能为空');
+  const data = await api('/api/planning/nodes/create', {
+    method: 'POST',
+    body: JSON.stringify({ noteId: active.id, parentNodeId, text: clean })
+  });
+  applyPlanningNodeResponse(data);
+  await refreshAfterMutation();
+  els.status.textContent = '已添加到规划台';
+}
+
+async function updatePlanningOutlineNode(nodeId, patch) {
+  const existing = planningNodeById(nodeId);
+  if (!existing) throw new Error('规划节点不存在');
+  const data = await api('/api/planning/nodes/update', {
+    method: 'POST',
+    body: JSON.stringify({ id: existing.id, ...patch })
+  });
+  applyPlanningNodeResponse(data);
+  await refreshAfterMutation();
+  els.status.textContent = '规划节点已同步';
+}
+
+async function deletePlanningOutlineNode(nodeId) {
+  const existing = planningNodeById(nodeId);
+  if (!existing) return;
+  if (!await confirmDanger('确认删除规划事项', '会同时删除它和子项关联的待办 / 日程：' + (existing.text || ''), '删除')) return;
+  const data = await api('/api/planning/nodes/delete', {
+    method: 'POST',
+    body: JSON.stringify({ id: existing.id })
+  });
+  applyPlanningNodeResponse(data);
+  await refreshAfterMutation();
+  els.status.textContent = '规划事项已删除';
+}
+
+async function commitPlanningNodeText(input) {
+  const nodeId = input?.dataset?.nodeText;
+  const existing = planningNodeById(nodeId);
+  if (!existing) return;
+  const next = String(input.value || '').trim();
+  if (!next) {
+    await deletePlanningOutlineNode(nodeId);
+    return;
+  }
+  if (next !== String(existing.text || '').trim()) {
+    await updatePlanningOutlineNode(nodeId, { text: next });
+  }
+}
+
+async function commitPlanningNodeField(input) {
+  const nodeId = input?.dataset?.nodeId;
+  const field = input?.dataset?.nodeField;
+  const existing = planningNodeById(nodeId);
+  if (!existing || !field) return;
+  const value = String(input.value || '').trim();
+  const patch = {};
+  if (['dueAt', 'startAt', 'endAt'].includes(field)) {
+    const parsedMillis = value ? parseLocalDateTimeMillis(value, new Date()) : null;
+    patch[field] = value ? (parsedMillis == null ? value.replace(' ', 'T') : formatDateTimeLocalValue(parsedMillis)) : null;
+  } else if (field === 'location') {
+    patch.location = value || null;
+  }
+  await updatePlanningOutlineNode(nodeId, patch);
+}
+
+function previousVisiblePlanningNode(nodeId) {
+  const flattened = flattenPlanningNodes(state.planningNodes || []);
+  const index = flattened.findIndex(item => sameId(item.node.id, nodeId));
+  return index > 0 ? flattened[index - 1].node : null;
+}
+
+async function indentPlanningNode(nodeId, outdent = false) {
+  const existing = planningNodeById(nodeId);
+  if (!existing) return;
+  if (outdent) {
+    const parent = existing.parentNodeId == null ? null : planningNodeById(existing.parentNodeId);
+    await updatePlanningOutlineNode(nodeId, { parentNodeId: parent ? parent.parentNodeId : null });
+    return;
+  }
+  const previous = previousVisiblePlanningNode(nodeId);
+  if (!previous || sameId(previous.id, existing.id)) return;
+  await updatePlanningOutlineNode(nodeId, { parentNodeId: previous.id });
 }
 
 function planningTypeLabel(type) {
@@ -2366,6 +2574,71 @@ document.getElementById('planning-import')?.addEventListener('click', () => impo
 document.getElementById('planning-refresh')?.addEventListener('click', () => refreshPlanningImported().catch(err => els.status.textContent = err.message));
 document.getElementById('planning-postpone')?.addEventListener('click', () => postponePlanningImported().catch(err => els.status.textContent = err.message));
 document.getElementById('planning-undo')?.addEventListener('click', () => undoPlanningLastOperation().catch(err => els.status.textContent = err.message));
+document.getElementById('planning-export-markdown')?.addEventListener('click', () => {
+  if (!els.planningEditor) return;
+  els.planningEditor.value = state.planningNodesMarkdown || '';
+  state.planningDirty = false;
+  els.status.textContent = '已同步大纲 Markdown 到兼容编辑区';
+});
+document.getElementById('planning-root-add')?.addEventListener('click', () => {
+  const value = els.planningRootInput?.value || '';
+  createPlanningOutlineNode(value)
+    .then(() => { if (els.planningRootInput) els.planningRootInput.value = ''; })
+    .catch(err => els.status.textContent = err.message);
+});
+els.planningRootInput?.addEventListener('keydown', event => {
+  if (event.key !== 'Enter') return;
+  event.preventDefault();
+  document.getElementById('planning-root-add')?.click();
+});
+els.planningOutline?.addEventListener('click', event => {
+  const collapse = event.target.closest?.('[data-node-collapse]');
+  const complete = event.target.closest?.('[data-node-complete]');
+  const child = event.target.closest?.('[data-node-child]');
+  const del = event.target.closest?.('[data-node-delete]');
+  if (collapse && !collapse.disabled) {
+    const node = planningNodeById(collapse.dataset.nodeCollapse);
+    if (node) updatePlanningOutlineNode(node.id, { collapsed: !node.collapsed }).catch(err => els.status.textContent = err.message);
+  }
+  if (complete) {
+    const node = planningNodeById(complete.dataset.nodeComplete);
+    if (node) updatePlanningOutlineNode(node.id, { completed: !node.completed }).catch(err => els.status.textContent = err.message);
+  }
+  if (child) {
+    const text = prompt('新增子项', '');
+    if (text) createPlanningOutlineNode(text, Number(child.dataset.nodeChild)).catch(err => els.status.textContent = err.message);
+  }
+  if (del) {
+    deletePlanningOutlineNode(del.dataset.nodeDelete).catch(err => els.status.textContent = err.message);
+  }
+});
+els.planningOutline?.addEventListener('focusout', event => {
+  if (event.target.matches?.('[data-node-text]')) {
+    commitPlanningNodeText(event.target).catch(err => els.status.textContent = err.message);
+  }
+  if (event.target.matches?.('[data-node-field]')) {
+    commitPlanningNodeField(event.target).catch(err => els.status.textContent = err.message);
+  }
+});
+els.planningOutline?.addEventListener('keydown', event => {
+  const textInput = event.target.matches?.('[data-node-text]') ? event.target : null;
+  if (!textInput) return;
+  if (event.key === 'Enter') {
+    event.preventDefault();
+    const node = planningNodeById(textInput.dataset.nodeText);
+    const siblingText = prompt('新增同级事项', '');
+    if (!siblingText) return;
+    commitPlanningNodeText(textInput)
+      .then(() => createPlanningOutlineNode(siblingText, node?.parentNodeId ?? null))
+      .catch(err => { els.status.textContent = err.message; });
+  } else if (event.key === 'Tab') {
+    event.preventDefault();
+    indentPlanningNode(textInput.dataset.nodeText, event.shiftKey).catch(err => els.status.textContent = err.message);
+  } else if (event.key === 'Backspace' && !textInput.value) {
+    event.preventDefault();
+    deletePlanningOutlineNode(textInput.dataset.nodeText).catch(err => els.status.textContent = err.message);
+  }
+});
 els.planningEditor?.addEventListener('input', () => {
   state.planningParseResult = null;
   renderPlanningPreview();

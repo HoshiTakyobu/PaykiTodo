@@ -11,11 +11,18 @@ data class PlanningNodeDraft(
     val noteId: Long,
     val parentNodeId: Long? = null,
     val text: String,
+    val notes: String = "",
+    val groupId: Long = 0,
+    val groupName: String = "",
     val sortOrder: Int? = null,
     val dueAt: LocalDateTime? = null,
     val startAt: LocalDateTime? = null,
     val endAt: LocalDateTime? = null,
     val location: String? = null,
+    val reminderOffsetsMinutes: List<Int>? = null,
+    val allDay: Boolean = false,
+    val countdownEnabled: Boolean = false,
+    val checkInEnabled: Boolean = false,
     val collapsed: Boolean = false,
     val completed: Boolean = false
 )
@@ -35,7 +42,8 @@ data class PlanningNodeEdit(
 data class PlanningNodeChangeResult(
     val node: PlanningNode,
     val linkedItem: TodoItem?,
-    val deletedLinkedItem: TodoItem? = null
+    val deletedLinkedItem: TodoItem? = null,
+    val affectedLinkedItems: List<TodoItem> = linkedItem?.let { listOf(it) }.orEmpty()
 )
 
 data class PlanningNodeMarkdownImportResult(

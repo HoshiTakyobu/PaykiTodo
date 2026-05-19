@@ -7,8 +7,8 @@
 - Package name: `com.paykitodo.app`
 - Target platform: Android 14 / API 34
 - Current version in code:
-  - `versionName = "1.12.1"`
-  - `versionCode = 228`
+  - `versionName = "1.12.2"`
+  - `versionCode = 229`
 
 ## Current Build Facts
 
@@ -18,7 +18,14 @@
 - Latest signed release APK built locally:
   - `app/build/outputs/apk/release/PaykiTodo-1.11.0-release.apk`
 - Latest fully built debug APK:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.12.1-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.12.2-debug.apk`
+- Current `1.12.2 / versionCode 229` verification completed:
+  - `./gradlew.bat :app:compileDebugKotlin`
+  - `./gradlew.bat :app:testDebugUnitTest`
+  - `node --check app/src/main/assets/desktop-web/app.js`
+  - `git diff --check`
+  - `./gradlew.bat :app:assembleDebug`
+  - Debug APK metadata inspected: `versionName = 1.12.2`, `versionCode = 229`, output `PaykiTodo-1.12.2-debug.apk`
 - Current `1.12.1 / versionCode 228` verification completed:
   - `./gradlew.bat :app:compileDebugKotlin`
   - `./gradlew.bat :app:testDebugUnitTest`
@@ -68,13 +75,13 @@
 
 ## Current Worktree Reality
 
-The repository now targets the `1.12.1 / versionCode 228` workline. Phase 1 of the capture + outliner goal is implemented: Android share targets accept text / image shares into a capture preview, launcher shortcuts expose `拍照添加` and `语音添加`, photo capture uses FileProvider + the system camera, voice capture uses Android SpeechRecognizer with zh-CN partial results, and background capture recognition posts a `capture_processing` notification that opens the same preview surface. The Planning Desk phone `识别` button starts background recognition instead of blocking the editor, while desktop Web recognition remains synchronous. Phase 2 Outliner is only partially implemented: database version is now `20`, `planning_nodes` schema / migration / backup / repository APIs exist, but the phone outline editor, desktop node APIs / Web UI, and capture-to-node bridge are still pending and must not be treated as complete. The earlier Android widget, multi-group todo, event check-in, Planning Desk image recognition, release-size, and `1.11.4` check-in regression fixes remain in the working tree. Release builds enable R8/resource shrinking and use WebP dashboard backgrounds; the latest signed `PaykiTodo-1.11.0-release.apk` size check is `4.83 MB`, and release startup / main-surface smoke testing passed on `Pixel_8 / emulator-5554`.
+The repository now targets the `1.12.2 / versionCode 229` workline. Phase 1 of the capture + outliner goal is implemented. The current Outliner slice now has database `planning_nodes`, migration / backup support, phone-side tree editing, desktop `/api/planning/nodes` routes, a desktop Web node editor, Markdown import/export compatibility, and capture/share/photo/voice recognition that can directly create planning nodes and linked official todos/events. This is still not the complete Outliner goal: phone keyboard interactions and long-press time/location editing remain incomplete, and desktop reorder is still a minimal API foundation rather than a polished drag/reorder UI. The latest 1.12.2 patch fixes parent-node completion reminder cleanup and capture-created false reminder state. The earlier Android widget, multi-group todo, event check-in, Planning Desk image recognition, release-size, and `1.11.4` check-in regression fixes remain in the working tree. Release builds enable R8/resource shrinking and use WebP dashboard backgrounds; the latest signed `PaykiTodo-1.11.0-release.apk` size check is `4.83 MB`, and release startup / main-surface smoke testing passed on `Pixel_8 / emulator-5554`.
 
 Most important current baseline facts:
 
 - Database version is now `20` in the working tree. `MIGRATION_17_18` drops the old `focus_sessions` table, creates `event_check_ins`, creates `todo_group_tags`, adds `checkInEnabled` and `totalCheckInMinutes` to `todo_items`, backfills todo group tags, and merges the old default `专注` group into `例行`; `MIGRATION_18_19` adds `planning_notes.documentDateEpochDay`; `MIGRATION_19_20` creates `planning_nodes` and migrates existing planning Markdown lines into node records.
-- Phase 1 quick capture is implemented: `ShareReceiverActivity`, `CaptureActivity`, `VoiceCaptureActivity`, `BackgroundCaptureProcessor`, shortcuts XML, FileProvider paths, and capture preview storage exist.
-- Phase 2 Outliner data foundation is partial: `PlanningNode`, DAO methods, repository CRUD / Markdown import-export helpers, backup / restore, and schema `20.json` exist; the visible phone outline editor and desktop browser node editor are not wired yet.
+- Quick capture is implemented: `ShareReceiverActivity`, `CaptureActivity`, `VoiceCaptureActivity`, `BackgroundCaptureProcessor`, shortcuts XML, FileProvider paths, and direct node insertion exist. Legacy preview UI code still exists for reusable/old paths but is no longer the default share/capture write path.
+- Phase 2 Outliner is partially user-facing: `PlanningNode`, DAO methods, repository CRUD / Markdown import-export helpers, backup / restore, schema `20.json`, phone outline editing, desktop sync node routes, desktop Web node editing, and capture-to-node insertion exist. Remaining gaps include phone keyboard editing shortcuts, long-press time/location editing, polished desktop reorder, and stricter migration/runtime QA.
 - Active no-DDL todos are still treated as today todos across phone daily board, Android widget board query, desktop board, and desktop todo management.
 - Countdown-enabled todos use their DDL time as the target; countdown-enabled events use their start time.
 - Countdown targets whose exact target time has passed are filtered out before board / widget / desktop rendering.

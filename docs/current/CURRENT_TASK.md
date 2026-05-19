@@ -2,7 +2,7 @@
 
 ## Active Development Focus
 
-Active goal: implement `docs/goals/2026-05-19-paykitodo-capture-and-outliner-goal.md`. Phase 1 quick capture is implemented and verified in `1.12.0 / versionCode 227`. The worktree is now bumped to `1.12.1 / versionCode 228` with a partial Phase 2 Outliner data foundation: `planning_nodes`, migration `19 -> 20`, backup / restore, repository APIs, and ViewModel callbacks exist, but the phone outline editor, desktop node APIs / Web UI, and capture-to-node bridge are still pending and must not be treated as complete.
+Active goal: implement `docs/goals/2026-05-19-paykitodo-capture-and-outliner-goal.md`. Phase 1 quick capture is implemented and verified in `1.12.0 / versionCode 227`. The worktree is now bumped to `1.12.2 / versionCode 229` with a partial but user-facing Phase 2 Outliner slice: `planning_nodes`, migration `19 -> 20`, backup / restore, repository APIs, phone outline editor, desktop node APIs / Web UI, Markdown import/export compatibility, and capture-to-node direct insertion exist. This still must not be treated as the full Outliner goal because phone keyboard editing shortcuts, long-press time/location editing, polished desktop reorder, and stricter migration/runtime QA remain incomplete.
 
 Do not push to GitHub unless the user explicitly asks.
 
@@ -28,6 +28,18 @@ Do not push to GitHub unless the user explicitly asks.
 6. Phone `PlanningDeskPanel` does not yet render or edit the node tree; the passed node callbacks are currently unused at the UI boundary.
 7. Desktop sync has no `/api/planning/nodes` routes yet, and desktop Web still uses the legacy Markdown Planning Desk.
 8. Verification passed after the compile repair: `./gradlew.bat :app:compileDebugKotlin`, `./gradlew.bat :app:testDebugUnitTest`, `node --check app/src/main/assets/desktop-web/app.js`, `git diff --check`, and `./gradlew.bat :app:assembleDebug`; debug APK metadata confirms `PaykiTodo-1.12.1-debug.apk`.
+
+### v1.12.2 Outliner wiring audit patch
+
+1. Phone Planning Desk now receives and renders `planning_nodes` as an outline editor by default, with Markdown compatibility mode retained behind the toolbar.
+2. Desktop sync exposes `/api/planning/nodes` create / update / delete / reorder routes, and desktop Web shows a basic node tree editor with inline fields.
+3. Share / photo / voice / Planning Desk background recognition now direct-inserts recognized candidates as planning nodes and linked official todos/events instead of using preview/import as the default capture write path.
+4. Creating nodes preserves candidate fields such as notes, group, reminder offsets, all-day, countdown, and check-in flags where available.
+5. Editing linked official todos/events now syncs title/time/location/completion back to matching planning nodes.
+6. Completing a parent node cascades completion into subtree nodes and linked official items; phone and desktop reminder scheduling now handle all affected linked items rather than only one linked item.
+7. Capture-created linked items now disable `reminderEnabled` if Android rejects reminder scheduling, avoiding false reminder state.
+8. App version metadata is `1.12.2 / versionCode 229`.
+9. Verification passed in this audit round: `./gradlew.bat :app:compileDebugKotlin`, `./gradlew.bat :app:testDebugUnitTest`, `node --check app/src/main/assets/desktop-web/app.js`, `git diff --check`, and `./gradlew.bat :app:assembleDebug`; debug APK metadata confirms `PaykiTodo-1.12.2-debug.apk`.
 
 ### v1.11.4 check-in regression patch
 

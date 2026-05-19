@@ -15,6 +15,10 @@ import com.example.todoalarm.data.PlanningImportCandidate
 import com.example.todoalarm.data.PlanningLineMapping
 import com.example.todoalarm.data.PlanningLineMatcher
 import com.example.todoalarm.data.MappingStatus
+import com.example.todoalarm.data.PlanningNode
+import com.example.todoalarm.data.PlanningNodeChangeResult
+import com.example.todoalarm.data.PlanningNodeDraft
+import com.example.todoalarm.data.PlanningNodeEdit
 import com.example.todoalarm.data.PlanningNote
 import com.example.todoalarm.data.PlanningOperationResult
 import com.example.todoalarm.data.PlanningParsedCandidate
@@ -154,6 +158,11 @@ class DesktopSyncCoordinator(
                 method == "POST" && path == "/api/planning/notes" -> DesktopSyncServer.Response.json(createPlanningNote(JSONObject(body)))
                 method == "PUT" && routePath.matches(Regex("/api/planning/notes/\\d+")) -> DesktopSyncServer.Response.json(updatePlanningNote(routePath, JSONObject(body)))
                 method == "DELETE" && routePath.matches(Regex("/api/planning/notes/\\d+")) -> DesktopSyncServer.Response.json(deletePlanningNote(routePath))
+                method == "GET" && routePath == "/api/planning/nodes" -> DesktopSyncServer.Response.json(planningNodes(path))
+                method == "POST" && path == "/api/planning/nodes/create" -> DesktopSyncServer.Response.json(createPlanningNode(JSONObject(body)))
+                method == "POST" && path == "/api/planning/nodes/update" -> DesktopSyncServer.Response.json(updatePlanningNode(JSONObject(body)))
+                method == "POST" && path == "/api/planning/nodes/delete" -> DesktopSyncServer.Response.json(deletePlanningNode(JSONObject(body)))
+                method == "POST" && path == "/api/planning/nodes/reorder" -> DesktopSyncServer.Response.json(reorderPlanningNodes(JSONObject(body)))
                 method == "POST" && path == "/api/planning/parse" -> DesktopSyncServer.Response.json(parsePlanning(JSONObject(body)))
                 method == "POST" && path == "/api/planning/import" -> DesktopSyncServer.Response.json(importPlanning(JSONObject(body)))
                 method == "GET" && routePath == "/api/planning/mappings" -> DesktopSyncServer.Response.json(planningMappings(path))
@@ -509,6 +518,96 @@ class DesktopSyncCoordinator(
         return JSONObject().put("ok", true)
     }
 
+    private suspend fun planningNodes(path: String): JSONObject {
+        val noteId = queryParam(path, "noteId")?.toLongOrNull() ?: error("缺少 noteId")
+        val note = app.repository.getPlanningNote(noteId) ?: error("规划文档不存在")
+        val nodes = app.repository.getPlanningNodesForNote(note.id)
+        settingsStore.updateLastOpenedPlanningNoteId(note.id)
+        return JSONObject()
+            .put("noteId", note.id)
+            .put("nodes", JSONArray(nodes.map { it.toPlanningNodeJson() }))
+            .put("markdown", app.repository.exportPlanningNodesToMarkdown(note.id))
+    }
+
+    private suspend fun createPlanningNode(json: JSONObject): JSONObject {
+        val noteId = json.optLong("noteId", 0L).takeIf { it > 0L } ?: error("缺少 noteId")
+        val draft = PlanningNodeDraft(
+            noteId = noteId,
+            parentNodeId = json.optNullableLong("parentNodeId"),
+            text = json.optString("text").trim(),
+            sortOrder = json.optIntOrNull("sortOrder"),
+            dueAt = parsePlanningNodeDateTime(json.optStringOrNull("dueAt"), defaultTime = LocalTime.of(23, 59)),
+            startAt = parsePlanningNodeDateTime(json.optStringOrNull("startAt")),
+            endAt = parsePlanningNodeDateTime(json.optStringOrNull("endAt")),
+            location = json.optStringOrNull("location")?.trim(),
+            collapsed = json.optBoolean("collapsed", false),
+            completed = json.optBoolean("completed", false)
+        )
+        require(draft.text.isNotBlank()) { "事项不能为空" }
+        val result = app.repository.createPlanningNode(draft) ?: error("规划节点创建失败")
+        handlePlanningNodeChange(result)
+        settingsStore.updateLastOpenedPlanningNoteId(result.node.noteId)
+        autoBackupIfNeeded()
+        return planningNodeMutationResult(result.node.noteId, result)
+    }
+
+    private suspend fun updatePlanningNode(json: JSONObject): JSONObject {
+        val nodeId = json.optLong("id", 0L).takeIf { it > 0L } ?: error("缺少节点 id")
+        val existing = app.repository.getPlanningNode(nodeId) ?: error("规划节点不存在")
+        val beforeLinked = existing.linkedTodoId?.let { app.repository.getTodo(it) }
+        val edit = PlanningNodeEdit(
+            text = json.optStringOrNull("text")?.trim() ?: existing.text,
+            parentNodeId = if (json.has("parentNodeId")) json.optNullableLong("parentNodeId") else existing.parentNodeId,
+            sortOrder = json.optIntOrNull("sortOrder") ?: existing.sortOrder,
+            dueAt = if (json.has("dueAt")) parsePlanningNodeDateTime(json.optStringOrNull("dueAt"), defaultTime = LocalTime.of(23, 59)) else existing.dueAtMillis?.toPlanningNodeDateTime(),
+            startAt = if (json.has("startAt")) parsePlanningNodeDateTime(json.optStringOrNull("startAt")) else existing.startAtMillis?.toPlanningNodeDateTime(),
+            endAt = if (json.has("endAt")) parsePlanningNodeDateTime(json.optStringOrNull("endAt")) else existing.endAtMillis?.toPlanningNodeDateTime(),
+            location = if (json.has("location")) json.optStringOrNull("location")?.trim() else existing.location,
+            collapsed = json.optBoolean("collapsed", existing.collapsed),
+            completed = json.optBoolean("completed", existing.completed)
+        )
+        require(edit.text.isNotBlank()) { "事项不能为空" }
+        val result = app.repository.updatePlanningNode(existing.id, edit) ?: error("规划节点更新失败")
+        beforeLinked?.let { clearReminderArtifacts(listOf(it)) }
+        handlePlanningNodeChange(result)
+        settingsStore.updateLastOpenedPlanningNoteId(result.node.noteId)
+        autoBackupIfNeeded()
+        return planningNodeMutationResult(result.node.noteId, result)
+    }
+
+    private suspend fun deletePlanningNode(json: JSONObject): JSONObject {
+        val nodeId = json.optLong("id", 0L).takeIf { it > 0L } ?: error("缺少节点 id")
+        val existing = app.repository.getPlanningNode(nodeId) ?: return JSONObject().put("ok", false)
+        val deletedItems = app.repository.deletePlanningNodeTree(existing.id)
+        clearReminderArtifacts(deletedItems)
+        settingsStore.updateLastOpenedPlanningNoteId(existing.noteId)
+        autoBackupIfNeeded()
+        return JSONObject()
+            .put("ok", true)
+            .put("deletedLinkedItems", deletedItems.size)
+            .put("noteId", existing.noteId)
+            .put("nodes", JSONArray(app.repository.getPlanningNodesForNote(existing.noteId).map { it.toPlanningNodeJson() }))
+            .put("markdown", app.repository.exportPlanningNodesToMarkdown(existing.noteId))
+    }
+
+    private suspend fun reorderPlanningNodes(json: JSONObject): JSONObject {
+        val noteId = json.optLong("noteId", 0L).takeIf { it > 0L } ?: error("缺少 noteId")
+        val orderedIds = json.optJSONArray("orderedNodeIds")?.toLongList().orEmpty()
+        require(orderedIds.isNotEmpty()) { "缺少排序节点" }
+        app.repository.reorderPlanningNodes(
+            noteId = noteId,
+            parentNodeId = json.optNullableLong("parentNodeId"),
+            orderedNodeIds = orderedIds
+        )
+        settingsStore.updateLastOpenedPlanningNoteId(noteId)
+        autoBackupIfNeeded()
+        return JSONObject()
+            .put("ok", true)
+            .put("noteId", noteId)
+            .put("nodes", JSONArray(app.repository.getPlanningNodesForNote(noteId).map { it.toPlanningNodeJson() }))
+            .put("markdown", app.repository.exportPlanningNodesToMarkdown(noteId))
+    }
+
     private suspend fun parsePlanning(json: JSONObject): JSONObject {
         val markdown = json.optString("markdown")
         val noteId = json.optLong("noteId", 0L).takeIf { it > 0L }
@@ -853,6 +952,28 @@ class DesktopSyncCoordinator(
         result.affectedAfterItems.forEach { scheduleReminderOrDisable(it) }
     }
 
+    private suspend fun handlePlanningNodeChange(result: PlanningNodeChangeResult) {
+        result.deletedLinkedItem?.let { clearReminderArtifacts(listOf(it)) }
+        val linkedItems = result.affectedLinkedItems.ifEmpty { result.linkedItem?.let { listOf(it) }.orEmpty() }
+        linkedItems.forEach { linked ->
+            if (linked.completed || linked.canceled) {
+                clearReminderArtifacts(listOf(linked))
+            } else {
+                scheduleReminderOrDisable(linked)
+            }
+        }
+    }
+
+    private suspend fun planningNodeMutationResult(noteId: Long, result: PlanningNodeChangeResult): JSONObject {
+        return JSONObject()
+            .put("ok", true)
+            .put("node", result.node.toPlanningNodeJson())
+            .put("linkedItemId", result.linkedItem?.id)
+            .put("linkedItemType", result.linkedItem?.let { if (it.isEvent) "EVENT" else "TODO" })
+            .put("nodes", JSONArray(app.repository.getPlanningNodesForNote(noteId).map { it.toPlanningNodeJson() }))
+            .put("markdown", app.repository.exportPlanningNodesToMarkdown(noteId))
+    }
+
     private fun autoBackupIfNeeded() {
         val settings = settingsStore.currentSettings()
         if (!settings.autoBackupEnabled) return
@@ -898,6 +1019,46 @@ class DesktopSyncCoordinator(
 private fun JSONObject.optStringOrNull(key: String): String? {
     if (isNull(key)) return null
     return optString(key).takeIf { it.isNotBlank() }
+}
+
+private fun JSONObject.optNullableLong(key: String): Long? {
+    if (!has(key) || isNull(key)) return null
+    return optLong(key, 0L).takeIf { it > 0L }
+}
+
+private fun JSONObject.optIntOrNull(key: String): Int? {
+    if (!has(key) || isNull(key)) return null
+    return optInt(key)
+}
+
+private fun PlanningNode.toPlanningNodeJson(): JSONObject {
+    return JSONObject()
+        .put("id", id)
+        .put("noteId", noteId)
+        .put("parentNodeId", parentNodeId)
+        .put("sortOrder", sortOrder)
+        .put("text", text)
+        .put("createdAtMillis", createdAtMillis)
+        .put("updatedAtMillis", updatedAtMillis)
+        .put("startAtMillis", startAtMillis)
+        .put("endAtMillis", endAtMillis)
+        .put("dueAtMillis", dueAtMillis)
+        .put("startAt", startAtMillis?.toPlanningNodeDateTime()?.toString())
+        .put("endAt", endAtMillis?.toPlanningNodeDateTime()?.toString())
+        .put("dueAt", dueAtMillis?.toPlanningNodeDateTime()?.toString())
+        .put("location", location)
+        .put("linkedTodoId", linkedTodoId)
+        .put("collapsed", collapsed)
+        .put("completed", completed)
+        .put("completedAtMillis", completedAtMillis)
+}
+
+private fun parsePlanningNodeDateTime(raw: String?, defaultTime: LocalTime? = null): LocalDateTime? {
+    return parsePlanningImportDateTime(raw, defaultTime = defaultTime)
+}
+
+private fun Long.toPlanningNodeDateTime(): LocalDateTime {
+    return java.time.Instant.ofEpochMilli(this).atZone(ZoneId.systemDefault()).toLocalDateTime()
 }
 
 private fun JSONArray.toIntList(): List<Int> {

@@ -443,11 +443,7 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
 
     suspend fun togglePlanningNodeCompleted(node: PlanningNode): String? {
         val result = repository.togglePlanningNodeCompleted(node.id) ?: return "规划节点不存在"
-        if (result.node.completed) {
-            result.linkedItem?.let { clearReminderArtifacts(listOf(it)) }
-        } else {
-            result.linkedItem?.let { scheduleReminderOrDisable(it) }
-        }
+        handlePlanningNodeChange(result)
         autoBackupIfEnabled()
         return null
     }
@@ -1264,11 +1260,13 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
 
     private suspend fun handlePlanningNodeChange(result: PlanningNodeChangeResult) {
         result.deletedLinkedItem?.let { clearReminderArtifacts(listOf(it)) }
-        val linked = result.linkedItem ?: return
-        if (linked.completed || linked.canceled) {
-            clearReminderArtifacts(listOf(linked))
-        } else {
-            scheduleReminderOrDisable(linked)
+        val linkedItems = result.affectedLinkedItems.ifEmpty { result.linkedItem?.let { listOf(it) }.orEmpty() }
+        linkedItems.forEach { linked ->
+            if (linked.completed || linked.canceled) {
+                clearReminderArtifacts(listOf(linked))
+            } else {
+                scheduleReminderOrDisable(linked)
+            }
         }
     }
 

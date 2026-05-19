@@ -421,6 +421,33 @@ button.ghost {
 .planning-workspace { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(320px, .95fr); gap: 16px; align-items: stretch; min-height: calc(100vh - 220px); }
 .planning-editor-pane { min-width: 0; }
 .planning-active-title { font-weight: 700; font-size: 16px; margin-bottom: 8px; color: var(--text); }
+.planning-outline-shell { border-radius: 24px; border: 1px solid var(--card-border); background: var(--card-bg-strong); padding: 14px; box-shadow: var(--card-shadow); }
+.planning-outline-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 12px; }
+.planning-outline-head strong { display: block; color: var(--text); font-size: 17px; margin-bottom: 4px; }
+.planning-outline-head p { margin: 0; font-size: 13px; line-height: 1.45; }
+.planning-outline { display: flex; flex-direction: column; gap: 9px; max-height: 560px; overflow: auto; padding-right: 4px; }
+.planning-node-row { border-radius: 20px; border: 1px solid var(--card-border); background: var(--subtle-bg); padding: 8px 10px 10px; margin-left: calc(var(--depth, 0) * 24px); transition: border-color .16s ease, background .16s ease; }
+.planning-node-row:focus-within { border-color: rgba(53,104,212,.46); background: rgba(53,104,212,.06); }
+.planning-node-row.completed .planning-node-text { color: var(--strong-text); text-decoration: line-through; font-weight: 800; }
+.planning-node-hint { display: none; align-items: center; gap: 7px; margin: 0 0 6px 48px; color: var(--muted); font-size: 12px; font-weight: 800; }
+.planning-node-row:focus-within .planning-node-hint { display: flex; }
+.planning-node-hint span.active { color: var(--primary); }
+.planning-node-hint b { color: var(--line-strong); font-weight: 700; }
+.planning-node-main { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.planning-node-icon, .planning-node-check { width: 32px; min-width: 32px; height: 32px; border-radius: 999px; border: 1px solid var(--card-border); background: var(--input-bg); color: var(--primary); font-weight: 900; cursor: pointer; }
+.planning-node-icon:disabled { color: var(--muted); cursor: default; opacity: .55; }
+.planning-node-check { color: var(--success); }
+.planning-node-text { flex: 1; min-width: 120px; border: 0; border-bottom: 1px solid transparent; background: transparent; color: var(--muted); font-size: 15px; font-weight: 750; padding: 8px 4px; }
+.planning-node-text:focus { outline: none; border-bottom-color: rgba(53,104,212,.38); color: var(--text); }
+.planning-node-meta { margin: 6px 0 0 48px; color: var(--notes-text); font-size: 12px; line-height: 1.45; }
+.planning-node-fields { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin: 8px 0 0 48px; }
+.planning-node-fields label { display: flex; flex-direction: column; gap: 4px; color: var(--muted); font-size: 11px; font-weight: 850; }
+.planning-node-fields input { width: 100%; border-radius: 11px; border: 1px solid var(--card-border); background: var(--input-bg); color: var(--text); padding: 7px 9px; font: inherit; }
+.planning-outline-add { display: flex; gap: 8px; margin-top: 12px; }
+.planning-outline-add input { flex: 1; min-width: 0; border-radius: 14px; border: 1px solid var(--card-border); background: var(--input-bg); color: var(--text); padding: 10px 12px; font: inherit; }
+.planning-markdown-compat { margin-top: 12px; border-radius: 20px; border: 1px dashed var(--card-border); background: var(--subtle-bg); padding: 12px; }
+.planning-markdown-compat summary { cursor: pointer; color: var(--text); font-weight: 900; }
+.planning-markdown-compat p { margin: 8px 0 10px; font-size: 13px; line-height: 1.45; }
 .planning-editor { width: 100%; min-height: 620px; resize: vertical; border-radius: 24px; border: 1px solid var(--card-border); background: var(--card-bg-strong); padding: 18px; line-height: 1.65; font-family: Consolas, "Microsoft YaHei UI", monospace; font-size: 15px; color: var(--text); box-shadow: var(--card-shadow); }
 .planning-editor:focus { outline: 2px solid rgba(53,104,212,.18); border-color: rgba(53,104,212,.42); }
 .planning-preview-shell { min-width: 0; border-radius: 24px; border: 1px solid var(--card-border); background: var(--board-bg); padding: 16px; overflow: hidden; }

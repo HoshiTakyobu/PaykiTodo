@@ -112,14 +112,25 @@ private fun ShareReceiverScreen(
     LaunchedEffect(intent) {
         loading = true
         error = null
-        runCatching {
-            val previewId = intent?.getStringExtra(ShareReceiverActivity.EXTRA_PREVIEW_ID)
-            val resolved = if (!previewId.isNullOrBlank()) {
-                CapturePlanningStore.get(previewId)
-                    ?: throw IllegalArgumentException("捕获结果已失效，请重新识别")
-            } else {
-                recognizeSharedIntent(app, context, intent)
+        val previewId = intent?.getStringExtra(ShareReceiverActivity.EXTRA_PREVIEW_ID)
+        if (previewId.isNullOrBlank()) {
+            runCatching {
+                captureSharedIntentToNodes(app, context, intent)
+            }.onSuccess { result ->
+                Toast.makeText(context, "已添加 ${result.importedCount} 条到规划台", Toast.LENGTH_SHORT).show()
+                onFinish()
+            }.onFailure { throwable ->
+                val message = throwable.message ?: "识别失败"
+                error = message
+                Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+                onFinish()
             }
+            loading = false
+            return@LaunchedEffect
+        }
+        runCatching {
+            val resolved = CapturePlanningStore.get(previewId)
+                ?: throw IllegalArgumentException("捕获结果已失效，请重新识别")
             if (resolved.importableCount <= 0) {
                 throw IllegalArgumentException("未能识别出待办或日程")
             }
@@ -170,6 +181,36 @@ private fun ShareReceiverScreen(
             }
         }
     )
+}
+
+private suspend fun captureSharedIntentToNodes(
+    app: TodoApplication,
+    context: Context,
+    intent: Intent?
+): CapturePlanningInsertResult {
+    val action = intent?.action
+    val type = intent?.type.orEmpty()
+    if (action != Intent.ACTION_SEND && action != Intent.ACTION_SEND_MULTIPLE) {
+        throw IllegalArgumentException("没有可识别的内容")
+    }
+    val text = extractSharedText(context, intent)
+    if (text.isNotBlank() && (type.isBlank() || type.startsWith("text/"))) {
+        return CapturePlanningPipeline.captureTextToNodes(
+            app = app,
+            markdown = text,
+            title = "分享文本",
+            appendToActiveNote = true
+        )
+    }
+    val imageUris = extractSharedImageUris(intent)
+    if (imageUris.isNotEmpty()) {
+        return CapturePlanningPipeline.captureImagesToNodes(
+            app = app,
+            uris = imageUris,
+            title = "分享图片"
+        )
+    }
+    throw IllegalArgumentException("没有可识别的内容")
 }
 
 private suspend fun recognizeSharedIntent(

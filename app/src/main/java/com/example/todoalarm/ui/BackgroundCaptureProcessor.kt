@@ -33,18 +33,13 @@ object BackgroundCaptureProcessor {
         notifyProcessing(app, jobId, title)
         app.applicationScope.launch {
             try {
-                val preview = CapturePlanningPipeline.recognizeText(
+                val result = CapturePlanningPipeline.captureTextToNodes(
                     app = app,
                     markdown = cleanText,
                     title = title,
                     appendToActiveNote = appendToActiveNote
                 )
-                if (preview.importableCount <= 0) {
-                    notifyFailure(app, jobId, "未能识别出待办或日程")
-                } else {
-                    val stored = CapturePlanningStore.put(preview)
-                    notifyCompleted(app, jobId, stored)
-                }
+                notifyInserted(app, jobId, result)
             } catch (error: CancellationException) {
                 throw error
             } catch (error: Exception) {
@@ -67,18 +62,13 @@ object BackgroundCaptureProcessor {
         notifyProcessing(app, jobId, title)
         app.applicationScope.launch {
             try {
-                val preview = CapturePlanningPipeline.recognizePlanningNoteText(
+                val result = CapturePlanningPipeline.capturePlanningNoteTextToNodes(
                     app = app,
                     noteId = noteId,
                     markdown = cleanText,
                     title = title
                 )
-                if (preview.importableCount <= 0) {
-                    notifyFailure(app, jobId, "未能识别出待办或日程")
-                } else {
-                    val stored = CapturePlanningStore.put(preview)
-                    notifyCompleted(app, jobId, stored)
-                }
+                notifyInserted(app, jobId, result)
             } catch (error: CancellationException) {
                 throw error
             } catch (error: Exception) {
@@ -107,17 +97,12 @@ object BackgroundCaptureProcessor {
         notifyProcessing(app, jobId, title)
         app.applicationScope.launch {
             try {
-                val preview = CapturePlanningPipeline.recognizeImages(
+                val result = CapturePlanningPipeline.captureImagesToNodes(
                     app = app,
                     uris = uris,
                     title = title
                 )
-                if (preview.importableCount <= 0) {
-                    notifyFailure(app, jobId, "未能识别出待办或日程")
-                } else {
-                    val stored = CapturePlanningStore.put(preview)
-                    notifyCompleted(app, jobId, stored)
-                }
+                notifyInserted(app, jobId, result)
             } catch (error: CancellationException) {
                 throw error
             } catch (error: Exception) {
@@ -149,6 +134,30 @@ object BackgroundCaptureProcessor {
                 .setContentText(title)
                 .setOngoing(true)
                 .setProgress(0, 0, true)
+                .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+        )
+    }
+
+    private fun notifyInserted(context: Context, jobId: Int, result: CapturePlanningInsertResult) {
+        val intent = Intent(context, MainActivity::class.java).apply {
+            putExtra(MainActivity.EXTRA_OPEN_PLANNING_NOTE_ID, result.noteId)
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+        }
+        val pendingIntent = PendingIntent.getActivity(
+            context,
+            jobId,
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        notifySafely(
+            context = context,
+            notificationId = jobId,
+            builder = NotificationCompat.Builder(context, CaptureChannelId)
+                .setSmallIcon(R.drawable.ic_stat_payki_todo)
+                .setContentTitle("已添加 ${result.importedCount} 条到规划台")
+                .setContentText("点击打开对应规划文档")
+                .setContentIntent(pendingIntent)
+                .setAutoCancel(true)
                 .setPriority(NotificationCompat.PRIORITY_DEFAULT)
         )
     }

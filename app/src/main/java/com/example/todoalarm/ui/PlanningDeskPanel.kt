@@ -10,6 +10,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.Image
@@ -33,6 +34,9 @@ import androidx.compose.material.icons.rounded.Archive
 import androidx.compose.material.icons.rounded.Article
 import androidx.compose.material.icons.rounded.Campaign
 import androidx.compose.material.icons.rounded.Delete
+import androidx.compose.material.icons.rounded.Add
+import androidx.compose.material.icons.rounded.CheckCircle
+import androidx.compose.material.icons.rounded.RadioButtonUnchecked
 import androidx.compose.material.icons.rounded.ExpandLess
 import androidx.compose.material.icons.rounded.ExpandMore
 import androidx.compose.material.icons.rounded.Image
@@ -77,6 +81,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
@@ -95,6 +100,9 @@ import com.example.todoalarm.data.PlanningAnnouncementParser
 import com.example.todoalarm.data.PlanningImportCandidate
 import com.example.todoalarm.data.PlanningImportResult
 import com.example.todoalarm.data.PlanningLineMapping
+import com.example.todoalarm.data.PlanningNode
+import com.example.todoalarm.data.PlanningNodeDraft
+import com.example.todoalarm.data.PlanningNodeEdit
 import com.example.todoalarm.data.MappingStatus
 import com.example.todoalarm.data.PlanningOperationResult
 import com.example.todoalarm.data.PlanningParseResult
@@ -111,9 +119,11 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.ByteArrayOutputStream
 import java.io.IOException
+import java.time.Instant
 import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.LocalDateTime
+import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 import kotlin.math.max
@@ -124,6 +134,7 @@ import kotlin.math.roundToInt
 internal fun PlanningDeskPanel(
     notes: List<PlanningNote>,
     activeNote: PlanningNote?,
+    nodes: List<PlanningNode>,
     groups: List<TaskGroup>,
     planningAiProviders: List<PlanningAiProvider>,
     onSelectNote: (Long) -> Unit,
@@ -133,6 +144,12 @@ internal fun PlanningDeskPanel(
     onDeleteNote: suspend (Long) -> String?,
     onArchiveNote: suspend (Long) -> String?,
     onOpenTodayNote: suspend () -> Long,
+    onCreateNode: suspend (PlanningNodeDraft) -> String?,
+    onUpdateNode: suspend (PlanningNode, PlanningNodeEdit) -> String?,
+    onToggleNode: suspend (PlanningNode) -> String?,
+    onDeleteNode: suspend (PlanningNode) -> String?,
+    onExportNodesMarkdown: suspend (Long) -> String,
+    onReplaceNodesFromMarkdown: suspend (Long, String) -> String?,
     onParse: suspend (String, Long?) -> PlanningParseResult,
     onImport: suspend (List<PlanningImportCandidate>, Set<String>, String, Long?) -> PlanningImportResult,
     onSyncMappings: suspend (Long, String) -> List<PlanningLineMapping>,
@@ -152,9 +169,14 @@ internal fun PlanningDeskPanel(
     var documentSheetVisible by remember { mutableStateOf(false) }
     var previewSheetVisible by remember { mutableStateOf(false) }
     var helpSheetVisible by remember { mutableStateOf(false) }
+    var markdownCompatMode by rememberSaveable(activeNote?.id) { mutableStateOf(false) }
     var markdownEditMode by rememberSaveable(activeNote?.id) { mutableStateOf(true) }
+    var markdownImportVisible by remember { mutableStateOf(false) }
+    var markdownImportText by remember(activeNote?.id) { mutableStateOf("") }
     var renameDialog by remember { mutableStateOf(false) }
     var pendingDeleteNote by remember { mutableStateOf<PlanningNote?>(null) }
+    var pendingDeleteNode by remember { mutableStateOf<PlanningNode?>(null) }
+    var childInputTarget by remember { mutableStateOf<PlanningNode?>(null) }
     var archiveDialog by remember { mutableStateOf(false) }
     var newDialog by remember { mutableStateOf(false) }
     var overflowMenuExpanded by remember { mutableStateOf(false) }
@@ -240,6 +262,7 @@ internal fun PlanningDeskPanel(
         parseResult = null
         selectedIds.clear()
         editableCandidates.clear()
+        markdownCompatMode = false
         markdownEditMode = true
     }
 
@@ -302,33 +325,44 @@ internal fun PlanningDeskPanel(
                     modifier = Modifier.height(40.dp),
                     onClick = {
                         focusManager.clearFocus()
-                        markdownEditMode = !markdownEditMode
+                        markdownCompatMode = !markdownCompatMode
                     }
                 ) {
-                    Text(if (markdownEditMode) "预览" else "编辑")
+                    Text(if (markdownCompatMode) "大纲" else "Markdown")
                 }
-                Button(
-                    modifier = Modifier.height(40.dp),
-                    enabled = !parsing,
-                    onClick = {
-                        focusManager.clearFocus()
-                        val markdown = editorValue.text
-                        if (markdown.isBlank()) {
-                            Toast.makeText(context, "没有可识别的内容", Toast.LENGTH_SHORT).show()
-                        } else {
-                            BackgroundCaptureProcessor.processPlanningNoteText(
-                                context = context,
-                                noteId = activeNote?.id,
-                                text = markdown,
-                                title = activeNote?.title?.let { "规划台：$it" } ?: "规划台识别"
-                            )
-                            Toast.makeText(context, "正在后台识别，稍后通知", Toast.LENGTH_SHORT).show()
+                if (markdownCompatMode) {
+                    OutlinedButton(
+                        modifier = Modifier.height(40.dp),
+                        onClick = {
+                            focusManager.clearFocus()
+                            markdownEditMode = !markdownEditMode
                         }
+                    ) {
+                        Text(if (markdownEditMode) "预览" else "编辑")
                     }
-                ) {
-                    Icon(Icons.Rounded.Search, contentDescription = null, modifier = Modifier.size(16.dp))
-                    Spacer(Modifier.width(4.dp))
-                    Text(if (parsing) "识别中" else "识别")
+                    Button(
+                        modifier = Modifier.height(40.dp),
+                        enabled = !parsing,
+                        onClick = {
+                            focusManager.clearFocus()
+                            val markdown = editorValue.text
+                            if (markdown.isBlank()) {
+                                Toast.makeText(context, "没有可识别的内容", Toast.LENGTH_SHORT).show()
+                            } else {
+                                BackgroundCaptureProcessor.processPlanningNoteText(
+                                    context = context,
+                                    noteId = activeNote?.id,
+                                    text = markdown,
+                                    title = activeNote?.title?.let { "规划台：$it" } ?: "规划台识别"
+                                )
+                                Toast.makeText(context, "正在后台识别，稍后通知", Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                    ) {
+                        Icon(Icons.Rounded.Search, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(Modifier.width(4.dp))
+                        Text(if (parsing) "识别中" else "识别")
+                    }
                 }
                 IconButton(
                     modifier = Modifier.size(40.dp),
@@ -387,6 +421,33 @@ internal fun PlanningDeskPanel(
                             onClick = { overflowMenuExpanded = false; shortcutBarExpanded = !shortcutBarExpanded }
                         )
                         DropdownMenuItem(
+                            text = { Text("导出 Markdown") },
+                            onClick = {
+                                overflowMenuExpanded = false
+                                val noteId = activeNote?.id ?: return@DropdownMenuItem
+                                scope.launch {
+                                    val markdown = onExportNodesMarkdown(noteId)
+                                    editorValue = TextFieldValue(markdown, selection = TextRange(markdown.length))
+                                    markdownCompatMode = true
+                                    markdownEditMode = true
+                                    Toast.makeText(context, "已载入 Markdown 兼容编辑区，可复制或继续编辑。", Toast.LENGTH_LONG).show()
+                                }
+                            },
+                            enabled = activeNote != null
+                        )
+                        DropdownMenuItem(
+                            text = { Text("从 Markdown 导入") },
+                            onClick = {
+                                overflowMenuExpanded = false
+                                val noteId = activeNote?.id ?: return@DropdownMenuItem
+                                scope.launch {
+                                    markdownImportText = onExportNodesMarkdown(noteId)
+                                    markdownImportVisible = true
+                                }
+                            },
+                            enabled = activeNote != null
+                        )
+                        DropdownMenuItem(
                             text = { Text("刷新已导入项") },
                             onClick = { overflowMenuExpanded = false; refreshConfirmVisible = true },
                             enabled = activeNote != null && !operationRunning
@@ -427,7 +488,39 @@ internal fun PlanningDeskPanel(
             }
         }
 
-        if (markdownEditMode) {
+        if (!markdownCompatMode) {
+            PlanningOutlineEditor(
+                activeNote = activeNote,
+                nodes = nodes,
+                onCreateNode = { draft ->
+                    scope.launch {
+                        val message = onCreateNode(draft)
+                        message?.let { Toast.makeText(context, it, Toast.LENGTH_SHORT).show() }
+                    }
+                },
+                onUpdateNode = { node, edit ->
+                    scope.launch {
+                        val message = onUpdateNode(node, edit)
+                        message?.let { Toast.makeText(context, it, Toast.LENGTH_SHORT).show() }
+                    }
+                },
+                onToggleNode = { node ->
+                    scope.launch {
+                        val message = onToggleNode(node)
+                        message?.let { Toast.makeText(context, it, Toast.LENGTH_SHORT).show() }
+                    }
+                },
+                onDeleteNode = { node ->
+                    pendingDeleteNode = node
+                },
+                onRequestChild = { node ->
+                    childInputTarget = node
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f)
+            )
+        } else if (markdownEditMode) {
             if (!shortcutBarExpanded) {
                 PlanningShortcutCollapsedHint(onExpand = { shortcutBarExpanded = true })
             }
@@ -591,6 +684,55 @@ internal fun PlanningDeskPanel(
         }
     }
 
+    if (markdownImportVisible && activeNote != null) {
+        AlertDialog(
+            onDismissRequest = { markdownImportVisible = false },
+            title = { Text("从 Markdown 导入") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text("会用当前文本替换此文档的大纲节点。原节点关联的待办 / 日程会同步删除后重建。")
+                    OutlinedTextField(
+                        value = markdownImportText,
+                        onValueChange = { markdownImportText = it },
+                        modifier = Modifier.fillMaxWidth().height(260.dp),
+                        textStyle = MaterialTheme.typography.bodyMedium.copy(fontFamily = FontFamily.Monospace),
+                        placeholder = { Text("- [ ] 入党资料要写完\n  - [ ] 填写个人信息表\n- [ ] 数据库复习 ddl 5.28 23:59") }
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    enabled = markdownImportText.isNotBlank(),
+                    onClick = {
+                        val noteId = activeNote.id
+                        scope.launch {
+                            val message = onReplaceNodesFromMarkdown(noteId, markdownImportText)
+                            message?.let { Toast.makeText(context, it, Toast.LENGTH_SHORT).show() }
+                            markdownImportVisible = false
+                        }
+                    }
+                ) { Text("导入并替换") }
+            },
+            dismissButton = { TextButton(onClick = { markdownImportVisible = false }) { Text("取消") } }
+        )
+    }
+
+    childInputTarget?.let { parent ->
+        PlanningNodeInputDialog(
+            title = "新增子项",
+            label = "写下子任务 / DDL / 日程",
+            onDismiss = { childInputTarget = null },
+            onConfirm = { text ->
+                val noteId = activeNote?.id ?: return@PlanningNodeInputDialog
+                scope.launch {
+                    val message = onCreateNode(PlanningNodeDraft(noteId = noteId, parentNodeId = parent.id, text = text))
+                    message?.let { Toast.makeText(context, it, Toast.LENGTH_SHORT).show() }
+                    childInputTarget = null
+                }
+            }
+        )
+    }
+
     if (visionRecognizing) {
         AlertDialog(
             onDismissRequest = {},
@@ -654,6 +796,21 @@ internal fun PlanningDeskPanel(
                     val message = onDeleteNote(note.id)
                     message?.let { Toast.makeText(context, it, Toast.LENGTH_SHORT).show() }
                     pendingDeleteNote = null
+                }
+            }
+        )
+    }
+    pendingDeleteNode?.let { node ->
+        ConfirmPlanningDialog(
+            title = "删除大纲事项？",
+            message = "会同时删除它和子项关联的待办 / 日程：${node.text}",
+            confirmText = "删除",
+            onDismiss = { pendingDeleteNode = null },
+            onConfirm = {
+                scope.launch {
+                    val message = onDeleteNode(node)
+                    message?.let { Toast.makeText(context, it, Toast.LENGTH_SHORT).show() }
+                    pendingDeleteNode = null
                 }
             }
         )
@@ -752,6 +909,287 @@ internal fun PlanningDeskPanel(
         )
     }
 
+}
+
+@Composable
+private fun PlanningOutlineEditor(
+    activeNote: PlanningNote?,
+    nodes: List<PlanningNode>,
+    onCreateNode: (PlanningNodeDraft) -> Unit,
+    onUpdateNode: (PlanningNode, PlanningNodeEdit) -> Unit,
+    onToggleNode: (PlanningNode) -> Unit,
+    onDeleteNode: (PlanningNode) -> Unit,
+    onRequestChild: (PlanningNode) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    var newNodeText by remember(activeNote?.id) { mutableStateOf("") }
+    var focusedNodeId by remember { mutableStateOf<Long?>(null) }
+    val flattened = remember(nodes) { flattenPlanningNodes(nodes) }
+
+    ElevatedCard(
+        modifier = modifier,
+        shape = RoundedCornerShape(22.dp),
+        colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.elevatedCardElevation(defaultElevation = 1.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Text(
+                text = "大纲即待办：写下一行就会同步创建待办；写时间段会成为日程。",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                if (activeNote == null) {
+                    item {
+                        PlanningOutlineEmptyCard("请先新建或打开一个规划文档。")
+                    }
+                } else if (flattened.isEmpty()) {
+                    item {
+                        PlanningOutlineEmptyCard("写下第一件事，比如：入党资料要写完，或 10:00-12:00 写论文 @图书馆3楼。")
+                    }
+                } else {
+                    items(flattened, key = { it.node.id }) { item ->
+                        PlanningOutlineRow(
+                            item = item,
+                            allNodes = nodes,
+                            focused = focusedNodeId == item.node.id,
+                            onFocusChange = { focused ->
+                                focusedNodeId = if (focused) item.node.id else focusedNodeId.takeUnless { it == item.node.id }
+                            },
+                            onToggle = { onToggleNode(item.node) },
+                            onToggleCollapse = {
+                                onUpdateNode(
+                                    item.node,
+                                    item.node.toPlanningNodeEdit(collapsed = !item.node.collapsed)
+                                )
+                            },
+                            onTextCommit = { text ->
+                                if (text.isBlank()) {
+                                    onDeleteNode(item.node)
+                                } else if (text.trim() != item.node.text.trim()) {
+                                    onUpdateNode(item.node, item.node.toPlanningNodeEdit(text = text.trim()))
+                                }
+                            },
+                            onRequestChild = { onRequestChild(item.node) },
+                            onDelete = { onDeleteNode(item.node) }
+                        )
+                    }
+                }
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                OutlinedTextField(
+                    value = newNodeText,
+                    onValueChange = { newNodeText = it },
+                    modifier = Modifier.weight(1f),
+                    singleLine = true,
+                    label = { Text("新增事项") },
+                    placeholder = { Text("例如：数据库复习 / 明天 16:30 交材料") }
+                )
+                Button(
+                    enabled = activeNote != null && newNodeText.isNotBlank(),
+                    onClick = {
+                        val note = activeNote ?: return@Button
+                        val text = newNodeText.trim()
+                        if (text.isBlank()) return@Button
+                        onCreateNode(PlanningNodeDraft(noteId = note.id, text = text))
+                        newNodeText = ""
+                    }
+                ) {
+                    Icon(Icons.Rounded.Add, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(4.dp))
+                    Text("添加")
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun PlanningOutlineEmptyCard(text: String) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(18.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.28f),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f))
+    ) {
+        Text(
+            text = text,
+            modifier = Modifier.padding(16.dp),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+    }
+}
+
+@Composable
+private fun PlanningOutlineRow(
+    item: PlanningOutlineItem,
+    allNodes: List<PlanningNode>,
+    focused: Boolean,
+    onFocusChange: (Boolean) -> Unit,
+    onToggle: () -> Unit,
+    onToggleCollapse: () -> Unit,
+    onTextCommit: (String) -> Unit,
+    onRequestChild: () -> Unit,
+    onDelete: () -> Unit
+) {
+    val node = item.node
+    val hasChildren = allNodes.any { it.parentNodeId == node.id }
+    var text by remember(node.id, node.text) { mutableStateOf(node.text) }
+    val chipText = remember(node) { planningNodeMetaText(node) }
+    val textColor = if (node.completed) {
+        MaterialTheme.colorScheme.onSurface
+    } else {
+        MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.72f)
+    }
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        if (focused) {
+            PlanningOutlineHeaderHint(text)
+        }
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(18.dp),
+            color = if (focused) MaterialTheme.colorScheme.primary.copy(alpha = 0.07f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.14f),
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = if (focused) 0.62f else 0.24f))
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 8.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                Spacer(Modifier.width((item.depth * 22).dp))
+                IconButton(
+                    modifier = Modifier.size(32.dp),
+                    enabled = hasChildren,
+                    onClick = onToggleCollapse
+                ) {
+                    Icon(
+                        imageVector = if (hasChildren && !node.collapsed) Icons.Rounded.ExpandLess else Icons.Rounded.ExpandMore,
+                        contentDescription = if (node.collapsed) "展开" else "折叠",
+                        tint = if (hasChildren) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant
+                    )
+                }
+                IconButton(
+                    modifier = Modifier.size(34.dp),
+                    onClick = onToggle
+                ) {
+                    Icon(
+                        imageVector = if (node.completed) Icons.Rounded.CheckCircle else Icons.Rounded.RadioButtonUnchecked,
+                        contentDescription = if (node.completed) "标记未完成" else "完成",
+                        tint = if (node.completed) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline
+                    )
+                }
+                Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    OutlinedTextField(
+                        value = text,
+                        onValueChange = { text = it },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .onFocusChanged { focusState ->
+                                onFocusChange(focusState.isFocused)
+                                if (!focusState.isFocused && text.trim() != node.text.trim()) {
+                                    onTextCommit(text)
+                                }
+                            },
+                        textStyle = MaterialTheme.typography.bodyLarge.copy(
+                            color = textColor,
+                            textDecoration = if (node.completed) TextDecoration.LineThrough else TextDecoration.None
+                        ),
+                        singleLine = true,
+                        placeholder = { Text("写下事项、DDL 或日程") }
+                    )
+                    if (chipText.isNotBlank()) {
+                        Text(
+                            text = chipText,
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                }
+                IconButton(modifier = Modifier.size(34.dp), onClick = onRequestChild) {
+                    Icon(Icons.Rounded.PlaylistAdd, contentDescription = "新增子项", tint = MaterialTheme.colorScheme.primary)
+                }
+                IconButton(modifier = Modifier.size(34.dp), onClick = onDelete) {
+                    Icon(Icons.Rounded.Delete, contentDescription = "删除", tint = MaterialTheme.colorScheme.error)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun PlanningOutlineHeaderHint(text: String) {
+    val hasTime = Regex("\\d{1,2}[:：]\\d{2}|ddl|截止|今天|明天|后天").containsMatchIn(text)
+    val hasLocation = Regex("@\\S+|地点[:：]").containsMatchIn(text)
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(start = 14.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        PlanningOutlineHintToken("时间", active = hasTime)
+        Text("|", color = MaterialTheme.colorScheme.outline)
+        PlanningOutlineHintToken("事项", active = text.isNotBlank())
+        Text("|", color = MaterialTheme.colorScheme.outline)
+        PlanningOutlineHintToken("地点", active = hasLocation)
+    }
+}
+
+@Composable
+private fun PlanningOutlineHintToken(label: String, active: Boolean) {
+    Text(
+        text = label,
+        style = MaterialTheme.typography.labelSmall,
+        color = if (active) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.55f),
+        fontWeight = if (active) FontWeight.Bold else FontWeight.Normal
+    )
+}
+
+@Composable
+private fun PlanningNodeInputDialog(
+    title: String,
+    label: String,
+    onDismiss: () -> Unit,
+    onConfirm: (String) -> Unit
+) {
+    var value by rememberSaveable { mutableStateOf("") }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(title) },
+        text = {
+            OutlinedTextField(
+                value = value,
+                onValueChange = { value = it },
+                modifier = Modifier.fillMaxWidth(),
+                label = { Text(label) },
+                placeholder = { Text("例如：填写个人信息表 / 14:00-15:00 整理材料") }
+            )
+        },
+        confirmButton = {
+            TextButton(
+                enabled = value.isNotBlank(),
+                onClick = { onConfirm(value.trim()) }
+            ) { Text("添加") }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("取消") } }
+    )
 }
 
 @Composable
@@ -2803,4 +3241,74 @@ private fun parsePlanningWeekdays(raw: String): Set<DayOfWeek> {
 private fun planningMillisLabel(value: Long): String {
     val dateTime = LocalDateTime.ofInstant(java.time.Instant.ofEpochMilli(value), java.time.ZoneId.systemDefault())
     return planningDateTimeLabel(dateTime)
+}
+
+private data class PlanningOutlineItem(
+    val node: PlanningNode,
+    val depth: Int
+)
+
+private fun flattenPlanningNodes(nodes: List<PlanningNode>): List<PlanningOutlineItem> {
+    if (nodes.isEmpty()) return emptyList()
+    val childrenByParent = nodes
+        .groupBy { it.parentNodeId }
+        .mapValues { (_, children) -> children.sortedWith(compareBy<PlanningNode> { it.sortOrder }.thenBy { it.id }) }
+    val result = mutableListOf<PlanningOutlineItem>()
+    val visiting = mutableSetOf<Long>()
+
+    fun append(node: PlanningNode, depth: Int) {
+        if (!visiting.add(node.id)) return
+        result += PlanningOutlineItem(node = node, depth = depth.coerceAtMost(8))
+        if (!node.collapsed) {
+            childrenByParent[node.id].orEmpty().forEach { child -> append(child, depth + 1) }
+        }
+        visiting.remove(node.id)
+    }
+
+    childrenByParent[null].orEmpty().forEach { append(it, 0) }
+    return result
+}
+
+private fun PlanningNode.toPlanningNodeEdit(
+    text: String = this.text,
+    parentNodeId: Long? = this.parentNodeId,
+    sortOrder: Int = this.sortOrder,
+    collapsed: Boolean = this.collapsed,
+    completed: Boolean = this.completed
+): PlanningNodeEdit {
+    return PlanningNodeEdit(
+        text = text,
+        parentNodeId = parentNodeId,
+        sortOrder = sortOrder,
+        dueAt = dueAtMillis?.toPlanningNodeLocalDateTime(),
+        startAt = startAtMillis?.toPlanningNodeLocalDateTime(),
+        endAt = endAtMillis?.toPlanningNodeLocalDateTime(),
+        location = location,
+        collapsed = collapsed,
+        completed = completed
+    )
+}
+
+private fun planningNodeMetaText(node: PlanningNode): String {
+    val location = node.location?.trim().orEmpty()
+    val time = when {
+        node.startAtMillis != null && node.endAtMillis != null -> {
+            val start = node.startAtMillis.toPlanningNodeLocalDateTime()
+            val end = node.endAtMillis.toPlanningNodeLocalDateTime()
+            if (start.toLocalDate() == end.toLocalDate()) {
+                "日程 ${start.format(DateTimeFormatter.ofPattern("MM-dd HH:mm", Locale.CHINA))}-${end.format(DateTimeFormatter.ofPattern("HH:mm", Locale.CHINA))}"
+            } else {
+                "日程 ${start.format(DateTimeFormatter.ofPattern("MM-dd HH:mm", Locale.CHINA))} → ${end.format(DateTimeFormatter.ofPattern("MM-dd HH:mm", Locale.CHINA))}"
+            }
+        }
+        node.dueAtMillis != null -> {
+            "DDL ${node.dueAtMillis.toPlanningNodeLocalDateTime().format(DateTimeFormatter.ofPattern("MM-dd HH:mm", Locale.CHINA))}"
+        }
+        else -> ""
+    }
+    return listOf(time, location.takeIf { it.isNotBlank() }).filterNotNull().joinToString(" · ")
+}
+
+private fun Long.toPlanningNodeLocalDateTime(): LocalDateTime {
+    return LocalDateTime.ofInstant(Instant.ofEpochMilli(this), ZoneId.systemDefault())
 }

@@ -6,10 +6,13 @@ import android.graphics.BitmapFactory
 import android.net.Uri
 import android.util.Base64
 import com.example.todoalarm.TodoApplication
+import com.example.todoalarm.alarm.ReminderDispatchTracker
 import com.example.todoalarm.data.PlanningAiCaller
 import com.example.todoalarm.data.PlanningAiVisionRequest
 import com.example.todoalarm.data.PlanningImportCandidate
+import com.example.todoalarm.data.PlanningNodeDraft
 import com.example.todoalarm.data.PlanningNote
+import com.example.todoalarm.data.PlanningParsedType
 import com.example.todoalarm.data.PlanningParseResult
 import com.example.todoalarm.data.PlanningRecognitionService
 import com.example.todoalarm.data.toPlanningImportCandidate
@@ -34,6 +37,13 @@ data class CapturePlanningPreview(
     val importableCount: Int
         get() = candidates.count { it.importable && it.validate() == null }
 }
+
+data class CapturePlanningInsertResult(
+    val noteId: Long,
+    val importedCount: Int,
+    val skippedCount: Int,
+    val title: String
+)
 
 object CapturePlanningStore {
     private val previews = linkedMapOf<String, CapturePlanningPreview>()
@@ -60,6 +70,53 @@ object CapturePlanningStore {
 }
 
 object CapturePlanningPipeline {
+    suspend fun captureTextToNodes(
+        app: TodoApplication,
+        markdown: String,
+        title: String = "捕获内容",
+        appendToActiveNote: Boolean = true
+    ): CapturePlanningInsertResult {
+        val preview = recognizeText(
+            app = app,
+            markdown = markdown,
+            title = title,
+            appendToActiveNote = appendToActiveNote
+        )
+        return insertPreviewAsNodes(app, preview)
+    }
+
+    suspend fun capturePlanningNoteTextToNodes(
+        app: TodoApplication,
+        noteId: Long?,
+        markdown: String,
+        title: String = "规划台识别"
+    ): CapturePlanningInsertResult {
+        val preview = recognizePlanningNoteText(
+            app = app,
+            noteId = noteId,
+            markdown = markdown,
+            title = title
+        )
+        return insertPreviewAsNodes(app, preview)
+    }
+
+    suspend fun captureImagesToNodes(
+        app: TodoApplication,
+        uris: List<Uri>,
+        title: String = "图片捕获"
+    ): CapturePlanningInsertResult {
+        val preview = recognizeImages(app = app, uris = uris, title = title)
+        return insertPreviewAsNodes(app, preview)
+    }
+
+    suspend fun captureImageToNodes(
+        app: TodoApplication,
+        uri: Uri,
+        title: String = "图片捕获"
+    ): CapturePlanningInsertResult {
+        return captureImagesToNodes(app = app, uris = listOf(uri), title = title)
+    }
+
     suspend fun recognizeText(
         app: TodoApplication,
         markdown: String,
@@ -209,6 +266,86 @@ object CapturePlanningPipeline {
         val note = current ?: app.repository.ensureDefaultPlanningNote()
         app.settingsStore.updateLastOpenedPlanningNoteId(note.id)
         return note
+    }
+
+    private suspend fun insertPreviewAsNodes(
+        app: TodoApplication,
+        preview: CapturePlanningPreview
+    ): CapturePlanningInsertResult {
+        val note = app.repository.getPlanningNote(preview.activeNoteId)
+            ?.takeIf { !it.archived }
+            ?: activePlanningNote(app)
+        val importable = preview.candidates.filter { candidate ->
+            candidate.importable && candidate.validate() == null
+        }
+        require(importable.isNotEmpty()) { "未能识别出待办或日程" }
+        var inserted = 0
+        importable.forEach { candidate ->
+            val result = app.repository.createPlanningNode(candidate.toPlanningNodeDraft(note.id)) ?: return@forEach
+            result.linkedItem?.let { linked ->
+                if (linked.completed || linked.canceled) {
+                    app.alarmScheduler.cancel(linked.id)
+                    app.reminderNotifier.cancel(linked.id)
+                    ReminderDispatchTracker.clear(app, linked.id)
+                } else {
+                    ReminderDispatchTracker.clear(app, linked.id)
+                    val scheduleMessage = app.alarmScheduler.schedule(linked)
+                    if (scheduleMessage != null) {
+                        app.repository.updateTodo(linked.copy(reminderEnabled = false))
+                    }
+                }
+            }
+            inserted += 1
+        }
+        require(inserted > 0) { "未能识别出待办或日程" }
+        app.settingsStore.updateLastOpenedPlanningNoteId(note.id)
+        autoBackupIfEnabled(app)
+        return CapturePlanningInsertResult(
+            noteId = note.id,
+            importedCount = inserted,
+            skippedCount = preview.candidates.size - inserted,
+            title = preview.title
+        )
+    }
+
+    private fun PlanningImportCandidate.toPlanningNodeDraft(noteId: Long): PlanningNodeDraft {
+        val fallbackText = sourceLine.ifBlank { title }
+        return when (type) {
+            PlanningParsedType.EVENT -> PlanningNodeDraft(
+                noteId = noteId,
+                text = title.ifBlank { fallbackText },
+                notes = notes,
+                groupName = groupName,
+                startAt = startAt,
+                endAt = endAt,
+                location = location.takeIf { it.isNotBlank() },
+                reminderOffsetsMinutes = normalizedReminderOffsets(),
+                allDay = allDay,
+                countdownEnabled = countdownEnabled,
+                checkInEnabled = checkInEnabled
+            )
+            PlanningParsedType.TODO -> PlanningNodeDraft(
+                noteId = noteId,
+                text = title.ifBlank { fallbackText },
+                notes = notes,
+                groupName = groupName,
+                dueAt = dueAt,
+                location = location.takeIf { it.isNotBlank() },
+                reminderOffsetsMinutes = normalizedReminderOffsets(),
+                countdownEnabled = countdownEnabled
+            )
+            else -> PlanningNodeDraft(noteId = noteId, text = fallbackText)
+        }
+    }
+
+    private suspend fun autoBackupIfEnabled(app: TodoApplication) {
+        val settings = app.settingsStore.currentSettings()
+        if (!settings.autoBackupEnabled) return
+        val directoryUri = settings.backupDirectoryUri ?: return
+        withContext(Dispatchers.IO) {
+            val snapshot = app.repository.exportSnapshot(settings)
+            app.backupManager.autoBackupToDirectory(directoryUri, snapshot)
+        }
     }
 
     private fun appendPlanningMarkdown(current: String, appended: String): String {

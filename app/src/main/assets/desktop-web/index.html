@@ -107,7 +107,25 @@
           <div class="planning-workspace">
             <div class="planning-editor-pane">
               <div id="planning-active-title" class="planning-active-title">我的规划</div>
-              <textarea id="planning-editor" class="planning-editor"></textarea>
+              <div class="planning-outline-shell">
+                <div class="planning-outline-head">
+                  <div>
+                    <strong>大纲事项</strong>
+                    <p class="muted">写下一行就会同步创建待办；写时间段会成为日程。</p>
+                  </div>
+                  <button id="planning-export-markdown" class="ghost mini">同步 Markdown</button>
+                </div>
+                <div id="planning-outline" class="planning-outline"></div>
+                <div class="planning-outline-add">
+                  <input id="planning-root-input" placeholder="新增事项，例如：10:00-12:00 自习 @图书馆3楼" />
+                  <button id="planning-root-add" class="mini">添加</button>
+                </div>
+              </div>
+              <details class="planning-markdown-compat">
+                <summary>Markdown 兼容编辑 / 旧识别导入</summary>
+                <p class="muted">这里用于复制、迁移或旧批量识别。直接编辑后请点“保存”，不会绕过大纲节点规则。</p>
+                <textarea id="planning-editor" class="planning-editor"></textarea>
+              </details>
             </div>
             <div class="planning-preview-shell">
               <div class="panel-head">

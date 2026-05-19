@@ -144,14 +144,6 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
-private data class QuickCheckInResult(
-    val eventId: Long,
-    val title: String,
-    val investedMinutes: Int,
-    val checkOutAtMillis: Long,
-    val shouldOfferEndAdjust: Boolean
-)
-
 @Composable
 internal fun DashboardBackgroundBrush(): Brush {
     val colors = MaterialTheme.colorScheme
@@ -399,8 +391,6 @@ internal fun DashboardBody(
     onGetAiReport: suspend (Long) -> AiReport?,
     onGetTodoById: suspend (Long) -> TodoItem?,
     onGetEventCheckIns: suspend (Long) -> List<EventCheckIn>,
-    onCheckInCalendarEvent: suspend (Long) -> String?,
-    onCheckOutCalendarEvent: suspend (Long) -> String?,
     onCompleteCalendarEvent: suspend (Long) -> EventCheckInCompletionSummary?,
     historyItems: StateFlow<List<TodoItem>>,
     calendarItems: StateFlow<List<TodoItem>>,
@@ -438,8 +428,7 @@ internal fun DashboardBody(
     onReportPreferencesChange: (Boolean, Int, Int, Boolean, Int, Int, AiReportRetention) -> Unit,
     onGenerateDailyReportNow: suspend () -> String?,
     onDeleteAiReport: suspend (Long) -> String?,
-    onQuickCheckInEvent: suspend (String, String, Int, Long) -> String?,
-    onAdjustCalendarEventEndTime: suspend (Long, Long) -> String?,
+    onLaunchCheckIn: (Long) -> Unit,
     onResetOnboarding: () -> Unit,
     onDesktopSyncEnabledChange: (Boolean) -> Unit,
     onDesktopSyncWifiKeepAliveChange: (Boolean) -> Unit,
@@ -502,8 +491,6 @@ internal fun DashboardBody(
                 onEditEvent = onEditCalendarEvent,
                 onGetEventById = onGetTodoById,
                 onGetEventCheckIns = onGetEventCheckIns,
-                onCheckInEvent = onCheckInCalendarEvent,
-                onCheckOutEvent = onCheckOutCalendarEvent,
                 onCompleteEvent = onCompleteCalendarEvent,
                 onMoveEvent = onMoveCalendarEvent,
                 onDeleteEvent = onDeleteCalendarEvent,
@@ -673,15 +660,6 @@ internal fun DashboardBody(
             .sortedBy { DailyBoardSnapshotBuilder.countdownTargetMillis(it) ?: Long.MAX_VALUE }
             .take(5)
     }
-    val quickCheckInCandidateEvents = remember(allTodayScheduleItems, boardMoment) {
-        val nowMillis = boardMoment.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
-        allTodayScheduleItems.filter { item ->
-            item.checkInEnabled &&
-                !item.completed &&
-                !item.canceled &&
-                (item.startAtMillis ?: item.dueAtMillis) <= nowMillis
-        }
-    }
     val tomorrowScheduleItems = remember(uiState.calendarItems, boardDate) {
         val tomorrow = boardDate.plusDays(1)
         uiState.calendarItems.filter { DailyBoardSnapshotBuilder.eventOverlapsDay(it, tomorrow) }
@@ -782,22 +760,12 @@ internal fun DashboardBody(
                             hasTodayEvents = allTodayScheduleItems.isNotEmpty(),
                             todayEvents = todayScheduleItems,
                             tomorrowEvents = tomorrowScheduleItems,
-                            quickCheckInDefaults = Triple(
-                                uiState.settings.lastQuickCheckInTitle,
-                                uiState.settings.lastQuickCheckInLocation,
-                                uiState.settings.lastQuickCheckInMinutes
-                            ),
-                                quickCheckInCandidateEvents = quickCheckInCandidateEvents,
                             todayCollapsed = boardTodayEventsCollapsed,
                             tomorrowCollapsed = boardTomorrowEventsCollapsed,
                             onToggleTomorrow = { boardTomorrowEventsCollapsed = !boardTomorrowEventsCollapsed },
                             onOpenEvent = onEditCalendarEvent,
                             onGetEventCheckIns = onGetEventCheckIns,
-                            onCheckInEvent = onCheckInCalendarEvent,
-                            onCheckOutEvent = onCheckOutCalendarEvent,
-                            onQuickCheckInEvent = onQuickCheckInEvent,
-                            onAdjustCalendarEventEndTime = onAdjustCalendarEventEndTime,
-                            groups = uiState.groups,
+                            onLaunchCheckIn = onLaunchCheckIn,
                             onNavigatePlanning = onNavigatePlanning
                         )
                     }
@@ -1276,67 +1244,14 @@ private fun TodayScheduleBoardCard(
     hasTodayEvents: Boolean,
     todayEvents: List<TodoItem>,
     tomorrowEvents: List<TodoItem>,
-    quickCheckInDefaults: Triple<String, String, Int>,
-    quickCheckInCandidateEvents: List<TodoItem>,
     todayCollapsed: Boolean,
     tomorrowCollapsed: Boolean,
     onToggleTomorrow: () -> Unit,
     onOpenEvent: (TodoItem) -> Unit,
     onGetEventCheckIns: suspend (Long) -> List<EventCheckIn>,
-    onCheckInEvent: suspend (Long) -> String?,
-    onCheckOutEvent: suspend (Long) -> String?,
-    onQuickCheckInEvent: suspend (String, String, Int, Long) -> String?,
-    onAdjustCalendarEventEndTime: suspend (Long, Long) -> String?,
-    groups: List<TaskGroup>,
+    onLaunchCheckIn: (Long) -> Unit,
     onNavigatePlanning: () -> Unit = {}
 ) {
-    val context = LocalContext.current
-    val scope = rememberCoroutineScope()
-    val quickDurationPresets = remember { listOf(30, 60, 90, 120) }
-    var quickSheetVisible by remember { mutableStateOf(false) }
-    var quickRunning by remember { mutableStateOf(false) }
-    var quickTitle by remember(quickCheckInDefaults.first) { mutableStateOf(quickCheckInDefaults.first) }
-    var quickLocation by remember(quickCheckInDefaults.second) { mutableStateOf(quickCheckInDefaults.second) }
-    var quickMinutes by remember(quickCheckInDefaults.third) { mutableStateOf(quickCheckInDefaults.third) }
-    var quickCustomMinutesText by remember(quickCheckInDefaults.third) { mutableStateOf(quickCheckInDefaults.third.toString()) }
-    var quickGroupId by remember(groups) {
-        mutableStateOf(groups.firstOrNull { it.name == "例行" }?.id ?: groups.firstOrNull()?.id ?: 0L)
-    }
-    var quickResult by remember { mutableStateOf<QuickCheckInResult?>(null) }
-    val quickActiveCheckIns by produceState(
-        initialValue = emptyList<EventCheckIn>(),
-        quickCheckInCandidateEvents
-    ) {
-        val activeRecords = quickCheckInCandidateEvents.mapNotNull { event ->
-            onGetEventCheckIns(event.id)
-                .firstOrNull { it.checkOutAtMillis == null }
-        }
-        value = activeRecords
-    }
-    val quickActiveCheckIn = quickActiveCheckIns.firstOrNull { it.checkOutAtMillis == null }
-    val quickCheckInActiveEvent = remember(quickCheckInCandidateEvents, quickActiveCheckIn) {
-        quickCheckInActiveEventFor(quickCheckInCandidateEvents, quickActiveCheckIn)
-    }
-    val quickButtonLabel = remember(quickActiveCheckIn, now) {
-        if (quickActiveCheckIn == null) {
-            "⏱ 快速签到"
-        } else {
-            "⏱ 签到中 · 已 ${formatBoardCheckInMinutes(quickActiveCheckIn, now)}"
-        }
-    }
-
-    LaunchedEffect(quickSheetVisible, quickCheckInDefaults, groups) {
-        if (quickSheetVisible) {
-            quickTitle = quickCheckInDefaults.first
-            quickLocation = quickCheckInDefaults.second
-            quickMinutes = quickCheckInDefaults.third
-            quickCustomMinutesText = quickCheckInDefaults.third.toString()
-            if (groups.none { it.id == quickGroupId }) {
-                quickGroupId = groups.firstOrNull { it.name == "例行" }?.id ?: groups.firstOrNull()?.id ?: 0L
-            }
-        }
-    }
-
     ElevatedCard(
         shape = RoundedCornerShape(28.dp),
         colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.96f))
@@ -1377,47 +1292,6 @@ private fun TodayScheduleBoardCard(
                 modifier = Modifier.weight(1f),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                Surface(
-                    shape = RoundedCornerShape(18.dp),
-                    color = if (quickActiveCheckIn == null) Color(0xFF4CB782).copy(alpha = 0.14f) else Color(0xFFD14343).copy(alpha = 0.10f),
-                    border = BorderStroke(
-                        1.dp,
-                        if (quickActiveCheckIn == null) Color(0xFF4CB782).copy(alpha = 0.45f) else Color(0xFFD14343).copy(alpha = 0.38f)
-                    ),
-                    onClick = {
-                        if (quickActiveCheckIn == null) {
-                            quickSheetVisible = true
-                        } else {
-                            scope.launch {
-                                val event = quickCheckInActiveEvent ?: return@launch
-                                val active = quickActiveCheckIn
-                                val checkOutAtMillis = System.currentTimeMillis()
-                                val message = onCheckOutEvent(event.id)
-                                Toast.makeText(context, message ?: "已签退", Toast.LENGTH_SHORT).show()
-                                if (message == null) {
-                                    val investedMinutes = ((checkOutAtMillis - active.checkInAtMillis).coerceAtLeast(0L) / 60_000L).toInt()
-                                    val plannedEnd = event.endAtMillis
-                                    quickResult = QuickCheckInResult(
-                                        eventId = event.id,
-                                        title = event.title,
-                                        investedMinutes = investedMinutes,
-                                        checkOutAtMillis = checkOutAtMillis,
-                                        shouldOfferEndAdjust = plannedEnd != null && checkOutAtMillis - plannedEnd > 15 * 60_000L
-                                    )
-                                }
-                            }
-                        }
-                    }
-                ) {
-                    Text(
-                        text = quickButtonLabel,
-                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
-                        color = if (quickActiveCheckIn == null) Color(0xFF2E7D32) else Color(0xFFD14343),
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-
                 if (!todayCollapsed) {
                     if (todayEvents.isEmpty()) {
                         Surface(
@@ -1438,8 +1312,7 @@ private fun TodayScheduleBoardCard(
                                 item = item,
                                 now = now,
                                 onGetEventCheckIns = onGetEventCheckIns,
-                                onCheckInEvent = onCheckInEvent,
-                                onCheckOutEvent = onCheckOutEvent,
+                                onLaunchCheckIn = onLaunchCheckIn,
                                 onClick = { onOpenEvent(item) }
                             )
                         }
@@ -1489,158 +1362,6 @@ private fun TodayScheduleBoardCard(
         }
     }
 
-    if (quickSheetVisible) {
-        ModalBottomSheet(
-            onDismissRequest = { quickSheetVisible = false },
-            sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-        ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 18.dp, vertical = 14.dp),
-                verticalArrangement = Arrangement.spacedBy(14.dp)
-            ) {
-                Text(
-                    text = "快速签到",
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold
-                )
-                OutlinedTextField(
-                    value = quickTitle,
-                    onValueChange = { quickTitle = it },
-                    modifier = Modifier.fillMaxWidth(),
-                    label = { Text("标题") },
-                    placeholder = { Text("做什么？") },
-                    singleLine = true
-                )
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text(
-                        text = "时长",
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .horizontalScroll(rememberScrollState()),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        quickDurationPresets.forEach { preset ->
-                            FilterChip(
-                                selected = quickMinutes == preset,
-                                onClick = {
-                                    quickMinutes = preset
-                                    quickCustomMinutesText = preset.toString()
-                                },
-                                label = { Text("${preset}min") }
-                            )
-                        }
-                    }
-                    OutlinedTextField(
-                        value = quickCustomMinutesText,
-                        onValueChange = { raw ->
-                            val filtered = raw.filter(Char::isDigit)
-                            quickCustomMinutesText = filtered
-                            filtered.toIntOrNull()?.let { value ->
-                                quickMinutes = value.coerceIn(1, 24 * 60)
-                            }
-                        },
-                        modifier = Modifier.fillMaxWidth(),
-                        label = { Text("自定义时长（分钟）") },
-                        singleLine = true
-                    )
-                }
-                OutlinedTextField(
-                    value = quickLocation,
-                    onValueChange = { quickLocation = it },
-                    modifier = Modifier.fillMaxWidth(),
-                    label = { Text("地点") },
-                    singleLine = true
-                )
-                if (groups.isNotEmpty()) {
-                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text(
-                            text = "分组",
-                            style = MaterialTheme.typography.titleSmall,
-                            fontWeight = FontWeight.SemiBold
-                        )
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .horizontalScroll(rememberScrollState()),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            groups.forEach { group ->
-                                FilterChip(
-                                    selected = quickGroupId == group.id,
-                                    onClick = { quickGroupId = group.id },
-                                    label = { Text(group.name) }
-                                )
-                            }
-                        }
-                    }
-                }
-                Button(
-                    onClick = {
-                        scope.launch {
-                            quickRunning = true
-                            val minutes = quickCustomMinutesText.toIntOrNull()?.coerceIn(1, 24 * 60) ?: quickMinutes
-                            val message = onQuickCheckInEvent(quickTitle, quickLocation, minutes, quickGroupId)
-                            Toast.makeText(context, message ?: "快速签到已开始", Toast.LENGTH_SHORT).show()
-                            if (message == null) {
-                                quickSheetVisible = false
-                            }
-                            quickRunning = false
-                        }
-                    },
-                    enabled = !quickRunning && quickCustomMinutesText.toIntOrNull()?.coerceIn(1, 24 * 60) != null,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text(if (quickRunning) "启动中" else "立即开始")
-                }
-            }
-        }
-    }
-    quickResult?.let { result ->
-        AlertDialog(
-            onDismissRequest = { quickResult = null },
-            title = { Text("快速签到已结束") },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("「${result.title}」本次投入 ${formatDurationMinutes(result.investedMinutes)}。")
-                    if (result.shouldOfferEndAdjust) {
-                        Text(
-                            "实际签退时间已超过原计划 15 分钟以上，是否把日程结束时间调整为本次签退时间？",
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            style = MaterialTheme.typography.bodyMedium
-                        )
-                    }
-                }
-            },
-            confirmButton = {
-                if (result.shouldOfferEndAdjust) {
-                    TextButton(
-                        onClick = {
-                            scope.launch {
-                                val message = onAdjustCalendarEventEndTime(result.eventId, result.checkOutAtMillis)
-                                Toast.makeText(context, message ?: "已调整日程结束时间", Toast.LENGTH_SHORT).show()
-                                if (message == null) quickResult = null
-                            }
-                        }
-                    ) {
-                        Text("调整结束时间")
-                    }
-                } else {
-                    TextButton(onClick = { quickResult = null }) { Text("知道了") }
-                }
-            },
-            dismissButton = {
-                if (result.shouldOfferEndAdjust) {
-                    TextButton(onClick = { quickResult = null }) { Text("不调整") }
-                }
-            }
-        )
-    }
 }
 
 @Composable
@@ -1648,22 +1369,16 @@ private fun BoardScheduleEventRow(
     item: TodoItem,
     now: LocalDateTime?,
     onGetEventCheckIns: (suspend (Long) -> List<EventCheckIn>)? = null,
-    onCheckInEvent: (suspend (Long) -> String?)? = null,
-    onCheckOutEvent: (suspend (Long) -> String?)? = null,
+    onLaunchCheckIn: ((Long) -> Unit)? = null,
     onClick: () -> Unit
 ) {
-    val context = LocalContext.current
-    val scope = rememberCoroutineScope()
     val tint = item.accentColorHex?.let(::colorFromHex) ?: MaterialTheme.colorScheme.primary
     val inProgress = now?.let { DailyBoardSnapshotBuilder.eventInProgress(item, it) } == true
-    var refreshSerial by remember(item.id) { mutableStateOf(0) }
-    var actionRunning by remember(item.id) { mutableStateOf(false) }
     val checkIns by produceState(
         initialValue = emptyList<EventCheckIn>(),
         item.id,
         item.checkInEnabled,
-        inProgress,
-        refreshSerial
+        inProgress
     ) {
         value = if (item.checkInEnabled && inProgress && onGetEventCheckIns != null) {
             onGetEventCheckIns(item.id)
@@ -1761,31 +1476,14 @@ private fun BoardScheduleEventRow(
                                 fontWeight = FontWeight.SemiBold,
                                 modifier = Modifier.weight(1f)
                             )
-                            if (onCheckInEvent != null && onCheckOutEvent != null) {
+                            if (onLaunchCheckIn != null) {
                                 TextButton(
-                                    enabled = !actionRunning,
                                     colors = ButtonDefaults.textButtonColors(
-                                        contentColor = if (activeCheckIn == null) Color(0xFF2E7D32) else Color(0xFFD14343)
+                                        contentColor = if (activeCheckIn == null) Color(0xFF2196F3) else Color(0xFF4CAF50)
                                     ),
-                                    onClick = {
-                                        scope.launch {
-                                            actionRunning = true
-                                            val message = if (activeCheckIn == null) {
-                                                onCheckInEvent(item.id)
-                                            } else {
-                                                onCheckOutEvent(item.id)
-                                            }
-                                            Toast.makeText(
-                                                context,
-                                                message ?: if (activeCheckIn == null) "已签到" else "已签退",
-                                                Toast.LENGTH_SHORT
-                                            ).show()
-                                            if (message == null) refreshSerial += 1
-                                            actionRunning = false
-                                        }
-                                    }
+                                    onClick = { onLaunchCheckIn(item.id) }
                                 ) {
-                                    Text(if (activeCheckIn == null) "签到" else "签退")
+                                    Text(if (activeCheckIn == null) "去签到" else "查看")
                                 }
                             }
                         }
@@ -1805,22 +1503,6 @@ private fun formatBoardCheckInMinutes(checkIn: EventCheckIn, now: LocalDateTime?
         hours > 0 && rest > 0 -> "${hours}h${rest}m"
         hours > 0 -> "${hours}h"
         else -> "${rest}m"
-    }
-}
-
-private fun quickCheckInActiveEventFor(events: List<TodoItem>, activeCheckIn: EventCheckIn?): TodoItem? {
-    if (activeCheckIn == null) return null
-    return events.firstOrNull { it.id == activeCheckIn.eventId }
-}
-
-private fun formatDurationMinutes(minutes: Int): String {
-    val safeMinutes = minutes.coerceAtLeast(0)
-    val hours = safeMinutes / 60
-    val rest = safeMinutes % 60
-    return when {
-        hours > 0 && rest > 0 -> "${hours} 小时 ${rest} 分钟"
-        hours > 0 -> "${hours} 小时"
-        else -> "${rest} 分钟"
     }
 }
 

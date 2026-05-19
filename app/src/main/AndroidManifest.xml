@@ -46,6 +46,11 @@
             android:exported="false"
             android:theme="@style/Theme.TodoAlarm" />
 
+        <activity
+            android:name=".ui.CheckInActivity"
+            android:exported="false"
+            android:theme="@style/Theme.TodoAlarm" />
+
         <service
             android:name=".alarm.ReminderForegroundService"
             android:exported="false"

@@ -93,9 +93,6 @@ private fun AppSettings.toJson(): JSONObject {
         put("desktopSyncToken", desktopSyncToken)
         put("desktopSyncWifiKeepAlive", desktopSyncWifiKeepAlive)
         put("lastOpenedPlanningNoteId", lastOpenedPlanningNoteId)
-        put("lastQuickCheckInTitle", lastQuickCheckInTitle)
-        put("lastQuickCheckInLocation", lastQuickCheckInLocation)
-        put("lastQuickCheckInMinutes", lastQuickCheckInMinutes)
         put("boardCountdownCollapsed", boardCountdownCollapsed)
         put("boardTodayTodosCollapsed", boardTodayTodosCollapsed)
         put("boardTodayEventsCollapsed", boardTodayEventsCollapsed)
@@ -597,9 +594,6 @@ private fun JSONObject?.toSettings(): AppSettings {
         desktopSyncToken = optString("desktopSyncToken", ""),
         desktopSyncWifiKeepAlive = optBoolean("desktopSyncWifiKeepAlive", true),
         lastOpenedPlanningNoteId = optLongOrNull("lastOpenedPlanningNoteId")?.takeIf { it > 0 },
-        lastQuickCheckInTitle = optString("lastQuickCheckInTitle", "自习").ifBlank { "自习" },
-        lastQuickCheckInLocation = optString("lastQuickCheckInLocation", ""),
-        lastQuickCheckInMinutes = optInt("lastQuickCheckInMinutes", 60).coerceIn(1, 24 * 60),
         boardCountdownCollapsed = optBoolean("boardCountdownCollapsed", false),
         boardTodayTodosCollapsed = optBoolean("boardTodayTodosCollapsed", false),
         boardTodayEventsCollapsed = optBoolean("boardTodayEventsCollapsed", false),

@@ -175,8 +175,6 @@ class MainActivity : ComponentActivity() {
                     onGetTodoById = viewModel::getTodoById,
                     onGetTodoGroupIds = viewModel::getTodoGroupIds,
                     onGetEventCheckIns = viewModel::getEventCheckIns,
-                    onCheckInCalendarEvent = viewModel::checkInCalendarEvent,
-                    onCheckOutCalendarEvent = viewModel::checkOutCalendarEvent,
                     onCompleteCalendarEvent = viewModel::completeCalendarEvent,
                     onCalendarVisibleDateRangeChange = viewModel::updateCalendarEventWindow,
                     onUpdateTodo = viewModel::updateTodo,
@@ -225,8 +223,9 @@ class MainActivity : ComponentActivity() {
                     onReportPreferencesChange = viewModel::updateReportPreferences,
                     onGenerateDailyReportNow = viewModel::generateDailyReportNow,
                     onDeleteAiReport = viewModel::deleteAiReport,
-                    onQuickCheckInEvent = viewModel::quickCheckInEvent,
-                    onAdjustCalendarEventEndTime = viewModel::adjustCalendarEventEndTime,
+                    onLaunchCheckIn = { eventId ->
+                        startActivity(CheckInActivity.createIntent(this@MainActivity, eventId))
+                    },
                     onDismissOnboarding = viewModel::markOnboardingSeen,
                     onResetOnboarding = {
                         viewModel.resetOnboarding()

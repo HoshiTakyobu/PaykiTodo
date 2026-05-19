@@ -1,5 +1,14 @@
 # Changelog
 
+## v1.11.3
+
+- 日程打卡签到/签退改为独立全屏界面 `CheckInActivity`：显示日程名称、实时 HH:MM:SS 时钟、大圆形状态按钮（蓝色"签到"→ 绿色"已签到"→ 红色"已签退"），签退前弹确认对话框
+- 移除每日看板的"快速签到"按钮和 BottomSheet，签到入口统一为日程行的"去签到"按钮和日程详情的"去签到/查看签到"按钮
+- 日历日程详情的打卡区域不再内嵌签到/签退按钮，改为跳转签到界面
+- 清理 ViewModel 中不再使用的 `quickCheckInEvent`、`adjustCalendarEventEndTime`、`checkInCalendarEvent`、`checkOutCalendarEvent` 方法
+- 清理 AppSettingsStore 和备份中的 `lastQuickCheckInTitle`、`lastQuickCheckInLocation`、`lastQuickCheckInMinutes` 字段
+- 版本号升级到 `1.11.3` / `versionCode 225`
+
 ## v1.11.2
 
 - 每日看板的公告、倒数日、今日待办、今日日程、明日日程卡片新增展开 / 折叠控制，折叠状态会本地保存并进入备份，重启后仍保持用户选择

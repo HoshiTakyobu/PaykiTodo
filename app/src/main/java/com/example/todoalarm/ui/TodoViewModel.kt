@@ -327,37 +327,6 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
         return withContext(Dispatchers.IO) { repository.getCheckInsForEvent(eventId) }
     }
 
-    suspend fun checkInCalendarEvent(eventId: Long): String? {
-        val checkIn = withContext(Dispatchers.IO) { repository.checkInEvent(eventId) }
-        if (checkIn == null) return "无法签到：请确认日程未结束且已开启打卡追踪"
-        autoBackupIfEnabled()
-        return null
-    }
-
-    suspend fun checkOutCalendarEvent(eventId: Long): String? {
-        val checkOut = withContext(Dispatchers.IO) { repository.checkOutEvent(eventId) }
-        if (checkOut == null) return "当前没有进行中的签到"
-        autoBackupIfEnabled()
-        return null
-    }
-
-    suspend fun adjustCalendarEventEndTime(eventId: Long, endAtMillis: Long): String? {
-        val event = withContext(Dispatchers.IO) { repository.getTodo(eventId) }
-            ?: return "日程不存在"
-        if (!event.isEvent || event.startAtMillis == null || endAtMillis <= event.startAtMillis) {
-            return "结束时间必须晚于开始时间"
-        }
-        val updated = event.copy(
-            dueAtMillis = event.startAtMillis,
-            endAtMillis = endAtMillis,
-            reminderEnabled = event.reminderTriggerTimesMillis().any { it > System.currentTimeMillis() }
-        )
-        withContext(Dispatchers.IO) { repository.updateTodo(updated) }
-        scheduleReminderOrDisable(updated)
-        autoBackupIfEnabled()
-        return null
-    }
-
     suspend fun completeCalendarEvent(eventId: Long): EventCheckInCompletionSummary? {
         val settings = settingsStore.currentSettings()
         val result = withContext(Dispatchers.IO) {
@@ -434,48 +403,6 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
         settingsStore.updateLastOpenedPlanningNoteId(existing.id)
         autoBackupIfEnabled()
         return existing.id
-    }
-
-    suspend fun quickCheckInEvent(
-        title: String,
-        location: String,
-        minutes: Int,
-        groupId: Long
-    ): String? {
-        val now = LocalDateTime.now()
-        val durationMinutes = minutes.coerceIn(1, 24 * 60)
-        val groups = repository.getAllGroups().ifEmpty { repository.ensureDefaultGroups() }
-        val resolvedGroupId = groupId.takeIf { it > 0 }
-            ?: groups.firstOrNull { it.name == "例行" }?.id
-            ?: groups.firstOrNull()?.id
-            ?: 0L
-        val draft = CalendarEventDraft(
-            title = title.trim().ifBlank { "自习" },
-            notes = "",
-            location = location.trim(),
-            startAt = now,
-            endAt = now.plusMinutes(durationMinutes.toLong()),
-            allDay = false,
-            accentColorHex = groups.firstOrNull { it.id == resolvedGroupId }?.colorHex ?: "#4CB782",
-            reminderMinutesBefore = DEFAULT_PLANNING_REMINDER_MINUTES,
-            reminderOffsetsMinutes = listOf(DEFAULT_PLANNING_REMINDER_MINUTES),
-            ringEnabled = true,
-            vibrateEnabled = true,
-            reminderDeliveryMode = ReminderDeliveryMode.FULLSCREEN,
-            countdownEnabled = false,
-            checkInEnabled = true,
-            recurrence = RecurrenceConfig(),
-            groupId = resolvedGroupId
-        )
-        val event = withContext(Dispatchers.IO) {
-            repository.createCalendarEventFromDraft(draft).firstOrNull()
-        } ?: return "快速签到日程创建失败"
-        withContext(Dispatchers.IO) { repository.checkInEvent(event.id) }
-            ?: return "快速签到创建成功，但签到启动失败"
-        settingsStore.updateQuickCheckInDefaults(draft.title, draft.location, durationMinutes)
-        scheduleReminderOrDisable(event)
-        autoBackupIfEnabled()
-        return null
     }
 
     suspend fun savePlanningNoteContent(noteId: Long, contentMarkdown: String): String? {

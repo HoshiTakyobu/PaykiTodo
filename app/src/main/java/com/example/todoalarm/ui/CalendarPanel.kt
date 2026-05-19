@@ -199,8 +199,6 @@ internal fun CalendarPanel(
     onEditEvent: (TodoItem) -> Unit,
     onGetEventById: suspend (Long) -> TodoItem?,
     onGetEventCheckIns: suspend (Long) -> List<EventCheckIn>,
-    onCheckInEvent: suspend (Long) -> String?,
-    onCheckOutEvent: suspend (Long) -> String?,
     onCompleteEvent: suspend (Long) -> EventCheckInCompletionSummary?,
     onMoveEvent: (TodoItem, LocalDateTime, LocalDateTime) -> Unit,
     onDeleteEvent: (TodoItem) -> Unit,
@@ -677,8 +675,6 @@ internal fun CalendarPanel(
             item = item,
             onGetEventById = onGetEventById,
             onGetEventCheckIns = onGetEventCheckIns,
-            onCheckInEvent = onCheckInEvent,
-            onCheckOutEvent = onCheckOutEvent,
             onCompleteEvent = onCompleteEvent,
             onDismiss = { detailsTarget = null },
             onEdit = {
@@ -2208,8 +2204,6 @@ private fun CalendarEventDetailsDialog(
     item: TodoItem,
     onGetEventById: suspend (Long) -> TodoItem?,
     onGetEventCheckIns: suspend (Long) -> List<EventCheckIn>,
-    onCheckInEvent: suspend (Long) -> String?,
-    onCheckOutEvent: suspend (Long) -> String?,
     onCompleteEvent: suspend (Long) -> EventCheckInCompletionSummary?,
     onDismiss: () -> Unit,
     onEdit: () -> Unit,
@@ -2370,6 +2364,7 @@ private fun CalendarEventDetailsDialog(
             }
 
             if (displayItem.checkInEnabled) {
+                val checkInContext = LocalContext.current
                 EventCheckInSection(
                     tint = tint,
                     checkIns = checkIns,
@@ -2377,16 +2372,8 @@ private fun CalendarEventDetailsDialog(
                     totalInvestedMinutes = totalInvestedMinutes,
                     nowMillis = nowMillis,
                     loading = checkInLoading,
-                    actionRunning = actionRunning,
-                    onCheckIn = {
-                        refreshAfterAction("已签到") {
-                            onCheckInEvent(displayItem.id)
-                        }
-                    },
-                    onCheckOut = {
-                        refreshAfterAction("已签退") {
-                            onCheckOutEvent(displayItem.id)
-                        }
+                    onLaunchCheckIn = {
+                        checkInContext.startActivity(CheckInActivity.createIntent(checkInContext, displayItem.id))
                     }
                 )
             }
@@ -2522,9 +2509,7 @@ private fun EventCheckInSection(
     totalInvestedMinutes: Int,
     nowMillis: Long,
     loading: Boolean,
-    actionRunning: Boolean,
-    onCheckIn: () -> Unit,
-    onCheckOut: () -> Unit
+    onLaunchCheckIn: () -> Unit
 ) {
     Surface(
         shape = RoundedCornerShape(20.dp),
@@ -2572,24 +2557,14 @@ private fun EventCheckInSection(
                 }
             }
 
-            if (activeCheckIn == null) {
-                Button(
-                    modifier = Modifier.fillMaxWidth(),
-                    enabled = !loading && !actionRunning,
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2E7D32)),
-                    onClick = onCheckIn
-                ) {
-                    Text(if (actionRunning) "处理中…" else "签到")
-                }
-            } else {
-                Button(
-                    modifier = Modifier.fillMaxWidth(),
-                    enabled = !loading && !actionRunning,
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFD14343)),
-                    onClick = onCheckOut
-                ) {
-                    Text(if (actionRunning) "处理中…" else "签退")
-                }
+            Button(
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = if (activeCheckIn == null) Color(0xFF2196F3) else Color(0xFF4CAF50)
+                ),
+                onClick = onLaunchCheckIn
+            ) {
+                Text(if (activeCheckIn == null) "去签到" else "查看签到")
             }
         }
     }

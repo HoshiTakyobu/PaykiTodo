@@ -67,9 +67,6 @@ data class AppSettings(
     val desktopSyncToken: String = "",
     val desktopSyncWifiKeepAlive: Boolean = true,
     val lastOpenedPlanningNoteId: Long? = null,
-    val lastQuickCheckInTitle: String = "自习",
-    val lastQuickCheckInLocation: String = "",
-    val lastQuickCheckInMinutes: Int = 60,
     val boardCountdownCollapsed: Boolean = false,
     val boardTodayTodosCollapsed: Boolean = false,
     val boardTodayEventsCollapsed: Boolean = false,
@@ -218,15 +215,6 @@ class AppSettingsStore(context: Context) {
         refresh()
     }
 
-    fun updateQuickCheckInDefaults(title: String, location: String, minutes: Int) {
-        preferences.edit()
-            .putString(KEY_LAST_QUICK_CHECK_IN_TITLE, title.trim().ifBlank { "自习" })
-            .putString(KEY_LAST_QUICK_CHECK_IN_LOCATION, location.trim())
-            .putInt(KEY_LAST_QUICK_CHECK_IN_MINUTES, minutes.coerceIn(1, 24 * 60))
-            .apply()
-        refresh()
-    }
-
     fun updateBoardCollapseState(
         countdown: Boolean = currentSettings().boardCountdownCollapsed,
         todayTodos: Boolean = currentSettings().boardTodayTodosCollapsed,
@@ -350,9 +338,6 @@ class AppSettingsStore(context: Context) {
             .putBoolean(KEY_DESKTOP_SYNC_ENABLED, settings.desktopSyncEnabled)
             .putString(KEY_DESKTOP_SYNC_TOKEN, settings.desktopSyncToken)
             .putBoolean(KEY_DESKTOP_SYNC_WIFI_KEEP_ALIVE, settings.desktopSyncWifiKeepAlive)
-            .putString(KEY_LAST_QUICK_CHECK_IN_TITLE, settings.lastQuickCheckInTitle.ifBlank { "自习" })
-            .putString(KEY_LAST_QUICK_CHECK_IN_LOCATION, settings.lastQuickCheckInLocation)
-            .putInt(KEY_LAST_QUICK_CHECK_IN_MINUTES, settings.lastQuickCheckInMinutes.coerceIn(1, 24 * 60))
             .putBoolean(KEY_BOARD_COUNTDOWN_COLLAPSED, settings.boardCountdownCollapsed)
             .putBoolean(KEY_BOARD_TODAY_TODOS_COLLAPSED, settings.boardTodayTodosCollapsed)
             .putBoolean(KEY_BOARD_TODAY_EVENTS_COLLAPSED, settings.boardTodayEventsCollapsed)
@@ -439,9 +424,6 @@ class AppSettingsStore(context: Context) {
             desktopSyncToken = syncToken,
             desktopSyncWifiKeepAlive = preferences.getBoolean(KEY_DESKTOP_SYNC_WIFI_KEEP_ALIVE, true),
             lastOpenedPlanningNoteId = preferences.getLong(KEY_LAST_OPENED_PLANNING_NOTE_ID, 0L).takeIf { it > 0 },
-            lastQuickCheckInTitle = preferences.getString(KEY_LAST_QUICK_CHECK_IN_TITLE, "自习").orEmpty().ifBlank { "自习" },
-            lastQuickCheckInLocation = preferences.getString(KEY_LAST_QUICK_CHECK_IN_LOCATION, "").orEmpty(),
-            lastQuickCheckInMinutes = preferences.getInt(KEY_LAST_QUICK_CHECK_IN_MINUTES, 60).coerceIn(1, 24 * 60),
             boardCountdownCollapsed = preferences.getBoolean(KEY_BOARD_COUNTDOWN_COLLAPSED, false),
             boardTodayTodosCollapsed = preferences.getBoolean(KEY_BOARD_TODAY_TODOS_COLLAPSED, false),
             boardTodayEventsCollapsed = preferences.getBoolean(KEY_BOARD_TODAY_EVENTS_COLLAPSED, false),
@@ -532,9 +514,6 @@ class AppSettingsStore(context: Context) {
         private const val KEY_DESKTOP_SYNC_TOKEN = "desktop_sync_token"
         private const val KEY_DESKTOP_SYNC_WIFI_KEEP_ALIVE = "desktop_sync_wifi_keep_alive"
         private const val KEY_LAST_OPENED_PLANNING_NOTE_ID = "last_opened_planning_note_id"
-        private const val KEY_LAST_QUICK_CHECK_IN_TITLE = "last_quick_check_in_title"
-        private const val KEY_LAST_QUICK_CHECK_IN_LOCATION = "last_quick_check_in_location"
-        private const val KEY_LAST_QUICK_CHECK_IN_MINUTES = "last_quick_check_in_minutes"
         private const val KEY_BOARD_COUNTDOWN_COLLAPSED = "board_countdown_collapsed"
         private const val KEY_BOARD_TODAY_TODOS_COLLAPSED = "board_today_todos_collapsed"
         private const val KEY_BOARD_TODAY_EVENTS_COLLAPSED = "board_today_events_collapsed"

@@ -2,7 +2,7 @@
 
 ## Active Development Focus
 
-Active goal: complete the final verification and handoff for `docs/goals/2026-05-18-paykitodo-1.11.0-revised-goal.md`, plus the user's additional Android widget requirements. Code now builds as `1.11.0 / versionCode 222`.
+Active goal: continue post-`1.11.0` polish and verification. Code now builds as `1.11.1 / versionCode 223` after the latest UX cleanup.
 
 Do not push to GitHub unless the user explicitly asks.
 
@@ -167,6 +167,15 @@ Do not push to GitHub unless the user explicitly asks.
 5. Debug APK metadata confirms `versionName = 1.11.0`, `versionCode = 222`, output `PaykiTodo-1.11.0-debug.apk`.
 6. `apksigner verify --verbose --print-certs app/build/outputs/apk/release/PaykiTodo-1.11.0-release.apk` passed with one v2 signer.
 
+### v1.11.1 UX cleanup slice
+
+1. App version metadata is now `1.11.1 / versionCode 223`.
+2. Daily-board greeting defaults collapsed and first-use guidance is moved below today's task / schedule content.
+3. Todo batch import opens empty with placeholder examples, and its generated sample uses future dates.
+4. Todo `+` remains the primary bottom action while batch import becomes a secondary compact FAB.
+5. Planning Desk editor has starter placeholder examples; todo group filter copy and calendar timezone label are shorter and clearer.
+6. `./gradlew.bat :app:compileDebugKotlin` and `./gradlew.bat :app:assembleDebug` passed for this patch.
+
 ## Verification Completed
 
 ### Widget slice
@@ -311,7 +320,7 @@ Do not push to GitHub unless the user explicitly asks.
 
 ## Verification Still Needed On Device / Browser
 
-1. Install `app/build/outputs/apk/debug/PaykiTodo-1.11.0-debug.apk` on the physical phone if validating the latest built widget APK.
+1. Install `app/build/outputs/apk/debug/PaykiTodo-1.11.1-debug.apk` on the physical phone if validating the latest built debug APK.
 2. Add / resize the `今日看板` widget and confirm the removed top header, minute refresh, and cross-day date/list update behavior on the launcher.
 3. Add / resize the `倒数日` widget and confirm scroll behavior, readable multi-line rows, and row deep links on the launcher.
 4. Confirm on the physical phone that no user-facing focus / pomodoro entry remains in settings, todo long-press menu, desktop web, AI report, or widgets; the emulator drawer check already found no focus entry.

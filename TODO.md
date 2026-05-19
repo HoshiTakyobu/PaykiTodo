@@ -4,8 +4,8 @@
 
 ### In Progress
 
-- Verify version `1.11.0` on device after the focus removal, event check-in, multi-group todo, Planning Desk image recognition, widget refresh, and R8 release-size changes
-- Keep `README.md`, `CHANGELOG.md`, Wiki, in-app help sheets, desktop-web help, and current-state docs aligned with version `1.11.0`
+- Verify version `1.11.1` on device after the focus removal, event check-in, multi-group todo, Planning Desk image recognition, widget refresh, R8 release-size changes, and latest UX cleanup
+- Keep `README.md`, `CHANGELOG.md`, Wiki, in-app help sheets, desktop-web help, and current-state docs aligned with version `1.11.1`
 - Verify the current 1.11.0 multi-group todo slice on device and desktop browser: phone editor reopen preserves all selected groups, selecting multiple group chips uses intersection filtering, desktop Web edit preserves all groups, and backup export/import keeps `todoGroupTags`
 - Continue planning-desk usability polish without expanding into drag/drop, Gantt, AI auto-planning, or complex project trees
 - Improve repo-native handoff so new sessions do not depend on long chat history

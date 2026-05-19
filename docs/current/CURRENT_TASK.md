@@ -2,11 +2,21 @@
 
 ## Active Development Focus
 
-Active goal: commit the `1.11.4` check-in regression patch. Code targets `1.11.4 / versionCode 226`; verification has passed for the functional issues found while auditing the `1.11.3` full-screen check-in refactor.
+Active goal: implement `docs/goals/2026-05-19-paykitodo-capture-and-outliner-goal.md`. Phase 1 quick capture is implemented and verified in `1.12.0 / versionCode 227`; Phase 2 Outliner (`planning_nodes`, migration 19 -> 20, outline editor, bidirectional todo sync, desktop node APIs) is still pending and must not be treated as complete.
 
 Do not push to GitHub unless the user explicitly asks.
 
 ## Completed Goal Slices
+
+### v1.12.0 quick capture phase
+
+1. System share target `ShareReceiverActivity` accepts shared text and images under the label `添加到 PaykiTodo`, recognizes content, shows a candidate preview, and imports through the existing Planning Desk import pipeline.
+2. Launcher shortcuts `拍照添加` and `语音添加` are declared through `res/xml/shortcuts.xml`; photo capture uses FileProvider + system camera, and voice capture requests `RECORD_AUDIO` and uses zh-CN SpeechRecognizer partial results.
+3. `BackgroundCaptureProcessor` centralizes text / image recognition, posts `capture_processing` notifications, and opens capture previews through notification taps.
+4. Phone Planning Desk `识别` now starts background recognition and toasts `正在后台识别，稍后通知`; desktop Web recognition remains synchronous.
+5. Database version remains `19`; no `planning_nodes` schema exists yet.
+6. App version metadata is `1.12.0 / versionCode 227`.
+7. Verification passed: `./gradlew.bat :app:compileDebugKotlin`, `node --check app/src/main/assets/desktop-web/app.js`, `git diff --check`, and `./gradlew.bat :app:assembleDebug`; debug APK metadata confirms `PaykiTodo-1.12.0-debug.apk`.
 
 ### v1.11.4 check-in regression patch
 

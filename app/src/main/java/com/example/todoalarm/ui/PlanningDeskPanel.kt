@@ -312,26 +312,17 @@ internal fun PlanningDeskPanel(
                     enabled = !parsing,
                     onClick = {
                         focusManager.clearFocus()
-                        scope.launch {
-                            parsing = true
-                            try {
-                            val result = onParse(editorValue.text, activeNote?.id)
-                                parseResult = result
-                                selectedIds.clear()
-                                editableCandidates.clear()
-                                result.candidates.forEach { candidate ->
-                                    val editable = candidate.toPlanningImportCandidate()
-                                    editableCandidates += editable
-                                    selectedIds[editable.id] = editable.validate() == null
-                                }
-                                val extra = result.message.takeIf { it.isNotBlank() }?.let { "；$it" }.orEmpty()
-                                Toast.makeText(context, "识别完成：${result.importableCount} 条可导入$extra", Toast.LENGTH_SHORT).show()
-                                previewSheetVisible = true
-                            } catch (error: Exception) {
-                                Toast.makeText(context, error.message ?: "识别失败", Toast.LENGTH_SHORT).show()
-                            } finally {
-                                parsing = false
-                            }
+                        val markdown = editorValue.text
+                        if (markdown.isBlank()) {
+                            Toast.makeText(context, "没有可识别的内容", Toast.LENGTH_SHORT).show()
+                        } else {
+                            BackgroundCaptureProcessor.processPlanningNoteText(
+                                context = context,
+                                noteId = activeNote?.id,
+                                text = markdown,
+                                title = activeNote?.title?.let { "规划台：$it" } ?: "规划台识别"
+                            )
+                            Toast.makeText(context, "正在后台识别，稍后通知", Toast.LENGTH_SHORT).show()
                         }
                     }
                 ) {

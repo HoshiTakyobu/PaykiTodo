@@ -6,7 +6,15 @@ Long-running Codex sessions can become unreliable. This file exists so a new ses
 
 ## Current Handoff Summary
 
-- Current workline is `1.11.4 / versionCode 226`.
+- Current workline is `1.12.0 / versionCode 227`.
+- `1.12.0` quick capture phase is implemented and verified:
+  1. System share target `ShareReceiverActivity` accepts shared text and images under the label `添加到 PaykiTodo`, recognizes content, shows a capture preview, and imports through the same Planning Desk import pipeline.
+  2. Launcher shortcuts `拍照添加` and `语音添加` are declared in `res/xml/shortcuts.xml`; photo capture uses FileProvider + system camera, and voice capture requests `RECORD_AUDIO` then uses zh-CN SpeechRecognizer partial results.
+  3. `BackgroundCaptureProcessor` centralizes background text/image recognition and posts the `capture_processing` notification that opens the capture preview.
+  4. Phone Planning Desk `识别` starts background recognition and shows `正在后台识别，稍后通知`; desktop Web recognition remains synchronous.
+  5. Database version is still `19`; Phase 2 Outliner (`planning_nodes`, migration 19 -> 20, outline editor, bidirectional sync, desktop node APIs) is not implemented yet.
+  6. Verification passed: `./gradlew.bat :app:compileDebugKotlin`, `node --check app/src/main/assets/desktop-web/app.js`, `git diff --check`, and `./gradlew.bat :app:assembleDebug`.
+  7. Debug APK metadata confirms `versionName = 1.12.0`, `versionCode = 227`, output `PaykiTodo-1.12.0-debug.apk`.
 - `1.11.4` check-in regression patch is implemented and verified:
   1. `CheckInActivity` now allows a check-in-enabled event to be signed in again after a previous sign-out instead of disabling the main button forever.
   2. Successful sign-in / sign-out from `CheckInActivity` runs the same auto-backup path when auto-backup is enabled.
@@ -38,7 +46,7 @@ Long-running Codex sessions can become unreliable. This file exists so a new ses
   - `./gradlew.bat :app:assembleDebug`
   - Debug APK metadata confirms `versionName = 1.11.2`, `versionCode = 224`, output `PaykiTodo-1.11.2-debug.apk`
 - Latest debug APK:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.11.4-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.12.0-debug.apk`
 - Latest closed UX cleanup in `1.11.1 / versionCode 223`:
   1. Todo batch import now opens with an empty editor and placeholder examples instead of stale prefilled examples that can immediately fail validation.
   2. Todo page bottom actions now keep single-item `+` creation as the visual primary action; batch todo import is a compact secondary FAB.
@@ -47,7 +55,7 @@ Long-running Codex sessions can become unreliable. This file exists so a new ses
   5. Todo group filter helper text is shortened.
   6. Calendar timezone label now says local time with UTC offset instead of raw `GMT+0` style text.
   7. Version metadata has been bumped to `1.11.1 / versionCode 223`; debug build verification passed.
-- Active goal: `1.11.4 / versionCode 226` check-in regression patch is ready to commit; do not push unless the user explicitly asks.
+- Active goal: continue implementing `docs/goals/2026-05-19-paykitodo-capture-and-outliner-goal.md`; Phase 1 is complete, Phase 2 Outliner remains pending. Do not push unless the user explicitly asks.
 - Already completed baseline widget slice:
   1. `今日看板` widget removes the top menu/title/date header.
   2. `今日看板` widget and `倒数日` widget refresh through provider-owned minute ticks instead of relying on `updatePeriodMillis`.
@@ -81,7 +89,7 @@ Long-running Codex sessions can become unreliable. This file exists so a new ses
   - `app/build/outputs/apk/release/PaykiTodo-1.10.2-release.apk`
   - GitHub Release: `https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.10.2`
 - Latest locally built APKs:
-  - Debug: `app/build/outputs/apk/debug/PaykiTodo-1.11.4-debug.apk`
+  - Debug: `app/build/outputs/apk/debug/PaykiTodo-1.12.0-debug.apk`
   - Release: `app/build/outputs/apk/release/PaykiTodo-1.11.0-release.apk`
 - Do not push to GitHub unless the user explicitly asks.
 - Keep `keystore.properties`, `release/`, APK/AAB outputs, API keys, tokens, and private Base URLs out of Git.

@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <shortcut
+        android:shortcutId="capture_camera"
+        android:enabled="true"
+        android:icon="@drawable/ic_shortcut_camera"
+        android:shortcutShortLabel="@string/shortcut_camera_label"
+        android:shortcutLongLabel="@string/shortcut_camera_long_label">
+        <intent
+            android:action="com.paykitodo.ACTION_CAPTURE_CAMERA"
+            android:targetPackage="com.paykitodo.app"
+            android:targetClass="com.example.todoalarm.ui.CaptureActivity" />
+    </shortcut>
+    <shortcut
+        android:shortcutId="capture_voice"
+        android:enabled="true"
+        android:icon="@drawable/ic_shortcut_mic"
+        android:shortcutShortLabel="@string/shortcut_voice_label"
+        android:shortcutLongLabel="@string/shortcut_voice_long_label">
+        <intent
+            android:action="com.paykitodo.ACTION_CAPTURE_VOICE"
+            android:targetPackage="com.paykitodo.app"
+            android:targetClass="com.example.todoalarm.ui.VoiceCaptureActivity" />
+    </shortcut>
+</shortcuts>

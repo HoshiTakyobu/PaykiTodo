@@ -9,6 +9,10 @@
     <string name="widget_todo_description">建议 4×5，可上下拉伸；展示公告、今日待办、今日日程和明日日程。</string>
     <string name="widget_countdown_name">PaykiTodo 倒数日</string>
     <string name="widget_countdown_description">建议 4×2，可上下拉伸；展示最近倒数目标并按分钟刷新。</string>
+    <string name="shortcut_camera_label">拍照添加</string>
+    <string name="shortcut_camera_long_label">拍纸添加到 PaykiTodo</string>
+    <string name="shortcut_voice_label">语音添加</string>
+    <string name="shortcut_voice_long_label">语音添加到 PaykiTodo</string>
     <string name="accessibility_service_summary">在提醒触发时直接覆盖显示提醒内容，并在后台、锁屏与解锁后持续兜底。</string>
     <string name="accessibility_service_description">为依赖无障碍的用户提供更及时、更强的到点提醒与全屏覆盖能力。</string>
 </resources>

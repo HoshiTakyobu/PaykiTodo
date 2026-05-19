@@ -514,6 +514,19 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
         return PlanningImportResult(importedCount = selected.size, updatedMarkdown = updatedMarkdown)
     }
 
+    suspend fun importCapturePreview(
+        preview: CapturePlanningPreview,
+        candidates: List<PlanningImportCandidate>,
+        selectedIds: Set<String>
+    ): PlanningImportResult {
+        return importPlanningCandidates(
+            candidates = candidates,
+            selectedIds = selectedIds,
+            currentMarkdown = preview.currentMarkdown,
+            activeNoteId = preview.activeNoteId
+        )
+    }
+
     suspend fun syncPlanningMappings(noteId: Long, markdown: String): List<PlanningLineMapping> {
         return repository.syncPlanningMappingStatuses(noteId, markdown).mappings
     }

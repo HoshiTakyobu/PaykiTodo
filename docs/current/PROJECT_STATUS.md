@@ -7,8 +7,8 @@
 - Package name: `com.paykitodo.app`
 - Target platform: Android 14 / API 34
 - Current version in code:
-  - `versionName = "1.11.4"`
-  - `versionCode = 226`
+  - `versionName = "1.12.0"`
+  - `versionCode = 227`
 
 ## Current Build Facts
 
@@ -18,7 +18,13 @@
 - Latest signed release APK built locally:
   - `app/build/outputs/apk/release/PaykiTodo-1.11.0-release.apk`
 - Latest fully built debug APK:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.11.4-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.12.0-debug.apk`
+- Current `1.12.0 / versionCode 227` verification completed:
+  - `./gradlew.bat :app:compileDebugKotlin`
+  - `node --check app/src/main/assets/desktop-web/app.js`
+  - `git diff --check`
+  - `./gradlew.bat :app:assembleDebug`
+  - Debug APK metadata inspected: `versionName = 1.12.0`, `versionCode = 227`, output `PaykiTodo-1.12.0-debug.apk`
 - Current `1.11.4 / versionCode 226` verification completed:
   - `./gradlew.bat :app:compileDebugKotlin`
   - `git diff --check`
@@ -55,11 +61,12 @@
 
 ## Current Worktree Reality
 
-The repository now targets the `1.11.4 / versionCode 226` workline. The Android widget requirements have landed. The first `1.11.0` goal slice removes the former focus / pomodoro mode and prepares the database for later check-in and multi-group todo work. The second small `1.11.0` slice adds database schema export, debug-only Compose tooling, structured startup initialization, and AI-report retention cleanup. The navigation slice renames the drawer task entry to single-line `待办`, removes the drawer group expansion and standalone `分组管理` entry, and moves group filtering / group maintenance into the todo page chip bar. The multi-group slice implements multi-group todo relationships across phone UI, repository queries, backup/restore, desktop sync, and desktop Web todo management. Phone check-in work now includes the event-editor `打卡追踪` switch, calendar-event details card, full-screen / accessibility fallback event reminder sign-in actions, daily-board check-in state display, and the independent `CheckInActivity` full-screen sign-in surface. `1.11.4` specifically fixes the `1.11.3` check-in refactor regressions: a signed-out event can be signed in again, successful sign-in/out triggers automatic backup when enabled, and returning from the check-in surface refreshes board/detail check-in state. Desktop Web still exposes the event-editor `打卡追踪` checkbox and a preview-side check-in card through desktop sync endpoints. The Android `今日看板` widget shows active in-progress event check-in status without exposing launcher-side sign-in / sign-out buttons. Settings -> `日历与提醒` stores the event check-in behavior preferences for automatic checkout on event completion, showing investment statistics on completion, and idle auto-checkout. AI daily reports include today's event check-in investment minutes in both the AI prompt and local fallback report. Phone Planning Desk shortcut UI has also been simplified to `子任务` and `公告`, with normal task / DDL / reminder / group / schedule input staying in natural text and parser tags. Phone Planning Desk can call vision-capable AI providers from `更多 -> 从图片识别日程`, append recognized schedule Markdown to the current note, and now auto-open the preview sheet when the returned Markdown produces candidates. Release builds enable R8/resource shrinking and use WebP dashboard backgrounds; the latest signed `PaykiTodo-1.11.0-release.apk` size check is `4.83 MB`, and release startup / main-surface smoke testing passed on `Pixel_8 / emulator-5554`.
+The repository now targets the `1.12.0 / versionCode 227` workline. Phase 1 of the capture + outliner goal is implemented: Android share targets accept text / image shares into a capture preview, launcher shortcuts expose `拍照添加` and `语音添加`, photo capture uses FileProvider + the system camera, voice capture uses Android SpeechRecognizer with zh-CN partial results, and background capture recognition posts a `capture_processing` notification that opens the same preview surface. The Planning Desk phone `识别` button now starts background recognition instead of blocking the editor, while desktop Web recognition remains synchronous. Database version remains `19`; the `planning_nodes` Outliner schema and migration are still pending Phase 2. The earlier Android widget, multi-group todo, event check-in, Planning Desk image recognition, release-size, and `1.11.4` check-in regression fixes remain in the working tree. Release builds enable R8/resource shrinking and use WebP dashboard backgrounds; the latest signed `PaykiTodo-1.11.0-release.apk` size check is `4.83 MB`, and release startup / main-surface smoke testing passed on `Pixel_8 / emulator-5554`.
 
 Most important current baseline facts:
 
 - Database version is now `19` in the working tree. `MIGRATION_17_18` drops the old `focus_sessions` table, creates `event_check_ins`, creates `todo_group_tags`, adds `checkInEnabled` and `totalCheckInMinutes` to `todo_items`, backfills todo group tags, and merges the old default `专注` group into `例行`; `MIGRATION_18_19` adds `planning_notes.documentDateEpochDay`.
+- Phase 1 quick capture is implemented without schema changes: `ShareReceiverActivity`, `CaptureActivity`, `VoiceCaptureActivity`, `BackgroundCaptureProcessor`, shortcuts XML, FileProvider paths, and capture preview storage exist; `planning_nodes` is not created yet.
 - Active no-DDL todos are still treated as today todos across phone daily board, Android widget board query, desktop board, and desktop todo management.
 - Countdown-enabled todos use their DDL time as the target; countdown-enabled events use their start time.
 - Countdown targets whose exact target time has passed are filtered out before board / widget / desktop rendering.

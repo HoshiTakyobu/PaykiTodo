@@ -6,6 +6,13 @@ Long-running Codex sessions can become unreliable. This file exists so a new ses
 
 ## Current Handoff Summary
 
+- Latest UX cleanup after `1.11.0`:
+  1. Todo batch import now opens with an empty editor and placeholder examples instead of stale prefilled examples that can immediately fail validation.
+  2. Todo page bottom actions now keep single-item `+` creation as the visual primary action; batch todo import is a compact secondary FAB.
+  3. Daily board greeting is collapsed by default, and the first-use hint card is moved below today's todo/schedule content with shorter copy.
+  4. Planning Desk editor now has starter placeholder text for natural schedules, DDL tasks, and nested Markdown tasks.
+  5. Todo group filter helper text is shortened.
+  6. Calendar timezone label now says local time with UTC offset instead of raw `GMT+0` style text.
 - Active goal: complete final verification and handoff for `docs/goals/2026-05-18-paykitodo-1.11.0-revised-goal.md`, plus the user's extra Android widget requirements. The app now builds as `1.11.0 / versionCode 222`.
 - Already completed baseline widget slice:
   1. `今日看板` widget removes the top menu/title/date header.

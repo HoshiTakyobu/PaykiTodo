@@ -2813,9 +2813,14 @@ private fun calendarVisualAlpha(item: TodoItem): Float {
 }
 
 private fun timezoneShortLabel(): String {
-    val totalSeconds = ZoneId.systemDefault().rules.getOffset(Instant.now()).totalSeconds
-    val totalHours = totalSeconds / 3600
-    return if (totalHours >= 0) "GMT+$totalHours" else "GMT$totalHours"
+    val offset = ZoneId.systemDefault().rules.getOffset(Instant.now())
+    val totalMinutes = offset.totalSeconds / 60
+    val sign = if (totalMinutes >= 0) "+" else "-"
+    val absMinutes = kotlin.math.abs(totalMinutes)
+    val hours = absMinutes / 60
+    val minutes = absMinutes % 60
+    val suffix = if (minutes == 0) "UTC$sign$hours" else "UTC$sign$hours:${minutes.toString().padStart(2, '0')}"
+    return "本地时间（$suffix）"
 }
 
 private fun formatClockTime(dateTime: LocalDateTime): String {

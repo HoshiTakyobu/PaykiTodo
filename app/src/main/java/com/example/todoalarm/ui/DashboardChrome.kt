@@ -617,12 +617,6 @@ internal fun DashboardBody(
                     CompactGreetingCard(quote = uiState.currentQuote)
                 }
 
-                if (!uiState.settings.hasSeenOnboarding) {
-                    item {
-                        OnboardingCard(onDismiss = onDismissOnboarding)
-                    }
-                }
-
                 if (visibleCountdownItems.isNotEmpty()) {
                     item {
                         CountdownBoardCard(
@@ -669,6 +663,12 @@ internal fun DashboardBody(
                         onCheckOutEvent = onCheckOutCalendarEvent,
                         onNavigatePlanning = onNavigatePlanning
                     )
+                }
+
+                if (!uiState.settings.hasSeenOnboarding) {
+                    item {
+                        OnboardingCard(onDismiss = onDismissOnboarding)
+                    }
                 }
             }
 
@@ -819,7 +819,7 @@ private fun AnnouncementBanner(text: String, rangeLabel: String? = null) {
 private fun CompactGreetingCard(
     quote: String
 ) {
-    var collapsed by rememberSaveable { mutableStateOf(false) }
+    var collapsed by rememberSaveable { mutableStateOf(true) }
     ElevatedCard(
         shape = RoundedCornerShape(24.dp),
         colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f))
@@ -877,21 +877,20 @@ private fun CompactGreetingCard(
 @Composable
 private fun OnboardingCard(onDismiss: () -> Unit) {
     ElevatedCard(
-        shape = RoundedCornerShape(28.dp),
-        colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.92f))
     ) {
-        Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            Text("欢迎使用 PaykiTodo", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
-            Text("• 点右下角 + 创建第一条待办", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface)
-            Text("• 打开抽屉试试「规划台」，把近期要做的事写下来", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface)
-            Text("• 到设置里检查提醒权限，避免错过 DDL", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface)
+        Column(modifier = Modifier.padding(horizontal = 18.dp, vertical = 16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text("首次使用提示", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+            Text("右下角 + 先记一条待办；抽屉里的「规划台」适合先把近期事情写下来。", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurface)
+            Text("正式使用前，去设置里检查提醒权限，避免错过 DDL。", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurface)
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
                 Surface(
                     shape = RoundedCornerShape(18.dp),
                     color = MaterialTheme.colorScheme.primary,
                     onClick = onDismiss
                 ) {
-                    Text("知道了", modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp), color = MaterialTheme.colorScheme.onPrimary, fontWeight = FontWeight.SemiBold)
+                    Text("知道了", modifier = Modifier.padding(horizontal = 14.dp, vertical = 7.dp), color = MaterialTheme.colorScheme.onPrimary, fontWeight = FontWeight.SemiBold)
                 }
             }
         }

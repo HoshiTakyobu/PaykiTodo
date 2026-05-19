@@ -157,7 +157,7 @@ internal fun inputSyntaxHelpLines(topic: InputSyntaxHelpTopic): List<String> {
 internal fun inputSyntaxHelpExample(topic: InputSyntaxHelpTopic): String {
     return when (topic) {
         InputSyntaxHelpTopic.Reminder -> "5,15,16:30,2:30 pm,下午 2:30,明天 16:30,周五 16:30,5/10,14:30"
-        InputSyntaxHelpTopic.TodoBatch -> "16:30,写报告,5\n5/13 09:30,给老师发消息,09:00\n5月14日，09:30,整理保研材料,5\n无DDL,整理 Obsidian 待办"
+        InputSyntaxHelpTopic.TodoBatch -> "明天 16:30,写报告,5\n周五 09:30,给老师发消息,09:00\n后天 23:59,整理保研材料,5\n无DDL,整理 Obsidian 待办"
         InputSyntaxHelpTopic.CalendarBatch -> "13:40-14:40, 学院立德树人优秀教师推荐学生座谈会, @MB-B1-403\n明天: 10:20-11:55, 辅导员助理值班, @MB-B1-412, Remind=5"
         InputSyntaxHelpTopic.Snooze -> "5\n16:30\n2:30 pm\n下午 2:30\n明天 16:30\n周五 16:30"
         InputSyntaxHelpTopic.DdlPostpone -> "30\n30分钟\n往后推45分钟\n16:30\n2026-05-22 16:30"

@@ -57,7 +57,8 @@ internal fun TodoBatchImportDialog(
     onDismiss: () -> Unit,
     onImport: (List<TodoDraft>) -> Unit
 ) {
-    var input by remember { mutableStateOf(TodoBatchImportSampleText) }
+    val sampleText = remember { todoBatchImportSampleText() }
+    var input by remember { mutableStateOf("") }
     var parseResult by remember { mutableStateOf(TodoBatchImportParser.parse(input, defaults)) }
     var showHelp by remember { mutableStateOf(false) }
     var helpTopic by remember { mutableStateOf<InputSyntaxHelpTopic?>(null) }
@@ -94,13 +95,20 @@ internal fun TodoBatchImportDialog(
                         }
                     },
                     modifier = Modifier.fillMaxWidth(),
+                    placeholder = {
+                        Text(
+                            "可以直接粘贴多行待办，例如：\n" +
+                                "明天 16:30,写报告,5\n" +
+                                "无DDL,整理 Obsidian 待办"
+                        )
+                    },
                     minLines = 8,
                     maxLines = 14
                 )
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     OutlinedButton(onClick = { showHelp = true }) { Text("语法说明") }
                     OutlinedButton(onClick = {
-                        input = TodoBatchImportSampleText
+                        input = sampleText
                         parseResult = TodoBatchImportParser.parse(input, defaults)
                     }) { Text("填入示例") }
                 }
@@ -148,7 +156,7 @@ internal fun TodoBatchImportDialog(
                     Text("提醒时间只写一个：5、16:30、2:30 pm、明天 16:30、周五 16:30、5月28日，14:30。")
                     Text("因为英文逗号用于分隔字段，所以日期和时间放在同一个字段里时，推荐用空格或中文逗号，不要用英文逗号。")
                     Text("如果提醒时刻晚于 DDL，或提醒已经过去，该行会被判定为非法。")
-                    Text("示例：16:30,写报告,5")
+                    Text("示例：明天 16:30,写报告,5")
                 }
             },
             confirmButton = { TextButton(onClick = { showHelp = false }) { Text("知道了") } }
@@ -269,9 +277,6 @@ private object TodoBatchImportParser {
             )
         }
 
-        if (previews.isEmpty() && errors.isEmpty()) {
-            errors += "请输入要导入的待办。"
-        }
         return TodoBatchParseResult(previews, errors)
     }
 }
@@ -292,9 +297,14 @@ private fun String.isNoDueToken(): Boolean {
     return normalized == "无ddl" || normalized == "无 ddl" || normalized == "无截止" || normalized == "no due" || normalized == "-"
 }
 
-private val TodoBatchImportSampleText = """
-16:30,写报告,5
-5.13 09:30,给老师发消息,09:00
-5月14日,整理保研材料,5
+private fun todoBatchImportSampleText(today: LocalDate = LocalDate.now()): String {
+    val day1 = today.plusDays(1)
+    val day2 = today.plusDays(2)
+    val day3 = today.plusDays(3)
+    return """
+${day1.monthValue}.${day1.dayOfMonth} 16:30,写报告,5
+${day2.monthValue}/${day2.dayOfMonth} 09:30,给老师发消息,09:00
+${day3.monthValue}月${day3.dayOfMonth}日 23:59,整理保研材料,5
 无DDL,整理 Obsidian 待办
 """.trimIndent()
+}

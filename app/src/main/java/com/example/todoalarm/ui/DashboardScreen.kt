@@ -15,11 +15,11 @@ import androidx.compose.material.icons.rounded.PostAdd
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalNavigationDrawer
+import androidx.compose.material3.SmallFloatingActionButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -410,11 +410,13 @@ fun DashboardScreen(
                             horizontalArrangement = Arrangement.spacedBy(12.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            ExtendedFloatingActionButton(
+                            SmallFloatingActionButton(
                                 onClick = { todoBatchImportVisible = true },
-                                icon = { Icon(Icons.Rounded.PostAdd, contentDescription = null) },
-                                text = { Text("批量待办") }
-                            )
+                                containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                                contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                            ) {
+                                Icon(Icons.Rounded.PostAdd, contentDescription = "批量添加待办")
+                            }
                             FloatingActionButton(onClick = {
                                 editingItem = null
                                 editorKind = EditorKind.TODO

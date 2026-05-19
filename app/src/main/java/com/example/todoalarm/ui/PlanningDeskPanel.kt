@@ -429,6 +429,17 @@ internal fun PlanningDeskPanel(
                         .padding(6.dp),
                     textStyle = MaterialTheme.typography.bodyLarge.copy(fontFamily = FontFamily.Monospace),
                     shape = RoundedCornerShape(18.dp),
+                    placeholder = {
+                        Text(
+                            text = "可以直接这样写：\n\n" +
+                                "10:00-12:00 写论文 @图书馆3楼\n" +
+                                "任务M ddl 15:00\n" +
+                                "明天 16:30 交材料\n" +
+                                "- [ ] 整理保研材料\n" +
+                                "  - [ ] 打印成绩单",
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    },
                     minLines = 12
                 )
             }

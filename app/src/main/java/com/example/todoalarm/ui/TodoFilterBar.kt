@@ -97,7 +97,7 @@ internal fun TodoFilterBar(
             )
         }
         Text(
-            text = "可多选；多选时只显示同时属于这些分组的待办。长按分组可重命名、改色或删除。",
+            text = "多选按交集筛选；长按可管理分组。",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )

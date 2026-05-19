@@ -437,7 +437,7 @@ class DesktopSyncCoordinator(
             autoCheckOutEventOnEnd = settings.autoCheckOutEventOnEnd
         )
         val updated = result?.item
-        updated?.let { clearReminderArtifacts(listOf(it)) }
+        result?.affectedItems?.let(::clearReminderArtifacts)
         autoBackupIfNeeded()
         return JSONObject()
             .put("ok", updated != null)
@@ -465,12 +465,12 @@ class DesktopSyncCoordinator(
     private suspend fun deleteItem(path: String): JSONObject {
         val id = path.substringAfter("/api/items/").toLong()
         val item = app.repository.getTodo(id) ?: return JSONObject().put("ok", false)
-        if (item.isEvent) {
+        val deletedItems = if (item.isEvent) {
             app.repository.deleteCalendarEvent(item, RecurrenceScope.CURRENT)
         } else {
             app.repository.deleteTodo(id)
         }
-        clearReminderArtifacts(listOf(item))
+        clearReminderArtifacts(deletedItems.ifEmpty { listOf(item) })
         autoBackupIfNeeded()
         return JSONObject().put("ok", true)
     }
@@ -511,7 +511,8 @@ class DesktopSyncCoordinator(
 
     private suspend fun deletePlanningNote(path: String): JSONObject {
         val id = path.substringAfter("/api/planning/notes/").toLong()
-        app.repository.deletePlanningNote(id)
+        val deletedItems = app.repository.deletePlanningNote(id)
+        clearReminderArtifacts(deletedItems)
         val fallback = app.repository.ensureDefaultPlanningNote()
         settingsStore.updateLastOpenedPlanningNoteId(fallback.id)
         autoBackupIfNeeded()
@@ -540,11 +541,15 @@ class DesktopSyncCoordinator(
             startAt = parsePlanningNodeDateTime(json.optStringOrNull("startAt")),
             endAt = parsePlanningNodeDateTime(json.optStringOrNull("endAt")),
             location = json.optStringOrNull("location")?.trim(),
+            syncEnabled = json.optBoolean("syncEnabled", true),
             collapsed = json.optBoolean("collapsed", false),
             completed = json.optBoolean("completed", false)
         )
         require(draft.text.isNotBlank()) { "事项不能为空" }
-        val result = app.repository.createPlanningNode(draft) ?: error("规划节点创建失败")
+        val result = app.repository.createPlanningNode(
+            draft,
+            createEventEndTodo = settingsStore.currentSettings().planningEventEndTodoEnabled
+        ) ?: error("规划节点创建失败")
         handlePlanningNodeChange(result)
         settingsStore.updateLastOpenedPlanningNoteId(result.node.noteId)
         autoBackupIfNeeded()
@@ -554,7 +559,10 @@ class DesktopSyncCoordinator(
     private suspend fun updatePlanningNode(json: JSONObject): JSONObject {
         val nodeId = json.optLong("id", 0L).takeIf { it > 0L } ?: error("缺少节点 id")
         val existing = app.repository.getPlanningNode(nodeId) ?: error("规划节点不存在")
-        val beforeLinked = existing.linkedTodoId?.let { app.repository.getTodo(it) }
+        val beforeLinked = listOfNotNull(
+            existing.linkedTodoId?.let { app.repository.getTodo(it) },
+            existing.linkedEndTodoId?.let { app.repository.getTodo(it) }
+        )
         val edit = PlanningNodeEdit(
             text = json.optStringOrNull("text")?.trim() ?: existing.text,
             parentNodeId = if (json.has("parentNodeId")) json.optNullableLong("parentNodeId") else existing.parentNodeId,
@@ -563,12 +571,17 @@ class DesktopSyncCoordinator(
             startAt = if (json.has("startAt")) parsePlanningNodeDateTime(json.optStringOrNull("startAt")) else existing.startAtMillis?.toPlanningNodeDateTime(),
             endAt = if (json.has("endAt")) parsePlanningNodeDateTime(json.optStringOrNull("endAt")) else existing.endAtMillis?.toPlanningNodeDateTime(),
             location = if (json.has("location")) json.optStringOrNull("location")?.trim() else existing.location,
+            syncEnabled = json.optBoolean("syncEnabled", existing.syncEnabled),
             collapsed = json.optBoolean("collapsed", existing.collapsed),
             completed = json.optBoolean("completed", existing.completed)
         )
         require(edit.text.isNotBlank()) { "事项不能为空" }
-        val result = app.repository.updatePlanningNode(existing.id, edit) ?: error("规划节点更新失败")
-        beforeLinked?.let { clearReminderArtifacts(listOf(it)) }
+        val result = app.repository.updatePlanningNode(
+            existing.id,
+            edit,
+            createEventEndTodo = settingsStore.currentSettings().planningEventEndTodoEnabled
+        ) ?: error("规划节点更新失败")
+        clearReminderArtifacts(beforeLinked)
         handlePlanningNodeChange(result)
         settingsStore.updateLastOpenedPlanningNoteId(result.node.noteId)
         autoBackupIfNeeded()
@@ -953,7 +966,7 @@ class DesktopSyncCoordinator(
     }
 
     private suspend fun handlePlanningNodeChange(result: PlanningNodeChangeResult) {
-        result.deletedLinkedItem?.let { clearReminderArtifacts(listOf(it)) }
+        clearReminderArtifacts(result.deletedLinkedItems)
         val linkedItems = result.affectedLinkedItems.ifEmpty { result.linkedItem?.let { listOf(it) }.orEmpty() }
         linkedItems.forEach { linked ->
             if (linked.completed || linked.canceled) {
@@ -1048,6 +1061,8 @@ private fun PlanningNode.toPlanningNodeJson(): JSONObject {
         .put("dueAt", dueAtMillis?.toPlanningNodeDateTime()?.toString())
         .put("location", location)
         .put("linkedTodoId", linkedTodoId)
+        .put("linkedEndTodoId", linkedEndTodoId)
+        .put("syncEnabled", syncEnabled)
         .put("collapsed", collapsed)
         .put("completed", completed)
         .put("completedAtMillis", completedAtMillis)

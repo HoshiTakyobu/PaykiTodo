@@ -94,6 +94,8 @@ private fun AppSettings.toJson(): JSONObject {
         put("desktopSyncToken", desktopSyncToken)
         put("desktopSyncWifiKeepAlive", desktopSyncWifiKeepAlive)
         put("lastOpenedPlanningNoteId", lastOpenedPlanningNoteId)
+        put("planningOutlineHintVisible", planningOutlineHintVisible)
+        put("planningEventEndTodoEnabled", planningEventEndTodoEnabled)
         put("boardCountdownCollapsed", boardCountdownCollapsed)
         put("boardTodayTodosCollapsed", boardTodayTodosCollapsed)
         put("boardTodayEventsCollapsed", boardTodayEventsCollapsed)
@@ -275,6 +277,8 @@ private fun PlanningNode.toJson(): JSONObject {
         put("dueAtMillis", dueAtMillis)
         put("location", location)
         put("linkedTodoId", linkedTodoId)
+        put("linkedEndTodoId", linkedEndTodoId)
+        put("syncEnabled", syncEnabled)
         put("collapsed", collapsed)
         put("completed", completed)
         put("completedAtMillis", completedAtMillis)
@@ -553,6 +557,8 @@ private fun JSONArray?.toPlanningNodes(): List<PlanningNode> {
                     dueAtMillis = item.optLongOrNull("dueAtMillis"),
                     location = item.optStringOrNull("location"),
                     linkedTodoId = item.optLongOrNull("linkedTodoId"),
+                    linkedEndTodoId = item.optLongOrNull("linkedEndTodoId"),
+                    syncEnabled = item.optBoolean("syncEnabled", true),
                     collapsed = item.optBoolean("collapsed", false),
                     completed = item.optBoolean("completed", false),
                     completedAtMillis = item.optLongOrNull("completedAtMillis")
@@ -647,6 +653,8 @@ private fun JSONObject?.toSettings(): AppSettings {
         desktopSyncToken = optString("desktopSyncToken", ""),
         desktopSyncWifiKeepAlive = optBoolean("desktopSyncWifiKeepAlive", true),
         lastOpenedPlanningNoteId = optLongOrNull("lastOpenedPlanningNoteId")?.takeIf { it > 0 },
+        planningOutlineHintVisible = optBoolean("planningOutlineHintVisible", true),
+        planningEventEndTodoEnabled = optBoolean("planningEventEndTodoEnabled", false),
         boardCountdownCollapsed = optBoolean("boardCountdownCollapsed", false),
         boardTodayTodosCollapsed = optBoolean("boardTodayTodosCollapsed", false),
         boardTodayEventsCollapsed = optBoolean("boardTodayEventsCollapsed", false),

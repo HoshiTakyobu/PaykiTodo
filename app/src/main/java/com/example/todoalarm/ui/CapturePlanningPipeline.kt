@@ -281,8 +281,11 @@ object CapturePlanningPipeline {
         require(importable.isNotEmpty()) { "未能识别出待办或日程" }
         var inserted = 0
         importable.forEach { candidate ->
-            val result = app.repository.createPlanningNode(candidate.toPlanningNodeDraft(note.id)) ?: return@forEach
-            result.linkedItem?.let { linked ->
+            val result = app.repository.createPlanningNode(
+                candidate.toPlanningNodeDraft(note.id),
+                createEventEndTodo = app.settingsStore.currentSettings().planningEventEndTodoEnabled
+            ) ?: return@forEach
+            result.affectedLinkedItems.forEach { linked ->
                 if (linked.completed || linked.canceled) {
                     app.alarmScheduler.cancel(linked.id)
                     app.reminderNotifier.cancel(linked.id)

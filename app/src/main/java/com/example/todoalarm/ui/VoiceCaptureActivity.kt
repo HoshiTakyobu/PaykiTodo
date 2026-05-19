@@ -72,7 +72,7 @@ class VoiceCaptureActivity : ComponentActivity() {
                             Toast.makeText(this, "没有可识别的内容", Toast.LENGTH_SHORT).show()
                         } else {
                             BackgroundCaptureProcessor.processText(this, text, title = "语音捕获")
-                            Toast.makeText(this, "正在后台识别，稍后通知", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(this, BackgroundCaptureProcessor.processingToastMessage(this), Toast.LENGTH_SHORT).show()
                         }
                         finish()
                     },

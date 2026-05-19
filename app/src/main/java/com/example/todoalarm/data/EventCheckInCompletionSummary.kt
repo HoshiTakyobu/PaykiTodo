@@ -12,5 +12,6 @@ data class EventCheckInCompletionSummary(
 
 data class CompletedItemResult(
     val item: TodoItem,
+    val affectedItems: List<TodoItem> = listOf(item),
     val eventCheckInSummary: EventCheckInCompletionSummary? = null
 )

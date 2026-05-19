@@ -28,6 +28,7 @@ const state = {
   planningMappings: [],
   planningLoaded: false,
   planningNodesLoaded: false,
+  planningDraggingNodeId: null,
   todosLoaded: false,
   todoOffset: 0,
   todoTotal: 0,
@@ -1272,6 +1273,12 @@ function planningNodeById(id) {
   return (state.planningNodes || []).find(node => sameId(node.id, id)) || null;
 }
 
+function planningSiblingNodes(parentNodeId) {
+  return (state.planningNodes || [])
+    .filter(node => parentNodeId == null ? node.parentNodeId == null : sameId(node.parentNodeId, parentNodeId))
+    .sort((a, b) => (Number(a.sortOrder || 0) - Number(b.sortOrder || 0)) || (Number(a.id || 0) - Number(b.id || 0)));
+}
+
 function flattenPlanningNodes(nodes) {
   const children = new Map();
   (nodes || []).forEach(node => {
@@ -1297,15 +1304,26 @@ function flattenPlanningNodes(nodes) {
 function planningNodeMetaText(node) {
   if (!node) return '';
   const location = String(node.location || '').trim();
+  if (node.syncEnabled === false) {
+    return ['结构标题', location].filter(Boolean).join(' · ');
+  }
   let time = '';
   if (node.startAtMillis && node.endAtMillis) {
-    time = '日程 ' + editableDateTimeValue(node.startAtMillis).replace('T', ' ') + ' - ' + editableDateTimeValue(node.endAtMillis).replace('T', ' ');
+    time = '日程 ' + planningNodeDateTimeValue(node, 'startAt').replace('T', ' ') + ' - ' + planningNodeDateTimeValue(node, 'endAt').replace('T', ' ');
   } else if (node.dueAtMillis) {
-    time = 'DDL ' + editableDateTimeValue(node.dueAtMillis).replace('T', ' ');
+    time = 'DDL ' + planningNodeDateTimeValue(node, 'dueAt').replace('T', ' ');
   } else {
     time = '无 DDL 待办';
   }
   return [time, location].filter(Boolean).join(' · ');
+}
+
+function planningNodeDateTimeValue(node, field) {
+  if (!node) return '';
+  const textValue = node[field];
+  if (textValue) return editableDateTimeValue(textValue);
+  const millis = node[field + 'Millis'];
+  return millis ? formatDateTimeLocalValue(Number(millis)) : '';
 }
 
 function planningNodeHeaderHint(text) {
@@ -1333,21 +1351,31 @@ function renderPlanningOutline() {
     const completedClass = node.completed ? ' completed' : '';
     const hasChildrenClass = item.hasChildren ? ' has-children' : '';
     const collapseText = item.hasChildren ? (node.collapsed ? '▶' : '▼') : '·';
-    const dueAt = editableDateTimeValue(node.dueAtMillis).replace('T', ' ');
-    const startAt = editableDateTimeValue(node.startAtMillis).replace('T', ' ');
-    const endAt = editableDateTimeValue(node.endAtMillis).replace('T', ' ');
+    const siblings = planningSiblingNodes(node.parentNodeId);
+    const siblingIndex = siblings.findIndex(sibling => sameId(sibling.id, node.id));
+    const moveUpDisabled = siblingIndex <= 0 ? ' disabled' : '';
+    const moveDownDisabled = siblingIndex < 0 || siblingIndex >= siblings.length - 1 ? ' disabled' : '';
+    const dueAt = planningNodeDateTimeValue(node, 'dueAt').replace('T', ' ');
+    const startAt = planningNodeDateTimeValue(node, 'startAt').replace('T', ' ');
+    const endAt = planningNodeDateTimeValue(node, 'endAt').replace('T', ' ');
+    const syncChecked = node.syncEnabled === false ? '' : ' checked';
     return ''
-      + '<article class="planning-node-row' + completedClass + hasChildrenClass + '" style="--depth:' + Number(item.depth || 0) + '" data-planning-node-row="' + escapeHtml(node.id) + '">'
+      + '<article class="planning-node-row' + completedClass + hasChildrenClass + '" draggable="true" style="--depth:' + Number(item.depth || 0) + '" data-planning-node-row="' + escapeHtml(node.id) + '">'
       +   planningNodeHeaderHint(node.text)
       +   '<div class="planning-node-main">'
       +     '<button type="button" class="planning-node-icon" data-node-collapse="' + escapeHtml(node.id) + '"' + (item.hasChildren ? '' : ' disabled') + '>' + escapeHtml(collapseText) + '</button>'
       +     '<button type="button" class="planning-node-check" data-node-complete="' + escapeHtml(node.id) + '">' + (node.completed ? '✓' : '○') + '</button>'
       +     '<input class="planning-node-text" data-node-text="' + escapeHtml(node.id) + '" value="' + escapeHtml(node.text || '') + '" placeholder="写下事项、DDL 或日程" />'
+      +     '<span class="planning-node-order">'
+      +       '<button type="button" class="ghost mini planning-node-move" data-node-move-up="' + escapeHtml(node.id) + '"' + moveUpDisabled + ' title="上移">↑</button>'
+      +       '<button type="button" class="ghost mini planning-node-move" data-node-move-down="' + escapeHtml(node.id) + '"' + moveDownDisabled + ' title="下移">↓</button>'
+      +     '</span>'
       +     '<button type="button" class="ghost mini" data-node-child="' + escapeHtml(node.id) + '">子项</button>'
       +     '<button type="button" class="ghost mini danger-lite-action" data-node-delete="' + escapeHtml(node.id) + '">删除</button>'
       +   '</div>'
       +   '<div class="planning-node-meta">' + escapeHtml(planningNodeMetaText(node)) + '</div>'
       +   '<div class="planning-node-fields">'
+      +     '<label class="planning-node-sync"><input type="checkbox" data-node-sync="' + escapeHtml(node.id) + '"' + syncChecked + ' />同步为待办/日程</label>'
       +     '<label>DDL<input data-node-field="dueAt" data-node-id="' + escapeHtml(node.id) + '" value="' + escapeHtml(dueAt) + '" placeholder="明天 16:30 / 5.28 23:59" /></label>'
       +     '<label>开始<input data-node-field="startAt" data-node-id="' + escapeHtml(node.id) + '" value="' + escapeHtml(startAt) + '" placeholder="10:00" /></label>'
       +     '<label>结束<input data-node-field="endAt" data-node-id="' + escapeHtml(node.id) + '" value="' + escapeHtml(endAt) + '" placeholder="12:00" /></label>'
@@ -1443,6 +1471,83 @@ async function indentPlanningNode(nodeId, outdent = false) {
   const previous = previousVisiblePlanningNode(nodeId);
   if (!previous || sameId(previous.id, existing.id)) return;
   await updatePlanningOutlineNode(nodeId, { parentNodeId: previous.id });
+}
+
+async function movePlanningNode(nodeId, direction) {
+  const existing = planningNodeById(nodeId);
+  const active = activePlanningNote();
+  if (!existing || !active) return;
+  const siblings = planningSiblingNodes(existing.parentNodeId);
+  const index = siblings.findIndex(node => sameId(node.id, existing.id));
+  const targetIndex = index + direction;
+  if (index < 0 || targetIndex < 0 || targetIndex >= siblings.length) return;
+  const ordered = siblings.map(node => node.id);
+  [ordered[index], ordered[targetIndex]] = [ordered[targetIndex], ordered[index]];
+  const data = await api('/api/planning/nodes/reorder', {
+    method: 'POST',
+    body: JSON.stringify({
+      noteId: active.id,
+      parentNodeId: existing.parentNodeId ?? null,
+      orderedNodeIds: ordered
+    })
+  });
+  applyPlanningNodeResponse(data);
+  await refreshAfterMutation();
+  els.status.textContent = '规划节点顺序已更新';
+}
+
+async function reorderPlanningNodeNear(draggedId, targetId, insertAfter = false) {
+  const dragged = planningNodeById(draggedId);
+  const target = planningNodeById(targetId);
+  const active = activePlanningNote();
+  if (!dragged || !target || !active || sameId(dragged.id, target.id)) return;
+  const sameParent = dragged.parentNodeId == null
+    ? target.parentNodeId == null
+    : sameId(dragged.parentNodeId, target.parentNodeId);
+  if (!sameParent) {
+    els.status.textContent = '只能在同一层级内拖拽排序';
+    return;
+  }
+  const siblings = planningSiblingNodes(dragged.parentNodeId);
+  const ordered = siblings.map(node => node.id).filter(id => !sameId(id, dragged.id));
+  const targetIndex = ordered.findIndex(id => sameId(id, target.id));
+  if (targetIndex < 0) return;
+  ordered.splice(targetIndex + (insertAfter ? 1 : 0), 0, dragged.id);
+  const data = await api('/api/planning/nodes/reorder', {
+    method: 'POST',
+    body: JSON.stringify({
+      noteId: active.id,
+      parentNodeId: dragged.parentNodeId ?? null,
+      orderedNodeIds: ordered
+    })
+  });
+  applyPlanningNodeResponse(data);
+  await refreshAfterMutation();
+  els.status.textContent = '规划节点顺序已更新';
+}
+
+function planningDragNodeId(event) {
+  return state.planningDraggingNodeId
+    || event.dataTransfer?.getData('application/x-paykitodo-planning-node')
+    || event.dataTransfer?.getData('text/plain')
+    || '';
+}
+
+function planningDragBlockedTarget(target) {
+  return !!target?.closest?.('input, textarea, select, button, label, a');
+}
+
+function clearPlanningDragTargets() {
+  document.querySelectorAll('.planning-node-row.drag-over, .planning-node-row.drag-after').forEach(row => {
+    row.classList.remove('drag-over', 'drag-after');
+  });
+}
+
+function clearPlanningDragState() {
+  state.planningDraggingNodeId = null;
+  document.querySelectorAll('.planning-node-row.dragging, .planning-node-row.drag-over, .planning-node-row.drag-after').forEach(row => {
+    row.classList.remove('dragging', 'drag-over', 'drag-after');
+  });
 }
 
 function planningTypeLabel(type) {
@@ -2596,6 +2701,13 @@ els.planningOutline?.addEventListener('click', event => {
   const complete = event.target.closest?.('[data-node-complete]');
   const child = event.target.closest?.('[data-node-child]');
   const del = event.target.closest?.('[data-node-delete]');
+  const sync = event.target.closest?.('[data-node-sync]');
+  const moveUp = event.target.closest?.('[data-node-move-up]');
+  const moveDown = event.target.closest?.('[data-node-move-down]');
+  if (sync) {
+    const node = planningNodeById(sync.dataset.nodeSync);
+    if (node) updatePlanningOutlineNode(node.id, { syncEnabled: sync.checked }).catch(err => els.status.textContent = err.message);
+  }
   if (collapse && !collapse.disabled) {
     const node = planningNodeById(collapse.dataset.nodeCollapse);
     if (node) updatePlanningOutlineNode(node.id, { collapsed: !node.collapsed }).catch(err => els.status.textContent = err.message);
@@ -2608,10 +2720,63 @@ els.planningOutline?.addEventListener('click', event => {
     const text = prompt('新增子项', '');
     if (text) createPlanningOutlineNode(text, Number(child.dataset.nodeChild)).catch(err => els.status.textContent = err.message);
   }
+  if (moveUp && !moveUp.disabled) {
+    movePlanningNode(moveUp.dataset.nodeMoveUp, -1).catch(err => els.status.textContent = err.message);
+  }
+  if (moveDown && !moveDown.disabled) {
+    movePlanningNode(moveDown.dataset.nodeMoveDown, 1).catch(err => els.status.textContent = err.message);
+  }
   if (del) {
     deletePlanningOutlineNode(del.dataset.nodeDelete).catch(err => els.status.textContent = err.message);
   }
 });
+els.planningOutline?.addEventListener('dragstart', event => {
+  const row = event.target.closest?.('[data-planning-node-row]');
+  if (!row || planningDragBlockedTarget(event.target)) {
+    event.preventDefault();
+    return;
+  }
+  const nodeId = row.dataset.planningNodeRow || '';
+  state.planningDraggingNodeId = nodeId;
+  event.dataTransfer?.setData('text/plain', nodeId);
+  event.dataTransfer?.setData('application/x-paykitodo-planning-node', nodeId);
+  if (event.dataTransfer) event.dataTransfer.effectAllowed = 'move';
+  row.classList.add('dragging');
+});
+els.planningOutline?.addEventListener('dragover', event => {
+  const row = event.target.closest?.('[data-planning-node-row]');
+  const draggedId = planningDragNodeId(event);
+  const targetId = row?.dataset?.planningNodeRow || '';
+  if (!row || !draggedId || !targetId || sameId(draggedId, targetId)) return;
+  const dragged = planningNodeById(draggedId);
+  const target = planningNodeById(targetId);
+  const sameParent = dragged && target && (dragged.parentNodeId == null
+    ? target.parentNodeId == null
+    : sameId(dragged.parentNodeId, target.parentNodeId));
+  if (!sameParent) return;
+  event.preventDefault();
+  if (event.dataTransfer) event.dataTransfer.dropEffect = 'move';
+  const rect = row.getBoundingClientRect();
+  const insertAfter = event.clientY > rect.top + rect.height / 2;
+  clearPlanningDragTargets();
+  row.classList.add('drag-over');
+  row.classList.toggle('drag-after', insertAfter);
+});
+els.planningOutline?.addEventListener('dragleave', event => {
+  const row = event.target.closest?.('[data-planning-node-row]');
+  if (row && !row.contains(event.relatedTarget)) row.classList.remove('drag-over', 'drag-after');
+});
+els.planningOutline?.addEventListener('drop', event => {
+  const row = event.target.closest?.('[data-planning-node-row]');
+  const draggedId = planningDragNodeId(event);
+  const targetId = row?.dataset?.planningNodeRow || '';
+  const insertAfter = row?.classList?.contains('drag-after') === true;
+  clearPlanningDragState();
+  if (!row || !draggedId || !targetId || sameId(draggedId, targetId)) return;
+  event.preventDefault();
+  reorderPlanningNodeNear(draggedId, targetId, insertAfter).catch(err => els.status.textContent = err.message);
+});
+els.planningOutline?.addEventListener('dragend', () => clearPlanningDragState());
 els.planningOutline?.addEventListener('focusout', event => {
   if (event.target.matches?.('[data-node-text]')) {
     commitPlanningNodeText(event.target).catch(err => els.status.textContent = err.message);
@@ -2682,11 +2847,13 @@ els.planningNoteSelect?.addEventListener('change', async event => {
   state.activePlanningNoteId = event.target.value;
   const note = activePlanningNote();
   if (note && els.planningEditor) {
-    els.planningEditor.value = note.contentMarkdown || '';
+    await loadPlanningNodes();
+    els.planningEditor.value = state.planningNodesMarkdown || note.contentMarkdown || '';
     state.planningDirty = false;
     state.planningRenderedNoteId = note.id;
     state.planningParseResult = null;
     await loadPlanningMappings();
+    renderPlanningOutline();
     renderPlanningPreview();
   }
 });

@@ -15,7 +15,7 @@ class CaptureActivity : ComponentActivity() {
         val uri = pendingPhotoUri
         if (success && uri != null) {
             BackgroundCaptureProcessor.processImage(this, uri, title = "拍照捕获")
-            Toast.makeText(this, "正在后台识别，稍后通知", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, BackgroundCaptureProcessor.processingToastMessage(this), Toast.LENGTH_SHORT).show()
         }
         finish()
     }

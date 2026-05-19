@@ -1,5 +1,60 @@
 # Changelog
 
+## v1.12.9
+
+- 修复电脑端规划台 Outliner 拖拽排序的浏览器兼容风险：拖动节点时不再依赖 `dragover` 阶段读取 `dataTransfer`，改为记录当前拖拽节点状态，避免部分浏览器无法高亮落点或无法放置
+- 电脑端 Outliner 现在同时保留上移 / 下移按钮和同层级拖拽排序；跨层级拖拽仍会被拦截，避免误改父子结构
+- 版本号升级到 `1.12.9` / `versionCode 236`
+- 验证：`node --check app/src/main/assets/desktop-web/app.js`、`git diff --check`、`./gradlew.bat :app:compileDebugKotlin`、`./gradlew.bat :app:testDebugUnitTest`、`./gradlew.bat :app:assembleDebug` 通过；debug APK 元数据确认 `1.12.9 / 236`
+
+## v1.12.8
+
+- 修复规划台 Outliner 与正式待办 / 日程的删除、取消同步漏洞：从待办页、日历页、提醒页或电脑端取消 / 删除由规划台节点创建的正式事项后，规划台节点会解除正式事项关联，不再在下次启动修复时被重新创建
+- 修复规划台日程结束联动 DDL 待办的残留风险：删除或取消日程主关联项时，会同时处理该节点的结束 DDL 联动待办，避免留下半截提醒事项
+- 数据库版本保持 `22`；本轮只修同步行为，不新增 Room schema
+- 版本号升级到 `1.12.8` / `versionCode 235`
+
+## v1.12.7
+
+- 修复旧 Markdown 规划文档迁移到 Outliner 后的结构标题污染问题：`# 今日计划`、`# 收集箱` 等标题会保留为大纲结构节点，但默认不会同步生成正式待办 / 日程
+- 规划台节点新增同步开关：普通事项继续“写下即同步”为正式待办 / 日程，结构节点可在手机端和电脑端显示为“结构标题”，电脑端可切换是否同步为正式事项
+- 备份 / 恢复和桌面同步 API 均保留规划节点的同步语义，避免恢复后再次把结构标题补建成无 DDL 待办
+- 数据库升级到 `22`，新增 `planning_nodes.syncEnabled`；`21 -> 22` 迁移会清理结构标题节点在 1.12.6 期间误生成的自动待办关联
+- 版本号升级到 `1.12.7` / `versionCode 234`
+
+## v1.12.6
+
+- 修复电脑端规划台 Outliner 时间显示错误：节点 DDL / 开始 / 结束输入框和摘要现在优先使用后端返回的日期时间字符串，避免显示毫秒时间戳
+- 修复电脑端规划台切换文档后的大纲错位风险：文档下拉切换时会重新加载对应文档的 Outliner 节点，不再保留上一个文档的大纲内容
+- 版本号升级到 `1.12.6` / `versionCode 233`
+- 验证：`node --check app/src/main/assets/desktop-web/app.js`、`git diff --check`、`./gradlew.bat :app:compileDebugKotlin`、`./gradlew.bat :app:testDebugUnitTest`、`./gradlew.bat :app:assembleDebug` 通过；debug APK 元数据确认 `1.12.6 / 233`
+
+## v1.12.5
+
+- 修复快速捕获在 Android 13+ 未开启通知权限时的误导提示：分享、拍照、语音和规划台后台捕获会提示“请稍后进规划台查看”，不再承诺一定收到通知
+- 修复规划台 Markdown 兼容区的重复创建风险：按钮文案从“识别”改为“捕获”，执行前会确认当前文本会作为新事项写入大纲并同步创建待办 / 日程
+- 版本号升级到 `1.12.5` / `versionCode 232`
+- 验证：`node --check app/src/main/assets/desktop-web/app.js`、`git diff --check`、`./gradlew.bat :app:compileDebugKotlin`、`./gradlew.bat :app:testDebugUnitTest`、`./gradlew.bat :app:assembleDebug` 通过；debug APK 元数据确认 `1.12.5 / 232`
+
+## v1.12.4
+
+- 系统分享入口改为真正后台化：分享文字或图片到“添加到 PaykiTodo”后会立即返回，识别结果直接写入规划台节点并通过通知打开对应规划文档
+- 删除规划文档会同步删除该文档大纲节点关联的待办、日程和日程结束 DDL 待办，并清理对应提醒痕迹
+- 规划台节点的日程与结束 DDL 待办完成状态双向同步，手机端和电脑端完成操作都会处理所有受影响提醒
+- 应用启动时会修复旧 Markdown 迁移后缺少关联待办 / 日程的规划节点，避免旧数据只显示在大纲里但没有正式提醒事项
+- 版本号升级到 `1.12.4` / `versionCode 231`
+
+## v1.12.3
+
+- 规划台 Outliner 补齐手机端大纲行编辑：文本框支持 Enter / 输入法“下一项”创建同级事项、Tab 缩进、Shift+Tab 反缩进、空文本 Backspace 删除当前节点
+- 规划台 Outliner 新增长按行菜单：可直接设置 DDL / 开始结束时间、设置地点或删除节点；时间输入支持 `16:30`、`明天 16:30`、`5.28 14:30` 等自然写法
+- 规划台设置新增“显示编辑提示行”和“日程结束同步 DDL 待办”；日程节点可按设置额外创建以日程结束时间为 DDL 的联动待办，默认保持关闭
+- 规划台节点数据升级到数据库 21：`planning_nodes` 新增 `linkedEndTodoId`，备份 / 恢复、删除、完成同步和提醒重排都会同时处理主关联事项和日程结束联动待办
+- 电脑端规划台 Outliner 增加紧凑的上移 / 下移按钮，复用 `/api/planning/nodes/reorder` 更新同级节点顺序，不再只有后端排序接口
+- 修复 Outliner 插入同级节点时可能出现相同 `sortOrder` 导致顺序不稳定的问题：指定位置插入会顺延后续同级节点
+- 版本号升级到 `1.12.3` / `versionCode 230`
+- 验证：`./gradlew.bat :app:compileDebugKotlin`、`./gradlew.bat :app:testDebugUnitTest`、`node --check app/src/main/assets/desktop-web/app.js`、`git diff --check`、`./gradlew.bat :app:assembleDebug` 通过
+
 ## v1.12.2
 
 - 修复规划台 Outliner 完成父节点时的提醒同步漏洞：手机端和电脑端现在都会处理所有受影响子节点关联的待办 / 日程，而不是只清理当前节点的一个提醒

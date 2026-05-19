@@ -4,11 +4,11 @@
 
 ### In Progress
 
-- Verify version `1.11.1` on device after the focus removal, event check-in, multi-group todo, Planning Desk image recognition, widget refresh, R8 release-size changes, and latest UX cleanup
-- Keep `README.md`, `CHANGELOG.md`, Wiki, in-app help sheets, desktop-web help, and current-state docs aligned with version `1.11.1`
-- Verify the current 1.11.0 multi-group todo slice on device and desktop browser: phone editor reopen preserves all selected groups, selecting multiple group chips uses intersection filtering, desktop Web edit preserves all groups, and backup export/import keeps `todoGroupTags`
-- Continue planning-desk usability polish without expanding into drag/drop, Gantt, AI auto-planning, or complex project trees
-- Improve repo-native handoff so new sessions do not depend on long chat history
+- Verify version `1.12.9` on a real Android device: share target, launcher photo shortcut, launcher voice shortcut, Android 13+ notification-permission copy, Planning Desk Outliner editing, structure-heading migration, migrated Planning Desk documents, and official-item delete/cancel detachment for Outliner-created items.
+- Verify version `1.12.9` in a real desktop browser against live phone data: Planning Desk node create / edit / complete / delete / cancel / up-down reorder, same-level drag reorder, structure-heading sync toggle, document switching, node time-field display/editing, Markdown compatibility capture confirmation, and desktop sync refresh behavior.
+- Keep `README.md`, `CHANGELOG.md`, Wiki, in-app help sheets, desktop-web help, and current-state docs aligned with version `1.12.9`.
+- Archive `docs/goals/2026-05-19-paykitodo-capture-and-outliner-goal.md` in a separate commit after the feature commit if final audit confirms no secrets.
+- Continue Planning Desk usability polish without expanding into Gantt, AI auto-planning, CRDT, or complex project trees.
 
 ### Needs Verification
 

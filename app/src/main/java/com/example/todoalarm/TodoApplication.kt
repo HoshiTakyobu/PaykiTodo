@@ -6,6 +6,7 @@ import com.example.todoalarm.alarm.AlarmScheduler
 import com.example.todoalarm.alarm.DailyReportNotifier
 import com.example.todoalarm.alarm.DailyReportScheduler
 import com.example.todoalarm.alarm.EventCheckInWatchdog
+import com.example.todoalarm.alarm.ReminderDispatchTracker
 import com.example.todoalarm.alarm.ReminderNotifier
 import com.example.todoalarm.data.AppDatabase
 import com.example.todoalarm.data.BackupManager
@@ -38,6 +39,17 @@ class TodoApplication : Application() {
         DailyReportScheduler.scheduleNext(this)
         applicationScope.launch {
             repository.ensureDefaultGroups()
+            val repairedPlanningItems = repository.ensurePlanningNodeLinkedItems(
+                createEventEndTodo = settingsStore.currentSettings().planningEventEndTodoEnabled
+            )
+            repairedPlanningItems.forEach { item ->
+                if (item.completed || item.canceled || !item.reminderEnabled) return@forEach
+                ReminderDispatchTracker.clear(applicationContext, item.id)
+                val scheduleMessage = alarmScheduler.schedule(item)
+                if (scheduleMessage != null) {
+                    repository.updateTodo(item.copy(reminderEnabled = false))
+                }
+            }
             LegacyAiReportMigration.migrateIfNeeded(this@TodoApplication)
             if (settingsStore.currentSettings().desktopSyncEnabled) {
                 DesktopSyncService.start(applicationContext)
@@ -71,7 +83,9 @@ class TodoApplication : Application() {
             DatabaseMigrations.MIGRATION_16_17,
             DatabaseMigrations.MIGRATION_17_18,
             DatabaseMigrations.MIGRATION_18_19,
-            DatabaseMigrations.MIGRATION_19_20
+            DatabaseMigrations.MIGRATION_19_20,
+            DatabaseMigrations.MIGRATION_20_21,
+            DatabaseMigrations.MIGRATION_21_22
         )
             .build()
     }

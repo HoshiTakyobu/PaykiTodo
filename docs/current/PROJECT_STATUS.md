@@ -7,8 +7,8 @@
 - Package name: `com.paykitodo.app`
 - Target platform: Android 14 / API 34
 - Current version in code:
-  - `versionName = "1.12.2"`
-  - `versionCode = 229`
+  - `versionName = "1.12.9"`
+  - `versionCode = 236`
 
 ## Current Build Facts
 
@@ -18,7 +18,70 @@
 - Latest signed release APK built locally:
   - `app/build/outputs/apk/release/PaykiTodo-1.11.0-release.apk`
 - Latest fully built debug APK:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.12.2-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.12.9-debug.apk`
+- Current `1.12.9 / versionCode 236` verification completed:
+  - Desktop Web Planning Desk Outliner same-level drag reorder now keeps the dragged node id in page state instead of relying on `dataTransfer` reads during `dragover`, avoiding browser compatibility failures where no drop target is recognized.
+  - Desktop Web keeps the existing up / down reorder buttons and still blocks cross-level drag reorder to avoid accidental parent-child changes.
+  - Database version stays `22`; this patch changes desktop Web behavior only and does not add a Room schema.
+  - `node --check app/src/main/assets/desktop-web/app.js`
+  - `git diff --check`
+  - `./gradlew.bat :app:compileDebugKotlin`
+  - `./gradlew.bat :app:testDebugUnitTest`
+  - `./gradlew.bat :app:assembleDebug`
+  - Debug APK metadata inspected: `versionName = 1.12.9`, `versionCode = 236`, output `PaykiTodo-1.12.9-debug.apk`
+- Current `1.12.8 / versionCode 235` verification completed:
+  - Planning Desk Outliner linked-item deletion is now one-way safe: deleting a formal todo / event from phone, reminder flow, or desktop Web detaches the related planning node instead of letting startup repair recreate it.
+  - Canceling a formal todo / event now also detaches the related planning node from official sync, so canceled items do not remain as active Outliner-linked reminders.
+  - Deleting or canceling an Outliner-created event also handles its optional event-end DDL linked todo, avoiding leftover half-linked reminders.
+  - Database version stays `22`; this patch changes synchronization behavior only and does not add a Room schema.
+  - `./gradlew.bat :app:compileDebugKotlin`
+  - `./gradlew.bat :app:testDebugUnitTest`
+  - `node --check app/src/main/assets/desktop-web/app.js`
+  - `git diff --check`
+  - `./gradlew.bat :app:assembleDebug`
+  - Debug APK metadata inspected: `versionName = 1.12.8`, `versionCode = 235`, output `PaykiTodo-1.12.8-debug.apk`
+- Current `1.12.7 / versionCode 234` verification completed:
+  - Planning Desk Outliner nodes now store `syncEnabled`, so structure headings can remain in the outline without being repaired into official todos/events.
+  - `MIGRATION_21_22` adds `planning_nodes.syncEnabled` and marks common migrated structure headings such as `今日计划` / `收集箱` as non-sync nodes.
+  - The migration removes only the auto-linked no-DDL todo rows that were attached to those structure heading nodes, avoiding deletion of unrelated user-created todos.
+  - Backup / restore and desktop sync JSON now preserve `syncEnabled`.
+  - Desktop Web exposes a compact `同步为待办/日程` checkbox and shows non-sync nodes as `结构标题`.
+  - `node --check app/src/main/assets/desktop-web/app.js`
+  - `git diff --check`
+  - `./gradlew.bat :app:compileDebugKotlin`
+  - `./gradlew.bat :app:testDebugUnitTest`
+  - `./gradlew.bat :app:assembleDebug`
+  - Debug APK metadata inspected: `versionName = 1.12.7`, `versionCode = 234`, output `PaykiTodo-1.12.7-debug.apk`
+- Current `1.12.6 / versionCode 233` verification completed:
+  - Desktop Web Planning Desk Outliner time fields now render ISO-like date-time strings instead of raw epoch milliseconds.
+  - Desktop Web Planning Desk note switching now reloads the selected note's Outliner nodes before rendering.
+  - `node --check app/src/main/assets/desktop-web/app.js`
+  - `git diff --check`
+  - `./gradlew.bat :app:compileDebugKotlin`
+  - `./gradlew.bat :app:testDebugUnitTest`
+  - `./gradlew.bat :app:assembleDebug`
+  - Debug APK metadata inspected: `versionName = 1.12.6`, `versionCode = 233`, output `PaykiTodo-1.12.6-debug.apk`
+- Current `1.12.5 / versionCode 232` verification completed:
+  - `./gradlew.bat :app:compileDebugKotlin`
+  - `./gradlew.bat :app:testDebugUnitTest`
+  - `node --check app/src/main/assets/desktop-web/app.js`
+  - `git diff --check`
+  - `./gradlew.bat :app:assembleDebug`
+  - Debug APK metadata inspected: `versionName = 1.12.5`, `versionCode = 232`, output `PaykiTodo-1.12.5-debug.apk`
+- Current `1.12.4 / versionCode 231` verification completed:
+  - `./gradlew.bat :app:compileDebugKotlin`
+  - `./gradlew.bat :app:testDebugUnitTest`
+  - `node --check app/src/main/assets/desktop-web/app.js`
+  - `git diff --check`
+  - `./gradlew.bat :app:assembleDebug`
+  - Debug APK metadata inspected: `versionName = 1.12.4`, `versionCode = 231`, output `PaykiTodo-1.12.4-debug.apk`
+- Current `1.12.3 / versionCode 230` verification completed:
+  - `./gradlew.bat :app:compileDebugKotlin`
+  - `./gradlew.bat :app:testDebugUnitTest`
+  - `node --check app/src/main/assets/desktop-web/app.js`
+  - `git diff --check`
+  - `./gradlew.bat :app:assembleDebug`
+  - Debug APK metadata inspected: `versionName = 1.12.3`, `versionCode = 230`, output `PaykiTodo-1.12.3-debug.apk`
 - Current `1.12.2 / versionCode 229` verification completed:
   - `./gradlew.bat :app:compileDebugKotlin`
   - `./gradlew.bat :app:testDebugUnitTest`
@@ -75,13 +138,13 @@
 
 ## Current Worktree Reality
 
-The repository now targets the `1.12.2 / versionCode 229` workline. Phase 1 of the capture + outliner goal is implemented. The current Outliner slice now has database `planning_nodes`, migration / backup support, phone-side tree editing, desktop `/api/planning/nodes` routes, a desktop Web node editor, Markdown import/export compatibility, and capture/share/photo/voice recognition that can directly create planning nodes and linked official todos/events. This is still not the complete Outliner goal: phone keyboard interactions and long-press time/location editing remain incomplete, and desktop reorder is still a minimal API foundation rather than a polished drag/reorder UI. The latest 1.12.2 patch fixes parent-node completion reminder cleanup and capture-created false reminder state. The earlier Android widget, multi-group todo, event check-in, Planning Desk image recognition, release-size, and `1.11.4` check-in regression fixes remain in the working tree. Release builds enable R8/resource shrinking and use WebP dashboard backgrounds; the latest signed `PaykiTodo-1.11.0-release.apk` size check is `4.83 MB`, and release startup / main-surface smoke testing passed on `Pixel_8 / emulator-5554`.
+The repository now targets the `1.12.9 / versionCode 236` workline. Phase 1 quick capture and Phase 2 Planning Desk Outliner are implemented in the working tree: `planning_nodes`, migration / backup support, phone-side tree editing, desktop `/api/planning/nodes` routes, desktop Web node editing / reordering, Markdown import/export compatibility, and capture/share/photo/voice recognition can directly create planning nodes and linked official todos/events. The latest patch fixes a desktop Web Outliner drag-reorder compatibility risk by tracking the dragged node id in page state, so same-level drag reorder does not depend on browser-specific `dataTransfer` reads during `dragover`. The previous `1.12.8` patch fixed an Outliner linked-item lifecycle issue: if a formal todo / event created from an Outliner node is deleted or canceled outside the Planning Desk, the node is detached from official sync so startup repair will not recreate it. The earlier `1.12.7` migration fix keeps old Markdown headings such as `# 今日计划` and `# 收集箱` as structure nodes instead of repairing them into no-DDL todos. Remaining work is mostly real-device/browser QA and cleanup of legacy reusable capture-preview code, not a known missing goal requirement. The earlier Android widget, multi-group todo, event check-in, Planning Desk image recognition, release-size, and `1.11.4` check-in regression fixes remain in the working tree. Release builds enable R8/resource shrinking and use WebP dashboard backgrounds; the latest signed `PaykiTodo-1.11.0-release.apk` size check is `4.83 MB`, and release startup / main-surface smoke testing passed on `Pixel_8 / emulator-5554`.
 
 Most important current baseline facts:
 
-- Database version is now `20` in the working tree. `MIGRATION_17_18` drops the old `focus_sessions` table, creates `event_check_ins`, creates `todo_group_tags`, adds `checkInEnabled` and `totalCheckInMinutes` to `todo_items`, backfills todo group tags, and merges the old default `专注` group into `例行`; `MIGRATION_18_19` adds `planning_notes.documentDateEpochDay`; `MIGRATION_19_20` creates `planning_nodes` and migrates existing planning Markdown lines into node records.
+- Database version is now `22` in the working tree. `MIGRATION_17_18` drops the old `focus_sessions` table, creates `event_check_ins`, creates `todo_group_tags`, adds `checkInEnabled` and `totalCheckInMinutes` to `todo_items`, backfills todo group tags, and merges the old default `专注` group into `例行`; `MIGRATION_18_19` adds `planning_notes.documentDateEpochDay`; `MIGRATION_19_20` creates `planning_nodes` and migrates existing planning Markdown lines into node records; `MIGRATION_20_21` adds `planning_nodes.linkedEndTodoId` and its index; `MIGRATION_21_22` adds `planning_nodes.syncEnabled` and marks common migrated structure headings as non-sync nodes so they do not create official todos/events.
 - Quick capture is implemented: `ShareReceiverActivity`, `CaptureActivity`, `VoiceCaptureActivity`, `BackgroundCaptureProcessor`, shortcuts XML, FileProvider paths, and direct node insertion exist. Legacy preview UI code still exists for reusable/old paths but is no longer the default share/capture write path.
-- Phase 2 Outliner is partially user-facing: `PlanningNode`, DAO methods, repository CRUD / Markdown import-export helpers, backup / restore, schema `20.json`, phone outline editing, desktop sync node routes, desktop Web node editing, and capture-to-node insertion exist. Remaining gaps include phone keyboard editing shortcuts, long-press time/location editing, polished desktop reorder, and stricter migration/runtime QA.
+- Phase 2 Outliner is user-facing: `PlanningNode`, DAO methods, repository CRUD / Markdown import-export helpers, backup / restore, schema `20.json` and `21.json`, phone outline editing with keyboard / long-press operations, desktop sync node routes, desktop Web node editing / up-down reorder / same-level drag reorder, optional event-end DDL linked todos, and capture-to-node insertion exist. Remaining work is stricter migration/runtime QA on real devices and browsers.
 - Active no-DDL todos are still treated as today todos across phone daily board, Android widget board query, desktop board, and desktop todo management.
 - Countdown-enabled todos use their DDL time as the target; countdown-enabled events use their start time.
 - Countdown targets whose exact target time has passed are filtered out before board / widget / desktop rendering.

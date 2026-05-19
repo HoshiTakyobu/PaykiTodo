@@ -225,6 +225,7 @@ class MainActivity : ComponentActivity() {
                             idleAutoCheckOutHours = it
                         )
                     },
+                    onPlanningOutlinerPreferencesChange = viewModel::updatePlanningOutlinerPreferences,
                     onReminderAudioStrategyChange = viewModel::updateReminderAudioStrategy,
                     onPlanningAiProvidersChange = viewModel::updatePlanningAiProviders,
                     onReportPreferencesChange = viewModel::updateReportPreferences,

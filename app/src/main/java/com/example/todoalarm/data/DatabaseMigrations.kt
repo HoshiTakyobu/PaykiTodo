@@ -384,6 +384,19 @@ object DatabaseMigrations {
         }
     }
 
+    val MIGRATION_20_21 = object : Migration(20, 21) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            ensurePlanningEndTodoColumn(db)
+        }
+    }
+
+    val MIGRATION_21_22 = object : Migration(21, 22) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            ensurePlanningSyncEnabledColumn(db)
+            markMigratedPlanningStructureNodes(db)
+        }
+    }
+
     private fun rebuildPlanningNotesTable(db: SupportSQLiteDatabase) {
         db.execSQL("DROP TABLE IF EXISTS `planning_notes_room_expected`")
         createPlanningNotesTable(db, "planning_notes_room_expected")
@@ -611,6 +624,8 @@ object DatabaseMigrations {
                 `dueAtMillis` INTEGER,
                 `location` TEXT,
                 `linkedTodoId` INTEGER,
+                `linkedEndTodoId` INTEGER,
+                `syncEnabled` INTEGER NOT NULL DEFAULT 1,
                 `collapsed` INTEGER NOT NULL DEFAULT 0,
                 `completed` INTEGER NOT NULL DEFAULT 0,
                 `completedAtMillis` INTEGER,
@@ -623,6 +638,94 @@ object DatabaseMigrations {
         db.execSQL("CREATE INDEX IF NOT EXISTS `index_planning_nodes_noteId` ON `planning_nodes` (`noteId`)")
         db.execSQL("CREATE INDEX IF NOT EXISTS `index_planning_nodes_parentNodeId` ON `planning_nodes` (`parentNodeId`)")
         db.execSQL("CREATE INDEX IF NOT EXISTS `index_planning_nodes_linkedTodoId` ON `planning_nodes` (`linkedTodoId`)")
+        db.execSQL("CREATE INDEX IF NOT EXISTS `index_planning_nodes_linkedEndTodoId` ON `planning_nodes` (`linkedEndTodoId`)")
+        ensurePlanningEndTodoColumn(db)
+        ensurePlanningSyncEnabledColumn(db)
+    }
+
+    private fun ensurePlanningEndTodoColumn(db: SupportSQLiteDatabase) {
+        if (!tableExists(db, "planning_nodes")) return
+        if (!tableHasColumns(db, "planning_nodes", listOf("linkedEndTodoId"))) {
+            db.execSQL("ALTER TABLE `planning_nodes` ADD COLUMN `linkedEndTodoId` INTEGER")
+        }
+        db.execSQL("CREATE INDEX IF NOT EXISTS `index_planning_nodes_linkedEndTodoId` ON `planning_nodes` (`linkedEndTodoId`)")
+    }
+
+    private fun ensurePlanningSyncEnabledColumn(db: SupportSQLiteDatabase) {
+        if (!tableExists(db, "planning_nodes")) return
+        if (!tableHasColumns(db, "planning_nodes", listOf("syncEnabled"))) {
+            db.execSQL("ALTER TABLE `planning_nodes` ADD COLUMN `syncEnabled` INTEGER NOT NULL DEFAULT 1")
+        }
+    }
+
+    private fun markMigratedPlanningStructureNodes(db: SupportSQLiteDatabase) {
+        if (!tableExists(db, "planning_nodes")) return
+        val structureTitles = listOf(
+            "今日计划",
+            "今天计划",
+            "明日计划",
+            "明天计划",
+            "后天计划",
+            "收集箱",
+            "今日",
+            "今天",
+            "明日",
+            "明天",
+            "后天"
+        )
+        structureTitles.forEach { title ->
+            if (tableExists(db, "todo_group_tags")) {
+                db.execSQL(
+                    """
+                    DELETE FROM `todo_group_tags`
+                    WHERE `todoId` IN (
+                        SELECT `linkedTodoId`
+                        FROM `planning_nodes`
+                        WHERE `text` = ?
+                            AND `startAtMillis` IS NULL
+                            AND `endAtMillis` IS NULL
+                            AND `dueAtMillis` IS NULL
+                            AND `linkedTodoId` IS NOT NULL
+                    )
+                    """.trimIndent(),
+                    arrayOf(title)
+                )
+            }
+            if (tableExists(db, "todo_items")) {
+                db.execSQL(
+                    """
+                    DELETE FROM `todo_items`
+                    WHERE `id` IN (
+                        SELECT `linkedTodoId`
+                        FROM `planning_nodes`
+                        WHERE `text` = ?
+                            AND `startAtMillis` IS NULL
+                            AND `endAtMillis` IS NULL
+                            AND `dueAtMillis` IS NULL
+                            AND `linkedTodoId` IS NOT NULL
+                    )
+                    AND `itemType` = 'TODO'
+                    AND `title` = ?
+                    AND `dueAtMillis` = ?
+                    AND (`notes` IS NULL OR `notes` = '')
+                    """.trimIndent(),
+                    arrayOf(title, title, Long.MAX_VALUE)
+                )
+            }
+            db.execSQL(
+                """
+                UPDATE `planning_nodes`
+                SET `syncEnabled` = 0,
+                    `linkedTodoId` = NULL,
+                    `linkedEndTodoId` = NULL
+                WHERE `text` = ?
+                    AND `startAtMillis` IS NULL
+                    AND `endAtMillis` IS NULL
+                    AND `dueAtMillis` IS NULL
+                """.trimIndent(),
+                arrayOf(title)
+            )
+        }
     }
 
     private fun migratePlanningMarkdownToNodes(db: SupportSQLiteDatabase) {
@@ -696,6 +799,7 @@ object DatabaseMigrations {
                 sortOrderByParent[parentKey] = sortOrder + 1
                 val parsed = parsedByLine[lineNumber]?.takeIf { it.type == PlanningParsedType.TODO || it.type == PlanningParsedType.EVENT }
                 val mapping = mappings[lineNumber]
+                val syncEnabled = mapping?.linkedTodoId != null || parsed != null && !outlineLine.structureOnly
                 val nodeId = insertPlanningNode(
                     db = db,
                     noteId = noteId,
@@ -709,6 +813,7 @@ object DatabaseMigrations {
                     dueAtMillis = parsed?.dueAt?.toEpochMillis(),
                     location = parsed?.location?.takeIf { it.isNotBlank() },
                     linkedTodoId = mapping?.linkedTodoId?.takeIf { planningLinkedItemExists(db, it) },
+                    syncEnabled = syncEnabled,
                     completed = outlineLine.completed || mapping?.completed == true,
                     completedAtMillis = if (outlineLine.completed || mapping?.completed == true) updatedAtMillis else null
                 )
@@ -767,6 +872,7 @@ object DatabaseMigrations {
         dueAtMillis: Long?,
         location: String?,
         linkedTodoId: Long?,
+        syncEnabled: Boolean,
         completed: Boolean,
         completedAtMillis: Long?
     ): Long {
@@ -775,8 +881,8 @@ object DatabaseMigrations {
             INSERT INTO `planning_nodes` (
                 `noteId`, `parentNodeId`, `sortOrder`, `text`, `createdAtMillis`, `updatedAtMillis`,
                 `startAtMillis`, `endAtMillis`, `dueAtMillis`, `location`, `linkedTodoId`,
-                `collapsed`, `completed`, `completedAtMillis`
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?)
+                `syncEnabled`, `collapsed`, `completed`, `completedAtMillis`
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?)
             """.trimIndent(),
             arrayOf(
                 noteId,
@@ -790,6 +896,7 @@ object DatabaseMigrations {
                 dueAtMillis,
                 location,
                 linkedTodoId,
+                if (syncEnabled) 1 else 0,
                 if (completed) 1 else 0,
                 completedAtMillis
             )
@@ -809,6 +916,7 @@ object DatabaseMigrations {
             return PlanningMigrationLine(
                 depth = depth.coerceAtLeast(0),
                 text = stripPlanningNodeNoise(heading.groupValues[1]),
+                structureOnly = true,
                 completed = false
             )
         }
@@ -817,6 +925,7 @@ object DatabaseMigrations {
             return PlanningMigrationLine(
                 depth = (leadingSpaces / 2).coerceAtLeast(0),
                 text = stripPlanningNodeNoise(checkbox.groupValues[2]),
+                structureOnly = false,
                 completed = checkbox.groupValues[1].equals("x", ignoreCase = true)
             )
         }
@@ -825,12 +934,14 @@ object DatabaseMigrations {
             return PlanningMigrationLine(
                 depth = (leadingSpaces / 2).coerceAtLeast(0),
                 text = stripPlanningNodeNoise(bullet.groupValues[1]),
+                structureOnly = false,
                 completed = false
             )
         }
         return PlanningMigrationLine(
             depth = (leadingSpaces / 2).coerceAtLeast(0),
             text = stripPlanningNodeNoise(trimmed),
+            structureOnly = false,
             completed = false
         )
     }
@@ -851,6 +962,7 @@ object DatabaseMigrations {
     private data class PlanningMigrationLine(
         val depth: Int,
         val text: String,
+        val structureOnly: Boolean,
         val completed: Boolean
     )
 

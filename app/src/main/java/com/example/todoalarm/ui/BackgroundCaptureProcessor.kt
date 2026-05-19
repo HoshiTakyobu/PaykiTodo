@@ -124,6 +124,19 @@ object BackgroundCaptureProcessor {
         manager.createNotificationChannel(channel)
     }
 
+    fun processingToastMessage(context: Context): String {
+        return if (canPostResultNotifications(context)) {
+            "正在后台识别，稍后通知"
+        } else {
+            "正在后台识别；通知权限未开启，请稍后进规划台查看"
+        }
+    }
+
+    fun canPostResultNotifications(context: Context): Boolean {
+        return Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
+            ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
+    }
+
     private fun notifyProcessing(context: Context, jobId: Int, title: String) {
         notifySafely(
             context = context,
@@ -162,27 +175,6 @@ object BackgroundCaptureProcessor {
         )
     }
 
-    private fun notifyCompleted(context: Context, jobId: Int, preview: CapturePlanningPreview) {
-        val intent = ShareReceiverActivity.previewIntent(context, preview.id)
-        val pendingIntent = PendingIntent.getActivity(
-            context,
-            jobId,
-            intent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
-        notifySafely(
-            context = context,
-            notificationId = jobId,
-            builder = NotificationCompat.Builder(context, CaptureChannelId)
-                .setSmallIcon(R.drawable.ic_stat_payki_todo)
-                .setContentTitle("已识别 ${preview.importableCount} 条待办/日程")
-                .setContentText("点击查看并确认导入")
-                .setContentIntent(pendingIntent)
-                .setAutoCancel(true)
-                .setPriority(NotificationCompat.PRIORITY_DEFAULT)
-        )
-    }
-
     private fun notifyFailure(context: Context, jobId: Int, message: String) {
         notifySafely(
             context = context,
@@ -201,10 +193,7 @@ object BackgroundCaptureProcessor {
         notificationId: Int,
         builder: NotificationCompat.Builder
     ) {
-        if (
-            Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
-            ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
-        ) {
+        if (!canPostResultNotifications(context)) {
             return
         }
         runCatching {

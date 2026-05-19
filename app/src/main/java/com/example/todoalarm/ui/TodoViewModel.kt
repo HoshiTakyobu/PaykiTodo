@@ -340,7 +340,7 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
                 autoCheckOutEventOnEnd = settings.autoCheckOutEventOnEnd
             )
         } ?: return null
-        clearReminderArtifacts(listOf(result.item))
+        clearReminderArtifacts(result.affectedItems)
         autoBackupIfEnabled()
         return result.eventCheckInSummary.takeIf { settings.showEventCheckInStatsOnComplete }
     }
@@ -422,7 +422,10 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
 
     suspend fun createPlanningNode(draft: PlanningNodeDraft): String? {
         if (draft.text.isBlank()) return "事项不能为空"
-        val result = repository.createPlanningNode(draft) ?: return "规划节点创建失败"
+        val result = repository.createPlanningNode(
+            draft,
+            createEventEndTodo = settingsStore.currentSettings().planningEventEndTodoEnabled
+        ) ?: return "规划节点创建失败"
         handlePlanningNodeChange(result)
         settingsStore.updateLastOpenedPlanningNoteId(result.node.noteId)
         autoBackupIfEnabled()
@@ -431,10 +434,17 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
 
     suspend fun updatePlanningNode(node: PlanningNode, edit: PlanningNodeEdit): String? {
         if (edit.text.isBlank()) return "事项不能为空"
-        val beforeLinked = node.linkedTodoId?.let { repository.getTodo(it) }
-        val result = repository.updatePlanningNode(node.id, edit) ?: return "规划节点更新失败"
-        beforeLinked?.let { clearReminderArtifacts(listOf(it)) }
-        result.deletedLinkedItem?.let { clearReminderArtifacts(listOf(it)) }
+        val beforeLinked = listOfNotNull(
+            node.linkedTodoId?.let { repository.getTodo(it) },
+            node.linkedEndTodoId?.let { repository.getTodo(it) }
+        )
+        val result = repository.updatePlanningNode(
+            node.id,
+            edit,
+            createEventEndTodo = settingsStore.currentSettings().planningEventEndTodoEnabled
+        ) ?: return "规划节点更新失败"
+        clearReminderArtifacts(beforeLinked)
+        clearReminderArtifacts(result.deletedLinkedItems)
         handlePlanningNodeChange(result)
         settingsStore.updateLastOpenedPlanningNoteId(result.node.noteId)
         autoBackupIfEnabled()
@@ -482,7 +492,8 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     suspend fun deletePlanningNote(noteId: Long): String? {
-        repository.deletePlanningNote(noteId)
+        val deletedItems = repository.deletePlanningNote(noteId)
+        clearReminderArtifacts(deletedItems)
         val fallback = repository.ensureDefaultPlanningNote()
         settingsStore.updateLastOpenedPlanningNoteId(fallback.id)
         autoBackupIfEnabled()
@@ -776,8 +787,8 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
 
     fun completeTodo(todoItem: TodoItem) {
         viewModelScope.launch {
-            repository.setCompleted(todoItem.id, true)
-            clearReminderArtifacts(listOf(todoItem))
+            val result = repository.setCompletedWithResult(todoItem.id, true)
+            clearReminderArtifacts(result?.affectedItems ?: listOf(todoItem))
             autoBackupIfEnabled()
         }
     }
@@ -811,8 +822,8 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
 
     fun deleteTodo(todoItem: TodoItem) {
         viewModelScope.launch {
-            repository.deleteTodo(todoItem.id)
-            clearReminderArtifacts(listOf(todoItem))
+            val deletedItems = repository.deleteTodo(todoItem.id)
+            clearReminderArtifacts(deletedItems.ifEmpty { listOf(todoItem) })
             autoBackupIfEnabled()
         }
     }
@@ -865,6 +876,16 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
             autoCheckOutOnEnd = autoCheckOutOnEnd,
             showStatsOnComplete = showStatsOnComplete,
             idleAutoCheckOutHours = idleAutoCheckOutHours
+        )
+    }
+
+    fun updatePlanningOutlinerPreferences(
+        hintVisible: Boolean = settingsStore.currentSettings().planningOutlineHintVisible,
+        eventEndTodoEnabled: Boolean = settingsStore.currentSettings().planningEventEndTodoEnabled
+    ) {
+        settingsStore.updatePlanningOutlinerPreferences(
+            hintVisible = hintVisible,
+            eventEndTodoEnabled = eventEndTodoEnabled
         )
     }
 
@@ -1259,7 +1280,7 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     private suspend fun handlePlanningNodeChange(result: PlanningNodeChangeResult) {
-        result.deletedLinkedItem?.let { clearReminderArtifacts(listOf(it)) }
+        clearReminderArtifacts(result.deletedLinkedItems)
         val linkedItems = result.affectedLinkedItems.ifEmpty { result.linkedItem?.let { listOf(it) }.orEmpty() }
         linkedItems.forEach { linked ->
             if (linked.completed || linked.canceled) {

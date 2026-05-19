@@ -670,6 +670,24 @@ interface TodoDao {
 
     @Query(
         """
+        SELECT * FROM planning_nodes
+        WHERE linkedTodoId = :linkedTodoId OR linkedEndTodoId = :linkedTodoId
+        ORDER BY id ASC
+        """
+    )
+    suspend fun getPlanningNodesByAnyLinkedTodo(linkedTodoId: Long): List<PlanningNode>
+
+    @Query(
+        """
+        SELECT * FROM planning_nodes
+        WHERE linkedTodoId IN (:linkedTodoIds) OR linkedEndTodoId IN (:linkedTodoIds)
+        ORDER BY noteId ASC, parentNodeId ASC, sortOrder ASC, id ASC
+        """
+    )
+    suspend fun getPlanningNodesByAnyLinkedTodos(linkedTodoIds: List<Long>): List<PlanningNode>
+
+    @Query(
+        """
         SELECT COALESCE(MAX(sortOrder), -1)
         FROM planning_nodes
         WHERE noteId = :noteId

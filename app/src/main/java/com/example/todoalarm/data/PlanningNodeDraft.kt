@@ -23,6 +23,7 @@ data class PlanningNodeDraft(
     val allDay: Boolean = false,
     val countdownEnabled: Boolean = false,
     val checkInEnabled: Boolean = false,
+    val syncEnabled: Boolean = true,
     val collapsed: Boolean = false,
     val completed: Boolean = false
 )
@@ -35,6 +36,7 @@ data class PlanningNodeEdit(
     val startAt: LocalDateTime?,
     val endAt: LocalDateTime?,
     val location: String?,
+    val syncEnabled: Boolean,
     val collapsed: Boolean,
     val completed: Boolean
 )
@@ -43,6 +45,7 @@ data class PlanningNodeChangeResult(
     val node: PlanningNode,
     val linkedItem: TodoItem?,
     val deletedLinkedItem: TodoItem? = null,
+    val deletedLinkedItems: List<TodoItem> = deletedLinkedItem?.let { listOf(it) }.orEmpty(),
     val affectedLinkedItems: List<TodoItem> = linkedItem?.let { listOf(it) }.orEmpty()
 )
 

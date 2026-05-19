@@ -31,7 +31,8 @@ import androidx.room.PrimaryKey
     indices = [
         Index("noteId"),
         Index("parentNodeId"),
-        Index("linkedTodoId")
+        Index("linkedTodoId"),
+        Index("linkedEndTodoId")
     ]
 )
 data class PlanningNode(
@@ -48,6 +49,9 @@ data class PlanningNode(
     val dueAtMillis: Long? = null,
     val location: String? = null,
     val linkedTodoId: Long? = null,
+    val linkedEndTodoId: Long? = null,
+    @ColumnInfo(defaultValue = "1")
+    val syncEnabled: Boolean = true,
     @ColumnInfo(defaultValue = "0")
     val collapsed: Boolean = false,
     @ColumnInfo(defaultValue = "0")

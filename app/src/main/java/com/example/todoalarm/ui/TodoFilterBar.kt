@@ -83,6 +83,23 @@ internal fun TodoFilterBar(
                 leadingIcon = true,
                 onClick = { onSelectGroup(null) }
             )
+            Surface(
+                modifier = Modifier
+                    .size(36.dp)
+                    .clickable { creating = true },
+                shape = CircleShape,
+                color = MaterialTheme.colorScheme.primaryContainer,
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.28f))
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        imageVector = Icons.Rounded.Add,
+                        contentDescription = "新建分组",
+                        modifier = Modifier.size(18.dp),
+                        tint = MaterialTheme.colorScheme.onPrimaryContainer
+                    )
+                }
+            }
             sortedGroups.forEach { group ->
                 TodoGroupChip(
                     label = group.name,
@@ -92,13 +109,6 @@ internal fun TodoFilterBar(
                     onLongClick = { editingGroup = group }
                 )
             }
-            TodoGroupChip(
-                label = "新建",
-                color = MaterialTheme.colorScheme.primary,
-                selected = false,
-                leadingAddIcon = true,
-                onClick = { creating = true }
-            )
             if (selectedGroupIds.size >= 2) {
                 FilterChip(
                     selected = true,
@@ -148,7 +158,6 @@ private fun TodoGroupChip(
     color: Color,
     selected: Boolean,
     leadingIcon: Boolean = false,
-    leadingAddIcon: Boolean = false,
     onClick: () -> Unit,
     onLongClick: (() -> Unit)? = null
 ) {
@@ -171,12 +180,6 @@ private fun TodoGroupChip(
             when {
                 leadingIcon -> Icon(
                     imageVector = Icons.Rounded.TaskAlt,
-                    contentDescription = null,
-                    modifier = Modifier.size(16.dp),
-                    tint = color
-                )
-                leadingAddIcon -> Icon(
-                    imageVector = Icons.Rounded.Add,
                     contentDescription = null,
                     modifier = Modifier.size(16.dp),
                     tint = color

@@ -316,18 +316,11 @@ internal fun PlanningDeskPanel(
             Row(
                 modifier = Modifier
                     .fillMaxSize()
+                    .horizontalScroll(rememberScrollState())
                     .padding(horizontal = 10.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                if (hasUnsavedChanges) {
-                    Text(
-                        text = "自动保存中",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-                Spacer(Modifier.weight(1f))
                 OutlinedButton(
                     modifier = Modifier.height(40.dp),
                     onClick = {
@@ -344,10 +337,16 @@ internal fun PlanningDeskPanel(
                     modifier = Modifier.height(40.dp),
                     onClick = {
                         focusManager.clearFocus()
-                        markdownCompatMode = !markdownCompatMode
+                        documentSheetVisible = true
                     }
                 ) {
-                    Text(if (markdownCompatMode) "大纲" else "Markdown")
+                    Icon(Icons.Rounded.Article, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Spacer(Modifier.width(4.dp))
+                    Text(
+                        text = activeNote?.title?.take(8)?.let { "文档:$it" } ?: "文档",
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
                 }
                 if (!markdownCompatMode) {
                     OutlinedButton(
@@ -364,40 +363,19 @@ internal fun PlanningDeskPanel(
                         modifier = Modifier.height(40.dp),
                         onClick = {
                             focusManager.clearFocus()
+                            markdownCompatMode = false
+                        }
+                    ) {
+                        Text("大纲")
+                    }
+                    OutlinedButton(
+                        modifier = Modifier.height(40.dp),
+                        onClick = {
+                            focusManager.clearFocus()
                             markdownEditMode = !markdownEditMode
                         }
                     ) {
                         Text(if (markdownEditMode) "预览" else "编辑")
-                    }
-                    OutlinedButton(
-                        modifier = Modifier.height(40.dp),
-                        onClick = {
-                            focusManager.clearFocus()
-                            val noteId = activeNote?.id ?: return@OutlinedButton
-                            scope.launch {
-                                val markdown = onExportNodesMarkdown(noteId)
-                                editorValue = TextFieldValue(markdown, selection = TextRange(markdown.length))
-                                markdownEditMode = true
-                                Toast.makeText(context, "已导出到 Markdown 兼容区。", Toast.LENGTH_SHORT).show()
-                            }
-                        },
-                        enabled = activeNote != null
-                    ) {
-                        Text("导出")
-                    }
-                    OutlinedButton(
-                        modifier = Modifier.height(40.dp),
-                        onClick = {
-                            focusManager.clearFocus()
-                            val noteId = activeNote?.id ?: return@OutlinedButton
-                            scope.launch {
-                                markdownImportText = onExportNodesMarkdown(noteId)
-                                markdownImportVisible = true
-                            }
-                        },
-                        enabled = activeNote != null
-                    ) {
-                        Text("导入")
                     }
                     Button(
                         modifier = Modifier.height(40.dp),
@@ -414,17 +392,15 @@ internal fun PlanningDeskPanel(
                     ) {
                         Icon(Icons.Rounded.Search, contentDescription = null, modifier = Modifier.size(16.dp))
                         Spacer(Modifier.width(4.dp))
-                        Text(if (parsing) "识别中" else "捕获")
+                        Text(if (parsing) "识别中" else "识别")
                     }
                 }
-                IconButton(
-                    modifier = Modifier.size(40.dp),
-                    onClick = {
-                        focusManager.clearFocus()
-                        documentSheetVisible = true
-                    }
-                ) {
-                    Icon(Icons.Rounded.Article, contentDescription = "文档列表")
+                if (hasUnsavedChanges) {
+                    Text(
+                        text = "自动保存中",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
                 androidx.compose.foundation.layout.Box {
                     IconButton(
@@ -453,6 +429,64 @@ internal fun PlanningDeskPanel(
                             text = { Text("使用说明") },
                             onClick = { overflowMenuExpanded = false; helpSheetVisible = true }
                         )
+                        DropdownMenuItem(
+                            text = {
+                                Column {
+                                    Text("从图片识别日程")
+                                    if (visionProviders.isEmpty()) {
+                                        Text(
+                                            "请先在设置中标记支持图片识别的 AI 源",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                }
+                            },
+                            onClick = {
+                                overflowMenuExpanded = false
+                                imagePicker.launch("image/*")
+                            },
+                            enabled = activeNote != null && visionProviders.isNotEmpty() && !visionRecognizing,
+                            leadingIcon = { Icon(Icons.Rounded.Image, contentDescription = null) }
+                        )
+                        DropdownMenuItem(
+                            text = { Text(if (markdownCompatMode) "关闭 Markdown 兼容模式" else "Markdown 兼容模式") },
+                            onClick = {
+                                overflowMenuExpanded = false
+                                focusManager.clearFocus()
+                                markdownCompatMode = !markdownCompatMode
+                            }
+                        )
+                        if (markdownCompatMode) {
+                            DropdownMenuItem(
+                                text = { Text("导出到 Markdown 兼容区") },
+                                onClick = {
+                                    overflowMenuExpanded = false
+                                    focusManager.clearFocus()
+                                    val noteId = activeNote?.id ?: return@DropdownMenuItem
+                                    scope.launch {
+                                        val markdown = onExportNodesMarkdown(noteId)
+                                        editorValue = TextFieldValue(markdown, selection = TextRange(markdown.length))
+                                        markdownEditMode = true
+                                        Toast.makeText(context, "已导出到 Markdown 兼容区。", Toast.LENGTH_SHORT).show()
+                                    }
+                                },
+                                enabled = activeNote != null
+                            )
+                            DropdownMenuItem(
+                                text = { Text("从 Markdown 导入大纲") },
+                                onClick = {
+                                    overflowMenuExpanded = false
+                                    focusManager.clearFocus()
+                                    val noteId = activeNote?.id ?: return@DropdownMenuItem
+                                    scope.launch {
+                                        markdownImportText = onExportNodesMarkdown(noteId)
+                                        markdownImportVisible = true
+                                    }
+                                },
+                                enabled = activeNote != null
+                            )
+                        }
                         DropdownMenuItem(
                             text = { Text("归档") },
                             onClick = { overflowMenuExpanded = false; archiveDialog = true },

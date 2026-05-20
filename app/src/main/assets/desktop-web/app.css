@@ -450,8 +450,9 @@ button.ghost {
 .planning-node-fields { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin: 8px 0 0 48px; }
 .planning-node-fields label { display: flex; flex-direction: column; gap: 4px; color: var(--muted); font-size: 11px; font-weight: 850; }
 .planning-node-fields input { width: 100%; border-radius: 11px; border: 1px solid var(--card-border); background: var(--input-bg); color: var(--text); padding: 7px 9px; font: inherit; }
-.planning-outline-add { display: flex; gap: 8px; margin-top: 12px; }
-.planning-outline-add input { flex: 1; min-width: 0; border-radius: 14px; border: 1px solid var(--card-border); background: var(--input-bg); color: var(--text); padding: 10px 12px; font: inherit; }
+.planning-outline-add { display: flex; gap: 8px; align-items: center; margin-top: 12px; }
+.planning-outline-add input { flex: 1; min-width: 0; border-radius: 12px; border: 0; border-bottom: 1px solid transparent; background: transparent; color: var(--text); padding: 10px 6px; font: inherit; }
+.planning-outline-add input:focus { outline: none; border-bottom-color: rgba(53,104,212,.38); background: rgba(53,104,212,.06); }
 .planning-markdown-compat { margin-top: 12px; border-radius: 20px; border: 1px dashed var(--card-border); background: var(--subtle-bg); padding: 12px; }
 .planning-markdown-compat summary { cursor: pointer; color: var(--text); font-weight: 900; }
 .planning-markdown-compat p { margin: 8px 0 10px; font-size: 13px; line-height: 1.45; }

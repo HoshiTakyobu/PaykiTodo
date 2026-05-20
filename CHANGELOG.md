@@ -1,5 +1,13 @@
 # Changelog
 
+## v1.12.13
+
+- 补齐手机端规划台 Outliner 备忘录级键盘行为：空输入行 Backspace 会回到上一节点，节点行首 Backspace 会与上一个同级节点合并，节点中间 Enter 会断行为新同级节点
+- 手机端规划台输入行改为无完整边框的轻量 BasicTextField，保留 placeholder 和聚焦底色，使底部输入行/子任务输入行更像大纲自然延续而不是表单框
+- 补齐电脑端 Web Outliner 同类键盘行为：空行 Backspace 删除并聚焦上一节点，行首 Backspace 合并同级节点，中间 Enter 断行，上下方向键可跨节点/根输入行移动焦点
+- 版本号升级到 `1.12.13` / `versionCode 240`
+- 验证：`node --check app/src/main/assets/desktop-web/app.js`、`./gradlew.bat :app:compileDebugKotlin`、`git diff --check`、`./gradlew.bat :app:assembleDebug` 通过；debug APK 元数据确认 `1.12.13 / 240`
+
 ## v1.12.12
 
 - 提升调试包版本号，确保 Android 在已安装 `1.12.11` 时把新 APK 识别为可升级安装包

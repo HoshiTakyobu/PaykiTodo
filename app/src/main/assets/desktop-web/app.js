@@ -1385,18 +1385,21 @@ function renderPlanningOutline() {
   }).join('');
 }
 
-async function createPlanningOutlineNode(text, parentNodeId = null) {
+async function createPlanningOutlineNode(text, parentNodeId = null, options = {}) {
   const active = activePlanningNote();
   const clean = String(text || '').trim();
   if (!active) throw new Error('没有可写入的规划文档');
   if (!clean) throw new Error('事项不能为空');
+  const body = { noteId: active.id, parentNodeId, text: clean };
+  if (Number.isFinite(Number(options.sortOrder))) body.sortOrder = Number(options.sortOrder);
   const data = await api('/api/planning/nodes/create', {
     method: 'POST',
-    body: JSON.stringify({ noteId: active.id, parentNodeId, text: clean })
+    body: JSON.stringify(body)
   });
   applyPlanningNodeResponse(data);
   await refreshAfterMutation();
   els.status.textContent = '已添加到规划台';
+  return data.node || null;
 }
 
 async function updatePlanningOutlineNode(nodeId, patch) {
@@ -1411,10 +1414,12 @@ async function updatePlanningOutlineNode(nodeId, patch) {
   els.status.textContent = '规划节点已同步';
 }
 
-async function deletePlanningOutlineNode(nodeId) {
+async function deletePlanningOutlineNode(nodeId, options = {}) {
   const existing = planningNodeById(nodeId);
   if (!existing) return;
-  if (!await confirmDanger('确认删除规划事项', '会同时删除它和子项关联的待办 / 日程：' + (existing.text || ''), '删除')) return;
+  if (options.confirm !== false) {
+    if (!await confirmDanger('确认删除规划事项', '会同时删除它和子项关联的待办 / 日程：' + (existing.text || ''), '删除')) return;
+  }
   const data = await api('/api/planning/nodes/delete', {
     method: 'POST',
     body: JSON.stringify({ id: existing.id })
@@ -1458,6 +1463,76 @@ function previousVisiblePlanningNode(nodeId) {
   const flattened = flattenPlanningNodes(state.planningNodes || []);
   const index = flattened.findIndex(item => sameId(item.node.id, nodeId));
   return index > 0 ? flattened[index - 1].node : null;
+}
+
+function nextVisiblePlanningNode(nodeId) {
+  const flattened = flattenPlanningNodes(state.planningNodes || []);
+  const index = flattened.findIndex(item => sameId(item.node.id, nodeId));
+  return index >= 0 ? (flattened[index + 1]?.node || null) : null;
+}
+
+function previousSiblingPlanningNode(nodeId) {
+  const existing = planningNodeById(nodeId);
+  if (!existing) return null;
+  const siblings = planningSiblingNodes(existing.parentNodeId);
+  const index = siblings.findIndex(node => sameId(node.id, existing.id));
+  return index > 0 ? siblings[index - 1] : null;
+}
+
+function focusPlanningNodeText(nodeId, cursor = null) {
+  window.requestAnimationFrame(() => {
+    const input = Array.from(document.querySelectorAll('[data-node-text]'))
+      .find(node => sameId(node.dataset.nodeText, nodeId));
+    if (!input) return;
+    const position = Math.max(0, Math.min(Number(cursor ?? input.value.length), input.value.length));
+    input.focus();
+    input.setSelectionRange(position, position);
+  });
+}
+
+function focusPlanningRootInput(cursor = null) {
+  window.requestAnimationFrame(() => {
+    if (!els.planningRootInput) return;
+    const position = Math.max(0, Math.min(Number(cursor ?? els.planningRootInput.value.length), els.planningRootInput.value.length));
+    els.planningRootInput.focus();
+    els.planningRootInput.setSelectionRange(position, position);
+  });
+}
+
+async function mergePlanningTextIntoPrevious(previous, text, afterMerge) {
+  const clean = String(text || '').replace(/^\s+/, '');
+  if (!previous || !clean.trim()) return false;
+  const cursor = String(previous.text || '').length;
+  await updatePlanningOutlineNode(previous.id, { text: String(previous.text || '') + clean });
+  if (afterMerge) await afterMerge();
+  focusPlanningNodeText(previous.id, cursor);
+  return true;
+}
+
+async function splitPlanningNodeAtCursor(input) {
+  const node = planningNodeById(input?.dataset?.nodeText);
+  if (!node) return false;
+  const start = input.selectionStart ?? input.value.length;
+  const end = input.selectionEnd ?? start;
+  const before = input.value.slice(0, start).trim();
+  const after = input.value.slice(end).trim();
+  if (!before || !after) return false;
+  input.dataset.skipCommit = 'true';
+  await updatePlanningOutlineNode(node.id, { text: before });
+  const sortOrder = Number(node.sortOrder || 0) + 1;
+  const created = await createPlanningOutlineNode(after, node.parentNodeId ?? null, { sortOrder });
+  focusPlanningNodeText(created?.id, 0);
+  return true;
+}
+
+async function mergePlanningNodeWithPrevious(input) {
+  const nodeId = input?.dataset?.nodeText;
+  const previous = previousSiblingPlanningNode(nodeId);
+  if (!previous) return false;
+  input.dataset.skipCommit = 'true';
+  return mergePlanningTextIntoPrevious(previous, input.value, async () => {
+    await deletePlanningOutlineNode(nodeId, { confirm: false });
+  });
 }
 
 async function indentPlanningNode(nodeId, outdent = false) {
@@ -2692,9 +2767,32 @@ document.getElementById('planning-root-add')?.addEventListener('click', () => {
     .catch(err => els.status.textContent = err.message);
 });
 els.planningRootInput?.addEventListener('keydown', event => {
-  if (event.key !== 'Enter') return;
-  event.preventDefault();
-  document.getElementById('planning-root-add')?.click();
+  if (event.key === 'Enter') {
+    event.preventDefault();
+    document.getElementById('planning-root-add')?.click();
+    return;
+  }
+  if (event.key === 'Backspace') {
+    const atStart = (event.target.selectionStart || 0) === 0 && (event.target.selectionEnd || 0) === 0;
+    const previous = (flattenPlanningNodes(state.planningNodes || []).slice(-1)[0] || {}).node || null;
+    if (!event.target.value && previous) {
+      event.preventDefault();
+      focusPlanningNodeText(previous.id, String(previous.text || '').length);
+    } else if (event.target.value && atStart && previous) {
+      event.preventDefault();
+      mergePlanningTextIntoPrevious(previous, event.target.value, async () => {
+        event.target.value = '';
+      }).catch(err => { els.status.textContent = err.message; });
+    }
+    return;
+  }
+  if (event.key === 'ArrowUp') {
+    const previous = (flattenPlanningNodes(state.planningNodes || []).slice(-1)[0] || {}).node || null;
+    if (previous) {
+      event.preventDefault();
+      focusPlanningNodeText(previous.id, String(previous.text || '').length);
+    }
+  }
 });
 els.planningOutline?.addEventListener('click', event => {
   const collapse = event.target.closest?.('[data-node-collapse]');
@@ -2779,6 +2877,10 @@ els.planningOutline?.addEventListener('drop', event => {
 els.planningOutline?.addEventListener('dragend', () => clearPlanningDragState());
 els.planningOutline?.addEventListener('focusout', event => {
   if (event.target.matches?.('[data-node-text]')) {
+    if (event.target.dataset.skipCommit === 'true') {
+      delete event.target.dataset.skipCommit;
+      return;
+    }
     commitPlanningNodeText(event.target).catch(err => els.status.textContent = err.message);
   }
   if (event.target.matches?.('[data-node-field]')) {
@@ -2790,18 +2892,55 @@ els.planningOutline?.addEventListener('keydown', event => {
   if (!textInput) return;
   if (event.key === 'Enter') {
     event.preventDefault();
-    const node = planningNodeById(textInput.dataset.nodeText);
-    const siblingText = prompt('新增同级事项', '');
-    if (!siblingText) return;
-    commitPlanningNodeText(textInput)
-      .then(() => createPlanningOutlineNode(siblingText, node?.parentNodeId ?? null))
-      .catch(err => { els.status.textContent = err.message; });
+    const start = textInput.selectionStart ?? textInput.value.length;
+    const end = textInput.selectionEnd ?? start;
+    const atMiddle = start > 0 && start < textInput.value.length;
+    const hasTail = String(textInput.value.slice(end)).trim().length > 0;
+    if (atMiddle || hasTail) {
+      splitPlanningNodeAtCursor(textInput).catch(err => { els.status.textContent = err.message; });
+    } else {
+      textInput.dataset.skipCommit = 'true';
+      commitPlanningNodeText(textInput)
+        .then(() => focusPlanningRootInput())
+        .catch(err => { els.status.textContent = err.message; });
+    }
   } else if (event.key === 'Tab') {
     event.preventDefault();
     indentPlanningNode(textInput.dataset.nodeText, event.shiftKey).catch(err => els.status.textContent = err.message);
-  } else if (event.key === 'Backspace' && !textInput.value) {
-    event.preventDefault();
-    deletePlanningOutlineNode(textInput.dataset.nodeText).catch(err => els.status.textContent = err.message);
+  } else if (event.key === 'Backspace') {
+    const atStart = (textInput.selectionStart || 0) === 0 && (textInput.selectionEnd || 0) === 0;
+    if (!textInput.value) {
+      event.preventDefault();
+      const previous = previousVisiblePlanningNode(textInput.dataset.nodeText);
+      textInput.dataset.skipCommit = 'true';
+      deletePlanningOutlineNode(textInput.dataset.nodeText, { confirm: false })
+        .then(() => {
+          if (previous) focusPlanningNodeText(previous.id, String(previous.text || '').length);
+        })
+        .catch(err => { els.status.textContent = err.message; });
+    } else if (atStart) {
+      event.preventDefault();
+      mergePlanningNodeWithPrevious(textInput).catch(err => { els.status.textContent = err.message; });
+    }
+  } else if (event.key === 'ArrowUp') {
+    if ((textInput.selectionStart || 0) === 0 && (textInput.selectionEnd || 0) === 0) {
+      const previous = previousVisiblePlanningNode(textInput.dataset.nodeText);
+      if (previous) {
+        event.preventDefault();
+        focusPlanningNodeText(previous.id, String(previous.text || '').length);
+      }
+    }
+  } else if (event.key === 'ArrowDown') {
+    const end = String(textInput.value || '').length;
+    if ((textInput.selectionStart || 0) === end && (textInput.selectionEnd || 0) === end) {
+      const next = nextVisiblePlanningNode(textInput.dataset.nodeText);
+      event.preventDefault();
+      if (next) {
+        focusPlanningNodeText(next.id, String(next.text || '').length);
+      } else {
+        focusPlanningRootInput();
+      }
+    }
   }
 });
 els.planningEditor?.addEventListener('input', () => {

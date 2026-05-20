@@ -2,24 +2,34 @@
 
 ## Active Development Focus
 
-Active goal: rebuild the debug APK as `1.12.12 / versionCode 239` so devices already on `1.12.11` can install the next package by normal Android upgrade rules.
+Active goal: implement `docs/goals/2026-05-20-paykitodo-outliner-keyboard-fix-goal.md`.
 
-The working tree is now on the `1.12.12 / versionCode 239` line. This round only increments version metadata and rebuilds the debug APK over the completed `1.12.11` phone-side Planning Desk Outliner UX baseline. The Outliner goal remains implemented, locally built, unit-tested, and smoke-tested on `emulator-5554`. Do not push to GitHub unless the user explicitly asks.
+The working tree is now on the `1.12.13 / versionCode 240` line. This round targets Planning Desk Outliner keyboard behavior on phone and desktop Web: Backspace should cross row boundaries, Enter should split nodes at the cursor, input rows should no longer look like form boxes, and desktop ArrowUp/ArrowDown should move between rows. Do not push to GitHub unless the user explicitly asks.
 
 ## Current Goal State
 
 Current implementation state:
 
-1. Phone Outliner now shows lightweight text rows plus a root active input line; expanded child areas show their own active input lines.
-2. Editing an existing Outliner node and pressing Enter now opens a focused same-level input line at that node's position, so the flow does not stop after committing text.
-3. Existing-node edit commit is guarded so Enter, IME Done, and focus loss do not process the same edit twice.
-4. Phone Outliner has an edit / preview switch; edit mode hides per-row right-side operations, while preview mode exposes row `⋯` actions for time, location, sync toggle, delete, and opening the linked official todo/event editor.
-5. Adding a child demotes its parent to a structure heading and deletes the parent's linked official item; moving/deleting the last child can restore ordinary parents as synced leaf items.
-6. Parent nodes with children now show `有子任务时保持结构标题` in preview menus instead of offering a misleading sync toggle.
-7. Natural schedule parsing accepts bare ordered locations such as `时间, 事件名, 地点`.
-8. Main phone overflow menu is simplified to document-level actions; Markdown import/export moved to the Markdown compatibility toolbar.
-9. Phone Planning Desk tutorial now has three Outliner-focused pages.
-10. Preview `⋯` reuses the existing official todo/event editor through the linked item, so reminder, group, recurrence, notes, countdown, and event check-in use the same surface as ordinary phone editing.
+1. Phone Outliner node editing now uses `TextFieldValue` so cursor position is known.
+2. Phone active input rows are borderless `BasicTextField` lines with placeholder and subtle focus background.
+3. Phone input rows support empty Backspace -> previous node focus and row-start Backspace -> merge current input text into the previous node.
+4. Phone node rows support row-start Backspace -> merge into the previous same-level node and middle Enter -> split into a new same-level node.
+5. Desktop Web Outliner supports the same Backspace / Enter keyboard behavior through DOM `selectionStart` / `selectionEnd`.
+6. Desktop Web Outliner supports ArrowUp / ArrowDown focus movement between node rows and the root input line.
+7. This is a UI / interaction change only; no database schema, backup format, reminder model, or sync payload schema change is intended.
+
+## Verification Completed For 1.12.13
+
+The `1.12.13 / versionCode 240` patch has passed so far:
+
+1. `node --check app/src/main/assets/desktop-web/app.js`
+2. `./gradlew.bat :app:compileDebugKotlin`
+3. `git diff --check`
+4. `./gradlew.bat :app:assembleDebug`
+5. Debug APK metadata confirms:
+   - `versionName = 1.12.13`
+   - `versionCode = 240`
+   - output `PaykiTodo-1.12.13-debug.apk`
 
 ## Verification Completed For 1.12.12
 
@@ -78,7 +88,7 @@ The `1.12.10 / versionCode 237` patch has passed:
    - `versionCode = 237`
    - output `PaykiTodo-1.12.10-debug.apk`
 
-Latest debug APK: `app/build/outputs/apk/debug/PaykiTodo-1.12.12-debug.apk`.
+Latest debug APK: `app/build/outputs/apk/debug/PaykiTodo-1.12.13-debug.apk`.
 
 ## Previous Verification Completed For 1.12.9
 

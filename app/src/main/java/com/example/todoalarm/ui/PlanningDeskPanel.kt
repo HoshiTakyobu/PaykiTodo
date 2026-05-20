@@ -14,9 +14,12 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -83,6 +86,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
@@ -485,6 +489,12 @@ internal fun PlanningDeskPanel(
                 onToggleNode = { node ->
                     scope.launch {
                         val message = onToggleNode(node)
+                        message?.let { Toast.makeText(context, it, Toast.LENGTH_SHORT).show() }
+                    }
+                },
+                onDeleteNodeNow = { node ->
+                    scope.launch {
+                        val message = onDeleteNode(node)
                         message?.let { Toast.makeText(context, it, Toast.LENGTH_SHORT).show() }
                     }
                 },
@@ -913,21 +923,92 @@ private fun PlanningOutlineEditor(
     onCreateNode: (PlanningNodeDraft) -> Unit,
     onUpdateNode: (PlanningNode, PlanningNodeEdit) -> Unit,
     onToggleNode: (PlanningNode) -> Unit,
+    onDeleteNodeNow: (PlanningNode) -> Unit,
     onDeleteNode: (PlanningNode) -> Unit,
     onOpenLinkedItem: (Long) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    var rootInput by remember(activeNote?.id) { mutableStateOf("") }
-    var editingNodeId by remember(activeNote?.id) { mutableStateOf<Long?>(null) }
+    var rootInput by remember(activeNote?.id) { mutableStateOf(TextFieldValue("")) }
+    var editingTarget by remember(activeNote?.id) { mutableStateOf<PlanningOutlineEditingTarget?>(null) }
+    var pendingCreatedFocus by remember(activeNote?.id) { mutableStateOf<PlanningOutlinePendingNodeFocus?>(null) }
     var siblingInputAfterNodeId by remember(activeNote?.id) { mutableStateOf<Long?>(null) }
     var inputFocusTarget by remember(activeNote?.id) { mutableStateOf<String?>(null) }
-    val childInputs = remember(activeNote?.id) { mutableStateMapOf<Long, String>() }
-    val siblingInputs = remember(activeNote?.id) { mutableStateMapOf<Long, String>() }
+    val childInputs = remember(activeNote?.id) { mutableStateMapOf<Long, TextFieldValue>() }
+    val siblingInputs = remember(activeNote?.id) { mutableStateMapOf<Long, TextFieldValue>() }
     val expandedChildInputs = remember(activeNote?.id) { mutableStateMapOf<Long, Boolean>() }
     var timeDialogNode by remember { mutableStateOf<PlanningNode?>(null) }
     var locationDialogNode by remember { mutableStateOf<PlanningNode?>(null) }
     val flattened = remember(nodes) { flattenPlanningNodes(nodes) }
     val childrenByParent = remember(nodes) { nodes.groupBy { it.parentNodeId } }
+
+    fun focusNode(node: PlanningNode?, cursor: Int? = null) {
+        if (node == null) return
+        editingTarget = PlanningOutlineEditingTarget(node.id, cursor ?: node.text.length)
+        siblingInputAfterNodeId = null
+        inputFocusTarget = null
+    }
+
+    fun siblingNodes(parentId: Long?): List<PlanningNode> {
+        return nodes
+            .filter { it.parentNodeId == parentId }
+            .sortedWith(compareBy<PlanningNode> { it.sortOrder }.thenBy { it.id })
+    }
+
+    fun previousSibling(node: PlanningNode): PlanningNode? {
+        val siblings = siblingNodes(node.parentNodeId)
+        val index = siblings.indexOfFirst { it.id == node.id }
+        return siblings.getOrNull(index - 1)
+    }
+
+    fun nextVisibleNode(node: PlanningNode): PlanningNode? {
+        val index = flattened.indexOfFirst { it.node.id == node.id }
+        return flattened.getOrNull(index + 1)?.node
+    }
+
+    fun previousVisibleNode(node: PlanningNode): PlanningNode? {
+        val index = flattened.indexOfFirst { it.node.id == node.id }
+        return flattened.getOrNull(index - 1)?.node
+    }
+
+    fun mergeTextIntoPrevious(previous: PlanningNode?, raw: String, onMerged: () -> Unit = {}) {
+        val clean = raw.trimStart()
+        if (previous == null || clean.isBlank()) return
+        val cursor = previous.text.length
+        onUpdateNode(previous, previous.toPlanningNodeEdit(text = previous.text + clean))
+        onMerged()
+        focusNode(previous, cursor)
+    }
+
+    fun mergeNodeIntoPrevious(node: PlanningNode, raw: String) {
+        val previous = previousSibling(node) ?: return
+        mergeTextIntoPrevious(previous, raw) {
+            onDeleteNodeNow(node)
+        }
+    }
+
+    fun focusRootInput(cursor: Int = rootInput.text.length) {
+        editingTarget = null
+        rootInput = rootInput.copy(selection = TextRange(cursor.coerceIn(0, rootInput.text.length)))
+        inputFocusTarget = "root-${System.nanoTime()}"
+    }
+
+    LaunchedEffect(nodes, pendingCreatedFocus) {
+        val pending = pendingCreatedFocus ?: return@LaunchedEffect
+        val target = nodes
+            .filter { candidate ->
+                candidate.parentNodeId == pending.parentNodeId &&
+                    candidate.text.trim() == pending.text.trim()
+            }
+            .let { candidates ->
+                pending.sortOrder?.let { order ->
+                    candidates.firstOrNull { it.sortOrder == order } ?: candidates.firstOrNull()
+                } ?: candidates.firstOrNull()
+            }
+        if (target != null) {
+            pendingCreatedFocus = null
+            focusNode(target, pending.cursor)
+        }
+    }
 
     fun createNode(parentId: Long?, raw: String, sortOrder: Int? = null) {
         val note = activeNote ?: return
@@ -991,9 +1072,12 @@ private fun PlanningOutlineEditor(
                             childInputVisible = childInputVisible,
                             outlineHintVisible = outlineHintVisible,
                             previewMode = previewMode,
-                            editing = editingNodeId == node.id,
-                            onStartEdit = { editingNodeId = node.id },
-                            onStopEdit = { editingNodeId = null },
+                            editing = editingTarget?.nodeId == node.id,
+                            editingCursor = editingTarget?.takeIf { it.nodeId == node.id }?.cursor,
+                            onStartEdit = { focusNode(node, node.text.length) },
+                            onStopEdit = {
+                                if (editingTarget?.nodeId == node.id) editingTarget = null
+                            },
                             onToggle = { onToggleNode(node) },
                             onToggleCollapse = {
                                 if (hasChildren) {
@@ -1004,21 +1088,81 @@ private fun PlanningOutlineEditor(
                                 } else {
                                     val nextExpanded = !childInputExpanded
                                     expandedChildInputs[node.id] = nextExpanded
-                                    if (nextExpanded) inputFocusTarget = "child-${node.id}"
+                                    if (nextExpanded) inputFocusTarget = "child-${node.id}-${System.nanoTime()}"
                                 }
                             },
                             onTextCommit = { text ->
                                 if (text.isBlank()) {
-                                    onDeleteNode(node)
+                                    onDeleteNodeNow(node)
                                 } else if (text.trim() != node.text.trim()) {
                                     onUpdateNode(node, node.toPlanningNodeEdit(text = text.trim()))
                                 }
                             },
+                            onDeleteAndFocusPrevious = {
+                                val previous = previousVisibleNode(node)
+                                onDeleteNodeNow(node)
+                                focusNode(previous, previous?.text?.length)
+                                true
+                            },
+                            onMergeWithPrevious = { text ->
+                                if (previousSibling(node) == null) {
+                                    false
+                                } else {
+                                    mergeNodeIntoPrevious(node, text)
+                                    true
+                                }
+                            },
                             onCreateSibling = {
-                                editingNodeId = null
+                                editingTarget = null
                                 siblingInputAfterNodeId = node.id
-                                siblingInputs[node.id] = ""
-                                inputFocusTarget = "sibling-${node.id}"
+                                siblingInputs[node.id] = TextFieldValue("")
+                                inputFocusTarget = "sibling-${node.id}-${System.nanoTime()}"
+                            },
+                            onCreateSiblingWithText = { before, after ->
+                                val cleanBefore = before.trim()
+                                val cleanAfter = after.trim()
+                                if (cleanBefore.isBlank()) {
+                                    false
+                                } else {
+                                    if (cleanBefore != node.text.trim()) {
+                                        onUpdateNode(node, node.toPlanningNodeEdit(text = cleanBefore))
+                                    }
+                                    editingTarget = null
+                                    if (cleanAfter.isNotBlank()) {
+                                        val nextSortOrder = node.sortOrder + 1
+                                        pendingCreatedFocus = PlanningOutlinePendingNodeFocus(
+                                            parentNodeId = node.parentNodeId,
+                                            text = cleanAfter,
+                                            sortOrder = nextSortOrder,
+                                            cursor = 0
+                                        )
+                                        createNode(node.parentNodeId, cleanAfter, sortOrder = nextSortOrder)
+                                    } else {
+                                        siblingInputAfterNodeId = node.id
+                                        siblingInputs[node.id] = TextFieldValue("")
+                                        inputFocusTarget = "sibling-${node.id}-${System.nanoTime()}"
+                                    }
+                                    true
+                                }
+                            },
+                            onFocusPrevious = {
+                                val previous = previousVisibleNode(node)
+                                if (previous != null) {
+                                    focusNode(previous, previous.text.length)
+                                    true
+                                } else {
+                                    false
+                                }
+                            },
+                            onFocusNext = {
+                                val next = nextVisibleNode(node)
+                                if (next != null) {
+                                    focusNode(next, next.text.length)
+                                    true
+                                } else {
+                                    focusRootInput()
+                                    true
+                                }
                             },
                             onIndent = {
                                 val index = flattened.indexOfFirst { it.node.id == node.id }
@@ -1061,13 +1205,13 @@ private fun PlanningOutlineEditor(
                             item(key = "sibling-input-${node.id}") {
                                 PlanningOutlineInputLine(
                                     depth = outline.depth,
-                                    value = siblingInputs[node.id].orEmpty(),
+                                    value = siblingInputs[node.id] ?: TextFieldValue(""),
                                     placeholder = "继续写同级事项",
                                     enabled = activeNote != null,
-                                    autoFocusKey = inputFocusTarget.takeIf { it == "sibling-${node.id}" },
+                                    autoFocusKey = inputFocusTarget.takeIf { it?.startsWith("sibling-${node.id}-") == true },
                                     onValueChange = { siblingInputs[node.id] = it },
                                     onCommit = {
-                                        val raw = siblingInputs[node.id].orEmpty()
+                                        val raw = siblingInputs[node.id]?.text.orEmpty()
                                         if (raw.isBlank()) {
                                             siblingInputAfterNodeId = null
                                             siblingInputs.remove(node.id)
@@ -1076,6 +1220,23 @@ private fun PlanningOutlineEditor(
                                             siblingInputAfterNodeId = null
                                             siblingInputs.remove(node.id)
                                         }
+                                    },
+                                    onBackspaceEmpty = {
+                                        siblingInputAfterNodeId = null
+                                        siblingInputs.remove(node.id)
+                                        focusNode(node, node.text.length)
+                                        true
+                                    },
+                                    onBackspaceAtStart = { text ->
+                                        mergeTextIntoPrevious(node, text) {
+                                            siblingInputAfterNodeId = null
+                                            siblingInputs.remove(node.id)
+                                        }
+                                        true
+                                    },
+                                    onArrowUp = {
+                                        focusNode(node, node.text.length)
+                                        true
                                     }
                                 )
                             }
@@ -1084,15 +1245,32 @@ private fun PlanningOutlineEditor(
                             item(key = "child-input-${node.id}") {
                                 PlanningOutlineInputLine(
                                     depth = outline.depth + 1,
-                                    value = childInputs[node.id].orEmpty(),
+                                    value = childInputs[node.id] ?: TextFieldValue(""),
                                     placeholder = "输入 ${node.text} 的子任务",
                                     enabled = activeNote != null,
-                                    autoFocusKey = inputFocusTarget.takeIf { it == "child-${node.id}" },
+                                    autoFocusKey = inputFocusTarget.takeIf { it?.startsWith("child-${node.id}-") == true },
                                     onValueChange = { childInputs[node.id] = it },
                                     onCommit = {
-                                        val raw = childInputs[node.id].orEmpty()
+                                        val raw = childInputs[node.id]?.text.orEmpty()
                                         createNode(node.id, raw)
-                                        childInputs[node.id] = ""
+                                        childInputs[node.id] = TextFieldValue("")
+                                    },
+                                    onBackspaceEmpty = {
+                                        childInputs.remove(node.id)
+                                        if (!hasChildren) expandedChildInputs[node.id] = false
+                                        focusNode(node, node.text.length)
+                                        true
+                                    },
+                                    onBackspaceAtStart = { text ->
+                                        mergeTextIntoPrevious(node, text) {
+                                            childInputs.remove(node.id)
+                                            if (!hasChildren) expandedChildInputs[node.id] = false
+                                        }
+                                        true
+                                    },
+                                    onArrowUp = {
+                                        focusNode(node, node.text.length)
+                                        true
                                     }
                                 )
                             }
@@ -1106,10 +1284,36 @@ private fun PlanningOutlineEditor(
                             value = rootInput,
                             placeholder = "继续写下一行，按回车创建",
                             enabled = activeNote != null,
+                            autoFocusKey = inputFocusTarget.takeIf { it?.startsWith("root-") == true },
                             onValueChange = { rootInput = it },
                             onCommit = {
-                                createNode(null, rootInput)
-                                rootInput = ""
+                                createNode(null, rootInput.text)
+                                rootInput = TextFieldValue("")
+                            },
+                            onBackspaceEmpty = {
+                                val previous = flattened.lastOrNull()?.node
+                                if (previous != null) {
+                                    focusNode(previous, previous.text.length)
+                                    true
+                                } else {
+                                    false
+                                }
+                            },
+                            onBackspaceAtStart = { text ->
+                                val previous = flattened.lastOrNull()?.node
+                                mergeTextIntoPrevious(previous, text) {
+                                    rootInput = TextFieldValue("")
+                                }
+                                previous != null
+                            },
+                            onArrowUp = {
+                                val previous = flattened.lastOrNull()?.node
+                                if (previous != null) {
+                                    focusNode(previous, previous.text.length)
+                                    true
+                                } else {
+                                    false
+                                }
                             }
                         )
                     }
@@ -1156,18 +1360,34 @@ private fun PlanningOutlineEmptyCard(text: String) {
     }
 }
 
+private data class PlanningOutlineEditingTarget(
+    val nodeId: Long,
+    val cursor: Int? = null
+)
+
+private data class PlanningOutlinePendingNodeFocus(
+    val parentNodeId: Long?,
+    val text: String,
+    val sortOrder: Int?,
+    val cursor: Int
+)
+
 @Composable
 private fun PlanningOutlineInputLine(
     depth: Int,
-    value: String,
+    value: TextFieldValue,
     placeholder: String,
     enabled: Boolean,
     autoFocusKey: Any? = null,
-    onValueChange: (String) -> Unit,
-    onCommit: () -> Unit
+    onValueChange: (TextFieldValue) -> Unit,
+    onCommit: () -> Unit,
+    onBackspaceEmpty: () -> Boolean = { false },
+    onBackspaceAtStart: (String) -> Boolean = { false },
+    onArrowUp: () -> Boolean = { false }
 ) {
     val focusRequester = remember { FocusRequester() }
     val keyboardController = LocalSoftwareKeyboardController.current
+    var focused by remember { mutableStateOf(false) }
     LaunchedEffect(autoFocusKey) {
         if (autoFocusKey != null) {
             delay(80)
@@ -1188,25 +1408,63 @@ private fun PlanningOutlineInputLine(
             tint = MaterialTheme.colorScheme.outline,
             modifier = Modifier.size(22.dp)
         )
-        OutlinedTextField(
+        BasicTextField(
             value = value,
             onValueChange = onValueChange,
             modifier = Modifier
                 .weight(1f)
                 .focusRequester(focusRequester)
+                .onFocusChanged { focused = it.isFocused }
                 .onPreviewKeyEvent { event ->
-                    if (event.type == KeyEventType.KeyDown && event.key == Key.Enter) {
-                        onCommit()
-                        true
-                    } else {
-                        false
+                    if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
+                    val cursorAtStart = value.selection.start == 0 && value.selection.end == 0
+                    when (event.key) {
+                        Key.Enter -> {
+                            onCommit()
+                            true
+                        }
+                        Key.Backspace -> {
+                            when {
+                                value.text.isBlank() -> onBackspaceEmpty()
+                                cursorAtStart -> onBackspaceAtStart(value.text)
+                                else -> false
+                            }
+                        }
+                        Key.DirectionUp -> onArrowUp()
+                        else -> false
                     }
                 },
             enabled = enabled,
             singleLine = true,
-            placeholder = { Text(placeholder) },
+            textStyle = MaterialTheme.typography.bodyLarge.copy(color = MaterialTheme.colorScheme.onSurfaceVariant),
+            cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-            keyboardActions = KeyboardActions(onDone = { onCommit() })
+            keyboardActions = KeyboardActions(onDone = { onCommit() }),
+            decorationBox = { innerTextField ->
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(
+                            color = if (focused) {
+                                MaterialTheme.colorScheme.primary.copy(alpha = 0.06f)
+                            } else {
+                                Color.Transparent
+                            },
+                            shape = RoundedCornerShape(12.dp)
+                        )
+                        .padding(horizontal = 4.dp, vertical = 8.dp),
+                    contentAlignment = Alignment.CenterStart
+                ) {
+                    if (value.text.isEmpty()) {
+                        Text(
+                            text = placeholder,
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.outline
+                        )
+                    }
+                    innerTextField()
+                }
+            }
         )
     }
 }
@@ -1219,12 +1477,18 @@ private fun PlanningOutlineRow(
     outlineHintVisible: Boolean,
     previewMode: Boolean,
     editing: Boolean,
+    editingCursor: Int?,
     onStartEdit: () -> Unit,
     onStopEdit: () -> Unit,
     onToggle: () -> Unit,
     onToggleCollapse: () -> Unit,
     onTextCommit: (String) -> Unit,
+    onDeleteAndFocusPrevious: () -> Boolean,
+    onMergeWithPrevious: (String) -> Boolean,
     onCreateSibling: () -> Unit,
+    onCreateSiblingWithText: (String, String) -> Boolean,
+    onFocusPrevious: () -> Boolean,
+    onFocusNext: () -> Boolean,
     onIndent: () -> Unit,
     onOutdent: () -> Unit,
     onUpdateTime: (LocalDateTime?, LocalDateTime?, LocalDateTime?) -> Unit,
@@ -1236,7 +1500,10 @@ private fun PlanningOutlineRow(
     onDelete: () -> Unit
 ) {
     val node = item.node
-    var text by remember(node.id, node.text) { mutableStateOf(node.text) }
+    val initialCursor = editingCursor?.coerceIn(0, node.text.length) ?: node.text.length
+    var textValue by remember(node.id, node.text, editingCursor) {
+        mutableStateOf(TextFieldValue(node.text, TextRange(initialCursor)))
+    }
     var actionMenuExpanded by remember { mutableStateOf(false) }
     val editFocusRequester = remember { FocusRequester() }
     val keyboardController = LocalSoftwareKeyboardController.current
@@ -1260,7 +1527,7 @@ private fun PlanningOutlineRow(
     fun commit() {
         if (editCommitHandled) return
         editCommitHandled = true
-        val clean = text.trim()
+        val clean = textValue.text.trim()
         if (clean.isBlank()) {
             onDelete()
         } else if (clean != node.text.trim()) {
@@ -1271,7 +1538,7 @@ private fun PlanningOutlineRow(
 
     Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
         if (outlineHintVisible && editing && !previewMode) {
-            PlanningOutlineHeaderHint(text)
+            PlanningOutlineHeaderHint(textValue.text)
         }
         Row(
             modifier = Modifier
@@ -1314,31 +1581,48 @@ private fun PlanningOutlineRow(
             ) {
                 if (editing && !previewMode) {
                     OutlinedTextField(
-                        value = text,
-                        onValueChange = { text = it },
+                        value = textValue,
+                        onValueChange = { textValue = it },
                         modifier = Modifier
                             .fillMaxWidth()
                             .focusRequester(editFocusRequester)
                             .onPreviewKeyEvent { event ->
                                 if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
+                                val cursorStart = minOf(textValue.selection.start, textValue.selection.end)
+                                val cursorEnd = maxOf(textValue.selection.start, textValue.selection.end)
+                                val cursorAtStart = cursorStart == 0 && cursorEnd == 0
+                                val cursorAtEnd = cursorStart == textValue.text.length && cursorEnd == textValue.text.length
                                 when (event.key) {
                                     Key.Enter -> {
-                                        commit()
-                                        onCreateSibling()
-                                        true
+                                        val before = textValue.text.substring(0, cursorStart)
+                                        val after = textValue.text.substring(cursorEnd)
+                                        if (cursorStart in 1 until textValue.text.length || after.isNotBlank()) {
+                                            if (onCreateSiblingWithText(before, after)) {
+                                                editCommitHandled = true
+                                                onStopEdit()
+                                                true
+                                            } else {
+                                                false
+                                            }
+                                        } else {
+                                            commit()
+                                            onCreateSibling()
+                                            true
+                                        }
                                     }
                                     Key.Tab -> {
                                         if (event.isShiftPressed) onOutdent() else onIndent()
                                         true
                                     }
                                     Key.Backspace -> {
-                                        if (text.isBlank()) {
-                                            onDelete()
-                                            true
-                                        } else {
-                                            false
+                                        when {
+                                            textValue.text.isBlank() -> onDeleteAndFocusPrevious()
+                                            cursorAtStart -> onMergeWithPrevious(textValue.text)
+                                            else -> false
                                         }
                                     }
+                                    Key.DirectionUp -> if (cursorAtStart) onFocusPrevious() else false
+                                    Key.DirectionDown -> if (cursorAtEnd) onFocusNext() else false
                                     else -> false
                                 }
                             }

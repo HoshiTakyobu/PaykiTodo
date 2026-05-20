@@ -7,8 +7,8 @@
 - Package name: `com.paykitodo.app`
 - Target platform: Android 14 / API 34
 - Current version in code:
-  - `versionName = "1.12.12"`
-  - `versionCode = 239`
+  - `versionName = "1.12.13"`
+  - `versionCode = 240`
 
 ## Current Build Facts
 
@@ -18,7 +18,17 @@
 - Latest signed release APK built locally:
   - `app/build/outputs/apk/release/PaykiTodo-1.11.0-release.apk`
 - Latest fully built debug APK:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.12.12-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.12.13-debug.apk`
+- Current `1.12.13 / versionCode 240` verification completed:
+  - Phone Planning Desk Outliner keyboard handling now tracks cursor selection with `TextFieldValue`.
+  - Empty input Backspace focuses the previous node; row-start Backspace merges into the previous same-level node; middle Enter splits the current node into a new sibling.
+  - Phone active input rows use a borderless `BasicTextField` surface with placeholder and subtle focus background.
+  - Desktop Web Outliner implements the same Backspace/Enter behavior plus ArrowUp/ArrowDown focus movement and a borderless root input line.
+  - `node --check app/src/main/assets/desktop-web/app.js`
+  - `./gradlew.bat :app:compileDebugKotlin`
+  - `git diff --check`
+  - `./gradlew.bat :app:assembleDebug`
+  - Debug APK metadata inspected: `versionName = 1.12.13`, `versionCode = 240`, output `PaykiTodo-1.12.13-debug.apk`
 - Current `1.12.12 / versionCode 239` verification completed:
   - Version metadata was bumped only so Android can upgrade over an installed `1.12.11` debug build.
   - No database schema, reminder behavior, Planning Desk behavior, or user-data format changed in this rebuild.
@@ -171,7 +181,7 @@
 
 ## Current Worktree Reality
 
-The repository now targets the `1.12.12 / versionCode 239` workline. This patch is a version-bump rebuild over the `1.12.11` Planning Desk Outliner baseline so Android treats the newly built debug APK as upgradeable on devices that already installed `1.12.11`. Phase 1 quick capture and Phase 2 Planning Desk Outliner remain implemented in the working tree. The latest behavioral patch tightens phone-side Outliner editing after audit: existing-node Enter opens a focused same-level input, edit commit is protected from duplicate Enter / IME / focus-loss handling, no-child expand arrows expose child input with correct semantics, and parent nodes with children no longer offer a misleading sync toggle. The previous `1.12.10` patch introduced lighter note-like rows, root / child active input lines, edit / preview mode, simplified overflow, bare ordered location parsing, parent/leaf synchronization so only leaf nodes become official todos/events, and preview `⋯` routing to the existing official todo/event editor for full field configuration. The earlier Android widget, multi-group todo, event check-in, Planning Desk image recognition, release-size, and `1.11.4` check-in regression fixes remain in the working tree. Release builds enable R8/resource shrinking and use WebP dashboard backgrounds; the latest signed `PaykiTodo-1.11.0-release.apk` size check is `4.83 MB`, and release startup / main-surface smoke testing passed on `Pixel_8 / emulator-5554`.
+The repository now targets the `1.12.13 / versionCode 240` workline. This patch extends the `1.12.11`-`1.12.12` Planning Desk Outliner baseline with memo-style keyboard behavior on both phone and desktop Web: empty input Backspace focuses the previous node, row-start Backspace merges into the previous same-level node, middle Enter splits a node into a new sibling, and desktop ArrowUp/ArrowDown can cross node rows. Phase 1 quick capture and Phase 2 Planning Desk Outliner remain implemented in the working tree. The earlier Android widget, multi-group todo, event check-in, Planning Desk image recognition, release-size, and `1.11.4` check-in regression fixes remain in the working tree. Release builds enable R8/resource shrinking and use WebP dashboard backgrounds; the latest signed `PaykiTodo-1.11.0-release.apk` size check is `4.83 MB`, and release startup / main-surface smoke testing passed on `Pixel_8 / emulator-5554`.
 
 Most important current baseline facts:
 

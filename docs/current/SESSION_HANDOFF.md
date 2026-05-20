@@ -6,22 +6,31 @@
 - Branch: `main`
 - Do not push to GitHub unless the user explicitly authorizes it.
 - Current code version:
-  - `versionName = 1.12.12`
-  - `versionCode = 239`
+  - `versionName = 1.12.13`
+  - `versionCode = 240`
 - Latest debug APK built in this round:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.12.12-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.12.13-debug.apk`
 - Debug APK metadata confirms:
-  - `versionName = 1.12.12`
-  - `versionCode = 239`
-  - output `PaykiTodo-1.12.12-debug.apk`
+  - `versionName = 1.12.13`
+  - `versionCode = 240`
+  - output `PaykiTodo-1.12.13-debug.apk`
 
 ## Active Goal
 
-Latest active goal file:
+Active goal file:
 
-- `docs/goals/2026-05-20-paykitodo-outliner-ux-fix-goal.md`
+- `docs/goals/2026-05-20-paykitodo-outliner-keyboard-fix-goal.md`
 
-Goal status from code audit: implemented in code, with emulator runtime QA partially completed. The phone Planning Desk Outliner now has lighter note-like rows, root / child active input lines, existing-row Enter sibling input, edit / preview mode, simplified overflow, ordered bare-location parsing, leaf-only linked-item synchronization, and preview `⋯` routing to the existing official todo/event editor for full field configuration.
+Latest goal status from code audit: the keyboard-fix goal is implemented in code and passed local build / APK metadata verification. The phone Planning Desk Outliner now tracks cursor selection during node editing, supports Backspace merge/focus jumps and middle-Enter split, and uses borderless active input lines. Desktop Web implements the same Backspace/Enter behavior plus ArrowUp/ArrowDown focus movement.
+
+## What Changed In The Latest 1.12.13 Patch
+
+1. Phone Planning Desk Outliner node editing now uses cursor-aware `TextFieldValue`.
+2. Empty phone input rows Backspace to the previous node; row-start Backspace merges text into the previous same-level node; middle Enter splits the node into a new same-level node.
+3. Phone root / sibling / child input lines are borderless `BasicTextField` rows with placeholder and subtle focus background.
+4. Desktop Web Outliner implements empty-row Backspace, row-start Backspace merge, middle Enter split, ArrowUp/ArrowDown focus movement, and a borderless root input line.
+5. Version metadata moved to `1.12.13 / versionCode 240`.
+6. Latest debug APK path is `app/build/outputs/apk/debug/PaykiTodo-1.12.13-debug.apk`.
 
 ## What Changed In The Latest 1.12.12 Patch
 
@@ -143,6 +152,14 @@ Goal status from code audit: implemented in code, with emulator runtime QA parti
 
 ## Verification Completed
 
+Passed so far after the 1.12.13 keyboard patch:
+
+1. `node --check app/src/main/assets/desktop-web/app.js`
+2. `./gradlew.bat :app:compileDebugKotlin`
+3. `git diff --check`
+4. `./gradlew.bat :app:assembleDebug`
+5. Debug APK metadata inspection: `versionName = 1.12.13`, `versionCode = 240`, output `PaykiTodo-1.12.13-debug.apk`
+
 Passed so far after the 1.12.12 rebuild:
 
 1. Version metadata moved to `1.12.12 / versionCode 239`.
@@ -227,7 +244,7 @@ No known code requirement from the active goal is intentionally left unimplement
 
 ## Git State Notes
 
-- Worktree should be clean after the 1.12.12 version-bump rebuild commit.
+- Worktree should be clean after the 1.12.13 keyboard-fix implementation and goal-archive commits.
 - Branch is ahead of `origin/main`; do not push without explicit user authorization.
 - `docs/goals/2026-05-20-paykitodo-outliner-ux-fix-goal.md` is tracked in Git and was checked for common secret markers before closing the goal.
 - Do not commit local signing material, APK outputs, API keys, tokens, or private Base URLs.

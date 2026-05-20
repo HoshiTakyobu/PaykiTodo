@@ -21,7 +21,7 @@ Active goal file:
 
 - `docs/goals/2026-05-19-paykitodo-capture-and-outliner-goal.md`
 
-Goal status from code audit: the quick-capture + Planning Desk Outliner deliverables are implemented in the working tree. The audit-found migrated-heading risk is fixed in `1.12.7`, the official-item delete/cancel lifecycle risk is fixed in `1.12.8`, and the desktop Web same-level drag-reorder browser compatibility risk is fixed in `1.12.9`. Do not mark the goal complete unless the final checklist audit in the active session confirms every explicit goal item has concrete evidence.
+Goal status from code audit: the quick-capture + Planning Desk Outliner deliverables are implemented in the working tree. The audit-found migrated-heading risk is fixed in `1.12.7`, the official-item delete/cancel lifecycle risk is fixed in `1.12.8`, and the desktop Web same-level drag-reorder browser compatibility risk is fixed in `1.12.9`. A follow-up emulator audit confirmed text sharing can create a real Planning Desk node plus linked calendar event. No known explicit goal item remains unimplemented; remaining risk is real-device / real-browser QA.
 
 ## What Changed In The Latest 1.12.9 Patch
 
@@ -128,6 +128,18 @@ Passed after the 1.12.9 patch:
 
 Known warnings are existing Kotlin / Android deprecation or unused-parameter warnings, not build failures.
 
+Follow-up audit performed on `Pixel_8 / emulator-5554`:
+
+1. Confirmed installed package metadata on emulator: `versionName = 1.12.9`, `versionCode = 236`.
+2. Reused `app/build/outputs/apk/debug/PaykiTodo-1.12.9-debug.apk`; no new APK was assembled in the audit-only pass.
+3. Explicit `ACTION_SEND text/plain` to `com.example.todoalarm.ui.ShareReceiverActivity` with remote-quoted text `2030-05-21 15:00-16:00 ShareAuditQuoted-... @Library3` produced a notification title `已添加 1 条到规划台`.
+4. Pulling `databases/todo-alarm.db` with `adb exec-out run-as com.paykitodo.app` showed:
+   - `planning_nodes`: one node with title `ShareAuditQuoted-...`, location `@Library3`, expected start/end millis, and `linkedTodoId = 1`.
+   - `todo_items`: one linked `EVENT` row with the same title/location and matching start/end timestamps.
+5. The earlier `捕获识别失败：未能识别出待办或日程` observation came from an unquoted adb command that split the intended text at spaces; it was a test-command false negative, not a verified app defect.
+6. Added a unit regression test for bare shared schedule text: `2030-05-21 15:00-16:00 ShareAudit @Library3`.
+7. Follow-up validation passed: `node --check app/src/main/assets/desktop-web/app.js`, `./gradlew.bat :app:testDebugUnitTest`, and `git diff --check`.
+
 ## Remaining QA
 
 No known code requirement from the active goal is intentionally left unimplemented. Remaining work is runtime QA:
@@ -139,7 +151,7 @@ No known code requirement from the active goal is intentionally left unimplement
 
 ## Git State Notes
 
-- Worktree is dirty only if this handoff is read before the separate goal-document archive commit completes.
+- Worktree may be dirty only with the audit regression test / current-doc updates until the audit commit is created.
 - Branch is ahead of `origin/main`.
 - `docs/goals/2026-05-19-paykitodo-capture-and-outliner-goal.md` has been checked for obvious secret patterns and is being archived in a separate goal-document commit after the feature commit.
 - Do not commit local signing material, APK outputs, API keys, tokens, or private Base URLs.

@@ -38,6 +38,15 @@ The `1.12.9 / versionCode 236` patch has passed:
    - `versionCode = 236`
    - output `PaykiTodo-1.12.9-debug.apk`
 
+Follow-up audit on `Pixel_8 / emulator-5554` confirmed the system-share text capture path can write real data:
+
+- Installed/running APK metadata still reports `versionName = 1.12.9`, `versionCode = 236`.
+- Explicit `ACTION_SEND text/plain` to `ShareReceiverActivity` with quoted text `2030-05-21 15:00-16:00 ShareAuditQuoted-... @Library3` produced a capture notification saying `已添加 1 条到规划台`.
+- Pulling `databases/todo-alarm.db` through `run-as` showed one `planning_nodes` row and one linked `todo_items` `EVENT` row with title `ShareAuditQuoted-...`, location `@Library3`, and the expected 2030-05-21 start/end timestamps.
+- The earlier unquoted adb command that produced `捕获识别失败：未能识别出待办或日程` was a test-command false negative: adb shell split the text at spaces, so the app received an incomplete extra instead of the intended schedule line.
+- Added a unit regression test for bare shared schedule lines such as `2030-05-21 15:00-16:00 ShareAudit @Library3`.
+- Follow-up validation passed: `node --check app/src/main/assets/desktop-web/app.js`, `./gradlew.bat :app:testDebugUnitTest`, and `git diff --check`.
+
 ## Remaining Work
 
 No known code requirement from `2026-05-19-paykitodo-capture-and-outliner-goal.md` is intentionally left incomplete. Remaining work is QA rather than implementation:

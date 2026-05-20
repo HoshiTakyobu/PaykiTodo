@@ -51,6 +51,21 @@ class PlanningMarkdownParserTest {
     }
 
     @Test
+    fun parsesSharedBareScheduleLineWithFullDateAndLocation() {
+        val result = PlanningMarkdownParser.parse(
+            "2030-05-21 15:00-16:00 ShareAudit @Library3",
+            now = now
+        )
+
+        val event = result.candidates.single()
+        assertEquals(PlanningParsedType.EVENT, event.type)
+        assertEquals("ShareAudit", event.title)
+        assertEquals("@Library3", event.location)
+        assertEquals(LocalDateTime.of(2030, 5, 21, 15, 0), event.startAt)
+        assertEquals(LocalDateTime.of(2030, 5, 21, 16, 0), event.endAt)
+    }
+
+    @Test
     fun explicitDdlTakesPrecedenceOverNaturalScheduleText() {
         val result = PlanningMarkdownParser.parse(
             "- [ ] 会议 9:00-10:00 讨论 #ddl 5.28",

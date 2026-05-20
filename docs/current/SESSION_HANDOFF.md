@@ -6,20 +6,26 @@
 - Branch: `main`
 - Do not push to GitHub unless the user explicitly authorizes it.
 - Current code version:
-  - `versionName = 1.12.15`
-  - `versionCode = 242`
+  - `versionName = 1.12.16`
+  - `versionCode = 243`
 - Latest debug APK built in this round:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.12.15-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.12.16-debug.apk`
 - Debug APK metadata confirms:
-  - `versionName = 1.12.15`
-  - `versionCode = 242`
-  - output `PaykiTodo-1.12.15-debug.apk`
+  - `versionName = 1.12.16`
+  - `versionCode = 243`
+  - output `PaykiTodo-1.12.16-debug.apk`
 
 ## Active Goal
 
-Active goal: UI recovery plus Planning Desk draft/publish separation.
+Active goal: metadata-only rebuild for Android upgrade installation.
 
-Latest status: version metadata has moved to `1.12.15 / versionCode 242` so Android can upgrade over an installed `1.12.14` debug APK. The product baseline now includes one-line calendar header controls, front-loaded todo group creation, restored Planning Desk document/image-recognition entry points, and explicit draft publishing for Planning Desk nodes.
+Latest status: version metadata has moved to `1.12.16 / versionCode 243` so Android can upgrade over an installed `1.12.15` debug APK. This rebuild intentionally keeps the `1.12.15` product behavior baseline unchanged.
+
+## What Changed In The Latest 1.12.16 Patch
+
+1. Version metadata moved to `1.12.16 / versionCode 243`.
+2. This rebuild intentionally does not change database schema, reminder behavior, Planning Desk behavior, or user-data format.
+3. Latest debug APK path is `app/build/outputs/apk/debug/PaykiTodo-1.12.16-debug.apk`.
 
 ## What Changed In The Latest 1.12.15 Patch
 

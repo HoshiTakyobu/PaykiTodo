@@ -2,19 +2,32 @@
 
 ## Active Development Focus
 
-Active goal: ship the UI recovery and Planning Desk draft/publish separation as a higher debug build so devices with `1.12.14` installed can upgrade normally.
+Active goal: ship a higher debug build so devices with `1.12.15` installed can upgrade normally.
 
-The working tree is now on the `1.12.15 / versionCode 242` line. This round is not metadata-only: it includes calendar/todo/Planning Desk UI recovery plus Planning Desk draft nodes and explicit publish actions. Database version is `23` because `planning_nodes.isDraft` was added. Do not push to GitHub unless the user explicitly asks.
+The working tree is now on the `1.12.16 / versionCode 243` line. This round is metadata-only: it does not change database schema, reminder behavior, Planning Desk behavior, or user-data format. Do not push to GitHub unless the user explicitly asks.
 
 ## Current Goal State
 
 Current implementation state:
 
-1. Version metadata moved to `1.12.15 / versionCode 242`.
-2. Calendar header title/actions are on one line, and the todo group new-entry button is fixed near `全部`.
-3. Planning Desk restores a visible document button and image-recognition entry.
-4. Planning Desk Outliner now separates drafts from formal items: new/captured nodes stay draft until single publish or publish-all.
-5. Database version is `23`; backup/restore and desktop sync carry `isDraft`.
+1. Version metadata moved to `1.12.16 / versionCode 243`.
+2. This rebuild exists to make Android accept installation over `1.12.15`.
+3. Calendar/todo/Planning Desk behavior remains the `1.12.15` baseline.
+4. Database version remains `23`; no migration is added in this metadata-only rebuild.
+
+## Verification Completed For 1.12.16
+
+The `1.12.16 / versionCode 243` rebuild status:
+
+1. Version metadata moved from `1.12.15 / versionCode 242` to `1.12.16 / versionCode 243`.
+2. No database schema, reminder behavior, Planning Desk behavior, or user-data format changed in this rebuild.
+3. `./gradlew.bat :app:compileDebugKotlin`
+4. `git diff --check`
+5. `./gradlew.bat :app:assembleDebug`
+6. Debug APK metadata confirms:
+   - `versionName = 1.12.16`
+   - `versionCode = 243`
+   - output `PaykiTodo-1.12.16-debug.apk`
 
 ## Verification Completed For 1.12.15
 

@@ -1,5 +1,12 @@
 # Changelog
 
+## v1.12.16
+
+- 提升调试包版本号，确保 Android 在已安装 `1.12.15` 时把新 APK 识别为可升级安装包
+- 本轮不改变数据库结构、提醒逻辑、规划台逻辑或用户数据格式，只重建更高版本调试包
+- 版本号升级到 `1.12.16` / `versionCode 243`
+- 验证：`./gradlew.bat :app:compileDebugKotlin`、`git diff --check`、`./gradlew.bat :app:assembleDebug` 通过；debug APK 元数据确认 `1.12.16 / 243`
+
 ## v1.12.15
 
 - 日历顶部把月份标题和操作按钮合并到同一行，标题仍可点击选日期，窄屏下操作区可横向滚动

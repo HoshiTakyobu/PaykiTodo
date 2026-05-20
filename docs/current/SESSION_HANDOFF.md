@@ -6,22 +6,33 @@
 - Branch: `main`
 - Do not push to GitHub unless the user explicitly authorizes it.
 - Current code version:
-  - `versionName = 1.12.9`
-  - `versionCode = 236`
+  - `versionName = 1.12.10`
+  - `versionCode = 237`
 - Latest debug APK built in this round:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.12.9-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.12.10-debug.apk`
 - Debug APK metadata confirms:
-  - `versionName = 1.12.9`
-  - `versionCode = 236`
-  - output `PaykiTodo-1.12.9-debug.apk`
+  - `versionName = 1.12.10`
+  - `versionCode = 237`
+  - output `PaykiTodo-1.12.10-debug.apk`
 
 ## Active Goal
 
 Active goal file:
 
-- `docs/goals/2026-05-19-paykitodo-capture-and-outliner-goal.md`
+- `docs/goals/2026-05-20-paykitodo-outliner-ux-fix-goal.md`
 
-Goal status from code audit: the quick-capture + Planning Desk Outliner deliverables are implemented in the working tree. The audit-found migrated-heading risk is fixed in `1.12.7`, the official-item delete/cancel lifecycle risk is fixed in `1.12.8`, and the desktop Web same-level drag-reorder browser compatibility risk is fixed in `1.12.9`. A follow-up emulator audit confirmed text sharing can create a real Planning Desk node plus linked calendar event. No known explicit goal item remains unimplemented; remaining risk is real-device / real-browser QA.
+Goal status from code audit: implemented in code, pending runtime QA. The phone Planning Desk Outliner now has lighter note-like rows, root / child active input lines, edit / preview mode, simplified overflow, ordered bare-location parsing, leaf-only linked-item synchronization, and preview `⋯` routing to the existing official todo/event editor for full field configuration.
+
+## What Changed In The Latest 1.12.10 Patch
+
+1. Phone Planning Desk Outliner edit mode now renders existing nodes as lightweight text rows rather than per-row card-like text fields.
+2. The root outline and expanded child areas expose active input lines; pressing Enter / IME Done creates a node and clears the input.
+3. Preview mode exposes per-row `⋯` actions for time, location, sync toggle, delete, and opening the linked official todo/event editor, while edit mode keeps row actions hidden.
+4. Adding children demotes the parent node into a structure heading and deletes its linked official item; ordinary parents can be restored as leaf synced items after the last child is removed.
+5. Natural schedule parsing accepts ordered bare locations such as `15:00-17:00, 写论文, 图书馆3楼`.
+6. The phone Planning Desk overflow menu is document-focused; Markdown import/export moved to Markdown compatibility mode.
+7. Phone tutorial pages now match the Outliner workflow.
+8. Version metadata moved to `1.12.10 / versionCode 237`.
 
 ## What Changed In The Latest 1.12.9 Patch
 
@@ -117,6 +128,23 @@ Goal status from code audit: the quick-capture + Planning Desk Outliner delivera
 
 ## Verification Completed
 
+Passed after the 1.12.10 patch:
+
+1. `./gradlew.bat :app:compileDebugKotlin`
+2. `./gradlew.bat :app:testDebugUnitTest`
+3. `git diff --check`
+4. `./gradlew.bat :app:assembleDebug`
+5. Debug APK metadata inspection: `versionName = 1.12.10`, `versionCode = 237`, output `PaykiTodo-1.12.10-debug.apk`
+
+Emulator smoke test on `emulator-5554`:
+
+1. Installed `app/build/outputs/apk/debug/PaykiTodo-1.12.10-debug.apk` with `adb install -r`.
+2. Launched `com.example.todoalarm.ui.MainActivity` under package `com.paykitodo.app`.
+3. Navigated from drawer to `规划台`; UI dump showed the Outliner toolbar with `Markdown` and `预览`, the note-like hint text, and the active input placeholder `继续写下一行，按回车创建`.
+4. Switched to preview mode; UI dump showed the toolbar button changed to `编辑`, the root input disappeared, and the row exposed `节点设置`.
+5. Opened row `⋯`; UI dump showed `完整编辑`, `设置时间`, `设置地点`, `改为结构标题`, and `删除`.
+6. Tapped `完整编辑`; UI dump showed the existing `编辑日程` sheet with `保存`, proving the linked official event editor opens from preview mode.
+
 Passed after the 1.12.9 patch:
 
 1. `node --check app/src/main/assets/desktop-web/app.js`
@@ -151,7 +179,7 @@ No known code requirement from the active goal is intentionally left unimplement
 
 ## Git State Notes
 
-- Worktree may be dirty only with the audit regression test / current-doc updates until the audit commit is created.
+- Worktree may be dirty with the 1.12.10 Outliner UX patch and current-doc updates until the feature commit is created.
 - Branch is ahead of `origin/main`.
-- `docs/goals/2026-05-19-paykitodo-capture-and-outliner-goal.md` has been checked for obvious secret patterns and is being archived in a separate goal-document commit after the feature commit.
+- `docs/goals/2026-05-20-paykitodo-outliner-ux-fix-goal.md` is the active goal file; archive it separately only after the Outliner UX goal is fully complete and checked for secrets.
 - Do not commit local signing material, APK outputs, API keys, tokens, or private Base URLs.

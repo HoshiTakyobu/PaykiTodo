@@ -265,6 +265,34 @@ class PlanningMarkdownParserTest {
     }
 
     @Test
+    fun parsesOrderedBareLocationWithoutAtPrefix() {
+        val result = PlanningMarkdownParser.parse(
+            "- [ ] 15:00-17:00, 写论文, 图书馆3楼",
+            now = now
+        )
+
+        val event = result.candidates.single()
+        assertEquals(PlanningParsedType.EVENT, event.type)
+        assertEquals("写论文", event.title)
+        assertEquals("图书馆3楼", event.location)
+        assertEquals(LocalDateTime.of(2026, 5, 14, 15, 0), event.startAt)
+        assertEquals(LocalDateTime.of(2026, 5, 14, 17, 0), event.endAt)
+    }
+
+    @Test
+    fun parsesSpaceSeparatedLocationWhenLastTokenLooksLikePlace() {
+        val result = PlanningMarkdownParser.parse(
+            "- [ ] 15:00-17:00 写论文 图书馆3楼",
+            now = now
+        )
+
+        val event = result.candidates.single()
+        assertEquals(PlanningParsedType.EVENT, event.type)
+        assertEquals("写论文", event.title)
+        assertEquals("图书馆3楼", event.location)
+    }
+
+    @Test
     fun eventParentTitleIsAppliedToSubtasks() {
         val result = PlanningMarkdownParser.parse(
             """

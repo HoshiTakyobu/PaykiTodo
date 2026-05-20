@@ -7,8 +7,8 @@
 - Package name: `com.paykitodo.app`
 - Target platform: Android 14 / API 34
 - Current version in code:
-  - `versionName = "1.12.9"`
-  - `versionCode = 236`
+  - `versionName = "1.12.10"`
+  - `versionCode = 237`
 
 ## Current Build Facts
 
@@ -18,7 +18,19 @@
 - Latest signed release APK built locally:
   - `app/build/outputs/apk/release/PaykiTodo-1.11.0-release.apk`
 - Latest fully built debug APK:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.12.9-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.12.10-debug.apk`
+- Current `1.12.10 / versionCode 237` verification completed:
+  - Phone Planning Desk Outliner editing has been moved toward a note-like flow with root / child active input lines and edit / preview mode.
+  - Preview `⋯` can open the linked official todo/event editor for full reminder, group, recurrence, notes, countdown, and check-in configuration when the node is synced.
+  - Planning nodes with children are demoted to structure headings so only leaf nodes sync into official todos/events; ordinary parents can be restored as leaf synced items after their last child is removed.
+  - Natural schedule parsing now accepts ordered bare location fields such as `15:00-17:00, 写论文, 图书馆3楼`.
+  - Planning Desk overflow is simplified and Markdown import/export is available from Markdown compatibility mode.
+  - `./gradlew.bat :app:compileDebugKotlin`
+  - `./gradlew.bat :app:testDebugUnitTest`
+  - `git diff --check`
+  - `./gradlew.bat :app:assembleDebug`
+  - Debug APK metadata inspected: `versionName = 1.12.10`, `versionCode = 237`, output `PaykiTodo-1.12.10-debug.apk`
+  - Emulator `emulator-5554` smoke test: installed and launched the APK, opened Planning Desk, confirmed edit/preview toggle, active input placeholder, preview row `⋯` menu, and `完整编辑` opening the linked `编辑日程` sheet
 - Current `1.12.9 / versionCode 236` verification completed:
   - Desktop Web Planning Desk Outliner same-level drag reorder now keeps the dragged node id in page state instead of relying on `dataTransfer` reads during `dragover`, avoiding browser compatibility failures where no drop target is recognized.
   - Desktop Web keeps the existing up / down reorder buttons and still blocks cross-level drag reorder to avoid accidental parent-child changes.
@@ -138,7 +150,7 @@
 
 ## Current Worktree Reality
 
-The repository now targets the `1.12.9 / versionCode 236` workline. Phase 1 quick capture and Phase 2 Planning Desk Outliner are implemented in the working tree: `planning_nodes`, migration / backup support, phone-side tree editing, desktop `/api/planning/nodes` routes, desktop Web node editing / reordering, Markdown import/export compatibility, and capture/share/photo/voice recognition can directly create planning nodes and linked official todos/events. The latest patch fixes a desktop Web Outliner drag-reorder compatibility risk by tracking the dragged node id in page state, so same-level drag reorder does not depend on browser-specific `dataTransfer` reads during `dragover`. The previous `1.12.8` patch fixed an Outliner linked-item lifecycle issue: if a formal todo / event created from an Outliner node is deleted or canceled outside the Planning Desk, the node is detached from official sync so startup repair will not recreate it. The earlier `1.12.7` migration fix keeps old Markdown headings such as `# 今日计划` and `# 收集箱` as structure nodes instead of repairing them into no-DDL todos. Remaining work is mostly real-device/browser QA and cleanup of legacy reusable capture-preview code, not a known missing goal requirement. The earlier Android widget, multi-group todo, event check-in, Planning Desk image recognition, release-size, and `1.11.4` check-in regression fixes remain in the working tree. Release builds enable R8/resource shrinking and use WebP dashboard backgrounds; the latest signed `PaykiTodo-1.11.0-release.apk` size check is `4.83 MB`, and release startup / main-surface smoke testing passed on `Pixel_8 / emulator-5554`.
+The repository now targets the `1.12.10 / versionCode 237` workline. Phase 1 quick capture and Phase 2 Planning Desk Outliner remain implemented in the working tree. The latest patch focuses on phone-side Outliner UX: lighter note-like rows, root / child active input lines, edit / preview mode, simplified overflow, bare ordered location parsing, parent/leaf synchronization so only leaf nodes become official todos/events, and preview `⋯` routing to the existing official todo/event editor for full field configuration. The earlier Android widget, multi-group todo, event check-in, Planning Desk image recognition, release-size, and `1.11.4` check-in regression fixes remain in the working tree. Release builds enable R8/resource shrinking and use WebP dashboard backgrounds; the latest signed `PaykiTodo-1.11.0-release.apk` size check is `4.83 MB`, and release startup / main-surface smoke testing passed on `Pixel_8 / emulator-5554`.
 
 Most important current baseline facts:
 

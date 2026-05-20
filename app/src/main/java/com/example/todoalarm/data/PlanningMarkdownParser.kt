@@ -529,7 +529,30 @@ object PlanningMarkdownParser {
                 .trim(',', '，', '；', ';')
             return TitleLocation(title = title, location = normalizeLocationToken(match.groupValues[1]))
         }
+        splitBareOrderedLocation(text)?.let { return it }
         return TitleLocation(title = text)
+    }
+
+    private fun splitBareOrderedLocation(text: String): TitleLocation? {
+        val separated = text
+            .split(',', '，', '；', ';')
+            .map { it.trim().trim('"', '\'', '“', '”', '‘', '’') }
+            .filter { it.isNotBlank() }
+        if (separated.size >= 2) {
+            return TitleLocation(
+                title = separated.dropLast(1).joinToString(" "),
+                location = normalizeLocationToken(separated.last())
+            )
+        }
+        val tokens = text.split(Regex("\\s+")).filter { it.isNotBlank() }
+        val last = tokens.lastOrNull()?.trim('"', '\'', '“', '”', '‘', '’') ?: return null
+        if (tokens.size >= 2 && BareLocationLikeRegex.containsMatchIn(last)) {
+            return TitleLocation(
+                title = tokens.dropLast(1).joinToString(" "),
+                location = normalizeLocationToken(last)
+            )
+        }
+        return null
     }
 
     private fun normalizeLocationToken(raw: String): String {
@@ -666,6 +689,7 @@ object PlanningMarkdownParser {
     private val InlineLocationRegex = Regex("(?:^|[\\s,，；;])(@[^\\s#\"'“”‘’，,；;]+)")
     private val QuotedLocationRegex = Regex("[\"“”'‘’](@[^\"“”'‘’#]+)[\"“”'‘’]")
     private val NamedLocationRegex = Regex("(?:^|[\\s,，；;])(地点|location|loc|place)\\s*[:：]\\s*(\"[^\"]+\"|“[^”]+”|'[^']+'|‘[^’]+’|[^#，,；;]+)", RegexOption.IGNORE_CASE)
+    private val BareLocationLikeRegex = Regex("(楼|馆|室|教室|实验室|图书馆|主楼|校区|操场|食堂|会议室|[A-Za-z]+\\d|\\d+楼)")
     private val BeforeTimeRegex = Regex("(\\d{1,2})(?::(\\d{2})|点)(?:前|之前)")
     private val ChineseDayPeriodRegex = Regex("(早上|上午|中午|下午|晚上)")
     private val FuzzyPeriodDeadlineRegex = Regex("(早上|上午|中午|下午|晚上)")

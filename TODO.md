@@ -4,10 +4,10 @@
 
 ### In Progress
 
-- Verify version `1.12.9` on a real Android device: share target, launcher photo shortcut, launcher voice shortcut, Android 13+ notification-permission copy, Planning Desk Outliner editing, structure-heading migration, migrated Planning Desk documents, and official-item delete/cancel detachment for Outliner-created items.
-- Verify version `1.12.9` in a real desktop browser against live phone data: Planning Desk node create / edit / complete / delete / cancel / up-down reorder, same-level drag reorder, structure-heading sync toggle, document switching, node time-field display/editing, Markdown compatibility capture confirmation, and desktop sync refresh behavior.
-- Keep `README.md`, `CHANGELOG.md`, Wiki, in-app help sheets, desktop-web help, and current-state docs aligned with version `1.12.9`.
-- Archive `docs/goals/2026-05-19-paykitodo-capture-and-outliner-goal.md` in a separate commit after the feature commit if final audit confirms no secrets.
+- Verify version `1.12.10` on a real Android device: Planning Desk active input Enter behavior, child input expansion, edit/preview switch, parent demotion/restoration, bare-location parsing, share target, launcher photo shortcut, launcher voice shortcut, and Android 13+ notification-permission copy.
+- Verify version `1.12.10` in a real desktop browser against live phone data: Planning Desk node create / edit / complete / delete / cancel / up-down reorder, same-level drag reorder, structure-heading sync toggle, document switching, node time-field display/editing, Markdown compatibility capture confirmation, and desktop sync refresh behavior.
+- Keep `README.md`, `CHANGELOG.md`, Wiki, in-app help sheets, desktop-web help, and current-state docs aligned with version `1.12.10`.
+- Archive `docs/goals/2026-05-20-paykitodo-outliner-ux-fix-goal.md` in a separate commit after the Outliner UX goal is complete and final audit confirms no secrets.
 - Continue Planning Desk usability polish without expanding into Gantt, AI auto-planning, CRDT, or complex project trees.
 
 ### Needs Verification

@@ -53,3 +53,8 @@ data class PlanningNodeMarkdownImportResult(
     val created: List<PlanningNodeChangeResult>,
     val deletedLinkedItems: List<TodoItem> = emptyList()
 )
+
+data class PlanningNodeDeleteResult(
+    val deletedLinkedItems: List<TodoItem> = emptyList(),
+    val affectedLinkedItems: List<TodoItem> = emptyList()
+)

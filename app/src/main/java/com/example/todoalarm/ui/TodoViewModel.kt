@@ -459,8 +459,12 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     suspend fun deletePlanningNode(node: PlanningNode): String? {
-        val deletedItems = repository.deletePlanningNodeTree(node.id)
-        clearReminderArtifacts(deletedItems)
+        val result = repository.deletePlanningNodeTree(
+            node.id,
+            createEventEndTodo = settingsStore.currentSettings().planningEventEndTodoEnabled
+        )
+        clearReminderArtifacts(result.deletedLinkedItems)
+        result.affectedLinkedItems.forEach { scheduleReminderOrDisable(it) }
         autoBackupIfEnabled()
         return null
     }

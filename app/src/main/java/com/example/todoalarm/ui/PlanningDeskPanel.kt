@@ -158,6 +158,7 @@ internal fun PlanningDeskPanel(
     onUpdateNode: suspend (PlanningNode, PlanningNodeEdit) -> String?,
     onToggleNode: suspend (PlanningNode) -> String?,
     onDeleteNode: suspend (PlanningNode) -> String?,
+    onOpenLinkedItem: (Long) -> Unit,
     onExportNodesMarkdown: suspend (Long) -> String,
     onReplaceNodesFromMarkdown: suspend (Long, String) -> String?,
     onParse: suspend (String, Long?) -> PlanningParseResult,
@@ -181,13 +182,13 @@ internal fun PlanningDeskPanel(
     var helpSheetVisible by remember { mutableStateOf(false) }
     var markdownCompatMode by rememberSaveable(activeNote?.id) { mutableStateOf(false) }
     var markdownEditMode by rememberSaveable(activeNote?.id) { mutableStateOf(true) }
+    var outlinePreviewMode by rememberSaveable(activeNote?.id) { mutableStateOf(false) }
     var markdownImportVisible by remember { mutableStateOf(false) }
     var markdownImportText by remember(activeNote?.id) { mutableStateOf("") }
     var markdownCaptureConfirmVisible by remember { mutableStateOf(false) }
     var renameDialog by remember { mutableStateOf(false) }
     var pendingDeleteNote by remember { mutableStateOf<PlanningNote?>(null) }
     var pendingDeleteNode by remember { mutableStateOf<PlanningNode?>(null) }
-    var childInputTarget by remember { mutableStateOf<PlanningNode?>(null) }
     var archiveDialog by remember { mutableStateOf(false) }
     var newDialog by remember { mutableStateOf(false) }
     var overflowMenuExpanded by remember { mutableStateOf(false) }
@@ -341,7 +342,17 @@ internal fun PlanningDeskPanel(
                 ) {
                     Text(if (markdownCompatMode) "大纲" else "Markdown")
                 }
-                if (markdownCompatMode) {
+                if (!markdownCompatMode) {
+                    OutlinedButton(
+                        modifier = Modifier.height(40.dp),
+                        onClick = {
+                            focusManager.clearFocus()
+                            outlinePreviewMode = !outlinePreviewMode
+                        }
+                    ) {
+                        Text(if (outlinePreviewMode) "编辑" else "预览")
+                    }
+                } else {
                     OutlinedButton(
                         modifier = Modifier.height(40.dp),
                         onClick = {
@@ -350,6 +361,36 @@ internal fun PlanningDeskPanel(
                         }
                     ) {
                         Text(if (markdownEditMode) "预览" else "编辑")
+                    }
+                    OutlinedButton(
+                        modifier = Modifier.height(40.dp),
+                        onClick = {
+                            focusManager.clearFocus()
+                            val noteId = activeNote?.id ?: return@OutlinedButton
+                            scope.launch {
+                                val markdown = onExportNodesMarkdown(noteId)
+                                editorValue = TextFieldValue(markdown, selection = TextRange(markdown.length))
+                                markdownEditMode = true
+                                Toast.makeText(context, "已导出到 Markdown 兼容区。", Toast.LENGTH_SHORT).show()
+                            }
+                        },
+                        enabled = activeNote != null
+                    ) {
+                        Text("导出")
+                    }
+                    OutlinedButton(
+                        modifier = Modifier.height(40.dp),
+                        onClick = {
+                            focusManager.clearFocus()
+                            val noteId = activeNote?.id ?: return@OutlinedButton
+                            scope.launch {
+                                markdownImportText = onExportNodesMarkdown(noteId)
+                                markdownImportVisible = true
+                            }
+                        },
+                        enabled = activeNote != null
+                    ) {
+                        Text("导入")
                     }
                     Button(
                         modifier = Modifier.height(40.dp),
@@ -406,79 +447,6 @@ internal fun PlanningDeskPanel(
                             onClick = { overflowMenuExpanded = false; helpSheetVisible = true }
                         )
                         DropdownMenuItem(
-                            text = { Text("从图片识别日程") },
-                            leadingIcon = { Icon(Icons.Rounded.Image, contentDescription = null) },
-                            onClick = {
-                                overflowMenuExpanded = false
-                                focusManager.clearFocus()
-                                if (activeNote == null) {
-                                    Toast.makeText(context, "请先创建或打开一个规划文档", Toast.LENGTH_SHORT).show()
-                                } else if (visionProviders.isEmpty()) {
-                                    Toast.makeText(context, "请在设置中为某个 AI 源开启图片识别支持", Toast.LENGTH_LONG).show()
-                                } else {
-                                    imagePicker.launch("image/*")
-                                }
-                            },
-                            enabled = activeNote != null && !visionRecognizing
-                        )
-                        DropdownMenuItem(
-                            text = { Text(if (shortcutBarExpanded) "隐藏快捷输入栏" else "显示快捷输入栏") },
-                            onClick = { overflowMenuExpanded = false; shortcutBarExpanded = !shortcutBarExpanded }
-                        )
-                        DropdownMenuItem(
-                            text = { Text("导出 Markdown") },
-                            onClick = {
-                                overflowMenuExpanded = false
-                                val noteId = activeNote?.id ?: return@DropdownMenuItem
-                                scope.launch {
-                                    val markdown = onExportNodesMarkdown(noteId)
-                                    editorValue = TextFieldValue(markdown, selection = TextRange(markdown.length))
-                                    markdownCompatMode = true
-                                    markdownEditMode = true
-                                    Toast.makeText(context, "已载入 Markdown 兼容编辑区，可复制或继续编辑。", Toast.LENGTH_LONG).show()
-                                }
-                            },
-                            enabled = activeNote != null
-                        )
-                        DropdownMenuItem(
-                            text = { Text("从 Markdown 导入") },
-                            onClick = {
-                                overflowMenuExpanded = false
-                                val noteId = activeNote?.id ?: return@DropdownMenuItem
-                                scope.launch {
-                                    markdownImportText = onExportNodesMarkdown(noteId)
-                                    markdownImportVisible = true
-                                }
-                            },
-                            enabled = activeNote != null
-                        )
-                        DropdownMenuItem(
-                            text = { Text("刷新已导入项") },
-                            onClick = { overflowMenuExpanded = false; refreshConfirmVisible = true },
-                            enabled = activeNote != null && !operationRunning
-                        )
-                        DropdownMenuItem(
-                            text = { Text("批量顺延") },
-                            onClick = { overflowMenuExpanded = false; postponeSheetVisible = true },
-                            enabled = activeNote != null && mappingStates.any { it.status == MappingStatus.ACTIVE } && !operationRunning
-                        )
-                        DropdownMenuItem(
-                            text = { Text("撤销上次操作") },
-                            onClick = { overflowMenuExpanded = false; undoConfirmVisible = true },
-                            enabled = activeNote != null && latestUndoSummary != null && !operationRunning
-                        )
-                        DropdownMenuItem(
-                            text = { Text("同步完成状态到原文") },
-                            onClick = {
-                                overflowMenuExpanded = false
-                                val updated = syncCompletedMappingsToMarkdown(editorValue.text, mappingStates)
-                                if (updated != editorValue.text) {
-                                    editorValue = editorValue.copy(text = updated)
-                                }
-                            },
-                            enabled = mappingStates.any { it.status == MappingStatus.COMPLETED }
-                        )
-                        DropdownMenuItem(
                             text = { Text("归档") },
                             onClick = { overflowMenuExpanded = false; archiveDialog = true },
                             enabled = activeNote != null
@@ -498,6 +466,7 @@ internal fun PlanningDeskPanel(
                 activeNote = activeNote,
                 nodes = nodes,
                 outlineHintVisible = outlineHintVisible,
+                previewMode = outlinePreviewMode,
                 onCreateNode = { draft ->
                     scope.launch {
                         val message = onCreateNode(draft)
@@ -519,9 +488,7 @@ internal fun PlanningDeskPanel(
                 onDeleteNode = { node ->
                     pendingDeleteNode = node
                 },
-                onRequestChild = { node ->
-                    childInputTarget = node
-                },
+                onOpenLinkedItem = onOpenLinkedItem,
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(1f)
@@ -756,22 +723,6 @@ internal fun PlanningDeskPanel(
         )
     }
 
-    childInputTarget?.let { parent ->
-        PlanningNodeInputDialog(
-            title = "新增子项",
-            label = "写下子任务 / DDL / 日程",
-            onDismiss = { childInputTarget = null },
-            onConfirm = { text ->
-                val noteId = activeNote?.id ?: return@PlanningNodeInputDialog
-                scope.launch {
-                    val message = onCreateNode(PlanningNodeDraft(noteId = noteId, parentNodeId = parent.id, text = text))
-                    message?.let { Toast.makeText(context, it, Toast.LENGTH_SHORT).show() }
-                    childInputTarget = null
-                }
-            }
-        )
-    }
-
     if (visionRecognizing) {
         AlertDialog(
             onDismissRequest = {},
@@ -955,16 +906,35 @@ private fun PlanningOutlineEditor(
     activeNote: PlanningNote?,
     nodes: List<PlanningNode>,
     outlineHintVisible: Boolean,
+    previewMode: Boolean,
     onCreateNode: (PlanningNodeDraft) -> Unit,
     onUpdateNode: (PlanningNode, PlanningNodeEdit) -> Unit,
     onToggleNode: (PlanningNode) -> Unit,
     onDeleteNode: (PlanningNode) -> Unit,
-    onRequestChild: (PlanningNode) -> Unit,
+    onOpenLinkedItem: (Long) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    var newNodeText by remember(activeNote?.id) { mutableStateOf("") }
-    var focusedNodeId by remember { mutableStateOf<Long?>(null) }
+    var rootInput by remember(activeNote?.id) { mutableStateOf("") }
+    var editingNodeId by remember(activeNote?.id) { mutableStateOf<Long?>(null) }
+    val childInputs = remember(activeNote?.id) { mutableStateMapOf<Long, String>() }
+    val expandedChildInputs = remember(activeNote?.id) { mutableStateMapOf<Long, Boolean>() }
+    var timeDialogNode by remember { mutableStateOf<PlanningNode?>(null) }
+    var locationDialogNode by remember { mutableStateOf<PlanningNode?>(null) }
     val flattened = remember(nodes) { flattenPlanningNodes(nodes) }
+    val childrenByParent = remember(nodes) { nodes.groupBy { it.parentNodeId } }
+
+    fun createNode(parentId: Long?, raw: String) {
+        val note = activeNote ?: return
+        val text = raw.trim()
+        if (text.isBlank()) return
+        onCreateNode(
+            PlanningNodeDraft(
+                noteId = note.id,
+                parentNodeId = parentId,
+                text = text
+            )
+        )
+    }
 
     ElevatedCard(
         modifier = modifier,
@@ -979,7 +949,11 @@ private fun PlanningOutlineEditor(
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             Text(
-                text = "大纲即待办：写下一行就会同步创建待办；写时间段会成为日程。",
+                text = if (previewMode) {
+                    "预览模式：点圆圈完成，点每行右侧 ⋯ 补充时间、地点或删除。"
+                } else {
+                    "像备忘录一样写：输入一行后按回车，自动固化为待办；时间段会成为日程。"
+                },
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -995,61 +969,57 @@ private fun PlanningOutlineEditor(
                     }
                 } else if (flattened.isEmpty()) {
                     item {
-                        PlanningOutlineEmptyCard("写下第一件事，比如：入党资料要写完，或 10:00-12:00 写论文 @图书馆3楼。")
+                        PlanningOutlineEmptyCard("写下第一件事，比如：入党资料要写完，或 10:00-12:00 写论文 图书馆3楼。")
                     }
                 } else {
-                    items(flattened, key = { it.node.id }) { item ->
+                    flattened.forEach { outline ->
+                        val node = outline.node
+                        val hasChildren = childrenByParent[node.id].orEmpty().isNotEmpty()
+                        item(key = node.id) {
                         PlanningOutlineRow(
-                            item = item,
-                            allNodes = nodes,
+                            item = outline,
+                            hasChildren = hasChildren,
                             outlineHintVisible = outlineHintVisible,
-                            focused = focusedNodeId == item.node.id,
-                            onFocusChange = { focused ->
-                                focusedNodeId = if (focused) item.node.id else focusedNodeId.takeUnless { it == item.node.id }
-                            },
-                            onToggle = { onToggleNode(item.node) },
+                            previewMode = previewMode,
+                            editing = editingNodeId == node.id,
+                            onStartEdit = { editingNodeId = node.id },
+                            onStopEdit = { editingNodeId = null },
+                            onToggle = { onToggleNode(node) },
                             onToggleCollapse = {
-                                onUpdateNode(
-                                    item.node,
-                                    item.node.toPlanningNodeEdit(collapsed = !item.node.collapsed)
-                                )
+                                if (hasChildren) {
+                                    onUpdateNode(
+                                        node,
+                                        node.toPlanningNodeEdit(collapsed = !node.collapsed)
+                                    )
+                                } else {
+                                    expandedChildInputs[node.id] = !(expandedChildInputs[node.id] ?: false)
+                                }
                             },
                             onTextCommit = { text ->
                                 if (text.isBlank()) {
-                                    onDeleteNode(item.node)
-                                } else if (text.trim() != item.node.text.trim()) {
-                                    onUpdateNode(item.node, item.node.toPlanningNodeEdit(text = text.trim()))
+                                    onDeleteNode(node)
+                                } else if (text.trim() != node.text.trim()) {
+                                    onUpdateNode(node, node.toPlanningNodeEdit(text = text.trim()))
                                 }
                             },
-                            onCreateSibling = {
-                                activeNote?.let { note ->
-                                    onCreateNode(
-                                        PlanningNodeDraft(
-                                            noteId = note.id,
-                                            parentNodeId = item.node.parentNodeId,
-                                            text = "新事项",
-                                            sortOrder = item.node.sortOrder + 1
-                                        )
-                                    )
-                                }
-                            },
+                            onCreateSibling = { editingNodeId = null },
                             onIndent = {
-                                val index = flattened.indexOfFirst { it.node.id == item.node.id }
+                                val index = flattened.indexOfFirst { it.node.id == node.id }
                                 val previous = flattened.getOrNull(index - 1)?.node
                                 if (previous != null) {
-                                    onUpdateNode(item.node, item.node.toPlanningNodeEdit(parentNodeId = previous.id))
+                                    onUpdateNode(node, node.toPlanningNodeEdit(parentNodeId = previous.id))
                                 }
                             },
                             onOutdent = {
-                                val parent = nodes.firstOrNull { it.id == item.node.parentNodeId }
-                                if (item.node.parentNodeId != null) {
-                                    onUpdateNode(item.node, item.node.toPlanningNodeEdit(parentNodeId = parent?.parentNodeId))
+                                val parent = nodes.firstOrNull { it.id == node.parentNodeId }
+                                if (node.parentNodeId != null) {
+                                    onUpdateNode(node, node.toPlanningNodeEdit(parentNodeId = parent?.parentNodeId))
                                 }
                             },
                             onUpdateTime = { dueAt, startAt, endAt ->
                                 onUpdateNode(
-                                    item.node,
-                                    item.node.toPlanningNodeEdit(
+                                    node,
+                                    node.toPlanningNodeEdit(
                                         dueAt = dueAt,
                                         startAt = startAt,
                                         endAt = endAt
@@ -1057,43 +1027,75 @@ private fun PlanningOutlineEditor(
                                 )
                             },
                             onUpdateLocation = { location ->
-                                onUpdateNode(item.node, item.node.toPlanningNodeEdit(location = location))
+                                onUpdateNode(node, node.toPlanningNodeEdit(location = location))
                             },
-                            onRequestChild = { onRequestChild(item.node) },
-                            onDelete = { onDeleteNode(item.node) }
+                            onToggleSync = {
+                                onUpdateNode(node, node.toPlanningNodeEdit(syncEnabled = !node.syncEnabled))
+                            },
+                            onOpenLinkedItem = {
+                                node.linkedTodoId?.let(onOpenLinkedItem)
+                            },
+                            onRequestTime = { timeDialogNode = node },
+                            onRequestLocation = { locationDialogNode = node },
+                            onDelete = { onDeleteNode(node) }
+                        )
+                        }
+                        val childInputVisible = !previewMode && ((expandedChildInputs[node.id] == true) || (hasChildren && !node.collapsed))
+                        if (childInputVisible) {
+                            item(key = "child-input-${node.id}") {
+                                PlanningOutlineInputLine(
+                                    depth = outline.depth + 1,
+                                    value = childInputs[node.id].orEmpty(),
+                                    placeholder = "输入 ${node.text} 的子任务",
+                                    enabled = activeNote != null,
+                                    onValueChange = { childInputs[node.id] = it },
+                                    onCommit = {
+                                        val raw = childInputs[node.id].orEmpty()
+                                        createNode(node.id, raw)
+                                        childInputs[node.id] = ""
+                                    }
+                                )
+                            }
+                        }
+                    }
+                }
+                if (!previewMode) {
+                    item(key = "root-input") {
+                        PlanningOutlineInputLine(
+                            depth = 0,
+                            value = rootInput,
+                            placeholder = "继续写下一行，按回车创建",
+                            enabled = activeNote != null,
+                            onValueChange = { rootInput = it },
+                            onCommit = {
+                                createNode(null, rootInput)
+                                rootInput = ""
+                            }
                         )
                     }
                 }
             }
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                OutlinedTextField(
-                    value = newNodeText,
-                    onValueChange = { newNodeText = it },
-                    modifier = Modifier.weight(1f),
-                    singleLine = true,
-                    label = { Text("新增事项") },
-                    placeholder = { Text("例如：数据库复习 / 明天 16:30 交材料") }
-                )
-                Button(
-                    enabled = activeNote != null && newNodeText.isNotBlank(),
-                    onClick = {
-                        val note = activeNote ?: return@Button
-                        val text = newNodeText.trim()
-                        if (text.isBlank()) return@Button
-                        onCreateNode(PlanningNodeDraft(noteId = note.id, text = text))
-                        newNodeText = ""
-                    }
-                ) {
-                    Icon(Icons.Rounded.Add, contentDescription = null, modifier = Modifier.size(18.dp))
-                    Spacer(Modifier.width(4.dp))
-                    Text("添加")
-                }
-            }
         }
+    }
+    timeDialogNode?.let { node ->
+        PlanningNodeTimeDialog(
+            node = node,
+            onDismiss = { timeDialogNode = null },
+            onConfirm = { dueAt, startAt, endAt ->
+                onUpdateNode(node, node.toPlanningNodeEdit(dueAt = dueAt, startAt = startAt, endAt = endAt))
+                timeDialogNode = null
+            }
+        )
+    }
+    locationDialogNode?.let { node ->
+        PlanningNodeLocationDialog(
+            node = node,
+            onDismiss = { locationDialogNode = null },
+            onConfirm = { location ->
+                onUpdateNode(node, node.toPlanningNodeEdit(location = location))
+                locationDialogNode = null
+            }
+        )
     }
 }
 
@@ -1114,14 +1116,59 @@ private fun PlanningOutlineEmptyCard(text: String) {
     }
 }
 
-@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun PlanningOutlineInputLine(
+    depth: Int,
+    value: String,
+    placeholder: String,
+    enabled: Boolean,
+    onValueChange: (String) -> Unit,
+    onCommit: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(start = (depth * 22).dp, end = 4.dp, top = 2.dp, bottom = 2.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Icon(
+            imageVector = Icons.Rounded.RadioButtonUnchecked,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.outline,
+            modifier = Modifier.size(22.dp)
+        )
+        OutlinedTextField(
+            value = value,
+            onValueChange = onValueChange,
+            modifier = Modifier
+                .weight(1f)
+                .onPreviewKeyEvent { event ->
+                    if (event.type == KeyEventType.KeyDown && event.key == Key.Enter) {
+                        onCommit()
+                        true
+                    } else {
+                        false
+                    }
+                },
+            enabled = enabled,
+            singleLine = true,
+            placeholder = { Text(placeholder) },
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+            keyboardActions = KeyboardActions(onDone = { onCommit() })
+        )
+    }
+}
+
 @Composable
 private fun PlanningOutlineRow(
     item: PlanningOutlineItem,
-    allNodes: List<PlanningNode>,
+    hasChildren: Boolean,
     outlineHintVisible: Boolean,
-    focused: Boolean,
-    onFocusChange: (Boolean) -> Unit,
+    previewMode: Boolean,
+    editing: Boolean,
+    onStartEdit: () -> Unit,
+    onStopEdit: () -> Unit,
     onToggle: () -> Unit,
     onToggleCollapse: () -> Unit,
     onTextCommit: (String) -> Unit,
@@ -1130,74 +1177,66 @@ private fun PlanningOutlineRow(
     onOutdent: () -> Unit,
     onUpdateTime: (LocalDateTime?, LocalDateTime?, LocalDateTime?) -> Unit,
     onUpdateLocation: (String?) -> Unit,
-    onRequestChild: () -> Unit,
+    onToggleSync: () -> Unit,
+    onOpenLinkedItem: () -> Unit,
+    onRequestTime: () -> Unit,
+    onRequestLocation: () -> Unit,
     onDelete: () -> Unit
 ) {
     val node = item.node
-    val hasChildren = allNodes.any { it.parentNodeId == node.id }
     var text by remember(node.id, node.text) { mutableStateOf(node.text) }
     var actionMenuExpanded by remember { mutableStateOf(false) }
-    var timeDialogVisible by remember { mutableStateOf(false) }
-    var locationDialogVisible by remember { mutableStateOf(false) }
     val chipText = remember(node) { planningNodeMetaText(node) }
     val textColor = if (node.completed) {
         MaterialTheme.colorScheme.onSurface
     } else {
-        MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.72f)
+        MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.78f)
     }
-    fun commitAndCreateSibling() {
+
+    fun commit() {
         val clean = text.trim()
-        if (clean.isBlank()) return
-        if (clean != node.text.trim()) {
+        if (clean.isBlank()) {
+            onDelete()
+        } else if (clean != node.text.trim()) {
             onTextCommit(clean)
         }
-        onCreateSibling()
+        onStopEdit()
     }
-    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        if (outlineHintVisible && focused) {
+
+    Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+        if (outlineHintVisible && editing && !previewMode) {
             PlanningOutlineHeaderHint(text)
         }
-        Surface(
+        Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .combinedClickable(
-                    onClick = {},
-                    onLongClick = { actionMenuExpanded = true }
-                ),
-            shape = RoundedCornerShape(18.dp),
-            color = if (focused) MaterialTheme.colorScheme.primary.copy(alpha = 0.07f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.14f),
-            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = if (focused) 0.62f else 0.24f))
+                .padding(horizontal = 2.dp, vertical = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
         ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 8.dp, vertical = 8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            Spacer(Modifier.width((item.depth * 22).dp))
+            IconButton(
+                modifier = Modifier.size(30.dp),
+                onClick = onToggleCollapse
             ) {
-                Spacer(Modifier.width((item.depth * 22).dp))
-                IconButton(
-                    modifier = Modifier.size(32.dp),
-                    enabled = hasChildren,
-                    onClick = onToggleCollapse
-                ) {
-                    Icon(
-                        imageVector = if (hasChildren && !node.collapsed) Icons.Rounded.ExpandLess else Icons.Rounded.ExpandMore,
-                        contentDescription = if (node.collapsed) "展开" else "折叠",
-                        tint = if (hasChildren) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant
-                    )
-                }
-                IconButton(
-                    modifier = Modifier.size(34.dp),
-                    onClick = onToggle
-                ) {
-                    Icon(
-                        imageVector = if (node.completed) Icons.Rounded.CheckCircle else Icons.Rounded.RadioButtonUnchecked,
-                        contentDescription = if (node.completed) "标记未完成" else "完成",
-                        tint = if (node.completed) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline
-                    )
-                }
-                Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Icon(
+                    imageVector = if (hasChildren && !node.collapsed) Icons.Rounded.ExpandLess else Icons.Rounded.ExpandMore,
+                    contentDescription = if (node.collapsed) "展开子任务" else "折叠子任务",
+                    tint = MaterialTheme.colorScheme.outline
+                )
+            }
+            IconButton(
+                modifier = Modifier.size(32.dp),
+                onClick = onToggle
+            ) {
+                Icon(
+                    imageVector = if (node.completed) Icons.Rounded.CheckCircle else Icons.Rounded.RadioButtonUnchecked,
+                    contentDescription = if (node.completed) "标记未完成" else "完成",
+                    tint = if (node.completed) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.outline
+                )
+            }
+            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                if (editing && !previewMode) {
                     OutlinedTextField(
                         value = text,
                         onValueChange = { text = it },
@@ -1207,15 +1246,12 @@ private fun PlanningOutlineRow(
                                 if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
                                 when (event.key) {
                                     Key.Enter -> {
-                                        commitAndCreateSibling()
+                                        commit()
+                                        onCreateSibling()
                                         true
                                     }
                                     Key.Tab -> {
-                                        if (event.isShiftPressed) {
-                                            onOutdent()
-                                        } else {
-                                            onIndent()
-                                        }
+                                        if (event.isShiftPressed) onOutdent() else onIndent()
                                         true
                                     }
                                     Key.Backspace -> {
@@ -1230,81 +1266,87 @@ private fun PlanningOutlineRow(
                                 }
                             }
                             .onFocusChanged { focusState ->
-                                onFocusChange(focusState.isFocused)
-                                if (!focusState.isFocused && text.trim() != node.text.trim()) {
-                                    onTextCommit(text)
-                                }
+                                if (!focusState.isFocused && editing) commit()
                             },
                         textStyle = MaterialTheme.typography.bodyLarge.copy(
                             color = textColor,
                             textDecoration = if (node.completed) TextDecoration.LineThrough else TextDecoration.None
                         ),
-                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
-                        keyboardActions = KeyboardActions(onNext = { commitAndCreateSibling() }),
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                        keyboardActions = KeyboardActions(onDone = { commit() }),
                         singleLine = true,
                         placeholder = { Text("写下事项、DDL 或日程") }
                     )
-                    if (chipText.isNotBlank()) {
-                        Text(
-                            text = chipText,
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.primary
+                } else {
+                    Text(
+                        text = node.text,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable(enabled = !previewMode) { onStartEdit() },
+                        style = MaterialTheme.typography.bodyLarge.copy(
+                            color = textColor,
+                            textDecoration = if (node.completed) TextDecoration.LineThrough else TextDecoration.None
+                        ),
+                        maxLines = 3,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+                if (chipText.isNotBlank()) {
+                    Text(
+                        text = chipText,
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
+            }
+            if (previewMode) {
+                androidx.compose.foundation.layout.Box {
+                    IconButton(modifier = Modifier.size(34.dp), onClick = { actionMenuExpanded = true }) {
+                        Icon(Icons.Rounded.MoreVert, contentDescription = "节点设置")
+                    }
+                    DropdownMenu(
+                        expanded = actionMenuExpanded,
+                        onDismissRequest = { actionMenuExpanded = false }
+                    ) {
+                        DropdownMenuItem(
+                            text = { Text("完整编辑") },
+                            onClick = {
+                                actionMenuExpanded = false
+                                onOpenLinkedItem()
+                            },
+                            enabled = node.linkedTodoId != null
+                        )
+                        DropdownMenuItem(
+                            text = { Text("设置时间") },
+                            onClick = {
+                                actionMenuExpanded = false
+                                onRequestTime()
+                            }
+                        )
+                        DropdownMenuItem(
+                            text = { Text("设置地点") },
+                            onClick = {
+                                actionMenuExpanded = false
+                                onRequestLocation()
+                            }
+                        )
+                        DropdownMenuItem(
+                            text = { Text(if (node.syncEnabled) "改为结构标题" else "同步为待办/日程") },
+                            onClick = {
+                                actionMenuExpanded = false
+                                onToggleSync()
+                            }
+                        )
+                        DropdownMenuItem(
+                            text = { Text("删除") },
+                            onClick = {
+                                actionMenuExpanded = false
+                                onDelete()
+                            }
                         )
                     }
                 }
-                IconButton(modifier = Modifier.size(34.dp), onClick = onRequestChild) {
-                    Icon(Icons.Rounded.PlaylistAdd, contentDescription = "新增子项", tint = MaterialTheme.colorScheme.primary)
-                }
-                IconButton(modifier = Modifier.size(34.dp), onClick = onDelete) {
-                    Icon(Icons.Rounded.Delete, contentDescription = "删除", tint = MaterialTheme.colorScheme.error)
-                }
             }
-        }
-        DropdownMenu(
-            expanded = actionMenuExpanded,
-            onDismissRequest = { actionMenuExpanded = false }
-        ) {
-            DropdownMenuItem(
-                text = { Text("设置时间") },
-                onClick = {
-                    actionMenuExpanded = false
-                    timeDialogVisible = true
-                }
-            )
-            DropdownMenuItem(
-                text = { Text("设置地点") },
-                onClick = {
-                    actionMenuExpanded = false
-                    locationDialogVisible = true
-                }
-            )
-            DropdownMenuItem(
-                text = { Text("删除") },
-                onClick = {
-                    actionMenuExpanded = false
-                    onDelete()
-                }
-            )
-        }
-        if (timeDialogVisible) {
-            PlanningNodeTimeDialog(
-                node = node,
-                onDismiss = { timeDialogVisible = false },
-                onConfirm = { dueAt, startAt, endAt ->
-                    onUpdateTime(dueAt, startAt, endAt)
-                    timeDialogVisible = false
-                }
-            )
-        }
-        if (locationDialogVisible) {
-            PlanningNodeLocationDialog(
-                node = node,
-                onDismiss = { locationDialogVisible = false },
-                onConfirm = { location ->
-                    onUpdateLocation(location)
-                    locationDialogVisible = false
-                }
-            )
         }
     }
 }
@@ -1335,36 +1377,6 @@ private fun PlanningOutlineHintToken(label: String, active: Boolean) {
         style = MaterialTheme.typography.labelSmall,
         color = if (active) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.55f),
         fontWeight = if (active) FontWeight.Bold else FontWeight.Normal
-    )
-}
-
-@Composable
-private fun PlanningNodeInputDialog(
-    title: String,
-    label: String,
-    onDismiss: () -> Unit,
-    onConfirm: (String) -> Unit
-) {
-    var value by rememberSaveable { mutableStateOf("") }
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(title) },
-        text = {
-            OutlinedTextField(
-                value = value,
-                onValueChange = { value = it },
-                modifier = Modifier.fillMaxWidth(),
-                label = { Text(label) },
-                placeholder = { Text("例如：填写个人信息表 / 14:00-15:00 整理材料") }
-            )
-        },
-        confirmButton = {
-            TextButton(
-                enabled = value.isNotBlank(),
-                onClick = { onConfirm(value.trim()) }
-            ) { Text("添加") }
-        },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("取消") } }
     )
 }
 
@@ -1912,106 +1924,50 @@ private data class PlanningTutorialPage(
 private fun planningTutorialPages(): List<PlanningTutorialPage> {
     return listOf(
         PlanningTutorialPage(
-            title = "1. 你可以先随便写",
-            subtitle = "像备忘录一样",
+            title = "1. 像备忘录一样一行一行写",
+            subtitle = "输入 → 回车 → 变成节点",
             lines = listOf(
-                "不用先想复杂语法，先把脑子里的计划写下来。",
-                "最自然的日程写法是：时间段 + 事情。",
-                "最自然的任务写法是：事情 + ddl + 时间。",
-                "如果你写得很花哨，先保留原文，再用识别预览页校正。"
+                "底部空行就是当前输入行，写完一件事按回车即可创建节点。",
+                "没有时间的文字会成为无 DDL 待办，统一出现在今日待办。",
+                "点已有节点文字可以行内修改；编辑时按 Tab / Shift+Tab 可以调整层级。",
+                "点左侧圆圈完成，完成后文字会加删除线并变深。"
             ),
             example = """
-                10:00-12:00 事件1
-                12:00-13:00 事件2
+                入党资料要写完
+                数据库复习
+                给导师发消息
+            """.trimIndent()
+        ),
+        PlanningTutorialPage(
+            title = "2. 时间、地点和子任务",
+            subtitle = "按自然顺序写",
+            lines = listOf(
+                "日程推荐写法：时间, 事件名, 地点；逗号、分号或明显地点词都可以辅助识别。",
+                "DDL 待办可以写：任务M ddl 15:00、交材料 截止明天 23:59。",
+                "点节点左侧箭头会展开/折叠子任务区域，在缩进空行继续输入即可创建子节点。",
+                "有子任务的父节点只作为结构标题，真正进入待办/日历的是最底层叶子节点。"
+            ),
+            example = """
+                10:00-12:00, 写论文, 图书馆3楼
                 任务M ddl 15:00
+                保研材料
+                  扫描获奖证明
+                  汇总课程成绩
             """.trimIndent()
         ),
         PlanningTutorialPage(
-            title = "2. 快捷栏只保留高频入口",
-            subtitle = "写作区优先",
+            title = "3. 预览配置和 Markdown 兼容",
+            subtitle = "粗写之后再精修",
             lines = listOf(
-                "规划台鼓励直接自然书写，不需要为了按钮去打断思路。",
-                "点“子任务”会在当前行下面新建缩进任务，适合拆解大任务。",
-                "点“公告”会在新行插入 #公告，占位后继续补日期范围和正文。",
-                "长按快捷图标，可以看它的用途说明。"
-            ),
-            example = """
-                - [ ] 整理材料
-                  - [ ] 扫描获奖证明
-                  - [ ] 汇总课程成绩
-            """.trimIndent()
-        ),
-        PlanningTutorialPage(
-            title = "3. DDL 和提醒怎么写",
-            subtitle = "常用就够",
-            lines = listOf(
-                "DDL 可以写 15:00、明天 16:30、5.28 23:59。",
-                "提醒可以写 #remind 5,15，意思是提前 5 分钟和 15 分钟。",
-                "你也可以先不写提醒，导入前在预览页修改。",
-                "常用自然文本里写 ddl 15:00，也会尽量按今天 15:00 理解。"
-            ),
-            example = """
-                - [ ] 任务M #ddl 15:00
-                - [ ] 交材料 #ddl 5.28 23:59 #remind 30,5
-            """.trimIndent()
-        ),
-        PlanningTutorialPage(
-            title = "4. 标题只是分区",
-            subtitle = "不是必须",
-            lines = listOf(
-                "# 今日计划 下面没写日期的时间段会按今天理解。",
-                "# 明天 下面没写日期的时间段会按明天理解。",
-                "# 收集箱 只是普通分区，不会自动加日期。"
-            ),
-            example = """
-                # 今日计划
-                10:00-12:00 写作业
-
-                # 明天
-                09:00-10:30 背单词
-            """.trimIndent()
-        ),
-        PlanningTutorialPage(
-            title = "5. 最后点识别",
-            subtitle = "预览确认再导入",
-            lines = listOf(
-                "写完后点顶部“识别”。",
-                "识别预览里可以改标题、时间、分组、提醒。",
-                "确认没问题再导入，导入后原文会追加 #imported，避免重复导入。"
-            )
-        ),
-        PlanningTutorialPage(
-            title = "6. 关于 AI 识别",
-            subtitle = "可选增强",
-            lines = listOf(
-                "设置里启用 AI 调用配置后，“识别”会优先调用 AI 源。",
-                "DeepSeek、Qwen、OpenAI 兼容接口可以配置多个，按顺序失败兜底。",
-                "AI 识别适合处理写得很随性、格式不固定的内容。",
-                "AI 失败或没有完整配置时会回到本地规则；AI 只生成候选，不会直接写入待办或日程。"
-            )
-        ),
-        PlanningTutorialPage(
-            title = "7. 公告写在规划台",
-            subtitle = "可以写多条",
-            lines = listOf(
-                "公告不在设置里单独维护，直接写进任意未归档规划文档。",
-                "以 #公告 开头的行会显示在每日看板顶部和桌面小组件里。",
-                "可以写日期范围；不写日期时视为长期公告。"
+                "顶部“预览”会切到只读查看，每行右侧 ⋯ 可以设置时间、地点、同步状态或删除。",
+                "需要批量复制/迁移时，切到 Markdown 兼容区，再使用导出/导入。",
+                "公告仍可在 Markdown 兼容区写 #公告；图片、语音、系统分享走快速捕获入口。",
+                "AI 识别只是可选增强，结果进入候选预览后才会写入正式待办/日程。"
             ),
             example = """
                 #公告 5.16-7.1 期间禁止游玩舞萌DX游戏
-                #公告 2026-05-16 2026-05-20 本周推进保研材料
-                > [!公告] 长期提醒：先完成今天三件大事
+                - [ ] 交材料 #ddl 5.28 23:59 #remind 30,5
             """.trimIndent()
-        ),
-        PlanningTutorialPage(
-            title = "8. 其他导入方式",
-            subtitle = "已整理好的大量待办/日程",
-            lines = listOf(
-                "已整理好的大量待办，可以去「待办 → 右下角批量待办」一次性录入。",
-                "日程批量导入在「日历 → 顶部工具栏 → 批量导入」。",
-                "批量导入使用逗号分隔的结构化格式，适合从 Excel 或其他工具粘贴。"
-            )
         )
     )
 }

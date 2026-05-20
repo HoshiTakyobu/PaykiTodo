@@ -606,6 +606,14 @@ fun DashboardScreen(
                     onUpdatePlanningNode = onUpdatePlanningNode,
                     onTogglePlanningNode = onTogglePlanningNode,
                     onDeletePlanningNode = onDeletePlanningNode,
+                    onOpenPlanningLinkedItem = { itemId ->
+                        scope.launch {
+                            val item = onGetTodoById(itemId) ?: return@launch
+                            editingItem = item
+                            editorKind = if (item.isEvent) EditorKind.CALENDAR else EditorKind.TODO
+                            editorVisible = true
+                        }
+                    },
                     onExportPlanningNodesMarkdown = onExportPlanningNodesMarkdown,
                     onReplacePlanningNodesFromMarkdown = onReplacePlanningNodesFromMarkdown,
                     onParsePlanningMarkdown = onParsePlanningMarkdown,

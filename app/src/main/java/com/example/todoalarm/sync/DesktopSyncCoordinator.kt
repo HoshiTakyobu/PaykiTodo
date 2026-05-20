@@ -591,13 +591,17 @@ class DesktopSyncCoordinator(
     private suspend fun deletePlanningNode(json: JSONObject): JSONObject {
         val nodeId = json.optLong("id", 0L).takeIf { it > 0L } ?: error("缺少节点 id")
         val existing = app.repository.getPlanningNode(nodeId) ?: return JSONObject().put("ok", false)
-        val deletedItems = app.repository.deletePlanningNodeTree(existing.id)
-        clearReminderArtifacts(deletedItems)
+        val result = app.repository.deletePlanningNodeTree(
+            existing.id,
+            createEventEndTodo = settingsStore.currentSettings().planningEventEndTodoEnabled
+        )
+        clearReminderArtifacts(result.deletedLinkedItems)
+        result.affectedLinkedItems.forEach { scheduleReminderOrDisable(it) }
         settingsStore.updateLastOpenedPlanningNoteId(existing.noteId)
         autoBackupIfNeeded()
         return JSONObject()
             .put("ok", true)
-            .put("deletedLinkedItems", deletedItems.size)
+            .put("deletedLinkedItems", result.deletedLinkedItems.size)
             .put("noteId", existing.noteId)
             .put("nodes", JSONArray(app.repository.getPlanningNodesForNote(existing.noteId).map { it.toPlanningNodeJson() }))
             .put("markdown", app.repository.exportPlanningNodesToMarkdown(existing.noteId))

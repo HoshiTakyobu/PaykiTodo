@@ -2,29 +2,38 @@
 
 ## Active Development Focus
 
-Active goal: implement `docs/goals/2026-05-19-paykitodo-capture-and-outliner-goal.md`.
+Active goal: implement `docs/goals/2026-05-20-paykitodo-outliner-ux-fix-goal.md`.
 
-The working tree is now on the `1.12.9 / versionCode 236` line. The quick-capture and Planning Desk Outliner goal is implemented in code. This round fixes the desktop Web Outliner same-level drag-reorder compatibility risk by tracking the dragged node id in page state instead of relying on browser-specific `dataTransfer` reads during `dragover`. The earlier `1.12.8` patch fixed the linked-item lifecycle risk where deleting or canceling an official todo / event created from an Outliner node could leave the node sync-enabled and allow startup repair to recreate an item the user intentionally removed. The earlier `1.12.7` migration fix still keeps old Markdown headings such as `# 今日计划` / `# 收集箱` as structure nodes instead of unwanted no-DDL todos. Do not push to GitHub unless the user explicitly asks.
+The working tree is now on the `1.12.10 / versionCode 237` line. This round is a phone-side Planning Desk Outliner UX fix: make the editor less like a form/list manager and more like a notes app, keep only leaf nodes synced to official todos/events, add an Outliner edit/preview switch, simplify the phone overflow menu, and rewrite the phone tutorial. Do not push to GitHub unless the user explicitly asks.
 
 ## Current Goal State
 
-The goal deliverables are implemented as follows:
+Current implementation state:
 
-1. System share target accepts shared text/images and routes them through background capture into Planning Desk nodes.
-2. Launcher shortcuts expose photo and voice capture.
-3. Background capture writes recognized results directly into Planning Desk nodes and linked official todos/events, then opens the matching planning document through notification when notification permission is available.
-4. Voice capture uses Android SpeechRecognizer with zh-CN partial results and sends the final transcript to background capture.
-5. `planning_nodes` is the Outliner data model; database version is `22`, with schema export `app/schemas/com.example.todoalarm.data.AppDatabase/22.json`.
-6. Existing Markdown planning notes are migrated into nodes; Markdown export/import compatibility remains available, and structure headings are preserved as non-sync outline nodes instead of becoming official todos/events.
-7. Nodes create linked official todos/events immediately; no-DDL nodes create no-DDL todos, DDL nodes create DDL todos, and schedule nodes create calendar events.
-8. Optional event-end DDL linked todos are controlled by the Planning Desk Outliner setting and default off.
-9. Node completion, todo/event completion, parent completion, sibling event/end-DDL completion, text/time/location edits, deletion, cancellation, and document deletion synchronize across planning nodes and official items.
-10. Phone Outliner UI supports tree rendering, completion styling, collapse/expand, child creation, Enter / IME Next / Tab / Shift+Tab / empty Backspace operations, long-press time/location/delete actions, and hideable `时间 | 事项 | 地点` hints.
-11. Desktop sync exposes planning-node APIs and desktop Web renders a node editor with inline edits, child/delete actions, completion, collapse, up/down reorder, and same-level drag reorder.
-12. Markdown compatibility capture now requires explicit confirmation before direct node creation to reduce accidental duplicate imports.
-13. Background-capture toasts are notification-permission aware on Android 13+.
+1. Phone Outliner now shows lightweight text rows plus a root active input line; expanded child areas show their own active input lines.
+2. Phone Outliner has an edit / preview switch; edit mode hides per-row right-side operations, while preview mode exposes row `⋯` actions for time, location, sync toggle, delete, and opening the linked official todo/event editor.
+3. Adding a child demotes its parent to a structure heading and deletes the parent's linked official item; moving/deleting the last child can restore ordinary parents as synced leaf items.
+4. Natural schedule parsing accepts bare ordered locations such as `时间, 事件名, 地点`.
+5. Main phone overflow menu is simplified to document-level actions; Markdown import/export moved to the Markdown compatibility toolbar.
+6. Phone Planning Desk tutorial now has three Outliner-focused pages.
+7. Preview `⋯` reuses the existing official todo/event editor through the linked item, so reminder, group, recurrence, notes, countdown, and event check-in use the same surface as ordinary phone editing.
 
-## Verification Completed For 1.12.9
+## Verification Completed For 1.12.10
+
+The `1.12.10 / versionCode 237` patch has passed:
+
+1. `./gradlew.bat :app:compileDebugKotlin`
+2. `./gradlew.bat :app:testDebugUnitTest`
+3. `git diff --check`
+4. `./gradlew.bat :app:assembleDebug`
+5. Debug APK metadata confirms:
+   - `versionName = 1.12.10`
+   - `versionCode = 237`
+   - output `PaykiTodo-1.12.10-debug.apk`
+
+Latest debug APK: `app/build/outputs/apk/debug/PaykiTodo-1.12.10-debug.apk`.
+
+## Previous Verification Completed For 1.12.9
 
 The `1.12.9 / versionCode 236` patch has passed:
 
@@ -49,15 +58,14 @@ Follow-up audit on `Pixel_8 / emulator-5554` confirmed the system-share text cap
 
 ## Remaining Work
 
-No known code requirement from `2026-05-19-paykitodo-capture-and-outliner-goal.md` is intentionally left incomplete. Remaining work is QA rather than implementation:
+The `2026-05-20-paykitodo-outliner-ux-fix-goal.md` goal is not fully closed yet.
 
-1. Real Android device testing for share targets, launcher shortcuts, camera capture, voice recognition, Android 13+ notification-permission behavior, and OEM background behavior.
-2. Real desktop-browser testing for Planning Desk node editing/reorder, same-level drag reorder, document switching, and node time-field display/editing against live phone data.
-3. Real migrated-user-data testing for Markdown-to-node migration, structure-heading preservation, startup linked-item repair, and delete/cancel detachment of Outliner-created official items.
-4. Optional cleanup of legacy preview/import code paths that remain reusable but are no longer the default capture path.
+1. Phone runtime QA is still needed for active input focus behavior, IME Enter behavior, child input expansion, linked-item editor routing, and parent demotion/restoration with real data.
+2. Real migrated-user-data testing is still needed for old Markdown headings and existing parent/child nodes that already have linked official items.
+3. If this goal continues, the next slice should focus on emulator/manual verification rather than known code gaps.
 
 ## Git / Release Notes
 
 - Branch remains `main`, ahead of `origin/main`; do not push without explicit user authorization.
-- `docs/goals/2026-05-19-paykitodo-capture-and-outliner-goal.md` has been checked for obvious secret patterns and is being archived in a separate goal-document commit after the feature commit.
+- `docs/goals/2026-05-20-paykitodo-outliner-ux-fix-goal.md` is the active goal file and is currently untracked until the feature work is complete enough to archive.
 - Local signing files, APK outputs, API keys, tokens, and private Base URLs must remain out of Git.

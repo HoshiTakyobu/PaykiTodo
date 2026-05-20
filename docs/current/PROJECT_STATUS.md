@@ -7,8 +7,8 @@
 - Package name: `com.paykitodo.app`
 - Target platform: Android 14 / API 34
 - Current version in code:
-  - `versionName = "1.12.11"`
-  - `versionCode = 238`
+  - `versionName = "1.12.12"`
+  - `versionCode = 239`
 
 ## Current Build Facts
 
@@ -18,7 +18,15 @@
 - Latest signed release APK built locally:
   - `app/build/outputs/apk/release/PaykiTodo-1.11.0-release.apk`
 - Latest fully built debug APK:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.12.11-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.12.12-debug.apk`
+- Current `1.12.12 / versionCode 239` verification completed:
+  - Version metadata was bumped only so Android can upgrade over an installed `1.12.11` debug build.
+  - No database schema, reminder behavior, Planning Desk behavior, or user-data format changed in this rebuild.
+  - `./gradlew.bat :app:compileDebugKotlin`
+  - `./gradlew.bat :app:testDebugUnitTest`
+  - `git diff --check`
+  - `./gradlew.bat :app:assembleDebug`
+  - Debug APK metadata inspected: `versionName = 1.12.12`, `versionCode = 239`, output `PaykiTodo-1.12.12-debug.apk`
 - Current `1.12.11 / versionCode 238` verification completed:
   - Phone Planning Desk Outliner existing-node Enter now opens a focused same-level input line and inserts the next node at the intended sibling position.
   - Existing-node edit commit is guarded so Enter, IME Done, and focus loss do not process the same edit twice.
@@ -163,7 +171,7 @@
 
 ## Current Worktree Reality
 
-The repository now targets the `1.12.11 / versionCode 238` workline. Phase 1 quick capture and Phase 2 Planning Desk Outliner remain implemented in the working tree. The latest patch tightens phone-side Outliner editing after audit: existing-node Enter opens a focused same-level input, edit commit is protected from duplicate Enter / IME / focus-loss handling, no-child expand arrows expose child input with correct semantics, and parent nodes with children no longer offer a misleading sync toggle. The previous `1.12.10` patch introduced lighter note-like rows, root / child active input lines, edit / preview mode, simplified overflow, bare ordered location parsing, parent/leaf synchronization so only leaf nodes become official todos/events, and preview `⋯` routing to the existing official todo/event editor for full field configuration. The earlier Android widget, multi-group todo, event check-in, Planning Desk image recognition, release-size, and `1.11.4` check-in regression fixes remain in the working tree. Release builds enable R8/resource shrinking and use WebP dashboard backgrounds; the latest signed `PaykiTodo-1.11.0-release.apk` size check is `4.83 MB`, and release startup / main-surface smoke testing passed on `Pixel_8 / emulator-5554`.
+The repository now targets the `1.12.12 / versionCode 239` workline. This patch is a version-bump rebuild over the `1.12.11` Planning Desk Outliner baseline so Android treats the newly built debug APK as upgradeable on devices that already installed `1.12.11`. Phase 1 quick capture and Phase 2 Planning Desk Outliner remain implemented in the working tree. The latest behavioral patch tightens phone-side Outliner editing after audit: existing-node Enter opens a focused same-level input, edit commit is protected from duplicate Enter / IME / focus-loss handling, no-child expand arrows expose child input with correct semantics, and parent nodes with children no longer offer a misleading sync toggle. The previous `1.12.10` patch introduced lighter note-like rows, root / child active input lines, edit / preview mode, simplified overflow, bare ordered location parsing, parent/leaf synchronization so only leaf nodes become official todos/events, and preview `⋯` routing to the existing official todo/event editor for full field configuration. The earlier Android widget, multi-group todo, event check-in, Planning Desk image recognition, release-size, and `1.11.4` check-in regression fixes remain in the working tree. Release builds enable R8/resource shrinking and use WebP dashboard backgrounds; the latest signed `PaykiTodo-1.11.0-release.apk` size check is `4.83 MB`, and release startup / main-surface smoke testing passed on `Pixel_8 / emulator-5554`.
 
 Most important current baseline facts:
 

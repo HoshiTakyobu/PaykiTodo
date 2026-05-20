@@ -1,5 +1,12 @@
 # Changelog
 
+## v1.12.12
+
+- 提升调试包版本号，确保 Android 在已安装 `1.12.11` 时把新 APK 识别为可升级安装包
+- 本轮不改变数据库结构、提醒逻辑、规划台逻辑或用户数据格式，只重建更高版本调试包
+- 版本号升级到 `1.12.12` / `versionCode 239`
+- 验证：`./gradlew.bat :app:compileDebugKotlin`、`./gradlew.bat :app:testDebugUnitTest`、`git diff --check`、`./gradlew.bat :app:assembleDebug` 通过；debug APK 元数据确认 `1.12.12 / 239`
+
 ## v1.12.11
 
 - 修复手机端规划台 Outliner 已有节点编辑体验：编辑节点时按 Enter 会在当前节点下方打开并聚焦同级输入行，输入后按回车按原位置插入新同级节点，不再只是提交文本后停住

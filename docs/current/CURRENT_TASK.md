@@ -2,9 +2,9 @@
 
 ## Active Development Focus
 
-Active goal: implement `docs/goals/2026-05-20-paykitodo-outliner-ux-fix-goal.md`.
+Active goal: rebuild the debug APK as `1.12.12 / versionCode 239` so devices already on `1.12.11` can install the next package by normal Android upgrade rules.
 
-The working tree is now on the `1.12.11 / versionCode 238` line. The phone-side Planning Desk Outliner UX goal is implemented, locally built, unit-tested, and smoke-tested on `emulator-5554`. The goal made the editor less like a form/list manager and more like a notes app, kept only leaf nodes synced to official todos/events, added an Outliner edit/preview switch, simplified the phone overflow menu, rewrote the phone tutorial, and closed the remaining audit gaps around existing-row Enter and parent menu semantics. Do not push to GitHub unless the user explicitly asks.
+The working tree is now on the `1.12.12 / versionCode 239` line. This round only increments version metadata and rebuilds the debug APK over the completed `1.12.11` phone-side Planning Desk Outliner UX baseline. The Outliner goal remains implemented, locally built, unit-tested, and smoke-tested on `emulator-5554`. Do not push to GitHub unless the user explicitly asks.
 
 ## Current Goal State
 
@@ -20,6 +20,22 @@ Current implementation state:
 8. Main phone overflow menu is simplified to document-level actions; Markdown import/export moved to the Markdown compatibility toolbar.
 9. Phone Planning Desk tutorial now has three Outliner-focused pages.
 10. Preview `⋯` reuses the existing official todo/event editor through the linked item, so reminder, group, recurrence, notes, countdown, and event check-in use the same surface as ordinary phone editing.
+
+## Verification Completed For 1.12.12
+
+The `1.12.12 / versionCode 239` rebuild has passed so far:
+
+1. Version metadata moved from `1.12.11 / versionCode 238` to `1.12.12 / versionCode 239`.
+2. No database schema, reminder behavior, Planning Desk behavior, or user-data format changed in this rebuild.
+3. `./gradlew.bat :app:compileDebugKotlin`
+4. `./gradlew.bat :app:testDebugUnitTest`
+5. `git diff --check`
+6. `./gradlew.bat :app:assembleDebug`
+7. Debug APK metadata confirms:
+   - `versionName = 1.12.12`
+   - `versionCode = 239`
+   - output `PaykiTodo-1.12.12-debug.apk`
+8. Latest debug APK: `app/build/outputs/apk/debug/PaykiTodo-1.12.12-debug.apk`.
 
 ## Verification Completed For 1.12.11
 
@@ -62,7 +78,7 @@ The `1.12.10 / versionCode 237` patch has passed:
    - `versionCode = 237`
    - output `PaykiTodo-1.12.10-debug.apk`
 
-Latest debug APK: `app/build/outputs/apk/debug/PaykiTodo-1.12.11-debug.apk`.
+Latest debug APK: `app/build/outputs/apk/debug/PaykiTodo-1.12.12-debug.apk`.
 
 ## Previous Verification Completed For 1.12.9
 

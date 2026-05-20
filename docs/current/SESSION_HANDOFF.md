@@ -6,22 +6,28 @@
 - Branch: `main`
 - Do not push to GitHub unless the user explicitly authorizes it.
 - Current code version:
-  - `versionName = 1.12.11`
-  - `versionCode = 238`
+  - `versionName = 1.12.12`
+  - `versionCode = 239`
 - Latest debug APK built in this round:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.12.11-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.12.12-debug.apk`
 - Debug APK metadata confirms:
-  - `versionName = 1.12.11`
-  - `versionCode = 238`
-  - output `PaykiTodo-1.12.11-debug.apk`
+  - `versionName = 1.12.12`
+  - `versionCode = 239`
+  - output `PaykiTodo-1.12.12-debug.apk`
 
 ## Active Goal
 
-Active goal file:
+Latest active goal file:
 
 - `docs/goals/2026-05-20-paykitodo-outliner-ux-fix-goal.md`
 
 Goal status from code audit: implemented in code, with emulator runtime QA partially completed. The phone Planning Desk Outliner now has lighter note-like rows, root / child active input lines, existing-row Enter sibling input, edit / preview mode, simplified overflow, ordered bare-location parsing, leaf-only linked-item synchronization, and preview `⋯` routing to the existing official todo/event editor for full field configuration.
+
+## What Changed In The Latest 1.12.12 Patch
+
+1. Version metadata moved to `1.12.12 / versionCode 239` so Android can upgrade over an installed `1.12.11` debug build.
+2. This rebuild intentionally does not change database schema, reminder behavior, Planning Desk behavior, or user-data format.
+3. Latest debug APK path is `app/build/outputs/apk/debug/PaykiTodo-1.12.12-debug.apk`.
 
 ## What Changed In The Latest 1.12.11 Patch
 
@@ -137,6 +143,15 @@ Goal status from code audit: implemented in code, with emulator runtime QA parti
 
 ## Verification Completed
 
+Passed so far after the 1.12.12 rebuild:
+
+1. Version metadata moved to `1.12.12 / versionCode 239`.
+2. `./gradlew.bat :app:compileDebugKotlin`
+3. `./gradlew.bat :app:testDebugUnitTest`
+4. `git diff --check`
+5. `./gradlew.bat :app:assembleDebug`
+6. Debug APK metadata inspection: `versionName = 1.12.12`, `versionCode = 239`, output `PaykiTodo-1.12.12-debug.apk`
+
 Passed so far after the 1.12.11 patch:
 
 1. `./gradlew.bat :app:compileDebugKotlin`
@@ -212,7 +227,7 @@ No known code requirement from the active goal is intentionally left unimplement
 
 ## Git State Notes
 
-- Worktree should be clean after the 1.12.11 Outliner UX implementation and emulator-verification commits.
+- Worktree should be clean after the 1.12.12 version-bump rebuild commit.
 - Branch is ahead of `origin/main`; do not push without explicit user authorization.
 - `docs/goals/2026-05-20-paykitodo-outliner-ux-fix-goal.md` is tracked in Git and was checked for common secret markers before closing the goal.
 - Do not commit local signing material, APK outputs, API keys, tokens, or private Base URLs.

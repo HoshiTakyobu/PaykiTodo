@@ -132,7 +132,7 @@ interface TodoDao {
         AND canceled = 0
         AND countdownEnabled = 1
         AND (
-            (itemType = 'TODO' AND dueAtMillis != :noDueDateMillis AND dueAtMillis >= :minTargetMillis)
+            (itemType = 'TODO' AND hiddenFromBoard = 0 AND dueAtMillis != :noDueDateMillis AND dueAtMillis >= :minTargetMillis)
             OR (itemType = 'EVENT' AND startAtMillis IS NOT NULL AND startAtMillis >= :minTargetMillis)
         )
         ORDER BY COALESCE(startAtMillis, dueAtMillis) ASC, createdAtMillis ASC
@@ -210,6 +210,7 @@ interface TodoDao {
         """
         SELECT * FROM todo_items
         WHERE itemType = 'TODO'
+        AND hiddenFromBoard = 0
         AND completed = 1
         AND completedAtMillis IS NOT NULL
         AND completedAtMillis >= :startMillis
@@ -223,6 +224,7 @@ interface TodoDao {
         """
         SELECT * FROM todo_items
         WHERE itemType = 'TODO'
+        AND hiddenFromBoard = 0
         AND missed = 1
         AND dueAtMillis >= :startMillis
         AND dueAtMillis < :endMillis
@@ -235,6 +237,7 @@ interface TodoDao {
         """
         SELECT * FROM todo_items
         WHERE itemType = 'TODO'
+        AND hiddenFromBoard = 0
         AND completed = 0
         AND canceled = 0
         AND dueAtMillis != :noDueDateMillis
@@ -340,6 +343,7 @@ interface TodoDao {
         AND (
             (
                 itemType = 'TODO'
+                AND hiddenFromBoard = 0
                 AND (
                     missed = 1
                     OR dueAtMillis = :noDueDateMillis
@@ -355,7 +359,7 @@ interface TodoDao {
             OR (
                 countdownEnabled = 1
                 AND (
-                    (itemType = 'TODO' AND dueAtMillis != :noDueDateMillis AND dueAtMillis >= :boardStartMillis)
+                    (itemType = 'TODO' AND hiddenFromBoard = 0 AND dueAtMillis != :noDueDateMillis AND dueAtMillis >= :boardStartMillis)
                     OR (itemType = 'EVENT' AND startAtMillis IS NOT NULL AND startAtMillis >= :boardStartMillis)
                 )
             )

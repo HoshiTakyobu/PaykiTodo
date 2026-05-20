@@ -2,6 +2,7 @@ package com.example.todoalarm.data
 
 import androidx.room.Entity
 import androidx.room.Index
+import androidx.room.ColumnInfo
 import androidx.room.PrimaryKey
 import java.time.Instant
 import java.time.LocalDate
@@ -53,6 +54,8 @@ data class TodoItem(
     val location: String = "",
     val accentColorHex: String? = null,
     val countdownEnabled: Boolean = false,
+    @ColumnInfo(defaultValue = "0")
+    val hiddenFromBoard: Boolean = false,
     val checkInEnabled: Boolean = false,
     val totalCheckInMinutes: Int = 0,
     val reminderAtMillis: Long?,

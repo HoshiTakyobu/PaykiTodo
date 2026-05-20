@@ -24,6 +24,7 @@ import androidx.compose.material.icons.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.Edit
+import androidx.compose.material.icons.rounded.NotificationsActive
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ElevatedCard
@@ -343,12 +344,40 @@ private fun TitleRow(
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         CategoryChip(resolveTaskGroup(item, groups))
+        if (item.hiddenFromBoard) {
+            HiddenReminderChip()
+        }
         StrikeTitle(
             text = item.title,
             progress = progress,
             textColor = if (item.missed) Color(0xFFC62828) else MaterialTheme.colorScheme.onSurface,
             modifier = Modifier.weight(1f)
         )
+    }
+}
+
+@Composable
+private fun HiddenReminderChip() {
+    val tint = MaterialTheme.colorScheme.primary
+    Surface(shape = RoundedCornerShape(12.dp), color = tint.copy(alpha = 0.12f)) {
+        Row(
+            modifier = Modifier.padding(horizontal = 6.dp, vertical = 4.dp),
+            horizontalArrangement = Arrangement.spacedBy(3.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = Icons.Rounded.NotificationsActive,
+                contentDescription = null,
+                modifier = Modifier.size(13.dp),
+                tint = tint
+            )
+            Text(
+                text = "仅提醒",
+                color = tint,
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.SemiBold
+            )
+        }
     }
 }
 
@@ -530,6 +559,9 @@ internal fun TodoDetailsDialog(
                 TodoInfoRow(label = "DDL", value = formatLocalDateTime(reminderAtMillisToDateTime(item.dueAtMillis)))
             } else {
                 TodoInfoRow(label = "DDL", value = "未设置")
+            }
+            if (item.hiddenFromBoard) {
+                TodoInfoRow(label = "显示", value = "仅提醒，不在看板/日历显示")
             }
             if (showCreated) {
                 TodoInfoRow(label = "创建", value = formatLocalDateTime(reminderAtMillisToDateTime(item.createdAtMillis)))

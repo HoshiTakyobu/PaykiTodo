@@ -139,6 +139,7 @@ private fun RecurringTaskTemplate.toJson(): JSONObject {
         put("location", location)
         put("accentColorHex", accentColorHex)
         put("countdownEnabled", countdownEnabled)
+        put("hiddenFromBoard", hiddenFromBoard)
         put("allDay", allDay)
         put("groupId", groupId)
         put("dueHour", dueHour)
@@ -175,6 +176,7 @@ private fun TodoItem.toJson(): JSONObject {
         put("location", location)
         put("accentColorHex", accentColorHex)
         put("countdownEnabled", countdownEnabled)
+        put("hiddenFromBoard", hiddenFromBoard)
         put("checkInEnabled", checkInEnabled)
         put("totalCheckInMinutes", totalCheckInMinutes)
         put("reminderAtMillis", reminderAtMillis)
@@ -279,6 +281,7 @@ private fun PlanningNode.toJson(): JSONObject {
         put("linkedTodoId", linkedTodoId)
         put("linkedEndTodoId", linkedEndTodoId)
         put("isDraft", isDraft)
+        put("isNote", isNote)
         put("syncEnabled", syncEnabled)
         put("collapsed", collapsed)
         put("completed", completed)
@@ -369,6 +372,7 @@ private fun JSONArray?.toTemplates(): List<RecurringTaskTemplate> {
                     location = item.optString("location", ""),
                     accentColorHex = item.optStringOrNull("accentColorHex"),
                     countdownEnabled = item.optBoolean("countdownEnabled", false),
+                    hiddenFromBoard = item.optBoolean("hiddenFromBoard", false),
                     allDay = item.optBoolean("allDay", false),
                     groupId = item.optLong("groupId", 0L),
                     dueHour = item.optInt("dueHour"),
@@ -413,6 +417,7 @@ private fun JSONArray?.toTasks(): List<TodoItem> {
                     location = item.optString("location", ""),
                     accentColorHex = item.optStringOrNull("accentColorHex"),
                     countdownEnabled = item.optBoolean("countdownEnabled", false),
+                    hiddenFromBoard = item.optBoolean("hiddenFromBoard", false),
                     checkInEnabled = item.optBoolean("checkInEnabled", false),
                     totalCheckInMinutes = item.optInt("totalCheckInMinutes", 0),
                     reminderAtMillis = item.optLongOrNull("reminderAtMillis"),
@@ -560,6 +565,7 @@ private fun JSONArray?.toPlanningNodes(): List<PlanningNode> {
                     linkedTodoId = item.optLongOrNull("linkedTodoId"),
                     linkedEndTodoId = item.optLongOrNull("linkedEndTodoId"),
                     isDraft = item.optBoolean("isDraft", false),
+                    isNote = item.optBoolean("isNote", false),
                     syncEnabled = item.optBoolean("syncEnabled", true),
                     collapsed = item.optBoolean("collapsed", false),
                     completed = item.optBoolean("completed", false),

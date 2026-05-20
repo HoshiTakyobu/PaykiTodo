@@ -1,5 +1,16 @@
 # Changelog
 
+## v1.12.19
+
+- 收口 7 项运行问题修正：循环提醒调度失败不再拖垮启动，编辑 BottomSheet 禁止半屏收缩，倒数日 / 日程点击优先进入详情预览
+- 待办编辑器新增「仅提醒，不在看板/日历显示」开关；该类待办仍正常调度提醒并保留在待办页，但会从每日看板、今日看板 Widget、桌面端看板和 AI 日报/周报统计中排除
+- 循环待办模板保留「仅提醒」设置，后续自动展开的实例继承该设置；待办卡片和详情页显示「仅提醒」标记，便于在待办页管理
+- 规划台 Outliner 新增备注节点：以 `// ` 或 `> ` 开头的节点会存为备注样式，不发布为待办/日程，也不参与父项完成状态计算；预览三点菜单支持「标记为备注 / 取消备注」
+- 数据库升级到 `24`，新增 `todo_items.hiddenFromBoard`、`recurring_task_templates.hiddenFromBoard` 和 `planning_nodes.isNote`；JSON 备份/恢复与电脑同步 JSON 均保留这些字段，旧备份默认按 `false` 处理
+- 今日看板和独立倒数日 Widget 进一步压缩卡片/列表留白，提高小尺寸桌面组件的可见条目数量
+- 版本号升级到 `1.12.19` / `versionCode 246`
+- 验证：`./gradlew.bat :app:compileDebugKotlin`、`git diff --check`、`./gradlew.bat :app:assembleDebug` 通过；debug APK 元数据确认 `1.12.19 / 246`
+
 ## v1.12.18
 
 - 提升调试包版本号，确保 Android 在已安装 `1.12.17` 时把新 APK 识别为可升级安装包

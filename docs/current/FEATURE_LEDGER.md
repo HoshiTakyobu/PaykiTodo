@@ -11,6 +11,8 @@ This file tracks the product at a practical level for new coding sessions.
 - Todo editor shows title / DDL / group first for new todos and folds notes / reminder input / reminder delivery mode / recurrence / ring / vibration into 更多选项, auto-expanding when editing existing todos that use advanced state
 - Todo editor can choose reminder delivery mode between full-screen reminder and notification reminder; the selected mode is persisted for todos and recurring todo templates
 - Todo editor can mark a DDL-backed task as `倒数日`; the task then uses its DDL date as the countdown target and appears on board / desktop / widget countdown surfaces
+- Todo editor can mark a DDL-backed task as `仅提醒，不在看板/日历显示`; the task still schedules reminders and remains manageable in My Tasks, but is filtered out of the phone daily board, Android board widget, desktop board, countdown board queries, and AI daily/weekly todo statistics
+- recurring todo templates persist `hiddenFromBoard`, and newly replenished recurring instances inherit the reminder-only visibility setting
 - no-deadline todos; active no-DDL items are treated as `今日待办` across phone board, Android widget board query, desktop board, and desktop todo management
 - lightweight comma-based todo batch import with preview validation
 - todo batch-import DDL supports same-day clock input such as `16:30` / `16：30`, plus Planning Desk-style natural date forms such as `5.28`, `5月28日`, `明天`, and `周五`; date-only values default to `23:59`
@@ -31,7 +33,8 @@ This file tracks the product at a practical level for new coding sessions.
 - board todo block includes missed active todos, today's normal todos, and active no-DDL todos
 - board intentionally stays a read-only overview for todos, schedules, announcements, and countdown targets
 - board view can show today's todos and today's / tomorrow's schedule summary together
-- board can show a `倒数日` card for active countdown-enabled todos / events; todos count down to DDL times, events count down to event start times, exact-time expired targets are hidden, and tapping rows opens the corresponding todo / event editor
+- board can show a `倒数日` card for active countdown-enabled todos / events; todos count down to DDL times, events count down to event start times, exact-time expired targets are hidden, and tapping rows opens the corresponding todo / event preview first instead of jumping straight into an editor
+- board section title / empty-card areas navigate to the corresponding task or calendar surface while concrete todo / event rows keep their detail-preview behavior
 - board today's schedule hides timed events after they have ended
 - board currently running events can be visually highlighted with a gold outline and subtle glow
 - board greeting card supports compact collapse / expand behavior
@@ -65,6 +68,8 @@ This file tracks the product at a practical level for new coding sessions.
 - Planning Desk stores multiple Markdown planning documents in Room table `planning_notes`
 - default startup opens the last opened planning document; if none exists, the app creates an empty `我的规划`; examples stay in help/tutorial content instead of the editor itself
 - planning documents support create, open, rename, archive, and delete with confirmation on the phone UI; the phone document directory and desktop web Planning Desk both expose delete actions
+- Planning Desk Outliner nodes support note-only rows: text prefixed with `// ` or `> ` is stored as an `isNote` node, displayed with muted/italic styling, excluded from publish-to-todo/event behavior, and ignored when computing parent completion from children
+- Planning Desk node overflow actions can manually switch between task and note behavior with `标记为备注 / 取消备注`
 - phone Planning Desk currently defaults to stable raw Markdown / natural-text editing; `1.7.8` restores a manual Markdown preview that renders headings, task checkboxes, subtask indentation, tag pills, and `#imported` state pills while keeping raw edit as the startup default
 - phone editor mode remains a plain Markdown / natural-text editor with a fixed-height 56dp operation toolbar (预览 / 识别 / 文档列表 / 教程 / 快捷展开 / 更多) and a collapsible compact icon-style shortcut toolbar positioned above the editor only when needed
 - phone Planning Desk secondary actions (新建/重命名/使用说明/归档/删除) are in an overflow DropdownMenu; manual save button removed in favor of auto-save
@@ -171,6 +176,9 @@ This file tracks the product at a practical level for new coding sessions.
 ### Reminder System
 
 - `AlarmManager` based scheduling
+- reminder scheduling catches `setAlarmClock` / exact-alarm failures, records them as non-fatal diagnostics, and falls back to inexact scheduling where possible instead of crashing the app
+- startup reminder recovery is wrapped in a safe recovery path with `SafeStartupGuard`, so repeated early crashes skip reminder recovery and let the user open the app to manage data
+- recurring todo creation only expands an initial limited window and later replenishes future instances, reducing alarm burst size for long daily recurring tasks
 - todos and calendar events can store and schedule multiple configured reminder offsets
 - custom snooze input can parse either minutes or a concrete future time, has no 180-minute cap, and only changes the next reminder rather than silently moving DDL
 - todo reminder screens expose an explicit `DDL 推迟` action; its input accepts positive minute increments, same-date clock targets, and full date-time targets, and rejects any target that is not later than the current DDL
@@ -206,6 +214,7 @@ This file tracks the product at a practical level for new coding sessions.
 - Android launcher exposes a PaykiTodo `今日看板` widget through `TodoWidgetProvider`
 - widget displays active Planning Desk announcements, today todo block, and a combined today/tomorrow schedule board closer to the in-app daily board
 - widget uses RemoteViews `ListView`; rows are adaptive-height, split into greeting / section / empty-card / todo-card / schedule-card / announcement-card types, and no longer limited to five todos, so resizing the launcher widget reveals more board content
+- widget board and countdown layouts use tighter list/card padding for small launcher sizes while keeping readable text and row click targets
 - widget provider declares horizontal / vertical resize mode plus min resize dimensions for better launcher compatibility
 - widget day/night colors are resource-backed, with daily-board background art, dark-mode scrims, and text colors for launcher readability
 - widget refresh uses a board-range Room query rather than loading all historical todos, and duplicate `onReceive` update routing has been removed
@@ -237,6 +246,7 @@ This file tracks the product at a practical level for new coding sessions.
 - Room-based local storage
 - JSON import / export
 - backup / restore includes `todoGroupTags`; old backups without explicit multi-group tags are restored by backfilling each todo's original `groupId`
+- backup / restore includes `hiddenFromBoard` for todos and recurring templates plus `isNote` for Planning Desk nodes; old backups default the new fields to `false`
 - backup / restore includes `eventCheckIns`, and todo/event rows preserve `checkInEnabled` plus `totalCheckInMinutes`
 - backup / restore preserves event check-in behavior preferences for automatic checkout and completion statistics
 - auto-backup related support

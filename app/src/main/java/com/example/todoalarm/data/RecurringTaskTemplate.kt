@@ -2,6 +2,7 @@ package com.example.todoalarm.data
 
 import androidx.room.Entity
 import androidx.room.Index
+import androidx.room.ColumnInfo
 import androidx.room.PrimaryKey
 
 @Entity(
@@ -17,6 +18,8 @@ data class RecurringTaskTemplate(
     val location: String = "",
     val accentColorHex: String? = null,
     val countdownEnabled: Boolean = false,
+    @ColumnInfo(defaultValue = "0")
+    val hiddenFromBoard: Boolean = false,
     val allDay: Boolean = false,
     val groupId: Long,
     val dueHour: Int,

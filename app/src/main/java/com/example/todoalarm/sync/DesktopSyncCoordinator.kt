@@ -284,6 +284,7 @@ class DesktopSyncCoordinator(
             vibrateEnabled = json.optBoolean("vibrateEnabled", true),
             reminderDeliveryMode = com.example.todoalarm.data.ReminderDeliveryMode.fromStorage(json.optString("reminderDeliveryMode")),
             countdownEnabled = json.optBoolean("countdownEnabled", false),
+            hiddenFromBoard = json.optBoolean("hiddenFromBoard", false),
             recurrence = recurrence,
             reminderOffsetsMinutes = reminderOffsets,
             groupIds = groupIds
@@ -318,6 +319,7 @@ class DesktopSyncCoordinator(
                 json.optString("reminderDeliveryMode", original.reminderDeliveryMode)
             ),
             countdownEnabled = json.optBoolean("countdownEnabled", original.countdownEnabled),
+            hiddenFromBoard = json.optBoolean("hiddenFromBoard", original.hiddenFromBoard),
             recurrence = recurrence,
             reminderOffsetsMinutes = reminderOffsets,
             groupIds = groupIds
@@ -544,6 +546,7 @@ class DesktopSyncCoordinator(
             endAt = parsePlanningNodeDateTime(json.optStringOrNull("endAt")),
             location = json.optStringOrNull("location")?.trim(),
             isDraft = json.optBoolean("isDraft", true),
+            isNote = json.optBoolean("isNote", false),
             syncEnabled = json.optBoolean("syncEnabled", true),
             collapsed = json.optBoolean("collapsed", false),
             completed = json.optBoolean("completed", false)
@@ -574,6 +577,7 @@ class DesktopSyncCoordinator(
             startAt = if (json.has("startAt")) parsePlanningNodeDateTime(json.optStringOrNull("startAt")) else existing.startAtMillis?.toPlanningNodeDateTime(),
             endAt = if (json.has("endAt")) parsePlanningNodeDateTime(json.optStringOrNull("endAt")) else existing.endAtMillis?.toPlanningNodeDateTime(),
             location = if (json.has("location")) json.optStringOrNull("location")?.trim() else existing.location,
+            isNote = json.optBoolean("isNote", existing.isNote),
             syncEnabled = json.optBoolean("syncEnabled", existing.syncEnabled),
             collapsed = json.optBoolean("collapsed", existing.collapsed),
             completed = json.optBoolean("completed", existing.completed)
@@ -867,6 +871,7 @@ class DesktopSyncCoordinator(
         vibrateEnabled: Boolean,
         reminderDeliveryMode: com.example.todoalarm.data.ReminderDeliveryMode,
         countdownEnabled: Boolean,
+        hiddenFromBoard: Boolean,
         recurrence: RecurrenceConfig,
         reminderOffsetsMinutes: List<Int>,
         groupIds: List<Long> = emptyList()
@@ -885,6 +890,7 @@ class DesktopSyncCoordinator(
             vibrateEnabled = vibrateEnabled,
             reminderDeliveryMode = reminderDeliveryMode,
             countdownEnabled = countdownEnabled,
+            hiddenFromBoard = hiddenFromBoard && dueAt != null,
             recurrence = recurrence,
             reminderOffsetsMinutes = reminderOffsetsMinutes,
             groupIds = groupIds
@@ -1112,6 +1118,7 @@ private fun PlanningNode.toPlanningNodeJson(): JSONObject {
         .put("linkedTodoId", linkedTodoId)
         .put("linkedEndTodoId", linkedEndTodoId)
         .put("isDraft", isDraft)
+        .put("isNote", isNote)
         .put("syncEnabled", syncEnabled)
         .put("collapsed", collapsed)
         .put("completed", completed)

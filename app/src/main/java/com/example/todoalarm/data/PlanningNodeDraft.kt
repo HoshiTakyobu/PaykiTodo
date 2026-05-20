@@ -24,6 +24,7 @@ data class PlanningNodeDraft(
     val countdownEnabled: Boolean = false,
     val checkInEnabled: Boolean = false,
     val isDraft: Boolean = true,
+    val isNote: Boolean = false,
     val syncEnabled: Boolean = true,
     val collapsed: Boolean = false,
     val completed: Boolean = false
@@ -37,6 +38,7 @@ data class PlanningNodeEdit(
     val startAt: LocalDateTime?,
     val endAt: LocalDateTime?,
     val location: String?,
+    val isNote: Boolean,
     val syncEnabled: Boolean,
     val collapsed: Boolean,
     val completed: Boolean

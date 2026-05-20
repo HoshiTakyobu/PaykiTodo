@@ -6,20 +6,34 @@
 - Branch: `main`
 - Do not push to GitHub unless the user explicitly authorizes it.
 - Current code version:
-  - `versionName = 1.12.18`
-  - `versionCode = 245`
-- Latest debug APK built in this round:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.12.18-debug.apk`
-- Debug APK metadata confirms:
-  - `versionName = 1.12.18`
-  - `versionCode = 245`
-  - output `PaykiTodo-1.12.18-debug.apk`
+  - `versionName = 1.12.19`
+  - `versionCode = 246`
+- Latest debug APK target in this round:
+  - `app/build/outputs/apk/debug/PaykiTodo-1.12.19-debug.apk`
+- Debug APK metadata inspection:
+  - `versionName = 1.12.19`
+  - `versionCode = 246`
+  - output `PaykiTodo-1.12.19-debug.apk`
 
 ## Active Goal
 
-Active goal: higher debug build for Android upgrade installation.
+Active goal: complete `docs/goals/2026-05-20-paykitodo-7-runtime-issues-goal.md`.
 
-Latest status: version metadata has moved to `1.12.18 / versionCode 245` so Android can upgrade over an installed `1.12.17` debug APK. The working tree already contains database `24` and in-progress Planning Desk / hidden-board todo changes, so this build is not metadata-only.
+Latest status: the code line is `1.12.19 / versionCode 246` and contains the 7 runtime-issue fixes: recurring reminder crash hardening, countdown/detail preview routing, Planning Desk note nodes, compact widgets, reminder-only todos, board blank-area navigation, and full-height editor BottomSheets. Do not push to GitHub unless the user explicitly authorizes it.
+
+## What Changed In The Latest 1.12.19 Patch
+
+1. Recurring reminder scheduling catches exact-alarm failures and falls back without crashing; startup reminder recovery is guarded by SafeStartupGuard and wrapped in non-fatal error handling.
+2. Recurring todo creation/recovery only materializes a limited upcoming window and replenishes future instances later, avoiding a 90-day alarm burst.
+3. Daily-board countdown/todo/event interactions now open detail previews first; concrete schedule rows no longer jump directly into the editor from the board.
+4. Board section title / empty-card clicks navigate to My Tasks or Calendar while item rows keep their own preview behavior.
+5. Editor BottomSheets skip partial expansion and protect unsaved changes through confirmation.
+6. Widget board/countdown layouts use tighter padding and list spacing.
+7. Todo editor supports `仅提醒，不在看板/日历显示`; recurring templates inherit it, reminders still schedule, My Tasks shows a `仅提醒` chip, and board/widget/desktop-board/AI-report todo queries filter it out.
+8. Planning Desk supports note nodes with `// ` / `> `, muted/italic note styling, manual note toggle, no linked todo/event creation, and completion calculations that ignore note children.
+9. Database version is `24`; backup/restore and desktop-sync JSON preserve `hiddenFromBoard` and `isNote`.
+10. Version metadata moved to `1.12.19 / versionCode 246`; latest debug APK path is `app/build/outputs/apk/debug/PaykiTodo-1.12.19-debug.apk`.
+11. Verification: `./gradlew.bat :app:assembleDebug` output `BUILD SUCCESSFUL`; `git diff --check` passed; APK metadata confirms `1.12.19 / 246`.
 
 ## What Changed In The Latest 1.12.18 Patch
 

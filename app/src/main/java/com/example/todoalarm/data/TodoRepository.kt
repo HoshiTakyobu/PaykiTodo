@@ -198,6 +198,7 @@ class TodoRepository(
         val childrenByParent = allNodes.groupBy { it.parentNodeId }
         allNodes.forEach { node ->
             if (node.isDraft) return@forEach
+            if (node.isNote) return@forEach
             if (childrenByParent[node.id].orEmpty().isNotEmpty()) {
                 val deleted = demotePlanningNodeToStructureIfNeeded(node, System.currentTimeMillis())
                 deleteItemsByIds(deleted.map { it.id })
@@ -220,6 +221,7 @@ class TodoRepository(
                     startAt = node.startAtMillis?.toPlanningLocalDateTime(),
                     endAt = node.endAtMillis?.toPlanningLocalDateTime(),
                     location = node.location,
+                    isNote = node.isNote,
                     syncEnabled = node.syncEnabled,
                     collapsed = node.collapsed,
                     completed = node.completed
@@ -239,9 +241,10 @@ class TodoRepository(
         val parentId = draft.parentNodeId?.takeIf { parentId ->
             todoDao.getPlanningNode(parentId)?.noteId == note.id
         }
+        val noteState = planningNoteState(draft.text, draft.isNote)
         val resolved = resolvePlanningNodeDraft(
             note = note,
-            text = draft.text,
+            text = noteState.text,
             notes = draft.notes,
             groupId = draft.groupId,
             groupName = draft.groupName,
@@ -264,7 +267,7 @@ class TodoRepository(
             )
         }
         val now = System.currentTimeMillis()
-        val effectiveSyncEnabled = draft.syncEnabled && !draft.isDraft
+        val effectiveSyncEnabled = draft.syncEnabled && !draft.isDraft && !noteState.isNote
         val linked = if (effectiveSyncEnabled) {
             createLinkedItemForPlanningNode(resolved, completed = draft.completed, now = now)
         } else {
@@ -290,7 +293,8 @@ class TodoRepository(
             linkedTodoId = linked?.id,
             linkedEndTodoId = endTodo?.id,
             isDraft = draft.isDraft,
-            syncEnabled = draft.syncEnabled,
+            isNote = noteState.isNote,
+            syncEnabled = draft.syncEnabled && !noteState.isNote,
             collapsed = draft.collapsed,
             completed = draft.completed,
             completedAtMillis = if (draft.completed) now else null
@@ -321,11 +325,12 @@ class TodoRepository(
         }
         val allNodesBefore = todoDao.getPlanningNodesForNote(note.id)
         val hasChildren = allNodesBefore.any { it.parentNodeId == existing.id }
-        val desiredSyncEnabled = edit.syncEnabled && !hasChildren
+        val noteState = planningNoteState(edit.text, edit.isNote)
+        val desiredSyncEnabled = edit.syncEnabled && !hasChildren && !noteState.isNote
         val effectiveSyncEnabled = desiredSyncEnabled && !existing.isDraft
         val resolved = resolvePlanningNodeDraft(
             note = note,
-            text = edit.text,
+            text = noteState.text,
             dueAt = edit.dueAt,
             startAt = edit.startAt,
             endAt = edit.endAt,
@@ -357,6 +362,7 @@ class TodoRepository(
             location = resolved.location,
             linkedTodoId = sync.linkedItem?.id,
             linkedEndTodoId = endTodoSync.linkedItem?.id,
+            isNote = noteState.isNote,
             syncEnabled = desiredSyncEnabled,
             collapsed = edit.collapsed,
             completed = edit.completed,
@@ -393,6 +399,19 @@ class TodoRepository(
         createEventEndTodo: Boolean = false
     ): PlanningNodeChangeResult? {
         val existing = todoDao.getPlanningNode(nodeId) ?: return null
+        if (existing.isNote) {
+            val updated = existing.copy(
+                isDraft = false,
+                syncEnabled = false,
+                linkedTodoId = null,
+                linkedEndTodoId = null,
+                updatedAtMillis = System.currentTimeMillis()
+            )
+            todoDao.updatePlanningNode(updated)
+            updatePlanningNoteNodeLegacyMarkdown(updated.noteId)
+            notifyItemsChanged()
+            return PlanningNodeChangeResult(node = updated, linkedItem = null)
+        }
         if (!existing.isDraft) {
             val linked = existing.linkedTodoId?.let { todoDao.getById(it) }
             return PlanningNodeChangeResult(node = existing, linkedItem = linked)
@@ -409,7 +428,7 @@ class TodoRepository(
             location = existing.location
         ) ?: return null
         val now = System.currentTimeMillis()
-        val effectiveSyncEnabled = existing.syncEnabled && !hasChildren
+        val effectiveSyncEnabled = existing.syncEnabled && !hasChildren && !existing.isNote
         val previousLinked = existing.linkedTodoId?.let { todoDao.getById(it) }
         val previousEndTodo = existing.linkedEndTodoId?.let { todoDao.getById(it) }
         val sync = if (effectiveSyncEnabled) {
@@ -477,6 +496,9 @@ class TodoRepository(
             planningNodeSubtree(node, allNodes)
         } else {
             listOf(node)
+        }.filterNot { it.isNote }
+        if (targetNodes.isEmpty()) {
+            return PlanningNodeChangeResult(node = node, linkedItem = null, affectedLinkedItems = emptyList())
         }
         val updatedNodes = targetNodes.map { target ->
             target.copy(
@@ -659,6 +681,7 @@ class TodoRepository(
                     text = line.text,
                     sortOrder = sortOrder,
                     syncEnabled = line.syncEnabled,
+                    isNote = line.isNote,
                     completed = line.completed
                 )
             ) ?: return@forEach
@@ -1990,6 +2013,7 @@ class TodoRepository(
                     vibrateEnabled = previous.vibrateEnabled,
                     reminderDeliveryMode = previous.reminderDeliveryModeEnum,
                     countdownEnabled = previous.countdownEnabled && resolved.dueAt != null,
+                    hiddenFromBoard = previous.hiddenFromBoard,
                     reminderOffsetsMinutes = if (resolved.dueAt == null) emptyList() else previous.configuredReminderOffsetsMinutes.ifEmpty { listOf(DEFAULT_PLANNING_REMINDER_MINUTES) },
                     groupIds = groupIds
                 )
@@ -2063,6 +2087,7 @@ class TodoRepository(
             vibrateEnabled = previous.vibrateEnabled,
             reminderDeliveryMode = previous.reminderDeliveryModeEnum,
             countdownEnabled = previous.countdownEnabled,
+            hiddenFromBoard = previous.hiddenFromBoard,
             reminderOffsetsMinutes = previous.configuredReminderOffsetsMinutes.ifEmpty { listOf(DEFAULT_PLANNING_REMINDER_MINUTES) },
             groupIds = groupIds
         )
@@ -2184,6 +2209,16 @@ class TodoRepository(
         }
     }
 
+    private fun planningNoteState(text: String, explicitIsNote: Boolean): PlanningNodeNoteState {
+        val cleaned = cleanPlanningNodeText(text)
+        val marker = Regex("^(//|>)\\s+(.+)$").matchEntire(cleaned)
+        return if (marker != null) {
+            PlanningNodeNoteState(text = marker.groupValues[2].trim(), isNote = true)
+        } else {
+            PlanningNodeNoteState(text = cleaned, isNote = explicitIsNote)
+        }
+    }
+
     private suspend fun updateLinkedItemCompletion(
         itemId: Long,
         completed: Boolean,
@@ -2221,11 +2256,12 @@ class TodoRepository(
         while (parentId != null) {
             val parent = nodesById[parentId] ?: break
             val children = childrenByParent[parent.id].orEmpty()
-            if (children.isEmpty()) {
+            val effectiveChildren = children.filterNot { it.isNote }
+            if (effectiveChildren.isEmpty()) {
                 parentId = parent.parentNodeId
                 continue
             }
-            val allChildrenCompleted = children.all { child ->
+            val allChildrenCompleted = effectiveChildren.all { child ->
                 nodesById[child.id]?.completed ?: child.completed
             }
             val nextParent = parent.copy(
@@ -2269,7 +2305,9 @@ class TodoRepository(
             .mapValues { (_, children) -> children.sortedWith(compareBy<PlanningNode> { it.sortOrder }.thenBy { it.id }) }
         val lines = mutableListOf<String>()
         fun appendNode(node: PlanningNode, depth: Int) {
-            if (!node.syncEnabled) {
+            if (node.isNote) {
+                lines += "  ".repeat(depth) + "// " + node.text.trim()
+            } else if (!node.syncEnabled) {
                 lines += "#".repeat((depth + 1).coerceIn(1, 6)) + " " + node.text.trim()
             } else {
                 val prefix = "  ".repeat(depth) + if (node.completed) "- [x] " else "- [ ] "
@@ -2317,6 +2355,7 @@ class TodoRepository(
                         depth = (leadingSpaces / 2).coerceAtLeast(0),
                         text = checkbox.groupValues[2].replace(Regex("\\s+#imported(?=\\s|$)"), "").trim(),
                         syncEnabled = true,
+                        isNote = false,
                         completed = checkbox.groupValues[1].equals("x", ignoreCase = true)
                     )
                 }
@@ -2326,6 +2365,17 @@ class TodoRepository(
                         depth = (trimmed.takeWhile { it == '#' }.length - 1).coerceAtLeast(0),
                         text = heading.groupValues[1].replace(Regex("\\s+#imported(?=\\s|$)"), "").trim(),
                         syncEnabled = false,
+                        isNote = false,
+                        completed = false
+                    )
+                }
+                val note = Regex("^(//|>)\\s+(.+)$").matchEntire(trimmed)
+                if (note != null) {
+                    return@mapNotNull PlanningMarkdownImportLine(
+                        depth = (leadingSpaces / 2).coerceAtLeast(0),
+                        text = note.groupValues[2].replace(Regex("\\s+#imported(?=\\s|$)"), "").trim(),
+                        syncEnabled = false,
+                        isNote = true,
                         completed = false
                     )
                 }
@@ -2334,6 +2384,7 @@ class TodoRepository(
                     depth = (leadingSpaces / 2).coerceAtLeast(0),
                     text = (bullet?.groupValues?.getOrNull(1) ?: trimmed).replace(Regex("\\s+#imported(?=\\s|$)"), "").trim(),
                     syncEnabled = true,
+                    isNote = false,
                     completed = false
                 )
             }
@@ -2373,6 +2424,11 @@ class TodoRepository(
         val deletedLinkedItem: TodoItem?
     )
 
+    private data class PlanningNodeNoteState(
+        val text: String,
+        val isNote: Boolean
+    )
+
     private fun PlanningNode.linkedItemIds(): List<Long> {
         return listOfNotNull(linkedTodoId, linkedEndTodoId)
     }
@@ -2381,6 +2437,7 @@ class TodoRepository(
         val depth: Int,
         val text: String,
         val syncEnabled: Boolean,
+        val isNote: Boolean,
         val completed: Boolean
     )
 
@@ -3039,6 +3096,7 @@ class TodoRepository(
             location = "",
             accentColorHex = null,
             countdownEnabled = draft.countdownEnabled && draft.dueAt != null,
+            hiddenFromBoard = draft.hiddenFromBoard,
             reminderAtMillis = reminderAtMillis,
             reminderOffsetsCsv = reminderOffsetsCsv,
             reminderEnabled = normalizedOffsets.isNotEmpty(),
@@ -3207,6 +3265,7 @@ class TodoRepository(
             location = "",
             accentColorHex = null,
             countdownEnabled = draft.countdownEnabled,
+            hiddenFromBoard = draft.hiddenFromBoard,
             allDay = false,
             groupId = draft.groupId,
             dueHour = dueAt.hour,
@@ -3424,6 +3483,7 @@ class TodoRepository(
                         vibrateEnabled = template.vibrateEnabled,
                         reminderDeliveryMode = ReminderDeliveryMode.fromStorage(template.reminderDeliveryMode),
                         countdownEnabled = template.countdownEnabled,
+                        hiddenFromBoard = template.hiddenFromBoard,
                         recurrence = template.toRecurrenceConfig(),
                         reminderOffsetsMinutes = offsets,
                         groupIds = listOf(template.groupId)

@@ -824,7 +824,7 @@ internal fun DashboardBody(
                             todayCollapsed = boardTodayEventsCollapsed,
                             tomorrowCollapsed = boardTomorrowEventsCollapsed,
                             onToggleTomorrow = { boardTomorrowEventsCollapsed = !boardTomorrowEventsCollapsed },
-                            onOpenEvent = onEditCalendarEvent,
+                            onOpenEvent = onPreviewCalendarEvent,
                             onGetEventCheckIns = onGetEventCheckIns,
                             onLaunchCheckIn = onLaunchCheckIn,
                             onNavigatePlanning = onNavigatePlanning,

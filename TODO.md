@@ -4,10 +4,10 @@
 
 ### In Progress
 
-- Verify version `1.12.16` on a real Android device: it should install over `1.12.15` as a normal upgrade while preserving the existing `1.12.15` behavior baseline.
-- Verify version `1.12.16` in a real desktop browser against live phone data after installing the new debug APK.
-- Keep `README.md`, `CHANGELOG.md`, Wiki, in-app help sheets, desktop-web help, and current-state docs aligned with version `1.12.16`.
-- Keep the archived `docs/goals/2026-05-20-paykitodo-outliner-ux-fix-goal.md` as historical evidence for the completed Outliner UX goal.
+- Verify version `1.12.19` on a real Android device: it should install over `1.12.18` as a normal debug upgrade and cover the 7 runtime-issue fixes from `docs/goals/2026-05-20-paykitodo-7-runtime-issues-goal.md`.
+- Device-test the severe UX fixes that cannot be fully proven by static/build checks: 90-day recurring reminder creation, BottomSheet keyboard behavior, board/widget preview routing, widget compactness, reminder-only todo visibility, and Planning Desk note-node behavior.
+- Keep `README.md`, `CHANGELOG.md`, Wiki, in-app help sheets, desktop-web help, and current-state docs aligned with version `1.12.19`.
+- Keep archived `docs/goals/` files as historical evidence for completed goal rounds.
 - Continue Planning Desk usability polish without expanding into Gantt, AI auto-planning, CRDT, or complex project trees.
 
 ### Needs Verification

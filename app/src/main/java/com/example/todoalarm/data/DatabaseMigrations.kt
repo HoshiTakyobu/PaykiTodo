@@ -403,6 +403,13 @@ object DatabaseMigrations {
         }
     }
 
+    val MIGRATION_23_24 = object : Migration(23, 24) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            ensureHiddenFromBoardColumns(db)
+            ensurePlanningNoteColumn(db)
+        }
+    }
+
     private fun rebuildPlanningNotesTable(db: SupportSQLiteDatabase) {
         db.execSQL("DROP TABLE IF EXISTS `planning_notes_room_expected`")
         createPlanningNotesTable(db, "planning_notes_room_expected")
@@ -508,6 +515,15 @@ object DatabaseMigrations {
             ON `todo_items` (`completed`, `canceled`, `countdownEnabled`, `itemType`, `dueAtMillis`, `startAtMillis`)
             """.trimIndent()
         )
+    }
+
+    private fun ensureHiddenFromBoardColumns(db: SupportSQLiteDatabase) {
+        if (tableExists(db, "todo_items") && !tableHasColumns(db, "todo_items", listOf("hiddenFromBoard"))) {
+            db.execSQL("ALTER TABLE `todo_items` ADD COLUMN `hiddenFromBoard` INTEGER NOT NULL DEFAULT 0")
+        }
+        if (tableExists(db, "recurring_task_templates") && !tableHasColumns(db, "recurring_task_templates", listOf("hiddenFromBoard"))) {
+            db.execSQL("ALTER TABLE `recurring_task_templates` ADD COLUMN `hiddenFromBoard` INTEGER NOT NULL DEFAULT 0")
+        }
     }
 
     private fun ensureEventCheckInTable(db: SupportSQLiteDatabase) {
@@ -632,6 +648,7 @@ object DatabaseMigrations {
                 `linkedTodoId` INTEGER,
                 `linkedEndTodoId` INTEGER,
                 `isDraft` INTEGER NOT NULL DEFAULT 0,
+                `isNote` INTEGER NOT NULL DEFAULT 0,
                 `syncEnabled` INTEGER NOT NULL DEFAULT 1,
                 `collapsed` INTEGER NOT NULL DEFAULT 0,
                 `completed` INTEGER NOT NULL DEFAULT 0,
@@ -649,6 +666,7 @@ object DatabaseMigrations {
         ensurePlanningEndTodoColumn(db)
         ensurePlanningSyncEnabledColumn(db)
         ensurePlanningDraftColumn(db)
+        ensurePlanningNoteColumn(db)
     }
 
     private fun ensurePlanningEndTodoColumn(db: SupportSQLiteDatabase) {
@@ -670,6 +688,13 @@ object DatabaseMigrations {
         if (!tableExists(db, "planning_nodes")) return
         if (!tableHasColumns(db, "planning_nodes", listOf("isDraft"))) {
             db.execSQL("ALTER TABLE `planning_nodes` ADD COLUMN `isDraft` INTEGER NOT NULL DEFAULT 0")
+        }
+    }
+
+    private fun ensurePlanningNoteColumn(db: SupportSQLiteDatabase) {
+        if (!tableExists(db, "planning_nodes")) return
+        if (!tableHasColumns(db, "planning_nodes", listOf("isNote"))) {
+            db.execSQL("ALTER TABLE `planning_nodes` ADD COLUMN `isNote` INTEGER NOT NULL DEFAULT 0")
         }
     }
 
@@ -896,8 +921,8 @@ object DatabaseMigrations {
             INSERT INTO `planning_nodes` (
                 `noteId`, `parentNodeId`, `sortOrder`, `text`, `createdAtMillis`, `updatedAtMillis`,
                 `startAtMillis`, `endAtMillis`, `dueAtMillis`, `location`, `linkedTodoId`,
-                `syncEnabled`, `collapsed`, `completed`, `completedAtMillis`
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?)
+                `syncEnabled`, `isNote`, `collapsed`, `completed`, `completedAtMillis`
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, ?, ?)
             """.trimIndent(),
             arrayOf(
                 noteId,

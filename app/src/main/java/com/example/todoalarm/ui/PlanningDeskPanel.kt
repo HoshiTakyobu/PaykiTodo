@@ -102,6 +102,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.ImeAction
@@ -1256,6 +1257,15 @@ private fun PlanningOutlineEditor(
                             onToggleSync = {
                                 onUpdateNode(node, node.toPlanningNodeEdit(syncEnabled = !node.syncEnabled))
                             },
+                            onToggleNote = {
+                                onUpdateNode(
+                                    node,
+                                    node.toPlanningNodeEdit(
+                                        isNote = !node.isNote,
+                                        syncEnabled = node.isNote
+                                    )
+                                )
+                            },
                             onOpenLinkedItem = {
                                 node.linkedTodoId?.let(onOpenLinkedItem)
                             },
@@ -1558,6 +1568,7 @@ private fun PlanningOutlineRow(
     onUpdateTime: (LocalDateTime?, LocalDateTime?, LocalDateTime?) -> Unit,
     onUpdateLocation: (String?) -> Unit,
     onToggleSync: () -> Unit,
+    onToggleNote: () -> Unit,
     onOpenLinkedItem: () -> Unit,
     onRequestTime: () -> Unit,
     onRequestLocation: () -> Unit,
@@ -1575,10 +1586,10 @@ private fun PlanningOutlineRow(
     var editCommitHandled by remember(node.id, editing) { mutableStateOf(false) }
     val chipText = remember(node) { planningNodeMetaText(node) }
     val childToggleExpanded = if (hasChildren) !node.collapsed else childInputVisible
-    val textColor = if (node.completed) {
-        MaterialTheme.colorScheme.onSurface
-    } else {
-        MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.78f)
+    val textColor = when {
+        node.isNote -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.58f)
+        node.completed -> MaterialTheme.colorScheme.onSurface
+        else -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.78f)
     }
     LaunchedEffect(editing, previewMode) {
         if (editing && !previewMode) {
@@ -1622,19 +1633,33 @@ private fun PlanningOutlineRow(
                     tint = MaterialTheme.colorScheme.outline
                 )
             }
-            IconButton(
-                modifier = Modifier.size(32.dp),
-                onClick = onToggle
-            ) {
-                Icon(
-                    imageVector = if (node.completed) Icons.Rounded.CheckCircle else Icons.Rounded.RadioButtonUnchecked,
-                    contentDescription = if (node.completed) "标记未完成" else "完成",
-                    tint = when {
-                        node.completed -> MaterialTheme.colorScheme.onSurface
-                        node.isDraft -> MaterialTheme.colorScheme.outline.copy(alpha = 0.48f)
-                        else -> MaterialTheme.colorScheme.outline
-                    }
-                )
+            if (node.isNote) {
+                Box(
+                    modifier = Modifier.size(32.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "//",
+                        color = MaterialTheme.colorScheme.outline.copy(alpha = 0.7f),
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            } else {
+                IconButton(
+                    modifier = Modifier.size(32.dp),
+                    onClick = onToggle
+                ) {
+                    Icon(
+                        imageVector = if (node.completed) Icons.Rounded.CheckCircle else Icons.Rounded.RadioButtonUnchecked,
+                        contentDescription = if (node.completed) "标记未完成" else "完成",
+                        tint = when {
+                            node.completed -> MaterialTheme.colorScheme.onSurface
+                            node.isDraft -> MaterialTheme.colorScheme.outline.copy(alpha = 0.48f)
+                            else -> MaterialTheme.colorScheme.outline
+                        }
+                    )
+                }
             }
             val textColumnModifier = if (!previewMode && !editing) {
                 Modifier
@@ -1703,6 +1728,7 @@ private fun PlanningOutlineRow(
                             },
                         textStyle = MaterialTheme.typography.bodyLarge.copy(
                             color = textColor,
+                            fontStyle = if (node.isNote) FontStyle.Italic else FontStyle.Normal,
                             textDecoration = if (node.completed) TextDecoration.LineThrough else TextDecoration.None
                         ),
                         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
@@ -1716,6 +1742,7 @@ private fun PlanningOutlineRow(
                         modifier = Modifier.fillMaxWidth(),
                         style = MaterialTheme.typography.bodyLarge.copy(
                             color = textColor,
+                            fontStyle = if (node.isNote) FontStyle.Italic else FontStyle.Normal,
                             textDecoration = if (node.completed) TextDecoration.LineThrough else TextDecoration.None
                         ),
                         maxLines = 3,
@@ -1730,7 +1757,7 @@ private fun PlanningOutlineRow(
                     )
                 }
             }
-            if (node.isDraft) {
+            if (node.isDraft && !node.isNote) {
                 IconButton(
                     modifier = Modifier.size(34.dp),
                     onClick = onPublish
@@ -1788,6 +1815,13 @@ private fun PlanningOutlineRow(
                                 }
                             )
                         }
+                        DropdownMenuItem(
+                            text = { Text(if (node.isNote) "取消备注" else "标记为备注") },
+                            onClick = {
+                                actionMenuExpanded = false
+                                onToggleNote()
+                            }
+                        )
                         DropdownMenuItem(
                             text = { Text("删除") },
                             onClick = {
@@ -4002,6 +4036,7 @@ private fun PlanningNode.toPlanningNodeEdit(
     startAt: LocalDateTime? = startAtMillis?.toPlanningNodeLocalDateTime(),
     endAt: LocalDateTime? = endAtMillis?.toPlanningNodeLocalDateTime(),
     location: String? = this.location,
+    isNote: Boolean = this.isNote,
     syncEnabled: Boolean = this.syncEnabled,
     collapsed: Boolean = this.collapsed,
     completed: Boolean = this.completed
@@ -4014,6 +4049,7 @@ private fun PlanningNode.toPlanningNodeEdit(
         startAt = startAt,
         endAt = endAt,
         location = location,
+        isNote = isNote,
         syncEnabled = syncEnabled,
         collapsed = collapsed,
         completed = completed
@@ -4023,6 +4059,9 @@ private fun PlanningNode.toPlanningNodeEdit(
 private fun planningNodeMetaText(node: PlanningNode): String {
     val location = node.location?.trim().orEmpty()
     val draft = "草稿".takeIf { node.isDraft }
+    if (node.isNote) {
+        return listOf(draft, "备注", location.takeIf { it.isNotBlank() }).filterNotNull().joinToString(" · ")
+    }
     if (!node.syncEnabled) {
         return listOf(draft, "结构标题", location.takeIf { it.isNotBlank() }).filterNotNull().joinToString(" · ")
     }

@@ -132,6 +132,9 @@ fun TodoEditorDialog(
     var countdownEnabled by remember(initialTodo?.id) {
         mutableStateOf(initialTodo?.countdownEnabled == true)
     }
+    var hiddenFromBoard by remember(initialTodo?.id) {
+        mutableStateOf(initialTodo?.hiddenFromBoard == true)
+    }
     var recurringEnabled by remember(initialTodo?.id) { mutableStateOf(initialTodo?.isRecurring == true) }
     var recurrenceType by remember(initialTodo?.id) {
         mutableStateOf(initialTodo?.recurrenceTypeEnum ?: RecurrenceType.DAILY)
@@ -171,6 +174,7 @@ fun TodoEditorDialog(
                 initialTodo.configuredReminderOffsetsMinutes.joinToString(",").ifBlank { "5" } != "5" ||
                 initialTodo.reminderDeliveryModeEnum != ReminderDeliveryMode.FULLSCREEN ||
                 initialTodo.recurrenceTypeEnum != RecurrenceType.NONE ||
+                initialTodo.hiddenFromBoard ||
                 initialTodo.ringEnabled != defaultRingEnabled ||
                 initialTodo.vibrateEnabled != defaultVibrateEnabled
             )
@@ -189,6 +193,7 @@ fun TodoEditorDialog(
         vibrateEnabled,
         reminderDeliveryMode,
         countdownEnabled,
+        hiddenFromBoard,
         recurringEnabled,
         recurrenceType,
         weeklyDays,
@@ -201,7 +206,8 @@ fun TodoEditorDialog(
                 hasDueDate ||
                 reminderInput != "5" ||
                 recurringEnabled ||
-                countdownEnabled
+                countdownEnabled ||
+                hiddenFromBoard
         } else {
             title != initialTodo.title ||
                 notes != initialTodo.notes ||
@@ -213,6 +219,7 @@ fun TodoEditorDialog(
                 vibrateEnabled != initialTodo.vibrateEnabled ||
                 reminderDeliveryMode != initialTodo.reminderDeliveryModeEnum ||
                 countdownEnabled != initialTodo.countdownEnabled ||
+                hiddenFromBoard != initialTodo.hiddenFromBoard ||
                 recurringEnabled != initialTodo.isRecurring ||
                 recurrenceType != initialTodo.recurrenceTypeEnum ||
                 weeklyDays != storageStringToWeekdays(initialTodo.recurrenceWeekdays) ||
@@ -248,6 +255,7 @@ fun TodoEditorDialog(
                     vibrateEnabled = vibrateEnabled,
                     reminderDeliveryMode = reminderDeliveryMode,
                     countdownEnabled = countdownEnabled && hasDueDate,
+                    hiddenFromBoard = hiddenFromBoard && hasDueDate,
                     recurrence = RecurrenceConfig(
                         enabled = !isHistory && hasDueDate && recurringEnabled,
                         type = recurrenceType,
@@ -287,6 +295,7 @@ fun TodoEditorDialog(
                                     reminderEnabled = false
                                     recurringEnabled = false
                                     countdownEnabled = false
+                                    hiddenFromBoard = false
                                 }
                             },
                             thumbContent = null
@@ -395,6 +404,24 @@ fun TodoEditorDialog(
                         }
 
                         if (!isHistory && hasDueDate) {
+                            TodoEditorBlock(title = "看板显示") {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                                        Text("仅提醒，不在看板/日历显示", fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
+                                        Text("适合吃药、记账这类只需要到点提醒、不想占用每日看板空间的循环任务。", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+                                    }
+                                    Switch(
+                                        checked = hiddenFromBoard,
+                                        onCheckedChange = { hiddenFromBoard = it },
+                                        thumbContent = null
+                                    )
+                                }
+                            }
+
                             TodoEditorBlock(title = "提醒") {
                                 Row(
                                     modifier = Modifier.fillMaxWidth(),
@@ -576,6 +603,7 @@ fun TodoEditorDialog(
                                                     ringEnabled = ringEnabled,
                                                     vibrateEnabled = vibrateEnabled,
                                                     reminderDeliveryMode = reminderDeliveryMode,
+                                                    hiddenFromBoard = hiddenFromBoard && hasDueDate,
                                                     recurrence = RecurrenceConfig(
                                                         enabled = true,
                                                         type = recurrenceType,

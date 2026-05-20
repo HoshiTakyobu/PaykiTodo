@@ -2,18 +2,35 @@
 
 ## Active Development Focus
 
-Active goal: ship a higher debug build so devices with `1.12.17` installed can upgrade normally.
+Active goal: complete `docs/goals/2026-05-20-paykitodo-7-runtime-issues-goal.md`.
 
-The working tree is now on the `1.12.18 / versionCode 245` line. This round is not metadata-only because the working tree already contains database `24` and in-progress Planning Desk / hidden-board todo changes. Do not push to GitHub unless the user explicitly asks.
+The working tree is now on the `1.12.19 / versionCode 246` line. This round fixes the 7 runtime issues: recurring reminder crash hardening, countdown/detail preview routing, Planning Desk note nodes, widget padding, reminder-only todos, board blank-area navigation, and BottomSheet keyboard behavior. Do not push to GitHub unless the user explicitly asks.
 
 ## Current Goal State
 
 Current implementation state:
 
-1. Version metadata moved to `1.12.18 / versionCode 245`.
-2. This rebuild exists to make Android accept installation over `1.12.17`.
-3. Calendar/todo/Planning Desk behavior remains the current working-tree baseline.
-4. Database version is already `24` in the current working tree because earlier in-progress changes added Planning Desk note / hidden-board todo fields.
+1. #7 P0 recurring reminder crash is hardened with safe alarm scheduling, SafeStartupGuard, startup recovery try/catch, and limited recurring-instance expansion.
+2. #6 editor BottomSheet uses skip-partially-expanded behavior and unsaved-change confirmation.
+3. #1 countdown rows and widget deep links open item previews before editing.
+4. #5 board title / empty-card areas navigate to tasks or calendar, while concrete rows keep preview behavior.
+5. #3 widget board/countdown layouts use tighter padding and list spacing.
+6. #4 todo editor supports `hiddenFromBoard`; hidden reminder todos still schedule reminders and remain in My Tasks, but are filtered out of board/widget/desktop-board/AI-report todo statistics.
+7. #2 Planning Desk supports `isNote` nodes from `// ` / `> `, note styling, note toggle actions, no publish-to-task behavior, and completion calculations that ignore note children.
+8. Database version is `24`, backup/restore and desktop-sync JSON preserve `hiddenFromBoard` and `isNote`.
+
+## Verification Completed For 1.12.19
+
+The `1.12.19 / versionCode 246` rebuild status:
+
+1. Version metadata moved from `1.12.18 / versionCode 245` to `1.12.19 / versionCode 246`.
+2. The generated debug APK is `app/build/outputs/apk/debug/PaykiTodo-1.12.19-debug.apk`.
+3. `./gradlew.bat :app:assembleDebug` output `BUILD SUCCESSFUL`.
+4. `git diff --check`
+5. Debug APK metadata confirms:
+   - `versionName = 1.12.19`
+   - `versionCode = 246`
+   - output `PaykiTodo-1.12.19-debug.apk`
 
 ## Verification Completed For 1.12.18
 

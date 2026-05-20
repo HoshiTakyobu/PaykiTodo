@@ -212,7 +212,7 @@ No known code requirement from the active goal is intentionally left unimplement
 
 ## Git State Notes
 
-- Worktree may be dirty with the 1.12.11 Outliner UX follow-up patch and current-doc updates until the feature commit is created.
-- Branch is ahead of `origin/main`.
-- `docs/goals/2026-05-20-paykitodo-outliner-ux-fix-goal.md` is the active goal file; archive it separately only after the Outliner UX goal is fully complete and checked for secrets.
+- Worktree should be clean after the 1.12.11 Outliner UX implementation and emulator-verification commits.
+- Branch is ahead of `origin/main`; do not push without explicit user authorization.
+- `docs/goals/2026-05-20-paykitodo-outliner-ux-fix-goal.md` is tracked in Git and was checked for common secret markers before closing the goal.
 - Do not commit local signing material, APK outputs, API keys, tokens, or private Base URLs.

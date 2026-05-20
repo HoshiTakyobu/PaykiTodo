@@ -4,7 +4,7 @@
 
 Active goal: implement `docs/goals/2026-05-20-paykitodo-outliner-ux-fix-goal.md`.
 
-The working tree is now on the `1.12.11 / versionCode 238` line. This round is a phone-side Planning Desk Outliner UX fix: make the editor less like a form/list manager and more like a notes app, keep only leaf nodes synced to official todos/events, add an Outliner edit/preview switch, simplify the phone overflow menu, rewrite the phone tutorial, and close the remaining audit gaps around existing-row Enter and parent menu semantics. Do not push to GitHub unless the user explicitly asks.
+The working tree is now on the `1.12.11 / versionCode 238` line. The phone-side Planning Desk Outliner UX goal is implemented, locally built, unit-tested, and smoke-tested on `emulator-5554`. The goal made the editor less like a form/list manager and more like a notes app, kept only leaf nodes synced to official todos/events, added an Outliner edit/preview switch, simplified the phone overflow menu, rewrote the phone tutorial, and closed the remaining audit gaps around existing-row Enter and parent menu semantics. Do not push to GitHub unless the user explicitly asks.
 
 ## Current Goal State
 
@@ -87,16 +87,16 @@ Follow-up audit on `Pixel_8 / emulator-5554` confirmed the system-share text cap
 - Added a unit regression test for bare shared schedule lines such as `2030-05-21 15:00-16:00 ShareAudit @Library3`.
 - Follow-up validation passed: `node --check app/src/main/assets/desktop-web/app.js`, `./gradlew.bat :app:testDebugUnitTest`, and `git diff --check`.
 
-## Remaining Work
+## Remaining QA
 
-The `2026-05-20-paykitodo-outliner-ux-fix-goal.md` goal is not fully closed yet.
+No known code requirement from `docs/goals/2026-05-20-paykitodo-outliner-ux-fix-goal.md` is intentionally left unimplemented. Remaining work is runtime QA beyond this goal's local verification scope:
 
 1. Phone runtime QA is still needed on a physical device for active input focus behavior, IME Enter behavior, child input expansion, linked-item editor routing, and parent demotion/restoration with real data.
 2. Real migrated-user-data testing is still needed for old Markdown headings and existing parent/child nodes that already have linked official items.
-3. If this goal continues, the next slice should focus on emulator/manual verification rather than known code gaps.
+3. Real-browser testing is still needed for desktop Web Planning Desk node editing, up/down reorder, same-level drag reorder, document switching, and node time-field display/editing against live phone data.
 
 ## Git / Release Notes
 
 - Branch remains `main`, ahead of `origin/main`; do not push without explicit user authorization.
-- `docs/goals/2026-05-20-paykitodo-outliner-ux-fix-goal.md` is the active goal file and is currently untracked until the feature work is complete enough to archive.
+- `docs/goals/2026-05-20-paykitodo-outliner-ux-fix-goal.md` is tracked in Git and was checked for common secret markers before closing the goal.
 - Local signing files, APK outputs, API keys, tokens, and private Base URLs must remain out of Git.

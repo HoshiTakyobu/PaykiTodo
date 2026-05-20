@@ -1,5 +1,12 @@
 # Changelog
 
+## v1.12.17
+
+- 提升调试包版本号，确保 Android 在已安装 `1.12.16` 时把新 APK 识别为可升级安装包
+- 本轮只调整版本元数据，不主动引入新的数据库结构、提醒逻辑、规划台逻辑或用户数据格式变更
+- 版本号升级到 `1.12.17` / `versionCode 244`
+- 验证：`./gradlew.bat :app:compileDebugKotlin`、`git diff --check`、`./gradlew.bat :app:assembleDebug` 通过；debug APK 元数据确认 `1.12.17 / 244`
+
 ## v1.12.16
 
 - 提升调试包版本号，确保 Android 在已安装 `1.12.15` 时把新 APK 识别为可升级安装包

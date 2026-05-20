@@ -6,20 +6,27 @@
 - Branch: `main`
 - Do not push to GitHub unless the user explicitly authorizes it.
 - Current code version:
-  - `versionName = 1.12.16`
-  - `versionCode = 243`
+  - `versionName = 1.12.17`
+  - `versionCode = 244`
 - Latest debug APK built in this round:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.12.16-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.12.17-debug.apk`
 - Debug APK metadata confirms:
-  - `versionName = 1.12.16`
-  - `versionCode = 243`
-  - output `PaykiTodo-1.12.16-debug.apk`
+  - `versionName = 1.12.17`
+  - `versionCode = 244`
+  - output `PaykiTodo-1.12.17-debug.apk`
 
 ## Active Goal
 
 Active goal: metadata-only rebuild for Android upgrade installation.
 
-Latest status: version metadata has moved to `1.12.16 / versionCode 243` so Android can upgrade over an installed `1.12.15` debug APK. This rebuild intentionally keeps the `1.12.15` product behavior baseline unchanged.
+Latest status: version metadata has moved to `1.12.17 / versionCode 244` so Android can upgrade over an installed `1.12.16` debug APK. This rebuild intentionally keeps the current working-tree product behavior baseline unchanged.
+
+## What Changed In The Latest 1.12.17 Patch
+
+1. Version metadata moved to `1.12.17 / versionCode 244`.
+2. This rebuild intentionally does not change database schema, reminder behavior, Planning Desk behavior, or user-data format.
+3. Latest debug APK path is `app/build/outputs/apk/debug/PaykiTodo-1.12.17-debug.apk`.
+4. Verification passed: `./gradlew.bat :app:compileDebugKotlin`, `git diff --check`, `./gradlew.bat :app:assembleDebug`; APK metadata confirms `1.12.17 / 244`.
 
 ## What Changed In The Latest 1.12.16 Patch
 

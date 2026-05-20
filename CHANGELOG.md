@@ -6,10 +6,12 @@
 - 待办分组筛选把新建分组入口前置到 `全部` 右侧的紧凑 `+`，避免分组过多时需要滚到末尾才能新建
 - 规划台恢复更显眼的文档按钮和图片识别入口，图片识别仅在存在 vision AI 源时可用
 - 规划台 Outliner 增加草稿 / 发布分离：新建、分享、拍照、语音和图片识别先进入草稿节点，不再立即生成正式待办 / 日程；用户可单条发布或批量发布当前文档草稿
+- 修复草稿节点编辑后的发布意图保留问题：编辑草稿不会再把同步标记误清空，发布后仍会按节点内容生成正式待办 / 日程
 - 电脑端 Web 规划台同步支持草稿状态、单条发布和批量发布，草稿行用虚线样式和 `草稿` 元信息区分
+- 更新手机端规划台教程、电脑端规划台帮助和内置 Wiki，明确“回车只是草稿，发布才入库”的新工作流
 - 数据库升级到 `23`，`planning_nodes` 新增 `isDraft` 字段；备份 / 恢复保留草稿状态，旧备份默认按正式节点恢复
 - 版本号升级到 `1.12.15` / `versionCode 242`
-- 验证：`./gradlew.bat :app:compileDebugKotlin`、`git diff --check`、`./gradlew.bat :app:assembleDebug` 通过；debug APK 元数据确认 `1.12.15 / 242`
+- 验证：`node --check app/src/main/assets/desktop-web/app.js`、`./gradlew.bat :app:compileDebugKotlin`、`./gradlew.bat :app:testDebugUnitTest`、`git diff --check`、`./gradlew.bat :app:assembleDebug` 通过；debug APK 元数据确认 `1.12.15 / 242`
 
 ## v1.12.14
 

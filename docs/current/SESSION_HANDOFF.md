@@ -27,10 +27,11 @@ Latest status: version metadata has moved to `1.12.15 / versionCode 242` so Andr
 2. Todo group creation moved beside `全部` as a compact `+` entry.
 3. Planning Desk uses a larger document button and restores `从图片识别日程` in the overflow menu.
 4. Planning Desk Outliner new nodes, share capture, photo capture, voice capture, and image recognition create draft nodes first instead of immediate official todos/events.
-5. Phone and desktop Web can publish one draft node or all drafts in the current document.
+5. Phone and desktop Web can publish one draft node or all drafts in the current document; editing a draft preserves its publish/sync intent so publication still creates the expected official item.
 6. Database version moved to `23` with `planning_nodes.isDraft`; backup/restore and desktop sync preserve the draft state.
-7. Version metadata moved to `1.12.15 / versionCode 242`.
-8. Latest debug APK path is `app/build/outputs/apk/debug/PaykiTodo-1.12.15-debug.apk`.
+7. Phone tutorial, desktop Web help, and in-app Wiki now describe that Enter creates a draft and publish creates the official item.
+8. Version metadata moved to `1.12.15 / versionCode 242`.
+9. Latest debug APK path is `app/build/outputs/apk/debug/PaykiTodo-1.12.15-debug.apk`.
 
 ## What Changed In The Latest 1.12.14 Patch
 
@@ -169,10 +170,12 @@ Latest status: version metadata has moved to `1.12.15 / versionCode 242` so Andr
 
 Passed after the 1.12.15 patch:
 
-1. `./gradlew.bat :app:compileDebugKotlin`
-2. `git diff --check`
-3. `./gradlew.bat :app:assembleDebug`
-4. Debug APK metadata inspection: `versionName = 1.12.15`, `versionCode = 242`, output `PaykiTodo-1.12.15-debug.apk`
+1. `node --check app/src/main/assets/desktop-web/app.js`
+2. `./gradlew.bat :app:compileDebugKotlin`
+3. `./gradlew.bat :app:testDebugUnitTest`
+4. `git diff --check`
+5. `./gradlew.bat :app:assembleDebug`
+6. Debug APK metadata inspection: `versionName = 1.12.15`, `versionCode = 242`, output `PaykiTodo-1.12.15-debug.apk`
 
 Passed after the 1.12.14 metadata rebuild:
 

@@ -21,9 +21,11 @@ Current implementation state:
 The `1.12.15 / versionCode 242` patch has passed:
 
 1. `./gradlew.bat :app:compileDebugKotlin`
-2. `git diff --check`
-3. `./gradlew.bat :app:assembleDebug`
-4. Debug APK metadata confirms:
+2. `./gradlew.bat :app:testDebugUnitTest`
+3. `node --check app/src/main/assets/desktop-web/app.js`
+4. `git diff --check`
+5. `./gradlew.bat :app:assembleDebug`
+6. Debug APK metadata confirms:
    - `versionName = 1.12.15`
    - `versionCode = 242`
    - output `PaykiTodo-1.12.15-debug.apk`

@@ -25,7 +25,9 @@
   - Planning Desk document/image-recognition entries were restored.
   - Planning Desk draft/publish separation is implemented for phone, capture flows, backup/restore, and desktop Web sync.
   - Database version is `23`; `planning_nodes.isDraft` is present in schema and migration.
+  - `node --check app/src/main/assets/desktop-web/app.js`
   - `./gradlew.bat :app:compileDebugKotlin`
+  - `./gradlew.bat :app:testDebugUnitTest`
   - `git diff --check`
   - `./gradlew.bat :app:assembleDebug`
   - Debug APK metadata inspected: `versionName = 1.12.15`, `versionCode = 242`, output `PaykiTodo-1.12.15-debug.apk`

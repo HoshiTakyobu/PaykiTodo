@@ -321,7 +321,8 @@ class TodoRepository(
         }
         val allNodesBefore = todoDao.getPlanningNodesForNote(note.id)
         val hasChildren = allNodesBefore.any { it.parentNodeId == existing.id }
-        val effectiveSyncEnabled = edit.syncEnabled && !hasChildren && !existing.isDraft
+        val desiredSyncEnabled = edit.syncEnabled && !hasChildren
+        val effectiveSyncEnabled = desiredSyncEnabled && !existing.isDraft
         val resolved = resolvePlanningNodeDraft(
             note = note,
             text = edit.text,
@@ -356,7 +357,7 @@ class TodoRepository(
             location = resolved.location,
             linkedTodoId = sync.linkedItem?.id,
             linkedEndTodoId = endTodoSync.linkedItem?.id,
-            syncEnabled = effectiveSyncEnabled,
+            syncEnabled = desiredSyncEnabled,
             collapsed = edit.collapsed,
             completed = edit.completed,
             completedAtMillis = when {

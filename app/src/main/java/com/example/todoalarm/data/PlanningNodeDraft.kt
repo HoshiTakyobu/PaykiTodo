@@ -23,6 +23,7 @@ data class PlanningNodeDraft(
     val allDay: Boolean = false,
     val countdownEnabled: Boolean = false,
     val checkInEnabled: Boolean = false,
+    val isDraft: Boolean = true,
     val syncEnabled: Boolean = true,
     val collapsed: Boolean = false,
     val completed: Boolean = false
@@ -47,6 +48,11 @@ data class PlanningNodeChangeResult(
     val deletedLinkedItem: TodoItem? = null,
     val deletedLinkedItems: List<TodoItem> = deletedLinkedItem?.let { listOf(it) }.orEmpty(),
     val affectedLinkedItems: List<TodoItem> = linkedItem?.let { listOf(it) }.orEmpty()
+)
+
+data class PlanningNodePublishBatchResult(
+    val published: List<PlanningNodeChangeResult>,
+    val failedCount: Int
 )
 
 data class PlanningNodeMarkdownImportResult(

@@ -397,6 +397,12 @@ object DatabaseMigrations {
         }
     }
 
+    val MIGRATION_22_23 = object : Migration(22, 23) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            ensurePlanningDraftColumn(db)
+        }
+    }
+
     private fun rebuildPlanningNotesTable(db: SupportSQLiteDatabase) {
         db.execSQL("DROP TABLE IF EXISTS `planning_notes_room_expected`")
         createPlanningNotesTable(db, "planning_notes_room_expected")
@@ -625,6 +631,7 @@ object DatabaseMigrations {
                 `location` TEXT,
                 `linkedTodoId` INTEGER,
                 `linkedEndTodoId` INTEGER,
+                `isDraft` INTEGER NOT NULL DEFAULT 0,
                 `syncEnabled` INTEGER NOT NULL DEFAULT 1,
                 `collapsed` INTEGER NOT NULL DEFAULT 0,
                 `completed` INTEGER NOT NULL DEFAULT 0,
@@ -641,6 +648,7 @@ object DatabaseMigrations {
         db.execSQL("CREATE INDEX IF NOT EXISTS `index_planning_nodes_linkedEndTodoId` ON `planning_nodes` (`linkedEndTodoId`)")
         ensurePlanningEndTodoColumn(db)
         ensurePlanningSyncEnabledColumn(db)
+        ensurePlanningDraftColumn(db)
     }
 
     private fun ensurePlanningEndTodoColumn(db: SupportSQLiteDatabase) {
@@ -655,6 +663,13 @@ object DatabaseMigrations {
         if (!tableExists(db, "planning_nodes")) return
         if (!tableHasColumns(db, "planning_nodes", listOf("syncEnabled"))) {
             db.execSQL("ALTER TABLE `planning_nodes` ADD COLUMN `syncEnabled` INTEGER NOT NULL DEFAULT 1")
+        }
+    }
+
+    private fun ensurePlanningDraftColumn(db: SupportSQLiteDatabase) {
+        if (!tableExists(db, "planning_nodes")) return
+        if (!tableHasColumns(db, "planning_nodes", listOf("isDraft"))) {
+            db.execSQL("ALTER TABLE `planning_nodes` ADD COLUMN `isDraft` INTEGER NOT NULL DEFAULT 0")
         }
     }
 

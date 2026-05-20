@@ -50,6 +50,8 @@ data class PlanningNode(
     val location: String? = null,
     val linkedTodoId: Long? = null,
     val linkedEndTodoId: Long? = null,
+    @ColumnInfo(defaultValue = "0")
+    val isDraft: Boolean = false,
     @ColumnInfo(defaultValue = "1")
     val syncEnabled: Boolean = true,
     @ColumnInfo(defaultValue = "0")

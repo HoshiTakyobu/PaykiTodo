@@ -200,6 +200,8 @@ class MainActivity : ComponentActivity() {
                     onCreatePlanningNode = viewModel::createPlanningNode,
                     onUpdatePlanningNode = viewModel::updatePlanningNode,
                     onTogglePlanningNode = viewModel::togglePlanningNodeCompleted,
+                    onPublishPlanningNode = viewModel::publishPlanningNode,
+                    onPublishAllPlanningDrafts = viewModel::publishAllPlanningDrafts,
                     onDeletePlanningNode = viewModel::deletePlanningNode,
                     onExportPlanningNodesMarkdown = viewModel::exportPlanningNodesMarkdown,
                     onReplacePlanningNodesFromMarkdown = viewModel::replacePlanningNodesFromMarkdown,

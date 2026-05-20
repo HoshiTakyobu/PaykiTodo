@@ -302,7 +302,6 @@ object CapturePlanningPipeline {
         }
         require(inserted > 0) { "未能识别出待办或日程" }
         app.settingsStore.updateLastOpenedPlanningNoteId(note.id)
-        autoBackupIfEnabled(app)
         return CapturePlanningInsertResult(
             noteId = note.id,
             importedCount = inserted,
@@ -338,16 +337,6 @@ object CapturePlanningPipeline {
                 countdownEnabled = countdownEnabled
             )
             else -> PlanningNodeDraft(noteId = noteId, text = fallbackText)
-        }
-    }
-
-    private suspend fun autoBackupIfEnabled(app: TodoApplication) {
-        val settings = app.settingsStore.currentSettings()
-        if (!settings.autoBackupEnabled) return
-        val directoryUri = settings.backupDirectoryUri ?: return
-        withContext(Dispatchers.IO) {
-            val snapshot = app.repository.exportSnapshot(settings)
-            app.backupManager.autoBackupToDirectory(directoryUri, snapshot)
         }
     }
 

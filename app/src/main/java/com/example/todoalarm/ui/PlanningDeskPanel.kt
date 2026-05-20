@@ -49,6 +49,7 @@ import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material.icons.rounded.PlaylistAdd
 import androidx.compose.material.icons.rounded.Search
+import androidx.compose.material.icons.rounded.Send
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -164,6 +165,8 @@ internal fun PlanningDeskPanel(
     onCreateNode: suspend (PlanningNodeDraft) -> String?,
     onUpdateNode: suspend (PlanningNode, PlanningNodeEdit) -> String?,
     onToggleNode: suspend (PlanningNode) -> String?,
+    onPublishNode: suspend (PlanningNode) -> String?,
+    onPublishAllDrafts: suspend (Long) -> String?,
     onDeleteNode: suspend (PlanningNode) -> String?,
     onOpenLinkedItem: (Long) -> Unit,
     onExportNodesMarkdown: suspend (Long) -> String,
@@ -211,6 +214,7 @@ internal fun PlanningDeskPanel(
     val selectedIds = remember { mutableStateMapOf<String, Boolean>() }
     val editableCandidates = remember { mutableStateListOf<PlanningImportCandidate>() }
     val hasUnsavedChanges = activeNote != null && editorValue.text != activeNote.contentMarkdown
+    val draftNodeCount = remember(nodes) { nodes.count { it.isDraft } }
     val latestUndoSummary = remember(mappingStates) { latestPlanningUndoSummary(mappingStates) }
     val visionProviders = remember(planningAiProviders) {
         planningAiProviders
@@ -244,27 +248,27 @@ internal fun PlanningDeskPanel(
                     Toast.makeText(context, "未能从图中识别出日程", Toast.LENGTH_SHORT).show()
                     return@launch
                 }
-                val previousMarkdown = editorValue.text
-                val visionParseMarkdown = planningVisionParseMarkdown(previousMarkdown, recognizedMarkdown)
-                val updated = appendPlanningMarkdown(previousMarkdown, recognizedMarkdown)
-                editorValue = TextFieldValue(text = updated, selection = TextRange(updated.length))
-                markdownEditMode = true
                 latestVisionImageUri = uri
-                val result = onParse(visionParseMarkdown, activeNote?.id)
-                parseResult = result
-                selectedIds.clear()
-                editableCandidates.clear()
-                result.candidates.forEach { candidate ->
-                    val editable = candidate.toPlanningImportCandidate()
-                    editableCandidates += editable
-                    selectedIds[editable.id] = editable.validate() == null
-                }
-                if (result.importableCount > 0) {
-                    previewSheetVisible = true
-                    Toast.makeText(context, "图片识别完成，已自动打开预览。", Toast.LENGTH_SHORT).show()
+                val noteId = activeNote?.id
+                val result = onParse(recognizedMarkdown, noteId)
+                val drafts = result.candidates
+                    .map { it.toPlanningImportCandidate() }
+                    .filter { candidate -> candidate.importable && candidate.validate() == null }
+                if (noteId != null && drafts.isNotEmpty()) {
+                    var added = 0
+                    drafts.forEach { candidate ->
+                        if (onCreateNode(candidate.toPlanningNodeDraft(noteId)) == null) {
+                            added += 1
+                        }
+                    }
+                    Toast.makeText(context, "图片识别完成，已添加 $added 条草稿。", Toast.LENGTH_SHORT).show()
                 } else {
+                    val previousMarkdown = editorValue.text
+                    val updated = appendPlanningMarkdown(previousMarkdown, recognizedMarkdown)
+                    editorValue = TextFieldValue(text = updated, selection = TextRange(updated.length))
+                    markdownEditMode = true
                     val lineCount = recognizedMarkdown.lines().count { it.isNotBlank() }
-                    Toast.makeText(context, "已追加 $lineCount 条识别结果，请检查格式后手动点「识别」", Toast.LENGTH_LONG).show()
+                    Toast.makeText(context, "已追加 $lineCount 条识别结果，请检查格式后手动整理。", Toast.LENGTH_LONG).show()
                 }
             } catch (error: PlanningVisionImageException) {
                 Toast.makeText(context, error.message ?: "图片过大，请裁剪后重试", Toast.LENGTH_LONG).show()
@@ -357,6 +361,23 @@ internal fun PlanningDeskPanel(
                         }
                     ) {
                         Text(if (outlinePreviewMode) "编辑" else "预览")
+                    }
+                    if (draftNodeCount > 0) {
+                        Button(
+                            modifier = Modifier.height(40.dp),
+                            onClick = {
+                                focusManager.clearFocus()
+                                val noteId = activeNote?.id ?: return@Button
+                                scope.launch {
+                                    val message = onPublishAllDrafts(noteId)
+                                    message?.let { Toast.makeText(context, it, Toast.LENGTH_SHORT).show() }
+                                }
+                            }
+                        ) {
+                            Icon(Icons.Rounded.Send, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(Modifier.width(4.dp))
+                            Text("发布${draftNodeCount}条")
+                        }
                     }
                 } else {
                     OutlinedButton(
@@ -523,6 +544,12 @@ internal fun PlanningDeskPanel(
                 onToggleNode = { node ->
                     scope.launch {
                         val message = onToggleNode(node)
+                        message?.let { Toast.makeText(context, it, Toast.LENGTH_SHORT).show() }
+                    }
+                },
+                onPublishNode = { node ->
+                    scope.launch {
+                        val message = onPublishNode(node)
                         message?.let { Toast.makeText(context, it, Toast.LENGTH_SHORT).show() }
                     }
                 },
@@ -957,6 +984,7 @@ private fun PlanningOutlineEditor(
     onCreateNode: (PlanningNodeDraft) -> Unit,
     onUpdateNode: (PlanningNode, PlanningNodeEdit) -> Unit,
     onToggleNode: (PlanningNode) -> Unit,
+    onPublishNode: (PlanningNode) -> Unit,
     onDeleteNodeNow: (PlanningNode) -> Unit,
     onDeleteNode: (PlanningNode) -> Unit,
     onOpenLinkedItem: (Long) -> Unit,
@@ -1072,9 +1100,9 @@ private fun PlanningOutlineEditor(
         ) {
             Text(
                 text = if (previewMode) {
-                    "预览模式：点圆圈完成，点每行右侧 ⋯ 补充时间、地点或删除。"
+                    "预览模式：草稿点纸飞机发布，正式节点可点 ⋯ 补充时间、地点或删除。"
                 } else {
-                    "像备忘录一样写：输入一行后按回车，自动固化为待办；时间段会成为日程。"
+                    "像备忘录一样写：回车只生成草稿节点；点纸飞机或顶部发布按钮后才进入待办/日历。"
                 },
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -1113,6 +1141,7 @@ private fun PlanningOutlineEditor(
                                 if (editingTarget?.nodeId == node.id) editingTarget = null
                             },
                             onToggle = { onToggleNode(node) },
+                            onPublish = { onPublishNode(node) },
                             onToggleCollapse = {
                                 if (hasChildren) {
                                     onUpdateNode(
@@ -1515,6 +1544,7 @@ private fun PlanningOutlineRow(
     onStartEdit: () -> Unit,
     onStopEdit: () -> Unit,
     onToggle: () -> Unit,
+    onPublish: () -> Unit,
     onToggleCollapse: () -> Unit,
     onTextCommit: (String) -> Unit,
     onDeleteAndFocusPrevious: () -> Boolean,
@@ -1599,7 +1629,11 @@ private fun PlanningOutlineRow(
                 Icon(
                     imageVector = if (node.completed) Icons.Rounded.CheckCircle else Icons.Rounded.RadioButtonUnchecked,
                     contentDescription = if (node.completed) "标记未完成" else "完成",
-                    tint = if (node.completed) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.outline
+                    tint = when {
+                        node.completed -> MaterialTheme.colorScheme.onSurface
+                        node.isDraft -> MaterialTheme.colorScheme.outline.copy(alpha = 0.48f)
+                        else -> MaterialTheme.colorScheme.outline
+                    }
                 )
             }
             val textColumnModifier = if (!previewMode && !editing) {
@@ -1692,7 +1726,19 @@ private fun PlanningOutlineRow(
                     Text(
                         text = chipText,
                         style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.primary
+                        color = if (node.isDraft) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.primary
+                    )
+                }
+            }
+            if (node.isDraft) {
+                IconButton(
+                    modifier = Modifier.size(34.dp),
+                    onClick = onPublish
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.Send,
+                        contentDescription = "发布为正式事项",
+                        tint = MaterialTheme.colorScheme.primary
                     )
                 }
             }
@@ -3279,6 +3325,38 @@ private data class PlanningShortcutSpec(
     val help: String
 )
 
+private fun PlanningImportCandidate.toPlanningNodeDraft(noteId: Long): PlanningNodeDraft {
+    val fallbackText = sourceLine.ifBlank { title }
+    return when (type) {
+        PlanningParsedType.EVENT -> PlanningNodeDraft(
+            noteId = noteId,
+            text = title.ifBlank { fallbackText },
+            notes = notes,
+            groupName = groupName,
+            startAt = startAt,
+            endAt = endAt,
+            location = location.takeIf { it.isNotBlank() },
+            reminderOffsetsMinutes = normalizedReminderOffsets(),
+            allDay = allDay,
+            countdownEnabled = countdownEnabled,
+            checkInEnabled = checkInEnabled,
+            isDraft = true
+        )
+        PlanningParsedType.TODO -> PlanningNodeDraft(
+            noteId = noteId,
+            text = title.ifBlank { fallbackText },
+            notes = notes,
+            groupName = groupName,
+            dueAt = dueAt,
+            location = location.takeIf { it.isNotBlank() },
+            reminderOffsetsMinutes = normalizedReminderOffsets(),
+            countdownEnabled = countdownEnabled,
+            isDraft = true
+        )
+        else -> PlanningNodeDraft(noteId = noteId, text = fallbackText, isDraft = true)
+    }
+}
+
 private sealed interface PlanningShortcutAction {
     data class Insert(val token: String) : PlanningShortcutAction
     data class InsertSection(val heading: String) : PlanningShortcutAction
@@ -3658,18 +3736,6 @@ private fun appendPlanningMarkdown(current: String, appended: String): String {
     return "$base\n\n$addition"
 }
 
-private fun planningVisionParseMarkdown(current: String, appended: String): String {
-    val addition = appended.trim()
-    if (current.trimEnd().isBlank()) return addition
-    val existingLineCount = current.trimEnd().replace("\r\n", "\n").replace('\r', '\n').lines().size
-    return buildString {
-        repeat(existingLineCount + 1) {
-            append('\n')
-        }
-        append(addition)
-    }
-}
-
 private const val PlanningVisionMaxLongSide = 1600
 private const val PlanningVisionJpegQuality = 80
 private const val PlanningVisionMaxEncodedBytes = 4 * 1024 * 1024
@@ -3953,8 +4019,9 @@ private fun PlanningNode.toPlanningNodeEdit(
 
 private fun planningNodeMetaText(node: PlanningNode): String {
     val location = node.location?.trim().orEmpty()
+    val draft = "草稿".takeIf { node.isDraft }
     if (!node.syncEnabled) {
-        return listOf("结构标题", location.takeIf { it.isNotBlank() }).filterNotNull().joinToString(" · ")
+        return listOf(draft, "结构标题", location.takeIf { it.isNotBlank() }).filterNotNull().joinToString(" · ")
     }
     val time = when {
         node.startAtMillis != null && node.endAtMillis != null -> {
@@ -3971,7 +4038,7 @@ private fun planningNodeMetaText(node: PlanningNode): String {
         }
         else -> ""
     }
-    return listOf(time, location.takeIf { it.isNotBlank() }).filterNotNull().joinToString(" · ")
+    return listOf(draft, time, location.takeIf { it.isNotBlank() }).filterNotNull().joinToString(" · ")
 }
 
 private fun Long.toPlanningNodeLocalDateTime(): LocalDateTime {

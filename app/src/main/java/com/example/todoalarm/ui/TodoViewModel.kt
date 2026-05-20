@@ -428,7 +428,7 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
         ) ?: return "规划节点创建失败"
         handlePlanningNodeChange(result)
         settingsStore.updateLastOpenedPlanningNoteId(result.node.noteId)
-        autoBackupIfEnabled()
+        if (!result.node.isDraft) autoBackupIfEnabled()
         return null
     }
 
@@ -447,14 +447,42 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
         clearReminderArtifacts(result.deletedLinkedItems)
         handlePlanningNodeChange(result)
         settingsStore.updateLastOpenedPlanningNoteId(result.node.noteId)
-        autoBackupIfEnabled()
+        if (!result.node.isDraft) autoBackupIfEnabled()
         return null
+    }
+
+    suspend fun publishPlanningNode(node: PlanningNode): String? {
+        val result = repository.publishPlanningNode(
+            node.id,
+            createEventEndTodo = settingsStore.currentSettings().planningEventEndTodoEnabled
+        ) ?: return "草稿发布失败，请检查时间格式"
+        clearReminderArtifacts(result.deletedLinkedItems)
+        handlePlanningNodeChange(result)
+        settingsStore.updateLastOpenedPlanningNoteId(result.node.noteId)
+        autoBackupIfEnabled()
+        return "已发布 1 条"
+    }
+
+    suspend fun publishAllPlanningDrafts(noteId: Long): String? {
+        val result = repository.publishAllPlanningDrafts(
+            noteId,
+            createEventEndTodo = settingsStore.currentSettings().planningEventEndTodoEnabled
+        )
+        result.published.forEach { change ->
+            clearReminderArtifacts(change.deletedLinkedItems)
+            handlePlanningNodeChange(change)
+        }
+        if (result.published.isNotEmpty()) {
+            settingsStore.updateLastOpenedPlanningNoteId(noteId)
+            autoBackupIfEnabled()
+        }
+        return "已发布 ${result.published.size} 条，${result.failedCount} 条失败"
     }
 
     suspend fun togglePlanningNodeCompleted(node: PlanningNode): String? {
         val result = repository.togglePlanningNodeCompleted(node.id) ?: return "规划节点不存在"
         handlePlanningNodeChange(result)
-        autoBackupIfEnabled()
+        if (!result.node.isDraft || result.affectedLinkedItems.isNotEmpty()) autoBackupIfEnabled()
         return null
     }
 
@@ -465,7 +493,7 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
         )
         clearReminderArtifacts(result.deletedLinkedItems)
         result.affectedLinkedItems.forEach { scheduleReminderOrDisable(it) }
-        autoBackupIfEnabled()
+        if (!node.isDraft || result.deletedLinkedItems.isNotEmpty() || result.affectedLinkedItems.isNotEmpty()) autoBackupIfEnabled()
         return null
     }
 

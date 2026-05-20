@@ -167,8 +167,8 @@ object BackgroundCaptureProcessor {
             notificationId = jobId,
             builder = NotificationCompat.Builder(context, CaptureChannelId)
                 .setSmallIcon(R.drawable.ic_stat_payki_todo)
-                .setContentTitle("已添加 ${result.importedCount} 条到规划台")
-                .setContentText("点击打开对应规划文档")
+                .setContentTitle("已添加 ${result.importedCount} 条草稿")
+                .setContentText("点击前往规划台检查并发布")
                 .setContentIntent(pendingIntent)
                 .setAutoCancel(true)
                 .setPriority(NotificationCompat.PRIORITY_DEFAULT)

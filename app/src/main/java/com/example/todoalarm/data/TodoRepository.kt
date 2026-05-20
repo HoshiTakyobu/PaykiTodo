@@ -197,6 +197,7 @@ class TodoRepository(
         val allNodes = todoDao.getAllPlanningNodes()
         val childrenByParent = allNodes.groupBy { it.parentNodeId }
         allNodes.forEach { node ->
+            if (node.isDraft) return@forEach
             if (childrenByParent[node.id].orEmpty().isNotEmpty()) {
                 val deleted = demotePlanningNodeToStructureIfNeeded(node, System.currentTimeMillis())
                 deleteItemsByIds(deleted.map { it.id })
@@ -263,7 +264,8 @@ class TodoRepository(
             )
         }
         val now = System.currentTimeMillis()
-        val linked = if (draft.syncEnabled) {
+        val effectiveSyncEnabled = draft.syncEnabled && !draft.isDraft
+        val linked = if (effectiveSyncEnabled) {
             createLinkedItemForPlanningNode(resolved, completed = draft.completed, now = now)
         } else {
             null
@@ -272,7 +274,7 @@ class TodoRepository(
             resolved = resolved,
             completed = draft.completed,
             now = now,
-            enabled = draft.syncEnabled && createEventEndTodo
+            enabled = effectiveSyncEnabled && createEventEndTodo
         )
         val node = PlanningNode(
             noteId = note.id,
@@ -287,6 +289,7 @@ class TodoRepository(
             location = resolved.location,
             linkedTodoId = linked?.id,
             linkedEndTodoId = endTodo?.id,
+            isDraft = draft.isDraft,
             syncEnabled = draft.syncEnabled,
             collapsed = draft.collapsed,
             completed = draft.completed,
@@ -318,7 +321,7 @@ class TodoRepository(
         }
         val allNodesBefore = todoDao.getPlanningNodesForNote(note.id)
         val hasChildren = allNodesBefore.any { it.parentNodeId == existing.id }
-        val effectiveSyncEnabled = edit.syncEnabled && !hasChildren
+        val effectiveSyncEnabled = edit.syncEnabled && !hasChildren && !existing.isDraft
         val resolved = resolvePlanningNodeDraft(
             note = note,
             text = edit.text,
@@ -382,6 +385,86 @@ class TodoRepository(
             affectedLinkedItems = (listOfNotNull(sync.linkedItem, endTodoSync.linkedItem) + restoredOldParent.orEmpty())
                 .distinctBy { it.id }
         )
+    }
+
+    suspend fun publishPlanningNode(
+        nodeId: Long,
+        createEventEndTodo: Boolean = false
+    ): PlanningNodeChangeResult? {
+        val existing = todoDao.getPlanningNode(nodeId) ?: return null
+        if (!existing.isDraft) {
+            val linked = existing.linkedTodoId?.let { todoDao.getById(it) }
+            return PlanningNodeChangeResult(node = existing, linkedItem = linked)
+        }
+        val note = todoDao.getPlanningNote(existing.noteId) ?: return null
+        val allNodes = todoDao.getPlanningNodesForNote(note.id)
+        val hasChildren = allNodes.any { it.parentNodeId == existing.id }
+        val resolved = resolvePlanningNodeDraft(
+            note = note,
+            text = existing.text,
+            dueAt = existing.dueAtMillis?.toPlanningLocalDateTime(),
+            startAt = existing.startAtMillis?.toPlanningLocalDateTime(),
+            endAt = existing.endAtMillis?.toPlanningLocalDateTime(),
+            location = existing.location
+        ) ?: return null
+        val now = System.currentTimeMillis()
+        val effectiveSyncEnabled = existing.syncEnabled && !hasChildren
+        val previousLinked = existing.linkedTodoId?.let { todoDao.getById(it) }
+        val previousEndTodo = existing.linkedEndTodoId?.let { todoDao.getById(it) }
+        val sync = if (effectiveSyncEnabled) {
+            upsertLinkedItemForPlanningNode(previousLinked, resolved, existing.completed, now)
+        } else {
+            PlanningNodeLinkedSync(linkedItem = null, deletedLinkedItem = previousLinked)
+        }
+        val endTodoSync = upsertPlanningEventEndTodo(
+            previous = previousEndTodo,
+            resolved = resolved,
+            completed = existing.completed,
+            now = now,
+            enabled = effectiveSyncEnabled && createEventEndTodo
+        )
+        val updated = existing.copy(
+            text = resolved.title,
+            updatedAtMillis = now,
+            startAtMillis = resolved.startAt?.toEpochMillis(),
+            endAtMillis = resolved.endAt?.toEpochMillis(),
+            dueAtMillis = if (resolved.type == PlanningNodeResolvedType.TODO) resolved.dueAt?.toEpochMillis() else null,
+            location = resolved.location,
+            linkedTodoId = sync.linkedItem?.id,
+            linkedEndTodoId = endTodoSync.linkedItem?.id,
+            isDraft = false,
+            syncEnabled = effectiveSyncEnabled
+        )
+        todoDao.updatePlanningNode(updated)
+        val deletedItems = listOfNotNull(sync.deletedLinkedItem, endTodoSync.deletedLinkedItem).distinctBy { it.id }
+        deleteItemsByIds(deletedItems.map { it.id })
+        updatePlanningNoteNodeLegacyMarkdown(note.id)
+        notifyItemsChanged()
+        return PlanningNodeChangeResult(
+            node = updated,
+            linkedItem = sync.linkedItem,
+            deletedLinkedItem = sync.deletedLinkedItem,
+            deletedLinkedItems = deletedItems,
+            affectedLinkedItems = listOfNotNull(sync.linkedItem, endTodoSync.linkedItem).distinctBy { it.id }
+        )
+    }
+
+    suspend fun publishAllPlanningDrafts(
+        noteId: Long,
+        createEventEndTodo: Boolean = false
+    ): PlanningNodePublishBatchResult {
+        val draftNodes = todoDao.getPlanningNodesForNote(noteId).filter { it.isDraft }
+        val published = mutableListOf<PlanningNodeChangeResult>()
+        var failedCount = 0
+        draftNodes.forEach { node ->
+            val result = publishPlanningNode(node.id, createEventEndTodo)
+            if (result != null && !result.node.isDraft) {
+                published += result
+            } else {
+                failedCount += 1
+            }
+        }
+        return PlanningNodePublishBatchResult(published = published, failedCount = failedCount)
     }
 
     suspend fun togglePlanningNodeCompleted(nodeId: Long, completed: Boolean? = null): PlanningNodeChangeResult? {
@@ -511,6 +594,7 @@ class TodoRepository(
         val parent = parentId?.let { todoDao.getPlanningNode(it) } ?: return emptyList()
         val hasChildren = todoDao.getPlanningNodesForNote(parent.noteId).any { it.parentNodeId == parent.id }
         if (hasChildren || parent.syncEnabled || parent.linkedItemIds().isNotEmpty()) return emptyList()
+        if (parent.isDraft) return emptyList()
         if (!shouldRestorePlanningStructureAsLeaf(parent)) return emptyList()
         val note = todoDao.getPlanningNote(parent.noteId) ?: return emptyList()
         val resolved = resolvePlanningNodeDraft(
@@ -1582,8 +1666,8 @@ class TodoRepository(
             .map { node ->
                 node.copy(
                     parentNodeId = node.parentNodeId?.takeIf { it in nodeIds },
-                    linkedTodoId = node.linkedTodoId?.takeIf { it in itemIds },
-                    linkedEndTodoId = node.linkedEndTodoId?.takeIf { it in itemIds }
+                    linkedTodoId = node.linkedTodoId?.takeIf { !node.isDraft && it in itemIds },
+                    linkedEndTodoId = node.linkedEndTodoId?.takeIf { !node.isDraft && it in itemIds }
                 )
             }
         return topologicallySortedPlanningNodes(sanitized.withoutCyclicPlanningParents())

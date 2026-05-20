@@ -278,6 +278,7 @@ private fun PlanningNode.toJson(): JSONObject {
         put("location", location)
         put("linkedTodoId", linkedTodoId)
         put("linkedEndTodoId", linkedEndTodoId)
+        put("isDraft", isDraft)
         put("syncEnabled", syncEnabled)
         put("collapsed", collapsed)
         put("completed", completed)
@@ -558,6 +559,7 @@ private fun JSONArray?.toPlanningNodes(): List<PlanningNode> {
                     location = item.optStringOrNull("location"),
                     linkedTodoId = item.optLongOrNull("linkedTodoId"),
                     linkedEndTodoId = item.optLongOrNull("linkedEndTodoId"),
+                    isDraft = item.optBoolean("isDraft", false),
                     syncEnabled = item.optBoolean("syncEnabled", true),
                     collapsed = item.optBoolean("collapsed", false),
                     completed = item.optBoolean("completed", false),

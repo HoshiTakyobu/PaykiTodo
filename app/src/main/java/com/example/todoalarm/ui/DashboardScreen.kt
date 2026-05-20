@@ -143,6 +143,8 @@ fun DashboardScreen(
     onCreatePlanningNode: suspend (PlanningNodeDraft) -> String?,
     onUpdatePlanningNode: suspend (PlanningNode, PlanningNodeEdit) -> String?,
     onTogglePlanningNode: suspend (PlanningNode) -> String?,
+    onPublishPlanningNode: suspend (PlanningNode) -> String?,
+    onPublishAllPlanningDrafts: suspend (Long) -> String?,
     onDeletePlanningNode: suspend (PlanningNode) -> String?,
     onExportPlanningNodesMarkdown: suspend (Long) -> String,
     onReplacePlanningNodesFromMarkdown: suspend (Long, String) -> String?,
@@ -605,6 +607,8 @@ fun DashboardScreen(
                     onCreatePlanningNode = onCreatePlanningNode,
                     onUpdatePlanningNode = onUpdatePlanningNode,
                     onTogglePlanningNode = onTogglePlanningNode,
+                    onPublishPlanningNode = onPublishPlanningNode,
+                    onPublishAllPlanningDrafts = onPublishAllPlanningDrafts,
                     onDeletePlanningNode = onDeletePlanningNode,
                     onOpenPlanningLinkedItem = { itemId ->
                         scope.launch {

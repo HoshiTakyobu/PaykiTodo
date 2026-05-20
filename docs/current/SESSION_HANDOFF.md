@@ -6,14 +6,14 @@
 - Branch: `main`
 - Do not push to GitHub unless the user explicitly authorizes it.
 - Current code version:
-  - `versionName = 1.12.10`
-  - `versionCode = 237`
+  - `versionName = 1.12.11`
+  - `versionCode = 238`
 - Latest debug APK built in this round:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.12.10-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.12.11-debug.apk`
 - Debug APK metadata confirms:
-  - `versionName = 1.12.10`
-  - `versionCode = 237`
-  - output `PaykiTodo-1.12.10-debug.apk`
+  - `versionName = 1.12.11`
+  - `versionCode = 238`
+  - output `PaykiTodo-1.12.11-debug.apk`
 
 ## Active Goal
 
@@ -21,7 +21,16 @@ Active goal file:
 
 - `docs/goals/2026-05-20-paykitodo-outliner-ux-fix-goal.md`
 
-Goal status from code audit: implemented in code, pending runtime QA. The phone Planning Desk Outliner now has lighter note-like rows, root / child active input lines, edit / preview mode, simplified overflow, ordered bare-location parsing, leaf-only linked-item synchronization, and preview `⋯` routing to the existing official todo/event editor for full field configuration.
+Goal status from code audit: implemented in code, with emulator runtime QA partially completed. The phone Planning Desk Outliner now has lighter note-like rows, root / child active input lines, existing-row Enter sibling input, edit / preview mode, simplified overflow, ordered bare-location parsing, leaf-only linked-item synchronization, and preview `⋯` routing to the existing official todo/event editor for full field configuration.
+
+## What Changed In The Latest 1.12.11 Patch
+
+1. Existing-node edit mode now treats Enter as "continue writing here": it commits the current node, opens a same-level input row directly below it, and focuses that input for the next node.
+2. Same-level insertion passes an explicit sort order so the new node is inserted at the current position instead of being appended at the end.
+3. Existing-node edit commit is guarded so Enter, IME Done, and focus loss do not process the same edit twice.
+4. Child input expansion on nodes without children now focuses the child input and uses matching expand/collapse icon semantics.
+5. Preview menus for parents with children no longer offer a misleading sync toggle; they show `有子任务时保持结构标题`.
+6. Version metadata moved to `1.12.11 / versionCode 238`.
 
 ## What Changed In The Latest 1.12.10 Patch
 
@@ -128,6 +137,21 @@ Goal status from code audit: implemented in code, pending runtime QA. The phone 
 
 ## Verification Completed
 
+Passed so far after the 1.12.11 patch:
+
+1. `./gradlew.bat :app:compileDebugKotlin`
+2. `./gradlew.bat :app:testDebugUnitTest`
+3. `node --check app/src/main/assets/desktop-web/app.js`
+4. `git diff --check`
+5. `./gradlew.bat :app:assembleDebug`
+6. Debug APK metadata inspection: `versionName = 1.12.11`, `versionCode = 238`, output `PaykiTodo-1.12.11-debug.apk`
+7. Note: one parallel Gradle run triggered a Kotlin incremental-cache race while another Gradle task was compiling; rerunning the same commands sequentially passed.
+8. Emulator `emulator-5554` audit before the code patch confirmed the runtime parent/leaf data behavior:
+   - `ParentAudit144457` with child is `syncEnabled = 0` and has no official linked todo.
+   - `ChildAudit144457` / `ChildAuditComplete237` are leaf synced official todos.
+   - deleting the last child restored `ParentAudit144457` as a synced leaf todo.
+   - completing `ChildAuditComplete237` propagated completion to its parent node and linked official todo.
+
 Passed after the 1.12.10 patch:
 
 1. `./gradlew.bat :app:compileDebugKotlin`
@@ -179,7 +203,7 @@ No known code requirement from the active goal is intentionally left unimplement
 
 ## Git State Notes
 
-- Worktree may be dirty with the 1.12.10 Outliner UX patch and current-doc updates until the feature commit is created.
+- Worktree may be dirty with the 1.12.11 Outliner UX follow-up patch and current-doc updates until the feature commit is created.
 - Branch is ahead of `origin/main`.
 - `docs/goals/2026-05-20-paykitodo-outliner-ux-fix-goal.md` is the active goal file; archive it separately only after the Outliner UX goal is fully complete and checked for secrets.
 - Do not commit local signing material, APK outputs, API keys, tokens, or private Base URLs.

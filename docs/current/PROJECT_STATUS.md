@@ -7,8 +7,8 @@
 - Package name: `com.paykitodo.app`
 - Target platform: Android 14 / API 34
 - Current version in code:
-  - `versionName = "1.12.10"`
-  - `versionCode = 237`
+  - `versionName = "1.12.11"`
+  - `versionCode = 238`
 
 ## Current Build Facts
 
@@ -18,7 +18,19 @@
 - Latest signed release APK built locally:
   - `app/build/outputs/apk/release/PaykiTodo-1.11.0-release.apk`
 - Latest fully built debug APK:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.12.10-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.12.11-debug.apk`
+- Current `1.12.11 / versionCode 238` verification completed:
+  - Phone Planning Desk Outliner existing-node Enter now opens a focused same-level input line and inserts the next node at the intended sibling position.
+  - Existing-node edit commit is guarded so Enter, IME Done, and focus loss do not process the same edit twice.
+  - Parent nodes that have children now keep the preview menu honest: they show `有子任务时保持结构标题` instead of an invalid sync toggle.
+  - Child-input expand/collapse arrows now use matching icon state and accessibility text when a node has no existing children.
+  - Emulator `emulator-5554` audit confirmed Outliner leaf-only sync for `ParentAudit144457` / `ChildAudit144457`, parent restoration after deleting the last child, and parent/child/official-todo completion propagation for `ChildAuditComplete237`.
+  - `./gradlew.bat :app:compileDebugKotlin`
+  - `./gradlew.bat :app:testDebugUnitTest`
+  - `node --check app/src/main/assets/desktop-web/app.js`
+  - `git diff --check`
+  - `./gradlew.bat :app:assembleDebug`
+  - Debug APK metadata inspected: `versionName = 1.12.11`, `versionCode = 238`, output `PaykiTodo-1.12.11-debug.apk`
 - Current `1.12.10 / versionCode 237` verification completed:
   - Phone Planning Desk Outliner editing has been moved toward a note-like flow with root / child active input lines and edit / preview mode.
   - Preview `⋯` can open the linked official todo/event editor for full reminder, group, recurrence, notes, countdown, and check-in configuration when the node is synced.
@@ -150,7 +162,7 @@
 
 ## Current Worktree Reality
 
-The repository now targets the `1.12.10 / versionCode 237` workline. Phase 1 quick capture and Phase 2 Planning Desk Outliner remain implemented in the working tree. The latest patch focuses on phone-side Outliner UX: lighter note-like rows, root / child active input lines, edit / preview mode, simplified overflow, bare ordered location parsing, parent/leaf synchronization so only leaf nodes become official todos/events, and preview `⋯` routing to the existing official todo/event editor for full field configuration. The earlier Android widget, multi-group todo, event check-in, Planning Desk image recognition, release-size, and `1.11.4` check-in regression fixes remain in the working tree. Release builds enable R8/resource shrinking and use WebP dashboard backgrounds; the latest signed `PaykiTodo-1.11.0-release.apk` size check is `4.83 MB`, and release startup / main-surface smoke testing passed on `Pixel_8 / emulator-5554`.
+The repository now targets the `1.12.11 / versionCode 238` workline. Phase 1 quick capture and Phase 2 Planning Desk Outliner remain implemented in the working tree. The latest patch tightens phone-side Outliner editing after audit: existing-node Enter opens a focused same-level input, edit commit is protected from duplicate Enter / IME / focus-loss handling, no-child expand arrows expose child input with correct semantics, and parent nodes with children no longer offer a misleading sync toggle. The previous `1.12.10` patch introduced lighter note-like rows, root / child active input lines, edit / preview mode, simplified overflow, bare ordered location parsing, parent/leaf synchronization so only leaf nodes become official todos/events, and preview `⋯` routing to the existing official todo/event editor for full field configuration. The earlier Android widget, multi-group todo, event check-in, Planning Desk image recognition, release-size, and `1.11.4` check-in regression fixes remain in the working tree. Release builds enable R8/resource shrinking and use WebP dashboard backgrounds; the latest signed `PaykiTodo-1.11.0-release.apk` size check is `4.83 MB`, and release startup / main-surface smoke testing passed on `Pixel_8 / emulator-5554`.
 
 Most important current baseline facts:
 

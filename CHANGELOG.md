@@ -1,5 +1,14 @@
 # Changelog
 
+## v1.12.11
+
+- 修复手机端规划台 Outliner 已有节点编辑体验：编辑节点时按 Enter 会在当前节点下方打开并聚焦同级输入行，输入后按回车按原位置插入新同级节点，不再只是提交文本后停住
+- 修复规划台已有节点编辑提交的防重入问题：Enter、输入法完成键和失焦提交只会处理一次，避免一次编辑触发重复保存或多余自动备份
+- 修复规划台父子节点菜单语义：有子任务的父节点在预览 `⋯` 菜单里显示为“有子任务时保持结构标题”，不再给出实际不会生效的“同步为待办/日程”操作
+- 修复规划台无子节点展开箭头的语义提示：展开子任务输入区时图标和无障碍文案保持一致，避免明明是展开入口却提示“折叠子任务”
+- 版本号升级到 `1.12.11` / `versionCode 238`
+- 验证：`node --check app/src/main/assets/desktop-web/app.js`、`./gradlew.bat :app:compileDebugKotlin`、`./gradlew.bat :app:testDebugUnitTest`、`git diff --check`、`./gradlew.bat :app:assembleDebug` 通过；debug APK 输出 `PaykiTodo-1.12.11-debug.apk`
+
 ## v1.12.10
 
 - 手机端规划台 Outliner 编辑体验改为更接近备忘录：大纲节点默认以轻量文本行展示，底部和展开的子任务区都有活跃输入行，输入后按回车即可创建节点，不再必须点“添加”按钮

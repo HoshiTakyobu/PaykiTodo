@@ -83,6 +83,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
@@ -93,6 +95,7 @@ import androidx.compose.ui.input.key.type
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.TextRange
@@ -916,14 +919,17 @@ private fun PlanningOutlineEditor(
 ) {
     var rootInput by remember(activeNote?.id) { mutableStateOf("") }
     var editingNodeId by remember(activeNote?.id) { mutableStateOf<Long?>(null) }
+    var siblingInputAfterNodeId by remember(activeNote?.id) { mutableStateOf<Long?>(null) }
+    var inputFocusTarget by remember(activeNote?.id) { mutableStateOf<String?>(null) }
     val childInputs = remember(activeNote?.id) { mutableStateMapOf<Long, String>() }
+    val siblingInputs = remember(activeNote?.id) { mutableStateMapOf<Long, String>() }
     val expandedChildInputs = remember(activeNote?.id) { mutableStateMapOf<Long, Boolean>() }
     var timeDialogNode by remember { mutableStateOf<PlanningNode?>(null) }
     var locationDialogNode by remember { mutableStateOf<PlanningNode?>(null) }
     val flattened = remember(nodes) { flattenPlanningNodes(nodes) }
     val childrenByParent = remember(nodes) { nodes.groupBy { it.parentNodeId } }
 
-    fun createNode(parentId: Long?, raw: String) {
+    fun createNode(parentId: Long?, raw: String, sortOrder: Int? = null) {
         val note = activeNote ?: return
         val text = raw.trim()
         if (text.isBlank()) return
@@ -931,7 +937,8 @@ private fun PlanningOutlineEditor(
             PlanningNodeDraft(
                 noteId = note.id,
                 parentNodeId = parentId,
-                text = text
+                text = text,
+                sortOrder = sortOrder
             )
         )
     }
@@ -975,10 +982,13 @@ private fun PlanningOutlineEditor(
                     flattened.forEach { outline ->
                         val node = outline.node
                         val hasChildren = childrenByParent[node.id].orEmpty().isNotEmpty()
+                        val childInputExpanded = expandedChildInputs[node.id] == true
+                        val childInputVisible = !previewMode && (childInputExpanded || (hasChildren && !node.collapsed))
                         item(key = node.id) {
                         PlanningOutlineRow(
                             item = outline,
                             hasChildren = hasChildren,
+                            childInputVisible = childInputVisible,
                             outlineHintVisible = outlineHintVisible,
                             previewMode = previewMode,
                             editing = editingNodeId == node.id,
@@ -992,7 +1002,9 @@ private fun PlanningOutlineEditor(
                                         node.toPlanningNodeEdit(collapsed = !node.collapsed)
                                     )
                                 } else {
-                                    expandedChildInputs[node.id] = !(expandedChildInputs[node.id] ?: false)
+                                    val nextExpanded = !childInputExpanded
+                                    expandedChildInputs[node.id] = nextExpanded
+                                    if (nextExpanded) inputFocusTarget = "child-${node.id}"
                                 }
                             },
                             onTextCommit = { text ->
@@ -1002,7 +1014,12 @@ private fun PlanningOutlineEditor(
                                     onUpdateNode(node, node.toPlanningNodeEdit(text = text.trim()))
                                 }
                             },
-                            onCreateSibling = { editingNodeId = null },
+                            onCreateSibling = {
+                                editingNodeId = null
+                                siblingInputAfterNodeId = node.id
+                                siblingInputs[node.id] = ""
+                                inputFocusTarget = "sibling-${node.id}"
+                            },
                             onIndent = {
                                 val index = flattened.indexOfFirst { it.node.id == node.id }
                                 val previous = flattened.getOrNull(index - 1)?.node
@@ -1040,7 +1057,29 @@ private fun PlanningOutlineEditor(
                             onDelete = { onDeleteNode(node) }
                         )
                         }
-                        val childInputVisible = !previewMode && ((expandedChildInputs[node.id] == true) || (hasChildren && !node.collapsed))
+                        if (!previewMode && siblingInputAfterNodeId == node.id) {
+                            item(key = "sibling-input-${node.id}") {
+                                PlanningOutlineInputLine(
+                                    depth = outline.depth,
+                                    value = siblingInputs[node.id].orEmpty(),
+                                    placeholder = "继续写同级事项",
+                                    enabled = activeNote != null,
+                                    autoFocusKey = inputFocusTarget.takeIf { it == "sibling-${node.id}" },
+                                    onValueChange = { siblingInputs[node.id] = it },
+                                    onCommit = {
+                                        val raw = siblingInputs[node.id].orEmpty()
+                                        if (raw.isBlank()) {
+                                            siblingInputAfterNodeId = null
+                                            siblingInputs.remove(node.id)
+                                        } else {
+                                            createNode(node.parentNodeId, raw, sortOrder = node.sortOrder + 1)
+                                            siblingInputAfterNodeId = null
+                                            siblingInputs.remove(node.id)
+                                        }
+                                    }
+                                )
+                            }
+                        }
                         if (childInputVisible) {
                             item(key = "child-input-${node.id}") {
                                 PlanningOutlineInputLine(
@@ -1048,6 +1087,7 @@ private fun PlanningOutlineEditor(
                                     value = childInputs[node.id].orEmpty(),
                                     placeholder = "输入 ${node.text} 的子任务",
                                     enabled = activeNote != null,
+                                    autoFocusKey = inputFocusTarget.takeIf { it == "child-${node.id}" },
                                     onValueChange = { childInputs[node.id] = it },
                                     onCommit = {
                                         val raw = childInputs[node.id].orEmpty()
@@ -1122,9 +1162,19 @@ private fun PlanningOutlineInputLine(
     value: String,
     placeholder: String,
     enabled: Boolean,
+    autoFocusKey: Any? = null,
     onValueChange: (String) -> Unit,
     onCommit: () -> Unit
 ) {
+    val focusRequester = remember { FocusRequester() }
+    val keyboardController = LocalSoftwareKeyboardController.current
+    LaunchedEffect(autoFocusKey) {
+        if (autoFocusKey != null) {
+            delay(80)
+            focusRequester.requestFocus()
+            keyboardController?.show()
+        }
+    }
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -1143,6 +1193,7 @@ private fun PlanningOutlineInputLine(
             onValueChange = onValueChange,
             modifier = Modifier
                 .weight(1f)
+                .focusRequester(focusRequester)
                 .onPreviewKeyEvent { event ->
                     if (event.type == KeyEventType.KeyDown && event.key == Key.Enter) {
                         onCommit()
@@ -1164,6 +1215,7 @@ private fun PlanningOutlineInputLine(
 private fun PlanningOutlineRow(
     item: PlanningOutlineItem,
     hasChildren: Boolean,
+    childInputVisible: Boolean,
     outlineHintVisible: Boolean,
     previewMode: Boolean,
     editing: Boolean,
@@ -1186,14 +1238,28 @@ private fun PlanningOutlineRow(
     val node = item.node
     var text by remember(node.id, node.text) { mutableStateOf(node.text) }
     var actionMenuExpanded by remember { mutableStateOf(false) }
+    val editFocusRequester = remember { FocusRequester() }
+    val keyboardController = LocalSoftwareKeyboardController.current
+    var editHadFocus by remember(node.id, editing) { mutableStateOf(false) }
+    var editCommitHandled by remember(node.id, editing) { mutableStateOf(false) }
     val chipText = remember(node) { planningNodeMetaText(node) }
+    val childToggleExpanded = if (hasChildren) !node.collapsed else childInputVisible
     val textColor = if (node.completed) {
         MaterialTheme.colorScheme.onSurface
     } else {
         MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.78f)
     }
+    LaunchedEffect(editing, previewMode) {
+        if (editing && !previewMode) {
+            delay(80)
+            editFocusRequester.requestFocus()
+            keyboardController?.show()
+        }
+    }
 
     fun commit() {
+        if (editCommitHandled) return
+        editCommitHandled = true
         val clean = text.trim()
         if (clean.isBlank()) {
             onDelete()
@@ -1220,8 +1286,8 @@ private fun PlanningOutlineRow(
                 onClick = onToggleCollapse
             ) {
                 Icon(
-                    imageVector = if (hasChildren && !node.collapsed) Icons.Rounded.ExpandLess else Icons.Rounded.ExpandMore,
-                    contentDescription = if (node.collapsed) "展开子任务" else "折叠子任务",
+                    imageVector = if (childToggleExpanded) Icons.Rounded.ExpandLess else Icons.Rounded.ExpandMore,
+                    contentDescription = if (childToggleExpanded) "折叠子任务" else "展开子任务",
                     tint = MaterialTheme.colorScheme.outline
                 )
             }
@@ -1235,13 +1301,24 @@ private fun PlanningOutlineRow(
                     tint = if (node.completed) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.outline
                 )
             }
-            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            val textColumnModifier = if (!previewMode && !editing) {
+                Modifier
+                    .weight(1f)
+                    .clickable { onStartEdit() }
+            } else {
+                Modifier.weight(1f)
+            }
+            Column(
+                modifier = textColumnModifier,
+                verticalArrangement = Arrangement.spacedBy(2.dp)
+            ) {
                 if (editing && !previewMode) {
                     OutlinedTextField(
                         value = text,
                         onValueChange = { text = it },
                         modifier = Modifier
                             .fillMaxWidth()
+                            .focusRequester(editFocusRequester)
                             .onPreviewKeyEvent { event ->
                                 if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
                                 when (event.key) {
@@ -1266,7 +1343,11 @@ private fun PlanningOutlineRow(
                                 }
                             }
                             .onFocusChanged { focusState ->
-                                if (!focusState.isFocused && editing) commit()
+                                if (focusState.isFocused) {
+                                    editHadFocus = true
+                                } else if (editing && editHadFocus) {
+                                    commit()
+                                }
                             },
                         textStyle = MaterialTheme.typography.bodyLarge.copy(
                             color = textColor,
@@ -1280,9 +1361,7 @@ private fun PlanningOutlineRow(
                 } else {
                     Text(
                         text = node.text,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable(enabled = !previewMode) { onStartEdit() },
+                        modifier = Modifier.fillMaxWidth(),
                         style = MaterialTheme.typography.bodyLarge.copy(
                             color = textColor,
                             textDecoration = if (node.completed) TextDecoration.LineThrough else TextDecoration.None
@@ -1330,13 +1409,21 @@ private fun PlanningOutlineRow(
                                 onRequestLocation()
                             }
                         )
-                        DropdownMenuItem(
-                            text = { Text(if (node.syncEnabled) "改为结构标题" else "同步为待办/日程") },
-                            onClick = {
-                                actionMenuExpanded = false
-                                onToggleSync()
-                            }
-                        )
+                        if (hasChildren) {
+                            DropdownMenuItem(
+                                text = { Text("有子任务时保持结构标题") },
+                                onClick = {},
+                                enabled = false
+                            )
+                        } else {
+                            DropdownMenuItem(
+                                text = { Text(if (node.syncEnabled) "改为结构标题" else "同步为待办/日程") },
+                                onClick = {
+                                    actionMenuExpanded = false
+                                    onToggleSync()
+                                }
+                            )
+                        }
                         DropdownMenuItem(
                             text = { Text("删除") },
                             onClick = {

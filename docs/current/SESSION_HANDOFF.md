@@ -6,20 +6,31 @@
 - Branch: `main`
 - Do not push to GitHub unless the user explicitly authorizes it.
 - Current code version:
-  - `versionName = 1.12.14`
-  - `versionCode = 241`
+  - `versionName = 1.12.15`
+  - `versionCode = 242`
 - Latest debug APK built in this round:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.12.14-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.12.15-debug.apk`
 - Debug APK metadata confirms:
-  - `versionName = 1.12.14`
-  - `versionCode = 241`
-  - output `PaykiTodo-1.12.14-debug.apk`
+  - `versionName = 1.12.15`
+  - `versionCode = 242`
+  - output `PaykiTodo-1.12.15-debug.apk`
 
 ## Active Goal
 
-Active goal: version-metadata-only debug rebuild over the completed `1.12.13` Planning Desk Outliner keyboard baseline.
+Active goal: UI recovery plus Planning Desk draft/publish separation.
 
-Latest status: version metadata has moved to `1.12.14 / versionCode 241` so Android can upgrade over an installed `1.12.13` debug APK. The product behavior baseline remains the completed `1.12.13` Outliner keyboard patch.
+Latest status: version metadata has moved to `1.12.15 / versionCode 242` so Android can upgrade over an installed `1.12.14` debug APK. The product baseline now includes one-line calendar header controls, front-loaded todo group creation, restored Planning Desk document/image-recognition entry points, and explicit draft publishing for Planning Desk nodes.
+
+## What Changed In The Latest 1.12.15 Patch
+
+1. Calendar title and calendar action buttons share one header row while keeping the title clickable.
+2. Todo group creation moved beside `全部` as a compact `+` entry.
+3. Planning Desk uses a larger document button and restores `从图片识别日程` in the overflow menu.
+4. Planning Desk Outliner new nodes, share capture, photo capture, voice capture, and image recognition create draft nodes first instead of immediate official todos/events.
+5. Phone and desktop Web can publish one draft node or all drafts in the current document.
+6. Database version moved to `23` with `planning_nodes.isDraft`; backup/restore and desktop sync preserve the draft state.
+7. Version metadata moved to `1.12.15 / versionCode 242`.
+8. Latest debug APK path is `app/build/outputs/apk/debug/PaykiTodo-1.12.15-debug.apk`.
 
 ## What Changed In The Latest 1.12.14 Patch
 
@@ -155,6 +166,13 @@ Latest status: version metadata has moved to `1.12.14 / versionCode 241` so Andr
   - `app/src/main/assets/desktop-web/app.css`
 
 ## Verification Completed
+
+Passed after the 1.12.15 patch:
+
+1. `./gradlew.bat :app:compileDebugKotlin`
+2. `git diff --check`
+3. `./gradlew.bat :app:assembleDebug`
+4. Debug APK metadata inspection: `versionName = 1.12.15`, `versionCode = 242`, output `PaykiTodo-1.12.15-debug.apk`
 
 Passed after the 1.12.14 metadata rebuild:
 

@@ -7,8 +7,8 @@
 - Package name: `com.paykitodo.app`
 - Target platform: Android 14 / API 34
 - Current version in code:
-  - `versionName = "1.12.14"`
-  - `versionCode = 241`
+  - `versionName = "1.12.15"`
+  - `versionCode = 242`
 
 ## Current Build Facts
 
@@ -18,7 +18,17 @@
 - Latest signed release APK built locally:
   - `app/build/outputs/apk/release/PaykiTodo-1.11.0-release.apk`
 - Latest fully built debug APK:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.12.14-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.12.15-debug.apk`
+- Current `1.12.15 / versionCode 242` verification completed:
+  - Calendar header title/actions were merged to one row.
+  - Todo group creation is fixed beside `全部`.
+  - Planning Desk document/image-recognition entries were restored.
+  - Planning Desk draft/publish separation is implemented for phone, capture flows, backup/restore, and desktop Web sync.
+  - Database version is `23`; `planning_nodes.isDraft` is present in schema and migration.
+  - `./gradlew.bat :app:compileDebugKotlin`
+  - `git diff --check`
+  - `./gradlew.bat :app:assembleDebug`
+  - Debug APK metadata inspected: `versionName = 1.12.15`, `versionCode = 242`, output `PaykiTodo-1.12.15-debug.apk`
 - Current `1.12.14 / versionCode 241` verification completed:
   - Version metadata was bumped only so Android can upgrade over an installed `1.12.13` debug build.
   - No database schema, reminder behavior, Planning Desk behavior, or user-data format changed in this rebuild.
@@ -188,11 +198,11 @@
 
 ## Current Worktree Reality
 
-The repository now targets the `1.12.14 / versionCode 241` workline. This is a version-metadata-only rebuild over the `1.12.13` Planning Desk Outliner keyboard baseline so Android can upgrade an already installed debug APK. The underlying `1.12.13` behavior extends the `1.12.11`-`1.12.12` Planning Desk Outliner baseline with memo-style keyboard behavior on both phone and desktop Web: empty input Backspace focuses the previous node, row-start Backspace merges into the previous same-level node, middle Enter splits a node into a new sibling, and desktop ArrowUp/ArrowDown can cross node rows. Phase 1 quick capture and Phase 2 Planning Desk Outliner remain implemented in the working tree. The earlier Android widget, multi-group todo, event check-in, Planning Desk image recognition, release-size, and `1.11.4` check-in regression fixes remain in the working tree. Release builds enable R8/resource shrinking and use WebP dashboard backgrounds; the latest signed `PaykiTodo-1.11.0-release.apk` size check is `4.83 MB`, and release startup / main-surface smoke testing passed on `Pixel_8 / emulator-5554`.
+The repository now targets the `1.12.15 / versionCode 242` workline. This patch packages the UI recovery and Planning Desk draft/publish separation after the `1.12.14` metadata-only rebuild: calendar header actions are back on the month-title row, todo group creation is fixed beside `全部`, Planning Desk document/image-recognition entry points are visible again, and Outliner/capture-created nodes stay draft until the user explicitly publishes them. Phase 1 quick capture and Phase 2 Planning Desk Outliner remain implemented in the working tree. The earlier Android widget, multi-group todo, event check-in, Planning Desk image recognition, release-size, and `1.11.4` check-in regression fixes remain in the working tree. Release builds enable R8/resource shrinking and use WebP dashboard backgrounds; the latest signed `PaykiTodo-1.11.0-release.apk` size check is `4.83 MB`, and release startup / main-surface smoke testing passed on `Pixel_8 / emulator-5554`.
 
 Most important current baseline facts:
 
-- Database version is now `22` in the working tree. `MIGRATION_17_18` drops the old `focus_sessions` table, creates `event_check_ins`, creates `todo_group_tags`, adds `checkInEnabled` and `totalCheckInMinutes` to `todo_items`, backfills todo group tags, and merges the old default `专注` group into `例行`; `MIGRATION_18_19` adds `planning_notes.documentDateEpochDay`; `MIGRATION_19_20` creates `planning_nodes` and migrates existing planning Markdown lines into node records; `MIGRATION_20_21` adds `planning_nodes.linkedEndTodoId` and its index; `MIGRATION_21_22` adds `planning_nodes.syncEnabled` and marks common migrated structure headings as non-sync nodes so they do not create official todos/events.
+- Database version is now `23` in the working tree. `MIGRATION_17_18` drops the old `focus_sessions` table, creates `event_check_ins`, creates `todo_group_tags`, adds `checkInEnabled` and `totalCheckInMinutes` to `todo_items`, backfills todo group tags, and merges the old default `专注` group into `例行`; `MIGRATION_18_19` adds `planning_notes.documentDateEpochDay`; `MIGRATION_19_20` creates `planning_nodes` and migrates existing planning Markdown lines into node records; `MIGRATION_20_21` adds `planning_nodes.linkedEndTodoId` and its index; `MIGRATION_21_22` adds `planning_nodes.syncEnabled` and marks common migrated structure headings as non-sync nodes so they do not create official todos/events; `MIGRATION_22_23` adds `planning_nodes.isDraft` so newly captured/planned nodes can stay out of official todos/events until published.
 - Quick capture is implemented: `ShareReceiverActivity`, `CaptureActivity`, `VoiceCaptureActivity`, `BackgroundCaptureProcessor`, shortcuts XML, FileProvider paths, and direct node insertion exist. Legacy preview UI code still exists for reusable/old paths but is no longer the default share/capture write path.
 - Phase 2 Outliner is user-facing: `PlanningNode`, DAO methods, repository CRUD / Markdown import-export helpers, backup / restore, schema `20.json` and `21.json`, phone outline editing with keyboard / long-press operations, desktop sync node routes, desktop Web node editing / up-down reorder / same-level drag reorder, optional event-end DDL linked todos, and capture-to-node insertion exist. Remaining work is stricter migration/runtime QA on real devices and browsers.
 - Active no-DDL todos are still treated as today todos across phone daily board, Android widget board query, desktop board, and desktop todo management.

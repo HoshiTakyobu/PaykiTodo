@@ -4,9 +4,9 @@
 
 ### In Progress
 
-- Verify version `1.12.14` on a real Android device: Planning Desk empty-input Backspace focus jump, row-start Backspace merge, middle Enter split, child-input behavior, active input focus, edit/preview switch, parent demotion/restoration, bare-location parsing, share target, launcher photo shortcut, launcher voice shortcut, and Android 13+ notification-permission copy.
-- Verify version `1.12.14` in a real desktop browser against live phone data: Planning Desk empty-row Backspace, row-start Backspace merge, middle Enter split, ArrowUp/ArrowDown focus movement, node create / edit / complete / delete / cancel / up-down reorder, same-level drag reorder, structure-heading sync toggle, document switching, node time-field display/editing, Markdown compatibility capture confirmation, and desktop sync refresh behavior.
-- Keep `README.md`, `CHANGELOG.md`, Wiki, in-app help sheets, desktop-web help, and current-state docs aligned with version `1.12.14`.
+- Verify version `1.12.15` on a real Android device: calendar header one-line layout, todo group `+` entry, Planning Desk document button / image recognition entry, draft node creation, single publish, publish-all, share/photo/voice/image capture draft behavior, and old formal nodes after database migration.
+- Verify version `1.12.15` in a real desktop browser against live phone data: Planning Desk draft row display, single publish, publish-all, node create / edit / delete / reorder, document switching, and desktop sync refresh behavior.
+- Keep `README.md`, `CHANGELOG.md`, Wiki, in-app help sheets, desktop-web help, and current-state docs aligned with version `1.12.15`.
 - Keep the archived `docs/goals/2026-05-20-paykitodo-outliner-ux-fix-goal.md` as historical evidence for the completed Outliner UX goal.
 - Continue Planning Desk usability polish without expanding into Gantt, AI auto-planning, CRDT, or complex project trees.
 

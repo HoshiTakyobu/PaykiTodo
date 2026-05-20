@@ -2,17 +2,31 @@
 
 ## Active Development Focus
 
-Active goal: rebuild the current debug line with a higher Android version code so devices with `1.12.13` installed can upgrade normally.
+Active goal: ship the UI recovery and Planning Desk draft/publish separation as a higher debug build so devices with `1.12.14` installed can upgrade normally.
 
-The working tree is now on the `1.12.14 / versionCode 241` line. This round is a metadata-only rebuild over the completed `1.12.13` Planning Desk Outliner keyboard behavior. No database schema, reminder behavior, Planning Desk behavior, or user-data format change is intended. Do not push to GitHub unless the user explicitly asks.
+The working tree is now on the `1.12.15 / versionCode 242` line. This round is not metadata-only: it includes calendar/todo/Planning Desk UI recovery plus Planning Desk draft nodes and explicit publish actions. Database version is `23` because `planning_nodes.isDraft` was added. Do not push to GitHub unless the user explicitly asks.
 
 ## Current Goal State
 
 Current implementation state:
 
-1. Version metadata moved to `1.12.14 / versionCode 241`.
-2. The behavior baseline remains the completed `1.12.13` Outliner keyboard patch.
-3. This is a metadata-only rebuild; no database schema, backup format, reminder model, or sync payload schema change is intended.
+1. Version metadata moved to `1.12.15 / versionCode 242`.
+2. Calendar header title/actions are on one line, and the todo group new-entry button is fixed near `全部`.
+3. Planning Desk restores a visible document button and image-recognition entry.
+4. Planning Desk Outliner now separates drafts from formal items: new/captured nodes stay draft until single publish or publish-all.
+5. Database version is `23`; backup/restore and desktop sync carry `isDraft`.
+
+## Verification Completed For 1.12.15
+
+The `1.12.15 / versionCode 242` patch has passed:
+
+1. `./gradlew.bat :app:compileDebugKotlin`
+2. `git diff --check`
+3. `./gradlew.bat :app:assembleDebug`
+4. Debug APK metadata confirms:
+   - `versionName = 1.12.15`
+   - `versionCode = 242`
+   - output `PaykiTodo-1.12.15-debug.apk`
 
 ## Verification Completed For 1.12.14
 
@@ -96,7 +110,7 @@ The `1.12.10 / versionCode 237` patch has passed:
    - `versionCode = 237`
    - output `PaykiTodo-1.12.10-debug.apk`
 
-Latest debug APK: `app/build/outputs/apk/debug/PaykiTodo-1.12.14-debug.apk`.
+Latest debug APK: `app/build/outputs/apk/debug/PaykiTodo-1.12.15-debug.apk`.
 
 ## Previous Verification Completed For 1.12.9
 

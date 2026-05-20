@@ -39,6 +39,15 @@ The `1.12.11 / versionCode 238` patch has passed so far:
    - `versionName = 1.12.11`
    - `versionCode = 238`
    - output `PaykiTodo-1.12.11-debug.apk`
+8. Emulator `emulator-5554` runtime audit on installed `1.12.11` confirmed the target phone Planning Desk UX:
+   - app package metadata reports `versionName = 1.12.11`, `versionCode = 238`.
+   - opening drawer -> `规划台` shows the Outliner toolbar with `今日`, `Markdown`, `预览`, document list, and `更多操作`.
+   - edit mode shows the note-like hint `像备忘录一样写：输入一行后按回车...`, existing rows with expand / completion controls, and the active input placeholder `继续写下一行，按回车创建`.
+   - typing `GoalAudit1512` into the active input and pressing Enter created a normal outline node, while a new active input row stayed focused.
+   - the main overflow menu contains only `新建文档`, `重命名`, `使用说明`, `归档`, and `删除文档`; Markdown import/export and image recognition are not in the main menu.
+   - `使用说明` opens the three-page `规划台新手教程`; page 1 is `像备忘录一样一行一行写` and explains `输入 → 回车 → 变成节点`.
+   - tapping `预览` switches the toolbar button to `编辑`, hides the active input row, shows preview-mode copy, and exposes per-row `节点设置`.
+   - opening a parent row's `节点设置` menu shows `有子任务时保持结构标题` as a disabled item rather than `同步为待办/日程`.
 
 ## Verification Completed For 1.12.10
 

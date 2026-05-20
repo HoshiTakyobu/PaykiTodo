@@ -31,6 +31,7 @@
   - `git diff --check`
   - `./gradlew.bat :app:assembleDebug`
   - Debug APK metadata inspected: `versionName = 1.12.11`, `versionCode = 238`, output `PaykiTodo-1.12.11-debug.apk`
+  - Emulator `emulator-5554` installed `PaykiTodo-1.12.11-debug.apk` and confirmed the Planning Desk phone UX: drawer navigation opens `规划台`; edit mode has the note-like active input row; Enter turns `GoalAudit1512` into a node and keeps the next input focused; the main overflow menu is limited to document actions; the three-page tutorial opens from `使用说明`; preview mode hides input rows and exposes per-row `节点设置`; parent rows with children show disabled `有子任务时保持结构标题`.
 - Current `1.12.10 / versionCode 237` verification completed:
   - Phone Planning Desk Outliner editing has been moved toward a note-like flow with root / child active input lines and edit / preview mode.
   - Preview `⋯` can open the linked official todo/event editor for full reminder, group, recurrence, notes, countdown, and check-in configuration when the node is synced.

@@ -146,7 +146,16 @@ Passed so far after the 1.12.11 patch:
 5. `./gradlew.bat :app:assembleDebug`
 6. Debug APK metadata inspection: `versionName = 1.12.11`, `versionCode = 238`, output `PaykiTodo-1.12.11-debug.apk`
 7. Note: one parallel Gradle run triggered a Kotlin incremental-cache race while another Gradle task was compiling; rerunning the same commands sequentially passed.
-8. Emulator `emulator-5554` audit before the code patch confirmed the runtime parent/leaf data behavior:
+8. Emulator `emulator-5554` runtime audit on installed `1.12.11` confirmed the target phone Planning Desk UX:
+   - package metadata reports `versionName = 1.12.11`, `versionCode = 238`.
+   - drawer navigation opens `规划台`.
+   - edit mode shows the note-like hint, existing rows with expand / completion controls, and the active input placeholder `继续写下一行，按回车创建`.
+   - typing `GoalAudit1512` into the active input and pressing Enter creates a normal node and keeps the next active input focused.
+   - the main overflow menu contains `新建文档`, `重命名`, `使用说明`, `归档`, and `删除文档`, with no image-recognition or Markdown import/export actions in that menu.
+   - `使用说明` opens the three-page `规划台新手教程`.
+   - preview mode changes the toolbar button to `编辑`, hides active input rows, shows preview-mode copy, and exposes per-row `节点设置`.
+   - a parent row with children shows disabled `有子任务时保持结构标题` in its node menu.
+9. Emulator `emulator-5554` audit before the code patch confirmed the runtime parent/leaf data behavior:
    - `ParentAudit144457` with child is `syncEnabled = 0` and has no official linked todo.
    - `ChildAudit144457` / `ChildAuditComplete237` are leaf synced official todos.
    - deleting the last child restored `ParentAudit144457` as a synced leaf todo.

@@ -2,21 +2,29 @@
 
 ## Active Development Focus
 
-Active goal: implement `docs/goals/2026-05-20-paykitodo-outliner-keyboard-fix-goal.md`.
+Active goal: rebuild the current debug line with a higher Android version code so devices with `1.12.13` installed can upgrade normally.
 
-The working tree is now on the `1.12.13 / versionCode 240` line. This round targets Planning Desk Outliner keyboard behavior on phone and desktop Web: Backspace should cross row boundaries, Enter should split nodes at the cursor, input rows should no longer look like form boxes, and desktop ArrowUp/ArrowDown should move between rows. Do not push to GitHub unless the user explicitly asks.
+The working tree is now on the `1.12.14 / versionCode 241` line. This round is a metadata-only rebuild over the completed `1.12.13` Planning Desk Outliner keyboard behavior. No database schema, reminder behavior, Planning Desk behavior, or user-data format change is intended. Do not push to GitHub unless the user explicitly asks.
 
 ## Current Goal State
 
 Current implementation state:
 
-1. Phone Outliner node editing now uses `TextFieldValue` so cursor position is known.
-2. Phone active input rows are borderless `BasicTextField` lines with placeholder and subtle focus background.
-3. Phone input rows support empty Backspace -> previous node focus and row-start Backspace -> merge current input text into the previous node.
-4. Phone node rows support row-start Backspace -> merge into the previous same-level node and middle Enter -> split into a new same-level node.
-5. Desktop Web Outliner supports the same Backspace / Enter keyboard behavior through DOM `selectionStart` / `selectionEnd`.
-6. Desktop Web Outliner supports ArrowUp / ArrowDown focus movement between node rows and the root input line.
-7. This is a UI / interaction change only; no database schema, backup format, reminder model, or sync payload schema change is intended.
+1. Version metadata moved to `1.12.14 / versionCode 241`.
+2. The behavior baseline remains the completed `1.12.13` Outliner keyboard patch.
+3. This is a metadata-only rebuild; no database schema, backup format, reminder model, or sync payload schema change is intended.
+
+## Verification Completed For 1.12.14
+
+The `1.12.14 / versionCode 241` rebuild has passed:
+
+1. `./gradlew.bat :app:compileDebugKotlin`
+2. `git diff --check`
+3. `./gradlew.bat :app:assembleDebug`
+4. Debug APK metadata confirms:
+   - `versionName = 1.12.14`
+   - `versionCode = 241`
+   - output `PaykiTodo-1.12.14-debug.apk`
 
 ## Verification Completed For 1.12.13
 
@@ -88,7 +96,7 @@ The `1.12.10 / versionCode 237` patch has passed:
    - `versionCode = 237`
    - output `PaykiTodo-1.12.10-debug.apk`
 
-Latest debug APK: `app/build/outputs/apk/debug/PaykiTodo-1.12.13-debug.apk`.
+Latest debug APK: `app/build/outputs/apk/debug/PaykiTodo-1.12.14-debug.apk`.
 
 ## Previous Verification Completed For 1.12.9
 

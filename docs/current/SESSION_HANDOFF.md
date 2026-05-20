@@ -6,22 +6,26 @@
 - Branch: `main`
 - Do not push to GitHub unless the user explicitly authorizes it.
 - Current code version:
-  - `versionName = 1.12.13`
-  - `versionCode = 240`
+  - `versionName = 1.12.14`
+  - `versionCode = 241`
 - Latest debug APK built in this round:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.12.13-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.12.14-debug.apk`
 - Debug APK metadata confirms:
-  - `versionName = 1.12.13`
-  - `versionCode = 240`
-  - output `PaykiTodo-1.12.13-debug.apk`
+  - `versionName = 1.12.14`
+  - `versionCode = 241`
+  - output `PaykiTodo-1.12.14-debug.apk`
 
 ## Active Goal
 
-Active goal file:
+Active goal: version-metadata-only debug rebuild over the completed `1.12.13` Planning Desk Outliner keyboard baseline.
 
-- `docs/goals/2026-05-20-paykitodo-outliner-keyboard-fix-goal.md`
+Latest status: version metadata has moved to `1.12.14 / versionCode 241` so Android can upgrade over an installed `1.12.13` debug APK. The product behavior baseline remains the completed `1.12.13` Outliner keyboard patch.
 
-Latest goal status from code audit: the keyboard-fix goal is implemented in code and passed local build / APK metadata verification. The phone Planning Desk Outliner now tracks cursor selection during node editing, supports Backspace merge/focus jumps and middle-Enter split, and uses borderless active input lines. Desktop Web implements the same Backspace/Enter behavior plus ArrowUp/ArrowDown focus movement.
+## What Changed In The Latest 1.12.14 Patch
+
+1. Version metadata moved to `1.12.14 / versionCode 241`.
+2. This rebuild intentionally does not change database schema, reminder behavior, Planning Desk behavior, or user-data format.
+3. Latest debug APK path is `app/build/outputs/apk/debug/PaykiTodo-1.12.14-debug.apk`.
 
 ## What Changed In The Latest 1.12.13 Patch
 
@@ -151,6 +155,13 @@ Latest goal status from code audit: the keyboard-fix goal is implemented in code
   - `app/src/main/assets/desktop-web/app.css`
 
 ## Verification Completed
+
+Passed after the 1.12.14 metadata rebuild:
+
+1. `./gradlew.bat :app:compileDebugKotlin`
+2. `git diff --check`
+3. `./gradlew.bat :app:assembleDebug`
+4. Debug APK metadata inspection: `versionName = 1.12.14`, `versionCode = 241`, output `PaykiTodo-1.12.14-debug.apk`
 
 Passed so far after the 1.12.13 keyboard patch:
 

@@ -1,5 +1,12 @@
 # Changelog
 
+## v1.12.14
+
+- 提升调试包版本号，确保 Android 在已安装 `1.12.13` 时把新 APK 识别为可升级安装包
+- 本轮不改变数据库结构、提醒逻辑、规划台逻辑或用户数据格式，只重建更高版本调试包
+- 版本号升级到 `1.12.14` / `versionCode 241`
+- 验证：`./gradlew.bat :app:compileDebugKotlin`、`git diff --check`、`./gradlew.bat :app:assembleDebug` 通过；debug APK 元数据确认 `1.12.14 / 241`
+
 ## v1.12.13
 
 - 补齐手机端规划台 Outliner 备忘录级键盘行为：空输入行 Backspace 会回到上一节点，节点行首 Backspace 会与上一个同级节点合并，节点中间 Enter 会断行为新同级节点

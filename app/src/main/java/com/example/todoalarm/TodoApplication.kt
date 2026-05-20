@@ -35,27 +35,39 @@ class TodoApplication : Application() {
     override fun onCreate() {
         super.onCreate()
         CrashLogger.install(this)
-        DailyReportNotifier.ensureChannel(this)
-        DailyReportScheduler.scheduleNext(this)
+        val skipReminderRecovery = SafeStartupGuard.enterStartup(this)
+        runCatching {
+            DailyReportNotifier.ensureChannel(this)
+            DailyReportScheduler.scheduleNext(this)
+        }.onFailure(CrashLogger::recordNonFatal)
         applicationScope.launch {
-            repository.ensureDefaultGroups()
-            val repairedPlanningItems = repository.ensurePlanningNodeLinkedItems(
-                createEventEndTodo = settingsStore.currentSettings().planningEventEndTodoEnabled
-            )
-            repairedPlanningItems.forEach { item ->
-                if (item.completed || item.canceled || !item.reminderEnabled) return@forEach
-                ReminderDispatchTracker.clear(applicationContext, item.id)
-                val scheduleMessage = alarmScheduler.schedule(item)
-                if (scheduleMessage != null) {
-                    repository.updateTodo(item.copy(reminderEnabled = false))
+            try {
+                repository.ensureDefaultGroups()
+                if (!skipReminderRecovery) {
+                    val replenishedRecurringItems = repository.ensureRecurringInstancesAhead()
+                    val repairedPlanningItems = repository.ensurePlanningNodeLinkedItems(
+                        createEventEndTodo = settingsStore.currentSettings().planningEventEndTodoEnabled
+                    )
+                    (replenishedRecurringItems + repairedPlanningItems).forEach { item ->
+                        if (item.completed || item.canceled || !item.reminderEnabled) return@forEach
+                        ReminderDispatchTracker.clear(applicationContext, item.id)
+                        val scheduleMessage = alarmScheduler.schedule(item)
+                        if (scheduleMessage != null) {
+                            repository.updateTodo(item.copy(reminderEnabled = false))
+                        }
+                    }
                 }
+                LegacyAiReportMigration.migrateIfNeeded(this@TodoApplication)
+                if (settingsStore.currentSettings().desktopSyncEnabled) {
+                    DesktopSyncService.start(applicationContext)
+                }
+                delay(5_000L)
+                EventCheckInWatchdog.runOnce(applicationContext)
+            } catch (exception: Exception) {
+                CrashLogger.recordNonFatal(exception)
+            } finally {
+                SafeStartupGuard.markStartupSuccessful(applicationContext)
             }
-            LegacyAiReportMigration.migrateIfNeeded(this@TodoApplication)
-            if (settingsStore.currentSettings().desktopSyncEnabled) {
-                DesktopSyncService.start(applicationContext)
-            }
-            delay(5_000L)
-            EventCheckInWatchdog.runOnce(applicationContext)
         }
     }
 

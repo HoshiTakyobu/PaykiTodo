@@ -5,6 +5,7 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.os.Build
+import com.example.todoalarm.CrashLogger
 import com.example.todoalarm.data.reminderTriggerTimesMillis
 import com.example.todoalarm.data.TodoItem
 import com.example.todoalarm.data.ReminderChainStage
@@ -52,38 +53,86 @@ class AlarmScheduler(
             return "系统未授予精确闹钟权限，提醒尚未启用。"
         }
 
-        return runCatching {
-            triggerTimes.forEach { scheduledAt ->
-                val exactIntent = buildBroadcastIntent(todoItem.id, scheduledAt, ACTION_EXACT, EXACT_OFFSET)
-                val backupIntent = buildBroadcastIntent(todoItem.id, scheduledAt, ACTION_BACKUP, BACKUP_OFFSET)
-                if (canUseAlarmClock) {
+        val scheduledPrimaryTimes = mutableListOf<Long>()
+        var firstFailure: Throwable? = null
+
+        triggerTimes.forEach { scheduledAt ->
+            val exactIntent = buildBroadcastIntent(todoItem.id, scheduledAt, ACTION_EXACT, EXACT_OFFSET)
+            val backupIntent = buildBroadcastIntent(todoItem.id, scheduledAt, ACTION_BACKUP, BACKUP_OFFSET)
+            val primaryScheduled = when {
+                canUseAlarmClock -> safeSchedule(
+                    todoItem = todoItem,
+                    scheduledAt = scheduledAt,
+                    mode = "alarmClock",
+                    onFailure = { firstFailure = firstFailure ?: it }
+                ) {
                     alarmManager.setAlarmClock(
                         AlarmManager.AlarmClockInfo(scheduledAt, buildShowIntent(todoItem.id)),
                         exactIntent
                     )
-                } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                }
+
+                Build.VERSION.SDK_INT >= Build.VERSION_CODES.M -> safeSchedule(
+                    todoItem = todoItem,
+                    scheduledAt = scheduledAt,
+                    mode = "exactAllowWhileIdle",
+                    onFailure = { firstFailure = firstFailure ?: it }
+                ) {
                     alarmManager.setExactAndAllowWhileIdle(
-                        AlarmManager.RTC_WAKEUP,
-                        scheduledAt,
-                        exactIntent
-                    )
-                } else {
-                    alarmManager.setExact(
                         AlarmManager.RTC_WAKEUP,
                         scheduledAt,
                         exactIntent
                     )
                 }
 
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && canUseExactBackup) {
-                    alarmManager.setExactAndAllowWhileIdle(
+                else -> safeSchedule(
+                    todoItem = todoItem,
+                    scheduledAt = scheduledAt,
+                    mode = "exact",
+                    onFailure = { firstFailure = firstFailure ?: it }
+                ) {
+                    alarmManager.setExact(
                         AlarmManager.RTC_WAKEUP,
-                        scheduledAt + BACKUP_DELAY_MILLIS,
-                        backupIntent
+                        scheduledAt,
+                        exactIntent
                     )
                 }
             }
-            persistScheduledTimes(todoItem.id, triggerTimes)
+
+            val accepted = if (primaryScheduled) {
+                true
+            } else {
+                safeSchedule(
+                    todoItem = todoItem,
+                    scheduledAt = scheduledAt,
+                    mode = "inexactFallback",
+                    onFailure = { firstFailure = firstFailure ?: it }
+                ) {
+                    alarmManager.set(AlarmManager.RTC_WAKEUP, scheduledAt, exactIntent)
+                }
+            }
+
+            if (accepted) {
+                scheduledPrimaryTimes += scheduledAt
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && canUseExactBackup) {
+                    safeSchedule(
+                        todoItem = todoItem,
+                        scheduledAt = scheduledAt + BACKUP_DELAY_MILLIS,
+                        mode = "backupExact",
+                        onFailure = { firstFailure = firstFailure ?: it }
+                    ) {
+                        alarmManager.setExactAndAllowWhileIdle(
+                            AlarmManager.RTC_WAKEUP,
+                            scheduledAt + BACKUP_DELAY_MILLIS,
+                            backupIntent
+                        )
+                    }
+                }
+            }
+        }
+
+        return if (scheduledPrimaryTimes.isNotEmpty()) {
+            persistScheduledTimes(todoItem.id, scheduledPrimaryTimes)
             ReminderChainLogger.log(
                 context = context,
                 todoId = todoItem.id,
@@ -91,10 +140,16 @@ class AlarmScheduler(
                 stage = ReminderChainStage.SCHEDULED,
                 status = ReminderChainStatus.OK,
                 reminderAtMillis = triggerAtMillis,
-                message = if (canUseAlarmClock) "alarmClock" else "exact"
+                message = if (scheduledPrimaryTimes.size == triggerTimes.size) {
+                    if (canUseAlarmClock) "alarmClock" else "exact"
+                } else {
+                    "partial:${scheduledPrimaryTimes.size}/${triggerTimes.size}"
+                }
             )
-        }.exceptionOrNull()?.let { throwable ->
+            null
+        } else {
             cancel(todoItem.id)
+            val throwable = firstFailure
             ReminderChainLogger.log(
                 context = context,
                 todoId = todoItem.id,
@@ -102,9 +157,9 @@ class AlarmScheduler(
                 stage = ReminderChainStage.SCHEDULE_FAILED,
                 status = ReminderChainStatus.ERROR,
                 reminderAtMillis = triggerAtMillis,
-                message = throwable.javaClass.simpleName
+                message = throwable?.javaClass?.simpleName ?: "NoScheduleAccepted"
             )
-            "系统拒绝设置提醒：${throwable.javaClass.simpleName}"
+            "系统拒绝设置提醒：${throwable?.javaClass?.simpleName ?: "NoScheduleAccepted"}"
         }
     }
 
@@ -159,6 +214,45 @@ class AlarmScheduler(
             .edit()
             .putStringSet(scheduledSetKey(todoId), triggerTimes.map { it.toString() }.toSet())
             .apply()
+    }
+
+    private fun safeSchedule(
+        todoItem: TodoItem,
+        scheduledAt: Long,
+        mode: String,
+        onFailure: (Throwable) -> Unit,
+        block: () -> Unit
+    ): Boolean {
+        return try {
+            block()
+            true
+        } catch (security: SecurityException) {
+            recordScheduleFailure(todoItem, scheduledAt, mode, security)
+            onFailure(security)
+            false
+        } catch (exception: Exception) {
+            recordScheduleFailure(todoItem, scheduledAt, mode, exception)
+            onFailure(exception)
+            false
+        }
+    }
+
+    private fun recordScheduleFailure(
+        todoItem: TodoItem,
+        scheduledAt: Long,
+        mode: String,
+        throwable: Throwable
+    ) {
+        CrashLogger.recordNonFatal(throwable)
+        ReminderChainLogger.log(
+            context = context,
+            todoId = todoItem.id,
+            source = "AlarmScheduler",
+            stage = ReminderChainStage.SCHEDULE_FAILED,
+            status = ReminderChainStatus.ERROR,
+            reminderAtMillis = scheduledAt,
+            message = "$mode:${throwable.javaClass.simpleName}"
+        )
     }
 
     companion object {

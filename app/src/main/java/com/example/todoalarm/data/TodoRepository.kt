@@ -1394,6 +1394,56 @@ class TodoRepository(
         }
     }
 
+    suspend fun ensureRecurringInstancesAhead(
+        nowMillis: Long = System.currentTimeMillis(),
+        lookAheadDays: Long = INITIAL_RECURRING_LOOKAHEAD_DAYS
+    ): List<TodoItem> {
+        val templates = todoDao.getAllRecurringTemplates()
+        if (templates.isEmpty()) return emptyList()
+
+        val today = Instant.ofEpochMilli(nowMillis).atZone(ZoneId.systemDefault()).toLocalDate()
+        val horizonDate = today.plusDays((lookAheadDays - 1).coerceAtLeast(0))
+        val createdItems = mutableListOf<TodoItem>()
+
+        templates.forEach { template ->
+            val recurrenceType = RecurrenceType.fromStorage(template.recurrenceType)
+            if (recurrenceType == RecurrenceType.NONE) return@forEach
+
+            val templateEndDate = LocalDate.ofEpochDay(template.endEpochDay)
+            val targetEndDate = if (templateEndDate.isBefore(horizonDate)) templateEndDate else horizonDate
+            if (targetEndDate.isBefore(today)) return@forEach
+
+            val existingSeriesItems = todoDao.getBySeriesId(template.seriesId)
+            val existingDates = existingSeriesItems
+                .mapNotNull { item -> item.recurrenceInstanceDateOrNull() }
+                .toSet()
+            val latestExistingDate = existingDates.maxOrNull()
+            val templateStartDate = LocalDate.ofEpochDay(template.startEpochDay)
+            val nextMissingDate = latestExistingDate?.plusDays(1) ?: today
+            val targetStartDate = if (templateStartDate.isAfter(nextMissingDate)) templateStartDate else nextMissingDate
+            if (targetStartDate.isAfter(targetEndDate)) return@forEach
+
+            val missingDates = generateTemplateDates(template, targetStartDate, targetEndDate)
+                .filterNot { it in existingDates }
+            if (missingDates.isEmpty()) return@forEach
+
+            val generated = missingDates.map { date ->
+                buildItemFromTemplate(template, date, nowMillis)
+            }
+            val ids = todoDao.insertAll(generated)
+            val created = generated.zip(ids) { item, id -> item.copy(id = id) }
+            if (PlannerItemType.fromStorage(template.itemType) == PlannerItemType.TODO) {
+                replaceGroupTags(created, listOf(template.groupId))
+            }
+            createdItems += created
+        }
+
+        if (createdItems.isNotEmpty()) {
+            notifyItemsChanged()
+        }
+        return createdItems
+    }
+
     suspend fun dueReminderItems(now: Long, graceWindowMillis: Long = 2 * 60_000L): List<TodoItem> {
         val earliestAllowed = now - graceWindowMillis
         return todoDao.getActiveReminderItems().filter { item ->
@@ -3255,7 +3305,7 @@ class TodoRepository(
             RecurrenceType.YEARLY_LUNAR_DATE -> generateYearlyLunarDates(dueDate, endDate)
         }
 
-        return dates.map { instanceDate ->
+        return dates.take(INITIAL_RECURRING_INSTANCE_LIMIT).map { instanceDate ->
             val instanceDue = LocalDateTime.of(instanceDate, dueTime)
             val instanceReminder = offsetMinutes?.let { instanceDue.minusMinutes(it.toLong()) }
             buildTaskItem(
@@ -3291,7 +3341,7 @@ class TodoRepository(
             RecurrenceType.YEARLY_LUNAR_DATE -> generateYearlyLunarDates(startDate, endDate)
         }
 
-        return dates.map { instanceDate ->
+        return dates.take(INITIAL_RECURRING_INSTANCE_LIMIT).map { instanceDate ->
             val instanceStart = LocalDateTime.of(instanceDate, draft.startAt.toLocalTime())
             val instanceEnd = instanceStart.plusMinutes(durationMinutes)
             buildCalendarEventItem(
@@ -3299,6 +3349,107 @@ class TodoRepository(
                 now = now,
                 seriesId = seriesId
             )
+        }
+    }
+
+    private fun generateTemplateDates(
+        template: RecurringTaskTemplate,
+        targetStartDate: LocalDate,
+        targetEndDate: LocalDate
+    ): List<LocalDate> {
+        val anchorDate = LocalDate.ofEpochDay(template.startEpochDay)
+        val templateEndDate = LocalDate.ofEpochDay(template.endEpochDay)
+        val generationEnd = if (templateEndDate.isBefore(targetEndDate)) templateEndDate else targetEndDate
+        if (generationEnd.isBefore(targetStartDate)) return emptyList()
+        val dates = when (RecurrenceType.fromStorage(template.recurrenceType)) {
+            RecurrenceType.NONE -> listOf(anchorDate)
+            RecurrenceType.DAILY -> generateDailyDates(anchorDate, generationEnd)
+            RecurrenceType.WEEKLY -> generateWeeklyDates(
+                anchorDate,
+                generationEnd,
+                storageStringToWeekdays(template.recurrenceWeekdays).ifEmpty { setOf(anchorDate.dayOfWeek) }
+            )
+            RecurrenceType.MONTHLY_NTH_WEEKDAY -> generateNthWeekdayDates(anchorDate, generationEnd)
+            RecurrenceType.MONTHLY_DAY -> generateMonthlyDayDates(anchorDate, generationEnd)
+            RecurrenceType.YEARLY_DATE -> generateYearlyDates(anchorDate, generationEnd)
+            RecurrenceType.YEARLY_LUNAR_DATE -> generateYearlyLunarDates(anchorDate, generationEnd)
+        }
+        return dates.filter { !it.isBefore(targetStartDate) && !it.isAfter(targetEndDate) }
+    }
+
+    private fun buildItemFromTemplate(
+        template: RecurringTaskTemplate,
+        instanceDate: LocalDate,
+        nowMillis: Long
+    ): TodoItem {
+        return when (PlannerItemType.fromStorage(template.itemType)) {
+            PlannerItemType.EVENT -> {
+                val startAt = LocalDateTime.of(instanceDate, LocalTime.of(template.dueHour, template.dueMinute))
+                val duration = template.eventDurationMinutes ?: 30
+                buildCalendarEventItem(
+                    draft = CalendarEventDraft(
+                        title = template.title,
+                        notes = template.notes,
+                        location = template.location,
+                        startAt = startAt,
+                        endAt = startAt.plusMinutes(duration.toLong()),
+                        allDay = template.allDay,
+                        accentColorHex = template.accentColorHex ?: "#4E87E1",
+                        reminderMinutesBefore = template.reminderOffsetMinutes,
+                        reminderOffsetsMinutes = template.configuredReminderOffsetsMinutes,
+                        ringEnabled = template.ringEnabled,
+                        vibrateEnabled = template.vibrateEnabled,
+                        reminderDeliveryMode = ReminderDeliveryMode.fromStorage(template.reminderDeliveryMode),
+                        countdownEnabled = template.countdownEnabled,
+                        recurrence = template.toRecurrenceConfig(),
+                        groupId = template.groupId
+                    ),
+                    now = nowMillis,
+                    seriesId = template.seriesId
+                )
+            }
+
+            PlannerItemType.TODO -> {
+                val dueAt = LocalDateTime.of(instanceDate, LocalTime.of(template.dueHour, template.dueMinute))
+                val offsets = template.configuredReminderOffsetsMinutes
+                val reminderAt = offsets.firstOrNull()?.let { dueAt.minusMinutes(it.toLong()) }
+                buildTaskItem(
+                    draft = TodoDraft(
+                        title = template.title,
+                        notes = template.notes,
+                        dueAt = dueAt,
+                        reminderAt = reminderAt,
+                        groupId = template.groupId,
+                        ringEnabled = template.ringEnabled,
+                        vibrateEnabled = template.vibrateEnabled,
+                        reminderDeliveryMode = ReminderDeliveryMode.fromStorage(template.reminderDeliveryMode),
+                        countdownEnabled = template.countdownEnabled,
+                        recurrence = template.toRecurrenceConfig(),
+                        reminderOffsetsMinutes = offsets,
+                        groupIds = listOf(template.groupId)
+                    ),
+                    now = nowMillis,
+                    seriesId = template.seriesId
+                )
+            }
+        }
+    }
+
+    private fun RecurringTaskTemplate.toRecurrenceConfig(): RecurrenceConfig {
+        val type = RecurrenceType.fromStorage(recurrenceType)
+        return RecurrenceConfig(
+            enabled = type != RecurrenceType.NONE,
+            type = type,
+            weeklyDays = storageStringToWeekdays(recurrenceWeekdays),
+            endDate = LocalDate.ofEpochDay(endEpochDay)
+        )
+    }
+
+    private fun TodoItem.recurrenceInstanceDateOrNull(): LocalDate? {
+        return if (isEvent) {
+            eventStartDate()
+        } else {
+            dueDateTimeOrNull()?.toLocalDate()
         }
     }
 
@@ -3389,6 +3540,8 @@ class TodoRepository(
 
     companion object {
         private const val MISSED_GRACE_PERIOD_MILLIS = 60_000L
+        private const val INITIAL_RECURRING_INSTANCE_LIMIT = 14
+        private const val INITIAL_RECURRING_LOOKAHEAD_DAYS = 14L
         private val PlanningNodeDateTimeFormatter: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")
         private val PlanningNodeTimeFormatter: DateTimeFormatter = DateTimeFormatter.ofPattern("HH:mm")
         private val PlanningStructureTitleTexts = setOf(

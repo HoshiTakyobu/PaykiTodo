@@ -16,6 +16,7 @@ class BootReceiver : BroadcastReceiver() {
             try {
                 val app = context.applicationContext as TodoApplication
                 app.repository.markMissedTasks(System.currentTimeMillis())
+                app.repository.ensureRecurringInstancesAhead()
                 val items = app.repository.futureReminderItems(System.currentTimeMillis())
                 items.forEach(app.alarmScheduler::schedule)
                 DailyReportScheduler.scheduleNext(context.applicationContext)

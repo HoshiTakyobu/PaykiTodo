@@ -1304,8 +1304,9 @@ function flattenPlanningNodes(nodes) {
 function planningNodeMetaText(node) {
   if (!node) return '';
   const location = String(node.location || '').trim();
+  const draft = node.isDraft ? '草稿' : '';
   if (node.syncEnabled === false) {
-    return ['结构标题', location].filter(Boolean).join(' · ');
+    return [draft, '结构标题', location].filter(Boolean).join(' · ');
   }
   let time = '';
   if (node.startAtMillis && node.endAtMillis) {
@@ -1315,7 +1316,7 @@ function planningNodeMetaText(node) {
   } else {
     time = '无 DDL 待办';
   }
-  return [time, location].filter(Boolean).join(' · ');
+  return [draft, time, location].filter(Boolean).join(' · ');
 }
 
 function planningNodeDateTimeValue(node, field) {
@@ -1337,6 +1338,12 @@ function planningNodeHeaderHint(text) {
 function renderPlanningOutline() {
   if (!els.planningOutline) return;
   const active = activePlanningNote();
+  const draftCount = (state.planningNodes || []).filter(node => node.isDraft).length;
+  const publishAll = document.getElementById('planning-publish-all');
+  if (publishAll) {
+    publishAll.disabled = !active || draftCount === 0;
+    publishAll.textContent = draftCount > 0 ? '发布' + draftCount + '条' : '发布草稿';
+  }
   if (!active) {
     els.planningOutline.innerHTML = '<div class="empty-state">请先新建或打开一个规划文档。</div>';
     return;
@@ -1349,6 +1356,7 @@ function renderPlanningOutline() {
   els.planningOutline.innerHTML = flattened.map(item => {
     const node = item.node;
     const completedClass = node.completed ? ' completed' : '';
+    const draftClass = node.isDraft ? ' draft' : '';
     const hasChildrenClass = item.hasChildren ? ' has-children' : '';
     const collapseText = item.hasChildren ? (node.collapsed ? '▶' : '▼') : '·';
     const siblings = planningSiblingNodes(node.parentNodeId);
@@ -1360,7 +1368,7 @@ function renderPlanningOutline() {
     const endAt = planningNodeDateTimeValue(node, 'endAt').replace('T', ' ');
     const syncChecked = node.syncEnabled === false ? '' : ' checked';
     return ''
-      + '<article class="planning-node-row' + completedClass + hasChildrenClass + '" draggable="true" style="--depth:' + Number(item.depth || 0) + '" data-planning-node-row="' + escapeHtml(node.id) + '">'
+      + '<article class="planning-node-row' + completedClass + draftClass + hasChildrenClass + '" draggable="true" style="--depth:' + Number(item.depth || 0) + '" data-planning-node-row="' + escapeHtml(node.id) + '">'
       +   planningNodeHeaderHint(node.text)
       +   '<div class="planning-node-main">'
       +     '<button type="button" class="planning-node-icon" data-node-collapse="' + escapeHtml(node.id) + '"' + (item.hasChildren ? '' : ' disabled') + '>' + escapeHtml(collapseText) + '</button>'
@@ -1371,6 +1379,7 @@ function renderPlanningOutline() {
       +       '<button type="button" class="ghost mini planning-node-move" data-node-move-down="' + escapeHtml(node.id) + '"' + moveDownDisabled + ' title="下移">↓</button>'
       +     '</span>'
       +     '<button type="button" class="ghost mini" data-node-child="' + escapeHtml(node.id) + '">子项</button>'
+      +     (node.isDraft ? '<button type="button" class="mini planning-node-publish" data-node-publish="' + escapeHtml(node.id) + '">发布</button>' : '')
       +     '<button type="button" class="ghost mini danger-lite-action" data-node-delete="' + escapeHtml(node.id) + '">删除</button>'
       +   '</div>'
       +   '<div class="planning-node-meta">' + escapeHtml(planningNodeMetaText(node)) + '</div>'
@@ -1398,7 +1407,7 @@ async function createPlanningOutlineNode(text, parentNodeId = null, options = {}
   });
   applyPlanningNodeResponse(data);
   await refreshAfterMutation();
-  els.status.textContent = '已添加到规划台';
+  els.status.textContent = '已添加草稿到规划台';
   return data.node || null;
 }
 
@@ -1411,7 +1420,31 @@ async function updatePlanningOutlineNode(nodeId, patch) {
   });
   applyPlanningNodeResponse(data);
   await refreshAfterMutation();
-  els.status.textContent = '规划节点已同步';
+  els.status.textContent = existing.isDraft ? '规划草稿已更新' : '规划节点已同步';
+}
+
+async function publishPlanningOutlineNode(nodeId) {
+  const existing = planningNodeById(nodeId);
+  if (!existing) throw new Error('规划节点不存在');
+  const data = await api('/api/planning/nodes/' + encodeURIComponent(existing.id) + '/publish', {
+    method: 'POST',
+    body: JSON.stringify({})
+  });
+  applyPlanningNodeResponse(data);
+  await refreshAfterMutation();
+  els.status.textContent = '已发布 1 条草稿';
+}
+
+async function publishAllPlanningDrafts() {
+  const active = activePlanningNote();
+  if (!active) throw new Error('没有可发布的规划文档');
+  const data = await api('/api/planning/nodes/publish-all', {
+    method: 'POST',
+    body: JSON.stringify({ noteId: active.id })
+  });
+  applyPlanningNodeResponse(data);
+  await refreshAfterMutation();
+  els.status.textContent = '已发布 ' + (data.publishedCount || 0) + ' 条，' + (data.failedCount || 0) + ' 条失败';
 }
 
 async function deletePlanningOutlineNode(nodeId, options = {}) {
@@ -2749,6 +2782,7 @@ document.getElementById('planning-new')?.addEventListener('click', () => createP
 document.getElementById('planning-delete')?.addEventListener('click', () => deletePlanningNote().catch(err => els.status.textContent = err.message));
 document.getElementById('planning-save')?.addEventListener('click', () => savePlanningNote().catch(err => els.status.textContent = err.message));
 document.getElementById('planning-help')?.addEventListener('click', () => openModal('planning-help-modal'));
+document.getElementById('planning-publish-all')?.addEventListener('click', () => publishAllPlanningDrafts().catch(err => els.status.textContent = err.message));
 document.getElementById('planning-parse')?.addEventListener('click', () => parsePlanningEditor().catch(err => els.status.textContent = err.message));
 document.getElementById('planning-import')?.addEventListener('click', () => importSelectedPlanning().catch(err => els.status.textContent = err.message));
 document.getElementById('planning-refresh')?.addEventListener('click', () => refreshPlanningImported().catch(err => els.status.textContent = err.message));
@@ -2802,6 +2836,7 @@ els.planningOutline?.addEventListener('click', event => {
   const sync = event.target.closest?.('[data-node-sync]');
   const moveUp = event.target.closest?.('[data-node-move-up]');
   const moveDown = event.target.closest?.('[data-node-move-down]');
+  const publish = event.target.closest?.('[data-node-publish]');
   if (sync) {
     const node = planningNodeById(sync.dataset.nodeSync);
     if (node) updatePlanningOutlineNode(node.id, { syncEnabled: sync.checked }).catch(err => els.status.textContent = err.message);
@@ -2823,6 +2858,9 @@ els.planningOutline?.addEventListener('click', event => {
   }
   if (moveDown && !moveDown.disabled) {
     movePlanningNode(moveDown.dataset.nodeMoveDown, 1).catch(err => els.status.textContent = err.message);
+  }
+  if (publish) {
+    publishPlanningOutlineNode(publish.dataset.nodePublish).catch(err => els.status.textContent = err.message);
   }
   if (del) {
     deletePlanningOutlineNode(del.dataset.nodeDelete).catch(err => els.status.textContent = err.message);

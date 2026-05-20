@@ -163,6 +163,8 @@ class DesktopSyncCoordinator(
                 method == "POST" && path == "/api/planning/nodes/update" -> DesktopSyncServer.Response.json(updatePlanningNode(JSONObject(body)))
                 method == "POST" && path == "/api/planning/nodes/delete" -> DesktopSyncServer.Response.json(deletePlanningNode(JSONObject(body)))
                 method == "POST" && path == "/api/planning/nodes/reorder" -> DesktopSyncServer.Response.json(reorderPlanningNodes(JSONObject(body)))
+                method == "POST" && routePath.matches(Regex("/api/planning/nodes/\\d+/publish")) -> DesktopSyncServer.Response.json(publishPlanningNode(routePath))
+                method == "POST" && path == "/api/planning/nodes/publish-all" -> DesktopSyncServer.Response.json(publishAllPlanningDrafts(JSONObject(body)))
                 method == "POST" && path == "/api/planning/parse" -> DesktopSyncServer.Response.json(parsePlanning(JSONObject(body)))
                 method == "POST" && path == "/api/planning/import" -> DesktopSyncServer.Response.json(importPlanning(JSONObject(body)))
                 method == "GET" && routePath == "/api/planning/mappings" -> DesktopSyncServer.Response.json(planningMappings(path))
@@ -541,6 +543,7 @@ class DesktopSyncCoordinator(
             startAt = parsePlanningNodeDateTime(json.optStringOrNull("startAt")),
             endAt = parsePlanningNodeDateTime(json.optStringOrNull("endAt")),
             location = json.optStringOrNull("location")?.trim(),
+            isDraft = json.optBoolean("isDraft", true),
             syncEnabled = json.optBoolean("syncEnabled", true),
             collapsed = json.optBoolean("collapsed", false),
             completed = json.optBoolean("completed", false)
@@ -552,7 +555,7 @@ class DesktopSyncCoordinator(
         ) ?: error("规划节点创建失败")
         handlePlanningNodeChange(result)
         settingsStore.updateLastOpenedPlanningNoteId(result.node.noteId)
-        autoBackupIfNeeded()
+        if (!result.node.isDraft) autoBackupIfNeeded()
         return planningNodeMutationResult(result.node.noteId, result)
     }
 
@@ -584,8 +587,48 @@ class DesktopSyncCoordinator(
         clearReminderArtifacts(beforeLinked)
         handlePlanningNodeChange(result)
         settingsStore.updateLastOpenedPlanningNoteId(result.node.noteId)
+        if (!result.node.isDraft) autoBackupIfNeeded()
+        return planningNodeMutationResult(result.node.noteId, result)
+    }
+
+    private suspend fun publishPlanningNode(routePath: String): JSONObject {
+        val nodeId = Regex("/api/planning/nodes/(\\d+)/publish").matchEntire(routePath)
+            ?.groupValues
+            ?.getOrNull(1)
+            ?.toLongOrNull()
+            ?: error("缺少节点 id")
+        val result = app.repository.publishPlanningNode(
+            nodeId,
+            createEventEndTodo = settingsStore.currentSettings().planningEventEndTodoEnabled
+        ) ?: error("草稿发布失败，请检查时间格式")
+        clearReminderArtifacts(result.deletedLinkedItems)
+        handlePlanningNodeChange(result)
+        settingsStore.updateLastOpenedPlanningNoteId(result.node.noteId)
         autoBackupIfNeeded()
         return planningNodeMutationResult(result.node.noteId, result)
+    }
+
+    private suspend fun publishAllPlanningDrafts(json: JSONObject): JSONObject {
+        val noteId = json.optLong("noteId", 0L).takeIf { it > 0L } ?: error("缺少 noteId")
+        val result = app.repository.publishAllPlanningDrafts(
+            noteId,
+            createEventEndTodo = settingsStore.currentSettings().planningEventEndTodoEnabled
+        )
+        result.published.forEach { change ->
+            clearReminderArtifacts(change.deletedLinkedItems)
+            handlePlanningNodeChange(change)
+        }
+        if (result.published.isNotEmpty()) {
+            settingsStore.updateLastOpenedPlanningNoteId(noteId)
+            autoBackupIfNeeded()
+        }
+        return JSONObject()
+            .put("ok", true)
+            .put("publishedCount", result.published.size)
+            .put("failedCount", result.failedCount)
+            .put("noteId", noteId)
+            .put("nodes", JSONArray(app.repository.getPlanningNodesForNote(noteId).map { it.toPlanningNodeJson() }))
+            .put("markdown", app.repository.exportPlanningNodesToMarkdown(noteId))
     }
 
     private suspend fun deletePlanningNode(json: JSONObject): JSONObject {
@@ -598,7 +641,9 @@ class DesktopSyncCoordinator(
         clearReminderArtifacts(result.deletedLinkedItems)
         result.affectedLinkedItems.forEach { scheduleReminderOrDisable(it) }
         settingsStore.updateLastOpenedPlanningNoteId(existing.noteId)
-        autoBackupIfNeeded()
+        if (!existing.isDraft || result.deletedLinkedItems.isNotEmpty() || result.affectedLinkedItems.isNotEmpty()) {
+            autoBackupIfNeeded()
+        }
         return JSONObject()
             .put("ok", true)
             .put("deletedLinkedItems", result.deletedLinkedItems.size)
@@ -1066,6 +1111,7 @@ private fun PlanningNode.toPlanningNodeJson(): JSONObject {
         .put("location", location)
         .put("linkedTodoId", linkedTodoId)
         .put("linkedEndTodoId", linkedEndTodoId)
+        .put("isDraft", isDraft)
         .put("syncEnabled", syncEnabled)
         .put("collapsed", collapsed)
         .put("completed", completed)

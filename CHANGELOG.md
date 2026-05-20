@@ -1,5 +1,12 @@
 # Changelog
 
+## v1.12.18
+
+- 提升调试包版本号，确保 Android 在已安装 `1.12.17` 时把新 APK 识别为可升级安装包
+- 当前工作区包含数据库 `24` 线上的规划台备注节点与仅提醒待办等未完成收口改动，调试包会随当前源码一起构建
+- 版本号升级到 `1.12.18` / `versionCode 245`
+- 验证：`./gradlew.bat :app:assembleDebug` 输出 `BUILD SUCCESSFUL`；`git diff --check` 通过；debug APK 元数据确认 `1.12.18 / 245`
+
 ## v1.12.17
 
 - 提升调试包版本号，确保 Android 在已安装 `1.12.16` 时把新 APK 识别为可升级安装包

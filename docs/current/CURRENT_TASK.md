@@ -2,18 +2,31 @@
 
 ## Active Development Focus
 
-Active goal: ship a higher debug build so devices with `1.12.16` installed can upgrade normally.
+Active goal: ship a higher debug build so devices with `1.12.17` installed can upgrade normally.
 
-The working tree is now on the `1.12.17 / versionCode 244` line. This round is metadata-only: it does not change database schema, reminder behavior, Planning Desk behavior, or user-data format. Do not push to GitHub unless the user explicitly asks.
+The working tree is now on the `1.12.18 / versionCode 245` line. This round is not metadata-only because the working tree already contains database `24` and in-progress Planning Desk / hidden-board todo changes. Do not push to GitHub unless the user explicitly asks.
 
 ## Current Goal State
 
 Current implementation state:
 
-1. Version metadata moved to `1.12.17 / versionCode 244`.
-2. This rebuild exists to make Android accept installation over `1.12.16`.
+1. Version metadata moved to `1.12.18 / versionCode 245`.
+2. This rebuild exists to make Android accept installation over `1.12.17`.
 3. Calendar/todo/Planning Desk behavior remains the current working-tree baseline.
-4. Database version remains `23`; no migration is added in this metadata-only rebuild.
+4. Database version is already `24` in the current working tree because earlier in-progress changes added Planning Desk note / hidden-board todo fields.
+
+## Verification Completed For 1.12.18
+
+The `1.12.18 / versionCode 245` rebuild status:
+
+1. Version metadata moved from `1.12.17 / versionCode 244` to `1.12.18 / versionCode 245`.
+2. The generated debug APK is `app/build/outputs/apk/debug/PaykiTodo-1.12.18-debug.apk`.
+3. `./gradlew.bat :app:assembleDebug` output `BUILD SUCCESSFUL` before the shell timeout wrapper returned.
+4. `git diff --check`
+5. Debug APK metadata confirms:
+   - `versionName = 1.12.18`
+   - `versionCode = 245`
+   - output `PaykiTodo-1.12.18-debug.apk`
 
 ## Verification Completed For 1.12.17
 

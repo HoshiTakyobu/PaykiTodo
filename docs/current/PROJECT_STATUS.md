@@ -7,8 +7,8 @@
 - Package name: `com.paykitodo.app`
 - Target platform: Android 14 / API 34
 - Current version in code:
-  - `versionName = "1.12.17"`
-  - `versionCode = 244`
+  - `versionName = "1.12.18"`
+  - `versionCode = 245`
 
 ## Current Build Facts
 
@@ -18,7 +18,13 @@
 - Latest signed release APK built locally:
   - `app/build/outputs/apk/release/PaykiTodo-1.11.0-release.apk`
 - Latest fully built debug APK:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.12.17-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.12.18-debug.apk`
+- Current `1.12.18 / versionCode 245` verification completed:
+  - Version metadata was bumped so Android can upgrade over an installed `1.12.17` debug build.
+  - Current working tree already includes database `24` and in-progress Planning Desk / hidden-board todo changes, so this APK is not a metadata-only rebuild.
+  - `./gradlew.bat :app:assembleDebug` output `BUILD SUCCESSFUL` before the shell timeout wrapper returned.
+  - `git diff --check`
+  - Debug APK metadata inspected: `versionName = 1.12.18`, `versionCode = 245`, output `PaykiTodo-1.12.18-debug.apk`
 - Current `1.12.17 / versionCode 244` verification completed:
   - Version metadata was bumped only so Android can upgrade over an installed `1.12.16` debug build.
   - No database schema, reminder behavior, Planning Desk behavior, or user-data format changed in this metadata-only rebuild.

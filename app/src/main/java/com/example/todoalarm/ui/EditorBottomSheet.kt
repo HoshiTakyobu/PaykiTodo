@@ -27,7 +27,12 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -46,8 +51,10 @@ internal fun PaykiBottomSheet(
     contentPadding: PaddingValues = PaddingValues(horizontal = 20.dp, vertical = 16.dp),
     content: @Composable ColumnScope.() -> Unit
 ) {
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     ModalBottomSheet(
         onDismissRequest = onDismiss,
+        sheetState = sheetState,
         dragHandle = if (showDragHandle) {
             {
                 BottomSheetDefaults.DragHandle(
@@ -88,11 +95,19 @@ internal fun EditorBottomSheet(
     confirmLabel: String,
     confirmEnabled: Boolean = true,
     onDismiss: () -> Unit,
+    hasUnsavedChanges: Boolean = false,
     onConfirm: () -> Unit,
     content: @Composable ColumnScope.() -> Unit
 ) {
+    var showDiscardConfirm by remember { mutableStateOf(false) }
     PaykiBottomSheet(
-        onDismiss = onDismiss,
+        onDismiss = {
+            if (hasUnsavedChanges) {
+                showDiscardConfirm = true
+            } else {
+                onDismiss()
+            }
+        },
         topBar = {
             Box(
                 modifier = Modifier
@@ -141,6 +156,18 @@ internal fun EditorBottomSheet(
             modifier = Modifier.fillMaxWidth(),
             verticalArrangement = Arrangement.spacedBy(12.dp),
             content = content
+        )
+    }
+    if (showDiscardConfirm) {
+        PaykiDecisionBottomSheet(
+            title = "放弃本次编辑？",
+            message = "当前编辑内容尚未保存，确认后会丢弃本次修改。",
+            confirmLabel = "放弃编辑",
+            onDismiss = { showDiscardConfirm = false },
+            onConfirm = {
+                showDiscardConfirm = false
+                onDismiss()
+            }
         )
     }
 }

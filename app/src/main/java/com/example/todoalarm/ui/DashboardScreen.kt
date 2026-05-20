@@ -211,6 +211,10 @@ fun DashboardScreen(
     var boardVisited by rememberSaveable { mutableStateOf(false) }
     var handledTodoLaunchSerial by rememberSaveable { mutableStateOf(-1) }
     var handledEventLaunchSerial by rememberSaveable { mutableStateOf(-1) }
+    var previewTodoId by rememberSaveable { mutableStateOf<Long?>(null) }
+    var previewTodoSerial by rememberSaveable { mutableStateOf(0) }
+    var previewEventId by rememberSaveable { mutableStateOf<Long?>(null) }
+    var previewEventSerial by rememberSaveable { mutableStateOf(0) }
     var calendarFocusDateEpochDay by rememberSaveable { mutableStateOf<Long?>(null) }
     val defaultReminderRing = if (uiState.settings.workQuietModeEnabled) false else uiState.settings.defaultRingEnabled
     val defaultReminderVibrate = if (uiState.settings.workQuietModeEnabled) true else uiState.settings.defaultVibrateEnabled
@@ -279,7 +283,8 @@ fun DashboardScreen(
             ?: return@LaunchedEffect
         handledTodoLaunchSerial = launchRouteSerial
         section = if (target.isHistory) DashboardSection.HISTORY else DashboardSection.ACTIVE
-        openTodoEditor(target)
+        previewTodoId = target.id
+        previewTodoSerial = launchRouteSerial
     }
 
     LaunchedEffect(launchRouteSerial, launchRoute?.targetEventId) {
@@ -293,7 +298,6 @@ fun DashboardScreen(
         calendarFocusDateEpochDay = targetDate.toEpochDay()
         onCalendarVisibleDateRangeChange(targetDate.minusDays(1), targetDate.plusDays(2))
         section = DashboardSection.CALENDAR
-        openCalendarEventEditor(target)
     }
 
     LaunchedEffect(uiState.dataReady) {
@@ -451,8 +455,8 @@ fun DashboardScreen(
                     section = section,
                     settingsInitialSectionKey = launchRoute?.settingsSectionKey,
                     settingsInitialSectionSerial = launchRouteSerial,
-                    targetEventId = launchRoute?.targetEventId,
-                    targetEventSerial = launchRouteSerial,
+                    targetEventId = previewEventId ?: launchRoute?.targetEventId,
+                    targetEventSerial = if (previewEventId != null) previewEventSerial else launchRouteSerial,
                     calendarFocusDate = calendarFocusDateEpochDay?.let(LocalDate::ofEpochDay),
                     calendarFocusDateSerial = launchRouteSerial,
                     targetAiReportId = launchRoute?.targetAiReportId,
@@ -473,6 +477,27 @@ fun DashboardScreen(
                     permissions = permissions,
                     onEdit = { openTodoEditor(it) },
                     onEditCalendarEvent = { openCalendarEventEditor(it) },
+                    previewTodoId = previewTodoId,
+                    previewTodoSerial = previewTodoSerial,
+                    onPreviewTodoConsumed = {
+                        previewTodoId = null
+                    },
+                    onNavigateTasks = {
+                        calendarFocusDateEpochDay = null
+                        section = DashboardSection.ACTIVE
+                    },
+                    onNavigateCalendar = {
+                        calendarFocusDateEpochDay = null
+                        section = DashboardSection.CALENDAR
+                    },
+                    onPreviewCalendarEvent = { item ->
+                        val targetDate = item.eventStartDate() ?: item.dueDate()
+                        calendarFocusDateEpochDay = targetDate.toEpochDay()
+                        onCalendarVisibleDateRangeChange(targetDate.minusDays(1), targetDate.plusDays(2))
+                        previewEventId = item.id
+                        previewEventSerial += 1
+                        section = DashboardSection.CALENDAR
+                    },
                     onQuickCreateCalendarEvent = { startAt, endAt ->
                         editorKind = EditorKind.CALENDAR
                         editingItem = null

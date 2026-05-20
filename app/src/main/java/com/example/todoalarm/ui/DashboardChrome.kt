@@ -407,6 +407,12 @@ internal fun DashboardBody(
     permissions: PermissionSnapshot,
     onEdit: (TodoItem) -> Unit,
     onEditCalendarEvent: (TodoItem) -> Unit,
+    previewTodoId: Long? = null,
+    previewTodoSerial: Int = 0,
+    onPreviewTodoConsumed: () -> Unit = {},
+    onNavigateTasks: () -> Unit = {},
+    onNavigateCalendar: () -> Unit = {},
+    onPreviewCalendarEvent: (TodoItem) -> Unit = {},
     onQuickCreateCalendarEvent: (LocalDateTime, LocalDateTime) -> Unit,
     onMoveCalendarEvent: (TodoItem, LocalDateTime, LocalDateTime) -> Unit,
     onCompleteTodo: (TodoItem) -> Unit,
@@ -704,6 +710,15 @@ internal fun DashboardBody(
             .sortedBy { it.startAtMillis ?: it.dueAtMillis }
     }
     val activeAnnouncements = uiState.activeAnnouncements
+    var previewTodoTarget by remember { mutableStateOf<TodoItem?>(null) }
+    LaunchedEffect(previewTodoId, previewTodoSerial, uiState.todayItems, uiState.missedItems, uiState.upcomingItems) {
+        val targetId = previewTodoId ?: return@LaunchedEffect
+        previewTodoTarget = (uiState.missedItems + uiState.todayItems + uiState.upcomingItems)
+            .firstOrNull { it.id == targetId && it.isTodo }
+        if (previewTodoTarget != null) {
+            onPreviewTodoConsumed()
+        }
+    }
     val completedHistoryItems = if (section == DashboardSection.HISTORY) {
         historyItems.collectAsStateWithLifecycle().value
     } else {
@@ -746,14 +761,15 @@ internal fun DashboardBody(
                         CollapsibleBoardCard(
                             title = "倒数日（${visibleCountdownItems.size}）",
                             collapsed = countdownCollapsed,
-                            onToggle = { countdownCollapsed = !countdownCollapsed }
+                            onToggle = { countdownCollapsed = !countdownCollapsed },
+                            onNavigate = onNavigateTasks
                         ) {
                             CountdownBoardCard(
                                 items = visibleCountdownItems,
                                 now = boardMoment,
                                 groups = uiState.groups,
-                                onOpenTodo = onEdit,
-                                onOpenEvent = onEditCalendarEvent
+                                onOpenTodo = { previewTodoTarget = it },
+                                onOpenEvent = onPreviewCalendarEvent
                             )
                         }
                     }
@@ -763,17 +779,23 @@ internal fun DashboardBody(
                     BoardBlockTitle(
                         title = "今日待办（${boardTodoItems.size}）",
                         collapsed = boardTodosCollapsed,
-                        onToggle = { boardTodosCollapsed = !boardTodosCollapsed }
+                        onToggle = { boardTodosCollapsed = !boardTodosCollapsed },
+                        onNavigate = onNavigateTasks
                     )
                 }
                 if (!boardTodosCollapsed) {
                     if (boardTodoItems.isEmpty()) {
-                        item { EmptyStateCard("今天还没有安排任务。") }
+                        item {
+                            Box(modifier = Modifier.clickable(onClick = onNavigateTasks)) {
+                                EmptyStateCard("今天还没有安排任务。")
+                            }
+                        }
                     } else {
                         items(boardTodoItems, key = { it.id }) { item ->
                             ActiveTodoCard(
                                 item = item,
                                 groups = uiState.groups,
+                                forceShowDetailsKey = if (previewTodoId == item.id) previewTodoSerial else 0,
                                 onEdit = { onEdit(item) },
                                 onComplete = { onCompleteTodo(item) },
                                 onCancel = { onCancelTodo(item) },
@@ -787,7 +809,8 @@ internal fun DashboardBody(
                     BoardBlockTitle(
                         title = "今日日程（${todayScheduleItems.size}）",
                         collapsed = boardTodayEventsCollapsed,
-                        onToggle = { boardTodayEventsCollapsed = !boardTodayEventsCollapsed }
+                        onToggle = { boardTodayEventsCollapsed = !boardTodayEventsCollapsed },
+                        onNavigate = onNavigateCalendar
                     )
                 }
                 if (!boardTodayEventsCollapsed || !boardTomorrowEventsCollapsed) {
@@ -804,7 +827,8 @@ internal fun DashboardBody(
                             onOpenEvent = onEditCalendarEvent,
                             onGetEventCheckIns = onGetEventCheckIns,
                             onLaunchCheckIn = onLaunchCheckIn,
-                            onNavigatePlanning = onNavigatePlanning
+                            onNavigatePlanning = onNavigatePlanning,
+                            onNavigateCalendar = onNavigateCalendar
                         )
                     }
                 }
@@ -856,7 +880,14 @@ internal fun DashboardBody(
                     }
                     if (missedExpanded) {
                         items(uiState.missedItems, key = { it.id }) { item ->
-                            ActiveTodoCard(item, uiState.groups, { onEdit(item) }, { onCompleteTodo(item) }, { onCancelTodo(item) }, { onDeleteTodo(item) })
+                            ActiveTodoCard(
+                                item = item,
+                                groups = uiState.groups,
+                                onEdit = { onEdit(item) },
+                                onComplete = { onCompleteTodo(item) },
+                                onCancel = { onCancelTodo(item) },
+                                onDelete = { onDeleteTodo(item) }
+                            )
                         }
                     }
                 }
@@ -873,7 +904,14 @@ internal fun DashboardBody(
                         item { EmptyStateCard("今天还没有安排任务。") }
                     } else {
                         items(uiState.todayItems, key = { it.id }) { item ->
-                            ActiveTodoCard(item, uiState.groups, { onEdit(item) }, { onCompleteTodo(item) }, { onCancelTodo(item) }, { onDeleteTodo(item) })
+                            ActiveTodoCard(
+                                item = item,
+                                groups = uiState.groups,
+                                onEdit = { onEdit(item) },
+                                onComplete = { onCompleteTodo(item) },
+                                onCancel = { onCancelTodo(item) },
+                                onDelete = { onDeleteTodo(item) }
+                            )
                         }
                     }
                 }
@@ -890,7 +928,14 @@ internal fun DashboardBody(
                         item { EmptyStateCard("后续时间暂时没有新计划。") }
                     } else {
                         items(uiState.upcomingItems, key = { it.id }) { item ->
-                            ActiveTodoCard(item, uiState.groups, { onEdit(item) }, { onCompleteTodo(item) }, { onCancelTodo(item) }, { onDeleteTodo(item) })
+                            ActiveTodoCard(
+                                item = item,
+                                groups = uiState.groups,
+                                onEdit = { onEdit(item) },
+                                onComplete = { onCompleteTodo(item) },
+                                onCancel = { onCancelTodo(item) },
+                                onDelete = { onDeleteTodo(item) }
+                            )
                         }
                     }
                 }
@@ -910,6 +955,35 @@ internal fun DashboardBody(
             DashboardSection.AI_REPORTS -> Unit
             DashboardSection.SETTINGS -> Unit
         }
+    }
+    previewTodoTarget?.let { item ->
+        TodoDetailsDialog(
+            item = item,
+            groups = uiState.groups,
+            onDismiss = { previewTodoTarget = null },
+            showCreated = true,
+            showStatusTime = item.isHistory,
+            onEdit = {
+                previewTodoTarget = null
+                onEdit(item)
+            },
+            onCancel = if (item.isHistory) {
+                null
+            } else {
+                {
+                    previewTodoTarget = null
+                    onCancelTodo(item)
+                }
+            },
+            onRestore = if (item.completed || item.canceled) {
+                {
+                    previewTodoTarget = null
+                    onRestoreTodo(item)
+                }
+            } else {
+                null
+            }
+        )
     }
 }
 
@@ -1226,11 +1300,14 @@ private val CountdownTimeFormatter: DateTimeFormatter = DateTimeFormatter.ofPatt
 private fun BoardBlockTitle(
     title: String,
     collapsed: Boolean? = null,
-    onToggle: (() -> Unit)? = null
+    onToggle: (() -> Unit)? = null,
+    onNavigate: (() -> Unit)? = null
 ) {
     val isDarkTheme = MaterialTheme.colorScheme.background.luminance() < 0.3f
     Row(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(enabled = onNavigate != null, onClick = { onNavigate?.invoke() }),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -1264,10 +1341,11 @@ private fun CollapsibleBoardCard(
     title: String,
     collapsed: Boolean,
     onToggle: () -> Unit,
+    onNavigate: (() -> Unit)? = null,
     content: @Composable () -> Unit
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        BoardBlockTitle(title = title, collapsed = collapsed, onToggle = onToggle)
+        BoardBlockTitle(title = title, collapsed = collapsed, onToggle = onToggle, onNavigate = onNavigate)
         if (!collapsed) {
             content()
         }
@@ -1288,9 +1366,11 @@ private fun TodayScheduleBoardCard(
     onOpenEvent: (TodoItem) -> Unit,
     onGetEventCheckIns: suspend (Long) -> List<EventCheckIn>,
     onLaunchCheckIn: (Long) -> Unit,
-    onNavigatePlanning: () -> Unit = {}
+    onNavigatePlanning: () -> Unit = {},
+    onNavigateCalendar: () -> Unit = {}
 ) {
     ElevatedCard(
+        modifier = Modifier.clickable(onClick = onNavigateCalendar),
         shape = RoundedCornerShape(28.dp),
         colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.96f))
     ) {

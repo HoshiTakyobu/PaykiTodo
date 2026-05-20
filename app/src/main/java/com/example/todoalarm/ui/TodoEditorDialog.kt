@@ -176,12 +176,56 @@ fun TodoEditorDialog(
             )
     }
     var moreOptionsExpanded by remember(initialTodo?.id, shouldAutoExpandMore) { mutableStateOf(shouldAutoExpandMore) }
+    val hasUnsavedChanges = remember(
+        initialTodo?.id,
+        title,
+        notes,
+        selectedGroupIds,
+        hasDueDate,
+        dueAt,
+        reminderEnabled,
+        reminderInput,
+        ringEnabled,
+        vibrateEnabled,
+        reminderDeliveryMode,
+        countdownEnabled,
+        recurringEnabled,
+        recurrenceType,
+        weeklyDays,
+        recurrenceEndDate
+    ) {
+        if (initialTodo == null) {
+            title.isNotBlank() ||
+                notes.isNotBlank() ||
+                selectedGroupIds.isNotEmpty() ||
+                hasDueDate ||
+                reminderInput != "5" ||
+                recurringEnabled ||
+                countdownEnabled
+        } else {
+            title != initialTodo.title ||
+                notes != initialTodo.notes ||
+                hasDueDate != initialTodo.hasDueDate ||
+                dueAt != (initialTodo.dueDateTimeOrNull() ?: dueAt) ||
+                reminderEnabled != initialTodo.reminderEnabled ||
+                reminderInput != initialTodo.configuredReminderOffsetsMinutes.joinToString(",").ifBlank { "5" } ||
+                ringEnabled != initialTodo.ringEnabled ||
+                vibrateEnabled != initialTodo.vibrateEnabled ||
+                reminderDeliveryMode != initialTodo.reminderDeliveryModeEnum ||
+                countdownEnabled != initialTodo.countdownEnabled ||
+                recurringEnabled != initialTodo.isRecurring ||
+                recurrenceType != initialTodo.recurrenceTypeEnum ||
+                weeklyDays != storageStringToWeekdays(initialTodo.recurrenceWeekdays) ||
+                recurrenceEndDate != (initialTodo.recurrenceEndDate ?: recurrenceEndDate)
+        }
+    }
 
     EditorBottomSheet(
         title = if (initialTodo == null) "新增任务" else "编辑任务",
         confirmLabel = if (initialTodo == null) "创建" else "保存",
         confirmEnabled = confirmEnabled,
         onDismiss = onDismiss,
+        hasUnsavedChanges = hasUnsavedChanges,
         onConfirm = {
             val parsedReminderTimes = if (isHistory || !hasDueDate || !reminderEnabled || !reminderValidation.isValid) {
                 emptyList()

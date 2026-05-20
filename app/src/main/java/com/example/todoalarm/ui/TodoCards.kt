@@ -71,6 +71,7 @@ import kotlinx.coroutines.delay
 internal fun ActiveTodoCard(
     item: TodoItem,
     groups: List<TaskGroup>,
+    forceShowDetailsKey: Int = 0,
     onEdit: () -> Unit,
     onComplete: () -> Unit,
     onCancel: () -> Unit,
@@ -87,6 +88,11 @@ internal fun ActiveTodoCard(
         if (completing) {
             delay(650)
             onComplete()
+        }
+    }
+    LaunchedEffect(forceShowDetailsKey) {
+        if (forceShowDetailsKey > 0) {
+            showDetails = true
         }
     }
 
@@ -432,7 +438,7 @@ private fun StrikeTitle(
 }
 
 @Composable
-private fun TodoDetailsDialog(
+internal fun TodoDetailsDialog(
     item: TodoItem,
     groups: List<TaskGroup>,
     onDismiss: () -> Unit,

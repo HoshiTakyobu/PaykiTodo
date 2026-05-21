@@ -26,7 +26,18 @@ class AlarmScheduler(
     }
 
     fun schedule(todoItem: TodoItem): String? {
-        val triggerTimes = todoItem.reminderTriggerTimesMillis()
+        if (todoItem.isHistory || !todoItem.reminderEnabled) {
+            cancel(todoItem.id)
+            return null
+        }
+
+        cancel(todoItem.id)
+        if (todoItem.isEvent) {
+            OngoingEventNotifier.schedule(context, todoItem)
+        }
+
+        val now = System.currentTimeMillis()
+        val triggerTimes = todoItem.reminderTriggerTimesMillis().filter { it >= now }
         val triggerAtMillis = triggerTimes.minOrNull() ?: return null
         ReminderChainLogger.log(
             context = context,
@@ -37,12 +48,6 @@ class AlarmScheduler(
             reminderAtMillis = triggerAtMillis,
             message = "itemType=${todoItem.itemType}"
         )
-        if (todoItem.isHistory || !todoItem.reminderEnabled) {
-            cancel(todoItem.id)
-            return null
-        }
-
-        cancel(todoItem.id)
         val canUseAlarmClock = Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP
         val canUseExactBackup = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             alarmManager.canScheduleExactAlarms()
@@ -164,6 +169,7 @@ class AlarmScheduler(
     }
 
     fun cancel(todoId: Long) {
+        OngoingEventNotifier.cancelAll(context, todoId)
         alarmManager.cancel(buildBroadcastIntent(todoId, 0L, ACTION_EXACT, EXACT_OFFSET))
         alarmManager.cancel(buildBroadcastIntent(todoId, 0L, ACTION_BACKUP, BACKUP_OFFSET))
         val prefs = context.getSharedPreferences(SCHEDULE_PREFS, Context.MODE_PRIVATE)

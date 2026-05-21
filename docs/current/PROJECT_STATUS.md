@@ -7,8 +7,8 @@
 - Package name: `com.paykitodo.app`
 - Target platform: Android 14 / API 34
 - Current version in code:
-  - `versionName = "1.12.20"`
-  - `versionCode = 247`
+  - `versionName = "1.13.6"`
+  - `versionCode = 254`
 
 ## Current Build Facts
 
@@ -18,7 +18,36 @@
 - Latest signed release APK built locally:
   - `app/build/outputs/apk/release/PaykiTodo-1.11.0-release.apk`
 - Latest fully built debug APK:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.12.20-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.13.6-debug.apk`
+- Current `1.13.6 / versionCode 254` status:
+  - This build closes the `2026-05-22` UX polish and M1/M2/M4/M5 goal set: Planning Desk drag reorder and undo, recurring-todo folding, reminder visual refresh, ongoing event notifications, alarm mode, daily brief, global search, and data health cleanup.
+  - Database version is `25`; `todo_items.alarmMode` and `recurring_task_templates.alarmMode` are present with Room migration/schema, backup/restore, and desktop sync coverage.
+  - Ongoing event notifications use channel `ongoing_event`; daily brief uses channel `daily_brief`.
+  - `./gradlew.bat :app:compileDebugKotlin` passed after final code changes.
+  - `git diff --check`
+  - `./gradlew.bat :app:assembleDebug`
+  - Debug APK metadata confirms `versionName = 1.13.6`, `versionCode = 254`, output `PaykiTodo-1.13.6-debug.apk`.
+- Current `1.13.5 / versionCode 253` status:
+  - This is a metadata-only rebuild on top of the current in-progress `1.13.x` working tree so Android can upgrade over an installed `1.13.4` debug build.
+  - The APK includes the current workspace's uncommitted `1.13.x` code line; this round itself only changed version metadata/current docs.
+  - `git diff --check`
+  - `./gradlew.bat :app:assembleDebug`
+  - Debug APK metadata confirms `versionName = 1.13.5`, `versionCode = 253`, output `PaykiTodo-1.13.5-debug.apk`.
+- Current `1.13.4 / versionCode 252` status:
+  - This is a metadata-only rebuild on top of the current in-progress `1.13.x` working tree so Android can upgrade over an installed `1.13.3` debug build.
+  - The APK includes the current workspace's uncommitted `1.13.x` code line; this round itself only changed version metadata/current docs and fixed one Kotlin visibility blocker required for the existing workspace to compile.
+  - `./gradlew.bat :app:assembleDebug`
+  - Debug APK metadata confirms `versionName = 1.13.4`, `versionCode = 252`, output `PaykiTodo-1.13.4-debug.apk`.
+- Current `1.13.3 / versionCode 251` status:
+  - This is a metadata-only rebuild on top of the current in-progress `1.13.x` working tree so Android can upgrade over an installed `1.13.2` debug build.
+  - The APK includes the current workspace's uncommitted `1.13.x` code line; this round itself only changed version metadata and current docs.
+  - `./gradlew.bat :app:assembleDebug`
+  - Debug APK metadata confirms `versionName = 1.13.3`, `versionCode = 251`, output `PaykiTodo-1.13.3-debug.apk`.
+- Current `1.13.2 / versionCode 250` status:
+  - This is a metadata-only rebuild on top of the current in-progress `1.13.x` working tree so Android can upgrade over an installed `1.13.1` debug build.
+  - The APK includes the current workspace's uncommitted `1.13.x` code line; this round itself only changed version metadata and current docs.
+  - `./gradlew.bat :app:assembleDebug`
+  - Debug APK metadata confirms `versionName = 1.13.2`, `versionCode = 250`, output `PaykiTodo-1.13.2-debug.apk`.
 - Current `1.12.20 / versionCode 247` status:
   - This is a metadata-only rebuild so Android can upgrade over an installed `1.12.19` debug build.
   - No database schema, reminder behavior, Planning Desk behavior, or user-data format changed in this version bump.

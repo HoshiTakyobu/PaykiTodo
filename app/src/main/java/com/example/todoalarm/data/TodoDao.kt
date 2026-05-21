@@ -210,6 +210,34 @@ interface TodoDao {
         """
         SELECT * FROM todo_items
         WHERE itemType = 'TODO'
+        AND completed = 1
+        AND completedAtMillis IS NOT NULL
+        AND completedAtMillis < :cutoffMillis
+        ORDER BY completedAtMillis ASC
+        """
+    )
+    suspend fun getOldCompletedTodos(cutoffMillis: Long): List<TodoItem>
+
+    @Query(
+        """
+        SELECT * FROM todo_items
+        WHERE itemType = 'TODO'
+        AND completed = 0
+        AND canceled = 0
+        AND dueAtMillis != :noDueDateMillis
+        AND dueAtMillis < :cutoffMillis
+        AND reminderEnabled = 0
+        AND reminderAtMillis IS NULL
+        AND reminderOffsetsCsv = ''
+        ORDER BY dueAtMillis ASC
+        """
+    )
+    suspend fun getOverdueTodosWithoutReminder(cutoffMillis: Long, noDueDateMillis: Long): List<TodoItem>
+
+    @Query(
+        """
+        SELECT * FROM todo_items
+        WHERE itemType = 'TODO'
         AND hiddenFromBoard = 0
         AND completed = 1
         AND completedAtMillis IS NOT NULL
@@ -274,6 +302,40 @@ interface TodoDao {
         """
     )
     suspend fun getDesktopTodoItems(): List<TodoItem>
+
+    @Query(
+        """
+        SELECT * FROM todo_items
+        WHERE itemType = 'TODO'
+        AND (
+            title LIKE '%' || :query || '%'
+            OR notes LIKE '%' || :query || '%'
+        )
+        ORDER BY
+            CASE WHEN completed = 0 AND canceled = 0 THEN 0 ELSE 1 END ASC,
+            dueAtMillis ASC,
+            createdAtMillis DESC
+        LIMIT :limit
+        """
+    )
+    suspend fun searchTodos(query: String, limit: Int): List<TodoItem>
+
+    @Query(
+        """
+        SELECT * FROM todo_items
+        WHERE itemType = 'EVENT'
+        AND (
+            title LIKE '%' || :query || '%'
+            OR location LIKE '%' || :query || '%'
+        )
+        ORDER BY
+            CASE WHEN completed = 0 AND canceled = 0 THEN 0 ELSE 1 END ASC,
+            COALESCE(startAtMillis, dueAtMillis) ASC,
+            createdAtMillis DESC
+        LIMIT :limit
+        """
+    )
+    suspend fun searchEvents(query: String, limit: Int): List<TodoItem>
 
     @Query(
         """
@@ -618,6 +680,20 @@ interface TodoDao {
     @Query("DELETE FROM planning_notes WHERE id IN (:ids)")
     suspend fun deletePlanningNotesByIds(ids: List<Long>)
 
+    @Query(
+        """
+        SELECT * FROM planning_notes
+        WHERE TRIM(contentMarkdown) = ''
+        AND NOT EXISTS (
+            SELECT 1 FROM planning_nodes
+            WHERE planning_nodes.noteId = planning_notes.id
+            LIMIT 1
+        )
+        ORDER BY updatedAtMillis ASC, createdAtMillis ASC
+        """
+    )
+    suspend fun getEmptyPlanningNotes(): List<PlanningNote>
+
     @Query("DELETE FROM planning_notes")
     suspend fun clearPlanningNotes()
 
@@ -668,6 +744,26 @@ interface TodoDao {
 
     @Query("SELECT * FROM planning_nodes WHERE id = :nodeId LIMIT 1")
     suspend fun getPlanningNode(nodeId: Long): PlanningNode?
+
+    @Query(
+        """
+        SELECT * FROM planning_nodes
+        WHERE isDraft = 1
+        AND createdAtMillis < :cutoffMillis
+        ORDER BY createdAtMillis ASC
+        """
+    )
+    suspend fun getStaleDraftPlanningNodes(cutoffMillis: Long): List<PlanningNode>
+
+    @Query(
+        """
+        SELECT * FROM planning_nodes
+        WHERE text LIKE '%' || :query || '%'
+        ORDER BY updatedAtMillis DESC, id DESC
+        LIMIT :limit
+        """
+    )
+    suspend fun searchPlanningNodes(query: String, limit: Int): List<PlanningNode>
 
     @Query("SELECT * FROM planning_nodes WHERE linkedTodoId = :linkedTodoId ORDER BY id ASC")
     suspend fun getPlanningNodesByLinkedTodo(linkedTodoId: Long): List<PlanningNode>
@@ -786,6 +882,20 @@ interface TodoDao {
 
     @Query("SELECT * FROM ai_reports WHERE id = :id LIMIT 1")
     suspend fun getAiReportById(id: Long): AiReport?
+
+    @Query("SELECT * FROM ai_reports WHERE generatedAtMillis < :cutoffMillis ORDER BY generatedAtMillis ASC")
+    suspend fun getAiReportsBefore(cutoffMillis: Long): List<AiReport>
+
+    @Query(
+        """
+        SELECT * FROM ai_reports
+        WHERE content LIKE '%' || :query || '%'
+        OR providerName LIKE '%' || :query || '%'
+        ORDER BY generatedAtMillis DESC, id DESC
+        LIMIT :limit
+        """
+    )
+    suspend fun searchAiReports(query: String, limit: Int): List<AiReport>
 
     @Query("DELETE FROM ai_reports WHERE id = :id")
     suspend fun deleteAiReport(id: Long)

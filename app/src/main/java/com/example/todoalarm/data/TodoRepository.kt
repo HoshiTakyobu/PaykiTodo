@@ -123,6 +123,77 @@ class TodoRepository(
         return todoDao.getTotalCheckInMinutesInRange(startMillis, endMillis)
     }
     suspend fun getAllTodos(): List<TodoItem> = todoDao.getAllTodos()
+
+    suspend fun inspectDataHealth(retention: AiReportRetention): DataHealthReport {
+        val now = System.currentTimeMillis()
+        val oldCompletedCutoff = now - Duration.ofDays(30).toMillis()
+        val staleDraftCutoff = now - Duration.ofDays(14).toMillis()
+        val overdueWithoutReminderCutoff = now - Duration.ofDays(7).toMillis()
+        val expiredAiReportCutoff = retention.days?.let { days ->
+            now - Duration.ofDays(days.toLong()).toMillis()
+        }
+        return DataHealthReport(
+            oldCompletedTodos = todoDao.getOldCompletedTodos(oldCompletedCutoff).size,
+            emptyPlanningNotes = todoDao.getEmptyPlanningNotes().size,
+            staleDraftNodes = todoDao.getStaleDraftPlanningNodes(staleDraftCutoff).size,
+            expiredAiReports = expiredAiReportCutoff?.let { todoDao.getAiReportsBefore(it).size } ?: 0,
+            overdueTodosWithoutReminder = todoDao.getOverdueTodosWithoutReminder(
+                cutoffMillis = overdueWithoutReminderCutoff,
+                noDueDateMillis = NO_DUE_DATE_MILLIS
+            ).size
+        )
+    }
+
+    suspend fun cleanSafeDataHealthItems(retention: AiReportRetention): DataHealthCleanResult {
+        val now = System.currentTimeMillis()
+        val oldCompletedCutoff = now - Duration.ofDays(30).toMillis()
+        val oldCompleted = todoDao.getOldCompletedTodos(oldCompletedCutoff)
+        val emptyNotes = todoDao.getEmptyPlanningNotes()
+        val expiredAiReportCutoff = retention.days?.let { days ->
+            now - Duration.ofDays(days.toLong()).toMillis()
+        }
+
+        val deletedTodos = deleteItemsByIds(oldCompleted.map { it.id }).size
+        val deletedNotes = emptyNotes.map { it.id }.distinct().also { ids ->
+            if (ids.isNotEmpty()) {
+                ids.forEach { noteId -> todoDao.deletePlanningMappingsForNote(noteId) }
+                todoDao.deletePlanningNotesByIds(ids)
+            }
+        }.size
+        val deletedReports = expiredAiReportCutoff?.let { todoDao.purgeAiReportsBefore(it) } ?: 0
+
+        if (deletedTodos > 0 || deletedNotes > 0 || deletedReports > 0) {
+            notifyItemsChanged()
+        }
+        return DataHealthCleanResult(
+            deletedCompletedTodos = deletedTodos,
+            deletedEmptyPlanningNotes = deletedNotes,
+            deletedExpiredAiReports = deletedReports
+        )
+    }
+
+    suspend fun globalSearch(query: String, limitPerCategory: Int = 20): GlobalSearchResult {
+        val safeQuery = query.trim()
+        if (safeQuery.isBlank()) return GlobalSearchResult.empty(query = safeQuery)
+        val safeLimit = limitPerCategory.coerceIn(1, 50)
+        val nodes = todoDao.searchPlanningNodes(safeQuery, safeLimit)
+        val noteTitles = nodes
+            .map { it.noteId }
+            .distinct()
+            .associateWith { noteId -> todoDao.getPlanningNote(noteId)?.title.orEmpty() }
+        return GlobalSearchResult(
+            query = safeQuery,
+            todos = todoDao.searchTodos(safeQuery, safeLimit),
+            events = todoDao.searchEvents(safeQuery, safeLimit),
+            planningNodes = nodes.map { node ->
+                PlanningNodeSearchResult(
+                    node = node,
+                    noteTitle = noteTitles[node.noteId].orEmpty().ifBlank { "规划文档 ${node.noteId}" }
+                )
+            },
+            aiReports = todoDao.searchAiReports(safeQuery, safeLimit)
+        )
+    }
     suspend fun getDesktopTodoItems(): List<TodoItem> = todoDao.getDesktopTodoItems()
     suspend fun getDesktopTodoItemsPaged(
         query: String,
@@ -190,6 +261,95 @@ class TodoRepository(
 
     suspend fun insertPlanningNodes(nodes: List<PlanningNode>) {
         if (nodes.isNotEmpty()) todoDao.insertPlanningNodes(nodes)
+    }
+
+    suspend fun createPlanningNodeSnapshot(noteId: Long): PlanningNodeSnapshot {
+        val nodes = todoDao.getPlanningNodesForNote(noteId)
+        val linkedIds = nodes
+            .flatMap { it.linkedItemIds() }
+            .filter { it > 0 }
+            .distinct()
+        val linkedItems = linkedIds.mapNotNull { id -> todoDao.getById(id) }
+        val todoGroupTags = linkedIds.flatMap { todoId ->
+            todoDao.getGroupIdsForTodo(todoId).map { groupId ->
+                TodoGroupTag(todoId = todoId, groupId = groupId)
+            }
+        }
+        val eventCheckIns = linkedItems
+            .filter { it.isEvent }
+            .flatMap { event -> todoDao.getCheckInsForEvent(event.id) }
+        return PlanningNodeSnapshot(
+            noteId = noteId,
+            nodes = nodes,
+            linkedItems = linkedItems,
+            todoGroupTags = todoGroupTags,
+            eventCheckIns = eventCheckIns
+        )
+    }
+
+    suspend fun restorePlanningNodeSnapshot(snapshot: PlanningNodeSnapshot): PlanningNodeRestoreResult {
+        val currentNodes = todoDao.getPlanningNodesForNote(snapshot.noteId)
+        val currentLinkedIds = currentNodes
+            .flatMap { it.linkedItemIds() }
+            .filter { it > 0 }
+            .distinct()
+        val beforeItems = currentLinkedIds.mapNotNull { id -> todoDao.getById(id) }
+        val restoredLinkedIds = snapshot.linkedItems
+            .map { it.id }
+            .filter { it > 0 }
+            .distinct()
+        val restoredLinkedIdSet = restoredLinkedIds.toSet()
+        val removedItems = deleteItemsByIds(currentLinkedIds.filter { it !in restoredLinkedIdSet })
+
+        if (snapshot.linkedItems.isNotEmpty()) {
+            todoDao.insertAll(snapshot.linkedItems)
+        }
+        if (restoredLinkedIds.isNotEmpty()) {
+            todoDao.clearTodoGroupTagsForTodos(restoredLinkedIds)
+            val restoredTags = snapshot.todoGroupTags
+                .filter { tag -> tag.todoId in restoredLinkedIdSet && tag.groupId > 0 }
+                .distinct()
+            if (restoredTags.isNotEmpty()) {
+                todoDao.insertTodoGroupTags(restoredTags)
+            }
+            val restoredEventIds = snapshot.linkedItems
+                .filter { it.isEvent }
+                .map { it.id }
+                .filter { it > 0 }
+                .distinct()
+            if (restoredEventIds.isNotEmpty()) {
+                todoDao.clearCheckInsForEvents(restoredEventIds)
+                val restoredCheckIns = snapshot.eventCheckIns
+                    .filter { it.eventId in restoredEventIds }
+                    .distinctBy { it.id.takeIf { id -> id > 0 } ?: "${it.eventId}-${it.checkInAtMillis}-${it.checkOutAtMillis}" }
+                if (restoredCheckIns.isNotEmpty()) {
+                    todoDao.insertCheckIns(restoredCheckIns)
+                }
+            }
+        }
+
+        todoDao.deletePlanningNodesForNote(snapshot.noteId)
+        val nodeIds = snapshot.nodes.map { it.id }.toSet()
+        val restoredNodes = snapshot.nodes
+            .filter { it.id > 0 && it.noteId == snapshot.noteId && it.text.isNotBlank() }
+            .map { node ->
+                node.copy(
+                    parentNodeId = node.parentNodeId?.takeIf { it in nodeIds },
+                    linkedTodoId = node.linkedTodoId?.takeIf { it in restoredLinkedIdSet },
+                    linkedEndTodoId = node.linkedEndTodoId?.takeIf { it in restoredLinkedIdSet }
+                )
+            }
+            .withoutCyclicPlanningParents()
+            .let(::topologicallySortedPlanningNodes)
+        if (restoredNodes.isNotEmpty()) {
+            todoDao.insertPlanningNodes(restoredNodes)
+        }
+        updatePlanningNoteNodeLegacyMarkdown(snapshot.noteId)
+        notifyItemsChanged()
+        return PlanningNodeRestoreResult(
+            affectedBeforeItems = (beforeItems + removedItems).distinctBy { it.id },
+            affectedAfterItems = snapshot.linkedItems.distinctBy { it.id }
+        )
     }
 
     suspend fun ensurePlanningNodeLinkedItems(createEventEndTodo: Boolean = false): List<TodoItem> {
@@ -1413,7 +1573,13 @@ class TodoRepository(
 
     suspend fun futureReminderItems(now: Long): List<TodoItem> {
         return todoDao.getActiveReminderItems().filter { item ->
-            item.reminderTriggerTimesMillis().any { it >= now }
+            item.reminderTriggerTimesMillis().any { it >= now } ||
+                (
+                    item.isEvent &&
+                        item.reminderEnabled &&
+                        item.startAtMillis != null &&
+                        (item.endAtMillis ?: item.startAtMillis) >= now
+                    )
         }
     }
 
@@ -2011,6 +2177,7 @@ class TodoRepository(
                     groupId = groupIds.first(),
                     ringEnabled = previous.ringEnabled,
                     vibrateEnabled = previous.vibrateEnabled,
+                    alarmMode = previous.alarmMode,
                     reminderDeliveryMode = previous.reminderDeliveryModeEnum,
                     countdownEnabled = previous.countdownEnabled && resolved.dueAt != null,
                     hiddenFromBoard = previous.hiddenFromBoard,
@@ -2085,6 +2252,7 @@ class TodoRepository(
             groupId = groupIds.first(),
             ringEnabled = previous.ringEnabled,
             vibrateEnabled = previous.vibrateEnabled,
+            alarmMode = previous.alarmMode,
             reminderDeliveryMode = previous.reminderDeliveryModeEnum,
             countdownEnabled = previous.countdownEnabled,
             hiddenFromBoard = previous.hiddenFromBoard,
@@ -3102,6 +3270,7 @@ class TodoRepository(
             reminderEnabled = normalizedOffsets.isNotEmpty(),
             ringEnabled = draft.ringEnabled,
             vibrateEnabled = draft.vibrateEnabled,
+            alarmMode = draft.alarmMode && draft.dueAt != null && normalizedOffsets.isNotEmpty(),
             voiceEnabled = false,
             reminderDeliveryMode = draft.reminderDeliveryMode.name,
             groupId = draft.groupId,
@@ -3275,6 +3444,7 @@ class TodoRepository(
             reminderOffsetsCsv = encodeReminderOffsets(normalizedOffsets),
             ringEnabled = draft.ringEnabled,
             vibrateEnabled = draft.vibrateEnabled,
+            alarmMode = draft.alarmMode && normalizedOffsets.isNotEmpty(),
             reminderDeliveryMode = draft.reminderDeliveryMode.name,
             recurrenceType = draft.recurrence.type.name,
             recurrenceWeekdays = draft.recurrence.weeklyDays.toStorageString(),
@@ -3481,6 +3651,7 @@ class TodoRepository(
                         groupId = template.groupId,
                         ringEnabled = template.ringEnabled,
                         vibrateEnabled = template.vibrateEnabled,
+                        alarmMode = template.alarmMode,
                         reminderDeliveryMode = ReminderDeliveryMode.fromStorage(template.reminderDeliveryMode),
                         countdownEnabled = template.countdownEnabled,
                         hiddenFromBoard = template.hiddenFromBoard,

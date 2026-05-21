@@ -15,6 +15,7 @@ import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.text.BasicTextField
@@ -32,9 +33,11 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.Undo
 import androidx.compose.material.icons.rounded.Archive
 import androidx.compose.material.icons.rounded.Article
 import androidx.compose.material.icons.rounded.Campaign
@@ -88,6 +91,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
@@ -97,7 +101,9 @@ import androidx.compose.ui.input.key.isShiftPressed
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
@@ -121,6 +127,7 @@ import com.example.todoalarm.data.PlanningLineMapping
 import com.example.todoalarm.data.PlanningNode
 import com.example.todoalarm.data.PlanningNodeDraft
 import com.example.todoalarm.data.PlanningNodeEdit
+import com.example.todoalarm.data.PlanningNodeSnapshot
 import com.example.todoalarm.data.MappingStatus
 import com.example.todoalarm.data.PlanningOperationResult
 import com.example.todoalarm.data.PlanningParseResult
@@ -144,6 +151,7 @@ import java.time.LocalDateTime
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
+import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.roundToInt
 
@@ -169,6 +177,9 @@ internal fun PlanningDeskPanel(
     onPublishNode: suspend (PlanningNode) -> String?,
     onPublishAllDrafts: suspend (Long) -> String?,
     onDeleteNode: suspend (PlanningNode) -> String?,
+    onReorderNodes: suspend (Long, Long?, List<Long>) -> String?,
+    onCreateNodeSnapshot: suspend (Long) -> PlanningNodeSnapshot,
+    onRestoreNodeSnapshot: suspend (PlanningNodeSnapshot) -> String?,
     onOpenLinkedItem: (Long) -> Unit,
     onExportNodesMarkdown: suspend (Long) -> String,
     onReplaceNodesFromMarkdown: suspend (Long, String) -> String?,
@@ -181,6 +192,8 @@ internal fun PlanningDeskPanel(
     onUndoLastOperation: suspend (Long, String) -> PlanningOperationResult,
     onApplyConflictDocument: suspend (Long, String, Long) -> PlanningOperationResult,
     onApplyConflictItem: suspend (Long, String, Long) -> PlanningOperationResult,
+    highlightedPlanningNodeId: Long? = null,
+    highlightedPlanningNodeSerial: Int = 0,
     isNewUser: Boolean
 ) {
     val context = LocalContext.current
@@ -214,6 +227,8 @@ internal fun PlanningDeskPanel(
     var latestVisionImageUri by remember { mutableStateOf<Uri?>(null) }
     val selectedIds = remember { mutableStateMapOf<String, Boolean>() }
     val editableCandidates = remember { mutableStateListOf<PlanningImportCandidate>() }
+    val outlineUndoStack = remember(activeNote?.id) { mutableStateListOf<PlanningNodeUndoEntry>() }
+    var outlineUndoRunning by remember(activeNote?.id) { mutableStateOf(false) }
     val hasUnsavedChanges = activeNote != null && editorValue.text != activeNote.contentMarkdown
     val draftNodeCount = remember(nodes) { nodes.count { it.isDraft } }
     val latestUndoSummary = remember(mappingStates) { latestPlanningUndoSummary(mappingStates) }
@@ -286,8 +301,44 @@ internal fun PlanningDeskPanel(
         parseResult = null
         selectedIds.clear()
         editableCandidates.clear()
+        outlineUndoStack.clear()
         markdownCompatMode = false
         markdownEditMode = true
+    }
+
+    fun pushOutlineUndo(entry: PlanningNodeUndoEntry?) {
+        if (entry == null || entry.snapshot.nodes.isEmpty()) return
+        outlineUndoStack.add(entry)
+        while (outlineUndoStack.size > PlanningNodeUndoMaxSize) {
+            outlineUndoStack.removeAt(0)
+        }
+    }
+
+    suspend fun captureOutlineUndo(description: String): PlanningNodeUndoEntry? {
+        val noteId = activeNote?.id ?: return null
+        return runCatching {
+            PlanningNodeUndoEntry(description = description, snapshot = onCreateNodeSnapshot(noteId))
+        }.getOrElse { error ->
+            Toast.makeText(context, error.message ?: "撤销快照创建失败", Toast.LENGTH_SHORT).show()
+            null
+        }
+    }
+
+    suspend fun restoreLastOutlineUndo() {
+        if (outlineUndoRunning || outlineUndoStack.isEmpty()) return
+        val index = outlineUndoStack.lastIndex
+        val entry = outlineUndoStack.removeAt(index)
+        outlineUndoRunning = true
+        try {
+            val message = onRestoreNodeSnapshot(entry.snapshot)
+            message?.let { Toast.makeText(context, it, Toast.LENGTH_SHORT).show() }
+            Toast.makeText(context, "已撤销：${entry.description}", Toast.LENGTH_SHORT).show()
+        } catch (error: Exception) {
+            outlineUndoStack.add(entry)
+            Toast.makeText(context, error.message ?: "撤销失败", Toast.LENGTH_SHORT).show()
+        } finally {
+            outlineUndoRunning = false
+        }
     }
 
     LaunchedEffect(activeNote?.id) {
@@ -370,8 +421,12 @@ internal fun PlanningDeskPanel(
                                 focusManager.clearFocus()
                                 val noteId = activeNote?.id ?: return@Button
                                 scope.launch {
+                                    val undoEntry = captureOutlineUndo("批量发布草稿")
                                     val message = onPublishAllDrafts(noteId)
                                     message?.let { Toast.makeText(context, it, Toast.LENGTH_SHORT).show() }
+                                    if (message?.startsWith("已发布 0 条") != true) {
+                                        pushOutlineUndo(undoEntry)
+                                    }
                                 }
                             }
                         ) {
@@ -423,6 +478,21 @@ internal fun PlanningDeskPanel(
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
+                }
+                if (!markdownCompatMode) {
+                    IconButton(
+                        modifier = Modifier.size(40.dp),
+                        enabled = outlineUndoStack.isNotEmpty() && !outlineUndoRunning,
+                        onClick = {
+                            focusManager.clearFocus()
+                            scope.launch { restoreLastOutlineUndo() }
+                        }
+                    ) {
+                        Icon(
+                            Icons.AutoMirrored.Rounded.Undo,
+                            contentDescription = outlineUndoStack.lastOrNull()?.let { "撤销：${it.description}" } ?: "撤销"
+                        )
+                    }
                 }
                 androidx.compose.foundation.layout.Box {
                     IconButton(
@@ -530,6 +600,8 @@ internal fun PlanningDeskPanel(
                 nodes = nodes,
                 outlineHintVisible = outlineHintVisible,
                 previewMode = outlinePreviewMode,
+                highlightedPlanningNodeId = highlightedPlanningNodeId,
+                highlightedPlanningNodeSerial = highlightedPlanningNodeSerial,
                 onCreateNode = { draft ->
                     scope.launch {
                         val message = onCreateNode(draft)
@@ -538,8 +610,10 @@ internal fun PlanningDeskPanel(
                 },
                 onUpdateNode = { node, edit ->
                     scope.launch {
+                        val undoEntry = captureOutlineUndo("编辑节点：${node.text.compactUndoLabel()}")
                         val message = onUpdateNode(node, edit)
                         message?.let { Toast.makeText(context, it, Toast.LENGTH_SHORT).show() }
+                        if (message == null) pushOutlineUndo(undoEntry)
                     }
                 },
                 onToggleNode = { node ->
@@ -550,18 +624,42 @@ internal fun PlanningDeskPanel(
                 },
                 onPublishNode = { node ->
                     scope.launch {
+                        val undoEntry = captureOutlineUndo("发布草稿：${node.text.compactUndoLabel()}")
                         val message = onPublishNode(node)
                         message?.let { Toast.makeText(context, it, Toast.LENGTH_SHORT).show() }
+                        if (message?.startsWith("草稿发布失败") != true) {
+                            pushOutlineUndo(undoEntry)
+                        }
                     }
                 },
                 onDeleteNodeNow = { node ->
                     scope.launch {
+                        val undoEntry = captureOutlineUndo("删除节点：${node.text.compactUndoLabel()}")
                         val message = onDeleteNode(node)
                         message?.let { Toast.makeText(context, it, Toast.LENGTH_SHORT).show() }
+                        if (message == null) pushOutlineUndo(undoEntry)
                     }
                 },
                 onDeleteNode = { node ->
                     pendingDeleteNode = node
+                },
+                onReorderNodes = { noteId, parentNodeId, orderedNodeIds ->
+                    scope.launch {
+                        val undoEntry = captureOutlineUndo("调整节点顺序")
+                        val message = onReorderNodes(noteId, parentNodeId, orderedNodeIds)
+                        message?.let { Toast.makeText(context, it, Toast.LENGTH_SHORT).show() }
+                        if (message == null) pushOutlineUndo(undoEntry)
+                    }
+                },
+                onMergeNodeIntoPrevious = { node, previous, edit ->
+                    scope.launch {
+                        val undoEntry = captureOutlineUndo("合并节点：${node.text.compactUndoLabel()}")
+                        val updateMessage = onUpdateNode(previous, edit)
+                        updateMessage?.let { Toast.makeText(context, it, Toast.LENGTH_SHORT).show() }
+                        val deleteMessage = if (updateMessage == null) onDeleteNode(node) else null
+                        deleteMessage?.let { Toast.makeText(context, it, Toast.LENGTH_SHORT).show() }
+                        if (updateMessage == null) pushOutlineUndo(undoEntry)
+                    }
                 },
                 onOpenLinkedItem = onOpenLinkedItem,
                 modifier = Modifier
@@ -873,8 +971,10 @@ internal fun PlanningDeskPanel(
             onDismiss = { pendingDeleteNode = null },
             onConfirm = {
                 scope.launch {
+                    val undoEntry = captureOutlineUndo("删除节点：${node.text.compactUndoLabel()}")
                     val message = onDeleteNode(node)
                     message?.let { Toast.makeText(context, it, Toast.LENGTH_SHORT).show() }
+                    if (message == null) pushOutlineUndo(undoEntry)
                     pendingDeleteNode = null
                 }
             }
@@ -976,21 +1076,27 @@ internal fun PlanningDeskPanel(
 
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun PlanningOutlineEditor(
     activeNote: PlanningNote?,
     nodes: List<PlanningNode>,
     outlineHintVisible: Boolean,
     previewMode: Boolean,
+    highlightedPlanningNodeId: Long?,
+    highlightedPlanningNodeSerial: Int,
     onCreateNode: (PlanningNodeDraft) -> Unit,
     onUpdateNode: (PlanningNode, PlanningNodeEdit) -> Unit,
     onToggleNode: (PlanningNode) -> Unit,
     onPublishNode: (PlanningNode) -> Unit,
     onDeleteNodeNow: (PlanningNode) -> Unit,
     onDeleteNode: (PlanningNode) -> Unit,
+    onReorderNodes: (Long, Long?, List<Long>) -> Unit,
+    onMergeNodeIntoPrevious: (PlanningNode, PlanningNode, PlanningNodeEdit) -> Unit,
     onOpenLinkedItem: (Long) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val focusManager = LocalFocusManager.current
     var rootInput by remember(activeNote?.id) { mutableStateOf(TextFieldValue("")) }
     var editingTarget by remember(activeNote?.id) { mutableStateOf<PlanningOutlineEditingTarget?>(null) }
     var pendingCreatedFocus by remember(activeNote?.id) { mutableStateOf<PlanningOutlinePendingNodeFocus?>(null) }
@@ -1003,6 +1109,11 @@ private fun PlanningOutlineEditor(
     var locationDialogNode by remember { mutableStateOf<PlanningNode?>(null) }
     val flattened = remember(nodes) { flattenPlanningNodes(nodes) }
     val childrenByParent = remember(nodes) { nodes.groupBy { it.parentNodeId } }
+    val listState = rememberLazyListState()
+    var activeHighlightNodeId by remember(activeNote?.id) { mutableStateOf<Long?>(null) }
+    var draggingNodeId by remember(activeNote?.id) { mutableStateOf<Long?>(null) }
+    var dragOffsetY by remember(activeNote?.id) { mutableStateOf(0f) }
+    val reorderStepPx = with(LocalDensity.current) { 52.dp.toPx() }
 
     fun focusNode(node: PlanningNode?, cursor: Int? = null) {
         if (node == null) return
@@ -1044,15 +1155,30 @@ private fun PlanningOutlineEditor(
 
     fun mergeNodeIntoPrevious(node: PlanningNode, raw: String) {
         val previous = previousSibling(node) ?: return
-        mergeTextIntoPrevious(previous, raw) {
-            onDeleteNodeNow(node)
-        }
+        val clean = raw.trimStart()
+        if (clean.isBlank()) return
+        val cursor = previous.text.length
+        onMergeNodeIntoPrevious(node, previous, previous.toPlanningNodeEdit(text = previous.text + clean))
+        focusNode(previous, cursor)
     }
 
     fun focusRootInput(cursor: Int = rootInput.text.length) {
         editingTarget = null
         rootInput = rootInput.copy(selection = TextRange(cursor.coerceIn(0, rootInput.text.length)))
         inputFocusTarget = "root-${System.nanoTime()}"
+    }
+
+    fun moveNodeWithinSiblings(node: PlanningNode, direction: Int): Boolean {
+        val note = activeNote ?: return false
+        val siblings = siblingNodes(node.parentNodeId)
+        val index = siblings.indexOfFirst { it.id == node.id }
+        val targetIndex = (index + direction).coerceIn(0, siblings.lastIndex)
+        if (index < 0 || index == targetIndex) return false
+        val reordered = siblings.toMutableList().apply {
+            add(targetIndex, removeAt(index))
+        }
+        onReorderNodes(note.id, node.parentNodeId, reordered.map { it.id })
+        return true
     }
 
     LaunchedEffect(nodes, pendingCreatedFocus) {
@@ -1070,6 +1196,32 @@ private fun PlanningOutlineEditor(
         if (target != null) {
             pendingCreatedFocus = null
             focusNode(target, pending.cursor)
+        }
+    }
+
+    LaunchedEffect(highlightedPlanningNodeId, highlightedPlanningNodeSerial, nodes, activeNote?.id) {
+        val targetId = highlightedPlanningNodeId ?: return@LaunchedEffect
+        val target = nodes.firstOrNull { it.id == targetId } ?: return@LaunchedEffect
+        val nodesById = nodes.associateBy { it.id }
+        var parentId = target.parentNodeId
+        var expandedAnyAncestor = false
+        while (parentId != null) {
+            val parent = nodesById[parentId] ?: break
+            if (parent.collapsed) {
+                expandedAnyAncestor = true
+                onUpdateNode(parent, parent.toPlanningNodeEdit(collapsed = false))
+            }
+            parentId = parent.parentNodeId
+        }
+        if (expandedAnyAncestor) return@LaunchedEffect
+        val targetIndex = flattened.indexOfFirst { it.node.id == targetId }
+        if (targetIndex >= 0) {
+            activeHighlightNodeId = targetId
+            listState.animateScrollToItem(targetIndex)
+            delay(3_000L)
+            if (activeHighlightNodeId == targetId) {
+                activeHighlightNodeId = null
+            }
         }
     }
 
@@ -1109,6 +1261,7 @@ private fun PlanningOutlineEditor(
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             LazyColumn(
+                state = listState,
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(1f),
@@ -1128,15 +1281,45 @@ private fun PlanningOutlineEditor(
                         val hasChildren = childrenByParent[node.id].orEmpty().isNotEmpty()
                         val childInputExpanded = expandedChildInputs[node.id] == true
                         val childInputVisible = !previewMode && (childInputExpanded || (hasChildren && !node.collapsed))
+                        val dragging = draggingNodeId == node.id
                         item(key = node.id) {
-                        PlanningOutlineRow(
+                            Box(modifier = Modifier.animateItemPlacement()) {
+                                PlanningOutlineRow(
                             item = outline,
                             hasChildren = hasChildren,
                             childInputVisible = childInputVisible,
                             outlineHintVisible = outlineHintVisible,
                             previewMode = previewMode,
+                            highlighted = activeHighlightNodeId == node.id,
                             editing = editingTarget?.nodeId == node.id,
                             editingCursor = editingTarget?.takeIf { it.nodeId == node.id }?.cursor,
+                            dragEnabled = !previewMode && editingTarget?.nodeId != node.id && siblingNodes(node.parentNodeId).size > 1,
+                            dragging = dragging,
+                            dragOffsetY = if (dragging) dragOffsetY else 0f,
+                            onDragStart = {
+                                focusManager.clearFocus()
+                                editingTarget = null
+                                draggingNodeId = node.id
+                                dragOffsetY = 0f
+                            },
+                            onDragDelta = { deltaY ->
+                                if (draggingNodeId != node.id) return@PlanningOutlineRow
+                                dragOffsetY += deltaY
+                                if (abs(dragOffsetY) >= reorderStepPx) {
+                                    val direction = if (dragOffsetY > 0f) 1 else -1
+                                    if (moveNodeWithinSiblings(node, direction)) {
+                                        dragOffsetY = 0f
+                                    } else {
+                                        dragOffsetY = dragOffsetY.coerceIn(-reorderStepPx, reorderStepPx)
+                                    }
+                                }
+                            },
+                            onDragEnd = {
+                                if (draggingNodeId == node.id) {
+                                    draggingNodeId = null
+                                    dragOffsetY = 0f
+                                }
+                            },
                             onStartEdit = { focusNode(node, node.text.length) },
                             onStopEdit = {
                                 if (editingTarget?.nodeId == node.id) editingTarget = null
@@ -1271,8 +1454,9 @@ private fun PlanningOutlineEditor(
                             },
                             onRequestTime = { timeDialogNode = node },
                             onRequestLocation = { locationDialogNode = node },
-                            onDelete = { onDeleteNode(node) }
-                        )
+                                    onDelete = { onDeleteNode(node) }
+                                )
+                            }
                         }
                         if (!previewMode && siblingInputAfterNodeId == node.id) {
                             item(key = "sibling-input-${node.id}") {
@@ -1549,8 +1733,15 @@ private fun PlanningOutlineRow(
     childInputVisible: Boolean,
     outlineHintVisible: Boolean,
     previewMode: Boolean,
+    highlighted: Boolean,
     editing: Boolean,
     editingCursor: Int?,
+    dragEnabled: Boolean,
+    dragging: Boolean,
+    dragOffsetY: Float,
+    onDragStart: () -> Unit,
+    onDragDelta: (Float) -> Unit,
+    onDragEnd: () -> Unit,
     onStartEdit: () -> Unit,
     onStopEdit: () -> Unit,
     onToggle: () -> Unit,
@@ -1611,224 +1802,264 @@ private fun PlanningOutlineRow(
         onStopEdit()
     }
 
+    val rowContainerColor = if (highlighted) {
+        MaterialTheme.colorScheme.primary.copy(alpha = 0.13f)
+    } else {
+        Color.Transparent
+    }
+    val rowBorder = if (highlighted) {
+        BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.55f))
+    } else {
+        null
+    }
+    val dragModifier = if (dragEnabled) {
+        Modifier.pointerInput(node.id, dragEnabled) {
+            detectDragGesturesAfterLongPress(
+                onDragStart = { onDragStart() },
+                onDragEnd = onDragEnd,
+                onDragCancel = onDragEnd,
+                onDrag = { change, dragAmount ->
+                    change.consume()
+                    onDragDelta(dragAmount.y)
+                }
+            )
+        }
+    } else {
+        Modifier
+    }
+
     Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
         if (outlineHintVisible && editing && !previewMode) {
             PlanningOutlineHeaderHint(textValue.text)
         }
-        Row(
+        Surface(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 2.dp, vertical = 4.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(6.dp)
-        ) {
-            Spacer(Modifier.width((item.depth * 22).dp))
-            IconButton(
-                modifier = Modifier.size(30.dp),
-                onClick = onToggleCollapse
-            ) {
-                Icon(
-                    imageVector = if (childToggleExpanded) Icons.Rounded.ExpandLess else Icons.Rounded.ExpandMore,
-                    contentDescription = if (childToggleExpanded) "折叠子任务" else "展开子任务",
-                    tint = MaterialTheme.colorScheme.outline
-                )
-            }
-            if (node.isNote) {
-                Box(
-                    modifier = Modifier.size(32.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = "//",
-                        color = MaterialTheme.colorScheme.outline.copy(alpha = 0.7f),
-                        style = MaterialTheme.typography.labelMedium,
-                        fontWeight = FontWeight.Bold
-                    )
+                .graphicsLayer {
+                    translationY = if (dragging) dragOffsetY else 0f
+                    alpha = if (dragging) 0.82f else 1f
+                    shadowElevation = if (dragging) 12f else 0f
                 }
-            } else {
+                .then(dragModifier),
+            shape = RoundedCornerShape(16.dp),
+            color = rowContainerColor,
+            border = rowBorder
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 2.dp, vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                Spacer(Modifier.width((item.depth * 22).dp))
                 IconButton(
-                    modifier = Modifier.size(32.dp),
-                    onClick = onToggle
+                    modifier = Modifier.size(30.dp),
+                    onClick = onToggleCollapse
                 ) {
                     Icon(
-                        imageVector = if (node.completed) Icons.Rounded.CheckCircle else Icons.Rounded.RadioButtonUnchecked,
-                        contentDescription = if (node.completed) "标记未完成" else "完成",
-                        tint = when {
-                            node.completed -> MaterialTheme.colorScheme.onSurface
-                            node.isDraft -> MaterialTheme.colorScheme.outline.copy(alpha = 0.48f)
-                            else -> MaterialTheme.colorScheme.outline
-                        }
+                        imageVector = if (childToggleExpanded) Icons.Rounded.ExpandLess else Icons.Rounded.ExpandMore,
+                        contentDescription = if (childToggleExpanded) "折叠子任务" else "展开子任务",
+                        tint = MaterialTheme.colorScheme.outline
                     )
                 }
-            }
-            val textColumnModifier = if (!previewMode && !editing) {
-                Modifier
-                    .weight(1f)
-                    .clickable { onStartEdit() }
-            } else {
-                Modifier.weight(1f)
-            }
-            Column(
-                modifier = textColumnModifier,
-                verticalArrangement = Arrangement.spacedBy(2.dp)
-            ) {
-                if (editing && !previewMode) {
-                    OutlinedTextField(
-                        value = textValue,
-                        onValueChange = { textValue = it },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .focusRequester(editFocusRequester)
-                            .onPreviewKeyEvent { event ->
-                                if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
-                                val cursorStart = minOf(textValue.selection.start, textValue.selection.end)
-                                val cursorEnd = maxOf(textValue.selection.start, textValue.selection.end)
-                                val cursorAtStart = cursorStart == 0 && cursorEnd == 0
-                                val cursorAtEnd = cursorStart == textValue.text.length && cursorEnd == textValue.text.length
-                                when (event.key) {
-                                    Key.Enter -> {
-                                        val before = textValue.text.substring(0, cursorStart)
-                                        val after = textValue.text.substring(cursorEnd)
-                                        if (cursorStart in 1 until textValue.text.length || after.isNotBlank()) {
-                                            if (onCreateSiblingWithText(before, after)) {
-                                                editCommitHandled = true
-                                                onStopEdit()
-                                                true
+                if (node.isNote) {
+                    Box(
+                        modifier = Modifier.size(32.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "//",
+                            color = MaterialTheme.colorScheme.outline.copy(alpha = 0.7f),
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                } else {
+                    IconButton(
+                        modifier = Modifier.size(32.dp),
+                        onClick = onToggle
+                    ) {
+                        Icon(
+                            imageVector = if (node.completed) Icons.Rounded.CheckCircle else Icons.Rounded.RadioButtonUnchecked,
+                            contentDescription = if (node.completed) "标记未完成" else "完成",
+                            tint = when {
+                                node.completed -> MaterialTheme.colorScheme.onSurface
+                                node.isDraft -> MaterialTheme.colorScheme.outline.copy(alpha = 0.48f)
+                                else -> MaterialTheme.colorScheme.outline
+                            }
+                        )
+                    }
+                }
+                val textColumnModifier = if (!previewMode && !editing) {
+                    Modifier
+                        .weight(1f)
+                        .clickable { onStartEdit() }
+                } else {
+                    Modifier.weight(1f)
+                }
+                Column(
+                    modifier = textColumnModifier,
+                    verticalArrangement = Arrangement.spacedBy(2.dp)
+                ) {
+                    if (editing && !previewMode) {
+                        OutlinedTextField(
+                            value = textValue,
+                            onValueChange = { textValue = it },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .focusRequester(editFocusRequester)
+                                .onPreviewKeyEvent { event ->
+                                    if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
+                                    val cursorStart = minOf(textValue.selection.start, textValue.selection.end)
+                                    val cursorEnd = maxOf(textValue.selection.start, textValue.selection.end)
+                                    val cursorAtStart = cursorStart == 0 && cursorEnd == 0
+                                    val cursorAtEnd = cursorStart == textValue.text.length && cursorEnd == textValue.text.length
+                                    when (event.key) {
+                                        Key.Enter -> {
+                                            val before = textValue.text.substring(0, cursorStart)
+                                            val after = textValue.text.substring(cursorEnd)
+                                            if (cursorStart in 1 until textValue.text.length || after.isNotBlank()) {
+                                                if (onCreateSiblingWithText(before, after)) {
+                                                    editCommitHandled = true
+                                                    onStopEdit()
+                                                    true
+                                                } else {
+                                                    false
+                                                }
                                             } else {
-                                                false
+                                                commit()
+                                                onCreateSibling()
+                                                true
                                             }
-                                        } else {
-                                            commit()
-                                            onCreateSibling()
+                                        }
+                                        Key.Tab -> {
+                                            if (event.isShiftPressed) onOutdent() else onIndent()
                                             true
                                         }
-                                    }
-                                    Key.Tab -> {
-                                        if (event.isShiftPressed) onOutdent() else onIndent()
-                                        true
-                                    }
-                                    Key.Backspace -> {
-                                        when {
-                                            textValue.text.isBlank() -> onDeleteAndFocusPrevious()
-                                            cursorAtStart -> onMergeWithPrevious(textValue.text)
-                                            else -> false
+                                        Key.Backspace -> {
+                                            when {
+                                                textValue.text.isBlank() -> onDeleteAndFocusPrevious()
+                                                cursorAtStart -> onMergeWithPrevious(textValue.text)
+                                                else -> false
+                                            }
                                         }
+                                        Key.DirectionUp -> if (cursorAtStart) onFocusPrevious() else false
+                                        Key.DirectionDown -> if (cursorAtEnd) onFocusNext() else false
+                                        else -> false
                                     }
-                                    Key.DirectionUp -> if (cursorAtStart) onFocusPrevious() else false
-                                    Key.DirectionDown -> if (cursorAtEnd) onFocusNext() else false
-                                    else -> false
                                 }
-                            }
-                            .onFocusChanged { focusState ->
-                                if (focusState.isFocused) {
-                                    editHadFocus = true
-                                } else if (editing && editHadFocus) {
-                                    commit()
-                                }
-                            },
-                        textStyle = MaterialTheme.typography.bodyLarge.copy(
-                            color = textColor,
-                            fontStyle = if (node.isNote) FontStyle.Italic else FontStyle.Normal,
-                            textDecoration = if (node.completed) TextDecoration.LineThrough else TextDecoration.None
-                        ),
-                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-                        keyboardActions = KeyboardActions(onDone = { commit() }),
-                        singleLine = true,
-                        placeholder = { Text("写下事项、DDL 或日程") }
-                    )
-                } else {
-                    Text(
-                        text = node.text,
-                        modifier = Modifier.fillMaxWidth(),
-                        style = MaterialTheme.typography.bodyLarge.copy(
-                            color = textColor,
-                            fontStyle = if (node.isNote) FontStyle.Italic else FontStyle.Normal,
-                            textDecoration = if (node.completed) TextDecoration.LineThrough else TextDecoration.None
-                        ),
-                        maxLines = 3,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
-                if (chipText.isNotBlank()) {
-                    Text(
-                        text = chipText,
-                        style = MaterialTheme.typography.labelMedium,
-                        color = if (node.isDraft) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.primary
-                    )
-                }
-            }
-            if (node.isDraft && !node.isNote) {
-                IconButton(
-                    modifier = Modifier.size(34.dp),
-                    onClick = onPublish
-                ) {
-                    Icon(
-                        imageVector = Icons.Rounded.Send,
-                        contentDescription = "发布为正式事项",
-                        tint = MaterialTheme.colorScheme.primary
-                    )
-                }
-            }
-            if (previewMode) {
-                androidx.compose.foundation.layout.Box {
-                    IconButton(modifier = Modifier.size(34.dp), onClick = { actionMenuExpanded = true }) {
-                        Icon(Icons.Rounded.MoreVert, contentDescription = "节点设置")
+                                .onFocusChanged { focusState ->
+                                    if (focusState.isFocused) {
+                                        editHadFocus = true
+                                    } else if (editing && editHadFocus) {
+                                        commit()
+                                    }
+                                },
+                            textStyle = MaterialTheme.typography.bodyLarge.copy(
+                                color = textColor,
+                                fontStyle = if (node.isNote) FontStyle.Italic else FontStyle.Normal,
+                                textDecoration = if (node.completed) TextDecoration.LineThrough else TextDecoration.None
+                            ),
+                            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                            keyboardActions = KeyboardActions(onDone = { commit() }),
+                            singleLine = true,
+                            placeholder = { Text("写下事项、DDL 或日程") }
+                        )
+                    } else {
+                        Text(
+                            text = node.text,
+                            modifier = Modifier.fillMaxWidth(),
+                            style = MaterialTheme.typography.bodyLarge.copy(
+                                color = textColor,
+                                fontStyle = if (node.isNote) FontStyle.Italic else FontStyle.Normal,
+                                textDecoration = if (node.completed) TextDecoration.LineThrough else TextDecoration.None
+                            ),
+                            maxLines = 3,
+                            overflow = TextOverflow.Ellipsis
+                        )
                     }
-                    DropdownMenu(
-                        expanded = actionMenuExpanded,
-                        onDismissRequest = { actionMenuExpanded = false }
+                    if (chipText.isNotBlank()) {
+                        Text(
+                            text = chipText,
+                            style = MaterialTheme.typography.labelMedium,
+                            color = if (node.isDraft) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.primary
+                        )
+                    }
+                }
+                if (node.isDraft && !node.isNote) {
+                    IconButton(
+                        modifier = Modifier.size(34.dp),
+                        onClick = onPublish
                     ) {
-                        DropdownMenuItem(
-                            text = { Text("完整编辑") },
-                            onClick = {
-                                actionMenuExpanded = false
-                                onOpenLinkedItem()
-                            },
-                            enabled = node.linkedTodoId != null
+                        Icon(
+                            imageVector = Icons.Rounded.Send,
+                            contentDescription = "发布为正式事项",
+                            tint = MaterialTheme.colorScheme.primary
                         )
-                        DropdownMenuItem(
-                            text = { Text("设置时间") },
-                            onClick = {
-                                actionMenuExpanded = false
-                                onRequestTime()
-                            }
-                        )
-                        DropdownMenuItem(
-                            text = { Text("设置地点") },
-                            onClick = {
-                                actionMenuExpanded = false
-                                onRequestLocation()
-                            }
-                        )
-                        if (hasChildren) {
+                    }
+                }
+                if (previewMode) {
+                    androidx.compose.foundation.layout.Box {
+                        IconButton(modifier = Modifier.size(34.dp), onClick = { actionMenuExpanded = true }) {
+                            Icon(Icons.Rounded.MoreVert, contentDescription = "节点设置")
+                        }
+                        DropdownMenu(
+                            expanded = actionMenuExpanded,
+                            onDismissRequest = { actionMenuExpanded = false }
+                        ) {
                             DropdownMenuItem(
-                                text = { Text("有子任务时保持结构标题") },
-                                onClick = {},
-                                enabled = false
-                            )
-                        } else {
-                            DropdownMenuItem(
-                                text = { Text(if (node.syncEnabled) "改为结构标题" else "同步为待办/日程") },
+                                text = { Text("完整编辑") },
                                 onClick = {
                                     actionMenuExpanded = false
-                                    onToggleSync()
+                                    onOpenLinkedItem()
+                                },
+                                enabled = node.linkedTodoId != null
+                            )
+                            DropdownMenuItem(
+                                text = { Text("设置时间") },
+                                onClick = {
+                                    actionMenuExpanded = false
+                                    onRequestTime()
+                                }
+                            )
+                            DropdownMenuItem(
+                                text = { Text("设置地点") },
+                                onClick = {
+                                    actionMenuExpanded = false
+                                    onRequestLocation()
+                                }
+                            )
+                            if (hasChildren) {
+                                DropdownMenuItem(
+                                    text = { Text("有子任务时保持结构标题") },
+                                    onClick = {},
+                                    enabled = false
+                                )
+                            } else {
+                                DropdownMenuItem(
+                                    text = { Text(if (node.syncEnabled) "改为结构标题" else "同步为待办/日程") },
+                                    onClick = {
+                                        actionMenuExpanded = false
+                                        onToggleSync()
+                                    }
+                                )
+                            }
+                            DropdownMenuItem(
+                                text = { Text(if (node.isNote) "取消备注" else "标记为备注") },
+                                onClick = {
+                                    actionMenuExpanded = false
+                                    onToggleNote()
+                                }
+                            )
+                            DropdownMenuItem(
+                                text = { Text("删除") },
+                                onClick = {
+                                    actionMenuExpanded = false
+                                    onDelete()
                                 }
                             )
                         }
-                        DropdownMenuItem(
-                            text = { Text(if (node.isNote) "取消备注" else "标记为备注") },
-                            onClick = {
-                                actionMenuExpanded = false
-                                onToggleNote()
-                            }
-                        )
-                        DropdownMenuItem(
-                            text = { Text("删除") },
-                            onClick = {
-                                actionMenuExpanded = false
-                                onDelete()
-                            }
-                        )
                     }
                 }
             }
@@ -3550,6 +3781,18 @@ private fun planningLineStartOffset(markdown: String, lineNumber: Int): Int {
 private fun currentPlanningCursorLine(value: TextFieldValue): Int {
     val cursor = value.selection.start.coerceIn(0, value.text.length)
     return value.text.take(cursor).count { it == '\n' } + 1
+}
+
+private const val PlanningNodeUndoMaxSize = 20
+
+private data class PlanningNodeUndoEntry(
+    val description: String,
+    val snapshot: PlanningNodeSnapshot
+)
+
+private fun String.compactUndoLabel(maxLength: Int = 12): String {
+    val clean = trim().replace(Regex("\\s+"), " ")
+    return if (clean.length <= maxLength) clean else clean.take(maxLength) + "…"
 }
 
 private fun syncCompletedMappingsToMarkdown(

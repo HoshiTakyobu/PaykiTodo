@@ -64,6 +64,30 @@ class ReminderNotifier(
         notificationManager.notify(notificationId(todoItem.id), build(todoItem, taskGroup))
     }
 
+    fun showUnhandledAlarmMode(
+        todoItem: TodoItem,
+        taskGroup: ResolvedTaskGroup = resolveTaskGroup(todoItem, emptyList())
+    ) {
+        val channelId = ensureChannel(todoItem.copy(alarmMode = false))
+        val pendingIntent = reminderPendingIntent(todoItem.id)
+        val body = "你有一条未处理的提醒。闹钟模式已暂停响铃，请完成、延后或取消。"
+        val notification = NotificationCompat.Builder(context, channelId)
+            .setSmallIcon(R.drawable.ic_stat_payki_todo)
+            .setContentTitle("未处理提醒：${taskGroupEmoji(taskGroup)} ${todoItem.title}")
+            .setContentText(body)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(body))
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setCategory(NotificationCompat.CATEGORY_REMINDER)
+            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+            .setOngoing(true)
+            .setAutoCancel(false)
+            .setOnlyAlertOnce(true)
+            .setDefaults(0)
+            .setContentIntent(pendingIntent)
+            .build()
+        notificationManager.notify(notificationId(todoItem.id), notification)
+    }
+
     fun createReminderIntent(todoId: Long): Intent = buildReminderIntent(todoId)
 
     fun reminderPendingIntent(todoId: Long): PendingIntent {

@@ -81,6 +81,10 @@ data class AppSettings(
     val planningAiModel: String = "",
     val planningAiProviders: List<PlanningAiProvider> = emptyList(),
     val hasSeenOnboarding: Boolean = false,
+    val dailyBriefEnabled: Boolean = true,
+    val dailyBriefHour: Int = 8,
+    val dailyBriefMinute: Int = 0,
+    val ongoingEventNotificationEnabled: Boolean = true,
     val dailyReportEnabled: Boolean = false,
     val dailyReportHour: Int = 22,
     val dailyReportMinute: Int = 0,
@@ -314,6 +318,24 @@ class AppSettingsStore(context: Context) {
         refresh()
     }
 
+    fun updateDailyBriefPreferences(
+        enabled: Boolean,
+        hour: Int,
+        minute: Int
+    ) {
+        preferences.edit()
+            .putBoolean(KEY_DAILY_BRIEF_ENABLED, enabled)
+            .putInt(KEY_DAILY_BRIEF_HOUR, hour.coerceIn(0, 23))
+            .putInt(KEY_DAILY_BRIEF_MINUTE, minute.coerceIn(0, 59))
+            .apply()
+        refresh()
+    }
+
+    fun updateOngoingEventNotificationEnabled(enabled: Boolean) {
+        preferences.edit().putBoolean(KEY_ONGOING_EVENT_NOTIFICATION_ENABLED, enabled).apply()
+        refresh()
+    }
+
     fun markLegacyAiReportMigrated() {
         preferences.edit().putBoolean(KEY_LEGACY_AI_REPORT_MIGRATED, true).apply()
         refresh()
@@ -365,6 +387,10 @@ class AppSettingsStore(context: Context) {
             .putString(KEY_PLANNING_AI_MODEL, primaryPlanningAiProvider?.model ?: settings.planningAiModel)
             .putString(KEY_PLANNING_AI_PROVIDERS_JSON, planningAiProvidersToJson(mergedPlanningAiProviders))
             .putBoolean(KEY_HAS_SEEN_ONBOARDING, settings.hasSeenOnboarding)
+            .putBoolean(KEY_DAILY_BRIEF_ENABLED, settings.dailyBriefEnabled)
+            .putInt(KEY_DAILY_BRIEF_HOUR, settings.dailyBriefHour.coerceIn(0, 23))
+            .putInt(KEY_DAILY_BRIEF_MINUTE, settings.dailyBriefMinute.coerceIn(0, 59))
+            .putBoolean(KEY_ONGOING_EVENT_NOTIFICATION_ENABLED, settings.ongoingEventNotificationEnabled)
             .putBoolean(KEY_DAILY_REPORT_ENABLED, settings.dailyReportEnabled)
             .putInt(KEY_DAILY_REPORT_HOUR, settings.dailyReportHour.coerceIn(0, 23))
             .putInt(KEY_DAILY_REPORT_MINUTE, settings.dailyReportMinute.coerceIn(0, 59))
@@ -453,6 +479,10 @@ class AppSettingsStore(context: Context) {
             planningAiModel = primaryPlanningAiProvider?.model ?: legacyModel,
             planningAiProviders = planningAiProviders,
             hasSeenOnboarding = preferences.getBoolean(KEY_HAS_SEEN_ONBOARDING, false),
+            dailyBriefEnabled = preferences.getBoolean(KEY_DAILY_BRIEF_ENABLED, true),
+            dailyBriefHour = preferences.getInt(KEY_DAILY_BRIEF_HOUR, 8).coerceIn(0, 23),
+            dailyBriefMinute = preferences.getInt(KEY_DAILY_BRIEF_MINUTE, 0).coerceIn(0, 59),
+            ongoingEventNotificationEnabled = preferences.getBoolean(KEY_ONGOING_EVENT_NOTIFICATION_ENABLED, true),
             dailyReportEnabled = preferences.getBoolean(KEY_DAILY_REPORT_ENABLED, false),
             dailyReportHour = preferences.getInt(KEY_DAILY_REPORT_HOUR, 22).coerceIn(0, 23),
             dailyReportMinute = preferences.getInt(KEY_DAILY_REPORT_MINUTE, 0).coerceIn(0, 59),
@@ -546,6 +576,10 @@ class AppSettingsStore(context: Context) {
         private const val KEY_PLANNING_AI_PROVIDERS_JSON = "planning_ai_providers_json"
         private const val KEY_LEGACY_ANNOUNCEMENT_CLEANED = "legacy_announcement_cleaned"
         private const val KEY_HAS_SEEN_ONBOARDING = "has_seen_onboarding"
+        private const val KEY_DAILY_BRIEF_ENABLED = "daily_brief_enabled"
+        private const val KEY_DAILY_BRIEF_HOUR = "daily_brief_hour"
+        private const val KEY_DAILY_BRIEF_MINUTE = "daily_brief_minute"
+        private const val KEY_ONGOING_EVENT_NOTIFICATION_ENABLED = "ongoing_event_notification_enabled"
         private const val KEY_DAILY_REPORT_ENABLED = "daily_report_enabled"
         private const val KEY_DAILY_REPORT_HOUR = "daily_report_hour"
         private const val KEY_DAILY_REPORT_MINUTE = "daily_report_minute"

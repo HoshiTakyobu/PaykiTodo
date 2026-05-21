@@ -410,6 +410,12 @@ object DatabaseMigrations {
         }
     }
 
+    val MIGRATION_24_25 = object : Migration(24, 25) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            ensureAlarmModeColumns(db)
+        }
+    }
+
     private fun rebuildPlanningNotesTable(db: SupportSQLiteDatabase) {
         db.execSQL("DROP TABLE IF EXISTS `planning_notes_room_expected`")
         createPlanningNotesTable(db, "planning_notes_room_expected")
@@ -523,6 +529,15 @@ object DatabaseMigrations {
         }
         if (tableExists(db, "recurring_task_templates") && !tableHasColumns(db, "recurring_task_templates", listOf("hiddenFromBoard"))) {
             db.execSQL("ALTER TABLE `recurring_task_templates` ADD COLUMN `hiddenFromBoard` INTEGER NOT NULL DEFAULT 0")
+        }
+    }
+
+    private fun ensureAlarmModeColumns(db: SupportSQLiteDatabase) {
+        if (tableExists(db, "todo_items") && !tableHasColumns(db, "todo_items", listOf("alarmMode"))) {
+            db.execSQL("ALTER TABLE `todo_items` ADD COLUMN `alarmMode` INTEGER NOT NULL DEFAULT 0")
+        }
+        if (tableExists(db, "recurring_task_templates") && !tableHasColumns(db, "recurring_task_templates", listOf("alarmMode"))) {
+            db.execSQL("ALTER TABLE `recurring_task_templates` ADD COLUMN `alarmMode` INTEGER NOT NULL DEFAULT 0")
         }
     }
 

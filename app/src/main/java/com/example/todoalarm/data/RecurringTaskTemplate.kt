@@ -29,6 +29,8 @@ data class RecurringTaskTemplate(
     val reminderOffsetsCsv: String = "",
     val ringEnabled: Boolean,
     val vibrateEnabled: Boolean,
+    @ColumnInfo(defaultValue = "0")
+    val alarmMode: Boolean = false,
     val reminderDeliveryMode: String = ReminderDeliveryMode.FULLSCREEN.name,
     val recurrenceType: String,
     val recurrenceWeekdays: String = "",

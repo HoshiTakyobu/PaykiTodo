@@ -2,9 +2,75 @@
 
 ## Active Development Focus
 
-Active goal: complete `docs/goals/2026-05-20-paykitodo-7-runtime-issues-goal.md`.
+Active goal: complete `docs/goals/2026-05-22-paykitodo-6-ux-polish-goal.md` and `docs/goals/2026-05-22-paykitodo-m1-m2-m4-m5-goal.md`.
 
-The working tree is now on the `1.12.20 / versionCode 247` line. This round is a metadata-only rebuild so Android can install over `1.12.19`. The previous `1.12.19` behavior remains the active runtime baseline: recurring reminder crash hardening, countdown/detail preview routing, Planning Desk note nodes, widget padding, reminder-only todos, board blank-area navigation, and BottomSheet keyboard behavior. Do not push to GitHub unless the user explicitly asks.
+The working tree is now on the `1.13.6 / versionCode 254` line. This round closes the 6-item UX polish goal plus M1/M2/M4/M5: Planning Desk drag reorder and Outliner undo, recurring-todo folding, reminder-page visual upgrade, ongoing event notifications, alarm mode, daily brief, global search, and data health cleanup. Do not push to GitHub unless the user explicitly asks.
+
+## Verification Completed For 1.13.6
+
+The `1.13.6 / versionCode 254` rebuild is intended to let Android upgrade over the installed `1.13.5` debug build.
+
+1. Version metadata moved from `1.13.5 / versionCode 253` to `1.13.6 / versionCode 254`.
+2. Database version moved to `25` for `alarmMode` on todos and recurring templates; this supersedes the UX-only goal's older "keep database 24" note.
+3. The generated debug APK is `app/build/outputs/apk/debug/PaykiTodo-1.13.6-debug.apk`.
+4. Implemented and compile-verified:
+   - phone Planning Desk same-parent long-press drag reorder with visual lift and placement animation;
+   - Planning Desk Outliner snapshot undo stack for edit/delete/merge/reorder/publish operations;
+   - future recurring todo folding in My Tasks;
+   - flatter high-contrast reminder page with larger title/time/actions and alarm-mode pulse;
+   - ongoing event notification scheduling/cancel channel;
+   - alarm mode persistence, playback loop, timeout downgrade, retry bursts, backup/sync/schema fields;
+   - daily brief notification scheduling/settings/backup fields;
+   - global search over todos/events/planning nodes/AI reports with result routing;
+   - data health scan and safe-only confirmed cleanup.
+5. `./gradlew.bat :app:compileDebugKotlin` passed after final code changes.
+6. `git diff --check` passed.
+7. `./gradlew.bat :app:assembleDebug` passed.
+8. Debug APK metadata confirms:
+   - `versionName = 1.13.6`
+   - `versionCode = 254`
+   - output `PaykiTodo-1.13.6-debug.apk`
+
+## Verification Completed For 1.13.5
+
+The `1.13.5 / versionCode 253` rebuild is intended to let Android upgrade over the installed `1.13.4` debug build.
+
+1. Version metadata moved from `1.13.4 / versionCode 252` to `1.13.5 / versionCode 253`.
+2. No additional database schema, reminder behavior, Planning Desk behavior, or user-data format change was intentionally introduced by this version bump.
+3. The generated debug APK is `app/build/outputs/apk/debug/PaykiTodo-1.13.5-debug.apk`.
+4. `git diff --check` passed.
+5. `./gradlew.bat :app:assembleDebug` passed.
+6. Debug APK metadata confirms:
+   - `versionName = 1.13.5`
+   - `versionCode = 253`
+   - output `PaykiTodo-1.13.5-debug.apk`
+
+## Verification Completed For 1.13.4
+
+The `1.13.4 / versionCode 252` rebuild is intended to let Android upgrade over the installed `1.13.3` debug build.
+
+1. Version metadata moved from `1.13.3 / versionCode 251` to `1.13.4 / versionCode 252`.
+2. No additional database schema, reminder behavior, Planning Desk behavior, or user-data format change was intentionally introduced by this version bump.
+3. The existing `UpcomingTodoDisplayGroup` type was made public because public `TodoUiState` exposes it; this was required for Kotlin compilation.
+4. The generated debug APK is `app/build/outputs/apk/debug/PaykiTodo-1.13.4-debug.apk`.
+5. `./gradlew.bat :app:assembleDebug` passed.
+6. Debug APK metadata confirms:
+   - `versionName = 1.13.4`
+   - `versionCode = 252`
+   - output `PaykiTodo-1.13.4-debug.apk`
+
+## Verification Completed For 1.13.3
+
+The `1.13.3 / versionCode 251` rebuild is intended to let Android upgrade over the installed `1.13.2` debug build.
+
+1. Version metadata moved from `1.13.2 / versionCode 250` to `1.13.3 / versionCode 251`.
+2. No additional database schema, reminder behavior, Planning Desk behavior, or user-data format change was intentionally introduced by this metadata-only bump.
+3. The generated debug APK is `app/build/outputs/apk/debug/PaykiTodo-1.13.3-debug.apk`.
+4. `./gradlew.bat :app:assembleDebug` passed.
+5. Debug APK metadata confirms:
+   - `versionName = 1.13.3`
+   - `versionCode = 251`
+   - output `PaykiTodo-1.13.3-debug.apk`
 
 ## Current Goal State
 

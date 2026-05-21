@@ -127,6 +127,9 @@ class ReminderForegroundService : Service() {
                 }
             }
             delay(REMINDER_SESSION_DURATION_MS)
+            if (todoItem.alarmMode && ActiveReminderStore.getActiveTodoId(this@ReminderForegroundService) == todoId) {
+                runAlarmModeTimeoutRetries(app, todoItem.id)
+            }
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
                 stopForeground(STOP_FOREGROUND_DETACH)
             } else {
@@ -162,6 +165,47 @@ class ReminderForegroundService : Service() {
             startForeground(id, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE)
         } else {
             startForeground(id, notification)
+        }
+    }
+
+    private suspend fun runAlarmModeTimeoutRetries(app: TodoApplication, todoId: Long) {
+        alertController.stop()
+        app.repository.getTodo(todoId)?.let { latest ->
+            val taskGroup = resolveTaskGroup(latest, app.repository.getGroup(latest.groupId))
+            (reminderNotifier ?: ReminderNotifier(this)).showUnhandledAlarmMode(latest, taskGroup)
+        }
+        ReminderChainLogger.log(
+            context = this,
+            todoId = todoId,
+            source = "ReminderForegroundService",
+            stage = ReminderChainStage.SERVICE_START,
+            status = ReminderChainStatus.INFO,
+            message = "alarm_mode_timeout_downgrade"
+        )
+        repeat(ALARM_MODE_RETRY_COUNT) { index ->
+            delay(ALARM_MODE_RETRY_INTERVAL_MS)
+            val latest = app.repository.getTodo(todoId)
+            if (
+                latest == null ||
+                latest.isHistory ||
+                !latest.reminderEnabled ||
+                ActiveReminderStore.getActiveTodoId(this) != todoId
+            ) {
+                return
+            }
+            ReminderChainLogger.log(
+                context = this,
+                todoId = todoId,
+                source = "ReminderForegroundService",
+                stage = ReminderChainStage.SERVICE_START,
+                status = ReminderChainStatus.INFO,
+                message = "alarm_mode_retry=${index + 1}"
+            )
+            alertController.start(latest.copy(alarmMode = false))
+            delay(ALARM_MODE_RETRY_RING_MS)
+            if (ActiveReminderStore.getActiveTodoId(this) == todoId) {
+                alertController.stop()
+            }
         }
     }
 
@@ -300,6 +344,9 @@ class ReminderForegroundService : Service() {
 
     companion object {
         private const val REMINDER_SESSION_DURATION_MS = 5 * 60 * 1000L
+        private const val ALARM_MODE_RETRY_INTERVAL_MS = 2 * 60 * 1000L
+        private const val ALARM_MODE_RETRY_RING_MS = 30 * 1000L
+        private const val ALARM_MODE_RETRY_COUNT = 3
         private val FULLSCREEN_RETRY_DELAYS_MS = listOf(1_200L, 3_200L, 10_000L, 20_000L, 45_000L, 90_000L, 180_000L)
 
         fun start(context: android.content.Context, todoId: Long) {

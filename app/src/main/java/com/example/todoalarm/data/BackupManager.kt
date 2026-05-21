@@ -96,6 +96,10 @@ private fun AppSettings.toJson(): JSONObject {
         put("lastOpenedPlanningNoteId", lastOpenedPlanningNoteId)
         put("planningOutlineHintVisible", planningOutlineHintVisible)
         put("planningEventEndTodoEnabled", planningEventEndTodoEnabled)
+        put("dailyBriefEnabled", dailyBriefEnabled)
+        put("dailyBriefHour", dailyBriefHour)
+        put("dailyBriefMinute", dailyBriefMinute)
+        put("ongoingEventNotificationEnabled", ongoingEventNotificationEnabled)
         put("boardCountdownCollapsed", boardCountdownCollapsed)
         put("boardTodayTodosCollapsed", boardTodayTodosCollapsed)
         put("boardTodayEventsCollapsed", boardTodayEventsCollapsed)
@@ -149,6 +153,7 @@ private fun RecurringTaskTemplate.toJson(): JSONObject {
         put("reminderOffsetsCsv", reminderOffsetsCsv)
         put("ringEnabled", ringEnabled)
         put("vibrateEnabled", vibrateEnabled)
+        put("alarmMode", alarmMode)
         put("reminderDeliveryMode", reminderDeliveryMode)
         put("recurrenceType", recurrenceType)
         put("recurrenceWeekdays", recurrenceWeekdays)
@@ -184,6 +189,7 @@ private fun TodoItem.toJson(): JSONObject {
         put("reminderEnabled", reminderEnabled)
         put("ringEnabled", ringEnabled)
         put("vibrateEnabled", vibrateEnabled)
+        put("alarmMode", alarmMode)
         put("voiceEnabled", voiceEnabled)
         put("reminderDeliveryMode", reminderDeliveryMode)
         put("groupId", groupId)
@@ -382,6 +388,7 @@ private fun JSONArray?.toTemplates(): List<RecurringTaskTemplate> {
                     reminderOffsetsCsv = item.optString("reminderOffsetsCsv", item.optIntOrNull("reminderOffsetMinutes")?.toString().orEmpty()),
                     ringEnabled = item.optBoolean("ringEnabled", true),
                     vibrateEnabled = item.optBoolean("vibrateEnabled", true),
+                    alarmMode = item.optBoolean("alarmMode", false),
                     reminderDeliveryMode = item.optString("reminderDeliveryMode", ReminderDeliveryMode.FULLSCREEN.name),
                     recurrenceType = item.optString("recurrenceType"),
                     recurrenceWeekdays = item.optString("recurrenceWeekdays"),
@@ -425,6 +432,7 @@ private fun JSONArray?.toTasks(): List<TodoItem> {
                     reminderEnabled = item.optBoolean("reminderEnabled", false),
                     ringEnabled = item.optBoolean("ringEnabled", true),
                     vibrateEnabled = item.optBoolean("vibrateEnabled", true),
+                    alarmMode = item.optBoolean("alarmMode", false),
                     voiceEnabled = item.optBoolean("voiceEnabled", false),
                     reminderDeliveryMode = item.optString("reminderDeliveryMode", ReminderDeliveryMode.FULLSCREEN.name),
                     groupId = item.optLong("groupId", 0L),
@@ -663,6 +671,10 @@ private fun JSONObject?.toSettings(): AppSettings {
         lastOpenedPlanningNoteId = optLongOrNull("lastOpenedPlanningNoteId")?.takeIf { it > 0 },
         planningOutlineHintVisible = optBoolean("planningOutlineHintVisible", true),
         planningEventEndTodoEnabled = optBoolean("planningEventEndTodoEnabled", false),
+        dailyBriefEnabled = optBoolean("dailyBriefEnabled", true),
+        dailyBriefHour = optInt("dailyBriefHour", 8).coerceIn(0, 23),
+        dailyBriefMinute = optInt("dailyBriefMinute", 0).coerceIn(0, 59),
+        ongoingEventNotificationEnabled = optBoolean("ongoingEventNotificationEnabled", true),
         boardCountdownCollapsed = optBoolean("boardCountdownCollapsed", false),
         boardTodayTodosCollapsed = optBoolean("boardTodayTodosCollapsed", false),
         boardTodayEventsCollapsed = optBoolean("boardTodayEventsCollapsed", false),

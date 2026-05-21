@@ -28,17 +28,20 @@ internal class ReminderAlertController(
     fun start(todoItem: TodoItem) {
         stop()
         val settings = currentSettings()
-        if (todoItem.ringEnabled && !settings.workQuietModeEnabled) {
-            playConfiguredClip()
+        val alarmMode = todoItem.alarmMode
+        if ((todoItem.ringEnabled || alarmMode) && !settings.workQuietModeEnabled) {
+            playConfiguredClip(looping = alarmMode)
         }
-        val shouldVibrate = todoItem.vibrateEnabled || settings.workQuietModeEnabled
+        val shouldVibrate = todoItem.vibrateEnabled || settings.workQuietModeEnabled || alarmMode
         if (shouldVibrate) {
-            val pattern = if (settings.workQuietModeEnabled) {
+            val pattern = if (alarmMode) {
+                longArrayOf(0, 800, 400, 800, 400)
+            } else if (settings.workQuietModeEnabled) {
                 longArrayOf(0, 420, 90, 420, 90, 620)
             } else {
                 longArrayOf(0, 260, 100, 260)
             }
-            ensureVibrator().vibrate(VibrationEffect.createWaveform(pattern, -1))
+            ensureVibrator().vibrate(VibrationEffect.createWaveform(pattern, if (alarmMode) 0 else -1))
         }
     }
 
@@ -63,15 +66,21 @@ internal class ReminderAlertController(
         stop()
     }
 
-    private fun playConfiguredClip() {
+    private fun playConfiguredClip(looping: Boolean) {
         val settings = currentSettings()
         val toneUri = settings.reminderToneUri
         if (!toneUri.isNullOrBlank()) {
-            if (playRingtoneFromUri(Uri.parse(toneUri), settings) || playFromUri(Uri.parse(toneUri), settings)) {
+            val uri = Uri.parse(toneUri)
+            val played = if (looping) {
+                playFromUri(uri, settings, looping = true) || playRingtoneFromUri(uri, settings)
+            } else {
+                playRingtoneFromUri(uri, settings) || playFromUri(uri, settings, looping = false)
+            }
+            if (played) {
                 return
             }
         }
-        playBuiltInClip(settings)
+        playBuiltInClip(settings, looping)
     }
 
     private fun playRingtoneFromUri(uri: Uri, settings: AppSettings): Boolean {
@@ -89,14 +98,14 @@ internal class ReminderAlertController(
         }.getOrDefault(false)
     }
 
-    private fun playBuiltInClip(settings: AppSettings) {
+    private fun playBuiltInClip(settings: AppSettings, looping: Boolean) {
         val afd = runCatching { context.resources.openRawResourceFd(R.raw.remind_vocal) }.getOrNull() ?: return
         val player = MediaPlayer()
         runCatching {
             player.setAudioAttributes(
                 audioAttributesFor(settings.reminderAudioChannel)
             )
-            player.isLooping = false
+            player.isLooping = looping
             player.setDataSource(afd.fileDescriptor, afd.startOffset, afd.length)
             player.setVolume(settings.reminderInternalVolumePercent.toPlayerVolume(), settings.reminderInternalVolumePercent.toPlayerVolume())
             player.setOnCompletionListener {
@@ -128,13 +137,13 @@ internal class ReminderAlertController(
         }
     }
 
-    private fun playFromUri(uri: Uri, settings: AppSettings): Boolean {
+    private fun playFromUri(uri: Uri, settings: AppSettings, looping: Boolean): Boolean {
         val player = MediaPlayer()
         return runCatching {
             player.setAudioAttributes(
                 audioAttributesFor(settings.reminderAudioChannel)
             )
-            player.isLooping = false
+            player.isLooping = looping
             player.setDataSource(context, uri)
             player.setVolume(settings.reminderInternalVolumePercent.toPlayerVolume(), settings.reminderInternalVolumePercent.toPlayerVolume())
             player.setOnCompletionListener {

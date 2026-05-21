@@ -126,6 +126,9 @@ fun TodoEditorDialog(
     var vibrateEnabled by remember(initialTodo?.id) {
         mutableStateOf(initialTodo?.vibrateEnabled ?: defaultVibrateEnabled)
     }
+    var alarmMode by remember(initialTodo?.id) {
+        mutableStateOf(initialTodo?.alarmMode == true)
+    }
     var reminderDeliveryMode by remember(initialTodo?.id) {
         mutableStateOf(initialTodo?.reminderDeliveryModeEnum ?: ReminderDeliveryMode.FULLSCREEN)
     }
@@ -175,6 +178,7 @@ fun TodoEditorDialog(
                 initialTodo.reminderDeliveryModeEnum != ReminderDeliveryMode.FULLSCREEN ||
                 initialTodo.recurrenceTypeEnum != RecurrenceType.NONE ||
                 initialTodo.hiddenFromBoard ||
+                initialTodo.alarmMode ||
                 initialTodo.ringEnabled != defaultRingEnabled ||
                 initialTodo.vibrateEnabled != defaultVibrateEnabled
             )
@@ -191,6 +195,7 @@ fun TodoEditorDialog(
         reminderInput,
         ringEnabled,
         vibrateEnabled,
+        alarmMode,
         reminderDeliveryMode,
         countdownEnabled,
         hiddenFromBoard,
@@ -206,6 +211,7 @@ fun TodoEditorDialog(
                 hasDueDate ||
                 reminderInput != "5" ||
                 recurringEnabled ||
+                alarmMode ||
                 countdownEnabled ||
                 hiddenFromBoard
         } else {
@@ -217,6 +223,7 @@ fun TodoEditorDialog(
                 reminderInput != initialTodo.configuredReminderOffsetsMinutes.joinToString(",").ifBlank { "5" } ||
                 ringEnabled != initialTodo.ringEnabled ||
                 vibrateEnabled != initialTodo.vibrateEnabled ||
+                alarmMode != initialTodo.alarmMode ||
                 reminderDeliveryMode != initialTodo.reminderDeliveryModeEnum ||
                 countdownEnabled != initialTodo.countdownEnabled ||
                 hiddenFromBoard != initialTodo.hiddenFromBoard ||
@@ -253,6 +260,7 @@ fun TodoEditorDialog(
                     groupId = primaryGroupId,
                     ringEnabled = ringEnabled,
                     vibrateEnabled = vibrateEnabled,
+                    alarmMode = alarmMode && hasDueDate && reminderEnabled && !isHistory,
                     reminderDeliveryMode = reminderDeliveryMode,
                     countdownEnabled = countdownEnabled && hasDueDate,
                     hiddenFromBoard = hiddenFromBoard && hasDueDate,
@@ -450,6 +458,25 @@ fun TodoEditorDialog(
                                         value = reminderDeliveryMode.label,
                                         onClick = { showReminderDeliveryPicker = true }
                                     )
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.SpaceBetween
+                                    ) {
+                                        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                                            Text("闹钟模式（持续响铃直到操作）", fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
+                                            Text(
+                                                "适合吃药、重要 DDL 等绝对不能漏的提醒；5 分钟后会降级为通知并间歇重试。",
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                style = MaterialTheme.typography.bodySmall
+                                            )
+                                        }
+                                        Switch(
+                                            checked = alarmMode,
+                                            onCheckedChange = { alarmMode = it },
+                                            thumbContent = null
+                                        )
+                                    }
                                     Surface(
                                         shape = RoundedCornerShape(18.dp),
                                         color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.24f)
@@ -602,6 +629,7 @@ fun TodoEditorDialog(
                                                     groupId = primaryGroupId,
                                                     ringEnabled = ringEnabled,
                                                     vibrateEnabled = vibrateEnabled,
+                                                    alarmMode = alarmMode && reminderEnabled && hasDueDate && !isHistory,
                                                     reminderDeliveryMode = reminderDeliveryMode,
                                                     hiddenFromBoard = hiddenFromBoard && hasDueDate,
                                                     recurrence = RecurrenceConfig(

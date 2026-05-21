@@ -63,6 +63,8 @@ data class TodoItem(
     val reminderEnabled: Boolean,
     val ringEnabled: Boolean,
     val vibrateEnabled: Boolean,
+    @ColumnInfo(defaultValue = "0")
+    val alarmMode: Boolean = false,
     val voiceEnabled: Boolean = false,
     val reminderDeliveryMode: String = ReminderDeliveryMode.FULLSCREEN.name,
     val groupId: Long = 0,

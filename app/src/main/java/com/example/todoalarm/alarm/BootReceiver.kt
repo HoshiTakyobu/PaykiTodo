@@ -20,6 +20,7 @@ class BootReceiver : BroadcastReceiver() {
                 val items = app.repository.futureReminderItems(System.currentTimeMillis())
                 items.forEach(app.alarmScheduler::schedule)
                 DailyReportScheduler.scheduleNext(context.applicationContext)
+                DailyBriefScheduler.scheduleNext(context.applicationContext)
                 if (app.settingsStore.currentSettings().desktopSyncEnabled) {
                     DesktopSyncService.start(context.applicationContext)
                 }

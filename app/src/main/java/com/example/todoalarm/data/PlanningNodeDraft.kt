@@ -66,3 +66,16 @@ data class PlanningNodeDeleteResult(
     val deletedLinkedItems: List<TodoItem> = emptyList(),
     val affectedLinkedItems: List<TodoItem> = emptyList()
 )
+
+data class PlanningNodeSnapshot(
+    val noteId: Long,
+    val nodes: List<PlanningNode>,
+    val linkedItems: List<TodoItem> = emptyList(),
+    val todoGroupTags: List<TodoGroupTag> = emptyList(),
+    val eventCheckIns: List<EventCheckIn> = emptyList()
+)
+
+data class PlanningNodeRestoreResult(
+    val affectedBeforeItems: List<TodoItem> = emptyList(),
+    val affectedAfterItems: List<TodoItem> = emptyList()
+)

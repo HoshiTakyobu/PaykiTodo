@@ -282,6 +282,7 @@ class DesktopSyncCoordinator(
             groupId = groupId,
             ringEnabled = json.optBoolean("ringEnabled", true),
             vibrateEnabled = json.optBoolean("vibrateEnabled", true),
+            alarmMode = json.optBoolean("alarmMode", false),
             reminderDeliveryMode = com.example.todoalarm.data.ReminderDeliveryMode.fromStorage(json.optString("reminderDeliveryMode")),
             countdownEnabled = json.optBoolean("countdownEnabled", false),
             hiddenFromBoard = json.optBoolean("hiddenFromBoard", false),
@@ -315,6 +316,7 @@ class DesktopSyncCoordinator(
             groupId = groupId,
             ringEnabled = json.optBoolean("ringEnabled", original.ringEnabled),
             vibrateEnabled = json.optBoolean("vibrateEnabled", original.vibrateEnabled),
+            alarmMode = json.optBoolean("alarmMode", original.alarmMode),
             reminderDeliveryMode = com.example.todoalarm.data.ReminderDeliveryMode.fromStorage(
                 json.optString("reminderDeliveryMode", original.reminderDeliveryMode)
             ),
@@ -869,6 +871,7 @@ class DesktopSyncCoordinator(
         groupId: Long,
         ringEnabled: Boolean,
         vibrateEnabled: Boolean,
+        alarmMode: Boolean,
         reminderDeliveryMode: com.example.todoalarm.data.ReminderDeliveryMode,
         countdownEnabled: Boolean,
         hiddenFromBoard: Boolean,
@@ -888,6 +891,7 @@ class DesktopSyncCoordinator(
             groupId = groupId,
             ringEnabled = ringEnabled,
             vibrateEnabled = vibrateEnabled,
+            alarmMode = alarmMode && dueAt != null && reminderOffsetsMinutes.isNotEmpty(),
             reminderDeliveryMode = reminderDeliveryMode,
             countdownEnabled = countdownEnabled,
             hiddenFromBoard = hiddenFromBoard && dueAt != null,

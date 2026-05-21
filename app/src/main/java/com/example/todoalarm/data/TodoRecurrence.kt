@@ -47,6 +47,7 @@ data class TodoDraft(
     val groupId: Long,
     val ringEnabled: Boolean,
     val vibrateEnabled: Boolean,
+    val alarmMode: Boolean = false,
     val reminderDeliveryMode: ReminderDeliveryMode = ReminderDeliveryMode.FULLSCREEN,
     val countdownEnabled: Boolean = false,
     val hiddenFromBoard: Boolean = false,

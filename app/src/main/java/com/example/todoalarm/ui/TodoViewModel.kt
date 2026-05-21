@@ -7,7 +7,9 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.todoalarm.TodoApplication
 import com.example.todoalarm.alarm.ActiveReminderStore
+import com.example.todoalarm.alarm.DailyBriefScheduler
 import com.example.todoalarm.alarm.DailyReportScheduler
+import com.example.todoalarm.alarm.OngoingEventNotifier
 import com.example.todoalarm.alarm.ReminderChainLogger
 import com.example.todoalarm.alarm.ReminderDispatchTracker
 import com.example.todoalarm.alarm.ReminderForegroundService
@@ -19,8 +21,11 @@ import com.example.todoalarm.data.CalendarEventDraft
 import com.example.todoalarm.data.DEFAULT_PLANNING_REMINDER_MINUTES
 import com.example.todoalarm.data.DailyReportGenerator
 import com.example.todoalarm.data.DailyBoardSnapshotBuilder
+import com.example.todoalarm.data.DataHealthCleanResult
+import com.example.todoalarm.data.DataHealthReport
 import com.example.todoalarm.data.EventCheckIn
 import com.example.todoalarm.data.EventCheckInCompletionSummary
+import com.example.todoalarm.data.GlobalSearchResult
 import com.example.todoalarm.data.PlanningAnnouncement
 import com.example.todoalarm.data.PlanningAnnouncementParser
 import com.example.todoalarm.data.PlanningImportCandidate
@@ -32,6 +37,7 @@ import com.example.todoalarm.data.PlanningNode
 import com.example.todoalarm.data.PlanningNodeChangeResult
 import com.example.todoalarm.data.PlanningNodeDraft
 import com.example.todoalarm.data.PlanningNodeEdit
+import com.example.todoalarm.data.PlanningNodeSnapshot
 import com.example.todoalarm.data.PlanningNote
 import com.example.todoalarm.data.PlanningParseResult
 import com.example.todoalarm.data.PlanningParsedType
@@ -87,6 +93,7 @@ data class TodoUiState(
     val missedItems: List<TodoItem> = emptyList(),
     val todayItems: List<TodoItem> = emptyList(),
     val upcomingItems: List<TodoItem> = emptyList(),
+    val upcomingItemGroups: List<UpcomingTodoDisplayGroup> = emptyList(),
     val calendarItems: List<TodoItem> = emptyList(),
     val countdownItems: List<TodoItem> = emptyList(),
     val activeAnnouncements: List<PlanningAnnouncement> = emptyList(),
@@ -266,6 +273,7 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
             missedItems = todoSections.missedItems,
             todayItems = todoSections.todayItems,
             upcomingItems = todoSections.upcomingItems,
+            upcomingItemGroups = buildUpcomingTodoDisplayGroups(todoSections.upcomingItems),
             calendarItems = sortedCalendarItems,
             countdownItems = activeCountdownItems
                 .filter { item -> DailyBoardSnapshotBuilder.countdownTargetMillis(item)?.let { it >= nowMillis } == true }
@@ -375,6 +383,10 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
         return withContext(Dispatchers.IO) { repository.getAiReportById(reportId) }
     }
 
+    suspend fun globalSearch(query: String): GlobalSearchResult {
+        return withContext(Dispatchers.IO) { repository.globalSearch(query) }
+    }
+
     suspend fun parsePlanningMarkdown(markdown: String, activeNoteId: Long? = null): PlanningParseResult {
         val documentDate = activeNoteId
             ?.let { repository.getPlanningNote(it)?.documentDateEpochDay }
@@ -418,6 +430,19 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
 
     fun observePlanningNodes(noteId: Long): Flow<List<PlanningNode>> {
         return repository.observePlanningNodesForNote(noteId)
+    }
+
+    suspend fun createPlanningNodeSnapshot(noteId: Long): PlanningNodeSnapshot {
+        return repository.createPlanningNodeSnapshot(noteId)
+    }
+
+    suspend fun restorePlanningNodeSnapshot(snapshot: PlanningNodeSnapshot): String? {
+        val result = repository.restorePlanningNodeSnapshot(snapshot)
+        clearReminderArtifacts(result.affectedBeforeItems)
+        result.affectedAfterItems.forEach { scheduleReminderOrDisable(it) }
+        settingsStore.updateLastOpenedPlanningNoteId(snapshot.noteId)
+        autoBackupIfEnabled()
+        return null
     }
 
     suspend fun createPlanningNode(draft: PlanningNodeDraft): String? {
@@ -911,6 +936,25 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
         )
     }
 
+    fun updateOngoingEventNotificationEnabled(enabled: Boolean) {
+        settingsStore.updateOngoingEventNotificationEnabled(enabled)
+        viewModelScope.launch(Dispatchers.IO) {
+            val now = System.currentTimeMillis()
+            val currentEvents = repository.getActiveEventsOverlappingRange(now, now + 1)
+            val futureReminderEvents = repository.futureReminderItems(now)
+                .filter { it.isEvent }
+            (currentEvents + futureReminderEvents)
+                .distinctBy { it.id }
+                .forEach { event ->
+                    if (enabled) {
+                        OngoingEventNotifier.schedule(app, event)
+                    } else {
+                        OngoingEventNotifier.cancelAll(app, event.id)
+                    }
+                }
+        }
+    }
+
     fun updatePlanningOutlinerPreferences(
         hintVisible: Boolean = settingsStore.currentSettings().planningOutlineHintVisible,
         eventEndTodoEnabled: Boolean = settingsStore.currentSettings().planningEventEndTodoEnabled
@@ -1005,6 +1049,19 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
         DailyReportScheduler.scheduleNext(app)
     }
 
+    fun updateDailyBriefPreferences(
+        enabled: Boolean,
+        hour: Int,
+        minute: Int
+    ) {
+        settingsStore.updateDailyBriefPreferences(
+            enabled = enabled,
+            hour = hour,
+            minute = minute
+        )
+        DailyBriefScheduler.scheduleNext(app)
+    }
+
     suspend fun generateDailyReportNow(): String? {
         runCatching { DailyReportGenerator.generateDaily(app) }
             .getOrElse { return "日报生成失败：${it.message ?: it::class.java.simpleName}" }
@@ -1016,6 +1073,18 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
         repository.deleteAiReport(reportId)
         autoBackupIfEnabled()
         return null
+    }
+
+    suspend fun inspectDataHealth(): DataHealthReport {
+        return repository.inspectDataHealth(settingsStore.currentSettings().aiReportRetention)
+    }
+
+    suspend fun cleanSafeDataHealthItems(): DataHealthCleanResult {
+        val result = repository.cleanSafeDataHealthItems(settingsStore.currentSettings().aiReportRetention)
+        if (result.totalDeleted > 0) {
+            autoBackupIfEnabled()
+        }
+        return result
     }
 
     fun resetOnboarding() {
@@ -1210,6 +1279,8 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
             selectedGroupIdsFlow.value = emptySet()
             refreshTaskStates()
             repository.futureReminderItems(System.currentTimeMillis()).forEach(app.alarmScheduler::schedule)
+            DailyReportScheduler.scheduleNext(app)
+            DailyBriefScheduler.scheduleNext(app)
             "导入完成"
         }.getOrElse { it.message ?: "导入失败" }
     }
@@ -1442,6 +1513,7 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
         val scheduleMessage = alarmScheduler.schedule(item)
         if (scheduleMessage != null) {
             repository.updateTodo(item.copy(reminderEnabled = false))
+            alarmScheduler.cancel(item.id)
         }
     }
 

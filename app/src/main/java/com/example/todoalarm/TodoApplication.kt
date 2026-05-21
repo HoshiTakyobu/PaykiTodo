@@ -5,6 +5,9 @@ import androidx.room.Room
 import com.example.todoalarm.alarm.AlarmScheduler
 import com.example.todoalarm.alarm.DailyReportNotifier
 import com.example.todoalarm.alarm.DailyReportScheduler
+import com.example.todoalarm.alarm.DailyBriefNotifier
+import com.example.todoalarm.alarm.DailyBriefScheduler
+import com.example.todoalarm.alarm.OngoingEventNotifier
 import com.example.todoalarm.alarm.EventCheckInWatchdog
 import com.example.todoalarm.alarm.ReminderDispatchTracker
 import com.example.todoalarm.alarm.ReminderNotifier
@@ -39,6 +42,9 @@ class TodoApplication : Application() {
         runCatching {
             DailyReportNotifier.ensureChannel(this)
             DailyReportScheduler.scheduleNext(this)
+            DailyBriefNotifier.ensureChannel(this)
+            DailyBriefScheduler.scheduleNext(this)
+            OngoingEventNotifier.ensureChannel(this)
         }.onFailure(CrashLogger::recordNonFatal)
         applicationScope.launch {
             try {
@@ -54,6 +60,7 @@ class TodoApplication : Application() {
                         val scheduleMessage = alarmScheduler.schedule(item)
                         if (scheduleMessage != null) {
                             repository.updateTodo(item.copy(reminderEnabled = false))
+                            alarmScheduler.cancel(item.id)
                         }
                     }
                 }
@@ -99,7 +106,8 @@ class TodoApplication : Application() {
             DatabaseMigrations.MIGRATION_20_21,
             DatabaseMigrations.MIGRATION_21_22,
             DatabaseMigrations.MIGRATION_22_23,
-            DatabaseMigrations.MIGRATION_23_24
+            DatabaseMigrations.MIGRATION_23_24,
+            DatabaseMigrations.MIGRATION_24_25
         )
             .build()
     }

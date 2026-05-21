@@ -12,11 +12,13 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.PostAdd
+import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.SmallFloatingActionButton
@@ -43,17 +45,21 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import com.example.todoalarm.R
 import com.example.todoalarm.data.CalendarEventDraft
+import com.example.todoalarm.data.DataHealthCleanResult
+import com.example.todoalarm.data.DataHealthReport
 import com.example.todoalarm.data.AiReport
 import com.example.todoalarm.data.AiReportType
 import com.example.todoalarm.data.AiReportRetention
 import com.example.todoalarm.data.EventCheckIn
 import com.example.todoalarm.data.EventCheckInCompletionSummary
+import com.example.todoalarm.data.GlobalSearchResult
 import com.example.todoalarm.data.PlanningImportCandidate
 import com.example.todoalarm.data.PlanningImportResult
 import com.example.todoalarm.data.PlanningLineMapping
 import com.example.todoalarm.data.PlanningNode
 import com.example.todoalarm.data.PlanningNodeDraft
 import com.example.todoalarm.data.PlanningNodeEdit
+import com.example.todoalarm.data.PlanningNodeSnapshot
 import com.example.todoalarm.data.PlanningNote
 import com.example.todoalarm.data.PlanningOperationResult
 import com.example.todoalarm.data.PlanningParseResult
@@ -98,6 +104,7 @@ fun DashboardScreen(
     planningNotes: StateFlow<List<PlanningNote>>,
     observeAiReports: (AiReportType?, Int, String, Long, Long) -> Flow<List<AiReport>>,
     onGetAiReport: suspend (Long) -> AiReport?,
+    onGlobalSearch: suspend (String) -> GlobalSearchResult,
     historyItems: StateFlow<List<TodoItem>>,
     calendarItems: StateFlow<List<TodoItem>>,
     scheduleTemplates: StateFlow<List<ScheduleTemplate>>,
@@ -146,6 +153,9 @@ fun DashboardScreen(
     onPublishPlanningNode: suspend (PlanningNode) -> String?,
     onPublishAllPlanningDrafts: suspend (Long) -> String?,
     onDeletePlanningNode: suspend (PlanningNode) -> String?,
+    onReorderPlanningNodes: suspend (Long, Long?, List<Long>) -> String?,
+    onCreatePlanningNodeSnapshot: suspend (Long) -> PlanningNodeSnapshot,
+    onRestorePlanningNodeSnapshot: suspend (PlanningNodeSnapshot) -> String?,
     onExportPlanningNodesMarkdown: suspend (Long) -> String,
     onReplacePlanningNodesFromMarkdown: suspend (Long, String) -> String?,
     onParsePlanningMarkdown: suspend (String, Long?) -> PlanningParseResult,
@@ -164,10 +174,12 @@ fun DashboardScreen(
     onDefaultCalendarReminderModeChange: (ReminderDeliveryMode) -> Unit,
     onEventCheckInPreferencesChange: (Boolean, Boolean) -> Unit,
     onEventCheckInIdleAutoCheckOutHoursChange: (Int) -> Unit,
+    onOngoingEventNotificationEnabledChange: (Boolean) -> Unit,
     onPlanningOutlinerPreferencesChange: (Boolean, Boolean) -> Unit,
     onReminderAudioStrategyChange: (ReminderAudioChannel, Int, Boolean, Int, Boolean) -> Unit,
     onPlanningAiProvidersChange: (Boolean, List<PlanningAiProvider>) -> Unit,
     onReportPreferencesChange: (Boolean, Int, Int, Boolean, Int, Int, AiReportRetention) -> Unit,
+    onDailyBriefPreferencesChange: (Boolean, Int, Int) -> Unit,
     onGenerateDailyReportNow: suspend () -> String?,
     onDeleteAiReport: suspend (Long) -> String?,
     onLaunchCheckIn: (Long) -> Unit,
@@ -189,6 +201,8 @@ fun DashboardScreen(
     onExportBackup: () -> Unit,
     onImportBackup: () -> Unit,
     onAutoBackupChange: (Boolean) -> Unit,
+    onInspectDataHealth: suspend () -> DataHealthReport,
+    onCleanSafeDataHealthItems: suspend () -> DataHealthCleanResult,
     onBoardCollapseStateChange: (Boolean, Boolean, Boolean, Boolean, Boolean) -> Unit
 ) {
     val drawerState = rememberDrawerState(DrawerValue.Closed)
@@ -215,6 +229,11 @@ fun DashboardScreen(
     var previewTodoSerial by rememberSaveable { mutableStateOf(0) }
     var previewEventId by rememberSaveable { mutableStateOf<Long?>(null) }
     var previewEventSerial by rememberSaveable { mutableStateOf(0) }
+    var searchVisible by rememberSaveable { mutableStateOf(false) }
+    var searchAiReportTargetId by rememberSaveable { mutableStateOf<Long?>(null) }
+    var searchAiReportTargetSerial by rememberSaveable { mutableStateOf(0) }
+    var highlightedPlanningNodeId by rememberSaveable { mutableStateOf<Long?>(null) }
+    var highlightedPlanningNodeSerial by rememberSaveable { mutableStateOf(0) }
     var calendarFocusDateEpochDay by rememberSaveable { mutableStateOf<Long?>(null) }
     val defaultReminderRing = if (uiState.settings.workQuietModeEnabled) false else uiState.settings.defaultRingEnabled
     val defaultReminderVibrate = if (uiState.settings.workQuietModeEnabled) true else uiState.settings.defaultVibrateEnabled
@@ -422,7 +441,14 @@ fun DashboardScreen(
                 topBar = {
                     DashboardTopBar(
                         title = section.topBarTitle,
-                        onMenu = { scope.launch { drawerState.open() } }
+                        onMenu = { scope.launch { drawerState.open() } },
+                        actions = {
+                            if (section == DashboardSection.BOARD) {
+                                IconButton(onClick = { searchVisible = true }) {
+                                    Icon(Icons.Rounded.Search, contentDescription = "全局搜索")
+                                }
+                            }
+                        }
                     )
                 },
                 floatingActionButton = {
@@ -459,8 +485,8 @@ fun DashboardScreen(
                     targetEventSerial = if (previewEventId != null) previewEventSerial else launchRouteSerial,
                     calendarFocusDate = calendarFocusDateEpochDay?.let(LocalDate::ofEpochDay),
                     calendarFocusDateSerial = launchRouteSerial,
-                    targetAiReportId = launchRoute?.targetAiReportId,
-                    targetAiReportSerial = launchRouteSerial,
+                    targetAiReportId = searchAiReportTargetId ?: launchRoute?.targetAiReportId,
+                    targetAiReportSerial = if (searchAiReportTargetId != null) searchAiReportTargetSerial else launchRouteSerial,
                     padding = padding,
                     uiState = uiState,
                     planningNotes = planningNotes,
@@ -596,10 +622,12 @@ fun DashboardScreen(
                     onDefaultCalendarReminderModeChange = onDefaultCalendarReminderModeChange,
                     onEventCheckInPreferencesChange = onEventCheckInPreferencesChange,
                     onEventCheckInIdleAutoCheckOutHoursChange = onEventCheckInIdleAutoCheckOutHoursChange,
+                    onOngoingEventNotificationEnabledChange = onOngoingEventNotificationEnabledChange,
                     onPlanningOutlinerPreferencesChange = onPlanningOutlinerPreferencesChange,
                     onReminderAudioStrategyChange = onReminderAudioStrategyChange,
                     onPlanningAiProvidersChange = onPlanningAiProvidersChange,
                     onReportPreferencesChange = onReportPreferencesChange,
+                    onDailyBriefPreferencesChange = onDailyBriefPreferencesChange,
                     onGenerateDailyReportNow = onGenerateDailyReportNow,
                     onDeleteAiReport = onDeleteAiReport,
                     onLaunchCheckIn = onLaunchCheckIn,
@@ -620,6 +648,8 @@ fun DashboardScreen(
                     onExportBackup = onExportBackup,
                     onImportBackup = onImportBackup,
                     onAutoBackupChange = onAutoBackupChange,
+                    onInspectDataHealth = onInspectDataHealth,
+                    onCleanSafeDataHealthItems = onCleanSafeDataHealthItems,
                     onOpenCalendarBatchImport = { batchImportVisible = true },
                     onSelectPlanningNote = onSelectPlanningNote,
                     onCreatePlanningNote = onCreatePlanningNote,
@@ -635,6 +665,11 @@ fun DashboardScreen(
                     onPublishPlanningNode = onPublishPlanningNode,
                     onPublishAllPlanningDrafts = onPublishAllPlanningDrafts,
                     onDeletePlanningNode = onDeletePlanningNode,
+                    onReorderPlanningNodes = onReorderPlanningNodes,
+                    onCreatePlanningNodeSnapshot = onCreatePlanningNodeSnapshot,
+                    onRestorePlanningNodeSnapshot = onRestorePlanningNodeSnapshot,
+                    highlightedPlanningNodeId = highlightedPlanningNodeId,
+                    highlightedPlanningNodeSerial = highlightedPlanningNodeSerial,
                     onOpenPlanningLinkedItem = { itemId ->
                         scope.launch {
                             val item = onGetTodoById(itemId) ?: return@launch
@@ -681,6 +716,42 @@ fun DashboardScreen(
                         Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
                     }
                 }
+            }
+        )
+    }
+
+    if (searchVisible) {
+        SearchPanel(
+            groups = uiState.groups,
+            onSearch = onGlobalSearch,
+            onDismiss = { searchVisible = false },
+            onOpenTodo = { item ->
+                previewTodoId = item.id
+                previewTodoSerial += 1
+                section = if (item.isHistory) DashboardSection.HISTORY else DashboardSection.ACTIVE
+                searchVisible = false
+            },
+            onOpenEvent = { item ->
+                val targetDate = item.eventStartDate() ?: item.dueDate()
+                calendarFocusDateEpochDay = targetDate.toEpochDay()
+                onCalendarVisibleDateRangeChange(targetDate.minusDays(1), targetDate.plusDays(2))
+                previewEventId = item.id
+                previewEventSerial += 1
+                section = DashboardSection.CALENDAR
+                searchVisible = false
+            },
+            onOpenPlanningNode = { result ->
+                onSelectPlanningNote(result.node.noteId)
+                highlightedPlanningNodeId = result.node.id
+                highlightedPlanningNodeSerial += 1
+                section = DashboardSection.PLANNING
+                searchVisible = false
+            },
+            onOpenAiReport = { report ->
+                searchAiReportTargetId = report.id
+                searchAiReportTargetSerial += 1
+                section = DashboardSection.AI_REPORTS
+                searchVisible = false
             }
         )
     }

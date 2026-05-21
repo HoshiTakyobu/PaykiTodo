@@ -56,6 +56,8 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Button
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
@@ -85,6 +87,8 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.pm.PackageInfoCompat
 import com.example.todoalarm.data.AppSettings
 import com.example.todoalarm.data.AiReportRetention
+import com.example.todoalarm.data.DataHealthCleanResult
+import com.example.todoalarm.data.DataHealthReport
 import com.example.todoalarm.data.PlanningAiCaller
 import com.example.todoalarm.data.PlanningAiModelFetchResult
 import com.example.todoalarm.data.PlanningAiProvider
@@ -103,6 +107,7 @@ private enum class SettingsSection {
     SOUND_STRATEGY,
     TONE,
     CALENDAR,
+    DAILY_BRIEF,
     AI_CONFIG,
     ABOUT,
     DIAGNOSTICS,
@@ -130,10 +135,12 @@ fun SettingsPanel(
     onDefaultCalendarReminderModeChange: (ReminderDeliveryMode) -> Unit,
     onEventCheckInPreferencesChange: (Boolean, Boolean) -> Unit,
     onEventCheckInIdleAutoCheckOutHoursChange: (Int) -> Unit,
+    onOngoingEventNotificationEnabledChange: (Boolean) -> Unit,
     onPlanningOutlinerPreferencesChange: (Boolean, Boolean) -> Unit,
     onReminderAudioStrategyChange: (ReminderAudioChannel, Int, Boolean, Int, Boolean) -> Unit,
     onPlanningAiProvidersChange: (Boolean, List<PlanningAiProvider>) -> Unit,
     onReportPreferencesChange: (Boolean, Int, Int, Boolean, Int, Int, AiReportRetention) -> Unit,
+    onDailyBriefPreferencesChange: (Boolean, Int, Int) -> Unit,
     onGenerateDailyReportNow: suspend () -> String?,
     onResetOnboarding: () -> Unit,
     onDesktopSyncEnabledChange: (Boolean) -> Unit,
@@ -150,6 +157,8 @@ fun SettingsPanel(
     onExportBackup: () -> Unit,
     onImportBackup: () -> Unit,
     onAutoBackupChange: (Boolean) -> Unit,
+    onInspectDataHealth: suspend () -> DataHealthReport,
+    onCleanSafeDataHealthItems: suspend () -> DataHealthCleanResult,
     onCopyCrashLog: () -> Unit,
     onClearCrashLog: () -> Unit
 ) {
@@ -208,6 +217,17 @@ fun SettingsPanel(
                     title = "日历与提醒",
                     summary = "默认延后时长、周起始日、日历默认提醒方式",
                     onClick = { selectedSection = SettingsSection.CALENDAR }
+                )
+                SettingsMenuDivider()
+                SettingsMenuItem(
+                    icon = Icons.Rounded.Notifications,
+                    title = "每日摘要通知",
+                    summary = if (settings.dailyBriefEnabled) {
+                        "每天 ${formatReportTime(settings.dailyBriefHour, settings.dailyBriefMinute)} 推送今日待办和日程"
+                    } else {
+                        "已关闭"
+                    },
+                    onClick = { selectedSection = SettingsSection.DAILY_BRIEF }
                 )
                 SettingsMenuDivider()
                 SettingsMenuItem(
@@ -336,6 +356,13 @@ fun SettingsPanel(
                     onSelect = { label -> ReminderDeliveryMode.entries.firstOrNull { it.label == label }?.let(onDefaultCalendarReminderModeChange) }
                 )
 
+                SettingsSwitchRow(
+                    title = "日程进行时显示通知",
+                    summary = "开启后，有提醒的日程在进行期间会显示低优先级常驻通知，日程结束后自动消失。",
+                    checked = settings.ongoingEventNotificationEnabled,
+                    onCheckedChange = onOngoingEventNotificationEnabledChange
+                )
+
                 Spacer(modifier = Modifier.height(4.dp))
                 SettingsSwitchRow(
                     title = "日程结束时自动签退",
@@ -410,6 +437,13 @@ fun SettingsPanel(
             }
         }
 
+        SettingsSection.DAILY_BRIEF -> SettingsSectionDialog("每日摘要通知", { selectedSection = null }) {
+            DailyBriefPreferencesPanel(
+                settings = settings,
+                onChange = onDailyBriefPreferencesChange
+            )
+        }
+
         SettingsSection.AI_CONFIG -> SettingsSectionDialog("AI 调用配置", { selectedSection = null }) {
             PlanningAiConfigPanel(
                 settings = settings,
@@ -458,6 +492,11 @@ fun SettingsPanel(
         }
 
         SettingsSection.BACKUP -> SettingsSectionDialog("数据与备份", { selectedSection = null }) {
+            var dataHealthReport by remember { mutableStateOf<DataHealthReport?>(null) }
+            var dataHealthScanning by remember { mutableStateOf(false) }
+            var dataHealthCleaning by remember { mutableStateOf(false) }
+            var dataHealthMessage by remember { mutableStateOf<String?>(null) }
+            var dataHealthConfirmVisible by remember { mutableStateOf(false) }
             Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                     Column(modifier = Modifier.weight(1f)) {
@@ -470,6 +509,56 @@ fun SettingsPanel(
                     OutlinedButton(onClick = onPickBackupDirectory, modifier = Modifier.fillMaxWidth()) { Text("选择备份目录") }
                     OutlinedButton(onClick = onExportBackup, modifier = Modifier.fillMaxWidth()) { Text("导出 JSON") }
                     OutlinedButton(onClick = onImportBackup, modifier = Modifier.fillMaxWidth()) { Text("导入 JSON") }
+                }
+                HorizontalDivider()
+                DataHealthPanel(
+                    report = dataHealthReport,
+                    scanning = dataHealthScanning,
+                    cleaning = dataHealthCleaning,
+                    message = dataHealthMessage,
+                    onScan = {
+                        scope.launch {
+                            dataHealthScanning = true
+                            dataHealthMessage = null
+                            try {
+                                dataHealthReport = onInspectDataHealth()
+                            } catch (error: Exception) {
+                                dataHealthMessage = "检查失败：${error.message ?: error::class.java.simpleName}"
+                            } finally {
+                                dataHealthScanning = false
+                            }
+                        }
+                    },
+                    onCleanSafeItems = {
+                        if ((dataHealthReport?.safeCleanableCount ?: 0) > 0) {
+                            dataHealthConfirmVisible = true
+                        } else {
+                            dataHealthMessage = "当前没有可一键清理的安全项。"
+                        }
+                    }
+                )
+                if (dataHealthConfirmVisible) {
+                    DataHealthCleanConfirmDialog(
+                        report = dataHealthReport ?: DataHealthReport(),
+                        cleaning = dataHealthCleaning,
+                        onDismiss = { if (!dataHealthCleaning) dataHealthConfirmVisible = false },
+                        onConfirm = {
+                            scope.launch {
+                                dataHealthCleaning = true
+                                dataHealthMessage = null
+                                try {
+                                    val result = onCleanSafeDataHealthItems()
+                                    dataHealthMessage = result.message()
+                                    dataHealthReport = onInspectDataHealth()
+                                } catch (error: Exception) {
+                                    dataHealthMessage = "清理失败：${error.message ?: error::class.java.simpleName}"
+                                } finally {
+                                    dataHealthCleaning = false
+                                    dataHealthConfirmVisible = false
+                                }
+                            }
+                        }
+                    )
                 }
             }
         }
@@ -968,6 +1057,62 @@ private fun PlanningAiConfigPanel(
                 }
             }
         )
+    }
+}
+
+@Composable
+private fun DailyBriefPreferencesPanel(
+    settings: AppSettings,
+    onChange: (Boolean, Int, Int) -> Unit
+) {
+    var enabled by remember(settings.dailyBriefEnabled) { mutableStateOf(settings.dailyBriefEnabled) }
+    var timeText by remember(settings.dailyBriefHour, settings.dailyBriefMinute) {
+        mutableStateOf(formatReportTime(settings.dailyBriefHour, settings.dailyBriefMinute))
+    }
+    var savedHint by remember { mutableStateOf(false) }
+    val parsedTime = parseReportTime(timeText)
+    val invalid = enabled && parsedTime == null
+
+    fun save() {
+        val time = parsedTime ?: (settings.dailyBriefHour to settings.dailyBriefMinute)
+        onChange(enabled, time.first, time.second)
+        savedHint = true
+    }
+
+    PrefCard("每日摘要") {
+        Text(
+            text = "每天在设定时间推送一条轻量通知，汇总今日待办、今日日程和 7 天内最近倒数日。点击通知会打开每日看板。",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        ReportScheduleRow(
+            title = "每天发送今日摘要",
+            summary = "默认 08:00，不会全屏打扰",
+            enabled = enabled,
+            timeText = timeText,
+            timeValid = parsedTime != null,
+            onEnabledChange = {
+                enabled = it
+                savedHint = false
+            },
+            onTimeChange = {
+                timeText = it
+                savedHint = false
+            }
+        )
+        if (invalid) {
+            Text("时间格式需要是 HH:mm，例如 08:00。", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
+        }
+        OutlinedButton(
+            onClick = { save() },
+            enabled = !invalid,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("保存每日摘要设置")
+        }
+        if (savedHint) {
+            Text("每日摘要设置已保存，系统定时已重新调度。", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
+        }
     }
 }
 
@@ -1929,6 +2074,159 @@ fun AboutPanel(
             )
         }
     }
+}
+
+@Composable
+private fun DataHealthPanel(
+    report: DataHealthReport?,
+    scanning: Boolean,
+    cleaning: Boolean,
+    message: String?,
+    onScan: () -> Unit,
+    onCleanSafeItems: () -> Unit
+) {
+    PrefCard("数据健康检查") {
+        Text(
+            text = "扫描长期使用后可能堆积的数据。安全清理只会删除 30 天前已完成待办、空规划文档、超出保留策略的 AI 报告；草稿节点和未处理过期待办只提示，不自动删除。",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        if (report == null) {
+            Text(
+                text = "尚未检查。点击下方按钮后会统计可清理项和需要手动处理的项目。",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        } else {
+            DataHealthMetricRow("已完成待办（超过 30 天）", report.oldCompletedTodos, safe = true)
+            DataHealthMetricRow("空规划文档", report.emptyPlanningNotes, safe = true)
+            DataHealthMetricRow("过期 AI 报告", report.expiredAiReports, safe = true)
+            DataHealthMetricRow("过期草稿节点（超过 14 天）", report.staleDraftNodes, safe = false)
+            DataHealthMetricRow("无提醒的过期待办", report.overdueTodosWithoutReminder, safe = false)
+            Text(
+                text = if (report.hasIssues) {
+                    "可一键清理安全项 ${report.safeCleanableCount} 条；另有 ${report.attentionCount} 条需要手动查看。"
+                } else {
+                    "当前没有发现需要处理的数据健康问题。"
+                },
+                style = MaterialTheme.typography.bodySmall,
+                color = if (report.hasIssues) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+        message?.takeIf { it.isNotBlank() }?.let {
+            Text(
+                text = it,
+                style = MaterialTheme.typography.bodySmall,
+                color = if (it.contains("失败")) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
+            )
+        }
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            OutlinedButton(
+                onClick = onScan,
+                enabled = !scanning && !cleaning,
+                modifier = Modifier.weight(1f)
+            ) {
+                if (scanning) {
+                    CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+                    Spacer(Modifier.size(8.dp))
+                }
+                Text(if (scanning) "检查中" else "开始检查")
+            }
+            Button(
+                onClick = onCleanSafeItems,
+                enabled = !scanning && !cleaning && (report?.safeCleanableCount ?: 0) > 0,
+                modifier = Modifier.weight(1f)
+            ) {
+                if (cleaning) {
+                    CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+                    Spacer(Modifier.size(8.dp))
+                }
+                Text(if (cleaning) "清理中" else "一键清理安全项")
+            }
+        }
+    }
+}
+
+@Composable
+private fun DataHealthMetricRow(
+    label: String,
+    count: Int,
+    safe: Boolean
+) {
+    Surface(
+        shape = RoundedCornerShape(16.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.28f)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp, vertical = 10.dp),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = if (safe) "✓" else "!",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = if (safe) MaterialTheme.colorScheme.primary else Color(0xFFD08700)
+            )
+            Text(
+                text = label,
+                modifier = Modifier.weight(1f),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            Text(
+                text = "${count} 条",
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.Bold,
+                color = if (count > 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+}
+
+@Composable
+private fun DataHealthCleanConfirmDialog(
+    report: DataHealthReport,
+    cleaning: Boolean,
+    onDismiss: () -> Unit,
+    onConfirm: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("确认清理安全项？") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(
+                    text = "将清理 ${report.oldCompletedTodos} 条 30 天前已完成待办、${report.emptyPlanningNotes} 个空规划文档、${report.expiredAiReports} 条过期 AI 报告。此操作不可撤销，建议先导出 JSON 备份。",
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Text(
+                    text = "不会自动删除过期草稿节点或未处理过期待办。",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = onConfirm,
+                enabled = !cleaning
+            ) {
+                Text("确认清理", color = MaterialTheme.colorScheme.error)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss, enabled = !cleaning) {
+                Text("取消")
+            }
+        }
+    )
 }
 
 @Composable

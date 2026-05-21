@@ -155,6 +155,7 @@ class MainActivity : ComponentActivity() {
                     planningNotes = viewModel.planningNotes,
                     observeAiReports = viewModel::observeAiReports,
                     onGetAiReport = viewModel::getAiReportById,
+                    onGlobalSearch = viewModel::globalSearch,
                     historyItems = viewModel.historyItems,
                     calendarItems = viewModel.calendarItems,
                     scheduleTemplates = viewModel.scheduleTemplates,
@@ -203,6 +204,9 @@ class MainActivity : ComponentActivity() {
                     onPublishPlanningNode = viewModel::publishPlanningNode,
                     onPublishAllPlanningDrafts = viewModel::publishAllPlanningDrafts,
                     onDeletePlanningNode = viewModel::deletePlanningNode,
+                    onReorderPlanningNodes = viewModel::reorderPlanningNodes,
+                    onCreatePlanningNodeSnapshot = viewModel::createPlanningNodeSnapshot,
+                    onRestorePlanningNodeSnapshot = viewModel::restorePlanningNodeSnapshot,
                     onExportPlanningNodesMarkdown = viewModel::exportPlanningNodesMarkdown,
                     onReplacePlanningNodesFromMarkdown = viewModel::replacePlanningNodesFromMarkdown,
                     onParsePlanningMarkdown = viewModel::parsePlanningMarkdown,
@@ -227,10 +231,12 @@ class MainActivity : ComponentActivity() {
                             idleAutoCheckOutHours = it
                         )
                     },
+                    onOngoingEventNotificationEnabledChange = viewModel::updateOngoingEventNotificationEnabled,
                     onPlanningOutlinerPreferencesChange = viewModel::updatePlanningOutlinerPreferences,
                     onReminderAudioStrategyChange = viewModel::updateReminderAudioStrategy,
                     onPlanningAiProvidersChange = viewModel::updatePlanningAiProviders,
                     onReportPreferencesChange = viewModel::updateReportPreferences,
+                    onDailyBriefPreferencesChange = viewModel::updateDailyBriefPreferences,
                     onGenerateDailyReportNow = viewModel::generateDailyReportNow,
                     onDeleteAiReport = viewModel::deleteAiReport,
                     onLaunchCheckIn = { eventId ->
@@ -268,6 +274,8 @@ class MainActivity : ComponentActivity() {
                     onExportBackup = { exportBackupLauncher.launch("PaykiTodo-backup.json") },
                     onImportBackup = { importBackupLauncher.launch(arrayOf("application/json")) },
                     onAutoBackupChange = viewModel::updateAutoBackupEnabled,
+                    onInspectDataHealth = viewModel::inspectDataHealth,
+                    onCleanSafeDataHealthItems = viewModel::cleanSafeDataHealthItems,
                     onBoardCollapseStateChange = viewModel::updateBoardCollapseState
                 )
             }

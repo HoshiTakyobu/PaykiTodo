@@ -43,6 +43,7 @@ import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.Insights
 import androidx.compose.material.icons.rounded.LightMode
 import androidx.compose.material.icons.rounded.Menu
+import androidx.compose.material.icons.rounded.MoreHoriz
 import androidx.compose.material.icons.rounded.PostAdd
 import androidx.compose.material.icons.rounded.ExpandLess
 import androidx.compose.material.icons.rounded.ExpandMore
@@ -113,6 +114,8 @@ import com.example.todoalarm.data.AiReport
 import com.example.todoalarm.data.AiReportType
 import com.example.todoalarm.data.AiReportRetention
 import com.example.todoalarm.data.CalendarEventDraft
+import com.example.todoalarm.data.DataHealthCleanResult
+import com.example.todoalarm.data.DataHealthReport
 import com.example.todoalarm.data.DailyBoardSnapshotBuilder
 import com.example.todoalarm.data.EventCheckIn
 import com.example.todoalarm.data.EventCheckInCompletionSummary
@@ -123,6 +126,7 @@ import com.example.todoalarm.data.PlanningLineMapping
 import com.example.todoalarm.data.PlanningNode
 import com.example.todoalarm.data.PlanningNodeDraft
 import com.example.todoalarm.data.PlanningNodeEdit
+import com.example.todoalarm.data.PlanningNodeSnapshot
 import com.example.todoalarm.data.PlanningNote
 import com.example.todoalarm.data.PlanningOperationResult
 import com.example.todoalarm.data.PlanningParseResult
@@ -255,39 +259,20 @@ internal fun DashboardDrawer(
                             onClick = { onSelectSection(section) }
                         )
                     }
-                    Surface(
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(18.dp),
-                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.26f),
-                        onClick = { moreExpanded = !moreExpanded }
-                    ) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 14.dp, vertical = 12.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(10.dp)
-                        ) {
+                    DrawerSectionButton(
+                        label = "更多",
+                        icon = Icons.Rounded.MoreHoriz,
+                        selected = false,
+                        onClick = { moreExpanded = !moreExpanded },
+                        trailingContent = {
                             Icon(
                                 imageVector = if (moreExpanded) Icons.Rounded.ExpandLess else Icons.Rounded.ExpandMore,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.primary
+                                contentDescription = if (moreExpanded) "折叠更多" else "展开更多",
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(22.dp)
                             )
-                            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                                Text(
-                                    text = "更多",
-                                    style = MaterialTheme.typography.titleSmall,
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.onSurface
-                                )
-                                Text(
-                                    text = "归档与历史",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
                         }
-                    }
+                    )
                     if (moreExpanded) {
                         listOf(DashboardSection.AI_REPORTS, DashboardSection.HISTORY).forEach { section ->
                             DrawerSectionButton(
@@ -391,6 +376,8 @@ internal fun DashboardBody(
     calendarFocusDateSerial: Int = 0,
     targetAiReportId: Long? = null,
     targetAiReportSerial: Int = 0,
+    highlightedPlanningNodeId: Long? = null,
+    highlightedPlanningNodeSerial: Int = 0,
     padding: PaddingValues,
     uiState: TodoUiState,
     planningNotes: StateFlow<List<PlanningNote>>,
@@ -436,10 +423,12 @@ internal fun DashboardBody(
     onDefaultCalendarReminderModeChange: (ReminderDeliveryMode) -> Unit,
     onEventCheckInPreferencesChange: (Boolean, Boolean) -> Unit,
     onEventCheckInIdleAutoCheckOutHoursChange: (Int) -> Unit,
+    onOngoingEventNotificationEnabledChange: (Boolean) -> Unit,
     onPlanningOutlinerPreferencesChange: (Boolean, Boolean) -> Unit,
     onReminderAudioStrategyChange: (ReminderAudioChannel, Int, Boolean, Int, Boolean) -> Unit,
     onPlanningAiProvidersChange: (Boolean, List<PlanningAiProvider>) -> Unit,
     onReportPreferencesChange: (Boolean, Int, Int, Boolean, Int, Int, AiReportRetention) -> Unit,
+    onDailyBriefPreferencesChange: (Boolean, Int, Int) -> Unit,
     onGenerateDailyReportNow: suspend () -> String?,
     onDeleteAiReport: suspend (Long) -> String?,
     onLaunchCheckIn: (Long) -> Unit,
@@ -460,6 +449,8 @@ internal fun DashboardBody(
     onExportBackup: () -> Unit,
     onImportBackup: () -> Unit,
     onAutoBackupChange: (Boolean) -> Unit,
+    onInspectDataHealth: suspend () -> DataHealthReport,
+    onCleanSafeDataHealthItems: suspend () -> DataHealthCleanResult,
     onOpenCalendarBatchImport: () -> Unit,
     onSelectPlanningNote: (Long) -> Unit,
     onCreatePlanningNote: suspend (String) -> String?,
@@ -475,6 +466,9 @@ internal fun DashboardBody(
     onPublishPlanningNode: suspend (PlanningNode) -> String?,
     onPublishAllPlanningDrafts: suspend (Long) -> String?,
     onDeletePlanningNode: suspend (PlanningNode) -> String?,
+    onReorderPlanningNodes: suspend (Long, Long?, List<Long>) -> String?,
+    onCreatePlanningNodeSnapshot: suspend (Long) -> PlanningNodeSnapshot,
+    onRestorePlanningNodeSnapshot: suspend (PlanningNodeSnapshot) -> String?,
     onOpenPlanningLinkedItem: (Long) -> Unit,
     onExportPlanningNodesMarkdown: suspend (Long) -> String,
     onReplacePlanningNodesFromMarkdown: suspend (Long, String) -> String?,
@@ -572,10 +566,12 @@ internal fun DashboardBody(
                 onDefaultCalendarReminderModeChange = onDefaultCalendarReminderModeChange,
                 onEventCheckInPreferencesChange = onEventCheckInPreferencesChange,
                 onEventCheckInIdleAutoCheckOutHoursChange = onEventCheckInIdleAutoCheckOutHoursChange,
+                onOngoingEventNotificationEnabledChange = onOngoingEventNotificationEnabledChange,
                 onPlanningOutlinerPreferencesChange = onPlanningOutlinerPreferencesChange,
                 onReminderAudioStrategyChange = onReminderAudioStrategyChange,
                 onPlanningAiProvidersChange = onPlanningAiProvidersChange,
                 onReportPreferencesChange = onReportPreferencesChange,
+                onDailyBriefPreferencesChange = onDailyBriefPreferencesChange,
                 onGenerateDailyReportNow = onGenerateDailyReportNow,
                 onResetOnboarding = onResetOnboarding,
                 onDesktopSyncEnabledChange = onDesktopSyncEnabledChange,
@@ -592,6 +588,8 @@ internal fun DashboardBody(
                 onExportBackup = onExportBackup,
                 onImportBackup = onImportBackup,
                 onAutoBackupChange = onAutoBackupChange,
+                onInspectDataHealth = onInspectDataHealth,
+                onCleanSafeDataHealthItems = onCleanSafeDataHealthItems,
                 onCopyCrashLog = permissions.copyCrashLog,
                 onClearCrashLog = permissions.clearCrashLog
             )
@@ -635,6 +633,9 @@ internal fun DashboardBody(
                 onPublishNode = onPublishPlanningNode,
                 onPublishAllDrafts = onPublishAllPlanningDrafts,
                 onDeleteNode = onDeletePlanningNode,
+                onReorderNodes = onReorderPlanningNodes,
+                onCreateNodeSnapshot = onCreatePlanningNodeSnapshot,
+                onRestoreNodeSnapshot = onRestorePlanningNodeSnapshot,
                 onOpenLinkedItem = onOpenPlanningLinkedItem,
                 onExportNodesMarkdown = onExportPlanningNodesMarkdown,
                 onReplaceNodesFromMarkdown = onReplacePlanningNodesFromMarkdown,
@@ -647,6 +648,8 @@ internal fun DashboardBody(
                 onUndoLastOperation = onUndoLastPlanningOperation,
                 onApplyConflictDocument = onApplyPlanningConflictDocument,
                 onApplyConflictItem = onApplyPlanningConflictItem,
+                highlightedPlanningNodeId = highlightedPlanningNodeId,
+                highlightedPlanningNodeSerial = highlightedPlanningNodeSerial,
                 isNewUser = !uiState.settings.hasSeenOnboarding
             )
         }
@@ -656,6 +659,7 @@ internal fun DashboardBody(
     var missedExpanded by rememberSaveable { mutableStateOf(true) }
     var todayExpanded by rememberSaveable { mutableStateOf(true) }
     var upcomingExpanded by rememberSaveable(uiState.todayItems.isEmpty()) { mutableStateOf(uiState.todayItems.isEmpty()) }
+    var expandedRecurringSeriesIds by rememberSaveable { mutableStateOf(emptyList<String>()) }
     var countdownCollapsed by rememberSaveable { mutableStateOf(uiState.settings.boardCountdownCollapsed) }
     var boardTodosCollapsed by rememberSaveable { mutableStateOf(uiState.settings.boardTodayTodosCollapsed) }
     var boardTodayEventsCollapsed by rememberSaveable { mutableStateOf(uiState.settings.boardTodayEventsCollapsed) }
@@ -710,6 +714,7 @@ internal fun DashboardBody(
             .sortedBy { it.startAtMillis ?: it.dueAtMillis }
     }
     val activeAnnouncements = uiState.activeAnnouncements
+    val expandedRecurringSeries = expandedRecurringSeriesIds.toSet()
     var previewTodoTarget by remember { mutableStateOf<TodoItem?>(null) }
     LaunchedEffect(previewTodoId, previewTodoSerial, uiState.todayItems, uiState.missedItems, uiState.upcomingItems) {
         val targetId = previewTodoId ?: return@LaunchedEffect
@@ -927,15 +932,49 @@ internal fun DashboardBody(
                     if (uiState.upcomingItems.isEmpty()) {
                         item { EmptyStateCard("后续时间暂时没有新计划。") }
                     } else {
-                        items(uiState.upcomingItems, key = { it.id }) { item ->
-                            ActiveTodoCard(
-                                item = item,
-                                groups = uiState.groups,
-                                onEdit = { onEdit(item) },
-                                onComplete = { onCompleteTodo(item) },
-                                onCancel = { onCancelTodo(item) },
-                                onDelete = { onDeleteTodo(item) }
-                            )
+                        uiState.upcomingItemGroups.forEach { group ->
+                            val seriesId = group.seriesId
+                            if (group.isCollapsibleRecurringSeries && seriesId != null) {
+                                val expanded = seriesId in expandedRecurringSeries
+                                item(key = "series-summary-$seriesId") {
+                                    RecurringTodoSeriesCard(
+                                        representative = group.representative,
+                                        instanceCount = group.items.size,
+                                        groups = uiState.groups,
+                                        expanded = expanded,
+                                        onToggle = {
+                                            expandedRecurringSeriesIds = if (expanded) {
+                                                expandedRecurringSeriesIds - seriesId
+                                            } else {
+                                                (expandedRecurringSeriesIds + seriesId).distinct()
+                                            }
+                                        }
+                                    )
+                                }
+                                if (expanded) {
+                                    items(group.items, key = { "series-$seriesId-${it.id}" }) { item ->
+                                        ActiveTodoCard(
+                                            item = item,
+                                            groups = uiState.groups,
+                                            onEdit = { onEdit(item) },
+                                            onComplete = { onCompleteTodo(item) },
+                                            onCancel = { onCancelTodo(item) },
+                                            onDelete = { onDeleteTodo(item) }
+                                        )
+                                    }
+                                }
+                            } else {
+                                items(group.items, key = { it.id }) { item ->
+                                    ActiveTodoCard(
+                                        item = item,
+                                        groups = uiState.groups,
+                                        onEdit = { onEdit(item) },
+                                        onComplete = { onCompleteTodo(item) },
+                                        onCancel = { onCancelTodo(item) },
+                                        onDelete = { onDeleteTodo(item) }
+                                    )
+                                }
+                            }
                         }
                     }
                 }
@@ -1007,6 +1046,77 @@ private fun ExpandableSectionHeader(
             contentDescription = if (expanded) "收起$title" else "展开$title",
             tint = MaterialTheme.colorScheme.onSurface
         )
+    }
+}
+
+@Composable
+private fun RecurringTodoSeriesCard(
+    representative: TodoItem,
+    instanceCount: Int,
+    groups: List<TaskGroup>,
+    expanded: Boolean,
+    onToggle: () -> Unit
+) {
+    val group = resolveTaskGroup(representative, groups)
+    val accent = colorFromHex(group.colorHex)
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onToggle),
+        shape = RoundedCornerShape(22.dp),
+        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.94f),
+        border = BorderStroke(1.dp, accent.copy(alpha = 0.30f))
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier
+                    .width(5.dp)
+                    .height(58.dp)
+                    .background(accent, RoundedCornerShape(999.dp))
+            )
+            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                Text(
+                    text = representative.title,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Text(
+                    text = listOfNotNull(
+                        representative.recurrenceTypeEnum.label,
+                        "还有 ${instanceCount - 1} 个未来实例",
+                        representative.dueDateTimeOrNull()?.let { "最近 ${formatLocalDateTime(it)}" }
+                    ).joinToString(" · "),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+            Surface(
+                shape = RoundedCornerShape(999.dp),
+                color = accent.copy(alpha = 0.12f)
+            ) {
+                Text(
+                    text = "${instanceCount} 次",
+                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
+                    color = accent,
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+            Icon(
+                imageVector = if (expanded) Icons.Rounded.ExpandLess else Icons.Rounded.ExpandMore,
+                contentDescription = if (expanded) "折叠循环实例" else "展开循环实例",
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
     }
 }
 
@@ -1817,7 +1927,25 @@ internal fun LaunchScreen() {
 private fun DrawerSectionButton(
     section: DashboardSection,
     selected: Boolean,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    trailingContent: (@Composable RowScope.() -> Unit)? = null
+) {
+    DrawerSectionButton(
+        label = section.label,
+        icon = section.icon,
+        selected = selected,
+        onClick = onClick,
+        trailingContent = trailingContent
+    )
+}
+
+@Composable
+private fun DrawerSectionButton(
+    label: String,
+    icon: ImageVector,
+    selected: Boolean,
+    onClick: () -> Unit,
+    trailingContent: (@Composable RowScope.() -> Unit)? = null
 ) {
     Surface(
         modifier = Modifier
@@ -1838,17 +1966,19 @@ private fun DrawerSectionButton(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Icon(
-                imageVector = section.icon,
+                imageVector = icon,
                 contentDescription = null,
                 modifier = Modifier.size(24.dp),
                 tint = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
             )
             Text(
-                text = section.label,
+                text = label,
+                modifier = Modifier.weight(1f),
                 style = MaterialTheme.typography.titleMedium.copy(fontSize = 19.sp),
                 fontWeight = FontWeight.Bold,
                 color = if (selected) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant
             )
+            trailingContent?.invoke(this)
         }
     }
 }

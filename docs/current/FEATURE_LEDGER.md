@@ -10,6 +10,7 @@ This file tracks the product at a practical level for new coding sessions.
 - title / notes / multi-group tags / deadline / multi-reminder fields
 - Todo editor shows title / DDL / group first for new todos and folds notes / reminder input / reminder delivery mode / recurrence / ring / vibration into 更多选项, auto-expanding when editing existing todos that use advanced state
 - Todo editor can choose reminder delivery mode between full-screen reminder and notification reminder; the selected mode is persisted for todos and recurring todo templates
+- Todo editor can enable `闹钟模式（持续响铃直到操作）` for DDL-backed reminders; alarm mode persists on todos and recurring templates, future recurring instances inherit it, and timeout downgrade leaves an explicit unhandled-reminder notification plus limited retry bursts
 - Todo editor can mark a DDL-backed task as `倒数日`; the task then uses its DDL date as the countdown target and appears on board / desktop / widget countdown surfaces
 - Todo editor can mark a DDL-backed task as `仅提醒，不在看板/日历显示`; the task still schedules reminders and remains manageable in My Tasks, but is filtered out of the phone daily board, Android board widget, desktop board, countdown board queries, and AI daily/weekly todo statistics
 - recurring todo templates persist `hiddenFromBoard`, and newly replenished recurring instances inherit the reminder-only visibility setting
@@ -23,6 +24,7 @@ This file tracks the product at a practical level for new coding sessions.
 - active todo preview now uses the same bottom-sheet visual language as calendar event preview
 - active todo card body opens preview; completion is isolated to the checkbox to avoid accidental completion
 - recurring task support
+- future recurring todo instances in the `计划中` section fold into one series card with a count badge and expand/collapse control, while `已错过` and `今日待办` remain uncollapsed
 - grouped task filtering, including multi-group intersection filtering and a phone-side intersection / union switch when multiple groups are selected
 - three-zone home logic: overdue / today / upcoming, with no-DDL active todos included in today rather than hidden in upcoming
 - board-style daily overview entry exists and can show today's todos directly
@@ -50,6 +52,13 @@ This file tracks the product at a practical level for new coding sessions.
 - daily board onboarding card is readable in dark mode, can be dismissed, and can be reset from Settings -> About -> 使用说明
 - daily board floating block titles have stronger dark-theme text shadow so they stay readable over the dark wallpaper background
 - board surface intentionally does not expose add / batch-add buttons
+
+### Reminders / Notifications
+
+- reminder alerts use a flatter high-priority surface with centered large time/title, 56dp action buttons, collapsible notes, entry animation, and a distinct alarm-mode pulse
+- alarm mode loops sound and vibration until the user completes, snoozes, cancels, or acknowledges; after 5 minutes it stops continuous ringing, updates the notification to `未处理提醒`, and performs three 30-second retry bursts at 2-minute intervals
+- daily brief notification can be enabled from Settings with a configurable time, defaults to 08:00, summarizes today's todos/events and nearest <=7-day countdown target, and opens the daily board
+- calendar events with reminders can show a low-priority ongoing notification during the event using channel `ongoing_event`; start/end alarms are restored independently of whether the original reminder time has already passed
 
 ### Board Announcements
 
@@ -100,6 +109,7 @@ This file tracks the product at a practical level for new coding sessions.
 - Planning Desk refresh can update current-section or whole-document imported items from the latest Markdown, but only for unfinished active mappings
 - Planning Desk batch postpone can shift unfinished imported items and the corresponding Markdown time text together
 - the latest import / refresh / postpone batch can be undone
+- Planning Desk Outliner supports an in-memory per-document 20-step undo stack for node edit, delete subtree, merge, same-parent reorder, single publish, and publish-all; switching documents clears the stack
 - conflicts between imported items and source Markdown can be resolved either by overwriting the item from the document or rewriting the document from the current item
 - default Planning Desk import reminder is 5 minutes before, full-screen, ring + vibration
 - planning notes are included in JSON backup / restore snapshots
@@ -123,6 +133,7 @@ This file tracks the product at a practical level for new coding sessions.
 - Planning Desk database migration is repaired in `1.7.5`: database version `10` includes `MIGRATION_9_10` to rebuild `planning_notes` tables created by the mismatched `1.7.0`-`1.7.4` migration
 - Planning Desk database version is now `11`; `MIGRATION_10_11` creates the `planning_line_mappings` table and indices
 - Planning Desk Outliner is user-facing in `1.12.10`: database version `22` stores `planning_nodes` with optional `linkedEndTodoId` and `syncEnabled`, migrates existing Markdown lines into tree nodes, keeps Markdown headings such as `# 今日计划` / `# 收集箱` as non-sync structure nodes instead of official todos/events, includes nodes in backup / restore, exposes repository / ViewModel CRUD plus Markdown import-export helpers, renders a phone outline editor by default, exposes desktop `/api/planning/nodes` routes, and adds desktop Web node editing plus up/down reorder and same-level drag reorder controls
+- Phone Planning Desk Outliner supports same-parent long-press drag reorder in edit mode, with drag lift/alpha feedback and placement animation; preview mode blocks drag and keeps the row action menu behavior
 - Phone Planning Desk Outliner `1.12.15` keeps the `1.12.13` memo-style keyboard behavior and adds draft/publish separation: edit mode shows lightweight rows with borderless root / sibling / child active input lines; empty input Backspace focuses the previous node; row-start Backspace merges into the previous same-level node; middle Enter splits a node into a new same-level node; preview mode shows per-row `⋯` actions; parent nodes with children remain structure headings; newly created/captured leaf nodes are drafts until single publish or publish-all creates official todos/events, and editing a draft preserves its publish/sync intent
 - Desktop Web Planning Desk Outliner `1.12.15` carries the same Backspace / Enter / ArrowUp / ArrowDown behavior, displays draft nodes distinctly, and exposes single-node publish plus current-document publish-all through desktop sync routes
 - Planning Desk natural schedule parsing `1.12.10` accepts ordered bare location fields such as `15:00-17:00, 写论文, 图书馆3楼` and a common space-separated place-token fallback
@@ -255,6 +266,7 @@ This file tracks the product at a practical level for new coding sessions.
 - in-app Wiki sidebar navigation works through local WebView JavaScript
 - in-app Wiki keeps a left menu / right article layout on phone-sized screens instead of stacking all section buttons above the content
 - in-app Wiki documents current reminder, batch-import, Planning Desk, desktop Planning Desk, and snooze input syntax
+- Settings includes a data health check surface that scans old completed todos, empty planning notes, stale draft nodes, expired AI reports, and overdue no-reminder todos; one-click cleanup only deletes safe items after confirmation
 
 ### Input Help
 
@@ -301,6 +313,11 @@ This file tracks the product at a practical level for new coding sessions.
 - desktop web todo / event mutations and Planning Desk import / refresh / undo paths refresh the current page's needed data instead of reloading one complete snapshot after every operation
 - desktop web follows system dark mode through CSS variables for timeline cards, event cards, modal sheets, summary cards, tab buttons, sidebar cards, Planning Desk, inputs, and announcement surfaces
 
+### Search
+
+- phone daily board exposes a global search entry; search covers todo titles/notes, event titles/locations, Planning Desk node text, and AI report content/provider names with 300ms debounce and per-category limits
+- search result taps route to the corresponding todo preview, calendar event detail, Planning Desk document/node highlight, or AI report detail
+
 ### Destructive Action Safety
 
 - active todo deletion asks for confirmation
@@ -313,7 +330,7 @@ This file tracks the product at a practical level for new coding sessions.
 ### Data / Performance
 
 - `todo_items` has Room indices for board todo queries, board event range queries, active reminders, group+DDL sorting, recurring-series lookup, desktop todo paging / sorting, and active countdown lookup.
-- Database version is `23`; `MIGRATION_13_14` creates the initial `todo_items` performance indices on upgraded installs, `MIGRATION_14_15` adds / backfills `planning_notes.hasAnnouncementHint` plus the indexed announcement lookup path, `MIGRATION_15_16` adds desktop todo paging plus AI-report generated-time/type indices, `MIGRATION_16_17` adds countdown fields / indices for todos and recurring templates, `MIGRATION_17_18` removes `focus_sessions` while adding `event_check_ins`, `todo_group_tags`, todo check-in fields, and a backfill from existing todo `groupId` values into the multi-group join table, `MIGRATION_18_19` adds `planning_notes.documentDateEpochDay` for today-note date context, `MIGRATION_19_20` creates `planning_nodes` plus migrates Planning Desk Markdown lines into node rows, `MIGRATION_20_21` adds optional event-end linked todo IDs, `MIGRATION_21_22` adds `syncEnabled` for structure headings, and `MIGRATION_22_23` adds `planning_nodes.isDraft` for explicit Planning Desk publish.
+- Database version is `25`; `MIGRATION_13_14` creates the initial `todo_items` performance indices on upgraded installs, `MIGRATION_14_15` adds / backfills `planning_notes.hasAnnouncementHint` plus the indexed announcement lookup path, `MIGRATION_15_16` adds desktop todo paging plus AI-report generated-time/type indices, `MIGRATION_16_17` adds countdown fields / indices for todos and recurring templates, `MIGRATION_17_18` removes `focus_sessions` while adding `event_check_ins`, `todo_group_tags`, todo check-in fields, and a backfill from existing todo `groupId` values into the multi-group join table, `MIGRATION_18_19` adds `planning_notes.documentDateEpochDay` for today-note date context, `MIGRATION_19_20` creates `planning_nodes` plus migrates Planning Desk Markdown lines into node rows, `MIGRATION_20_21` adds optional event-end linked todo IDs, `MIGRATION_21_22` adds `syncEnabled` for structure headings, `MIGRATION_22_23` adds `planning_nodes.isDraft` for explicit Planning Desk publish, `MIGRATION_23_24` adds reminder-only board visibility / note-node fields, and `MIGRATION_24_25` adds `alarmMode` to todos and recurring templates.
 - Room schema export is enabled and `app/schemas/com.example.todoalarm.data.AppDatabase/20.json` is committed as the database-20 reference schema.
 - Desktop Web first connection now uses a lightweight board snapshot (`/api/snapshot?scope=board`); todo management uses paged/searchable `/api/todos?offset=...&limit=...&q=...`, and the event timeline uses visible-range `/api/events?start=...&end=...` instead of sharing one full snapshot for every management tab.
 - Main phone board/task UI uses active-todo-only observation and today/tomorrow event range observation instead of merging all todos and full active events into ordinary board/task state.

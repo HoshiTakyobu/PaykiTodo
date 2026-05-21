@@ -6,20 +6,28 @@
 - Branch: `main`
 - Do not push to GitHub unless the user explicitly authorizes it.
 - Current code version:
-  - `versionName = 1.12.19`
-  - `versionCode = 246`
+  - `versionName = 1.12.20`
+  - `versionCode = 247`
 - Latest debug APK target in this round:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.12.19-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.12.20-debug.apk`
 - Debug APK metadata inspection:
-  - `versionName = 1.12.19`
-  - `versionCode = 246`
-  - output `PaykiTodo-1.12.19-debug.apk`
+  - `versionName = 1.12.20`
+  - `versionCode = 247`
+  - output `PaykiTodo-1.12.20-debug.apk`
 
 ## Active Goal
 
 Active goal: complete `docs/goals/2026-05-20-paykitodo-7-runtime-issues-goal.md`.
 
-Latest status: the code line is `1.12.19 / versionCode 246` and contains the 7 runtime-issue fixes: recurring reminder crash hardening, countdown/detail preview routing, Planning Desk note nodes, compact widgets, reminder-only todos, board blank-area navigation, and full-height editor BottomSheets. Do not push to GitHub unless the user explicitly authorizes it.
+Latest status: the code line is `1.12.20 / versionCode 247`. This is a metadata-only rebuild so Android can upgrade over `1.12.19`; the previous 7 runtime-issue fixes remain the active behavior baseline. Do not push to GitHub unless the user explicitly authorizes it.
+
+## What Changed In The Latest 1.12.20 Patch
+
+1. Version metadata moved to `1.12.20 / versionCode 247`.
+2. This rebuild exists so Android can install over an already-installed `1.12.19` debug build.
+3. No database schema, reminder behavior, Planning Desk behavior, or user-data format changed in this patch.
+4. Latest debug APK target is `app/build/outputs/apk/debug/PaykiTodo-1.12.20-debug.apk`.
+5. Verification passed: `./gradlew.bat :app:assembleDebug`; `git diff --check`; APK metadata confirms `1.12.20 / 247`.
 
 ## What Changed In The Latest 1.12.19 Patch
 

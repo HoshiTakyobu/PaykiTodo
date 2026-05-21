@@ -7,8 +7,8 @@
 - Package name: `com.paykitodo.app`
 - Target platform: Android 14 / API 34
 - Current version in code:
-  - `versionName = "1.12.19"`
-  - `versionCode = 246`
+  - `versionName = "1.12.20"`
+  - `versionCode = 247`
 
 ## Current Build Facts
 
@@ -18,7 +18,13 @@
 - Latest signed release APK built locally:
   - `app/build/outputs/apk/release/PaykiTodo-1.11.0-release.apk`
 - Latest fully built debug APK:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.12.19-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.12.20-debug.apk`
+- Current `1.12.20 / versionCode 247` status:
+  - This is a metadata-only rebuild so Android can upgrade over an installed `1.12.19` debug build.
+  - No database schema, reminder behavior, Planning Desk behavior, or user-data format changed in this version bump.
+  - `./gradlew.bat :app:assembleDebug`
+  - `git diff --check`
+  - Debug APK metadata confirms `versionName = 1.12.20`, `versionCode = 247`, output `PaykiTodo-1.12.20-debug.apk`.
 - Current `1.12.19 / versionCode 246` status:
   - This build completes the 7 runtime-issue goal: recurring-reminder crash hardening, safe startup guard, BottomSheet full-height behavior, countdown/event preview routing, board-area navigation, widget padding compression, reminder-only todos, and Planning Desk note nodes.
   - Database version is `24` with `todo_items.hiddenFromBoard`, `recurring_task_templates.hiddenFromBoard`, and `planning_nodes.isNote`.

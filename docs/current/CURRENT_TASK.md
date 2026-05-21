@@ -4,7 +4,7 @@
 
 Active goal: complete `docs/goals/2026-05-20-paykitodo-7-runtime-issues-goal.md`.
 
-The working tree is now on the `1.12.19 / versionCode 246` line. This round fixes the 7 runtime issues: recurring reminder crash hardening, countdown/detail preview routing, Planning Desk note nodes, widget padding, reminder-only todos, board blank-area navigation, and BottomSheet keyboard behavior. Do not push to GitHub unless the user explicitly asks.
+The working tree is now on the `1.12.20 / versionCode 247` line. This round is a metadata-only rebuild so Android can install over `1.12.19`. The previous `1.12.19` behavior remains the active runtime baseline: recurring reminder crash hardening, countdown/detail preview routing, Planning Desk note nodes, widget padding, reminder-only todos, board blank-area navigation, and BottomSheet keyboard behavior. Do not push to GitHub unless the user explicitly asks.
 
 ## Current Goal State
 
@@ -18,6 +18,20 @@ Current implementation state:
 6. #4 todo editor supports `hiddenFromBoard`; hidden reminder todos still schedule reminders and remain in My Tasks, but are filtered out of board/widget/desktop-board/AI-report todo statistics.
 7. #2 Planning Desk supports `isNote` nodes from `// ` / `> `, note styling, note toggle actions, no publish-to-task behavior, and completion calculations that ignore note children.
 8. Database version is `24`, backup/restore and desktop-sync JSON preserve `hiddenFromBoard` and `isNote`.
+
+## Verification Completed For 1.12.20
+
+The `1.12.20 / versionCode 247` rebuild is intended to let Android upgrade over the installed `1.12.19` debug build.
+
+1. Version metadata moved from `1.12.19 / versionCode 246` to `1.12.20 / versionCode 247`.
+2. No database schema, reminder behavior, Planning Desk behavior, or user-data format changed in this metadata-only rebuild.
+3. The generated debug APK is `app/build/outputs/apk/debug/PaykiTodo-1.12.20-debug.apk`.
+4. `./gradlew.bat :app:assembleDebug` passed.
+5. `git diff --check` passed.
+6. Debug APK metadata confirms:
+   - `versionName = 1.12.20`
+   - `versionCode = 247`
+   - output `PaykiTodo-1.12.20-debug.apk`
 
 ## Verification Completed For 1.12.19
 

@@ -6,19 +6,26 @@
 - Branch: `main`
 - Do not push to GitHub unless the user explicitly authorizes it.
 - Current code version:
-  - `versionName = 1.13.10`
-  - `versionCode = 258`
+  - `versionName = 1.13.11`
+  - `versionCode = 259`
 - Latest debug APK target in this round:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.13.10-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.13.11-debug.apk`
 - Debug APK metadata inspection:
-  - `versionName = 1.13.10`
-  - `versionCode = 258`
+  - `versionName = 1.13.11`
+  - `versionCode = 259`
 
 ## Active Goal
 
-Active immediate task: complete `docs/goals/2026-05-22-paykitodo-widget-followup-fix-goal.md` on the `1.13.10 / versionCode 258` line.
+Active immediate task: polish launcher Widget horizontal spacing on the `1.13.11 / versionCode 259` line.
 
-Latest status: code changes are implemented and `./gradlew.bat :app:compileDebugKotlin` passed on the previous `1.13.9` line. The current `1.13.10 / versionCode 258` bump is for Android upgrade installability. `git diff --check`, `./gradlew.bat :app:assembleDebug`, and APK metadata inspection have passed. Commit and completion audit are pending. Do not push to GitHub unless the user explicitly authorizes it.
+Latest status: Widget spacing changes are implemented and version metadata has moved to `1.13.11 / versionCode 259`. `git diff --check`, `./gradlew.bat :app:assembleDebug`, and APK metadata inspection have passed. Commit is pending. Do not push to GitHub unless the user explicitly authorizes it.
+
+## What Changed In The Latest 1.13.11 Patch
+
+1. 今日看板 Widget runtime and picker preview outer content padding increased so section titles and cards no longer sit too close to the widget shell's left and right edges.
+2. 倒数日 Widget runtime and picker preview outer content padding increased; countdown row internal start/end padding and accent-strip spacing were widened.
+3. Database version remains `25`; no schema or user-data format change was introduced.
+4. Verification passed: `git diff --check`, `./gradlew.bat :app:assembleDebug`; APK metadata confirms `1.13.11 / 259`.
 
 ## What Changed In The Latest 1.13.10 Patch
 

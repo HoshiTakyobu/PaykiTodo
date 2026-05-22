@@ -1,5 +1,14 @@
 # Changelog
 
+## v1.13.11
+
+- 美化桌面 Widget 横向留白：今日看板 Widget 内容区左右 padding 从 6dp 提高到 14dp，上下 padding 从 6dp 提高到 10dp，避免标题、卡片和 Widget 圆角外壳贴边
+- 美化倒数日 Widget 横向留白：运行布局和添加页预览外层左右 padding 从 4dp 提高到 12dp，上下 padding 从 4dp 提高到 8dp
+- 倒数日卡片内部左右 padding 提高到 14dp，并放大竖线与文字区之间的呼吸感，让倒数时间、颜色竖线和事项标题不再挤在边缘
+- 数据库保持 `25`，本轮不新增 schema 或用户数据格式迁移
+- 版本号升级到 `1.13.11` / `versionCode 259`
+- 验证：`git diff --check`、`./gradlew.bat :app:assembleDebug` 通过；debug APK 元数据确认 `1.13.11 / 259`
+
 ## v1.13.10
 
 - 提升调试包版本号，确保 Android 在已安装 `1.13.9` 或同版本本地构建时把新 APK 识别为可升级安装包

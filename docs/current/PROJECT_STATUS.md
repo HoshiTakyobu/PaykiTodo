@@ -7,8 +7,8 @@
 - Package name: `com.paykitodo.app`
 - Target platform: Android 14 / API 34
 - Current version in code:
-  - `versionName = "1.13.10"`
-  - `versionCode = 258`
+  - `versionName = "1.13.11"`
+  - `versionCode = 259`
 
 ## Current Build Facts
 
@@ -18,7 +18,15 @@
 - Latest signed release APK built locally:
   - `app/build/outputs/apk/release/PaykiTodo-1.11.0-release.apk`
 - Latest fully built debug APK:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.13.10-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.13.11-debug.apk`
+- Current `1.13.11 / versionCode 259` status:
+  - This build improves launcher Widget spacing based on the 2026-05-22 device screenshot.
+  - 今日看板 Widget runtime and picker preview content padding now use wider horizontal margins so cards and section titles are not visually pressed against the rounded widget shell.
+  - 倒数日 Widget runtime and picker preview use wider outer padding, and countdown rows use larger start/end padding plus more spacing around the accent strip.
+  - Database version remains `25`; no schema or user-data migration was added.
+  - `git diff --check` passed.
+  - `./gradlew.bat :app:assembleDebug` passed.
+  - Debug APK metadata confirms `versionName = 1.13.11`, `versionCode = 259`, output `PaykiTodo-1.13.11-debug.apk`.
 - Current `1.13.10 / versionCode 258` status:
   - This build is a version-bumped debug rebuild on top of `docs/goals/2026-05-22-paykitodo-widget-followup-fix-goal.md` so Android can upgrade over an installed `1.13.9` build.
   - Widget todo/event accent strips use pure-rectangle strip drawables plus parent `clipToOutline` on todo cards and schedule event rows to reduce visual seams.

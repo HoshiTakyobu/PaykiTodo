@@ -8,9 +8,9 @@
     android:elevation="2dp"
     android:gravity="center_vertical"
     android:orientation="horizontal"
-    android:paddingStart="8dp"
+    android:paddingStart="14dp"
     android:paddingTop="6dp"
-    android:paddingEnd="10dp"
+    android:paddingEnd="14dp"
     android:paddingBottom="6dp">
 
     <TextView
@@ -58,8 +58,8 @@
         android:id="@+id/widget_countdown_strip"
         android:layout_width="5dp"
         android:layout_height="48dp"
-        android:layout_marginStart="6dp"
-        android:layout_marginEnd="8dp"
+        android:layout_marginStart="8dp"
+        android:layout_marginEnd="10dp"
         android:contentDescription="@null"
         android:scaleType="fitXY"
         android:src="@drawable/widget_vertical_pill" />

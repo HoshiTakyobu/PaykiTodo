@@ -2,9 +2,25 @@
 
 ## Active Development Focus
 
-Active immediate task: complete `docs/goals/2026-05-22-paykitodo-widget-followup-fix-goal.md` on the `1.13.10 / versionCode 258` line.
+Active immediate task: polish launcher Widget horizontal spacing on the `1.13.11 / versionCode 259` line.
 
 Do not push to GitHub unless the user explicitly asks.
+
+## Verification Completed For 1.13.11
+
+The `1.13.11 / versionCode 259` build addresses the user's 2026-05-22 screenshot feedback that both launcher widgets looked cramped against the left and right edges.
+
+1. Version metadata moved from `1.13.10 / versionCode 258` to `1.13.11 / versionCode 259`.
+2. Database version remains `25`; no schema, backup format, or user-data migration was added.
+3. 今日看板 Widget runtime and picker preview outer content padding increased from `6dp` to `14dp` horizontally and from `6dp` to `10dp` vertically.
+4. 倒数日 Widget runtime and picker preview outer content padding increased from `4dp` to `12dp` horizontally and from `4dp` to `8dp` vertically.
+5. 倒数日 row start/end padding increased to `14dp`, and the accent strip margins were widened for better visual breathing room.
+6. `git diff --check` passed.
+7. `./gradlew.bat :app:assembleDebug` passed.
+8. Debug APK metadata confirms:
+   - `versionName = 1.13.11`
+   - `versionCode = 259`
+   - output `PaykiTodo-1.13.11-debug.apk`
 
 ## Verification Completed For 1.13.10
 

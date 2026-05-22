@@ -233,6 +233,7 @@ internal fun CalendarPanel(
     var showActionsMenu by remember { mutableStateOf(false) }
     var pendingDeleteTarget by remember { mutableStateOf<TodoItem?>(null) }
     var handledTargetEventSerial by rememberSaveable { mutableStateOf(-1) }
+    var calendarEventDragActive by remember { mutableStateOf(false) }
     var monthVerticalDirection by remember { mutableStateOf(0L) }
     var agendaVerticalDirection by remember { mutableStateOf(0L) }
     var agendaRefreshing by remember { mutableStateOf(false) }
@@ -521,6 +522,7 @@ internal fun CalendarPanel(
                         HorizontalPager(
                             state = timelinePagerState,
                             modifier = Modifier.fillMaxSize(),
+                            userScrollEnabled = !calendarEventDragActive,
                             key = { page -> dateWindow.dateAt(page).toEpochDay() }
                         ) { page ->
                             val pageIndex = page.coerceIn(0, dateWindow.lastIndex)
@@ -611,6 +613,7 @@ internal fun CalendarPanel(
                                         onMoveEvent = { item, startAt, endAt ->
                                             draggingEvent = DraggingCalendarEvent(item, startAt, endAt)
                                         },
+                                        onEventDragActiveChange = { active -> calendarEventDragActive = active },
                                         currentDayIndex = currentDateIndex
                                     )
                                 }
@@ -1833,6 +1836,7 @@ private fun CalendarTimedBoard(
     onQuickCreateEvent: (LocalDateTime, LocalDateTime) -> Unit,
     onOpenDetails: (TodoItem) -> Unit,
     onMoveEvent: (TodoItem, LocalDateTime, LocalDateTime) -> Unit,
+    onEventDragActiveChange: (Boolean) -> Unit,
     currentDayIndex: Int
 ) {
     val density = LocalDensity.current
@@ -1913,7 +1917,8 @@ private fun CalendarTimedBoard(
                         horizontalOffsetPx = horizontalOffsetPx,
                         hourHeight = hourHeight,
                         onClick = { onOpenDetails(placement.segment.item) },
-                        onMove = onMoveEvent
+                        onMove = onMoveEvent,
+                        onDragActiveChange = onEventDragActiveChange
                     )
                 }
             }
@@ -2001,7 +2006,8 @@ private fun TimedEventCard(
     horizontalOffsetPx: Float,
     hourHeight: Dp,
     onClick: () -> Unit,
-    onMove: (TodoItem, LocalDateTime, LocalDateTime) -> Unit
+    onMove: (TodoItem, LocalDateTime, LocalDateTime) -> Unit,
+    onDragActiveChange: (Boolean) -> Unit
 ) {
     val item = segment.item
     val startDateTime = reminderAtMillisToDateTime(segment.startMillis)
@@ -2047,6 +2053,7 @@ private fun TimedEventCard(
             .pointerInput(item.id, dayColumnWidthPx, hourHeight) {
                 detectDragGesturesAfterLongPress(
                     onDragStart = {
+                        onDragActiveChange(true)
                         haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                     },
                     onDragEnd = {
@@ -2063,10 +2070,12 @@ private fun TimedEventCard(
                         if (newStart != startDateTime || newEnd != endDateTime) {
                             onMove(item, newStart, newEnd)
                         }
+                        onDragActiveChange(false)
                     },
                     onDragCancel = {
                         dragTranslationX = 0f
                         dragTranslationY = 0f
+                        onDragActiveChange(false)
                     }
                 ) { change, dragAmount ->
                     change.consume()

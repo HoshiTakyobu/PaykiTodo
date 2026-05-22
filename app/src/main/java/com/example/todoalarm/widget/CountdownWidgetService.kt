@@ -93,7 +93,7 @@ private class CountdownWidgetFactory(
     override fun getLoadingView(): RemoteViews {
         if (mutedText == 0) loadColors()
         return RemoteViews(context.packageName, R.layout.widget_todo_empty_card).apply {
-            setTextViewText(R.id.widget_empty_card_title, "加载中…")
+            setTextViewText(R.id.widget_empty_card_title, "⏳ 加载中…")
             setTextColor(R.id.widget_empty_card_title, mutedText)
         }
     }

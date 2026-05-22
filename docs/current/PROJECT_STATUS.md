@@ -7,8 +7,8 @@
 - Package name: `com.paykitodo.app`
 - Target platform: Android 14 / API 34
 - Current version in code:
-  - `versionName = "1.13.8"`
-  - `versionCode = 256`
+  - `versionName = "1.13.10"`
+  - `versionCode = 258`
 
 ## Current Build Facts
 
@@ -18,7 +18,20 @@
 - Latest signed release APK built locally:
   - `app/build/outputs/apk/release/PaykiTodo-1.11.0-release.apk`
 - Latest fully built debug APK:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.13.8-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.13.10-debug.apk`
+- Current `1.13.10 / versionCode 258` status:
+  - This build is a version-bumped debug rebuild on top of `docs/goals/2026-05-22-paykitodo-widget-followup-fix-goal.md` so Android can upgrade over an installed `1.13.9` build.
+  - Widget todo/event accent strips use pure-rectangle strip drawables plus parent `clipToOutline` on todo cards and schedule event rows to reduce visual seams.
+  - Widget schedule aggregate card background now matches the todo soft-card background in light and dark modes.
+  - Dark mode has a stronger overdue-badge background; loading rows display `⏳ 加载中…`.
+  - Countdown widget runtime and preview outer padding returned to 4dp while keeping the 3dp list divider.
+  - Calendar event long-press drag disables HorizontalPager user scrolling while dragging, reducing gesture conflict between event rescheduling and page swiping.
+  - Three-day Calendar paging is intentionally kept as one-day-at-a-time browsing.
+  - Database version remains `25`; no schema or user-data migration was added.
+  - `./gradlew.bat :app:compileDebugKotlin` passed after code changes on the `1.13.9` line.
+  - `git diff --check` passed.
+  - `./gradlew.bat :app:assembleDebug` passed.
+  - Debug APK metadata confirms `versionName = 1.13.10`, `versionCode = 258`, output `PaykiTodo-1.13.10-debug.apk`.
 - Current `1.13.8 / versionCode 256` status:
   - This build implements `docs/goals/2026-05-22-paykitodo-widget-ux-overhaul-goal.md`.
   - Android board/countdown widgets no longer include the app wallpaper ImageView layer; runtime layouts and static previews use fixed light/dark widget backgrounds plus a very light scrim.

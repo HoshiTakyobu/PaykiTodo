@@ -1,5 +1,24 @@
 # Changelog
 
+## v1.13.10
+
+- 提升调试包版本号，确保 Android 在已安装 `1.13.9` 或同版本本地构建时把新 APK 识别为可升级安装包
+- 本轮版本元数据沿用 `1.13.9` 工作线的 Widget follow-up 和日历 Pager 回归防护改动；不额外引入数据库结构、提醒逻辑、规划台逻辑或用户数据格式变更
+- 数据库保持 `25`
+- 版本号升级到 `1.13.10` / `versionCode 258`
+- 验证：`git diff --check`、`./gradlew.bat :app:assembleDebug` 通过；debug APK 元数据确认 `1.13.10 / 258`
+
+## v1.13.9
+
+- 修正 Widget 待办和日程色条的一体化裁剪：色条 drawable 改为纯矩形，待办卡和日程事件行启用 `clipToOutline`，避免色条与卡片边缘出现拼接裂缝
+- 统一 Widget 日程聚合卡与待办卡背景：浅色 / 深色 `widget_todo_item_background` 与软卡片底板保持同色、同圆角、同描边风格
+- 深色模式新增逾期 badge 背景变体，提升 `已逾期` 标签可见度；loading 文案改为 `⏳ 加载中…` 以区别普通空状态
+- 倒数日 Widget 和添加页预览的外层 padding 从 6dp 回退到 4dp，保持上一轮“收紧 padding”的目标
+- 日历 Pager 回归防护：事件块长按拖拽期间禁用 `HorizontalPager` 用户翻页，降低事件横向改期与 Pager 翻页抢手势的风险；三日视图继续保持每次横向翻 1 天的浏览语义
+- 数据库保持 `25`，本轮不新增 schema 或用户数据格式迁移
+- 版本号升级到 `1.13.9` / `versionCode 257`
+- 验证：`./gradlew.bat :app:compileDebugKotlin` 已通过；最终 `git diff --check`、`./gradlew.bat :app:assembleDebug`、APK 元数据和模拟器日历回归检查待执行
+
 ## v1.13.8
 
 - Android 今日看板和倒数日 Widget 移除应用壁纸背景层，改用固定浅色暖白 / 深色灰黑圆角底板和极淡 scrim，添加页静态预览同步使用新背景

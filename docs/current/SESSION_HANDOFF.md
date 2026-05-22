@@ -6,20 +6,37 @@
 - Branch: `main`
 - Do not push to GitHub unless the user explicitly authorizes it.
 - Current code version:
-  - `versionName = 1.13.8`
-  - `versionCode = 256`
+  - `versionName = 1.13.10`
+  - `versionCode = 258`
 - Latest debug APK target in this round:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.13.8-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.13.10-debug.apk`
 - Debug APK metadata inspection:
-  - `versionName = 1.13.8`
-  - `versionCode = 256`
-  - output `PaykiTodo-1.13.8-debug.apk`
+  - `versionName = 1.13.10`
+  - `versionCode = 258`
 
 ## Active Goal
 
-Active immediate task: complete `docs/goals/2026-05-22-paykitodo-widget-ux-overhaul-goal.md` on the `1.13.8 / versionCode 256` line.
+Active immediate task: complete `docs/goals/2026-05-22-paykitodo-widget-followup-fix-goal.md` on the `1.13.10 / versionCode 258` line.
 
-Latest status: code changes are implemented and verified with `./gradlew.bat :app:compileDebugKotlin`, `git diff --check`, `./gradlew.bat :app:assembleDebug`, APK metadata inspection, and a `Pixel_8 / emulator-5554` calendar launch smoke test. Feature and goal-archive commits are in place; completion audit is pending. Do not push to GitHub unless the user explicitly authorizes it.
+Latest status: code changes are implemented and `./gradlew.bat :app:compileDebugKotlin` passed on the previous `1.13.9` line. The current `1.13.10 / versionCode 258` bump is for Android upgrade installability. `git diff --check`, `./gradlew.bat :app:assembleDebug`, and APK metadata inspection have passed. Commit and completion audit are pending. Do not push to GitHub unless the user explicitly authorizes it.
+
+## What Changed In The Latest 1.13.10 Patch
+
+1. Version metadata moved to `1.13.10 / versionCode 258` so Android can upgrade over an installed `1.13.9` debug build.
+2. This patch carries the same Widget follow-up and Calendar Pager regression-guard behavior from the current work line.
+3. Database version remains `25`; no schema or user-data format change was introduced.
+4. Verification passed: `git diff --check`, `./gradlew.bat :app:assembleDebug`; APK metadata confirms `1.13.10 / 258`.
+
+## What Changed In The Latest 1.13.9 Patch
+
+1. Version metadata moved to `1.13.9 / versionCode 257`.
+2. Widget todo/event accent strips use a pure-rectangle strip drawable, with parent card/row `clipToOutline` handling rounded clipping to reduce strip-card seams.
+3. Widget schedule aggregate card backgrounds now match todo soft-card backgrounds in light and dark modes.
+4. Dark mode has a stronger overdue badge background; loading rows display `⏳ 加载中…`.
+5. Countdown widget runtime and picker preview outer padding returned to `4dp`.
+6. Calendar event long-press drag disables Pager user scrolling while dragging; three-day paging intentionally remains one day per page.
+7. Database version remains `25`; no schema or user-data format change was introduced.
+8. Verification so far: `./gradlew.bat :app:compileDebugKotlin` passed. Final assemble, metadata, and emulator checks pending.
 
 ## What Changed In The Latest 1.13.8 Patch
 

@@ -2,9 +2,27 @@
 
 ## Active Development Focus
 
-Active immediate task: complete `docs/goals/2026-05-22-paykitodo-widget-ux-overhaul-goal.md` on the `1.13.8 / versionCode 256` line.
+Active immediate task: complete `docs/goals/2026-05-22-paykitodo-widget-followup-fix-goal.md` on the `1.13.10 / versionCode 258` line.
 
 Do not push to GitHub unless the user explicitly asks.
+
+## Verification Completed For 1.13.10
+
+The `1.13.10 / versionCode 258` build is a version-bumped debug rebuild of the Widget follow-up fixes and Calendar Pager regression guard so Android can upgrade over an installed `1.13.9` build.
+
+1. Version metadata moved from `1.13.9 / versionCode 257` to `1.13.10 / versionCode 258`.
+2. Database version remains `25`; no schema, backup format, or user-data migration was added.
+3. Widget todo/event accent strips use pure-rectangle `widget_vertical_pill` and parent `clipToOutline` on todo card / schedule event rows.
+4. Widget schedule card background now matches the soft todo card background in light and dark modes.
+5. Dark-mode overdue badge background exists under `drawable-night`; countdown widget runtime and preview padding returned to `4dp`.
+6. Calendar event long-press drag disables Pager user scrolling while dragging; three-day paging remains one day per page by design.
+7. `./gradlew.bat :app:compileDebugKotlin` passed after code changes.
+8. `git diff --check` passed.
+9. `./gradlew.bat :app:assembleDebug` passed.
+10. Debug APK metadata confirms:
+   - `versionName = 1.13.10`
+   - `versionCode = 258`
+   - output `PaykiTodo-1.13.10-debug.apk`
 
 ## Verification Completed For 1.13.8
 

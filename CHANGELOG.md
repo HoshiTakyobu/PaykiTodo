@@ -8,6 +8,7 @@
 - 数据库保持 `25`，本轮不新增 schema 或用户数据格式迁移
 - 版本号升级到 `1.13.11` / `versionCode 259`
 - 验证：`git diff --check`、`./gradlew.bat :app:assembleDebug`、`./gradlew.bat :app:assembleRelease` 通过；debug/release APK 元数据确认 `1.13.11 / 259`，release APK 签名校验通过 v2 scheme
+- 发布：GitHub Release `v1.13.11` 已创建并上传 `PaykiTodo-1.13.11-release.apk`
 
 ## v1.13.10
 

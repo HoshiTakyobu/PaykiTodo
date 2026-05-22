@@ -9,7 +9,7 @@
 - 手机日历日视图 / 三日视图改由 `HorizontalPager` 驱动横向翻页，替代手动 `scrollable` 偏移；待办 LazyColumn 同类卡片补充 `contentType` 以降低大量列表滚动复用成本
 - 数据库保持 `25`，本轮不新增 schema 或用户数据格式迁移
 - 版本号升级到 `1.13.8` / `versionCode 256`
-- 验证：`./gradlew.bat :app:compileDebugKotlin`、`git diff --check`、`./gradlew.bat :app:assembleDebug` 通过；debug APK 元数据确认 `1.13.8 / 256`
+- 验证：`./gradlew.bat :app:compileDebugKotlin`、`git diff --check`、`./gradlew.bat :app:assembleDebug` 通过；debug APK 元数据确认 `1.13.8 / 256`；`Pixel_8 / emulator-5554` 安装后通过日历 deep link 启动，无 AndroidRuntime 崩溃
 
 ## v1.13.7
 

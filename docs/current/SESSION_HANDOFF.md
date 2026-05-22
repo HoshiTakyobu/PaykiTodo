@@ -19,7 +19,7 @@
 
 Active immediate task: complete `docs/goals/2026-05-22-paykitodo-widget-ux-overhaul-goal.md` on the `1.13.8 / versionCode 256` line.
 
-Latest status: code changes are implemented and verified with `./gradlew.bat :app:compileDebugKotlin`, `git diff --check`, `./gradlew.bat :app:assembleDebug`, and APK metadata inspection. Commit and completion audit are still pending. Do not push to GitHub unless the user explicitly authorizes it.
+Latest status: code changes are implemented and verified with `./gradlew.bat :app:compileDebugKotlin`, `git diff --check`, `./gradlew.bat :app:assembleDebug`, APK metadata inspection, and a `Pixel_8 / emulator-5554` calendar launch smoke test. Feature and goal-archive commits are in place; completion audit is pending. Do not push to GitHub unless the user explicitly authorizes it.
 
 ## What Changed In The Latest 1.13.8 Patch
 
@@ -30,6 +30,7 @@ Latest status: code changes are implemented and verified with `./gradlew.bat :ap
 5. Calendar day/three-day timeline paging now uses Compose `HorizontalPager`; dashboard todo LazyColumn rows add `contentType` while keeping stable item keys.
 6. Database version remains `25`; no schema or user-data format change was introduced.
 7. Verification passed: `./gradlew.bat :app:compileDebugKotlin`, `git diff --check`, `./gradlew.bat :app:assembleDebug`; APK metadata confirms `1.13.8 / 256`.
+8. Emulator smoke test: `Pixel_8 / emulator-5554` installed `PaykiTodo-1.13.8-debug.apk`, launched `MainActivity` with `EXTRA_OPEN_CALENDAR=true`, UI dump confirmed `日历` / `三日视图`, and logcat showed no AndroidRuntime fatal crash.
 
 ## What Changed In The Latest 1.13.7 Patch
 

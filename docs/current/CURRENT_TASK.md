@@ -23,6 +23,7 @@ The `1.13.8 / versionCode 256` build implements the Widget UX overhaul and calen
    - `versionName = 1.13.8`
    - `versionCode = 256`
    - output `PaykiTodo-1.13.8-debug.apk`
+11. Emulator `Pixel_8 / emulator-5554` installed the debug APK and launched the calendar deep link; UI dump showed the `日历` / `三日视图` surface and logcat contained no AndroidRuntime fatal crash.
 
 ## Verification Completed For 1.13.7
 

@@ -30,6 +30,7 @@
   - `git diff --check`
   - `./gradlew.bat :app:assembleDebug`
   - Debug APK metadata confirms `versionName = 1.13.8`, `versionCode = 256`, output `PaykiTodo-1.13.8-debug.apk`.
+  - Emulator `Pixel_8 / emulator-5554` installed `PaykiTodo-1.13.8-debug.apk`, launched `MainActivity` with `EXTRA_OPEN_CALENDAR=true`, and UI dump confirmed the Calendar / `三日视图` surface without AndroidRuntime fatal errors.
 - Current `1.13.7 / versionCode 255` status:
   - This is a metadata-only rebuild on top of the current `1.13.6` code line so Android can upgrade over an installed `1.13.6` debug build.
   - No additional database schema, reminder behavior, Planning Desk behavior, Widget behavior, or user-data format change was intentionally introduced by this version bump.

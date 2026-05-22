@@ -21,6 +21,12 @@ The `1.13.11 / versionCode 259` build addresses the user's 2026-05-22 screenshot
    - `versionName = 1.13.11`
    - `versionCode = 259`
    - output `PaykiTodo-1.13.11-debug.apk`
+9. `./gradlew.bat :app:assembleRelease` passed.
+10. Release APK metadata confirms:
+   - `versionName = 1.13.11`
+   - `versionCode = 259`
+   - output `PaykiTodo-1.13.11-release.apk`
+   - `apksigner verify --verbose` reports `Verifies` with APK Signature Scheme v2.
 
 ## Verification Completed For 1.13.10
 

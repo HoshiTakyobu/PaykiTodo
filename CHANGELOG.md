@@ -7,7 +7,7 @@
 - 倒数日卡片内部左右 padding 提高到 14dp，并放大竖线与文字区之间的呼吸感，让倒数时间、颜色竖线和事项标题不再挤在边缘
 - 数据库保持 `25`，本轮不新增 schema 或用户数据格式迁移
 - 版本号升级到 `1.13.11` / `versionCode 259`
-- 验证：`git diff --check`、`./gradlew.bat :app:assembleDebug` 通过；debug APK 元数据确认 `1.13.11 / 259`
+- 验证：`git diff --check`、`./gradlew.bat :app:assembleDebug`、`./gradlew.bat :app:assembleRelease` 通过；debug/release APK 元数据确认 `1.13.11 / 259`，release APK 签名校验通过 v2 scheme
 
 ## v1.13.10
 

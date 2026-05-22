@@ -10,6 +10,8 @@
   - `versionCode = 259`
 - Latest debug APK target in this round:
   - `app/build/outputs/apk/debug/PaykiTodo-1.13.11-debug.apk`
+- Latest signed release APK target in this round:
+  - `app/build/outputs/apk/release/PaykiTodo-1.13.11-release.apk`
 - Debug APK metadata inspection:
   - `versionName = 1.13.11`
   - `versionCode = 259`
@@ -18,14 +20,14 @@
 
 Active immediate task: polish launcher Widget horizontal spacing on the `1.13.11 / versionCode 259` line.
 
-Latest status: Widget spacing changes are implemented and version metadata has moved to `1.13.11 / versionCode 259`. `git diff --check`, `./gradlew.bat :app:assembleDebug`, and APK metadata inspection have passed. Commit is pending. Do not push to GitHub unless the user explicitly authorizes it.
+Latest status: Widget spacing changes are implemented and version metadata has moved to `1.13.11 / versionCode 259`. `git diff --check`, `./gradlew.bat :app:assembleDebug`, `./gradlew.bat :app:assembleRelease`, APK metadata inspection, and release signature verification have passed. Push to GitHub is authorized by the user in the current turn.
 
 ## What Changed In The Latest 1.13.11 Patch
 
 1. 今日看板 Widget runtime and picker preview outer content padding increased so section titles and cards no longer sit too close to the widget shell's left and right edges.
 2. 倒数日 Widget runtime and picker preview outer content padding increased; countdown row internal start/end padding and accent-strip spacing were widened.
 3. Database version remains `25`; no schema or user-data format change was introduced.
-4. Verification passed: `git diff --check`, `./gradlew.bat :app:assembleDebug`; APK metadata confirms `1.13.11 / 259`.
+4. Verification passed: `git diff --check`, `./gradlew.bat :app:assembleDebug`, `./gradlew.bat :app:assembleRelease`; debug/release APK metadata confirms `1.13.11 / 259`, and release signature verification reports `Verifies`.
 
 ## What Changed In The Latest 1.13.10 Patch
 

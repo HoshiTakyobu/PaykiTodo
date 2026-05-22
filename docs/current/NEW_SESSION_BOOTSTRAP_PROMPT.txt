@@ -14,7 +14,7 @@ Read in this order:
 
 Then inspect:
 8. README.md
-9. TODO.md
+9. docs/current/PROJECT_BACKLOG.md
 10. CHANGELOG.md
 11. git status
 

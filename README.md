@@ -1,5 +1,10 @@
 # PaykiTodo
 
+[![Latest release](https://img.shields.io/github/v/release/HoshiTakyobu/PaykiTodo?label=release)](https://github.com/HoshiTakyobu/PaykiTodo/releases/latest)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Android](https://img.shields.io/badge/platform-Android-green.svg)](app)
+[![CI](https://github.com/HoshiTakyobu/PaykiTodo/actions/workflows/android-ci.yml/badge.svg)](https://github.com/HoshiTakyobu/PaykiTodo/actions/workflows/android-ci.yml)
+
 PaykiTodo 是一个以 **强提醒、本地可控、日程与待办一体化** 为核心的 Android 个人任务管理应用。
 
 它面向这样的使用场景：
@@ -181,6 +186,8 @@ PaykiTodo 以 MIT License 开源。你可以在遵守许可证条款的前提下
 
 - 贡献说明：[`CONTRIBUTING.md`](CONTRIBUTING.md)
 - 安全说明：[`SECURITY.md`](SECURITY.md)
+- 支持说明：[`SUPPORT.md`](SUPPORT.md)
+- 行为规范：[`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md)
 - 版本记录：[`CHANGELOG.md`](CHANGELOG.md)
 
 提交 Issue 或 Pull Request 时，请不要包含：
@@ -201,6 +208,8 @@ PaykiTodo 以 MIT License 开源。你可以在遵守许可证条款的前提下
 | `NOTICE.md` | 开源与第三方依赖声明 |
 | `PRIVACY.md` | 隐私与数据处理说明 |
 | `SECURITY.md` | 安全报告与敏感信息处理说明 |
+| `SUPPORT.md` | 提问、报错和支持边界 |
+| `CODE_OF_CONDUCT.md` | 社区讨论行为规范 |
 | `CONTRIBUTING.md` | 本地开发、提交和发布约束 |
 | `docs/current/` | 当前维护状态、设计意图和会话交接文档 |
 | `docs/archive/` | 历史文档归档 |
@@ -210,4 +219,4 @@ PaykiTodo 以 MIT License 开源。你可以在遵守许可证条款的前提下
 PaykiTodo 仍处于快速迭代阶段。功能覆盖已经较广，但 UI 细节、厂商 ROM 提醒稳定性、桌面端功能一致性和文档仍在持续打磨。
 
 如果你只是想安装使用，请优先下载最新 GitHub Release。
-如果你要参与开发，请先阅读 `AGENTS.md`、`CONTRIBUTING.md` 和 `docs/current/` 下的当前状态文档。
+如果你要参与开发，请先阅读 `AGENTS.md`、`CONTRIBUTING.md` 和 `docs/current/` 下的当前状态文档；内部维护 backlog 位于 `docs/current/PROJECT_BACKLOG.md`。

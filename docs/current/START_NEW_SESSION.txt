@@ -13,7 +13,7 @@ Read in this order:
 7. docs/current/PAYKITODO_SESSION_LEDGER.md
 8. docs/current/SESSION_WORKFLOW_MANUAL.md
 9. README.md
-10. TODO.md
+10. docs/current/PROJECT_BACKLOG.md
 11. CHANGELOG.md
 
 Then inspect:

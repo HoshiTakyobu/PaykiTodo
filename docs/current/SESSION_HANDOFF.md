@@ -33,6 +33,8 @@ The public repository documentation is being reorganized:
 3. Root-level public governance files now exist or are being added: `LICENSE`, `NOTICE.md`, `PRIVACY.md`, `SECURITY.md`, `CONTRIBUTING.md`.
 4. Keep secret files out of git. Confirm `git check-ignore -v keystore.properties release/PaykiTodo-release.jks` before the final commit if release/signing docs are touched.
 5. After local commit, update GitHub Release `v1.13.11` body to the cleaner public release-note format and push `main`.
+6. The current standardization pass adds `.github` issue templates, PR template, Android CI, `SUPPORT.md`, `CODE_OF_CONDUCT.md`, README badges, and moves internal bootstrap/backlog files out of the root directory.
+7. Local verification for this pass: `git diff --check`, `./gradlew.bat :app:testDebugUnitTest`, ignored-secret checks, and secret-pattern scan over public docs / `.github` / current docs.
 
 ## What Changed In The Latest 1.13.11 Patch
 

@@ -81,5 +81,5 @@ Do not move to an independently hosted Web app unless there is a clear product r
 
 - API / LAN server logic belongs in `app/src/main/java/com/example/todoalarm/sync/`.
 - Desktop browser UI belongs in `app/src/main/assets/desktop-web/`.
-- If Web UI behavior changes, update `CHANGELOG.md`, `TODO.md`, and the current docs in the same round.
+- If Web UI behavior changes, update `CHANGELOG.md`, `docs/current/PROJECT_BACKLOG.md`, and the current docs in the same round.
 - If API contracts change, document both the Android-side handler and the Web-side caller.

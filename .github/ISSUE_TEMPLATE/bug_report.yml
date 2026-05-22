@@ -1,0 +1,70 @@
+name: Bug report
+description: Report a reproducible PaykiTodo bug.
+title: "[Bug] "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting a bug. Remove private schedule data, API keys, tokens, backups, and signing material before submitting.
+  - type: input
+    id: version
+    attributes:
+      label: App version
+      description: Example: 1.13.11 / versionCode 259
+      placeholder: 1.13.11 / 259
+    validations:
+      required: true
+  - type: input
+    id: device
+    attributes:
+      label: Device and Android version
+      placeholder: Xiaomi / OPPO / Pixel ..., Android ...
+    validations:
+      required: true
+  - type: dropdown
+    id: build_type
+    attributes:
+      label: Build type
+      options:
+        - Release APK from GitHub
+        - Local debug build
+        - Local release build
+        - Unknown
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Reproduction steps
+      description: List exact steps.
+      placeholder: |
+        1. Open ...
+        2. Tap ...
+        3. Observe ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs or screenshots
+      description: Optional. Redact personal data and secrets.
+  - type: checkboxes
+    id: privacy
+    attributes:
+      label: Privacy check
+      options:
+        - label: I removed API keys, tokens, private Base URLs, backups, signing material, and personal schedule data.
+          required: true

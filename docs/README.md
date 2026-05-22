@@ -9,6 +9,13 @@ This directory is intentionally split by document lifecycle.
 Use this folder as the live project baseline. New sessions should read `AGENTS.md`
 first, then the required files under `docs/current/`.
 
+Internal maintenance files that should not clutter the public repository root also live under `docs/current/`, including:
+
+- `START_NEW_SESSION.txt`
+- `PROJECT_BACKLOG.md`
+
+Long obsolete backlog material is archived under `docs/archive/historical/`.
+
 ## Historical archive
 
 - `docs/archive/historical/`

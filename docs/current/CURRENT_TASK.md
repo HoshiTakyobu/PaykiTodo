@@ -20,6 +20,16 @@ The public repository surface is being reorganized so GitHub readers can underst
    - `CONTRIBUTING.md`
 4. GitHub Release `v1.13.11` body should be updated to match the cleaned public presentation.
 5. Before committing and pushing, verify ignored signing files remain ignored and no secret-like files are staged.
+6. Repository standardization should add `.github` issue templates, PR template, Android CI, support / code-of-conduct files, README badges, and move internal root files into `docs/current/` or `docs/archive/`.
+
+## Verification For Repository Standardization
+
+Completed locally before commit:
+
+1. `git diff --check`
+2. `./gradlew.bat :app:testDebugUnitTest`
+3. `git check-ignore -v keystore.properties release/PaykiTodo-release.jks .env app/build/outputs/apk/release/PaykiTodo-1.13.11-release.apk`
+4. Secret-pattern scan over public docs, `.github`, and `docs/current/` found no real API key / token / private key; matches were only documentation examples and rule text.
 
 After checks pass, push the documentation cleanup to GitHub because the user explicitly requested the GitHub-facing presentation to be cleaned up.
 

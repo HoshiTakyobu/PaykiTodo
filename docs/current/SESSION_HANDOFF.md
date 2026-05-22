@@ -6,20 +6,28 @@
 - Branch: `main`
 - Do not push to GitHub unless the user explicitly authorizes it.
 - Current code version:
-  - `versionName = 1.13.6`
-  - `versionCode = 254`
+  - `versionName = 1.13.7`
+  - `versionCode = 255`
 - Latest debug APK target in this round:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.13.6-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.13.7-debug.apk`
 - Debug APK metadata inspection:
-  - `versionName = 1.13.6`
-  - `versionCode = 254`
-  - output `PaykiTodo-1.13.6-debug.apk`
+  - `versionName = 1.13.7`
+  - `versionCode = 255`
+  - output `PaykiTodo-1.13.7-debug.apk`
 
 ## Active Goal
 
-Active goal: complete `docs/goals/2026-05-22-paykitodo-6-ux-polish-goal.md` and `docs/goals/2026-05-22-paykitodo-m1-m2-m4-m5-goal.md`.
+Active immediate task: metadata-only rebuild to `1.13.7 / versionCode 255` so Android can install over the existing `1.13.6` debug build.
 
-Latest status: the code line is `1.13.6 / versionCode 254`. This round is completing `docs/goals/2026-05-22-paykitodo-6-ux-polish-goal.md` plus `docs/goals/2026-05-22-paykitodo-m1-m2-m4-m5-goal.md`. Do not push to GitHub unless the user explicitly authorizes it.
+Latest status: the code line is `1.13.7 / versionCode 255`. The local widget UX goal file `docs/goals/2026-05-22-paykitodo-widget-ux-overhaul-goal.md` is present but not part of this metadata-only rebuild. Do not push to GitHub unless the user explicitly authorizes it.
+
+## What Changed In The Latest 1.13.7 Patch
+
+1. Version metadata moved to `1.13.7 / versionCode 255`.
+2. This rebuild exists so Android can install over an already-installed `1.13.6` debug build.
+3. No additional database schema, reminder behavior, Planning Desk behavior, Widget behavior, or user-data format change was intentionally introduced by this version bump.
+4. Latest debug APK target is `app/build/outputs/apk/debug/PaykiTodo-1.13.7-debug.apk`.
+5. Verification passed: `git diff --check`, `./gradlew.bat :app:assembleDebug`; APK metadata confirms `1.13.7 / 255`.
 
 ## What Changed In The Latest 1.13.6 Patch
 

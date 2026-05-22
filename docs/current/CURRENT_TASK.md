@@ -2,9 +2,23 @@
 
 ## Active Development Focus
 
-Active goal: complete `docs/goals/2026-05-22-paykitodo-6-ux-polish-goal.md` and `docs/goals/2026-05-22-paykitodo-m1-m2-m4-m5-goal.md`.
+Active immediate task: metadata-only rebuild to `1.13.7 / versionCode 255` so Android can install over the existing `1.13.6` debug build.
 
-The working tree is now on the `1.13.6 / versionCode 254` line. This round closes the 6-item UX polish goal plus M1/M2/M4/M5: Planning Desk drag reorder and Outliner undo, recurring-todo folding, reminder-page visual upgrade, ongoing event notifications, alarm mode, daily brief, global search, and data health cleanup. Do not push to GitHub unless the user explicitly asks.
+The broader widget UX goal file `docs/goals/2026-05-22-paykitodo-widget-ux-overhaul-goal.md` exists locally but is not part of this metadata-only rebuild. Do not push to GitHub unless the user explicitly asks.
+
+## Verification Completed For 1.13.7
+
+The `1.13.7 / versionCode 255` rebuild is intended to let Android upgrade over the installed `1.13.6` debug build.
+
+1. Version metadata moved from `1.13.6 / versionCode 254` to `1.13.7 / versionCode 255`.
+2. No additional database schema, reminder behavior, Planning Desk behavior, Widget behavior, or user-data format change was intentionally introduced by this version bump.
+3. The generated debug APK target is `app/build/outputs/apk/debug/PaykiTodo-1.13.7-debug.apk`.
+4. `git diff --check` passed.
+5. `./gradlew.bat :app:assembleDebug` passed.
+6. Debug APK metadata confirms:
+   - `versionName = 1.13.7`
+   - `versionCode = 255`
+   - output `PaykiTodo-1.13.7-debug.apk`
 
 ## Verification Completed For 1.13.6
 

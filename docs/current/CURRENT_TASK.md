@@ -2,9 +2,26 @@
 
 ## Active Development Focus
 
-Active immediate task: polish launcher Widget horizontal spacing on the `1.13.11 / versionCode 259` line.
+Active immediate task: polish GitHub-facing project documentation after publishing `v1.13.11`.
 
-Do not push to GitHub unless the user explicitly asks.
+Do not commit secrets, signing material, API keys, private Base URLs, generated APK/AAB outputs, or personal backups/logs. The repository already ignores `keystore.properties`, `release/`, `*.apk`, `*.jks`, `.env*`, and local temp files.
+
+## Documentation Cleanup In Progress
+
+The public repository surface is being reorganized so GitHub readers can understand the app without reading internal session logs.
+
+1. README should describe the app, current version, download/install path, major features, local build process, privacy boundary, open-source license, and contribution/security links.
+2. CHANGELOG should be a structured user-facing release log, not a long uncurated internal debug journal.
+3. Root-level open-source and governance files should exist:
+   - `LICENSE`
+   - `NOTICE.md`
+   - `PRIVACY.md`
+   - `SECURITY.md`
+   - `CONTRIBUTING.md`
+4. GitHub Release `v1.13.11` body should be updated to match the cleaned public presentation.
+5. Before committing and pushing, verify ignored signing files remain ignored and no secret-like files are staged.
+
+After checks pass, push the documentation cleanup to GitHub because the user explicitly requested the GitHub-facing presentation to be cleaned up.
 
 ## Verification Completed For 1.13.11
 

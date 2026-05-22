@@ -4,7 +4,7 @@
 
 - Repository root: `G:\Workspace\Project\PaykiTodo`
 - Branch: `main`
-- Do not push to GitHub unless the user explicitly authorizes it.
+- User has requested GitHub-facing documentation cleanup. Push is appropriate after the documentation cleanup is committed and checked, because the requested change targets GitHub presentation.
 - Current code version:
   - `versionName = 1.13.11`
   - `versionCode = 259`
@@ -23,6 +23,16 @@
 Active immediate task: polish launcher Widget horizontal spacing on the `1.13.11 / versionCode 259` line.
 
 Latest status: Widget spacing changes are implemented and version metadata has moved to `1.13.11 / versionCode 259`. `git diff --check`, `./gradlew.bat :app:assembleDebug`, `./gradlew.bat :app:assembleRelease`, APK metadata inspection, and release signature verification have passed. Main branch and tags have been pushed, and GitHub Release `v1.13.11` includes the signed release APK.
+
+## Current Documentation Cleanup
+
+The public repository documentation is being reorganized:
+
+1. `README.md` should stay concise and public-facing: app purpose, latest release, install path, feature overview, build commands, privacy/open-source/contribution links.
+2. `CHANGELOG.md` should stay structured by version / milestone and should not return to a huge internal session journal.
+3. Root-level public governance files now exist or are being added: `LICENSE`, `NOTICE.md`, `PRIVACY.md`, `SECURITY.md`, `CONTRIBUTING.md`.
+4. Keep secret files out of git. Confirm `git check-ignore -v keystore.properties release/PaykiTodo-release.jks` before the final commit if release/signing docs are touched.
+5. After local commit, update GitHub Release `v1.13.11` body to the cleaner public release-note format and push `main`.
 
 ## What Changed In The Latest 1.13.11 Patch
 

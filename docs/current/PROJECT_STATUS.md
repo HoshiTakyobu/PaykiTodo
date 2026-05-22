@@ -6,6 +6,7 @@
 - Branch: `main`
 - Package name: `com.paykitodo.app`
 - Target platform: Android 14 / API 34
+- License: MIT License (`LICENSE`)
 - Current version in code:
   - `versionName = "1.13.11"`
   - `versionCode = 259`
@@ -32,6 +33,7 @@
   - `./gradlew.bat :app:assembleRelease` passed.
   - Release APK metadata confirms `versionName = 1.13.11`, `versionCode = 259`, output `PaykiTodo-1.13.11-release.apk`; `apksigner verify --verbose` reports `Verifies` with APK Signature Scheme v2.
   - GitHub Release `v1.13.11` was created and includes `PaykiTodo-1.13.11-release.apk`.
+  - GitHub-facing documentation has been reorganized: README is now a public project overview, CHANGELOG is a structured user-facing release log, and root-level `LICENSE`, `NOTICE.md`, `PRIVACY.md`, `SECURITY.md`, and `CONTRIBUTING.md` define open-source, privacy, security, and contribution boundaries.
 - Current `1.13.10 / versionCode 258` status:
   - This build is a version-bumped debug rebuild on top of `docs/goals/2026-05-22-paykitodo-widget-followup-fix-goal.md` so Android can upgrade over an installed `1.13.9` build.
   - Widget todo/event accent strips use pure-rectangle strip drawables plus parent `clipToOutline` on todo cards and schedule event rows to reduce visual seams.

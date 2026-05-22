@@ -7,8 +7,8 @@
 - Package name: `com.paykitodo.app`
 - Target platform: Android 14 / API 34
 - Current version in code:
-  - `versionName = "1.13.7"`
-  - `versionCode = 255`
+  - `versionName = "1.13.8"`
+  - `versionCode = 256`
 
 ## Current Build Facts
 
@@ -18,7 +18,18 @@
 - Latest signed release APK built locally:
   - `app/build/outputs/apk/release/PaykiTodo-1.11.0-release.apk`
 - Latest fully built debug APK:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.13.7-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.13.8-debug.apk`
+- Current `1.13.8 / versionCode 256` status:
+  - This build implements `docs/goals/2026-05-22-paykitodo-widget-ux-overhaul-goal.md`.
+  - Android board/countdown widgets no longer include the app wallpaper ImageView layer; runtime layouts and static previews use fixed light/dark widget backgrounds plus a very light scrim.
+  - Board widget todo cards remove the non-functional checkbox circle, use a tighter integrated color strip/card structure, and show overdue tasks as `已逾期`.
+  - Board/countdown widget list/card padding is tightened; board and countdown RemoteViews factories return a custom `加载中…` view instead of the system loading spinner.
+  - Calendar day/three-day timeline paging now uses Compose `HorizontalPager` instead of a manual `scrollable` horizontal offset; todo LazyColumn rows keep stable keys and now add content types for card reuse.
+  - Database version remains `25`; no schema or user-data migration was added.
+  - `./gradlew.bat :app:compileDebugKotlin` passed after code changes.
+  - `git diff --check`
+  - `./gradlew.bat :app:assembleDebug`
+  - Debug APK metadata confirms `versionName = 1.13.8`, `versionCode = 256`, output `PaykiTodo-1.13.8-debug.apk`.
 - Current `1.13.7 / versionCode 255` status:
   - This is a metadata-only rebuild on top of the current `1.13.6` code line so Android can upgrade over an installed `1.13.6` debug build.
   - No additional database schema, reminder behavior, Planning Desk behavior, Widget behavior, or user-data format change was intentionally introduced by this version bump.

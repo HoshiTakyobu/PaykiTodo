@@ -90,7 +90,13 @@ private class CountdownWidgetFactory(
         }
     }
 
-    override fun getLoadingView(): RemoteViews? = null
+    override fun getLoadingView(): RemoteViews {
+        if (mutedText == 0) loadColors()
+        return RemoteViews(context.packageName, R.layout.widget_todo_empty_card).apply {
+            setTextViewText(R.id.widget_empty_card_title, "加载中…")
+            setTextColor(R.id.widget_empty_card_title, mutedText)
+        }
+    }
     override fun getViewTypeCount(): Int = 1
     override fun getItemId(position: Int): Long = rows.getOrNull(position)?.item?.id ?: position.toLong()
     override fun hasStableIds(): Boolean = true

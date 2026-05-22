@@ -6,20 +6,30 @@
 - Branch: `main`
 - Do not push to GitHub unless the user explicitly authorizes it.
 - Current code version:
-  - `versionName = 1.13.7`
-  - `versionCode = 255`
+  - `versionName = 1.13.8`
+  - `versionCode = 256`
 - Latest debug APK target in this round:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.13.7-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.13.8-debug.apk`
 - Debug APK metadata inspection:
-  - `versionName = 1.13.7`
-  - `versionCode = 255`
-  - output `PaykiTodo-1.13.7-debug.apk`
+  - `versionName = 1.13.8`
+  - `versionCode = 256`
+  - output `PaykiTodo-1.13.8-debug.apk`
 
 ## Active Goal
 
-Active immediate task: metadata-only rebuild to `1.13.7 / versionCode 255` so Android can install over the existing `1.13.6` debug build.
+Active immediate task: complete `docs/goals/2026-05-22-paykitodo-widget-ux-overhaul-goal.md` on the `1.13.8 / versionCode 256` line.
 
-Latest status: the code line is `1.13.7 / versionCode 255`. The local widget UX goal file `docs/goals/2026-05-22-paykitodo-widget-ux-overhaul-goal.md` is present but not part of this metadata-only rebuild. Do not push to GitHub unless the user explicitly authorizes it.
+Latest status: code changes are implemented and verified with `./gradlew.bat :app:compileDebugKotlin`, `git diff --check`, `./gradlew.bat :app:assembleDebug`, and APK metadata inspection. Commit and completion audit are still pending. Do not push to GitHub unless the user explicitly authorizes it.
+
+## What Changed In The Latest 1.13.8 Patch
+
+1. Version metadata moved to `1.13.8 / versionCode 256`.
+2. Android 今日看板 / 倒数日 Widget runtime layouts and static previews no longer include the app wallpaper ImageView layer; both use fixed light/dark widget backgrounds and very light scrims.
+3. 今日看板 Widget todo rows remove the non-functional checkbox circle, use tighter integrated card/strip spacing, and show overdue todos as `已逾期` instead of `!`.
+4. Widget list/card padding and schedule row spacing are tighter; board/countdown factories return a custom `加载中…` loading RemoteViews instead of the system loading spinner.
+5. Calendar day/three-day timeline paging now uses Compose `HorizontalPager`; dashboard todo LazyColumn rows add `contentType` while keeping stable item keys.
+6. Database version remains `25`; no schema or user-data format change was introduced.
+7. Verification passed: `./gradlew.bat :app:compileDebugKotlin`, `git diff --check`, `./gradlew.bat :app:assembleDebug`; APK metadata confirms `1.13.8 / 256`.
 
 ## What Changed In The Latest 1.13.7 Patch
 

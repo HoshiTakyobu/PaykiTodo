@@ -2,9 +2,27 @@
 
 ## Active Development Focus
 
-Active immediate task: metadata-only rebuild to `1.13.7 / versionCode 255` so Android can install over the existing `1.13.6` debug build.
+Active immediate task: complete `docs/goals/2026-05-22-paykitodo-widget-ux-overhaul-goal.md` on the `1.13.8 / versionCode 256` line.
 
-The broader widget UX goal file `docs/goals/2026-05-22-paykitodo-widget-ux-overhaul-goal.md` exists locally but is not part of this metadata-only rebuild. Do not push to GitHub unless the user explicitly asks.
+Do not push to GitHub unless the user explicitly asks.
+
+## Verification Completed For 1.13.8
+
+The `1.13.8 / versionCode 256` build implements the Widget UX overhaul and calendar/todo-list performance slice.
+
+1. Version metadata moved from `1.13.7 / versionCode 255` to `1.13.8 / versionCode 256`.
+2. Database version remains `25`; no schema, backup format, or user-data migration was added.
+3. Android 今日看板 / 倒数日 Widget runtime layouts and static previews no longer reference `widget_dashboard_bg_image`.
+4. 今日看板 Widget 待办卡 no longer has `widget_task_check`; overdue badge text is `已逾期`; `getLoadingView()` returns custom `加载中…` RemoteViews.
+5. Widget padding/list dividers/card minimum heights were tightened for small launcher sizes.
+6. Calendar day/three-day timeline now uses `HorizontalPager`; Dashboard todo LazyColumn rows use stable keys plus `contentType`.
+7. `./gradlew.bat :app:compileDebugKotlin` passed after code changes.
+8. `git diff --check` passed.
+9. `./gradlew.bat :app:assembleDebug` passed.
+10. Debug APK metadata confirms:
+   - `versionName = 1.13.8`
+   - `versionCode = 256`
+   - output `PaykiTodo-1.13.8-debug.apk`
 
 ## Verification Completed For 1.13.7
 

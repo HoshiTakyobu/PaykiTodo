@@ -227,13 +227,13 @@ This file tracks the product at a practical level for new coding sessions.
 - widget uses RemoteViews `ListView`; rows are adaptive-height, split into greeting / section / empty-card / todo-card / schedule-card / announcement-card types, and no longer limited to five todos, so resizing the launcher widget reveals more board content
 - widget board and countdown layouts use tighter list/card padding for small launcher sizes while keeping readable text and row click targets
 - widget provider declares horizontal / vertical resize mode plus min resize dimensions for better launcher compatibility
-- widget day/night colors are resource-backed, with daily-board background art, dark-mode scrims, and text colors for launcher readability
+- widget day/night colors are resource-backed, with fixed widget-specific light/dark board backgrounds, very light scrims, and text colors for launcher readability rather than app wallpaper reuse
 - widget refresh uses a board-range Room query rather than loading all historical todos, and duplicate `onReceive` update routing has been removed
 - widget board-range query explicitly includes active no-DDL todos, so the launcher widget's 今日待办 block matches the phone daily board instead of dropping no-DDL tasks
 - tapping a todo area opens the in-app `待办` section, tapping a schedule / event area opens Calendar without forcing an editor detail, tapping an announcement row opens the source Planning Desk note, and header / empty rows return to the default daily board
 - widget empty states now use the same card-style visual direction as the in-app daily board rather than thin bordered rows
 - widget schedule content is aggregated into one card with a left date block, today rows, tomorrow label, and tomorrow rows instead of independent event cards; todo cards use the task group's color strip
-- widget root includes a daily-board-style background image layer plus tuned day-night scrims; the fixed menu/title/date header has been removed so the launcher widget opens directly into board content and cannot show a stale header date
+- widget root no longer includes the daily-board wallpaper image layer; the fixed menu/title/date header has been removed so the launcher widget opens directly into board content and cannot show a stale header date
 - widget keeps the launcher surface focused on announcements, greeting, today todos, and today/tomorrow schedule summaries
 - widget in-progress schedule rows batch-load active event check-ins and show `⏱ 签到中 Xm` in the event accent color when a check-in is currently active; the launcher widget remains display-only and does not expose sign-in / sign-out buttons
 - widget greeting, empty, orange announcement, todo, and schedule cards use stronger light/dark card surfaces, lightweight elevation, larger 28dp-style rounding, wider todo color strips, tighter title/card spacing, and daily-board-like ordering with announcements before greeting for better launcher readability
@@ -248,6 +248,7 @@ This file tracks the product at a practical level for new coding sessions.
 - widget `1.10.2` pass removes the independent `倒数日` widget header/date/count block, makes rows deep-link to exact todo/event details, changes countdown text to day/hour/minute without seconds, schedules minute-level refresh ticks, and counts only unfinished today events in 今日看板 widget section titles
 - widget `1.10.2` adds distinct launcher-picker labels/descriptions/static previews for 今日看板 and 倒数日
 - widget `1.10.3` continuation removes the 今日看板 widget top menu/title/date header, converts the independent 倒数日 widget into a scrollable RemoteViews ListView, gives countdown rows daily-board-style soft cards with dynamic accent strips and larger multi-line text, and makes both 今日看板 / 倒数日 widgets refresh RemoteViews collections through provider-owned minute ticks with `updatePeriodMillis=0`
+- widget `1.13.8` pass removes the app wallpaper layer from board/countdown runtime layouts and picker previews, replaces the ambiguous todo overdue `!` with `已逾期`, removes the board-widget todo checkbox circle, returns custom `加载中…` loading rows, and further tightens board/countdown card spacing
 - planning-desk `1.10.3` pass changes event import to default event-only, keeps linked todo creation behind an explicit preview checkbox, removes the fixed generated linked-todo note, and parses `@地点` / quoted `@地点` / `地点：...` into the event location field
 - desktop-web `1.10.3` pass adds compact event color preset swatches matching the phone event editor while preserving custom color input
 - repository todo mutations and Planning Desk note edits / delete / archive operations notify widget data refresh through the application-level widget callback

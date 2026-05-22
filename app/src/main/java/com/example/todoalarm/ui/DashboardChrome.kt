@@ -796,7 +796,11 @@ internal fun DashboardBody(
                             }
                         }
                     } else {
-                        items(boardTodoItems, key = { it.id }) { item ->
+                        items(
+                            items = boardTodoItems,
+                            key = { it.id },
+                            contentType = { "active-todo-card" }
+                        ) { item ->
                             ActiveTodoCard(
                                 item = item,
                                 groups = uiState.groups,
@@ -884,7 +888,11 @@ internal fun DashboardBody(
                         )
                     }
                     if (missedExpanded) {
-                        items(uiState.missedItems, key = { it.id }) { item ->
+                        items(
+                            items = uiState.missedItems,
+                            key = { it.id },
+                            contentType = { "active-todo-card" }
+                        ) { item ->
                             ActiveTodoCard(
                                 item = item,
                                 groups = uiState.groups,
@@ -908,7 +916,11 @@ internal fun DashboardBody(
                     if (uiState.todayItems.isEmpty()) {
                         item { EmptyStateCard("今天还没有安排任务。") }
                     } else {
-                        items(uiState.todayItems, key = { it.id }) { item ->
+                        items(
+                            items = uiState.todayItems,
+                            key = { it.id },
+                            contentType = { "active-todo-card" }
+                        ) { item ->
                             ActiveTodoCard(
                                 item = item,
                                 groups = uiState.groups,
@@ -952,7 +964,11 @@ internal fun DashboardBody(
                                     )
                                 }
                                 if (expanded) {
-                                    items(group.items, key = { "series-$seriesId-${it.id}" }) { item ->
+                                    items(
+                                        items = group.items,
+                                        key = { "series-$seriesId-${it.id}" },
+                                        contentType = { "active-todo-card" }
+                                    ) { item ->
                                         ActiveTodoCard(
                                             item = item,
                                             groups = uiState.groups,
@@ -964,7 +980,11 @@ internal fun DashboardBody(
                                     }
                                 }
                             } else {
-                                items(group.items, key = { it.id }) { item ->
+                                items(
+                                    items = group.items,
+                                    key = { it.id },
+                                    contentType = { "active-todo-card" }
+                                ) { item ->
                                     ActiveTodoCard(
                                         item = item,
                                         groups = uiState.groups,
@@ -984,7 +1004,11 @@ internal fun DashboardBody(
                 if (completedHistoryItems.isEmpty()) {
                     item { EmptyStateCard("完成后的任务会保存在这里。") }
                 } else {
-                    items(completedHistoryItems, key = { it.id }) { item ->
+                    items(
+                        items = completedHistoryItems,
+                        key = { it.id },
+                        contentType = { "completed-todo-card" }
+                    ) { item ->
                         CompletedTodoCard(item, uiState.groups, { onEdit(item) }, { onRestoreTodo(item) })
                     }
                 }

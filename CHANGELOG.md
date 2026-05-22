@@ -1,5 +1,16 @@
 # Changelog
 
+## v1.13.8
+
+- Android 今日看板和倒数日 Widget 移除应用壁纸背景层，改用固定浅色暖白 / 深色灰黑圆角底板和极淡 scrim，添加页静态预览同步使用新背景
+- 今日看板 Widget 待办卡去掉空心勾选圆圈，改为一体化圆角卡 + 左侧分组色条；逾期待办标签从 `!` 改为 `已逾期`
+- 今日看板 Widget 增加自定义 `加载中…` RemoteViews，避免无日程或数据加载期间露出系统默认 loading；今明日程空状态继续显示明确文案
+- 今日看板 / 倒数日 Widget 收紧外层、卡片、日程行和列表分隔留白，小尺寸桌面组件可显示更多内容
+- 手机日历日视图 / 三日视图改由 `HorizontalPager` 驱动横向翻页，替代手动 `scrollable` 偏移；待办 LazyColumn 同类卡片补充 `contentType` 以降低大量列表滚动复用成本
+- 数据库保持 `25`，本轮不新增 schema 或用户数据格式迁移
+- 版本号升级到 `1.13.8` / `versionCode 256`
+- 验证：`./gradlew.bat :app:compileDebugKotlin`、`git diff --check`、`./gradlew.bat :app:assembleDebug` 通过；debug APK 元数据确认 `1.13.8 / 256`
+
 ## v1.13.7
 
 - 提升调试包版本号，确保 Android 在已安装 `1.13.6` 时把新 APK 识别为可升级安装包

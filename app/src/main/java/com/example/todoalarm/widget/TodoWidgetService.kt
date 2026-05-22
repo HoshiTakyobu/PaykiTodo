@@ -90,7 +90,13 @@ private class TodoWidgetFactory(
         }
     }
 
-    override fun getLoadingView(): RemoteViews? = null
+    override fun getLoadingView(): RemoteViews {
+        if (mutedText == 0) loadWidgetColors()
+        return RemoteViews(context.packageName, R.layout.widget_todo_empty_card).apply {
+            setTextViewText(R.id.widget_empty_card_title, "加载中…")
+            setTextColor(R.id.widget_empty_card_title, mutedText)
+        }
+    }
     override fun getViewTypeCount(): Int = WidgetRowType.entries.size
     override fun getItemId(position: Int): Long = rows.getOrNull(position)?.stableId ?: position.toLong()
     override fun hasStableIds(): Boolean = true
@@ -297,7 +303,7 @@ private class TodoWidgetFactory(
                     groupName = group?.name ?: "默认",
                     notes = item.notes.trim(),
                     meta = todoTimeLabel(item),
-                    trailing = if (item.missed) "!" else "",
+                    trailing = if (item.missed) "已逾期" else "",
                     titleColor = darkText,
                     metaColor = if (item.missed) danger else mutedText,
                     trailingColor = danger,

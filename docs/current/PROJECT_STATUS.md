@@ -8,8 +8,8 @@
 - Target platform: Android 14 / API 34
 - License: MIT License (`LICENSE`)
 - Current version in code:
-  - `versionName = "1.13.13"`
-  - `versionCode = 261`
+  - `versionName = "1.13.14"`
+  - `versionCode = 262`
 
 ## Current Build Facts
 
@@ -21,7 +21,14 @@
 - Latest GitHub Release:
   - `https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.13.11`
 - Latest fully built debug APK:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.13.13-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.13.14-debug.apk`
+- Current `1.13.14 / versionCode 262` status:
+  - Desktop sync service now runs a continuous connection watchdog instead of a one-shot startup check.
+  - If no authorized desktop client enters the access token within 5 minutes, the phone writes `desktopSyncEnabled = false`, stops the LAN server, stops the foreground service, and removes the notification.
+  - If a desktop client had connected but stops sending authorized heartbeats for 5 minutes, the same auto-stop path runs, covering closed browser tabs, sleeping computers, and LAN disconnects.
+  - Desktop Web sends an authorized `/api/status` heartbeat every 60 seconds after successful connection.
+  - Desktop sync status reads no longer start a bare HTTP server without the foreground service; if the setting is enabled and the server is absent, the foreground service is started first.
+  - Database version remains `25`; no schema or user-data migration was added.
 - Current `1.13.13 / versionCode 261` status:
   - This build fixes desktop Web todo title editing by replacing the single-line title input with a multiline textarea and preserving title newlines in desktop cards/previews.
   - Desktop Web recurring todo/event editing now exposes a scope selector matching the phone model: current only, current and future, or all.

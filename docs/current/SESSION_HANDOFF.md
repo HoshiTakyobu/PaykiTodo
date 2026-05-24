@@ -4,25 +4,25 @@
 
 - Repository root: `G:\Workspace\Project\PaykiTodo`
 - Branch: `main`
-- User requested a desktop Web parity fix for multiline todo titles and recurring-item scope handling. Push has not been requested in this round.
+- User requested a desktop sync auto-stop fix because the phone did not close the sync service / notification when the computer had not entered the access token or had disconnected. Push has not been requested in this round.
 - Current code version:
-  - `versionName = 1.13.13`
-  - `versionCode = 261`
+  - `versionName = 1.13.14`
+  - `versionCode = 262`
 - Latest debug APK target in this round:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.13.13-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.13.14-debug.apk`
 - Latest signed release APK available locally:
   - `app/build/outputs/apk/release/PaykiTodo-1.13.11-release.apk`
 - Latest GitHub Release:
   - `https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.13.11`
 - Debug APK metadata inspection:
-  - `versionName = 1.13.13`
-  - `versionCode = 261`
+  - `versionName = 1.13.14`
+  - `versionCode = 262`
 
 ## Active Goal
 
-Active immediate task: finish the desktop Web recurring-item parity fix on the `1.13.13 / versionCode 261` line and rebuild the debug APK.
+Active immediate task: fix desktop sync auto-stop behavior on the `1.13.14 / versionCode 262` line and rebuild the debug APK.
 
-Latest status: desktop Web todo titles now use a multiline textarea, title newlines are preserved in cards/previews, and recurring edit/delete/update calls now carry a scope model that matches the phone-side recurrence dialog behavior. `node --check app/src/main/assets/desktop-web/app.js`, `./gradlew.bat :app:compileDebugKotlin`, `./gradlew.bat :app:assembleDebug`, APK metadata inspection, and `git diff --check` have passed. This round has not pushed to GitHub.
+Latest status: desktop sync foreground service now has a continuous watchdog. The desktop Web sends an authorized `/api/status` heartbeat every 60 seconds after a successful connection, and the phone auto-disables desktop sync after 5 minutes without any authorized heartbeat. This round has not pushed to GitHub.
 
 ## Current Documentation / Repository Standards
 
@@ -35,6 +35,15 @@ The public repository documentation remains standardized:
 5. Public docs must distinguish the current source/debug version from the latest published GitHub Release when they differ.
 6. `.github` issue templates, PR template, Android CI, `SUPPORT.md`, `CODE_OF_CONDUCT.md`, and README badges should stay usable.
 7. Internal bootstrap/backlog/goal material belongs under `docs/current/`, `docs/goals/`, or `docs/archive/`, not loose in the repository root.
+
+## What Changed In The Latest 1.13.14 Patch
+
+1. Desktop sync foreground service now continuously monitors authorized desktop-client heartbeats instead of using only a one-shot startup timer.
+2. If no desktop enters the correct access token within 5 minutes, the phone writes `desktopSyncEnabled = false`, stops the LAN server, stops the foreground service, and removes the notification.
+3. If a previously connected browser tab closes, the computer sleeps, or the LAN disconnects for 5 minutes, the same auto-stop path runs.
+4. Desktop Web sends an authorized `/api/status` heartbeat every 60 seconds after a successful connection.
+5. Desktop sync status reads no longer start a bare HTTP server without the foreground service; when the setting is enabled and the server is absent, the foreground service is started first.
+6. Version metadata moved to `1.13.14 / versionCode 262`; latest debug APK target is `app/build/outputs/apk/debug/PaykiTodo-1.13.14-debug.apk`.
 
 ## What Changed In The Latest 1.13.13 Patch
 

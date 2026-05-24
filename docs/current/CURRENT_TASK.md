@@ -2,19 +2,36 @@
 
 ## Active Development Focus
 
-Active immediate task: finish the desktop Web recurring-item parity fix on the `1.13.13 / versionCode 261` line and rebuild the debug APK.
+Active immediate task: fix desktop sync auto-stop behavior on the `1.13.14 / versionCode 262` line and rebuild the debug APK.
 
 Do not commit secrets, signing material, API keys, private Base URLs, generated APK/AAB outputs, or personal backups/logs. The repository already ignores `keystore.properties`, `release/`, `*.apk`, `*.jks`, `.env*`, and local temp files.
 
 ## Current Round Scope
 
-The user reported that the desktop Web side could not edit todo titles with line breaks and could not correctly remove future recurring items after changing a series to non-recurring. The fix now needs to mirror the phone-side recurrence-scope behavior and accept multiline titles.
+The user reported that phone-side desktop sync did not reliably detect a disconnected computer, did not auto-close within 5 minutes when the desktop had not entered the access token, and could leave the foreground notification visible.
 
-1. Desktop Web todo title input should be multiline and preserve newline characters on save and render.
-2. Desktop Web todo/event editors need recurrence-scope selection matching phone-side recurrence editing.
-3. Editing a recurring item to non-recurring should clear future generated instances by default instead of leaving the old series alive.
-4. Desktop sync update/delete routes should carry scope to the repository so phone-side and desktop-side behavior stay aligned.
-5. Version metadata should move to `1.13.13 / versionCode 261` so the debug APK can install over `1.13.12`.
+1. Desktop sync service should continuously monitor authorized desktop-client heartbeats, not only run a one-shot startup timer.
+2. If no desktop client enters the correct access token within 5 minutes, the phone should set desktop sync off, stop the LAN server, and remove the foreground notification.
+3. If a previously connected desktop client stops heartbeating for 5 minutes, the same auto-stop behavior should run.
+4. Desktop Web should send a lightweight authorized heartbeat after successful connection.
+5. Status reads should not start a bare HTTP server without the foreground service / notification.
+6. Version metadata should move to `1.13.14 / versionCode 262` so the debug APK can install over `1.13.13`.
+
+## Verification Completed For 1.13.14
+
+The `1.13.14 / versionCode 262` build addresses desktop sync auto-stop and foreground-notification lifecycle behavior.
+
+1. Version metadata moved from `1.13.13 / versionCode 261` to `1.13.14 / versionCode 262`.
+2. Database version remains `25`; no schema, backup format, or user-data migration was added.
+3. Desktop sync foreground service now runs a continuous watchdog keyed to the last authorized desktop heartbeat.
+4. No-token and disconnected-client states both stop desktop sync after 5 minutes by writing the setting off, stopping the coordinator, and removing the foreground notification.
+5. Desktop Web sends `/api/status` heartbeats every 60 seconds after successful connection.
+6. Desktop sync status reads start the foreground service when needed instead of starting a hidden server without notification.
+7. `node --check app/src/main/assets/desktop-web/app.js` passed.
+8. `./gradlew.bat :app:compileDebugKotlin` reached `BUILD SUCCESSFUL`; the wrapper command hit the 120s timeout after Gradle had already printed success.
+9. `./gradlew.bat :app:assembleDebug` passed.
+10. Debug APK metadata confirms `versionName = 1.13.14`, `versionCode = 262`, output `PaykiTodo-1.13.14-debug.apk`.
+11. `git diff --check` passed.
 
 ## Verification Completed For 1.13.13
 

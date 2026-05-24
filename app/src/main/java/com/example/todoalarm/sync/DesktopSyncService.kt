@@ -26,10 +26,12 @@ import kotlinx.coroutines.launch
 
 class DesktopSyncService : Service() {
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
-    private var autoStopJob: Job? = null
+    private var connectionWatchdogJob: Job? = null
     private var startedAtMillis: Long = 0L
     private var wifiLock: WifiManager.WifiLock? = null
     private var wakeLock: PowerManager.WakeLock? = null
+    private var lastNotificationConnected: Boolean? = null
+    private var lastNotificationKeepAlive: Boolean? = null
 
     override fun onCreate() {
         super.onCreate()
@@ -54,17 +56,10 @@ class DesktopSyncService : Service() {
             PendingIntent.FLAG_UPDATE_CURRENT or immutableFlag()
         )
         val keepAlive = app.settingsStore.currentSettings().desktopSyncWifiKeepAlive
-        val notification = NotificationCompat.Builder(this, CHANNEL_ID)
-            .setSmallIcon(R.drawable.ic_stat_payki_todo)
-            .setContentTitle("PaykiTodo 电脑同步已运行")
-            .setContentText(if (keepAlive) "桌面端连接中 · 已保持网络唤醒" else "桌面端连接中")
-            .setContentIntent(contentIntent)
-            .setOngoing(true)
-            .build()
-        startForeground(NOTIFICATION_ID, notification)
+        startForeground(NOTIFICATION_ID, buildNotification(keepAlive = keepAlive, connected = false, contentIntent = contentIntent))
         app.desktopSyncCoordinator.ensureRunning()
         updateKeepAliveLocks(keepAlive)
-        scheduleAutoStopIfNoClient()
+        startConnectionWatchdog()
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -79,12 +74,12 @@ class DesktopSyncService : Service() {
             startedAtMillis = System.currentTimeMillis()
         }
         updateKeepAliveLocks(app.settingsStore.currentSettings().desktopSyncWifiKeepAlive)
-        scheduleAutoStopIfNoClient()
+        startConnectionWatchdog()
         return START_STICKY
     }
 
     override fun onDestroy() {
-        autoStopJob?.cancel()
+        connectionWatchdogJob?.cancel()
         releaseLocks()
         serviceScope.cancel()
         (application as TodoApplication).desktopSyncCoordinator.stop()
@@ -110,20 +105,102 @@ class DesktopSyncService : Service() {
         )
     }
 
-    private fun scheduleAutoStopIfNoClient() {
-        autoStopJob?.cancel()
-        val start = startedAtMillis.takeIf { it > 0L } ?: System.currentTimeMillis().also { startedAtMillis = it }
-        val remainingMillis = (start + NO_CLIENT_AUTO_STOP_MILLIS - System.currentTimeMillis()).coerceAtLeast(0L)
-        autoStopJob = serviceScope.launch {
-            delay(remainingMillis)
-            val app = application as TodoApplication
-            if (!app.settingsStore.currentSettings().desktopSyncEnabled) return@launch
-            val lastClientAt = app.desktopSyncCoordinator.lastAuthorizedClientAtMillis()
-            if (lastClientAt >= start) return@launch
+    private fun startConnectionWatchdog() {
+        connectionWatchdogJob?.cancel()
+        connectionWatchdogJob = serviceScope.launch {
+            while (true) {
+                val delayMillis = checkDesktopConnectionAndUpdateService()
+                if (delayMillis == null) return@launch
+                delay(delayMillis)
+            }
+        }
+    }
+
+    private fun checkDesktopConnectionAndUpdateService(): Long? {
+        val app = application as TodoApplication
+        val settings = app.settingsStore.currentSettings()
+        if (!settings.desktopSyncEnabled) {
+            app.desktopSyncCoordinator.stop()
+            stopForegroundAndSelf()
+            return null
+        }
+
+        app.desktopSyncCoordinator.ensureRunning()
+        val now = System.currentTimeMillis()
+        if (startedAtMillis <= 0L) startedAtMillis = now
+        val lastAuthorizedAt = app.desktopSyncCoordinator.lastAuthorizedClientAtMillis()
+        val referenceMillis = lastAuthorizedAt.takeIf { it > 0L } ?: startedAtMillis
+        val connected = lastAuthorizedAt > 0L && now - lastAuthorizedAt < NO_CLIENT_AUTO_STOP_MILLIS
+        updateForegroundNotification(keepAlive = settings.desktopSyncWifiKeepAlive, connected = connected)
+
+        val remainingMillis = referenceMillis + NO_CLIENT_AUTO_STOP_MILLIS - now
+        if (remainingMillis <= 0L) {
             app.settingsStore.updateDesktopSyncEnabled(false)
             app.desktopSyncCoordinator.stop()
-            stopSelf()
+            stopForegroundAndSelf()
+            return null
         }
+        return remainingMillis.coerceAtMost(CONNECTION_WATCHDOG_INTERVAL_MILLIS).coerceAtLeast(1_000L)
+    }
+
+    private fun updateForegroundNotification(keepAlive: Boolean, connected: Boolean) {
+        if (lastNotificationConnected == connected && lastNotificationKeepAlive == keepAlive) return
+        lastNotificationConnected = connected
+        lastNotificationKeepAlive = keepAlive
+        startForeground(NOTIFICATION_ID, buildNotification(keepAlive = keepAlive, connected = connected, contentIntent = desktopSyncSettingsIntent()))
+    }
+
+    private fun buildNotification(
+        keepAlive: Boolean,
+        connected: Boolean,
+        contentIntent: PendingIntent
+    ): Notification {
+        val title = if (connected) {
+            "PaykiTodo 电脑同步已连接"
+        } else {
+            "PaykiTodo 电脑同步等待连接"
+        }
+        val text = when {
+            connected && keepAlive -> "已检测到桌面端心跳 · 保持网络唤醒；断开 5 分钟后自动关闭"
+            connected -> "已检测到桌面端心跳；断开 5 分钟后自动关闭"
+            keepAlive -> "等待电脑输入访问密钥 · 5 分钟无连接将自动关闭 · 已保持网络唤醒"
+            else -> "等待电脑输入访问密钥 · 5 分钟无连接将自动关闭"
+        }
+        return NotificationCompat.Builder(this, CHANNEL_ID)
+            .setSmallIcon(R.drawable.ic_stat_payki_todo)
+            .setContentTitle(title)
+            .setContentText(text)
+            .setContentIntent(contentIntent)
+            .setOnlyAlertOnce(true)
+            .setOngoing(true)
+            .build()
+    }
+
+    private fun desktopSyncSettingsIntent(): PendingIntent {
+        return PendingIntent.getActivity(
+            this,
+            0,
+            Intent(this, MainActivity::class.java).apply {
+                addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+                putExtra(
+                    MainActivity.EXTRA_OPEN_SETTINGS_SECTION,
+                    MainActivity.SETTINGS_SECTION_DESKTOP_SYNC
+                )
+            },
+            PendingIntent.FLAG_UPDATE_CURRENT or immutableFlag()
+        )
+    }
+
+    private fun stopForegroundAndSelf() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            stopForeground(STOP_FOREGROUND_REMOVE)
+        } else {
+            @Suppress("DEPRECATION")
+            stopForeground(true)
+        }
+        val notificationManager = getSystemService(NotificationManager::class.java)
+        notificationManager?.cancel(NOTIFICATION_ID)
+        stopSelf()
     }
 
     private fun updateKeepAliveLocks(enabled: Boolean) {
@@ -160,6 +237,7 @@ class DesktopSyncService : Service() {
         private const val CHANNEL_ID = "paykitodo_desktop_sync"
         private const val NOTIFICATION_ID = 42071
         private const val NO_CLIENT_AUTO_STOP_MILLIS = 5 * 60 * 1000L
+        private const val CONNECTION_WATCHDOG_INTERVAL_MILLIS = 15 * 1000L
 
         fun start(context: Context) {
             ContextCompat.startForegroundService(context, Intent(context, DesktopSyncService::class.java))

@@ -41,6 +41,7 @@ const state = {
   eventRangeEnd: null,
   eventLoadSerial: 0,
   eventCheckInLoadSerial: 0,
+  desktopHeartbeatTimer: null,
   editingTodoOriginalRecurring: false,
   editingEventOriginalRecurring: false
 };
@@ -710,7 +711,27 @@ async function connect() {
   state.token = els.token.value.trim();
   state.planningLoaded = false;
   await loadSnapshot({ planning: false });
+  startDesktopHeartbeat();
   els.status.textContent = '已连接';
+}
+
+function stopDesktopHeartbeat() {
+  if (state.desktopHeartbeatTimer != null) {
+    window.clearInterval(state.desktopHeartbeatTimer);
+    state.desktopHeartbeatTimer = null;
+  }
+}
+
+function startDesktopHeartbeat() {
+  stopDesktopHeartbeat();
+  state.desktopHeartbeatTimer = window.setInterval(async () => {
+    try {
+      await api('/api/status');
+    } catch (error) {
+      stopDesktopHeartbeat();
+      els.status.textContent = '电脑同步连接已断开，请在手机端重新开启后再连接';
+    }
+  }, 60 * 1000);
 }
 
 async function loadSnapshot(options = {}) {

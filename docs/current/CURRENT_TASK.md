@@ -2,7 +2,7 @@
 
 ## Active Development Focus
 
-Active immediate task: audit recurring item behavior and reduce lag in large todo lists / Calendar timeline on the `1.13.15 / versionCode 263` line, then rebuild the debug APK.
+Active immediate task: audit recurring item behavior and reduce lag in large todo lists / Calendar timeline on the `1.13.16 / versionCode 264` line, then rebuild the debug APK.
 
 Do not commit secrets, signing material, API keys, private Base URLs, generated APK/AAB outputs, or personal backups/logs. The repository already ignores `keystore.properties`, `release/`, `*.apk`, `*.jks`, `.env*`, and local temp files.
 
@@ -15,7 +15,25 @@ The user asked to re-check recurring-task behavior and fix severe lag when many 
 3. Reduce main-thread work when todo / daily-board lists become large.
 4. Reduce Calendar day / three-day timeline layout cost when many events are loaded.
 5. Keep database schema stable unless a real migration is required.
-6. Version metadata should move to `1.13.15 / versionCode 263` so the debug APK can install over `1.13.14`.
+6. Version metadata should move to `1.13.16 / versionCode 264` so the debug APK can install over `1.13.15`.
+
+## Verification Completed For 1.13.16
+
+The `1.13.16 / versionCode 264` build closes the follow-up recurring-instance correctness issues and adds a second concrete performance pass for todo scrolling and Calendar timeline scrolling.
+
+1. Version metadata moved from `1.13.15 / versionCode 263` to `1.13.16 / versionCode 264`.
+2. Database version remains `25`; no schema, backup format, or user-data migration was added.
+3. Recurring todo/event current-instance delete now keeps a canceled tombstone so the recurring template replenisher cannot recreate the same deleted occurrence.
+4. Recurring-instance range logic now uses `recurrenceAnchorDueAtMillis` as the original occurrence date before falling back to current DDL/start date, so moved single instances no longer corrupt “当前及之后” selection, template truncation, or replenishment checks.
+5. Editing only the current recurring todo/event preserves the original series recurrence fields, and phone/desktop validation rejects recurrence-rule changes under `RecurrenceScope.CURRENT`.
+6. Phone recurring-todo delete now shows the recurrence scope selector instead of silently deleting/canceling only one row.
+7. Calendar day / three-day timed board now renders only events intersecting the vertical viewport plus a 2-hour overscan window, and buckets scroll recomputation by half-hour.
+8. Todo cards use lightweight `Surface` rows without card shadow elevation and cache the resolved task group per card, reducing per-row drawing and repeated group lookup during large-list scrolling.
+9. `./gradlew.bat :app:compileDebugKotlin` passed.
+10. `./gradlew.bat :app:testDebugUnitTest` passed.
+11. `./gradlew.bat :app:assembleDebug` passed.
+12. `git diff --check` passed after final documentation edits.
+13. Debug APK metadata confirms `versionName = 1.13.16`, `versionCode = 264`, output `PaykiTodo-1.13.16-debug.apk`.
 
 ## Verification Completed For 1.13.15
 

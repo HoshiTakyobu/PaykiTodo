@@ -36,6 +36,7 @@ import com.example.todoalarm.data.TodoDraft
 import com.example.todoalarm.data.TodoItem
 import com.example.todoalarm.data.parseReminderTextInput
 import com.example.todoalarm.data.reminderTriggerTimesMillis
+import com.example.todoalarm.data.storageStringToWeekdays
 import com.example.todoalarm.sync.toDesktopSyncBoard
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -291,6 +292,7 @@ class DesktopSyncCoordinator(
             groupIds = groupIds
         )
         require(draft.title.isNotBlank()) { "标题不能为空" }
+        validateTodoDraft(draft = draft, original = null, scope = RecurrenceScope.CURRENT)?.let { error(it) }
         val created = app.repository.createFromDraft(draft)
         created.forEach { scheduleReminderOrDisable(it) }
         autoBackupIfNeeded()
@@ -332,7 +334,7 @@ class DesktopSyncCoordinator(
             groupIds = groupIds
         )
         require(draft.title.isNotBlank()) { "标题不能为空" }
-        validateTodoDraft(draft = draft, original = original)?.let { error(it) }
+        validateTodoDraft(draft = draft, original = original, scope = targetScope)?.let { error(it) }
         val affected = app.repository.getActiveItemsForScope(original, targetScope)
         clearReminderArtifacts(affected.ifEmpty { listOf(original) })
         val updated = app.repository.updateFromDraft(original, draft, targetScope)
@@ -365,6 +367,7 @@ class DesktopSyncCoordinator(
             groupId = groupId
         )
         require(draft.title.isNotBlank()) { "日程标题不能为空" }
+        validateEventDraft(draft = draft, original = null, scope = RecurrenceScope.CURRENT)?.let { error(it) }
         val created = app.repository.createCalendarEventFromDraft(draft)
         created.forEach { scheduleReminderOrDisable(it) }
         autoBackupIfNeeded()
@@ -404,6 +407,7 @@ class DesktopSyncCoordinator(
             groupId = groupId
         )
         require(draft.title.isNotBlank()) { "日程标题不能为空" }
+        validateEventDraft(draft = draft, original = original, scope = targetScope)?.let { error(it) }
         val affected = app.repository.getActiveItemsForScope(original, targetScope)
         clearReminderArtifacts(affected.ifEmpty { listOf(original) })
         val updated = app.repository.updateCalendarEventFromDraft(original, draft, targetScope)
@@ -944,7 +948,11 @@ class DesktopSyncCoordinator(
         )
     }
 
-    private fun validateTodoDraft(draft: TodoDraft, original: TodoItem?): String? {
+    private fun validateTodoDraft(
+        draft: TodoDraft,
+        original: TodoItem?,
+        scope: RecurrenceScope
+    ): String? {
         if (draft.title.isBlank()) return "标题不能为空"
         val now = System.currentTimeMillis()
         val isHistory = original?.isHistory == true
@@ -988,7 +996,53 @@ class DesktopSyncCoordinator(
         if (original?.isRecurring == true && draft.dueAt == null) {
             return "循环任务必须保留 DDL"
         }
+        if (original?.isRecurring == true && scope == RecurrenceScope.CURRENT &&
+            recurrenceSignatureChanged(original, draft.recurrence)
+        ) {
+            return "仅修改当前事件时不能变更循环规则；请改用“当前事件和此后所有事件”或“所有事件”"
+        }
         return null
+    }
+
+    private fun validateEventDraft(
+        draft: CalendarEventDraft,
+        original: TodoItem?,
+        scope: RecurrenceScope
+    ): String? {
+        if (draft.title.isBlank()) return "日程标题不能为空"
+        val startMillis = draft.startAt.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
+        val endMillis = if (draft.allDay) {
+            draft.endAt.toLocalDate().plusDays(1).atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
+        } else {
+            draft.endAt.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
+        }
+        if (endMillis <= startMillis) return "结束时间必须晚于开始时间"
+
+        val recurrence = draft.recurrence
+        if (recurrence.enabled) {
+            if (recurrence.type == RecurrenceType.NONE) return "请选择循环规则"
+            val endDate = recurrence.endDate ?: return "请设置循环截止日期"
+            val canTerminateSeriesEarly = original?.isRecurring == true && scope != RecurrenceScope.CURRENT
+            if (!canTerminateSeriesEarly && endDate.isBefore(draft.startAt.toLocalDate())) {
+                return "循环截止日期不能早于首次日程日期"
+            }
+            if (recurrence.type == RecurrenceType.WEEKLY && recurrence.weeklyDays.isEmpty()) {
+                return "每周循环至少选择一天"
+            }
+        }
+        if (original?.isRecurring == true && scope == RecurrenceScope.CURRENT &&
+            recurrenceSignatureChanged(original, recurrence)
+        ) {
+            return "仅修改当前事件时不能变更循环规则；请改用“当前事件和此后所有事件”或“所有事件”"
+        }
+        return null
+    }
+
+    private fun recurrenceSignatureChanged(original: TodoItem, recurrence: RecurrenceConfig): Boolean {
+        return recurrence.enabled != original.isRecurring ||
+            recurrence.type != original.recurrenceTypeEnum ||
+            recurrence.weeklyDays != storageStringToWeekdays(original.recurrenceWeekdays) ||
+            recurrence.endDate != original.recurrenceEndDate
     }
 
     private fun sanitizeEventDraft(

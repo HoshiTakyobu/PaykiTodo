@@ -6,23 +6,23 @@
 - Branch: `main`
 - User requested a recurring-item audit and performance fixes because todo scrolling becomes very laggy when many items exist and the Calendar page still stutters. Push has not been requested in this round.
 - Current code version:
-  - `versionName = 1.13.15`
-  - `versionCode = 263`
+  - `versionName = 1.13.16`
+  - `versionCode = 264`
 - Latest debug APK target in this round:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.13.15-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.13.16-debug.apk`
 - Latest signed release APK available locally:
   - `app/build/outputs/apk/release/PaykiTodo-1.13.11-release.apk`
 - Latest GitHub Release:
   - `https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.13.11`
 - Debug APK metadata inspection:
-  - `versionName = 1.13.15`
-  - `versionCode = 263`
+  - `versionName = 1.13.16`
+  - `versionCode = 264`
 
 ## Active Goal
 
-Active immediate task: audit recurring task / recurring event behavior, fix any confirmed recurrence bug, reduce lag in large todo lists and the Calendar timeline, and rebuild the debug APK on the `1.13.15 / versionCode 263` line.
+Active immediate task: audit recurring task / recurring event behavior, fix any confirmed recurrence bug, reduce lag in large todo lists and the Calendar timeline, and rebuild the debug APK on the `1.13.16 / versionCode 264` line.
 
-Latest status: recurring Calendar `ALL`-scope edits now delete the old template when the series is changed to non-recurring; todo / daily-board derived state runs heavy list work off the main thread; todo card left strips no longer use intrinsic measurement; Calendar timed-event placement is limited to visible page days. This round has not pushed to GitHub.
+Latest status: recurring current-instance delete now leaves canceled tombstones so template replenishment cannot recreate deleted occurrences; recurring range logic uses original recurrence anchor dates; current-only recurrence rule edits are blocked; phone recurring-todo delete shows scope choice; Calendar timed-event rendering is vertically culled to the viewport; todo cards use lighter no-shadow rows and cache group resolution. This round has not pushed to GitHub.
 
 ## Current Documentation / Repository Standards
 
@@ -35,6 +35,17 @@ The public repository documentation remains standardized:
 5. Public docs must distinguish the current source/debug version from the latest published GitHub Release when they differ.
 6. `.github` issue templates, PR template, Android CI, `SUPPORT.md`, `CODE_OF_CONDUCT.md`, and README badges should stay usable.
 7. Internal bootstrap/backlog/goal material belongs under `docs/current/`, `docs/goals/`, or `docs/archive/`, not loose in the repository root.
+
+## What Changed In The Latest 1.13.16 Patch
+
+1. Recurring todo/event current-instance delete now keeps a canceled tombstone instead of hard-deleting the row, preventing recurring-template replenishment from recreating the same occurrence.
+2. Recurring range edit/cancel/delete and template truncation use the original recurrence anchor date where available, so moving a single occurrence no longer corrupts `当前及之后` selection.
+3. Editing only the current recurring todo/event preserves the original series recurrence fields, and phone/desktop validation rejects recurrence-rule changes under `仅当前`.
+4. Phone recurring-todo delete now shows the recurrence scope selector instead of silently affecting only one row.
+5. Calendar day / three-day timeline renders only timed events intersecting the vertical viewport plus overscan, and buckets scroll recomputation by half-hour.
+6. Todo cards use lightweight no-shadow `Surface` rows and cache each card's resolved group, reducing large-list drawing and repeated group lookup.
+7. Version metadata moved to `1.13.16 / versionCode 264`; latest debug APK target is `app/build/outputs/apk/debug/PaykiTodo-1.13.16-debug.apk`.
+8. Verification passed: `./gradlew.bat :app:compileDebugKotlin`, `./gradlew.bat :app:testDebugUnitTest`, `./gradlew.bat :app:assembleDebug`, `git diff --check`, and APK metadata inspection confirmed `versionName = 1.13.16`, `versionCode = 264`.
 
 ## What Changed In The Latest 1.13.15 Patch
 

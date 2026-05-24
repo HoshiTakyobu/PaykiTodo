@@ -1,6 +1,7 @@
 package com.example.todoalarm.ui
 
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.combinedClickable
@@ -21,9 +22,7 @@ import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.rounded.NotificationsActive
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
-import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -82,6 +81,7 @@ internal fun ActiveTodoCard(
     var showActionSheet by remember(item.id) { mutableStateOf(false) }
     val haptic = LocalHapticFeedback.current
     val progress by animateFloatAsState(targetValue = if (completing) 1f else 0f, label = "complete_progress")
+    val resolvedGroup = remember(item, groups) { resolveTaskGroup(item, groups) }
 
     LaunchedEffect(completing) {
         if (completing) {
@@ -96,8 +96,7 @@ internal fun ActiveTodoCard(
     }
 
     TodoCardShell(
-        item = item,
-        groups = groups,
+        group = resolvedGroup,
         onClick = { showDetails = true },
         onLongClick = null,
         contentClickable = false
@@ -129,7 +128,7 @@ internal fun ActiveTodoCard(
                     ),
                 verticalArrangement = Arrangement.spacedBy(6.dp)
             ) {
-                TitleRow(item = item, groups = groups, progress = progress)
+                TitleRow(item = item, group = resolvedGroup, progress = progress)
                 if (item.notes.isNotBlank()) {
                     StrikeText(
                         text = item.notes,
@@ -249,10 +248,11 @@ internal fun CompletedTodoCard(
     onRestore: () -> Unit
 ) {
     var showDetails by remember(item.id) { mutableStateOf(false) }
+    val resolvedGroup = remember(item, groups) { resolveTaskGroup(item, groups) }
 
-    TodoCardShell(item = item, groups = groups, onClick = { showDetails = true }) {
+    TodoCardShell(group = resolvedGroup, onClick = { showDetails = true }) {
         Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            TitleRow(item = item, groups = groups, progress = 0f)
+            TitleRow(item = item, group = resolvedGroup, progress = 0f)
             if (item.notes.isNotBlank()) {
                 Text(
                     text = item.notes,
@@ -287,17 +287,20 @@ internal fun CompletedTodoCard(
 @Composable
 @OptIn(ExperimentalFoundationApi::class)
 private fun TodoCardShell(
-    item: TodoItem,
-    groups: List<TaskGroup>,
+    group: ResolvedTaskGroup,
     onClick: () -> Unit,
     onLongClick: (() -> Unit)? = null,
     contentClickable: Boolean = true,
     content: @Composable () -> Unit
 ) {
-    val accent = categoryColor(resolveTaskGroup(item, groups))
-    ElevatedCard(
+    val accent = categoryColor(group)
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surface)
+        color = MaterialTheme.colorScheme.surface,
+        tonalElevation = 0.dp,
+        shadowElevation = 0.dp,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.14f))
     ) {
         Box(
             modifier = Modifier
@@ -333,7 +336,7 @@ private fun TodoCardShell(
 @Composable
 private fun TitleRow(
     item: TodoItem,
-    groups: List<TaskGroup>,
+    group: ResolvedTaskGroup,
     progress: Float
 ) {
     Row(
@@ -341,7 +344,7 @@ private fun TitleRow(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        CategoryChip(resolveTaskGroup(item, groups))
+        CategoryChip(group)
         if (item.hiddenFromBoard) {
             HiddenReminderChip()
         }

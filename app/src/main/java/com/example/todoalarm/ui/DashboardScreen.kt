@@ -88,6 +88,7 @@ import java.time.LocalDateTime
 private enum class ScopeDialogMode {
     EDIT_TODO,
     CANCEL_TODO,
+    DELETE_TODO,
     EDIT_EVENT,
     DELETE_EVENT
 }
@@ -595,8 +596,13 @@ fun DashboardScreen(
                         }
                     },
                     onDeleteTodo = { item ->
-                        onDeleteTodo(item)
-                        Toast.makeText(context, "任务已删除", Toast.LENGTH_SHORT).show()
+                        if (item.isRecurring && !item.isHistory) {
+                            scopeDialogTarget = item
+                            scopeDialogMode = ScopeDialogMode.DELETE_TODO
+                        } else {
+                            onDeleteTodo(item)
+                            Toast.makeText(context, "任务已删除", Toast.LENGTH_SHORT).show()
+                        }
                     },
                     onDeleteCalendarEvent = { item ->
                         if (item.isRecurring) {
@@ -861,6 +867,7 @@ fun DashboardScreen(
             title = when (scopeDialogMode) {
                 ScopeDialogMode.EDIT_TODO, ScopeDialogMode.EDIT_EVENT -> "选择修改范围"
                 ScopeDialogMode.CANCEL_TODO -> "选择取消范围"
+                ScopeDialogMode.DELETE_TODO -> "选择删除范围"
                 ScopeDialogMode.DELETE_EVENT -> "选择删除范围"
                 null -> "选择范围"
             },
@@ -883,6 +890,10 @@ fun DashboardScreen(
                         editorVisible = true
                     }
                     ScopeDialogMode.CANCEL_TODO -> onCancelTodo(item, selectedScope)
+                    ScopeDialogMode.DELETE_TODO -> {
+                        onCancelTodo(item, selectedScope)
+                        Toast.makeText(context, "任务已删除", Toast.LENGTH_SHORT).show()
+                    }
                     ScopeDialogMode.DELETE_EVENT -> {
                         onDeleteCalendarEvent(item, selectedScope)
                         Toast.makeText(context, "日程已删除", Toast.LENGTH_SHORT).show()

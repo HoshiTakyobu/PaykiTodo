@@ -64,6 +64,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
@@ -127,6 +128,7 @@ import kotlin.math.roundToInt
 
 private const val CalendarDayRange = 730
 private const val CalendarOverscanDays = 1
+private const val CalendarVerticalOverscanHours = 2f
 private const val VisibleCalendarDayColumns = 3.0f
 
 private class CalendarDateWindow(
@@ -1837,11 +1839,40 @@ private fun CalendarTimedBoard(
     val latestHorizontalOffsetPx by rememberUpdatedState(horizontalOffsetPx)
     val latestPendingDraft by rememberUpdatedState(pendingDraft)
 
-    Box(
-        modifier = modifier
-            .clipToBounds()
-            .verticalScroll(verticalScroll)
+    BoxWithConstraints(
+        modifier = modifier.clipToBounds()
     ) {
+        val viewportHeightPx = with(density) { maxHeight.toPx() }
+        val minEventHeightPx = with(density) { 48.dp.toPx() }
+        val verticalBucketSizePx = (hourHeightPx / 2f).coerceAtLeast(1f)
+        val verticalScrollBucket by remember(verticalScroll, verticalBucketSizePx) {
+            derivedStateOf { (verticalScroll.value / verticalBucketSizePx).toInt() }
+        }
+        val bucketedScrollPx = verticalScrollBucket * verticalBucketSizePx
+        val verticalStartPx = (bucketedScrollPx - hourHeightPx * CalendarVerticalOverscanHours).coerceAtLeast(0f)
+        val verticalEndPx = bucketedScrollPx + viewportHeightPx + hourHeightPx * CalendarVerticalOverscanHours
+        val viewportEventPlacements = remember(
+            visibleEventPlacements,
+            verticalStartPx,
+            verticalEndPx,
+            hourHeightPx,
+            minEventHeightPx
+        ) {
+            visibleEventPlacements.filter { (_, placement) ->
+                placement.intersectsVerticalRange(
+                    startPx = verticalStartPx,
+                    endPx = verticalEndPx,
+                    hourHeightPx = hourHeightPx,
+                    minHeightPx = minEventHeightPx
+                )
+            }
+        }
+
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(verticalScroll)
+        ) {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -1898,7 +1929,7 @@ private fun CalendarTimedBoard(
                 }
             }
 
-            visibleEventPlacements.forEach { (day, placement) ->
+            viewportEventPlacements.forEach { (day, placement) ->
                 val dayIndex = dateWindow.indexOf(day) ?: return@forEach
                 key(placement.segment.item.id, day, placement.segment.startMillis, placement.segment.endMillis) {
                     TimedEventCard(
@@ -1936,6 +1967,7 @@ private fun CalendarTimedBoard(
                 boardHeightPx = with(density) { boardHeight.toPx() },
                 hourHeightPx = hourHeightPx
             )
+        }
         }
     }
 }
@@ -2672,6 +2704,22 @@ private data class TimedEventPlacement(
     val columnIndex: Int,
     val columnCount: Int
 )
+
+private fun TimedEventPlacement.intersectsVerticalRange(
+    startPx: Float,
+    endPx: Float,
+    hourHeightPx: Float,
+    minHeightPx: Float
+): Boolean {
+    val startDateTime = reminderAtMillisToDateTime(segment.startMillis)
+    val endDateTime = reminderAtMillisToDateTime(segment.endMillis)
+    val startMinutes = startDateTime.hour * 60 + startDateTime.minute
+    val durationMinutes = Duration.between(startDateTime, endDateTime).toMinutes().coerceAtLeast(20)
+    val eventTopPx = (startMinutes / 60f) * hourHeightPx
+    val eventHeightPx = max(hourHeightPx * (durationMinutes / 60f), minHeightPx)
+    val eventBottomPx = eventTopPx + eventHeightPx
+    return eventBottomPx >= startPx && eventTopPx <= endPx
+}
 
 private fun calculateVisibleDayRange(
     totalDays: Int,

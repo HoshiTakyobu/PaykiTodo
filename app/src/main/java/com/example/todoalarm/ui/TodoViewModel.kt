@@ -66,6 +66,7 @@ import com.example.todoalarm.data.toDraftsForWeek
 import com.example.todoalarm.data.toJsonString
 import com.example.todoalarm.data.toWeeklyRecurringDrafts
 import com.example.todoalarm.data.toEpochMillis
+import com.example.todoalarm.data.storageStringToWeekdays
 import com.example.todoalarm.sync.DesktopSyncStatus
 import com.example.todoalarm.sync.DesktopSyncService
 import kotlinx.coroutines.Job
@@ -1475,6 +1476,11 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
         if (original?.isRecurring == true && draft.dueAt == null) {
             return "循环任务必须保留 DDL"
         }
+        if (original?.isRecurring == true && scope == RecurrenceScope.CURRENT &&
+            recurrenceSignatureChanged(original, draft.recurrence)
+        ) {
+            return "仅修改当前事件时不能变更循环规则；请改用“当前事件和此后所有事件”或“所有事件”"
+        }
         return null
     }
 
@@ -1514,7 +1520,19 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
                 return "每周循环至少选择一天"
             }
         }
+        if (original?.isRecurring == true && scope == RecurrenceScope.CURRENT &&
+            recurrenceSignatureChanged(original, draft.recurrence)
+        ) {
+            return "仅修改当前事件时不能变更循环规则；请改用“当前事件和此后所有事件”或“所有事件”"
+        }
         return null
+    }
+
+    private fun recurrenceSignatureChanged(original: TodoItem, recurrence: RecurrenceConfig): Boolean {
+        return recurrence.enabled != original.isRecurring ||
+            recurrence.type != original.recurrenceTypeEnum ||
+            recurrence.weeklyDays != storageStringToWeekdays(original.recurrenceWeekdays) ||
+            recurrence.endDate != original.recurrenceEndDate
     }
 
     private suspend fun autoBackupIfEnabled() {

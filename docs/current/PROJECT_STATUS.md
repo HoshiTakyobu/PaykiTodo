@@ -8,8 +8,8 @@
 - Target platform: Android 14 / API 34
 - License: MIT License (`LICENSE`)
 - Current version in code:
-  - `versionName = "1.13.15"`
-  - `versionCode = 263`
+  - `versionName = "1.13.16"`
+  - `versionCode = 264`
 
 ## Current Build Facts
 
@@ -21,7 +21,20 @@
 - Latest GitHub Release:
   - `https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.13.11`
 - Latest fully built debug APK:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.13.15-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.13.16-debug.apk`
+- Current `1.13.16 / versionCode 264` status:
+  - Recurring todo/event current-instance delete keeps a canceled tombstone instead of hard-deleting the row, so the recurring template replenisher cannot recreate that occurrence.
+  - Recurring range edit/cancel/delete and template truncation use the original recurrence anchor date when available, so a single moved occurrence no longer breaks `当前及之后` selection.
+  - Editing only the current recurring todo/event preserves the original recurrence fields; phone and desktop validation reject recurrence-rule changes under `仅当前`.
+  - Phone recurring-todo delete now shows the same recurrence scope selector as edit/cancel paths.
+  - Calendar day / three-day timeline renders only timed events intersecting the current vertical viewport plus overscan, and buckets scroll recomputation by half-hour.
+  - Todo cards now use lightweight no-shadow `Surface` rows and cache per-card group resolution to reduce large-list draw and lookup cost.
+  - Database version remains `25`; no schema or user-data migration was added.
+  - `./gradlew.bat :app:compileDebugKotlin` passed.
+  - `./gradlew.bat :app:testDebugUnitTest` passed.
+  - `./gradlew.bat :app:assembleDebug` passed.
+  - `git diff --check` passed.
+  - Debug APK metadata confirms `versionName = 1.13.16`, `versionCode = 264`, output `PaykiTodo-1.13.16-debug.apk`.
 - Current `1.13.15 / versionCode 263` status:
   - This build fixes a recurring-calendar correctness bug: when a recurring event series is edited with scope `ALL` and changed to non-recurring, the old recurring template is now deleted instead of being left behind for future replenishment.
   - Todo / daily-board derived state now moves large-list sectioning, countdown sorting, and announcement parsing off the main thread.

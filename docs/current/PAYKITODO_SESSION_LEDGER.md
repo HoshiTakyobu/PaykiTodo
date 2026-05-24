@@ -98,6 +98,7 @@ When reconstructing PaykiTodo state, use this priority order:
 
 ## Recent Repository-Native Updates
 
+- `1.13.16` fixed recurring current-instance deletion by keeping canceled tombstones, made recurring `当前及之后` range handling use original occurrence anchors, blocked current-only recurrence-rule edits, added phone recurring-todo delete scope selection, and further reduced todo / Calendar lag with lightweight todo rows plus vertical timed-event viewport culling.
 - `1.13.15` fixed a recurring Calendar template cleanup bug where changing an entire recurring event series to non-recurring could leave the old template behind, and reduced large-list / Calendar lag by moving heavy todo-state derivation off the main thread, removing intrinsic measurement from todo cards, and limiting timed-event overlap layout to visible Calendar page days.
 - `1.13.14` fixed desktop sync lifecycle detection: desktop Web now sends authorized heartbeats, and the phone auto-disables the sync service plus notification after 5 minutes without a valid heartbeat.
 - `1.13.13` fixed desktop Web todo multiline titles and recurring edit scope parity, including default current-and-future cleanup when a recurring todo is changed to non-recurring.

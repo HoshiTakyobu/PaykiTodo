@@ -1236,10 +1236,11 @@ class TodoRepository(
             return listOfNotNull(todoDao.getById(item.id)).filter { it.isActive }
         }
         val seriesId = item.recurringSeriesId ?: return emptyList()
+        val splitDate = item.recurrenceScopeDate()
         return todoDao.getActiveBySeriesId(seriesId).filter { candidate ->
             when (scope) {
                 RecurrenceScope.CURRENT -> candidate.id == item.id
-                RecurrenceScope.CURRENT_AND_FUTURE -> candidate.dueAtMillis >= item.dueAtMillis
+                RecurrenceScope.CURRENT_AND_FUTURE -> candidate.isOnOrAfterRecurrenceDate(splitDate)
                 RecurrenceScope.ALL -> true
             }
         }
@@ -1253,6 +1254,12 @@ class TodoRepository(
     }
 
     suspend fun deleteTodo(id: Long): List<TodoItem> {
+        val item = todoDao.getById(id)
+        if (item?.isRecurring == true) {
+            // Keep a canceled tombstone for the current recurring instance; otherwise the
+            // template replenisher will recreate the same occurrence on the next startup.
+            return cancelTodo(item, RecurrenceScope.CURRENT)
+        }
         val deletedItems = deleteItemsByIds(listOf(id))
         notifyItemsChanged()
         return deletedItems
@@ -1376,8 +1383,13 @@ class TodoRepository(
                 updateRecurringSeries(original, resolvedDraft, scope)
             }
             else -> {
+                val currentDraft = if (original.isRecurring && scope == RecurrenceScope.CURRENT) {
+                    resolvedDraft.copy(recurrence = original.toRecurrenceConfig())
+                } else {
+                    resolvedDraft
+                }
                 val updated = buildTaskItem(
-                    draft = resolvedDraft,
+                    draft = currentDraft,
                     now = original.createdAtMillis,
                     existing = original,
                     keepSeries = original.isRecurring
@@ -1403,11 +1415,12 @@ class TodoRepository(
         } else {
             emptyList()
         }
+        val splitDate = item.recurrenceScopeDate()
         val targets = if (item.isRecurring && scope != RecurrenceScope.CURRENT) {
             activeSeries.filter { candidate ->
                 when (scope) {
                     RecurrenceScope.CURRENT -> candidate.id == item.id
-                    RecurrenceScope.CURRENT_AND_FUTURE -> candidate.dueAtMillis >= item.dueAtMillis
+                    RecurrenceScope.CURRENT_AND_FUTURE -> candidate.isOnOrAfterRecurrenceDate(splitDate)
                     RecurrenceScope.ALL -> true
                 }
             }
@@ -1438,7 +1451,7 @@ class TodoRepository(
                             seriesId = seriesId,
                             template = todoDao.getTemplateBySeriesId(seriesId),
                             activeSeries = activeSeries,
-                            splitDate = item.dueDate()
+                            splitDate = splitDate
                         )
                     }
                     RecurrenceScope.ALL -> {
@@ -1695,8 +1708,13 @@ class TodoRepository(
                 updateRecurringCalendarSeries(original, resolvedDraft, scope)
             }
             else -> {
+                val currentDraft = if (original.isRecurring && scope == RecurrenceScope.CURRENT) {
+                    resolvedDraft.copy(recurrence = original.toRecurrenceConfig())
+                } else {
+                    resolvedDraft
+                }
                 val updated = buildCalendarEventItem(
-                    draft = resolvedDraft,
+                    draft = currentDraft,
                     now = original.createdAtMillis,
                     existing = original,
                     keepSeries = original.isRecurring
@@ -1717,16 +1735,32 @@ class TodoRepository(
         if (!item.isEvent) return emptyList()
         val seriesId = item.recurringSeriesId
         val deletedItems = when {
-            !item.isRecurring || scope == RecurrenceScope.CURRENT -> {
+            item.isRecurring && scope == RecurrenceScope.CURRENT -> {
+                val now = System.currentTimeMillis()
+                val current = todoDao.getById(item.id)?.takeIf { it.isEvent && it.isActive } ?: return emptyList()
+                val canceled = current.copy(
+                    canceled = true,
+                    canceledAtMillis = now,
+                    completed = false,
+                    completedAtMillis = null,
+                    missed = false,
+                    missedAtMillis = null,
+                    reminderEnabled = false
+                )
+                todoDao.update(canceled)
+                (listOf(canceled) + syncPlanningNodeCancellationFromItems(listOf(canceled), now)).distinctBy { it.id }
+            }
+            !item.isRecurring -> {
                 deleteItemsByIds(listOf(item.id))
             }
             seriesId == null -> emptyList()
             else -> {
                 val seriesItems = todoDao.getBySeriesId(seriesId).filter { it.isEvent && !it.canceled }
+                val splitDate = item.recurrenceScopeDate()
                 val targets = seriesItems.filter { candidate ->
                     when (scope) {
                         RecurrenceScope.CURRENT -> candidate.id == item.id
-                        RecurrenceScope.CURRENT_AND_FUTURE -> candidate.dueAtMillis >= item.dueAtMillis
+                        RecurrenceScope.CURRENT_AND_FUTURE -> candidate.isOnOrAfterRecurrenceDate(splitDate)
                         RecurrenceScope.ALL -> true
                     }
                 }
@@ -1738,7 +1772,7 @@ class TodoRepository(
                         seriesId = seriesId,
                         template = todoDao.getTemplateBySeriesId(seriesId),
                         activeSeries = seriesItems,
-                        splitDate = item.dueDate()
+                        splitDate = splitDate
                     )
                     RecurrenceScope.ALL -> todoDao.deleteTemplateBySeriesId(seriesId)
                 }
@@ -2910,10 +2944,11 @@ class TodoRepository(
         val seriesId = original.recurringSeriesId ?: UUID.randomUUID().toString()
         val template = todoDao.getTemplateBySeriesId(seriesId)
         val activeSeries = todoDao.getActiveBySeriesId(seriesId)
+        val splitDate = original.recurrenceScopeDate()
         val targets = activeSeries.filter { candidate ->
             when (scope) {
                 RecurrenceScope.CURRENT -> candidate.id == original.id
-                RecurrenceScope.CURRENT_AND_FUTURE -> candidate.dueAtMillis >= original.dueAtMillis
+                RecurrenceScope.CURRENT_AND_FUTURE -> candidate.isOnOrAfterRecurrenceDate(splitDate)
                 RecurrenceScope.ALL -> true
             }
         }
@@ -2949,7 +2984,7 @@ class TodoRepository(
 
             RecurrenceScope.CURRENT_AND_FUTURE -> {
                 deleteItemsByIds(targets.map { it.id })
-                truncateTemplateBefore(seriesId, template, activeSeries, original.dueDate())
+                truncateTemplateBefore(seriesId, template, activeSeries, splitDate)
 
                 if (draft.recurrence.isRecurring) {
                     val branchSeriesId = UUID.randomUUID().toString()
@@ -2989,10 +3024,11 @@ class TodoRepository(
         val seriesId = original.recurringSeriesId ?: UUID.randomUUID().toString()
         val template = todoDao.getTemplateBySeriesId(seriesId)
         val seriesItems = todoDao.getBySeriesId(seriesId).filter { it.isEvent && !it.canceled }
+        val splitDate = original.recurrenceScopeDate()
         val targets = seriesItems.filter { candidate ->
             when (scope) {
                 RecurrenceScope.CURRENT -> candidate.id == original.id
-                RecurrenceScope.CURRENT_AND_FUTURE -> candidate.dueAtMillis >= original.dueAtMillis
+                RecurrenceScope.CURRENT_AND_FUTURE -> candidate.isOnOrAfterRecurrenceDate(splitDate)
                 RecurrenceScope.ALL -> true
             }
         }
@@ -3031,7 +3067,7 @@ class TodoRepository(
 
             RecurrenceScope.CURRENT_AND_FUTURE -> {
                 deleteItemsByIds(targets.map { it.id })
-                truncateTemplateBefore(seriesId, template, seriesItems, original.dueDate())
+                truncateTemplateBefore(seriesId, template, seriesItems, splitDate)
                 if (draft.recurrence.isRecurring) {
                     val branchSeriesId = UUID.randomUUID().toString()
                     val replacement = generateRecurringEventItems(
@@ -3118,8 +3154,9 @@ class TodoRepository(
         original: TodoItem
     ): TodoDraft {
         val dueAt = requireNotNull(draft.dueAt) { "Recurring todo requires DDL" }
-        val baseDate = activeSeries.minByOrNull { it.dueAtMillis }?.dueDate()
-            ?: original.dueDate()
+        val baseDate = activeSeries.minWithOrNull(compareBy<TodoItem> { it.recurrenceScopeDate() }.thenBy { it.id })
+            ?.recurrenceScopeDate()
+            ?: original.recurrenceScopeDate()
         val alignedDueAt = LocalDateTime.of(baseDate, dueAt.toLocalTime())
         return draft.withAlignedDateTime(alignedDueAt)
     }
@@ -3129,7 +3166,9 @@ class TodoRepository(
         activeSeries: List<TodoItem>,
         original: TodoItem
     ): CalendarEventDraft {
-        val baseDate = activeSeries.minByOrNull { it.dueAtMillis }?.dueDate() ?: original.dueDate()
+        val baseDate = activeSeries.minWithOrNull(compareBy<TodoItem> { it.recurrenceScopeDate() }.thenBy { it.id })
+            ?.recurrenceScopeDate()
+            ?: original.recurrenceScopeDate()
         val newStart = LocalDateTime.of(baseDate, draft.startAt.toLocalTime())
         val durationMinutes = Duration.between(draft.startAt, draft.endAt).toMinutes().coerceAtLeast(30)
         return draft.copy(
@@ -3144,7 +3183,7 @@ class TodoRepository(
         activeSeries: List<TodoItem>,
         splitDate: LocalDate
     ) {
-        val remainingActive = activeSeries.filter { it.dueDate().isBefore(splitDate) }
+        val remainingActive = activeSeries.filter { it.recurrenceScopeDate().isBefore(splitDate) }
         if (remainingActive.isEmpty()) {
             todoDao.deleteTemplateBySeriesId(seriesId)
             return
@@ -3157,6 +3196,14 @@ class TodoRepository(
             return
         }
         todoDao.updateTemplate(existingTemplate.copy(endEpochDay = newEndEpochDay))
+    }
+
+    private fun TodoItem.recurrenceScopeDate(): LocalDate {
+        return recurrenceInstanceDateOrNull() ?: dueDate()
+    }
+
+    private fun TodoItem.isOnOrAfterRecurrenceDate(splitDate: LocalDate): Boolean {
+        return !recurrenceScopeDate().isBefore(splitDate)
     }
 
     private suspend fun replaceRecurringTargets(
@@ -3292,21 +3339,27 @@ class TodoRepository(
             } else {
                 ""
             },
-            recurrenceMonthlyOrdinal = if (recurrence.isRecurring && recurrence.type == RecurrenceType.MONTHLY_NTH_WEEKDAY && dueDate != null) {
+            recurrenceMonthlyOrdinal = if (recurrence.isRecurring && keepSeries) {
+                existing?.recurrenceMonthlyOrdinal
+            } else if (recurrence.isRecurring && recurrence.type == RecurrenceType.MONTHLY_NTH_WEEKDAY && dueDate != null) {
                 dueDate.nthWeekOrdinal()
             } else if (keepSeries) {
                 existing?.recurrenceMonthlyOrdinal
             } else {
                 null
             },
-            recurrenceMonthlyWeekday = if (recurrence.isRecurring && recurrence.type == RecurrenceType.MONTHLY_NTH_WEEKDAY && dueDate != null) {
+            recurrenceMonthlyWeekday = if (recurrence.isRecurring && keepSeries) {
+                existing?.recurrenceMonthlyWeekday
+            } else if (recurrence.isRecurring && recurrence.type == RecurrenceType.MONTHLY_NTH_WEEKDAY && dueDate != null) {
                 dueDate.dayOfWeek.value
             } else if (keepSeries) {
                 existing?.recurrenceMonthlyWeekday
             } else {
                 null
             },
-            recurrenceMonthlyDay = if (recurrence.isRecurring && recurrence.type == RecurrenceType.MONTHLY_DAY && dueDate != null) {
+            recurrenceMonthlyDay = if (recurrence.isRecurring && keepSeries) {
+                existing?.recurrenceMonthlyDay
+            } else if (recurrence.isRecurring && recurrence.type == RecurrenceType.MONTHLY_DAY && dueDate != null) {
                 dueDate.dayOfMonth
             } else if (keepSeries) {
                 existing?.recurrenceMonthlyDay
@@ -3318,7 +3371,9 @@ class TodoRepository(
             } else {
                 null
             },
-            recurrenceAnchorDueAtMillis = if (recurrence.isRecurring) dueAtMillis else if (keepSeries) {
+            recurrenceAnchorDueAtMillis = if (recurrence.isRecurring) {
+                if (keepSeries) existing?.recurrenceAnchorDueAtMillis ?: dueAtMillis else dueAtMillis
+            } else if (keepSeries) {
                 existing?.recurrenceAnchorDueAtMillis
             } else {
                 null
@@ -3384,21 +3439,27 @@ class TodoRepository(
             } else {
                 ""
             },
-            recurrenceMonthlyOrdinal = if (recurrence.isRecurring && recurrence.type == RecurrenceType.MONTHLY_NTH_WEEKDAY) {
+            recurrenceMonthlyOrdinal = if (recurrence.isRecurring && keepSeries) {
+                existing?.recurrenceMonthlyOrdinal
+            } else if (recurrence.isRecurring && recurrence.type == RecurrenceType.MONTHLY_NTH_WEEKDAY) {
                 startDate.nthWeekOrdinal()
             } else if (keepSeries) {
                 existing?.recurrenceMonthlyOrdinal
             } else {
                 null
             },
-            recurrenceMonthlyWeekday = if (recurrence.isRecurring && recurrence.type == RecurrenceType.MONTHLY_NTH_WEEKDAY) {
+            recurrenceMonthlyWeekday = if (recurrence.isRecurring && keepSeries) {
+                existing?.recurrenceMonthlyWeekday
+            } else if (recurrence.isRecurring && recurrence.type == RecurrenceType.MONTHLY_NTH_WEEKDAY) {
                 startDate.dayOfWeek.value
             } else if (keepSeries) {
                 existing?.recurrenceMonthlyWeekday
             } else {
                 null
             },
-            recurrenceMonthlyDay = if (recurrence.isRecurring && recurrence.type == RecurrenceType.MONTHLY_DAY) {
+            recurrenceMonthlyDay = if (recurrence.isRecurring && keepSeries) {
+                existing?.recurrenceMonthlyDay
+            } else if (recurrence.isRecurring && recurrence.type == RecurrenceType.MONTHLY_DAY) {
                 startDate.dayOfMonth
             } else if (keepSeries) {
                 existing?.recurrenceMonthlyDay
@@ -3410,7 +3471,9 @@ class TodoRepository(
             } else {
                 null
             },
-            recurrenceAnchorDueAtMillis = if (recurrence.isRecurring) eventStartAtMillis else if (keepSeries) {
+            recurrenceAnchorDueAtMillis = if (recurrence.isRecurring) {
+                if (keepSeries) existing?.recurrenceAnchorDueAtMillis ?: eventStartAtMillis else eventStartAtMillis
+            } else if (keepSeries) {
                 existing?.recurrenceAnchorDueAtMillis
             } else {
                 null
@@ -3676,12 +3739,20 @@ class TodoRepository(
         )
     }
 
+    private fun TodoItem.toRecurrenceConfig(): RecurrenceConfig {
+        return RecurrenceConfig(
+            enabled = isRecurring,
+            type = recurrenceTypeEnum,
+            weeklyDays = storageStringToWeekdays(recurrenceWeekdays),
+            endDate = recurrenceEndDate
+        )
+    }
+
     private fun TodoItem.recurrenceInstanceDateOrNull(): LocalDate? {
-        return if (isEvent) {
-            eventStartDate()
-        } else {
-            dueDateTimeOrNull()?.toLocalDate()
+        recurrenceAnchorDueAtMillis?.let { anchorMillis ->
+            return Instant.ofEpochMilli(anchorMillis).atZone(ZoneId.systemDefault()).toLocalDate()
         }
+        return if (isEvent) eventStartDate() else dueDateTimeOrNull()?.toLocalDate()
     }
 
     private fun generateDailyDates(start: LocalDate, end: LocalDate): List<LocalDate> {

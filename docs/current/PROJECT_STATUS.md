@@ -8,8 +8,8 @@
 - Target platform: Android 14 / API 34
 - License: MIT License (`LICENSE`)
 - Current version in code:
-  - `versionName = "1.13.11"`
-  - `versionCode = 259`
+  - `versionName = "1.13.12"`
+  - `versionCode = 260`
 
 ## Current Build Facts
 
@@ -21,7 +21,18 @@
 - Latest GitHub Release:
   - `https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.13.11`
 - Latest fully built debug APK:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.13.11-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.13.12-debug.apk`
+- Current `1.13.12 / versionCode 260` status:
+  - This build fixes the launcher icon regression path by switching both standard and round adaptive icon foregrounds from the older opaque launcher-art bitmap to the transparent main-logo resource.
+  - Adaptive launcher icons now also declare a `monochrome` drawable that points at the same transparent main-logo resource, reducing launcher themed-icon fallback to stale opaque art.
+  - The drawer header app icon also uses the transparent logo resource.
+  - Unreferenced older launcher-art PNG variants were removed from source resources; the notification icon art remains because `ic_stat_payki_todo.xml` still references it.
+  - `AGENTS.md` now documents GitHub public repository standards: root file hygiene, docs/archive placement, README/CHANGELOG expectations, `.github`/CI maintenance, and secret/artifact exclusion.
+  - Database version remains `25`; no schema or user-data migration was added.
+  - `./gradlew.bat :app:assembleDebug` passed.
+  - Debug APK metadata confirms `versionName = 1.13.12`, `versionCode = 260`, output `PaykiTodo-1.13.12-debug.apk`.
+  - `aapt dump xmltree` confirms `res/mipmap-anydpi-v26/ic_launcher.xml` declares `background`, `foreground`, and `monochrome`; foreground and monochrome resolve to the same drawable id.
+  - `git diff --check` passed.
 - Current `1.13.11 / versionCode 259` status:
   - This build improves launcher Widget spacing based on the 2026-05-22 device screenshot.
   - 今日看板 Widget runtime and picker preview content padding now use wider horizontal margins so cards and section titles are not visually pressed against the rounded widget shell.

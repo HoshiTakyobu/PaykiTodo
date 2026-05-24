@@ -2,36 +2,37 @@
 
 ## Active Development Focus
 
-Active immediate task: polish GitHub-facing project documentation after publishing `v1.13.11`.
+Active immediate task: fix the launcher-icon regression path and document GitHub public repository maintenance rules on the `1.13.12 / versionCode 260` line.
 
 Do not commit secrets, signing material, API keys, private Base URLs, generated APK/AAB outputs, or personal backups/logs. The repository already ignores `keystore.properties`, `release/`, `*.apk`, `*.jks`, `.env*`, and local temp files.
 
-## Documentation Cleanup In Progress
+## Current Round Scope
 
-The public repository surface is being reorganized so GitHub readers can understand the app without reading internal session logs.
+The user reported that the PaykiTodo launcher icon had drifted back toward an older ugly/simple look and asked for `AGENTS.md` to preserve the current GitHub-standard repository style.
 
-1. README should describe the app, current version, download/install path, major features, local build process, privacy boundary, open-source license, and contribution/security links.
-2. CHANGELOG should be a structured user-facing release log, not a long uncurated internal debug journal.
-3. Root-level open-source and governance files should exist:
-   - `LICENSE`
-   - `NOTICE.md`
-   - `PRIVACY.md`
-   - `SECURITY.md`
-   - `CONTRIBUTING.md`
-4. GitHub Release `v1.13.11` body should be updated to match the cleaned public presentation.
-5. Before committing and pushing, verify ignored signing files remain ignored and no secret-like files are staged.
-6. Repository standardization should add `.github` issue templates, PR template, Android CI, support / code-of-conduct files, README badges, and move internal root files into `docs/current/` or `docs/archive/`.
+1. Launcher and round adaptive icons should use the transparent main-logo resource rather than older opaque launcher-art PNGs.
+2. The drawer header should use the same transparent logo to avoid showing a white rounded-rectangle image inside a circular surface.
+3. Unreferenced old launcher-art PNG variants should be removed from source resources so future edits cannot accidentally revert to them.
+4. `AGENTS.md` should explicitly record public GitHub repository expectations: root-file hygiene, public docs, `.github` templates / CI, security docs, internal docs placement, and secret/artifact exclusions.
+5. Version metadata should move to `1.13.12 / versionCode 260` so the debug APK can install over `1.13.11`.
 
-## Verification For Repository Standardization
+## Verification Completed For 1.13.12
 
-Completed locally before commit:
+The `1.13.12 / versionCode 260` build addresses the launcher icon regression and AGENTS repository-standard rule request.
 
-1. `git diff --check`
-2. `./gradlew.bat :app:testDebugUnitTest`
-3. `git check-ignore -v keystore.properties release/PaykiTodo-release.jks .env app/build/outputs/apk/release/PaykiTodo-1.13.11-release.apk`
-4. Secret-pattern scan over public docs, `.github`, and `docs/current/` found no real API key / token / private key; matches were only documentation examples and rule text.
-
-After checks pass, push the documentation cleanup to GitHub because the user explicitly requested the GitHub-facing presentation to be cleaned up.
+1. Version metadata moved from `1.13.11 / versionCode 259` to `1.13.12 / versionCode 260`.
+2. Database version remains `25`; no schema, backup format, or user-data migration was added.
+3. `ic_launcher.xml` and `ic_launcher_round.xml` now use `@drawable/ic_launcher_art_transparent` for foreground and monochrome.
+4. The old unreferenced `ic_launcher_art.png`, `ic_launcher_art_dark.png`, and `ic_launcher_art_v2.png` resources were removed.
+5. Drawer header icon rendering now uses `R.drawable.ic_launcher_art_transparent`.
+6. `AGENTS.md` now records public GitHub repository standards and secret/artifact hygiene rules.
+7. `./gradlew.bat :app:assembleDebug` passed.
+8. Debug APK metadata confirms:
+   - `versionName = 1.13.12`
+   - `versionCode = 260`
+   - output `PaykiTodo-1.13.12-debug.apk`
+9. `aapt dump xmltree` confirms launcher foreground and monochrome entries are present in the packaged adaptive icon XML.
+10. `git diff --check` passed.
 
 ## Verification Completed For 1.13.11
 

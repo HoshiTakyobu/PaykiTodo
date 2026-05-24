@@ -221,7 +221,7 @@ internal fun DashboardDrawer(
                     Surface(shape = CircleShape, color = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)) {
                         Box(Modifier.size(52.dp), contentAlignment = Alignment.Center) {
                             Image(
-                                painter = painterResource(id = R.drawable.ic_launcher_art),
+                                painter = painterResource(id = R.drawable.ic_launcher_art_transparent),
                                 contentDescription = "应用图标",
                                 modifier = Modifier
                                     .size(52.dp)

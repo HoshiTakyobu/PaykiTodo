@@ -210,12 +210,11 @@ This file tracks the product at a practical level for new coding sessions.
 
 ### Packaging / Identity
 
-- adaptive launcher icon foreground is wired directly to the picture resource `ic_launcher_art`
-- old vector mark launcher resources have been removed to prevent accidentally reverting to the wrong icon
-- raster launcher art is also used by in-app launch / drawer surfaces
-- drawer header icon is clipped into its circular header surface to avoid exposing the launcher icon's white rounded-rectangle background
+- adaptive launcher icon foreground and round icon foreground are wired directly to `ic_launcher_art_transparent`, the transparent main-logo resource, instead of the older opaque white-background launcher art
+- adaptive launcher icons provide an explicit monochrome drawable so Android themed-icon launchers do not derive a simplified icon from stale opaque art
+- obsolete unreferenced launcher-art variants are removed from source resources to reduce the chance of accidentally reverting to the wrong icon
+- drawer header icon uses the same transparent logo resource and is clipped into its circular header surface to avoid exposing a white rounded-rectangle background
 - launch screen uses a transparent-logo variant so the mountain / sun background remains visible behind the logo
-- picture launcher art is opaque pure white and scaled down inside the 512px canvas to reduce desktop mask crowding
 - release-signing information template exists under `docs/templates/PaykiTodo-Release-Signing-Template.md`; real signing values belong only in ignored root-level `keystore.properties`
 - release builds read local `keystore.properties` and fail early with a clear error when the release keystore or required signing fields are missing, preventing unsigned or accidentally debug-signed release artifacts
 - release builds enable R8 minification and Android resource shrinking; the dashboard background images are stored as WebP resources so the signed release APK can stay below the 13 MB release-size target

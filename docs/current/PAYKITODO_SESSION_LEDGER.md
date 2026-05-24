@@ -98,6 +98,7 @@ When reconstructing PaykiTodo state, use this priority order:
 
 ## Recent Repository-Native Updates
 
+- `1.13.12` repaired the launcher icon resource chain by using the transparent main-logo resource for standard, round, drawer-header, and themed-icon paths, and removed obsolete unreferenced launcher-art PNG variants.
 - `1.6.48` refined Settings reminder-audio UI by replacing large option button groups with compact dropdown rows.
 - `1.6.48` changed percent controls for reminder audio from `±10%` buttons to a 0-100 slider plus numeric input.
 - `1.6.49` corrected the `1.6.48` work-mode interpretation: 工作模式 is a quiet strong-reminder mode that suppresses outward sound by default, strengthens vibration, and keeps calendar reminders on the full-screen / accessibility fallback chain.

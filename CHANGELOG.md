@@ -2,6 +2,26 @@
 
 PaykiTodo 采用语义化倾向的应用版本号和递增 `versionCode`。本文件面向用户记录重要变化，不再保存每一次内部调试重建的完整流水账；完整历史可通过 Git commit、tag 和 `docs/archive/` 追溯。
 
+## v1.13.12
+
+发布日期：2026-05-24（本地调试构建，尚未创建 GitHub Release）
+
+### 修复
+
+- 修正 Android 启动器图标资源链路：普通图标和圆形图标统一使用透明主图，不再引用旧的白底图标素材。
+- 为 adaptive icon 补充 themed icon 的 `monochrome` 链路，降低桌面启动器把旧图标派生为单调回退图标的概率。
+- 清理未被引用的旧 launcher 图标中间产物，避免后续维护时误用旧资源。
+
+### 维护
+
+- `AGENTS.md` 新增公开 GitHub 仓库维护规范，约束 README、CHANGELOG、`.github/`、安全文档、内部文档归档和敏感文件忽略习惯。
+
+### 构建
+
+- `versionName = 1.13.12`
+- `versionCode = 260`
+- 数据库版本保持 `25`，不新增数据迁移。
+
 ## v1.13.11
 
 发布日期：2026-05-22

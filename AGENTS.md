@@ -32,6 +32,21 @@ Then read only the code files directly relevant to the current task.
 11. Goal-mode prompt files (under `docs/goals/`) that drove a completed work round must be committed into the repository as a separate archive commit after the feature work itself lands. Subject like `归档 X.Y.Z 目标文档`. Do not commit goal files that contain API keys, tokens, private Base URLs, signing material, or other secrets — redact or keep them outside git instead. See `docs/goals/README.md` for the naming convention.
 12. Version numbers must always be written with standard ASCII digits and dots, such as `v1.10.3`, `1.10.3`, or `1.11.0 / versionCode 222`. Never write version numbers as Chinese numerals or mixed text such as `一一零三`, `一零三`, or `一.一零.三` in chat-facing summaries, docs, commit messages, release notes, or APK build reports.
 
+## GitHub Public Repository Standards
+
+Keep the repository presentable as a public Android project, not just as a local debug folder.
+
+- The root directory should stay focused on public entry points: `README.md`, `CHANGELOG.md`, `LICENSE`, `NOTICE.md`, `PRIVACY.md`, `SECURITY.md`, `CONTRIBUTING.md`, `SUPPORT.md`, `CODE_OF_CONDUCT.md`, `.github/`, `AGENTS.md`, Gradle project files, and source directories.
+- Internal session state, backlog notes, handoff prompts, and goal-mode files belong under `docs/current/`, `docs/goals/`, or `docs/archive/`; do not recreate loose root files such as `goal.md`, `TODO.md`, or temporary debug notes.
+- Public docs must distinguish the current source/debug version from the latest published GitHub Release when they differ. Do not point a public APK download link at a tag that has not been created.
+- When behavior changes are user-visible, update the relevant public-facing docs if the change affects how users install, understand, report issues for, or safely operate the app.
+- Keep `CHANGELOG.md` as a user-facing release log. Do not turn it back into a raw internal session journal; detailed implementation history belongs in commits and `docs/archive/`.
+- Keep `.github/` templates and Android CI usable. If a GitHub Actions failure is caused by repository config, formatting, or a stale workflow assumption, fix it before treating the repo as publication-ready.
+- Keep `SECURITY.md` because PaykiTodo includes LAN sync, optional AI API keys, local backups, and release signing. Security and secret-handling expectations should be visible to GitHub readers.
+- Never commit generated APK/AAB files, signing keystores, API keys, private Base URLs, backups, logs with personal data, or local machine diagnostics.
+- Do not keep unreferenced design intermediates, old launcher icon variants, or one-off generated assets in source directories unless they are deliberately documented as maintained source assets.
+- Before committing public-doc, release, signing, or repo-layout work, run `git diff --check` and verify ignored sensitive paths with `git check-ignore -v keystore.properties release/PaykiTodo-release.jks .env` or the closest relevant command.
+
 ## Release Signing And Secret Handling
 
 Release signing secrets never belong in `docs/` or in Git history.

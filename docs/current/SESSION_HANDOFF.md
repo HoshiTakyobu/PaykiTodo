@@ -4,37 +4,47 @@
 
 - Repository root: `G:\Workspace\Project\PaykiTodo`
 - Branch: `main`
-- User has requested GitHub-facing documentation cleanup. Push is appropriate after the documentation cleanup is committed and checked, because the requested change targets GitHub presentation.
+- User requested a launcher icon regression check and an `AGENTS.md` rule update for keeping the repository aligned with the current GitHub-standard public structure. Push has not been requested in this round.
 - Current code version:
-  - `versionName = 1.13.11`
-  - `versionCode = 259`
+  - `versionName = 1.13.12`
+  - `versionCode = 260`
 - Latest debug APK target in this round:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.13.11-debug.apk`
-- Latest signed release APK target in this round:
+  - `app/build/outputs/apk/debug/PaykiTodo-1.13.12-debug.apk`
+- Latest signed release APK available locally:
   - `app/build/outputs/apk/release/PaykiTodo-1.13.11-release.apk`
 - Latest GitHub Release:
   - `https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.13.11`
 - Debug APK metadata inspection:
-  - `versionName = 1.13.11`
-  - `versionCode = 259`
+  - `versionName = 1.13.12`
+  - `versionCode = 260`
 
 ## Active Goal
 
-Active immediate task: polish launcher Widget horizontal spacing on the `1.13.11 / versionCode 259` line.
+Active immediate task: fix launcher icon resource regression and record GitHub public repository maintenance rules on the `1.13.12 / versionCode 260` line.
 
-Latest status: Widget spacing changes are implemented and version metadata has moved to `1.13.11 / versionCode 259`. `git diff --check`, `./gradlew.bat :app:assembleDebug`, `./gradlew.bat :app:assembleRelease`, APK metadata inspection, and release signature verification have passed. Main branch and tags have been pushed, and GitHub Release `v1.13.11` includes the signed release APK.
+Latest status: launcher and round adaptive icon foregrounds now use the transparent main-logo resource, adaptive icons declare monochrome, obsolete unreferenced launcher-art PNG variants were removed, and `AGENTS.md` now documents public GitHub repository standards. `./gradlew.bat :app:assembleDebug`, APK metadata inspection, adaptive icon XML inspection, and `git diff --check` have passed. This round has not pushed to GitHub.
 
-## Current Documentation Cleanup
+## Current Documentation / Repository Standards
 
-The public repository documentation is being reorganized:
+The public repository documentation has been reorganized and AGENTS now records the maintenance rules:
 
 1. `README.md` should stay concise and public-facing: app purpose, latest release, install path, feature overview, build commands, privacy/open-source/contribution links.
 2. `CHANGELOG.md` should stay structured by version / milestone and should not return to a huge internal session journal.
 3. Root-level public governance files now exist or are being added: `LICENSE`, `NOTICE.md`, `PRIVACY.md`, `SECURITY.md`, `CONTRIBUTING.md`.
 4. Keep secret files out of git. Confirm `git check-ignore -v keystore.properties release/PaykiTodo-release.jks` before the final commit if release/signing docs are touched.
-5. After local commit, update GitHub Release `v1.13.11` body to the cleaner public release-note format and push `main`.
-6. The current standardization pass adds `.github` issue templates, PR template, Android CI, `SUPPORT.md`, `CODE_OF_CONDUCT.md`, README badges, and moves internal bootstrap/backlog files out of the root directory.
-7. Local verification for this pass: `git diff --check`, `./gradlew.bat :app:testDebugUnitTest`, ignored-secret checks, and secret-pattern scan over public docs / `.github` / current docs.
+5. Public docs must distinguish the current source/debug version from the latest published GitHub Release when they differ.
+6. `.github` issue templates, PR template, Android CI, `SUPPORT.md`, `CODE_OF_CONDUCT.md`, and README badges should stay usable.
+7. Internal bootstrap/backlog/goal material belongs under `docs/current/`, `docs/goals/`, or `docs/archive/`, not loose in the repository root.
+
+## What Changed In The Latest 1.13.12 Patch
+
+1. Launcher and round adaptive icon foregrounds now use `ic_launcher_art_transparent` instead of the older opaque white-background launcher art.
+2. Adaptive launcher icons now declare `monochrome` with the transparent logo resource, preventing Android themed-icon launchers from deriving from stale opaque art.
+3. Drawer header icon rendering now uses the same transparent logo.
+4. Unreferenced old launcher-art PNG variants were removed from `drawable-nodpi`; notification icon art remains because it is still referenced.
+5. `AGENTS.md` now includes GitHub public repository standards for root-file hygiene, public docs, CI/templates, security docs, and secret/artifact exclusions.
+6. Version metadata moved to `1.13.12 / versionCode 260`; latest debug APK target is `app/build/outputs/apk/debug/PaykiTodo-1.13.12-debug.apk`.
+7. Verification passed: `./gradlew.bat :app:assembleDebug`, APK metadata inspection, adaptive icon XML inspection, and `git diff --check`.
 
 ## What Changed In The Latest 1.13.11 Patch
 

@@ -74,7 +74,6 @@ private class CountdownWidgetFactory(
             ?: return RemoteViews(context.packageName, R.layout.widget_countdown_item)
         val item = row.item
         return RemoteViews(context.packageName, R.layout.widget_countdown_item).apply {
-            setViewVisibility(R.id.widget_countdown_check, if (item.isTodo) View.VISIBLE else View.GONE)
             setTextViewText(R.id.widget_countdown_primary, row.remainingPrimary)
             setTextViewText(R.id.widget_countdown_secondary, row.remainingSecondary)
             setTextViewText(R.id.widget_countdown_title, item.title)

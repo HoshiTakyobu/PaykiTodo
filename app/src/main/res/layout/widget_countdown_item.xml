@@ -8,20 +8,10 @@
     android:elevation="2dp"
     android:gravity="center_vertical"
     android:orientation="horizontal"
-    android:paddingStart="14dp"
-    android:paddingTop="6dp"
-    android:paddingEnd="14dp"
-    android:paddingBottom="6dp">
-
-    <TextView
-        android:id="@+id/widget_countdown_check"
-        android:layout_width="22dp"
-        android:layout_height="22dp"
-        android:layout_marginEnd="6dp"
-        android:background="@drawable/widget_checkbox_ring"
-        android:gravity="center"
-        android:includeFontPadding="false"
-        android:text="" />
+    android:paddingStart="10dp"
+    android:paddingTop="8dp"
+    android:paddingEnd="10dp"
+    android:paddingBottom="8dp">
 
     <LinearLayout
         android:layout_width="54dp"

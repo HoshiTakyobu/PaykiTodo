@@ -416,6 +416,12 @@ object DatabaseMigrations {
         }
     }
 
+    val MIGRATION_25_26 = object : Migration(25, 26) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            createLargeListRuntimeIndexes(db)
+        }
+    }
+
     private fun rebuildPlanningNotesTable(db: SupportSQLiteDatabase) {
         db.execSQL("DROP TABLE IF EXISTS `planning_notes_room_expected`")
         createPlanningNotesTable(db, "planning_notes_room_expected")
@@ -504,6 +510,27 @@ object DatabaseMigrations {
             """
             CREATE INDEX IF NOT EXISTS `index_ai_reports_generated_id`
             ON `ai_reports` (`generatedAtMillis`, `id`)
+            """.trimIndent()
+        )
+    }
+
+    private fun createLargeListRuntimeIndexes(db: SupportSQLiteDatabase) {
+        db.execSQL(
+            """
+            CREATE INDEX IF NOT EXISTS `index_todo_items_active_todo_sort`
+            ON `todo_items` (`itemType`, `completed`, `canceled`, `dueAtMillis`, `createdAtMillis`)
+            """.trimIndent()
+        )
+        db.execSQL(
+            """
+            CREATE INDEX IF NOT EXISTS `index_todo_items_history_todo_sort`
+            ON `todo_items` (`itemType`, `completed`, `canceled`, `completedAtMillis`, `canceledAtMillis`, `missedAtMillis`, `createdAtMillis`)
+            """.trimIndent()
+        )
+        db.execSQL(
+            """
+            CREATE INDEX IF NOT EXISTS `index_todo_items_calendar_range_sort`
+            ON `todo_items` (`itemType`, `completed`, `canceled`, `startAtMillis`, `endAtMillis`, `dueAtMillis`, `createdAtMillis`)
             """.trimIndent()
         )
     }

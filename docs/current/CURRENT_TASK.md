@@ -2,7 +2,7 @@
 
 ## Active Development Focus
 
-Active immediate task: audit recurring item behavior and reduce lag in large todo lists / Calendar timeline on the `1.13.16 / versionCode 264` line, then rebuild the debug APK.
+Active immediate task: audit recurring item behavior and reduce lag in large todo lists / Calendar timeline on the `1.13.18 / versionCode 266` line, then rebuild the debug APK.
 
 Do not commit secrets, signing material, API keys, private Base URLs, generated APK/AAB outputs, or personal backups/logs. The repository already ignores `keystore.properties`, `release/`, `*.apk`, `*.jks`, `.env*`, and local temp files.
 
@@ -14,8 +14,26 @@ The user asked to re-check recurring-task behavior and fix severe lag when many 
 2. Fix any confirmed recurring-series bug without touching the user's live phone data.
 3. Reduce main-thread work when todo / daily-board lists become large.
 4. Reduce Calendar day / three-day timeline layout cost when many events are loaded.
-5. Keep database schema stable unless a real migration is required.
-6. Version metadata should move to `1.13.16 / versionCode 264` so the debug APK can install over `1.13.15`.
+5. Add a small database migration only if it directly improves the large-list hot path.
+6. Version metadata should move to `1.13.18 / versionCode 266` so the debug APK can install over the previous debug build.
+
+## Verification Completed For 1.13.18
+
+The `1.13.18 / versionCode 266` build combines the current recurring-operation audit, todo/calendar performance pass, and already-present widget visual follow-up changes in the working tree.
+
+1. Version metadata moved to `1.13.18 / versionCode 266`.
+2. Database version moved to `26`; `MIGRATION_25_26` adds indexes for active todo sorting, history todo sorting, and calendar range queries.
+3. Desktop Web preview delete/cancel now sends `CURRENT_AND_FUTURE` for recurring todos/events, so preview actions no longer silently operate on only the current row when the user is trying to remove a series going forward.
+4. Todo cards use a lightweight Canvas completion toggle and skip strike-through text-layout callbacks unless the completion animation is active.
+5. Todo sectioning now classifies today/upcoming with the local-day millisecond range and has a boundary regression test.
+6. Calendar day / three-day timeline caches timed-event placements per date, precomputes segment time fields, and avoids timed-event layout work in month/list views.
+7. Widget follow-up removes countdown checkbox circles and tightens countdown/event card spacing while aligning greeting-card backgrounds with the newer widget card surface.
+8. `node --check app/src/main/assets/desktop-web/app.js` passed.
+9. `./gradlew.bat :app:compileDebugKotlin` passed.
+10. `./gradlew.bat :app:testDebugUnitTest` passed after stopping Gradle daemons and running sequentially; the earlier failed run was caused by parallel Gradle/KSP generated-source contention.
+11. `./gradlew.bat :app:assembleDebug` passed.
+12. `git diff --check` passed.
+13. Debug APK metadata confirms `versionName = 1.13.18`, `versionCode = 266`, output `PaykiTodo-1.13.18-debug.apk`.
 
 ## Verification Completed For 1.13.16
 

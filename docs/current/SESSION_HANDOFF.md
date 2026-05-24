@@ -6,23 +6,34 @@
 - Branch: `main`
 - User requested a recurring-item audit and performance fixes because todo scrolling becomes very laggy when many items exist and the Calendar page still stutters. Push has not been requested in this round.
 - Current code version:
-  - `versionName = 1.13.16`
-  - `versionCode = 264`
+  - `versionName = 1.13.18`
+  - `versionCode = 266`
 - Latest debug APK target in this round:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.13.16-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.13.18-debug.apk`
 - Latest signed release APK available locally:
   - `app/build/outputs/apk/release/PaykiTodo-1.13.11-release.apk`
 - Latest GitHub Release:
   - `https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.13.11`
 - Debug APK metadata inspection:
-  - `versionName = 1.13.16`
-  - `versionCode = 264`
+  - `versionName = 1.13.18`
+  - `versionCode = 266`
 
 ## Active Goal
 
-Active immediate task: audit recurring task / recurring event behavior, fix any confirmed recurrence bug, reduce lag in large todo lists and the Calendar timeline, and rebuild the debug APK on the `1.13.16 / versionCode 264` line.
+Active immediate task: audit recurring task / recurring event behavior, fix any confirmed recurrence bug, reduce lag in large todo lists and the Calendar timeline, and rebuild the debug APK on the `1.13.18 / versionCode 266` line.
 
-Latest status: recurring current-instance delete now leaves canceled tombstones so template replenishment cannot recreate deleted occurrences; recurring range logic uses original recurrence anchor dates; current-only recurrence rule edits are blocked; phone recurring-todo delete shows scope choice; Calendar timed-event rendering is vertically culled to the viewport; todo cards use lighter no-shadow rows and cache group resolution. This round has not pushed to GitHub.
+Latest status: recurring core repository paths were re-audited; no new repository-level future-instance bug was found beyond a desktop Web preview-entry gap. Desktop preview delete/cancel now sends current-and-future scope for recurring items. Calendar timed-event placement is cached per date and skipped outside day/three-day views; todo rows use a lighter checkbox and avoid strike-through layout callbacks until needed; todo sectioning uses local-day millisecond boundaries; database 26 adds hot-path indexes. This round has not pushed to GitHub.
+
+## What Changed In The Latest 1.13.18 Patch
+
+1. Desktop Web preview delete/cancel actions now send `CURRENT_AND_FUTURE` for recurring todos/events so preview actions cannot leave future recurring instances behind because of a missing scope query.
+2. Database version moved to `26`; `MIGRATION_25_26` adds indexes for active todo sorting, history todo sorting, and calendar range queries.
+3. Calendar day / three-day timeline precomputes timed-event placements by date, caches segment time values, and skips timed-event layout entirely in month/list views.
+4. Todo list rows use a lightweight Canvas completion toggle; ordinary text bypasses strike-through layout/draw callbacks until the completion animation runs.
+5. Todo sectioning compares against local-day millisecond boundaries instead of converting every item to `LocalDate`, with a unit test covering 00:00 / 23:59 / next-day boundaries.
+6. Widget visual follow-up removes countdown checkbox circles, tightens countdown/event card spacing, and aligns greeting-card backgrounds with the newer widget card surface.
+7. Version metadata moved to `1.13.18 / versionCode 266`; latest debug APK target is `app/build/outputs/apk/debug/PaykiTodo-1.13.18-debug.apk`.
+8. Verification passed: `node --check app/src/main/assets/desktop-web/app.js`, `./gradlew.bat :app:compileDebugKotlin`, sequential `./gradlew.bat :app:testDebugUnitTest`, `./gradlew.bat :app:assembleDebug`, `git diff --check`, and APK metadata inspection confirmed `versionName = 1.13.18`, `versionCode = 266`.
 
 ## Current Documentation / Repository Standards
 

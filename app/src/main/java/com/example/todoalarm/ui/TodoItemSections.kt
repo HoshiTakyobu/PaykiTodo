@@ -2,6 +2,7 @@ package com.example.todoalarm.ui
 
 import com.example.todoalarm.data.TodoItem
 import java.time.LocalDate
+import java.time.ZoneId
 
 internal data class ActiveTodoSections(
     val missedItems: List<TodoItem>,
@@ -24,6 +25,9 @@ internal fun classifyActiveTodoItems(
     activeTaskItems: List<TodoItem>,
     today: LocalDate
 ): ActiveTodoSections {
+    val zoneId = ZoneId.systemDefault()
+    val todayStartMillis = today.atStartOfDay(zoneId).toInstant().toEpochMilli()
+    val tomorrowStartMillis = today.plusDays(1).atStartOfDay(zoneId).toInstant().toEpochMilli()
     val sortedActiveTaskItems = activeTaskItems.sortedBy { it.dueAtMillis }
     val missedItems = ArrayList<TodoItem>()
     val todayItems = ArrayList<TodoItem>()
@@ -31,8 +35,8 @@ internal fun classifyActiveTodoItems(
     sortedActiveTaskItems.forEach { item ->
         when {
             item.missed -> missedItems += item
-            !item.hasDueDate || item.dueDate() == today -> todayItems += item
-            item.dueDate().isAfter(today) -> upcomingItems += item
+            !item.hasDueDate || item.dueAtMillis in todayStartMillis until tomorrowStartMillis -> todayItems += item
+            item.dueAtMillis >= tomorrowStartMillis -> upcomingItems += item
         }
     }
     return ActiveTodoSections(

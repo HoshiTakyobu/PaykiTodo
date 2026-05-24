@@ -22,7 +22,6 @@ import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.rounded.NotificationsActive
-import androidx.compose.material3.Checkbox
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -46,7 +45,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.TextLayoutResult
@@ -107,11 +106,10 @@ internal fun ActiveTodoCard(
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             Box(modifier = Modifier.padding(top = 2.dp), contentAlignment = Alignment.Center) {
-                Checkbox(
+                LightweightCompletionToggle(
                     checked = completing,
-                    onCheckedChange = { if (it && !completing) completing = true },
-                    modifier = Modifier.graphicsLayer(scaleX = 1.18f, scaleY = 1.18f),
-                    enabled = !completing
+                    enabled = !completing,
+                    onCheck = { completing = true }
                 )
                 Firework(progress)
             }
@@ -210,6 +208,51 @@ internal fun ActiveTodoCard(
                 onDelete()
             }
         )
+    }
+}
+
+@Composable
+private fun LightweightCompletionToggle(
+    checked: Boolean,
+    enabled: Boolean,
+    onCheck: () -> Unit
+) {
+    val primary = MaterialTheme.colorScheme.primary
+    val outline = MaterialTheme.colorScheme.outline
+    Box(
+        modifier = Modifier
+            .size(44.dp)
+            .clickable(enabled = enabled, onClick = onCheck),
+        contentAlignment = Alignment.Center
+    ) {
+        Canvas(modifier = Modifier.size(28.dp)) {
+            val strokeWidth = 2.2.dp.toPx()
+            val radius = (size.minDimension - strokeWidth) / 2f
+            val center = Offset(size.width / 2f, size.height / 2f)
+            val ringColor = if (checked) primary else outline.copy(alpha = if (enabled) 0.72f else 0.32f)
+            drawCircle(
+                color = ringColor,
+                radius = radius,
+                center = center,
+                style = Stroke(width = strokeWidth)
+            )
+            if (checked) {
+                drawLine(
+                    color = primary,
+                    start = Offset(size.width * 0.30f, size.height * 0.52f),
+                    end = Offset(size.width * 0.44f, size.height * 0.66f),
+                    strokeWidth = strokeWidth,
+                    cap = StrokeCap.Round
+                )
+                drawLine(
+                    color = primary,
+                    start = Offset(size.width * 0.44f, size.height * 0.66f),
+                    end = Offset(size.width * 0.72f, size.height * 0.34f),
+                    strokeWidth = strokeWidth,
+                    cap = StrokeCap.Round
+                )
+            }
+        }
     }
 }
 
@@ -613,6 +656,20 @@ private fun StrikeText(
     maxLines: Int = Int.MAX_VALUE,
     overflow: TextOverflow = TextOverflow.Clip
 ) {
+    if (progress <= 0f) {
+        Text(
+            text = text,
+            modifier = modifier,
+            style = style,
+            fontWeight = fontWeight,
+            color = color,
+            maxLines = maxLines,
+            overflow = overflow,
+            textAlign = TextAlign.Start
+        )
+        return
+    }
+
     var layoutResult by remember(text, style, fontWeight, maxLines, overflow) {
         mutableStateOf<TextLayoutResult?>(null)
     }

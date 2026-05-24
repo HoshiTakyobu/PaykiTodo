@@ -2418,6 +2418,10 @@ function recurrenceScopeQuery(prefix, originalRecurring) {
   return '?scope=' + encodeURIComponent(scope);
 }
 
+function recurrenceScopeQueryForItem(item) {
+  return item?.isRecurring ? '?scope=CURRENT_AND_FUTURE' : '';
+}
+
 function setTodoDueEnabled(enabled) {
   const checkbox = document.getElementById('todo-has-due');
   if (checkbox) checkbox.checked = enabled;
@@ -3225,7 +3229,8 @@ document.getElementById('preview-todo-complete').onclick = async () => {
 
 document.getElementById('preview-todo-cancel').onclick = async () => {
   if (!state.previewTodoId) return;
-  await api(`/api/items/${state.previewTodoId}/cancel`, { method: 'POST' });
+  const todoItem = findTodoById(state.previewTodoId);
+  await api(`/api/items/${state.previewTodoId}/cancel${recurrenceScopeQueryForItem(todoItem)}`, { method: 'POST' });
   closeModal('todo-preview-modal');
   await refreshAfterMutation();
 };
@@ -3233,7 +3238,8 @@ document.getElementById('preview-todo-cancel').onclick = async () => {
 document.getElementById('preview-todo-delete').onclick = async () => {
   if (!state.previewTodoId) return;
   if (!await confirmDanger('确认删除待办', '删除后无法恢复。')) return;
-  await api(`/api/items/${state.previewTodoId}`, { method: 'DELETE' });
+  const todoItem = findTodoById(state.previewTodoId);
+  await api(`/api/items/${state.previewTodoId}${recurrenceScopeQueryForItem(todoItem)}`, { method: 'DELETE' });
   closeModal('todo-preview-modal');
   await refreshAfterMutation();
 };
@@ -3300,7 +3306,8 @@ document.getElementById('preview-event-edit').onclick = () => {
 document.getElementById('preview-event-delete').onclick = async () => {
   if (!state.previewEventId) return;
   if (!await confirmDanger('确认删除日程', '删除后无法恢复。')) return;
-  await api(`/api/items/${state.previewEventId}`, { method: 'DELETE' });
+  const eventItem = findEventById(state.previewEventId);
+  await api(`/api/items/${state.previewEventId}${recurrenceScopeQueryForItem(eventItem)}`, { method: 'DELETE' });
   closeModal('event-preview-modal');
   await refreshAfterMutation();
 };

@@ -107,7 +107,8 @@ class TodoApplication : Application() {
             DatabaseMigrations.MIGRATION_21_22,
             DatabaseMigrations.MIGRATION_22_23,
             DatabaseMigrations.MIGRATION_23_24,
-            DatabaseMigrations.MIGRATION_24_25
+            DatabaseMigrations.MIGRATION_24_25,
+            DatabaseMigrations.MIGRATION_25_26
         )
             .build()
     }

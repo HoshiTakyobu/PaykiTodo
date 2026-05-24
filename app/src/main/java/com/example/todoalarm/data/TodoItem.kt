@@ -39,6 +39,18 @@ import java.time.ZoneId
         Index(
             value = ["completed", "canceled", "countdownEnabled", "itemType", "dueAtMillis", "startAtMillis"],
             name = "index_todo_items_countdown"
+        ),
+        Index(
+            value = ["itemType", "completed", "canceled", "dueAtMillis", "createdAtMillis"],
+            name = "index_todo_items_active_todo_sort"
+        ),
+        Index(
+            value = ["itemType", "completed", "canceled", "completedAtMillis", "canceledAtMillis", "missedAtMillis", "createdAtMillis"],
+            name = "index_todo_items_history_todo_sort"
+        ),
+        Index(
+            value = ["itemType", "completed", "canceled", "startAtMillis", "endAtMillis", "dueAtMillis", "createdAtMillis"],
+            name = "index_todo_items_calendar_range_sort"
         )
     ]
 )

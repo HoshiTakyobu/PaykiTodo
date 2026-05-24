@@ -13,15 +13,6 @@
         <item name="android:paddingBottom">10dp</item>
     </style>
 
-    <style name="WidgetCountdownCheck">
-        <item name="android:layout_width">22dp</item>
-        <item name="android:layout_height">22dp</item>
-        <item name="android:layout_marginEnd">8dp</item>
-        <item name="android:background">@drawable/widget_checkbox_ring</item>
-        <item name="android:gravity">center</item>
-        <item name="android:includeFontPadding">false</item>
-    </style>
-
     <style name="WidgetCountdownTimeBlock">
         <item name="android:layout_width">58dp</item>
         <item name="android:layout_height">wrap_content</item>

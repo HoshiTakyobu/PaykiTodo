@@ -17,7 +17,7 @@ import androidx.room.RoomDatabase
         EventCheckIn::class,
         TodoGroupTag::class
     ],
-    version = 25,
+    version = 26,
     exportSchema = true
 )
 abstract class AppDatabase : RoomDatabase() {

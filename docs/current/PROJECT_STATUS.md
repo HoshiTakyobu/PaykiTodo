@@ -8,8 +8,8 @@
 - Target platform: Android 14 / API 34
 - License: MIT License (`LICENSE`)
 - Current version in code:
-  - `versionName = "1.13.16"`
-  - `versionCode = 264`
+  - `versionName = "1.13.18"`
+  - `versionCode = 266`
 
 ## Current Build Facts
 
@@ -21,7 +21,20 @@
 - Latest GitHub Release:
   - `https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.13.11`
 - Latest fully built debug APK:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.13.16-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.13.18-debug.apk`
+- Current `1.13.18 / versionCode 266` status:
+  - Desktop Web preview delete/cancel actions now send `CURRENT_AND_FUTURE` for recurring todos/events, closing the preview-entry gap where future recurring instances could remain after an operation.
+  - Database version is `26`; `MIGRATION_25_26` adds large-list indexes for active todo sorting, history todo sorting, and calendar range queries.
+  - Calendar day / three-day timeline precomputes timed-event placements by date and cached segment time fields, while month/list views skip timed-event placement work entirely.
+  - Todo cards use a lightweight Canvas completion toggle and bypass strike-through text layout callbacks until the completion animation actually runs.
+  - Todo sectioning uses the local-day millisecond range instead of per-item `LocalDate` conversion, with boundary tests for 00:00 / 23:59 / next-day classification.
+  - Widget visual follow-up removes countdown item checkbox circles, tightens event/countdown row spacing, and aligns greeting-card surfaces with the newer widget card style.
+  - `./gradlew.bat :app:compileDebugKotlin` passed.
+  - `./gradlew.bat :app:testDebugUnitTest` passed after stopping parallel Gradle daemons; the earlier failure was caused by concurrently running Gradle tasks colliding over KSP generated sources.
+  - `node --check app/src/main/assets/desktop-web/app.js` passed.
+  - `./gradlew.bat :app:assembleDebug` passed.
+  - `git diff --check` passed.
+  - Debug APK metadata confirms `versionName = 1.13.18`, `versionCode = 266`, output `PaykiTodo-1.13.18-debug.apk`.
 - Current `1.13.16 / versionCode 264` status:
   - Recurring todo/event current-instance delete keeps a canceled tombstone instead of hard-deleting the row, so the recurring template replenisher cannot recreate that occurrence.
   - Recurring range edit/cancel/delete and template truncation use the original recurrence anchor date when available, so a single moved occurrence no longer breaks `当前及之后` selection.

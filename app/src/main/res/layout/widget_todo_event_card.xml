@@ -3,18 +3,19 @@
     android:id="@+id/widget_item_root"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:minHeight="108dp"
+    android:minHeight="72dp"
     android:background="@drawable/widget_todo_item_background"
+    android:clipToOutline="true"
     android:gravity="center_vertical"
     android:orientation="horizontal"
-    android:paddingStart="18dp"
-    android:paddingTop="15dp"
-    android:paddingEnd="18dp"
-    android:paddingBottom="15dp">
+    android:paddingStart="10dp"
+    android:paddingTop="10dp"
+    android:paddingEnd="10dp"
+    android:paddingBottom="10dp">
 
     <LinearLayout
         android:id="@+id/widget_event_date_block"
-        android:layout_width="56dp"
+        android:layout_width="48dp"
         android:layout_height="wrap_content"
         android:gravity="center"
         android:orientation="vertical">
@@ -55,14 +56,14 @@
     <TextView
         android:id="@+id/widget_event_strip"
         android:layout_width="5dp"
-        android:layout_height="78dp"
-        android:layout_marginStart="12dp"
+        android:layout_height="52dp"
+        android:layout_marginStart="8dp"
         android:background="@color/widget_event_blue" />
 
     <LinearLayout
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:layout_marginStart="14dp"
+        android:layout_marginStart="10dp"
         android:layout_weight="1"
         android:orientation="vertical">
 
@@ -81,7 +82,7 @@
             android:id="@+id/widget_event_title"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
+            android:layout_marginTop="5dp"
             android:ellipsize="end"
             android:maxLines="2"
             android:textColor="@color/widget_text_primary"
@@ -93,7 +94,7 @@
             android:id="@+id/widget_event_time"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="5dp"
+            android:layout_marginTop="4dp"
             android:ellipsize="end"
             android:singleLine="true"
             android:textColor="@color/widget_text_primary"
@@ -104,7 +105,7 @@
             android:id="@+id/widget_event_location"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="5dp"
+            android:layout_marginTop="4dp"
             android:ellipsize="end"
             android:maxLines="1"
             android:textColor="@color/widget_text_muted"

@@ -251,9 +251,15 @@ internal fun CalendarPanel(
     val currentDateIndex = dateWindow.indexOf(currentDate) ?: anchorDateIndex
 
     val eventsByDate = remember(events) { buildEventsByDate(events) }
-    val timedEvents = remember(events) {
-        events.filter { !it.allDay }
-            .sortedBy { it.startAtMillis ?: it.dueAtMillis }
+    val timedEventPlacementsByDate = remember(events, viewMode) {
+        when (viewMode) {
+            CalendarViewMode.DAY,
+            CalendarViewMode.THREE_DAY -> events.filter { !it.allDay }
+                .sortedBy { it.startAtMillis ?: it.dueAtMillis }
+                .let(::buildTimedEventPlacementsByDate)
+            CalendarViewMode.MONTH,
+            CalendarViewMode.AGENDA -> emptyMap()
+        }
     }
 
     val calendarBackground = MaterialTheme.colorScheme.background
@@ -520,8 +526,13 @@ internal fun CalendarPanel(
                             key = { page -> dateWindow.dateAt(page).toEpochDay() }
                         ) { page ->
                             val pageIndex = page.coerceIn(0, dateWindow.lastIndex)
+                            val threeDayAnchorIndex = if (viewMode == CalendarViewMode.THREE_DAY) {
+                                pageIndex.coerceIn(1, (dateWindow.lastIndex - 1).coerceAtLeast(1))
+                            } else {
+                                pageIndex
+                            }
                             val pageVisibleRange = if (viewMode == CalendarViewMode.THREE_DAY) {
-                                (pageIndex - 1).coerceAtLeast(0)..(pageIndex + 1).coerceAtMost(dateWindow.lastIndex)
+                                (threeDayAnchorIndex - 1)..(threeDayAnchorIndex + 1).coerceAtMost(dateWindow.lastIndex)
                             } else {
                                 pageIndex..pageIndex
                             }
@@ -530,7 +541,7 @@ internal fun CalendarPanel(
                             }
                             val pageHorizontalOffsetPx = when (viewMode) {
                                 CalendarViewMode.THREE_DAY ->
-                                    (((pageIndex - 1).coerceAtLeast(0)) * dayColumnWidthPx)
+                                    ((threeDayAnchorIndex - 1) * dayColumnWidthPx)
                                         .coerceIn(0f, maxHorizontalOffsetPx)
                                 CalendarViewMode.DAY ->
                                     (pageIndex * dayColumnWidthPx).coerceIn(0f, maxHorizontalOffsetPx)
@@ -543,11 +554,10 @@ internal fun CalendarPanel(
                                     .distinctBy { it.id }
                                     .sortedBy { it.startAtMillis ?: it.dueAtMillis }
                             }
-                            val pageTimedEvents = remember(timedEvents, pageVisibleDays) {
-                                filterEventsOverlappingDays(timedEvents, pageVisibleDays)
-                            }
-                            val pageTimedEventPlacements = remember(pageTimedEvents, pageVisibleDays) {
-                                buildTimedEventPlacementsForDays(pageTimedEvents, pageVisibleDays)
+                            val pageTimedEventPlacements = remember(timedEventPlacementsByDate, pageVisibleDays) {
+                                pageVisibleDays.flatMap { day ->
+                                    timedEventPlacementsByDate[day].orEmpty().map { placement -> day to placement }
+                                }
                             }
 
                             Column(modifier = Modifier.fillMaxSize()) {
@@ -2035,10 +2045,10 @@ private fun TimedEventCard(
     onDragActiveChange: (Boolean) -> Unit
 ) {
     val item = segment.item
-    val startDateTime = reminderAtMillisToDateTime(segment.startMillis)
-    val endDateTime = reminderAtMillisToDateTime(segment.endMillis)
-    val startMinutes = startDateTime.hour * 60 + startDateTime.minute
-    val durationMinutes = java.time.Duration.between(startDateTime, endDateTime).toMinutes().coerceAtLeast(20)
+    val startDateTime = segment.startDateTime
+    val endDateTime = segment.endDateTime
+    val startMinutes = segment.startMinutes
+    val durationMinutes = segment.durationMinutes
     val tint = item.accentColorHex?.let(::colorFromHex) ?: MaterialTheme.colorScheme.primary
     val alpha = calendarVisualAlpha(item)
     val topOffset = hourHeight * (startMinutes / 60f)
@@ -2696,7 +2706,11 @@ private data class DraggingCalendarEvent(
 private data class TimedEventSegment(
     val item: TodoItem,
     val startMillis: Long,
-    val endMillis: Long
+    val endMillis: Long,
+    val startDateTime: LocalDateTime,
+    val endDateTime: LocalDateTime,
+    val startMinutes: Int,
+    val durationMinutes: Int
 )
 
 private data class TimedEventPlacement(
@@ -2711,26 +2725,10 @@ private fun TimedEventPlacement.intersectsVerticalRange(
     hourHeightPx: Float,
     minHeightPx: Float
 ): Boolean {
-    val startDateTime = reminderAtMillisToDateTime(segment.startMillis)
-    val endDateTime = reminderAtMillisToDateTime(segment.endMillis)
-    val startMinutes = startDateTime.hour * 60 + startDateTime.minute
-    val durationMinutes = Duration.between(startDateTime, endDateTime).toMinutes().coerceAtLeast(20)
-    val eventTopPx = (startMinutes / 60f) * hourHeightPx
-    val eventHeightPx = max(hourHeightPx * (durationMinutes / 60f), minHeightPx)
+    val eventTopPx = (segment.startMinutes / 60f) * hourHeightPx
+    val eventHeightPx = max(hourHeightPx * (segment.durationMinutes / 60f), minHeightPx)
     val eventBottomPx = eventTopPx + eventHeightPx
     return eventBottomPx >= startPx && eventTopPx <= endPx
-}
-
-private fun calculateVisibleDayRange(
-    totalDays: Int,
-    dayColumnWidthPx: Float,
-    viewportWidthPx: Float,
-    horizontalOffsetPx: Float
-): IntRange {
-    val visibleStart = ((horizontalOffsetPx / dayColumnWidthPx).toInt() - CalendarOverscanDays).coerceAtLeast(0)
-    val visibleEnd = (((horizontalOffsetPx + viewportWidthPx) / dayColumnWidthPx).toInt() + CalendarOverscanDays)
-        .coerceAtMost(totalDays - 1)
-    return visibleStart..visibleEnd
 }
 
 private fun dayLeftPx(
@@ -2780,41 +2778,23 @@ private fun layoutTimedEventSegments(segments: List<TimedEventSegment>): List<Ti
     return result
 }
 
-private fun buildTimedEventPlacementsForDays(
-    events: List<TodoItem>,
-    visibleDays: List<LocalDate>
-): List<Pair<LocalDate, TimedEventPlacement>> {
-    if (events.isEmpty() || visibleDays.isEmpty()) return emptyList()
-    val segmentsByDay = visibleDays.associateWith { day ->
-        events.mapNotNull { item -> item.toSegmentForDay(day) }
-            .sortedBy { it.startMillis }
+private fun buildTimedEventPlacementsByDate(events: List<TodoItem>): Map<LocalDate, List<TimedEventPlacement>> {
+    if (events.isEmpty()) return emptyMap()
+    val segmentsByDay = linkedMapOf<LocalDate, MutableList<TimedEventSegment>>()
+    events.forEach { item ->
+        val startMillis = item.startAtMillis ?: item.dueAtMillis
+        val endMillis = item.endAtMillis ?: (startMillis + 30 * 60_000L)
+        var cursor = millisToDate(startMillis)
+        val inclusiveEnd = millisToDate(endMillis - 1)
+        while (!cursor.isAfter(inclusiveEnd)) {
+            item.toSegmentForDay(cursor)?.let { segment ->
+                segmentsByDay.getOrPut(cursor) { mutableListOf() } += segment
+            }
+            cursor = cursor.plusDays(1)
+        }
     }
-    return segmentsByDay.flatMap { (day, segments) ->
-        layoutTimedEventSegments(segments).map { placement -> day to placement }
-    }
-}
-
-private fun filterEventsOverlappingDays(
-    events: List<TodoItem>,
-    visibleDays: List<LocalDate>
-): List<TodoItem> {
-    if (events.isEmpty() || visibleDays.isEmpty()) return emptyList()
-    val zoneId = ZoneId.systemDefault()
-    val startMillis = visibleDays.minOrNull()
-        ?.atStartOfDay(zoneId)
-        ?.toInstant()
-        ?.toEpochMilli()
-        ?: return emptyList()
-    val endMillis = visibleDays.maxOrNull()
-        ?.plusDays(1)
-        ?.atStartOfDay(zoneId)
-        ?.toInstant()
-        ?.toEpochMilli()
-        ?: return emptyList()
-    return events.filter { item ->
-        val itemStart = item.startAtMillis ?: item.dueAtMillis
-        val itemEnd = item.endAtMillis ?: (itemStart + 30 * 60_000L)
-        itemStart < endMillis && itemEnd > startMillis
+    return segmentsByDay.mapValues { (_, segments) ->
+        layoutTimedEventSegments(segments.sortedBy { it.startMillis })
     }
 }
 
@@ -2827,10 +2807,20 @@ private fun TodoItem.toSegmentForDay(day: LocalDate): TimedEventSegment? {
     if (itemEnd <= dayStart || itemStart >= dayEnd) return null
     val segmentStart = max(itemStart, dayStart)
     val segmentEnd = max(segmentStart + 60_000L, minOf(itemEnd, dayEnd))
+    val segmentStartDateTime = reminderAtMillisToDateTime(segmentStart)
+    val segmentEndDateTime = reminderAtMillisToDateTime(segmentEnd)
+    val startMinutes = segmentStartDateTime.hour * 60 + segmentStartDateTime.minute
+    val durationMinutes = Duration.between(segmentStartDateTime, segmentEndDateTime).toMinutes()
+        .coerceAtLeast(20)
+        .toInt()
     return TimedEventSegment(
         item = this,
         startMillis = segmentStart,
-        endMillis = segmentEnd
+        endMillis = segmentEnd,
+        startDateTime = segmentStartDateTime,
+        endDateTime = segmentEndDateTime,
+        startMinutes = startMinutes,
+        durationMinutes = durationMinutes
     )
 }
 

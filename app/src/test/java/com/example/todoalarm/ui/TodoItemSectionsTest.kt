@@ -43,6 +43,21 @@ class TodoItemSectionsTest {
         assertEquals(listOf("无 DDL"), sections.todayItems.map { it.title })
     }
 
+    @Test
+    fun dueDateBoundaryUsesTodayLocalMillisRange() {
+        val todayStart = todo(id = 1, title = "今天零点", dueAt = LocalDateTime.of(2026, 5, 18, 0, 0))
+        val todayEnd = todo(id = 2, title = "今天最后一分钟", dueAt = LocalDateTime.of(2026, 5, 18, 23, 59))
+        val tomorrowStart = todo(id = 3, title = "明天零点", dueAt = LocalDateTime.of(2026, 5, 19, 0, 0))
+
+        val sections = classifyActiveTodoItems(
+            activeTaskItems = listOf(tomorrowStart, todayEnd, todayStart),
+            today = LocalDate.of(2026, 5, 18)
+        )
+
+        assertEquals(listOf("今天零点", "今天最后一分钟"), sections.todayItems.map { it.title })
+        assertEquals(listOf("明天零点"), sections.upcomingItems.map { it.title })
+    }
+
     private fun todo(id: Long, title: String, dueAt: LocalDateTime?): TodoItem {
         return TodoItem(
             id = id,

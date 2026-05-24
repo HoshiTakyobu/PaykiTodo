@@ -6,23 +6,33 @@
 - Branch: `main`
 - User requested a recurring-item audit and performance fixes because todo scrolling becomes very laggy when many items exist and the Calendar page still stutters. Push has not been requested in this round.
 - Current code version:
-  - `versionName = 1.13.18`
-  - `versionCode = 266`
+  - `versionName = 1.13.19`
+  - `versionCode = 267`
 - Latest debug APK target in this round:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.13.18-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.13.19-debug.apk`
 - Latest signed release APK available locally:
   - `app/build/outputs/apk/release/PaykiTodo-1.13.11-release.apk`
 - Latest GitHub Release:
   - `https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.13.11`
 - Debug APK metadata inspection:
-  - `versionName = 1.13.18`
-  - `versionCode = 266`
+  - `versionName = 1.13.19`
+  - `versionCode = 267`
 
 ## Active Goal
 
-Active immediate task: audit recurring task / recurring event behavior, fix any confirmed recurrence bug, reduce lag in large todo lists and the Calendar timeline, and rebuild the debug APK on the `1.13.18 / versionCode 266` line.
+Active immediate task: audit recurring task / recurring event behavior, reduce lag in large todo lists and the Calendar timeline, and hand off the rebuilt debug APK on the `1.13.19 / versionCode 267` line.
 
-Latest status: recurring core repository paths were re-audited; no new repository-level future-instance bug was found beyond a desktop Web preview-entry gap. Desktop preview delete/cancel now sends current-and-future scope for recurring items. Calendar timed-event placement is cached per date and skipped outside day/three-day views; todo rows use a lighter checkbox and avoid strike-through layout callbacks until needed; todo sectioning uses local-day millisecond boundaries; database 26 adds hot-path indexes. This round has not pushed to GitHub.
+Latest status: recurring core repository paths were re-audited again; no new repository-level recurring-data bug was confirmed. Future recurring todos still fold into one series card, and expanded series now render only the first 30 future instances plus a folded-count notice. Dashboard todo cards receive pre-resolved group data from a per-state group map, and Calendar day / three-day timeline computes timed-event placements only for the current page days with minute-level current-time refresh. This round has not pushed to GitHub.
+
+## What Changed In The Latest 1.13.19 Patch
+
+1. Future recurring todos in `计划中` keep the folded series-card model; expanded long series now render only the first 30 future instances and show a notice for the rest so one recurring series cannot flood the scrolling list.
+2. Dashboard todo cards now reuse pre-resolved task-group data from a per-state group map, reducing repeated group-list scans while scrolling many todos.
+3. Calendar day / three-day timeline now builds timed-event placements only for the currently visible page days instead of pre-layouting the whole loaded event window.
+4. Calendar current-time axis / line refreshes once per minute, and timed-board vertical overscan is reduced from 2 hours to 1 hour.
+5. Recurring todo/event repository paths were re-audited: current-instance delete still keeps canceled tombstones, `CURRENT_AND_FUTURE` still splits by original recurrence anchor date, and template truncation/deletion remains in place for range operations.
+6. Version metadata moved to `1.13.19 / versionCode 267`; latest debug APK target is `app/build/outputs/apk/debug/PaykiTodo-1.13.19-debug.apk`.
+7. Verification passed: `./gradlew.bat :app:compileDebugKotlin`, `./gradlew.bat :app:testDebugUnitTest`, `./gradlew.bat :app:assembleDebug`, APK metadata inspection confirmed `versionName = 1.13.19`, `versionCode = 267`, and `git diff --check` passed before final handoff-doc edits.
 
 ## What Changed In The Latest 1.13.18 Patch
 

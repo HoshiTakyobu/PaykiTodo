@@ -23,13 +23,31 @@ fun resolveTaskGroup(item: TodoItem, groups: List<TaskGroup>): ResolvedTaskGroup
     if (matched != null) {
         return ResolvedTaskGroup(matched.id, matched.name, matched.colorHex)
     }
-    val fallback = when (TodoCategory.fromKey(item.categoryKey)) {
+    return fallbackResolvedTaskGroup(item)
+}
+
+fun resolveTaskGroup(item: TodoItem, groupsById: Map<Long, TaskGroup>): ResolvedTaskGroup {
+    if (item.isEvent) {
+        return ResolvedTaskGroup(
+            id = 0,
+            name = if (item.allDay) "全天" else "日程",
+            colorHex = item.accentColorHex ?: "#4E87E1"
+        )
+    }
+    val matched = groupsById[item.groupId]
+    if (matched != null) {
+        return ResolvedTaskGroup(matched.id, matched.name, matched.colorHex)
+    }
+    return fallbackResolvedTaskGroup(item)
+}
+
+private fun fallbackResolvedTaskGroup(item: TodoItem): ResolvedTaskGroup {
+    return when (TodoCategory.fromKey(item.categoryKey)) {
         TodoCategory.IMPORTANT -> ResolvedTaskGroup(0, "重要", "#BF7B4D")
         TodoCategory.URGENT -> ResolvedTaskGroup(0, "紧急", "#FF6B4A")
         TodoCategory.FOCUS -> ResolvedTaskGroup(0, "例行", "#4CB782")
         TodoCategory.ROUTINE -> ResolvedTaskGroup(0, "例行", "#4CB782")
     }
-    return fallback
 }
 
 fun resolveTaskGroup(item: TodoItem, group: TaskGroup?): ResolvedTaskGroup {

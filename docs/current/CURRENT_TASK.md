@@ -2,7 +2,7 @@
 
 ## Active Development Focus
 
-Active immediate task: audit recurring item behavior and reduce lag in large todo lists / Calendar timeline on the `1.13.18 / versionCode 266` line, then rebuild the debug APK.
+Active immediate task: audit recurring item behavior and reduce lag in large todo lists / Calendar timeline on the `1.13.19 / versionCode 267` line, then hand off the debug APK for phone testing.
 
 Do not commit secrets, signing material, API keys, private Base URLs, generated APK/AAB outputs, or personal backups/logs. The repository already ignores `keystore.properties`, `release/`, `*.apk`, `*.jks`, `.env*`, and local temp files.
 
@@ -15,7 +15,26 @@ The user asked to re-check recurring-task behavior and fix severe lag when many 
 3. Reduce main-thread work when todo / daily-board lists become large.
 4. Reduce Calendar day / three-day timeline layout cost when many events are loaded.
 5. Add a small database migration only if it directly improves the large-list hot path.
-6. Version metadata should move to `1.13.18 / versionCode 266` so the debug APK can install over the previous debug build.
+6. Version metadata should move to `1.13.19 / versionCode 267` so the debug APK can install over the previous debug build.
+
+## Verification Completed For 1.13.19
+
+The `1.13.19 / versionCode 267` build finishes the follow-up recurring audit and the next concrete large-list / Calendar timeline performance pass.
+
+1. Version metadata moved to `1.13.19 / versionCode 267`.
+2. Database version remains `26`; no schema, backup format, or user-data migration was added.
+3. Recurring todo/event repository paths were re-audited: current-instance delete keeps canceled tombstones, `CURRENT_AND_FUTURE` still uses the original recurrence anchor date for the split, and template truncation/deletion remains in place for range operations.
+4. No new repository-level recurring-data bug was confirmed in this pass.
+5. Future recurring todos in `计划中` still fold into one series card; expanded series now render only the first 30 future instances and show a folded-count notice for the remainder.
+6. Dashboard todo cards now receive pre-resolved group data from a per-state group map, reducing repeated card-level group-list scans during large-list scrolling.
+7. Calendar day / three-day timeline now computes timed-event placements only for the currently visible page days instead of pre-layouting the entire loaded event window.
+8. Calendar current-time axis / line refreshes once per minute, and timed-board vertical overscan is reduced from 2 hours to 1 hour.
+9. Added a unit test covering recurring upcoming items folding into one display group with sorted instances.
+10. `./gradlew.bat :app:compileDebugKotlin` passed.
+11. `./gradlew.bat :app:testDebugUnitTest` passed.
+12. `./gradlew.bat :app:assembleDebug` passed.
+13. `git diff --check` passed.
+14. Debug APK metadata confirms `versionName = 1.13.19`, `versionCode = 267`, output `PaykiTodo-1.13.19-debug.apk`.
 
 ## Verification Completed For 1.13.18
 

@@ -155,6 +155,8 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
+private const val UpcomingRecurringExpandedLimit = 30
+
 @Composable
 internal fun DashboardBackgroundBrush(): Brush {
     val colors = MaterialTheme.colorScheme
@@ -729,6 +731,28 @@ internal fun DashboardBody(
     } else {
         emptyList()
     }
+    val groupsById = remember(uiState.groups) { uiState.groups.associateBy { it.id } }
+    val resolvedTodoGroups = remember(
+        groupsById,
+        boardTodoItems,
+        uiState.missedItems,
+        uiState.todayItems,
+        uiState.upcomingItems,
+        completedHistoryItems
+    ) {
+        buildMap {
+            fun addItems(items: List<TodoItem>) {
+                items.forEach { item ->
+                    put(item.id, resolveTaskGroup(item, groupsById))
+                }
+            }
+            addItems(boardTodoItems)
+            addItems(uiState.missedItems)
+            addItems(uiState.todayItems)
+            addItems(uiState.upcomingItems)
+            addItems(completedHistoryItems)
+        }
+    }
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
@@ -804,6 +828,7 @@ internal fun DashboardBody(
                             ActiveTodoCard(
                                 item = item,
                                 groups = uiState.groups,
+                                resolvedGroup = resolvedTodoGroups[item.id],
                                 forceShowDetailsKey = if (previewTodoId == item.id) previewTodoSerial else 0,
                                 onEdit = { onEdit(item) },
                                 onComplete = { onCompleteTodo(item) },
@@ -896,6 +921,7 @@ internal fun DashboardBody(
                             ActiveTodoCard(
                                 item = item,
                                 groups = uiState.groups,
+                                resolvedGroup = resolvedTodoGroups[item.id],
                                 onEdit = { onEdit(item) },
                                 onComplete = { onCompleteTodo(item) },
                                 onCancel = { onCancelTodo(item) },
@@ -924,6 +950,7 @@ internal fun DashboardBody(
                             ActiveTodoCard(
                                 item = item,
                                 groups = uiState.groups,
+                                resolvedGroup = resolvedTodoGroups[item.id],
                                 onEdit = { onEdit(item) },
                                 onComplete = { onCompleteTodo(item) },
                                 onCancel = { onCancelTodo(item) },
@@ -953,6 +980,7 @@ internal fun DashboardBody(
                                         representative = group.representative,
                                         instanceCount = group.items.size,
                                         groups = uiState.groups,
+                                        resolvedGroup = resolvedTodoGroups[group.representative.id],
                                         expanded = expanded,
                                         onToggle = {
                                             expandedRecurringSeriesIds = if (expanded) {
@@ -964,19 +992,33 @@ internal fun DashboardBody(
                                     )
                                 }
                                 if (expanded) {
+                                    val visibleSeriesItems = group.items.take(UpcomingRecurringExpandedLimit)
                                     items(
-                                        items = group.items,
+                                        items = visibleSeriesItems,
                                         key = { "series-$seriesId-${it.id}" },
                                         contentType = { "active-todo-card" }
                                     ) { item ->
                                         ActiveTodoCard(
                                             item = item,
                                             groups = uiState.groups,
+                                            resolvedGroup = resolvedTodoGroups[item.id],
                                             onEdit = { onEdit(item) },
                                             onComplete = { onCompleteTodo(item) },
                                             onCancel = { onCancelTodo(item) },
                                             onDelete = { onDeleteTodo(item) }
                                         )
+                                    }
+                                    val hiddenCount = group.items.size - visibleSeriesItems.size
+                                    if (hiddenCount > 0) {
+                                        item(
+                                            key = "series-limit-$seriesId",
+                                            contentType = "recurring-series-limit"
+                                        ) {
+                                            RecurringSeriesLimitNotice(
+                                                hiddenCount = hiddenCount,
+                                                visibleCount = UpcomingRecurringExpandedLimit
+                                            )
+                                        }
                                     }
                                 }
                             } else {
@@ -988,6 +1030,7 @@ internal fun DashboardBody(
                                     ActiveTodoCard(
                                         item = item,
                                         groups = uiState.groups,
+                                        resolvedGroup = resolvedTodoGroups[item.id],
                                         onEdit = { onEdit(item) },
                                         onComplete = { onCompleteTodo(item) },
                                         onCancel = { onCancelTodo(item) },
@@ -1009,7 +1052,13 @@ internal fun DashboardBody(
                         key = { it.id },
                         contentType = { "completed-todo-card" }
                     ) { item ->
-                        CompletedTodoCard(item, uiState.groups, { onEdit(item) }, { onRestoreTodo(item) })
+                        CompletedTodoCard(
+                            item = item,
+                            groups = uiState.groups,
+                            onEdit = { onEdit(item) },
+                            onRestore = { onRestoreTodo(item) },
+                            resolvedGroup = resolvedTodoGroups[item.id]
+                        )
                     }
                 }
             }
@@ -1078,10 +1127,13 @@ private fun RecurringTodoSeriesCard(
     representative: TodoItem,
     instanceCount: Int,
     groups: List<TaskGroup>,
+    resolvedGroup: ResolvedTaskGroup? = null,
     expanded: Boolean,
     onToggle: () -> Unit
 ) {
-    val group = resolveTaskGroup(representative, groups)
+    val group = remember(representative.id, representative.groupId, representative.categoryKey, representative.itemType, representative.accentColorHex, resolvedGroup, groups) {
+        resolvedGroup ?: resolveTaskGroup(representative, groups)
+    }
     val accent = colorFromHex(group.colorHex)
     Surface(
         modifier = Modifier
@@ -1141,6 +1193,26 @@ private fun RecurringTodoSeriesCard(
                 tint = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
+    }
+}
+
+@Composable
+private fun RecurringSeriesLimitNotice(
+    hiddenCount: Int,
+    visibleCount: Int
+) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(18.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.42f)
+    ) {
+        Text(
+            text = "已展开前 ${visibleCount} 个未来实例，另有 ${hiddenCount} 个已折叠以保持滑动流畅。",
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            style = MaterialTheme.typography.bodySmall,
+            lineHeight = 18.sp
+        )
     }
 }
 

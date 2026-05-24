@@ -8,8 +8,8 @@
 - Target platform: Android 14 / API 34
 - License: MIT License (`LICENSE`)
 - Current version in code:
-  - `versionName = "1.13.18"`
-  - `versionCode = 266`
+  - `versionName = "1.13.19"`
+  - `versionCode = 267`
 
 ## Current Build Facts
 
@@ -21,7 +21,19 @@
 - Latest GitHub Release:
   - `https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.13.11`
 - Latest fully built debug APK:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.13.18-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.13.19-debug.apk`
+- Current `1.13.19 / versionCode 267` status:
+  - Recurring todo/event repository paths were re-audited: current-instance delete still keeps canceled tombstones, `CURRENT_AND_FUTURE` still cuts by the original recurrence anchor date, and template truncation/deletion remains in place for range cancel/delete/edit; no new repository-level recurring-data bug was found in this pass.
+  - Future recurring todos in `计划中` keep the folded series-card model, and expanded recurring series now render only the first 30 future instances plus a folded-count notice so a long series cannot flood the `LazyColumn`.
+  - Dashboard todo cards now receive pre-resolved task-group data from a per-state group map, reducing repeated per-card group-list scans during large-list scrolling.
+  - Calendar day / three-day timeline now builds timed-event placements only for the currently visible page days instead of pre-layouting the whole loaded event window.
+  - Calendar current-time axis / line refreshes once per minute, and timeline vertical overscan is reduced from 2 hours to 1 hour to cut repeated scroll recomposition and drawing.
+  - Database version remains `26`; no schema, backup format, or user-data migration was added.
+  - `./gradlew.bat :app:compileDebugKotlin` passed.
+  - `./gradlew.bat :app:testDebugUnitTest` passed.
+  - `./gradlew.bat :app:assembleDebug` passed.
+  - `git diff --check` passed before documentation updates.
+  - Debug APK metadata confirms `versionName = 1.13.19`, `versionCode = 267`, output `PaykiTodo-1.13.19-debug.apk`.
 - Current `1.13.18 / versionCode 266` status:
   - Desktop Web preview delete/cancel actions now send `CURRENT_AND_FUTURE` for recurring todos/events, closing the preview-entry gap where future recurring instances could remain after an operation.
   - Database version is `26`; `MIGRATION_25_26` adds large-list indexes for active todo sorting, history todo sorting, and calendar range queries.

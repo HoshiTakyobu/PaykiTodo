@@ -127,8 +127,8 @@ import kotlin.math.max
 import kotlin.math.roundToInt
 
 private const val CalendarDayRange = 730
-private const val CalendarOverscanDays = 1
-private const val CalendarVerticalOverscanHours = 2f
+private const val CalendarOverscanDays = 0
+private const val CalendarVerticalOverscanHours = 1f
 private const val VisibleCalendarDayColumns = 3.0f
 
 private class CalendarDateWindow(
@@ -251,17 +251,6 @@ internal fun CalendarPanel(
     val currentDateIndex = dateWindow.indexOf(currentDate) ?: anchorDateIndex
 
     val eventsByDate = remember(events) { buildEventsByDate(events) }
-    val timedEventPlacementsByDate = remember(events, viewMode) {
-        when (viewMode) {
-            CalendarViewMode.DAY,
-            CalendarViewMode.THREE_DAY -> events.filter { !it.allDay }
-                .sortedBy { it.startAtMillis ?: it.dueAtMillis }
-                .let(::buildTimedEventPlacementsByDate)
-            CalendarViewMode.MONTH,
-            CalendarViewMode.AGENDA -> emptyMap()
-        }
-    }
-
     val calendarBackground = MaterialTheme.colorScheme.background
     val todayHighlightColor = Color(0x334C8BF5)
     val todayHighlightTextColor = Color(0xFF73A8FF)
@@ -554,10 +543,8 @@ internal fun CalendarPanel(
                                     .distinctBy { it.id }
                                     .sortedBy { it.startAtMillis ?: it.dueAtMillis }
                             }
-                            val pageTimedEventPlacements = remember(timedEventPlacementsByDate, pageVisibleDays) {
-                                pageVisibleDays.flatMap { day ->
-                                    timedEventPlacementsByDate[day].orEmpty().map { placement -> day to placement }
-                                }
+                            val pageTimedEventPlacements = remember(events, pageVisibleDays) {
+                                buildTimedEventPlacementsForDays(events, pageVisibleDays)
                             }
 
                             Column(modifier = Modifier.fillMaxSize()) {
@@ -1766,7 +1753,7 @@ private fun CalendarTimeAxis(
 ) {
     val currentMoment by produceState(initialValue = LocalDateTime.now()) {
         while (true) {
-            delay(30_000L)
+            delay(60_000L)
             value = LocalDateTime.now()
         }
     }
@@ -2175,7 +2162,7 @@ private fun CurrentTimeLine(
 ) {
     val currentMoment by produceState(initialValue = LocalDateTime.now()) {
         while (true) {
-            delay(30_000L)
+            delay(60_000L)
             value = LocalDateTime.now()
         }
     }
@@ -2778,23 +2765,40 @@ private fun layoutTimedEventSegments(segments: List<TimedEventSegment>): List<Ti
     return result
 }
 
-private fun buildTimedEventPlacementsByDate(events: List<TodoItem>): Map<LocalDate, List<TimedEventPlacement>> {
-    if (events.isEmpty()) return emptyMap()
+private fun buildTimedEventPlacementsForDays(
+    events: List<TodoItem>,
+    days: List<LocalDate>
+): List<Pair<LocalDate, TimedEventPlacement>> {
+    if (events.isEmpty() || days.isEmpty()) return emptyList()
+    val daySet = days.toSet()
+    val windowStart = days.minOrNull() ?: return emptyList()
+    val windowEndExclusive = (days.maxOrNull() ?: windowStart).plusDays(1)
+    val zoneId = ZoneId.systemDefault()
+    val windowStartMillis = windowStart.atStartOfDay(zoneId).toInstant().toEpochMilli()
+    val windowEndMillis = windowEndExclusive.atStartOfDay(zoneId).toInstant().toEpochMilli()
     val segmentsByDay = linkedMapOf<LocalDate, MutableList<TimedEventSegment>>()
+
     events.forEach { item ->
+        if (item.allDay) return@forEach
         val startMillis = item.startAtMillis ?: item.dueAtMillis
         val endMillis = item.endAtMillis ?: (startMillis + 30 * 60_000L)
-        var cursor = millisToDate(startMillis)
-        val inclusiveEnd = millisToDate(endMillis - 1)
-        while (!cursor.isAfter(inclusiveEnd)) {
-            item.toSegmentForDay(cursor)?.let { segment ->
-                segmentsByDay.getOrPut(cursor) { mutableListOf() } += segment
+        if (endMillis <= windowStartMillis || startMillis >= windowEndMillis) return@forEach
+
+        var cursor = millisToDate(startMillis.coerceAtLeast(windowStartMillis))
+        val inclusiveEnd = millisToDate((endMillis - 1).coerceAtLeast(startMillis))
+        while (!cursor.isAfter(inclusiveEnd) && cursor.isBefore(windowEndExclusive)) {
+            if (cursor in daySet) {
+                item.toSegmentForDay(cursor)?.let { segment ->
+                    segmentsByDay.getOrPut(cursor) { mutableListOf() } += segment
+                }
             }
             cursor = cursor.plusDays(1)
         }
     }
-    return segmentsByDay.mapValues { (_, segments) ->
-        layoutTimedEventSegments(segments.sortedBy { it.startMillis })
+
+    return days.flatMap { day ->
+        val segments = segmentsByDay[day].orEmpty()
+        layoutTimedEventSegments(segments.sortedBy { it.startMillis }).map { placement -> day to placement }
     }
 }
 

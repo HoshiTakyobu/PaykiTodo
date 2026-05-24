@@ -28,6 +28,7 @@ This file tracks the product at a practical level for new coding sessions.
 - recurring todo/event `当前及之后` range handling uses the original recurrence anchor date where available, so moving a single instance does not corrupt future-range edit / cancel / delete behavior
 - recurring Calendar series edits delete the old recurring template when an entire series is changed to non-recurring, so future replenishment cannot recreate future events that the user intentionally removed from the series
 - future recurring todo instances in the `计划中` section fold into one series card with a count badge and expand/collapse control, while `已错过` and `今日待办` remain uncollapsed
+- expanded future recurring todo series render only the first 30 instances plus a folded-count notice, so very long series do not flood the scrolling list
 - grouped task filtering, including multi-group intersection filtering and a phone-side intersection / union switch when multiple groups are selected
 - three-zone home logic: overdue / today / upcoming, with no-DDL active todos included in today rather than hidden in upcoming
 - board-style daily overview entry exists and can show today's todos directly
@@ -356,6 +357,8 @@ This file tracks the product at a practical level for new coding sessions.
 - Calendar month/list/all-day surfaces reuse one top-level event-by-date index instead of rebuilding date buckets independently in each view; the timeline date span is represented by a lightweight date window instead of allocating a full long-range date list.
 - Phone Calendar subscribes only to active events overlapping the current padded visible date range, while notification / deep-link navigation to a far event expands that query range before focusing the target date.
 - Calendar day / three-day timed-event overlap placement is now computed only for the currently visible page days, and timed-event card rendering is vertically culled to the viewport plus overscan, reducing timeline paging and scrolling work when many events are present.
+- Calendar day / three-day timed-event placement now runs only for the currently rendered page days, current-time markers refresh once per minute, and vertical overscan is narrowed to reduce repeated scroll recomposition.
+- Dashboard todo cards reuse pre-resolved group data from a per-state group map, avoiding repeated group-list scans across visible cards while scrolling many todos.
 - Countdown-enabled todos / events are included in phone board, independent countdown widget, and desktop board data without requiring a full historical scan; exact-time past countdown targets are filtered out before rendering.
 - Schedule-template saving reads active events overlapping the selected week, and desktop Planning Desk note update / mapping refresh paths read single notes by ID instead of scanning all planning notes.
 - Future large-history work can still add real FTS for report content search and real-device calendar profiling; the biggest desktop full-snapshot coupling has been split, and desktop todo management now pages/searches `/api/todos` instead of returning the complete todo list by design.

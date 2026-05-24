@@ -68,6 +68,7 @@ import kotlinx.coroutines.delay
 internal fun ActiveTodoCard(
     item: TodoItem,
     groups: List<TaskGroup>,
+    resolvedGroup: ResolvedTaskGroup? = null,
     forceShowDetailsKey: Int = 0,
     onEdit: () -> Unit,
     onComplete: () -> Unit,
@@ -80,7 +81,9 @@ internal fun ActiveTodoCard(
     var showActionSheet by remember(item.id) { mutableStateOf(false) }
     val haptic = LocalHapticFeedback.current
     val progress by animateFloatAsState(targetValue = if (completing) 1f else 0f, label = "complete_progress")
-    val resolvedGroup = remember(item, groups) { resolveTaskGroup(item, groups) }
+    val displayGroup = remember(item.id, item.groupId, item.categoryKey, item.itemType, item.allDay, item.accentColorHex, resolvedGroup, groups) {
+        resolvedGroup ?: resolveTaskGroup(item, groups)
+    }
 
     LaunchedEffect(completing) {
         if (completing) {
@@ -95,7 +98,7 @@ internal fun ActiveTodoCard(
     }
 
     TodoCardShell(
-        group = resolvedGroup,
+        group = displayGroup,
         onClick = { showDetails = true },
         onLongClick = null,
         contentClickable = false
@@ -126,7 +129,7 @@ internal fun ActiveTodoCard(
                     ),
                 verticalArrangement = Arrangement.spacedBy(6.dp)
             ) {
-                TitleRow(item = item, group = resolvedGroup, progress = progress)
+                TitleRow(item = item, group = displayGroup, progress = progress)
                 if (item.notes.isNotBlank()) {
                     StrikeText(
                         text = item.notes,
@@ -288,14 +291,17 @@ internal fun CompletedTodoCard(
     item: TodoItem,
     groups: List<TaskGroup>,
     onEdit: () -> Unit,
-    onRestore: () -> Unit
+    onRestore: () -> Unit,
+    resolvedGroup: ResolvedTaskGroup? = null
 ) {
     var showDetails by remember(item.id) { mutableStateOf(false) }
-    val resolvedGroup = remember(item, groups) { resolveTaskGroup(item, groups) }
+    val displayGroup = remember(item.id, item.groupId, item.categoryKey, item.itemType, item.allDay, item.accentColorHex, resolvedGroup, groups) {
+        resolvedGroup ?: resolveTaskGroup(item, groups)
+    }
 
-    TodoCardShell(group = resolvedGroup, onClick = { showDetails = true }) {
+    TodoCardShell(group = displayGroup, onClick = { showDetails = true }) {
         Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            TitleRow(item = item, group = resolvedGroup, progress = 0f)
+            TitleRow(item = item, group = displayGroup, progress = 0f)
             if (item.notes.isNotBlank()) {
                 Text(
                     text = item.notes,

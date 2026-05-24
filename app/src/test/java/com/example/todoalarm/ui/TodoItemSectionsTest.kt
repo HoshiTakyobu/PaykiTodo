@@ -1,6 +1,7 @@
 package com.example.todoalarm.ui
 
 import com.example.todoalarm.data.NO_DUE_DATE_MILLIS
+import com.example.todoalarm.data.RecurrenceType
 import com.example.todoalarm.data.TodoItem
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -56,6 +57,29 @@ class TodoItemSectionsTest {
 
         assertEquals(listOf("今天零点", "今天最后一分钟"), sections.todayItems.map { it.title })
         assertEquals(listOf("明天零点"), sections.upcomingItems.map { it.title })
+    }
+
+    @Test
+    fun recurringUpcomingItemsFoldIntoOneDisplayGroupWithSortedInstances() {
+        val oneOff = todo(id = 1, title = "单次任务", dueAt = LocalDateTime.of(2026, 5, 19, 9, 0))
+        val laterRecurring = recurringTodo(id = 2, title = "循环任务-后", dueAt = LocalDateTime.of(2026, 5, 21, 8, 0))
+        val earlierRecurring = recurringTodo(id = 3, title = "循环任务-前", dueAt = LocalDateTime.of(2026, 5, 20, 8, 0))
+
+        val groups = buildUpcomingTodoDisplayGroups(listOf(oneOff, laterRecurring, earlierRecurring))
+
+        assertEquals(listOf(null, "daily-audit"), groups.map { it.seriesId })
+        assertEquals(listOf("单次任务"), groups[0].items.map { it.title })
+        assertTrue(groups[1].isCollapsibleRecurringSeries)
+        assertEquals(listOf("循环任务-前", "循环任务-后"), groups[1].items.map { it.title })
+    }
+
+    private fun recurringTodo(id: Long, title: String, dueAt: LocalDateTime): TodoItem {
+        return todo(id = id, title = title, dueAt = dueAt).copy(
+            recurringSeriesId = "daily-audit",
+            recurrenceType = RecurrenceType.DAILY.name,
+            recurrenceEndEpochDay = dueAt.toLocalDate().plusDays(30).toEpochDay(),
+            recurrenceAnchorDueAtMillis = dueAt.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
+        )
     }
 
     private fun todo(id: Long, title: String, dueAt: LocalDateTime?): TodoItem {

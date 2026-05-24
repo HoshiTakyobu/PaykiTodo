@@ -8,8 +8,8 @@
 - Target platform: Android 14 / API 34
 - License: MIT License (`LICENSE`)
 - Current version in code:
-  - `versionName = "1.13.12"`
-  - `versionCode = 260`
+  - `versionName = "1.13.13"`
+  - `versionCode = 261`
 
 ## Current Build Facts
 
@@ -21,7 +21,20 @@
 - Latest GitHub Release:
   - `https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.13.11`
 - Latest fully built debug APK:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.13.12-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.13.13-debug.apk`
+- Current `1.13.13 / versionCode 261` status:
+  - This build fixes desktop Web todo title editing by replacing the single-line title input with a multiline textarea and preserving title newlines in desktop cards/previews.
+  - Desktop Web recurring todo/event editing now exposes a scope selector matching the phone model: current only, current and future, or all.
+  - Desktop Web defaults recurring-todo-to-non-recurring edits to current-and-future so future generated items are cleared instead of continuing to appear.
+  - Desktop sync backend `PUT /api/todos/{id}` and `PUT /api/events/{id}` now honor recurrence scope and clear reminders for all affected items before rescheduling updated items.
+  - Desktop sync cancel/delete item routes can accept scope query parameters; recurring todo delete with a non-current scope cancels the selected active series range and truncates/deletes the template through repository logic.
+  - Database version remains `25`; no schema or user-data migration was added.
+  - Phone-side manual editing already routes recurring item edits through `RecurrenceScopeDialog`; this round focused on closing the desktop Web/API gap.
+  - `node --check app/src/main/assets/desktop-web/app.js` passed.
+  - `./gradlew.bat :app:compileDebugKotlin` passed.
+  - `./gradlew.bat :app:assembleDebug` passed.
+  - Debug APK metadata confirms `versionName = 1.13.13`, `versionCode = 261`, output `PaykiTodo-1.13.13-debug.apk`.
+  - `git diff --check` passed.
 - Current `1.13.12 / versionCode 260` status:
   - This build fixes the launcher icon regression path by switching both standard and round adaptive icon foregrounds from the older opaque launcher-art bitmap to the transparent main-logo resource.
   - Adaptive launcher icons now also declare a `monochrome` drawable that points at the same transparent main-logo resource, reducing launcher themed-icon fallback to stale opaque art.

@@ -2,37 +2,36 @@
 
 ## Active Development Focus
 
-Active immediate task: fix the launcher-icon regression path and document GitHub public repository maintenance rules on the `1.13.12 / versionCode 260` line.
+Active immediate task: finish the desktop Web recurring-item parity fix on the `1.13.13 / versionCode 261` line and rebuild the debug APK.
 
 Do not commit secrets, signing material, API keys, private Base URLs, generated APK/AAB outputs, or personal backups/logs. The repository already ignores `keystore.properties`, `release/`, `*.apk`, `*.jks`, `.env*`, and local temp files.
 
 ## Current Round Scope
 
-The user reported that the PaykiTodo launcher icon had drifted back toward an older ugly/simple look and asked for `AGENTS.md` to preserve the current GitHub-standard repository style.
+The user reported that the desktop Web side could not edit todo titles with line breaks and could not correctly remove future recurring items after changing a series to non-recurring. The fix now needs to mirror the phone-side recurrence-scope behavior and accept multiline titles.
 
-1. Launcher and round adaptive icons should use the transparent main-logo resource rather than older opaque launcher-art PNGs.
-2. The drawer header should use the same transparent logo to avoid showing a white rounded-rectangle image inside a circular surface.
-3. Unreferenced old launcher-art PNG variants should be removed from source resources so future edits cannot accidentally revert to them.
-4. `AGENTS.md` should explicitly record public GitHub repository expectations: root-file hygiene, public docs, `.github` templates / CI, security docs, internal docs placement, and secret/artifact exclusions.
-5. Version metadata should move to `1.13.12 / versionCode 260` so the debug APK can install over `1.13.11`.
+1. Desktop Web todo title input should be multiline and preserve newline characters on save and render.
+2. Desktop Web todo/event editors need recurrence-scope selection matching phone-side recurrence editing.
+3. Editing a recurring item to non-recurring should clear future generated instances by default instead of leaving the old series alive.
+4. Desktop sync update/delete routes should carry scope to the repository so phone-side and desktop-side behavior stay aligned.
+5. Version metadata should move to `1.13.13 / versionCode 261` so the debug APK can install over `1.13.12`.
 
-## Verification Completed For 1.13.12
+## Verification Completed For 1.13.13
 
-The `1.13.12 / versionCode 260` build addresses the launcher icon regression and AGENTS repository-standard rule request.
+The `1.13.13 / versionCode 261` build addresses the desktop Web title / recurrence-scope parity issue.
 
-1. Version metadata moved from `1.13.11 / versionCode 259` to `1.13.12 / versionCode 260`.
+1. Version metadata moved from `1.13.12 / versionCode 260` to `1.13.13 / versionCode 261`.
 2. Database version remains `25`; no schema, backup format, or user-data migration was added.
-3. `ic_launcher.xml` and `ic_launcher_round.xml` now use `@drawable/ic_launcher_art_transparent` for foreground and monochrome.
-4. The old unreferenced `ic_launcher_art.png`, `ic_launcher_art_dark.png`, and `ic_launcher_art_v2.png` resources were removed.
-5. Drawer header icon rendering now uses `R.drawable.ic_launcher_art_transparent`.
-6. `AGENTS.md` now records public GitHub repository standards and secret/artifact hygiene rules.
-7. `./gradlew.bat :app:assembleDebug` passed.
-8. Debug APK metadata confirms:
-   - `versionName = 1.13.12`
-   - `versionCode = 260`
-   - output `PaykiTodo-1.13.12-debug.apk`
-9. `aapt dump xmltree` confirms launcher foreground and monochrome entries are present in the packaged adaptive icon XML.
-10. `git diff --check` passed.
+3. Desktop Web todo title editing now uses a multiline textarea and preserves newline display in todo/event cards and previews.
+4. Desktop Web recurring todo/event editing exposes scope selection matching the phone-side model.
+5. Desktop Web defaults recurring-todo-to-non-recurring edits to current-and-future so future generated items are cleared instead of continuing to appear.
+6. Desktop sync backend `PUT /api/todos/{id}` and `PUT /api/events/{id}` now honor recurrence scope and clear reminders for all affected items before rescheduling updated items.
+7. Desktop sync cancel/delete item routes accept scope query parameters; recurring todo delete with a non-current scope cancels the selected active series range through repository logic.
+8. `node --check app/src/main/assets/desktop-web/app.js` passed.
+9. `./gradlew.bat :app:compileDebugKotlin` passed.
+10. `./gradlew.bat :app:assembleDebug` passed.
+11. Debug APK metadata confirms `versionName = 1.13.13`, `versionCode = 261`, output `PaykiTodo-1.13.13-debug.apk`.
+12. `git diff --check` passed.
 
 ## Verification Completed For 1.13.11
 

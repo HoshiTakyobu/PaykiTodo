@@ -281,6 +281,8 @@ This file tracks the product at a practical level for new coding sessions.
 - phone-side HTTP serving model exists
 - browser can perform limited data operations against the phone-side dataset
 - desktop web can edit existing todos with title, notes, DDL, reminder, reminder delivery mode, multi-group tags, recurrence, ring, and vibration fields
+- desktop web todo title editing uses a multiline textarea and preserves newline display in todo/event cards and previews
+- desktop web recurring todo/event editing exposes the same scope model as the phone side (`仅当前` / `当前及之后` / `整个循环系列`); turning a recurring todo into non-recurring defaults to `当前及之后` so future generated instances do not keep appearing
 - desktop web todo management has compact multi-select group filter chips with intersection semantics, and todo cards / previews / board rows display all group names instead of collapsing to one group
 - desktop web todo/event reminder inputs accept AM/PM, Chinese AM/PM, relative-date, weekday, dot/slash-date, Chinese-date, full-width separator, and Chinese-comma reminder syntax in addition to the existing minute and ISO-like forms; placeholders now show these examples
 - desktop web todo cards open a detail preview first; event cards open the editor directly, while destructive actions still require confirmation

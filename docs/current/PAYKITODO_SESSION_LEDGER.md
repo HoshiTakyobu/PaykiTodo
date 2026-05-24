@@ -98,6 +98,7 @@ When reconstructing PaykiTodo state, use this priority order:
 
 ## Recent Repository-Native Updates
 
+- `1.13.13` fixed desktop Web todo multiline titles and recurring edit scope parity, including default current-and-future cleanup when a recurring todo is changed to non-recurring.
 - `1.13.12` repaired the launcher icon resource chain by using the transparent main-logo resource for standard, round, drawer-header, and themed-icon paths, and removed obsolete unreferenced launcher-art PNG variants.
 - `1.6.48` refined Settings reminder-audio UI by replacing large option button groups with compact dropdown rows.
 - `1.6.48` changed percent controls for reminder audio from `±10%` buttons to a 0-100 slider plus numeric input.

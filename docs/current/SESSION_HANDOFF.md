@@ -4,29 +4,29 @@
 
 - Repository root: `G:\Workspace\Project\PaykiTodo`
 - Branch: `main`
-- User requested a launcher icon regression check and an `AGENTS.md` rule update for keeping the repository aligned with the current GitHub-standard public structure. Push has not been requested in this round.
+- User requested a desktop Web parity fix for multiline todo titles and recurring-item scope handling. Push has not been requested in this round.
 - Current code version:
-  - `versionName = 1.13.12`
-  - `versionCode = 260`
+  - `versionName = 1.13.13`
+  - `versionCode = 261`
 - Latest debug APK target in this round:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.13.12-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.13.13-debug.apk`
 - Latest signed release APK available locally:
   - `app/build/outputs/apk/release/PaykiTodo-1.13.11-release.apk`
 - Latest GitHub Release:
   - `https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.13.11`
 - Debug APK metadata inspection:
-  - `versionName = 1.13.12`
-  - `versionCode = 260`
+  - `versionName = 1.13.13`
+  - `versionCode = 261`
 
 ## Active Goal
 
-Active immediate task: fix launcher icon resource regression and record GitHub public repository maintenance rules on the `1.13.12 / versionCode 260` line.
+Active immediate task: finish the desktop Web recurring-item parity fix on the `1.13.13 / versionCode 261` line and rebuild the debug APK.
 
-Latest status: launcher and round adaptive icon foregrounds now use the transparent main-logo resource, adaptive icons declare monochrome, obsolete unreferenced launcher-art PNG variants were removed, and `AGENTS.md` now documents public GitHub repository standards. `./gradlew.bat :app:assembleDebug`, APK metadata inspection, adaptive icon XML inspection, and `git diff --check` have passed. This round has not pushed to GitHub.
+Latest status: desktop Web todo titles now use a multiline textarea, title newlines are preserved in cards/previews, and recurring edit/delete/update calls now carry a scope model that matches the phone-side recurrence dialog behavior. `node --check app/src/main/assets/desktop-web/app.js`, `./gradlew.bat :app:compileDebugKotlin`, `./gradlew.bat :app:assembleDebug`, APK metadata inspection, and `git diff --check` have passed. This round has not pushed to GitHub.
 
 ## Current Documentation / Repository Standards
 
-The public repository documentation has been reorganized and AGENTS now records the maintenance rules:
+The public repository documentation remains standardized:
 
 1. `README.md` should stay concise and public-facing: app purpose, latest release, install path, feature overview, build commands, privacy/open-source/contribution links.
 2. `CHANGELOG.md` should stay structured by version / milestone and should not return to a huge internal session journal.
@@ -36,15 +36,16 @@ The public repository documentation has been reorganized and AGENTS now records 
 6. `.github` issue templates, PR template, Android CI, `SUPPORT.md`, `CODE_OF_CONDUCT.md`, and README badges should stay usable.
 7. Internal bootstrap/backlog/goal material belongs under `docs/current/`, `docs/goals/`, or `docs/archive/`, not loose in the repository root.
 
-## What Changed In The Latest 1.13.12 Patch
+## What Changed In The Latest 1.13.13 Patch
 
-1. Launcher and round adaptive icon foregrounds now use `ic_launcher_art_transparent` instead of the older opaque white-background launcher art.
-2. Adaptive launcher icons now declare `monochrome` with the transparent logo resource, preventing Android themed-icon launchers from deriving from stale opaque art.
-3. Drawer header icon rendering now uses the same transparent logo.
-4. Unreferenced old launcher-art PNG variants were removed from `drawable-nodpi`; notification icon art remains because it is still referenced.
-5. `AGENTS.md` now includes GitHub public repository standards for root-file hygiene, public docs, CI/templates, security docs, and secret/artifact exclusions.
-6. Version metadata moved to `1.13.12 / versionCode 260`; latest debug APK target is `app/build/outputs/apk/debug/PaykiTodo-1.13.12-debug.apk`.
-7. Verification passed: `./gradlew.bat :app:assembleDebug`, APK metadata inspection, adaptive icon XML inspection, and `git diff --check`.
+1. Desktop Web todo title editing now uses a multiline textarea instead of a single-line input, so phone-created newline titles can be edited and new newline titles can be entered from the browser.
+2. Desktop todo/event list cards and detail previews now preserve title line breaks instead of collapsing them into one line.
+3. Desktop Web recurring todo/event editors now expose `修改范围` with `仅当前` / `当前及之后` / `整个循环系列`.
+4. Turning a recurring todo into a non-recurring todo from desktop defaults to `当前及之后`, preventing future generated instances from continuing to appear after save.
+5. Desktop sync update routes accept recurrence scope and clear reminder artifacts for the full affected item set before rescheduling updates.
+6. Desktop sync cancel/delete item routes accept scope query parameters; recurring todo delete with non-current scope uses repository cancellation/truncation to remove active future instances.
+7. Version metadata moved to `1.13.13 / versionCode 261`; latest debug APK target is `app/build/outputs/apk/debug/PaykiTodo-1.13.13-debug.apk`.
+8. Verification: `node --check app/src/main/assets/desktop-web/app.js`, `./gradlew.bat :app:compileDebugKotlin`, `./gradlew.bat :app:assembleDebug`, APK metadata inspection, and `git diff --check` passed.
 
 ## What Changed In The Latest 1.13.11 Patch
 

@@ -174,8 +174,8 @@ class DesktopSyncCoordinator(
                 method == "POST" && path == "/api/planning/conflict/document" -> DesktopSyncServer.Response.json(resolvePlanningConflictDocument(JSONObject(body)))
                 method == "POST" && path == "/api/planning/conflict/item" -> DesktopSyncServer.Response.json(resolvePlanningConflictItem(JSONObject(body)))
                 method == "POST" && routePath.matches(Regex("/api/items/\\d+/complete")) -> DesktopSyncServer.Response.json(markCompleted(routePath))
-                method == "POST" && routePath.matches(Regex("/api/items/\\d+/cancel")) -> DesktopSyncServer.Response.json(cancelItem(routePath))
-                method == "DELETE" && routePath.matches(Regex("/api/items/\\d+")) -> DesktopSyncServer.Response.json(deleteItem(routePath))
+                method == "POST" && routePath.matches(Regex("/api/items/\\d+/cancel")) -> DesktopSyncServer.Response.json(cancelItem(path))
+                method == "DELETE" && routePath.matches(Regex("/api/items/\\d+")) -> DesktopSyncServer.Response.json(deleteItem(path))
                 else -> DesktopSyncServer.Response.json(JSONObject().put("error", "未找到接口"), 404)
             }
         }.getOrElse { throwable ->
@@ -308,6 +308,11 @@ class DesktopSyncCoordinator(
         val reminderAt = json.optStringOrNull("reminderAt")?.let(LocalDateTime::parse)
         val reminderOffsets = json.optJSONArray("reminderOffsetsMinutes")?.toIntList().orEmpty()
         val recurrence = parseRecurrence(json.optJSONObject("recurrence"), dueAt?.toLocalDate())
+        val targetScope = resolveDesktopRecurrenceScope(
+            original = original,
+            recurrence = recurrence,
+            requested = parseRecurrenceScope(json.optStringOrNull("scope"))
+        )
         val draft = sanitizeTodoDraft(
             title = json.optString("title").trim(),
             notes = json.optString("notes").trim(),
@@ -328,12 +333,12 @@ class DesktopSyncCoordinator(
         )
         require(draft.title.isNotBlank()) { "标题不能为空" }
         validateTodoDraft(draft = draft, original = original)?.let { error(it) }
-        val affected = app.repository.getActiveItemsForScope(original, RecurrenceScope.CURRENT)
+        val affected = app.repository.getActiveItemsForScope(original, targetScope)
         clearReminderArtifacts(affected.ifEmpty { listOf(original) })
-        val updated = app.repository.updateFromDraft(original, draft, RecurrenceScope.CURRENT)
+        val updated = app.repository.updateFromDraft(original, draft, targetScope)
         updated.forEach { scheduleReminderOrDisable(it) }
         autoBackupIfNeeded()
-        return JSONObject().put("ok", updated.isNotEmpty())
+        return JSONObject().put("ok", updated.isNotEmpty()).put("scope", targetScope.name)
     }
 
     private suspend fun createEvent(json: JSONObject): JSONObject {
@@ -376,6 +381,11 @@ class DesktopSyncCoordinator(
         val endAt = LocalDateTime.parse(json.getString("endAt"))
         val reminderOffsets = json.optJSONArray("reminderOffsetsMinutes")?.toIntList().orEmpty()
         val recurrence = parseRecurrence(json.optJSONObject("recurrence"), startAt.toLocalDate())
+        val targetScope = resolveDesktopRecurrenceScope(
+            original = original,
+            recurrence = recurrence,
+            requested = parseRecurrenceScope(json.optStringOrNull("scope"))
+        )
         val draft = sanitizeEventDraft(
             title = json.optString("title").trim(),
             notes = json.optString("notes").trim(),
@@ -394,10 +404,12 @@ class DesktopSyncCoordinator(
             groupId = groupId
         )
         require(draft.title.isNotBlank()) { "日程标题不能为空" }
-        val updated = app.repository.updateCalendarEventFromDraft(original, draft, RecurrenceScope.CURRENT)
+        val affected = app.repository.getActiveItemsForScope(original, targetScope)
+        clearReminderArtifacts(affected.ifEmpty { listOf(original) })
+        val updated = app.repository.updateCalendarEventFromDraft(original, draft, targetScope)
         updated.forEach { scheduleReminderOrDisable(it) }
         autoBackupIfNeeded()
-        return JSONObject().put("ok", updated.isNotEmpty())
+        return JSONObject().put("ok", updated.isNotEmpty()).put("scope", targetScope.name)
     }
 
     private suspend fun eventCheckIns(path: String): JSONObject {
@@ -456,29 +468,35 @@ class DesktopSyncCoordinator(
     }
 
     private suspend fun cancelItem(path: String): JSONObject {
-        val id = path.substringAfter("/api/items/").substringBefore('/').toLong()
+        val routePath = path.substringBefore('?')
+        val id = routePath.substringAfter("/api/items/").substringBefore('/').toLong()
         val item = app.repository.getTodo(id) ?: return JSONObject().put("ok", false)
+        val targetScope = parseRecurrenceScope(queryParam(path, "scope")) ?: RecurrenceScope.CURRENT
         val canceled = if (item.isEvent) {
-            app.repository.deleteCalendarEvent(item, RecurrenceScope.CURRENT)
+            app.repository.deleteCalendarEvent(item, targetScope)
         } else {
-            app.repository.cancelTodo(item, RecurrenceScope.CURRENT)
+            app.repository.cancelTodo(item, targetScope)
         }
         clearReminderArtifacts(canceled.ifEmpty { listOf(item) })
         autoBackupIfNeeded()
-        return JSONObject().put("ok", true)
+        return JSONObject().put("ok", true).put("scope", targetScope.name)
     }
 
     private suspend fun deleteItem(path: String): JSONObject {
-        val id = path.substringAfter("/api/items/").toLong()
+        val routePath = path.substringBefore('?')
+        val id = routePath.substringAfter("/api/items/").toLong()
         val item = app.repository.getTodo(id) ?: return JSONObject().put("ok", false)
+        val targetScope = parseRecurrenceScope(queryParam(path, "scope")) ?: RecurrenceScope.CURRENT
         val deletedItems = if (item.isEvent) {
-            app.repository.deleteCalendarEvent(item, RecurrenceScope.CURRENT)
+            app.repository.deleteCalendarEvent(item, targetScope)
+        } else if (item.isRecurring && targetScope != RecurrenceScope.CURRENT) {
+            app.repository.cancelTodo(item, targetScope)
         } else {
             app.repository.deleteTodo(id)
         }
         clearReminderArtifacts(deletedItems.ifEmpty { listOf(item) })
         autoBackupIfNeeded()
-        return JSONObject().put("ok", true)
+        return JSONObject().put("ok", true).put("scope", targetScope.name)
     }
 
     private suspend fun planningNotes(): JSONObject {
@@ -861,6 +879,31 @@ class DesktopSyncCoordinator(
             },
             endDate = endDate
         )
+    }
+
+    private fun parseRecurrenceScope(raw: String?): RecurrenceScope? {
+        return when (raw?.trim()?.uppercase(Locale.ROOT)) {
+            "CURRENT" -> RecurrenceScope.CURRENT
+            "CURRENT_AND_FUTURE", "FUTURE" -> RecurrenceScope.CURRENT_AND_FUTURE
+            "ALL" -> RecurrenceScope.ALL
+            else -> null
+        }
+    }
+
+    private fun resolveDesktopRecurrenceScope(
+        original: TodoItem,
+        recurrence: RecurrenceConfig,
+        requested: RecurrenceScope?
+    ): RecurrenceScope {
+        if (!original.isRecurring) return RecurrenceScope.CURRENT
+        if (!recurrence.isRecurring && requested == RecurrenceScope.CURRENT) {
+            return RecurrenceScope.CURRENT_AND_FUTURE
+        }
+        return requested ?: if (recurrence.isRecurring) {
+            RecurrenceScope.CURRENT
+        } else {
+            RecurrenceScope.CURRENT_AND_FUTURE
+        }
     }
 
     private fun sanitizeTodoDraft(

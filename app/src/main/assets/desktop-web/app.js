@@ -40,7 +40,9 @@ const state = {
   eventRangeStart: null,
   eventRangeEnd: null,
   eventLoadSerial: 0,
-  eventCheckInLoadSerial: 0
+  eventCheckInLoadSerial: 0,
+  editingTodoOriginalRecurring: false,
+  editingEventOriginalRecurring: false
 };
 
 const els = {
@@ -2369,6 +2371,32 @@ function recurrencePayload(typeValue, endValue, weekdaysValue) {
   };
 }
 
+function setRecurrenceScopeBlock(prefix, visible, defaultScope = 'CURRENT_AND_FUTURE') {
+  const block = document.getElementById(prefix + '-recurrence-scope-block');
+  const select = document.getElementById(prefix + '-recurrence-scope');
+  if (!block || !select) return;
+  block.classList.toggle('hidden', !visible);
+  select.disabled = !visible;
+  if (visible) select.value = defaultScope;
+}
+
+function recurrenceScopePayload(prefix, originalRecurring, recurrenceTypeValue) {
+  if (!originalRecurring) return 'CURRENT';
+  const select = document.getElementById(prefix + '-recurrence-scope');
+  const selected = select?.value || 'CURRENT_AND_FUTURE';
+  if ((!recurrenceTypeValue || recurrenceTypeValue === 'NONE') && selected === 'CURRENT') {
+    return 'CURRENT_AND_FUTURE';
+  }
+  return selected;
+}
+
+function recurrenceScopeQuery(prefix, originalRecurring) {
+  if (!originalRecurring) return '';
+  const select = document.getElementById(prefix + '-recurrence-scope');
+  const scope = select?.value || 'CURRENT_AND_FUTURE';
+  return '?scope=' + encodeURIComponent(scope);
+}
+
 function setTodoDueEnabled(enabled) {
   const checkbox = document.getElementById('todo-has-due');
   if (checkbox) checkbox.checked = enabled;
@@ -2388,6 +2416,7 @@ function setTodoDueEnabled(enabled) {
 }
 function clearTodoForm() {
   state.editingTodoId = null;
+  state.editingTodoOriginalRecurring = false;
   setTodoEditorGroupIds(defaultTodoGroupIds());
   document.getElementById('todo-modal-title').textContent = '新增待办';
   document.getElementById('create-todo').textContent = '创建待办';
@@ -2400,6 +2429,7 @@ function clearTodoForm() {
   document.getElementById('todo-recurrence-type').value = 'NONE';
   document.getElementById('todo-recurrence-end').value = '';
   document.getElementById('todo-weekdays').value = '';
+  setRecurrenceScopeBlock('todo', false);
   document.getElementById('todo-countdown').checked = false;
   document.getElementById('todo-ring').checked = true;
   document.getElementById('todo-vibrate').checked = true;
@@ -2410,6 +2440,7 @@ function clearTodoForm() {
 
 function openTodoEditor(item) {
   state.editingTodoId = item.id;
+  state.editingTodoOriginalRecurring = item.isRecurring === true;
   setTodoEditorGroupIds(todoGroupIds(item));
   document.getElementById('todo-modal-title').textContent = '编辑待办';
   document.getElementById('create-todo').textContent = '保存修改';
@@ -2425,6 +2456,7 @@ function openTodoEditor(item) {
   document.getElementById('todo-recurrence-type').value = recurrenceTypeValue(item);
   document.getElementById('todo-recurrence-end').value = item.recurrenceEndDate || '';
   document.getElementById('todo-weekdays').value = csvValue(item.recurrenceWeekdays);
+  setRecurrenceScopeBlock('todo', item.isRecurring === true, 'CURRENT_AND_FUTURE');
   document.getElementById('todo-countdown').checked = item.countdownEnabled === true;
   document.getElementById('todo-ring').checked = item.ringEnabled !== false;
   document.getElementById('todo-vibrate').checked = item.vibrateEnabled !== false;
@@ -2433,6 +2465,7 @@ function openTodoEditor(item) {
 
 function clearEventForm() {
   state.editingEventId = null;
+  state.editingEventOriginalRecurring = false;
   state.pendingEventSeed = null;
   fillGroupSelect('event-group');
   document.getElementById('event-modal-title').textContent = '新增日程';
@@ -2449,6 +2482,7 @@ function clearEventForm() {
   document.getElementById('event-recurrence-type').value = 'NONE';
   document.getElementById('event-recurrence-end').value = '';
   document.getElementById('event-weekdays').value = '';
+  setRecurrenceScopeBlock('event', false);
   document.getElementById('event-countdown').checked = false;
   document.getElementById('event-check-in').checked = false;
   document.getElementById('event-all-day').checked = false;
@@ -2514,6 +2548,7 @@ function bindEventColorPresets() {
 
 function openEventEditor(item) {
   state.editingEventId = item.id;
+  state.editingEventOriginalRecurring = item.isRecurring === true;
   state.pendingEventSeed = null;
   fillGroupSelect('event-group', item.groupId);
   document.getElementById('event-modal-title').textContent = '编辑日程';
@@ -2530,6 +2565,7 @@ function openEventEditor(item) {
   document.getElementById('event-recurrence-type').value = recurrenceTypeValue(item);
   document.getElementById('event-recurrence-end').value = item.recurrenceEndDate || '';
   document.getElementById('event-weekdays').value = csvValue(item.recurrenceWeekdays);
+  setRecurrenceScopeBlock('event', item.isRecurring === true, 'CURRENT_AND_FUTURE');
   document.getElementById('event-countdown').checked = item.countdownEnabled === true;
   document.getElementById('event-check-in').checked = item.checkInEnabled === true;
   document.getElementById('event-all-day').checked = item.allDay === true;
@@ -2747,6 +2783,16 @@ function bindActions() {
 }
 
 document.getElementById('todo-has-due')?.addEventListener('change', event => setTodoDueEnabled(event.target.checked));
+document.getElementById('todo-recurrence-type')?.addEventListener('change', event => {
+  if (!state.editingTodoOriginalRecurring || event.target.value !== 'NONE') return;
+  const scopeSelect = document.getElementById('todo-recurrence-scope');
+  if (scopeSelect?.value === 'CURRENT') scopeSelect.value = 'CURRENT_AND_FUTURE';
+});
+document.getElementById('event-recurrence-type')?.addEventListener('change', event => {
+  if (!state.editingEventOriginalRecurring || event.target.value !== 'NONE') return;
+  const scopeSelect = document.getElementById('event-recurrence-scope');
+  if (scopeSelect?.value === 'CURRENT') scopeSelect.value = 'CURRENT_AND_FUTURE';
+});
 document.getElementById('connect').onclick = () => connect().catch(err => els.status.textContent = err.message);
 els.token.addEventListener('keydown', event => {
   if (event.key !== 'Enter') return;
@@ -3099,6 +3145,7 @@ document.getElementById('create-todo').onclick = async () => {
     const dueAtMillis = dueAt ? new Date(dueAt).getTime() : null;
     const reminderOffsets = hasDueDate ? parseReminderSpecs(document.getElementById('todo-reminder-spec').value, dueAtMillis) : [];
     const groupIds = readTodoEditorGroupIds();
+    const recurrenceType = document.getElementById('todo-recurrence-type').value;
     const payload = {
       title: document.getElementById('todo-title').value,
       notes: document.getElementById('todo-notes').value,
@@ -3111,8 +3158,9 @@ document.getElementById('create-todo').onclick = async () => {
       ringEnabled: document.getElementById('todo-ring').checked,
       vibrateEnabled: document.getElementById('todo-vibrate').checked,
       reminderDeliveryMode: document.getElementById('todo-reminder-mode').value,
+      scope: recurrenceScopePayload('todo', state.editingTodoOriginalRecurring, hasDueDate ? recurrenceType : 'NONE'),
       recurrence: hasDueDate ? recurrencePayload(
-        document.getElementById('todo-recurrence-type').value,
+        recurrenceType,
         document.getElementById('todo-recurrence-end').value,
         document.getElementById('todo-weekdays').value
       ) : { enabled: false, type: 'NONE', weeklyDays: [], endDate: null }
@@ -3134,7 +3182,7 @@ document.getElementById('create-todo').onclick = async () => {
 document.getElementById('delete-todo').onclick = async () => {
   if (!state.editingTodoId) return;
   if (!await confirmDanger('确认删除待办', '删除后无法恢复。')) return;
-  await api(`/api/items/${state.editingTodoId}`, { method: 'DELETE' });
+  await api(`/api/items/${state.editingTodoId}${recurrenceScopeQuery('todo', state.editingTodoOriginalRecurring)}`, { method: 'DELETE' });
   clearTodoForm();
   closeModal('todo-modal');
   await refreshAfterMutation();
@@ -3175,6 +3223,7 @@ document.getElementById('save-event').onclick = async () => {
     const startAt = readDateTimeValue('event-start');
     const endAt = readDateTimeValue('event-end');
     const startAtMillis = startAt ? new Date(startAt).getTime() : null;
+    const recurrenceType = document.getElementById('event-recurrence-type').value;
     const payload = {
       title: document.getElementById('event-title').value,
       groupId: Number(document.getElementById('event-group').value || 0),
@@ -3190,8 +3239,9 @@ document.getElementById('save-event').onclick = async () => {
       ringEnabled: document.getElementById('event-ring').checked,
       vibrateEnabled: document.getElementById('event-vibrate').checked,
       reminderDeliveryMode: document.getElementById('event-reminder-mode').value,
+      scope: recurrenceScopePayload('event', state.editingEventOriginalRecurring, recurrenceType),
       recurrence: recurrencePayload(
-        document.getElementById('event-recurrence-type').value,
+        recurrenceType,
         document.getElementById('event-recurrence-end').value,
         document.getElementById('event-weekdays').value
       )
@@ -3213,7 +3263,7 @@ document.getElementById('save-event').onclick = async () => {
 document.getElementById('delete-event').onclick = async () => {
   if (!state.editingEventId) return;
   if (!await confirmDanger('确认删除日程', '删除后无法恢复。')) return;
-  await api(`/api/items/${state.editingEventId}`, { method: 'DELETE' });
+  await api(`/api/items/${state.editingEventId}${recurrenceScopeQuery('event', state.editingEventOriginalRecurring)}`, { method: 'DELETE' });
   clearEventForm();
   closeModal('event-modal');
   await refreshAfterMutation();

@@ -8,8 +8,8 @@
 - Target platform: Android 14 / API 34
 - License: MIT License (`LICENSE`)
 - Current version in code:
-  - `versionName = "1.13.14"`
-  - `versionCode = 262`
+  - `versionName = "1.13.15"`
+  - `versionCode = 263`
 
 ## Current Build Facts
 
@@ -21,7 +21,19 @@
 - Latest GitHub Release:
   - `https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.13.11`
 - Latest fully built debug APK:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.13.14-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.13.15-debug.apk`
+- Current `1.13.15 / versionCode 263` status:
+  - This build fixes a recurring-calendar correctness bug: when a recurring event series is edited with scope `ALL` and changed to non-recurring, the old recurring template is now deleted instead of being left behind for future replenishment.
+  - Todo / daily-board derived state now moves large-list sectioning, countdown sorting, and announcement parsing off the main thread.
+  - Desktop sync status is no longer recomputed as part of every ordinary todo/event list recomposition.
+  - Active todo cards no longer use `IntrinsicSize.Min` for the left color strip; the strip is drawn directly to reduce LazyColumn measurement cost.
+  - Calendar day / three-day timeline layout now calculates timed-event overlap placement only for the currently visible page days instead of pre-layouting the whole loaded event window.
+  - Database version remains `25`; no schema or user-data migration was added.
+  - `./gradlew.bat :app:compileDebugKotlin` passed.
+  - `./gradlew.bat :app:assembleDebug` passed.
+  - `./gradlew.bat :app:testDebugUnitTest` passed.
+  - `git diff --check` passed.
+  - Debug APK metadata confirms `versionName = 1.13.15`, `versionCode = 263`, output `PaykiTodo-1.13.15-debug.apk`.
 - Current `1.13.14 / versionCode 262` status:
   - Desktop sync service now runs a continuous connection watchdog instead of a one-shot startup check.
   - If no authorized desktop client enters the access token within 5 minutes, the phone writes `desktopSyncEnabled = false`, stops the LAN server, stops the foreground service, and removes the notification.

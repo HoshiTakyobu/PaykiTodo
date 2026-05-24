@@ -3,17 +3,13 @@ package com.example.todoalarm.ui
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -45,8 +41,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.graphicsLayer
@@ -296,21 +294,21 @@ private fun TodoCardShell(
     contentClickable: Boolean = true,
     content: @Composable () -> Unit
 ) {
+    val accent = categoryColor(resolveTaskGroup(item, groups))
     ElevatedCard(
         shape = RoundedCornerShape(24.dp),
         colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surface)
     ) {
-        Row(
+        Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(IntrinsicSize.Min)
+                .drawBehind {
+                    drawRect(
+                        color = accent,
+                        size = Size(width = 8.dp.toPx(), height = size.height)
+                    )
+                }
         ) {
-            Box(
-                modifier = Modifier
-                    .width(8.dp)
-                    .fillMaxHeight()
-                    .background(categoryColor(resolveTaskGroup(item, groups)))
-            )
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -324,7 +322,7 @@ private fun TodoCardShell(
                             Modifier
                         }
                     )
-                    .padding(horizontal = 12.dp, vertical = 14.dp)
+                    .padding(start = 20.dp, end = 12.dp, top = 14.dp, bottom = 14.dp)
             ) {
                 content()
             }

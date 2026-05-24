@@ -253,14 +253,6 @@ internal fun CalendarPanel(
         events.filter { !it.allDay }
             .sortedBy { it.startAtMillis ?: it.dueAtMillis }
     }
-    val timedEventSegmentsByDay = remember(timedEvents) {
-        buildTimedEventSegmentsByDay(timedEvents)
-    }
-    val timedEventPlacementsByDay = remember(timedEventSegmentsByDay) {
-        timedEventSegmentsByDay.mapValues { (_, segments) ->
-            layoutTimedEventSegments(segments)
-        }
-    }
 
     val calendarBackground = MaterialTheme.colorScheme.background
     val todayHighlightColor = Color(0x334C8BF5)
@@ -549,10 +541,11 @@ internal fun CalendarPanel(
                                     .distinctBy { it.id }
                                     .sortedBy { it.startAtMillis ?: it.dueAtMillis }
                             }
-                            val pageTimedEventPlacements = remember(timedEventPlacementsByDay, pageVisibleDays) {
-                                pageVisibleDays.flatMap { day ->
-                                    timedEventPlacementsByDay[day].orEmpty().map { placement -> day to placement }
-                                }
+                            val pageTimedEvents = remember(timedEvents, pageVisibleDays) {
+                                filterEventsOverlappingDays(timedEvents, pageVisibleDays)
+                            }
+                            val pageTimedEventPlacements = remember(pageTimedEvents, pageVisibleDays) {
+                                buildTimedEventPlacementsForDays(pageTimedEvents, pageVisibleDays)
                             }
 
                             Column(modifier = Modifier.fillMaxSize()) {
@@ -2739,23 +2732,42 @@ private fun layoutTimedEventSegments(segments: List<TimedEventSegment>): List<Ti
     return result
 }
 
-private fun buildTimedEventSegmentsByDay(events: List<TodoItem>): Map<LocalDate, List<TimedEventSegment>> {
-    if (events.isEmpty()) return emptyMap()
-    val segmentsByDay = linkedMapOf<LocalDate, MutableList<TimedEventSegment>>()
-    events.forEach { item ->
+private fun buildTimedEventPlacementsForDays(
+    events: List<TodoItem>,
+    visibleDays: List<LocalDate>
+): List<Pair<LocalDate, TimedEventPlacement>> {
+    if (events.isEmpty() || visibleDays.isEmpty()) return emptyList()
+    val segmentsByDay = visibleDays.associateWith { day ->
+        events.mapNotNull { item -> item.toSegmentForDay(day) }
+            .sortedBy { it.startMillis }
+    }
+    return segmentsByDay.flatMap { (day, segments) ->
+        layoutTimedEventSegments(segments).map { placement -> day to placement }
+    }
+}
+
+private fun filterEventsOverlappingDays(
+    events: List<TodoItem>,
+    visibleDays: List<LocalDate>
+): List<TodoItem> {
+    if (events.isEmpty() || visibleDays.isEmpty()) return emptyList()
+    val zoneId = ZoneId.systemDefault()
+    val startMillis = visibleDays.minOrNull()
+        ?.atStartOfDay(zoneId)
+        ?.toInstant()
+        ?.toEpochMilli()
+        ?: return emptyList()
+    val endMillis = visibleDays.maxOrNull()
+        ?.plusDays(1)
+        ?.atStartOfDay(zoneId)
+        ?.toInstant()
+        ?.toEpochMilli()
+        ?: return emptyList()
+    return events.filter { item ->
         val itemStart = item.startAtMillis ?: item.dueAtMillis
         val itemEnd = item.endAtMillis ?: (itemStart + 30 * 60_000L)
-        val startDate = millisToDate(itemStart)
-        val endDate = millisToDate(itemEnd - 1)
-        var dayCursor = startDate
-        while (!dayCursor.isAfter(endDate)) {
-            item.toSegmentForDay(dayCursor)?.let { segment ->
-                segmentsByDay.getOrPut(dayCursor) { mutableListOf() }.add(segment)
-            }
-            dayCursor = dayCursor.plusDays(1)
-        }
+        itemStart < endMillis && itemEnd > startMillis
     }
-    return segmentsByDay.mapValues { (_, segments) -> segments.sortedBy { it.startMillis } }
 }
 
 private fun TodoItem.toSegmentForDay(day: LocalDate): TimedEventSegment? {

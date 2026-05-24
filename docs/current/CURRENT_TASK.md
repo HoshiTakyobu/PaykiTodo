@@ -2,20 +2,37 @@
 
 ## Active Development Focus
 
-Active immediate task: fix desktop sync auto-stop behavior on the `1.13.14 / versionCode 262` line and rebuild the debug APK.
+Active immediate task: audit recurring item behavior and reduce lag in large todo lists / Calendar timeline on the `1.13.15 / versionCode 263` line, then rebuild the debug APK.
 
 Do not commit secrets, signing material, API keys, private Base URLs, generated APK/AAB outputs, or personal backups/logs. The repository already ignores `keystore.properties`, `release/`, `*.apk`, `*.jks`, `.env*`, and local temp files.
 
 ## Current Round Scope
 
-The user reported that phone-side desktop sync did not reliably detect a disconnected computer, did not auto-close within 5 minutes when the desktop had not entered the access token, and could leave the foreground notification visible.
+The user asked to re-check recurring-task behavior and fix severe lag when many items exist, especially scrolling through todos and using the Calendar timeline.
 
-1. Desktop sync service should continuously monitor authorized desktop-client heartbeats, not only run a one-shot startup timer.
-2. If no desktop client enters the correct access token within 5 minutes, the phone should set desktop sync off, stop the LAN server, and remove the foreground notification.
-3. If a previously connected desktop client stops heartbeating for 5 minutes, the same auto-stop behavior should run.
-4. Desktop Web should send a lightweight authorized heartbeat after successful connection.
-5. Status reads should not start a bare HTTP server without the foreground service / notification.
-6. Version metadata should move to `1.13.14 / versionCode 262` so the debug APK can install over `1.13.13`.
+1. Re-audit recurring todo / recurring event range edit, cancel, delete, template truncation, and replenishment paths.
+2. Fix any confirmed recurring-series bug without touching the user's live phone data.
+3. Reduce main-thread work when todo / daily-board lists become large.
+4. Reduce Calendar day / three-day timeline layout cost when many events are loaded.
+5. Keep database schema stable unless a real migration is required.
+6. Version metadata should move to `1.13.15 / versionCode 263` so the debug APK can install over `1.13.14`.
+
+## Verification Completed For 1.13.15
+
+The `1.13.15 / versionCode 263` build addresses recurring-calendar template cleanup and the first concrete todo-list / Calendar performance pass.
+
+1. Version metadata moved from `1.13.14 / versionCode 262` to `1.13.15 / versionCode 263`.
+2. Database version remains `25`; no schema, backup format, or user-data migration was added.
+3. Recurring Calendar `ALL`-scope edits now delete the old template when the series is changed to non-recurring, preventing future replenishment from recreating removed future events.
+4. Todo / daily-board derived state now performs large-list sectioning, countdown sorting, and announcement parsing on `Dispatchers.Default`.
+5. Desktop sync status is now a separate state flow, so ordinary todo/event list changes no longer re-run desktop sync status and IP-address computation.
+6. Todo cards no longer use `IntrinsicSize.Min` for the left color strip; the strip is drawn directly, reducing LazyColumn measurement cost.
+7. Calendar day / three-day timeline now computes timed-event overlap placement only for the currently visible page days instead of the whole loaded event window.
+8. `./gradlew.bat :app:compileDebugKotlin` passed.
+9. `./gradlew.bat :app:assembleDebug` passed.
+10. `./gradlew.bat :app:testDebugUnitTest` passed.
+11. `git diff --check` passed.
+12. Debug APK metadata confirms `versionName = 1.13.15`, `versionCode = 263`, output `PaykiTodo-1.13.15-debug.apk`.
 
 ## Verification Completed For 1.13.14
 

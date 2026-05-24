@@ -98,6 +98,7 @@ When reconstructing PaykiTodo state, use this priority order:
 
 ## Recent Repository-Native Updates
 
+- `1.13.15` fixed a recurring Calendar template cleanup bug where changing an entire recurring event series to non-recurring could leave the old template behind, and reduced large-list / Calendar lag by moving heavy todo-state derivation off the main thread, removing intrinsic measurement from todo cards, and limiting timed-event overlap layout to visible Calendar page days.
 - `1.13.14` fixed desktop sync lifecycle detection: desktop Web now sends authorized heartbeats, and the phone auto-disables the sync service plus notification after 5 minutes without a valid heartbeat.
 - `1.13.13` fixed desktop Web todo multiline titles and recurring edit scope parity, including default current-and-future cleanup when a recurring todo is changed to non-recurring.
 - `1.13.12` repaired the launcher icon resource chain by using the transparent main-logo resource for standard, round, drawer-header, and themed-icon paths, and removed obsolete unreferenced launcher-art PNG variants.

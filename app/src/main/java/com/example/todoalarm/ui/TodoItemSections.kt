@@ -25,10 +25,20 @@ internal fun classifyActiveTodoItems(
     today: LocalDate
 ): ActiveTodoSections {
     val sortedActiveTaskItems = activeTaskItems.sortedBy { it.dueAtMillis }
+    val missedItems = ArrayList<TodoItem>()
+    val todayItems = ArrayList<TodoItem>()
+    val upcomingItems = ArrayList<TodoItem>()
+    sortedActiveTaskItems.forEach { item ->
+        when {
+            item.missed -> missedItems += item
+            !item.hasDueDate || item.dueDate() == today -> todayItems += item
+            item.dueDate().isAfter(today) -> upcomingItems += item
+        }
+    }
     return ActiveTodoSections(
-        missedItems = sortedActiveTaskItems.filter { it.missed },
-        todayItems = sortedActiveTaskItems.filter { !it.missed && (!it.hasDueDate || it.dueDate() == today) },
-        upcomingItems = sortedActiveTaskItems.filter { it.hasDueDate && !it.missed && it.dueDate().isAfter(today) }
+        missedItems = missedItems,
+        todayItems = todayItems,
+        upcomingItems = upcomingItems
     )
 }
 

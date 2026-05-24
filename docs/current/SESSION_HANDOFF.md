@@ -4,25 +4,25 @@
 
 - Repository root: `G:\Workspace\Project\PaykiTodo`
 - Branch: `main`
-- User requested a desktop sync auto-stop fix because the phone did not close the sync service / notification when the computer had not entered the access token or had disconnected. Push has not been requested in this round.
+- User requested a recurring-item audit and performance fixes because todo scrolling becomes very laggy when many items exist and the Calendar page still stutters. Push has not been requested in this round.
 - Current code version:
-  - `versionName = 1.13.14`
-  - `versionCode = 262`
+  - `versionName = 1.13.15`
+  - `versionCode = 263`
 - Latest debug APK target in this round:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.13.14-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.13.15-debug.apk`
 - Latest signed release APK available locally:
   - `app/build/outputs/apk/release/PaykiTodo-1.13.11-release.apk`
 - Latest GitHub Release:
   - `https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.13.11`
 - Debug APK metadata inspection:
-  - `versionName = 1.13.14`
-  - `versionCode = 262`
+  - `versionName = 1.13.15`
+  - `versionCode = 263`
 
 ## Active Goal
 
-Active immediate task: fix desktop sync auto-stop behavior on the `1.13.14 / versionCode 262` line and rebuild the debug APK.
+Active immediate task: audit recurring task / recurring event behavior, fix any confirmed recurrence bug, reduce lag in large todo lists and the Calendar timeline, and rebuild the debug APK on the `1.13.15 / versionCode 263` line.
 
-Latest status: desktop sync foreground service now has a continuous watchdog. The desktop Web sends an authorized `/api/status` heartbeat every 60 seconds after a successful connection, and the phone auto-disables desktop sync after 5 minutes without any authorized heartbeat. This round has not pushed to GitHub.
+Latest status: recurring Calendar `ALL`-scope edits now delete the old template when the series is changed to non-recurring; todo / daily-board derived state runs heavy list work off the main thread; todo card left strips no longer use intrinsic measurement; Calendar timed-event placement is limited to visible page days. This round has not pushed to GitHub.
 
 ## Current Documentation / Repository Standards
 
@@ -35,6 +35,16 @@ The public repository documentation remains standardized:
 5. Public docs must distinguish the current source/debug version from the latest published GitHub Release when they differ.
 6. `.github` issue templates, PR template, Android CI, `SUPPORT.md`, `CODE_OF_CONDUCT.md`, and README badges should stay usable.
 7. Internal bootstrap/backlog/goal material belongs under `docs/current/`, `docs/goals/`, or `docs/archive/`, not loose in the repository root.
+
+## What Changed In The Latest 1.13.15 Patch
+
+1. Recurring Calendar series edits with scope `ALL` now delete the old recurring template when the edited series becomes non-recurring, preventing future replenishment from recreating removed future events.
+2. Todo / daily-board UI state moves large-list sectioning, countdown sorting, and announcement parsing to `Dispatchers.Default` instead of doing that work on the main composition path.
+3. Desktop sync status is collected through a separate state flow, so ordinary todo/event list changes no longer re-run LAN status and IP-address computation.
+4. Active todo cards draw the left color strip directly and no longer use `IntrinsicSize.Min`, reducing LazyColumn measurement overhead when many items are visible.
+5. Calendar day / three-day timed-event placement is computed only for the currently visible page days instead of the whole loaded event window.
+6. Version metadata moved to `1.13.15 / versionCode 263`; latest debug APK target is `app/build/outputs/apk/debug/PaykiTodo-1.13.15-debug.apk`.
+7. Verification passed: `./gradlew.bat :app:compileDebugKotlin`, `./gradlew.bat :app:assembleDebug`, and APK metadata inspection confirmed `versionName = 1.13.15`, `versionCode = 263`.
 
 ## What Changed In The Latest 1.13.14 Patch
 

@@ -77,6 +77,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -229,6 +230,19 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
         initialValue = emptyList()
     )
 
+    @OptIn(ExperimentalCoroutinesApi::class)
+    private val desktopSyncStatusFlow = combine(settingsStore.settingsFlow, desktopSyncRefreshTick) { _, tick -> tick }
+        .mapLatest {
+            withContext(Dispatchers.IO) {
+                app.desktopSyncCoordinator.status()
+            }
+        }
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5_000),
+            initialValue = TodoUiState().desktopSyncStatus
+        )
+
     val uiState = combine(
         repository.observeGroups(),
         repository.observePlanningNotesWithAnnouncementHints(),
@@ -239,7 +253,7 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
         quoteFlow,
         selectedGroupIdsFlow,
         groupFilterModeFlow,
-        desktopSyncRefreshTick,
+        desktopSyncStatusFlow,
         todayDateFlow
     ) { values ->
         @Suppress("UNCHECKED_CAST")
@@ -258,32 +272,45 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
         @Suppress("UNCHECKED_CAST")
         val selectedGroupIds = values[7] as Set<Long>
         val groupFilterMode = values[8] as GroupFilterMode
+        val desktopSyncStatus = values[9] as DesktopSyncStatus
         val today = values[10] as LocalDate
-        val availableGroups = if (groups.isEmpty()) repository.ensureDefaultGroups() else groups
-        val todoSections = classifyActiveTodoItems(activeTaskItems, today)
-        val sortedCalendarItems = activeCalendarItems.sortedBy { it.startAtMillis ?: it.dueAtMillis }
-        val availableQuotes = quotes.ifEmpty { QuoteRepository.seedQuotes }
-        val currentQuote = availableQuotes[settings.quoteIndex.mod(availableQuotes.size)]
-        val nowMillis = System.currentTimeMillis()
+        val availableGroups = if (groups.isEmpty()) {
+            withContext(Dispatchers.IO) { repository.ensureDefaultGroups() }
+        } else {
+            groups
+        }
 
-        TodoUiState(
-            groups = availableGroups,
-            selectedGroupIds = selectedGroupIds,
-            groupFilterMode = groupFilterMode,
-            missedItems = todoSections.missedItems,
-            todayItems = todoSections.todayItems,
-            upcomingItems = todoSections.upcomingItems,
-            upcomingItemGroups = buildUpcomingTodoDisplayGroups(todoSections.upcomingItems),
-            calendarItems = sortedCalendarItems,
-            countdownItems = activeCountdownItems
-                .filter { item -> DailyBoardSnapshotBuilder.countdownTargetMillis(item)?.let { it >= nowMillis } == true }
-                .sortedBy { DailyBoardSnapshotBuilder.countdownTargetMillis(it) ?: Long.MAX_VALUE },
-            activeAnnouncements = PlanningAnnouncementParser.activeAnnouncements(announcementNotes, today),
-            settings = settings,
-            currentQuote = currentQuote,
-            dataReady = true,
-            desktopSyncStatus = app.desktopSyncCoordinator.status()
-        )
+        withContext(Dispatchers.Default) {
+            val todoSections = classifyActiveTodoItems(activeTaskItems, today)
+            val sortedCalendarItems = activeCalendarItems.sortedBy { it.startAtMillis ?: it.dueAtMillis }
+            val availableQuotes = quotes.ifEmpty { QuoteRepository.seedQuotes }
+            val currentQuote = availableQuotes[settings.quoteIndex.mod(availableQuotes.size)]
+            val nowMillis = System.currentTimeMillis()
+            val visibleCountdownItems = activeCountdownItems
+                .mapNotNull { item ->
+                    val targetMillis = DailyBoardSnapshotBuilder.countdownTargetMillis(item)
+                    if (targetMillis != null && targetMillis >= nowMillis) item to targetMillis else null
+                }
+                .sortedBy { it.second }
+                .map { it.first }
+
+            TodoUiState(
+                groups = availableGroups,
+                selectedGroupIds = selectedGroupIds,
+                groupFilterMode = groupFilterMode,
+                missedItems = todoSections.missedItems,
+                todayItems = todoSections.todayItems,
+                upcomingItems = todoSections.upcomingItems,
+                upcomingItemGroups = buildUpcomingTodoDisplayGroups(todoSections.upcomingItems),
+                calendarItems = sortedCalendarItems,
+                countdownItems = visibleCountdownItems,
+                activeAnnouncements = PlanningAnnouncementParser.activeAnnouncements(announcementNotes, today),
+                settings = settings,
+                currentQuote = currentQuote,
+                dataReady = true,
+                desktopSyncStatus = desktopSyncStatus
+            )
+        }
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5_000),

@@ -24,6 +24,7 @@ This file tracks the product at a practical level for new coding sessions.
 - active todo preview now uses the same bottom-sheet visual language as calendar event preview
 - active todo card body opens preview; completion is isolated to the checkbox to avoid accidental completion
 - recurring task support
+- recurring Calendar series edits delete the old recurring template when an entire series is changed to non-recurring, so future replenishment cannot recreate future events that the user intentionally removed from the series
 - future recurring todo instances in the `计划中` section fold into one series card with a count badge and expand/collapse control, while `已错过` and `今日待办` remain uncollapsed
 - grouped task filtering, including multi-group intersection filtering and a phone-side intersection / union switch when multiple groups are selected
 - three-zone home logic: overdue / today / upcoming, with no-DDL active todos included in today rather than hidden in upcoming
@@ -340,6 +341,8 @@ This file tracks the product at a practical level for new coding sessions.
 - Desktop Web first connection now uses a lightweight board snapshot (`/api/snapshot?scope=board`); todo management uses paged/searchable `/api/todos?offset=...&limit=...&q=...`, and the event timeline uses visible-range `/api/events?start=...&end=...` instead of sharing one full snapshot for every management tab.
 - Main phone board/task UI uses active-todo-only observation and today/tomorrow event range observation instead of merging all todos and full active events into ordinary board/task state.
 - Main phone board/task UI uses the shared active-todo section classifier for missed / today / upcoming lists, so no-DDL active todos keep the same "today every day" behavior in My Tasks and the board.
+- Main phone board/task UI now computes large-list sectioning, countdown filtering/sorting, and announcement parsing off the main thread, and desktop-sync status recomputation is split out of ordinary todo/event list updates.
+- Active todo cards draw their left color strip directly instead of using intrinsic-height measurement, reducing per-row LazyColumn measurement cost when many items are visible.
 - Main phone board/task UI no longer carries the full Planning Desk note list; complete planning notes are collected only while the Planning Desk section is open.
 - Daily-board announcements on phone, Android widget, and desktop lightweight snapshot use the indexed `planning_notes.hasAnnouncementHint` candidate query before strict parsing instead of reading every planning document or scanning Markdown bodies with `LIKE`.
 - Planning-note backup / restore recomputes `hasAnnouncementHint` from Markdown content, so imported data does not preserve stale announcement-candidate state.
@@ -350,6 +353,7 @@ This file tracks the product at a practical level for new coding sessions.
 - Application startup initialization uses an application-level `SupervisorJob` scope and records non-fatal initialization failures through `CrashLogger.recordNonFatal`.
 - Calendar month/list/all-day surfaces reuse one top-level event-by-date index instead of rebuilding date buckets independently in each view; the timeline date span is represented by a lightweight date window instead of allocating a full long-range date list.
 - Phone Calendar subscribes only to active events overlapping the current padded visible date range, while notification / deep-link navigation to a far event expands that query range before focusing the target date.
+- Calendar day / three-day timed-event overlap placement is now computed only for the currently visible page days instead of the whole loaded event window, reducing timeline paging and scrolling work when many events are present.
 - Countdown-enabled todos / events are included in phone board, independent countdown widget, and desktop board data without requiring a full historical scan; exact-time past countdown targets are filtered out before rendering.
 - Schedule-template saving reads active events overlapping the selected week, and desktop Planning Desk note update / mapping refresh paths read single notes by ID instead of scanning all planning notes.
 - Future large-history work can still add real FTS for report content search and real-device calendar profiling; the biggest desktop full-snapshot coupling has been split, and desktop todo management now pages/searches `/api/todos` instead of returning the complete todo list by design.

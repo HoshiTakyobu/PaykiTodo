@@ -3017,15 +3017,15 @@ class TodoRepository(
                 targetSeriesId = seriesId,
                 deleteTemplateSeriesId = seriesId
             ).also { updated ->
-                if (updated.isEmpty()) {
-                    todoDao.deleteTemplateBySeriesId(seriesId)
-                } else {
+                if (draft.recurrence.isRecurring && updated.isNotEmpty()) {
                     todoDao.insertTemplate(
                         buildCalendarTemplate(
                             updated.first(),
                             alignRecurringCalendarDraftForAll(draft, seriesItems, original)
                         )
                     )
+                } else {
+                    todoDao.deleteTemplateBySeriesId(seriesId)
                 }
             }
 

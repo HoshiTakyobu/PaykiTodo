@@ -24,6 +24,7 @@ This file tracks the product at a practical level for new coding sessions.
 - active todo preview now uses the same bottom-sheet visual language as calendar event preview
 - active todo card body opens preview; completion is isolated to the checkbox to avoid accidental completion
 - recurring task support
+- recurring todo/event `1.13.21` `整个循环系列` edits preserve a user-selected new series start date instead of always rebasing to the old first occurrence; time-only edits still keep the old series anchor, and stale templates are deleted before rebuilt series/templates are inserted.
 - recurring todo/event current-instance delete keeps a canceled tombstone, so recurring-template replenishment does not recreate an occurrence the user explicitly deleted
 - recurring todo/event `当前及之后` range handling uses the original recurrence anchor date where available, so moving a single instance does not corrupt future-range edit / cancel / delete behavior
 - recurring Calendar series edits delete the old recurring template when an entire series is changed to non-recurring, so future replenishment cannot recreate future events that the user intentionally removed from the series
@@ -119,6 +120,7 @@ This file tracks the product at a practical level for new coding sessions.
 - planning notes are included in JSON backup / restore snapshots
 - planning mapping records are also included in JSON backup / restore snapshots
 - Planning Desk supports a `今日` document shortcut; notes can carry `documentDateEpochDay`, and undated schedule lines in that note are parsed against the document date while explicit dates still win
+- Planning Desk `1.13.21` fixes explicit DDL-date precedence for phone / desktop parser paths: lines such as `5.29 【DDL】...`, `5.29【DDL】...`, `5.29 【DDL】14:00 ...`, and `5.29 【紧急】【DDL】14:00 ...` use the inline date/time instead of the planning note's document date, while DDL markers and time tokens are removed from the final title.
 - AI recognition for Planning Desk is now an optional Provider-based enhancement for DeepSeek / Qwen / OpenAI-compatible APIs; Settings exposes ordered multi-provider Base URL/API Key/model configuration, single-provider model-list fetching, single-provider connection testing, both phone and desktop Planning Desk recognition call enabled sources in order, local rules remain the fallback, and AI output enters preview before import
 - Planning Desk AI keeps group assignment conservative: AI `groupName` is preserved only when the source line explicitly contains a group marker such as `#group`, `分组：`, `项目：`, or `课程：`, so ordinary titles are not split into accidental groups
 - Planning Desk AI / preview candidates carry event location, all-day, countdown, and recurrence fields; phone and desktop previews can edit those fields before import, and imports persist them into the final todo/event drafts

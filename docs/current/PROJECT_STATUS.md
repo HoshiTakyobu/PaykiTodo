@@ -8,8 +8,8 @@
 - Target platform: Android 14 / API 34
 - License: MIT License (`LICENSE`)
 - Current version in code:
-  - `versionName = "1.13.20"`
-  - `versionCode = 268`
+  - `versionName = "1.13.21"`
+  - `versionCode = 269`
 
 ## Current Build Facts
 
@@ -21,7 +21,20 @@
 - Latest GitHub Release:
   - `https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.13.11`
 - Latest fully built debug APK:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.13.20-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.13.21-debug.apk`
+- Current `1.13.21 / versionCode 269` status:
+  - Planning Desk parsing now treats explicit inline dates as stronger than the note's `documentDateEpochDay` context for DDL text, including forms such as `5.29 【DDL】...`, `5.29【DDL】...`, `5.29 【DDL】14:00 ...`, and `5.29 【紧急】【DDL】14:00 ...`.
+  - Planning Desk title cleanup removes DDL markers and their optional time prefix from natural todo titles while preserving user emphasis labels such as `【紧急】`.
+  - Recurring todo/event `ALL`-scope edits now keep a user-selected new start date instead of always rebasing to the old series start date; time-only edits still preserve the old series start date.
+  - Recurring series replacement deletes the stale template before writing the rebuilt series/template, preventing old template start dates from replenishing removed future instances.
+  - Database version remains `26`; no schema, backup format, or user-data migration was added.
+  - `./gradlew.bat :app:testDebugUnitTest --tests com.example.todoalarm.data.PlanningMarkdownParserTest --tests com.example.todoalarm.data.TodoRepositoryRecurrenceAlignmentTest` passed.
+  - `./gradlew.bat :app:compileDebugKotlin` passed.
+  - `./gradlew.bat :app:testDebugUnitTest` passed.
+  - `node --check app/src/main/assets/desktop-web/app.js` passed.
+  - `git diff --check` passed.
+  - `./gradlew.bat :app:assembleDebug` passed.
+  - Debug APK metadata confirms `versionName = 1.13.21`, `versionCode = 269`, output `PaykiTodo-1.13.21-debug.apk`.
 - Current `1.13.20 / versionCode 268` status:
   - Desktop Web Planning Desk Outliner is now the explicit primary input surface: the empty-outline state focuses the root input, the root input is a visible multi-line entry box, and existing nodes render as directly editable auto-height textareas.
   - Desktop Web Planning Desk drag reorder now starts only from a dedicated handle, so ordinary text clicks and typing are not intercepted by the draggable row.
@@ -401,11 +414,11 @@
   - prefer Android Studio bundled `jbr`
   - avoid random system Java overrides when building this repo
 
-## Current Worktree Reality
+## Legacy Worktree Reality Snapshot
 
-The repository now targets the `1.12.15 / versionCode 242` workline. This patch packages the UI recovery and Planning Desk draft/publish separation after the `1.12.14` metadata-only rebuild: calendar header actions are back on the month-title row, todo group creation is fixed beside `全部`, Planning Desk document/image-recognition entry points are visible again, and Outliner/capture-created nodes stay draft until the user explicitly publishes them. Phase 1 quick capture and Phase 2 Planning Desk Outliner remain implemented in the working tree. The earlier Android widget, multi-group todo, event check-in, Planning Desk image recognition, release-size, and `1.11.4` check-in regression fixes remain in the working tree. Release builds enable R8/resource shrinking and use WebP dashboard backgrounds; the latest signed `PaykiTodo-1.11.0-release.apk` size check is `4.83 MB`, and release startup / main-surface smoke testing passed on `Pixel_8 / emulator-5554`.
+This section is a carried-forward implementation snapshot from the older `1.12.x` workline and is not the current version source of truth. Use the `Current Baseline`, `Current Build Facts`, and newest version status entries at the top of this file for the active `1.13.21 / versionCode 269` baseline. The notes below remain useful only as historical implementation context until this large section is fully normalized.
 
-Most important current baseline facts:
+Legacy snapshot facts:
 
 - Database version is now `23` in the working tree. `MIGRATION_17_18` drops the old `focus_sessions` table, creates `event_check_ins`, creates `todo_group_tags`, adds `checkInEnabled` and `totalCheckInMinutes` to `todo_items`, backfills todo group tags, and merges the old default `专注` group into `例行`; `MIGRATION_18_19` adds `planning_notes.documentDateEpochDay`; `MIGRATION_19_20` creates `planning_nodes` and migrates existing planning Markdown lines into node records; `MIGRATION_20_21` adds `planning_nodes.linkedEndTodoId` and its index; `MIGRATION_21_22` adds `planning_nodes.syncEnabled` and marks common migrated structure headings as non-sync nodes so they do not create official todos/events; `MIGRATION_22_23` adds `planning_nodes.isDraft` so newly captured/planned nodes can stay out of official todos/events until published.
 - Quick capture is implemented: `ShareReceiverActivity`, `CaptureActivity`, `VoiceCaptureActivity`, `BackgroundCaptureProcessor`, shortcuts XML, FileProvider paths, and direct node insertion exist. Legacy preview UI code still exists for reusable/old paths but is no longer the default share/capture write path.

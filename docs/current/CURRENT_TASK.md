@@ -2,20 +2,45 @@
 
 ## Active Development Focus
 
-Active immediate task: fix the desktop Web Planning Desk Outliner usability regression on the `1.13.20 / versionCode 268` line, especially the user's report that “大纲事项” cannot be typed into directly and the desktop Planning Desk entry points / input areas are unclear.
+Active immediate task: fix two correctness bugs on the `1.13.21 / versionCode 269` line:
+
+1. Phone Planning Desk must let explicit inline DDL dates win over a planning note's document date.
+2. Recurring todo/event “整个循环系列” edits must honor a user-selected new start date and must not be replenished from a stale old template.
 
 Do not commit secrets, signing material, API keys, private Base URLs, generated APK/AAB outputs, or personal backups/logs. The repository already ignores `keystore.properties`, `release/`, `*.apk`, `*.jks`, `.env*`, and local temp files.
 
 ## Current Round Scope
 
-The user reported that the desktop Web Planning Desk currently forces text entry through “Markdown 兼容编辑”, while the visible “大纲事项” area cannot be used naturally. The fix should make the Outliner the obvious main editor and clarify which actions belong to Outliner drafts versus Markdown batch recognition.
+The user reported:
 
-1. Make the empty Outliner state and root input directly usable as the primary writing surface.
-2. Allow existing Outliner nodes to be edited directly without a confusing single-line / draggable-card feel.
-3. Prevent row drag handling from interfering with text input.
-4. Flush pending Outliner edits before publish, parse, import, refresh, postpone, undo, or document switching.
-5. Clarify desktop Planning Desk labels, placeholders, tooltips, and preview copy.
-6. Version metadata should move to `1.13.20 / versionCode 268` so the debug APK can install over the previous debug build.
+1. In a May 20 Planning Desk document, writing `5.29 【紧急】【DDL】把入党资料交到芳姐那里` created a todo on May 20 instead of May 29.
+2. Editing all occurrences of a recurring todo on May 25 showed the expected May 25 / May 26 preview, but after saving the series still remained on May 26 / May 27.
+
+Fix requirements:
+
+1. Inline explicit DDL date/time must beat document date context.
+2. DDL marker cleanup must not pollute the final title with `【DDL】`, `截止`, or the DDL time token.
+3. Recurring `ALL` edit alignment must distinguish time-only changes from user-selected new start-date changes.
+4. Rebuilding a recurring series must replace the old template rather than leaving stale template state behind.
+
+## Verification Completed For 1.13.21
+
+The `1.13.21 / versionCode 269` build addresses the Planning Desk explicit-date bug and the recurring edit-all start-date bug.
+
+1. Version metadata moved to `1.13.21 / versionCode 269`.
+2. Database version remains `26`; no schema, backup format, or user-data migration was added.
+3. Planning Desk local parsing now treats inline dates in DDL lines as stronger than the note document date.
+4. Regression tests cover `5.29 【DDL】...`, `5.29【DDL】...`, `5.29 【DDL】14:00 ...`, and `5.29 【紧急】【DDL】14:00 ...`.
+5. Natural DDL title cleanup preserves user emphasis labels such as `【紧急】` while removing DDL markers and DDL time tokens.
+6. Recurring `ALL` edits keep a user-selected new start date; pure time edits still rebase to the original series start date.
+7. Recurring target replacement deletes old templates before inserting the rebuilt series/template.
+8. Targeted parser / recurrence tests passed.
+9. `./gradlew.bat :app:compileDebugKotlin` passed.
+10. `./gradlew.bat :app:testDebugUnitTest` passed.
+11. `node --check app/src/main/assets/desktop-web/app.js` passed.
+12. `git diff --check` passed.
+13. `./gradlew.bat :app:assembleDebug` passed.
+14. Debug APK metadata confirms `versionName = 1.13.21`, `versionCode = 269`, output `PaykiTodo-1.13.21-debug.apk`.
 
 ## Verification Completed For 1.13.20
 

@@ -2971,9 +2971,10 @@ class TodoRepository(
                 draft = alignRecurringDraftForAll(draft, activeSeries, original),
                 targets = targets,
                 targetSeriesId = seriesId,
-                deleteTemplateSeriesId = if (draft.recurrence.isRecurring) null else seriesId
+                deleteTemplateSeriesId = seriesId
             ).also { updated ->
                 if (draft.recurrence.isRecurring && updated.isNotEmpty()) {
+                    todoDao.deleteTemplateBySeriesId(seriesId)
                     todoDao.insertTemplate(buildTemplate(updated.first(), alignRecurringDraftForAll(draft, activeSeries, original)))
                 } else if (draft.recurrence.isRecurring && updated.isEmpty()) {
                     todoDao.deleteTemplateBySeriesId(seriesId)
@@ -3157,8 +3158,13 @@ class TodoRepository(
         val baseDate = activeSeries.minWithOrNull(compareBy<TodoItem> { it.recurrenceScopeDate() }.thenBy { it.id })
             ?.recurrenceScopeDate()
             ?: original.recurrenceScopeDate()
-        val alignedDueAt = LocalDateTime.of(baseDate, dueAt.toLocalTime())
-        return draft.withAlignedDateTime(alignedDueAt)
+        return draft.withAlignedDateTime(
+            alignRecurringDateForAllScope(
+                editedDate = dueAt.toLocalDate(),
+                originalDate = original.recurrenceScopeDate(),
+                seriesStartDate = baseDate
+            ).atTime(dueAt.toLocalTime())
+        )
     }
 
     private fun alignRecurringCalendarDraftForAll(
@@ -3169,7 +3175,11 @@ class TodoRepository(
         val baseDate = activeSeries.minWithOrNull(compareBy<TodoItem> { it.recurrenceScopeDate() }.thenBy { it.id })
             ?.recurrenceScopeDate()
             ?: original.recurrenceScopeDate()
-        val newStart = LocalDateTime.of(baseDate, draft.startAt.toLocalTime())
+        val newStart = alignRecurringDateForAllScope(
+            editedDate = draft.startAt.toLocalDate(),
+            originalDate = original.recurrenceScopeDate(),
+            seriesStartDate = baseDate
+        ).atTime(draft.startAt.toLocalTime())
         val durationMinutes = Duration.between(draft.startAt, draft.endAt).toMinutes().coerceAtLeast(30)
         return draft.copy(
             startAt = newStart,
@@ -3213,6 +3223,7 @@ class TodoRepository(
         targetSeriesId: String,
         deleteTemplateSeriesId: String?
     ): List<TodoItem> {
+        deleteTemplateSeriesId?.let { todoDao.deleteTemplateBySeriesId(it) }
         deleteItemsByIds(targets.map { it.id })
 
         val replacement = if (draft.recurrence.isRecurring) {
@@ -3232,10 +3243,7 @@ class TodoRepository(
             )
         }
 
-        if (replacement.isEmpty()) {
-            deleteTemplateSeriesId?.let { todoDao.deleteTemplateBySeriesId(it) }
-            return emptyList()
-        }
+        if (replacement.isEmpty()) return emptyList()
 
         val ids = todoDao.insertAll(replacement)
         val created = replacement.zip(ids) { item, id -> item.copy(id = id) }
@@ -3250,6 +3258,7 @@ class TodoRepository(
         targetSeriesId: String,
         deleteTemplateSeriesId: String?
     ): List<TodoItem> {
+        deleteTemplateSeriesId?.let { todoDao.deleteTemplateBySeriesId(it) }
         deleteItemsByIds(targets.map { it.id })
         val replacement = if (draft.recurrence.isRecurring) {
             generateRecurringEventItems(
@@ -3267,10 +3276,7 @@ class TodoRepository(
                 )
             )
         }
-        if (replacement.isEmpty()) {
-            deleteTemplateSeriesId?.let { todoDao.deleteTemplateBySeriesId(it) }
-            return emptyList()
-        }
+        if (replacement.isEmpty()) return emptyList()
         val ids = todoDao.insertAll(replacement)
         return replacement.zip(ids) { item, id -> item.copy(id = id) }
     }
@@ -4025,4 +4031,12 @@ class TodoRepository(
         val end = date.plusDays(1).atStartOfDay(zone).toInstant().toEpochMilli() - 1
         return start to end
     }
+}
+
+internal fun alignRecurringDateForAllScope(
+    editedDate: LocalDate,
+    originalDate: LocalDate,
+    seriesStartDate: LocalDate
+): LocalDate {
+    return if (editedDate == originalDate) seriesStartDate else editedDate
 }

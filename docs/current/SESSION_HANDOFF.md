@@ -4,25 +4,35 @@
 
 - Repository root: `G:\Workspace\Project\PaykiTodo`
 - Branch: `main`
-- User requested a desktop Web Planning Desk fix because “大纲事项” could not be typed into naturally and the desktop Planning Desk entry points / input areas were unclear. Push has not been requested in this round.
+- User reported two correctness bugs after the `1.13.20` line: Planning Desk inline DDL date was overridden by the note document date, and recurring “整个循环系列” edits did not honor a newly selected start date after save. Push has not been requested in this round.
 - Current code version:
-  - `versionName = 1.13.20`
-  - `versionCode = 268`
+  - `versionName = 1.13.21`
+  - `versionCode = 269`
 - Latest debug APK target in this round:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.13.20-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.13.21-debug.apk`
 - Latest signed release APK available locally:
   - `app/build/outputs/apk/release/PaykiTodo-1.13.11-release.apk`
 - Latest GitHub Release:
   - `https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.13.11`
 - Debug APK metadata inspection:
-  - `versionName = 1.13.20`
-  - `versionCode = 268`
+  - `versionName = 1.13.21`
+  - `versionCode = 269`
 
 ## Active Goal
 
-Active immediate task: close the desktop Web Planning Desk Outliner usability regression and hand off the rebuilt debug APK on the `1.13.20 / versionCode 268` line.
+Active immediate task: close the Planning Desk explicit-date bug and recurring edit-all start-date bug on the `1.13.21 / versionCode 269` line.
 
-Latest status: desktop Web Planning Desk Outliner now has a visible multi-line root input, clickable empty-state focus, directly editable auto-height node textareas, drag reorder restricted to a handle, pending edit flushing before publish / parse / import / refresh / postpone / undo / document switch, and clearer copy distinguishing Outliner drafts from Markdown compatibility. This round has not pushed to GitHub.
+Latest status: Planning Desk parsing now lets explicit inline DDL dates beat document-date context, and recurring `ALL` edits now preserve a user-selected new start date while still treating time-only edits as series-start edits. Debug APK `PaykiTodo-1.13.21-debug.apk` was rebuilt and metadata-confirmed. This round has not pushed to GitHub.
+
+## What Changed In The Latest 1.13.21 Patch
+
+1. Planning Desk local parser now handles `5.29 【DDL】...`, `5.29【DDL】...`, `5.29 【DDL】14:00 ...`, and `5.29 【紧急】【DDL】14:00 ...` by using the explicit May 29 date instead of the note's document date.
+2. Natural DDL title cleanup removes DDL markers and optional DDL time tokens while preserving user emphasis labels such as `【紧急】`.
+3. Phone Outliner publishing is covered because `resolvePlanningNodeDraft()` wraps node text through the same `PlanningMarkdownParser.parse(..., documentDate = note.documentDateEpochDay)` path.
+4. Recurring todo/event `ALL` edits now keep a user-selected new start date; if only the time changes and the edited date still equals the original occurrence date, the series remains anchored to the old first occurrence date.
+5. Recurring replacement deletes the old recurring template before creating the replacement items/template, preventing stale template `startEpochDay` from replenishing old future dates.
+6. Version metadata moved to `1.13.21 / versionCode 269`; latest debug APK target is `app/build/outputs/apk/debug/PaykiTodo-1.13.21-debug.apk`.
+7. Verification passed: targeted Planning Desk parser / recurrence tests, `./gradlew.bat :app:compileDebugKotlin`, `./gradlew.bat :app:testDebugUnitTest`, `node --check app/src/main/assets/desktop-web/app.js`, `git diff --check`, `./gradlew.bat :app:assembleDebug`, and APK metadata inspection confirmed `versionName = 1.13.21`, `versionCode = 269`.
 
 ## What Changed In The Latest 1.13.20 Patch
 

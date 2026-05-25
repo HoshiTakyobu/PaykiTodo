@@ -4,6 +4,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import java.time.LocalDate
 import java.time.LocalDateTime
 
 class PlanningMarkdownParserTest {
@@ -159,6 +160,62 @@ class PlanningMarkdownParserTest {
         assertEquals(LocalDateTime.of(2026, 5, 15, 23, 59), todo.dueAt)
         assertTrue(todo.message.contains("根据自然文本推断"))
         assertTrue(todo.message.contains("检测到循环关键词"))
+    }
+
+    @Test
+    fun leadingDateWithDdlMarkerWinsOverPlanningDocumentDate() {
+        val result = PlanningMarkdownParser.parse(
+            "5.29 【紧急】【DDL】把入党资料交到芳姐那里",
+            now = LocalDateTime.of(2026, 5, 20, 8, 0),
+            documentDate = LocalDate.of(2026, 5, 20)
+        )
+
+        val todo = result.candidates.single()
+        assertEquals(PlanningParsedType.TODO, todo.type)
+        assertEquals("【紧急】把入党资料交到芳姐那里", todo.title)
+        assertEquals(LocalDateTime.of(2026, 5, 29, 23, 59), todo.dueAt)
+    }
+
+    @Test
+    fun leadingDateCanTouchBracketedDdlMarker() {
+        val result = PlanningMarkdownParser.parse(
+            "5.29【DDL】把入党资料交到芳姐那里",
+            now = LocalDateTime.of(2026, 5, 20, 8, 0),
+            documentDate = LocalDate.of(2026, 5, 20)
+        )
+
+        val todo = result.candidates.single()
+        assertEquals(PlanningParsedType.TODO, todo.type)
+        assertEquals("把入党资料交到芳姐那里", todo.title)
+        assertEquals(LocalDateTime.of(2026, 5, 29, 23, 59), todo.dueAt)
+    }
+
+    @Test
+    fun leadingDateWithDdlMarkerAndTimeWinsOverPlanningDocumentDate() {
+        val result = PlanningMarkdownParser.parse(
+            "5.29 【DDL】14:00 把入党资料交到芳姐那里",
+            now = LocalDateTime.of(2026, 5, 20, 8, 0),
+            documentDate = LocalDate.of(2026, 5, 20)
+        )
+
+        val todo = result.candidates.single()
+        assertEquals(PlanningParsedType.TODO, todo.type)
+        assertEquals("把入党资料交到芳姐那里", todo.title)
+        assertEquals(LocalDateTime.of(2026, 5, 29, 14, 0), todo.dueAt)
+    }
+
+    @Test
+    fun leadingDateWithUrgentDdlMarkerAndTimeKeepsUrgentLabelOnlyInTitle() {
+        val result = PlanningMarkdownParser.parse(
+            "5.29 【紧急】【DDL】14:00 把入党资料交到芳姐那里",
+            now = LocalDateTime.of(2026, 5, 20, 8, 0),
+            documentDate = LocalDate.of(2026, 5, 20)
+        )
+
+        val todo = result.candidates.single()
+        assertEquals(PlanningParsedType.TODO, todo.type)
+        assertEquals("【紧急】把入党资料交到芳姐那里", todo.title)
+        assertEquals(LocalDateTime.of(2026, 5, 29, 14, 0), todo.dueAt)
     }
 
     @Test

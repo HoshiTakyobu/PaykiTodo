@@ -197,9 +197,13 @@ object PlanningMarkdownParser {
             )
         }
 
-        val title = cleanTitle(content).trim()
-        if (title.isBlank()) return error(lineNumber, sourceLine, "待办标题不能为空。")
         val naturalDdl = if (explicitDdl == null) parseNaturalDdlHint(content, dateContext, now) else null
+        val title = if (explicitDdl == null && naturalDdl != null) {
+            cleanNaturalTodoTitle(content, stripLeadingDate = true, today = now.toLocalDate())
+        } else {
+            cleanTitle(content).trim()
+        }
+        if (title.isBlank()) return error(lineNumber, sourceLine, "待办标题不能为空。")
         val ddl = explicitDdl?.let { ddlText ->
             parseDateTimeExpression(ddlText, defaultDate = dateContext, nowDate = now.toLocalDate(), defaultTime = LocalTime.of(23, 59))
                 ?: return error(lineNumber, sourceLine, "无法识别 DDL：$ddlText")
@@ -242,7 +246,7 @@ object PlanningMarkdownParser {
         now: LocalDateTime
     ): PlanningParsedCandidate? {
         val ddl = parseNaturalDdlHint(content, dateContext, now) ?: return null
-        val title = cleanNaturalTodoTitle(content).trim()
+        val title = cleanNaturalTodoTitle(content, stripLeadingDate = true, today = now.toLocalDate()).trim()
         if (title.isBlank()) return error(lineNumber, sourceLine, "待办标题不能为空。")
         val reminderResult = parseReminderTag(content, ddl, now)
         if (reminderResult != null && !reminderResult.isValid) {
@@ -274,8 +278,26 @@ object PlanningMarkdownParser {
 
     private fun parseNaturalDdlHint(content: String, dateContext: LocalDate?, now: LocalDateTime): LocalDateTime? {
         val text = normalizeSyntaxText(content)
+        parseLeadingDate(text, now.toLocalDate())?.let { leadingDate ->
+            val markerMatch = DdlMarkerRegex.find(leadingDate.rest)
+            val keywordMatch = markerMatch ?: DdlKeywordRegex.find(leadingDate.rest)
+            if (keywordMatch != null) {
+                val rawAfterKeyword = leadingDate.rest.substring(keywordMatch.range.last + 1)
+                    .trim()
+                    .trimStart(':', '：', ' ', ',')
+                return parseDateTimeExpression(
+                    rawAfterKeyword,
+                    defaultDate = leadingDate.date,
+                    nowDate = now.toLocalDate(),
+                    defaultTime = LocalTime.of(23, 59)
+                ) ?: LocalDateTime.of(leadingDate.date, LocalTime.of(23, 59))
+            }
+        }
         DdlKeywordRegex.find(text)?.let { match ->
-            val raw = text.substring(match.range.last + 1).trim().trimStart(':', '：', ' ', ',')
+            val rawAfterKeyword = text.substring(match.range.last + 1).trim().trimStart(':', '：', ' ', ',')
+            val raw = rawAfterKeyword.ifBlank {
+                parseLeadingDate(text, now.toLocalDate())?.date?.toString().orEmpty()
+            }
             parseDateTimeExpression(raw, defaultDate = dateContext, nowDate = now.toLocalDate(), defaultTime = LocalTime.of(23, 59))?.let {
                 return it
             }
@@ -326,12 +348,54 @@ object PlanningMarkdownParser {
         return parts.distinct().joinToString("；").takeIf { it.isNotBlank() }
     }
 
-    private fun cleanNaturalTodoTitle(raw: String): String {
-        return cleanTitle(raw)
+    private fun cleanNaturalTodoTitle(
+        raw: String,
+        stripLeadingDate: Boolean = false,
+        today: LocalDate = LocalDate.now()
+    ): String {
+        val preprocessed = if (stripLeadingDate) {
+            val normalized = normalizeSyntaxText(raw)
+            parseLeadingDate(normalized, today)?.let { leadingDate ->
+                stripLeadingDateDdlPrefix(leadingDate.rest).takeIf { it != leadingDate.rest }
+            } ?: raw
+        } else {
+            raw
+        }
+        var text = cleanTitle(preprocessed)
+            .replace(DdlMarkerRegex, " ")
             .replace(DdlKeywordRegex, " ")
             .replace(BeforeTimeRegex, " ")
             .trim()
             .replace(Regex("\\s+"), " ")
+        if (stripLeadingDate) {
+            parseLeadingDate(text, today)?.let { leadingDate ->
+                text = stripLeadingDateDdlPrefix(leadingDate.rest).trimStart().trimStart(',', '，')
+            }
+        }
+        return text
+            .trim()
+            .replace(Regex("\\s+"), " ")
+            .replace(Regex("(?<=[】\\]])\\s+(?=\\S)"), "")
+    }
+
+    private fun stripLeadingDateDdlPrefix(rawRest: String): String {
+        var rest = rawRest.trimStart().trimStart(',', '，').trimStart()
+        val marker = DdlMarkerRegex.find(rest)
+        val keyword = marker ?: DdlKeywordRegex.find(rest)
+        if (keyword != null) {
+            val preservedPrefix = rest.substring(0, keyword.range.first).trim()
+            rest = rest.substring(keyword.range.last + 1)
+                .trimStart()
+                .trimStart(':', '：', ' ', ',')
+                .trimStart()
+            TimePrefixRegex.find(rest)?.takeIf { it.range.first == 0 }?.let { timeMatch ->
+                rest = rest.substring(timeMatch.range.last + 1).trimStart().trimStart(',', '，').trimStart()
+            }
+            rest = listOf(preservedPrefix, rest)
+                .filter { it.isNotBlank() }
+                .joinToString(" ")
+        }
+        return rest
     }
 
     private fun parseReminderTag(content: String, anchor: LocalDateTime, now: LocalDateTime): ReminderTextParseResult? {
@@ -393,9 +457,9 @@ object PlanningMarkdownParser {
         val time = if (rest.isBlank()) {
             defaultTime
         } else {
-            TimeOnlyRegex.find(rest)?.takeIf { it.range.first == 0 }?.let { parseTimeToken(it.value) }
-        } ?: defaultTime
-        return time?.let { LocalDateTime.of(date, it) }
+            TimePrefixRegex.find(rest)?.takeIf { it.range.first == 0 }?.let { parseTimeToken(it.value) }
+        } ?: return null
+        return LocalDateTime.of(date, time)
     }
 
     private fun parseDateExpression(raw: String, today: LocalDate): ParsedDate? {
@@ -485,6 +549,7 @@ object PlanningMarkdownParser {
         text = text.replace(NamedLocationRegex, " ")
         text = text.replace(QuotedLocationRegex, " ")
         text = text.replace(InlineLocationRegex, " ")
+        text = text.replace(DdlMarkerRegex, " ")
         text = text.trim().trim(',', '，', '；', ';')
         text = text.replace(BareDdlRegex, " ")
         text = text.replace(BeforeTimeRegex, " ")
@@ -593,7 +658,7 @@ object PlanningMarkdownParser {
 
     private fun isLeadingDateBoundary(rest: String): Boolean {
         val first = rest.firstOrNull() ?: return true
-        return first.isWhitespace() || first == ',' || first.isDigit()
+        return first.isWhitespace() || first == ',' || first.isDigit() || first == '【' || first == '['
     }
 
     private fun isHeadingDateContextRest(rest: String): Boolean {
@@ -681,11 +746,13 @@ object PlanningMarkdownParser {
     private val MonthDayRegex = Regex("^(\\d{1,2})[-./](\\d{1,2})$")
     private val ChineseMonthDayRegex = Regex("^(\\d{1,2})月(\\d{1,2})日?$")
     private val TimeOnlyRegex = Regex("^(凌晨|早上|上午|中午|下午|晚上)?\\s*(\\d{1,2})[:：](\\d{2})\\s*([aApP][mM])?$")
+    private val TimePrefixRegex = Regex("^(?:凌晨|早上|上午|中午|下午|晚上)?\\s*\\d{1,2}[:：]\\d{2}\\s*(?:[aApP][mM])?")
     private val TimeTokenPattern = "(?:凌晨|早上|上午|中午|下午|晚上)?\\s*\\d{1,2}[:：]\\d{2}\\s*(?:[aApP][mM])?"
     private val TimeRangeRegex = Regex("($TimeTokenPattern)\\s*(?:-|~|至|到)\\s*(次日)?($TimeTokenPattern)")
     private val LeadingDateRegex = Regex("^(今天|今日|明天|明日|后天|周[一二三四五六日天]|星期[一二三四五六日天]|礼拜[一二三四五六日天]|\\d{4}[-./]\\d{1,2}[-./]\\d{1,2}|\\d{4}年\\d{1,2}月\\d{1,2}日?|\\d{1,2}[-./]\\d{1,2}|\\d{1,2}月\\d{1,2}日?)")
     private val BareDdlRegex = Regex("(?:^|\\s)ddl\\s+([^#]+)", RegexOption.IGNORE_CASE)
     private val DdlKeywordRegex = Regex("(截止|deadline|ddl)", RegexOption.IGNORE_CASE)
+    private val DdlMarkerRegex = Regex("[【\\[]\\s*(DDL|deadline|截止)\\s*[】\\]]", RegexOption.IGNORE_CASE)
     private val InlineLocationRegex = Regex("(?:^|[\\s,，；;])(@[^\\s#\"'“”‘’，,；;]+)")
     private val QuotedLocationRegex = Regex("[\"“”'‘’](@[^\"“”'‘’#]+)[\"“”'‘’]")
     private val NamedLocationRegex = Regex("(?:^|[\\s,，；;])(地点|location|loc|place)\\s*[:：]\\s*(\"[^\"]+\"|“[^”]+”|'[^']+'|‘[^’]+’|[^#，,；;]+)", RegexOption.IGNORE_CASE)

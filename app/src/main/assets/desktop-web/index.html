@@ -89,20 +89,20 @@
           <div class="planning-toolbar">
             <div>
               <h2>规划台</h2>
-              <p class="muted">像备忘录一样写自然计划；新增大纲行先成为草稿，发布后才进入正式待办或日程。Markdown 兼容区仍可用 AI / 本地规则识别，Ctrl+S 保存，Ctrl+Enter 识别。</p>
+              <p class="muted">左侧“大纲事项”是主输入区：直接写、按 Enter 生成草稿；确认无误后点发布才进入手机端正式待办或日程。Markdown 兼容区只用于粘贴旧文本、批量识别或迁移。</p>
             </div>
             <div class="toolbar-row">
               <select id="planning-note-select"></select>
-              <button id="planning-new" class="ghost mini">新建</button>
-              <button id="planning-delete" class="ghost mini danger-lite-action">删除</button>
-              <button id="planning-save" class="ghost mini">保存</button>
+              <button id="planning-new" class="ghost mini" title="创建一个新的规划文档">新建文档</button>
+              <button id="planning-delete" class="ghost mini danger-lite-action" title="删除当前规划文档">删除文档</button>
+              <button id="planning-save" class="ghost mini" title="保存 Markdown 兼容编辑区内容">保存兼容区</button>
               <button id="planning-help" class="ghost mini">使用说明</button>
-              <button id="planning-publish-all" class="mini" disabled>发布草稿</button>
-              <button id="planning-parse" class="mini">识别</button>
-              <button id="planning-import" class="mini">导入选中</button>
-              <button id="planning-refresh" class="ghost mini">刷新已导入</button>
-              <button id="planning-postpone" class="ghost mini">批量顺延</button>
-              <button id="planning-undo" class="ghost mini">撤销</button>
+              <button id="planning-publish-all" class="mini" disabled title="把当前文档里的草稿发布为正式待办或日程">发布草稿</button>
+              <button id="planning-parse" class="mini" title="识别 Markdown 兼容区或大纲导出的内容">识别预览</button>
+              <button id="planning-import" class="mini" title="导入右侧预览中勾选的候选项">导入选中</button>
+              <button id="planning-refresh" class="ghost mini" title="用当前文本刷新已导入事项">刷新已导入</button>
+              <button id="planning-postpone" class="ghost mini" title="批量顺延已导入事项">批量顺延</button>
+              <button id="planning-undo" class="ghost mini" title="撤销最近一次导入、刷新或顺延">撤销</button>
             </div>
           </div>
           <div class="planning-workspace">
@@ -112,26 +112,30 @@
                 <div class="planning-outline-head">
                   <div>
                     <strong>大纲事项</strong>
-                    <p class="muted">写下一行会生成规划草稿；点“发布”或“发布N条”后才会进入待办/日历。</p>
+                    <p class="muted">这里就是电脑端的主要输入区。写完一行按 Enter 添加；Shift+Enter 在当前输入框内换行。已有事项可以直接点击文字修改。</p>
                   </div>
-                  <button id="planning-export-markdown" class="ghost mini">同步 Markdown</button>
+                  <button id="planning-export-markdown" class="ghost mini" title="把当前大纲导出到下方 Markdown 兼容区">同步到 Markdown</button>
+                </div>
+                <div class="planning-outline-add">
+                  <div class="planning-outline-add-label">
+                    <strong>直接写下一条</strong>
+                    <span>例如：10:00-12:00, 【课程】习思想，&quot;@主楼B1-412&quot;；或 任务M ddl 15:00</span>
+                  </div>
+                  <textarea id="planning-root-input" rows="2" placeholder="在这里输入，Enter 添加为草稿；Shift+Enter 换行"></textarea>
+                  <button id="planning-root-add" class="mini">添加草稿</button>
                 </div>
                 <div id="planning-outline" class="planning-outline"></div>
-                <div class="planning-outline-add">
-                  <input id="planning-root-input" placeholder="新增事项，例如：10:00-12:00 自习 @图书馆3楼" />
-                  <button id="planning-root-add" class="mini">添加</button>
-                </div>
               </div>
               <details class="planning-markdown-compat">
-                <summary>Markdown 兼容编辑 / 旧识别导入</summary>
-                <p class="muted">这里用于复制、迁移或旧批量识别。直接编辑后请点“保存”，不会绕过大纲节点规则。</p>
+                <summary>Markdown 兼容编辑（批量粘贴 / 旧识别导入，不是主输入区）</summary>
+                <p class="muted">日常请优先使用上方大纲事项。这里适合从 Word、Excel、Obsidian、聊天记录里粘贴大段文本，再点“识别预览”。直接编辑后请点“保存兼容区”。</p>
                 <textarea id="planning-editor" class="planning-editor"></textarea>
               </details>
             </div>
             <div class="planning-preview-shell">
               <div class="panel-head">
-                <h3>识别预览</h3>
-                <p id="planning-preview-meta" class="muted">尚未识别</p>
+                <h3>识别 / 导入预览</h3>
+                <p id="planning-preview-meta" class="muted">写完后点“识别预览”，这里会让你检查标题、时间、地点、分组和提醒。</p>
               </div>
               <div id="planning-preview" class="planning-preview"></div>
             </div>

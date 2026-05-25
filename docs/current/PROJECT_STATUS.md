@@ -8,8 +8,8 @@
 - Target platform: Android 14 / API 34
 - License: MIT License (`LICENSE`)
 - Current version in code:
-  - `versionName = "1.13.19"`
-  - `versionCode = 267`
+  - `versionName = "1.13.20"`
+  - `versionCode = 268`
 
 ## Current Build Facts
 
@@ -21,7 +21,20 @@
 - Latest GitHub Release:
   - `https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.13.11`
 - Latest fully built debug APK:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.13.19-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.13.20-debug.apk`
+- Current `1.13.20 / versionCode 268` status:
+  - Desktop Web Planning Desk Outliner is now the explicit primary input surface: the empty-outline state focuses the root input, the root input is a visible multi-line entry box, and existing nodes render as directly editable auto-height textareas.
+  - Desktop Web Planning Desk drag reorder now starts only from a dedicated handle, so ordinary text clicks and typing are not intercepted by the draggable row.
+  - Desktop Web Planning Desk flushes pending Outliner edits before publish-all, parse, import, refresh, postpone, undo, document switching, and compatible Markdown actions.
+  - Desktop Web Planning Desk can split pasted multi-line root input into multiple draft nodes.
+  - Desktop Web Planning Desk copy now distinguishes the daily Outliner workflow from the Markdown compatibility area, reducing the previous impression that users must edit through Markdown.
+  - Database version remains `26`; no schema, backup format, or user-data migration was added.
+  - `node --check app/src/main/assets/desktop-web/app.js` passed.
+  - `./gradlew.bat :app:compileDebugKotlin` passed.
+  - `./gradlew.bat :app:testDebugUnitTest` passed.
+  - `./gradlew.bat :app:assembleDebug` passed.
+  - `git diff --check` passed.
+  - Debug APK metadata confirms `versionName = 1.13.20`, `versionCode = 268`, output `PaykiTodo-1.13.20-debug.apk`.
 - Current `1.13.19 / versionCode 267` status:
   - Recurring todo/event repository paths were re-audited: current-instance delete still keeps canceled tombstones, `CURRENT_AND_FUTURE` still cuts by the original recurrence anchor date, and template truncation/deletion remains in place for range cancel/delete/edit; no new repository-level recurring-data bug was found in this pass.
   - Future recurring todos in `计划中` keep the folded series-card model, and expanded recurring series now render only the first 30 future instances plus a folded-count notice so a long series cannot flood the `LazyColumn`.

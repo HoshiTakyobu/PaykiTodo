@@ -2,20 +2,40 @@
 
 ## Active Development Focus
 
-Active immediate task: audit recurring item behavior and reduce lag in large todo lists / Calendar timeline on the `1.13.19 / versionCode 267` line, then hand off the debug APK for phone testing.
+Active immediate task: fix the desktop Web Planning Desk Outliner usability regression on the `1.13.20 / versionCode 268` line, especially the user's report that “大纲事项” cannot be typed into directly and the desktop Planning Desk entry points / input areas are unclear.
 
 Do not commit secrets, signing material, API keys, private Base URLs, generated APK/AAB outputs, or personal backups/logs. The repository already ignores `keystore.properties`, `release/`, `*.apk`, `*.jks`, `.env*`, and local temp files.
 
 ## Current Round Scope
 
-The user asked to re-check recurring-task behavior and fix severe lag when many items exist, especially scrolling through todos and using the Calendar timeline.
+The user reported that the desktop Web Planning Desk currently forces text entry through “Markdown 兼容编辑”, while the visible “大纲事项” area cannot be used naturally. The fix should make the Outliner the obvious main editor and clarify which actions belong to Outliner drafts versus Markdown batch recognition.
 
-1. Re-audit recurring todo / recurring event range edit, cancel, delete, template truncation, and replenishment paths.
-2. Fix any confirmed recurring-series bug without touching the user's live phone data.
-3. Reduce main-thread work when todo / daily-board lists become large.
-4. Reduce Calendar day / three-day timeline layout cost when many events are loaded.
-5. Add a small database migration only if it directly improves the large-list hot path.
-6. Version metadata should move to `1.13.19 / versionCode 267` so the debug APK can install over the previous debug build.
+1. Make the empty Outliner state and root input directly usable as the primary writing surface.
+2. Allow existing Outliner nodes to be edited directly without a confusing single-line / draggable-card feel.
+3. Prevent row drag handling from interfering with text input.
+4. Flush pending Outliner edits before publish, parse, import, refresh, postpone, undo, or document switching.
+5. Clarify desktop Planning Desk labels, placeholders, tooltips, and preview copy.
+6. Version metadata should move to `1.13.20 / versionCode 268` so the debug APK can install over the previous debug build.
+
+## Verification Completed For 1.13.20
+
+The `1.13.20 / versionCode 268` build addresses the desktop Web Planning Desk input / guidance issue.
+
+1. Version metadata moved to `1.13.20 / versionCode 268`.
+2. Database version remains `26`; no schema, backup format, or user-data migration was added.
+3. Desktop Web Planning Desk empty Outliner state is now a clickable focus target rather than a passive message.
+4. The root Outliner input is now a visible multi-line entry box with examples and `Enter` / `Shift+Enter` guidance.
+5. Existing Outliner nodes now use auto-height editable textareas, so users can directly click and type in “大纲事项”.
+6. Same-level drag reorder now starts only from a dedicated drag handle, avoiding row-level draggable behavior that can interfere with text editing.
+7. Root input multi-line paste can create multiple draft nodes.
+8. Pending Outliner edits are flushed before publish-all, parse, import, refresh, postpone, undo, document switching, and Markdown sync.
+9. Desktop Planning Desk copy now explicitly distinguishes daily Outliner writing from Markdown compatibility / old batch recognition.
+10. `node --check app/src/main/assets/desktop-web/app.js` passed.
+11. `./gradlew.bat :app:compileDebugKotlin` passed.
+12. `./gradlew.bat :app:testDebugUnitTest` passed.
+13. `./gradlew.bat :app:assembleDebug` passed.
+14. `git diff --check` passed.
+15. Debug APK metadata confirms `versionName = 1.13.20`, `versionCode = 268`, output `PaykiTodo-1.13.20-debug.apk`.
 
 ## Verification Completed For 1.13.19
 

@@ -29,6 +29,8 @@ const state = {
   planningLoaded: false,
   planningNodesLoaded: false,
   planningDraggingNodeId: null,
+  planningPendingCommits: [],
+  planningParseMarkdown: '',
   todosLoaded: false,
   todoOffset: 0,
   todoTotal: 0,
@@ -688,7 +690,7 @@ function syncTopbar() {
   const todoMode = state.currentTab === 'todos';
   const eventMode = state.currentTab === 'events';
   els.panelTitle.textContent = todoMode ? '每日看板' : eventMode ? '日程时间轴' : '规划台';
-  els.viewCaption.textContent = todoMode ? '桌面端每日看板' : eventMode ? '桌面端日程模式' : 'Markdown 规划模式';
+  els.viewCaption.textContent = todoMode ? '桌面端每日看板' : eventMode ? '桌面端日程模式' : '大纲草稿 / Markdown 兼容';
   els.openCreate.textContent = todoMode ? '新增待办' : eventMode ? '新增日程' : '新建规划';
   els.openCreate.classList.toggle('hidden', state.currentTab === 'planning');
   const dataMode = todoMode && state.todosLoaded
@@ -1267,6 +1269,7 @@ function renderPlanningNotes() {
     const activeChanged = !sameId(state.planningRenderedNoteId, active.id);
     state.activePlanningNoteId = active.id;
     els.planningNoteSelect.value = String(active.id);
+    if (activeChanged) state.planningParseMarkdown = '';
     if (activeChanged || !state.planningDirty) {
       els.planningEditor.value = state.planningNodesMarkdown || active.contentMarkdown || '';
       state.planningDirty = false;
@@ -1286,9 +1289,7 @@ function applyPlanningNodeResponse(data) {
   if (!data) return;
   if (Array.isArray(data.nodes)) state.planningNodes = data.nodes;
   if (typeof data.markdown === 'string') state.planningNodesMarkdown = data.markdown;
-  if (!state.planningDirty && els.planningEditor) {
-    els.planningEditor.value = state.planningNodesMarkdown || '';
-  }
+  refreshPlanningMarkdownEditor(state.planningNodesMarkdown || '');
   renderPlanningOutline();
 }
 
@@ -1368,12 +1369,14 @@ function renderPlanningOutline() {
     publishAll.textContent = draftCount > 0 ? '发布' + draftCount + '条' : '发布草稿';
   }
   if (!active) {
-    els.planningOutline.innerHTML = '<div class="empty-state">请先新建或打开一个规划文档。</div>';
+    els.planningOutline.innerHTML = '<button type="button" class="planning-outline-empty" data-focus-planning-root="true">请先新建或打开一个规划文档。</button>';
+    autosizePlanningTextarea(els.planningRootInput);
     return;
   }
   const flattened = flattenPlanningNodes(state.planningNodes || []);
   if (!flattened.length) {
-    els.planningOutline.innerHTML = '<div class="empty-state">写下第一件事，比如：入党资料要写完，或 10:00-12:00 写论文 @图书馆3楼。</div>';
+    els.planningOutline.innerHTML = '<button type="button" class="planning-outline-empty" data-focus-planning-root="true">当前文档还没有大纲事项。点这里或上方输入框，写下第一件事：10:00-12:00 写论文 @图书馆3楼，或 任务M ddl 15:00。</button>';
+    autosizePlanningTextarea(els.planningRootInput);
     return;
   }
   els.planningOutline.innerHTML = flattened.map(item => {
@@ -1391,12 +1394,13 @@ function renderPlanningOutline() {
     const endAt = planningNodeDateTimeValue(node, 'endAt').replace('T', ' ');
     const syncChecked = node.syncEnabled === false ? '' : ' checked';
     return ''
-      + '<article class="planning-node-row' + completedClass + draftClass + hasChildrenClass + '" draggable="true" style="--depth:' + Number(item.depth || 0) + '" data-planning-node-row="' + escapeHtml(node.id) + '">'
+      + '<article class="planning-node-row' + completedClass + draftClass + hasChildrenClass + '" style="--depth:' + Number(item.depth || 0) + '" data-planning-node-row="' + escapeHtml(node.id) + '">'
       +   planningNodeHeaderHint(node.text)
       +   '<div class="planning-node-main">'
+      +     '<button type="button" class="planning-node-drag" draggable="true" data-node-drag="' + escapeHtml(node.id) + '" title="拖拽调整同层级顺序">⋮⋮</button>'
       +     '<button type="button" class="planning-node-icon" data-node-collapse="' + escapeHtml(node.id) + '"' + (item.hasChildren ? '' : ' disabled') + '>' + escapeHtml(collapseText) + '</button>'
       +     '<button type="button" class="planning-node-check" data-node-complete="' + escapeHtml(node.id) + '">' + (node.completed ? '✓' : '○') + '</button>'
-      +     '<input class="planning-node-text" data-node-text="' + escapeHtml(node.id) + '" value="' + escapeHtml(node.text || '') + '" placeholder="写下事项、DDL 或日程" />'
+      +     '<textarea class="planning-node-text" data-node-text="' + escapeHtml(node.id) + '" rows="1" placeholder="写下事项、DDL 或日程">' + escapeHtml(node.text || '') + '</textarea>'
       +     '<span class="planning-node-order">'
       +       '<button type="button" class="ghost mini planning-node-move" data-node-move-up="' + escapeHtml(node.id) + '"' + moveUpDisabled + ' title="上移">↑</button>'
       +       '<button type="button" class="ghost mini planning-node-move" data-node-move-down="' + escapeHtml(node.id) + '"' + moveDownDisabled + ' title="下移">↓</button>'
@@ -1415,6 +1419,61 @@ function renderPlanningOutline() {
       +   '</div>'
       + '</article>';
   }).join('');
+  autosizePlanningTextareas(els.planningOutline);
+  autosizePlanningTextarea(els.planningRootInput);
+}
+
+function autosizePlanningTextarea(node) {
+  if (!node || node.tagName !== 'TEXTAREA') return;
+  const minHeight = node.id === 'planning-root-input' ? 58 : 38;
+  node.style.height = 'auto';
+  node.style.height = Math.max(minHeight, node.scrollHeight) + 'px';
+}
+
+function autosizePlanningTextareas(root = document) {
+  root.querySelectorAll?.('textarea[data-node-text], #planning-root-input').forEach(autosizePlanningTextarea);
+}
+
+function trackPlanningCommit(promise) {
+  const tracked = Promise.resolve(promise)
+    .catch(error => {
+      els.status.textContent = error.message;
+      return null;
+    })
+    .finally(() => {
+      state.planningPendingCommits = state.planningPendingCommits.filter(item => item !== tracked);
+    });
+  state.planningPendingCommits.push(tracked);
+  return tracked;
+}
+
+async function waitPlanningPendingCommits() {
+  if (!state.planningPendingCommits.length) return;
+  await Promise.all(state.planningPendingCommits.slice());
+}
+
+async function flushPlanningOutlineInputs(options = {}) {
+  await waitPlanningPendingCommits();
+  const createRoot = options.createRoot !== false;
+  const rootText = String(els.planningRootInput?.value || '').trim();
+  if (createRoot && rootText) {
+    await createPlanningOutlineNodesFromText(rootText);
+    if (els.planningRootInput) {
+      els.planningRootInput.value = '';
+      autosizePlanningTextarea(els.planningRootInput);
+    }
+  }
+  await waitPlanningPendingCommits();
+}
+
+function currentPlanningMarkdownForAction() {
+  if (state.planningDirty) return els.planningEditor?.value || '';
+  return state.planningNodesMarkdown || els.planningEditor?.value || '';
+}
+
+function refreshPlanningMarkdownEditor(markdown = state.planningNodesMarkdown || '') {
+  if (!els.planningEditor || state.planningDirty) return;
+  els.planningEditor.value = markdown;
 }
 
 async function createPlanningOutlineNode(text, parentNodeId = null, options = {}) {
@@ -1431,7 +1490,23 @@ async function createPlanningOutlineNode(text, parentNodeId = null, options = {}
   applyPlanningNodeResponse(data);
   await refreshAfterMutation();
   els.status.textContent = '已添加草稿到规划台';
+  if (data.node?.id) focusPlanningNodeText(data.node.id, String(data.node.text || clean).length);
   return data.node || null;
+}
+
+async function createPlanningOutlineNodesFromText(text, parentNodeId = null, options = {}) {
+  const lines = String(text || '')
+    .split(/\r?\n/)
+    .map(line => line.trim())
+    .filter(Boolean);
+  const entries = lines.length > 1 ? lines : [String(text || '').trim()];
+  let lastNode = null;
+  let nextSortOrder = Number(options.sortOrder);
+  for (const entry of entries) {
+    const entryOptions = Number.isFinite(nextSortOrder) ? { ...options, sortOrder: nextSortOrder++ } : options;
+    lastNode = await createPlanningOutlineNode(entry, parentNodeId, entryOptions);
+  }
+  return lastNode;
 }
 
 async function updatePlanningOutlineNode(nodeId, patch) {
@@ -1664,10 +1739,6 @@ function planningDragNodeId(event) {
     || '';
 }
 
-function planningDragBlockedTarget(target) {
-  return !!target?.closest?.('input, textarea, select, button, label, a');
-}
-
 function clearPlanningDragTargets() {
   document.querySelectorAll('.planning-node-row.drag-over, .planning-node-row.drag-after').forEach(row => {
     row.classList.remove('drag-over', 'drag-after');
@@ -1792,9 +1863,9 @@ function renderPlanningPreview() {
     parseButton.textContent = state.planningParsing ? '识别中' : '识别';
   }
   if (!result) {
-    els.planningPreviewMeta.textContent = state.planningParsing ? '识别中…' : '尚未识别';
+    els.planningPreviewMeta.textContent = state.planningParsing ? '识别中…' : '尚未识别 · 写完大纲后点“识别预览”，会先同步最新草稿';
     const mappingHtml = renderPlanningMappingPreview();
-    els.planningPreview.innerHTML = mappingHtml || '<div class="empty-state">写完计划后点&quot;识别&quot;，这里会显示识别结果。<br>你也可以直接自由书写，AI 会尝试理解你的意图。</div>';
+    els.planningPreview.innerHTML = mappingHtml || '<div class="empty-state">左侧大纲适合日常一条条写；右侧只负责检查识别结果。<br>需要从大段文本导入时，再展开 Markdown 兼容编辑区。</div>';
     return;
   }
   const candidates = result.candidates || [];
@@ -1944,6 +2015,7 @@ async function savePlanningNote(quiet = false) {
   const active = activePlanningNote();
   if (!active) throw new Error('没有可保存的规划文档');
   if (state.planningSaving) return;
+  await waitPlanningPendingCommits();
   if (state.planningSaveTimer) {
     window.clearTimeout(state.planningSaveTimer);
     state.planningSaveTimer = null;
@@ -1966,6 +2038,7 @@ async function savePlanningNote(quiet = false) {
 }
 
 async function createPlanningNote() {
+  await flushPlanningOutlineInputs({ createRoot: true });
   await flushPlanningAutosave();
   const title = prompt('新规划文档名称', '新的规划');
   if (!title) return;
@@ -1978,6 +2051,7 @@ async function createPlanningNote() {
 }
 
 async function deletePlanningNote() {
+  await flushPlanningOutlineInputs({ createRoot: true });
   await flushPlanningAutosave();
   const active = activePlanningNote();
   if (!active) return;
@@ -1990,15 +2064,18 @@ async function deletePlanningNote() {
 }
 
 async function parsePlanningEditor() {
+  await flushPlanningOutlineInputs({ createRoot: true });
   await flushPlanningAutosave();
+  const markdown = currentPlanningMarkdownForAction();
   state.planningParsing = true;
   renderPlanningPreview();
   try {
     const active = activePlanningNote();
     state.planningParseResult = await api('/api/planning/parse', {
       method: 'POST',
-      body: JSON.stringify({ markdown: els.planningEditor.value, noteId: active && active.id })
+      body: JSON.stringify({ markdown, noteId: active && active.id })
     });
+    state.planningParseMarkdown = markdown;
     renderPlanningPreview();
   } finally {
     state.planningParsing = false;
@@ -2007,6 +2084,7 @@ async function parsePlanningEditor() {
 }
 
 async function importSelectedPlanning() {
+  await flushPlanningOutlineInputs({ createRoot: true });
   if (!state.planningParseResult) {
     els.status.textContent = '请先点击“识别”生成预览，再勾选并导入';
     renderPlanningPreview();
@@ -2018,13 +2096,15 @@ async function importSelectedPlanning() {
     return;
   }
   const active = activePlanningNote();
+  const markdown = state.planningParseMarkdown || currentPlanningMarkdownForAction();
   const result = await api('/api/planning/import', {
     method: 'POST',
-    body: JSON.stringify({ markdown: els.planningEditor.value, selectedIds, candidates: collectPlanningCandidates(), noteId: active && active.id })
+    body: JSON.stringify({ markdown, selectedIds, candidates: collectPlanningCandidates(), noteId: active && active.id })
   });
   if (result.updatedMarkdown != null) {
     els.planningEditor.value = result.updatedMarkdown;
     state.planningDirty = true;
+    state.planningParseMarkdown = '';
     await savePlanningNote(true);
     state.planningParseResult = null;
     await loadPlanningMappings();
@@ -2036,14 +2116,16 @@ async function importSelectedPlanning() {
 }
 
 async function refreshPlanningImported() {
+  await flushPlanningOutlineInputs({ createRoot: true });
   const active = activePlanningNote();
   if (!active) throw new Error('没有可刷新的规划文档');
+  const markdown = currentPlanningMarkdownForAction();
   const wholeDocument = window.confirm('确定要刷新整篇文档的未完成已导入项吗？\n选择“取消”则只刷新当前标题分区。');
   const result = await api('/api/planning/refresh', {
     method: 'POST',
     body: JSON.stringify({
       noteId: active.id,
-      markdown: els.planningEditor.value,
+      markdown,
       scope: wholeDocument ? 'WHOLE_DOCUMENT' : 'CURRENT_SECTION',
       cursorLineNumber: planningCursorLine()
     })
@@ -2059,8 +2141,10 @@ async function refreshPlanningImported() {
 }
 
 async function postponePlanningImported() {
+  await flushPlanningOutlineInputs({ createRoot: true });
   const active = activePlanningNote();
   if (!active) throw new Error('没有可顺延的规划文档');
+  const markdown = currentPlanningMarkdownForAction();
   const mappings = (state.planningMappings || []).filter(item => item.status === 'ACTIVE');
   if (!mappings.length) throw new Error('当前没有可顺延的未完成已导入项');
   const summary = mappings.map((item, index) => '[' + (index + 1) + '] 第' + (item.lastKnownLineNumber || '-') + '行 ' + (item.currentLineText || item.originalLineText || '')).join('\n');
@@ -2074,7 +2158,7 @@ async function postponePlanningImported() {
     method: 'POST',
     body: JSON.stringify({
       noteId: active.id,
-      markdown: els.planningEditor.value,
+      markdown,
       mappingId: mappings[startIndex - 1].id,
       offsetMinutes,
       scope
@@ -2091,8 +2175,10 @@ async function postponePlanningImported() {
 }
 
 async function undoPlanningLastOperation() {
+  await flushPlanningOutlineInputs({ createRoot: true });
   const active = activePlanningNote();
   if (!active) throw new Error('没有可撤销的规划文档');
+  const markdown = currentPlanningMarkdownForAction();
   const undoSummary = latestPlanningUndoSummary();
   if (!undoSummary) throw new Error('当前没有可撤销的导入、刷新或顺延批次');
   if (!await confirmDanger('撤销上次规划台操作', '会回滚最近一次' + undoSummary.label + '批次，影响 ' + undoSummary.affectedCount + ' 条事项。', '撤销')) return;
@@ -2100,7 +2186,7 @@ async function undoPlanningLastOperation() {
     method: 'POST',
     body: JSON.stringify({
       noteId: active.id,
-      markdown: els.planningEditor.value
+      markdown
     })
   });
   if (result.updatedMarkdown != null) {
@@ -2853,26 +2939,41 @@ document.getElementById('planning-new')?.addEventListener('click', () => createP
 document.getElementById('planning-delete')?.addEventListener('click', () => deletePlanningNote().catch(err => els.status.textContent = err.message));
 document.getElementById('planning-save')?.addEventListener('click', () => savePlanningNote().catch(err => els.status.textContent = err.message));
 document.getElementById('planning-help')?.addEventListener('click', () => openModal('planning-help-modal'));
-document.getElementById('planning-publish-all')?.addEventListener('click', () => publishAllPlanningDrafts().catch(err => els.status.textContent = err.message));
+document.getElementById('planning-publish-all')?.addEventListener('click', () => {
+  flushPlanningOutlineInputs({ createRoot: true })
+    .then(() => publishAllPlanningDrafts())
+    .catch(err => els.status.textContent = err.message);
+});
 document.getElementById('planning-parse')?.addEventListener('click', () => parsePlanningEditor().catch(err => els.status.textContent = err.message));
 document.getElementById('planning-import')?.addEventListener('click', () => importSelectedPlanning().catch(err => els.status.textContent = err.message));
 document.getElementById('planning-refresh')?.addEventListener('click', () => refreshPlanningImported().catch(err => els.status.textContent = err.message));
 document.getElementById('planning-postpone')?.addEventListener('click', () => postponePlanningImported().catch(err => els.status.textContent = err.message));
 document.getElementById('planning-undo')?.addEventListener('click', () => undoPlanningLastOperation().catch(err => els.status.textContent = err.message));
 document.getElementById('planning-export-markdown')?.addEventListener('click', () => {
-  if (!els.planningEditor) return;
-  els.planningEditor.value = state.planningNodesMarkdown || '';
-  state.planningDirty = false;
-  els.status.textContent = '已同步大纲 Markdown 到兼容编辑区';
+  flushPlanningOutlineInputs({ createRoot: true })
+    .then(() => {
+      if (!els.planningEditor) return;
+      els.planningEditor.value = state.planningNodesMarkdown || '';
+      state.planningDirty = false;
+      state.planningParseMarkdown = '';
+      els.status.textContent = '已同步大纲 Markdown 到兼容编辑区';
+    })
+    .catch(err => els.status.textContent = err.message);
 });
 document.getElementById('planning-root-add')?.addEventListener('click', () => {
   const value = els.planningRootInput?.value || '';
-  createPlanningOutlineNode(value)
-    .then(() => { if (els.planningRootInput) els.planningRootInput.value = ''; })
+  createPlanningOutlineNodesFromText(value)
+    .then(() => {
+      if (els.planningRootInput) {
+        els.planningRootInput.value = '';
+        autosizePlanningTextarea(els.planningRootInput);
+        focusPlanningRootInput();
+      }
+    })
     .catch(err => els.status.textContent = err.message);
 });
 els.planningRootInput?.addEventListener('keydown', event => {
-  if (event.key === 'Enter') {
+  if (event.key === 'Enter' && !event.shiftKey) {
     event.preventDefault();
     document.getElementById('planning-root-add')?.click();
     return;
@@ -2899,7 +3000,9 @@ els.planningRootInput?.addEventListener('keydown', event => {
     }
   }
 });
+els.planningRootInput?.addEventListener('input', event => autosizePlanningTextarea(event.target));
 els.planningOutline?.addEventListener('click', event => {
+  const focusRoot = event.target.closest?.('[data-focus-planning-root]');
   const collapse = event.target.closest?.('[data-node-collapse]');
   const complete = event.target.closest?.('[data-node-complete]');
   const child = event.target.closest?.('[data-node-child]');
@@ -2908,6 +3011,10 @@ els.planningOutline?.addEventListener('click', event => {
   const moveUp = event.target.closest?.('[data-node-move-up]');
   const moveDown = event.target.closest?.('[data-node-move-down]');
   const publish = event.target.closest?.('[data-node-publish]');
+  if (focusRoot) {
+    focusPlanningRootInput();
+    return;
+  }
   if (sync) {
     const node = planningNodeById(sync.dataset.nodeSync);
     if (node) updatePlanningOutlineNode(node.id, { syncEnabled: sync.checked }).catch(err => els.status.textContent = err.message);
@@ -2931,15 +3038,18 @@ els.planningOutline?.addEventListener('click', event => {
     movePlanningNode(moveDown.dataset.nodeMoveDown, 1).catch(err => els.status.textContent = err.message);
   }
   if (publish) {
-    publishPlanningOutlineNode(publish.dataset.nodePublish).catch(err => els.status.textContent = err.message);
+    waitPlanningPendingCommits()
+      .then(() => publishPlanningOutlineNode(publish.dataset.nodePublish))
+      .catch(err => els.status.textContent = err.message);
   }
   if (del) {
     deletePlanningOutlineNode(del.dataset.nodeDelete).catch(err => els.status.textContent = err.message);
   }
 });
 els.planningOutline?.addEventListener('dragstart', event => {
-  const row = event.target.closest?.('[data-planning-node-row]');
-  if (!row || planningDragBlockedTarget(event.target)) {
+  const handle = event.target.closest?.('[data-node-drag]');
+  const row = handle?.closest?.('[data-planning-node-row]');
+  if (!handle || !row) {
     event.preventDefault();
     return;
   }
@@ -2990,16 +3100,19 @@ els.planningOutline?.addEventListener('focusout', event => {
       delete event.target.dataset.skipCommit;
       return;
     }
-    commitPlanningNodeText(event.target).catch(err => els.status.textContent = err.message);
+    trackPlanningCommit(commitPlanningNodeText(event.target));
   }
   if (event.target.matches?.('[data-node-field]')) {
-    commitPlanningNodeField(event.target).catch(err => els.status.textContent = err.message);
+    trackPlanningCommit(commitPlanningNodeField(event.target));
   }
+});
+els.planningOutline?.addEventListener('input', event => {
+  if (event.target.matches?.('[data-node-text]')) autosizePlanningTextarea(event.target);
 });
 els.planningOutline?.addEventListener('keydown', event => {
   const textInput = event.target.matches?.('[data-node-text]') ? event.target : null;
   if (!textInput) return;
-  if (event.key === 'Enter') {
+  if (event.key === 'Enter' && !event.shiftKey) {
     event.preventDefault();
     const start = textInput.selectionStart ?? textInput.value.length;
     const end = textInput.selectionEnd ?? start;
@@ -3054,6 +3167,7 @@ els.planningOutline?.addEventListener('keydown', event => {
 });
 els.planningEditor?.addEventListener('input', () => {
   state.planningParseResult = null;
+  state.planningParseMarkdown = '';
   renderPlanningPreview();
   markPlanningDirty();
 });
@@ -3087,6 +3201,7 @@ els.planningPreview?.addEventListener('click', event => {
 });
 els.planningNoteSelect?.addEventListener('change', async event => {
   try {
+    await flushPlanningOutlineInputs({ createRoot: true });
     await flushPlanningAutosave();
   } catch (err) {
     els.status.textContent = err.message;
@@ -3100,13 +3215,15 @@ els.planningNoteSelect?.addEventListener('change', async event => {
     state.planningDirty = false;
     state.planningRenderedNoteId = note.id;
     state.planningParseResult = null;
+    state.planningParseMarkdown = '';
     await loadPlanningMappings();
     renderPlanningOutline();
     renderPlanningPreview();
   }
 });
 window.addEventListener('beforeunload', event => {
-  if (!state.planningDirty) return;
+  const hasRootDraft = !!String(els.planningRootInput?.value || '').trim();
+  if (!state.planningDirty && !hasRootDraft && !state.planningPendingCommits.length) return;
   event.preventDefault();
   event.returnValue = '';
 });

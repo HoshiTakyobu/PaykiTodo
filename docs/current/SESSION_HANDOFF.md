@@ -4,25 +4,36 @@
 
 - Repository root: `G:\Workspace\Project\PaykiTodo`
 - Branch: `main`
-- User requested a recurring-item audit and performance fixes because todo scrolling becomes very laggy when many items exist and the Calendar page still stutters. Push has not been requested in this round.
+- User requested a desktop Web Planning Desk fix because “大纲事项” could not be typed into naturally and the desktop Planning Desk entry points / input areas were unclear. Push has not been requested in this round.
 - Current code version:
-  - `versionName = 1.13.19`
-  - `versionCode = 267`
+  - `versionName = 1.13.20`
+  - `versionCode = 268`
 - Latest debug APK target in this round:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.13.19-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.13.20-debug.apk`
 - Latest signed release APK available locally:
   - `app/build/outputs/apk/release/PaykiTodo-1.13.11-release.apk`
 - Latest GitHub Release:
   - `https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.13.11`
 - Debug APK metadata inspection:
-  - `versionName = 1.13.19`
-  - `versionCode = 267`
+  - `versionName = 1.13.20`
+  - `versionCode = 268`
 
 ## Active Goal
 
-Active immediate task: audit recurring task / recurring event behavior, reduce lag in large todo lists and the Calendar timeline, and hand off the rebuilt debug APK on the `1.13.19 / versionCode 267` line.
+Active immediate task: close the desktop Web Planning Desk Outliner usability regression and hand off the rebuilt debug APK on the `1.13.20 / versionCode 268` line.
 
-Latest status: recurring core repository paths were re-audited again; no new repository-level recurring-data bug was confirmed. Future recurring todos still fold into one series card, and expanded series now render only the first 30 future instances plus a folded-count notice. Dashboard todo cards receive pre-resolved group data from a per-state group map, and Calendar day / three-day timeline computes timed-event placements only for the current page days with minute-level current-time refresh. This round has not pushed to GitHub.
+Latest status: desktop Web Planning Desk Outliner now has a visible multi-line root input, clickable empty-state focus, directly editable auto-height node textareas, drag reorder restricted to a handle, pending edit flushing before publish / parse / import / refresh / postpone / undo / document switch, and clearer copy distinguishing Outliner drafts from Markdown compatibility. This round has not pushed to GitHub.
+
+## What Changed In The Latest 1.13.20 Patch
+
+1. Desktop Web Planning Desk “大纲事项” is now the explicit primary input area instead of a passive list beside Markdown compatibility editing.
+2. Empty Outliner state focuses the root input; the root input is a visible multi-line note box with examples and `Enter` / `Shift+Enter` guidance.
+3. Existing Outliner nodes render as directly editable auto-height textareas, so clicking node text allows normal typing.
+4. Drag reorder starts only from a dedicated drag handle, reducing input focus conflicts from row-level draggable cards.
+5. Multi-line paste into the root Outliner input can create multiple draft nodes.
+6. Pending Outliner edits flush before publish-all, parse, import, refresh, postpone, undo, document switching, and Markdown sync.
+7. Version metadata moved to `1.13.20 / versionCode 268`; latest debug APK target is `app/build/outputs/apk/debug/PaykiTodo-1.13.20-debug.apk`.
+8. Verification passed: `node --check app/src/main/assets/desktop-web/app.js`, `./gradlew.bat :app:compileDebugKotlin`, `./gradlew.bat :app:testDebugUnitTest`, `./gradlew.bat :app:assembleDebug`, APK metadata inspection confirmed `versionName = 1.13.20`, `versionCode = 268`, and `git diff --check` passed.
 
 ## What Changed In The Latest 1.13.19 Patch
 

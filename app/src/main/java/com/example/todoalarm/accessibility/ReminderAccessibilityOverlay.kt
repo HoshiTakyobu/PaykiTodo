@@ -21,6 +21,8 @@ import android.widget.TextView
 import android.widget.Toast
 import com.example.todoalarm.TodoApplication
 import com.example.todoalarm.alarm.ActiveReminderStore
+import com.example.todoalarm.alarm.AlarmScheduler
+import com.example.todoalarm.alarm.OngoingEventNotifier
 import com.example.todoalarm.alarm.ReminderChainLogger
 import com.example.todoalarm.alarm.ReminderForegroundService
 import com.example.todoalarm.alarm.ReminderNotifier
@@ -508,10 +510,11 @@ class ReminderAccessibilityOverlay(
                     message = "event_ack"
                 )
                 app.repository.acknowledgeCalendarEvent(item.id)
-                app.alarmScheduler.cancel(item.id)
+                app.alarmScheduler.cancelReminderOnly(item.id)
                 app.reminderNotifier.cancel(item.id)
                 ActiveReminderStore.clearIfMatches(service, item.id)
                 ActiveReminderStore.clearActivityHandoff(service, item.id)
+                OngoingEventNotifier.schedule(service, item.copy(reminderEnabled = false))
             }
             service.stopService(Intent(service, ReminderForegroundService::class.java))
             service.getSystemService(NotificationManager::class.java)
@@ -538,10 +541,11 @@ class ReminderAccessibilityOverlay(
                     message = if (checkIn == null) "event_check_in_failed" else "event_check_in"
                 )
                 if (checkIn == null) return@withContext false
-                app.alarmScheduler.cancel(item.id)
+                app.alarmScheduler.cancelReminderOnly(item.id)
                 app.reminderNotifier.cancel(item.id)
                 ActiveReminderStore.clearIfMatches(service, item.id)
                 ActiveReminderStore.clearActivityHandoff(service, item.id)
+                OngoingEventNotifier.schedule(service, item.copy(reminderEnabled = false))
                 true
             }
             if (success) {
@@ -654,7 +658,7 @@ class ReminderAccessibilityOverlay(
         service.startActivity(
             Intent(service, ReminderActivity::class.java).apply {
                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP)
-                putExtra(com.example.todoalarm.alarm.AlarmScheduler.EXTRA_TODO_ID, todoId)
+                putExtra(AlarmScheduler.EXTRA_TODO_ID, todoId)
             }
         )
     }

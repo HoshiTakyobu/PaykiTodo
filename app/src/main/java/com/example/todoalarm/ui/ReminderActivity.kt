@@ -65,6 +65,7 @@ import androidx.lifecycle.lifecycleScope
 import com.example.todoalarm.TodoApplication
 import com.example.todoalarm.alarm.ActiveReminderStore
 import com.example.todoalarm.alarm.AlarmScheduler
+import com.example.todoalarm.alarm.OngoingEventNotifier
 import com.example.todoalarm.alarm.ReminderChainLogger
 import com.example.todoalarm.alarm.ReminderForegroundService
 import com.example.todoalarm.alarm.ReminderNotifier
@@ -194,7 +195,7 @@ class ReminderActivity : ComponentActivity() {
                 message = "event_ack"
             )
             app.repository.acknowledgeCalendarEvent(item.id)
-            clearReminderArtifacts(listOf(item))
+            clearEventReminderArtifactsAndKeepOngoing(item)
             closeReminder(item.id)
         }
     }
@@ -215,7 +216,7 @@ class ReminderActivity : ComponentActivity() {
                 message = if (checkIn == null) "event_check_in_failed" else "event_check_in"
             )
             if (checkIn != null) {
-                clearReminderArtifacts(listOf(item))
+                clearEventReminderArtifactsAndKeepOngoing(item)
                 closeReminder(item.id)
             } else {
                 Toast.makeText(this@ReminderActivity, "无法签到：请确认日程已开启打卡追踪", Toast.LENGTH_SHORT).show()
@@ -287,6 +288,16 @@ class ReminderActivity : ComponentActivity() {
             app.reminderNotifier.cancel(item.id)
             ActiveReminderStore.clearIfMatches(this, item.id)
             ActiveReminderStore.clearActivityHandoff(this, item.id)
+        }
+    }
+
+    private fun clearEventReminderArtifactsAndKeepOngoing(item: TodoItem) {
+        app.alarmScheduler.cancelReminderOnly(item.id)
+        app.reminderNotifier.cancel(item.id)
+        ActiveReminderStore.clearIfMatches(this, item.id)
+        ActiveReminderStore.clearActivityHandoff(this, item.id)
+        if (item.isEvent && !item.isHistory) {
+            OngoingEventNotifier.schedule(this, item.copy(reminderEnabled = false))
         }
     }
 

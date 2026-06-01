@@ -5,24 +5,33 @@
 - Repository root: `G:\Workspace\Project\PaykiTodo`
 - Branch: `main`
 - Current code version:
-  - `versionName = 1.13.26`
-  - `versionCode = 274`
+  - `versionName = 1.13.27`
+  - `versionCode = 275`
   - database version = `27`
 - Latest debug APK target in this round:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.13.26-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.13.27-debug.apk`
 - Latest signed release APK available locally:
   - `app/build/outputs/apk/release/PaykiTodo-1.13.11-release.apk`
 - Latest GitHub Release:
   - `https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.13.11`
 - Debug APK metadata inspection:
-  - `versionName = 1.13.26`
-  - `versionCode = 274`
+  - `versionName = 1.13.27`
+  - `versionCode = 275`
 
 ## Active Goal
 
-Active immediate task: continue the broader product/UX audit from the current `1.13.26 / versionCode 274` local patch baseline.
+Active immediate task: continue the broader product/UX audit from the current `1.13.27 / versionCode 275` local patch baseline.
 
-Latest status: `1.13.26` extends the quick-preview fix to every phone-side todo entry point that previously bypassed preview. Search results, Planning Desk linked todos, notification routes, and widget/deep-link todo opens now land in the same todo details preview with cancel/archive available. The debug build and metadata inspection passed locally.
+Latest status: `1.13.27` fixes an ongoing-event notification regression discovered during the audit: acknowledging or signing into a full-screen event reminder no longer cancels the event's ongoing notification start/end alarms. The debug build and metadata inspection passed locally.
+
+## What Changed In The Latest 1.13.27 Patch
+
+1. Full-screen event reminders now clear only reminder artifacts when the user taps `我知道了`; they preserve or reschedule the ongoing-event notification path.
+2. Accessibility fallback event reminders now use the same keep-ongoing behavior for `我知道了` and `签到`.
+3. Ongoing event notification IDs now use the full item-ID hash request code instead of `eventId % 10000`, reducing notification collisions across many events.
+4. The current feature ledger now matches the implemented snooze policy: overdue/conflicting DDLs are pushed one minute after the next reminder.
+5. Version metadata moved to `1.13.27 / versionCode 275`; database version remains `27`.
+6. Verification passed: `node --check app/src/main/assets/desktop-web/app.js`, `./gradlew.bat :app:compileDebugKotlin`, `./gradlew.bat :app:testDebugUnitTest`, `git diff --check`, `./gradlew.bat :app:assembleDebug`, and APK metadata inspection.
 
 ## What Changed In The Latest 1.13.26 Patch
 

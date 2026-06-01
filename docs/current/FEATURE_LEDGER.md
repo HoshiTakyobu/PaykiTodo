@@ -206,7 +206,7 @@ This file tracks the product at a practical level for new coding sessions.
 - startup reminder recovery is wrapped in a safe recovery path with `SafeStartupGuard`, so repeated early crashes skip reminder recovery and let the user open the app to manage data
 - recurring todo creation only expands an initial limited window and later replenishes future instances, reducing alarm burst size for long daily recurring tasks
 - todos and calendar events can store and schedule multiple configured reminder offsets
-- custom snooze input can parse either minutes or a concrete future time, has no 180-minute cap, and only changes the next reminder rather than silently moving DDL
+- custom snooze input can parse either minutes or a concrete future time, has no 180-minute cap, and when the current DDL is already overdue or not later than the next reminder it will push DDL forward by one minute past the next reminder so the reminder loop keeps working
 - todo reminder screens expose an explicit `DDL 推迟` action; its input accepts positive minute increments, same-date clock targets, and full date-time targets, and rejects any target that is not later than the current DDL
 - notification reminder path
 - full-screen reminder path

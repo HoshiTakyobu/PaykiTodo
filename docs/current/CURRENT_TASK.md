@@ -2,7 +2,7 @@
 
 ## Active Development Focus
 
-Active immediate task: continue the broader product/UX audit from the `1.13.26 / versionCode 274` local patch baseline, using the previous reminder/Planning Desk goal as the latest verified work package:
+Active immediate task: continue the broader product/UX audit from the `1.13.27 / versionCode 275` local patch baseline, using the previous reminder/Planning Desk goal as the latest verified work package:
 
 - `docs/goals/2026-06-01-paykitodo-reminder-ongoing-planning-ux-goal.md`
 
@@ -87,3 +87,12 @@ Current local follow-up patch:
 3. The preview top action now uses an explicit `取消归档` text button instead of only a close icon.
 4. Version metadata moved to `1.13.26 / versionCode 274`; database version remains `27`.
 5. Verification passed: `node --check app/src/main/assets/desktop-web/app.js`, `./gradlew.bat :app:compileDebugKotlin`, `./gradlew.bat :app:testDebugUnitTest`, `git diff --check`, `./gradlew.bat :app:assembleDebug`, and APK metadata check for `versionName = 1.13.26`, `versionCode = 274`.
+
+Current reminder/ongoing notification follow-up patch:
+
+1. Event reminder acknowledgement and event check-in from the full-screen reminder surface now clear only event-reminder artifacts and preserve/re-schedule ongoing event notifications.
+2. Accessibility fallback event reminders use the same keep-ongoing behavior for acknowledgement and check-in.
+3. Ongoing event notification IDs now use the full alarm request-code hash rather than `eventId % 10000`.
+4. Feature documentation now matches the implemented snooze policy for overdue/conflicting DDLs.
+5. Version metadata moved to `1.13.27 / versionCode 275`; database version remains `27`.
+6. Verification passed: `node --check app/src/main/assets/desktop-web/app.js`, `./gradlew.bat :app:compileDebugKotlin`, `./gradlew.bat :app:testDebugUnitTest`, `git diff --check`, `./gradlew.bat :app:assembleDebug`, and APK metadata check for `versionName = 1.13.27`, `versionCode = 275`.

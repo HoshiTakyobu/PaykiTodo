@@ -219,7 +219,7 @@ object OngoingEventNotifier {
         }
     }
 
-    private fun notificationId(eventId: Long): Int {
-        return NOTIFICATION_BASE_ID + (eventId % 10_000).toInt()
+    fun notificationId(eventId: Long): Int {
+        return NOTIFICATION_BASE_ID + AlarmScheduler.requestCodeFor(eventId, 0L)
     }
 }

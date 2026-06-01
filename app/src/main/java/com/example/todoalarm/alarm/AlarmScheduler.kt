@@ -176,6 +176,10 @@ class AlarmScheduler(
         cancelReminderAlarms(todoId)
     }
 
+    fun cancelReminderOnly(todoId: Long) {
+        cancelReminderAlarms(todoId)
+    }
+
     private fun cancelReminderAlarms(todoId: Long) {
         alarmManager.cancel(buildBroadcastIntent(todoId, 0L, ACTION_EXACT, EXACT_OFFSET))
         alarmManager.cancel(buildBroadcastIntent(todoId, 0L, ACTION_BACKUP, BACKUP_OFFSET))

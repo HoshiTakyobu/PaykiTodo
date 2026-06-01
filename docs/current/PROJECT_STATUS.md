@@ -8,8 +8,8 @@
 - Target platform: Android 14 / API 34
 - License: MIT License (`LICENSE`)
 - Current version in code:
-  - `versionName = "1.13.26"`
-  - `versionCode = 274`
+  - `versionName = "1.13.27"`
+  - `versionCode = 275`
   - database version = `27`
 
 ## Current Build Facts
@@ -22,7 +22,18 @@
 - Latest GitHub Release:
   - `https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.13.11`
 - Latest fully built debug APK:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.13.26-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.13.27-debug.apk`
+- Current `1.13.27 / versionCode 275` status:
+  - Full-screen event reminders and accessibility overlay reminders no longer cancel the ongoing-event start/end alarms when the user taps `我知道了` or `签到`; they clear only the reminder artifacts and then preserve or reschedule the ongoing event notification.
+  - Ongoing event notification IDs now use the same full item-ID hash request code as the alarm stack rather than `eventId % 10000`, reducing cross-event notification overwrite/cancel collisions.
+  - Current docs now match the implemented snooze policy: overdue or next-reminder-conflicting DDLs are pushed to one minute after the next reminder; no-DDL todos still stay no-DDL.
+  - Database version remains `27`; no schema migration was added.
+  - `node --check app/src/main/assets/desktop-web/app.js` passed.
+  - `./gradlew.bat :app:compileDebugKotlin` passed.
+  - `./gradlew.bat :app:testDebugUnitTest` passed.
+  - `./gradlew.bat :app:assembleDebug` passed.
+  - `git diff --check` passed.
+  - Debug APK metadata confirms `versionName = 1.13.27`, `versionCode = 275`, output `PaykiTodo-1.13.27-debug.apk`.
 - Current `1.13.26 / versionCode 274` status:
   - Phone search results, Planning Desk linked todos, notification routes, and widget/deep-link todo opens now share the same todo details preview surface instead of jumping straight to the editor or relying on current list membership.
   - The shared todo details preview exposes cancel/archive, hard delete, edit, and restore where applicable; the top action now uses an explicit `取消归档` text button so archive is not confused with closing the sheet.

@@ -5,23 +5,33 @@
 - Repository root: `G:\Workspace\Project\PaykiTodo`
 - Branch: `main`
 - Current code version:
-  - `versionName = 1.13.41`
-  - `versionCode = 289`
+  - `versionName = 1.13.42`
+  - `versionCode = 290`
   - database version = `27`
 - Latest debug APK target in this round:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.13.41-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.13.42-debug.apk`
 - Latest signed release APK available locally:
   - `app/build/outputs/apk/release/PaykiTodo-1.13.11-release.apk`
 - Latest GitHub Release:
   - `https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.13.11`
 - Debug APK metadata inspection:
-  - `versionName = 1.13.41`, `versionCode = 289`
+  - `versionName = 1.13.42`, `versionCode = 290`
 
 ## Active Goal
 
-Active immediate task: continue the broader product/UX audit from the current `1.13.41 / versionCode 289` local patch baseline.
+Active immediate task: continue the broader product/UX audit from the current `1.13.42 / versionCode 290` local patch baseline.
 
-Latest status: `1.13.41` closes a Desktop Web / phone parity gap by allowing multi-line event titles in the desktop event editor. Debug build and metadata inspection should be checked before handoff.
+Latest status: `1.13.42` closes a Desktop Web / phone parity gap by adding explicit reminder enable switches to desktop todo and event editors. Debug build and metadata inspection should be checked before handoff.
+
+## What Changed In The Latest 1.13.42 Patch
+
+1. Desktop Web todo editor now has a visible `启用提醒` switch.
+2. Desktop Web event editor now has a visible `启用提醒` switch.
+3. Disabling reminders greys out reminder time, delivery mode, and ring/vibration fields and saves an empty reminder-offset list.
+4. Desktop todo creation defaults to a 5-minute reminder; desktop event creation defaults to no reminder, matching the phone-side defaults.
+5. The change reuses existing desktop sync payload fields and does not require a database migration.
+6. Version metadata moved to `1.13.42 / versionCode 290`; database version remains `27`.
+7. Verification passed: `node --check app/src/main/assets/desktop-web/app.js`, `./gradlew.bat :app:compileDebugKotlin`, `./gradlew.bat :app:testDebugUnitTest`, `git diff --check`, `./gradlew.bat :app:assembleDebug`, and APK metadata inspection confirmed `versionName = 1.13.42`, `versionCode = 290`.
 
 ## What Changed In The Latest 1.13.41 Patch
 

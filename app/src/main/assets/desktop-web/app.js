@@ -2509,6 +2509,21 @@ function recurrenceScopeQueryForItem(item) {
   return item?.isRecurring ? '?scope=CURRENT_AND_FUTURE' : '';
 }
 
+function setTodoReminderEnabled(enabled) {
+  const checkbox = document.getElementById('todo-reminder-enabled');
+  if (checkbox) checkbox.checked = enabled;
+  document.querySelectorAll('.todo-reminder-dependent').forEach(node => {
+    node.classList.toggle('disabled-block', !enabled);
+    node.querySelectorAll('input, select, textarea, button').forEach(input => {
+      input.disabled = !enabled;
+    });
+  });
+  if (!enabled) {
+    document.getElementById('todo-reminder-spec').value = '';
+    document.getElementById('todo-alarm-mode').checked = false;
+  }
+}
+
 function setTodoDueEnabled(enabled) {
   const checkbox = document.getElementById('todo-has-due');
   if (checkbox) checkbox.checked = enabled;
@@ -2530,6 +2545,10 @@ function setTodoDueEnabled(enabled) {
     if (countdown) countdown.checked = false;
     if (hiddenBoard) hiddenBoard.checked = false;
     if (alarmMode) alarmMode.checked = false;
+    setTodoReminderEnabled(false);
+  } else {
+    const reminderCheckbox = document.getElementById('todo-reminder-enabled');
+    setTodoReminderEnabled(reminderCheckbox?.checked !== false);
   }
 }
 function clearTodoForm() {
@@ -2542,8 +2561,9 @@ function clearTodoForm() {
   document.getElementById('todo-title').value = '';
   document.getElementById('todo-notes').value = '';
   writeDateTimeValue('todo-due', '');
-  document.getElementById('todo-reminder-spec').value = '';
+  document.getElementById('todo-reminder-spec').value = '5';
   document.getElementById('todo-reminder-mode').value = 'FULLSCREEN';
+  setTodoReminderEnabled(true);
   document.getElementById('todo-recurrence-type').value = 'NONE';
   document.getElementById('todo-recurrence-end').value = '';
   document.getElementById('todo-weekdays').value = '';
@@ -2573,6 +2593,7 @@ function openTodoEditor(item) {
   writeDateTimeValue('todo-due', item.hasDueDate ? formatDateTimeLocalValue(item.dueAtMillis) : '');
   document.getElementById('todo-reminder-spec').value = item.hasDueDate ? reminderSpecFromOffsets(item, item.dueAtMillis) : '';
   document.getElementById('todo-reminder-mode').value = item.reminderDeliveryMode || 'FULLSCREEN';
+  setTodoReminderEnabled(item.hasDueDate !== false && item.reminderEnabled === true);
   document.getElementById('todo-recurrence-type').value = recurrenceTypeValue(item);
   document.getElementById('todo-recurrence-end').value = item.recurrenceEndDate || '';
   document.getElementById('todo-weekdays').value = csvValue(item.recurrenceWeekdays);
@@ -2601,6 +2622,7 @@ function clearEventForm() {
   writeDateTimeValue('event-end', '');
   document.getElementById('event-reminder-mode').value = 'NOTIFICATION';
   document.getElementById('event-reminder-offsets').value = '';
+  setEventReminderEnabled(false);
   document.getElementById('event-recurrence-type').value = 'NONE';
   document.getElementById('event-recurrence-end').value = '';
   document.getElementById('event-weekdays').value = '';
@@ -2625,6 +2647,20 @@ function formatDateTimeLocalValue(millis) {
 
 function recurrenceTypeValue(item) {
   return item.isRecurring ? (item.recurrenceType || 'NONE') : 'NONE';
+}
+
+function setEventReminderEnabled(enabled) {
+  const checkbox = document.getElementById('event-reminder-enabled');
+  if (checkbox) checkbox.checked = enabled;
+  document.querySelectorAll('.event-reminder-dependent').forEach(node => {
+    node.classList.toggle('disabled-block', !enabled);
+    node.querySelectorAll('input, select, textarea, button').forEach(input => {
+      input.disabled = !enabled;
+    });
+  });
+  if (!enabled) {
+    document.getElementById('event-reminder-offsets').value = '';
+  }
 }
 
 
@@ -2684,6 +2720,7 @@ function openEventEditor(item) {
   writeDateTimeValue('event-end', formatDateTimeLocalValue(item.endAtMillis || item.startAtMillis));
   document.getElementById('event-reminder-mode').value = item.reminderDeliveryMode || 'NOTIFICATION';
   document.getElementById('event-reminder-offsets').value = reminderSpecFromOffsets(item, item.startAtMillis);
+  setEventReminderEnabled(item.reminderEnabled === true);
   document.getElementById('event-recurrence-type').value = recurrenceTypeValue(item);
   document.getElementById('event-recurrence-end').value = item.recurrenceEndDate || '';
   document.getElementById('event-weekdays').value = csvValue(item.recurrenceWeekdays);
@@ -2913,6 +2950,12 @@ function bindActions() {
 }
 
 document.getElementById('todo-has-due')?.addEventListener('change', event => setTodoDueEnabled(event.target.checked));
+document.getElementById('todo-reminder-enabled')?.addEventListener('change', event => {
+  setTodoReminderEnabled(event.target.checked && document.getElementById('todo-has-due')?.checked !== false);
+});
+document.getElementById('event-reminder-enabled')?.addEventListener('change', event => {
+  setEventReminderEnabled(event.target.checked);
+});
 document.getElementById('todo-recurrence-type')?.addEventListener('change', event => {
   if (!state.editingTodoOriginalRecurring || event.target.value !== 'NONE') return;
   const scopeSelect = document.getElementById('todo-recurrence-scope');
@@ -3304,7 +3347,8 @@ document.getElementById('create-todo').onclick = async () => {
     const hasDueDate = document.getElementById('todo-has-due')?.checked !== false;
     const dueAt = hasDueDate ? readDateTimeValue('todo-due') : null;
     const dueAtMillis = dueAt ? new Date(dueAt).getTime() : null;
-    const reminderOffsets = hasDueDate ? parseReminderSpecs(document.getElementById('todo-reminder-spec').value, dueAtMillis) : [];
+    const todoReminderEnabled = hasDueDate && document.getElementById('todo-reminder-enabled')?.checked !== false;
+    const reminderOffsets = todoReminderEnabled ? parseReminderSpecs(document.getElementById('todo-reminder-spec').value, dueAtMillis) : [];
     const groupIds = readTodoEditorGroupIds();
     const recurrenceType = document.getElementById('todo-recurrence-type').value;
     const payload = {
@@ -3317,9 +3361,9 @@ document.getElementById('create-todo').onclick = async () => {
       groupIds: groupIds,
       countdownEnabled: hasDueDate && document.getElementById('todo-countdown').checked,
       hiddenFromBoard: hasDueDate && document.getElementById('todo-hidden-board').checked,
-      alarmMode: hasDueDate && document.getElementById('todo-alarm-mode').checked,
-      ringEnabled: document.getElementById('todo-ring').checked,
-      vibrateEnabled: document.getElementById('todo-vibrate').checked,
+      alarmMode: todoReminderEnabled && document.getElementById('todo-alarm-mode').checked,
+      ringEnabled: todoReminderEnabled && document.getElementById('todo-ring').checked,
+      vibrateEnabled: todoReminderEnabled && document.getElementById('todo-vibrate').checked,
       reminderDeliveryMode: document.getElementById('todo-reminder-mode').value,
       scope: recurrenceScopePayload('todo', state.editingTodoOriginalRecurring, hasDueDate ? recurrenceType : 'NONE'),
       recurrence: hasDueDate ? recurrencePayload(
@@ -3394,6 +3438,7 @@ document.getElementById('save-event').onclick = async () => {
     const endAt = readDateTimeValue('event-end');
     const startAtMillis = startAt ? new Date(startAt).getTime() : null;
     const recurrenceType = document.getElementById('event-recurrence-type').value;
+    const eventReminderEnabled = document.getElementById('event-reminder-enabled')?.checked !== false;
     const payload = {
       title: document.getElementById('event-title').value,
       groupId: Number(document.getElementById('event-group').value || 0),
@@ -3403,11 +3448,11 @@ document.getElementById('save-event').onclick = async () => {
       endAt: endAt,
       allDay: document.getElementById('event-all-day').checked,
       accentColorHex: document.getElementById('event-color').value || DEFAULT_EVENT_COLOR,
-      reminderOffsetsMinutes: parseReminderSpecs(document.getElementById('event-reminder-offsets').value, startAtMillis),
+      reminderOffsetsMinutes: eventReminderEnabled ? parseReminderSpecs(document.getElementById('event-reminder-offsets').value, startAtMillis) : [],
       countdownEnabled: document.getElementById('event-countdown').checked,
       checkInEnabled: document.getElementById('event-check-in').checked,
-      ringEnabled: document.getElementById('event-ring').checked,
-      vibrateEnabled: document.getElementById('event-vibrate').checked,
+      ringEnabled: eventReminderEnabled && document.getElementById('event-ring').checked,
+      vibrateEnabled: eventReminderEnabled && document.getElementById('event-vibrate').checked,
       reminderDeliveryMode: document.getElementById('event-reminder-mode').value,
       scope: recurrenceScopePayload('event', state.editingEventOriginalRecurring, recurrenceType),
       recurrence: recurrencePayload(

@@ -8,8 +8,8 @@
 - Target platform: Android 14 / API 34
 - License: MIT License (`LICENSE`)
 - Current version in code:
-  - `versionName = "1.13.41"`
-  - `versionCode = 289`
+  - `versionName = "1.13.42"`
+  - `versionCode = 290`
   - database version = `27`
 
 ## Current Build Facts
@@ -22,7 +22,13 @@
 - Latest GitHub Release:
   - `https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.13.11`
 - Latest fully built debug APK:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.13.41-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.13.42-debug.apk`
+- Current `1.13.42 / versionCode 290` status:
+  - Desktop Web todo editor now exposes an explicit `启用提醒` switch instead of requiring users to clear the reminder-time field to disable reminders.
+  - Desktop Web event editor now exposes an explicit `启用提醒` switch; disabling it greys out reminder time, delivery mode, ring, and vibration fields and saves an empty reminder-offset list.
+  - New desktop todos keep the phone-like default 5-minute reminder, while new desktop events default to no reminder like the phone event editor.
+  - Existing desktop sync APIs and database fields are reused; database version remains `27`; no schema migration was added.
+  - Verification passed: `node --check app/src/main/assets/desktop-web/app.js`, `./gradlew.bat :app:compileDebugKotlin`, `./gradlew.bat :app:testDebugUnitTest`, `git diff --check`, `./gradlew.bat :app:assembleDebug`, and APK metadata check for `versionName = 1.13.42`, `versionCode = 290`.
 - Current `1.13.41 / versionCode 289` status:
   - Desktop Web event editor title input is now a multi-line textarea, matching the phone event editor's multi-line subject input behavior.
   - Newline event titles continue to use the existing `title` field and desktop sync save path; database version remains `27`; no schema migration was added.

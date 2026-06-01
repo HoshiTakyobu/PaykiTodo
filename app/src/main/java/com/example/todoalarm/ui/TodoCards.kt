@@ -30,6 +30,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -580,10 +581,19 @@ internal fun TodoDetailsDialog(
                     .fillMaxWidth()
                     .padding(horizontal = 6.dp, vertical = 0.dp),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.Start
+                horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 IconButton(onClick = onDismiss) {
                     Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "返回", tint = MaterialTheme.colorScheme.onSurface)
+                }
+                onCancel?.let {
+                    TextButton(onClick = requestCancel) {
+                        Text(
+                            text = "取消待办",
+                            color = Color(0xFFD97706),
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
                 }
             }
         },

@@ -2,7 +2,7 @@
 
 ## Active Development Focus
 
-Active immediate task: continue the broader product/UX audit from the `1.13.35 / versionCode 283` local patch baseline, using the previous reminder/Planning Desk goal as the latest verified work package:
+Active immediate task: continue the broader product/UX audit from the `1.13.36 / versionCode 284` local patch baseline, using the previous reminder/Planning Desk goal as the latest verified work package:
 
 - `docs/goals/2026-06-01-paykitodo-reminder-ongoing-planning-ux-goal.md`
 
@@ -16,6 +16,8 @@ The user reported four active usability / correctness failures:
 2. A schedule that is currently happening should remain visible in the Android notification shade as a non-dismissible ongoing notification until the event ends or is otherwise cleared.
 3. The todo reminder screen is still too incomplete: it needs a cancel-todo action, and snoozing after the DDL has already passed must push the DDL forward so the reminder loop remains usable.
 4. Phone Planning Desk input still feels constrained to a narrow row even when AI providers are configured; the user needs a note-like free writing surface that supports long natural text, multi-line input, and preview-first recognition.
+5. Todo quick-preview cancellation must stay reachable from the small preview sheet itself; cancel archives into history, delete remains hard deletion.
+6. Weekly recurring todo editing must not leave default weekdays stale after the DDL date is changed.
 
 ## Required Behavior
 
@@ -68,6 +70,8 @@ Completed behavior so far:
 2. The action sheet for active todo cards now also exposes `取消待办` directly, keeping cancel distinct from hard delete.
 3. Cancel remains a history-preserving archive action; delete remains a destructive removal path.
 4. Desktop Web todo preview confirms cancel/archive and hard delete with explicit history semantics.
+5. In `1.13.36`, phone todo quick preview also exposes `取消待办` in the top bar, so the archive/cancel action remains reachable even if the user does not notice the fixed bottom action area.
+6. In `1.13.36`, weekly recurring todos auto-sync default weekday selection to the DDL date until the user manually edits weekday chips, preventing stale generated recurrence dates.
 5. Recurring todo range delete now uses the hard-delete path instead of cancel/archive.
 6. Recurring todo current-instance delete records a `recurring_instance_skips` exception and then hard-deletes the row, so the occurrence does not enter history and does not regenerate.
 7. Backup / restore includes `recurring_instance_skips`, so single-instance recurring-todo deletions survive restore.

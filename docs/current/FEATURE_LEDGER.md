@@ -23,12 +23,13 @@ This file tracks the product at a practical level for new coding sessions.
 - complete / cancel / restore flows
 - active todo preview now uses the same bottom-sheet visual language as calendar event preview
 - active todo card body opens preview; completion is isolated to the checkbox to avoid accidental completion
-- active todo quick preview surfaces now expose visible `取消待办` / `取消待办（归档）` actions with confirmation; the phone details preview keeps archive/cancel in a fixed bottom action area so it remains visible even when details scroll, and the desktop Web preview uses a dedicated archive-action style, keeping cancel as a history-preserving archive flow and visually distinct from hard delete
+- active todo quick preview surfaces now expose visible `取消待办` / `取消待办（归档）` actions with confirmation; the phone details preview exposes cancel/archive in the top bar and keeps the fuller archive explanation in a fixed bottom action area so it remains visible even when details scroll, and the desktop Web preview uses a dedicated archive-action style, keeping cancel as a history-preserving archive flow and visually distinct from hard delete
 - todo quick preview is now the shared target for phone search results, Planning Desk linked todos, notification routes, and widget/deep-link todo opens, so active todos from those entry points can cancel/archive without detouring through the editor
 - desktop web todo preview exposes top and bottom cancel/archive actions plus a separate hard-delete path with explicit history semantics
 - built-in Wiki documents the current todo preview behavior, including completion-circle isolation, cancel/archive semantics, hard-delete semantics, and recurring-todo skip records
 - recurring task support
 - recurring todo/event `1.13.21` `整个循环系列` edits preserve a user-selected new series start date instead of always rebasing to the old first occurrence; time-only edits still keep the old series anchor, and stale templates are deleted before rebuilt series/templates are inserted.
+- recurring todo editor weekly defaults follow the DDL date until the user manually edits weekday chips, preventing stale default weekdays after a DDL date change while preserving explicit weekday selections
 - recurring todo current-instance delete writes a `recurring_instance_skips` exception and then hard-deletes the row, so the occurrence does not enter history and recurring-template replenishment does not recreate it
 - recurring todo `当前及之后` / `全部` delete paths hard-delete matching instances instead of canceling them into history
 - backup / restore includes `recurring_instance_skips`, so restored backups keep the user's single-instance recurring-todo deletions

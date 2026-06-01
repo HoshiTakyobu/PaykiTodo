@@ -37,6 +37,7 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -151,6 +152,16 @@ fun TodoEditorDialog(
             }
         )
     }
+    var weeklyDaysManuallyEdited by remember(initialTodo?.id) {
+        mutableStateOf(
+            initialTodoWeeklyDaysManuallyEdited(
+                isRecurring = initialTodo?.isRecurring == true,
+                recurrenceType = initialTodo?.recurrenceTypeEnum ?: RecurrenceType.NONE,
+                storedWeeklyDays = initialTodo?.let { storageStringToWeekdays(it.recurrenceWeekdays) }.orEmpty(),
+                dueDayOfWeek = dueAt.dayOfWeek
+            )
+        )
+    }
     var recurrenceEndDate by remember(initialTodo?.id) {
         mutableStateOf(initialTodo?.recurrenceEndDate ?: dueAt.toLocalDate().plusDays(90))
     }
@@ -171,6 +182,11 @@ fun TodoEditorDialog(
         }
     }
     val confirmEnabled = title.isNotBlank() && (!reminderEnabled || !hasDueDate || isHistory || reminderValidation.isValid)
+    LaunchedEffect(dueAt, recurrenceType, recurringEnabled, weeklyDaysManuallyEdited) {
+        if (shouldAutoSyncTodoWeeklyDays(recurringEnabled, recurrenceType, weeklyDaysManuallyEdited)) {
+            weeklyDays = setOf(dueAt.dayOfWeek)
+        }
+    }
     val shouldAutoExpandMore = remember(initialTodo?.id, defaultRingEnabled, defaultVibrateEnabled) {
         initialTodo != null && (
             initialTodo.notes.isNotBlank() ||
@@ -591,6 +607,7 @@ fun TodoEditorDialog(
                                                 FilterChip(
                                                     selected = day in weeklyDays,
                                                     onClick = {
+                                                        weeklyDaysManuallyEdited = true
                                                         weeklyDays = if (day in weeklyDays) weeklyDays - day else weeklyDays + day
                                                     },
                                                     label = { Text(day.shortLabel()) }
@@ -1018,4 +1035,24 @@ private fun DayOfWeek.shortLabel(): String = when (this) {
     DayOfWeek.FRIDAY -> "周五"
     DayOfWeek.SATURDAY -> "周六"
     DayOfWeek.SUNDAY -> "周日"
+}
+
+internal fun shouldAutoSyncTodoWeeklyDays(
+    recurringEnabled: Boolean,
+    recurrenceType: RecurrenceType,
+    weeklyDaysManuallyEdited: Boolean
+): Boolean {
+    return recurringEnabled && recurrenceType == RecurrenceType.WEEKLY && !weeklyDaysManuallyEdited
+}
+
+internal fun initialTodoWeeklyDaysManuallyEdited(
+    isRecurring: Boolean,
+    recurrenceType: RecurrenceType,
+    storedWeeklyDays: Set<DayOfWeek>,
+    dueDayOfWeek: DayOfWeek
+): Boolean {
+    if (!isRecurring || recurrenceType != RecurrenceType.WEEKLY || storedWeeklyDays.isEmpty()) {
+        return false
+    }
+    return storedWeeklyDays != setOf(dueDayOfWeek)
 }

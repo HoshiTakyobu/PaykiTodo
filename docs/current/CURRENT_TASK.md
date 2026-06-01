@@ -2,7 +2,7 @@
 
 ## Active Development Focus
 
-Active immediate task: continue the broader product/UX audit from the `1.13.33 / versionCode 281` local patch baseline, using the previous reminder/Planning Desk goal as the latest verified work package:
+Active immediate task: continue the broader product/UX audit from the `1.13.34 / versionCode 282` local patch baseline, using the previous reminder/Planning Desk goal as the latest verified work package:
 
 - `docs/goals/2026-06-01-paykitodo-reminder-ongoing-planning-ux-goal.md`
 
@@ -145,3 +145,11 @@ Current ongoing-event notification follow-up patch:
 4. Unit coverage was added for extended events, ended events, history events, and non-event rows.
 5. Version metadata moved to `1.13.33 / versionCode 281`; database version remains `27`.
 6. Verification passed: `node --check app/src/main/assets/desktop-web/app.js`, `./gradlew.bat :app:compileDebugKotlin`, `./gradlew.bat :app:testDebugUnitTest`, `git diff --check`, `./gradlew.bat :app:assembleDebug`, and APK metadata check for `versionName = 1.13.33`, `versionCode = 281`.
+
+Current todo quick-preview action-bar follow-up patch:
+
+1. Phone todo details quick preview now keeps `取消待办（归档）` in a fixed bottom action area, so users do not need to scroll through details or rely on a top text action to cancel/archive.
+2. The preview top bar now only returns to the previous screen; edit, delete, restore, and cancel/archive live together in the bottom action area.
+3. The explanatory copy still states that cancel enters history while delete is a hard removal.
+4. Version metadata moved to `1.13.34 / versionCode 282`; database version remains `27`.
+5. Verification passed: `./gradlew.bat :app:compileDebugKotlin`, `./gradlew.bat :app:testDebugUnitTest`, `git diff --check`, `./gradlew.bat :app:assembleDebug`, and APK metadata check for `versionName = 1.13.34`, `versionCode = 282`.

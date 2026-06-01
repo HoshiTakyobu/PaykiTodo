@@ -5,24 +5,32 @@
 - Repository root: `G:\Workspace\Project\PaykiTodo`
 - Branch: `main`
 - Current code version:
-  - `versionName = 1.13.33`
-  - `versionCode = 281`
+  - `versionName = 1.13.34`
+  - `versionCode = 282`
   - database version = `27`
 - Latest debug APK target in this round:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.13.33-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.13.34-debug.apk`
 - Latest signed release APK available locally:
   - `app/build/outputs/apk/release/PaykiTodo-1.13.11-release.apk`
 - Latest GitHub Release:
   - `https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.13.11`
 - Debug APK metadata inspection:
-  - `versionName = 1.13.33`
-  - `versionCode = 281`
+  - `versionName = 1.13.34`, `versionCode = 282`
 
 ## Active Goal
 
-Active immediate task: continue the broader product/UX audit from the current `1.13.33 / versionCode 281` local patch baseline.
+Active immediate task: continue the broader product/UX audit from the current `1.13.34 / versionCode 282` local patch baseline.
 
-Latest status: `1.13.33` hardens ongoing-event notification end handling: old end alarms now reload the latest event state before clearing, so an extended or moved event can keep its ongoing notification. Debug build and metadata inspection passed locally.
+Latest status: `1.13.34` makes the phone todo quick-preview cancel/archive path harder to miss: the preview now keeps `取消待办（归档）` in a fixed bottom action area instead of relying on a top action or scrollable content. Debug build and metadata inspection passed locally.
+
+## What Changed In The Latest 1.13.34 Patch
+
+1. Phone todo details quick preview now keeps `取消待办（归档）` in a fixed bottom action area.
+2. Preview content can scroll independently while cancel/archive, delete, edit, and restore remain visible at the bottom.
+3. The preview top bar now only returns to the previous screen, reducing action clutter.
+4. Cancel/archive copy still distinguishes history-preserving cancel from hard delete.
+5. Version metadata moved to `1.13.34 / versionCode 282`; database version remains `27`.
+6. Verification passed: `./gradlew.bat :app:compileDebugKotlin`, `./gradlew.bat :app:testDebugUnitTest`, `git diff --check`, `./gradlew.bat :app:assembleDebug`, and APK metadata inspection.
 
 ## What Changed In The Latest 1.13.33 Patch
 

@@ -48,6 +48,7 @@ internal fun PaykiBottomSheet(
     containerColor: Color = MaterialTheme.colorScheme.surface,
     showDragHandle: Boolean = true,
     topBar: @Composable () -> Unit = {},
+    bottomBar: @Composable () -> Unit = {},
     contentPadding: PaddingValues = PaddingValues(horizontal = 20.dp, vertical = 16.dp),
     content: @Composable ColumnScope.() -> Unit
 ) {
@@ -79,11 +80,14 @@ internal fun PaykiBottomSheet(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .weight(1f, fill = false)
                     .padding(contentPadding)
                     .verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
                 content = content
             )
+
+            bottomBar()
         }
     }
 }

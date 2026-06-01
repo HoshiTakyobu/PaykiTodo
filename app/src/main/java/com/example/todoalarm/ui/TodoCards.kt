@@ -9,6 +9,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -16,8 +17,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.automirrored.rounded.Undo
-import androidx.compose.material.icons.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.Edit
@@ -29,7 +30,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -580,42 +580,22 @@ internal fun TodoDetailsDialog(
                     .fillMaxWidth()
                     .padding(horizontal = 6.dp, vertical = 0.dp),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
+                horizontalArrangement = Arrangement.Start
             ) {
                 IconButton(onClick = onDismiss) {
-                    Icon(Icons.Rounded.ArrowBack, contentDescription = "返回", tint = MaterialTheme.colorScheme.onSurface)
-                }
-                Row(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
-                    onCancel?.let {
-                        TextButton(onClick = requestCancel) {
-                            Icon(
-                                Icons.Rounded.Close,
-                                contentDescription = null,
-                                modifier = Modifier.size(18.dp),
-                                tint = Color(0xFFD97706)
-                            )
-                            Text("取消待办", color = Color(0xFFD97706), fontWeight = FontWeight.SemiBold)
-                        }
-                    }
-                    onDelete?.let {
-                        IconButton(onClick = requestDelete) {
-                            Icon(Icons.Rounded.Delete, contentDescription = "删除待办", tint = Color(0xFFD14343))
-                        }
-                    }
-                    onRestore?.let {
-                        IconButton(onClick = it) {
-                            Icon(Icons.AutoMirrored.Rounded.Undo, contentDescription = "恢复", tint = MaterialTheme.colorScheme.primary)
-                        }
-                    }
-                    onEdit?.let {
-                        IconButton(onClick = it) {
-                            Icon(Icons.Rounded.Edit, contentDescription = "修改", tint = MaterialTheme.colorScheme.onSurface)
-                        }
-                    }
+                    Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "返回", tint = MaterialTheme.colorScheme.onSurface)
                 }
             }
         },
-        contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 18.dp, vertical = 8.dp)
+        bottomBar = {
+            TodoDetailsFixedActions(
+                onCancel = onCancel?.let { requestCancel },
+                onDelete = onDelete?.let { requestDelete },
+                onRestore = onRestore,
+                onEdit = onEdit
+            )
+        },
+        contentPadding = PaddingValues(horizontal = 18.dp, vertical = 8.dp)
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.Top) {
@@ -678,40 +658,7 @@ internal fun TodoDetailsDialog(
             }
 
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.18f))
-            onCancel?.let {
-                TodoCancelArchiveAction(onClick = requestCancel)
-            }
-            if (onDelete != null || onRestore != null || onEdit != null) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    onRestore?.let {
-                        OutlinedButton(
-                            modifier = Modifier.weight(1f),
-                            onClick = it
-                        ) {
-                            Text("恢复")
-                        }
-                    }
-                    onEdit?.let {
-                        OutlinedButton(
-                            modifier = Modifier.weight(1f),
-                            onClick = it
-                        ) {
-                            Text("修改")
-                        }
-                    }
-                    onDelete?.let {
-                        OutlinedButton(
-                            modifier = Modifier.weight(1f),
-                            onClick = requestDelete
-                        ) {
-                            Text("删除")
-                        }
-                    }
-                }
-            }
+            TodoArchiveHint(isHistory = item.completed || item.canceled)
         }
     }
 
@@ -741,6 +688,78 @@ internal fun TodoDetailsDialog(
                 onDelete()
             }
         )
+    }
+}
+
+@Composable
+private fun TodoDetailsFixedActions(
+    onCancel: (() -> Unit)?,
+    onDelete: (() -> Unit)?,
+    onRestore: (() -> Unit)?,
+    onEdit: (() -> Unit)?
+) {
+    if (onCancel == null && onDelete == null && onRestore == null && onEdit == null) return
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        color = MaterialTheme.colorScheme.surface,
+        tonalElevation = 0.dp,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.16f))
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 18.dp, vertical = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            onCancel?.let {
+                TodoCancelArchiveAction(onClick = it)
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                onRestore?.let {
+                    OutlinedButton(
+                        modifier = Modifier.weight(1f),
+                        onClick = it
+                    ) {
+                        Icon(
+                            Icons.AutoMirrored.Rounded.Undo,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Text("恢复")
+                    }
+                }
+                onEdit?.let {
+                    OutlinedButton(
+                        modifier = Modifier.weight(1f),
+                        onClick = it
+                    ) {
+                        Icon(
+                            Icons.Rounded.Edit,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Text("修改")
+                    }
+                }
+                onDelete?.let {
+                    OutlinedButton(
+                        modifier = Modifier.weight(1f),
+                        onClick = it
+                    ) {
+                        Icon(
+                            Icons.Rounded.Delete,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp),
+                            tint = Color(0xFFD14343)
+                        )
+                        Text("删除", color = Color(0xFFD14343))
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -794,6 +813,21 @@ private fun TodoCancelArchiveAction(onClick: () -> Unit) {
             }
         }
     }
+}
+
+@Composable
+private fun TodoArchiveHint(isHistory: Boolean) {
+    val text = if (isHistory) {
+        "这条待办已经进入历史记录。可恢复后重新安排，删除仍是不进入历史的彻底移除。"
+    } else {
+        "取消会归档到历史记录；删除会直接移除，不会进入历史。"
+    }
+    Text(
+        text = text,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        style = MaterialTheme.typography.bodySmall,
+        lineHeight = 17.sp
+    )
 }
 
 @Composable

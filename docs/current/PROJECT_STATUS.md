@@ -8,8 +8,8 @@
 - Target platform: Android 14 / API 34
 - License: MIT License (`LICENSE`)
 - Current version in code:
-  - `versionName = "1.13.33"`
-  - `versionCode = 281`
+  - `versionName = "1.13.34"`
+  - `versionCode = 282`
   - database version = `27`
 
 ## Current Build Facts
@@ -22,7 +22,12 @@
 - Latest GitHub Release:
   - `https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.13.11`
 - Latest fully built debug APK:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.13.33-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.13.34-debug.apk`
+- Current `1.13.34 / versionCode 282` status:
+  - Phone todo quick preview now has a fixed bottom action area, so `取消待办（归档）` stays visible without scrolling through details.
+  - The preview top bar is simplified to return only; edit/delete/restore/cancel are grouped in the bottom action area, keeping cancel/archive distinct from hard delete.
+  - Database version remains `27`; no schema migration was added.
+  - Verification passed: `./gradlew.bat :app:compileDebugKotlin`, `./gradlew.bat :app:testDebugUnitTest`, `git diff --check`, `./gradlew.bat :app:assembleDebug`, and APK metadata check.
 - Current `1.13.33 / versionCode 281` status:
   - Ongoing-event notification end broadcasts now re-read the latest event state before clearing the notification.
   - If an event was extended or moved and is still ongoing, the old end broadcast re-schedules / re-posts the ongoing notification instead of prematurely removing it.

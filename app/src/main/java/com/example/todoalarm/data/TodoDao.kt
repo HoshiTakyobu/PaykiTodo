@@ -560,6 +560,27 @@ interface TodoDao {
     @Query("DELETE FROM recurring_task_templates")
     suspend fun clearTemplates()
 
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insertRecurringSkip(skip: RecurringInstanceSkip): Long
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertRecurringSkips(skips: List<RecurringInstanceSkip>): List<Long>
+
+    @Query("DELETE FROM recurring_instance_skips WHERE seriesId = :seriesId")
+    suspend fun deleteRecurringSkipsBySeriesId(seriesId: String)
+
+    @Query("DELETE FROM recurring_instance_skips WHERE seriesId = :seriesId AND instanceEpochDay >= :fromEpochDay")
+    suspend fun deleteRecurringSkipsFrom(seriesId: String, fromEpochDay: Long)
+
+    @Query("SELECT instanceEpochDay FROM recurring_instance_skips WHERE seriesId = :seriesId")
+    suspend fun getRecurringSkipEpochDays(seriesId: String): List<Long>
+
+    @Query("SELECT * FROM recurring_instance_skips ORDER BY seriesId ASC, instanceEpochDay ASC")
+    suspend fun getAllRecurringSkips(): List<RecurringInstanceSkip>
+
+    @Query("DELETE FROM recurring_instance_skips")
+    suspend fun clearRecurringSkips()
+
     @Query("DELETE FROM task_groups")
     suspend fun clearGroups()
 

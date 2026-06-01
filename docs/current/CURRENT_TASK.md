@@ -2,7 +2,7 @@
 
 ## Active Development Focus
 
-Active immediate task: complete and commit the `1.13.23 / versionCode 271` quick-preview cancel-todo follow-up round described in:
+Active immediate task: complete and commit the `1.13.24 / versionCode 272` quick-preview cancel/delete semantics follow-up round described in:
 
 - `docs/goals/2026-06-01-paykitodo-reminder-ongoing-planning-ux-goal.md`
 
@@ -59,10 +59,15 @@ The user reported four active usability / correctness failures:
 
 ## Current Status
 
-The working tree has the quick-preview cancel-todo fix in progress. The next step is to rebuild and verify the bumped `1.13.23 / versionCode 271` APK, then commit the round.
+The quick-preview cancel/delete semantics fix has been implemented and verified for the `1.13.24 / versionCode 272` debug APK. The next step is to commit the completed round.
 
 Completed behavior so far:
 
-1. Quick todo preview dialogs now expose a visible `取消待办` action instead of hiding cancellation behind delete.
+1. Quick todo preview dialogs now expose a visible `取消待办（归档）` action instead of hiding cancellation behind delete.
 2. The action sheet for active todo cards now also exposes `取消待办` directly, keeping cancel distinct from hard delete.
 3. Cancel remains a history-preserving archive action; delete remains a destructive removal path.
+4. Desktop Web todo preview confirms cancel/archive and hard delete with explicit history semantics.
+5. Recurring todo range delete now uses the hard-delete path instead of cancel/archive.
+6. Recurring todo current-instance delete records a `recurring_instance_skips` exception and then hard-deletes the row, so the occurrence does not enter history and does not regenerate.
+7. Backup / restore includes `recurring_instance_skips`, so single-instance recurring-todo deletions survive restore.
+8. Verification passed: `node --check app/src/main/assets/desktop-web/app.js`, `./gradlew.bat :app:compileDebugKotlin`, `./gradlew.bat :app:testDebugUnitTest`, `git diff --check`, `./gradlew.bat :app:assembleDebug`, and APK metadata check for `versionName = 1.13.24`, `versionCode = 272`.

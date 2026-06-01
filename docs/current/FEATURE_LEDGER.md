@@ -23,10 +23,14 @@ This file tracks the product at a practical level for new coding sessions.
 - complete / cancel / restore flows
 - active todo preview now uses the same bottom-sheet visual language as calendar event preview
 - active todo card body opens preview; completion is isolated to the checkbox to avoid accidental completion
-- active todo quick preview surfaces now expose a visible `取消待办` action, keeping cancel as a history-preserving archive flow and distinct from hard delete
+- active todo quick preview surfaces now expose a visible `取消待办（归档）` action with confirmation, keeping cancel as a history-preserving archive flow and distinct from hard delete
+- desktop web todo preview also exposes confirmed cancel/archive and hard-delete paths with explicit history semantics
 - recurring task support
 - recurring todo/event `1.13.21` `整个循环系列` edits preserve a user-selected new series start date instead of always rebasing to the old first occurrence; time-only edits still keep the old series anchor, and stale templates are deleted before rebuilt series/templates are inserted.
-- recurring todo/event current-instance delete keeps a canceled tombstone, so recurring-template replenishment does not recreate an occurrence the user explicitly deleted
+- recurring todo current-instance delete writes a `recurring_instance_skips` exception and then hard-deletes the row, so the occurrence does not enter history and recurring-template replenishment does not recreate it
+- recurring todo `当前及之后` / `全部` delete paths hard-delete matching instances instead of canceling them into history
+- backup / restore includes `recurring_instance_skips`, so restored backups keep the user's single-instance recurring-todo deletions
+- recurring event current-instance delete still uses a canceled tombstone so calendar series replenishment does not recreate an occurrence that was explicitly removed
 - recurring todo/event `当前及之后` range handling uses the original recurrence anchor date where available, so moving a single instance does not corrupt future-range edit / cancel / delete behavior
 - recurring Calendar series edits delete the old recurring template when an entire series is changed to non-recurring, so future replenishment cannot recreate future events that the user intentionally removed from the series
 - future recurring todo instances in the `计划中` section fold into one series card with a count badge and expand/collapse control, while `已错过` and `今日待办` remain uncollapsed

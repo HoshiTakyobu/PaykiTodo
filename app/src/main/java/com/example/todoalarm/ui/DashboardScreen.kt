@@ -130,7 +130,7 @@ fun DashboardScreen(
     onCalendarVisibleDateRangeChange: (LocalDate, LocalDate) -> Unit,
     onUpdateTodo: suspend (TodoItem, TodoDraft, RecurrenceScope) -> String?,
     onUpdateCalendarEvent: suspend (TodoItem, com.example.todoalarm.data.CalendarEventDraft, RecurrenceScope) -> String?,
-    onDeleteTodo: (TodoItem) -> Unit,
+    onDeleteTodo: (TodoItem, RecurrenceScope) -> Unit,
     onDeleteCalendarEvent: (TodoItem, RecurrenceScope) -> Unit,
     onCompleteTodo: (TodoItem) -> Unit,
     onRestoreTodo: (TodoItem) -> Unit,
@@ -600,7 +600,7 @@ fun DashboardScreen(
                             scopeDialogTarget = item
                             scopeDialogMode = ScopeDialogMode.DELETE_TODO
                         } else {
-                            onDeleteTodo(item)
+                            onDeleteTodo(item, RecurrenceScope.CURRENT)
                             Toast.makeText(context, "任务已删除", Toast.LENGTH_SHORT).show()
                         }
                     },
@@ -891,7 +891,7 @@ fun DashboardScreen(
                     }
                     ScopeDialogMode.CANCEL_TODO -> onCancelTodo(item, selectedScope)
                     ScopeDialogMode.DELETE_TODO -> {
-                        onCancelTodo(item, selectedScope)
+                        onDeleteTodo(item, selectedScope)
                         Toast.makeText(context, "任务已删除", Toast.LENGTH_SHORT).show()
                     }
                     ScopeDialogMode.DELETE_EVENT -> {

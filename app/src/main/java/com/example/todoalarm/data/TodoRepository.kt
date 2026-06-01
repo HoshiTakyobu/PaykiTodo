@@ -1253,14 +1253,56 @@ class TodoRepository(
         return item
     }
 
-    suspend fun deleteTodo(id: Long): List<TodoItem> {
-        val item = todoDao.getById(id)
-        if (item?.isRecurring == true) {
-            // Keep a canceled tombstone for the current recurring instance; otherwise the
-            // template replenisher will recreate the same occurrence on the next startup.
-            return cancelTodo(item, RecurrenceScope.CURRENT)
+    suspend fun deleteTodo(
+        item: TodoItem,
+        scope: RecurrenceScope = RecurrenceScope.CURRENT
+    ): List<TodoItem> {
+        if (!item.isTodo) return emptyList()
+        val current = todoDao.getById(item.id) ?: return emptyList()
+        if (!current.isRecurring) {
+            val deletedItems = deleteItemsByIds(listOf(current.id))
+            notifyItemsChanged()
+            return deletedItems
         }
-        val deletedItems = deleteItemsByIds(listOf(id))
+
+        val seriesId = current.recurringSeriesId ?: return emptyList()
+        val activeSeries = todoDao.getActiveBySeriesId(seriesId)
+        val splitDate = current.recurrenceScopeDate()
+        val targets = activeSeries.filter { candidate ->
+            candidate.isTodo && when (scope) {
+                RecurrenceScope.CURRENT -> candidate.id == current.id
+                RecurrenceScope.CURRENT_AND_FUTURE -> candidate.isOnOrAfterRecurrenceDate(splitDate)
+                RecurrenceScope.ALL -> true
+            }
+        }
+        if (targets.isEmpty()) return emptyList()
+
+        if (scope == RecurrenceScope.CURRENT) {
+            todoDao.insertRecurringSkip(
+                RecurringInstanceSkip(
+                    seriesId = seriesId,
+                    instanceEpochDay = current.recurrenceScopeDate().toEpochDay()
+                )
+            )
+        }
+
+        val deletedItems = deleteItemsByIds(targets.map { it.id })
+        when (scope) {
+            RecurrenceScope.CURRENT -> Unit
+            RecurrenceScope.CURRENT_AND_FUTURE -> {
+                todoDao.deleteRecurringSkipsFrom(seriesId, splitDate.toEpochDay())
+                truncateTemplateBefore(
+                    seriesId = seriesId,
+                    template = todoDao.getTemplateBySeriesId(seriesId),
+                    activeSeries = activeSeries,
+                    splitDate = splitDate
+                )
+            }
+            RecurrenceScope.ALL -> {
+                todoDao.deleteRecurringSkipsBySeriesId(seriesId)
+                todoDao.deleteTemplateBySeriesId(seriesId)
+            }
+        }
         notifyItemsChanged()
         return deletedItems
     }
@@ -1447,6 +1489,7 @@ class TodoRepository(
                 when (scope) {
                     RecurrenceScope.CURRENT -> Unit
                     RecurrenceScope.CURRENT_AND_FUTURE -> {
+                        todoDao.deleteRecurringSkipsFrom(seriesId, splitDate.toEpochDay())
                         truncateTemplateBefore(
                             seriesId = seriesId,
                             template = todoDao.getTemplateBySeriesId(seriesId),
@@ -1455,6 +1498,7 @@ class TodoRepository(
                         )
                     }
                     RecurrenceScope.ALL -> {
+                        todoDao.deleteRecurringSkipsBySeriesId(seriesId)
                         todoDao.deleteTemplateBySeriesId(seriesId)
                     }
                 }
@@ -1640,6 +1684,7 @@ class TodoRepository(
             val existingDates = existingSeriesItems
                 .mapNotNull { item -> item.recurrenceInstanceDateOrNull() }
                 .toSet()
+            val skippedEpochDays = todoDao.getRecurringSkipEpochDays(template.seriesId).toSet()
             val latestExistingDate = existingDates.maxOrNull()
             val templateStartDate = LocalDate.ofEpochDay(template.startEpochDay)
             val nextMissingDate = latestExistingDate?.plusDays(1) ?: today
@@ -1648,6 +1693,7 @@ class TodoRepository(
 
             val missingDates = generateTemplateDates(template, targetStartDate, targetEndDate)
                 .filterNot { it in existingDates }
+                .filterNot { it.toEpochDay() in skippedEpochDays }
             if (missingDates.isEmpty()) return@forEach
 
             val generated = missingDates.map { date ->
@@ -1795,7 +1841,10 @@ class TodoRepository(
                         activeSeries = seriesItems,
                         splitDate = splitDate
                     )
-                    RecurrenceScope.ALL -> todoDao.deleteTemplateBySeriesId(seriesId)
+                    RecurrenceScope.ALL -> {
+                        todoDao.deleteRecurringSkipsBySeriesId(seriesId)
+                        todoDao.deleteTemplateBySeriesId(seriesId)
+                    }
                 }
                 deletedTargets
             }
@@ -1874,6 +1923,7 @@ class TodoRepository(
             aiReports = todoDao.getAllAiReports(),
             todoGroupTags = todoDao.getAllTodoGroupTags(),
             eventCheckIns = todoDao.getAllEventCheckIns(),
+            recurringInstanceSkips = todoDao.getAllRecurringSkips(),
             settings = settings
         )
     }
@@ -1882,6 +1932,7 @@ class TodoRepository(
         todoDao.clearPlanningNodes()
         todoDao.clearTodoGroupTags()
         todoDao.clearEventCheckIns()
+        todoDao.clearRecurringSkips()
         todoDao.clearTodos()
         todoDao.clearTemplates()
         todoDao.clearGroups()
@@ -1908,6 +1959,9 @@ class TodoRepository(
         val restoredCheckIns = restoredEventCheckIns(snapshot)
         if (restoredCheckIns.isNotEmpty()) {
             todoDao.insertCheckIns(restoredCheckIns)
+        }
+        if (snapshot.recurringInstanceSkips.isNotEmpty()) {
+            todoDao.insertRecurringSkips(snapshot.recurringInstanceSkips)
         }
         if (snapshot.reminderChainLogs.isNotEmpty()) {
             todoDao.insertReminderChainLogs(snapshot.reminderChainLogs)

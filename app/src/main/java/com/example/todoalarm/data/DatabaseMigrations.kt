@@ -422,6 +422,31 @@ object DatabaseMigrations {
         }
     }
 
+    val MIGRATION_26_27 = object : Migration(26, 27) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            createRecurringInstanceSkipsTable(db)
+        }
+    }
+
+    private fun createRecurringInstanceSkipsTable(db: SupportSQLiteDatabase) {
+        db.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS `recurring_instance_skips` (
+                `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                `seriesId` TEXT NOT NULL,
+                `instanceEpochDay` INTEGER NOT NULL,
+                `createdAtMillis` INTEGER NOT NULL
+            )
+            """.trimIndent()
+        )
+        db.execSQL(
+            """
+            CREATE UNIQUE INDEX IF NOT EXISTS `index_recurring_instance_skips_seriesId_instanceEpochDay`
+            ON `recurring_instance_skips` (`seriesId`, `instanceEpochDay`)
+            """.trimIndent()
+        )
+    }
+
     private fun rebuildPlanningNotesTable(db: SupportSQLiteDatabase) {
         db.execSQL("DROP TABLE IF EXISTS `planning_notes_room_expected`")
         createPlanningNotesTable(db, "planning_notes_room_expected")

@@ -65,6 +65,7 @@ private fun BackupSnapshot.toJson(): JSONObject {
         put("aiReports", JSONArray(aiReports.map { it.toJson() }))
         put("todoGroupTags", JSONArray(todoGroupTags.map { it.toJson() }))
         put("eventCheckIns", JSONArray(eventCheckIns.map { it.toJson() }))
+        put("recurringInstanceSkips", JSONArray(recurringInstanceSkips.map { it.toJson() }))
     }
 }
 
@@ -325,6 +326,15 @@ private fun EventCheckIn.toJson(): JSONObject {
     }
 }
 
+private fun RecurringInstanceSkip.toJson(): JSONObject {
+    return JSONObject().apply {
+        put("id", id)
+        put("seriesId", seriesId)
+        put("instanceEpochDay", instanceEpochDay)
+        put("createdAtMillis", createdAtMillis)
+    }
+}
+
 private fun backupSnapshotFromJson(json: JSONObject): BackupSnapshot {
     return BackupSnapshot(
         exportedAtMillis = json.optLong("exportedAtMillis", System.currentTimeMillis()),
@@ -340,6 +350,7 @@ private fun backupSnapshotFromJson(json: JSONObject): BackupSnapshot {
         aiReports = json.optJSONArray("aiReports").toAiReports(),
         todoGroupTags = json.optJSONArray("todoGroupTags").toTodoGroupTags(),
         eventCheckIns = json.optJSONArray("eventCheckIns").toEventCheckIns(),
+        recurringInstanceSkips = json.optJSONArray("recurringInstanceSkips").toRecurringInstanceSkips(),
         settings = json.optJSONObject("settings").toSettings()
     )
 }
@@ -634,6 +645,26 @@ private fun JSONArray?.toEventCheckIns(): List<EventCheckIn> {
                     checkInAtMillis = checkInAtMillis,
                     checkOutAtMillis = item.optLongOrNull("checkOutAtMillis"),
                     durationMinutes = item.optInt("durationMinutes", 0).coerceAtLeast(0)
+                )
+            )
+        }
+    }
+}
+
+private fun JSONArray?.toRecurringInstanceSkips(): List<RecurringInstanceSkip> {
+    if (this == null) return emptyList()
+    return buildList(length()) {
+        for (index in 0 until length()) {
+            val item = optJSONObject(index) ?: continue
+            val seriesId = item.optString("seriesId").trim()
+            val instanceEpochDay = item.optLong("instanceEpochDay", Long.MIN_VALUE)
+            if (seriesId.isBlank() || instanceEpochDay == Long.MIN_VALUE) continue
+            add(
+                RecurringInstanceSkip(
+                    id = item.optLong("id", 0L),
+                    seriesId = seriesId,
+                    instanceEpochDay = instanceEpochDay,
+                    createdAtMillis = item.optLong("createdAtMillis", System.currentTimeMillis())
                 )
             )
         }

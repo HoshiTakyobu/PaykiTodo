@@ -173,6 +173,10 @@ internal fun ActiveTodoCard(
             onCancel = {
                 showDetails = false
                 onCancel()
+            },
+            onDelete = {
+                showDetails = false
+                onDelete()
             }
         )
     }
@@ -550,10 +554,23 @@ internal fun TodoDetailsDialog(
     showStatusTime: Boolean,
     onEdit: (() -> Unit)? = null,
     onCancel: (() -> Unit)? = null,
+    onDelete: (() -> Unit)? = null,
     onRestore: (() -> Unit)? = null
 ) {
     val group = resolveTaskGroup(item, groups)
     val tint = if (item.missed) Color(0xFFC62828) else categoryColor(group)
+    var confirmCancel by remember(item.id) { mutableStateOf(false) }
+    var confirmDelete by remember(item.id) { mutableStateOf(false) }
+    val requestCancel = {
+        if (onCancel != null) {
+            confirmCancel = true
+        }
+    }
+    val requestDelete = {
+        if (onDelete != null) {
+            confirmDelete = true
+        }
+    }
 
     PaykiBottomSheet(
         onDismiss = onDismiss,
@@ -571,8 +588,13 @@ internal fun TodoDetailsDialog(
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
                     onCancel?.let {
-                        IconButton(onClick = it) {
-                            Icon(Icons.Rounded.Close, contentDescription = "取消待办", tint = Color(0xFFD14343))
+                        IconButton(onClick = requestCancel) {
+                            Icon(Icons.Rounded.Close, contentDescription = "取消待办并归档", tint = Color(0xFFD97706))
+                        }
+                    }
+                    onDelete?.let {
+                        IconButton(onClick = requestDelete) {
+                            Icon(Icons.Rounded.Delete, contentDescription = "删除待办", tint = Color(0xFFD14343))
                         }
                     }
                     onRestore?.let {
@@ -658,9 +680,17 @@ internal fun TodoDetailsDialog(
                 onCancel?.let {
                     FilledTonalButton(
                         modifier = Modifier.weight(1f),
-                        onClick = it
+                        onClick = requestCancel
                     ) {
-                        Text("取消待办")
+                        Text("取消待办（归档）")
+                    }
+                }
+                onDelete?.let {
+                    OutlinedButton(
+                        modifier = Modifier.weight(1f),
+                        onClick = requestDelete
+                    ) {
+                        Text("删除")
                     }
                 }
                 onRestore?.let {
@@ -681,6 +711,34 @@ internal fun TodoDetailsDialog(
                 }
             }
         }
+    }
+
+    if (confirmCancel && onCancel != null) {
+        PaykiDecisionBottomSheet(
+            title = "取消待办",
+            message = "取消后会停止提醒，并进入历史记录；这不是删除，后续可以在历史记录里查看。",
+            confirmLabel = "取消待办",
+            confirmLabelColor = Color(0xFFD97706),
+            onDismiss = { confirmCancel = false },
+            onConfirm = {
+                confirmCancel = false
+                onCancel()
+            }
+        )
+    }
+
+    if (confirmDelete && onDelete != null) {
+        PaykiDecisionBottomSheet(
+            title = "删除待办",
+            message = "删除后会直接移除，不进入历史记录，也无法恢复。",
+            confirmLabel = "删除",
+            confirmLabelColor = Color(0xFFD14343),
+            onDismiss = { confirmDelete = false },
+            onConfirm = {
+                confirmDelete = false
+                onDelete()
+            }
+        )
     }
 }
 

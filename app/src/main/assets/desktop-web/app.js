@@ -3346,6 +3346,7 @@ document.getElementById('preview-todo-complete').onclick = async () => {
 
 document.getElementById('preview-todo-cancel').onclick = async () => {
   if (!state.previewTodoId) return;
+  if (!await confirmDanger('确认取消待办', '取消后会停止提醒，并进入历史记录；这不是删除。', '取消待办')) return;
   const todoItem = findTodoById(state.previewTodoId);
   await api(`/api/items/${state.previewTodoId}/cancel${recurrenceScopeQueryForItem(todoItem)}`, { method: 'POST' });
   closeModal('todo-preview-modal');
@@ -3354,7 +3355,7 @@ document.getElementById('preview-todo-cancel').onclick = async () => {
 
 document.getElementById('preview-todo-delete').onclick = async () => {
   if (!state.previewTodoId) return;
-  if (!await confirmDanger('确认删除待办', '删除后无法恢复。')) return;
+  if (!await confirmDanger('确认删除待办', '删除后会直接移除，不进入历史记录，也无法恢复。')) return;
   const todoItem = findTodoById(state.previewTodoId);
   await api(`/api/items/${state.previewTodoId}${recurrenceScopeQueryForItem(todoItem)}`, { method: 'DELETE' });
   closeModal('todo-preview-modal');

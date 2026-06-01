@@ -493,10 +493,8 @@ class DesktopSyncCoordinator(
         val targetScope = parseRecurrenceScope(queryParam(path, "scope")) ?: RecurrenceScope.CURRENT
         val deletedItems = if (item.isEvent) {
             app.repository.deleteCalendarEvent(item, targetScope)
-        } else if (item.isRecurring && targetScope != RecurrenceScope.CURRENT) {
-            app.repository.cancelTodo(item, targetScope)
         } else {
-            app.repository.deleteTodo(id)
+            app.repository.deleteTodo(item, targetScope)
         }
         clearReminderArtifacts(deletedItems.ifEmpty { listOf(item) })
         autoBackupIfNeeded()

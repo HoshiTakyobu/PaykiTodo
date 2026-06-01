@@ -905,9 +905,9 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun deleteTodo(todoItem: TodoItem) {
+    fun deleteTodo(todoItem: TodoItem, scope: RecurrenceScope = RecurrenceScope.CURRENT) {
         viewModelScope.launch {
-            val deletedItems = repository.deleteTodo(todoItem.id)
+            val deletedItems = repository.deleteTodo(todoItem, scope)
             clearReminderArtifacts(deletedItems.ifEmpty { listOf(todoItem) })
             autoBackupIfEnabled()
         }

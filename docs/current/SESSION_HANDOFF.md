@@ -5,22 +5,35 @@
 - Repository root: `G:\Workspace\Project\PaykiTodo`
 - Branch: `main`
 - Current code version:
-  - `versionName = 1.13.23`
-  - `versionCode = 271`
+  - `versionName = 1.13.24`
+  - `versionCode = 272`
+  - database version = `27`
 - Latest debug APK target in this round:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.13.23-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.13.24-debug.apk`
 - Latest signed release APK available locally:
   - `app/build/outputs/apk/release/PaykiTodo-1.13.11-release.apk`
 - Latest GitHub Release:
   - `https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.13.11`
 - Debug APK metadata inspection:
-  - pending rebuild after version bump
+  - `versionName = 1.13.24`
+  - `versionCode = 272`
 
 ## Active Goal
 
-Active immediate task: finish the quick-preview cancel-todo follow-up on the `1.13.23 / versionCode 271` line, rebuild the debug APK, and commit the round.
+Active immediate task: finish the quick-preview cancel/delete semantics follow-up on the `1.13.24 / versionCode 272` line, rebuild the debug APK, and commit the round.
 
-Latest status: quick todo preview dialogs now expose a visible `取消待办` action, and active todo cards' action sheet also exposes `取消待办` directly so cancel is no longer hidden behind delete. The next step is the versioned rebuild and verification of `PaykiTodo-1.13.23-debug.apk`.
+Latest status: quick todo preview dialogs now expose a confirmed `取消待办（归档）` action, active todo cards' action sheet exposes `取消待办` directly, and recurring todo delete semantics were corrected so hard delete no longer archives range deletions. The `PaykiTodo-1.13.24-debug.apk` rebuild and metadata inspection passed; the next step is committing the round.
+
+## What Changed In The Latest 1.13.24 Patch
+
+1. Phone todo details preview labels cancel as `取消待办（归档）`, adds confirmation, and exposes delete separately with the explicit warning that deletion does not enter history.
+2. Desktop Web todo preview labels cancel as `取消待办（归档）` and confirms both cancel/archive and hard delete.
+3. Desktop sync delete API now routes todo deletion to `TodoRepository.deleteTodo(item, scope)` instead of canceling recurring range deletes.
+4. Recurring todo current-instance delete adds a `recurring_instance_skips` row before hard-deleting the item, so the occurrence does not enter history and is not regenerated.
+5. Backup / restore includes `recurring_instance_skips`, so single-instance recurring-todo deletions survive restore.
+6. Database version moved to `27`; schema `app/schemas/com.example.todoalarm.data.AppDatabase/27.json` includes `recurring_instance_skips`.
+7. Version metadata moved to `1.13.24 / versionCode 272`.
+8. Verification passed: `node --check app/src/main/assets/desktop-web/app.js`, `./gradlew.bat :app:compileDebugKotlin`, `./gradlew.bat :app:testDebugUnitTest`, `git diff --check`, `./gradlew.bat :app:assembleDebug`, and APK metadata inspection.
 
 ## What Changed In The Latest 1.13.22 Patch
 

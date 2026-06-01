@@ -1087,6 +1087,14 @@ internal fun DashboardBody(
                     onCancelTodo(item)
                 }
             },
+            onDelete = if (item.isHistory) {
+                null
+            } else {
+                {
+                    previewTodoTarget = null
+                    onDeleteTodo(item)
+                }
+            },
             onRestore = if (item.completed || item.canceled) {
                 {
                     previewTodoTarget = null

@@ -5,23 +5,31 @@
 - Repository root: `G:\Workspace\Project\PaykiTodo`
 - Branch: `main`
 - Current code version:
-  - `versionName = 1.13.40`
-  - `versionCode = 288`
+  - `versionName = 1.13.41`
+  - `versionCode = 289`
   - database version = `27`
 - Latest debug APK target in this round:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.13.40-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.13.41-debug.apk`
 - Latest signed release APK available locally:
   - `app/build/outputs/apk/release/PaykiTodo-1.13.11-release.apk`
 - Latest GitHub Release:
   - `https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.13.11`
 - Debug APK metadata inspection:
-  - `versionName = 1.13.40`, `versionCode = 288`
+  - `versionName = 1.13.41`, `versionCode = 289`
 
 ## Active Goal
 
-Active immediate task: continue the broader product/UX audit from the current `1.13.40 / versionCode 288` local patch baseline.
+Active immediate task: continue the broader product/UX audit from the current `1.13.41 / versionCode 289` local patch baseline.
 
-Latest status: `1.13.40` makes todo cancel/archive reachable and explicit inside the quick-preview surface itself on both phone and Desktop Web. Debug build and metadata inspection should be checked before handoff.
+Latest status: `1.13.41` closes a Desktop Web / phone parity gap by allowing multi-line event titles in the desktop event editor. Debug build and metadata inspection should be checked before handoff.
+
+## What Changed In The Latest 1.13.41 Patch
+
+1. Desktop Web event editor title input changed from a single-line input to a multi-line textarea.
+2. Desktop-created or desktop-edited event titles can now contain line breaks like phone-side event titles.
+3. The change reuses the existing `title` save path and does not require a database migration.
+4. Version metadata moved to `1.13.41 / versionCode 289`; database version remains `27`.
+5. Verification passed: `node --check app/src/main/assets/desktop-web/app.js`, `./gradlew.bat :app:compileDebugKotlin`, `./gradlew.bat :app:testDebugUnitTest`, `git diff --check`, `./gradlew.bat :app:assembleDebug`, and APK metadata inspection confirmed `versionName = 1.13.41`, `versionCode = 289`.
 
 ## What Changed In The Latest 1.13.40 Patch
 

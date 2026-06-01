@@ -8,8 +8,8 @@
 - Target platform: Android 14 / API 34
 - License: MIT License (`LICENSE`)
 - Current version in code:
-  - `versionName = "1.13.40"`
-  - `versionCode = 288`
+  - `versionName = "1.13.41"`
+  - `versionCode = 289`
   - database version = `27`
 
 ## Current Build Facts
@@ -22,7 +22,11 @@
 - Latest GitHub Release:
   - `https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.13.11`
 - Latest fully built debug APK:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.13.40-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.13.41-debug.apk`
+- Current `1.13.41 / versionCode 289` status:
+  - Desktop Web event editor title input is now a multi-line textarea, matching the phone event editor's multi-line subject input behavior.
+  - Newline event titles continue to use the existing `title` field and desktop sync save path; database version remains `27`; no schema migration was added.
+  - Verification passed: `node --check app/src/main/assets/desktop-web/app.js`, `./gradlew.bat :app:compileDebugKotlin`, `./gradlew.bat :app:testDebugUnitTest`, `git diff --check`, `./gradlew.bat :app:assembleDebug`, and APK metadata check for `versionName = 1.13.41`, `versionCode = 289`.
 - Current `1.13.40 / versionCode 288` status:
   - Phone todo quick-preview sheets now show a prominent `取消并归档` card directly below the title, so cancel/archive is reachable from the small preview surface itself.
   - Phone todo quick-preview top action now says `取消并归档`, making the archive/history behavior explicit instead of looking like a generic cancel/close action.

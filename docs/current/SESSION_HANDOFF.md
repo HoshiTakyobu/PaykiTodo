@@ -20,9 +20,9 @@
 
 ## Active Goal
 
-Active immediate task: finish the quick-preview cancel/delete documentation parity follow-up on the `1.13.25 / versionCode 273` line and commit the round.
+Active immediate task: continue the broader product/UX audit from the current clean `1.13.25 / versionCode 273` baseline.
 
-Latest status: `1.13.24` implemented and committed the quick todo preview / recurring delete semantics. The current `1.13.25` follow-up updates the built-in Wiki so user-facing help matches the implemented cancel/archive versus hard-delete behavior. The `PaykiTodo-1.13.25-debug.apk` rebuild and metadata inspection passed; the next step is committing the round.
+Latest status: `1.13.24` implemented and committed the quick todo preview / recurring delete semantics. `1.13.25` updated the built-in Wiki so user-facing help matches the implemented cancel/archive versus hard-delete behavior. The `PaykiTodo-1.13.25-debug.apk` rebuild and metadata inspection passed, and the round was committed as `91c9520`.
 
 ## What Changed In The Latest 1.13.25 Patch
 
@@ -67,7 +67,7 @@ Latest status: `1.13.24` implemented and committed the quick todo preview / recu
 2. Dashboard todo cards now reuse pre-resolved task-group data from a per-state group map, reducing repeated group-list scans while scrolling many todos.
 3. Calendar day / three-day timeline now builds timed-event placements only for the currently visible page days instead of pre-layouting the whole loaded event window.
 4. Calendar current-time axis / line refreshes once per minute, and timed-board vertical overscan is reduced from 2 hours to 1 hour.
-5. Recurring todo/event repository paths were re-audited: current-instance delete still keeps canceled tombstones, `CURRENT_AND_FUTURE` still splits by original recurrence anchor date, and template truncation/deletion remains in place for range operations.
+5. Historical note: recurring todo/event repository paths were re-audited at that time; todo current-instance delete later moved to the `1.13.24` non-history skip-record design, while recurring event current-instance deletion still uses the tombstone approach.
 6. Version metadata moved to `1.13.19 / versionCode 267`; latest debug APK target is `app/build/outputs/apk/debug/PaykiTodo-1.13.19-debug.apk`.
 7. Verification passed: `./gradlew.bat :app:compileDebugKotlin`, `./gradlew.bat :app:testDebugUnitTest`, `./gradlew.bat :app:assembleDebug`, APK metadata inspection confirmed `versionName = 1.13.19`, `versionCode = 267`, and `git diff --check` passed before final handoff-doc edits.
 

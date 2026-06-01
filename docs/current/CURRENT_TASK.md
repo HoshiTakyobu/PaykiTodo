@@ -2,7 +2,7 @@
 
 ## Active Development Focus
 
-Active immediate task: complete and commit the `1.13.25 / versionCode 273` quick-preview cancel/delete documentation parity follow-up round described in:
+Active immediate task: continue the broader product/UX audit from the clean `1.13.25 / versionCode 273` baseline, using the previous reminder/Planning Desk goal as the latest verified work package:
 
 - `docs/goals/2026-06-01-paykitodo-reminder-ongoing-planning-ux-goal.md`
 
@@ -59,7 +59,7 @@ The user reported four active usability / correctness failures:
 
 ## Current Status
 
-The quick-preview cancel/delete semantics fix was implemented and committed in `afe0e5a` for `1.13.24 / versionCode 272`. The current follow-up updates the built-in Wiki and current handoff documents so user-facing instructions match the implemented behavior; the `1.13.25 / versionCode 273` debug build has also been verified locally.
+The quick-preview cancel/delete semantics fix was implemented and committed in `afe0e5a` for `1.13.24 / versionCode 272`. The built-in Wiki and current handoff documents were then aligned with the implemented behavior and committed in `91c9520` for `1.13.25 / versionCode 273`. The current working tree is the baseline for the next audit pass.
 
 Completed behavior so far:
 

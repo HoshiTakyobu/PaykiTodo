@@ -5,24 +5,33 @@
 - Repository root: `G:\Workspace\Project\PaykiTodo`
 - Branch: `main`
 - Current code version:
-  - `versionName = 1.13.25`
-  - `versionCode = 273`
+  - `versionName = 1.13.26`
+  - `versionCode = 274`
   - database version = `27`
 - Latest debug APK target in this round:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.13.25-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.13.26-debug.apk`
 - Latest signed release APK available locally:
   - `app/build/outputs/apk/release/PaykiTodo-1.13.11-release.apk`
 - Latest GitHub Release:
   - `https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.13.11`
 - Debug APK metadata inspection:
-  - `versionName = 1.13.25`
-  - `versionCode = 273`
+  - `versionName = 1.13.26`
+  - `versionCode = 274`
 
 ## Active Goal
 
-Active immediate task: continue the broader product/UX audit from the current clean `1.13.25 / versionCode 273` baseline.
+Active immediate task: continue the broader product/UX audit from the current `1.13.26 / versionCode 274` local patch baseline.
 
-Latest status: `1.13.24` implemented and committed the quick todo preview / recurring delete semantics. `1.13.25` updated the built-in Wiki so user-facing help matches the implemented cancel/archive versus hard-delete behavior. The `PaykiTodo-1.13.25-debug.apk` rebuild and metadata inspection passed, and the round was committed as `91c9520`.
+Latest status: `1.13.26` extends the quick-preview fix to every phone-side todo entry point that previously bypassed preview. Search results, Planning Desk linked todos, notification routes, and widget/deep-link todo opens now land in the same todo details preview with cancel/archive available. The debug build and metadata inspection passed locally.
+
+## What Changed In The Latest 1.13.26 Patch
+
+1. Phone search results, Planning Desk linked todos, notification routes, and widget/deep-link todo opens now share the same todo details preview instead of jumping straight to the editor or depending on current list membership.
+2. The shared todo details preview exposes cancel/archive, hard delete, edit, and restore where applicable.
+3. The top preview action now says `取消归档` instead of showing only a close icon, reducing confusion between closing the sheet and archiving the todo.
+4. Planning Desk linked events still route to Calendar preview, while linked todos open todo preview first.
+5. Version metadata moved to `1.13.26 / versionCode 274`; database version remains `27`.
+6. Verification passed: `node --check app/src/main/assets/desktop-web/app.js`, `./gradlew.bat :app:compileDebugKotlin`, `./gradlew.bat :app:testDebugUnitTest`, `git diff --check`, `./gradlew.bat :app:assembleDebug`, and APK metadata inspection.
 
 ## What Changed In The Latest 1.13.25 Patch
 

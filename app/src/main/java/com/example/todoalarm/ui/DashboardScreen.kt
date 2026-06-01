@@ -228,6 +228,7 @@ fun DashboardScreen(
     var handledEventLaunchSerial by rememberSaveable { mutableStateOf(-1) }
     var previewTodoId by rememberSaveable { mutableStateOf<Long?>(null) }
     var previewTodoSerial by rememberSaveable { mutableStateOf(0) }
+    var quickPreviewTodo by remember { mutableStateOf<TodoItem?>(null) }
     var previewEventId by rememberSaveable { mutableStateOf<Long?>(null) }
     var previewEventSerial by rememberSaveable { mutableStateOf(0) }
     var searchVisible by rememberSaveable { mutableStateOf(false) }
@@ -261,6 +262,30 @@ fun DashboardScreen(
             calendarDraftSeed = null
             editScope = RecurrenceScope.CURRENT
             editorVisible = true
+        }
+    }
+
+    fun openTodoPreview(item: TodoItem) {
+        quickPreviewTodo = item
+        previewTodoId = null
+    }
+
+    fun requestCancelTodo(item: TodoItem) {
+        if (item.isRecurring && !item.isHistory) {
+            scopeDialogTarget = item
+            scopeDialogMode = ScopeDialogMode.CANCEL_TODO
+        } else {
+            onCancelTodo(item, RecurrenceScope.CURRENT)
+        }
+    }
+
+    fun requestDeleteTodo(item: TodoItem) {
+        if (item.isRecurring && !item.isHistory) {
+            scopeDialogTarget = item
+            scopeDialogMode = ScopeDialogMode.DELETE_TODO
+        } else {
+            onDeleteTodo(item, RecurrenceScope.CURRENT)
+            Toast.makeText(context, "任务已删除", Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -303,7 +328,7 @@ fun DashboardScreen(
             ?: return@LaunchedEffect
         handledTodoLaunchSerial = launchRouteSerial
         section = if (target.isHistory) DashboardSection.HISTORY else DashboardSection.ACTIVE
-        previewTodoId = target.id
+        openTodoPreview(target)
         previewTodoSerial = launchRouteSerial
     }
 
@@ -359,6 +384,7 @@ fun DashboardScreen(
             }
             todoBatchImportVisible -> todoBatchImportVisible = false
             batchImportVisible -> batchImportVisible = false
+            quickPreviewTodo != null -> quickPreviewTodo = null
             drawerState.isOpen -> scope.launch { drawerState.close() }
             section != DashboardSection.BOARD -> section = DashboardSection.BOARD
             else -> {
@@ -587,23 +613,8 @@ fun DashboardScreen(
                     },
                     onCompleteTodo = onCompleteTodo,
                     onRestoreTodo = onRestoreTodo,
-                    onCancelTodo = { item ->
-                        if (item.isRecurring && !item.isHistory) {
-                            scopeDialogTarget = item
-                            scopeDialogMode = ScopeDialogMode.CANCEL_TODO
-                        } else {
-                            onCancelTodo(item, RecurrenceScope.CURRENT)
-                        }
-                    },
-                    onDeleteTodo = { item ->
-                        if (item.isRecurring && !item.isHistory) {
-                            scopeDialogTarget = item
-                            scopeDialogMode = ScopeDialogMode.DELETE_TODO
-                        } else {
-                            onDeleteTodo(item, RecurrenceScope.CURRENT)
-                            Toast.makeText(context, "任务已删除", Toast.LENGTH_SHORT).show()
-                        }
-                    },
+                    onCancelTodo = ::requestCancelTodo,
+                    onDeleteTodo = ::requestDeleteTodo,
                     onDeleteCalendarEvent = { item ->
                         if (item.isRecurring) {
                             scopeDialogTarget = item
@@ -679,9 +690,16 @@ fun DashboardScreen(
                     onOpenPlanningLinkedItem = { itemId ->
                         scope.launch {
                             val item = onGetTodoById(itemId) ?: return@launch
-                            editingItem = item
-                            editorKind = if (item.isEvent) EditorKind.CALENDAR else EditorKind.TODO
-                            editorVisible = true
+                            if (item.isEvent) {
+                                val targetDate = item.eventStartDate() ?: item.dueDate()
+                                calendarFocusDateEpochDay = targetDate.toEpochDay()
+                                onCalendarVisibleDateRangeChange(targetDate.minusDays(1), targetDate.plusDays(2))
+                                previewEventId = item.id
+                                previewEventSerial += 1
+                                section = DashboardSection.CALENDAR
+                            } else {
+                                openTodoPreview(item)
+                            }
                         }
                     },
                     onExportPlanningNodesMarkdown = onExportPlanningNodesMarkdown,
@@ -732,8 +750,7 @@ fun DashboardScreen(
             onSearch = onGlobalSearch,
             onDismiss = { searchVisible = false },
             onOpenTodo = { item ->
-                previewTodoId = item.id
-                previewTodoSerial += 1
+                openTodoPreview(item)
                 section = if (item.isHistory) DashboardSection.HISTORY else DashboardSection.ACTIVE
                 searchVisible = false
             },
@@ -758,6 +775,44 @@ fun DashboardScreen(
                 searchAiReportTargetSerial += 1
                 section = DashboardSection.AI_REPORTS
                 searchVisible = false
+            }
+        )
+    }
+
+    quickPreviewTodo?.let { item ->
+        TodoDetailsDialog(
+            item = item,
+            groups = uiState.groups,
+            onDismiss = { quickPreviewTodo = null },
+            showCreated = true,
+            showStatusTime = item.isHistory,
+            onEdit = {
+                quickPreviewTodo = null
+                openTodoEditor(item)
+            },
+            onCancel = if (item.isHistory) {
+                null
+            } else {
+                {
+                    quickPreviewTodo = null
+                    requestCancelTodo(item)
+                }
+            },
+            onDelete = if (item.isHistory) {
+                null
+            } else {
+                {
+                    quickPreviewTodo = null
+                    requestDeleteTodo(item)
+                }
+            },
+            onRestore = if (item.completed || item.canceled) {
+                {
+                    quickPreviewTodo = null
+                    onRestoreTodo(item)
+                }
+            } else {
+                null
             }
         )
     }

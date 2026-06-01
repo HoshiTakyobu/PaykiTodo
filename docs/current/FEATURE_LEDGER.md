@@ -24,6 +24,7 @@ This file tracks the product at a practical level for new coding sessions.
 - active todo preview now uses the same bottom-sheet visual language as calendar event preview
 - active todo card body opens preview; completion is isolated to the checkbox to avoid accidental completion
 - active todo quick preview surfaces now expose a visible `取消待办（归档）` action with confirmation, keeping cancel as a history-preserving archive flow and distinct from hard delete
+- todo quick preview is now the shared target for phone search results, Planning Desk linked todos, notification routes, and widget/deep-link todo opens, so those entry points can cancel/archive without detouring through the editor
 - desktop web todo preview also exposes confirmed cancel/archive and hard-delete paths with explicit history semantics
 - built-in Wiki documents the current todo preview behavior, including completion-circle isolation, cancel/archive semantics, hard-delete semantics, and recurring-todo skip records
 - recurring task support

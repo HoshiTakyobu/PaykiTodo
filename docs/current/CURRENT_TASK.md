@@ -2,7 +2,7 @@
 
 ## Active Development Focus
 
-Active immediate task: continue the broader product/UX audit from the clean `1.13.25 / versionCode 273` baseline, using the previous reminder/Planning Desk goal as the latest verified work package:
+Active immediate task: continue the broader product/UX audit from the `1.13.26 / versionCode 274` local patch baseline, using the previous reminder/Planning Desk goal as the latest verified work package:
 
 - `docs/goals/2026-06-01-paykitodo-reminder-ongoing-planning-ux-goal.md`
 
@@ -79,3 +79,11 @@ Current follow-up behavior:
 3. Built-in Wiki now documents recurring-todo single-instance delete as a non-history skip record.
 4. Version metadata moved to `1.13.25 / versionCode 273`; database version remains `27`.
 5. Verification passed: `node --check app/src/main/assets/desktop-web/app.js`, `./gradlew.bat :app:compileDebugKotlin`, `./gradlew.bat :app:testDebugUnitTest`, `git diff --check`, `./gradlew.bat :app:assembleDebug`, and APK metadata check for `versionName = 1.13.25`, `versionCode = 273`.
+
+Current local follow-up patch:
+
+1. Phone search results, Planning Desk linked todos, notification routes, and widget/deep-link todo opens now use the shared todo details preview surface instead of bypassing preview.
+2. That preview exposes cancel/archive from these entry points, keeping cancel as a history-preserving archive action and delete as hard deletion.
+3. The preview top action now uses an explicit `取消归档` text button instead of only a close icon.
+4. Version metadata moved to `1.13.26 / versionCode 274`; database version remains `27`.
+5. Verification passed: `node --check app/src/main/assets/desktop-web/app.js`, `./gradlew.bat :app:compileDebugKotlin`, `./gradlew.bat :app:testDebugUnitTest`, `git diff --check`, `./gradlew.bat :app:assembleDebug`, and APK metadata check for `versionName = 1.13.26`, `versionCode = 274`.

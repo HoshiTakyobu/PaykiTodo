@@ -588,8 +588,14 @@ internal fun TodoDetailsDialog(
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
                     onCancel?.let {
-                        IconButton(onClick = requestCancel) {
-                            Icon(Icons.Rounded.Close, contentDescription = "取消待办并归档", tint = Color(0xFFD97706))
+                        TextButton(onClick = requestCancel) {
+                            Icon(
+                                Icons.Rounded.Close,
+                                contentDescription = null,
+                                modifier = Modifier.size(18.dp),
+                                tint = Color(0xFFD97706)
+                            )
+                            Text("取消归档", color = Color(0xFFD97706), fontWeight = FontWeight.SemiBold)
                         }
                     }
                     onDelete?.let {

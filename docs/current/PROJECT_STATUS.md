@@ -8,8 +8,8 @@
 - Target platform: Android 14 / API 34
 - License: MIT License (`LICENSE`)
 - Current version in code:
-  - `versionName = "1.13.25"`
-  - `versionCode = 273`
+  - `versionName = "1.13.26"`
+  - `versionCode = 274`
   - database version = `27`
 
 ## Current Build Facts
@@ -22,7 +22,18 @@
 - Latest GitHub Release:
   - `https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.13.11`
 - Latest fully built debug APK:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.13.25-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.13.26-debug.apk`
+- Current `1.13.26 / versionCode 274` status:
+  - Phone search results, Planning Desk linked todos, notification routes, and widget/deep-link todo opens now share the same todo details preview surface instead of jumping straight to the editor or relying on current list membership.
+  - The shared todo details preview exposes cancel/archive, hard delete, edit, and restore where applicable; the top action now uses an explicit `取消归档` text button so archive is not confused with closing the sheet.
+  - Planning Desk linked events still route to Calendar preview, while linked todos open the todo preview first.
+  - Database version remains `27`; no schema migration was added.
+  - `node --check app/src/main/assets/desktop-web/app.js` passed.
+  - `./gradlew.bat :app:compileDebugKotlin` passed.
+  - `./gradlew.bat :app:testDebugUnitTest` passed.
+  - `./gradlew.bat :app:assembleDebug` passed.
+  - `git diff --check` passed.
+  - Debug APK metadata confirms `versionName = 1.13.26`, `versionCode = 274`, output `PaykiTodo-1.13.26-debug.apk`.
 - Current `1.13.25 / versionCode 273` status:
   - Built-in Wiki todo-preview instructions now match the current UI: card body opens details, left circle completes, and details expose cancel/archive, delete, and edit.
   - Built-in Wiki explicitly distinguishes cancel/archive from hard delete and documents recurring-todo single-instance delete as a non-history skip record.

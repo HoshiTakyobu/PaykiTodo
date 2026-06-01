@@ -98,6 +98,7 @@ When reconstructing PaykiTodo state, use this priority order:
 
 ## Recent Repository-Native Updates
 
+- `1.13.26` unified phone-side todo preview entry points: search results, Planning Desk linked todos, notification routes, and widget/deep-link todo opens now land in the same detail preview that exposes cancel/archive, hard delete, edit, and restore where applicable. Planning Desk linked events continue routing to Calendar preview, while linked todos no longer jump straight into the editor.
 - `1.13.25` updated the built-in Wiki and current handoff docs to match the implemented quick-preview behavior: todo card bodies open details, the left circle completes only, cancel is labeled as archive/history, hard delete does not enter history, and recurring-todo single-instance delete is documented as a non-history skip record.
 - `1.13.24` corrected todo cancel/delete semantics in quick previews and desktop Web previews, routed recurring todo delete through hard-delete paths instead of cancel/archive, added the `recurring_instance_skips` table for single-instance recurring-todo deletion, and included those skip records in backup / restore.
 - `1.13.21` fixed two correctness bugs: Planning Desk inline DDL dates such as `5.29 【DDL】...` / `5.29【DDL】...` now beat the note document date and clean DDL markers from the title, while recurring todo/event `整个循环系列` edits preserve a user-selected new start date and replace stale templates before rebuilding future instances.

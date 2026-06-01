@@ -2,7 +2,7 @@
 
 ## Active Development Focus
 
-Active immediate task: continue the broader product/UX audit from the `1.13.45 / versionCode 293` local patch baseline, using the previous reminder/Planning Desk goal as the latest verified work package:
+Active immediate task: finish the Desktop Web `review.xls` 周历导入 round from the `1.13.46 / versionCode 294` local patch baseline, using the previous reminder/Planning Desk goal as the latest verified work package:
 
 - `docs/goals/2026-06-01-paykitodo-reminder-ongoing-planning-ux-goal.md`
 
@@ -10,7 +10,17 @@ Do not commit secrets, signing material, API keys, private Base URLs, generated 
 
 ## Current Round Scope
 
-The user reported four active usability / correctness failures:
+The current user request is to let the computer-side PaykiTodo console read a local weekly Excel timetable such as `G:\PlanGit\review.xls`, preview parsed schedule items, and import only the confirmed non-duplicate events into the phone database.
+
+Important constraints:
+
+1. Do not modify or save `G:\PlanGit\review.xls`.
+2. Do not invoke `存个档.bat` or `Core.ps1`.
+3. Do not archive the Excel file and do not set the Windows desktop wallpaper.
+4. Browser security means the web console cannot silently read `G:\PlanGit\review.xls`; the current implementation uses a manual file picker and then parses the selected file locally in the browser.
+5. Duplicates already in PaykiTodo or repeated inside Excel must be marked and skipped unless they are genuinely new candidates.
+
+Historical usability / correctness failures from the broader audit:
 
 1. Todo and schedule reminders do not reliably open the full-screen reminder surface when the reminder time arrives.
 2. A schedule that is currently happening should remain visible in the Android notification shade as a non-dismissible ongoing notification until the event ends or is otherwise cleared.
@@ -90,6 +100,8 @@ Completed behavior so far:
 13. In `1.13.43`, phone todo quick-preview bottom fixed actions include `取消归档` beside edit/delete actions, keeping cancel/archive reachable in the preview's primary action area.
 14. In `1.13.45`, phone todo quick-preview bottom fixed actions promote `取消并归档` to a full-width archive card above edit/delete, making the history-preserving cancel path easier to see and less confusable with hard delete.
 15. In `1.13.45`, Desktop Web Planning Desk recognition preview uses weekday chips for weekly recurrence candidates and clears hidden weekly-day state when candidates are changed away from weekly recurrence.
+16. In `1.13.46`, Desktop Web 日程时间轴 adds a `周历 Excel 导入` card that parses selected weekly Excel files, previews candidate events, marks duplicates, and imports only selected confirmed items.
+17. In `1.13.46`, validation passed: `node --check app/src/main/assets/desktop-web/app.js`, local `review.xls` parse smoke test, `git diff --check`, `compileDebugKotlin`, `testDebugUnitTest`, `assembleDebug`, and APK metadata check for `versionName = 1.13.46`, `versionCode = 294`.
 5. Recurring todo range delete now uses the hard-delete path instead of cancel/archive.
 6. Recurring todo current-instance delete records a `recurring_instance_skips` exception and then hard-deletes the row, so the occurrence does not enter history and does not regenerate.
 7. Backup / restore includes `recurring_instance_skips`, so single-instance recurring-todo deletions survive restore.

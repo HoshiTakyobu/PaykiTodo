@@ -10,6 +10,7 @@ This project also depends on third-party open-source components, including but n
 - Kotlin and kotlinx.coroutines
 - JUnit
 - org.json
+- SheetJS `xlsx` browser bundle, Apache License 2.0, vendored for Desktop Web local Excel parsing at `app/src/main/assets/desktop-web/vendor/xlsx.full.min.js`; license text is kept at `app/src/main/assets/desktop-web/vendor/xlsx.LICENSE.txt`
 
 Those dependencies remain governed by their own upstream licenses. Before redistributing modified builds, verify the exact dependency tree and license metadata from Gradle.
 

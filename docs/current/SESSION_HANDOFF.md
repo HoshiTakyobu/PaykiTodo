@@ -5,23 +5,32 @@
 - Repository root: `G:\Workspace\Project\PaykiTodo`
 - Branch: `main`
 - Current code version:
-  - `versionName = 1.13.45`
-  - `versionCode = 293`
+  - `versionName = 1.13.46`
+  - `versionCode = 294`
   - database version = `27`
 - Latest debug APK target in this round:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.13.45-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.13.46-debug.apk`
 - Latest signed release APK available locally:
   - `app/build/outputs/apk/release/PaykiTodo-1.13.11-release.apk`
 - Latest GitHub Release:
   - `https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.13.11`
 - Debug APK metadata inspection:
-  - `versionName = 1.13.45`, `versionCode = 293`
+  - `versionName = 1.13.46`, `versionCode = 294`
 
 ## Active Goal
 
-Active immediate task: continue the broader product/UX audit from the current `1.13.45 / versionCode 293` local patch baseline.
+Active immediate task: finish and verify the Desktop Web `review.xls` 周历导入 feature from the current `1.13.46 / versionCode 294` local patch baseline.
 
-Latest status: `1.13.45` makes phone todo quick-preview cancel/archive a full-width fixed bottom action above edit/delete, and brings Desktop Web Planning Desk recognition preview weekly recurrence editing to the same weekday-chip interaction. Debug build and metadata inspection passed.
+Latest status: `1.13.46` adds a Desktop Web schedule import card for local `review.xls` / `.xlsx` weekly tables. The browser reads the selected Excel file only after the user chooses it, previews parsed events, marks duplicates, and imports selected items only after explicit confirmation. Debug build and metadata inspection passed.
+
+## What Changed In The Latest 1.13.46 Patch
+
+1. Desktop Web 日程时间轴新增 `周历 Excel 导入` 卡片，可选择本地 `review.xls` / `.xlsx` 并生成候选日程预览。
+2. 解析规则读取第 1 行附近的日期表头、最左侧节次时间；单元格内显式时间段优先，合并单元格按合并区域末行推断结束时间。
+3. 导入前必须勾选候选并确认；已存在于 PaykiTodo 或 Excel 内重复的候选会被标记为重复并自动取消选择。
+4. 该功能只读 Excel 文件，不修改 `G:\PlanGit\review.xls`，不触发 `存个档.bat` / `Core.ps1`，不归档，也不设置桌面壁纸。
+5. Version metadata moved to `1.13.46 / versionCode 294`; database version remains `27`.
+6. Verification passed: `node --check app/src/main/assets/desktop-web/app.js`, local `review.xls` parse smoke test, `git diff --check`, `./gradlew.bat :app:compileDebugKotlin`, `./gradlew.bat :app:testDebugUnitTest`, `./gradlew.bat :app:assembleDebug`, and APK metadata inspection confirmed `versionName = 1.13.46`, `versionCode = 294`.
 
 ## What Changed In The Latest 1.13.45 Patch
 

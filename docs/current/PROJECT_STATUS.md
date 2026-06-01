@@ -8,8 +8,8 @@
 - Target platform: Android 14 / API 34
 - License: MIT License (`LICENSE`)
 - Current version in code:
-  - `versionName = "1.13.45"`
-  - `versionCode = 293`
+  - `versionName = "1.13.46"`
+  - `versionCode = 294`
   - database version = `27`
 
 ## Current Build Facts
@@ -22,7 +22,13 @@
 - Latest GitHub Release:
   - `https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.13.11`
 - Latest fully built debug APK:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.13.45-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.13.46-debug.apk`
+- Current `1.13.46 / versionCode 294` status:
+  - Desktop Web 日程时间轴新增 `周历 Excel 导入` 卡片，电脑端选择本地 `review.xls` / `.xlsx` 后可以只读解析候选日程。
+  - 周历导入按表头日期和左侧节次时间推断日程起止；单元格内显式时间段优先，合并单元格按合并区域末行推断结束时间。
+  - 导入前必须在预览里勾选并确认；已存在于 PaykiTodo 或 Excel 内重复的候选会自动标记并取消选择，避免重复添加。
+  - 浏览器不能自动读取 `G:\PlanGit\review.xls`，当前必须手动选择文件；PaykiTodo 不修改 Excel、不归档、不设置壁纸。
+  - Verification passed: `node --check app/src/main/assets/desktop-web/app.js`, local `review.xls` parse smoke test, `git diff --check`, `./gradlew.bat :app:compileDebugKotlin`, `./gradlew.bat :app:testDebugUnitTest`, `./gradlew.bat :app:assembleDebug`, and APK metadata check for `versionName = 1.13.46`, `versionCode = 294`.
 - Current `1.13.45 / versionCode 293` status:
   - Phone todo quick-preview bottom fixed actions now show `取消并归档` as a full-width archive action card above edit/delete, so cancel/archive is reachable and visually separate from hard delete in the small preview sheet.
   - Desktop Web Planning Desk recognition/import preview now uses compact weekday multi-select chips for weekly recurrence candidates instead of requiring manual `1,3,5` text input.

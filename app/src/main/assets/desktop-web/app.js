@@ -54,7 +54,14 @@ const state = {
   eventCheckInLoadSerial: 0,
   desktopHeartbeatTimer: null,
   editingTodoOriginalRecurring: false,
-  editingEventOriginalRecurring: false
+  editingEventOriginalRecurring: false,
+  reviewImport: {
+    fileName: '',
+    candidates: [],
+    existingEvents: [],
+    rangeStart: null,
+    rangeEnd: null
+  }
 };
 
 const els = {
@@ -84,7 +91,12 @@ const els = {
   planningRootInput: document.getElementById('planning-root-input'),
   planningActiveTitle: document.getElementById('planning-active-title'),
   planningPreview: document.getElementById('planning-preview'),
-  planningPreviewMeta: document.getElementById('planning-preview-meta')
+  planningPreviewMeta: document.getElementById('planning-preview-meta'),
+  reviewXlsFile: document.getElementById('review-xls-file'),
+  reviewXlsParse: document.getElementById('review-xls-parse'),
+  reviewXlsImport: document.getElementById('review-xls-import'),
+  reviewXlsMeta: document.getElementById('review-xls-meta'),
+  reviewXlsPreview: document.getElementById('review-xls-preview')
 };
 
 function headers() {
@@ -126,6 +138,469 @@ function addDays(key, delta) {
 
 function formatWeekday(date) {
   return ['周日', '周一', '周二', '周三', '周四', '周五', '周六'][date.getDay()];
+}
+
+function normalizeReviewText(value) {
+  return String(value || '')
+    .replace(/\r\n/g, '\n')
+    .replace(/\r/g, '\n')
+    .replace(/\u00a0/g, ' ')
+    .replace(/：/g, ':')
+    .replace(/，/g, ',')
+    .replace(/[－–—]/g, '-')
+    .trim();
+}
+
+function parseReviewTimeRange(value) {
+  const text = normalizeReviewText(value);
+  const match = text.match(/(\d{1,2})\s*:\s*(\d{2})\s*(?:-|~|～|至|到)\s*(\d{1,2})\s*:\s*(\d{2})/);
+  if (!match) return null;
+  const startHour = Number(match[1]);
+  const startMinute = Number(match[2]);
+  const endHour = Number(match[3]);
+  const endMinute = Number(match[4]);
+  if (
+    startHour < 0 || startHour > 23 ||
+    endHour < 0 || endHour > 23 ||
+    startMinute < 0 || startMinute > 59 ||
+    endMinute < 0 || endMinute > 59
+  ) return null;
+  return {
+    start: { hour: startHour, minute: startMinute },
+    end: { hour: endHour, minute: endMinute },
+    matchedText: match[0]
+  };
+}
+
+function parseReviewDateHeader(value) {
+  const text = normalizeReviewText(value);
+  const match = text.match(/(\d{1,2})\s*(?:\/|\.|-|月)\s*(\d{1,2})/);
+  if (!match) return null;
+  const month = Number(match[1]);
+  const day = Number(match[2]);
+  if (month < 1 || month > 12 || day < 1 || day > 31) return null;
+  return { month, day, label: text };
+}
+
+function inferReviewDateColumns(rows) {
+  let headerRow = -1;
+  let parsedHeaders = [];
+  for (let r = 0; r < Math.min(rows.length, 8); r += 1) {
+    const parsed = (rows[r] || [])
+      .map((value, column) => ({ ...(parseReviewDateHeader(value) || {}), column }))
+      .filter(item => item.month);
+    if (parsed.length >= 2) {
+      headerRow = r;
+      parsedHeaders = parsed;
+      break;
+    }
+  }
+  if (headerRow < 0) return { headerRow: -1, columns: [] };
+
+  const now = new Date();
+  let year = now.getFullYear();
+  const first = parsedHeaders[0];
+  let firstDate = new Date(year, first.month - 1, first.day);
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const diffDays = (firstDate.getTime() - today.getTime()) / (24 * 60 * 60 * 1000);
+  if (diffDays < -180) year += 1;
+  if (diffDays > 180) year -= 1;
+
+  const columns = [];
+  let previousDate = null;
+  parsedHeaders.forEach(item => {
+    let date = new Date(year, item.month - 1, item.day);
+    while (previousDate && date.getTime() < previousDate.getTime()) {
+      year += 1;
+      date = new Date(year, item.month - 1, item.day);
+    }
+    previousDate = date;
+    columns.push({
+      column: item.column,
+      date,
+      key: dayKey(date),
+      label: item.label
+    });
+  });
+  return { headerRow, columns };
+}
+
+function pad2(value) {
+  return String(value).padStart(2, '0');
+}
+
+function reviewDateTimeLocal(dateKey, time) {
+  return dateKey + 'T' + pad2(time.hour) + ':' + pad2(time.minute);
+}
+
+function reviewMillis(value) {
+  return new Date(value).getTime();
+}
+
+function normalizeReviewLocation(value) {
+  return normalizeReviewText(value)
+    .replace(/^[@＠]+/, '')
+    .replace(/^["“”'‘’]+|["“”'‘’]+$/g, '')
+    .trim();
+}
+
+function normalizeReviewKeyText(value) {
+  return normalizeReviewText(value)
+    .replace(/\s+/g, '')
+    .replace(/^[@＠]+/, '')
+    .toLowerCase();
+}
+
+function looksLikeReviewLocation(value) {
+  return /[@＠]|楼|室|馆|门|场|厅|房|中心|活动|教室|实验|校区|园|B\d|A\d|C\d|Room/i.test(value || '');
+}
+
+function parseReviewCellContent(rawValue) {
+  const original = normalizeReviewText(rawValue);
+  const timeRange = parseReviewTimeRange(original);
+  const quotedLocations = [];
+  original.replace(/["“”'‘’]\s*(@?[^"“”'‘’]+?)\s*["“”'‘’]/g, (_, location) => {
+    quotedLocations.push(location);
+    return '';
+  });
+
+  const parenthetical = [];
+  original.replace(/[（(]([^（）()]*)[）)]/g, (_, inner) => {
+    parenthetical.push(inner);
+    return '';
+  });
+
+  let location = quotedLocations.map(normalizeReviewLocation).find(Boolean) || '';
+  const notes = [];
+  parenthetical.forEach(inner => {
+    const cleaned = normalizeReviewText(inner).replace(/(\d{1,2})\s*:\s*(\d{2})\s*(?:-|~|～|至|到)\s*(\d{1,2})\s*:\s*(\d{2})/, ' ');
+    const parts = cleaned.split(/[,，\n]/).map(part => normalizeReviewText(part)).filter(Boolean);
+    if (!location && parts.length) {
+      const last = parts[parts.length - 1];
+      if (timeRange || looksLikeReviewLocation(last)) {
+        location = normalizeReviewLocation(last);
+        parts.slice(0, -1).forEach(part => notes.push(part));
+        return;
+      }
+    }
+    parts.forEach(part => {
+      if (!location && looksLikeReviewLocation(part)) location = normalizeReviewLocation(part);
+      else if (part !== location) notes.push(part);
+    });
+  });
+
+  let title = original
+    .replace(/[（(][^（）()]*[）)]/g, ' ')
+    .replace(/["“”'‘’]\s*@?[^"“”'‘’]+?\s*["“”'‘’]/g, ' ')
+    .replace(/(\d{1,2})\s*:\s*(\d{2})\s*(?:-|~|～|至|到)\s*(\d{1,2})\s*:\s*(\d{2})/, ' ')
+    .replace(/^[,\s]+|[,\s]+$/g, ' ')
+    .trim();
+  const titleParts = title.split(/[,，]/).map(part => normalizeReviewText(part)).filter(Boolean);
+  if (titleParts.length > 1) {
+    const maybeLocation = titleParts[titleParts.length - 1];
+    if (!location && looksLikeReviewLocation(maybeLocation)) {
+      location = normalizeReviewLocation(maybeLocation);
+      title = titleParts.slice(0, -1).join(' ');
+    } else {
+      title = titleParts.join(' ');
+    }
+  }
+  title = normalizeReviewText(title).replace(/\s+/g, ' ');
+  return {
+    title,
+    location,
+    notes: [...new Set(notes.map(normalizeReviewText).filter(Boolean))].join('；'),
+    explicitTimeRange: timeRange
+  };
+}
+
+function reviewMergeStartingAt(merges, row, column) {
+  return (merges || []).find(merge => merge.s?.r === row && merge.s?.c === column) || null;
+}
+
+function parseReviewWorkbook(arrayBuffer, fileName) {
+  if (!window.XLSX) throw new Error('Excel 解析组件未加载，请刷新电脑端页面后重试');
+  const workbook = window.XLSX.read(arrayBuffer, { type: 'array', cellDates: false });
+  const sheetName = workbook.SheetNames[0];
+  if (!sheetName) throw new Error('Excel 文件里没有工作表');
+  const sheet = workbook.Sheets[sheetName];
+  const rows = window.XLSX.utils.sheet_to_json(sheet, { header: 1, raw: false, defval: '' });
+  const { headerRow, columns } = inferReviewDateColumns(rows);
+  if (headerRow < 0 || !columns.length) throw new Error('没有识别到周历日期表头，例如 5/28 或 5月28日');
+  const rowTimes = new Map();
+  rows.forEach((row, index) => {
+    const range = parseReviewTimeRange(row?.[0]);
+    if (range) rowTimes.set(index, range);
+  });
+
+  const candidates = [];
+  const merges = sheet['!merges'] || [];
+  for (let r = headerRow + 1; r < rows.length; r += 1) {
+    columns.forEach(columnInfo => {
+      const raw = rows[r]?.[columnInfo.column];
+      if (!normalizeReviewText(raw)) return;
+      const merge = reviewMergeStartingAt(merges, r, columnInfo.column);
+      const rowTime = rowTimes.get(r);
+      const endRowTime = rowTimes.get(merge?.e?.r ?? r) || rowTime;
+      const parsed = parseReviewCellContent(raw);
+      const effectiveRange = parsed.explicitTimeRange || (rowTime && endRowTime ? { start: rowTime.start, end: endRowTime.end } : null);
+      const startAt = effectiveRange ? reviewDateTimeLocal(columnInfo.key, effectiveRange.start) : null;
+      let endAt = effectiveRange ? reviewDateTimeLocal(columnInfo.key, effectiveRange.end) : null;
+      if (startAt && endAt && reviewMillis(endAt) <= reviewMillis(startAt)) {
+        const endDate = new Date(reviewMillis(endAt));
+        endDate.setDate(endDate.getDate() + 1);
+        endAt = dayKey(endDate) + 'T' + pad2(endDate.getHours()) + ':' + pad2(endDate.getMinutes());
+      }
+      const invalidReason = !parsed.title
+        ? '标题为空'
+        : !startAt || !endAt
+          ? '没有识别到时间段'
+          : null;
+      candidates.push({
+        id: 'review-' + candidates.length,
+        selected: !invalidReason,
+        duplicate: false,
+        duplicateReason: '',
+        invalidReason,
+        title: parsed.title || normalizeReviewText(raw),
+        location: parsed.location,
+        notes: parsed.notes,
+        startAt,
+        endAt,
+        dateKey: columnInfo.key,
+        sourceCell: window.XLSX.utils.encode_cell({ r, c: columnInfo.column }),
+        sourceFile: fileName || 'review.xls'
+      });
+    });
+  }
+  return { sheetName, columns, candidates };
+}
+
+function reviewCandidateKey(candidate) {
+  return [
+    reviewMillis(candidate.startAt),
+    reviewMillis(candidate.endAt),
+    normalizeReviewKeyText(candidate.title),
+    normalizeReviewKeyText(candidate.location)
+  ].join('|');
+}
+
+function reviewEventKey(eventItem) {
+  return [
+    Number(eventItem.startAtMillis || 0),
+    Number(eventItem.endAtMillis || 0),
+    normalizeReviewKeyText(eventItem.title),
+    normalizeReviewKeyText(eventItem.location)
+  ].join('|');
+}
+
+async function loadExistingReviewEvents(candidates) {
+  const valid = candidates.filter(item => !item.invalidReason && item.startAt && item.endAt);
+  if (!valid.length) return [];
+  const starts = valid.map(item => reviewMillis(item.startAt)).filter(Number.isFinite);
+  const ends = valid.map(item => reviewMillis(item.endAt)).filter(Number.isFinite);
+  const rangeStart = dayKey(new Date(Math.min(...starts)));
+  const rangeEnd = addDays(dayKey(new Date(Math.max(...ends))), 1);
+  const data = await api('/api/events?start=' + encodeURIComponent(rangeStart) + '&end=' + encodeURIComponent(rangeEnd));
+  state.reviewImport.rangeStart = rangeStart;
+  state.reviewImport.rangeEnd = rangeEnd;
+  return data.events || [];
+}
+
+function applyReviewDuplicateMarks(candidates, existingEvents) {
+  const existingKeys = new Set((existingEvents || []).filter(item => !(item.completed || item.canceled)).map(reviewEventKey));
+  const seen = new Set();
+  candidates.forEach(candidate => {
+    if (candidate.invalidReason) {
+      candidate.selected = false;
+      return;
+    }
+    const key = reviewCandidateKey(candidate);
+    if (existingKeys.has(key)) {
+      candidate.duplicate = true;
+      candidate.duplicateReason = '已存在于 PaykiTodo';
+      candidate.selected = false;
+      return;
+    }
+    if (seen.has(key)) {
+      candidate.duplicate = true;
+      candidate.duplicateReason = 'Excel 内重复';
+      candidate.selected = false;
+      return;
+    }
+    seen.add(key);
+  });
+}
+
+function renderReviewImportPreview() {
+  if (!els.reviewXlsPreview || !els.reviewXlsMeta) return;
+  const candidates = state.reviewImport.candidates || [];
+  const importable = candidates.filter(item => !item.invalidReason && !item.duplicate);
+  const selectedCount = importable.filter(item => item.selected).length;
+  if (els.reviewXlsImport) els.reviewXlsImport.disabled = selectedCount === 0;
+  if (!candidates.length) {
+    els.reviewXlsPreview.innerHTML = '';
+    return;
+  }
+  const duplicateCount = candidates.filter(item => item.duplicate).length;
+  const invalidCount = candidates.filter(item => item.invalidReason).length;
+  els.reviewXlsMeta.textContent = '已解析 ' + candidates.length + ' 条，' + importable.length + ' 条可导入，' + duplicateCount + ' 条重复，' + invalidCount + ' 条无效；当前选中 ' + selectedCount + ' 条。';
+  const actions = ''
+    + '<div class="review-import-actions">'
+    +   '<button type="button" class="ghost mini" data-review-select-all="true">全选可导入</button>'
+    +   '<button type="button" class="ghost mini" data-review-clear-all="true">全不选</button>'
+    + '</div>';
+  els.reviewXlsPreview.innerHTML = actions + candidates.map(candidate => {
+    const disabled = candidate.invalidReason || candidate.duplicate;
+    const badge = candidate.invalidReason ? ('无效：' + candidate.invalidReason) : candidate.duplicate ? ('重复：' + candidate.duplicateReason) : '可导入';
+    const meta = [
+      candidate.startAt && candidate.endAt ? (formatDateTimeLabel(reviewMillis(candidate.startAt)) + ' - ' + formatDateTimeLabel(reviewMillis(candidate.endAt))) : '时间未识别',
+      candidate.location ? ('地点：' + candidate.location) : '',
+      candidate.notes ? ('备注：' + candidate.notes) : '',
+      '来源：' + candidate.sourceFile + ' · ' + candidate.sourceCell
+    ].filter(Boolean).join(' · ');
+    return ''
+      + '<div class="review-candidate' + (candidate.duplicate ? ' duplicate' : '') + (candidate.invalidReason ? ' invalid' : '') + '">'
+      +   '<input type="checkbox" data-review-select="' + escapeHtml(candidate.id) + '"' + (candidate.selected ? ' checked' : '') + (disabled ? ' disabled' : '') + ' />'
+      +   '<div>'
+      +     '<div class="review-candidate-title">' + escapeHtml(candidate.title || '未命名日程') + '</div>'
+      +     '<div class="review-candidate-meta">' + escapeHtml(meta) + '</div>'
+      +   '</div>'
+      +   '<div class="review-candidate-badge">' + escapeHtml(badge) + '</div>'
+      + '</div>';
+  }).join('');
+}
+
+function resetReviewImportPreview(message) {
+  state.reviewImport.fileName = '';
+  state.reviewImport.candidates = [];
+  state.reviewImport.existingEvents = [];
+  state.reviewImport.rangeStart = null;
+  state.reviewImport.rangeEnd = null;
+  if (els.reviewXlsImport) els.reviewXlsImport.disabled = true;
+  if (els.reviewXlsPreview) els.reviewXlsPreview.innerHTML = '';
+  if (els.reviewXlsMeta) {
+    els.reviewXlsMeta.textContent = message || '未选择文件。浏览器安全限制下，网页不能自动读取 G:\\PlanGit\\review.xls，需要你手动选择一次文件。';
+  }
+}
+
+async function parseReviewXlsFile() {
+  if (!state.token) throw new Error('请先连接手机，再解析 review.xls');
+  const file = els.reviewXlsFile?.files?.[0];
+  if (!file) throw new Error('请先选择 review.xls 文件');
+  const arrayBuffer = await file.arrayBuffer();
+  const parsed = parseReviewWorkbook(arrayBuffer, file.name);
+  const existingEvents = await loadExistingReviewEvents(parsed.candidates);
+  applyReviewDuplicateMarks(parsed.candidates, existingEvents);
+  state.reviewImport.fileName = file.name;
+  state.reviewImport.candidates = parsed.candidates;
+  state.reviewImport.existingEvents = existingEvents;
+  renderReviewImportPreview();
+  els.status.textContent = '已解析 ' + file.name + '，请在预览中确认后导入';
+}
+
+async function importSelectedReviewEvents() {
+  const selected = (state.reviewImport.candidates || []).filter(item => item.selected && !item.invalidReason && !item.duplicate);
+  if (!selected.length) throw new Error('没有选中的可导入日程');
+  if (!await confirmDanger(
+    '确认导入周历日程',
+    '将向手机端新增 ' + selected.length + ' 条日程。Excel 文件不会被修改，也不会触发归档或设置桌面壁纸。',
+    '导入选中'
+  )) return;
+  for (const candidate of selected) {
+    const payload = {
+      title: candidate.title,
+      groupId: 0,
+      location: candidate.location || '',
+      notes: candidate.notes || '',
+      startAt: candidate.startAt,
+      endAt: candidate.endAt,
+      allDay: false,
+      accentColorHex: DEFAULT_EVENT_COLOR,
+      reminderOffsetsMinutes: [],
+      countdownEnabled: false,
+      checkInEnabled: false,
+      ringEnabled: false,
+      vibrateEnabled: false,
+      reminderDeliveryMode: 'NOTIFICATION',
+      scope: 'CURRENT',
+      recurrence: { enabled: false, type: 'NONE', weeklyDays: [], endDate: null }
+    };
+    await api('/api/events', { method: 'POST', body: JSON.stringify(payload) });
+    candidate.selected = false;
+    candidate.duplicate = true;
+    candidate.duplicateReason = '刚刚已导入';
+  }
+  renderReviewImportPreview();
+  await refreshAfterMutation();
+  els.status.textContent = '已从 review.xls 导入 ' + selected.length + ' 条日程';
+}
+
+function bindReviewImportControls() {
+  els.reviewXlsFile?.addEventListener('change', () => {
+    const file = els.reviewXlsFile?.files?.[0];
+    if (!file) {
+      resetReviewImportPreview();
+      return;
+    }
+    resetReviewImportPreview('已选择 ' + file.name + '。点击“解析预览”后会按表头日期和左侧节次时间生成候选；年份按距离今天最近的同月日推断。');
+  });
+  els.reviewXlsParse?.addEventListener('click', async () => {
+    const button = els.reviewXlsParse;
+    if (button) {
+      button.disabled = true;
+      button.textContent = '解析中';
+    }
+    try {
+      await parseReviewXlsFile();
+    } catch (error) {
+      resetReviewImportPreview(error.message || '解析 review.xls 失败');
+      els.status.textContent = error.message || '解析 review.xls 失败';
+    } finally {
+      if (button) {
+        button.disabled = false;
+        button.textContent = '解析预览';
+      }
+    }
+  });
+  els.reviewXlsImport?.addEventListener('click', async () => {
+    const button = els.reviewXlsImport;
+    if (button) {
+      button.disabled = true;
+      button.textContent = '导入中';
+    }
+    try {
+      await importSelectedReviewEvents();
+    } catch (error) {
+      els.status.textContent = error.message || '导入 review.xls 日程失败';
+    } finally {
+      if (button) {
+        button.textContent = '导入选中';
+      }
+      renderReviewImportPreview();
+    }
+  });
+  els.reviewXlsPreview?.addEventListener('change', event => {
+    const selectNode = event.target.closest?.('[data-review-select]');
+    if (!selectNode) return;
+    const candidate = (state.reviewImport.candidates || []).find(item => item.id === selectNode.dataset.reviewSelect);
+    if (!candidate || candidate.invalidReason || candidate.duplicate) return;
+    candidate.selected = selectNode.checked;
+    renderReviewImportPreview();
+  });
+  els.reviewXlsPreview?.addEventListener('click', event => {
+    if (event.target.closest?.('[data-review-select-all]')) {
+      (state.reviewImport.candidates || []).forEach(candidate => {
+        if (!candidate.invalidReason && !candidate.duplicate) candidate.selected = true;
+      });
+      renderReviewImportPreview();
+    } else if (event.target.closest?.('[data-review-clear-all]')) {
+      (state.reviewImport.candidates || []).forEach(candidate => {
+        candidate.selected = false;
+      });
+      renderReviewImportPreview();
+    }
+  });
 }
 
 function formatTimeLabel(millis) {
@@ -3668,4 +4143,5 @@ document.addEventListener('click', event => {
 
 bindDigitInputs();
 bindEventColorPresets();
+bindReviewImportControls();
 syncTopbar();

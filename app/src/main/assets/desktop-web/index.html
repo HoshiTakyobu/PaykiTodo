@@ -58,6 +58,19 @@
       </section>
 
       <section id="events-panel" class="tab">
+        <div class="card-panel review-import-panel">
+          <div class="panel-head">
+            <h2>周历 Excel 导入</h2>
+            <p class="muted">选择电脑本地的 <code>review.xls</code> 后，PaykiTodo 只读取表格内容并生成日程预览；不会修改 Excel、不会归档、不会设置桌面壁纸。</p>
+          </div>
+          <div class="review-import-controls">
+            <input id="review-xls-file" type="file" accept=".xls,.xlsx,.xlsm,.xlsb" />
+            <button id="review-xls-parse" class="mini">解析预览</button>
+            <button id="review-xls-import" class="mini" disabled>导入选中</button>
+          </div>
+          <div id="review-xls-meta" class="muted">未选择文件。浏览器安全限制下，网页不能自动读取 G:\PlanGit\review.xls，需要你手动选择一次文件。</div>
+          <div id="review-xls-preview" class="review-import-preview"></div>
+        </div>
         <div class="card-panel schedule-panel">
           <div class="schedule-head schedule-toolbar">
             <div>
@@ -470,6 +483,7 @@
       </div>
     </div>
   </div>
+  <script src="/vendor/xlsx.full.min.js?v=__PAYKI_VERSION__"></script>
   <script src="/app.js?v=__PAYKI_VERSION__"></script>
 </body>
 </html>

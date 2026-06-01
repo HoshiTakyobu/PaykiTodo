@@ -186,6 +186,7 @@ This file tracks the product at a practical level for new coding sessions.
 - event location / notes / color / reminder settings
 - Desktop Web event editor supports multi-line event titles, matching phone-side event title entry instead of forcing a single-line input
 - Desktop Web event editor exposes an explicit `启用提醒` switch; disabling it saves an empty reminder-offset list and disables reminder-dependent fields, while new events default to no reminder like the phone event editor
+- Desktop Web 日程时间轴 supports local weekly Excel import for `review.xls` / `.xlsx`: the browser reads the user-selected file only, parses date headers plus left-side time slots, lets internal cell time ranges override row times, handles merged-cell duration inference, previews candidates, marks existing / in-file duplicates, and imports only selected confirmed events without touching the Excel file or wallpaper workflow
 - event editor can mark important events as `倒数日`; the countdown target is the event start time and it appears on board / desktop / widget countdown surfaces
 - event editor exposes an optional `打卡追踪` switch under `日程标记`; moving an event preserves both countdown and check-in marker state
 - event data now supports optional check-in tracking fields and accumulated invested minutes; repository and desktop-sync APIs can create check-ins, check out active records, list event check-ins, and recompute total event investment time

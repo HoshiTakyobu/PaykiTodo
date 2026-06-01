@@ -2,7 +2,7 @@
 
 ## Active Development Focus
 
-Active immediate task: continue the broader product/UX audit from the `1.13.32 / versionCode 280` local patch baseline, using the previous reminder/Planning Desk goal as the latest verified work package:
+Active immediate task: continue the broader product/UX audit from the `1.13.33 / versionCode 281` local patch baseline, using the previous reminder/Planning Desk goal as the latest verified work package:
 
 - `docs/goals/2026-06-01-paykitodo-reminder-ongoing-planning-ux-goal.md`
 
@@ -136,3 +136,12 @@ Current reminder delivery policy follow-up patch:
 4. Unit coverage was added for notification mode, fullscreen mode, work-mode override, and alarm-mode override.
 5. Version metadata moved to `1.13.32 / versionCode 280`; database version remains `27`.
 6. Verification passed: `node --check app/src/main/assets/desktop-web/app.js`, `./gradlew.bat :app:compileDebugKotlin`, `./gradlew.bat :app:testDebugUnitTest`, `git diff --check`, `./gradlew.bat :app:assembleDebug`, and APK metadata check for `versionName = 1.13.32`, `versionCode = 280`.
+
+Current ongoing-event notification follow-up patch:
+
+1. OngoingEventReceiver no longer clears an ongoing notification blindly when an old end alarm fires.
+2. The end path now reloads the latest event state and re-schedules / re-posts the ongoing notification if the event was extended or moved and is still ongoing.
+3. The notification is cleared only when the latest event is gone, no longer an event, completed/canceled, or already ended.
+4. Unit coverage was added for extended events, ended events, history events, and non-event rows.
+5. Version metadata moved to `1.13.33 / versionCode 281`; database version remains `27`.
+6. Verification passed: `node --check app/src/main/assets/desktop-web/app.js`, `./gradlew.bat :app:compileDebugKotlin`, `./gradlew.bat :app:testDebugUnitTest`, `git diff --check`, `./gradlew.bat :app:assembleDebug`, and APK metadata check for `versionName = 1.13.33`, `versionCode = 281`.

@@ -213,6 +213,7 @@ This file tracks the product at a practical level for new coding sessions.
 - reminder delivery policy respects the per-item `通知栏提醒` / `全屏界面提醒` choice: notification-mode items no longer actively launch the full-screen reminder surface unless work mode or alarm mode explicitly overrides them
 - full-screen reminder relaunch paths now keep a short recent-surface cooldown, so ordinary app resume / accessibility window events do not repeatedly foreground the same reminder immediately after it was already shown while locked-screen forced overlay behavior remains available
 - full-screen event reminders can start an event check-in when `打卡追踪` is enabled
+- ongoing-event notification end broadcasts now re-check the current event state before clearing the notification, so a moved / extended event is not prematurely removed by an old end alarm
 - foreground service and fallback chain work
 - reboot / time change / timezone change recovery
 - accessibility fallback path

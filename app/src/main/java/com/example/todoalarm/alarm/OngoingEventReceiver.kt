@@ -26,7 +26,11 @@ class OngoingEventReceiver : BroadcastReceiver() {
                         }
                     }
                     OngoingEventNotifier.ACTION_END -> {
-                        OngoingEventNotifier.cancelAll(context.applicationContext, eventId)
+                        if (event == null) {
+                            OngoingEventNotifier.cancelAll(context.applicationContext, eventId)
+                        } else {
+                            OngoingEventNotifier.handleEnd(context.applicationContext, event)
+                        }
                     }
                 }
             } finally {

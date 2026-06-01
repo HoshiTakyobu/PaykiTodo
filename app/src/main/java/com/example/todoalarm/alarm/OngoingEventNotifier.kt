@@ -88,6 +88,14 @@ object OngoingEventNotifier {
         }
     }
 
+    fun handleEnd(context: Context, event: TodoItem) {
+        if (shouldRefreshOngoingEventAfterEndBroadcast(event, System.currentTimeMillis())) {
+            schedule(context, event)
+        } else {
+            cancelAll(context, event.id)
+        }
+    }
+
     fun post(context: Context, event: TodoItem) {
         val startMillis = event.startAtMillis ?: return
         if (!event.isEvent) return
@@ -222,4 +230,11 @@ object OngoingEventNotifier {
     fun notificationId(eventId: Long): Int {
         return NOTIFICATION_BASE_ID + AlarmScheduler.requestCodeFor(eventId, 0L)
     }
+}
+
+internal fun shouldRefreshOngoingEventAfterEndBroadcast(event: TodoItem, nowMillis: Long): Boolean {
+    val startMillis = event.startAtMillis ?: return false
+    if (!event.isEvent || event.isHistory) return false
+    val endMillis = (event.endAtMillis ?: startMillis).coerceAtLeast(startMillis)
+    return nowMillis < endMillis
 }

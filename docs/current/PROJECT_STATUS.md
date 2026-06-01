@@ -8,8 +8,8 @@
 - Target platform: Android 14 / API 34
 - License: MIT License (`LICENSE`)
 - Current version in code:
-  - `versionName = "1.13.27"`
-  - `versionCode = 275`
+  - `versionName = "1.13.28"`
+  - `versionCode = 276`
   - database version = `27`
 
 ## Current Build Facts
@@ -22,7 +22,18 @@
 - Latest GitHub Release:
   - `https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.13.11`
 - Latest fully built debug APK:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.13.27-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.13.28-debug.apk`
+- Current `1.13.28 / versionCode 276` status:
+  - Phone todo details quick preview now labels the top archive action as `取消待办` instead of the confusing `取消归档`, while the bottom action keeps `取消待办（归档）` to clarify that cancel enters history and delete does not.
+  - Todo quick previews opened from the Daily Board, search, Planning Desk linked items, notifications, and widgets keep cancel/delete available for active todos and hide them only for completed/canceled history todos.
+  - Desktop Web todo preview now also exposes a top `取消待办` action, so users do not need to scroll to the bottom action row to archive a todo from quick preview.
+  - Database version remains `27`; no schema migration was added.
+  - `node --check app/src/main/assets/desktop-web/app.js` passed.
+  - `./gradlew.bat :app:compileDebugKotlin` passed.
+  - `./gradlew.bat :app:testDebugUnitTest` passed after clearing a corrupted local KSP incremental cache caused by concurrent Gradle runs.
+  - `./gradlew.bat :app:assembleDebug` passed.
+  - `git diff --check` passed.
+  - Debug APK metadata confirms `versionName = 1.13.28`, `versionCode = 276`, output `PaykiTodo-1.13.28-debug.apk`.
 - Current `1.13.27 / versionCode 275` status:
   - Full-screen event reminders and accessibility overlay reminders no longer cancel the ongoing-event start/end alarms when the user taps `我知道了` or `签到`; they clear only the reminder artifacts and then preserve or reschedule the ongoing event notification.
   - Ongoing event notification IDs now use the same full item-ID hash request code as the alarm stack rather than `eventId % 10000`, reducing cross-event notification overwrite/cancel collisions.

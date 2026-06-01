@@ -1079,7 +1079,7 @@ internal fun DashboardBody(
                 previewTodoTarget = null
                 onEdit(item)
             },
-            onCancel = if (item.isHistory) {
+            onCancel = if (!item.isTodo || item.completed || item.canceled) {
                 null
             } else {
                 {
@@ -1087,7 +1087,7 @@ internal fun DashboardBody(
                     onCancelTodo(item)
                 }
             },
-            onDelete = if (item.isHistory) {
+            onDelete = if (!item.isTodo || item.completed || item.canceled) {
                 null
             } else {
                 {

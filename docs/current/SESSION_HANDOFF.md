@@ -5,24 +5,32 @@
 - Repository root: `G:\Workspace\Project\PaykiTodo`
 - Branch: `main`
 - Current code version:
-  - `versionName = 1.13.27`
-  - `versionCode = 275`
+  - `versionName = 1.13.28`
+  - `versionCode = 276`
   - database version = `27`
 - Latest debug APK target in this round:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.13.27-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.13.28-debug.apk`
 - Latest signed release APK available locally:
   - `app/build/outputs/apk/release/PaykiTodo-1.13.11-release.apk`
 - Latest GitHub Release:
   - `https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.13.11`
 - Debug APK metadata inspection:
-  - `versionName = 1.13.27`
-  - `versionCode = 275`
+  - `versionName = 1.13.28`
+  - `versionCode = 276`
 
 ## Active Goal
 
-Active immediate task: continue the broader product/UX audit from the current `1.13.27 / versionCode 275` local patch baseline.
+Active immediate task: continue the broader product/UX audit from the current `1.13.28 / versionCode 276` local patch baseline.
 
-Latest status: `1.13.27` fixes an ongoing-event notification regression discovered during the audit: acknowledging or signing into a full-screen event reminder no longer cancels the event's ongoing notification start/end alarms. The debug build and metadata inspection passed locally.
+Latest status: `1.13.28` makes todo quick-preview cancellation easier to find and clearer to understand. Phone preview top actions now say `取消待办`, active todo quick previews keep cancel/delete available from all shared entry points, and desktop Web preview has a top `取消待办` action. Debug build and metadata inspection passed locally.
+
+## What Changed In The Latest 1.13.28 Patch
+
+1. Phone todo details quick preview now labels the top archive action as `取消待办` instead of `取消归档`.
+2. Shared quick-preview entry points hide cancel/delete only for completed or canceled history todos, not for active todos opened from search, Planning Desk, notifications, widgets, or board links.
+3. Desktop Web todo preview now exposes a top `取消待办` action in addition to the bottom action row.
+4. Version metadata moved to `1.13.28 / versionCode 276`; database version remains `27`.
+5. Verification passed: `node --check app/src/main/assets/desktop-web/app.js`, `./gradlew.bat :app:compileDebugKotlin`, `./gradlew.bat :app:testDebugUnitTest`, `git diff --check`, `./gradlew.bat :app:assembleDebug`, and APK metadata inspection. The first concurrent unit-test attempt hit a corrupted local KSP cache; after stopping Gradle daemons and removing generated `app/build/kspCaches`, the sequential test run passed.
 
 ## What Changed In The Latest 1.13.27 Patch
 
@@ -37,7 +45,7 @@ Latest status: `1.13.27` fixes an ongoing-event notification regression discover
 
 1. Phone search results, Planning Desk linked todos, notification routes, and widget/deep-link todo opens now share the same todo details preview instead of jumping straight to the editor or depending on current list membership.
 2. The shared todo details preview exposes cancel/archive, hard delete, edit, and restore where applicable.
-3. The top preview action now says `取消归档` instead of showing only a close icon, reducing confusion between closing the sheet and archiving the todo.
+3. The top preview action was changed in `1.13.28` to say `取消待办`; this older patch first introduced a visible top archive action.
 4. Planning Desk linked events still route to Calendar preview, while linked todos open todo preview first.
 5. Version metadata moved to `1.13.26 / versionCode 274`; database version remains `27`.
 6. Verification passed: `node --check app/src/main/assets/desktop-web/app.js`, `./gradlew.bat :app:compileDebugKotlin`, `./gradlew.bat :app:testDebugUnitTest`, `git diff --check`, `./gradlew.bat :app:assembleDebug`, and APK metadata inspection.

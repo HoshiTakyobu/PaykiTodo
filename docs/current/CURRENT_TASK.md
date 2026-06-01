@@ -2,7 +2,7 @@
 
 ## Active Development Focus
 
-Active immediate task: continue the broader product/UX audit from the `1.13.27 / versionCode 275` local patch baseline, using the previous reminder/Planning Desk goal as the latest verified work package:
+Active immediate task: continue the broader product/UX audit from the `1.13.28 / versionCode 276` local patch baseline, using the previous reminder/Planning Desk goal as the latest verified work package:
 
 - `docs/goals/2026-06-01-paykitodo-reminder-ongoing-planning-ux-goal.md`
 
@@ -96,3 +96,11 @@ Current reminder/ongoing notification follow-up patch:
 4. Feature documentation now matches the implemented snooze policy for overdue/conflicting DDLs.
 5. Version metadata moved to `1.13.27 / versionCode 275`; database version remains `27`.
 6. Verification passed: `node --check app/src/main/assets/desktop-web/app.js`, `./gradlew.bat :app:compileDebugKotlin`, `./gradlew.bat :app:testDebugUnitTest`, `git diff --check`, `./gradlew.bat :app:assembleDebug`, and APK metadata check for `versionName = 1.13.27`, `versionCode = 275`.
+
+Current quick-preview cancellation follow-up patch:
+
+1. Phone todo details quick preview now says `取消待办` in the top action instead of the confusing `取消归档` wording.
+2. Shared quick-preview entry points keep cancel/delete available for active todos and hide them only for completed or canceled history todos.
+3. Desktop Web todo preview now has a top `取消待办` action, so cancel/archive can be used without scrolling to the bottom of the preview.
+4. Version metadata moved to `1.13.28 / versionCode 276`; database version remains `27`.
+5. Verification passed: `node --check app/src/main/assets/desktop-web/app.js`, `./gradlew.bat :app:compileDebugKotlin`, `./gradlew.bat :app:testDebugUnitTest`, `git diff --check`, `./gradlew.bat :app:assembleDebug`, and APK metadata check for `versionName = 1.13.28`, `versionCode = 276`.

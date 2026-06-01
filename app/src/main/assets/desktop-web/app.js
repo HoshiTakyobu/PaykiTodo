@@ -2691,6 +2691,7 @@ function openTodoPreview(item) {
   const body = document.getElementById('todo-preview-body');
   const completeButton = document.getElementById('preview-todo-complete');
   const cancelButton = document.getElementById('preview-todo-cancel');
+  const cancelTopButton = document.getElementById('preview-todo-cancel-top');
   if (!body) return;
   body.innerHTML = ''
     + '<div class="preview-title-row" style="--accent:' + accent + '">'
@@ -2707,6 +2708,7 @@ function openTodoPreview(item) {
   const inactive = item.completed || item.canceled;
   completeButton?.classList.toggle('hidden', inactive);
   cancelButton?.classList.toggle('hidden', inactive);
+  cancelTopButton?.classList.toggle('hidden', inactive);
   openModal('todo-preview-modal');
 }
 
@@ -3351,6 +3353,10 @@ document.getElementById('preview-todo-cancel').onclick = async () => {
   await api(`/api/items/${state.previewTodoId}/cancel${recurrenceScopeQueryForItem(todoItem)}`, { method: 'POST' });
   closeModal('todo-preview-modal');
   await refreshAfterMutation();
+};
+
+document.getElementById('preview-todo-cancel-top').onclick = async () => {
+  document.getElementById('preview-todo-cancel')?.click();
 };
 
 document.getElementById('preview-todo-delete').onclick = async () => {

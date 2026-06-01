@@ -790,7 +790,7 @@ fun DashboardScreen(
                 quickPreviewTodo = null
                 openTodoEditor(item)
             },
-            onCancel = if (item.isHistory) {
+            onCancel = if (!item.isTodo || item.completed || item.canceled) {
                 null
             } else {
                 {
@@ -798,7 +798,7 @@ fun DashboardScreen(
                     requestCancelTodo(item)
                 }
             },
-            onDelete = if (item.isHistory) {
+            onDelete = if (!item.isTodo || item.completed || item.canceled) {
                 null
             } else {
                 {

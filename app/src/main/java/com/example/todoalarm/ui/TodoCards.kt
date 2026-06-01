@@ -595,7 +595,7 @@ internal fun TodoDetailsDialog(
                                 modifier = Modifier.size(18.dp),
                                 tint = Color(0xFFD97706)
                             )
-                            Text("取消归档", color = Color(0xFFD97706), fontWeight = FontWeight.SemiBold)
+                            Text("取消待办", color = Color(0xFFD97706), fontWeight = FontWeight.SemiBold)
                         }
                     }
                     onDelete?.let {

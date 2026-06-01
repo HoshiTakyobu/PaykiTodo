@@ -5,23 +5,32 @@
 - Repository root: `G:\Workspace\Project\PaykiTodo`
 - Branch: `main`
 - Current code version:
-  - `versionName = 1.13.37`
-  - `versionCode = 285`
+  - `versionName = 1.13.38`
+  - `versionCode = 286`
   - database version = `27`
 - Latest debug APK target in this round:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.13.37-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.13.38-debug.apk`
 - Latest signed release APK available locally:
   - `app/build/outputs/apk/release/PaykiTodo-1.13.11-release.apk`
 - Latest GitHub Release:
   - `https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.13.11`
 - Debug APK metadata inspection:
-  - `versionName = 1.13.37`, `versionCode = 285`
+  - `versionName = 1.13.38`, `versionCode = 286`
 
 ## Active Goal
 
-Active immediate task: continue the broader product/UX audit from the current `1.13.37 / versionCode 285` local patch baseline.
+Active immediate task: continue the broader product/UX audit from the current `1.13.38 / versionCode 286` local patch baseline.
 
-Latest status: `1.13.37` aligns reminder-surface cancel wording with archive semantics: reminder UI and accessibility overlay now say `取消待办（归档）` instead of presenting cancel like a destructive delete action. Debug build and metadata inspection should be checked before handoff.
+Latest status: `1.13.38` finishes the active-todo cancel/archive wording pass by aligning the card long-press action sheet and confirmation sheets with the same `取消待办（归档）` / `取消并归档` language. Debug build and metadata inspection should be checked before handoff.
+
+## What Changed In The Latest 1.13.38 Patch
+
+1. Active todo card long-press action sheet now labels cancel as `取消待办（归档）`.
+2. Active todo cancel confirmation sheet title now says `取消待办（归档）`.
+3. Todo details preview cancel confirmation uses `取消并归档` as the confirm action.
+4. Cancel still archives into history; delete remains a separate hard-delete action.
+5. Version metadata moved to `1.13.38 / versionCode 286`; database version remains `27`.
+6. Verification target: `./gradlew.bat :app:compileDebugKotlin`, `./gradlew.bat :app:testDebugUnitTest`, `git diff --check`, `./gradlew.bat :app:assembleDebug`, and APK metadata inspection.
 
 ## What Changed In The Latest 1.13.37 Patch
 

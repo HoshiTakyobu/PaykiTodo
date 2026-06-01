@@ -194,7 +194,7 @@ internal fun ActiveTodoCard(
                 )
                 TodoActionRow(
                     icon = Icons.Rounded.Close,
-                    title = "取消待办",
+                    title = "取消待办（归档）",
                     tint = Color(0xFFD97706),
                     onClick = {
                         showActionSheet = false
@@ -216,9 +216,9 @@ internal fun ActiveTodoCard(
 
     if (showCancelConfirm) {
         PaykiDecisionBottomSheet(
-            title = "取消待办",
+            title = "取消待办（归档）",
             message = "取消后会进入历史记录，后续提醒会停止；删除则会直接移除，不进入历史记录。",
-            confirmLabel = "取消待办",
+            confirmLabel = "取消并归档",
             confirmLabelColor = Color(0xFFD97706),
             onDismiss = { showCancelConfirm = false },
             onConfirm = {
@@ -674,9 +674,9 @@ internal fun TodoDetailsDialog(
 
     if (confirmCancel && onCancel != null) {
         PaykiDecisionBottomSheet(
-            title = "取消待办",
+            title = "取消待办（归档）",
             message = "取消后会停止提醒，并进入历史记录；这不是删除，后续可以在历史记录里查看。",
-            confirmLabel = "取消待办",
+            confirmLabel = "取消并归档",
             confirmLabelColor = Color(0xFFD97706),
             onDismiss = { confirmCancel = false },
             onConfirm = {

@@ -8,8 +8,8 @@
 - Target platform: Android 14 / API 34
 - License: MIT License (`LICENSE`)
 - Current version in code:
-  - `versionName = "1.13.37"`
-  - `versionCode = 285`
+  - `versionName = "1.13.38"`
+  - `versionCode = 286`
   - database version = `27`
 
 ## Current Build Facts
@@ -22,7 +22,12 @@
 - Latest GitHub Release:
   - `https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.13.11`
 - Latest fully built debug APK:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.13.37-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.13.38-debug.apk`
+- Current `1.13.38 / versionCode 286` status:
+  - Active todo long-press action sheets now label cancel as `取消待办（归档）`.
+  - Todo cancel confirmation sheets now use `取消待办（归档）` as the title and `取消并归档` as the confirm action, keeping cancel/archive distinct from hard delete.
+  - Database version remains `27`; no schema migration was added.
+  - Verification target: `./gradlew.bat :app:compileDebugKotlin`, `./gradlew.bat :app:testDebugUnitTest`, `git diff --check`, `./gradlew.bat :app:assembleDebug`, and APK metadata check.
 - Current `1.13.37 / versionCode 285` status:
   - Todo reminder full-screen UI now labels cancel as `取消待办（归档）` and uses archive-orange styling instead of delete-red styling.
   - Accessibility fallback reminder overlay uses the same `取消待办（归档）` wording and tells the user the todo was canceled and archived.

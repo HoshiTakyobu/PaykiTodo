@@ -8,8 +8,8 @@
 - Target platform: Android 14 / API 34
 - License: MIT License (`LICENSE`)
 - Current version in code:
-  - `versionName = "1.13.29"`
-  - `versionCode = 277`
+  - `versionName = "1.13.30"`
+  - `versionCode = 278`
   - database version = `27`
 
 ## Current Build Facts
@@ -22,7 +22,16 @@
 - Latest GitHub Release:
   - `https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.13.11`
 - Latest fully built debug APK:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.13.29-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.13.30-debug.apk`
+- Current `1.13.30 / versionCode 278` status:
+  - Phone Planning Desk recognition preview batch setting `全部加入倒数日` now applies to selected event candidates as well as selected DDL-backed todo candidates, matching the per-candidate countdown capability.
+  - Database version remains `27`; no schema migration was added.
+  - `node --check app/src/main/assets/desktop-web/app.js` passed.
+  - `./gradlew.bat :app:compileDebugKotlin` passed.
+  - `./gradlew.bat :app:testDebugUnitTest` passed.
+  - `./gradlew.bat :app:assembleDebug` passed.
+  - `git diff --check` passed.
+  - Debug APK metadata confirms `versionName = 1.13.30`, `versionCode = 278`, output `PaykiTodo-1.13.30-debug.apk`.
 - Current `1.13.29 / versionCode 277` status:
   - Desktop Web Planning Desk event candidates now expose `打卡追踪` in recognition preview, matching the phone Planning Desk preview option and reusing the existing `checkInEnabled` import field.
   - Database version remains `27`; no schema migration was added.

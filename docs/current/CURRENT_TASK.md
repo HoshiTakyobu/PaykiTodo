@@ -2,7 +2,7 @@
 
 ## Active Development Focus
 
-Active immediate task: continue the broader product/UX audit from the `1.13.29 / versionCode 277` local patch baseline, using the previous reminder/Planning Desk goal as the latest verified work package:
+Active immediate task: continue the broader product/UX audit from the `1.13.30 / versionCode 278` local patch baseline, using the previous reminder/Planning Desk goal as the latest verified work package:
 
 - `docs/goals/2026-06-01-paykitodo-reminder-ongoing-planning-ux-goal.md`
 
@@ -111,3 +111,10 @@ Current Planning Desk desktop parity follow-up patch:
 2. The option reuses the existing `checkInEnabled` candidate field and import backend, so no data migration is needed.
 3. Version metadata moved to `1.13.29 / versionCode 277`; database version remains `27`.
 4. Verification passed: `node --check app/src/main/assets/desktop-web/app.js`, `./gradlew.bat :app:compileDebugKotlin`, `./gradlew.bat :app:testDebugUnitTest`, `git diff --check`, `./gradlew.bat :app:assembleDebug`, and APK metadata check for `versionName = 1.13.29`, `versionCode = 277`.
+
+Current Planning Desk batch countdown follow-up patch:
+
+1. Phone Planning Desk recognition preview batch setting `全部加入倒数日` now also applies to selected event candidates.
+2. DDL-backed todo candidates continue to be supported; no-DDL todos remain excluded.
+3. Version metadata moved to `1.13.30 / versionCode 278`; database version remains `27`.
+4. Verification passed: `node --check app/src/main/assets/desktop-web/app.js`, `./gradlew.bat :app:compileDebugKotlin`, `./gradlew.bat :app:testDebugUnitTest`, `git diff --check`, `./gradlew.bat :app:assembleDebug`, and APK metadata check for `versionName = 1.13.30`, `versionCode = 278`.

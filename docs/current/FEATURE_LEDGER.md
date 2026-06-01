@@ -112,7 +112,7 @@ This file tracks the product at a practical level for new coding sessions.
 - natural schedule import can create both a calendar event and a linked todo whose DDL equals the event end time
 - planning import is preview-first and selection-based, not immediate database writes; import is disabled until at least one valid candidate is selected
 - planning preview cards are editable before import for title, group, notes, DDL/start/end times, mixed reminder input, and event linked-todo creation; preview has select-all / clear-all controls
-- planning recognition preview has a collapsible batch-settings area that can apply countdown, linked-todo creation, check-in, and unified group changes to the currently selected candidates
+- planning recognition preview has a collapsible batch-settings area that can apply countdown to selected events / DDL-backed todos, linked-todo creation, check-in, and unified group changes to the currently selected candidates
 - successful planning import appends `#imported` to imported source lines and immediately saves the active planning note to reduce duplicate imports
 - imported planning lines now also create stable `planning_line_mappings` entries that link the source line to the created todo/event item
 - mapping relocation uses normalized fingerprints plus fuzzy text matching, so the planning linkage is not purely a stored line number

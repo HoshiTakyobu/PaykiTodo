@@ -3183,15 +3183,18 @@ private fun PlanningPreviewSheet(
                 }
                 if (batchExpanded) {
                     val selectedCandidates = candidates.filter { selectedIds[it.id] == true }
-                    val selectedTodoCountdownCandidates = selectedCandidates.filter { it.type == PlanningParsedType.TODO && it.dueAt != null }
+                    val selectedCountdownCandidates = selectedCandidates.filter { candidate ->
+                        candidate.type == PlanningParsedType.EVENT ||
+                            (candidate.type == PlanningParsedType.TODO && candidate.dueAt != null)
+                    }
                     val selectedEventCandidates = selectedCandidates.filter { it.type == PlanningParsedType.EVENT }
                     PlanningBatchSwitchRow(
                         title = "全部加入倒数日",
-                        summary = "只影响已勾选且带 DDL 的待办候选",
-                        checked = selectedTodoCountdownCandidates.isNotEmpty() && selectedTodoCountdownCandidates.all { it.countdownEnabled },
-                        enabled = selectedTodoCountdownCandidates.isNotEmpty(),
+                        summary = "影响已勾选的日程，以及带 DDL 的待办候选",
+                        checked = selectedCountdownCandidates.isNotEmpty() && selectedCountdownCandidates.all { it.countdownEnabled },
+                        enabled = selectedCountdownCandidates.isNotEmpty(),
                         onCheckedChange = { checked ->
-                            selectedTodoCountdownCandidates.forEach { candidate ->
+                            selectedCountdownCandidates.forEach { candidate ->
                                 onCandidateChange(candidate.copy(countdownEnabled = checked))
                             }
                         }

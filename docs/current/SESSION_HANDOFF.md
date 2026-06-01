@@ -5,24 +5,31 @@
 - Repository root: `G:\Workspace\Project\PaykiTodo`
 - Branch: `main`
 - Current code version:
-  - `versionName = 1.13.29`
-  - `versionCode = 277`
+  - `versionName = 1.13.30`
+  - `versionCode = 278`
   - database version = `27`
 - Latest debug APK target in this round:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.13.29-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.13.30-debug.apk`
 - Latest signed release APK available locally:
   - `app/build/outputs/apk/release/PaykiTodo-1.13.11-release.apk`
 - Latest GitHub Release:
   - `https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.13.11`
 - Debug APK metadata inspection:
-  - `versionName = 1.13.29`
-  - `versionCode = 277`
+  - `versionName = 1.13.30`
+  - `versionCode = 278`
 
 ## Active Goal
 
-Active immediate task: continue the broader product/UX audit from the current `1.13.29 / versionCode 277` local patch baseline.
+Active immediate task: continue the broader product/UX audit from the current `1.13.30 / versionCode 278` local patch baseline.
 
-Latest status: `1.13.29` is a desktop/mobile parity follow-up for Planning Desk preview: desktop Web event candidates now expose `打卡追踪`, using the already-supported `checkInEnabled` import field. Debug build and metadata inspection passed locally.
+Latest status: `1.13.30` fixes a phone Planning Desk preview batch-setting inconsistency: `全部加入倒数日` now applies to selected event candidates as well as DDL-backed todo candidates. Debug build and metadata inspection passed locally.
+
+## What Changed In The Latest 1.13.30 Patch
+
+1. Phone Planning Desk recognition preview batch setting `全部加入倒数日` now includes selected event candidates.
+2. The same batch setting still applies to DDL-backed todo candidates and remains disabled for no-DDL todos.
+3. Version metadata moved to `1.13.30 / versionCode 278`; database version remains `27`.
+4. Verification passed: `node --check app/src/main/assets/desktop-web/app.js`, `./gradlew.bat :app:compileDebugKotlin`, `./gradlew.bat :app:testDebugUnitTest`, `git diff --check`, `./gradlew.bat :app:assembleDebug`, and APK metadata inspection.
 
 ## What Changed In The Latest 1.13.29 Patch
 

@@ -8,8 +8,8 @@
 - Target platform: Android 14 / API 34
 - License: MIT License (`LICENSE`)
 - Current version in code:
-  - `versionName = "1.13.39"`
-  - `versionCode = 287`
+  - `versionName = "1.13.40"`
+  - `versionCode = 288`
   - database version = `27`
 
 ## Current Build Facts
@@ -22,7 +22,13 @@
 - Latest GitHub Release:
   - `https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.13.11`
 - Latest fully built debug APK:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.13.39-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.13.40-debug.apk`
+- Current `1.13.40 / versionCode 288` status:
+  - Phone todo quick-preview sheets now show a prominent `取消并归档` card directly below the title, so cancel/archive is reachable from the small preview surface itself.
+  - Phone todo quick-preview top action now says `取消并归档`, making the archive/history behavior explicit instead of looking like a generic cancel/close action.
+  - Desktop Web todo preview now also shows an inline archive card and uses `取消并归档` for top/bottom cancel actions.
+  - Cancel still archives into history; delete remains a separate hard-delete path. Database version remains `27`; no schema migration was added.
+  - Verification passed: `node --check app/src/main/assets/desktop-web/app.js`, `./gradlew.bat :app:compileDebugKotlin`, `./gradlew.bat :app:testDebugUnitTest`, `git diff --check`, `./gradlew.bat :app:assembleDebug`, and APK metadata check for `versionName = 1.13.40`, `versionCode = 288`.
 - Current `1.13.39 / versionCode 287` status:
   - Desktop Web todo editor now exposes `闹钟模式`, matching the phone todo editor and existing desktop API support.
   - Desktop Web todo editor now exposes `仅提醒，不在看板显示`, matching the phone todo editor and existing desktop API support.

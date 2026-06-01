@@ -5,23 +5,32 @@
 - Repository root: `G:\Workspace\Project\PaykiTodo`
 - Branch: `main`
 - Current code version:
-  - `versionName = 1.13.39`
-  - `versionCode = 287`
+  - `versionName = 1.13.40`
+  - `versionCode = 288`
   - database version = `27`
 - Latest debug APK target in this round:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.13.39-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.13.40-debug.apk`
 - Latest signed release APK available locally:
   - `app/build/outputs/apk/release/PaykiTodo-1.13.11-release.apk`
 - Latest GitHub Release:
   - `https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.13.11`
 - Debug APK metadata inspection:
-  - `versionName = 1.13.39`, `versionCode = 287`
+  - `versionName = 1.13.40`, `versionCode = 288`
 
 ## Active Goal
 
-Active immediate task: continue the broader product/UX audit from the current `1.13.39 / versionCode 287` local patch baseline.
+Active immediate task: continue the broader product/UX audit from the current `1.13.40 / versionCode 288` local patch baseline.
 
-Latest status: `1.13.39` closes a desktop/phone todo-editor parity gap: Desktop Web now exposes `闹钟模式` and `仅提醒，不在看板显示`, reusing backend fields that already existed. Debug build and metadata inspection should be checked before handoff.
+Latest status: `1.13.40` makes todo cancel/archive reachable and explicit inside the quick-preview surface itself on both phone and Desktop Web. Debug build and metadata inspection should be checked before handoff.
+
+## What Changed In The Latest 1.13.40 Patch
+
+1. Phone todo quick-preview sheets now show a prominent `取消并归档` action card directly below the todo title.
+2. Phone todo quick-preview top action now says `取消并归档`, avoiding confusion with a generic close/cancel action.
+3. Desktop Web todo preview now shows an inline archive action card and uses `取消并归档` for the top and bottom cancel/archive actions.
+4. Cancel still archives into history; delete remains a separate hard-delete path.
+5. Version metadata moved to `1.13.40 / versionCode 288`; database version remains `27`.
+6. Verification passed: `node --check app/src/main/assets/desktop-web/app.js`, `./gradlew.bat :app:compileDebugKotlin`, `./gradlew.bat :app:testDebugUnitTest`, `git diff --check`, `./gradlew.bat :app:assembleDebug`, and APK metadata inspection confirmed `versionName = 1.13.40`, `versionCode = 288`.
 
 ## What Changed In The Latest 1.13.39 Patch
 

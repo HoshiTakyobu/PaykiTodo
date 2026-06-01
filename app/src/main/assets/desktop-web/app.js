@@ -2710,6 +2710,7 @@ function openTodoPreview(item) {
     +   '<div class="preview-main-title">' + escapeHtml(item.title) + '</div>'
     +   '<div class="pill">' + escapeHtml(todoStateLabel(item)) + '</div>'
     + '</div>'
+    + (item.completed || item.canceled ? '' : '<button type="button" class="preview-archive-card" data-preview-todo-cancel-inline="true"><strong>取消并归档</strong><span>停止后续提醒，进入历史记录；不是删除。</span></button>')
     + previewRow('分', '分组', todoGroupLabel(item))
     + previewRow('时', 'DDL', todoDueText(item))
     + previewRow('倒', '倒数日', item.countdownEnabled ? '已显示在每日看板倒数日' : '未开启')
@@ -2720,6 +2721,11 @@ function openTodoPreview(item) {
   completeButton?.classList.toggle('hidden', inactive);
   cancelButton?.classList.toggle('hidden', inactive);
   cancelTopButton?.classList.toggle('hidden', inactive);
+  body.querySelector('[data-preview-todo-cancel-inline]')?.addEventListener('click', event => {
+    event.preventDefault();
+    event.stopPropagation();
+    document.getElementById('preview-todo-cancel')?.click();
+  });
   openModal('todo-preview-modal');
 }
 
@@ -3361,7 +3367,7 @@ document.getElementById('preview-todo-complete').onclick = async () => {
 
 document.getElementById('preview-todo-cancel').onclick = async () => {
   if (!state.previewTodoId) return;
-  if (!await confirmDanger('确认取消待办', '取消后会停止提醒，并进入历史记录；这不是删除。', '取消待办')) return;
+  if (!await confirmDanger('确认取消并归档', '取消后会停止提醒，并进入历史记录；这不是删除。', '取消并归档')) return;
   const todoItem = findTodoById(state.previewTodoId);
   await api(`/api/items/${state.previewTodoId}/cancel${recurrenceScopeQueryForItem(todoItem)}`, { method: 'POST' });
   closeModal('todo-preview-modal');

@@ -589,7 +589,7 @@ internal fun TodoDetailsDialog(
                 onCancel?.let {
                     TextButton(onClick = requestCancel) {
                         Text(
-                            text = "取消待办",
+                            text = "取消并归档",
                             color = Color(0xFFD97706),
                             fontWeight = FontWeight.Bold
                         )
@@ -632,6 +632,10 @@ internal fun TodoDetailsDialog(
             }
 
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.22f))
+
+            onCancel?.let {
+                TodoCancelArchiveAction(onClick = requestCancel)
+            }
 
             item.notes.takeIf { it.isNotBlank() }?.let {
                 Surface(
@@ -721,9 +725,6 @@ private fun TodoDetailsFixedActions(
                 .padding(horizontal = 18.dp, vertical = 12.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            onCancel?.let {
-                TodoCancelArchiveAction(onClick = it)
-            }
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)

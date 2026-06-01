@@ -2,522 +2,78 @@
 
 ## Active Development Focus
 
-Active immediate task: fix two correctness bugs on the `1.13.21 / versionCode 269` line:
+Active immediate task: complete and commit the `1.13.22 / versionCode 270` strong-reminder and Planning Desk mobile-input round described in:
 
-1. Phone Planning Desk must let explicit inline DDL dates win over a planning note's document date.
-2. Recurring todo/event “整个循环系列” edits must honor a user-selected new start date and must not be replenished from a stale old template.
+- `docs/goals/2026-06-01-paykitodo-reminder-ongoing-planning-ux-goal.md`
 
 Do not commit secrets, signing material, API keys, private Base URLs, generated APK/AAB outputs, or personal backups/logs. The repository already ignores `keystore.properties`, `release/`, `*.apk`, `*.jks`, `.env*`, and local temp files.
 
 ## Current Round Scope
 
-The user reported:
+The user reported four active usability / correctness failures:
 
-1. In a May 20 Planning Desk document, writing `5.29 【紧急】【DDL】把入党资料交到芳姐那里` created a todo on May 20 instead of May 29.
-2. Editing all occurrences of a recurring todo on May 25 showed the expected May 25 / May 26 preview, but after saving the series still remained on May 26 / May 27.
+1. Todo and schedule reminders do not reliably open the full-screen reminder surface when the reminder time arrives.
+2. A schedule that is currently happening should remain visible in the Android notification shade as a non-dismissible ongoing notification until the event ends or is otherwise cleared.
+3. The todo reminder screen is still too incomplete: it needs a cancel-todo action, and snoozing after the DDL has already passed must push the DDL forward so the reminder loop remains usable.
+4. Phone Planning Desk input still feels constrained to a narrow row even when AI providers are configured; the user needs a note-like free writing surface that supports long natural text, multi-line input, and preview-first recognition.
 
-Fix requirements:
+## Required Behavior
 
-1. Inline explicit DDL date/time must beat document date context.
-2. DDL marker cleanup must not pollute the final title with `【DDL】`, `截止`, or the DDL time token.
-3. Recurring `ALL` edit alignment must distinguish time-only changes from user-selected new start-date changes.
-4. Rebuilding a recurring series must replace the old template rather than leaving stale template state behind.
+### Reminder Full-Screen Delivery
 
-## Verification Completed For 1.13.21
+1. Todo reminders and schedule reminders must both create high-priority full-screen reminder delivery.
+2. Reminder notifications must carry a full-screen intent.
+3. The alarm receiver path should not rely only on a passive notification tap; it should make a best-effort standard Android launch of the reminder surface.
+4. The reminder activity must be allowed to show over the lock screen and turn the screen on where Android permits it.
 
-The `1.13.21 / versionCode 269` build addresses the Planning Desk explicit-date bug and the recurring edit-all start-date bug.
+### Ongoing Schedule Notification
 
-1. Version metadata moved to `1.13.21 / versionCode 269`.
-2. Database version remains `26`; no schema, backup format, or user-data migration was added.
-3. Planning Desk local parsing now treats inline dates in DDL lines as stronger than the note document date.
-4. Regression tests cover `5.29 【DDL】...`, `5.29【DDL】...`, `5.29 【DDL】14:00 ...`, and `5.29 【紧急】【DDL】14:00 ...`.
-5. Natural DDL title cleanup preserves user emphasis labels such as `【紧急】` while removing DDL markers and DDL time tokens.
-6. Recurring `ALL` edits keep a user-selected new start date; pure time edits still rebase to the original series start date.
-7. Recurring target replacement deletes old templates before inserting the rebuilt series/template.
-8. Targeted parser / recurrence tests passed.
-9. `./gradlew.bat :app:compileDebugKotlin` passed.
-10. `./gradlew.bat :app:testDebugUnitTest` passed.
-11. `node --check app/src/main/assets/desktop-web/app.js` passed.
-12. `git diff --check` passed.
-13. `./gradlew.bat :app:assembleDebug` passed.
-14. Debug APK metadata confirms `versionName = 1.13.21`, `versionCode = 269`, output `PaykiTodo-1.13.21-debug.apk`.
+1. When an event reaches its start time, the app must post an ongoing notification for that event.
+2. The notification must be non-dismissible in normal notification-shade swipes.
+3. The notification must be canceled when the event ends, is completed, canceled, deleted, or is rescheduled away from the current time range.
 
-## Verification Completed For 1.13.20
+### Todo Reminder Closed Loop
 
-The `1.13.20 / versionCode 268` build addresses the desktop Web Planning Desk input / guidance issue.
+1. Todo reminder UI must include: complete, snooze 5 minutes, snooze 10 minutes, custom snooze, and cancel todo.
+2. Canceling from the reminder screen cancels the todo and clears its reminder artifacts; it does not delete the row.
+3. Snoozing computes `nextReminderAt = now + snoozeMinutes`.
+4. For todos without DDL, snoozing only creates the next reminder and must not invent a DDL.
+5. For todos with DDL, if the current DDL is already past or not later than `nextReminderAt`, snoozing must push DDL to `nextReminderAt + 1 minute`.
+6. For todos with a DDL later than `nextReminderAt`, snoozing must not modify the DDL.
 
-1. Version metadata moved to `1.13.20 / versionCode 268`.
-2. Database version remains `26`; no schema, backup format, or user-data migration was added.
-3. Desktop Web Planning Desk empty Outliner state is now a clickable focus target rather than a passive message.
-4. The root Outliner input is now a visible multi-line entry box with examples and `Enter` / `Shift+Enter` guidance.
-5. Existing Outliner nodes now use auto-height editable textareas, so users can directly click and type in “大纲事项”.
-6. Same-level drag reorder now starts only from a dedicated drag handle, avoiding row-level draggable behavior that can interfere with text editing.
-7. Root input multi-line paste can create multiple draft nodes.
-8. Pending Outliner edits are flushed before publish-all, parse, import, refresh, postpone, undo, document switching, and Markdown sync.
-9. Desktop Planning Desk copy now explicitly distinguishes daily Outliner writing from Markdown compatibility / old batch recognition.
-10. `node --check app/src/main/assets/desktop-web/app.js` passed.
-11. `./gradlew.bat :app:compileDebugKotlin` passed.
-12. `./gradlew.bat :app:testDebugUnitTest` passed.
-13. `./gradlew.bat :app:assembleDebug` passed.
-14. `git diff --check` passed.
-15. Debug APK metadata confirms `versionName = 1.13.20`, `versionCode = 268`, output `PaykiTodo-1.13.20-debug.apk`.
+### Phone Planning Desk Input
 
-## Verification Completed For 1.13.19
+1. Phone Planning Desk must expose a clear note-like free writing surface, not only a narrow per-row input.
+2. The free writing surface must support multi-line text, long-line inspection/editing, and paste.
+3. Recognition from that surface must still be preview-first and must not write official todos/events without user confirmation.
+4. The UI copy should make AI/local fallback behavior understandable.
 
-The `1.13.19 / versionCode 267` build finishes the follow-up recurring audit and the next concrete large-list / Calendar timeline performance pass.
-
-1. Version metadata moved to `1.13.19 / versionCode 267`.
-2. Database version remains `26`; no schema, backup format, or user-data migration was added.
-3. Recurring todo/event repository paths were re-audited: current-instance delete keeps canceled tombstones, `CURRENT_AND_FUTURE` still uses the original recurrence anchor date for the split, and template truncation/deletion remains in place for range operations.
-4. No new repository-level recurring-data bug was confirmed in this pass.
-5. Future recurring todos in `计划中` still fold into one series card; expanded series now render only the first 30 future instances and show a folded-count notice for the remainder.
-6. Dashboard todo cards now receive pre-resolved group data from a per-state group map, reducing repeated card-level group-list scans during large-list scrolling.
-7. Calendar day / three-day timeline now computes timed-event placements only for the currently visible page days instead of pre-layouting the entire loaded event window.
-8. Calendar current-time axis / line refreshes once per minute, and timed-board vertical overscan is reduced from 2 hours to 1 hour.
-9. Added a unit test covering recurring upcoming items folding into one display group with sorted instances.
-10. `./gradlew.bat :app:compileDebugKotlin` passed.
-11. `./gradlew.bat :app:testDebugUnitTest` passed.
-12. `./gradlew.bat :app:assembleDebug` passed.
-13. `git diff --check` passed.
-14. Debug APK metadata confirms `versionName = 1.13.19`, `versionCode = 267`, output `PaykiTodo-1.13.19-debug.apk`.
-
-## Verification Completed For 1.13.18
-
-The `1.13.18 / versionCode 266` build combines the current recurring-operation audit, todo/calendar performance pass, and already-present widget visual follow-up changes in the working tree.
-
-1. Version metadata moved to `1.13.18 / versionCode 266`.
-2. Database version moved to `26`; `MIGRATION_25_26` adds indexes for active todo sorting, history todo sorting, and calendar range queries.
-3. Desktop Web preview delete/cancel now sends `CURRENT_AND_FUTURE` for recurring todos/events, so preview actions no longer silently operate on only the current row when the user is trying to remove a series going forward.
-4. Todo cards use a lightweight Canvas completion toggle and skip strike-through text-layout callbacks unless the completion animation is active.
-5. Todo sectioning now classifies today/upcoming with the local-day millisecond range and has a boundary regression test.
-6. Calendar day / three-day timeline caches timed-event placements per date, precomputes segment time fields, and avoids timed-event layout work in month/list views.
-7. Widget follow-up removes countdown checkbox circles and tightens countdown/event card spacing while aligning greeting-card backgrounds with the newer widget card surface.
-8. `node --check app/src/main/assets/desktop-web/app.js` passed.
-9. `./gradlew.bat :app:compileDebugKotlin` passed.
-10. `./gradlew.bat :app:testDebugUnitTest` passed after stopping Gradle daemons and running sequentially; the earlier failed run was caused by parallel Gradle/KSP generated-source contention.
-11. `./gradlew.bat :app:assembleDebug` passed.
-12. `git diff --check` passed.
-13. Debug APK metadata confirms `versionName = 1.13.18`, `versionCode = 266`, output `PaykiTodo-1.13.18-debug.apk`.
-
-## Verification Completed For 1.13.16
-
-The `1.13.16 / versionCode 264` build closes the follow-up recurring-instance correctness issues and adds a second concrete performance pass for todo scrolling and Calendar timeline scrolling.
-
-1. Version metadata moved from `1.13.15 / versionCode 263` to `1.13.16 / versionCode 264`.
-2. Database version remains `25`; no schema, backup format, or user-data migration was added.
-3. Recurring todo/event current-instance delete now keeps a canceled tombstone so the recurring template replenisher cannot recreate the same deleted occurrence.
-4. Recurring-instance range logic now uses `recurrenceAnchorDueAtMillis` as the original occurrence date before falling back to current DDL/start date, so moved single instances no longer corrupt “当前及之后” selection, template truncation, or replenishment checks.
-5. Editing only the current recurring todo/event preserves the original series recurrence fields, and phone/desktop validation rejects recurrence-rule changes under `RecurrenceScope.CURRENT`.
-6. Phone recurring-todo delete now shows the recurrence scope selector instead of silently deleting/canceling only one row.
-7. Calendar day / three-day timed board now renders only events intersecting the vertical viewport plus a 2-hour overscan window, and buckets scroll recomputation by half-hour.
-8. Todo cards use lightweight `Surface` rows without card shadow elevation and cache the resolved task group per card, reducing per-row drawing and repeated group lookup during large-list scrolling.
-9. `./gradlew.bat :app:compileDebugKotlin` passed.
-10. `./gradlew.bat :app:testDebugUnitTest` passed.
-11. `./gradlew.bat :app:assembleDebug` passed.
-12. `git diff --check` passed after final documentation edits.
-13. Debug APK metadata confirms `versionName = 1.13.16`, `versionCode = 264`, output `PaykiTodo-1.13.16-debug.apk`.
-
-## Verification Completed For 1.13.15
-
-The `1.13.15 / versionCode 263` build addresses recurring-calendar template cleanup and the first concrete todo-list / Calendar performance pass.
-
-1. Version metadata moved from `1.13.14 / versionCode 262` to `1.13.15 / versionCode 263`.
-2. Database version remains `25`; no schema, backup format, or user-data migration was added.
-3. Recurring Calendar `ALL`-scope edits now delete the old template when the series is changed to non-recurring, preventing future replenishment from recreating removed future events.
-4. Todo / daily-board derived state now performs large-list sectioning, countdown sorting, and announcement parsing on `Dispatchers.Default`.
-5. Desktop sync status is now a separate state flow, so ordinary todo/event list changes no longer re-run desktop sync status and IP-address computation.
-6. Todo cards no longer use `IntrinsicSize.Min` for the left color strip; the strip is drawn directly, reducing LazyColumn measurement cost.
-7. Calendar day / three-day timeline now computes timed-event overlap placement only for the currently visible page days instead of the whole loaded event window.
-8. `./gradlew.bat :app:compileDebugKotlin` passed.
-9. `./gradlew.bat :app:assembleDebug` passed.
-10. `./gradlew.bat :app:testDebugUnitTest` passed.
-11. `git diff --check` passed.
-12. Debug APK metadata confirms `versionName = 1.13.15`, `versionCode = 263`, output `PaykiTodo-1.13.15-debug.apk`.
-
-## Verification Completed For 1.13.14
-
-The `1.13.14 / versionCode 262` build addresses desktop sync auto-stop and foreground-notification lifecycle behavior.
-
-1. Version metadata moved from `1.13.13 / versionCode 261` to `1.13.14 / versionCode 262`.
-2. Database version remains `25`; no schema, backup format, or user-data migration was added.
-3. Desktop sync foreground service now runs a continuous watchdog keyed to the last authorized desktop heartbeat.
-4. No-token and disconnected-client states both stop desktop sync after 5 minutes by writing the setting off, stopping the coordinator, and removing the foreground notification.
-5. Desktop Web sends `/api/status` heartbeats every 60 seconds after successful connection.
-6. Desktop sync status reads start the foreground service when needed instead of starting a hidden server without notification.
-7. `node --check app/src/main/assets/desktop-web/app.js` passed.
-8. `./gradlew.bat :app:compileDebugKotlin` reached `BUILD SUCCESSFUL`; the wrapper command hit the 120s timeout after Gradle had already printed success.
-9. `./gradlew.bat :app:assembleDebug` passed.
-10. Debug APK metadata confirms `versionName = 1.13.14`, `versionCode = 262`, output `PaykiTodo-1.13.14-debug.apk`.
-11. `git diff --check` passed.
-
-## Verification Completed For 1.13.13
-
-The `1.13.13 / versionCode 261` build addresses the desktop Web title / recurrence-scope parity issue.
-
-1. Version metadata moved from `1.13.12 / versionCode 260` to `1.13.13 / versionCode 261`.
-2. Database version remains `25`; no schema, backup format, or user-data migration was added.
-3. Desktop Web todo title editing now uses a multiline textarea and preserves newline display in todo/event cards and previews.
-4. Desktop Web recurring todo/event editing exposes scope selection matching the phone-side model.
-5. Desktop Web defaults recurring-todo-to-non-recurring edits to current-and-future so future generated items are cleared instead of continuing to appear.
-6. Desktop sync backend `PUT /api/todos/{id}` and `PUT /api/events/{id}` now honor recurrence scope and clear reminders for all affected items before rescheduling updated items.
-7. Desktop sync cancel/delete item routes accept scope query parameters; recurring todo delete with a non-current scope cancels the selected active series range through repository logic.
-8. `node --check app/src/main/assets/desktop-web/app.js` passed.
-9. `./gradlew.bat :app:compileDebugKotlin` passed.
-10. `./gradlew.bat :app:assembleDebug` passed.
-11. Debug APK metadata confirms `versionName = 1.13.13`, `versionCode = 261`, output `PaykiTodo-1.13.13-debug.apk`.
-12. `git diff --check` passed.
-
-## Verification Completed For 1.13.11
-
-The `1.13.11 / versionCode 259` build addresses the user's 2026-05-22 screenshot feedback that both launcher widgets looked cramped against the left and right edges.
-
-1. Version metadata moved from `1.13.10 / versionCode 258` to `1.13.11 / versionCode 259`.
-2. Database version remains `25`; no schema, backup format, or user-data migration was added.
-3. 今日看板 Widget runtime and picker preview outer content padding increased from `6dp` to `14dp` horizontally and from `6dp` to `10dp` vertically.
-4. 倒数日 Widget runtime and picker preview outer content padding increased from `4dp` to `12dp` horizontally and from `4dp` to `8dp` vertically.
-5. 倒数日 row start/end padding increased to `14dp`, and the accent strip margins were widened for better visual breathing room.
-6. `git diff --check` passed.
-7. `./gradlew.bat :app:assembleDebug` passed.
-8. Debug APK metadata confirms:
-   - `versionName = 1.13.11`
-   - `versionCode = 259`
-   - output `PaykiTodo-1.13.11-debug.apk`
-9. `./gradlew.bat :app:assembleRelease` passed.
-10. Release APK metadata confirms:
-   - `versionName = 1.13.11`
-   - `versionCode = 259`
-   - output `PaykiTodo-1.13.11-release.apk`
-   - `apksigner verify --verbose` reports `Verifies` with APK Signature Scheme v2.
-
-## Verification Completed For 1.13.10
-
-The `1.13.10 / versionCode 258` build is a version-bumped debug rebuild of the Widget follow-up fixes and Calendar Pager regression guard so Android can upgrade over an installed `1.13.9` build.
-
-1. Version metadata moved from `1.13.9 / versionCode 257` to `1.13.10 / versionCode 258`.
-2. Database version remains `25`; no schema, backup format, or user-data migration was added.
-3. Widget todo/event accent strips use pure-rectangle `widget_vertical_pill` and parent `clipToOutline` on todo card / schedule event rows.
-4. Widget schedule card background now matches the soft todo card background in light and dark modes.
-5. Dark-mode overdue badge background exists under `drawable-night`; countdown widget runtime and preview padding returned to `4dp`.
-6. Calendar event long-press drag disables Pager user scrolling while dragging; three-day paging remains one day per page by design.
-7. `./gradlew.bat :app:compileDebugKotlin` passed after code changes.
-8. `git diff --check` passed.
-9. `./gradlew.bat :app:assembleDebug` passed.
-10. Debug APK metadata confirms:
-   - `versionName = 1.13.10`
-   - `versionCode = 258`
-   - output `PaykiTodo-1.13.10-debug.apk`
-
-## Verification Completed For 1.13.8
-
-The `1.13.8 / versionCode 256` build implements the Widget UX overhaul and calendar/todo-list performance slice.
-
-1. Version metadata moved from `1.13.7 / versionCode 255` to `1.13.8 / versionCode 256`.
-2. Database version remains `25`; no schema, backup format, or user-data migration was added.
-3. Android 今日看板 / 倒数日 Widget runtime layouts and static previews no longer reference `widget_dashboard_bg_image`.
-4. 今日看板 Widget 待办卡 no longer has `widget_task_check`; overdue badge text is `已逾期`; `getLoadingView()` returns custom `加载中…` RemoteViews.
-5. Widget padding/list dividers/card minimum heights were tightened for small launcher sizes.
-6. Calendar day/three-day timeline now uses `HorizontalPager`; Dashboard todo LazyColumn rows use stable keys plus `contentType`.
-7. `./gradlew.bat :app:compileDebugKotlin` passed after code changes.
-8. `git diff --check` passed.
-9. `./gradlew.bat :app:assembleDebug` passed.
-10. Debug APK metadata confirms:
-   - `versionName = 1.13.8`
-   - `versionCode = 256`
-   - output `PaykiTodo-1.13.8-debug.apk`
-11. Emulator `Pixel_8 / emulator-5554` installed the debug APK and launched the calendar deep link; UI dump showed the `日历` / `三日视图` surface and logcat contained no AndroidRuntime fatal crash.
-
-## Verification Completed For 1.13.7
-
-The `1.13.7 / versionCode 255` rebuild is intended to let Android upgrade over the installed `1.13.6` debug build.
-
-1. Version metadata moved from `1.13.6 / versionCode 254` to `1.13.7 / versionCode 255`.
-2. No additional database schema, reminder behavior, Planning Desk behavior, Widget behavior, or user-data format change was intentionally introduced by this version bump.
-3. The generated debug APK target is `app/build/outputs/apk/debug/PaykiTodo-1.13.7-debug.apk`.
-4. `git diff --check` passed.
-5. `./gradlew.bat :app:assembleDebug` passed.
-6. Debug APK metadata confirms:
-   - `versionName = 1.13.7`
-   - `versionCode = 255`
-   - output `PaykiTodo-1.13.7-debug.apk`
-
-## Verification Completed For 1.13.6
-
-The `1.13.6 / versionCode 254` rebuild is intended to let Android upgrade over the installed `1.13.5` debug build.
-
-1. Version metadata moved from `1.13.5 / versionCode 253` to `1.13.6 / versionCode 254`.
-2. Database version moved to `25` for `alarmMode` on todos and recurring templates; this supersedes the UX-only goal's older "keep database 24" note.
-3. The generated debug APK is `app/build/outputs/apk/debug/PaykiTodo-1.13.6-debug.apk`.
-4. Implemented and compile-verified:
-   - phone Planning Desk same-parent long-press drag reorder with visual lift and placement animation;
-   - Planning Desk Outliner snapshot undo stack for edit/delete/merge/reorder/publish operations;
-   - future recurring todo folding in My Tasks;
-   - flatter high-contrast reminder page with larger title/time/actions and alarm-mode pulse;
-   - ongoing event notification scheduling/cancel channel;
-   - alarm mode persistence, playback loop, timeout downgrade, retry bursts, backup/sync/schema fields;
-   - daily brief notification scheduling/settings/backup fields;
-   - global search over todos/events/planning nodes/AI reports with result routing;
-   - data health scan and safe-only confirmed cleanup.
-5. `./gradlew.bat :app:compileDebugKotlin` passed after final code changes.
-6. `git diff --check` passed.
-7. `./gradlew.bat :app:assembleDebug` passed.
-8. Debug APK metadata confirms:
-   - `versionName = 1.13.6`
-   - `versionCode = 254`
-   - output `PaykiTodo-1.13.6-debug.apk`
-
-## Verification Completed For 1.13.5
-
-The `1.13.5 / versionCode 253` rebuild is intended to let Android upgrade over the installed `1.13.4` debug build.
-
-1. Version metadata moved from `1.13.4 / versionCode 252` to `1.13.5 / versionCode 253`.
-2. No additional database schema, reminder behavior, Planning Desk behavior, or user-data format change was intentionally introduced by this version bump.
-3. The generated debug APK is `app/build/outputs/apk/debug/PaykiTodo-1.13.5-debug.apk`.
-4. `git diff --check` passed.
-5. `./gradlew.bat :app:assembleDebug` passed.
-6. Debug APK metadata confirms:
-   - `versionName = 1.13.5`
-   - `versionCode = 253`
-   - output `PaykiTodo-1.13.5-debug.apk`
-
-## Verification Completed For 1.13.4
-
-The `1.13.4 / versionCode 252` rebuild is intended to let Android upgrade over the installed `1.13.3` debug build.
-
-1. Version metadata moved from `1.13.3 / versionCode 251` to `1.13.4 / versionCode 252`.
-2. No additional database schema, reminder behavior, Planning Desk behavior, or user-data format change was intentionally introduced by this version bump.
-3. The existing `UpcomingTodoDisplayGroup` type was made public because public `TodoUiState` exposes it; this was required for Kotlin compilation.
-4. The generated debug APK is `app/build/outputs/apk/debug/PaykiTodo-1.13.4-debug.apk`.
-5. `./gradlew.bat :app:assembleDebug` passed.
-6. Debug APK metadata confirms:
-   - `versionName = 1.13.4`
-   - `versionCode = 252`
-   - output `PaykiTodo-1.13.4-debug.apk`
-
-## Verification Completed For 1.13.3
-
-The `1.13.3 / versionCode 251` rebuild is intended to let Android upgrade over the installed `1.13.2` debug build.
-
-1. Version metadata moved from `1.13.2 / versionCode 250` to `1.13.3 / versionCode 251`.
-2. No additional database schema, reminder behavior, Planning Desk behavior, or user-data format change was intentionally introduced by this metadata-only bump.
-3. The generated debug APK is `app/build/outputs/apk/debug/PaykiTodo-1.13.3-debug.apk`.
-4. `./gradlew.bat :app:assembleDebug` passed.
-5. Debug APK metadata confirms:
-   - `versionName = 1.13.3`
-   - `versionCode = 251`
-   - output `PaykiTodo-1.13.3-debug.apk`
-
-## Current Goal State
-
-Current implementation state:
-
-1. #7 P0 recurring reminder crash is hardened with safe alarm scheduling, SafeStartupGuard, startup recovery try/catch, and limited recurring-instance expansion.
-2. #6 editor BottomSheet uses skip-partially-expanded behavior and unsaved-change confirmation.
-3. #1 countdown rows and widget deep links open item previews before editing.
-4. #5 board title / empty-card areas navigate to tasks or calendar, while concrete rows keep preview behavior.
-5. #3 widget board/countdown layouts use tighter padding and list spacing.
-6. #4 todo editor supports `hiddenFromBoard`; hidden reminder todos still schedule reminders and remain in My Tasks, but are filtered out of board/widget/desktop-board/AI-report todo statistics.
-7. #2 Planning Desk supports `isNote` nodes from `// ` / `> `, note styling, note toggle actions, no publish-to-task behavior, and completion calculations that ignore note children.
-8. Database version is `24`, backup/restore and desktop-sync JSON preserve `hiddenFromBoard` and `isNote`.
-
-## Verification Completed For 1.12.20
-
-The `1.12.20 / versionCode 247` rebuild is intended to let Android upgrade over the installed `1.12.19` debug build.
-
-1. Version metadata moved from `1.12.19 / versionCode 246` to `1.12.20 / versionCode 247`.
-2. No database schema, reminder behavior, Planning Desk behavior, or user-data format changed in this metadata-only rebuild.
-3. The generated debug APK is `app/build/outputs/apk/debug/PaykiTodo-1.12.20-debug.apk`.
-4. `./gradlew.bat :app:assembleDebug` passed.
-5. `git diff --check` passed.
-6. Debug APK metadata confirms:
-   - `versionName = 1.12.20`
-   - `versionCode = 247`
-   - output `PaykiTodo-1.12.20-debug.apk`
-
-## Verification Completed For 1.12.19
-
-The `1.12.19 / versionCode 246` rebuild status:
-
-1. Version metadata moved from `1.12.18 / versionCode 245` to `1.12.19 / versionCode 246`.
-2. The generated debug APK is `app/build/outputs/apk/debug/PaykiTodo-1.12.19-debug.apk`.
-3. `./gradlew.bat :app:assembleDebug` output `BUILD SUCCESSFUL`.
-4. `git diff --check`
-5. Debug APK metadata confirms:
-   - `versionName = 1.12.19`
-   - `versionCode = 246`
-   - output `PaykiTodo-1.12.19-debug.apk`
-
-## Verification Completed For 1.12.18
-
-The `1.12.18 / versionCode 245` rebuild status:
-
-1. Version metadata moved from `1.12.17 / versionCode 244` to `1.12.18 / versionCode 245`.
-2. The generated debug APK is `app/build/outputs/apk/debug/PaykiTodo-1.12.18-debug.apk`.
-3. `./gradlew.bat :app:assembleDebug` output `BUILD SUCCESSFUL` before the shell timeout wrapper returned.
-4. `git diff --check`
-5. Debug APK metadata confirms:
-   - `versionName = 1.12.18`
-   - `versionCode = 245`
-   - output `PaykiTodo-1.12.18-debug.apk`
-
-## Verification Completed For 1.12.17
-
-The `1.12.17 / versionCode 244` rebuild status:
-
-1. Version metadata moved from `1.12.16 / versionCode 243` to `1.12.17 / versionCode 244`.
-2. No database schema, reminder behavior, Planning Desk behavior, or user-data format changed in this metadata-only rebuild.
-3. `./gradlew.bat :app:compileDebugKotlin`
-4. `git diff --check`
-5. `./gradlew.bat :app:assembleDebug`
-6. Debug APK metadata confirms:
-   - `versionName = 1.12.17`
-   - `versionCode = 244`
-   - output `PaykiTodo-1.12.17-debug.apk`
-
-## Verification Completed For 1.12.16
-
-The `1.12.16 / versionCode 243` rebuild status:
-
-1. Version metadata moved from `1.12.15 / versionCode 242` to `1.12.16 / versionCode 243`.
-2. No database schema, reminder behavior, Planning Desk behavior, or user-data format changed in this rebuild.
-3. `./gradlew.bat :app:compileDebugKotlin`
-4. `git diff --check`
-5. `./gradlew.bat :app:assembleDebug`
-6. Debug APK metadata confirms:
-   - `versionName = 1.12.16`
-   - `versionCode = 243`
-   - output `PaykiTodo-1.12.16-debug.apk`
-
-## Verification Completed For 1.12.15
-
-The `1.12.15 / versionCode 242` patch has passed:
-
-1. `./gradlew.bat :app:compileDebugKotlin`
-2. `./gradlew.bat :app:testDebugUnitTest`
-3. `node --check app/src/main/assets/desktop-web/app.js`
-4. `git diff --check`
-5. `./gradlew.bat :app:assembleDebug`
-6. Debug APK metadata confirms:
-   - `versionName = 1.12.15`
-   - `versionCode = 242`
-   - output `PaykiTodo-1.12.15-debug.apk`
-
-## Verification Completed For 1.12.14
-
-The `1.12.14 / versionCode 241` rebuild has passed:
-
-1. `./gradlew.bat :app:compileDebugKotlin`
-2. `git diff --check`
-3. `./gradlew.bat :app:assembleDebug`
-4. Debug APK metadata confirms:
-   - `versionName = 1.12.14`
-   - `versionCode = 241`
-   - output `PaykiTodo-1.12.14-debug.apk`
-
-## Verification Completed For 1.12.13
-
-The `1.12.13 / versionCode 240` patch has passed so far:
-
-1. `node --check app/src/main/assets/desktop-web/app.js`
-2. `./gradlew.bat :app:compileDebugKotlin`
-3. `git diff --check`
-4. `./gradlew.bat :app:assembleDebug`
-5. Debug APK metadata confirms:
-   - `versionName = 1.12.13`
-   - `versionCode = 240`
-   - output `PaykiTodo-1.12.13-debug.apk`
-
-## Verification Completed For 1.12.12
-
-The `1.12.12 / versionCode 239` rebuild has passed so far:
-
-1. Version metadata moved from `1.12.11 / versionCode 238` to `1.12.12 / versionCode 239`.
-2. No database schema, reminder behavior, Planning Desk behavior, or user-data format changed in this rebuild.
-3. `./gradlew.bat :app:compileDebugKotlin`
-4. `./gradlew.bat :app:testDebugUnitTest`
-5. `git diff --check`
-6. `./gradlew.bat :app:assembleDebug`
-7. Debug APK metadata confirms:
-   - `versionName = 1.12.12`
-   - `versionCode = 239`
-   - output `PaykiTodo-1.12.12-debug.apk`
-8. Latest debug APK: `app/build/outputs/apk/debug/PaykiTodo-1.12.12-debug.apk`.
-
-## Verification Completed For 1.12.11
-
-The `1.12.11 / versionCode 238` patch has passed so far:
-
-1. Emulator `emulator-5554` runtime audit on installed `1.12.10` before the code patch confirmed the existing parent/leaf data behavior:
-   - `ParentAudit144457` became `syncEnabled = 0` with no linked official item after adding a child.
-   - `ChildAudit144457` / `ChildAuditComplete237` remained leaf synced official todos.
-   - deleting the last child restored `ParentAudit144457` to a leaf synced official todo.
-   - completing the child propagated completion to the parent node and linked official todo.
-2. `./gradlew.bat :app:compileDebugKotlin`
-3. `./gradlew.bat :app:testDebugUnitTest`
-4. `node --check app/src/main/assets/desktop-web/app.js`
-5. `git diff --check`
-6. `./gradlew.bat :app:assembleDebug`
-7. Debug APK metadata confirms:
-   - `versionName = 1.12.11`
-   - `versionCode = 238`
-   - output `PaykiTodo-1.12.11-debug.apk`
-8. Emulator `emulator-5554` runtime audit on installed `1.12.11` confirmed the target phone Planning Desk UX:
-   - app package metadata reports `versionName = 1.12.11`, `versionCode = 238`.
-   - opening drawer -> `规划台` shows the Outliner toolbar with `今日`, `Markdown`, `预览`, document list, and `更多操作`.
-   - edit mode shows the note-like hint `像备忘录一样写：输入一行后按回车...`, existing rows with expand / completion controls, and the active input placeholder `继续写下一行，按回车创建`.
-   - typing `GoalAudit1512` into the active input and pressing Enter created a normal outline node, while a new active input row stayed focused.
-   - the main overflow menu contains only `新建文档`, `重命名`, `使用说明`, `归档`, and `删除文档`; Markdown import/export and image recognition are not in the main menu.
-   - `使用说明` opens the three-page `规划台新手教程`; page 1 is `像备忘录一样一行一行写` and explains `输入 → 回车 → 变成节点`.
-   - tapping `预览` switches the toolbar button to `编辑`, hides the active input row, shows preview-mode copy, and exposes per-row `节点设置`.
-   - opening a parent row's `节点设置` menu shows `有子任务时保持结构标题` as a disabled item rather than `同步为待办/日程`.
-
-## Verification Completed For 1.12.10
-
-The `1.12.10 / versionCode 237` patch has passed:
+## Verification Required Before Completion
 
 1. `./gradlew.bat :app:compileDebugKotlin`
 2. `./gradlew.bat :app:testDebugUnitTest`
 3. `git diff --check`
 4. `./gradlew.bat :app:assembleDebug`
-5. Debug APK metadata confirms:
-   - `versionName = 1.12.10`
-   - `versionCode = 237`
-   - output `PaykiTodo-1.12.10-debug.apk`
+5. APK metadata check for `versionName = 1.13.22` and `versionCode = 270`
+6. Commit the completed round with a Chinese message that describes the reminder behavior, DDL snooze logic, Planning Desk input change, version bump, and validation.
 
-Latest debug APK: `app/build/outputs/apk/debug/PaykiTodo-1.12.15-debug.apk`.
+## Current Status
 
-## Previous Verification Completed For 1.12.9
+Implementation and local validation are complete on the working tree. Final remaining action is the focused git commit.
 
-The `1.12.9 / versionCode 236` patch has passed:
+Completed behavior:
 
-1. `node --check app/src/main/assets/desktop-web/app.js`
-2. `git diff --check`
-3. `./gradlew.bat :app:compileDebugKotlin`
-4. `./gradlew.bat :app:testDebugUnitTest`
-5. `./gradlew.bat :app:assembleDebug`
-6. Debug APK metadata confirms:
-   - `versionName = 1.12.9`
-   - `versionCode = 236`
-   - output `PaykiTodo-1.12.9-debug.apk`
+1. Todo and schedule reminders request the same full-screen reminder chain when a reminder is dispatched.
+2. Reminder full-screen launch attempts now record a short recent-surface marker, so normal app routing and accessibility window events do not repeatedly pull the same reminder surface to the foreground within 60 seconds. Locked-screen forced overlays still bypass this cooldown.
+3. Ongoing event notifications are scheduled independently of the event reminder-enabled flag, including normal scheduling, app-start recovery, and boot/time-change recovery.
+4. Todo snooze uses the new DDL policy: overdue or too-early DDL values are pushed to one minute after the next reminder; no-DDL todos remain no-DDL.
+5. Reminder UI and accessibility fallback expose `取消待办`.
+6. Phone Planning Desk now defaults to a wide free-writing markdown/natural-text surface and keeps recognition preview-first.
 
-Follow-up audit on `Pixel_8 / emulator-5554` confirmed the system-share text capture path can write real data:
+Verification completed:
 
-- Installed/running APK metadata still reports `versionName = 1.12.9`, `versionCode = 236`.
-- Explicit `ACTION_SEND text/plain` to `ShareReceiverActivity` with quoted text `2030-05-21 15:00-16:00 ShareAuditQuoted-... @Library3` produced a capture notification saying `已添加 1 条到规划台`.
-- Pulling `databases/todo-alarm.db` through `run-as` showed one `planning_nodes` row and one linked `todo_items` `EVENT` row with title `ShareAuditQuoted-...`, location `@Library3`, and the expected 2030-05-21 start/end timestamps.
-- The earlier unquoted adb command that produced `捕获识别失败：未能识别出待办或日程` was a test-command false negative: adb shell split the text at spaces, so the app received an incomplete extra instead of the intended schedule line.
-- Added a unit regression test for bare shared schedule lines such as `2030-05-21 15:00-16:00 ShareAudit @Library3`.
-- Follow-up validation passed: `node --check app/src/main/assets/desktop-web/app.js`, `./gradlew.bat :app:testDebugUnitTest`, and `git diff --check`.
-
-## Remaining QA
-
-No known code requirement from `docs/goals/2026-05-20-paykitodo-outliner-ux-fix-goal.md` is intentionally left unimplemented. Remaining work is runtime QA beyond this goal's local verification scope:
-
-1. Phone runtime QA is still needed on a physical device for active input focus behavior, IME Enter behavior, child input expansion, linked-item editor routing, and parent demotion/restoration with real data.
-2. Real migrated-user-data testing is still needed for old Markdown headings and existing parent/child nodes that already have linked official items.
-3. Real-browser testing is still needed for desktop Web Planning Desk node editing, up/down reorder, same-level drag reorder, document switching, and node time-field display/editing against live phone data.
-
-## Git / Release Notes
-
-- Branch remains `main`, ahead of `origin/main`; do not push without explicit user authorization.
-- `docs/goals/2026-05-20-paykitodo-outliner-ux-fix-goal.md` is tracked in Git and was checked for common secret markers before closing the goal.
-- Local signing files, APK outputs, API keys, tokens, and private Base URLs must remain out of Git.
+- `./gradlew.bat :app:compileDebugKotlin` passed.
+- `./gradlew.bat :app:testDebugUnitTest` passed.
+- `git diff --check` passed.
+- `./gradlew.bat :app:assembleDebug` passed.
+- APK metadata confirms `versionName = 1.13.22`, `versionCode = 270`, output `app/build/outputs/apk/debug/PaykiTodo-1.13.22-debug.apk`.

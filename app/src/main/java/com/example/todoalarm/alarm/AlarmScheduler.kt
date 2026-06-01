@@ -26,14 +26,17 @@ class AlarmScheduler(
     }
 
     fun schedule(todoItem: TodoItem): String? {
-        if (todoItem.isHistory || !todoItem.reminderEnabled) {
+        if (todoItem.isHistory) {
             cancel(todoItem.id)
             return null
         }
 
-        cancel(todoItem.id)
+        cancelReminderAlarms(todoItem.id)
         if (todoItem.isEvent) {
             OngoingEventNotifier.schedule(context, todoItem)
+        }
+        if (!todoItem.reminderEnabled) {
+            return null
         }
 
         val now = System.currentTimeMillis()
@@ -170,6 +173,10 @@ class AlarmScheduler(
 
     fun cancel(todoId: Long) {
         OngoingEventNotifier.cancelAll(context, todoId)
+        cancelReminderAlarms(todoId)
+    }
+
+    private fun cancelReminderAlarms(todoId: Long) {
         alarmManager.cancel(buildBroadcastIntent(todoId, 0L, ACTION_EXACT, EXACT_OFFSET))
         alarmManager.cancel(buildBroadcastIntent(todoId, 0L, ACTION_BACKUP, BACKUP_OFFSET))
         val prefs = context.getSharedPreferences(SCHEDULE_PREFS, Context.MODE_PRIVATE)

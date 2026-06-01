@@ -577,7 +577,7 @@ private fun ReminderScreen(
                                 .height(56.dp),
                             shape = RoundedCornerShape(18.dp)
                         ) {
-                            Text("取消任务")
+                            Text("取消待办")
                         }
                         FilledTonalButton(
                             onClick = { onSnooze(10) },
@@ -609,7 +609,7 @@ private fun ReminderScreen(
                                 color = MaterialTheme.colorScheme.onSurface
                             )
                             Text(
-                                text = "只调整下一次提醒，不改变任务 DDL。",
+                                text = "设置下一次提醒；如果当前 DDL 已过期或早于下一次提醒，会自动把 DDL 推到提醒后 1 分钟。",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )

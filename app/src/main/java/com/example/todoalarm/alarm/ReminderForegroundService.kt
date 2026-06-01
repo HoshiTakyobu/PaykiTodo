@@ -88,7 +88,8 @@ class ReminderForegroundService : Service() {
 
             val settings = app.settingsStore.currentSettings()
             val useFullscreenReminder = settings.workQuietModeEnabled ||
-                !todoItem.isEvent ||
+                todoItem.isTodo ||
+                todoItem.isEvent ||
                 todoItem.reminderDeliveryModeEnum == ReminderDeliveryMode.FULLSCREEN
             if (useFullscreenReminder) {
                 ActiveReminderStore.markActive(this@ReminderForegroundService, todoId)
@@ -239,7 +240,7 @@ class ReminderForegroundService : Service() {
         )
     }
 
-    private fun attemptFullscreenReminder(todoId: Long) {
+    private fun attemptFullscreenReminder(todoId: Long, force: Boolean = false) {
         ActiveReminderStore.refreshActive(this, todoId)
         ReminderChainLogger.log(
             context = this,
@@ -254,11 +255,11 @@ class ReminderForegroundService : Service() {
             val overlayShown = ReminderAccessibilityService.showOverlayNow(todoId, forceOverlay = true)
             triggerAccessibilityOverlay(todoId, forceOverlay = true)
             if (!overlayShown) {
-                launchReminderActivity(todoId)
+                launchReminderActivity(todoId, force = true)
             }
             return
         }
-        launchReminderActivity(todoId)
+        launchReminderActivity(todoId, force = force)
     }
 
     private fun scheduleReminderRetry(todoId: Long, delayMs: Long) {
@@ -271,7 +272,7 @@ class ReminderForegroundService : Service() {
                 val overlayShown = ReminderAccessibilityService.showOverlayNow(todoId, forceOverlay = true)
                 triggerAccessibilityOverlay(todoId, forceOverlay = true)
                 if (!overlayShown) {
-                    launchReminderActivity(todoId)
+                    launchReminderActivity(todoId, force = true)
                 }
             } else {
                 if (!ActiveReminderStore.isActivityHandoffPending(this@ReminderForegroundService, todoId)) return@launch
@@ -281,10 +282,22 @@ class ReminderForegroundService : Service() {
         }
     }
 
-    private fun launchReminderActivity(todoId: Long) {
+    private fun launchReminderActivity(todoId: Long, force: Boolean = false) {
+        if (!force && ActiveReminderStore.wasReminderSurfaceRecentlyShown(this, todoId, FULLSCREEN_RESHOW_COOLDOWN_MS)) {
+            ReminderChainLogger.log(
+                context = this,
+                todoId = todoId,
+                source = "ReminderForegroundService",
+                stage = ReminderChainStage.FULLSCREEN_ATTEMPT,
+                status = ReminderChainStatus.INFO,
+                message = "skip_recent_surface"
+            )
+            return
+        }
         ActiveReminderStore.markActivityHandoff(this, todoId)
         runCatching {
             startActivity(com.example.todoalarm.ui.ReminderActivity.createIntent(this, todoId))
+            ActiveReminderStore.markReminderSurfaceShown(this, todoId)
             ReminderChainLogger.log(
                 context = this,
                 todoId = todoId,
@@ -347,6 +360,7 @@ class ReminderForegroundService : Service() {
         private const val ALARM_MODE_RETRY_INTERVAL_MS = 2 * 60 * 1000L
         private const val ALARM_MODE_RETRY_RING_MS = 30 * 1000L
         private const val ALARM_MODE_RETRY_COUNT = 3
+        private const val FULLSCREEN_RESHOW_COOLDOWN_MS = 60 * 1000L
         private val FULLSCREEN_RETRY_DELAYS_MS = listOf(1_200L, 3_200L, 10_000L, 20_000L, 45_000L, 90_000L, 180_000L)
 
         fun start(context: android.content.Context, todoId: Long) {

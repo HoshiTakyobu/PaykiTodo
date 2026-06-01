@@ -584,6 +584,11 @@ class MainActivity : ComponentActivity() {
             lastReminderRoutingTodoId = -1L
             return
         }
+        if (explicitTodoId <= 0L &&
+            ActiveReminderStore.wasReminderSurfaceRecentlyShown(this, targetTodoId, REMINDER_SURFACE_RESHOW_COOLDOWN_MS)
+        ) {
+            return
+        }
 
         val now = System.currentTimeMillis()
         if (lastReminderRoutingTodoId == targetTodoId && now - lastReminderRoutingAt < 1_500L) {
@@ -616,6 +621,7 @@ class MainActivity : ComponentActivity() {
         const val EXTRA_OPEN_PLANNING_NOTE_ID = "com.example.todoalarm.OPEN_PLANNING_NOTE_ID"
         const val EXTRA_OPEN_AI_REPORT_ID = "com.example.todoalarm.OPEN_AI_REPORT_ID"
         const val SETTINGS_SECTION_DESKTOP_SYNC = "desktop_sync"
+        private const val REMINDER_SURFACE_RESHOW_COOLDOWN_MS = 60 * 1000L
     }
 }
 

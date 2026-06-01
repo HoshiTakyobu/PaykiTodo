@@ -68,6 +68,7 @@ class ReminderAccessibilityService : AccessibilityService() {
                 status = ReminderChainStatus.INFO,
                 message = "forced"
             )
+            ActiveReminderStore.markReminderSurfaceShown(this, todoId)
             overlay.showFor(todoId, ignoreActivityHandoff = true)
             return
         }
@@ -80,6 +81,9 @@ class ReminderAccessibilityService : AccessibilityService() {
 
         if (overlay.isShowing(todoId)) return
         if (ActiveReminderStore.isActivityHandoffPending(this, todoId)) return
+        if (ActiveReminderStore.wasReminderSurfaceRecentlyShown(this, todoId, REMINDER_SURFACE_RESHOW_COOLDOWN_MS)) {
+            return
+        }
 
         launchReminderActivity(todoId)
     }
@@ -157,6 +161,7 @@ class ReminderAccessibilityService : AccessibilityService() {
         ActiveReminderStore.markActivityHandoff(this, todoId)
         runCatching {
             startActivity(ReminderActivity.createIntent(this, todoId))
+            ActiveReminderStore.markReminderSurfaceShown(this, todoId)
             ReminderChainLogger.log(
                 context = this,
                 todoId = todoId,
@@ -188,6 +193,7 @@ class ReminderAccessibilityService : AccessibilityService() {
         const val ACTION_TRIGGER_REMINDER_OVERLAY = "com.paykitodo.app.TRIGGER_REMINDER_OVERLAY"
         const val EXTRA_TODO_ID = "extra_todo_id"
         const val EXTRA_FORCE_OVERLAY = "extra_force_overlay"
+        private const val REMINDER_SURFACE_RESHOW_COOLDOWN_MS = 60 * 1000L
 
         @Volatile
         private var activeService: ReminderAccessibilityService? = null

@@ -50,7 +50,7 @@ object OngoingEventNotifier {
 
     fun schedule(context: Context, event: TodoItem) {
         val startMillis = event.startAtMillis
-        if (!event.isEvent || startMillis == null || !event.reminderEnabled || event.isHistory || !isEnabled(context)) {
+        if (!event.isEvent || startMillis == null || event.isHistory || !isEnabled(context)) {
             cancelAll(context, event.id)
             return
         }
@@ -72,7 +72,7 @@ object OngoingEventNotifier {
 
     fun handleStart(context: Context, event: TodoItem) {
         val startMillis = event.startAtMillis
-        if (!event.isEvent || startMillis == null || !event.reminderEnabled || event.isHistory || !isEnabled(context)) {
+        if (!event.isEvent || startMillis == null || event.isHistory || !isEnabled(context)) {
             cancelAll(context, event.id)
             return
         }

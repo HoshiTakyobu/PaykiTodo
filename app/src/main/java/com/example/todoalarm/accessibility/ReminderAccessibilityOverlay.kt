@@ -26,6 +26,7 @@ import com.example.todoalarm.alarm.ReminderForegroundService
 import com.example.todoalarm.alarm.ReminderNotifier
 import com.example.todoalarm.data.ReminderChainStage
 import com.example.todoalarm.data.ReminderChainStatus
+import com.example.todoalarm.data.RecurrenceScope
 import com.example.todoalarm.data.TodoItem
 import com.example.todoalarm.ui.ReminderActivity
 import com.example.todoalarm.ui.ResolvedTaskGroup
@@ -66,7 +67,7 @@ class ReminderAccessibilityOverlay(
 
         serviceScope.launch {
             val item = withContext(Dispatchers.IO) { app.repository.getTodo(todoId) }
-            if (item == null || item.isHistory || !item.reminderEnabled) {
+            if (item == null || item.isHistory) {
                 hide(todoId)
                 ActiveReminderStore.clearIfMatches(service, todoId)
                 return@launch
@@ -332,6 +333,24 @@ class ReminderAccessibilityOverlay(
             )
             card.addView(quickSnoozeRow)
 
+            val cancelRow = LinearLayout(service).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.CENTER
+                setPadding(0, dp(12), 0, 0)
+            }
+            cancelRow.addView(
+                filledButton("取消待办", Color.parseColor("#B91C1C")).apply {
+                    setOnClickListener {
+                        cancelTodo(item.id)
+                    }
+                },
+                LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT
+                )
+            )
+            card.addView(cancelRow)
+
             val customRow = LinearLayout(service).apply {
                 orientation = LinearLayout.HORIZONTAL
                 gravity = Gravity.CENTER_VERTICAL
@@ -563,6 +582,31 @@ class ReminderAccessibilityOverlay(
                 .cancel(ReminderNotifier.notificationId(todoId))
             hide(todoId)
             Toast.makeText(service, "已延后 $minutes 分钟", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private fun cancelTodo(todoId: Long) {
+        serviceScope.launch {
+            withContext(Dispatchers.IO) {
+                val item = app.repository.getTodo(todoId) ?: return@withContext
+                ReminderChainLogger.log(
+                    context = service,
+                    todoId = item.id,
+                    source = "ReminderAccessibilityOverlay",
+                    stage = ReminderChainStage.USER_CANCEL,
+                    status = ReminderChainStatus.OK
+                )
+                app.repository.cancelTodo(item, RecurrenceScope.CURRENT)
+                app.alarmScheduler.cancel(item.id)
+                app.reminderNotifier.cancel(item.id)
+                ActiveReminderStore.clearIfMatches(service, item.id)
+                ActiveReminderStore.clearActivityHandoff(service, item.id)
+            }
+            service.stopService(Intent(service, ReminderForegroundService::class.java))
+            service.getSystemService(NotificationManager::class.java)
+                .cancel(ReminderNotifier.notificationId(todoId))
+            hide(todoId)
+            Toast.makeText(service, "待办已取消", Toast.LENGTH_SHORT).show()
         }
     }
 

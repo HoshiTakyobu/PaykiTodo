@@ -55,13 +55,16 @@ class TodoApplication : Application() {
                         createEventEndTodo = settingsStore.currentSettings().planningEventEndTodoEnabled
                     )
                     (replenishedRecurringItems + repairedPlanningItems).forEach { item ->
-                        if (item.completed || item.canceled || !item.reminderEnabled) return@forEach
+                        if (item.completed || item.canceled) return@forEach
                         ReminderDispatchTracker.clear(applicationContext, item.id)
                         val scheduleMessage = alarmScheduler.schedule(item)
                         if (scheduleMessage != null) {
                             repository.updateTodo(item.copy(reminderEnabled = false))
                             alarmScheduler.cancel(item.id)
                         }
+                    }
+                    repository.activeEventsForOngoingNotifications().forEach { event ->
+                        alarmScheduler.schedule(event)
                     }
                 }
                 LegacyAiReportMigration.migrateIfNeeded(this@TodoApplication)

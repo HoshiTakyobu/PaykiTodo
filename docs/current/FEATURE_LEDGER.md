@@ -63,7 +63,7 @@ This file tracks the product at a practical level for new coding sessions.
 - reminder alerts use a flatter high-priority surface with centered large time/title, 56dp action buttons, collapsible notes, entry animation, and a distinct alarm-mode pulse
 - alarm mode loops sound and vibration until the user completes, snoozes, cancels, or acknowledges; after 5 minutes it stops continuous ringing, updates the notification to `未处理提醒`, and performs three 30-second retry bursts at 2-minute intervals
 - daily brief notification can be enabled from Settings with a configurable time, defaults to 08:00, summarizes today's todos/events and nearest <=7-day countdown target, and opens the daily board
-- calendar events with reminders can show a low-priority ongoing notification during the event using channel `ongoing_event`; start/end alarms are restored independently of whether the original reminder time has already passed
+- calendar events can show a low-priority ongoing notification during the event using channel `ongoing_event`; start/end alarms are restored independently of whether the original reminder time has already passed, and the ongoing schedule notification no longer depends on the event reminder being enabled
 
 ### Board Announcements
 
@@ -84,7 +84,7 @@ This file tracks the product at a practical level for new coding sessions.
 - planning documents support create, open, rename, archive, and delete with confirmation on the phone UI; the phone document directory and desktop web Planning Desk both expose delete actions
 - Planning Desk Outliner nodes support note-only rows: text prefixed with `// ` or `> ` is stored as an `isNote` node, displayed with muted/italic styling, excluded from publish-to-todo/event behavior, and ignored when computing parent completion from children
 - Planning Desk node overflow actions can manually switch between task and note behavior with `标记为备注 / 取消备注`
-- phone Planning Desk currently defaults to stable raw Markdown / natural-text editing; `1.7.8` restores a manual Markdown preview that renders headings, task checkboxes, subtask indentation, tag pills, and `#imported` state pills while keeping raw edit as the startup default
+- phone Planning Desk currently defaults to a free-writing markdown/natural-text editor surface while keeping the explicit Outliner / Markdown-compatible tools available; the free-writing surface keeps the preview-first recognition flow and supports long-line inspection with horizontal scrolling
 - phone editor mode remains a plain Markdown / natural-text editor with a fixed-height 56dp operation toolbar (预览 / 识别 / 文档列表 / 教程 / 快捷展开 / 更多) and a collapsible compact icon-style shortcut toolbar positioned above the editor only when needed
 - phone Planning Desk secondary actions (新建/重命名/使用说明/归档/删除) are in an overflow DropdownMenu; manual save button removed in favor of auto-save
 - phone Planning Desk includes a multi-page in-screen beginner tutorial explaining the workflow, natural writing, heading sections such as `# 收集箱` / `# 今日计划`, preview/import, future AI recognition, and directly usable examples
@@ -120,7 +120,8 @@ This file tracks the product at a practical level for new coding sessions.
 - planning notes are included in JSON backup / restore snapshots
 - planning mapping records are also included in JSON backup / restore snapshots
 - Planning Desk supports a `今日` document shortcut; notes can carry `documentDateEpochDay`, and undated schedule lines in that note are parsed against the document date while explicit dates still win
-- Planning Desk `1.13.21` fixes explicit DDL-date precedence for phone / desktop parser paths: lines such as `5.29 【DDL】...`, `5.29【DDL】...`, `5.29 【DDL】14:00 ...`, and `5.29 【紧急】【DDL】14:00 ...` use the inline date/time instead of the planning note's document date, while DDL markers and time tokens are removed from the final title.
+- Planning Desk `1.13.21` fixes explicit DDL-date precedence for phone / desktop parser paths: lines such as `5.29 【DDL】...`, `5.29【DDL】...`, `5.29 【DDL】14:00 ...`, and `5.29 【紧急】【DDL】14:00 ...` use the inline date/time instead of the planning note's document date, while DDL markers and time tokens are removed from the final title
+- Planning Desk `1.13.22` makes the mobile Planning Desk start as a wide free-writing surface, keeps `识别` preview-first instead of background direct-write capture, and keeps AI/local fallback understandable in the editor copy
 - AI recognition for Planning Desk is now an optional Provider-based enhancement for DeepSeek / Qwen / OpenAI-compatible APIs; Settings exposes ordered multi-provider Base URL/API Key/model configuration, single-provider model-list fetching, single-provider connection testing, both phone and desktop Planning Desk recognition call enabled sources in order, local rules remain the fallback, and AI output enters preview before import
 - Planning Desk AI keeps group assignment conservative: AI `groupName` is preserved only when the source line explicitly contains a group marker such as `#group`, `分组：`, `项目：`, or `课程：`, so ordinary titles are not split into accidental groups
 - Planning Desk AI / preview candidates carry event location, all-day, countdown, and recurrence fields; phone and desktop previews can edit those fields before import, and imports persist them into the final todo/event drafts
@@ -202,6 +203,7 @@ This file tracks the product at a practical level for new coding sessions.
 - todo reminder screens expose an explicit `DDL 推迟` action; its input accepts positive minute increments, same-date clock targets, and full date-time targets, and rejects any target that is not later than the current DDL
 - notification reminder path
 - full-screen reminder path
+- full-screen reminder relaunch paths now keep a short recent-surface cooldown, so ordinary app resume / accessibility window events do not repeatedly foreground the same reminder immediately after it was already shown while locked-screen forced overlay behavior remains available
 - full-screen event reminders can start an event check-in when `打卡追踪` is enabled
 - foreground service and fallback chain work
 - reboot / time change / timezone change recovery

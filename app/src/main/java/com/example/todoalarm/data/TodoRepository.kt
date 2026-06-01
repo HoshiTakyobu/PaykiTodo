@@ -1526,11 +1526,24 @@ class TodoRepository(
         )
     }
 
-    suspend fun snoozeTodo(id: Long, nextReminderMillis: Long): TodoItem? {
+    suspend fun snoozeTodo(
+        id: Long,
+        nextReminderMillis: Long,
+        nowMillis: Long = System.currentTimeMillis()
+    ): TodoItem? {
         val item = todoDao.getById(id) ?: return null
         if (item.isHistory) return null
+        val resolvedDueAtMillis = if (item.isTodo) {
+            resolveSnoozedTodoDueAtMillis(
+                currentDueAtMillis = item.dueAtMillis,
+                nowMillis = nowMillis,
+                nextReminderMillis = nextReminderMillis
+            )
+        } else {
+            item.dueAtMillis
+        }
         val updated = item.copy(
-            dueAtMillis = item.dueAtMillis,
+            dueAtMillis = resolvedDueAtMillis,
             reminderAtMillis = nextReminderMillis,
             reminderOffsetsCsv = if (item.isTodo) "" else item.reminderOffsetsCsv,
             reminderEnabled = true,
@@ -1594,6 +1607,14 @@ class TodoRepository(
                         (item.endAtMillis ?: item.startAtMillis) >= now
                     )
         }
+    }
+
+    suspend fun activeEventsForOngoingNotifications(
+        now: Long = System.currentTimeMillis(),
+        lookAheadDays: Long = 30
+    ): List<TodoItem> {
+        val rangeEndMillis = now + Duration.ofDays(lookAheadDays.coerceAtLeast(1)).toMillis()
+        return todoDao.getActiveEventsOverlappingRange(now, rangeEndMillis)
     }
 
     suspend fun ensureRecurringInstancesAhead(

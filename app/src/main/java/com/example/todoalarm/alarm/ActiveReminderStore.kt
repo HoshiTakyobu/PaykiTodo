@@ -8,6 +8,8 @@ object ActiveReminderStore {
     private const val KEY_UPDATED_AT = "updated_at"
     private const val KEY_HANDOFF_TODO_ID = "handoff_todo_id"
     private const val KEY_HANDOFF_UNTIL = "handoff_until"
+    private const val KEY_SURFACE_TODO_ID = "surface_todo_id"
+    private const val KEY_SURFACE_SHOWN_AT = "surface_shown_at"
     private const val ACTIVE_SESSION_TIMEOUT_MS = 24 * 60 * 60 * 1000L
 
     fun markActive(context: Context, todoId: Long) {
@@ -47,6 +49,8 @@ object ActiveReminderStore {
             .remove(KEY_UPDATED_AT)
             .remove(KEY_HANDOFF_TODO_ID)
             .remove(KEY_HANDOFF_UNTIL)
+            .remove(KEY_SURFACE_TODO_ID)
+            .remove(KEY_SURFACE_SHOWN_AT)
             .apply()
     }
 
@@ -68,6 +72,30 @@ object ActiveReminderStore {
             .apply()
     }
 
+    fun markReminderSurfaceShown(context: Context, todoId: Long) {
+        context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            .edit()
+            .putLong(KEY_SURFACE_TODO_ID, todoId)
+            .putLong(KEY_SURFACE_SHOWN_AT, System.currentTimeMillis())
+            .apply()
+    }
+
+    fun wasReminderSurfaceRecentlyShown(
+        context: Context,
+        todoId: Long,
+        withinMs: Long
+    ): Boolean {
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        if (prefs.getLong(KEY_SURFACE_TODO_ID, -1L) != todoId) return false
+        val shownAt = prefs.getLong(KEY_SURFACE_SHOWN_AT, 0L)
+        if (shownAt <= 0L) return false
+        val recent = System.currentTimeMillis() - shownAt <= withinMs
+        if (!recent) {
+            clearReminderSurfaceMarker(context, todoId)
+        }
+        return recent
+    }
+
     fun isActivityHandoffPending(context: Context, todoId: Long): Boolean {
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         val handoffTodoId = prefs.getLong(KEY_HANDOFF_TODO_ID, -1L)
@@ -85,6 +113,15 @@ object ActiveReminderStore {
         prefs.edit()
             .remove(KEY_HANDOFF_TODO_ID)
             .remove(KEY_HANDOFF_UNTIL)
+            .apply()
+    }
+
+    fun clearReminderSurfaceMarker(context: Context, todoId: Long? = null) {
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        if (todoId != null && prefs.getLong(KEY_SURFACE_TODO_ID, -1L) != todoId) return
+        prefs.edit()
+            .remove(KEY_SURFACE_TODO_ID)
+            .remove(KEY_SURFACE_SHOWN_AT)
             .apply()
     }
 }

@@ -967,19 +967,13 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
     fun updateOngoingEventNotificationEnabled(enabled: Boolean) {
         settingsStore.updateOngoingEventNotificationEnabled(enabled)
         viewModelScope.launch(Dispatchers.IO) {
-            val now = System.currentTimeMillis()
-            val currentEvents = repository.getActiveEventsOverlappingRange(now, now + 1)
-            val futureReminderEvents = repository.futureReminderItems(now)
-                .filter { it.isEvent }
-            (currentEvents + futureReminderEvents)
-                .distinctBy { it.id }
-                .forEach { event ->
-                    if (enabled) {
-                        OngoingEventNotifier.schedule(app, event)
-                    } else {
-                        OngoingEventNotifier.cancelAll(app, event.id)
-                    }
+            repository.activeEventsForOngoingNotifications().forEach { event ->
+                if (enabled) {
+                    OngoingEventNotifier.schedule(app, event)
+                } else {
+                    OngoingEventNotifier.cancelAll(app, event.id)
                 }
+            }
         }
     }
 
@@ -1546,6 +1540,14 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     private suspend fun scheduleReminderOrDisable(item: TodoItem) {
+        if (item.isEvent) {
+            if (!item.isHistory) {
+                app.alarmScheduler.schedule(item)
+            } else {
+                app.alarmScheduler.cancel(item.id)
+            }
+            return
+        }
         if (item.isTodo && !item.hasDueDate) {
             if (item.reminderEnabled || item.reminderAtMillis != null) {
                 ReminderDispatchTracker.clear(app, item.id)

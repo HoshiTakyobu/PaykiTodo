@@ -31,6 +31,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -204,12 +205,11 @@ internal fun PlanningDeskPanel(
     var documentSheetVisible by remember { mutableStateOf(false) }
     var previewSheetVisible by remember { mutableStateOf(false) }
     var helpSheetVisible by remember { mutableStateOf(false) }
-    var markdownCompatMode by rememberSaveable(activeNote?.id) { mutableStateOf(false) }
+    var markdownCompatMode by rememberSaveable(activeNote?.id) { mutableStateOf(true) }
     var markdownEditMode by rememberSaveable(activeNote?.id) { mutableStateOf(true) }
     var outlinePreviewMode by rememberSaveable(activeNote?.id) { mutableStateOf(false) }
     var markdownImportVisible by remember { mutableStateOf(false) }
     var markdownImportText by remember(activeNote?.id) { mutableStateOf("") }
-    var markdownCaptureConfirmVisible by remember { mutableStateOf(false) }
     var renameDialog by remember { mutableStateOf(false) }
     var pendingDeleteNote by remember { mutableStateOf<PlanningNote?>(null) }
     var pendingDeleteNode by remember { mutableStateOf<PlanningNode?>(null) }
@@ -302,7 +302,7 @@ internal fun PlanningDeskPanel(
         selectedIds.clear()
         editableCandidates.clear()
         outlineUndoStack.clear()
-        markdownCompatMode = false
+        markdownCompatMode = true
         markdownEditMode = true
     }
 
@@ -463,7 +463,24 @@ internal fun PlanningDeskPanel(
                             if (markdown.isBlank()) {
                                 Toast.makeText(context, "没有可识别的内容", Toast.LENGTH_SHORT).show()
                             } else {
-                                markdownCaptureConfirmVisible = true
+                                scope.launch {
+                                    parsing = true
+                                    try {
+                                        val result = onParse(markdown, activeNote?.id)
+                                        parseResult = result
+                                        editableCandidates.clear()
+                                        editableCandidates.addAll(result.candidates.map { it.toPlanningImportCandidate() })
+                                        selectedIds.clear()
+                                        editableCandidates.forEach { candidate ->
+                                            selectedIds[candidate.id] = candidate.importable && candidate.validate() == null
+                                        }
+                                        previewSheetVisible = true
+                                    } catch (error: Exception) {
+                                        Toast.makeText(context, error.message ?: "识别失败", Toast.LENGTH_SHORT).show()
+                                    } finally {
+                                        parsing = false
+                                    }
+                                }
                             }
                         }
                     ) {
@@ -542,7 +559,7 @@ internal fun PlanningDeskPanel(
                             leadingIcon = { Icon(Icons.Rounded.Image, contentDescription = null) }
                         )
                         DropdownMenuItem(
-                            text = { Text(if (markdownCompatMode) "关闭 Markdown 兼容模式" else "Markdown 兼容模式") },
+                                text = { Text(if (markdownCompatMode) "切换到大纲模式" else "自由书写模式") },
                             onClick = {
                                 overflowMenuExpanded = false
                                 focusManager.clearFocus()
@@ -687,27 +704,58 @@ internal fun PlanningDeskPanel(
                 colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surface),
                 elevation = CardDefaults.elevatedCardElevation(defaultElevation = 1.dp)
             ) {
-                OutlinedTextField(
-                    value = editorValue,
-                    onValueChange = { editorValue = autoContinuePlanningLine(editorValue, it) },
+                Column(
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(6.dp),
-                    textStyle = MaterialTheme.typography.bodyLarge.copy(fontFamily = FontFamily.Monospace),
-                    shape = RoundedCornerShape(18.dp),
-                    placeholder = {
+                        .padding(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Surface(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(16.dp),
+                        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.34f)
+                    ) {
                         Text(
-                            text = "可以直接这样写：\n\n" +
-                                "10:00-12:00 写论文 @图书馆3楼\n" +
-                                "任务M ddl 15:00\n" +
-                                "明天 16:30 交材料\n" +
-                                "- [ ] 整理保研材料\n" +
-                                "  - [ ] 打印成绩单",
+                            text = if (planningAiProviders.any { it.normalized().enabled }) {
+                                "自由书写：像备忘录一样写一整段，点“识别”后优先使用已启用 AI，失败时回到本地规则；结果先进入预览。"
+                            } else {
+                                "自由书写：像备忘录一样写一整段，点“识别”后用本地规则解析；结果先进入预览，不会直接入库。"
+                            },
+                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+                            style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
-                    },
-                    minLines = 12
-                )
+                    }
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .weight(1f)
+                            .horizontalScroll(rememberScrollState())
+                    ) {
+                        OutlinedTextField(
+                            value = editorValue,
+                            onValueChange = { editorValue = autoContinuePlanningLine(editorValue, it) },
+                            modifier = Modifier
+                                .widthIn(min = 720.dp)
+                                .fillMaxHeight(),
+                            textStyle = MaterialTheme.typography.bodyLarge.copy(fontFamily = FontFamily.Monospace),
+                            shape = RoundedCornerShape(18.dp),
+                            placeholder = {
+                                Text(
+                                    text = "可以直接这样写：\n\n" +
+                                        "10:00-12:00 写论文 @图书馆3楼\n" +
+                                        "12:00-13:00 吃饭\n" +
+                                        "任务M ddl 15:00\n" +
+                                        "明天 16:30 交材料\n" +
+                                        "- [ ] 整理保研材料\n" +
+                                        "  - [ ] 打印成绩单",
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            },
+                            minLines = 16
+                        )
+                    }
+                }
             }
         } else {
             PlanningMarkdownPreview(
@@ -860,39 +908,6 @@ internal fun PlanningDeskPanel(
                 ) { Text("导入并替换") }
             },
             dismissButton = { TextButton(onClick = { markdownImportVisible = false }) { Text("取消") } }
-        )
-    }
-
-    if (markdownCaptureConfirmVisible) {
-        AlertDialog(
-            onDismissRequest = { markdownCaptureConfirmVisible = false },
-            title = { Text("确认捕获为新事项？") },
-            text = {
-                Text(
-                    "这会把当前 Markdown 文本作为新的捕获内容写入大纲，并同步创建对应待办 / 日程。如果这是从当前大纲导出的内容，继续操作可能造成重复事项。"
-                )
-            },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        markdownCaptureConfirmVisible = false
-                        BackgroundCaptureProcessor.processPlanningNoteText(
-                            context = context,
-                            noteId = activeNote?.id,
-                            text = editorValue.text,
-                            title = activeNote?.title?.let { "规划台：$it" } ?: "规划台识别"
-                        )
-                        Toast.makeText(
-                            context,
-                            BackgroundCaptureProcessor.processingToastMessage(context),
-                            Toast.LENGTH_SHORT
-                        ).show()
-                    }
-                ) { Text("继续捕获") }
-            },
-            dismissButton = {
-                TextButton(onClick = { markdownCaptureConfirmVisible = false }) { Text("取消") }
-            }
         )
     }
 

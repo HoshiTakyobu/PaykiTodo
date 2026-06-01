@@ -2,7 +2,7 @@
 
 ## Active Development Focus
 
-Active immediate task: continue the broader product/UX audit from the `1.13.34 / versionCode 282` local patch baseline, using the previous reminder/Planning Desk goal as the latest verified work package:
+Active immediate task: continue the broader product/UX audit from the `1.13.35 / versionCode 283` local patch baseline, using the previous reminder/Planning Desk goal as the latest verified work package:
 
 - `docs/goals/2026-06-01-paykitodo-reminder-ongoing-planning-ux-goal.md`
 
@@ -153,3 +153,11 @@ Current todo quick-preview action-bar follow-up patch:
 3. The explanatory copy still states that cancel enters history while delete is a hard removal.
 4. Version metadata moved to `1.13.34 / versionCode 282`; database version remains `27`.
 5. Verification passed: `./gradlew.bat :app:compileDebugKotlin`, `./gradlew.bat :app:testDebugUnitTest`, `git diff --check`, `./gradlew.bat :app:assembleDebug`, and APK metadata check for `versionName = 1.13.34`, `versionCode = 282`.
+
+Current desktop-sync status follow-up patch:
+
+1. Phone Settings -> Desktop Sync now distinguishes waiting for desktop access key from an authorized connected desktop.
+2. Desktop sync status refreshes every 15 seconds while enabled, so the Settings page can show updated connected/disconnected state and auto-stop countdown.
+3. `/api/status` now includes `connected`, `lastAuthorizedAtMillis`, and `secondsUntilAutoStop` while keeping existing fields compatible for the desktop web.
+4. Version metadata moved to `1.13.35 / versionCode 283`; database version remains `27`.
+5. Verification passed: `node --check app/src/main/assets/desktop-web/app.js`, `./gradlew.bat :app:compileDebugKotlin`, `./gradlew.bat :app:testDebugUnitTest`, `git diff --check`, `./gradlew.bat :app:assembleDebug`, and APK metadata check for `versionName = 1.13.35`, `versionCode = 283`.

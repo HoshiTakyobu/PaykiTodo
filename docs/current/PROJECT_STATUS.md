@@ -8,8 +8,8 @@
 - Target platform: Android 14 / API 34
 - License: MIT License (`LICENSE`)
 - Current version in code:
-  - `versionName = "1.13.34"`
-  - `versionCode = 282`
+  - `versionName = "1.13.35"`
+  - `versionCode = 283`
   - database version = `27`
 
 ## Current Build Facts
@@ -22,7 +22,13 @@
 - Latest GitHub Release:
   - `https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.13.11`
 - Latest fully built debug APK:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.13.34-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.13.35-debug.apk`
+- Current `1.13.35 / versionCode 283` status:
+  - Phone Settings -> Desktop Sync now distinguishes waiting for the desktop access key from an authorized connected desktop.
+  - Desktop sync status refreshes periodically while enabled, so connection state and auto-stop countdown can update without toggling the setting.
+  - Desktop sync status JSON now includes authorized heartbeat freshness and seconds until auto-stop; the existing desktop web remains compatible.
+  - Database version remains `27`; no schema migration was added.
+  - Verification passed: `node --check app/src/main/assets/desktop-web/app.js`, `./gradlew.bat :app:compileDebugKotlin`, `./gradlew.bat :app:testDebugUnitTest`, `git diff --check`, `./gradlew.bat :app:assembleDebug`, and APK metadata check.
 - Current `1.13.34 / versionCode 282` status:
   - Phone todo quick preview now has a fixed bottom action area, so `取消待办（归档）` stays visible without scrolling through details.
   - The preview top bar is simplified to return only; edit/delete/restore/cancel are grouped in the bottom action area, keeping cancel/archive distinct from hard delete.

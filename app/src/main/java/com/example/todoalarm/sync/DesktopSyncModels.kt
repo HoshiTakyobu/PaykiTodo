@@ -15,7 +15,10 @@ data class DesktopSyncStatus(
     val running: Boolean,
     val port: Int,
     val token: String,
-    val ipAddresses: List<String>
+    val ipAddresses: List<String>,
+    val connected: Boolean = false,
+    val lastAuthorizedAtMillis: Long = 0L,
+    val secondsUntilAutoStop: Long? = null
 )
 
 data class DesktopSyncSnapshot(
@@ -45,6 +48,13 @@ fun DesktopSyncStatus.toJson(): JSONObject {
         put("port", port)
         put("token", token)
         put("ipAddresses", JSONArray(ipAddresses))
+        put("connected", connected)
+        put("lastAuthorizedAtMillis", lastAuthorizedAtMillis)
+        if (secondsUntilAutoStop == null) {
+            put("secondsUntilAutoStop", JSONObject.NULL)
+        } else {
+            put("secondsUntilAutoStop", secondsUntilAutoStop)
+        }
     }
 }
 
@@ -161,12 +171,22 @@ fun TodoItem.toDesktopJson(group: TaskGroup?, groupIds: List<Long> = emptyList()
     }
 }
 
-fun AppSettings.toDesktopSyncStatus(running: Boolean, port: Int, ipAddresses: List<String>): DesktopSyncStatus {
+fun AppSettings.toDesktopSyncStatus(
+    running: Boolean,
+    port: Int,
+    ipAddresses: List<String>,
+    connected: Boolean = false,
+    lastAuthorizedAtMillis: Long = 0L,
+    secondsUntilAutoStop: Long? = null
+): DesktopSyncStatus {
     return DesktopSyncStatus(
         enabled = desktopSyncEnabled,
         running = running,
         port = port,
         token = desktopSyncToken,
-        ipAddresses = ipAddresses
+        ipAddresses = ipAddresses,
+        connected = connected,
+        lastAuthorizedAtMillis = lastAuthorizedAtMillis,
+        secondsUntilAutoStop = secondsUntilAutoStop
     )
 }

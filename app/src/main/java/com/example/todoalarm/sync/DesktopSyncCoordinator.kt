@@ -71,6 +71,8 @@ class DesktopSyncCoordinator(
     private val port = 18765
     @Volatile
     private var lastAuthorizedClientAtMillis: Long = 0L
+    @Volatile
+    private var trackingStartedAtMillis: Long = 0L
 
     fun ensureRunning() {
         if (!settingsStore.currentSettings().desktopSyncEnabled) {
@@ -78,6 +80,9 @@ class DesktopSyncCoordinator(
             return
         }
         if (server != null) return
+        if (trackingStartedAtMillis <= 0L) {
+            trackingStartedAtMillis = System.currentTimeMillis()
+        }
         server = DesktopSyncServer(port = port) { method, path, body, headers ->
             handleRequest(method, path, body, headers)
         }.also { it.start() }
@@ -86,10 +91,12 @@ class DesktopSyncCoordinator(
     fun stop() {
         server?.stop()
         server = null
+        trackingStartedAtMillis = 0L
     }
 
     fun resetClientTracking() {
         lastAuthorizedClientAtMillis = 0L
+        trackingStartedAtMillis = System.currentTimeMillis()
     }
 
     fun lastAuthorizedClientAtMillis(): Long = lastAuthorizedClientAtMillis
@@ -105,10 +112,24 @@ class DesktopSyncCoordinator(
             DesktopSyncService.start(context.applicationContext)
         }
         val enabledAndRunning = settings.desktopSyncEnabled && server != null
+        val now = System.currentTimeMillis()
+        val lastAuthorizedAt = lastAuthorizedClientAtMillis
+        val connected = enabledAndRunning &&
+            lastAuthorizedAt > 0L &&
+            now - lastAuthorizedAt < DesktopSyncService.NO_CLIENT_AUTO_STOP_MILLIS
+        val secondsUntilAutoStop = if (enabledAndRunning) {
+            val referenceMillis = lastAuthorizedAt.takeIf { it > 0L } ?: trackingStartedAtMillis
+            ((referenceMillis + DesktopSyncService.NO_CLIENT_AUTO_STOP_MILLIS - now).coerceAtLeast(0L) + 999L) / 1000L
+        } else {
+            null
+        }
         return settings.toDesktopSyncStatus(
             running = enabledAndRunning,
             port = port,
-            ipAddresses = if (enabledAndRunning) currentIpv4Addresses() else emptyList()
+            ipAddresses = if (enabledAndRunning) currentIpv4Addresses() else emptyList(),
+            connected = connected,
+            lastAuthorizedAtMillis = lastAuthorizedAt,
+            secondsUntilAutoStop = secondsUntilAutoStop
         )
     }
 

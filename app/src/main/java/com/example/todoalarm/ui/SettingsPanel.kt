@@ -252,7 +252,8 @@ fun SettingsPanel(
                     icon = Icons.Rounded.Computer,
                     title = "电脑同步",
                     summary = when {
-                        desktopSyncStatus.running -> "正在运行"
+                        desktopSyncStatus.connected -> "已连接"
+                        desktopSyncStatus.running -> "等待密钥"
                         settings.desktopSyncEnabled -> "未运行"
                         else -> "未开启"
                     },
@@ -566,15 +567,13 @@ fun SettingsPanel(
         SettingsSection.DESKTOP_SYNC -> SettingsSectionDialog("电脑同步", { selectedSection = null }) {
             val context = LocalContext.current
             Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                val syncStatusTitle = desktopSyncConnectionTitle(settings, desktopSyncStatus)
+                val syncStatusSummary = desktopSyncConnectionSummary(settings, desktopSyncStatus)
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                     Column(modifier = Modifier.weight(1f)) {
                         Text("启用电脑同步", fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
                         Text(
-                            when {
-                                desktopSyncStatus.running -> "当前服务正在运行"
-                                settings.desktopSyncEnabled -> "正在启动服务，请稍候刷新连接地址"
-                                else -> "当前服务未运行"
-                            },
+                            syncStatusTitle,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
@@ -585,6 +584,20 @@ fun SettingsPanel(
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
+                if (syncStatusSummary.isNotBlank()) {
+                    Surface(
+                        shape = RoundedCornerShape(16.dp),
+                        color = MaterialTheme.colorScheme.primary.copy(alpha = if (desktopSyncStatus.connected) 0.12f else 0.08f)
+                    ) {
+                        Text(
+                            text = syncStatusSummary,
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            lineHeight = MaterialTheme.typography.bodySmall.lineHeight
+                        )
+                    }
+                }
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text("访问密钥：${settings.desktopSyncToken}", fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.weight(1f))
                     OutlinedButton(onClick = {
@@ -1521,6 +1534,45 @@ private fun List<PlanningAiProvider>.moveProvider(from: Int, to: Int): List<Plan
     return toMutableList().apply {
         val item = removeAt(from)
         add(to, item)
+    }
+}
+
+private fun desktopSyncConnectionTitle(
+    settings: AppSettings,
+    status: DesktopSyncStatus
+): String {
+    return when {
+        !settings.desktopSyncEnabled -> "当前服务未运行"
+        status.connected -> "已连接电脑端"
+        status.running -> "等待电脑端输入访问密钥"
+        else -> "正在启动服务，请稍候刷新连接地址"
+    }
+}
+
+private fun desktopSyncConnectionSummary(
+    settings: AppSettings,
+    status: DesktopSyncStatus
+): String {
+    if (!settings.desktopSyncEnabled) return ""
+    val remaining = status.secondsUntilAutoStop?.let(::formatDesktopSyncRemaining)
+    return when {
+        status.connected && remaining != null -> "已检测到电脑端授权心跳；如果电脑断开或停止访问，约 $remaining 后会自动关闭电脑同步。"
+        status.connected -> "已检测到电脑端授权心跳。"
+        status.running && remaining != null -> "服务已启动，等待电脑端用正确访问密钥连接；如果一直未连接，约 $remaining 后自动关闭。"
+        status.running -> "服务已启动，等待电脑端用正确访问密钥连接。"
+        else -> "同步开关已打开，但服务尚未报告运行状态。"
+    }
+}
+
+private fun formatDesktopSyncRemaining(seconds: Long): String {
+    val normalized = seconds.coerceAtLeast(0L)
+    if (normalized < 60L) return "${normalized} 秒"
+    val minutes = normalized / 60L
+    val extraSeconds = normalized % 60L
+    return if (extraSeconds == 0L) {
+        "${minutes} 分钟"
+    } else {
+        "${minutes} 分 ${extraSeconds} 秒"
     }
 }
 

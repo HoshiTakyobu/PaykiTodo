@@ -5,23 +5,32 @@
 - Repository root: `G:\Workspace\Project\PaykiTodo`
 - Branch: `main`
 - Current code version:
-  - `versionName = 1.13.34`
-  - `versionCode = 282`
+  - `versionName = 1.13.35`
+  - `versionCode = 283`
   - database version = `27`
 - Latest debug APK target in this round:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.13.34-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.13.35-debug.apk`
 - Latest signed release APK available locally:
   - `app/build/outputs/apk/release/PaykiTodo-1.13.11-release.apk`
 - Latest GitHub Release:
   - `https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.13.11`
 - Debug APK metadata inspection:
-  - `versionName = 1.13.34`, `versionCode = 282`
+  - `versionName = 1.13.35`, `versionCode = 283`
 
 ## Active Goal
 
-Active immediate task: continue the broader product/UX audit from the current `1.13.34 / versionCode 282` local patch baseline.
+Active immediate task: continue the broader product/UX audit from the current `1.13.35 / versionCode 283` local patch baseline.
 
-Latest status: `1.13.34` makes the phone todo quick-preview cancel/archive path harder to miss: the preview now keeps `取消待办（归档）` in a fixed bottom action area instead of relying on a top action or scrollable content. Debug build and metadata inspection passed locally.
+Latest status: `1.13.35` improves desktop sync lifecycle visibility: Settings now distinguishes waiting for the access key from a real authorized desktop connection and refreshes status while sync is enabled. Debug build and metadata inspection passed locally.
+
+## What Changed In The Latest 1.13.35 Patch
+
+1. DesktopSyncStatus now exposes `connected`, `lastAuthorizedAtMillis`, and `secondsUntilAutoStop`.
+2. Phone Settings -> Desktop Sync now shows whether it is waiting for the access key or already connected to an authorized desktop.
+3. TodoViewModel refreshes desktop sync status every 15 seconds while sync is enabled, so the Settings page can update connection state and auto-stop countdown.
+4. `/api/status` remains compatible with the desktop web and adds the new status fields for future UI use.
+5. Version metadata moved to `1.13.35 / versionCode 283`; database version remains `27`.
+6. Verification passed: `node --check app/src/main/assets/desktop-web/app.js`, `./gradlew.bat :app:compileDebugKotlin`, `./gradlew.bat :app:testDebugUnitTest`, `git diff --check`, `./gradlew.bat :app:assembleDebug`, and APK metadata inspection.
 
 ## What Changed In The Latest 1.13.34 Patch
 

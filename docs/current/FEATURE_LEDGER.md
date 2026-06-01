@@ -323,6 +323,7 @@ This file tracks the product at a practical level for new coding sessions.
 - desktop sync service self-stops if Android restarts it while desktop sync is disabled in Settings
 - desktop sync enable immediately starts the phone-side foreground service / LAN server; status reads start the foreground service when needed instead of creating a hidden server without notification
 - desktop sync service auto-disables itself after 5 minutes without an authorized desktop heartbeat, covering both "电脑未输入密钥" and "已连接后断开" cases; desktop Web sends a 60-second authorized heartbeat after connection
+- desktop sync status now exposes authorized-heartbeat freshness and auto-stop countdown to the phone Settings panel, which distinguishes waiting-for-key from connected and refreshes while sync is enabled
 - desktop sync can keep WiFi and a partial wake lock while the foreground service is running; the default-on `桌面同步期间保持网络唤醒` setting is surfaced in Settings and reflected in the foreground notification copy
 - desktop web has a `规划台` tab with textarea editor, document selector, auto-save, `Ctrl+S` save, `Ctrl+Enter` parse, editable parse preview, selected import, and a help modal that explains the same DDL/reminder syntax as the phone-side Planning Desk help
 - desktop web Planning Desk uses phone-local `/api/planning/*` routes, edits the same Room planning notes as the phone UI, saves before switching documents, blocks empty selected imports, writes back `#imported` markers after import, and reuses the same AI recognition / local fallback path as the phone Planning Desk

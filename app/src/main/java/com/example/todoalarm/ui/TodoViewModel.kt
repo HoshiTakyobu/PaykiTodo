@@ -154,6 +154,16 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
                 delay(nextDateTickDelayMillis())
             }
         }
+        viewModelScope.launch {
+            while (true) {
+                if (settingsStore.currentSettings().desktopSyncEnabled) {
+                    desktopSyncRefreshTick.value = System.currentTimeMillis()
+                    delay(DESKTOP_SYNC_STATUS_REFRESH_MILLIS)
+                } else {
+                    delay(DESKTOP_SYNC_IDLE_REFRESH_MILLIS)
+                }
+            }
+        }
     }
 
     @OptIn(ExperimentalCoroutinesApi::class)
@@ -1639,6 +1649,8 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
     companion object {
         private const val MISSED_THRESHOLD_MILLIS = 60_000L
         private const val CalendarWindowPaddingDays = 2L
+        private const val DESKTOP_SYNC_STATUS_REFRESH_MILLIS = 15_000L
+        private const val DESKTOP_SYNC_IDLE_REFRESH_MILLIS = 60_000L
     }
 }
 

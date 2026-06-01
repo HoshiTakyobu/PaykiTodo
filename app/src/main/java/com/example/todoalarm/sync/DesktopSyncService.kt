@@ -236,7 +236,7 @@ class DesktopSyncService : Service() {
     companion object {
         private const val CHANNEL_ID = "paykitodo_desktop_sync"
         private const val NOTIFICATION_ID = 42071
-        private const val NO_CLIENT_AUTO_STOP_MILLIS = 5 * 60 * 1000L
+        const val NO_CLIENT_AUTO_STOP_MILLIS = 5 * 60 * 1000L
         private const val CONNECTION_WATCHDOG_INTERVAL_MILLIS = 15 * 1000L
 
         fun start(context: Context) {

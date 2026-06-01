@@ -1896,6 +1896,7 @@ function renderPlanningPreview() {
       + '<div class="planning-preview-options">'
       +   (item.type === 'EVENT' ? '<label class="planning-linked"><input type="checkbox" data-planning-flag="allDay" data-planning-id="' + escapeHtml(item.id) + '"' + (item.allDay ? ' checked' : '') + ' /> 全天</label>' : '')
       +   '<label class="planning-linked"><input type="checkbox" data-planning-flag="countdownEnabled" data-planning-id="' + escapeHtml(item.id) + '"' + (item.countdownEnabled ? ' checked' : '') + ' /> 倒数日</label>'
+      +   (item.type === 'EVENT' ? '<label class="planning-linked"><input type="checkbox" data-planning-flag="checkInEnabled" data-planning-id="' + escapeHtml(item.id) + '"' + (item.checkInEnabled ? ' checked' : '') + ' /> 打卡追踪</label>' : '')
       + '</div>'
     ) : '';
     return ''

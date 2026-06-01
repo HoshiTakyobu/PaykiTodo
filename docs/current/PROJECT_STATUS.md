@@ -8,8 +8,8 @@
 - Target platform: Android 14 / API 34
 - License: MIT License (`LICENSE`)
 - Current version in code:
-  - `versionName = "1.13.28"`
-  - `versionCode = 276`
+  - `versionName = "1.13.29"`
+  - `versionCode = 277`
   - database version = `27`
 
 ## Current Build Facts
@@ -22,7 +22,16 @@
 - Latest GitHub Release:
   - `https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.13.11`
 - Latest fully built debug APK:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.13.28-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.13.29-debug.apk`
+- Current `1.13.29 / versionCode 277` status:
+  - Desktop Web Planning Desk event candidates now expose `打卡追踪` in recognition preview, matching the phone Planning Desk preview option and reusing the existing `checkInEnabled` import field.
+  - Database version remains `27`; no schema migration was added.
+  - `node --check app/src/main/assets/desktop-web/app.js` passed.
+  - `./gradlew.bat :app:compileDebugKotlin` passed.
+  - `./gradlew.bat :app:testDebugUnitTest` passed.
+  - `./gradlew.bat :app:assembleDebug` passed.
+  - `git diff --check` passed.
+  - Debug APK metadata confirms `versionName = 1.13.29`, `versionCode = 277`, output `PaykiTodo-1.13.29-debug.apk`.
 - Current `1.13.28 / versionCode 276` status:
   - Phone todo details quick preview now labels the top archive action as `取消待办` instead of the confusing `取消归档`, while the bottom action keeps `取消待办（归档）` to clarify that cancel enters history and delete does not.
   - Todo quick previews opened from the Daily Board, search, Planning Desk linked items, notifications, and widgets keep cancel/delete available for active todos and hide them only for completed/canceled history todos.

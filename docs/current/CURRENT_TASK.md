@@ -2,7 +2,7 @@
 
 ## Active Development Focus
 
-Active immediate task: continue the broader product/UX audit from the `1.13.28 / versionCode 276` local patch baseline, using the previous reminder/Planning Desk goal as the latest verified work package:
+Active immediate task: continue the broader product/UX audit from the `1.13.29 / versionCode 277` local patch baseline, using the previous reminder/Planning Desk goal as the latest verified work package:
 
 - `docs/goals/2026-06-01-paykitodo-reminder-ongoing-planning-ux-goal.md`
 
@@ -104,3 +104,10 @@ Current quick-preview cancellation follow-up patch:
 3. Desktop Web todo preview now has a top `取消待办` action, so cancel/archive can be used without scrolling to the bottom of the preview.
 4. Version metadata moved to `1.13.28 / versionCode 276`; database version remains `27`.
 5. Verification passed: `node --check app/src/main/assets/desktop-web/app.js`, `./gradlew.bat :app:compileDebugKotlin`, `./gradlew.bat :app:testDebugUnitTest`, `git diff --check`, `./gradlew.bat :app:assembleDebug`, and APK metadata check for `versionName = 1.13.28`, `versionCode = 276`.
+
+Current Planning Desk desktop parity follow-up patch:
+
+1. Desktop Web Planning Desk event candidates now expose `打卡追踪` in the recognition preview, matching the phone preview option.
+2. The option reuses the existing `checkInEnabled` candidate field and import backend, so no data migration is needed.
+3. Version metadata moved to `1.13.29 / versionCode 277`; database version remains `27`.
+4. Verification passed: `node --check app/src/main/assets/desktop-web/app.js`, `./gradlew.bat :app:compileDebugKotlin`, `./gradlew.bat :app:testDebugUnitTest`, `git diff --check`, `./gradlew.bat :app:assembleDebug`, and APK metadata check for `versionName = 1.13.29`, `versionCode = 277`.

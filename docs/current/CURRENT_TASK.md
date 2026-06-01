@@ -2,7 +2,7 @@
 
 ## Active Development Focus
 
-Active immediate task: complete and commit the `1.13.24 / versionCode 272` quick-preview cancel/delete semantics follow-up round described in:
+Active immediate task: complete and commit the `1.13.25 / versionCode 273` quick-preview cancel/delete documentation parity follow-up round described in:
 
 - `docs/goals/2026-06-01-paykitodo-reminder-ongoing-planning-ux-goal.md`
 
@@ -54,12 +54,12 @@ The user reported four active usability / correctness failures:
 2. `./gradlew.bat :app:testDebugUnitTest`
 3. `git diff --check`
 4. `./gradlew.bat :app:assembleDebug`
-5. APK metadata check for `versionName = 1.13.22` and `versionCode = 270`
-6. Commit the completed round with a Chinese message that describes the reminder behavior, DDL snooze logic, Planning Desk input change, version bump, and validation.
+5. APK metadata check for the current app version.
+6. Commit the completed round with a Chinese message that describes user-visible behavior, version bump, and validation.
 
 ## Current Status
 
-The quick-preview cancel/delete semantics fix has been implemented and verified for the `1.13.24 / versionCode 272` debug APK. The next step is to commit the completed round.
+The quick-preview cancel/delete semantics fix was implemented and committed in `afe0e5a` for `1.13.24 / versionCode 272`. The current follow-up updates the built-in Wiki and current handoff documents so user-facing instructions match the implemented behavior; the `1.13.25 / versionCode 273` debug build has also been verified locally.
 
 Completed behavior so far:
 
@@ -71,3 +71,11 @@ Completed behavior so far:
 6. Recurring todo current-instance delete records a `recurring_instance_skips` exception and then hard-deletes the row, so the occurrence does not enter history and does not regenerate.
 7. Backup / restore includes `recurring_instance_skips`, so single-instance recurring-todo deletions survive restore.
 8. Verification passed: `node --check app/src/main/assets/desktop-web/app.js`, `./gradlew.bat :app:compileDebugKotlin`, `./gradlew.bat :app:testDebugUnitTest`, `git diff --check`, `./gradlew.bat :app:assembleDebug`, and APK metadata check for `versionName = 1.13.24`, `versionCode = 272`.
+
+Current follow-up behavior:
+
+1. Built-in Wiki now says the todo card body opens details and the left circle only completes the todo.
+2. Built-in Wiki now documents `取消待办（归档）` versus hard delete.
+3. Built-in Wiki now documents recurring-todo single-instance delete as a non-history skip record.
+4. Version metadata moved to `1.13.25 / versionCode 273`; database version remains `27`.
+5. Verification passed: `node --check app/src/main/assets/desktop-web/app.js`, `./gradlew.bat :app:compileDebugKotlin`, `./gradlew.bat :app:testDebugUnitTest`, `git diff --check`, `./gradlew.bat :app:assembleDebug`, and APK metadata check for `versionName = 1.13.25`, `versionCode = 273`.

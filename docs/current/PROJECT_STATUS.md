@@ -8,8 +8,8 @@
 - Target platform: Android 14 / API 34
 - License: MIT License (`LICENSE`)
 - Current version in code:
-  - `versionName = "1.13.24"`
-  - `versionCode = 272`
+  - `versionName = "1.13.25"`
+  - `versionCode = 273`
   - database version = `27`
 
 ## Current Build Facts
@@ -22,7 +22,17 @@
 - Latest GitHub Release:
   - `https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.13.11`
 - Latest fully built debug APK:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.13.24-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.13.25-debug.apk`
+- Current `1.13.25 / versionCode 273` status:
+  - Built-in Wiki todo-preview instructions now match the current UI: card body opens details, left circle completes, and details expose cancel/archive, delete, and edit.
+  - Built-in Wiki explicitly distinguishes cancel/archive from hard delete and documents recurring-todo single-instance delete as a non-history skip record.
+  - Database version remains `27`; no schema migration was added beyond the existing `recurring_instance_skips` table from `1.13.24`.
+  - `node --check app/src/main/assets/desktop-web/app.js` passed.
+  - `./gradlew.bat :app:compileDebugKotlin` passed.
+  - `./gradlew.bat :app:testDebugUnitTest` passed.
+  - `./gradlew.bat :app:assembleDebug` passed.
+  - `git diff --check` passed.
+  - Debug APK metadata confirms `versionName = 1.13.25`, `versionCode = 273`, output `PaykiTodo-1.13.25-debug.apk`.
 - Current `1.13.24 / versionCode 272` status:
   - Phone todo details preview labels cancel as `取消待办（归档）`, asks for confirmation, and keeps cancel distinct from hard delete.
   - Desktop Web todo preview also confirms cancel/archive and hard delete with explicit history semantics.

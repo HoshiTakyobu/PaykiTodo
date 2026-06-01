@@ -5,24 +5,32 @@
 - Repository root: `G:\Workspace\Project\PaykiTodo`
 - Branch: `main`
 - Current code version:
-  - `versionName = 1.13.24`
-  - `versionCode = 272`
+  - `versionName = 1.13.25`
+  - `versionCode = 273`
   - database version = `27`
 - Latest debug APK target in this round:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.13.24-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.13.25-debug.apk`
 - Latest signed release APK available locally:
   - `app/build/outputs/apk/release/PaykiTodo-1.13.11-release.apk`
 - Latest GitHub Release:
   - `https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.13.11`
 - Debug APK metadata inspection:
-  - `versionName = 1.13.24`
-  - `versionCode = 272`
+  - `versionName = 1.13.25`
+  - `versionCode = 273`
 
 ## Active Goal
 
-Active immediate task: finish the quick-preview cancel/delete semantics follow-up on the `1.13.24 / versionCode 272` line, rebuild the debug APK, and commit the round.
+Active immediate task: finish the quick-preview cancel/delete documentation parity follow-up on the `1.13.25 / versionCode 273` line and commit the round.
 
-Latest status: quick todo preview dialogs now expose a confirmed `取消待办（归档）` action, active todo cards' action sheet exposes `取消待办` directly, and recurring todo delete semantics were corrected so hard delete no longer archives range deletions. The `PaykiTodo-1.13.24-debug.apk` rebuild and metadata inspection passed; the next step is committing the round.
+Latest status: `1.13.24` implemented and committed the quick todo preview / recurring delete semantics. The current `1.13.25` follow-up updates the built-in Wiki so user-facing help matches the implemented cancel/archive versus hard-delete behavior. The `PaykiTodo-1.13.25-debug.apk` rebuild and metadata inspection passed; the next step is committing the round.
+
+## What Changed In The Latest 1.13.25 Patch
+
+1. Built-in Wiki todo-preview instructions now say the card body opens details and the left circle only completes the todo.
+2. Built-in Wiki now documents `取消待办（归档）` versus hard delete.
+3. Built-in Wiki now documents recurring-todo single-instance delete as a non-history skip record.
+4. Version metadata moved to `1.13.25 / versionCode 273`; database version remains `27`.
+5. Verification passed: `node --check app/src/main/assets/desktop-web/app.js`, `./gradlew.bat :app:compileDebugKotlin`, `./gradlew.bat :app:testDebugUnitTest`, `git diff --check`, `./gradlew.bat :app:assembleDebug`, and APK metadata inspection.
 
 ## What Changed In The Latest 1.13.24 Patch
 

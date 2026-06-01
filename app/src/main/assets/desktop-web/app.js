@@ -2524,6 +2524,12 @@ function setTodoDueEnabled(enabled) {
     document.getElementById('todo-recurrence-type').value = 'NONE';
     document.getElementById('todo-recurrence-end').value = '';
     document.getElementById('todo-weekdays').value = '';
+    const countdown = document.getElementById('todo-countdown');
+    const hiddenBoard = document.getElementById('todo-hidden-board');
+    const alarmMode = document.getElementById('todo-alarm-mode');
+    if (countdown) countdown.checked = false;
+    if (hiddenBoard) hiddenBoard.checked = false;
+    if (alarmMode) alarmMode.checked = false;
   }
 }
 function clearTodoForm() {
@@ -2543,6 +2549,8 @@ function clearTodoForm() {
   document.getElementById('todo-weekdays').value = '';
   setRecurrenceScopeBlock('todo', false);
   document.getElementById('todo-countdown').checked = false;
+  document.getElementById('todo-hidden-board').checked = false;
+  document.getElementById('todo-alarm-mode').checked = false;
   document.getElementById('todo-ring').checked = true;
   document.getElementById('todo-vibrate').checked = true;
   const hasDueCheckbox = document.getElementById('todo-has-due');
@@ -2570,6 +2578,8 @@ function openTodoEditor(item) {
   document.getElementById('todo-weekdays').value = csvValue(item.recurrenceWeekdays);
   setRecurrenceScopeBlock('todo', item.isRecurring === true, 'CURRENT_AND_FUTURE');
   document.getElementById('todo-countdown').checked = item.countdownEnabled === true;
+  document.getElementById('todo-hidden-board').checked = item.hiddenFromBoard === true;
+  document.getElementById('todo-alarm-mode').checked = item.alarmMode === true;
   document.getElementById('todo-ring').checked = item.ringEnabled !== false;
   document.getElementById('todo-vibrate').checked = item.vibrateEnabled !== false;
   openModal('todo-modal');
@@ -3300,6 +3310,8 @@ document.getElementById('create-todo').onclick = async () => {
       groupId: groupIds[0] || Number(document.getElementById('todo-group').value || 0),
       groupIds: groupIds,
       countdownEnabled: hasDueDate && document.getElementById('todo-countdown').checked,
+      hiddenFromBoard: hasDueDate && document.getElementById('todo-hidden-board').checked,
+      alarmMode: hasDueDate && document.getElementById('todo-alarm-mode').checked,
       ringEnabled: document.getElementById('todo-ring').checked,
       vibrateEnabled: document.getElementById('todo-vibrate').checked,
       reminderDeliveryMode: document.getElementById('todo-reminder-mode').value,

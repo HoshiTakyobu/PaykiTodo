@@ -8,8 +8,8 @@
 - Target platform: Android 14 / API 34
 - License: MIT License (`LICENSE`)
 - Current version in code:
-  - `versionName = "1.13.38"`
-  - `versionCode = 286`
+  - `versionName = "1.13.39"`
+  - `versionCode = 287`
   - database version = `27`
 
 ## Current Build Facts
@@ -22,7 +22,13 @@
 - Latest GitHub Release:
   - `https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.13.11`
 - Latest fully built debug APK:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.13.38-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.13.39-debug.apk`
+- Current `1.13.39 / versionCode 287` status:
+  - Desktop Web todo editor now exposes `闹钟模式`, matching the phone todo editor and existing desktop API support.
+  - Desktop Web todo editor now exposes `仅提醒，不在看板显示`, matching the phone todo editor and existing desktop API support.
+  - Both fields are reset when DDL is disabled and are round-tripped when editing existing todos.
+  - Database version remains `27`; no schema migration was added.
+  - Verification target: `node --check app/src/main/assets/desktop-web/app.js`, `./gradlew.bat :app:compileDebugKotlin`, `./gradlew.bat :app:testDebugUnitTest`, `git diff --check`, `./gradlew.bat :app:assembleDebug`, and APK metadata check.
 - Current `1.13.38 / versionCode 286` status:
   - Active todo long-press action sheets now label cancel as `取消待办（归档）`.
   - Todo cancel confirmation sheets now use `取消待办（归档）` as the title and `取消并归档` as the confirm action, keeping cancel/archive distinct from hard delete.

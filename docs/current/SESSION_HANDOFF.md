@@ -5,23 +5,32 @@
 - Repository root: `G:\Workspace\Project\PaykiTodo`
 - Branch: `main`
 - Current code version:
-  - `versionName = 1.13.38`
-  - `versionCode = 286`
+  - `versionName = 1.13.39`
+  - `versionCode = 287`
   - database version = `27`
 - Latest debug APK target in this round:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.13.38-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.13.39-debug.apk`
 - Latest signed release APK available locally:
   - `app/build/outputs/apk/release/PaykiTodo-1.13.11-release.apk`
 - Latest GitHub Release:
   - `https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.13.11`
 - Debug APK metadata inspection:
-  - `versionName = 1.13.38`, `versionCode = 286`
+  - `versionName = 1.13.39`, `versionCode = 287`
 
 ## Active Goal
 
-Active immediate task: continue the broader product/UX audit from the current `1.13.38 / versionCode 286` local patch baseline.
+Active immediate task: continue the broader product/UX audit from the current `1.13.39 / versionCode 287` local patch baseline.
 
-Latest status: `1.13.38` finishes the active-todo cancel/archive wording pass by aligning the card long-press action sheet and confirmation sheets with the same `取消待办（归档）` / `取消并归档` language. Debug build and metadata inspection should be checked before handoff.
+Latest status: `1.13.39` closes a desktop/phone todo-editor parity gap: Desktop Web now exposes `闹钟模式` and `仅提醒，不在看板显示`, reusing backend fields that already existed. Debug build and metadata inspection should be checked before handoff.
+
+## What Changed In The Latest 1.13.39 Patch
+
+1. Desktop Web todo editor now exposes the `闹钟模式` checkbox.
+2. Desktop Web todo editor now exposes the `仅提醒，不在看板显示` checkbox.
+3. Both fields are reset when DDL is disabled, because they depend on DDL/reminder behavior.
+4. Editing existing todos round-trips `alarmMode` and `hiddenFromBoard` through the existing desktop sync API.
+5. Version metadata moved to `1.13.39 / versionCode 287`; database version remains `27`.
+6. Verification target: `node --check app/src/main/assets/desktop-web/app.js`, `./gradlew.bat :app:compileDebugKotlin`, `./gradlew.bat :app:testDebugUnitTest`, `git diff --check`, `./gradlew.bat :app:assembleDebug`, and APK metadata inspection.
 
 ## What Changed In The Latest 1.13.38 Patch
 

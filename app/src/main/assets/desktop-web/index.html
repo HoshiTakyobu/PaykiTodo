@@ -250,7 +250,13 @@
         </div>
         <div class="todo-due-dependent"><label>循环截止日期</label><input id="todo-recurrence-end" type="date" /></div>
         <div class="span-2 todo-due-dependent"><label>每周循环的周几</label><input id="todo-weekdays" placeholder="1,3,5" /></div>
-        <div class="span-2 switch-row"><label><input id="todo-countdown" type="checkbox" /> 倒数日</label><label><input id="todo-ring" type="checkbox" checked /> 铃声</label><label><input id="todo-vibrate" type="checkbox" checked /> 震动</label></div>
+        <div class="span-2 switch-row">
+          <label><input id="todo-countdown" type="checkbox" /> 倒数日</label>
+          <label><input id="todo-hidden-board" type="checkbox" /> 仅提醒，不在看板显示</label>
+          <label><input id="todo-alarm-mode" type="checkbox" /> 闹钟模式</label>
+          <label><input id="todo-ring" type="checkbox" checked /> 铃声</label>
+          <label><input id="todo-vibrate" type="checkbox" checked /> 震动</label>
+        </div>
       </div>
       </div>
       <div class="modal-actions destructive-row"><button id="delete-todo" class="danger hidden">删除待办</button></div>

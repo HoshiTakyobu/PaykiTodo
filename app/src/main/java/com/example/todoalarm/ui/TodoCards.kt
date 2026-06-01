@@ -25,7 +25,6 @@ import androidx.compose.material.icons.rounded.NotificationsActive
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
@@ -679,40 +678,37 @@ internal fun TodoDetailsDialog(
             }
 
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.18f))
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                onCancel?.let {
-                    FilledTonalButton(
-                        modifier = Modifier.weight(1f),
-                        onClick = requestCancel
-                    ) {
-                        Text("取消待办（归档）")
+            onCancel?.let {
+                TodoCancelArchiveAction(onClick = requestCancel)
+            }
+            if (onDelete != null || onRestore != null || onEdit != null) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    onRestore?.let {
+                        OutlinedButton(
+                            modifier = Modifier.weight(1f),
+                            onClick = it
+                        ) {
+                            Text("恢复")
+                        }
                     }
-                }
-                onDelete?.let {
-                    OutlinedButton(
-                        modifier = Modifier.weight(1f),
-                        onClick = requestDelete
-                    ) {
-                        Text("删除")
+                    onEdit?.let {
+                        OutlinedButton(
+                            modifier = Modifier.weight(1f),
+                            onClick = it
+                        ) {
+                            Text("修改")
+                        }
                     }
-                }
-                onRestore?.let {
-                    OutlinedButton(
-                        modifier = Modifier.weight(1f),
-                        onClick = it
-                    ) {
-                        Text("恢复")
-                    }
-                }
-                onEdit?.let {
-                    OutlinedButton(
-                        modifier = Modifier.weight(1f),
-                        onClick = it
-                    ) {
-                        Text("修改")
+                    onDelete?.let {
+                        OutlinedButton(
+                            modifier = Modifier.weight(1f),
+                            onClick = requestDelete
+                        ) {
+                            Text("删除")
+                        }
                     }
                 }
             }
@@ -749,6 +745,58 @@ internal fun TodoDetailsDialog(
 }
 
 @Composable
+private fun TodoCancelArchiveAction(onClick: () -> Unit) {
+    val accent = Color(0xFFD97706)
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick),
+        shape = RoundedCornerShape(22.dp),
+        color = accent.copy(alpha = 0.12f),
+        border = BorderStroke(1.dp, accent.copy(alpha = 0.24f))
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 14.dp, vertical = 13.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Surface(
+                shape = RoundedCornerShape(12.dp),
+                color = accent.copy(alpha = 0.16f)
+            ) {
+                Icon(
+                    imageVector = Icons.Rounded.Close,
+                    contentDescription = null,
+                    tint = accent,
+                    modifier = Modifier
+                        .padding(8.dp)
+                        .size(20.dp)
+                )
+            }
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(3.dp)
+            ) {
+                Text(
+                    text = "取消待办（归档）",
+                    color = accent,
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    text = "停止后续提醒并进入历史记录，不会像删除一样直接移除。",
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    style = MaterialTheme.typography.bodySmall,
+                    lineHeight = 17.sp
+                )
+            }
+        }
+    }
+}
+
+@Composable
 private fun TodoInfoRow(label: String, value: String) {
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -766,7 +814,8 @@ private fun TodoInfoRow(label: String, value: String) {
             text = value,
             modifier = Modifier.weight(1f),
             color = MaterialTheme.colorScheme.onSurface,
-            style = MaterialTheme.typography.bodyLarge
+            style = MaterialTheme.typography.bodyMedium,
+            lineHeight = 20.sp
         )
     }
 }

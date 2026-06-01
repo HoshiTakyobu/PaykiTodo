@@ -2,7 +2,7 @@
 
 ## Active Development Focus
 
-Active immediate task: continue the broader product/UX audit from the `1.13.30 / versionCode 278` local patch baseline, using the previous reminder/Planning Desk goal as the latest verified work package:
+Active immediate task: continue the broader product/UX audit from the `1.13.31 / versionCode 279` local patch baseline, using the previous reminder/Planning Desk goal as the latest verified work package:
 
 - `docs/goals/2026-06-01-paykitodo-reminder-ongoing-planning-ux-goal.md`
 
@@ -118,3 +118,11 @@ Current Planning Desk batch countdown follow-up patch:
 2. DDL-backed todo candidates continue to be supported; no-DDL todos remain excluded.
 3. Version metadata moved to `1.13.30 / versionCode 278`; database version remains `27`.
 4. Verification passed: `node --check app/src/main/assets/desktop-web/app.js`, `./gradlew.bat :app:compileDebugKotlin`, `./gradlew.bat :app:testDebugUnitTest`, `git diff --check`, `./gradlew.bat :app:assembleDebug`, and APK metadata check for `versionName = 1.13.30`, `versionCode = 278`.
+
+Current quick-preview cancellation visibility follow-up patch:
+
+1. Phone todo details quick preview now presents `取消待办（归档）` as an independent archive action card instead of one item in a crowded action row.
+2. The archive action explains that cancel stops reminders and enters history, while delete remains a separate hard-delete path that does not enter history.
+3. Desktop Web todo preview now uses a dedicated archive-action style with the same explanatory wording.
+4. Version metadata moved to `1.13.31 / versionCode 279`; database version remains `27`.
+5. Verification passed: `node --check app/src/main/assets/desktop-web/app.js`, `./gradlew.bat :app:compileDebugKotlin`, `./gradlew.bat :app:testDebugUnitTest`, `git diff --check`, `./gradlew.bat :app:assembleDebug`, and APK metadata check for `versionName = 1.13.31`, `versionCode = 279`.

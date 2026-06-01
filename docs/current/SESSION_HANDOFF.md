@@ -5,24 +5,32 @@
 - Repository root: `G:\Workspace\Project\PaykiTodo`
 - Branch: `main`
 - Current code version:
-  - `versionName = 1.13.30`
-  - `versionCode = 278`
+  - `versionName = 1.13.31`
+  - `versionCode = 279`
   - database version = `27`
 - Latest debug APK target in this round:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.13.30-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.13.31-debug.apk`
 - Latest signed release APK available locally:
   - `app/build/outputs/apk/release/PaykiTodo-1.13.11-release.apk`
 - Latest GitHub Release:
   - `https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.13.11`
 - Debug APK metadata inspection:
-  - `versionName = 1.13.30`
-  - `versionCode = 278`
+  - `versionName = 1.13.31`
+  - `versionCode = 279`
 
 ## Active Goal
 
-Active immediate task: continue the broader product/UX audit from the current `1.13.30 / versionCode 278` local patch baseline.
+Active immediate task: continue the broader product/UX audit from the current `1.13.31 / versionCode 279` local patch baseline.
 
-Latest status: `1.13.30` fixes a phone Planning Desk preview batch-setting inconsistency: `全部加入倒数日` now applies to selected event candidates as well as DDL-backed todo candidates. Debug build and metadata inspection passed locally.
+Latest status: `1.13.31` makes cancel/archive harder to miss in todo quick previews: phone details preview now shows an independent `取消待办（归档）` action card, and desktop Web preview uses a dedicated archive-action style distinct from hard delete. Debug build and metadata inspection passed locally.
+
+## What Changed In The Latest 1.13.31 Patch
+
+1. Phone todo details quick preview now presents `取消待办（归档）` as an independent archive action card instead of one item in a crowded action row.
+2. The archive action explains that cancel stops reminders and enters history; hard delete stays visually separate and does not enter history.
+3. Desktop Web todo preview now uses a dedicated archive-action style and explanatory copy for `取消待办（归档）`.
+4. Version metadata moved to `1.13.31 / versionCode 279`; database version remains `27`.
+5. Verification passed: `node --check app/src/main/assets/desktop-web/app.js`, `./gradlew.bat :app:compileDebugKotlin`, `./gradlew.bat :app:testDebugUnitTest`, `git diff --check`, `./gradlew.bat :app:assembleDebug`, and APK metadata inspection.
 
 ## What Changed In The Latest 1.13.30 Patch
 

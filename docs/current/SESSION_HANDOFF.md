@@ -5,23 +5,31 @@
 - Repository root: `G:\Workspace\Project\PaykiTodo`
 - Branch: `main`
 - Current code version:
-  - `versionName = 1.13.42`
-  - `versionCode = 290`
+  - `versionName = 1.13.43`
+  - `versionCode = 291`
   - database version = `27`
 - Latest debug APK target in this round:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.13.42-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.13.43-debug.apk`
 - Latest signed release APK available locally:
   - `app/build/outputs/apk/release/PaykiTodo-1.13.11-release.apk`
 - Latest GitHub Release:
   - `https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.13.11`
 - Debug APK metadata inspection:
-  - `versionName = 1.13.42`, `versionCode = 290`
+  - `versionName = 1.13.43`, `versionCode = 291`
 
 ## Active Goal
 
-Active immediate task: continue the broader product/UX audit from the current `1.13.42 / versionCode 290` local patch baseline.
+Active immediate task: continue the broader product/UX audit from the current `1.13.43 / versionCode 291` local patch baseline.
 
-Latest status: `1.13.42` closes a Desktop Web / phone parity gap by adding explicit reminder enable switches to desktop todo and event editors. Debug build and metadata inspection should be checked before handoff.
+Latest status: `1.13.43` makes todo cancel/archive reachable from the bottom fixed action row in the phone quick-preview sheet, instead of relying only on the top text action or inline explanation card. Debug build and metadata inspection should be checked before handoff.
+
+## What Changed In The Latest 1.13.43 Patch
+
+1. Phone todo quick-preview bottom fixed actions now include a visible `取消归档` button beside edit/delete.
+2. The action still routes through cancel/archive semantics and sends the todo into history; hard delete remains a separate destructive path.
+3. The change is UI-only and does not require a database migration.
+4. Version metadata moved to `1.13.43 / versionCode 291`; database version remains `27`.
+5. Verification passed: `git diff --check`, `./gradlew.bat :app:compileDebugKotlin`, `./gradlew.bat :app:testDebugUnitTest`, `./gradlew.bat :app:assembleDebug`, and APK metadata inspection confirmed `versionName = 1.13.43`, `versionCode = 291`.
 
 ## What Changed In The Latest 1.13.42 Patch
 

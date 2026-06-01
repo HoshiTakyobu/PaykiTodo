@@ -2,7 +2,7 @@
 
 ## Active Development Focus
 
-Active immediate task: continue the broader product/UX audit from the `1.13.42 / versionCode 290` local patch baseline, using the previous reminder/Planning Desk goal as the latest verified work package:
+Active immediate task: continue the broader product/UX audit from the `1.13.43 / versionCode 291` local patch baseline, using the previous reminder/Planning Desk goal as the latest verified work package:
 
 - `docs/goals/2026-06-01-paykitodo-reminder-ongoing-planning-ux-goal.md`
 
@@ -24,6 +24,7 @@ The user reported four active usability / correctness failures:
 10. Todo quick-preview cancel/archive must be visibly available inside the preview content itself, not only hidden in top text or footer actions.
 11. Desktop Web event editor must match phone-side event title input behavior, including multi-line titles.
 12. Desktop Web todo and event editors must expose reminder enable/disable explicitly, instead of forcing users to infer it by clearing reminder text.
+13. Todo quick-preview bottom fixed actions must expose cancel/archive directly, not only through a top text action or inline explanation card.
 
 ## Required Behavior
 
@@ -84,6 +85,7 @@ Completed behavior so far:
 10. In `1.13.40`, phone and Desktop Web todo quick previews show an inline `取消并归档` action card; top/bottom cancel actions use the same wording, while delete remains a separate hard-delete path.
 11. In `1.13.41`, Desktop Web event editor title input is a multi-line textarea, matching phone-side event title entry.
 12. In `1.13.42`, Desktop Web todo and event editors expose `启用提醒` switches; disabled reminders save empty offset lists and grey out reminder-dependent fields.
+13. In `1.13.43`, phone todo quick-preview bottom fixed actions include `取消归档` beside edit/delete actions, keeping cancel/archive reachable in the preview's primary action area.
 5. Recurring todo range delete now uses the hard-delete path instead of cancel/archive.
 6. Recurring todo current-instance delete records a `recurring_instance_skips` exception and then hard-deletes the row, so the occurrence does not enter history and does not regenerate.
 7. Backup / restore includes `recurring_instance_skips`, so single-instance recurring-todo deletions survive restore.

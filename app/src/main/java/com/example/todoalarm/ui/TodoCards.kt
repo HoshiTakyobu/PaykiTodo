@@ -755,6 +755,20 @@ private fun TodoDetailsFixedActions(
                         Text("修改")
                     }
                 }
+                onCancel?.let {
+                    OutlinedButton(
+                        modifier = Modifier.weight(1f),
+                        onClick = it
+                    ) {
+                        Icon(
+                            Icons.Rounded.Close,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp),
+                            tint = Color(0xFFD97706)
+                        )
+                        Text("取消归档", color = Color(0xFFD97706))
+                    }
+                }
                 onDelete?.let {
                     OutlinedButton(
                         modifier = Modifier.weight(1f),

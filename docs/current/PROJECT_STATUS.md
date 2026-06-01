@@ -8,8 +8,8 @@
 - Target platform: Android 14 / API 34
 - License: MIT License (`LICENSE`)
 - Current version in code:
-  - `versionName = "1.13.42"`
-  - `versionCode = 290`
+  - `versionName = "1.13.43"`
+  - `versionCode = 291`
   - database version = `27`
 
 ## Current Build Facts
@@ -22,7 +22,11 @@
 - Latest GitHub Release:
   - `https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.13.11`
 - Latest fully built debug APK:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.13.42-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.13.43-debug.apk`
+- Current `1.13.43 / versionCode 291` status:
+  - Phone todo quick-preview bottom fixed actions now include a visible `取消归档` button beside edit/delete actions, so archive/cancel is reachable from the small preview sheet's primary action area.
+  - Cancel/archive still writes the todo into history; delete remains the separate hard-delete path. Database version remains `27`; no schema migration was added.
+  - Verification passed: `git diff --check`, `./gradlew.bat :app:compileDebugKotlin`, `./gradlew.bat :app:testDebugUnitTest`, `./gradlew.bat :app:assembleDebug`, and APK metadata check for `versionName = 1.13.43`, `versionCode = 291`.
 - Current `1.13.42 / versionCode 290` status:
   - Desktop Web todo editor now exposes an explicit `启用提醒` switch instead of requiring users to clear the reminder-time field to disable reminders.
   - Desktop Web event editor now exposes an explicit `启用提醒` switch; disabling it greys out reminder time, delivery mode, ring, and vibration fields and saves an empty reminder-offset list.

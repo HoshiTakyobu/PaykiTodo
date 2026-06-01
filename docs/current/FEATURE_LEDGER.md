@@ -69,6 +69,7 @@ This file tracks the product at a practical level for new coding sessions.
 ### Reminders / Notifications
 
 - reminder alerts use a flatter high-priority surface with centered large time/title, 56dp action buttons, collapsible notes, entry animation, and a distinct alarm-mode pulse
+- reminder todo cancel actions are labeled `取消待办（归档）` and use archive styling, matching quick-preview semantics that cancel enters history while delete is a hard removal
 - alarm mode loops sound and vibration until the user completes, snoozes, cancels, or acknowledges; after 5 minutes it stops continuous ringing, updates the notification to `未处理提醒`, and performs three 30-second retry bursts at 2-minute intervals
 - daily brief notification can be enabled from Settings with a configurable time, defaults to 08:00, summarizes today's todos/events and nearest <=7-day countdown target, and opens the daily board
 - calendar events can show a low-priority ongoing notification during the event using channel `ongoing_event`; start/end alarms are restored independently of whether the original reminder time has already passed, and the ongoing schedule notification no longer depends on the event reminder being enabled

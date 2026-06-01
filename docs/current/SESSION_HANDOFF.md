@@ -5,23 +5,32 @@
 - Repository root: `G:\Workspace\Project\PaykiTodo`
 - Branch: `main`
 - Current code version:
-  - `versionName = 1.13.36`
-  - `versionCode = 284`
+  - `versionName = 1.13.37`
+  - `versionCode = 285`
   - database version = `27`
 - Latest debug APK target in this round:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.13.36-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.13.37-debug.apk`
 - Latest signed release APK available locally:
   - `app/build/outputs/apk/release/PaykiTodo-1.13.11-release.apk`
 - Latest GitHub Release:
   - `https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.13.11`
 - Debug APK metadata inspection:
-  - `versionName = 1.13.36`, `versionCode = 284`
+  - `versionName = 1.13.37`, `versionCode = 285`
 
 ## Active Goal
 
-Active immediate task: continue the broader product/UX audit from the current `1.13.36 / versionCode 284` local patch baseline.
+Active immediate task: continue the broader product/UX audit from the current `1.13.37 / versionCode 285` local patch baseline.
 
-Latest status: `1.13.36` keeps todo cancel/archive reachable inside the phone quick preview and synchronizes default weekdays when editing weekly recurring todos. Debug build and metadata inspection should be checked before handoff.
+Latest status: `1.13.37` aligns reminder-surface cancel wording with archive semantics: reminder UI and accessibility overlay now say `取消待办（归档）` instead of presenting cancel like a destructive delete action. Debug build and metadata inspection should be checked before handoff.
+
+## What Changed In The Latest 1.13.37 Patch
+
+1. Todo reminder full-screen UI now labels cancel as `取消待办（归档）`.
+2. The reminder cancel button now uses archive-orange styling instead of delete-red styling.
+3. Accessibility fallback reminder overlay uses the same `取消待办（归档）` wording.
+4. Accessibility fallback cancel toast now says the todo was canceled and archived.
+5. Version metadata moved to `1.13.37 / versionCode 285`; database version remains `27`.
+6. Verification target: `./gradlew.bat :app:compileDebugKotlin`, `./gradlew.bat :app:testDebugUnitTest`, `git diff --check`, `./gradlew.bat :app:assembleDebug`, and APK metadata inspection.
 
 ## What Changed In The Latest 1.13.36 Patch
 

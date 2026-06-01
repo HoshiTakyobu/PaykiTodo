@@ -341,7 +341,7 @@ class ReminderAccessibilityOverlay(
                 setPadding(0, dp(12), 0, 0)
             }
             cancelRow.addView(
-                filledButton("取消待办", Color.parseColor("#B91C1C")).apply {
+                filledButton("取消待办（归档）", Color.parseColor("#D97706")).apply {
                     setOnClickListener {
                         cancelTodo(item.id)
                     }
@@ -610,7 +610,7 @@ class ReminderAccessibilityOverlay(
             service.getSystemService(NotificationManager::class.java)
                 .cancel(ReminderNotifier.notificationId(todoId))
             hide(todoId)
-            Toast.makeText(service, "待办已取消", Toast.LENGTH_SHORT).show()
+            Toast.makeText(service, "待办已取消并归档", Toast.LENGTH_SHORT).show()
         }
     }
 

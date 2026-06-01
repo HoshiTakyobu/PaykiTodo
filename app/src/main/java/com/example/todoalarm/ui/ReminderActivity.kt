@@ -586,9 +586,13 @@ private fun ReminderScreen(
                             modifier = Modifier
                                 .weight(1f)
                                 .height(56.dp),
-                            shape = RoundedCornerShape(18.dp)
+                            shape = RoundedCornerShape(18.dp),
+                            colors = ButtonDefaults.filledTonalButtonColors(
+                                containerColor = Color(0xFFD97706).copy(alpha = 0.16f),
+                                contentColor = Color(0xFFD97706)
+                            )
                         ) {
-                            Text("取消待办")
+                            Text("取消待办（归档）")
                         }
                         FilledTonalButton(
                             onClick = { onSnooze(10) },

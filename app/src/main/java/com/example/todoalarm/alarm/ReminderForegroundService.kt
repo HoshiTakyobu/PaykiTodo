@@ -16,7 +16,6 @@ import com.example.todoalarm.TodoApplication
 import com.example.todoalarm.accessibility.ReminderAccessibilityService
 import com.example.todoalarm.data.ReminderChainStage
 import com.example.todoalarm.data.ReminderChainStatus
-import com.example.todoalarm.data.ReminderDeliveryMode
 import com.example.todoalarm.ui.resolveTaskGroup
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -87,10 +86,10 @@ class ReminderForegroundService : Service() {
             )
 
             val settings = app.settingsStore.currentSettings()
-            val useFullscreenReminder = settings.workQuietModeEnabled ||
-                todoItem.isTodo ||
-                todoItem.isEvent ||
-                todoItem.reminderDeliveryModeEnum == ReminderDeliveryMode.FULLSCREEN
+            val useFullscreenReminder = shouldUseFullscreenReminder(
+                item = todoItem,
+                workQuietModeEnabled = settings.workQuietModeEnabled
+            )
             if (useFullscreenReminder) {
                 ActiveReminderStore.markActive(this@ReminderForegroundService, todoId)
                 activeFullscreenTodoId = todoId

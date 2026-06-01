@@ -5,24 +5,33 @@
 - Repository root: `G:\Workspace\Project\PaykiTodo`
 - Branch: `main`
 - Current code version:
-  - `versionName = 1.13.31`
-  - `versionCode = 279`
+  - `versionName = 1.13.32`
+  - `versionCode = 280`
   - database version = `27`
 - Latest debug APK target in this round:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.13.31-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.13.32-debug.apk`
 - Latest signed release APK available locally:
   - `app/build/outputs/apk/release/PaykiTodo-1.13.11-release.apk`
 - Latest GitHub Release:
   - `https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.13.11`
 - Debug APK metadata inspection:
-  - `versionName = 1.13.31`
-  - `versionCode = 279`
+  - `versionName = 1.13.32`
+  - `versionCode = 280`
 
 ## Active Goal
 
-Active immediate task: continue the broader product/UX audit from the current `1.13.31 / versionCode 279` local patch baseline.
+Active immediate task: continue the broader product/UX audit from the current `1.13.32 / versionCode 280` local patch baseline.
 
-Latest status: `1.13.31` makes cancel/archive harder to miss in todo quick previews: phone details preview now shows an independent `取消待办（归档）` action card, and desktop Web preview uses a dedicated archive-action style distinct from hard delete. Debug build and metadata inspection passed locally.
+Latest status: `1.13.32` fixes a reminder delivery policy mismatch: notification-mode todos/events no longer actively launch the full-screen reminder surface, while fullscreen mode, alarm mode, and work mode still use the strong-reminder chain. Debug build and metadata inspection passed locally.
+
+## What Changed In The Latest 1.13.32 Patch
+
+1. ReminderForegroundService now uses a dedicated reminder delivery policy instead of forcing every todo/event into the full-screen chain.
+2. Items set to `通知栏提醒` no longer actively launch the full-screen reminder surface unless `工作模式` or `闹钟模式` overrides the item setting.
+3. Items set to `全屏界面提醒` continue to request full-screen delivery.
+4. Unit coverage was added for notification mode, fullscreen mode, work-mode override, and alarm-mode override.
+5. Version metadata moved to `1.13.32 / versionCode 280`; database version remains `27`.
+6. Verification passed: `node --check app/src/main/assets/desktop-web/app.js`, `./gradlew.bat :app:compileDebugKotlin`, `./gradlew.bat :app:testDebugUnitTest`, `git diff --check`, `./gradlew.bat :app:assembleDebug`, and APK metadata inspection.
 
 ## What Changed In The Latest 1.13.31 Patch
 

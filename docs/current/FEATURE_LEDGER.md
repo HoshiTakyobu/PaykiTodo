@@ -210,6 +210,7 @@ This file tracks the product at a practical level for new coding sessions.
 - todo reminder screens expose an explicit `DDL 推迟` action; its input accepts positive minute increments, same-date clock targets, and full date-time targets, and rejects any target that is not later than the current DDL
 - notification reminder path
 - full-screen reminder path
+- reminder delivery policy respects the per-item `通知栏提醒` / `全屏界面提醒` choice: notification-mode items no longer actively launch the full-screen reminder surface unless work mode or alarm mode explicitly overrides them
 - full-screen reminder relaunch paths now keep a short recent-surface cooldown, so ordinary app resume / accessibility window events do not repeatedly foreground the same reminder immediately after it was already shown while locked-screen forced overlay behavior remains available
 - full-screen event reminders can start an event check-in when `打卡追踪` is enabled
 - foreground service and fallback chain work

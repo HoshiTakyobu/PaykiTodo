@@ -8,8 +8,8 @@
 - Target platform: Android 14 / API 34
 - License: MIT License (`LICENSE`)
 - Current version in code:
-  - `versionName = "1.13.31"`
-  - `versionCode = 279`
+  - `versionName = "1.13.32"`
+  - `versionCode = 280`
   - database version = `27`
 
 ## Current Build Facts
@@ -22,7 +22,17 @@
 - Latest GitHub Release:
   - `https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.13.11`
 - Latest fully built debug APK:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.13.31-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.13.32-debug.apk`
+- Current `1.13.32 / versionCode 280` status:
+  - Reminder delivery now respects the per-item `通知栏提醒` / `全屏界面提醒` choice: notification-mode todos/events no longer actively launch the full-screen reminder surface.
+  - `全屏界面提醒`, `闹钟模式`, and `工作模式` still request the full-screen / strong-reminder chain.
+  - Database version remains `27`; no schema migration was added.
+  - `node --check app/src/main/assets/desktop-web/app.js` passed.
+  - `./gradlew.bat :app:compileDebugKotlin` passed.
+  - `./gradlew.bat :app:testDebugUnitTest` passed.
+  - `./gradlew.bat :app:assembleDebug` passed.
+  - `git diff --check` passed.
+  - Debug APK metadata confirms `versionName = 1.13.32`, `versionCode = 280`, output `PaykiTodo-1.13.32-debug.apk`.
 - Current `1.13.31 / versionCode 279` status:
   - Phone todo details quick preview now presents `取消待办（归档）` as an independent archive action card, with explanatory copy that it stops reminders and enters history instead of deleting the row.
   - Desktop Web todo preview now gives the archive/cancel action a dedicated explanatory style, keeping it visually separate from hard delete.

@@ -2,7 +2,7 @@
 
 ## Active Development Focus
 
-Active immediate task: continue the broader product/UX audit from the `1.13.31 / versionCode 279` local patch baseline, using the previous reminder/Planning Desk goal as the latest verified work package:
+Active immediate task: continue the broader product/UX audit from the `1.13.32 / versionCode 280` local patch baseline, using the previous reminder/Planning Desk goal as the latest verified work package:
 
 - `docs/goals/2026-06-01-paykitodo-reminder-ongoing-planning-ux-goal.md`
 
@@ -21,10 +21,11 @@ The user reported four active usability / correctness failures:
 
 ### Reminder Full-Screen Delivery
 
-1. Todo reminders and schedule reminders must both create high-priority full-screen reminder delivery.
-2. Reminder notifications must carry a full-screen intent.
-3. The alarm receiver path should not rely only on a passive notification tap; it should make a best-effort standard Android launch of the reminder surface.
-4. The reminder activity must be allowed to show over the lock screen and turn the screen on where Android permits it.
+1. Todo reminders and schedule reminders set to `全屏界面提醒` must create high-priority full-screen reminder delivery.
+2. Todo reminders and schedule reminders set to `通知栏提醒` must still post a high-priority reminder notification, but must not actively launch the full-screen reminder surface unless `工作模式` or `闹钟模式` overrides the item setting.
+3. Full-screen reminder notifications must carry a full-screen intent.
+4. The alarm receiver path for full-screen reminders should not rely only on a passive notification tap; it should make a best-effort standard Android launch of the reminder surface.
+5. The reminder activity must be allowed to show over the lock screen and turn the screen on where Android permits it.
 
 ### Ongoing Schedule Notification
 
@@ -126,3 +127,12 @@ Current quick-preview cancellation visibility follow-up patch:
 3. Desktop Web todo preview now uses a dedicated archive-action style with the same explanatory wording.
 4. Version metadata moved to `1.13.31 / versionCode 279`; database version remains `27`.
 5. Verification passed: `node --check app/src/main/assets/desktop-web/app.js`, `./gradlew.bat :app:compileDebugKotlin`, `./gradlew.bat :app:testDebugUnitTest`, `git diff --check`, `./gradlew.bat :app:assembleDebug`, and APK metadata check for `versionName = 1.13.31`, `versionCode = 279`.
+
+Current reminder delivery policy follow-up patch:
+
+1. ReminderForegroundService now uses a dedicated reminder delivery policy instead of forcing every todo/event into the full-screen chain.
+2. Items set to `通知栏提醒` no longer actively launch the full-screen reminder surface unless `工作模式` or `闹钟模式` overrides the item setting.
+3. Items set to `全屏界面提醒` continue to request full-screen delivery.
+4. Unit coverage was added for notification mode, fullscreen mode, work-mode override, and alarm-mode override.
+5. Version metadata moved to `1.13.32 / versionCode 280`; database version remains `27`.
+6. Verification passed: `node --check app/src/main/assets/desktop-web/app.js`, `./gradlew.bat :app:compileDebugKotlin`, `./gradlew.bat :app:testDebugUnitTest`, `git diff --check`, `./gradlew.bat :app:assembleDebug`, and APK metadata check for `versionName = 1.13.32`, `versionCode = 280`.

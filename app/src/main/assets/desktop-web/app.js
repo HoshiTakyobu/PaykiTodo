@@ -4,6 +4,15 @@ const FIFTEEN_MINUTES = 15 * 60 * 1000;
 const THIRTY_MINUTES = 30 * 60 * 1000;
 const DEFAULT_EVENT_COLOR = '#4e87e1';
 const EVENT_COLOR_PRESETS = ['#4E87E1', '#4CB782', '#FF6B4A', '#BF7B4D', '#8B5CF6', '#0F766E', '#D97706', '#E11D48'];
+const WEEKDAY_OPTIONS = [
+  { value: 1, label: '一' },
+  { value: 2, label: '二' },
+  { value: 3, label: '三' },
+  { value: 4, label: '四' },
+  { value: 5, label: '五' },
+  { value: 6, label: '六' },
+  { value: 7, label: '日' }
+];
 const TODO_PAGE_LIMIT = 80;
 const state = {
   token: '',
@@ -2461,10 +2470,64 @@ function reminderSpecFromOffsets(item, anchorMillis) {
 }
 
 function parseWeekdays(text) {
-  return String(text || '')
+  return Array.from(new Set(String(text || '')
     .split(',')
     .map(v => Number(v.trim()))
-    .filter(v => Number.isInteger(v) && v >= 1 && v <= 7);
+    .filter(v => Number.isInteger(v) && v >= 1 && v <= 7)))
+    .sort((a, b) => a - b);
+}
+
+function setWeekdays(prefix, weekdays) {
+  const input = document.getElementById(prefix + '-weekdays');
+  if (!input) return;
+  input.value = parseWeekdays(Array.isArray(weekdays) ? weekdays.join(',') : weekdays).join(',');
+  syncWeekdayChips(prefix);
+}
+
+function syncWeekdayChips(prefix) {
+  const input = document.getElementById(prefix + '-weekdays');
+  const host = document.getElementById(prefix + '-weekday-chips');
+  if (!input || !host) return;
+  const selected = new Set(parseWeekdays(input.value));
+  host.querySelectorAll('[data-weekday-value]').forEach(node => {
+    const value = Number(node.dataset.weekdayValue);
+    node.classList.toggle('active', selected.has(value));
+    node.setAttribute('aria-pressed', selected.has(value) ? 'true' : 'false');
+  });
+}
+
+function bindWeekdayChips(prefix) {
+  const host = document.getElementById(prefix + '-weekday-chips');
+  const input = document.getElementById(prefix + '-weekdays');
+  if (!host || !input) return;
+  host.innerHTML = WEEKDAY_OPTIONS.map(day => (
+    '<button type="button" class="weekday-chip" data-weekday-value="' + day.value + '" aria-pressed="false">周' + escapeHtml(day.label) + '</button>'
+  )).join('');
+  host.addEventListener('click', event => {
+    const chip = event.target.closest?.('[data-weekday-value]');
+    if (!chip || chip.disabled) return;
+    const value = Number(chip.dataset.weekdayValue);
+    const selected = new Set(parseWeekdays(input.value));
+    if (selected.has(value)) selected.delete(value); else selected.add(value);
+    input.value = Array.from(selected).sort((a, b) => a - b).join(',');
+    syncWeekdayChips(prefix);
+  });
+  syncWeekdayChips(prefix);
+}
+
+function setWeekdayChipsEnabled(prefix, enabled) {
+  document.querySelectorAll('#' + prefix + '-weekday-chips [data-weekday-value]').forEach(node => {
+    node.disabled = !enabled;
+  });
+}
+
+function syncRecurrenceWeekdayVisibility(prefix) {
+  const type = document.getElementById(prefix + '-recurrence-type')?.value || 'NONE';
+  const field = document.getElementById(prefix + '-weekday-field');
+  const visible = type === 'WEEKLY';
+  field?.classList.toggle('hidden', !visible);
+  setWeekdayChipsEnabled(prefix, visible && (prefix !== 'todo' || document.getElementById('todo-has-due')?.checked !== false));
+  if (!visible) setWeekdays(prefix, []);
 }
 
 function recurrencePayload(typeValue, endValue, weekdaysValue) {
@@ -2533,12 +2596,14 @@ function setTodoDueEnabled(enabled) {
       input.disabled = !enabled;
     });
   });
+  setWeekdayChipsEnabled('todo', enabled);
   if (!enabled) {
     writeDateTimeValue('todo-due', '');
     document.getElementById('todo-reminder-spec').value = '';
     document.getElementById('todo-recurrence-type').value = 'NONE';
     document.getElementById('todo-recurrence-end').value = '';
-    document.getElementById('todo-weekdays').value = '';
+    setWeekdays('todo', []);
+    syncRecurrenceWeekdayVisibility('todo');
     const countdown = document.getElementById('todo-countdown');
     const hiddenBoard = document.getElementById('todo-hidden-board');
     const alarmMode = document.getElementById('todo-alarm-mode');
@@ -2566,7 +2631,8 @@ function clearTodoForm() {
   setTodoReminderEnabled(true);
   document.getElementById('todo-recurrence-type').value = 'NONE';
   document.getElementById('todo-recurrence-end').value = '';
-  document.getElementById('todo-weekdays').value = '';
+  setWeekdays('todo', []);
+  syncRecurrenceWeekdayVisibility('todo');
   setRecurrenceScopeBlock('todo', false);
   document.getElementById('todo-countdown').checked = false;
   document.getElementById('todo-hidden-board').checked = false;
@@ -2596,7 +2662,8 @@ function openTodoEditor(item) {
   setTodoReminderEnabled(item.hasDueDate !== false && item.reminderEnabled === true);
   document.getElementById('todo-recurrence-type').value = recurrenceTypeValue(item);
   document.getElementById('todo-recurrence-end').value = item.recurrenceEndDate || '';
-  document.getElementById('todo-weekdays').value = csvValue(item.recurrenceWeekdays);
+  setWeekdays('todo', item.recurrenceWeekdays);
+  syncRecurrenceWeekdayVisibility('todo');
   setRecurrenceScopeBlock('todo', item.isRecurring === true, 'CURRENT_AND_FUTURE');
   document.getElementById('todo-countdown').checked = item.countdownEnabled === true;
   document.getElementById('todo-hidden-board').checked = item.hiddenFromBoard === true;
@@ -2625,7 +2692,8 @@ function clearEventForm() {
   setEventReminderEnabled(false);
   document.getElementById('event-recurrence-type').value = 'NONE';
   document.getElementById('event-recurrence-end').value = '';
-  document.getElementById('event-weekdays').value = '';
+  setWeekdays('event', []);
+  syncRecurrenceWeekdayVisibility('event');
   setRecurrenceScopeBlock('event', false);
   document.getElementById('event-countdown').checked = false;
   document.getElementById('event-check-in').checked = false;
@@ -2704,6 +2772,9 @@ function bindEventColorPresets() {
   syncEventColorPresets();
 }
 
+bindWeekdayChips('todo');
+bindWeekdayChips('event');
+
 function openEventEditor(item) {
   state.editingEventId = item.id;
   state.editingEventOriginalRecurring = item.isRecurring === true;
@@ -2723,7 +2794,8 @@ function openEventEditor(item) {
   setEventReminderEnabled(item.reminderEnabled === true);
   document.getElementById('event-recurrence-type').value = recurrenceTypeValue(item);
   document.getElementById('event-recurrence-end').value = item.recurrenceEndDate || '';
-  document.getElementById('event-weekdays').value = csvValue(item.recurrenceWeekdays);
+  setWeekdays('event', item.recurrenceWeekdays);
+  syncRecurrenceWeekdayVisibility('event');
   setRecurrenceScopeBlock('event', item.isRecurring === true, 'CURRENT_AND_FUTURE');
   document.getElementById('event-countdown').checked = item.countdownEnabled === true;
   document.getElementById('event-check-in').checked = item.checkInEnabled === true;
@@ -2957,14 +3029,18 @@ document.getElementById('event-reminder-enabled')?.addEventListener('change', ev
   setEventReminderEnabled(event.target.checked);
 });
 document.getElementById('todo-recurrence-type')?.addEventListener('change', event => {
-  if (!state.editingTodoOriginalRecurring || event.target.value !== 'NONE') return;
-  const scopeSelect = document.getElementById('todo-recurrence-scope');
-  if (scopeSelect?.value === 'CURRENT') scopeSelect.value = 'CURRENT_AND_FUTURE';
+  syncRecurrenceWeekdayVisibility('todo');
+  if (state.editingTodoOriginalRecurring && event.target.value === 'NONE') {
+    const scopeSelect = document.getElementById('todo-recurrence-scope');
+    if (scopeSelect?.value === 'CURRENT') scopeSelect.value = 'CURRENT_AND_FUTURE';
+  }
 });
 document.getElementById('event-recurrence-type')?.addEventListener('change', event => {
-  if (!state.editingEventOriginalRecurring || event.target.value !== 'NONE') return;
-  const scopeSelect = document.getElementById('event-recurrence-scope');
-  if (scopeSelect?.value === 'CURRENT') scopeSelect.value = 'CURRENT_AND_FUTURE';
+  syncRecurrenceWeekdayVisibility('event');
+  if (state.editingEventOriginalRecurring && event.target.value === 'NONE') {
+    const scopeSelect = document.getElementById('event-recurrence-scope');
+    if (scopeSelect?.value === 'CURRENT') scopeSelect.value = 'CURRENT_AND_FUTURE';
+  }
 });
 document.getElementById('connect').onclick = () => connect().catch(err => els.status.textContent = err.message);
 els.token.addEventListener('keydown', event => {

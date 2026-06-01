@@ -5,23 +5,32 @@
 - Repository root: `G:\Workspace\Project\PaykiTodo`
 - Branch: `main`
 - Current code version:
-  - `versionName = 1.13.43`
-  - `versionCode = 291`
+  - `versionName = 1.13.44`
+  - `versionCode = 292`
   - database version = `27`
 - Latest debug APK target in this round:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.13.43-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.13.44-debug.apk`
 - Latest signed release APK available locally:
   - `app/build/outputs/apk/release/PaykiTodo-1.13.11-release.apk`
 - Latest GitHub Release:
   - `https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.13.11`
 - Debug APK metadata inspection:
-  - `versionName = 1.13.43`, `versionCode = 291`
+  - `versionName = 1.13.44`, `versionCode = 292`
 
 ## Active Goal
 
-Active immediate task: continue the broader product/UX audit from the current `1.13.43 / versionCode 291` local patch baseline.
+Active immediate task: continue the broader product/UX audit from the current `1.13.44 / versionCode 292` local patch baseline.
 
-Latest status: `1.13.43` makes todo cancel/archive reachable from the bottom fixed action row in the phone quick-preview sheet, instead of relying only on the top text action or inline explanation card. Debug build and metadata inspection should be checked before handoff.
+Latest status: `1.13.44` improves Desktop Web recurrence editing by replacing manual weekly-day CSV input with compact weekday multi-select chips for todo and event editors. Debug build and metadata inspection should be checked before handoff.
+
+## What Changed In The Latest 1.13.44 Patch
+
+1. Desktop Web todo weekly recurrence now uses visible weekday chips instead of manual `1,3,5` text input.
+2. Desktop Web event weekly recurrence uses the same weekday chips, matching the phone-side selectable weekday behavior more closely.
+3. Weekday chips are shown only when the recurrence type is `WEEKLY`; other recurrence types clear and hide weekly-day state.
+4. The change reuses existing recurrence payload fields and does not require a database migration.
+5. Version metadata moved to `1.13.44 / versionCode 292`; database version remains `27`.
+6. Verification passed: `node --check app/src/main/assets/desktop-web/app.js`, `git diff --check`, `./gradlew.bat :app:compileDebugKotlin`, `./gradlew.bat :app:testDebugUnitTest`, `./gradlew.bat :app:assembleDebug`, and APK metadata inspection confirmed `versionName = 1.13.44`, `versionCode = 292`.
 
 ## What Changed In The Latest 1.13.43 Patch
 

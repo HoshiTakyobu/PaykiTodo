@@ -252,7 +252,12 @@
           <p class="field-hint">循环待办改为“不重复”时，默认按“当前及之后”清理后续已生成条目，避免旧循环继续出现。</p>
         </div>
         <div class="todo-due-dependent"><label>循环截止日期</label><input id="todo-recurrence-end" type="date" /></div>
-        <div class="span-2 todo-due-dependent"><label>每周循环的周几</label><input id="todo-weekdays" placeholder="1,3,5" /></div>
+        <div id="todo-weekday-field" class="span-2 todo-due-dependent">
+          <label>每周循环的周几</label>
+          <input id="todo-weekdays" class="weekday-value-input" type="hidden" />
+          <div id="todo-weekday-chips" class="weekday-chip-row" aria-label="选择待办每周循环的周几"></div>
+          <p class="field-hint">选择周几后会自动生成循环规则；不需要手动输入 1,3,5。</p>
+        </div>
         <div class="span-2 switch-row">
           <label><input id="todo-countdown" type="checkbox" /> 倒数日</label>
           <label><input id="todo-hidden-board" type="checkbox" /> 仅提醒，不在看板显示</label>
@@ -346,7 +351,12 @@
           <p class="field-hint">编辑循环日程时与手机端一致，需要明确本次修改影响的范围。</p>
         </div>
         <div><label>循环截止日期</label><input id="event-recurrence-end" type="date" /></div>
-        <div><label>每周循环的周几（逗号分隔，例如 1,3,5）</label><input id="event-weekdays" placeholder="1,3,5" /></div>
+        <div id="event-weekday-field">
+          <label>每周循环的周几</label>
+          <input id="event-weekdays" class="weekday-value-input" type="hidden" />
+          <div id="event-weekday-chips" class="weekday-chip-row" aria-label="选择日程每周循环的周几"></div>
+          <p class="field-hint">选择周几后会自动生成循环规则；不需要手动输入 1,3,5。</p>
+        </div>
         <div class="span-2 switch-row"><label><input id="event-countdown" type="checkbox" /> 倒数日</label><label><input id="event-check-in" type="checkbox" /> 打卡追踪</label><label><input id="event-all-day" type="checkbox" /> 全天</label><label class="event-reminder-dependent"><input id="event-ring" type="checkbox" checked /> 铃声</label><label class="event-reminder-dependent"><input id="event-vibrate" type="checkbox" checked /> 震动</label></div>
       </div>
       </div>

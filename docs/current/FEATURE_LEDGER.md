@@ -15,6 +15,7 @@ This file tracks the product at a practical level for new coding sessions.
 - Todo editor can mark a DDL-backed task as `仅提醒，不在看板/日历显示`; the task still schedules reminders and remains manageable in My Tasks, but is filtered out of the phone daily board, Android board widget, desktop board, countdown board queries, and AI daily/weekly todo statistics
 - Desktop Web todo editor exposes and preserves `闹钟模式` and `仅提醒，不在看板显示`, matching the phone editor for these DDL-dependent todo fields
 - Desktop Web todo editor exposes an explicit `启用提醒` switch; disabling it saves an empty reminder-offset list and disables reminder-dependent fields instead of relying on clearing reminder text
+- Desktop Web todo and event editors use compact weekday multi-select chips for weekly recurrence instead of requiring manual `1,3,5` text input, and hide those chips for non-weekly recurrence rules
 - recurring todo templates persist `hiddenFromBoard`, and newly replenished recurring instances inherit the reminder-only visibility setting
 - no-deadline todos; active no-DDL items are treated as `今日待办` across phone board, Android widget board query, desktop board, and desktop todo management
 - lightweight comma-based todo batch import with preview validation

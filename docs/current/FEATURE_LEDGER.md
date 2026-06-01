@@ -23,6 +23,7 @@ This file tracks the product at a practical level for new coding sessions.
 - complete / cancel / restore flows
 - active todo preview now uses the same bottom-sheet visual language as calendar event preview
 - active todo card body opens preview; completion is isolated to the checkbox to avoid accidental completion
+- active todo quick preview surfaces now expose a visible `取消待办` action, keeping cancel as a history-preserving archive flow and distinct from hard delete
 - recurring task support
 - recurring todo/event `1.13.21` `整个循环系列` edits preserve a user-selected new series start date instead of always rebasing to the old first occurrence; time-only edits still keep the old series anchor, and stale templates are deleted before rebuilt series/templates are inserted.
 - recurring todo/event current-instance delete keeps a canceled tombstone, so recurring-template replenishment does not recreate an occurrence the user explicitly deleted

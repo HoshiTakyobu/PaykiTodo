@@ -9,7 +9,8 @@
 - License: MIT License (`LICENSE`)
 - Current version in code:
   - `versionName = "1.13.22"`
-  - `versionCode = 270`
+  - `versionName = "1.13.23"`
+  - `versionCode = 271`
 
 ## Current Build Facts
 
@@ -20,22 +21,13 @@
   - `app/build/outputs/apk/release/PaykiTodo-1.13.11-release.apk`
 - Latest GitHub Release:
   - `https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.13.11`
-- Latest fully built debug APK:
+  - Latest fully built debug APK:
   - `app/build/outputs/apk/debug/PaykiTodo-1.13.22-debug.apk`
-- Current `1.13.22 / versionCode 270` status:
-  - Todo and schedule reminders now always request the full-screen reminder chain when a reminder is dispatched; the foreground service still posts the high-priority alarm notification and retries the reminder activity / accessibility fallback.
-  - Snoozing a todo reminder now keeps the next reminder usable when the DDL has already passed or would be earlier than the next reminder: the DDL is pushed to one minute after the next reminder. No-DDL todos still do not receive a synthetic DDL.
-  - The reminder screen labels the destructive action as `取消待办`, keeps complete / 5-minute snooze / 10-minute snooze / custom snooze / cancel actions, and updates the custom snooze copy to explain automatic DDL pushing.
-  - Ongoing schedule notifications no longer depend on event reminder-enabled state; active/future events are scheduled for non-dismissible ongoing notification start/end handling during normal event saves, app startup recovery, and boot/time-change recovery.
-  - Phone Planning Desk now opens in a free-writing markdown/natural-text surface by default, supports wide horizontal inspection for long lines, explains AI-first/local-fallback recognition, and sends `识别` results into the existing preview sheet instead of the old background-capture direct-write path.
-  - Database version remains `26`; no schema, backup format, or user-data migration was added.
-  - `./gradlew.bat :app:compileDebugKotlin` passed.
-  - `./gradlew.bat :app:testDebugUnitTest` passed, including the new `ReminderSnoozePolicyTest`.
-  - `git diff --check` passed.
-  - `./gradlew.bat :app:assembleDebug` passed.
-  - Debug APK metadata confirms `versionName = 1.13.22`, `versionCode = 270`, output `PaykiTodo-1.13.22-debug.apk`.
-  - Follow-up within the same `1.13.22` round adds a 60-second recent-surface cooldown for reminder Activity / accessibility relaunch paths, so normal window changes or MainActivity resume cannot repeatedly pull the same reminder surface forward immediately after it was already shown. Locked-screen forced overlay behavior remains allowed.
-  - Re-verified after the cooldown change: `./gradlew.bat :app:compileDebugKotlin`, `./gradlew.bat :app:testDebugUnitTest`, `git diff --check`, and `./gradlew.bat :app:assembleDebug` all passed; `aapt dump badging` confirms `versionCode='270'` and `versionName='1.13.22'`.
+  - Current `1.13.23 / versionCode 271` status:
+  - Quick todo preview dialogs now expose a visible `取消待办` action, so preview users can archive a task without using destructive delete.
+  - Active todo cards' action sheet also exposes `取消待办` directly, keeping cancel and delete separate.
+  - Cancel remains a history-preserving archive action; delete remains the hard removal path.
+  - Database version remains `26`; no schema, backup format, or user-data migration was added yet for this follow-up.
 - Current `1.13.20 / versionCode 268` status:
   - Desktop Web Planning Desk Outliner is now the explicit primary input surface: the empty-outline state focuses the root input, the root input is a visible multi-line entry box, and existing nodes render as directly editable auto-height textareas.
   - Desktop Web Planning Desk drag reorder now starts only from a dedicated handle, so ordinary text clicks and typing are not intercepted by the draggable row.

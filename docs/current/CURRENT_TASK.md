@@ -2,7 +2,7 @@
 
 ## Active Development Focus
 
-Active immediate task: complete and commit the `1.13.22 / versionCode 270` strong-reminder and Planning Desk mobile-input round described in:
+Active immediate task: complete and commit the `1.13.23 / versionCode 271` quick-preview cancel-todo follow-up round described in:
 
 - `docs/goals/2026-06-01-paykitodo-reminder-ongoing-planning-ux-goal.md`
 
@@ -59,21 +59,10 @@ The user reported four active usability / correctness failures:
 
 ## Current Status
 
-Implementation and local validation are complete on the working tree. Final remaining action is the focused git commit.
+The working tree has the quick-preview cancel-todo fix in progress. The next step is to rebuild and verify the bumped `1.13.23 / versionCode 271` APK, then commit the round.
 
-Completed behavior:
+Completed behavior so far:
 
-1. Todo and schedule reminders request the same full-screen reminder chain when a reminder is dispatched.
-2. Reminder full-screen launch attempts now record a short recent-surface marker, so normal app routing and accessibility window events do not repeatedly pull the same reminder surface to the foreground within 60 seconds. Locked-screen forced overlays still bypass this cooldown.
-3. Ongoing event notifications are scheduled independently of the event reminder-enabled flag, including normal scheduling, app-start recovery, and boot/time-change recovery.
-4. Todo snooze uses the new DDL policy: overdue or too-early DDL values are pushed to one minute after the next reminder; no-DDL todos remain no-DDL.
-5. Reminder UI and accessibility fallback expose `取消待办`.
-6. Phone Planning Desk now defaults to a wide free-writing markdown/natural-text surface and keeps recognition preview-first.
-
-Verification completed:
-
-- `./gradlew.bat :app:compileDebugKotlin` passed.
-- `./gradlew.bat :app:testDebugUnitTest` passed.
-- `git diff --check` passed.
-- `./gradlew.bat :app:assembleDebug` passed.
-- APK metadata confirms `versionName = 1.13.22`, `versionCode = 270`, output `app/build/outputs/apk/debug/PaykiTodo-1.13.22-debug.apk`.
+1. Quick todo preview dialogs now expose a visible `取消待办` action instead of hiding cancellation behind delete.
+2. The action sheet for active todo cards now also exposes `取消待办` directly, keeping cancel distinct from hard delete.
+3. Cancel remains a history-preserving archive action; delete remains a destructive removal path.

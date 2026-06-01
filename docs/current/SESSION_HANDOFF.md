@@ -5,34 +5,29 @@
 - Repository root: `G:\Workspace\Project\PaykiTodo`
 - Branch: `main`
 - Current code version:
-  - `versionName = 1.13.22`
-  - `versionCode = 270`
+  - `versionName = 1.13.23`
+  - `versionCode = 271`
 - Latest debug APK target in this round:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.13.22-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.13.23-debug.apk`
 - Latest signed release APK available locally:
   - `app/build/outputs/apk/release/PaykiTodo-1.13.11-release.apk`
 - Latest GitHub Release:
   - `https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.13.11`
 - Debug APK metadata inspection:
-  - `versionName = 1.13.22`
-  - `versionCode = 270`
+  - pending rebuild after version bump
 
 ## Active Goal
 
-Active immediate task: close the reminder full-screen / ongoing event notification / reminder-screen closed loop / Planning Desk mobile input round on the `1.13.22 / versionCode 270` line.
+Active immediate task: finish the quick-preview cancel-todo follow-up on the `1.13.23 / versionCode 271` line, rebuild the debug APK, and commit the round.
 
-Latest status: reminder dispatch now requests the full-screen chain for reminder-mode items, ongoing event notifications are scheduled independently of reminder-enabled state, overdue todo snooze pushes DDL forward when needed, and phone Planning Desk now defaults to a wide free-writing surface with preview-first recognition. Reminder full-screen relaunch paths also have a 60-second recent-surface cooldown to avoid repeatedly foregrounding the same reminder after it was already shown. Debug APK `PaykiTodo-1.13.22-debug.apk` was rebuilt and metadata-confirmed.
+Latest status: quick todo preview dialogs now expose a visible `取消待办` action, and active todo cards' action sheet also exposes `取消待办` directly so cancel is no longer hidden behind delete. The next step is the versioned rebuild and verification of `PaykiTodo-1.13.23-debug.apk`.
 
 ## What Changed In The Latest 1.13.22 Patch
 
-1. Reminder dispatch now always requests the full-screen chain for reminder-mode todo and schedule items; the foreground-service notification remains the primary alarm surface, with Activity / accessibility fallback attempts still in place.
-2. Ongoing schedule notifications no longer depend on the event reminder-enabled flag; active events are scheduled during normal save, app startup recovery, and boot / time-change recovery for non-dismissible ongoing coverage.
-3. Snoozing an overdue todo now pushes its DDL forward when needed so the next reminder remains usable; no-DDL todos still do not invent a synthetic DDL.
-4. Reminder pages and accessibility fallback pages now label the destructive action as `取消待办` and keep the explicit complete / snooze / custom snooze / cancel flow.
-5. Phone Planning Desk now defaults to a wide free-writing markdown / natural-text surface, explains AI-first / local-fallback behavior in the editor copy, and sends `识别` results into the existing preview sheet instead of the old background-capture direct-write path.
-6. Reminder Activity / accessibility relaunch paths now record a recent-surface marker; normal app resume and accessibility window changes skip relaunching the same reminder for 60 seconds, while locked-screen forced overlays still bypass the cooldown.
-7. Version metadata moved to `1.13.22 / versionCode 270`; latest debug APK target is `app/build/outputs/apk/debug/PaykiTodo-1.13.22-debug.apk`.
-8. Verification passed: `./gradlew.bat :app:compileDebugKotlin`, `./gradlew.bat :app:testDebugUnitTest`, `git diff --check`, `./gradlew.bat :app:assembleDebug`, and APK metadata inspection confirmed `versionName = 1.13.22`, `versionCode = 270`.
+1. Quick todo preview dialogs now expose a visible `取消待办` action so the user can archive a task from the preview surface without using hard delete.
+2. Active todo cards' quick action sheet now also exposes `取消待办` directly, keeping cancel visually distinct from delete.
+3. Cancel remains a history-preserving archive action; delete remains the destructive removal path.
+4. Version metadata should be rebuilt to `1.13.23 / versionCode 271`; latest debug APK target should be `app/build/outputs/apk/debug/PaykiTodo-1.13.23-debug.apk` after rebuild.
 
 ## What Changed In The Latest 1.13.21 Patch
 

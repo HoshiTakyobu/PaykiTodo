@@ -25,6 +25,7 @@ import androidx.compose.material.icons.rounded.NotificationsActive
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
@@ -77,6 +78,7 @@ internal fun ActiveTodoCard(
 ) {
     var completing by remember(item.id) { mutableStateOf(false) }
     var showDetails by remember(item.id) { mutableStateOf(false) }
+    var showCancelConfirm by remember(item.id) { mutableStateOf(false) }
     var showDeleteConfirm by remember(item.id) { mutableStateOf(false) }
     var showActionSheet by remember(item.id) { mutableStateOf(false) }
     val haptic = LocalHapticFeedback.current
@@ -184,7 +186,16 @@ internal fun ActiveTodoCard(
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     maxLines = 2,
-                    overflow = TextOverflow.Ellipsis
+                        overflow = TextOverflow.Ellipsis
+                )
+                TodoActionRow(
+                    icon = Icons.Rounded.Close,
+                    title = "取消待办",
+                    tint = Color(0xFFD97706),
+                    onClick = {
+                        showActionSheet = false
+                        showCancelConfirm = true
+                    }
                 )
                 TodoActionRow(
                     icon = Icons.Rounded.Delete,
@@ -197,6 +208,20 @@ internal fun ActiveTodoCard(
                 )
             }
         }
+    }
+
+    if (showCancelConfirm) {
+        PaykiDecisionBottomSheet(
+            title = "取消待办",
+            message = "取消后会进入历史记录，后续提醒会停止；删除则会直接移除，不进入历史记录。",
+            confirmLabel = "取消待办",
+            confirmLabelColor = Color(0xFFD97706),
+            onDismiss = { showCancelConfirm = false },
+            onConfirm = {
+                showCancelConfirm = false
+                onCancel()
+            }
+        )
     }
 
     if (showDeleteConfirm) {
@@ -547,7 +572,7 @@ internal fun TodoDetailsDialog(
                 Row(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
                     onCancel?.let {
                         IconButton(onClick = it) {
-                            Icon(Icons.Rounded.Close, contentDescription = "取消任务", tint = Color(0xFFD14343))
+                            Icon(Icons.Rounded.Close, contentDescription = "取消待办", tint = Color(0xFFD14343))
                         }
                     }
                     onRestore?.let {
@@ -623,6 +648,37 @@ internal fun TodoDetailsDialog(
                         formatLocalDateTime(reminderAtMillisToDateTime(it))
                     } ?: "未记录"
                 )
+            }
+
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.18f))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                onCancel?.let {
+                    FilledTonalButton(
+                        modifier = Modifier.weight(1f),
+                        onClick = it
+                    ) {
+                        Text("取消待办")
+                    }
+                }
+                onRestore?.let {
+                    OutlinedButton(
+                        modifier = Modifier.weight(1f),
+                        onClick = it
+                    ) {
+                        Text("恢复")
+                    }
+                }
+                onEdit?.let {
+                    OutlinedButton(
+                        modifier = Modifier.weight(1f),
+                        onClick = it
+                    ) {
+                        Text("修改")
+                    }
+                }
             }
         }
     }

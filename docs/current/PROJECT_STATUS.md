@@ -8,8 +8,8 @@
 - Target platform: Android 14 / API 34
 - License: MIT License (`LICENSE`)
 - Current version in code:
-  - `versionName = "1.13.44"`
-  - `versionCode = 292`
+  - `versionName = "1.13.45"`
+  - `versionCode = 293`
   - database version = `27`
 
 ## Current Build Facts
@@ -22,7 +22,13 @@
 - Latest GitHub Release:
   - `https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.13.11`
 - Latest fully built debug APK:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.13.44-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.13.45-debug.apk`
+- Current `1.13.45 / versionCode 293` status:
+  - Phone todo quick-preview bottom fixed actions now show `取消并归档` as a full-width archive action card above edit/delete, so cancel/archive is reachable and visually separate from hard delete in the small preview sheet.
+  - Desktop Web Planning Desk recognition/import preview now uses compact weekday multi-select chips for weekly recurrence candidates instead of requiring manual `1,3,5` text input.
+  - Planning preview weekday chips are shown only when the candidate recurrence type is `WEEKLY`; switching away from weekly hides and clears weekly-day state to avoid invalid import payloads.
+  - The change reuses existing recurrence and cancel/archive payload fields and does not require a database migration.
+  - Verification passed: `node --check app/src/main/assets/desktop-web/app.js`, `git diff --check`, `./gradlew.bat :app:compileDebugKotlin`, `./gradlew.bat :app:testDebugUnitTest`, `./gradlew.bat :app:assembleDebug`, and APK metadata check for `versionName = 1.13.45`, `versionCode = 293`.
 - Current `1.13.44 / versionCode 292` status:
   - Desktop Web todo and event editors now use compact weekday multi-select chips for weekly recurrence instead of requiring manual `1,3,5` text input.
   - The weekday selector is shown only when the recurrence type is `WEEKLY`, reducing invalid weekly-day input for daily/monthly/yearly recurrence rules.

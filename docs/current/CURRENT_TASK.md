@@ -2,7 +2,7 @@
 
 ## Active Development Focus
 
-Active immediate task: continue the broader product/UX audit from the `1.13.43 / versionCode 291` local patch baseline, using the previous reminder/Planning Desk goal as the latest verified work package:
+Active immediate task: continue the broader product/UX audit from the `1.13.45 / versionCode 293` local patch baseline, using the previous reminder/Planning Desk goal as the latest verified work package:
 
 - `docs/goals/2026-06-01-paykitodo-reminder-ongoing-planning-ux-goal.md`
 
@@ -25,6 +25,8 @@ The user reported four active usability / correctness failures:
 11. Desktop Web event editor must match phone-side event title input behavior, including multi-line titles.
 12. Desktop Web todo and event editors must expose reminder enable/disable explicitly, instead of forcing users to infer it by clearing reminder text.
 13. Todo quick-preview bottom fixed actions must expose cancel/archive directly, not only through a top text action or inline explanation card.
+14. Todo quick-preview cancel/archive must be visually separated from edit/delete in the fixed bottom area, because cancel archives into history while delete is hard removal.
+15. Desktop Web Planning Desk recognition preview must not require manual weekday number input for weekly recurrence candidates.
 
 ## Required Behavior
 
@@ -86,6 +88,8 @@ Completed behavior so far:
 11. In `1.13.41`, Desktop Web event editor title input is a multi-line textarea, matching phone-side event title entry.
 12. In `1.13.42`, Desktop Web todo and event editors expose `启用提醒` switches; disabled reminders save empty offset lists and grey out reminder-dependent fields.
 13. In `1.13.43`, phone todo quick-preview bottom fixed actions include `取消归档` beside edit/delete actions, keeping cancel/archive reachable in the preview's primary action area.
+14. In `1.13.45`, phone todo quick-preview bottom fixed actions promote `取消并归档` to a full-width archive card above edit/delete, making the history-preserving cancel path easier to see and less confusable with hard delete.
+15. In `1.13.45`, Desktop Web Planning Desk recognition preview uses weekday chips for weekly recurrence candidates and clears hidden weekly-day state when candidates are changed away from weekly recurrence.
 5. Recurring todo range delete now uses the hard-delete path instead of cancel/archive.
 6. Recurring todo current-instance delete records a `recurring_instance_skips` exception and then hard-deletes the row, so the occurrence does not enter history and does not regenerate.
 7. Backup / restore includes `recurring_instance_skips`, so single-instance recurring-todo deletions survive restore.

@@ -1795,10 +1795,24 @@ function planningEditableSelect(id, field, label, value, options) {
     + '</select></label>';
 }
 
+function planningWeekdayChips(id, recurrenceType, weekdays) {
+  const selected = new Set(recurrenceType === 'WEEKLY' ? parseWeekdays(Array.isArray(weekdays) ? weekdays.join(',') : weekdays) : []);
+  const hiddenClass = recurrenceType === 'WEEKLY' ? '' : ' hidden';
+  return '<label class="planning-edit-field planning-weekday-field' + hiddenClass + '" data-planning-weekday-field="' + escapeHtml(id) + '"><span>每周周几</span>'
+    + '<input type="hidden" data-planning-field="recurrenceWeekdays" data-planning-id="' + escapeHtml(id) + '" value="' + escapeHtml(Array.from(selected).sort((a, b) => a - b).join(',')) + '" />'
+    + '<div class="weekday-chip-row planning-weekday-chips" data-planning-weekday-chips="' + escapeHtml(id) + '">'
+    + WEEKDAY_OPTIONS.map(day => {
+      const active = selected.has(day.value);
+      return '<button type="button" class="weekday-chip' + (active ? ' active' : '') + '" data-planning-weekday-value="' + day.value + '" aria-pressed="' + (active ? 'true' : 'false') + '">周' + escapeHtml(day.label) + '</button>';
+    }).join('')
+    + '</div>'
+    + '<small class="field-hint">只在重复为“每周”时生效。</small>'
+    + '</label>';
+}
+
 function planningRecurrenceFields(item) {
   const recurrence = item.recurrence || {};
   const type = recurrence.enabled ? (recurrence.type || 'NONE') : 'NONE';
-  const weeklyDays = Array.isArray(recurrence.weeklyDays) ? recurrence.weeklyDays.join(',') : '';
   return ''
     + planningEditableSelect(item.id, 'recurrenceType', '重复', type, [
       { value: 'NONE', label: '不重复' },
@@ -1810,7 +1824,7 @@ function planningRecurrenceFields(item) {
       { value: 'YEARLY_LUNAR_DATE', label: '每年同农历月日' }
     ])
     + planningEditableField(item.id, 'recurrenceEndDate', '重复截止', recurrence.endDate || '', '2026-06-30')
-    + planningEditableField(item.id, 'recurrenceWeekdays', '每周周几', weeklyDays, '1,3,5');
+    + planningWeekdayChips(item.id, type, recurrence.weeklyDays);
 }
 
 function planningMappingStatusLabel(status) {
@@ -1989,7 +2003,7 @@ function collectPlanningCandidates() {
       item.recurrence.endDate = value.trim() || null;
     } else if (node.dataset.planningField === 'recurrenceWeekdays') {
       item.recurrence = item.recurrence || {};
-      item.recurrence.weeklyDays = parseWeekdays(value);
+      item.recurrence.weeklyDays = item.recurrence.type === 'WEEKLY' ? parseWeekdays(value) : [];
     } else {
       item[node.dataset.planningField] = value;
     }
@@ -2003,6 +2017,35 @@ function collectPlanningCandidates() {
     if (item) item.createLinkedTodo = node.checked;
   });
   return base;
+}
+
+function syncPlanningWeekdayChips(candidateId) {
+  const input = document.querySelector('[data-planning-field="recurrenceWeekdays"][data-planning-id="' + cssEscapeValue(candidateId) + '"]');
+  const host = document.querySelector('[data-planning-weekday-chips="' + cssEscapeValue(candidateId) + '"]');
+  if (!input || !host) return;
+  const selected = new Set(parseWeekdays(input.value));
+  host.querySelectorAll('[data-planning-weekday-value]').forEach(node => {
+    const value = Number(node.dataset.planningWeekdayValue);
+    node.classList.toggle('active', selected.has(value));
+    node.setAttribute('aria-pressed', selected.has(value) ? 'true' : 'false');
+  });
+}
+
+function syncPlanningWeekdayVisibility(candidateId) {
+  const recurrenceSelect = document.querySelector('[data-planning-field="recurrenceType"][data-planning-id="' + cssEscapeValue(candidateId) + '"]');
+  const field = document.querySelector('[data-planning-weekday-field="' + cssEscapeValue(candidateId) + '"]');
+  const input = document.querySelector('[data-planning-field="recurrenceWeekdays"][data-planning-id="' + cssEscapeValue(candidateId) + '"]');
+  const visible = recurrenceSelect?.value === 'WEEKLY';
+  field?.classList.toggle('hidden', !visible);
+  if (!visible && input) {
+    input.value = '';
+    syncPlanningWeekdayChips(candidateId);
+  }
+}
+
+function cssEscapeValue(value) {
+  if (window.CSS?.escape) return window.CSS.escape(String(value));
+  return String(value).replace(/"/g, '\\"');
 }
 
 function markPlanningDirty() {
@@ -3324,6 +3367,7 @@ els.planningPreview?.addEventListener('click', event => {
   const clearAll = event.target.closest?.('[data-planning-clear-all]');
   const conflictDocument = event.target.closest?.('[data-planning-conflict-document]');
   const conflictItem = event.target.closest?.('[data-planning-conflict-item]');
+  const weekdayChip = event.target.closest?.('[data-planning-weekday-value]');
   if (selectAll) {
     document.querySelectorAll('[data-planning-select]:not(:disabled)').forEach(node => { node.checked = true; });
   }
@@ -3335,6 +3379,23 @@ els.planningPreview?.addEventListener('click', event => {
   }
   if (conflictItem) {
     resolvePlanningConflictItem(Number(conflictItem.dataset.planningConflictItem)).catch(err => els.status.textContent = err.message);
+  }
+  if (weekdayChip) {
+    const host = weekdayChip.closest?.('[data-planning-weekday-chips]');
+    const candidateId = host?.dataset?.planningWeekdayChips;
+    const input = candidateId ? document.querySelector('[data-planning-field="recurrenceWeekdays"][data-planning-id="' + cssEscapeValue(candidateId) + '"]') : null;
+    if (input) {
+      const value = Number(weekdayChip.dataset.planningWeekdayValue);
+      const selected = new Set(parseWeekdays(input.value));
+      if (selected.has(value)) selected.delete(value); else selected.add(value);
+      input.value = Array.from(selected).sort((a, b) => a - b).join(',');
+      syncPlanningWeekdayChips(candidateId);
+    }
+  }
+});
+els.planningPreview?.addEventListener('change', event => {
+  if (event.target.matches?.('[data-planning-field="recurrenceType"]')) {
+    syncPlanningWeekdayVisibility(event.target.dataset.planningId);
   }
 });
 els.planningNoteSelect?.addEventListener('change', async event => {

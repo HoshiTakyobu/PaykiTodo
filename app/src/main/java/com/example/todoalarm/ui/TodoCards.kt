@@ -725,64 +725,100 @@ private fun TodoDetailsFixedActions(
                 .padding(horizontal = 18.dp, vertical = 12.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            onCancel?.let {
+                TodoFixedCancelArchiveButton(onClick = it)
+            }
+            if (onRestore != null || onEdit != null || onDelete != null) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    onRestore?.let {
+                        OutlinedButton(
+                            modifier = Modifier.weight(1f),
+                            onClick = it
+                        ) {
+                            Icon(
+                                Icons.AutoMirrored.Rounded.Undo,
+                                contentDescription = null,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Text("恢复")
+                        }
+                    }
+                    onEdit?.let {
+                        OutlinedButton(
+                            modifier = Modifier.weight(1f),
+                            onClick = it
+                        ) {
+                            Icon(
+                                Icons.Rounded.Edit,
+                                contentDescription = null,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Text("修改")
+                        }
+                    }
+                    onDelete?.let {
+                        OutlinedButton(
+                            modifier = Modifier.weight(1f),
+                            onClick = it
+                        ) {
+                            Icon(
+                                Icons.Rounded.Delete,
+                                contentDescription = null,
+                                modifier = Modifier.size(18.dp),
+                                tint = Color(0xFFD14343)
+                            )
+                            Text("删除", color = Color(0xFFD14343))
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun TodoFixedCancelArchiveButton(onClick: () -> Unit) {
+    val accent = Color(0xFFD97706)
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick),
+        shape = RoundedCornerShape(18.dp),
+        color = accent.copy(alpha = 0.12f),
+        border = BorderStroke(1.dp, accent.copy(alpha = 0.30f))
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 14.dp, vertical = 12.dp),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                Icons.Rounded.Close,
+                contentDescription = null,
+                tint = accent,
+                modifier = Modifier.size(20.dp)
+            )
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(2.dp)
             ) {
-                onRestore?.let {
-                    OutlinedButton(
-                        modifier = Modifier.weight(1f),
-                        onClick = it
-                    ) {
-                        Icon(
-                            Icons.AutoMirrored.Rounded.Undo,
-                            contentDescription = null,
-                            modifier = Modifier.size(18.dp)
-                        )
-                        Text("恢复")
-                    }
-                }
-                onEdit?.let {
-                    OutlinedButton(
-                        modifier = Modifier.weight(1f),
-                        onClick = it
-                    ) {
-                        Icon(
-                            Icons.Rounded.Edit,
-                            contentDescription = null,
-                            modifier = Modifier.size(18.dp)
-                        )
-                        Text("修改")
-                    }
-                }
-                onCancel?.let {
-                    OutlinedButton(
-                        modifier = Modifier.weight(1f),
-                        onClick = it
-                    ) {
-                        Icon(
-                            Icons.Rounded.Close,
-                            contentDescription = null,
-                            modifier = Modifier.size(18.dp),
-                            tint = Color(0xFFD97706)
-                        )
-                        Text("取消归档", color = Color(0xFFD97706))
-                    }
-                }
-                onDelete?.let {
-                    OutlinedButton(
-                        modifier = Modifier.weight(1f),
-                        onClick = it
-                    ) {
-                        Icon(
-                            Icons.Rounded.Delete,
-                            contentDescription = null,
-                            modifier = Modifier.size(18.dp),
-                            tint = Color(0xFFD14343)
-                        )
-                        Text("删除", color = Color(0xFFD14343))
-                    }
-                }
+                Text(
+                    text = "取消并归档",
+                    color = accent,
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    text = "停止提醒并进入历史记录，不是删除。",
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    style = MaterialTheme.typography.bodySmall,
+                    lineHeight = 17.sp
+                )
             }
         }
     }

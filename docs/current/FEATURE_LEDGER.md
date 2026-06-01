@@ -16,6 +16,7 @@ This file tracks the product at a practical level for new coding sessions.
 - Desktop Web todo editor exposes and preserves `闹钟模式` and `仅提醒，不在看板显示`, matching the phone editor for these DDL-dependent todo fields
 - Desktop Web todo editor exposes an explicit `启用提醒` switch; disabling it saves an empty reminder-offset list and disables reminder-dependent fields instead of relying on clearing reminder text
 - Desktop Web todo and event editors use compact weekday multi-select chips for weekly recurrence instead of requiring manual `1,3,5` text input, and hide those chips for non-weekly recurrence rules
+- Desktop Web Planning Desk recognition preview uses the same weekday multi-select chips for weekly recurrence candidates, and clears weekly-day state when the candidate is changed away from `每周`
 - recurring todo templates persist `hiddenFromBoard`, and newly replenished recurring instances inherit the reminder-only visibility setting
 - no-deadline todos; active no-DDL items are treated as `今日待办` across phone board, Android widget board query, desktop board, and desktop todo management
 - lightweight comma-based todo batch import with preview validation
@@ -26,7 +27,7 @@ This file tracks the product at a practical level for new coding sessions.
 - complete / cancel / restore flows
 - active todo preview now uses the same bottom-sheet visual language as calendar event preview
 - active todo card body opens preview; completion is isolated to the checkbox to avoid accidental completion
-- active todo quick preview and quick action surfaces now expose visible `取消并归档` / `取消待办（归档）` actions with confirmation; the phone details preview shows an inline archive card directly below the title, a top `取消并归档` action, and a bottom fixed `取消归档` action beside edit/delete, while the desktop Web preview uses the same inline archive card plus dedicated archive-action styling, keeping cancel as a history-preserving archive flow and visually distinct from hard delete
+- active todo quick preview and quick action surfaces now expose visible `取消并归档` / `取消待办（归档）` actions with confirmation; the phone details preview shows an inline archive card directly below the title, a top `取消并归档` action, and a bottom fixed full-width `取消并归档` action above edit/delete, while the desktop Web preview uses the same inline archive card plus dedicated archive-action styling, keeping cancel as a history-preserving archive flow and visually distinct from hard delete
 - todo quick preview is now the shared target for phone search results, Planning Desk linked todos, notification routes, and widget/deep-link todo opens, so active todos from those entry points can cancel/archive without detouring through the editor
 - desktop web todo preview exposes top and bottom cancel/archive actions plus a separate hard-delete path with explicit history semantics
 - built-in Wiki documents the current todo preview behavior, including completion-circle isolation, cancel/archive semantics, hard-delete semantics, and recurring-todo skip records

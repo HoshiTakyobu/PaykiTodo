@@ -5,23 +5,32 @@
 - Repository root: `G:\Workspace\Project\PaykiTodo`
 - Branch: `main`
 - Current code version:
-  - `versionName = 1.13.44`
-  - `versionCode = 292`
+  - `versionName = 1.13.45`
+  - `versionCode = 293`
   - database version = `27`
 - Latest debug APK target in this round:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.13.44-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.13.45-debug.apk`
 - Latest signed release APK available locally:
   - `app/build/outputs/apk/release/PaykiTodo-1.13.11-release.apk`
 - Latest GitHub Release:
   - `https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.13.11`
 - Debug APK metadata inspection:
-  - `versionName = 1.13.44`, `versionCode = 292`
+  - `versionName = 1.13.45`, `versionCode = 293`
 
 ## Active Goal
 
-Active immediate task: continue the broader product/UX audit from the current `1.13.44 / versionCode 292` local patch baseline.
+Active immediate task: continue the broader product/UX audit from the current `1.13.45 / versionCode 293` local patch baseline.
 
-Latest status: `1.13.44` improves Desktop Web recurrence editing by replacing manual weekly-day CSV input with compact weekday multi-select chips for todo and event editors. Debug build and metadata inspection should be checked before handoff.
+Latest status: `1.13.45` makes phone todo quick-preview cancel/archive a full-width fixed bottom action above edit/delete, and brings Desktop Web Planning Desk recognition preview weekly recurrence editing to the same weekday-chip interaction. Debug build and metadata inspection passed.
+
+## What Changed In The Latest 1.13.45 Patch
+
+1. Phone todo quick-preview bottom fixed actions now show `取消并归档` as a full-width archive card above edit/delete.
+2. Cancel/archive remains history-preserving; delete remains hard deletion and is visually separated into the secondary action row.
+3. Desktop Web Planning Desk recognition/import preview now uses weekday chips for weekly recurrence candidates instead of manual `1,3,5` text input.
+4. Planning preview weekday chips are shown only for `WEEKLY`; non-weekly recurrence candidates hide and clear weekly-day state before import.
+5. Version metadata moved to `1.13.45 / versionCode 293`; database version remains `27`.
+6. Verification passed: `node --check app/src/main/assets/desktop-web/app.js`, `git diff --check`, `./gradlew.bat :app:compileDebugKotlin`, `./gradlew.bat :app:testDebugUnitTest`, `./gradlew.bat :app:assembleDebug`, and APK metadata inspection confirmed `versionName = 1.13.45`, `versionCode = 293`.
 
 ## What Changed In The Latest 1.13.44 Patch
 

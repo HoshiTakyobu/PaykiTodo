@@ -921,10 +921,10 @@ function nextOrSameWeekdayDate(baseDate, weekday) {
 
 function courseSlotDateTimeValue(baseDate, weekday, timeValue) {
   const match = String(timeValue || '').match(/^(\d{1,2}):(\d{2})$/);
-  if (!match) throw new Error('课程时间段格式错误，请填写 HH:mm。');
+  if (!match) throw new Error('时间段格式错误，请填写 HH:mm。');
   const hour = Number(match[1]);
   const minute = Number(match[2]);
-  if (hour < 0 || hour > 23 || minute < 0 || minute > 59) throw new Error('课程时间段超出有效时间范围。');
+  if (hour < 0 || hour > 23 || minute < 0 || minute > 59) throw new Error('时间段超出有效时间范围。');
   const date = nextOrSameWeekdayDate(baseDate, weekday);
   date.setHours(hour, minute, 0, 0);
   return formatDateTimeLocalValue(date.getTime());
@@ -4259,12 +4259,12 @@ document.getElementById('save-event').onclick = async () => {
       )
     };
     if (courseModeEnabled) {
-      if (!startAt) throw new Error('课程多时间段需要先填写起始日期作为起始周参考。');
+      if (!startAt) throw new Error('每周多时间段需要先填写起始日期作为起始周参考。');
       const baseDate = new Date(startAt);
       const recurrenceEnd = document.getElementById('event-recurrence-end').value || defaultCourseRecurrenceEndDate(baseDate);
       document.getElementById('event-recurrence-end').value = recurrenceEnd;
       const slots = readEventCourseSlots();
-      if (!slots.length) throw new Error('请至少填写一个课程时间段。');
+      if (!slots.length) throw new Error('请至少填写一个时间段。');
       const coursePayloads = [];
       for (const slot of slots) {
         const slotStart = courseSlotDateTimeValue(baseDate, slot.weekday, slot.startTime);
@@ -4295,13 +4295,11 @@ document.getElementById('save-event').onclick = async () => {
           }
         });
       }
-      for (const coursePayload of coursePayloads) {
-        await api('/api/events', {
-          method: 'POST',
-          body: JSON.stringify(coursePayload)
-        });
-      }
-      els.status.textContent = '已创建 ' + slots.length + ' 个课程时间段';
+      await api('/api/events/batch', {
+        method: 'POST',
+        body: JSON.stringify({ events: coursePayloads })
+      });
+      els.status.textContent = '已创建 ' + slots.length + ' 个每周时间段';
     } else if (state.editingEventId) {
       await api(`/api/events/${state.editingEventId}`, { method: 'PUT', body: JSON.stringify(payload) });
     } else {

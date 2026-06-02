@@ -927,7 +927,7 @@ fun DashboardScreen(
                         editorVisible = false
                         editingItem = null
                         calendarDraftSeed = null
-                        Toast.makeText(context, "已创建 ${drafts.size} 个课程时间段", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, "已创建 ${drafts.size} 个每周时间段", Toast.LENGTH_SHORT).show()
                     } else {
                         Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
                     }

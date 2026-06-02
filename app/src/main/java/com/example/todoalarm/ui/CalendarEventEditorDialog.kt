@@ -52,12 +52,14 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.example.todoalarm.data.CalendarEventDraft
+import com.example.todoalarm.data.CalendarEventTimeSlot
 import com.example.todoalarm.data.LunarCalendar
 import com.example.todoalarm.data.RecurrenceConfig
 import com.example.todoalarm.data.ReminderDeliveryMode
 import com.example.todoalarm.data.RecurrencePreviewResult
 import com.example.todoalarm.data.RecurrenceType
 import com.example.todoalarm.data.TodoItem
+import com.example.todoalarm.data.buildWeeklyMultiSlotEventDrafts
 import com.example.todoalarm.data.normalizeReminderOffsets
 import com.example.todoalarm.data.previewCalendarRecurrence
 import com.example.todoalarm.data.storageStringToWeekdays
@@ -342,10 +344,19 @@ internal fun CalendarEventEditorDialog(
                 )
             )
             if (courseModeActive) {
-                val courseDrafts = courseSlots.map { slot ->
-                    val slotDate = nextOrSameWeekday(startAt.toLocalDate(), slot.weekday)
-                    val slotStartAt = LocalDateTime.of(slotDate, slot.startTime)
-                    val slotReminderOffsets = if (reminderEnabled) {
+                val courseDrafts = buildWeeklyMultiSlotEventDrafts(
+                    baseDraft = baseDraft,
+                    slots = courseSlots.map { slot ->
+                        CalendarEventTimeSlot(
+                            weekday = slot.weekday,
+                            startTime = slot.startTime,
+                            endTime = slot.endTime
+                        )
+                    },
+                    baseDate = startAt.toLocalDate(),
+                    recurrenceEndDate = recurrenceEndDate
+                ) { _, slotStartAt ->
+                    if (reminderEnabled) {
                         parseReminderInput(
                             raw = reminderInput,
                             anchor = slotStartAt,
@@ -354,19 +365,6 @@ internal fun CalendarEventEditorDialog(
                     } else {
                         emptyList()
                     }
-                    baseDraft.copy(
-                        startAt = slotStartAt,
-                        endAt = LocalDateTime.of(slotDate, slot.endTime),
-                        allDay = false,
-                        reminderMinutesBefore = slotReminderOffsets.minOrNull(),
-                        reminderOffsetsMinutes = slotReminderOffsets,
-                        recurrence = RecurrenceConfig(
-                            enabled = true,
-                            type = RecurrenceType.WEEKLY,
-                            weeklyDays = setOf(slot.weekday),
-                            endDate = recurrenceEndDate
-                        )
-                    )
                 }
                 onConfirmMultiple?.invoke(courseDrafts) ?: onConfirm(courseDrafts.first())
             } else {
@@ -484,7 +482,7 @@ internal fun CalendarEventEditorDialog(
                 }
 
                 if (initialEvent == null) {
-                    EditorBlock(title = "课程多时间段") {
+                    EditorBlock(title = "每周多时间段") {
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             verticalAlignment = Alignment.CenterVertically,
@@ -494,12 +492,12 @@ internal fun CalendarEventEditorDialog(
                                 modifier = Modifier.weight(1f),
                                 verticalArrangement = Arrangement.spacedBy(2.dp)
                             ) {
-                                Text("一门课每周多个时间段", fontWeight = FontWeight.SemiBold)
+                                Text("同一日程每周多个时间段", fontWeight = FontWeight.SemiBold)
                                 Text(
                                     text = if (courseModeActive) {
                                         "将创建 ${courseSlots.size} 条同名周循环日程，共用标题、地点、描述、提醒和颜色。"
                                     } else {
-                                        "例如周二 10:20-11:55 + 周四 08:30-10:05。"
+                                        "适合课程、实验、固定值班等：例如周二 10:20-11:55 + 周四 08:30-10:05。"
                                     },
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
@@ -781,7 +779,7 @@ internal fun CalendarEventEditorDialog(
                                 verticalArrangement = Arrangement.spacedBy(3.dp)
                             ) {
                                 Text(
-                                    text = "课程多时间段固定为每周循环",
+                                    text = "每周多时间段固定为每周循环",
                                     fontWeight = FontWeight.SemiBold,
                                     color = MaterialTheme.colorScheme.onSurface
                                 )

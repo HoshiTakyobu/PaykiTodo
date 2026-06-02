@@ -171,6 +171,7 @@ class DesktopSyncCoordinator(
                 method == "GET" && routePath == "/api/events" -> DesktopSyncServer.Response.json(desktopEvents(path))
                 method == "POST" && path == "/api/todos" -> DesktopSyncServer.Response.json(createTodo(JSONObject(body)))
                 method == "POST" && path == "/api/events" -> DesktopSyncServer.Response.json(createEvent(JSONObject(body)))
+                method == "POST" && path == "/api/events/batch" -> DesktopSyncServer.Response.json(createEvents(JSONObject(body)))
                 method == "PUT" && routePath.matches(Regex("/api/todos/\\d+")) -> DesktopSyncServer.Response.json(updateTodo(routePath, JSONObject(body)))
                 method == "PUT" && routePath.matches(Regex("/api/events/\\d+")) -> DesktopSyncServer.Response.json(updateEvent(routePath, JSONObject(body)))
                 method == "GET" && routePath.matches(Regex("/api/events/\\d+/check-ins")) -> DesktopSyncServer.Response.json(eventCheckIns(routePath))
@@ -365,12 +366,50 @@ class DesktopSyncCoordinator(
     }
 
     private suspend fun createEvent(json: JSONObject): JSONObject {
+        val draft = newEventDraftFromJson(json)
+        require(draft.title.isNotBlank()) { "日程标题不能为空" }
+        validateEventDraft(draft = draft, original = null, scope = RecurrenceScope.CURRENT)?.let { error(it) }
+        val created = app.repository.createCalendarEventFromDraft(draft)
+        created.forEach { scheduleReminderOrDisable(it) }
+        autoBackupIfNeeded()
+        return JSONObject().put("created", created.size)
+    }
+
+    private suspend fun createEvents(json: JSONObject): JSONObject {
+        val events = json.optJSONArray("events") ?: error("缺少 events")
+        if (events.length() == 0) error("没有可创建的日程")
+        val drafts = (0 until events.length()).map { index ->
+            newEventDraftFromJson(events.getJSONObject(index))
+        }
+        drafts.forEachIndexed { index, draft ->
+            require(draft.title.isNotBlank()) { "第 ${index + 1} 段：日程标题不能为空" }
+            validateEventDraft(draft = draft, original = null, scope = RecurrenceScope.CURRENT)?.let { error ->
+                error("第 ${index + 1} 段：$error")
+            }
+        }
+
+        val createdCounts = JSONArray()
+        var createdTotal = 0
+        drafts.forEach { draft ->
+            val created = app.repository.createCalendarEventFromDraft(draft)
+            created.forEach { scheduleReminderOrDisable(it) }
+            createdCounts.put(created.size)
+            createdTotal += created.size
+        }
+        autoBackupIfNeeded()
+        return JSONObject()
+            .put("created", createdTotal)
+            .put("eventDrafts", drafts.size)
+            .put("createdPerDraft", createdCounts)
+    }
+
+    private suspend fun newEventDraftFromJson(json: JSONObject): CalendarEventDraft {
         val groupId = resolveGroupId(json)
         val startAt = LocalDateTime.parse(json.getString("startAt"))
         val endAt = LocalDateTime.parse(json.getString("endAt"))
         val reminderOffsets = json.optJSONArray("reminderOffsetsMinutes")?.toIntList().orEmpty()
         val recurrence = parseRecurrence(json.optJSONObject("recurrence"), startAt.toLocalDate())
-        val draft = sanitizeEventDraft(
+        return sanitizeEventDraft(
             title = json.optString("title").trim(),
             notes = json.optString("notes").trim(),
             location = json.optString("location").trim(),
@@ -387,12 +426,6 @@ class DesktopSyncCoordinator(
             recurrence = recurrence,
             groupId = groupId
         )
-        require(draft.title.isNotBlank()) { "日程标题不能为空" }
-        validateEventDraft(draft = draft, original = null, scope = RecurrenceScope.CURRENT)?.let { error(it) }
-        val created = app.repository.createCalendarEventFromDraft(draft)
-        created.forEach { scheduleReminderOrDisable(it) }
-        autoBackupIfNeeded()
-        return JSONObject().put("created", created.size)
     }
 
     private suspend fun updateEvent(path: String, json: JSONObject): JSONObject {

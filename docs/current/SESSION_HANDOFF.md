@@ -5,23 +5,32 @@
 - Repository root: `G:\Workspace\Project\PaykiTodo`
 - Branch: `main`
 - Current code version:
-  - `versionName = 1.13.53`
-  - `versionCode = 301`
+  - `versionName = 1.13.54`
+  - `versionCode = 302`
   - database version = `27`
 - Latest debug APK target in this round:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.13.53-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.13.54-debug.apk`
 - Latest signed release APK available locally:
   - `app/build/outputs/apk/release/PaykiTodo-1.13.11-release.apk`
 - Latest GitHub Release:
   - `https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.13.11`
 - Debug APK metadata inspection:
-  - `versionName = 1.13.53`, `versionCode = 301`
+  - `versionName = 1.13.54`, `versionCode = 302`
 
 ## Active Goal
 
-Active immediate task: continue auditing requirement / UX consistency from the current `1.13.53 / versionCode 301` local patch baseline.
+Active immediate task: continue auditing requirement / UX consistency from the current `1.13.54 / versionCode 302` local patch baseline.
 
-Latest status: `1.13.53` corrects Settings -> Calendar and reminders copy for ongoing event notifications: the notification setting applies to in-progress events and does not require the separate event reminder toggle. Debug build and metadata inspection passed.
+Latest status: `1.13.54` closes the new-event multi-slot scheduling gap: phone and Desktop Web creation paths expose the workflow as `每周多时间段`, generate one weekly recurring event series per slot, and Desktop Web uses a batch event API. Debug build and metadata inspection passed.
+
+## What Changed In The Latest 1.13.54 Patch
+
+1. New-event multi-slot scheduling is now described as `每周多时间段`, making it usable beyond courses for experiments, fixed duty, and recurring meetings.
+2. Phone-side multi-slot draft construction was extracted to `CalendarEventMultiSlot.kt`; tests now cover the Tuesday 10:20-11:55 plus Thursday 08:30-10:05 workflow.
+3. Desktop Web multi-slot creation now posts generated event drafts to `/api/events/batch`; the service validates all generated drafts before creation.
+4. Built-in Wiki and Feature Ledger were updated to match the current name and behavior.
+5. Version metadata moved to `1.13.54 / versionCode 302`; database version remains `27`.
+6. Verification passed: `node --check app/src/main/assets/desktop-web/app.js`, targeted `CalendarEventMultiSlotTest`, `./gradlew.bat :app:compileDebugKotlin`, full `./gradlew.bat :app:testDebugUnitTest`, `git diff --check`, `./gradlew.bat :app:assembleDebug`, and APK metadata inspection for `versionName = 1.13.54`, `versionCode = 302`.
 
 ## What Changed In The Latest 1.13.53 Patch
 

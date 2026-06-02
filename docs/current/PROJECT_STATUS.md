@@ -8,8 +8,8 @@
 - Target platform: Android 14 / API 34
 - License: MIT License (`LICENSE`)
 - Current version in code:
-  - `versionName = "1.13.53"`
-  - `versionCode = 301`
+  - `versionName = "1.13.54"`
+  - `versionCode = 302`
   - database version = `27`
 
 ## Current Build Facts
@@ -22,7 +22,13 @@
 - Latest GitHub Release:
   - `https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.13.11`
 - Latest fully built debug APK:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.13.53-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.13.54-debug.apk`
+- Current `1.13.54 / versionCode 302` status:
+  - New-event multi-slot scheduling is now exposed as `每周多时间段` rather than the narrower course-only wording.
+  - Phone-side multi-slot creation uses a shared data-layer builder that turns multiple weekday/time slots, such as Tuesday 10:20-11:55 plus Thursday 08:30-10:05, into one weekly recurring event draft per slot while preserving common title, location, notes, reminders, color, countdown, and check-in settings.
+  - Desktop Web multi-slot event creation now posts all generated event drafts to `/api/events/batch`, so the phone service validates all slots before creating the same-name weekly recurring event series.
+  - Built-in Wiki and Feature Ledger were updated to describe `每周多时间段`; database version remains `27`, no schema migration was added.
+  - Verification passed: `node --check app/src/main/assets/desktop-web/app.js`, targeted `CalendarEventMultiSlotTest`, `./gradlew.bat :app:compileDebugKotlin`, `./gradlew.bat :app:testDebugUnitTest`, `git diff --check`, `./gradlew.bat :app:assembleDebug`, and APK metadata check for `versionName = 1.13.54`, `versionCode = 302`.
 - Current `1.13.53 / versionCode 301` status:
   - Settings -> Calendar and reminders now describes ongoing event notifications accurately: when enabled, events can show a low-priority ongoing notification during the event without requiring the separate event reminder toggle.
   - This aligns the settings copy with the implemented `OngoingEventNotifier` behavior and the current requirement that in-progress schedules remain visible until they end or are cleared.

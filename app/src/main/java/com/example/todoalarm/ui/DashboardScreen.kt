@@ -882,6 +882,7 @@ fun DashboardScreen(
         CalendarEventEditorDialog(
             initialEvent = editingItem?.takeIf { it.isEvent },
             initialDraft = calendarDraftSeed,
+            groups = uiState.groups,
             defaultRingEnabled = editingItem?.ringEnabled ?: defaultReminderRing,
             defaultVibrateEnabled = editingItem?.vibrateEnabled ?: defaultReminderVibrate,
             defaultReminderDeliveryMode = editingItem?.reminderDeliveryModeEnum

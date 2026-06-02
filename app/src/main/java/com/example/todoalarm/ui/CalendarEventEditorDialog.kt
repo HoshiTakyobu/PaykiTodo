@@ -58,6 +58,7 @@ import com.example.todoalarm.data.RecurrenceConfig
 import com.example.todoalarm.data.ReminderDeliveryMode
 import com.example.todoalarm.data.RecurrencePreviewResult
 import com.example.todoalarm.data.RecurrenceType
+import com.example.todoalarm.data.TaskGroup
 import com.example.todoalarm.data.TodoItem
 import com.example.todoalarm.data.buildWeeklyMultiSlotEventDrafts
 import com.example.todoalarm.data.normalizeReminderOffsets
@@ -114,6 +115,7 @@ private val CalendarColorOptions = listOf(
 internal fun CalendarEventEditorDialog(
     initialEvent: TodoItem?,
     initialDraft: CalendarEventDraft? = null,
+    groups: List<TaskGroup> = emptyList(),
     defaultRingEnabled: Boolean,
     defaultVibrateEnabled: Boolean,
     defaultReminderDeliveryMode: ReminderDeliveryMode,
@@ -124,9 +126,25 @@ internal fun CalendarEventEditorDialog(
     val context = LocalContext.current
     val now = remember { LocalDateTime.now().withSecond(0).withNano(0) }
     val seedDraft = remember(initialEvent?.id, initialDraft) { if (initialEvent == null) initialDraft else null }
-    var title by remember(initialEvent?.id) { mutableStateOf(initialEvent?.title.orEmpty()) }
+    val sortedGroups = remember(groups) { groups.sortedWith(compareBy<TaskGroup> { it.sortOrder }.thenBy { it.id }) }
+    val defaultGroupId = remember(sortedGroups) {
+        sortedGroups.firstOrNull { it.name == "例行" }?.id ?: sortedGroups.firstOrNull()?.id ?: 0L
+    }
+    val validGroupIds = remember(sortedGroups) { sortedGroups.map { it.id }.toSet() }
+    val initialSelectedGroupId = remember(initialEvent?.id, seedDraft, validGroupIds, defaultGroupId) {
+        val preferred = initialEvent?.groupId?.takeIf { it > 0 } ?: seedDraft?.groupId?.takeIf { it > 0 } ?: defaultGroupId
+        when {
+            preferred in validGroupIds -> preferred
+            defaultGroupId in validGroupIds -> defaultGroupId
+            else -> preferred.takeIf { it > 0 } ?: 0L
+        }
+    }
+    var title by remember(initialEvent?.id, seedDraft) { mutableStateOf(initialEvent?.title ?: seedDraft?.title.orEmpty()) }
     var location by remember(initialEvent?.id, seedDraft) { mutableStateOf(initialEvent?.location ?: seedDraft?.location.orEmpty()) }
     var notes by remember(initialEvent?.id, seedDraft) { mutableStateOf(initialEvent?.notes ?: seedDraft?.notes.orEmpty()) }
+    var selectedGroupId by remember(initialEvent?.id, seedDraft, initialSelectedGroupId) {
+        mutableStateOf(initialSelectedGroupId)
+    }
     var allDay by remember(initialEvent?.id, seedDraft) { mutableStateOf(initialEvent?.allDay ?: (seedDraft?.allDay == true)) }
     var startAt by remember(initialEvent?.id) {
         mutableStateOf(initialEvent?.startAtMillis?.let(::reminderAtMillisToDateTime) ?: seedDraft?.startAt ?: now.plusHours(2))
@@ -203,6 +221,7 @@ internal fun CalendarEventEditorDialog(
     var showReminderPicker by remember { mutableStateOf(false) }
     var showReminderDeliveryPicker by remember { mutableStateOf(false) }
     var showRecurrencePicker by remember { mutableStateOf(false) }
+    var showGroupPicker by remember { mutableStateOf(false) }
     var helpTopic by remember { mutableStateOf<InputSyntaxHelpTopic?>(null) }
     var activeDateTimeTarget by remember { mutableStateOf<CalendarDateTimeTarget?>(null) }
     var activeLunarDateTarget by remember { mutableStateOf<CalendarDateTarget?>(null) }
@@ -275,6 +294,7 @@ internal fun CalendarEventEditorDialog(
         recurrenceType,
         weeklyDays,
         recurrenceEndDate,
+        selectedGroupId,
         courseMultiSlotEnabled,
         courseSlots
     ) {
@@ -289,6 +309,7 @@ internal fun CalendarEventEditorDialog(
                 countdownEnabled ||
                 checkInEnabled ||
                 recurringEnabled ||
+                selectedGroupId != initialSelectedGroupId ||
                 courseMultiSlotEnabled ||
                 courseSlots.size > 1
         } else {
@@ -306,6 +327,7 @@ internal fun CalendarEventEditorDialog(
                 reminderDeliveryMode != initialEvent.reminderDeliveryModeEnum ||
                 countdownEnabled != initialEvent.countdownEnabled ||
                 checkInEnabled != initialEvent.checkInEnabled ||
+                selectedGroupId != initialSelectedGroupId ||
                 recurringEnabled != initialEvent.isRecurring ||
                 recurrenceType != initialEvent.recurrenceTypeEnum ||
                 weeklyDays != storageStringToWeekdays(initialEvent.recurrenceWeekdays) ||
@@ -321,6 +343,7 @@ internal fun CalendarEventEditorDialog(
         hasUnsavedChanges = hasUnsavedChanges,
         onConfirm = {
             val normalizedOffsets = if (reminderEnabled && reminderValidation.isValid) reminderValidation.offsetsMinutes else emptyList()
+            val selectedGroup = sortedGroups.firstOrNull { it.id == selectedGroupId }
             val baseDraft = CalendarEventDraft(
                 title = title,
                 notes = notes,
@@ -341,7 +364,9 @@ internal fun CalendarEventEditorDialog(
                     type = recurrenceType,
                     weeklyDays = weeklyDays,
                     endDate = recurrenceEndDate
-                )
+                ),
+                groupId = selectedGroupId,
+                groupName = selectedGroup?.name.orEmpty()
             )
             if (courseModeActive) {
                 val courseDrafts = buildWeeklyMultiSlotEventDrafts(
@@ -378,6 +403,19 @@ internal fun CalendarEventEditorDialog(
                         onValueChange = { title = it },
                         label = { Text("添加主题") },
                         modifier = Modifier.fillMaxWidth()
+                    )
+                }
+
+                EditorBlock(title = "分组") {
+                    EditorSelectionRow(
+                        title = "日程分组",
+                        value = sortedGroups.firstOrNull { it.id == selectedGroupId }?.name ?: "默认分组",
+                        onClick = { if (sortedGroups.isNotEmpty()) showGroupPicker = true }
+                    )
+                    Text(
+                        text = "用于日历卡片、电脑端筛选和分组颜色显示；单个日程只归属一个主分组。",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
 
@@ -883,7 +921,9 @@ internal fun CalendarEventEditorDialog(
                                                 type = recurrenceType,
                                                 weeklyDays = weeklyDays,
                                                 endDate = recurrenceEndDate
-                                            )
+                                            ),
+                                            groupId = selectedGroupId,
+                                            groupName = sortedGroups.firstOrNull { it.id == selectedGroupId }?.name.orEmpty()
                                         )
                                     )
                                 },
@@ -1068,6 +1108,26 @@ internal fun CalendarEventEditorDialog(
             },
             onDismiss = { showReminderDeliveryPicker = false },
             onDone = { showReminderDeliveryPicker = false }
+        )
+    }
+
+    if (showGroupPicker) {
+        SingleChoiceListDialog(
+            title = "选择日程分组",
+            doneLabel = "完成",
+            options = sortedGroups.map { group ->
+                ChoiceItem(
+                    key = group.id.toString(),
+                    title = group.name,
+                    subtitle = if (group.isDefault) "默认分组" else null
+                )
+            },
+            selectedKey = selectedGroupId.toString(),
+            onSelect = { key ->
+                key.toLongOrNull()?.let { selectedGroupId = it }
+            },
+            onDismiss = { showGroupPicker = false },
+            onDone = { showGroupPicker = false }
         )
     }
 
@@ -1303,7 +1363,12 @@ private fun SingleChoiceListDialog(
         onDismissRequest = onDismiss,
         title = { Text(title, fontWeight = FontWeight.Bold) },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Column(
+                modifier = Modifier
+                    .heightIn(max = 420.dp)
+                    .verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(2.dp)
+            ) {
                 options.forEach { option ->
                     Row(
                         modifier = Modifier

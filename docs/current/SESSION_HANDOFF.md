@@ -5,23 +5,31 @@
 - Repository root: `G:\Workspace\Project\PaykiTodo`
 - Branch: `main`
 - Current code version:
-  - `versionName = 1.13.60`
-  - `versionCode = 308`
+  - `versionName = 1.13.61`
+  - `versionCode = 309`
   - database version = `27`
 - Latest debug APK target in this round:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.13.60-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.13.61-debug.apk`
 - Latest signed release APK available locally:
   - `app/build/outputs/apk/release/PaykiTodo-1.13.11-release.apk`
 - Latest GitHub Release:
   - `https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.13.11`
 - Debug APK metadata inspection:
-  - `versionName = 1.13.60`, `versionCode = 308`
+  - `versionName = 1.13.61`, `versionCode = 309`
 
 ## Active Goal
 
-Active immediate task: continue auditing requirement / UX consistency from the current `1.13.60 / versionCode 308` local patch baseline.
+Active immediate task: continue auditing requirement / UX consistency from the current `1.13.61 / versionCode 309` local patch baseline.
 
-Latest status: `1.13.60` restores keyboard-submit behavior for Desktop Web in-app form dialogs after replacing browser-native prompts. Debug build and metadata inspection passed.
+Latest status: `1.13.61` fixes phone / desktop Calendar editor parity for event grouping. Phone Calendar event editor now exposes event group selection and preserves prefilled draft titles; debug build and metadata inspection passed.
+
+## What Changed In The Latest 1.13.61 Patch
+
+1. Phone Calendar event editor now has a `分组` block with a compact single-choice row instead of leaving event grouping desktop-only.
+2. Selected event group is persisted into `CalendarEventDraft.groupId/groupName` for normal events and weekly multi-slot event creation.
+3. Draft-based Calendar editor entries now initialize the title from `initialDraft.title` when present.
+4. Version metadata moved to `1.13.61 / versionCode 309`; database version remains `27`.
+5. Verification passed: `./gradlew.bat :app:compileDebugKotlin`, full `./gradlew.bat :app:testDebugUnitTest`, `node --check app/src/main/assets/desktop-web/app.js`, `git diff --check`, `./gradlew.bat :app:assembleDebug`, and APK metadata inspection for `versionName = 1.13.61`, `versionCode = 309`.
 
 ## What Changed In The Latest 1.13.60 Patch
 

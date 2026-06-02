@@ -37,7 +37,7 @@ This file is the current high-level backlog for PaykiTodo. Historical long-form 
 - Test latest GitHub release APK on a real phone after each public release.
 - Verify widgets after launcher resize, date change, timezone change, and app update.
 - Verify desktop sync on trusted LAN and ensure it stops when disabled.
-- Keep secret handling covered: `PlanningAiProviderSerializationTest` verifies provider JSON and `BackupSnapshot` export/import handling omit AI API keys and Desktop Sync tokens for backups; release QA should still spot-check a real exported backup file before public distribution.
+- Keep secret handling covered: `PlanningAiProviderSerializationTest` verifies provider JSON and `BackupSnapshot` export/import handling omit AI API keys plus Desktop Sync enable/token fields for backups; release QA should still spot-check a real exported backup file before public distribution.
 - Verify backup / restore after database migrations.
 
 ## Documentation Rules

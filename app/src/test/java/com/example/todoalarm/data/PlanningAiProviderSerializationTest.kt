@@ -39,6 +39,7 @@ class PlanningAiProviderSerializationTest {
             templates = emptyList(),
             tasks = emptyList(),
             settings = AppSettings(
+                desktopSyncEnabled = true,
                 desktopSyncToken = "LAN-SECRET",
                 planningAiEnabled = true,
                 planningAiApiKey = "legacy-secret-key",
@@ -51,6 +52,7 @@ class PlanningAiProviderSerializationTest {
         val provider = settings.getJSONArray("planningAiProviders").getJSONObject(0)
 
         assertFalse(settings.has("planningAiApiKey"))
+        assertFalse(settings.has("desktopSyncEnabled"))
         assertFalse(settings.has("desktopSyncToken"))
         assertFalse(provider.has("apiKey"))
         assertFalse(json.toString().contains("secret-key"))
@@ -60,7 +62,7 @@ class PlanningAiProviderSerializationTest {
     }
 
     @Test
-    fun backupSnapshotImportIgnoresDesktopSyncTokenFromOldBackups() {
+    fun backupSnapshotImportDisablesDesktopSyncAndIgnoresTokenFromOldBackups() {
         val snapshot = backupSnapshotFromJson(
             JSONObject().apply {
                 put("exportedAtMillis", 1L)
@@ -72,7 +74,7 @@ class PlanningAiProviderSerializationTest {
             }
         )
 
-        assertTrue(snapshot.settings.desktopSyncEnabled)
+        assertFalse(snapshot.settings.desktopSyncEnabled)
         assertEquals("", snapshot.settings.desktopSyncToken)
     }
 

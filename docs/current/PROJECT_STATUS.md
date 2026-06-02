@@ -23,9 +23,9 @@
   - `https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.13.11`
 - Latest fully built debug APK:
 - Current `1.13.58 / versionCode 306` status:
-  - Backup JSON no longer writes `desktopSyncToken`, keeping the Desktop Sync access key local to the installed app.
-  - Importing older backups that contain `desktopSyncToken` now ignores that field; after restore, the settings layer generates a fresh local access key.
-  - `PlanningAiProviderSerializationTest` covers AI API key omission, Desktop Sync token omission, and old-backup token import ignoring.
+  - Backup JSON no longer writes `desktopSyncEnabled` or `desktopSyncToken`, keeping the Desktop Sync access state and access key local to the installed app.
+  - Importing older backups that contain `desktopSyncEnabled` / `desktopSyncToken` now restores Desktop Sync as disabled and ignores the old token; after the user manually enables sync again, the settings layer generates a fresh local access key.
+  - `PlanningAiProviderSerializationTest` covers AI API key omission, Desktop Sync enable/token omission, and old-backup Desktop Sync field import ignoring.
   - Verification passed: `./gradlew.bat :app:testDebugUnitTest --tests com.example.todoalarm.data.PlanningAiProviderSerializationTest`, `./gradlew.bat :app:compileDebugKotlin`, `./gradlew.bat :app:testDebugUnitTest`, `node --check app/src/main/assets/desktop-web/app.js`, `git diff --check`, `./gradlew.bat :app:assembleDebug`, and APK metadata inspection for `versionName = 1.13.58`, `versionCode = 306`.
 - Latest fully built debug APK:
   - `app/build/outputs/apk/debug/PaykiTodo-1.13.58-debug.apk`

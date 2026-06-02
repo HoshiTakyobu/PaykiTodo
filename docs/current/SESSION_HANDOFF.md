@@ -21,13 +21,13 @@
 
 Active immediate task: continue auditing requirement / UX consistency from the current `1.13.58 / versionCode 306` local patch baseline.
 
-Latest status: `1.13.58` removes Desktop Sync access-token export from backup JSON and ignores `desktopSyncToken` when importing old backups, so restored installs generate a fresh local access key. Debug build and metadata inspection passed.
+Latest status: `1.13.58` removes Desktop Sync enabled-state and access-token export from backup JSON, then ignores both fields when importing old backups. Restored installs keep Desktop Sync disabled until the user manually enables it again, at which point a fresh local access key is generated. Debug build and metadata inspection passed.
 
 ## What Changed In The Latest 1.13.58 Patch
 
-1. `BackupSnapshot.toJson()` no longer writes `settings.desktopSyncToken`.
-2. `backupSnapshotFromJson()` ignores `desktopSyncToken` even if an older backup file contains it.
-3. `PlanningAiProviderSerializationTest` now covers AI API key omission, Desktop Sync token omission, and old-backup token import ignoring at the snapshot JSON layer.
+1. `BackupSnapshot.toJson()` no longer writes `settings.desktopSyncEnabled` or `settings.desktopSyncToken`.
+2. `backupSnapshotFromJson()` restores Desktop Sync as disabled and ignores `desktopSyncToken` even if an older backup file contains those fields.
+3. `PlanningAiProviderSerializationTest` now covers AI API key omission, Desktop Sync enable/token omission, and old-backup Desktop Sync field import ignoring at the snapshot JSON layer.
 4. Version metadata moved to `1.13.58 / versionCode 306`; database version remains `27`.
 5. Verification passed: targeted `PlanningAiProviderSerializationTest`, `./gradlew.bat :app:compileDebugKotlin`, full `./gradlew.bat :app:testDebugUnitTest`, `node --check app/src/main/assets/desktop-web/app.js`, `git diff --check`, `./gradlew.bat :app:assembleDebug`, and APK metadata inspection for `versionName = 1.13.58`, `versionCode = 306`.
 

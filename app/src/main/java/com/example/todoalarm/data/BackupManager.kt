@@ -91,7 +91,6 @@ private fun AppSettings.toJson(): JSONObject {
         put("quoteIndex", quoteIndex)
         put("backupDirectoryUri", backupDirectoryUri)
         put("autoBackupEnabled", autoBackupEnabled)
-        put("desktopSyncEnabled", desktopSyncEnabled)
         put("desktopSyncWifiKeepAlive", desktopSyncWifiKeepAlive)
         put("lastOpenedPlanningNoteId", lastOpenedPlanningNoteId)
         put("planningOutlineHintVisible", planningOutlineHintVisible)
@@ -695,7 +694,7 @@ private fun JSONObject?.toSettings(): AppSettings {
         quoteIndex = optInt("quoteIndex", 0),
         backupDirectoryUri = optStringOrNull("backupDirectoryUri"),
         autoBackupEnabled = optBoolean("autoBackupEnabled", false),
-        desktopSyncEnabled = optBoolean("desktopSyncEnabled", false),
+        desktopSyncEnabled = false,
         desktopSyncToken = "",
         desktopSyncWifiKeepAlive = optBoolean("desktopSyncWifiKeepAlive", true),
         lastOpenedPlanningNoteId = optLongOrNull("lastOpenedPlanningNoteId")?.takeIf { it > 0 },

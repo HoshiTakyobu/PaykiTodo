@@ -5,23 +5,32 @@
 - Repository root: `G:\Workspace\Project\PaykiTodo`
 - Branch: `main`
 - Current code version:
-  - `versionName = 1.13.47`
-  - `versionCode = 295`
+  - `versionName = 1.13.48`
+  - `versionCode = 296`
   - database version = `27`
 - Latest debug APK target in this round:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.13.47-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.13.48-debug.apk`
 - Latest signed release APK available locally:
   - `app/build/outputs/apk/release/PaykiTodo-1.13.11-release.apk`
 - Latest GitHub Release:
   - `https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.13.11`
 - Debug APK metadata inspection:
-  - `versionName = 1.13.47`, `versionCode = 295`
+  - `versionName = 1.13.48`, `versionCode = 296`
 
 ## Active Goal
 
-Active immediate task: finish and verify phone-side Calendar event creation with course-style multiple weekly time slots from the current `1.13.47 / versionCode 295` local patch baseline.
+Active immediate task: continue auditing requirement / UX consistency and verify the course multi-slot reminder parsing fix from the current `1.13.48 / versionCode 296` local patch baseline.
 
-Latest status: `1.13.47` adds a `课程多时间段` mode to the phone event editor for new calendar events. It creates one weekly recurring event per selected weekday/time slot while sharing the common event fields. Debug build and metadata inspection passed.
+Latest status: `1.13.48` fixes a requirement / UX mismatch in `课程多时间段`: reminder input is now validated and resolved per slot's own start time rather than being parsed once against the editor's main start time. Debug build and metadata inspection passed.
+
+## What Changed In The Latest 1.13.48 Patch
+
+1. Course multi-slot reminder validation now iterates each slot and parses the shared reminder input against that slot's actual start time.
+2. Course multi-slot event creation writes each generated weekly event with reminder offsets computed from its own slot anchor.
+3. Reminder input errors in course mode include the failing weekday and slot start time, so the user knows which course period is invalid.
+4. The reminder text field's error state now follows the effective course-mode validation result instead of the old single-event validation.
+5. Version metadata moved to `1.13.48 / versionCode 296`; database version remains `27`.
+6. Verification passed: `./gradlew.bat :app:compileDebugKotlin`, `./gradlew.bat :app:testDebugUnitTest`, `git diff --check`, `./gradlew.bat :app:assembleDebug`, output metadata check, and `aapt dump badging` confirmed `versionName = 1.13.48`, `versionCode = 296`.
 
 ## What Changed In The Latest 1.13.47 Patch
 

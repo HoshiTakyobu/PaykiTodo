@@ -8,8 +8,8 @@
 - Target platform: Android 14 / API 34
 - License: MIT License (`LICENSE`)
 - Current version in code:
-  - `versionName = "1.13.47"`
-  - `versionCode = 295`
+  - `versionName = "1.13.48"`
+  - `versionCode = 296`
   - database version = `27`
 
 ## Current Build Facts
@@ -22,7 +22,12 @@
 - Latest GitHub Release:
   - `https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.13.11`
 - Latest fully built debug APK:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.13.47-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.13.48-debug.apk`
+- Current `1.13.48 / versionCode 296` status:
+  - Course multi-slot reminder parsing now validates and resolves reminder input per slot anchor instead of using only the editor's main start time.
+  - A reminder syntax error in course multi-slot mode reports the concrete weekday and slot start time that failed.
+  - Text-field error state follows the effective course-mode validation result, so UI feedback matches the actual create button gate.
+  - Verification passed: `./gradlew.bat :app:compileDebugKotlin`, `./gradlew.bat :app:testDebugUnitTest`, `git diff --check`, `./gradlew.bat :app:assembleDebug`, output metadata check, and `aapt dump badging` confirmed `versionName = 1.13.48`, `versionCode = 296`.
 - Current `1.13.47 / versionCode 295` status:
   - Phone Calendar event creation adds a `课程多时间段` mode for new events.
   - The mode lets one course/event share title, location, notes, reminder settings, color, countdown, and check-in settings across multiple weekday time slots.

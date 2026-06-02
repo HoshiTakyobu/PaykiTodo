@@ -231,10 +231,27 @@ internal fun CalendarEventEditorDialog(
             )
         }
     }
+    val courseReminderValidation = remember(
+        reminderInput,
+        reminderEnabled,
+        courseModeActive,
+        courseSlots,
+        startAt,
+        initialEvent?.id
+    ) {
+        validateCourseReminderInput(
+            raw = reminderInput,
+            baseDate = startAt.toLocalDate(),
+            courseSlots = courseSlots,
+            reminderEnabled = reminderEnabled && courseModeActive,
+            requireFuture = initialEvent == null
+        )
+    }
+    val effectiveReminderValidation = if (courseModeActive) courseReminderValidation else reminderValidation
     val eventEndValid = if (allDay) !endAt.toLocalDate().isBefore(startAt.toLocalDate()) else endAt.isAfter(startAt)
     val confirmEnabled = title.isNotBlank() &&
         (if (courseModeActive) courseSlotsValid else eventEndValid) &&
-        (!reminderEnabled || reminderValidation.isValid)
+        (!reminderEnabled || effectiveReminderValidation.isValid)
     val hasUnsavedChanges = remember(
         initialEvent?.id,
         seedDraft,
@@ -327,10 +344,22 @@ internal fun CalendarEventEditorDialog(
             if (courseModeActive) {
                 val courseDrafts = courseSlots.map { slot ->
                     val slotDate = nextOrSameWeekday(startAt.toLocalDate(), slot.weekday)
+                    val slotStartAt = LocalDateTime.of(slotDate, slot.startTime)
+                    val slotReminderOffsets = if (reminderEnabled) {
+                        parseReminderInput(
+                            raw = reminderInput,
+                            anchor = slotStartAt,
+                            requireFuture = initialEvent == null
+                        ).offsetsMinutes
+                    } else {
+                        emptyList()
+                    }
                     baseDraft.copy(
-                        startAt = LocalDateTime.of(slotDate, slot.startTime),
+                        startAt = slotStartAt,
                         endAt = LocalDateTime.of(slotDate, slot.endTime),
                         allDay = false,
+                        reminderMinutesBefore = slotReminderOffsets.minOrNull(),
+                        reminderOffsetsMinutes = slotReminderOffsets,
                         recurrence = RecurrenceConfig(
                             enabled = true,
                             type = RecurrenceType.WEEKLY,
@@ -652,9 +681,17 @@ internal fun CalendarEventEditorDialog(
                                 verticalArrangement = Arrangement.spacedBy(3.dp)
                             ) {
                                 Text(
-                                    text = if (reminderValidation.isValid) reminderValidation.message else "输入存在非法项",
+                                    text = if (effectiveReminderValidation.isValid) {
+                                        if (courseModeActive) {
+                                            "每个时间段会按自己的开始时间解析提醒"
+                                        } else {
+                                            effectiveReminderValidation.message
+                                        }
+                                    } else {
+                                        "输入存在非法项"
+                                    },
                                     fontWeight = FontWeight.SemiBold,
-                                    color = if (reminderValidation.isValid) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.error
+                                    color = if (effectiveReminderValidation.isValid) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.error
                                 )
                                 Text(
                                     text = buildReminderMetaLabel(
@@ -668,9 +705,9 @@ internal fun CalendarEventEditorDialog(
                             }
                         }
 
-                        if (!reminderValidation.isValid) {
+                        if (!effectiveReminderValidation.isValid) {
                             Text(
-                                text = "非法输入：${reminderValidation.message}",
+                                text = "非法输入：${effectiveReminderValidation.message}",
                                 color = MaterialTheme.colorScheme.error,
                                 style = MaterialTheme.typography.bodySmall,
                                 fontWeight = FontWeight.SemiBold
@@ -696,7 +733,7 @@ internal fun CalendarEventEditorDialog(
                                 }
                             },
                             placeholder = { Text("例：5（提前5分钟）或 5,15,16:30") },
-                            isError = !reminderValidation.isValid,
+                            isError = !effectiveReminderValidation.isValid,
                             supportingText = {
                                 Text("数字=提前分钟；HH:mm=当天时刻；MM-DD HH:mm=当年；YYYY-MM-DD HH:mm=完整时刻。用英文逗号分隔。")
                             },
@@ -1598,6 +1635,36 @@ private fun buildReminderMetaLabel(
         if (isEmpty()) add("静默")
     }
     return reminderDeliveryMode.label + " · " + toggles.joinToString(" + ")
+}
+
+private fun validateCourseReminderInput(
+    raw: String,
+    baseDate: LocalDate,
+    courseSlots: List<CourseTimeSlot>,
+    reminderEnabled: Boolean,
+    requireFuture: Boolean
+): ReminderInputValidation {
+    if (!reminderEnabled) return ReminderInputValidation(isValid = true)
+    val now = LocalDateTime.now().withSecond(0).withNano(0)
+    courseSlots.sortedWith(compareBy<CourseTimeSlot> { it.weekday.value }.thenBy { it.startTime }).forEach { slot ->
+        val slotDate = nextOrSameWeekday(baseDate, slot.weekday)
+        val slotStartAt = LocalDateTime.of(slotDate, slot.startTime)
+        val parsed = parseReminderInput(
+            raw = raw,
+            anchor = slotStartAt,
+            now = now,
+            requireFuture = requireFuture
+        )
+        if (!parsed.isValid) {
+            return parsed.copy(
+                message = "${slot.weekday.shortLabel()} ${formatLocalTime(slot.startTime)}：${parsed.message}"
+            )
+        }
+    }
+    return ReminderInputValidation(
+        isValid = true,
+        message = "每个时间段会按自己的开始时间解析提醒"
+    )
 }
 
 private fun reminderSelectionSummary(reminderOffsetsMinutes: List<Int>): String {

@@ -35,7 +35,8 @@ Latest status: `1.13.55` closes Android 今日看板小组件 deep-link consiste
 ## Non-Versioned Maintenance After 1.13.55
 
 1. `WikiActivity` no longer calls deprecated `allowFileAccessFromFileURLs` / `allowUniversalAccessFromFileURLs`; targetSdk 34 already defaults both to false, so the built-in `file:///android_asset/wiki/index.html` load keeps working with less deprecated surface.
-2. Verification passed: `git diff --check` and `./gradlew.bat :app:compileDebugKotlin`.
+2. `DesktopSyncService` now uses `WIFI_MODE_FULL_LOW_LATENCY` on Android 10+ for the optional Wi-Fi keep-alive lock and keeps the deprecated high-performance mode only for Android 8/9 with a local suppression.
+3. Verification passed for both maintenance changes: `git diff --check` and `./gradlew.bat :app:compileDebugKotlin`.
 
 ## What Changed In The Latest 1.13.54 Patch
 

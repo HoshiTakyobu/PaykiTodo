@@ -2665,7 +2665,15 @@ async function savePlanningNote(quiet = false) {
 async function createPlanningNote() {
   await flushPlanningOutlineInputs({ createRoot: true });
   await flushPlanningAutosave();
-  const title = prompt('新规划文档名称', '新的规划');
+  const form = await showFormDialog({
+    title: '新建规划文档',
+    message: '文档会保存到手机端 Planning Desk，并在下次打开时保留。',
+    confirmLabel: '新建',
+    fields: [
+      { id: 'title', label: '文档名称', type: 'text', value: '新的规划', required: true }
+    ]
+  });
+  const title = form?.title?.trim();
   if (!title) return;
   const data = await api('/api/planning/notes', { method: 'POST', body: JSON.stringify({ title }) });
   state.activePlanningNoteId = data.note && data.note.id;
@@ -2745,13 +2753,31 @@ async function refreshPlanningImported() {
   const active = activePlanningNote();
   if (!active) throw new Error('没有可刷新的规划文档');
   const markdown = currentPlanningMarkdownForAction();
-  const wholeDocument = window.confirm('确定要刷新整篇文档的未完成已导入项吗？\n选择“取消”则只刷新当前标题分区。');
+  const form = await showFormDialog({
+    title: '刷新已导入规划',
+    message: '只会刷新未完成且仍可匹配原文的已导入事项。',
+    confirmLabel: '刷新',
+    fields: [
+      {
+        id: 'scope',
+        label: '刷新范围',
+        type: 'select',
+        value: 'CURRENT_SECTION',
+        options: [
+          { value: 'CURRENT_SECTION', label: '当前标题分区' },
+          { value: 'WHOLE_DOCUMENT', label: '整篇文档' }
+        ],
+        hint: '建议先刷新当前分区；整篇文档适合大范围改期或整理后统一同步。'
+      }
+    ]
+  });
+  if (!form) return;
   const result = await api('/api/planning/refresh', {
     method: 'POST',
     body: JSON.stringify({
       noteId: active.id,
       markdown,
-      scope: wholeDocument ? 'WHOLE_DOCUMENT' : 'CURRENT_SECTION',
+      scope: form.scope === 'WHOLE_DOCUMENT' ? 'WHOLE_DOCUMENT' : 'CURRENT_SECTION',
       cursorLineNumber: planningCursorLine()
     })
   });
@@ -2772,21 +2798,53 @@ async function postponePlanningImported() {
   const markdown = currentPlanningMarkdownForAction();
   const mappings = (state.planningMappings || []).filter(item => item.status === 'ACTIVE');
   if (!mappings.length) throw new Error('当前没有可顺延的未完成已导入项');
-  const summary = mappings.map((item, index) => '[' + (index + 1) + '] 第' + (item.lastKnownLineNumber || '-') + '行 ' + (item.currentLineText || item.originalLineText || '')).join('\n');
-  const startIndex = Number(prompt('选择起始条目序号：\n' + summary, '1'));
-  if (!Number.isFinite(startIndex) || startIndex < 1 || startIndex > mappings.length) return;
-  const offsetMinutes = Number(prompt('输入顺延分钟数，例如 30 / 60 / -15', '30'));
-  if (!Number.isFinite(offsetMinutes) || !offsetMinutes) return;
-  const scopeRaw = prompt('范围：1=从此条目到分区末尾；2=从此条目到文档末尾；3=当前分区所有未完成项', '1');
-  const scope = scopeRaw === '2' ? 'FROM_ITEM_TO_DOCUMENT_END' : (scopeRaw === '3' ? 'CURRENT_SECTION_ALL' : 'FROM_ITEM_TO_SECTION_END');
+  const form = await showFormDialog({
+    title: '顺延规划事项',
+    message: '把已导入且未完成的待办 / 日程按分钟整体前后移动，并同步改写规划原文。',
+    confirmLabel: '顺延',
+    fields: [
+      {
+        id: 'mappingId',
+        label: '从哪一条开始',
+        type: 'select',
+        value: String(mappings[0].id),
+        options: mappings.map((item, index) => ({
+          value: item.id,
+          label: '[' + (index + 1) + '] 第' + (item.lastKnownLineNumber || '-') + '行 ' + truncatePlainText(item.currentLineText || item.originalLineText || '', 72)
+        }))
+      },
+      {
+        id: 'offsetMinutes',
+        label: '顺延分钟数',
+        type: 'number',
+        value: '30',
+        required: true,
+        hint: '正数表示往后推，例如 30；负数表示提前，例如 -15。'
+      },
+      {
+        id: 'scope',
+        label: '影响范围',
+        type: 'select',
+        value: 'FROM_ITEM_TO_SECTION_END',
+        options: [
+          { value: 'FROM_ITEM_TO_SECTION_END', label: '从此条目到当前分区末尾' },
+          { value: 'FROM_ITEM_TO_DOCUMENT_END', label: '从此条目到文档末尾' },
+          { value: 'CURRENT_SECTION_ALL', label: '当前分区所有未完成项' }
+        ]
+      }
+    ]
+  });
+  if (!form || !form.offsetMinutes) return;
+  const mapping = mappings.find(item => sameId(item.id, form.mappingId));
+  if (!mapping) return;
   const result = await api('/api/planning/postpone', {
     method: 'POST',
     body: JSON.stringify({
       noteId: active.id,
       markdown,
-      mappingId: mappings[startIndex - 1].id,
-      offsetMinutes,
-      scope
+      mappingId: mapping.id,
+      offsetMinutes: form.offsetMinutes,
+      scope: form.scope || 'FROM_ITEM_TO_SECTION_END'
     })
   });
   if (result.updatedMarkdown != null) {
@@ -2827,6 +2885,12 @@ async function undoPlanningLastOperation() {
 
 function escapeHtml(text) {
   return String(text || '').replace(/[&<>\"]/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch]));
+}
+
+function truncatePlainText(text, maxLength = 80) {
+  const normalized = String(text || '').replace(/\s+/g, ' ').trim();
+  if (normalized.length <= maxLength) return normalized;
+  return normalized.slice(0, Math.max(0, maxLength - 1)) + '…';
 }
 
 function sameId(left, right) {
@@ -3569,6 +3633,114 @@ function confirmDanger(title, message, confirmLabel = '删除') {
     cancelButton.focus();
   });
 }
+
+function showFormDialog({ title, message = '', confirmLabel = '确定', fields = [] }) {
+  return new Promise(resolve => {
+    const modal = document.getElementById('form-modal');
+    const titleNode = document.getElementById('form-title');
+    const messageNode = document.getElementById('form-message');
+    const fieldsHost = document.getElementById('form-fields');
+    const cancelButton = document.getElementById('form-cancel');
+    const okButton = document.getElementById('form-ok');
+    if (!modal || !titleNode || !messageNode || !fieldsHost || !cancelButton || !okButton) {
+      resolve(null);
+      return;
+    }
+
+    titleNode.textContent = title || '输入';
+    messageNode.textContent = message || '';
+    okButton.textContent = confirmLabel || '确定';
+    fieldsHost.innerHTML = '';
+    const inputs = new Map();
+
+    fields.forEach(field => {
+      const wrapper = document.createElement('div');
+      wrapper.className = 'form-dialog-field';
+
+      const label = document.createElement('label');
+      label.className = 'form-dialog-label';
+      label.textContent = field.label || field.id;
+      wrapper.appendChild(label);
+
+      let input;
+      if (field.type === 'textarea') {
+        input = document.createElement('textarea');
+      } else if (field.type === 'select') {
+        input = document.createElement('select');
+        (field.options || []).forEach(optionData => {
+          const option = document.createElement('option');
+          option.value = String(optionData.value ?? '');
+          option.textContent = optionData.label || String(optionData.value ?? '');
+          input.appendChild(option);
+        });
+      } else {
+        input = document.createElement('input');
+        input.type = field.type === 'number' ? 'number' : 'text';
+        if (field.type === 'number') input.step = field.step || '1';
+      }
+
+      input.value = field.value == null ? '' : String(field.value);
+      input.placeholder = field.placeholder || '';
+      input.dataset.formFieldId = field.id;
+      if (field.required) input.dataset.required = 'true';
+      wrapper.appendChild(input);
+
+      if (field.hint) {
+        const hint = document.createElement('p');
+        hint.className = 'form-dialog-hint';
+        hint.textContent = field.hint;
+        wrapper.appendChild(hint);
+      }
+
+      fieldsHost.appendChild(wrapper);
+      inputs.set(field.id, input);
+    });
+
+    const cleanup = result => {
+      modal.classList.add('hidden');
+      cancelButton.onclick = null;
+      okButton.onclick = null;
+      modal.onclick = null;
+      fieldsHost.innerHTML = '';
+      resolve(result);
+    };
+
+    cancelButton.onclick = () => cleanup(null);
+    okButton.onclick = () => {
+      const result = {};
+      for (const field of fields) {
+        const input = inputs.get(field.id);
+        if (!input) continue;
+        input.classList.remove('input-invalid');
+        const raw = input.value || '';
+        if (field.required && !raw.trim()) {
+          input.classList.add('input-invalid');
+          input.focus();
+          return;
+        }
+        if (field.type === 'number') {
+          const value = Number(raw);
+          if (!Number.isFinite(value)) {
+            input.classList.add('input-invalid');
+            input.focus();
+            return;
+          }
+          result[field.id] = value;
+        } else {
+          result[field.id] = raw;
+        }
+      }
+      cleanup(result);
+    };
+    modal.onclick = event => {
+      if (event.target === modal) cleanup(null);
+    };
+    modal.classList.remove('hidden');
+    const firstInput = fieldsHost.querySelector('input, textarea, select');
+    (firstInput || okButton).focus();
+  });
+}
+
 function bindActions() {
   document.querySelectorAll('[data-todo-group-filter]').forEach(node => {
     node.onclick = event => {
@@ -3840,7 +4012,7 @@ els.planningRootInput?.addEventListener('keydown', event => {
   }
 });
 els.planningRootInput?.addEventListener('input', event => autosizePlanningTextarea(event.target));
-els.planningOutline?.addEventListener('click', event => {
+els.planningOutline?.addEventListener('click', async event => {
   const focusRoot = event.target.closest?.('[data-focus-planning-root]');
   const collapse = event.target.closest?.('[data-node-collapse]');
   const complete = event.target.closest?.('[data-node-complete]');
@@ -3867,7 +4039,15 @@ els.planningOutline?.addEventListener('click', event => {
     if (node) updatePlanningOutlineNode(node.id, { completed: !node.completed }).catch(err => els.status.textContent = err.message);
   }
   if (child) {
-    const text = prompt('新增子项', '');
+    const form = await showFormDialog({
+      title: '新增子项',
+      message: '子项会作为当前规划事项的下级草稿，发布前不会进入正式待办或日程。',
+      confirmLabel: '添加',
+      fields: [
+        { id: 'text', label: '子项内容', type: 'textarea', placeholder: '例如：整理第一版材料', required: true }
+      ]
+    });
+    const text = form?.text?.trim();
     if (text) createPlanningOutlineNode(text, Number(child.dataset.nodeChild)).catch(err => els.status.textContent = err.message);
   }
   if (moveUp && !moveUp.disabled) {
@@ -4127,13 +4307,33 @@ document.querySelectorAll('[data-tab]').forEach(node => {
 document.querySelectorAll('[data-close-modal]').forEach(node => {
   node.onclick = () => closeModal(node.dataset.closeModal);
 });
+function cancelPromiseModal(modalId) {
+  const modal = document.getElementById(modalId);
+  if (!modal || modal.classList.contains('hidden')) return false;
+  if (modalId === 'form-modal') {
+    document.getElementById('form-cancel')?.click();
+    return true;
+  }
+  if (modalId === 'confirm-modal') {
+    document.getElementById('confirm-cancel')?.click();
+    return true;
+  }
+  return false;
+}
 document.querySelectorAll('.modal-backdrop').forEach(node => {
   node.onclick = event => {
-    if (event.target === node) node.classList.add('hidden');
+    if (event.target !== node) return;
+    if (node.id === 'form-modal' || node.id === 'confirm-modal') {
+      cancelPromiseModal(node.id);
+      return;
+    }
+    node.classList.add('hidden');
   };
 });
 document.addEventListener('keydown', event => {
-  if (event.key === 'Escape') document.querySelectorAll('.modal-backdrop').forEach(node => node.classList.add('hidden'));
+  if (event.key !== 'Escape') return;
+  if (cancelPromiseModal('form-modal') || cancelPromiseModal('confirm-modal')) return;
+  document.querySelectorAll('.modal-backdrop:not(.hidden)').forEach(node => node.classList.add('hidden'));
 });
 
 document.getElementById('create-todo').onclick = async () => {

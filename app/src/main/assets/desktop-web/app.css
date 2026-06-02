@@ -413,6 +413,15 @@ button.ghost {
 .confirm-sheet p { line-height: 1.6; margin-bottom: 18px; }
 .confirm-actions { width: 100%; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .danger-action { width: 100% !important; border-radius: 999px !important; padding: 11px 14px !important; background: var(--danger-strong) !important; color: #fff !important; box-shadow: 0 10px 22px rgba(214,60,60,.2); }
+.form-dialog-sheet { width: min(560px, 100%); }
+.form-dialog-body { display: flex; flex-direction: column; gap: 12px; padding: 16px 2px 2px; overflow: auto; }
+.form-dialog-field { border-radius: 18px; border: 1px solid var(--card-border); background: var(--card-bg); padding: 12px; box-shadow: 0 6px 16px rgba(46,64,98,.04); }
+.form-dialog-label { display: block; margin-bottom: 8px; color: var(--strong-text); font-size: 14px; font-weight: 900; }
+.form-dialog-field input,
+.form-dialog-field textarea,
+.form-dialog-field select { width: 100%; border-radius: 14px; border: 1px solid var(--card-border); background: var(--input-bg); color: var(--text); padding: 10px 12px; font: inherit; }
+.form-dialog-field textarea { min-height: 96px; resize: vertical; line-height: 1.55; }
+.form-dialog-hint { margin: 8px 0 0; color: var(--muted); font-size: 12px; line-height: 1.45; }
 .modal-handle { width: 54px; height: 5px; border-radius: 999px; background: rgba(98,114,133,.28); margin: 4px auto 10px; flex-shrink: 0; }
 .modal-head { position: sticky; top: 0; z-index: 2; display: grid; grid-template-columns: 96px minmax(0, 1fr) 120px; align-items: center; gap: 12px; padding: 8px 0 14px; background: linear-gradient(180deg, var(--modal-sticky-start), var(--modal-sticky-end)); border-bottom: 1px solid var(--line); }
 .modal-title-block { text-align: center; min-width: 0; }

@@ -5,23 +5,33 @@
 - Repository root: `G:\Workspace\Project\PaykiTodo`
 - Branch: `main`
 - Current code version:
-  - `versionName = 1.13.58`
-  - `versionCode = 306`
+  - `versionName = 1.13.59`
+  - `versionCode = 307`
   - database version = `27`
 - Latest debug APK target in this round:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.13.58-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.13.59-debug.apk`
 - Latest signed release APK available locally:
   - `app/build/outputs/apk/release/PaykiTodo-1.13.11-release.apk`
 - Latest GitHub Release:
   - `https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.13.11`
 - Debug APK metadata inspection:
-  - `versionName = 1.13.58`, `versionCode = 306`
+  - `versionName = 1.13.59`, `versionCode = 307`
 
 ## Active Goal
 
-Active immediate task: continue auditing requirement / UX consistency from the current `1.13.58 / versionCode 306` local patch baseline.
+Active immediate task: continue auditing requirement / UX consistency from the current `1.13.59 / versionCode 307` local patch baseline.
 
-Latest status: `1.13.58` removes Desktop Sync enabled-state and access-token export from backup JSON, then ignores both fields when importing old backups. Restored installs keep Desktop Sync disabled until the user manually enables it again, at which point a fresh local access key is generated. Debug build and metadata inspection passed.
+Latest status: `1.13.59` replaces the remaining Desktop Web Planning Desk browser-native `prompt` / `confirm` dialogs with a PaykiTodo in-app form dialog for new planning documents, refresh scope selection, planning postponement, and child-node creation. Debug build and metadata inspection passed.
+
+## What Changed In The Latest 1.13.59 Patch
+
+1. Desktop Web Planning Desk `新建文档` now uses an in-app text form instead of `prompt`.
+2. Imported-item refresh now uses an in-app scope selector instead of `window.confirm`.
+3. Planning postponement now uses in-app fields for mapped item, offset minutes, and scope, avoiding manual row-number and `1/2/3` prompt input.
+4. Child-node creation now uses an in-app textarea dialog instead of `prompt`.
+5. Escape / backdrop closing for promise-based form and confirmation modals routes through cancel handlers instead of silently hiding the modal.
+6. Version metadata moved to `1.13.59 / versionCode 307`; database version remains `27`.
+7. Verification passed: `node --check app/src/main/assets/desktop-web/app.js`, `git diff --check`, `./gradlew.bat :app:compileDebugKotlin`, full `./gradlew.bat :app:testDebugUnitTest`, `./gradlew.bat :app:assembleDebug`, and APK metadata inspection for `versionName = 1.13.59`, `versionCode = 307`.
 
 ## What Changed In The Latest 1.13.58 Patch
 

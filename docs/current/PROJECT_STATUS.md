@@ -8,8 +8,8 @@
 - Target platform: Android 14 / API 34
 - License: MIT License (`LICENSE`)
 - Current version in code:
-  - `versionName = "1.13.58"`
-  - `versionCode = 306`
+  - `versionName = "1.13.59"`
+  - `versionCode = 307`
   - database version = `27`
 
 ## Current Build Facts
@@ -22,13 +22,18 @@
 - Latest GitHub Release:
   - `https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.13.11`
 - Latest fully built debug APK:
+  - `app/build/outputs/apk/debug/PaykiTodo-1.13.59-debug.apk`
+- Current `1.13.59 / versionCode 307` status:
+  - Desktop Web Planning Desk no longer uses browser-native `prompt` / `confirm` dialogs for creating planning notes, refreshing imported items, postponing imported planning items, or adding child outline nodes.
+  - Those actions now use a PaykiTodo in-app form dialog with text / textarea / number / select fields, matching the desktop editor and confirmation modal visual language.
+  - Planning postponement now lets the user choose the mapped item and scope from dropdowns instead of memorizing row numbers or typing `1/2/3`.
+  - Escape / backdrop closing for promise-based form and confirmation modals now routes through cancel handlers rather than silently hiding the modal.
+  - Verification passed: `node --check app/src/main/assets/desktop-web/app.js`, `git diff --check`, `./gradlew.bat :app:compileDebugKotlin`, `./gradlew.bat :app:testDebugUnitTest`, `./gradlew.bat :app:assembleDebug`, and APK metadata inspection for `versionName = 1.13.59`, `versionCode = 307`.
 - Current `1.13.58 / versionCode 306` status:
   - Backup JSON no longer writes `desktopSyncEnabled` or `desktopSyncToken`, keeping the Desktop Sync access state and access key local to the installed app.
   - Importing older backups that contain `desktopSyncEnabled` / `desktopSyncToken` now restores Desktop Sync as disabled and ignores the old token; after the user manually enables sync again, the settings layer generates a fresh local access key.
   - `PlanningAiProviderSerializationTest` covers AI API key omission, Desktop Sync enable/token omission, and old-backup Desktop Sync field import ignoring.
   - Verification passed: `./gradlew.bat :app:testDebugUnitTest --tests com.example.todoalarm.data.PlanningAiProviderSerializationTest`, `./gradlew.bat :app:compileDebugKotlin`, `./gradlew.bat :app:testDebugUnitTest`, `node --check app/src/main/assets/desktop-web/app.js`, `git diff --check`, `./gradlew.bat :app:assembleDebug`, and APK metadata inspection for `versionName = 1.13.58`, `versionCode = 306`.
-- Latest fully built debug APK:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.13.58-debug.apk`
 - Current `1.13.57 / versionCode 305` status:
   - Planning Desk recognition now runs local parsing first and uses it directly when explicit Markdown / DDL / schedule syntax already covers all actionable lines.
   - Explicit local parse errors remain visible in the preview instead of being hidden by AI fallback.

@@ -5,23 +5,32 @@
 - Repository root: `G:\Workspace\Project\PaykiTodo`
 - Branch: `main`
 - Current code version:
-  - `versionName = 1.13.54`
-  - `versionCode = 302`
+  - `versionName = 1.13.55`
+  - `versionCode = 303`
   - database version = `27`
 - Latest debug APK target in this round:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.13.54-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.13.55-debug.apk`
 - Latest signed release APK available locally:
   - `app/build/outputs/apk/release/PaykiTodo-1.13.11-release.apk`
 - Latest GitHub Release:
   - `https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.13.11`
 - Debug APK metadata inspection:
-  - `versionName = 1.13.54`, `versionCode = 302`
+  - `versionName = 1.13.55`, `versionCode = 303`
 
 ## Active Goal
 
-Active immediate task: continue auditing requirement / UX consistency from the current `1.13.54 / versionCode 302` local patch baseline.
+Active immediate task: continue auditing requirement / UX consistency from the current `1.13.55 / versionCode 303` local patch baseline.
 
-Latest status: `1.13.54` closes the new-event multi-slot scheduling gap: phone and Desktop Web creation paths expose the workflow as `每周多时间段`, generate one weekly recurring event series per slot, and Desktop Web uses a batch event API. Debug build and metadata inspection passed.
+Latest status: `1.13.55` closes Android 今日看板小组件 deep-link consistency: concrete todo/event rows open corresponding detail previews, while section/aggregate areas route to Todo or Calendar. Debug build and metadata inspection passed.
+
+## What Changed In The Latest 1.13.55 Patch
+
+1. Android 今日看板小组件 concrete todo rows now pass `EXTRA_OPEN_TODO_ID`, opening the shared todo detail preview rather than only jumping to the Todo section.
+2. Concrete event rows inside the schedule aggregate card now pass `EXTRA_OPEN_EVENT_ID`, opening the corresponding event detail / calendar preview.
+3. The 今日待办 section title opens the Todo section; the 今日日程 section title and schedule aggregate card open Calendar.
+4. Built-in Wiki and Feature Ledger were updated to match the current routes.
+5. Version metadata moved to `1.13.55 / versionCode 303`; database version remains `27`.
+6. Verification passed: `git diff --check`, `./gradlew.bat :app:compileDebugKotlin`, full `./gradlew.bat :app:testDebugUnitTest`, `./gradlew.bat :app:assembleDebug`, and APK metadata inspection for `versionName = 1.13.55`, `versionCode = 303`.
 
 ## What Changed In The Latest 1.13.54 Patch
 

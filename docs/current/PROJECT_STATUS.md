@@ -8,8 +8,8 @@
 - Target platform: Android 14 / API 34
 - License: MIT License (`LICENSE`)
 - Current version in code:
-  - `versionName = "1.13.54"`
-  - `versionCode = 302`
+  - `versionName = "1.13.55"`
+  - `versionCode = 303`
   - database version = `27`
 
 ## Current Build Facts
@@ -22,7 +22,13 @@
 - Latest GitHub Release:
   - `https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.13.11`
 - Latest fully built debug APK:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.13.54-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.13.55-debug.apk`
+- Current `1.13.55 / versionCode 303` status:
+  - Android 今日看板小组件 concrete todo rows now pass `EXTRA_OPEN_TODO_ID`, so tapping a todo opens the shared todo detail preview where cancel/archive and edit/delete semantics are available.
+  - Concrete event rows inside the schedule aggregate card now pass `EXTRA_OPEN_EVENT_ID`, while the schedule aggregate card and schedule section title still open Calendar.
+  - The 今日待办 section title now opens the in-app Todo section instead of returning to the default board.
+  - Built-in Wiki and Feature Ledger were updated to describe the concrete-row deep-link behavior; database version remains `27`, no schema migration was added.
+  - Verification passed: `git diff --check`, `./gradlew.bat :app:compileDebugKotlin`, `./gradlew.bat :app:testDebugUnitTest`, `./gradlew.bat :app:assembleDebug`, and APK metadata check for `versionName = 1.13.55`, `versionCode = 303`.
 - Current `1.13.54 / versionCode 302` status:
   - New-event multi-slot scheduling is now exposed as `每周多时间段` rather than the narrower course-only wording.
   - Phone-side multi-slot creation uses a shared data-layer builder that turns multiple weekday/time slots, such as Tuesday 10:20-11:55 plus Thursday 08:30-10:05, into one weekly recurring event draft per slot while preserving common title, location, notes, reminders, color, countdown, and check-in settings.

@@ -289,7 +289,7 @@ private class TodoWidgetFactory(
             metaColor = mutedText
         )
 
-        output += sectionRow(-1L, "今日待办（${snapshot.todoItems.size}）", highlight = true)
+        output += sectionRow(-1L, "今日待办（${snapshot.todoItems.size}）", highlight = true, opensTasks = true)
         if (snapshot.todoItems.isEmpty()) {
             output += emptyRow(-2L, "今天还没有安排任务。")
         } else {
@@ -312,7 +312,7 @@ private class TodoWidgetFactory(
             }
         }
 
-        output += sectionRow(-3L, "今日日程（${snapshot.visibleTodayEvents.size}）", highlight = true)
+        output += sectionRow(-3L, "今日日程（${snapshot.visibleTodayEvents.size}）", highlight = true, opensCalendar = true)
         output += scheduleRow(snapshot, activeCheckIns)
         return output.take(60)
     }
@@ -321,7 +321,9 @@ private class TodoWidgetFactory(
         stableId: Long,
         title: String,
         meta: String = "",
-        highlight: Boolean
+        highlight: Boolean,
+        opensTasks: Boolean = false,
+        opensCalendar: Boolean = false
     ): WidgetBoardRow {
         return WidgetBoardRow(
             stableId = stableId,
@@ -330,7 +332,9 @@ private class TodoWidgetFactory(
             meta = meta,
             titleColor = darkText,
             metaColor = mutedText,
-            highlight = highlight
+            highlight = highlight,
+            opensTasks = opensTasks,
+            opensCalendar = opensCalendar
         )
     }
 
@@ -478,12 +482,28 @@ private class TodoWidgetFactory(
     private fun WidgetBoardRow.fillInIntent(): Intent {
         return Intent().apply {
             when (this@fillInIntent.type) {
-                WidgetRowType.TODO -> putExtra(MainActivity.EXTRA_OPEN_TASKS, true)
-                WidgetRowType.EVENT,
+                WidgetRowType.TODO -> {
+                    if (itemId > 0L) {
+                        putExtra(MainActivity.EXTRA_OPEN_TODO_ID, itemId)
+                    } else {
+                        putExtra(MainActivity.EXTRA_OPEN_TASKS, true)
+                    }
+                }
+                WidgetRowType.EVENT -> {
+                    if (itemId > 0L) {
+                        putExtra(MainActivity.EXTRA_OPEN_EVENT_ID, itemId)
+                    } else {
+                        putExtra(MainActivity.EXTRA_OPEN_CALENDAR, true)
+                    }
+                }
                 WidgetRowType.SCHEDULE -> putExtra(MainActivity.EXTRA_OPEN_CALENDAR, true)
                 WidgetRowType.ANNOUNCEMENT -> putExtra(MainActivity.EXTRA_OPEN_PLANNING_NOTE_ID, sourceNoteId)
+                WidgetRowType.SECTION -> when {
+                    opensTasks -> putExtra(MainActivity.EXTRA_OPEN_TASKS, true)
+                    opensCalendar -> putExtra(MainActivity.EXTRA_OPEN_CALENDAR, true)
+                    else -> putExtra(MainActivity.EXTRA_OPEN_BOARD, true)
+                }
                 WidgetRowType.GREETING,
-                WidgetRowType.SECTION,
                 WidgetRowType.EMPTY -> putExtra(MainActivity.EXTRA_OPEN_BOARD, true)
             }
         }
@@ -528,6 +548,7 @@ private class TodoWidgetFactory(
         val accentColor: Int = 0,
         val highlight: Boolean = false,
         val checkInStatus: String = "",
+        val opensTasks: Boolean = false,
         val opensCalendar: Boolean = false,
         val events: List<WidgetBoardRow> = emptyList(),
         val tomorrowEvents: List<WidgetBoardRow> = emptyList()

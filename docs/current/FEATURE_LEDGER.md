@@ -258,7 +258,7 @@ This file tracks the product at a practical level for new coding sessions.
 - widget day/night colors are resource-backed, with fixed widget-specific light/dark board backgrounds, very light scrims, and text colors for launcher readability rather than app wallpaper reuse
 - widget refresh uses a board-range Room query rather than loading all historical todos, and duplicate `onReceive` update routing has been removed
 - widget board-range query explicitly includes active no-DDL todos, so the launcher widget's 今日待办 block matches the phone daily board instead of dropping no-DDL tasks
-- tapping a todo area opens the in-app `待办` section, tapping a schedule / event area opens Calendar without forcing an editor detail, tapping an announcement row opens the source Planning Desk note, and header / empty rows return to the default daily board
+- tapping the `今日待办` section title opens the in-app `待办` section, concrete todo rows open the shared todo detail preview, the `今日日程` section title / schedule aggregate card opens Calendar, concrete event rows open the corresponding event detail / calendar preview, announcement rows open the source Planning Desk note, and greeting / empty rows return to the default daily board
 - widget empty states now use the same card-style visual direction as the in-app daily board rather than thin bordered rows
 - widget schedule content is aggregated into one card with a left date block, today rows, tomorrow label, and tomorrow rows instead of independent event cards; todo cards use the task group's color strip
 - widget root no longer includes the daily-board wallpaper image layer; the fixed menu/title/date header has been removed so the launcher widget opens directly into board content and cannot show a stale header date

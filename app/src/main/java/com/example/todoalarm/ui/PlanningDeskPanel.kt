@@ -1439,19 +1439,6 @@ private fun PlanningOutlineEditor(
                                     onUpdateNode(node, node.toPlanningNodeEdit(parentNodeId = parent?.parentNodeId))
                                 }
                             },
-                            onUpdateTime = { dueAt, startAt, endAt ->
-                                onUpdateNode(
-                                    node,
-                                    node.toPlanningNodeEdit(
-                                        dueAt = dueAt,
-                                        startAt = startAt,
-                                        endAt = endAt
-                                    )
-                                )
-                            },
-                            onUpdateLocation = { location ->
-                                onUpdateNode(node, node.toPlanningNodeEdit(location = location))
-                            },
                             onToggleSync = {
                                 onUpdateNode(node, node.toPlanningNodeEdit(syncEnabled = !node.syncEnabled))
                             },
@@ -1771,8 +1758,6 @@ private fun PlanningOutlineRow(
     onFocusNext: () -> Boolean,
     onIndent: () -> Unit,
     onOutdent: () -> Unit,
-    onUpdateTime: (LocalDateTime?, LocalDateTime?, LocalDateTime?) -> Unit,
-    onUpdateLocation: (String?) -> Unit,
     onToggleSync: () -> Unit,
     onToggleNote: () -> Unit,
     onOpenLinkedItem: () -> Unit,

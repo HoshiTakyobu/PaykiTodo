@@ -8,8 +8,8 @@
 - Target platform: Android 14 / API 34
 - License: MIT License (`LICENSE`)
 - Current version in code:
-  - `versionName = "1.13.61"`
-  - `versionCode = 309`
+  - `versionName = "1.13.62"`
+  - `versionCode = 310`
   - database version = `27`
 
 ## Current Build Facts
@@ -22,7 +22,13 @@
 - Latest GitHub Release:
   - `https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.13.11`
 - Latest fully built debug APK:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.13.61-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.13.62-debug.apk`
+- Current `1.13.62 / versionCode 310` status:
+  - Phone todo editor recurrence type selection now uses a compact single-choice row and dialog instead of a horizontal FilterChip button group.
+  - The recurrence type dialog includes short rule explanations for daily, weekly, monthly, yearly, and lunar-yearly recurrence choices.
+  - Weekly weekday chips remain as a multi-select date set because they are not a mutually exclusive enum choice.
+  - Database version remains `27`; no schema migration was added.
+  - Verification passed: `./gradlew.bat :app:compileDebugKotlin`, `./gradlew.bat :app:testDebugUnitTest`, `node --check app/src/main/assets/desktop-web/app.js`, `git diff --check`, `./gradlew.bat :app:assembleDebug`, and APK metadata inspection for `versionName = 1.13.62`, `versionCode = 310`.
 - Current `1.13.61 / versionCode 309` status:
   - Phone Calendar event editor now exposes a single-choice `日程分组` row, matching the Desktop Web event editor and the existing event `groupId/groupName` data path.
   - The selected event group is written into normal event drafts and weekly multi-slot event drafts, so phone-created course / duty multi-slot events keep the intended group assignment.

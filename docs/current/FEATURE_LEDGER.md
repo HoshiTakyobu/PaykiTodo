@@ -18,6 +18,7 @@ This file tracks the product at a practical level for new coding sessions.
 - Desktop Web todo and event editors use compact weekday multi-select chips for weekly recurrence instead of requiring manual `1,3,5` text input, and hide those chips for non-weekly recurrence rules
 - Desktop Web Planning Desk recognition preview uses the same weekday multi-select chips for weekly recurrence candidates, and clears weekly-day state when the candidate is changed away from `每周`
 - recurring todo templates persist `hiddenFromBoard`, and newly replenished recurring instances inherit the reminder-only visibility setting
+- phone todo editor recurrence type selection uses a compact single-choice row/dialog instead of a horizontal enum button group; weekly weekday chips remain only for the actual multi-select weekday set
 - no-deadline todos; active no-DDL items are treated as `今日待办` across phone board, Android widget board query, desktop board, and desktop todo management
 - lightweight comma-based todo batch import with preview validation
 - todo batch-import DDL supports same-day clock input such as `16:30` / `16：30`, plus Planning Desk-style natural date forms such as `5.28`, `5月28日`, `明天`, and `周五`; date-only values default to `23:59`

@@ -167,6 +167,7 @@ fun TodoEditorDialog(
     }
     var recurrencePreview by remember { mutableStateOf<RecurrencePreviewResult?>(null) }
     var showReminderDeliveryPicker by remember { mutableStateOf(false) }
+    var showRecurrenceTypePicker by remember { mutableStateOf(false) }
     var helpTopic by remember { mutableStateOf<InputSyntaxHelpTopic?>(null) }
     var activeDateTimeTarget by remember { mutableStateOf<TodoDateTimeTarget?>(null) }
     var showDueLunarPicker by remember { mutableStateOf(false) }
@@ -579,22 +580,11 @@ fun TodoEditorDialog(
                                 }
 
                                 if (recurringEnabled) {
-                                    Row(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .horizontalScroll(rememberScrollState()),
-                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                                    ) {
-                                        RecurrenceType.entries
-                                            .filter { it != RecurrenceType.NONE }
-                                            .forEach { type ->
-                                                FilterChip(
-                                                    selected = recurrenceType == type,
-                                                    onClick = { recurrenceType = type },
-                                                    label = { Text(type.label) }
-                                                )
-                                            }
-                                    }
+                                    TodoSelectionRow(
+                                        title = "重复规则",
+                                        value = recurrenceType.label,
+                                        onClick = { showRecurrenceTypePicker = true }
+                                    )
 
                                     if (recurrenceType == RecurrenceType.WEEKLY) {
                                         Row(
@@ -699,6 +689,28 @@ fun TodoEditorDialog(
             },
             onDismiss = { showReminderDeliveryPicker = false },
             onDone = { showReminderDeliveryPicker = false }
+        )
+    }
+
+    if (showRecurrenceTypePicker) {
+        TodoSingleChoiceListDialog(
+            title = "选择重复规则",
+            doneLabel = "完成",
+            options = RecurrenceType.entries
+                .filter { it != RecurrenceType.NONE }
+                .map { type ->
+                    TodoChoiceItem(
+                        key = type.name,
+                        title = type.label,
+                        subtitle = recurrenceTypeHint(type, dueAt)
+                    )
+                },
+            selectedKey = recurrenceType.name,
+            onSelect = { key ->
+                recurrenceType = RecurrenceType.entries.first { it.name == key }
+            },
+            onDismiss = { showRecurrenceTypePicker = false },
+            onDone = { showRecurrenceTypePicker = false }
         )
     }
 
@@ -884,7 +896,12 @@ private fun TodoSingleChoiceListDialog(
         onDismissRequest = onDismiss,
         title = { Text(title, fontWeight = FontWeight.Bold) },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Column(
+                modifier = Modifier
+                    .heightIn(max = 420.dp)
+                    .verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(2.dp)
+            ) {
                 options.forEach { option ->
                     Row(
                         modifier = Modifier
@@ -993,6 +1010,21 @@ private fun todoEditorDateLine(date: LocalDate): String {
     val nowYear = LocalDate.now().year
     val pattern = if (date.year == nowYear) "M月d日" else "yyyy年M月d日"
     return date.format(DateTimeFormatter.ofPattern(pattern, Locale.CHINA)) + "（农历${LunarCalendar.labelFor(date).displayText}） · " + date.dayOfWeek.shortLabel()
+}
+
+private fun recurrenceTypeHint(
+    recurrenceType: RecurrenceType,
+    dueAt: LocalDateTime
+): String? {
+    return when (recurrenceType) {
+        RecurrenceType.NONE -> null
+        RecurrenceType.DAILY -> "从 ${dueAt.toLocalDate()} 起，每天 ${formatLocalDateTime(dueAt).takeLast(5)}"
+        RecurrenceType.WEEKLY -> "按选中的周几，在 ${formatLocalDateTime(dueAt).takeLast(5)} 生成"
+        RecurrenceType.MONTHLY_NTH_WEEKDAY -> "每月第 ${(dueAt.dayOfMonth - 1) / 7 + 1} 个${dueAt.dayOfWeek.shortLabel()}"
+        RecurrenceType.MONTHLY_DAY -> "每月 ${dueAt.dayOfMonth} 日"
+        RecurrenceType.YEARLY_DATE -> "每年 ${dueAt.monthValue} 月 ${dueAt.dayOfMonth} 日"
+        RecurrenceType.YEARLY_LUNAR_DATE -> "每年农历 ${LunarCalendar.labelFor(dueAt.toLocalDate()).displayText}"
+    }
 }
 
 private fun toggleTodoEditorGroup(

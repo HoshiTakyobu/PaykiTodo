@@ -5,23 +5,31 @@
 - Repository root: `G:\Workspace\Project\PaykiTodo`
 - Branch: `main`
 - Current code version:
-  - `versionName = 1.13.61`
-  - `versionCode = 309`
+  - `versionName = 1.13.62`
+  - `versionCode = 310`
   - database version = `27`
 - Latest debug APK target in this round:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.13.61-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.13.62-debug.apk`
 - Latest signed release APK available locally:
   - `app/build/outputs/apk/release/PaykiTodo-1.13.11-release.apk`
 - Latest GitHub Release:
   - `https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.13.11`
 - Debug APK metadata inspection:
-  - `versionName = 1.13.61`, `versionCode = 309`
+  - `versionName = 1.13.62`, `versionCode = 310`
 
 ## Active Goal
 
-Active immediate task: continue auditing requirement / UX consistency from the current `1.13.61 / versionCode 309` local patch baseline.
+Active immediate task: continue auditing requirement / UX consistency from the current `1.13.62 / versionCode 310` local patch baseline.
 
-Latest status: `1.13.61` fixes phone / desktop Calendar editor parity for event grouping. Phone Calendar event editor now exposes event group selection and preserves prefilled draft titles; debug build and metadata inspection passed.
+Latest status: `1.13.62` fixes phone todo-editor UI consistency. Todo recurrence type selection no longer uses the enum-like horizontal FilterChip group; debug build and metadata inspection passed.
+
+## What Changed In The Latest 1.13.62 Patch
+
+1. Phone todo editor recurrence type selection now uses a `重复规则` selection row plus single-choice dialog instead of a horizontal button group.
+2. The recurrence type dialog shows short explanations for daily, weekly, monthly, yearly, and lunar yearly recurrence choices.
+3. Weekly weekday chips remain only for the actual multi-select weekday set, which is distinct from enum-like option selection.
+4. Version metadata moved to `1.13.62 / versionCode 310`; database version remains `27`.
+5. Verification passed: `./gradlew.bat :app:compileDebugKotlin`, full `./gradlew.bat :app:testDebugUnitTest`, `node --check app/src/main/assets/desktop-web/app.js`, `git diff --check`, `./gradlew.bat :app:assembleDebug`, and APK metadata inspection for `versionName = 1.13.62`, `versionCode = 310`.
 
 ## What Changed In The Latest 1.13.61 Patch
 

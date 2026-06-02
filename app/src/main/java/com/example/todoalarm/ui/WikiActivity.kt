@@ -14,8 +14,6 @@ class WikiActivity : ComponentActivity() {
             settings.domStorageEnabled = false
             settings.allowFileAccess = true
             settings.allowContentAccess = false
-            settings.allowFileAccessFromFileURLs = false
-            settings.allowUniversalAccessFromFileURLs = false
             settings.builtInZoomControls = true
             settings.displayZoomControls = false
             loadUrl("file:///android_asset/wiki/index.html")

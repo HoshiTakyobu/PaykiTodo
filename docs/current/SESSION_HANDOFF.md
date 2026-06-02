@@ -32,6 +32,11 @@ Latest status: `1.13.55` closes Android 今日看板小组件 deep-link consiste
 5. Version metadata moved to `1.13.55 / versionCode 303`; database version remains `27`.
 6. Verification passed: `git diff --check`, `./gradlew.bat :app:compileDebugKotlin`, full `./gradlew.bat :app:testDebugUnitTest`, `./gradlew.bat :app:assembleDebug`, and APK metadata inspection for `versionName = 1.13.55`, `versionCode = 303`.
 
+## Non-Versioned Maintenance After 1.13.55
+
+1. `WikiActivity` no longer calls deprecated `allowFileAccessFromFileURLs` / `allowUniversalAccessFromFileURLs`; targetSdk 34 already defaults both to false, so the built-in `file:///android_asset/wiki/index.html` load keeps working with less deprecated surface.
+2. Verification passed: `git diff --check` and `./gradlew.bat :app:compileDebugKotlin`.
+
 ## What Changed In The Latest 1.13.54 Patch
 
 1. New-event multi-slot scheduling is now described as `每周多时间段`, making it usable beyond courses for experiments, fixed duty, and recurring meetings.

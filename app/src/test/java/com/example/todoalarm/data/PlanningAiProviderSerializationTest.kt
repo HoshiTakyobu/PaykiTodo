@@ -1,6 +1,7 @@
 package com.example.todoalarm.data
 
 import org.json.JSONArray
+import org.json.JSONObject
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -38,6 +39,7 @@ class PlanningAiProviderSerializationTest {
             templates = emptyList(),
             tasks = emptyList(),
             settings = AppSettings(
+                desktopSyncToken = "LAN-SECRET",
                 planningAiEnabled = true,
                 planningAiApiKey = "legacy-secret-key",
                 planningAiProviders = listOf(provider())
@@ -49,10 +51,29 @@ class PlanningAiProviderSerializationTest {
         val provider = settings.getJSONArray("planningAiProviders").getJSONObject(0)
 
         assertFalse(settings.has("planningAiApiKey"))
+        assertFalse(settings.has("desktopSyncToken"))
         assertFalse(provider.has("apiKey"))
         assertFalse(json.toString().contains("secret-key"))
+        assertFalse(json.toString().contains("LAN-SECRET"))
         assertEquals("DeepSeek", provider.getString("name"))
         assertEquals("deepseek-v4-flash", provider.getString("model"))
+    }
+
+    @Test
+    fun backupSnapshotImportIgnoresDesktopSyncTokenFromOldBackups() {
+        val snapshot = backupSnapshotFromJson(
+            JSONObject().apply {
+                put("exportedAtMillis", 1L)
+                put("snapshotVersion", 1)
+                put("settings", JSONObject().apply {
+                    put("desktopSyncEnabled", true)
+                    put("desktopSyncToken", "OLD-LAN-SECRET")
+                })
+            }
+        )
+
+        assertTrue(snapshot.settings.desktopSyncEnabled)
+        assertEquals("", snapshot.settings.desktopSyncToken)
     }
 
     private fun provider(): PlanningAiProvider {

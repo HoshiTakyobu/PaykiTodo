@@ -8,8 +8,8 @@
 - Target platform: Android 14 / API 34
 - License: MIT License (`LICENSE`)
 - Current version in code:
-  - `versionName = "1.13.57"`
-  - `versionCode = 305`
+  - `versionName = "1.13.58"`
+  - `versionCode = 306`
   - database version = `27`
 
 ## Current Build Facts
@@ -22,7 +22,13 @@
 - Latest GitHub Release:
   - `https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.13.11`
 - Latest fully built debug APK:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.13.57-debug.apk`
+- Current `1.13.58 / versionCode 306` status:
+  - Backup JSON no longer writes `desktopSyncToken`, keeping the Desktop Sync access key local to the installed app.
+  - Importing older backups that contain `desktopSyncToken` now ignores that field; after restore, the settings layer generates a fresh local access key.
+  - `PlanningAiProviderSerializationTest` covers AI API key omission, Desktop Sync token omission, and old-backup token import ignoring.
+  - Verification passed: `./gradlew.bat :app:testDebugUnitTest --tests com.example.todoalarm.data.PlanningAiProviderSerializationTest`, `./gradlew.bat :app:compileDebugKotlin`, `./gradlew.bat :app:testDebugUnitTest`, `node --check app/src/main/assets/desktop-web/app.js`, `git diff --check`, `./gradlew.bat :app:assembleDebug`, and APK metadata inspection for `versionName = 1.13.58`, `versionCode = 306`.
+- Latest fully built debug APK:
+  - `app/build/outputs/apk/debug/PaykiTodo-1.13.58-debug.apk`
 - Current `1.13.57 / versionCode 305` status:
   - Planning Desk recognition now runs local parsing first and uses it directly when explicit Markdown / DDL / schedule syntax already covers all actionable lines.
   - Explicit local parse errors remain visible in the preview instead of being hidden by AI fallback.

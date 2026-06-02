@@ -2,6 +2,22 @@
 
 PaykiTodo 采用语义化倾向的应用版本号和递增 `versionCode`。本文件面向用户记录重要变化，不再保存每一次内部调试重建的完整流水账；完整历史可通过 Git commit、tag 和 `docs/archive/` 追溯。
 
+## v1.13.58
+
+发布日期：2026-06-02（本地调试构建，尚未创建 GitHub Release）
+
+### 修复
+
+- 备份导出的设置不再写入电脑同步访问密钥 `desktopSyncToken`，避免备份文件泄漏局域网控制台密钥。
+- 导入旧备份时会忽略旧文件里的 `desktopSyncToken`；恢复后 App 会按本机设置重新生成访问密钥。
+- 扩展备份隐私单元测试，覆盖 AI Provider API Key 和电脑同步 Token 在备份快照导出 / 旧备份导入中的处理。
+
+### 构建
+
+- `versionName = 1.13.58`
+- `versionCode = 306`
+- 数据库版本保持 `27`，不新增数据迁移。
+
 ## v1.13.57
 
 发布日期：2026-06-02（本地调试构建，尚未创建 GitHub Release）

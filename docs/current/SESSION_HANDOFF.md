@@ -5,23 +5,31 @@
 - Repository root: `G:\Workspace\Project\PaykiTodo`
 - Branch: `main`
 - Current code version:
-  - `versionName = 1.13.57`
-  - `versionCode = 305`
+  - `versionName = 1.13.58`
+  - `versionCode = 306`
   - database version = `27`
 - Latest debug APK target in this round:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.13.57-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.13.58-debug.apk`
 - Latest signed release APK available locally:
   - `app/build/outputs/apk/release/PaykiTodo-1.13.11-release.apk`
 - Latest GitHub Release:
   - `https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.13.11`
 - Debug APK metadata inspection:
-  - `versionName = 1.13.57`, `versionCode = 305`
+  - `versionName = 1.13.58`, `versionCode = 306`
 
 ## Active Goal
 
-Active immediate task: continue auditing requirement / UX consistency from the current `1.13.57 / versionCode 305` local patch baseline.
+Active immediate task: continue auditing requirement / UX consistency from the current `1.13.58 / versionCode 306` local patch baseline.
 
-Latest status: `1.13.57` routes Planning Desk recognition through local rules first. Clear Markdown / DDL / schedule syntax uses local candidates directly when every actionable line is covered, explicit local parse errors stay visible in preview, mixed free-form text can still use AI, and AI prompts now receive the planning document date as fallback context without overriding inline dates. Debug build and metadata inspection passed.
+Latest status: `1.13.58` removes Desktop Sync access-token export from backup JSON and ignores `desktopSyncToken` when importing old backups, so restored installs generate a fresh local access key. Debug build and metadata inspection passed.
+
+## What Changed In The Latest 1.13.58 Patch
+
+1. `BackupSnapshot.toJson()` no longer writes `settings.desktopSyncToken`.
+2. `backupSnapshotFromJson()` ignores `desktopSyncToken` even if an older backup file contains it.
+3. `PlanningAiProviderSerializationTest` now covers AI API key omission, Desktop Sync token omission, and old-backup token import ignoring at the snapshot JSON layer.
+4. Version metadata moved to `1.13.58 / versionCode 306`; database version remains `27`.
+5. Verification passed: targeted `PlanningAiProviderSerializationTest`, `./gradlew.bat :app:compileDebugKotlin`, full `./gradlew.bat :app:testDebugUnitTest`, `node --check app/src/main/assets/desktop-web/app.js`, `git diff --check`, `./gradlew.bat :app:assembleDebug`, and APK metadata inspection for `versionName = 1.13.58`, `versionCode = 306`.
 
 ## What Changed In The Latest 1.13.57 Patch
 

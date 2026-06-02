@@ -92,7 +92,6 @@ private fun AppSettings.toJson(): JSONObject {
         put("backupDirectoryUri", backupDirectoryUri)
         put("autoBackupEnabled", autoBackupEnabled)
         put("desktopSyncEnabled", desktopSyncEnabled)
-        put("desktopSyncToken", desktopSyncToken)
         put("desktopSyncWifiKeepAlive", desktopSyncWifiKeepAlive)
         put("lastOpenedPlanningNoteId", lastOpenedPlanningNoteId)
         put("planningOutlineHintVisible", planningOutlineHintVisible)
@@ -335,7 +334,7 @@ private fun RecurringInstanceSkip.toJson(): JSONObject {
     }
 }
 
-private fun backupSnapshotFromJson(json: JSONObject): BackupSnapshot {
+internal fun backupSnapshotFromJson(json: JSONObject): BackupSnapshot {
     return BackupSnapshot(
         exportedAtMillis = json.optLong("exportedAtMillis", System.currentTimeMillis()),
         pendingQuoteVersion = json.optInt("snapshotVersion", 1),
@@ -697,7 +696,7 @@ private fun JSONObject?.toSettings(): AppSettings {
         backupDirectoryUri = optStringOrNull("backupDirectoryUri"),
         autoBackupEnabled = optBoolean("autoBackupEnabled", false),
         desktopSyncEnabled = optBoolean("desktopSyncEnabled", false),
-        desktopSyncToken = optString("desktopSyncToken", ""),
+        desktopSyncToken = "",
         desktopSyncWifiKeepAlive = optBoolean("desktopSyncWifiKeepAlive", true),
         lastOpenedPlanningNoteId = optLongOrNull("lastOpenedPlanningNoteId")?.takeIf { it > 0 },
         planningOutlineHintVisible = optBoolean("planningOutlineHintVisible", true),

@@ -8,8 +8,8 @@
 - Target platform: Android 14 / API 34
 - License: MIT License (`LICENSE`)
 - Current version in code:
-  - `versionName = "1.13.49"`
-  - `versionCode = 297`
+  - `versionName = "1.13.50"`
+  - `versionCode = 298`
   - database version = `27`
 
 ## Current Build Facts
@@ -22,7 +22,13 @@
 - Latest GitHub Release:
   - `https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.13.11`
 - Latest fully built debug APK:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.13.49-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.13.50-debug.apk`
+- Current `1.13.50 / versionCode 298` status:
+  - Notification small icons now use a dedicated monochrome vector `ic_stat_payki_todo` instead of a colored PNG bitmap wrapper, reducing status-bar rendering risk across OEM ROMs.
+  - Adaptive launcher themed-icon monochrome layers now point to the same vector icon, while standard / round adaptive foregrounds keep the transparent main-logo art.
+  - The obsolete unreferenced notification icon PNG was removed from source resources.
+  - Database version remains `27`; no schema migration was added.
+  - Verification passed: `./gradlew.bat :app:compileDebugKotlin`, `./gradlew.bat :app:testDebugUnitTest`, `git diff --check`, `./gradlew.bat :app:assembleDebug`, APK metadata check, `aapt dump badging`, and `aapt dump xmltree` icon resource inspection confirmed `versionName = 1.13.50`, `versionCode = 298`, and adaptive-icon `monochrome` entries.
 - Current `1.13.49 / versionCode 297` status:
   - Desktop Web event creation now exposes `课程多时间段` for new events, matching the phone-side course multi-slot creation path.
   - The desktop course mode uses compact rows with weekday dropdown plus start/end time fields, creates one weekly recurring event per slot through the existing `/api/events` endpoint, and hides duplicate weekly-day chips while course mode is enabled.

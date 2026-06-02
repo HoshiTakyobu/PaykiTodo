@@ -230,7 +230,7 @@ This file tracks the product at a practical level for new coding sessions.
 - accessibility fallback path
 - accessibility fallback event reminders can start an event check-in when `打卡追踪` is enabled
 - reminder diagnostics and settings-side tooling exist
-- reminder and desktop-sync foreground notifications both use the dedicated `ic_stat_payki_todo` small icon resource
+- reminder, desktop-sync foreground, capture, report, ongoing-event, and check-in watchdog notifications use the dedicated vector `ic_stat_payki_todo` small icon resource, so notification shade icons are monochrome-mask compliant instead of depending on a colored bitmap
 - calendar event acknowledgement preserves the configured reminder offsets instead of clearing the event's reminder setup
 - reminder playback can now select alarm, accessibility, notification, or media audio channels
 - PaykiTodo now tracks an internal reminder-volume percentage for self-played alert audio
@@ -240,7 +240,7 @@ This file tracks the product at a practical level for new coding sessions.
 ### Packaging / Identity
 
 - adaptive launcher icon foreground and round icon foreground are wired directly to `ic_launcher_art_transparent`, the transparent main-logo resource, instead of the older opaque white-background launcher art
-- adaptive launcher icons provide an explicit monochrome drawable so Android themed-icon launchers do not derive a simplified icon from stale opaque art
+- adaptive launcher icons provide an explicit vector monochrome drawable through `ic_stat_payki_todo`, so Android themed-icon launchers do not derive a simplified icon from colored or stale opaque art
 - obsolete unreferenced launcher-art variants are removed from source resources to reduce the chance of accidentally reverting to the wrong icon
 - drawer header icon uses the same transparent logo resource and is clipped into its circular header surface to avoid exposing a white rounded-rectangle background
 - launch screen uses a transparent-logo variant so the mountain / sun background remains visible behind the logo

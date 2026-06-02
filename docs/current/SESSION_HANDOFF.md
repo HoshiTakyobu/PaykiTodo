@@ -5,23 +5,31 @@
 - Repository root: `G:\Workspace\Project\PaykiTodo`
 - Branch: `main`
 - Current code version:
-  - `versionName = 1.13.49`
-  - `versionCode = 297`
+  - `versionName = 1.13.50`
+  - `versionCode = 298`
   - database version = `27`
 - Latest debug APK target in this round:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.13.49-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.13.50-debug.apk`
 - Latest signed release APK available locally:
   - `app/build/outputs/apk/release/PaykiTodo-1.13.11-release.apk`
 - Latest GitHub Release:
   - `https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.13.11`
 - Debug APK metadata inspection:
-  - `versionName = 1.13.49`, `versionCode = 297`
+  - `versionName = 1.13.50`, `versionCode = 298`
 
 ## Active Goal
 
-Active immediate task: continue auditing requirement / UX consistency and verify Desktop Web course multi-slot event creation from the current `1.13.49 / versionCode 297` local patch baseline.
+Active immediate task: continue auditing requirement / UX consistency from the current `1.13.50 / versionCode 298` local patch baseline.
 
-Latest status: `1.13.49` adds Desktop Web `课程多时间段` for new event creation, closing the phone/desktop parity gap for the course multi-slot feature. Debug build and metadata inspection passed.
+Latest status: `1.13.50` repairs the app icon resource chain for notifications and themed launcher icons by replacing the colored notification PNG wrapper with a monochrome vector small icon and pointing adaptive-icon monochrome layers to that vector. Debug build and icon resource inspection passed.
+
+## What Changed In The Latest 1.13.50 Patch
+
+1. `ic_stat_payki_todo` is now a white vector mask suitable for Android notification small icons.
+2. Standard and round adaptive launcher icons keep the transparent main-logo foreground but use `ic_stat_payki_todo` for their explicit monochrome themed-icon layer.
+3. The obsolete `drawable-nodpi/ic_stat_payki_todo_art.png` file was removed after it became unreferenced.
+4. Version metadata moved to `1.13.50 / versionCode 298`; database version remains `27`.
+5. Verification passed: `./gradlew.bat :app:compileDebugKotlin`, `./gradlew.bat :app:testDebugUnitTest`, `git diff --check`, `./gradlew.bat :app:assembleDebug`, APK metadata check, `aapt dump badging`, and `aapt dump xmltree` icon resource inspection.
 
 ## What Changed In The Latest 1.13.49 Patch
 

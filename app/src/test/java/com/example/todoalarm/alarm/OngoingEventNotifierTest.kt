@@ -42,6 +42,29 @@ class OngoingEventNotifierTest {
     }
 
     @Test
+    fun endBroadcastClearsCanceledEvent() {
+        val now = 1_000_000L
+        val event = eventItem(
+            startAtMillis = now - 30 * 60_000L,
+            endAtMillis = now + 30 * 60_000L,
+            canceled = true
+        )
+
+        assertFalse(shouldRefreshOngoingEventAfterEndBroadcast(event, now))
+    }
+
+    @Test
+    fun endBroadcastClearsEventWithoutStartTime() {
+        val now = 1_000_000L
+        val event = eventItem(
+            startAtMillis = null,
+            endAtMillis = now + 30 * 60_000L
+        )
+
+        assertFalse(shouldRefreshOngoingEventAfterEndBroadcast(event, now))
+    }
+
+    @Test
     fun endBroadcastClearsNonEventItem() {
         val now = 1_000_000L
         val todo = eventItem(

@@ -36,7 +36,8 @@ Latest status: `1.13.55` closes Android 今日看板小组件 deep-link consiste
 
 1. `WikiActivity` no longer calls deprecated `allowFileAccessFromFileURLs` / `allowUniversalAccessFromFileURLs`; targetSdk 34 already defaults both to false, so the built-in `file:///android_asset/wiki/index.html` load keeps working with less deprecated surface.
 2. `DesktopSyncService` now uses `WIFI_MODE_FULL_LOW_LATENCY` on Android 10+ for the optional Wi-Fi keep-alive lock and keeps the deprecated high-performance mode only for Android 8/9 with a local suppression.
-3. Verification passed for both maintenance changes: `git diff --check` and `./gradlew.bat :app:compileDebugKotlin`.
+3. `ReminderForegroundService` keeps its reminder wake-up fallback but isolates deprecated `SCREEN_BRIGHT_WAKE_LOCK` / `ACQUIRE_CAUSES_WAKEUP` constants inside a small compatibility helper instead of spreading deprecation warnings through the service.
+4. Verification passed for all three maintenance changes: `git diff --check` and `./gradlew.bat :app:compileDebugKotlin`.
 
 ## What Changed In The Latest 1.13.54 Patch
 

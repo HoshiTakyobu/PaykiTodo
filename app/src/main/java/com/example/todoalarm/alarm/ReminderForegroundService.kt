@@ -211,14 +211,18 @@ class ReminderForegroundService : Service() {
 
     private fun wakeDevice() {
         val powerManager = getSystemService(PowerManager::class.java) ?: return
-        val lock = wakeLock ?: powerManager.newWakeLock(
-            PowerManager.SCREEN_BRIGHT_WAKE_LOCK or PowerManager.ACQUIRE_CAUSES_WAKEUP,
-            "PaykiTodo:ReminderWakeLock"
-        ).also { wakeLock = it }
+        val lock = wakeLock ?: createReminderWakeLock(powerManager).also { wakeLock = it }
         if (!lock.isHeld) {
-            @Suppress("DEPRECATION")
             lock.acquire(10_000L)
         }
+    }
+
+    @Suppress("DEPRECATION")
+    private fun createReminderWakeLock(powerManager: PowerManager): PowerManager.WakeLock {
+        return powerManager.newWakeLock(
+            PowerManager.SCREEN_BRIGHT_WAKE_LOCK or PowerManager.ACQUIRE_CAUSES_WAKEUP,
+            "PaykiTodo:ReminderWakeLock"
+        )
     }
 
     private fun triggerAccessibilityOverlay(todoId: Long, forceOverlay: Boolean = false) {

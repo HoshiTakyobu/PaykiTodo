@@ -38,9 +38,11 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.Article
+import androidx.compose.material.icons.automirrored.rounded.PlaylistAdd
+import androidx.compose.material.icons.automirrored.rounded.Send
 import androidx.compose.material.icons.automirrored.rounded.Undo
 import androidx.compose.material.icons.rounded.Archive
-import androidx.compose.material.icons.rounded.Article
 import androidx.compose.material.icons.rounded.Campaign
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.Add
@@ -51,9 +53,7 @@ import androidx.compose.material.icons.rounded.ExpandMore
 import androidx.compose.material.icons.rounded.Image
 import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.MoreVert
-import androidx.compose.material.icons.rounded.PlaylistAdd
 import androidx.compose.material.icons.rounded.Search
-import androidx.compose.material.icons.rounded.Send
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -396,7 +396,7 @@ internal fun PlanningDeskPanel(
                         documentSheetVisible = true
                     }
                 ) {
-                    Icon(Icons.Rounded.Article, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Icon(Icons.AutoMirrored.Rounded.Article, contentDescription = null, modifier = Modifier.size(16.dp))
                     Spacer(Modifier.width(4.dp))
                     Text(
                         text = activeNote?.title?.take(8)?.let { "文档:$it" } ?: "文档",
@@ -430,7 +430,7 @@ internal fun PlanningDeskPanel(
                                 }
                             }
                         ) {
-                            Icon(Icons.Rounded.Send, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Icon(Icons.AutoMirrored.Rounded.Send, contentDescription = null, modifier = Modifier.size(16.dp))
                             Spacer(Modifier.width(4.dp))
                             Text("发布${draftNodeCount}条")
                         }
@@ -1466,7 +1466,7 @@ private fun PlanningOutlineEditor(
                                     depth = outline.depth,
                                     value = siblingInputs[node.id] ?: TextFieldValue(""),
                                     placeholder = "继续写同级事项",
-                                    enabled = activeNote != null,
+                                    enabled = true,
                                     autoFocusKey = inputFocusTarget.takeIf { it?.startsWith("sibling-${node.id}-") == true },
                                     onValueChange = { siblingInputs[node.id] = it },
                                     onCommit = {
@@ -1506,7 +1506,7 @@ private fun PlanningOutlineEditor(
                                     depth = outline.depth + 1,
                                     value = childInputs[node.id] ?: TextFieldValue(""),
                                     placeholder = "输入 ${node.text} 的子任务",
-                                    enabled = activeNote != null,
+                                    enabled = true,
                                     autoFocusKey = inputFocusTarget.takeIf { it?.startsWith("child-${node.id}-") == true },
                                     onValueChange = { childInputs[node.id] = it },
                                     onCommit = {
@@ -1993,7 +1993,7 @@ private fun PlanningOutlineRow(
                         onClick = onPublish
                     ) {
                         Icon(
-                            imageVector = Icons.Rounded.Send,
+                            imageVector = Icons.AutoMirrored.Rounded.Send,
                             contentDescription = "发布为正式事项",
                             tint = MaterialTheme.colorScheme.primary
                         )
@@ -2260,7 +2260,7 @@ private fun PlanningShortcutBar(
     onHelp: (String, String) -> Unit
 ) {
     val chips = listOf(
-        PlanningShortcutSpec("子任务", Icons.Rounded.PlaylistAdd, PlanningShortcutAction.SubtaskLine, "在当前行下面新建一条缩进子任务"),
+        PlanningShortcutSpec("子任务", Icons.AutoMirrored.Rounded.PlaylistAdd, PlanningShortcutAction.SubtaskLine, "在当前行下面新建一条缩进子任务"),
         PlanningShortcutSpec("公告", Icons.Rounded.Campaign, PlanningShortcutAction.InsertAnnouncement, "在新行插入 #公告 占位，填上日期范围和正文后会显示在每日看板顶部和桌面小组件")
     )
     Row(
@@ -2861,6 +2861,7 @@ private fun PlanningMarkdownTaskLine(
     onApplyConflictItem: (Long) -> Unit
 ) {
     val status = mapping?.status
+    val conflictMapping = mapping?.takeIf { it.status == MappingStatus.CONFLICT }
     Surface(
         modifier = Modifier.fillMaxWidth().padding(start = (line.indentLevel * 18).dp),
         shape = RoundedCornerShape(18.dp),
@@ -2887,8 +2888,8 @@ private fun PlanningMarkdownTaskLine(
                     color = planningLineTextColor(status, line.checked)
                 )
                 PlanningMarkdownPills(tags = line.tags, imported = line.imported, status = status)
-                if (status == MappingStatus.CONFLICT && mapping != null) {
-                    PlanningConflictActions(mapping.id, onApplyConflictDocument, onApplyConflictItem)
+                conflictMapping?.let {
+                    PlanningConflictActions(it.id, onApplyConflictDocument, onApplyConflictItem)
                 }
             }
         }
@@ -2904,6 +2905,7 @@ private fun PlanningMarkdownTextLine(
     onApplyConflictItem: (Long) -> Unit
 ) {
     val status = mapping?.status
+    val conflictMapping = mapping?.takeIf { it.status == MappingStatus.CONFLICT }
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(18.dp),
@@ -2923,8 +2925,8 @@ private fun PlanningMarkdownTextLine(
                 color = planningLineTextColor(status, false)
             )
             PlanningMarkdownPills(tags = line.tags, imported = line.imported, status = status)
-            if (status == MappingStatus.CONFLICT && mapping != null) {
-                PlanningConflictActions(mapping.id, onApplyConflictDocument, onApplyConflictItem)
+            conflictMapping?.let {
+                PlanningConflictActions(it.id, onApplyConflictDocument, onApplyConflictItem)
             }
         }
     }

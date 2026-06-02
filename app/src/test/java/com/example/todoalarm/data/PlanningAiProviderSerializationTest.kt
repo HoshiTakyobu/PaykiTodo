@@ -30,6 +30,31 @@ class PlanningAiProviderSerializationTest {
         assertTrue(restored.supportsVision)
     }
 
+    @Test
+    fun backupSnapshotJsonDoesNotContainProviderOrLegacyApiKey() {
+        val snapshot = BackupSnapshot(
+            exportedAtMillis = 1L,
+            groups = emptyList(),
+            templates = emptyList(),
+            tasks = emptyList(),
+            settings = AppSettings(
+                planningAiEnabled = true,
+                planningAiApiKey = "legacy-secret-key",
+                planningAiProviders = listOf(provider())
+            )
+        )
+
+        val json = snapshot.toJson()
+        val settings = json.getJSONObject("settings")
+        val provider = settings.getJSONArray("planningAiProviders").getJSONObject(0)
+
+        assertFalse(settings.has("planningAiApiKey"))
+        assertFalse(provider.has("apiKey"))
+        assertFalse(json.toString().contains("secret-key"))
+        assertEquals("DeepSeek", provider.getString("name"))
+        assertEquals("deepseek-v4-flash", provider.getString("model"))
+    }
+
     private fun provider(): PlanningAiProvider {
         return PlanningAiProvider(
             id = "provider-1",

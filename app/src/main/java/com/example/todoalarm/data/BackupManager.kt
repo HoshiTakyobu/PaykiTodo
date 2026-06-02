@@ -49,7 +49,7 @@ class BackupManager(
     }
 }
 
-private fun BackupSnapshot.toJson(): JSONObject {
+internal fun BackupSnapshot.toJson(): JSONObject {
     return JSONObject().apply {
         put("exportedAtMillis", exportedAtMillis)
         put("snapshotVersion", pendingQuoteVersion)

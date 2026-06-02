@@ -22,7 +22,11 @@
 - Latest GitHub Release:
   - `https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.13.11`
 - Latest fully built debug APK:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.13.55-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.13.56-debug.apk`
+- Current `1.13.56 / versionCode 304` status:
+  - Phone Calendar visible-range updates now keep the current event query window when it already covers the requested range, avoiding redundant Room event queries during small day / three-day timeline swipes.
+  - The query-window decision is covered by `CalendarEventWindowTest`; database version remains `27`, no schema migration was added.
+  - Verification passed: `./gradlew.bat :app:testDebugUnitTest --tests com.example.todoalarm.ui.CalendarEventWindowTest`, `./gradlew.bat :app:compileDebugKotlin`, `./gradlew.bat :app:testDebugUnitTest`, `git diff --check`, `./gradlew.bat :app:assembleDebug`, and APK metadata inspection for `versionName = 1.13.56`, `versionCode = 304`.
 - Current `1.13.55 / versionCode 303` status:
   - Android 今日看板小组件 concrete todo rows now pass `EXTRA_OPEN_TODO_ID`, so tapping a todo opens the shared todo detail preview where cancel/archive and edit/delete semantics are available.
   - Concrete event rows inside the schedule aggregate card now pass `EXTRA_OPEN_EVENT_ID`, while the schedule aggregate card and schedule section title still open Calendar.

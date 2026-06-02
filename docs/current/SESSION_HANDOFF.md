@@ -5,23 +5,31 @@
 - Repository root: `G:\Workspace\Project\PaykiTodo`
 - Branch: `main`
 - Current code version:
-  - `versionName = 1.13.55`
-  - `versionCode = 303`
+  - `versionName = 1.13.56`
+  - `versionCode = 304`
   - database version = `27`
 - Latest debug APK target in this round:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.13.55-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.13.56-debug.apk`
 - Latest signed release APK available locally:
   - `app/build/outputs/apk/release/PaykiTodo-1.13.11-release.apk`
 - Latest GitHub Release:
   - `https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.13.11`
 - Debug APK metadata inspection:
-  - `versionName = 1.13.55`, `versionCode = 303`
+  - `versionName = 1.13.56`, `versionCode = 304`
 
 ## Active Goal
 
-Active immediate task: continue auditing requirement / UX consistency from the current `1.13.55 / versionCode 303` local patch baseline.
+Active immediate task: continue auditing requirement / UX consistency from the current `1.13.56 / versionCode 304` local patch baseline.
 
-Latest status: `1.13.55` closes Android 今日看板小组件 deep-link consistency: concrete todo/event rows open corresponding detail previews, while section/aggregate areas route to Todo or Calendar. Debug build and metadata inspection passed.
+Latest status: `1.13.56` reduces phone calendar timeline query churn: visible-range updates now keep the current Room event window when it already covers the requested range, so small date swipes do not repeatedly rebuild the event flow. Debug build and metadata inspection passed.
+
+## What Changed In The Latest 1.13.56 Patch
+
+1. `TodoViewModel.updateCalendarEventWindow()` now skips updates when the requested visible date range is already covered by the current loaded event window.
+2. The calendar event window decision was extracted to `nextCalendarEventWindow()` for unit coverage.
+3. `CalendarEventWindowTest` covers both no-refresh and boundary-refresh behavior.
+4. Version metadata moved to `1.13.56 / versionCode 304`; database version remains `27`.
+5. Verification passed: `./gradlew.bat :app:testDebugUnitTest --tests com.example.todoalarm.ui.CalendarEventWindowTest`, `./gradlew.bat :app:compileDebugKotlin`, `./gradlew.bat :app:testDebugUnitTest`, `git diff --check`, `./gradlew.bat :app:assembleDebug`, and APK metadata inspection for `versionName = 1.13.56`, `versionCode = 304`.
 
 ## What Changed In The Latest 1.13.55 Patch
 

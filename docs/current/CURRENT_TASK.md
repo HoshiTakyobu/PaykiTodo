@@ -2,7 +2,7 @@
 
 ## Active Development Focus
 
-Active immediate task: continue requirement / UX consistency auditing from the `1.13.55 / versionCode 303` local patch baseline, using the previous reminder/Planning Desk goal as the latest verified work package:
+Active immediate task: continue requirement / UX consistency auditing from the `1.13.56 / versionCode 304` local patch baseline, using the previous reminder/Planning Desk goal as the latest verified work package:
 
 - `docs/goals/2026-06-01-paykitodo-reminder-ongoing-planning-ux-goal.md`
 
@@ -10,7 +10,7 @@ Do not commit secrets, signing material, API keys, private Base URLs, generated 
 
 ## Current Round Scope
 
-The current user request is to check current software behavior against requirements and UX expectations, then fix confirmed mismatches. The current concrete fix is Android 今日看板小组件 deep-link consistency: concrete todo/event rows should open the corresponding detail preview, while section/aggregate areas still route to the relevant Todo or Calendar surface.
+The current user request is to check current software behavior against requirements and UX expectations, then fix confirmed mismatches. The current concrete fix is phone calendar timeline query-window churn: date / view changes should not re-query Room when the already loaded event window covers the requested visible range.
 
 Important constraints:
 
@@ -111,6 +111,7 @@ Completed behavior so far:
 24. In `1.13.53`, Settings -> Calendar and reminders copy for `日程进行时显示通知` no longer incorrectly says it only applies to events with reminders. Validation passed with `compileDebugKotlin`, `testDebugUnitTest`, `git diff --check`, `node --check`, `assembleDebug`, and APK metadata check.
 25. In `1.13.54`, new-event multi-slot scheduling was renamed to `每周多时间段`, phone-side draft construction was extracted to a shared data-layer builder, Desktop Web now submits generated slot drafts through `/api/events/batch`, and targeted tests cover the Tuesday + Thursday course-style workflow. Validation passed with `node --check`, targeted `CalendarEventMultiSlotTest`, `compileDebugKotlin`, full `testDebugUnitTest`, `git diff --check`, `assembleDebug`, and APK metadata inspection.
 26. In `1.13.55`, Android 今日看板小组件 concrete todo rows now route to todo detail preview, concrete event rows route to event detail / calendar preview, the 今日待办 section title routes to the Todo section, and schedule section / aggregate areas route to Calendar. Validation passed with `git diff --check`, `compileDebugKotlin`, full `testDebugUnitTest`, `assembleDebug`, and APK metadata inspection.
+27. In `1.13.56`, phone calendar visible-range updates now keep the current event query window when it already covers the requested range, avoiding redundant Room queries during small timeline swipes. Validation passed with targeted `CalendarEventWindowTest`, `compileDebugKotlin`, full `testDebugUnitTest`, `git diff --check`, `assembleDebug`, and APK metadata inspection.
 5. Recurring todo range delete now uses the hard-delete path instead of cancel/archive.
 6. Recurring todo current-instance delete records a `recurring_instance_skips` exception and then hard-deletes the row, so the occurrence does not enter history and does not regenerate.
 7. Backup / restore includes `recurring_instance_skips`, so single-instance recurring-todo deletions survive restore.

@@ -356,12 +356,13 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
 
     fun updateCalendarEventWindow(startInclusive: LocalDate, endExclusive: LocalDate) {
         if (!startInclusive.isBefore(endExclusive)) return
-        val padded = CalendarEventWindow(
-            startInclusive = startInclusive.minusDays(CalendarWindowPaddingDays),
-            endExclusive = endExclusive.plusDays(CalendarWindowPaddingDays)
-        )
-        if (calendarEventWindowFlow.value != padded) {
-            calendarEventWindowFlow.value = padded
+        nextCalendarEventWindow(
+            current = calendarEventWindowFlow.value,
+            requestStartInclusive = startInclusive,
+            requestEndExclusive = endExclusive,
+            paddingDays = CalendarWindowPaddingDays
+        )?.let { nextWindow ->
+            calendarEventWindowFlow.value = nextWindow
         }
     }
 
@@ -1654,10 +1655,27 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
     }
 }
 
-private data class CalendarEventWindow(
+internal data class CalendarEventWindow(
     val startInclusive: LocalDate,
     val endExclusive: LocalDate
 )
+
+internal fun nextCalendarEventWindow(
+    current: CalendarEventWindow,
+    requestStartInclusive: LocalDate,
+    requestEndExclusive: LocalDate,
+    paddingDays: Long
+): CalendarEventWindow? {
+    if (!requestStartInclusive.isBefore(requestEndExclusive)) return null
+    val alreadyCovered = !requestStartInclusive.isBefore(current.startInclusive) &&
+        !requestEndExclusive.isAfter(current.endExclusive)
+    if (alreadyCovered) return null
+    val next = CalendarEventWindow(
+        startInclusive = requestStartInclusive.minusDays(paddingDays),
+        endExclusive = requestEndExclusive.plusDays(paddingDays)
+    )
+    return next.takeIf { it != current }
+}
 
 private fun calendarEventWindowAround(date: LocalDate): CalendarEventWindow {
     return CalendarEventWindow(

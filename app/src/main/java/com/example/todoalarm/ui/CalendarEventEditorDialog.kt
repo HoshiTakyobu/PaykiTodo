@@ -75,6 +75,17 @@ private data class ReminderLeadTimeOption(
     val label: String
 )
 
+private data class CourseTimeSlot(
+    val weekday: DayOfWeek,
+    val startTime: LocalTime,
+    val endTime: LocalTime
+)
+
+private data class CourseTimeSlotTarget(
+    val index: Int,
+    val editingStart: Boolean
+)
+
 private val ReminderLeadTimeOptions = listOf(
     ReminderLeadTimeOption(5, "提前 5 分钟"),
     ReminderLeadTimeOption(10, "提前 10 分钟"),
@@ -105,7 +116,8 @@ internal fun CalendarEventEditorDialog(
     defaultVibrateEnabled: Boolean,
     defaultReminderDeliveryMode: ReminderDeliveryMode,
     onDismiss: () -> Unit,
-    onConfirm: (CalendarEventDraft) -> Unit
+    onConfirm: (CalendarEventDraft) -> Unit,
+    onConfirmMultiple: ((List<CalendarEventDraft>) -> Unit)? = null
 ) {
     val context = LocalContext.current
     val now = remember { LocalDateTime.now().withSecond(0).withNano(0) }
@@ -192,6 +204,21 @@ internal fun CalendarEventEditorDialog(
     var helpTopic by remember { mutableStateOf<InputSyntaxHelpTopic?>(null) }
     var activeDateTimeTarget by remember { mutableStateOf<CalendarDateTimeTarget?>(null) }
     var activeLunarDateTarget by remember { mutableStateOf<CalendarDateTarget?>(null) }
+    var courseMultiSlotEnabled by remember(initialEvent?.id) { mutableStateOf(false) }
+    var courseSlots by remember(initialEvent?.id) {
+        mutableStateOf(
+            listOf(
+                CourseTimeSlot(
+                    weekday = startAt.dayOfWeek,
+                    startTime = startAt.toLocalTime(),
+                    endTime = endAt.toLocalTime()
+                )
+            )
+        )
+    }
+    var activeCourseSlotTarget by remember { mutableStateOf<CourseTimeSlotTarget?>(null) }
+    val courseModeActive = initialEvent == null && courseMultiSlotEnabled
+    val courseSlotsValid = courseSlots.isNotEmpty() && courseSlots.all { it.endTime.isAfter(it.startTime) }
     val reminderAnchor = if (allDay) LocalDateTime.of(startAt.toLocalDate(), LocalTime.of(9, 0)) else startAt
     val reminderValidation = remember(reminderInput, reminderAnchor, reminderEnabled, initialEvent?.id) {
         if (!reminderEnabled) {
@@ -205,7 +232,9 @@ internal fun CalendarEventEditorDialog(
         }
     }
     val eventEndValid = if (allDay) !endAt.toLocalDate().isBefore(startAt.toLocalDate()) else endAt.isAfter(startAt)
-    val confirmEnabled = title.isNotBlank() && eventEndValid && (!reminderEnabled || reminderValidation.isValid)
+    val confirmEnabled = title.isNotBlank() &&
+        (if (courseModeActive) courseSlotsValid else eventEndValid) &&
+        (!reminderEnabled || reminderValidation.isValid)
     val hasUnsavedChanges = remember(
         initialEvent?.id,
         seedDraft,
@@ -226,7 +255,9 @@ internal fun CalendarEventEditorDialog(
         recurringEnabled,
         recurrenceType,
         weeklyDays,
-        recurrenceEndDate
+        recurrenceEndDate,
+        courseMultiSlotEnabled,
+        courseSlots
     ) {
         if (initialEvent == null) {
             title.isNotBlank() ||
@@ -238,7 +269,9 @@ internal fun CalendarEventEditorDialog(
                 reminderInput != "15" ||
                 countdownEnabled ||
                 checkInEnabled ||
-                recurringEnabled
+                recurringEnabled ||
+                courseMultiSlotEnabled ||
+                courseSlots.size > 1
         } else {
             title != initialEvent.title ||
                 location != initialEvent.location ||
@@ -269,30 +302,47 @@ internal fun CalendarEventEditorDialog(
         hasUnsavedChanges = hasUnsavedChanges,
         onConfirm = {
             val normalizedOffsets = if (reminderEnabled && reminderValidation.isValid) reminderValidation.offsetsMinutes else emptyList()
-            onConfirm(
-                CalendarEventDraft(
-                    title = title,
-                    notes = notes,
-                    location = location,
-                    startAt = startAt,
-                    endAt = endAt,
-                    allDay = allDay,
-                    accentColorHex = accentColorHex,
-                    reminderMinutesBefore = normalizedOffsets.minOrNull(),
-                    reminderOffsetsMinutes = normalizedOffsets,
-                    ringEnabled = ringEnabled,
-                    vibrateEnabled = vibrateEnabled,
-                    reminderDeliveryMode = reminderDeliveryMode,
-                    countdownEnabled = countdownEnabled,
-                    checkInEnabled = checkInEnabled,
-                    recurrence = RecurrenceConfig(
-                        enabled = recurringEnabled,
-                        type = recurrenceType,
-                        weeklyDays = weeklyDays,
-                        endDate = recurrenceEndDate
-                    )
+            val baseDraft = CalendarEventDraft(
+                title = title,
+                notes = notes,
+                location = location,
+                startAt = startAt,
+                endAt = endAt,
+                allDay = allDay,
+                accentColorHex = accentColorHex,
+                reminderMinutesBefore = normalizedOffsets.minOrNull(),
+                reminderOffsetsMinutes = normalizedOffsets,
+                ringEnabled = ringEnabled,
+                vibrateEnabled = vibrateEnabled,
+                reminderDeliveryMode = reminderDeliveryMode,
+                countdownEnabled = countdownEnabled,
+                checkInEnabled = checkInEnabled,
+                recurrence = RecurrenceConfig(
+                    enabled = recurringEnabled,
+                    type = recurrenceType,
+                    weeklyDays = weeklyDays,
+                    endDate = recurrenceEndDate
                 )
             )
+            if (courseModeActive) {
+                val courseDrafts = courseSlots.map { slot ->
+                    val slotDate = nextOrSameWeekday(startAt.toLocalDate(), slot.weekday)
+                    baseDraft.copy(
+                        startAt = LocalDateTime.of(slotDate, slot.startTime),
+                        endAt = LocalDateTime.of(slotDate, slot.endTime),
+                        allDay = false,
+                        recurrence = RecurrenceConfig(
+                            enabled = true,
+                            type = RecurrenceType.WEEKLY,
+                            weeklyDays = setOf(slot.weekday),
+                            endDate = recurrenceEndDate
+                        )
+                    )
+                }
+                onConfirmMultiple?.invoke(courseDrafts) ?: onConfirm(courseDrafts.first())
+            } else {
+                onConfirm(baseDraft)
+            }
         }
     ) {
                 EditorBlock(title = "主题") {
@@ -311,7 +361,13 @@ internal fun CalendarEventEditorDialog(
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         Text("全天日程", fontWeight = FontWeight.SemiBold)
-                        Switch(checked = allDay, onCheckedChange = { allDay = it })
+                        Switch(
+                            checked = allDay,
+                            onCheckedChange = {
+                                allDay = it
+                                if (it) courseMultiSlotEnabled = false
+                            }
+                        )
                     }
 
                     if (allDay) {
@@ -394,6 +450,114 @@ internal fun CalendarEventEditorDialog(
                                 modifier = Modifier.weight(1f),
                                 onClick = { activeLunarDateTarget = CalendarDateTarget.EndDate }
                             ) { Text("农历结束") }
+                        }
+                    }
+                }
+
+                if (initialEvent == null) {
+                    EditorBlock(title = "课程多时间段") {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Column(
+                                modifier = Modifier.weight(1f),
+                                verticalArrangement = Arrangement.spacedBy(2.dp)
+                            ) {
+                                Text("一门课每周多个时间段", fontWeight = FontWeight.SemiBold)
+                                Text(
+                                    text = if (courseModeActive) {
+                                        "将创建 ${courseSlots.size} 条同名周循环日程，共用标题、地点、描述、提醒和颜色。"
+                                    } else {
+                                        "例如周二 10:20-11:55 + 周四 08:30-10:05。"
+                                    },
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                            Switch(
+                                checked = courseMultiSlotEnabled,
+                                onCheckedChange = { enabled ->
+                                    courseMultiSlotEnabled = enabled
+                                    if (enabled) {
+                                        allDay = false
+                                        courseSlots = if (courseSlots.size == 1) {
+                                            listOf(
+                                                CourseTimeSlot(
+                                                    weekday = startAt.dayOfWeek,
+                                                    startTime = startAt.toLocalTime(),
+                                                    endTime = endAt.toLocalTime()
+                                                )
+                                            )
+                                        } else {
+                                            courseSlots
+                                        }
+                                        recurringEnabled = true
+                                        recurrenceType = RecurrenceType.WEEKLY
+                                        weeklyDays = courseSlots.map { it.weekday }.toSet()
+                                    }
+                                },
+                                thumbContent = null
+                            )
+                        }
+
+                        if (courseModeActive) {
+                            Surface(
+                                shape = RoundedCornerShape(18.dp),
+                                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.08f)
+                            ) {
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 14.dp, vertical = 12.dp),
+                                    verticalArrangement = Arrangement.spacedBy(3.dp)
+                                ) {
+                                    Text(
+                                        text = "起始周参考：${formatEditorDateTitle(startAt.toLocalDate())}",
+                                        fontWeight = FontWeight.SemiBold
+                                    )
+                                    Text(
+                                        text = "如果某段周几早于这个日期，会从下一个对应周几开始生成。",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
+
+                            courseSlots.forEachIndexed { index, slot ->
+                                CourseTimeSlotCard(
+                                    index = index,
+                                    slot = slot,
+                                    canRemove = courseSlots.size > 1,
+                                    onPickWeekday = { day ->
+                                        courseSlots = courseSlots.replaceAt(index, slot.copy(weekday = day))
+                                        weeklyDays = courseSlots.map { it.weekday }.toSet()
+                                    },
+                                    onPickStart = {
+                                        activeCourseSlotTarget = CourseTimeSlotTarget(index, editingStart = true)
+                                    },
+                                    onPickEnd = {
+                                        activeCourseSlotTarget = CourseTimeSlotTarget(index, editingStart = false)
+                                    },
+                                    onRemove = {
+                                        courseSlots = courseSlots.removeAt(index)
+                                        weeklyDays = courseSlots.map { it.weekday }.toSet()
+                                    }
+                                )
+                            }
+
+                            OutlinedButton(
+                                modifier = Modifier.fillMaxWidth(),
+                                onClick = {
+                                    val last = courseSlots.lastOrNull()
+                                        ?: CourseTimeSlot(startAt.dayOfWeek, startAt.toLocalTime(), endAt.toLocalTime())
+                                    val nextDay = DayOfWeek.of(if (last.weekday.value == 7) 1 else last.weekday.value + 1)
+                                    courseSlots = courseSlots + last.copy(weekday = nextDay)
+                                    weeklyDays = courseSlots.map { it.weekday }.toSet()
+                                }
+                            ) {
+                                Text("添加一个时间段")
+                            }
                         }
                     }
                 }
@@ -568,26 +732,7 @@ internal fun CalendarEventEditorDialog(
                 }
 
                 EditorBlock(title = "重复") {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Column(
-                            modifier = Modifier.weight(1f),
-                            verticalArrangement = Arrangement.spacedBy(2.dp)
-                        ) {
-                            Text("重复", fontWeight = FontWeight.SemiBold)
-                            Text(if (recurringEnabled) recurrenceType.label else "不重复", color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        }
-                        Switch(
-                            checked = recurringEnabled,
-                            onCheckedChange = { recurringEnabled = it },
-                            thumbContent = null
-                        )
-                    }
-
-                    if (recurringEnabled) {
+                    if (courseModeActive) {
                         Surface(
                             shape = RoundedCornerShape(18.dp),
                             color = MaterialTheme.colorScheme.primary.copy(alpha = 0.08f)
@@ -599,29 +744,17 @@ internal fun CalendarEventEditorDialog(
                                 verticalArrangement = Arrangement.spacedBy(3.dp)
                             ) {
                                 Text(
-                                    text = recurrenceSummaryLabel(recurrenceType, startAt, weeklyDays),
+                                    text = "课程多时间段固定为每周循环",
                                     fontWeight = FontWeight.SemiBold,
                                     color = MaterialTheme.colorScheme.onSurface
                                 )
                                 Text(
-                                    text = "循环到 $recurrenceEndDate 为止",
+                                    text = courseSlots.sortedWith(compareBy<CourseTimeSlot> { it.weekday.value }.thenBy { it.startTime })
+                                        .joinToString("；") { "${it.weekday.shortLabel()} ${formatLocalTime(it.startTime)}-${formatLocalTime(it.endTime)}" },
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
-                        }
-
-                        EditorSelectionRow(
-                            title = "重复规则",
-                            value = recurrenceSummaryLabel(recurrenceType, startAt, weeklyDays),
-                            onClick = { showRecurrencePicker = true }
-                        )
-                        if (recurrenceType == RecurrenceType.MONTHLY_DAY && startAt.dayOfMonth > 28) {
-                            Text(
-                                text = "（若某个月不存在 ${startAt.dayOfMonth} 日，则自动落到该月最后一天）",
-                                color = Color(0xFFC62828),
-                                style = MaterialTheme.typography.bodySmall
-                            )
                         }
                         OutlinedButton(
                             onClick = { showDatePicker(context, recurrenceEndDate) { recurrenceEndDate = it } },
@@ -629,37 +762,100 @@ internal fun CalendarEventEditorDialog(
                         ) {
                             Text("循环截止日期：$recurrenceEndDate")
                         }
-                        OutlinedButton(
-                            onClick = {
-                                val normalizedOffsets = if (reminderEnabled && reminderValidation.isValid) reminderValidation.offsetsMinutes else emptyList()
-                                recurrencePreview = previewCalendarRecurrence(
-                                    CalendarEventDraft(
-                                        title = title,
-                                        notes = notes,
-                                        location = location,
-                                        startAt = startAt,
-                                        endAt = endAt,
-                                        allDay = allDay,
-                                        accentColorHex = accentColorHex,
-                                        reminderMinutesBefore = normalizedOffsets.minOrNull(),
-                                        reminderOffsetsMinutes = normalizedOffsets,
-                                        ringEnabled = ringEnabled,
-                                        vibrateEnabled = vibrateEnabled,
-                                        reminderDeliveryMode = reminderDeliveryMode,
-                                        countdownEnabled = countdownEnabled,
-                                        checkInEnabled = checkInEnabled,
-                                        recurrence = RecurrenceConfig(
-                                            enabled = true,
-                                            type = recurrenceType,
-                                            weeklyDays = weeklyDays,
-                                            endDate = recurrenceEndDate
+                    } else {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Column(
+                                modifier = Modifier.weight(1f),
+                                verticalArrangement = Arrangement.spacedBy(2.dp)
+                            ) {
+                                Text("重复", fontWeight = FontWeight.SemiBold)
+                                Text(if (recurringEnabled) recurrenceType.label else "不重复", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                            Switch(
+                                checked = recurringEnabled,
+                                onCheckedChange = { recurringEnabled = it },
+                                thumbContent = null
+                            )
+                        }
+
+                        if (recurringEnabled) {
+                            Surface(
+                                shape = RoundedCornerShape(18.dp),
+                                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.08f)
+                            ) {
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 14.dp, vertical = 12.dp),
+                                    verticalArrangement = Arrangement.spacedBy(3.dp)
+                                ) {
+                                    Text(
+                                        text = recurrenceSummaryLabel(recurrenceType, startAt, weeklyDays),
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = MaterialTheme.colorScheme.onSurface
+                                    )
+                                    Text(
+                                        text = "循环到 $recurrenceEndDate 为止",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
+
+                            EditorSelectionRow(
+                                title = "重复规则",
+                                value = recurrenceSummaryLabel(recurrenceType, startAt, weeklyDays),
+                                onClick = { showRecurrencePicker = true }
+                            )
+                            if (recurrenceType == RecurrenceType.MONTHLY_DAY && startAt.dayOfMonth > 28) {
+                                Text(
+                                    text = "（若某个月不存在 ${startAt.dayOfMonth} 日，则自动落到该月最后一天）",
+                                    color = Color(0xFFC62828),
+                                    style = MaterialTheme.typography.bodySmall
+                                )
+                            }
+                            OutlinedButton(
+                                onClick = { showDatePicker(context, recurrenceEndDate) { recurrenceEndDate = it } },
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Text("循环截止日期：$recurrenceEndDate")
+                            }
+                            OutlinedButton(
+                                onClick = {
+                                    val normalizedOffsets = if (reminderEnabled && reminderValidation.isValid) reminderValidation.offsetsMinutes else emptyList()
+                                    recurrencePreview = previewCalendarRecurrence(
+                                        CalendarEventDraft(
+                                            title = title,
+                                            notes = notes,
+                                            location = location,
+                                            startAt = startAt,
+                                            endAt = endAt,
+                                            allDay = allDay,
+                                            accentColorHex = accentColorHex,
+                                            reminderMinutesBefore = normalizedOffsets.minOrNull(),
+                                            reminderOffsetsMinutes = normalizedOffsets,
+                                            ringEnabled = ringEnabled,
+                                            vibrateEnabled = vibrateEnabled,
+                                            reminderDeliveryMode = reminderDeliveryMode,
+                                            countdownEnabled = countdownEnabled,
+                                            checkInEnabled = checkInEnabled,
+                                            recurrence = RecurrenceConfig(
+                                                enabled = true,
+                                                type = recurrenceType,
+                                                weeklyDays = weeklyDays,
+                                                endDate = recurrenceEndDate
+                                            )
                                         )
                                     )
-                                )
-                            },
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Text("预览循环生成")
+                                },
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Text("预览循环生成")
+                            }
                         }
                     }
                 }
@@ -752,6 +948,32 @@ internal fun CalendarEventEditorDialog(
                 activeDateTimeTarget = null
             }
         )
+    }
+
+    activeCourseSlotTarget?.let { target ->
+        val slot = courseSlots.getOrNull(target.index)
+        if (slot == null) {
+            activeCourseSlotTarget = null
+        } else {
+            WheelDateTimePickerDialog(
+                title = if (target.editingStart) "选择课程开始时间" else "选择课程结束时间",
+                initialDateTime = LocalDateTime.of(startAt.toLocalDate(), if (target.editingStart) slot.startTime else slot.endTime),
+                onDismiss = { activeCourseSlotTarget = null },
+                onConfirm = { picked ->
+                    val pickedTime = picked.toLocalTime()
+                    courseSlots = courseSlots.replaceAt(target.index) { current ->
+                        if (target.editingStart) {
+                            val adjustedEnd = if (current.endTime.isAfter(pickedTime)) current.endTime else pickedTime.plusMinutes(30)
+                            current.copy(startTime = pickedTime, endTime = adjustedEnd)
+                        } else {
+                            val adjustedStart = if (pickedTime.isAfter(current.startTime)) current.startTime else pickedTime.minusMinutes(30)
+                            current.copy(startTime = adjustedStart, endTime = pickedTime)
+                        }
+                    }
+                    activeCourseSlotTarget = null
+                }
+            )
+        }
     }
 
     activeLunarDateTarget?.let { target ->
@@ -897,6 +1119,136 @@ private fun EditorSelectionRow(
                 imageVector = Icons.AutoMirrored.Rounded.KeyboardArrowRight,
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun CourseTimeSlotCard(
+    index: Int,
+    slot: CourseTimeSlot,
+    canRemove: Boolean,
+    onPickWeekday: (DayOfWeek) -> Unit,
+    onPickStart: () -> Unit,
+    onPickEnd: () -> Unit,
+    onRemove: () -> Unit
+) {
+    Surface(
+        shape = RoundedCornerShape(20.dp),
+        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.86f),
+        border = androidx.compose.foundation.BorderStroke(
+            1.dp,
+            MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.38f)
+        )
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Text("第 ${index + 1} 段", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+                    Text(
+                        "${slot.weekday.shortLabel()} ${formatLocalTime(slot.startTime)}-${formatLocalTime(slot.endTime)}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                if (canRemove) {
+                    TextButton(onClick = onRemove) {
+                        Text("删除", color = MaterialTheme.colorScheme.error)
+                    }
+                }
+            }
+
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                DayOfWeek.entries.forEach { day ->
+                    FilterChip(
+                        selected = slot.weekday == day,
+                        onClick = { onPickWeekday(day) },
+                        label = { Text(day.shortLabel()) }
+                    )
+                }
+            }
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                EditorTimeSelectorCard(
+                    modifier = Modifier.weight(1f),
+                    label = "开始",
+                    time = slot.startTime,
+                    onClick = onPickStart
+                )
+                EditorMiddlePill(
+                    modifier = Modifier.width(84.dp),
+                    label = formatTimeSlotDuration(slot)
+                )
+                EditorTimeSelectorCard(
+                    modifier = Modifier.weight(1f),
+                    label = "结束",
+                    time = slot.endTime,
+                    onClick = onPickEnd
+                )
+            }
+            if (!slot.endTime.isAfter(slot.startTime)) {
+                Text(
+                    text = "结束时间必须晚于开始时间",
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodySmall,
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun EditorTimeSelectorCard(
+    modifier: Modifier = Modifier,
+    label: String,
+    time: LocalTime,
+    onClick: () -> Unit
+) {
+    Surface(
+        modifier = modifier.clickable(onClick = onClick),
+        shape = RoundedCornerShape(18.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.26f),
+        border = androidx.compose.foundation.BorderStroke(
+            1.dp,
+            MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.40f)
+        )
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp, vertical = 10.dp),
+            verticalArrangement = Arrangement.spacedBy(3.dp)
+        ) {
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                fontWeight = FontWeight.Medium
+            )
+            Text(
+                text = formatLocalTime(time),
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface
             )
         }
     }
@@ -1303,6 +1655,39 @@ private fun formatTimedSpan(startAt: LocalDateTime, endAt: LocalDateTime): Strin
         minutes >= 60 -> "${minutes / 60}小时${minutes % 60}分"
         else -> "${minutes}分"
     }
+}
+
+private fun formatTimeSlotDuration(slot: CourseTimeSlot): String {
+    val minutes = Duration.between(slot.startTime, slot.endTime).toMinutes().coerceAtLeast(0)
+    return when {
+        minutes >= 60 && minutes % 60 == 0L -> "${minutes / 60}小时"
+        minutes >= 60 -> "${minutes / 60}小时${minutes % 60}分"
+        else -> "${minutes}分"
+    }
+}
+
+private fun formatLocalTime(time: LocalTime): String {
+    return time.format(DateTimeFormatter.ofPattern("HH:mm", Locale.CHINA))
+}
+
+private fun nextOrSameWeekday(base: LocalDate, weekday: DayOfWeek): LocalDate {
+    val delta = (weekday.value - base.dayOfWeek.value + 7) % 7
+    return base.plusDays(delta.toLong())
+}
+
+private fun <T> List<T>.replaceAt(index: Int, value: T): List<T> {
+    if (index !in indices) return this
+    return mapIndexed { currentIndex, currentValue -> if (currentIndex == index) value else currentValue }
+}
+
+private fun <T> List<T>.replaceAt(index: Int, transform: (T) -> T): List<T> {
+    if (index !in indices) return this
+    return mapIndexed { currentIndex, currentValue -> if (currentIndex == index) transform(currentValue) else currentValue }
+}
+
+private fun <T> List<T>.removeAt(index: Int): List<T> {
+    if (index !in indices) return this
+    return filterIndexed { currentIndex, _ -> currentIndex != index }
 }
 
 private fun formatAllDaySpan(startDate: LocalDate, endDate: LocalDate): String {

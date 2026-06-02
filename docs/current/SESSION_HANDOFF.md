@@ -5,23 +5,33 @@
 - Repository root: `G:\Workspace\Project\PaykiTodo`
 - Branch: `main`
 - Current code version:
-  - `versionName = 1.13.46`
-  - `versionCode = 294`
+  - `versionName = 1.13.47`
+  - `versionCode = 295`
   - database version = `27`
 - Latest debug APK target in this round:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.13.46-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.13.47-debug.apk`
 - Latest signed release APK available locally:
   - `app/build/outputs/apk/release/PaykiTodo-1.13.11-release.apk`
 - Latest GitHub Release:
   - `https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.13.11`
 - Debug APK metadata inspection:
-  - `versionName = 1.13.46`, `versionCode = 294`
+  - `versionName = 1.13.47`, `versionCode = 295`
 
 ## Active Goal
 
-Active immediate task: finish and verify the Desktop Web `review.xls` 周历导入 feature from the current `1.13.46 / versionCode 294` local patch baseline.
+Active immediate task: finish and verify phone-side Calendar event creation with course-style multiple weekly time slots from the current `1.13.47 / versionCode 295` local patch baseline.
 
-Latest status: `1.13.46` adds a Desktop Web schedule import card for local `review.xls` / `.xlsx` weekly tables. The browser reads the selected Excel file only after the user chooses it, previews parsed events, marks duplicates, and imports selected items only after explicit confirmation. Debug build and metadata inspection passed.
+Latest status: `1.13.47` adds a `课程多时间段` mode to the phone event editor for new calendar events. It creates one weekly recurring event per selected weekday/time slot while sharing the common event fields. Debug build and metadata inspection passed.
+
+## What Changed In The Latest 1.13.47 Patch
+
+1. Phone Calendar event creation now exposes a `课程多时间段` switch for new events only.
+2. When enabled, the editor lets the user add multiple weekday + start/end time slots under one shared title/location/description/reminder/color/check-in/countdown configuration.
+3. Confirming creates multiple weekly recurring event drafts through the existing batch calendar import path, one event series per slot.
+4. Course mode keeps an explicit recurrence end date and does not require a database migration because each slot remains a normal weekly recurring calendar event.
+5. Editing existing events stays single-series for now; the app does not infer that separate weekly series belong to one course bundle.
+6. Version metadata moved to `1.13.47 / versionCode 295`; database version remains `27`.
+7. Verification passed: `./gradlew.bat :app:compileDebugKotlin`, `./gradlew.bat :app:testDebugUnitTest`, `git diff --check`, `./gradlew.bat :app:assembleDebug`, output metadata check, and `aapt dump badging` confirmed `versionName = 1.13.47`, `versionCode = 295`.
 
 ## What Changed In The Latest 1.13.46 Patch
 

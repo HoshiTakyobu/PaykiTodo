@@ -8,8 +8,8 @@
 - Target platform: Android 14 / API 34
 - License: MIT License (`LICENSE`)
 - Current version in code:
-  - `versionName = "1.13.46"`
-  - `versionCode = 294`
+  - `versionName = "1.13.47"`
+  - `versionCode = 295`
   - database version = `27`
 
 ## Current Build Facts
@@ -22,7 +22,13 @@
 - Latest GitHub Release:
   - `https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.13.11`
 - Latest fully built debug APK:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.13.46-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.13.47-debug.apk`
+- Current `1.13.47 / versionCode 295` status:
+  - Phone Calendar event creation adds a `课程多时间段` mode for new events.
+  - The mode lets one course/event share title, location, notes, reminder settings, color, countdown, and check-in settings across multiple weekday time slots.
+  - Confirming creates one weekly recurring calendar event per time slot, such as Tuesday `10:20-11:55` plus Thursday `08:30-10:05`, without changing the Room schema.
+  - Existing event editing intentionally remains single-series editing; the app does not yet merge multiple course slots into one virtual editor object.
+  - Verification passed: `./gradlew.bat :app:compileDebugKotlin`, `./gradlew.bat :app:testDebugUnitTest`, `git diff --check`, `./gradlew.bat :app:assembleDebug`, output metadata check, and `aapt dump badging` confirmed `versionName = 1.13.47`, `versionCode = 295`.
 - Current `1.13.46 / versionCode 294` status:
   - Desktop Web 日程时间轴新增 `周历 Excel 导入` 卡片，电脑端选择本地 `review.xls` / `.xlsx` 后可以只读解析候选日程。
   - 周历导入按表头日期和左侧节次时间推断日程起止；单元格内显式时间段优先，合并单元格按合并区域末行推断结束时间。

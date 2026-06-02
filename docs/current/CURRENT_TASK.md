@@ -2,7 +2,7 @@
 
 ## Active Development Focus
 
-Active immediate task: finish the Desktop Web `review.xls` 周历导入 round from the `1.13.46 / versionCode 294` local patch baseline, using the previous reminder/Planning Desk goal as the latest verified work package:
+Active immediate task: finish phone-side Calendar event creation with course-style multiple weekly time slots from the `1.13.47 / versionCode 295` local patch baseline, using the previous reminder/Planning Desk goal as the latest verified work package:
 
 - `docs/goals/2026-06-01-paykitodo-reminder-ongoing-planning-ux-goal.md`
 
@@ -10,15 +10,15 @@ Do not commit secrets, signing material, API keys, private Base URLs, generated 
 
 ## Current Round Scope
 
-The current user request is to let the computer-side PaykiTodo console read a local weekly Excel timetable such as `G:\PlanGit\review.xls`, preview parsed schedule items, and import only the confirmed non-duplicate events into the phone database.
+The current user request is to let the phone-side Calendar event editor create one course/event with multiple weekly time slots, for example Tuesday `10:20-11:55` and Thursday `08:30-10:05`, without forcing the user to create each weekly event manually.
 
 Important constraints:
 
-1. Do not modify or save `G:\PlanGit\review.xls`.
-2. Do not invoke `存个档.bat` or `Core.ps1`.
-3. Do not archive the Excel file and do not set the Windows desktop wallpaper.
-4. Browser security means the web console cannot silently read `G:\PlanGit\review.xls`; the current implementation uses a manual file picker and then parses the selected file locally in the browser.
-5. Duplicates already in PaykiTodo or repeated inside Excel must be marked and skipped unless they are genuinely new candidates.
+1. Do not change the database schema for this round.
+2. New-event creation can generate multiple normal weekly recurring calendar events, one per time slot.
+3. Shared fields should include title, location, notes, reminder settings, color, countdown, and check-in settings.
+4. Existing event editing should remain single-series editing for now; do not silently merge or bulk-edit separate recurrence series.
+5. Course mode must stay compact enough for phone use and must not become a crowded button-grid interface.
 
 Historical usability / correctness failures from the broader audit:
 
@@ -102,6 +102,7 @@ Completed behavior so far:
 15. In `1.13.45`, Desktop Web Planning Desk recognition preview uses weekday chips for weekly recurrence candidates and clears hidden weekly-day state when candidates are changed away from weekly recurrence.
 16. In `1.13.46`, Desktop Web 日程时间轴 adds a `周历 Excel 导入` card that parses selected weekly Excel files, previews candidate events, marks duplicates, and imports only selected confirmed items.
 17. In `1.13.46`, validation passed: `node --check app/src/main/assets/desktop-web/app.js`, local `review.xls` parse smoke test, `git diff --check`, `compileDebugKotlin`, `testDebugUnitTest`, `assembleDebug`, and APK metadata check for `versionName = 1.13.46`, `versionCode = 294`.
+18. In `1.13.47`, phone Calendar new-event creation adds `课程多时间段`: each selected weekday/time slot becomes one weekly recurring event series while sharing common event fields; validation passed with `compileDebugKotlin`, `testDebugUnitTest`, `git diff --check`, `assembleDebug`, output metadata check, and `aapt dump badging`.
 5. Recurring todo range delete now uses the hard-delete path instead of cancel/archive.
 6. Recurring todo current-instance delete records a `recurring_instance_skips` exception and then hard-deletes the row, so the occurrence does not enter history and does not regenerate.
 7. Backup / restore includes `recurring_instance_skips`, so single-instance recurring-todo deletions survive restore.

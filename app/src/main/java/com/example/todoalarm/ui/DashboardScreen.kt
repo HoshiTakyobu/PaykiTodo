@@ -913,6 +913,25 @@ fun DashboardScreen(
                         Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
                     }
                 }
+            },
+            onConfirmMultiple = { drafts ->
+                scope.launch {
+                    val current = editingItem?.takeIf { it.isEvent }
+                    val message = if (current == null) {
+                        onImportCalendarEvents(drafts)
+                    } else {
+                        "编辑已有日程暂不支持批量修改多个时间段"
+                    }
+
+                    if (message == null) {
+                        editorVisible = false
+                        editingItem = null
+                        calendarDraftSeed = null
+                        Toast.makeText(context, "已创建 ${drafts.size} 个课程时间段", Toast.LENGTH_SHORT).show()
+                    } else {
+                        Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+                    }
+                }
             }
         )
     }

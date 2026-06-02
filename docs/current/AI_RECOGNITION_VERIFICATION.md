@@ -2,7 +2,7 @@
 
 ## Scope
 
-This document verifies the PaykiTodo `1.8.5` Planning Desk AI-recognition path. AI recognition must only run after an explicit recognition action, then still enter the preview-first import flow.
+This document verifies the PaykiTodo Planning Desk AI-recognition path. AI recognition must only run after an explicit recognition action, clear local syntax should be handled locally first, and any AI result must still enter the preview-first import flow.
 
 ## Phone Call Chain
 
@@ -16,8 +16,8 @@ This document verifies the PaykiTodo `1.8.5` Planning Desk AI-recognition path. 
    - the visible `识别` button calls `onParse(editorValue.text)`.
 5. `app/src/main/java/com/example/todoalarm/ui/TodoViewModel.kt:198-199`
    - `parsePlanningMarkdown` calls `PlanningRecognitionService.recognize`.
-6. `app/src/main/java/com/example/todoalarm/data/PlanningRecognitionService.kt:7-26`
-   - decides AI-first or local-fallback recognition.
+6. `app/src/main/java/com/example/todoalarm/data/PlanningRecognitionService.kt`
+   - runs local recognition first, returns local candidates when explicit syntax covers the actionable lines, and only calls AI for remaining free-form natural text when providers are configured.
 
 The phone editor auto-save effects call `onSaveNote` / `onSyncMappings` only. They do not call `onParse` or `PlanningRecognitionService.recognize`.
 

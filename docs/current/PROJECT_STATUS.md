@@ -8,8 +8,8 @@
 - Target platform: Android 14 / API 34
 - License: MIT License (`LICENSE`)
 - Current version in code:
-  - `versionName = "1.13.55"`
-  - `versionCode = 303`
+  - `versionName = "1.13.57"`
+  - `versionCode = 305`
   - database version = `27`
 
 ## Current Build Facts
@@ -22,7 +22,12 @@
 - Latest GitHub Release:
   - `https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.13.11`
 - Latest fully built debug APK:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.13.56-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.13.57-debug.apk`
+- Current `1.13.57 / versionCode 305` status:
+  - Planning Desk recognition now runs local parsing first and uses it directly when explicit Markdown / DDL / schedule syntax already covers all actionable lines.
+  - Explicit local parse errors remain visible in the preview instead of being hidden by AI fallback.
+  - Mixed free-form natural text still remains eligible for AI recognition, while AI prompts receive the planning document date as fallback context and are told that inline explicit dates win over document dates.
+  - Verification passed: `./gradlew.bat :app:testDebugUnitTest --tests com.example.todoalarm.data.PlanningRecognitionServiceTest`, `./gradlew.bat :app:testDebugUnitTest --tests com.example.todoalarm.data.PlanningMarkdownParserTest`, `./gradlew.bat :app:compileDebugKotlin`, `./gradlew.bat :app:testDebugUnitTest`, `node --check app/src/main/assets/desktop-web/app.js`, `git diff --check`, `./gradlew.bat :app:assembleDebug`, and APK metadata inspection for `versionName = 1.13.57`, `versionCode = 305`.
 - Current `1.13.56 / versionCode 304` status:
   - Phone Calendar visible-range updates now keep the current event query window when it already covers the requested range, avoiding redundant Room event queries during small day / three-day timeline swipes.
   - The query-window decision is covered by `CalendarEventWindowTest`; database version remains `27`, no schema migration was added.

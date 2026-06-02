@@ -5,23 +5,33 @@
 - Repository root: `G:\Workspace\Project\PaykiTodo`
 - Branch: `main`
 - Current code version:
-  - `versionName = 1.13.56`
-  - `versionCode = 304`
+  - `versionName = 1.13.57`
+  - `versionCode = 305`
   - database version = `27`
 - Latest debug APK target in this round:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.13.56-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.13.57-debug.apk`
 - Latest signed release APK available locally:
   - `app/build/outputs/apk/release/PaykiTodo-1.13.11-release.apk`
 - Latest GitHub Release:
   - `https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.13.11`
 - Debug APK metadata inspection:
-  - `versionName = 1.13.56`, `versionCode = 304`
+  - `versionName = 1.13.57`, `versionCode = 305`
 
 ## Active Goal
 
-Active immediate task: continue auditing requirement / UX consistency from the current `1.13.56 / versionCode 304` local patch baseline.
+Active immediate task: continue auditing requirement / UX consistency from the current `1.13.57 / versionCode 305` local patch baseline.
 
-Latest status: `1.13.56` reduces phone calendar timeline query churn: visible-range updates now keep the current Room event window when it already covers the requested range, so small date swipes do not repeatedly rebuild the event flow. Debug build and metadata inspection passed.
+Latest status: `1.13.57` routes Planning Desk recognition through local rules first. Clear Markdown / DDL / schedule syntax uses local candidates directly when every actionable line is covered, explicit local parse errors stay visible in preview, mixed free-form text can still use AI, and AI prompts now receive the planning document date as fallback context without overriding inline dates. Debug build and metadata inspection passed.
+
+## What Changed In The Latest 1.13.57 Patch
+
+1. `PlanningRecognitionService` now parses locally before considering AI.
+2. If local candidates cover all actionable non-heading lines, recognition returns local candidates directly, including explicit error candidates that should be shown in preview.
+3. Mixed documents with uncovered natural-language lines remain eligible for configured AI providers.
+4. `PlanningAiRecognizer` receives the Planning Desk document date and includes it in system/user prompts as fallback context, while explicitly requiring inline dates to win.
+5. `PlanningRecognitionServiceTest` covers local-first explicit syntax, mixed natural text, inline-date-over-document-date behavior, and explicit local parse errors staying local.
+6. Version metadata moved to `1.13.57 / versionCode 305`; database version remains `27`.
+7. Verification passed: targeted `PlanningRecognitionServiceTest`, targeted `PlanningMarkdownParserTest`, `./gradlew.bat :app:compileDebugKotlin`, full `./gradlew.bat :app:testDebugUnitTest`, `node --check app/src/main/assets/desktop-web/app.js`, `git diff --check`, `./gradlew.bat :app:assembleDebug`, and APK metadata inspection for `versionName = 1.13.57`, `versionCode = 305`.
 
 ## What Changed In The Latest 1.13.56 Patch
 

@@ -14,13 +14,14 @@ object PlanningAiRecognizer {
     suspend fun recognize(
         markdown: String,
         providers: List<PlanningAiProvider>,
-        now: LocalDateTime = LocalDateTime.now()
+        now: LocalDateTime = LocalDateTime.now(),
+        defaultDate: LocalDate? = null
     ): PlanningParseResult {
         val response = PlanningAiCaller.callWithFallback(
             providers = providers,
             request = PlanningAiRequest(
-                systemPrompt = buildSystemPrompt(now),
-                prompt = buildUserPrompt(markdown, now)
+                systemPrompt = buildSystemPrompt(now, defaultDate),
+                prompt = buildUserPrompt(markdown, now, defaultDate)
             )
         )
         return parseAiContent(
@@ -334,9 +335,10 @@ object PlanningAiRecognizer {
         return optString(name).takeIf { it.isNotBlank() }
     }
 
-    private fun buildUserPrompt(markdown: String, now: LocalDateTime): String {
+    private fun buildUserPrompt(markdown: String, now: LocalDateTime, defaultDate: LocalDate?): String {
         return """
             当前时间：${now.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)}
+            ${defaultDate?.let { "当前规划文档日期：$it。没有显式日期但有日期上下文的条目，优先按这个日期理解。" } ?: "当前规划文档没有指定日期。"}
 
             用户写下的规划内容如下。请把它拆成待办和日程候选：
 
@@ -346,12 +348,16 @@ object PlanningAiRecognizer {
         """.trimIndent()
     }
 
-    private fun buildSystemPrompt(now: LocalDateTime): String {
+    private fun buildSystemPrompt(now: LocalDateTime, defaultDate: LocalDate?): String {
         val today = now.toLocalDate()
+        val documentDateRule = defaultDate?.let {
+            "当前规划文档日期是 $it。没有显式日期、但语义依赖当前规划文档日期的条目，可以按 $it 作为默认日期；行内显式日期必须优先于文档日期。"
+        } ?: "当前规划文档没有指定日期；没有显式日期时不要编造具体日期。"
         return """
             你是 PaykiTodo 规划台的结构化识别器。你的任务是把用户随手写的中文规划、备忘、课程安排、DDL、会议、复习计划拆成可预览候选。
 
             必须只输出 JSON，不要输出 Markdown、解释、寒暄或代码块。今天是 $today，当前时间是 ${now.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)}。
+            $documentDateRule
 
             输出格式：
             {"items":[{"type":"todo","lineNumber":1,"sourceLine":"原文片段","title":"标题","notes":"","location":"","groupName":"","dueAt":"2026-05-28T23:59:00","startAt":null,"endAt":null,"allDay":false,"countdownEnabled":false,"reminderOffsetsMinutes":[5],"recurrence":{"enabled":false,"type":"NONE","weeklyDays":[],"endDate":null},"createLinkedTodo":false,"message":"根据自然文本推断，建议确认"}]}

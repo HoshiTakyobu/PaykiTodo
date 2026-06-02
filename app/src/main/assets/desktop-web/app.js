@@ -55,6 +55,7 @@ const state = {
   desktopHeartbeatTimer: null,
   editingTodoOriginalRecurring: false,
   editingEventOriginalRecurring: false,
+  editingEventMultiSlotBundleId: null,
   eventCourseSlots: [],
   reviewImport: {
     fileName: '',
@@ -3355,6 +3356,7 @@ function openTodoEditor(item) {
 function clearEventForm() {
   state.editingEventId = null;
   state.editingEventOriginalRecurring = false;
+  state.editingEventMultiSlotBundleId = null;
   state.pendingEventSeed = null;
   fillGroupSelect('event-group');
   document.getElementById('event-modal-title').textContent = '新增日程';
@@ -3379,6 +3381,8 @@ function clearEventForm() {
   document.getElementById('event-all-day').checked = false;
   document.getElementById('event-ring').checked = true;
   document.getElementById('event-vibrate').checked = true;
+  document.getElementById('event-multi-slot-sync').checked = false;
+  document.getElementById('event-multi-slot-sync-block').classList.add('hidden');
   state.eventCourseSlots = [defaultEventCourseSlot()];
   setEventCourseModeEnabled(false, true);
 }
@@ -3489,6 +3493,7 @@ bindWeekdayChips('event');
 function openEventEditor(item) {
   state.editingEventId = item.id;
   state.editingEventOriginalRecurring = item.isRecurring === true;
+  state.editingEventMultiSlotBundleId = item.multiSlotBundleId || null;
   state.pendingEventSeed = null;
   fillGroupSelect('event-group', item.groupId);
   document.getElementById('event-modal-title').textContent = '编辑日程';
@@ -3508,6 +3513,8 @@ function openEventEditor(item) {
   setWeekdays('event', item.recurrenceWeekdays);
   syncRecurrenceWeekdayVisibility('event');
   setRecurrenceScopeBlock('event', item.isRecurring === true, 'CURRENT_AND_FUTURE');
+  document.getElementById('event-multi-slot-sync').checked = false;
+  document.getElementById('event-multi-slot-sync-block').classList.toggle('hidden', !state.editingEventMultiSlotBundleId);
   document.getElementById('event-countdown').checked = item.countdownEnabled === true;
   document.getElementById('event-check-in').checked = item.checkInEnabled === true;
   document.getElementById('event-all-day').checked = item.allDay === true;
@@ -4457,6 +4464,8 @@ document.getElementById('save-event').onclick = async () => {
       ringEnabled: eventReminderEnabled && document.getElementById('event-ring').checked,
       vibrateEnabled: eventReminderEnabled && document.getElementById('event-vibrate').checked,
       reminderDeliveryMode: document.getElementById('event-reminder-mode').value,
+      multiSlotBundleId: state.editingEventMultiSlotBundleId,
+      syncMultiSlotBundleSharedFields: !!state.editingEventMultiSlotBundleId && document.getElementById('event-multi-slot-sync')?.checked === true,
       scope: recurrenceScopePayload('event', state.editingEventOriginalRecurring, recurrenceType),
       recurrence: recurrencePayload(
         recurrenceType,
@@ -4503,7 +4512,7 @@ document.getElementById('save-event').onclick = async () => {
       }
       await api('/api/events/batch', {
         method: 'POST',
-        body: JSON.stringify({ events: coursePayloads })
+        body: JSON.stringify({ multiSlotBundle: true, events: coursePayloads })
       });
       els.status.textContent = '已创建 ' + slots.length + ' 个每周时间段';
     } else if (state.editingEventId) {

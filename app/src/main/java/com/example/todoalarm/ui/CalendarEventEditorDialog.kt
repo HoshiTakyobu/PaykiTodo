@@ -121,7 +121,8 @@ internal fun CalendarEventEditorDialog(
     defaultReminderDeliveryMode: ReminderDeliveryMode,
     onDismiss: () -> Unit,
     onConfirm: (CalendarEventDraft) -> Unit,
-    onConfirmMultiple: ((List<CalendarEventDraft>) -> Unit)? = null
+    onConfirmMultiple: ((List<CalendarEventDraft>) -> Unit)? = null,
+    onConfirmMultiSlotBundleShared: ((CalendarEventDraft) -> Unit)? = null
 ) {
     val context = LocalContext.current
     val now = remember { LocalDateTime.now().withSecond(0).withNano(0) }
@@ -226,6 +227,7 @@ internal fun CalendarEventEditorDialog(
     var activeDateTimeTarget by remember { mutableStateOf<CalendarDateTimeTarget?>(null) }
     var activeLunarDateTarget by remember { mutableStateOf<CalendarDateTarget?>(null) }
     var courseMultiSlotEnabled by remember(initialEvent?.id) { mutableStateOf(false) }
+    var syncMultiSlotBundleSharedFields by remember(initialEvent?.id) { mutableStateOf(false) }
     var courseSlots by remember(initialEvent?.id) {
         mutableStateOf(
             listOf(
@@ -296,7 +298,8 @@ internal fun CalendarEventEditorDialog(
         recurrenceEndDate,
         selectedGroupId,
         courseMultiSlotEnabled,
-        courseSlots
+        courseSlots,
+        syncMultiSlotBundleSharedFields
     ) {
         if (initialEvent == null) {
             title.isNotBlank() ||
@@ -311,7 +314,8 @@ internal fun CalendarEventEditorDialog(
                 recurringEnabled ||
                 selectedGroupId != initialSelectedGroupId ||
                 courseMultiSlotEnabled ||
-                courseSlots.size > 1
+                courseSlots.size > 1 ||
+                syncMultiSlotBundleSharedFields
         } else {
             title != initialEvent.title ||
                 location != initialEvent.location ||
@@ -365,6 +369,7 @@ internal fun CalendarEventEditorDialog(
                     weeklyDays = weeklyDays,
                     endDate = recurrenceEndDate
                 ),
+                multiSlotBundleId = initialEvent?.multiSlotBundleId ?: seedDraft?.multiSlotBundleId,
                 groupId = selectedGroupId,
                 groupName = selectedGroup?.name.orEmpty()
             )
@@ -393,7 +398,11 @@ internal fun CalendarEventEditorDialog(
                 }
                 onConfirmMultiple?.invoke(courseDrafts) ?: onConfirm(courseDrafts.first())
             } else {
-                onConfirm(baseDraft)
+                if (syncMultiSlotBundleSharedFields && initialEvent?.multiSlotBundleId?.isNotBlank() == true) {
+                    onConfirmMultiSlotBundleShared?.invoke(baseDraft) ?: onConfirm(baseDraft)
+                } else {
+                    onConfirm(baseDraft)
+                }
             }
         }
     ) {
@@ -623,6 +632,32 @@ internal fun CalendarEventEditorDialog(
                             ) {
                                 Text("添加一个时间段")
                             }
+                        }
+                    }
+                }
+
+                if (initialEvent?.multiSlotBundleId?.isNotBlank() == true) {
+                    EditorBlock(title = "每周多时间段组") {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Column(
+                                modifier = Modifier.weight(1f),
+                                verticalArrangement = Arrangement.spacedBy(2.dp)
+                            ) {
+                                Text("同步共享字段到同组全部时间段", fontWeight = FontWeight.SemiBold)
+                                Text(
+                                    text = "保存时同步标题、地点、描述、分组、颜色、提醒、倒数日和打卡；不会改每个时间段自己的周几和起止时间。",
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                            Switch(
+                                checked = syncMultiSlotBundleSharedFields,
+                                onCheckedChange = { syncMultiSlotBundleSharedFields = it },
+                                thumbContent = null
+                            )
                         }
                     }
                 }

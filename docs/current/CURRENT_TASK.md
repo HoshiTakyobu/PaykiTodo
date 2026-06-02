@@ -2,7 +2,7 @@
 
 ## Active Development Focus
 
-Active immediate task: continue requirement / UX consistency auditing from the `1.13.62 / versionCode 310` local patch baseline, using the previous reminder/Planning Desk goal as the latest verified work package:
+Active immediate task: continue requirement / UX consistency auditing from the `1.13.63 / versionCode 311` local patch baseline, using the previous reminder/Planning Desk goal as the latest verified work package:
 
 - `docs/goals/2026-06-01-paykitodo-reminder-ongoing-planning-ux-goal.md`
 
@@ -10,11 +10,11 @@ Do not commit secrets, signing material, API keys, private Base URLs, generated 
 
 ## Current Round Scope
 
-The current user request is to check current software behavior against requirements and UX expectations, then fix confirmed mismatches. The current concrete fix is phone todo-editor UI consistency: the todo recurrence type selector still used a horizontal FilterChip button group for an enum-like choice, violating `docs/current/UI_DESIGN_RULES.md`.
+The current user request is to continue the weekly multi-slot Calendar feature beyond initial creation. The current concrete fix is multi-slot event group persistence and shared-field editing: newly created weekly multi-slot events now carry a shared bundle id, and phone / Desktop Web editors can synchronize shared fields across the bundle while preserving each slot's own weekday and time.
 
 Important constraints:
 
-1. Do not change the database schema for this round.
+1. Database version is now `28` because multi-slot bundle ids are persisted on event items and recurring templates.
 2. Concrete todo rows in the board widget should carry `EXTRA_OPEN_TODO_ID`.
 3. Concrete event rows in the schedule aggregate card should carry `EXTRA_OPEN_EVENT_ID`.
 4. Section titles and aggregate schedule card should still open the broader Todo / Calendar surface rather than a random detail.
@@ -118,6 +118,7 @@ Completed behavior so far:
 31. In `1.13.60`, Desktop Web in-app form dialogs support Enter confirmation for text, number, and select fields, while textarea fields keep Enter as newline and use Ctrl+Enter / Cmd+Enter to confirm. Validation passed with `node --check`, `compileDebugKotlin`, full `testDebugUnitTest`, `git diff --check`, `assembleDebug`, and APK metadata inspection.
 32. In `1.13.61`, phone Calendar event editor exposes a compact single-choice `日程分组` row, normal / weekly multi-slot event drafts persist the selected group, and draft-based editor entries preserve prefilled titles. Validation passed with `compileDebugKotlin`, full `testDebugUnitTest`, `node --check`, `git diff --check`, `assembleDebug`, and APK metadata inspection.
 33. In `1.13.62`, phone todo editor recurrence type selection changes from a horizontal enum FilterChip group to a compact single-choice row/dialog with short recurrence explanations. Weekly weekday chips remain only for the actual multi-select weekday set. Validation passed with `compileDebugKotlin`, full `testDebugUnitTest`, `node --check`, `git diff --check`, `assembleDebug`, and APK metadata inspection.
+34. In `1.13.63`, weekly multi-slot event creation writes a shared `multiSlotBundleId` into each generated slot series and recurring template. Phone and Desktop Web editing can synchronize shared fields across the bundled slots without changing their individual weekdays and start/end times. Validation passed with `compileDebugKotlin`, full `testDebugUnitTest`, `node --check`, `git diff --check`, `assembleDebug`, Room schema inspection, and APK metadata inspection.
 5. Recurring todo range delete now uses the hard-delete path instead of cancel/archive.
 6. Recurring todo current-instance delete records a `recurring_instance_skips` exception and then hard-deletes the row, so the occurrence does not enter history and does not regenerate.
 7. Backup / restore includes `recurring_instance_skips`, so single-instance recurring-todo deletions survive restore.

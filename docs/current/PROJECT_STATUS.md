@@ -8,9 +8,9 @@
 - Target platform: Android 14 / API 34
 - License: MIT License (`LICENSE`)
 - Current version in code:
-  - `versionName = "1.13.62"`
-  - `versionCode = 310`
-  - database version = `27`
+  - `versionName = "1.13.63"`
+  - `versionCode = 311`
+  - database version = `28`
 
 ## Current Build Facts
 
@@ -22,7 +22,14 @@
 - Latest GitHub Release:
   - `https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.13.11`
 - Latest fully built debug APK:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.13.62-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.13.63-debug.apk`
+- Current `1.13.63 / versionCode 311` status:
+  - Weekly multi-slot event creation now assigns the generated slot series a shared `multiSlotBundleId`, persisted on event items and recurring templates.
+  - Phone Calendar editing exposes a compact `同步共享字段到同组全部时间段` switch for existing bundled multi-slot events.
+  - Desktop Web event editing exposes the same bundled shared-field sync switch and sends it through Desktop Sync.
+  - Shared-field sync updates title, location, notes, primary group, color, reminder offsets, countdown, and check-in flags while preserving each slot's own weekday and start/end time.
+  - Backup JSON and Desktop Sync JSON include `multiSlotBundleId`; database version is now `28` with indexes for bundle lookups.
+  - Verification passed: `./gradlew.bat :app:compileDebugKotlin`, `./gradlew.bat :app:testDebugUnitTest`, `node --check app/src/main/assets/desktop-web/app.js`, `git diff --check`, `./gradlew.bat :app:assembleDebug`, Room schema inspection, and APK metadata inspection for `versionName = 1.13.63`, `versionCode = 311`.
 - Current `1.13.62 / versionCode 310` status:
   - Phone todo editor recurrence type selection now uses a compact single-choice row and dialog instead of a horizontal FilterChip button group.
   - The recurrence type dialog includes short rule explanations for daily, weekly, monthly, yearly, and lunar-yearly recurrence choices.

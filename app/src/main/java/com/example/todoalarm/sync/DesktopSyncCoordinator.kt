@@ -378,8 +378,11 @@ class DesktopSyncCoordinator(
     private suspend fun createEvents(json: JSONObject): JSONObject {
         val events = json.optJSONArray("events") ?: error("缺少 events")
         if (events.length() == 0) error("没有可创建的日程")
+        val multiSlotBundleId = json.optStringOrNull("multiSlotBundleId")?.takeIf { it.isNotBlank() }
+            ?: if (json.optBoolean("multiSlotBundle", false)) UUID.randomUUID().toString() else null
         val drafts = (0 until events.length()).map { index ->
-            newEventDraftFromJson(events.getJSONObject(index))
+            val draft = newEventDraftFromJson(events.getJSONObject(index))
+            if (multiSlotBundleId != null) draft.copy(multiSlotBundleId = multiSlotBundleId) else draft
         }
         drafts.forEachIndexed { index, draft ->
             require(draft.title.isNotBlank()) { "第 ${index + 1} 段：日程标题不能为空" }
@@ -424,7 +427,8 @@ class DesktopSyncCoordinator(
             countdownEnabled = json.optBoolean("countdownEnabled", false),
             checkInEnabled = json.optBoolean("checkInEnabled", false),
             recurrence = recurrence,
-            groupId = groupId
+            groupId = groupId,
+            multiSlotBundleId = json.optStringOrNull("multiSlotBundleId")
         )
     }
 
@@ -458,16 +462,34 @@ class DesktopSyncCoordinator(
             countdownEnabled = json.optBoolean("countdownEnabled", original.countdownEnabled),
             checkInEnabled = json.optBoolean("checkInEnabled", original.checkInEnabled),
             recurrence = recurrence,
-            groupId = groupId
+            groupId = groupId,
+            multiSlotBundleId = json.optStringOrNull("multiSlotBundleId") ?: original.multiSlotBundleId
         )
         require(draft.title.isNotBlank()) { "日程标题不能为空" }
-        validateEventDraft(draft = draft, original = original, scope = targetScope)?.let { error(it) }
-        val affected = app.repository.getActiveItemsForScope(original, targetScope)
+        val syncMultiSlotBundle = json.optBoolean("syncMultiSlotBundleSharedFields", false) &&
+            !original.multiSlotBundleId.isNullOrBlank()
+        validateEventDraft(
+            draft = draft,
+            original = original,
+            scope = if (syncMultiSlotBundle) RecurrenceScope.ALL else targetScope
+        )?.let { error(it) }
+        val affected = if (syncMultiSlotBundle) {
+            app.repository.getActiveEventsForMultiSlotBundle(original)
+        } else {
+            app.repository.getActiveItemsForScope(original, targetScope)
+        }
         clearReminderArtifacts(affected.ifEmpty { listOf(original) })
-        val updated = app.repository.updateCalendarEventFromDraft(original, draft, targetScope)
+        val updated = if (syncMultiSlotBundle) {
+            app.repository.updateCalendarEventMultiSlotBundleSharedFields(original, draft)
+        } else {
+            app.repository.updateCalendarEventFromDraft(original, draft, targetScope)
+        }
         updated.forEach { scheduleReminderOrDisable(it) }
         autoBackupIfNeeded()
-        return JSONObject().put("ok", updated.isNotEmpty()).put("scope", targetScope.name)
+        return JSONObject()
+            .put("ok", updated.isNotEmpty())
+            .put("scope", targetScope.name)
+            .put("multiSlotBundleUpdated", syncMultiSlotBundle)
     }
 
     private suspend fun eventCheckIns(path: String): JSONObject {
@@ -1112,7 +1134,8 @@ class DesktopSyncCoordinator(
         countdownEnabled: Boolean,
         checkInEnabled: Boolean,
         recurrence: RecurrenceConfig,
-        groupId: Long
+        groupId: Long,
+        multiSlotBundleId: String? = null
     ): CalendarEventDraft {
         val baseDraft = CalendarEventDraft(
             title = title,
@@ -1130,6 +1153,7 @@ class DesktopSyncCoordinator(
             countdownEnabled = countdownEnabled,
             checkInEnabled = checkInEnabled,
             recurrence = recurrence,
+            multiSlotBundleId = multiSlotBundleId?.takeIf { it.isNotBlank() },
             groupId = groupId
         )
         val now = System.currentTimeMillis()

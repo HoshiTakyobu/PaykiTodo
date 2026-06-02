@@ -4,6 +4,7 @@ import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
+import java.util.UUID
 
 const val DEFAULT_MULTI_SLOT_EVENT_DAYS = 90L
 
@@ -24,6 +25,8 @@ fun buildWeeklyMultiSlotEventDrafts(
     }
 ): List<CalendarEventDraft> {
     require(slots.isNotEmpty()) { "至少需要一个时间段" }
+    val bundleId = baseDraft.multiSlotBundleId?.takeIf { it.isNotBlank() }
+        ?: UUID.randomUUID().toString()
     return slots.map { slot ->
         require(slot.endTime.isAfter(slot.startTime)) {
             "${slot.weekday} ${slot.startTime}-${slot.endTime}：结束时间必须晚于开始时间"
@@ -38,6 +41,7 @@ fun buildWeeklyMultiSlotEventDrafts(
             allDay = false,
             reminderMinutesBefore = offsets.minOrNull(),
             reminderOffsetsMinutes = offsets,
+            multiSlotBundleId = bundleId,
             recurrence = RecurrenceConfig(
                 enabled = true,
                 type = RecurrenceType.WEEKLY,

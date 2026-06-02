@@ -1795,6 +1795,60 @@ class TodoRepository(
         return updatedItems
     }
 
+    suspend fun getActiveEventsForMultiSlotBundle(item: TodoItem): List<TodoItem> {
+        val bundleId = item.multiSlotBundleId?.takeIf { it.isNotBlank() } ?: return emptyList()
+        return todoDao.getActiveEventsByMultiSlotBundle(bundleId)
+    }
+
+    suspend fun updateCalendarEventMultiSlotBundleSharedFields(
+        original: TodoItem,
+        draft: CalendarEventDraft
+    ): List<TodoItem> {
+        val bundleId = original.multiSlotBundleId?.takeIf { it.isNotBlank() }
+            ?: return updateCalendarEventFromDraft(original, draft, RecurrenceScope.CURRENT)
+        val targets = todoDao.getActiveEventsByMultiSlotBundle(bundleId)
+        if (targets.isEmpty()) return emptyList()
+
+        val resolvedGroupId = when {
+            draft.groupId > 0 -> draft.groupId
+            draft.groupName.isNotBlank() -> resolveGroupIdByNameOrCreate(draft.groupName)
+            else -> original.groupId
+        }
+        val now = System.currentTimeMillis()
+        val updatedItems = targets.mapNotNull { target ->
+            val targetStartAt = target.eventStartDateTimeOrNull() ?: return@mapNotNull null
+            val targetEndAt = target.eventEndDateTimeOrNull() ?: targetStartAt.plusMinutes(30)
+            val targetOffsets = draft.normalizedReminderOffsetsMinutes.filter { minutes ->
+                targetStartAt.minusMinutes(minutes.toLong()).toEpochMillis() > now
+            }
+            buildCalendarEventItem(
+                draft = draft.copy(
+                    startAt = targetStartAt,
+                    endAt = targetEndAt,
+                    allDay = target.allDay,
+                    reminderMinutesBefore = targetOffsets.minOrNull(),
+                    reminderOffsetsMinutes = targetOffsets,
+                    recurrence = target.toRecurrenceConfig(),
+                    multiSlotBundleId = bundleId,
+                    groupId = resolvedGroupId
+                ),
+                now = target.createdAtMillis,
+                existing = target,
+                keepSeries = target.isRecurring
+            )
+        }
+        if (updatedItems.isEmpty()) return emptyList()
+
+        todoDao.updateAll(updatedItems)
+        updateMultiSlotBundleTemplates(
+            bundleId = bundleId,
+            draft = draft.copy(groupId = resolvedGroupId, multiSlotBundleId = bundleId)
+        )
+        updatedItems.forEach { syncPlanningNodeFromItem(it) }
+        notifyItemsChanged()
+        return updatedItems
+    }
+
     suspend fun deleteCalendarEvent(
         item: TodoItem,
         scope: RecurrenceScope = RecurrenceScope.CURRENT
@@ -3510,6 +3564,7 @@ class TodoRepository(
             missed = false,
             missedAtMillis = null,
             recurringSeriesId = if (keepSeries) existing?.recurringSeriesId else seriesId,
+            multiSlotBundleId = draft.multiSlotBundleId?.takeIf { it.isNotBlank() } ?: existing?.multiSlotBundleId,
             recurrenceType = if (recurrence.isRecurring) recurrence.type.name else if (keepSeries) {
                 existing?.recurrenceType ?: RecurrenceType.NONE.name
             } else {
@@ -3622,6 +3677,7 @@ class TodoRepository(
             location = draft.location.trim(),
             accentColorHex = draft.accentColorHex,
             countdownEnabled = draft.countdownEnabled,
+            multiSlotBundleId = draft.multiSlotBundleId?.takeIf { it.isNotBlank() },
             allDay = draft.allDay,
             groupId = draft.groupId,
             dueHour = draft.startAt.hour,
@@ -3650,6 +3706,31 @@ class TodoRepository(
             startEpochDay = startDate.toEpochDay(),
             endEpochDay = draft.recurrence.endDate?.toEpochDay() ?: startDate.toEpochDay()
         )
+    }
+
+    private suspend fun updateMultiSlotBundleTemplates(
+        bundleId: String,
+        draft: CalendarEventDraft
+    ) {
+        val normalizedOffsets = draft.normalizedReminderOffsetsMinutes
+        todoDao.getTemplatesByMultiSlotBundle(bundleId).forEach { template ->
+            todoDao.updateTemplate(
+                template.copy(
+                    title = draft.title.trim(),
+                    notes = draft.notes.trim(),
+                    location = draft.location.trim(),
+                    accentColorHex = draft.accentColorHex,
+                    countdownEnabled = draft.countdownEnabled,
+                    groupId = draft.groupId,
+                    reminderOffsetMinutes = normalizedOffsets.firstOrNull(),
+                    reminderOffsetsCsv = encodeReminderOffsets(normalizedOffsets, draft.reminderMinutesBefore),
+                    ringEnabled = draft.ringEnabled,
+                    vibrateEnabled = draft.vibrateEnabled,
+                    reminderDeliveryMode = draft.reminderDeliveryMode.name,
+                    multiSlotBundleId = bundleId
+                )
+            )
+        }
     }
 
     private fun generateRecurringItems(
@@ -3775,6 +3856,7 @@ class TodoRepository(
                         reminderDeliveryMode = ReminderDeliveryMode.fromStorage(template.reminderDeliveryMode),
                         countdownEnabled = template.countdownEnabled,
                         recurrence = template.toRecurrenceConfig(),
+                        multiSlotBundleId = template.multiSlotBundleId,
                         groupId = template.groupId
                     ),
                     now = nowMillis,
@@ -3834,6 +3916,14 @@ class TodoRepository(
             return Instant.ofEpochMilli(anchorMillis).atZone(ZoneId.systemDefault()).toLocalDate()
         }
         return if (isEvent) eventStartDate() else dueDateTimeOrNull()?.toLocalDate()
+    }
+
+    private fun TodoItem.eventStartDateTimeOrNull(): LocalDateTime? {
+        return startAtMillis?.let { Instant.ofEpochMilli(it).atZone(ZoneId.systemDefault()).toLocalDateTime() }
+    }
+
+    private fun TodoItem.eventEndDateTimeOrNull(): LocalDateTime? {
+        return endAtMillis?.let { Instant.ofEpochMilli(it).atZone(ZoneId.systemDefault()).toLocalDateTime() }
     }
 
     private fun generateDailyDates(start: LocalDate, end: LocalDate): List<LocalDate> {

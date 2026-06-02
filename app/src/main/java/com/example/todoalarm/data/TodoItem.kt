@@ -33,6 +33,10 @@ import java.time.ZoneId
             name = "index_todo_items_series_due"
         ),
         Index(
+            value = ["multiSlotBundleId", "startAtMillis"],
+            name = "index_todo_items_multi_slot_bundle"
+        ),
+        Index(
             value = ["itemType", "completed", "canceled", "missed", "dueAtMillis", "createdAtMillis"],
             name = "index_todo_items_desktop_todo_paging"
         ),
@@ -88,6 +92,7 @@ data class TodoItem(
     val missed: Boolean = false,
     val missedAtMillis: Long? = null,
     val recurringSeriesId: String? = null,
+    val multiSlotBundleId: String? = null,
     val recurrenceType: String = RecurrenceType.NONE.name,
     val recurrenceWeekdays: String = "",
     val recurrenceMonthlyOrdinal: Int? = null,

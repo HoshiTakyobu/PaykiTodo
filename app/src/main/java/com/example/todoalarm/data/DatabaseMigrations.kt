@@ -428,6 +428,33 @@ object DatabaseMigrations {
         }
     }
 
+    val MIGRATION_27_28 = object : Migration(27, 28) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            ensureMultiSlotBundleColumns(db)
+        }
+    }
+
+    private fun ensureMultiSlotBundleColumns(db: SupportSQLiteDatabase) {
+        if (tableExists(db, "todo_items") && !tableHasColumns(db, "todo_items", listOf("multiSlotBundleId"))) {
+            db.execSQL("ALTER TABLE `todo_items` ADD COLUMN `multiSlotBundleId` TEXT")
+        }
+        if (tableExists(db, "recurring_task_templates") && !tableHasColumns(db, "recurring_task_templates", listOf("multiSlotBundleId"))) {
+            db.execSQL("ALTER TABLE `recurring_task_templates` ADD COLUMN `multiSlotBundleId` TEXT")
+        }
+        db.execSQL(
+            """
+            CREATE INDEX IF NOT EXISTS `index_todo_items_multi_slot_bundle`
+            ON `todo_items` (`multiSlotBundleId`, `startAtMillis`)
+            """.trimIndent()
+        )
+        db.execSQL(
+            """
+            CREATE INDEX IF NOT EXISTS `index_recurring_task_templates_multi_slot_bundle`
+            ON `recurring_task_templates` (`multiSlotBundleId`)
+            """.trimIndent()
+        )
+    }
+
     private fun createRecurringInstanceSkipsTable(db: SupportSQLiteDatabase) {
         db.execSQL(
             """

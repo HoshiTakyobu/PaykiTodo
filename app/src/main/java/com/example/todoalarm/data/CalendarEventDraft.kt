@@ -19,6 +19,7 @@ data class CalendarEventDraft(
     val countdownEnabled: Boolean = false,
     val checkInEnabled: Boolean = false,
     val recurrence: RecurrenceConfig = RecurrenceConfig(),
+    val multiSlotBundleId: String? = null,
     val groupId: Long = 0,
     val groupName: String = ""
 ) {

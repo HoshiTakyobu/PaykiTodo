@@ -32,6 +32,8 @@ class CalendarEventMultiSlotTest {
         assertEquals(LocalDateTime.of(2026, 5, 21, 8, 30), drafts[1].startAt)
         assertEquals(LocalDateTime.of(2026, 5, 21, 10, 5), drafts[1].endAt)
         assertEquals(setOf(DayOfWeek.THURSDAY), drafts[1].recurrence.weeklyDays)
+        assertTrue(drafts[0].multiSlotBundleId?.isNotBlank() == true)
+        assertEquals(drafts[0].multiSlotBundleId, drafts[1].multiSlotBundleId)
         drafts.forEach { draft ->
             assertTrue(draft.recurrence.enabled)
             assertEquals(RecurrenceType.WEEKLY, draft.recurrence.type)

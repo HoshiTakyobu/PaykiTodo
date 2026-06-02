@@ -7,7 +7,10 @@ import androidx.room.PrimaryKey
 
 @Entity(
     tableName = "recurring_task_templates",
-    indices = [Index(value = ["seriesId"], unique = true)]
+    indices = [
+        Index(value = ["seriesId"], unique = true),
+        Index(value = ["multiSlotBundleId"], name = "index_recurring_task_templates_multi_slot_bundle")
+    ]
 )
 data class RecurringTaskTemplate(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
@@ -20,6 +23,7 @@ data class RecurringTaskTemplate(
     val countdownEnabled: Boolean = false,
     @ColumnInfo(defaultValue = "0")
     val hiddenFromBoard: Boolean = false,
+    val multiSlotBundleId: String? = null,
     val allDay: Boolean = false,
     val groupId: Long,
     val dueHour: Int,

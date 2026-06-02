@@ -881,6 +881,30 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
         return null
     }
 
+    suspend fun updateCalendarEventMultiSlotBundleSharedFields(
+        original: TodoItem,
+        draft: CalendarEventDraft
+    ): String? {
+        if (original.multiSlotBundleId.isNullOrBlank()) {
+            return updateCalendarEvent(original, draft, RecurrenceScope.CURRENT)
+        }
+        validateCalendarDraft(
+            draft = draft,
+            original = original,
+            scope = RecurrenceScope.ALL
+        )?.let { return it }
+
+        val affectedItems = repository.getActiveEventsForMultiSlotBundle(original).ifEmpty { listOf(original) }
+        clearReminderArtifacts(affectedItems)
+
+        val updatedItems = repository.updateCalendarEventMultiSlotBundleSharedFields(original, draft)
+        for (item in updatedItems) {
+            scheduleReminderOrDisable(item)
+        }
+        autoBackupIfEnabled()
+        return null
+    }
+
     fun completeTodo(todoItem: TodoItem) {
         viewModelScope.launch {
             val result = repository.setCompletedWithResult(todoItem.id, true)

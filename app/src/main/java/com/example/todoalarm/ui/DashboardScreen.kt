@@ -130,6 +130,7 @@ fun DashboardScreen(
     onCalendarVisibleDateRangeChange: (LocalDate, LocalDate) -> Unit,
     onUpdateTodo: suspend (TodoItem, TodoDraft, RecurrenceScope) -> String?,
     onUpdateCalendarEvent: suspend (TodoItem, com.example.todoalarm.data.CalendarEventDraft, RecurrenceScope) -> String?,
+    onUpdateCalendarEventMultiSlotBundleSharedFields: suspend (TodoItem, com.example.todoalarm.data.CalendarEventDraft) -> String?,
     onDeleteTodo: (TodoItem, RecurrenceScope) -> Unit,
     onDeleteCalendarEvent: (TodoItem, RecurrenceScope) -> Unit,
     onCompleteTodo: (TodoItem) -> Unit,
@@ -929,6 +930,25 @@ fun DashboardScreen(
                         editingItem = null
                         calendarDraftSeed = null
                         Toast.makeText(context, "已创建 ${drafts.size} 个每周时间段", Toast.LENGTH_SHORT).show()
+                    } else {
+                        Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+                    }
+                }
+            },
+            onConfirmMultiSlotBundleShared = { draft ->
+                scope.launch {
+                    val current = editingItem?.takeIf { it.isEvent }
+                    val message = if (current == null) {
+                        "新增日程不需要同步已有多时间段组"
+                    } else {
+                        onUpdateCalendarEventMultiSlotBundleSharedFields(current, draft)
+                    }
+
+                    if (message == null) {
+                        editorVisible = false
+                        editingItem = null
+                        calendarDraftSeed = null
+                        Toast.makeText(context, "已同步同组时间段", Toast.LENGTH_SHORT).show()
                     } else {
                         Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
                     }

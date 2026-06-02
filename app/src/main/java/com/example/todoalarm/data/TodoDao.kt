@@ -167,6 +167,18 @@ interface TodoDao {
     @Query(
         """
         SELECT * FROM todo_items
+        WHERE itemType = 'EVENT'
+        AND completed = 0
+        AND canceled = 0
+        AND multiSlotBundleId = :bundleId
+        ORDER BY startAtMillis ASC, id ASC
+        """
+    )
+    suspend fun getActiveEventsByMultiSlotBundle(bundleId: String): List<TodoItem>
+
+    @Query(
+        """
+        SELECT * FROM todo_items
         WHERE recurringSeriesId = :seriesId
         AND completed = 0
         AND canceled = 0
@@ -544,6 +556,9 @@ interface TodoDao {
 
     @Query("SELECT * FROM recurring_task_templates WHERE seriesId = :seriesId LIMIT 1")
     suspend fun getTemplateBySeriesId(seriesId: String): RecurringTaskTemplate?
+
+    @Query("SELECT * FROM recurring_task_templates WHERE multiSlotBundleId = :bundleId ORDER BY startEpochDay ASC, dueHour ASC, dueMinute ASC, id ASC")
+    suspend fun getTemplatesByMultiSlotBundle(bundleId: String): List<RecurringTaskTemplate>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertTemplate(template: RecurringTaskTemplate): Long

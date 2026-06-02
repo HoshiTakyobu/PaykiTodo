@@ -180,6 +180,7 @@ class MainActivity : ComponentActivity() {
                     onCalendarVisibleDateRangeChange = viewModel::updateCalendarEventWindow,
                     onUpdateTodo = viewModel::updateTodo,
                     onUpdateCalendarEvent = viewModel::updateCalendarEvent,
+                    onUpdateCalendarEventMultiSlotBundleSharedFields = viewModel::updateCalendarEventMultiSlotBundleSharedFields,
                     onDeleteTodo = viewModel::deleteTodo,
                     onDeleteCalendarEvent = viewModel::deleteCalendarEvent,
                     onCompleteTodo = viewModel::completeTodo,

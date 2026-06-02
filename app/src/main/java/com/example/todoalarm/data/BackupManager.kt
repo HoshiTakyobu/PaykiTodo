@@ -143,6 +143,7 @@ private fun RecurringTaskTemplate.toJson(): JSONObject {
         put("accentColorHex", accentColorHex)
         put("countdownEnabled", countdownEnabled)
         put("hiddenFromBoard", hiddenFromBoard)
+        put("multiSlotBundleId", multiSlotBundleId)
         put("allDay", allDay)
         put("groupId", groupId)
         put("dueHour", dueHour)
@@ -200,6 +201,7 @@ private fun TodoItem.toJson(): JSONObject {
         put("missed", missed)
         put("missedAtMillis", missedAtMillis)
         put("recurringSeriesId", recurringSeriesId)
+        put("multiSlotBundleId", multiSlotBundleId)
         put("recurrenceType", recurrenceType)
         put("recurrenceWeekdays", recurrenceWeekdays)
         put("recurrenceMonthlyOrdinal", recurrenceMonthlyOrdinal)
@@ -388,6 +390,7 @@ private fun JSONArray?.toTemplates(): List<RecurringTaskTemplate> {
                     accentColorHex = item.optStringOrNull("accentColorHex"),
                     countdownEnabled = item.optBoolean("countdownEnabled", false),
                     hiddenFromBoard = item.optBoolean("hiddenFromBoard", false),
+                    multiSlotBundleId = item.optStringOrNull("multiSlotBundleId"),
                     allDay = item.optBoolean("allDay", false),
                     groupId = item.optLong("groupId", 0L),
                     dueHour = item.optInt("dueHour"),
@@ -453,6 +456,7 @@ private fun JSONArray?.toTasks(): List<TodoItem> {
                     missed = item.optBoolean("missed", false),
                     missedAtMillis = item.optLongOrNull("missedAtMillis"),
                     recurringSeriesId = item.optStringOrNull("recurringSeriesId"),
+                    multiSlotBundleId = item.optStringOrNull("multiSlotBundleId"),
                     recurrenceType = item.optString("recurrenceType", RecurrenceType.NONE.name),
                     recurrenceWeekdays = item.optString("recurrenceWeekdays"),
                     recurrenceMonthlyOrdinal = item.optIntOrNull("recurrenceMonthlyOrdinal"),

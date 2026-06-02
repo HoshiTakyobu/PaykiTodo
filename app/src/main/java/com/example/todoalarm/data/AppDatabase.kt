@@ -18,7 +18,7 @@ import androidx.room.RoomDatabase
         TodoGroupTag::class,
         RecurringInstanceSkip::class
     ],
-    version = 27,
+    version = 28,
     exportSchema = true
 )
 abstract class AppDatabase : RoomDatabase() {

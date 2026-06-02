@@ -5,23 +5,34 @@
 - Repository root: `G:\Workspace\Project\PaykiTodo`
 - Branch: `main`
 - Current code version:
-  - `versionName = 1.13.62`
-  - `versionCode = 310`
-  - database version = `27`
+  - `versionName = 1.13.63`
+  - `versionCode = 311`
+  - database version = `28`
 - Latest debug APK target in this round:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.13.62-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.13.63-debug.apk`
 - Latest signed release APK available locally:
   - `app/build/outputs/apk/release/PaykiTodo-1.13.11-release.apk`
 - Latest GitHub Release:
   - `https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.13.11`
 - Debug APK metadata inspection:
-  - `versionName = 1.13.62`, `versionCode = 310`
+  - `versionName = 1.13.63`, `versionCode = 311`
 
 ## Active Goal
 
-Active immediate task: continue auditing requirement / UX consistency from the current `1.13.62 / versionCode 310` local patch baseline.
+Active immediate task: continue auditing requirement / UX consistency from the current `1.13.63 / versionCode 311` local patch baseline.
 
-Latest status: `1.13.62` fixes phone todo-editor UI consistency. Todo recurrence type selection no longer uses the enum-like horizontal FilterChip group; debug build and metadata inspection passed.
+Latest status: `1.13.63` continues weekly multi-slot Calendar work. Newly created multi-slot events persist a shared bundle id, and phone / Desktop Web editors can synchronize shared fields across bundled slots while preserving each slot's own weekday and time.
+
+## What Changed In The Latest 1.13.63 Patch
+
+1. Weekly multi-slot event draft generation assigns a shared `multiSlotBundleId` to all generated slot drafts.
+2. `todo_items` and `recurring_task_templates` now persist `multiSlotBundleId`; database version moved to `28` with bundle lookup indexes.
+3. Backup JSON and Desktop Sync JSON include the bundle id so restore and desktop editing do not lose the grouping relationship.
+4. Phone Calendar editing shows `同步共享字段到同组全部时间段` for existing bundled multi-slot events.
+5. Desktop Web event editing shows the same bundled shared-field sync option and sends it through `/api/events/{id}`.
+6. Shared-field sync updates title, location, notes, primary group, color, reminder offsets, countdown, and check-in settings while preserving each slot's own weekday and start/end time.
+7. Remaining limitation: editing a bundle still does not provide a full add/remove/reorder time-slot editor. Users can sync common fields, edit individual slots, or recreate/delete slots as needed.
+8. Verification passed: `./gradlew.bat :app:compileDebugKotlin`, full `./gradlew.bat :app:testDebugUnitTest`, `node --check app/src/main/assets/desktop-web/app.js`, `git diff --check`, `./gradlew.bat :app:assembleDebug`, Room schema inspection, and APK metadata inspection for `versionName = 1.13.63`, `versionCode = 311`.
 
 ## What Changed In The Latest 1.13.62 Patch
 

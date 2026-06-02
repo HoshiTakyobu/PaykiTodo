@@ -7,8 +7,8 @@ plugins {
     id("com.google.devtools.ksp")
 }
 
-val paykiVersionName = "1.13.59"
-val paykiVersionCode = 307
+val paykiVersionName = "1.13.60"
+val paykiVersionCode = 308
 
 project.setProperty("archivesBaseName", "PaykiTodo-$paykiVersionName")
 

@@ -5,23 +5,30 @@
 - Repository root: `G:\Workspace\Project\PaykiTodo`
 - Branch: `main`
 - Current code version:
-  - `versionName = 1.13.59`
-  - `versionCode = 307`
+  - `versionName = 1.13.60`
+  - `versionCode = 308`
   - database version = `27`
 - Latest debug APK target in this round:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.13.59-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.13.60-debug.apk`
 - Latest signed release APK available locally:
   - `app/build/outputs/apk/release/PaykiTodo-1.13.11-release.apk`
 - Latest GitHub Release:
   - `https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.13.11`
 - Debug APK metadata inspection:
-  - `versionName = 1.13.59`, `versionCode = 307`
+  - `versionName = 1.13.60`, `versionCode = 308`
 
 ## Active Goal
 
-Active immediate task: continue auditing requirement / UX consistency from the current `1.13.59 / versionCode 307` local patch baseline.
+Active immediate task: continue auditing requirement / UX consistency from the current `1.13.60 / versionCode 308` local patch baseline.
 
-Latest status: `1.13.59` replaces the remaining Desktop Web Planning Desk browser-native `prompt` / `confirm` dialogs with a PaykiTodo in-app form dialog for new planning documents, refresh scope selection, planning postponement, and child-node creation. Debug build and metadata inspection passed.
+Latest status: `1.13.60` restores keyboard-submit behavior for Desktop Web in-app form dialogs after replacing browser-native prompts. Debug build and metadata inspection passed.
+
+## What Changed In The Latest 1.13.60 Patch
+
+1. Desktop Web in-app form dialogs confirm with Enter for text, number, and select fields.
+2. Textarea fields keep Enter for normal line breaks and confirm with Ctrl+Enter / Cmd+Enter, preserving multi-line child planning node input.
+3. Version metadata moved to `1.13.60 / versionCode 308`; database version remains `27`.
+4. Verification passed: `node --check app/src/main/assets/desktop-web/app.js`, `git diff --check`, `./gradlew.bat :app:compileDebugKotlin`, full `./gradlew.bat :app:testDebugUnitTest`, `./gradlew.bat :app:assembleDebug`, and APK metadata inspection for `versionName = 1.13.60`, `versionCode = 308`.
 
 ## What Changed In The Latest 1.13.59 Patch
 

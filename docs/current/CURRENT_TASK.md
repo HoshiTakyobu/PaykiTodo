@@ -2,7 +2,7 @@
 
 ## Active Development Focus
 
-Active immediate task: continue requirement / UX consistency auditing from the `1.13.59 / versionCode 307` local patch baseline, using the previous reminder/Planning Desk goal as the latest verified work package:
+Active immediate task: continue requirement / UX consistency auditing from the `1.13.60 / versionCode 308` local patch baseline, using the previous reminder/Planning Desk goal as the latest verified work package:
 
 - `docs/goals/2026-06-01-paykitodo-reminder-ongoing-planning-ux-goal.md`
 
@@ -10,7 +10,7 @@ Do not commit secrets, signing material, API keys, private Base URLs, generated 
 
 ## Current Round Scope
 
-The current user request is to check current software behavior against requirements and UX expectations, then fix confirmed mismatches. The current concrete fix is Desktop Web Planning Desk interaction consistency: planning-note creation, refresh scope selection, postponement configuration, and child-node creation should use PaykiTodo in-app form dialogs rather than browser-native `prompt` / `confirm` popups.
+The current user request is to check current software behavior against requirements and UX expectations, then fix confirmed mismatches. The current concrete fix is Desktop Web in-app form keyboard usability: replacing native prompts in `1.13.59` removed the browser's default Enter-to-confirm behavior, so PaykiTodo's own form dialog should provide equivalent keyboard submission without breaking multiline text entry.
 
 Important constraints:
 
@@ -115,6 +115,7 @@ Completed behavior so far:
 28. In `1.13.57`, Planning Desk recognition now prefers local parser output when explicit Markdown / DDL / schedule syntax covers all actionable lines, keeps explicit local parse errors visible in preview, keeps mixed free-form text eligible for AI, and passes the planning document date into AI prompts while preserving inline-date priority. Validation passed with targeted `PlanningRecognitionServiceTest` and `PlanningMarkdownParserTest`, `compileDebugKotlin`, full `testDebugUnitTest`, `node --check`, `git diff --check`, `assembleDebug`, and APK metadata inspection.
 29. In `1.13.58`, backup JSON no longer exports `desktopSyncEnabled` or `desktopSyncToken`, old backups containing those fields restore with Desktop Sync disabled and a blank token, and snapshot-level tests cover AI provider API keys plus Desktop Sync enable/token fields. Validation passed with targeted `PlanningAiProviderSerializationTest`, `compileDebugKotlin`, full `testDebugUnitTest`, `node --check`, `git diff --check`, `assembleDebug`, and APK metadata inspection.
 30. In `1.13.59`, Desktop Web Planning Desk replaces the remaining browser-native `prompt` / `confirm` paths with an in-app form dialog for new planning documents, imported-item refresh, planning postponement, and child-node creation; postponement now uses dropdowns for mapped item and scope selection instead of manual row-number / `1/2/3` input. Validation passed with `node --check`, `compileDebugKotlin`, full `testDebugUnitTest`, `git diff --check`, `assembleDebug`, and APK metadata inspection.
+31. In `1.13.60`, Desktop Web in-app form dialogs support Enter confirmation for text, number, and select fields, while textarea fields keep Enter as newline and use Ctrl+Enter / Cmd+Enter to confirm. Validation passed with `node --check`, `compileDebugKotlin`, full `testDebugUnitTest`, `git diff --check`, `assembleDebug`, and APK metadata inspection.
 5. Recurring todo range delete now uses the hard-delete path instead of cancel/archive.
 6. Recurring todo current-instance delete records a `recurring_instance_skips` exception and then hard-deletes the row, so the occurrence does not enter history and does not regenerate.
 7. Backup / restore includes `recurring_instance_skips`, so single-instance recurring-todo deletions survive restore.

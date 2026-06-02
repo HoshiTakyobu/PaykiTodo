@@ -3683,6 +3683,12 @@ function showFormDialog({ title, message = '', confirmLabel = '确定', fields =
       input.placeholder = field.placeholder || '';
       input.dataset.formFieldId = field.id;
       if (field.required) input.dataset.required = 'true';
+      input.addEventListener('keydown', event => {
+        if (event.key !== 'Enter') return;
+        if (field.type === 'textarea' && !(event.ctrlKey || event.metaKey)) return;
+        event.preventDefault();
+        okButton.click();
+      });
       wrapper.appendChild(input);
 
       if (field.hint) {

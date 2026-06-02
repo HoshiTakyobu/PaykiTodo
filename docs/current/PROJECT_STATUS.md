@@ -8,8 +8,8 @@
 - Target platform: Android 14 / API 34
 - License: MIT License (`LICENSE`)
 - Current version in code:
-  - `versionName = "1.13.59"`
-  - `versionCode = 307`
+  - `versionName = "1.13.60"`
+  - `versionCode = 308`
   - database version = `27`
 
 ## Current Build Facts
@@ -22,7 +22,11 @@
 - Latest GitHub Release:
   - `https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.13.11`
 - Latest fully built debug APK:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.13.59-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.13.60-debug.apk`
+- Current `1.13.60 / versionCode 308` status:
+  - Desktop Web in-app form dialogs now support keyboard confirmation: Enter confirms text, number, and select fields.
+  - Textarea fields keep normal Enter for line breaks and use Ctrl+Enter / Cmd+Enter for confirmation, so adding a child planning node can still be multi-line.
+  - Verification passed: `node --check app/src/main/assets/desktop-web/app.js`, `git diff --check`, `./gradlew.bat :app:compileDebugKotlin`, `./gradlew.bat :app:testDebugUnitTest`, `./gradlew.bat :app:assembleDebug`, and APK metadata inspection for `versionName = 1.13.60`, `versionCode = 308`.
 - Current `1.13.59 / versionCode 307` status:
   - Desktop Web Planning Desk no longer uses browser-native `prompt` / `confirm` dialogs for creating planning notes, refreshing imported items, postponing imported planning items, or adding child outline nodes.
   - Those actions now use a PaykiTodo in-app form dialog with text / textarea / number / select fields, matching the desktop editor and confirmation modal visual language.

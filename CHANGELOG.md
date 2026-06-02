@@ -2,6 +2,21 @@
 
 PaykiTodo 采用语义化倾向的应用版本号和递增 `versionCode`。本文件面向用户记录重要变化，不再保存每一次内部调试重建的完整流水账；完整历史可通过 Git commit、tag 和 `docs/archive/` 追溯。
 
+## v1.13.60
+
+发布日期：2026-06-02（本地调试构建，尚未创建 GitHub Release）
+
+### 优化
+
+- 电脑端 Web 的 PaykiTodo 应用内表单弹窗补齐键盘提交：文本、数字和下拉字段按 Enter 会确认提交。
+- 多行输入框保留普通 Enter 换行，使用 `Ctrl+Enter` 或 `⌘+Enter` 确认，避免新增子项时误提交。
+
+### 构建
+
+- `versionName = 1.13.60`
+- `versionCode = 308`
+- 数据库版本保持 `27`，不新增数据迁移。
+
 ## v1.13.59
 
 发布日期：2026-06-02（本地调试构建，尚未创建 GitHub Release）

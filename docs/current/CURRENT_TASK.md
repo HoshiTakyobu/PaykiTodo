@@ -2,7 +2,7 @@
 
 ## Active Development Focus
 
-Active immediate task: continue requirement / UX consistency auditing from the `1.13.51 / versionCode 299` local patch baseline, using the previous reminder/Planning Desk goal as the latest verified work package:
+Active immediate task: continue requirement / UX consistency auditing from the `1.13.52 / versionCode 300` local patch baseline, using the previous reminder/Planning Desk goal as the latest verified work package:
 
 - `docs/goals/2026-06-01-paykitodo-reminder-ongoing-planning-ux-goal.md`
 
@@ -10,15 +10,15 @@ Do not commit secrets, signing material, API keys, private Base URLs, generated 
 
 ## Current Round Scope
 
-The current user request is to check current software behavior against requirements and UX expectations, then fix confirmed mismatches. The current concrete fix is event-check-in notification readability: idle auto-checkout notifications should identify the affected event even in collapsed notification form.
+The current user request is to check current software behavior against requirements and UX expectations, then fix confirmed mismatches. The current concrete fix is Planning Desk tutorial consistency: the beginner tutorial should match the current default free-writing workflow instead of stale node-first Outliner copy.
 
 Important constraints:
 
 1. Do not change the database schema for this round.
-2. Keep the existing auto-checkout BigText body content with checkout time and invested minutes.
-3. Use the already-computed event title instead of adding another repository lookup.
-4. Do not change the check-in database schema or scheduling behavior.
-5. Preserve the existing low-priority auto-checkout notification channel.
+2. Do not change Planning Desk parsing, import, node storage, or AI routing behavior for this copy-only UX fix.
+3. Keep the tutorial focused on the default phone free-writing workflow: write naturally, recognize, then review/import.
+4. Make the difference between Markdown rendering preview, recognition/import preview, and Outliner draft publish explicit.
+5. Keep AI described as optional enhancement with local-rule fallback; do not imply AI writes directly to official todos/events.
 
 Historical usability / correctness failures from the broader audit:
 
@@ -107,6 +107,7 @@ Completed behavior so far:
 20. In `1.13.49`, Desktop Web event creation adds `课程多时间段` for new events, creates one weekly recurring event per slot through existing `/api/events`, hides duplicate weekly-day chips in course mode, and keeps existing-event editing single-series; validation passed with `node --check`, `compileDebugKotlin`, `testDebugUnitTest`, `git diff --check`, `assembleDebug`, output metadata check, and `aapt dump badging`.
 21. In `1.13.50`, notification small icons were moved from a colored PNG bitmap wrapper to a monochrome vector `ic_stat_payki_todo`, adaptive launcher themed-icon monochrome layers now reuse that vector, and the obsolete notification PNG was removed; validation passed with `compileDebugKotlin`, `testDebugUnitTest`, `git diff --check`, `assembleDebug`, APK metadata check, `aapt dump badging`, and adaptive-icon `aapt dump xmltree`.
 22. In `1.13.51`, idle auto-checkout notifications now include the event title in the collapsed notification title; validation passed with `compileDebugKotlin`, `testDebugUnitTest`, `git diff --check`, `assembleDebug`, APK metadata check, and `aapt dump badging`.
+23. In `1.13.52`, phone Planning Desk beginner tutorial copy now matches the default free-writing workflow and explains recognition preview, Markdown preview, optional Outliner, and AI/local fallback. Validation is pending.
 5. Recurring todo range delete now uses the hard-delete path instead of cancel/archive.
 6. Recurring todo current-instance delete records a `recurring_instance_skips` exception and then hard-deletes the row, so the occurrence does not enter history and does not regenerate.
 7. Backup / restore includes `recurring_instance_skips`, so single-instance recurring-todo deletions survive restore.

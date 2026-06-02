@@ -100,7 +100,7 @@ This file tracks the product at a practical level for new coding sessions.
 - phone Planning Desk currently defaults to a free-writing markdown/natural-text editor surface while keeping the explicit Outliner / Markdown-compatible tools available; the free-writing surface keeps the preview-first recognition flow and supports long-line inspection with horizontal scrolling
 - phone editor mode remains a plain Markdown / natural-text editor with a fixed-height 56dp operation toolbar (预览 / 识别 / 文档列表 / 教程 / 快捷展开 / 更多) and a collapsible compact icon-style shortcut toolbar positioned above the editor only when needed
 - phone Planning Desk secondary actions (新建/重命名/使用说明/归档/删除) are in an overflow DropdownMenu; manual save button removed in favor of auto-save
-- phone Planning Desk includes a multi-page in-screen beginner tutorial explaining the workflow, natural writing, heading sections such as `# 收集箱` / `# 今日计划`, preview/import, future AI recognition, and directly usable examples
+- phone Planning Desk includes a multi-page in-screen beginner tutorial aligned with the current default free-writing workflow: natural writing first, recognition/import preview second, optional Outliner draft publishing as a separate mode, AI as optional enhancement with local-rule fallback, and directly usable examples
 - phone Markdown preview checkbox toggles rewrite the source Markdown line only; they do not directly complete imported official todos
 - phone Markdown preview renders Planning Desk announcement lines with orange styling, a campaign icon, a `全局公告` pill, and a date-range pill; tapping the line jumps back to the source line
 - phone Planning Desk editor auto-saves after a short debounce and saves before switching planning documents

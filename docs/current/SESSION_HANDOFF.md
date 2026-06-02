@@ -5,23 +5,31 @@
 - Repository root: `G:\Workspace\Project\PaykiTodo`
 - Branch: `main`
 - Current code version:
-  - `versionName = 1.13.51`
-  - `versionCode = 299`
+  - `versionName = 1.13.52`
+  - `versionCode = 300`
   - database version = `27`
 - Latest debug APK target in this round:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.13.51-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.13.52-debug.apk`
 - Latest signed release APK available locally:
   - `app/build/outputs/apk/release/PaykiTodo-1.13.11-release.apk`
 - Latest GitHub Release:
   - `https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.13.11`
 - Debug APK metadata inspection:
-  - `versionName = 1.13.51`, `versionCode = 299`
+  - pending for `1.13.52 / versionCode 300`
 
 ## Active Goal
 
-Active immediate task: continue auditing requirement / UX consistency from the current `1.13.51 / versionCode 299` local patch baseline.
+Active immediate task: continue auditing requirement / UX consistency from the current `1.13.52 / versionCode 300` local patch baseline.
 
-Latest status: `1.13.51` improves event check-in auto-checkout notification readability by including the event title in the collapsed notification title. Debug build and metadata inspection passed.
+Latest status: `1.13.52` updates the phone Planning Desk beginner tutorial so it matches the current default free-writing workflow instead of stale node-first Outliner copy. Validation is pending.
+
+## What Changed In The Latest 1.13.52 Patch
+
+1. Phone Planning Desk beginner tutorial now starts from the actual default workflow: free writing first, recognition second, preview confirmation third.
+2. Tutorial copy now distinguishes Markdown rendering preview, recognition/import preview, and the optional Outliner draft workflow.
+3. Tutorial copy now says AI recognition is optional and falls back to local rules; image, voice, and share capture results still need review before publish/import.
+4. Version metadata moved to `1.13.52 / versionCode 300`; database version remains `27`.
+5. Verification target: `./gradlew.bat :app:compileDebugKotlin`, `./gradlew.bat :app:testDebugUnitTest`, `git diff --check`, `./gradlew.bat :app:assembleDebug`, and APK metadata check.
 
 ## What Changed In The Latest 1.13.51 Patch
 

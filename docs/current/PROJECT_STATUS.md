@@ -8,8 +8,8 @@
 - Target platform: Android 14 / API 34
 - License: MIT License (`LICENSE`)
 - Current version in code:
-  - `versionName = "1.13.51"`
-  - `versionCode = 299`
+  - `versionName = "1.13.52"`
+  - `versionCode = 300`
   - database version = `27`
 
 ## Current Build Facts
@@ -22,7 +22,13 @@
 - Latest GitHub Release:
   - `https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.13.11`
 - Latest fully built debug APK:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.13.51-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.13.52-debug.apk`
+- Current `1.13.52 / versionCode 300` status:
+  - Phone Planning Desk beginner tutorial now matches the current default free-writing workflow: write naturally first, then use recognition, then confirm imports in preview.
+  - The tutorial now distinguishes Markdown rendering preview, recognition/import preview, and the optional Outliner draft workflow, reducing confusion from stale node-first copy.
+  - The tutorial explicitly says AI recognition is optional and falls back to local rules; image, voice, and share captures still require review before publish/import.
+  - Database version remains `27`; no schema migration was added.
+  - Verification target: `./gradlew.bat :app:compileDebugKotlin`, `./gradlew.bat :app:testDebugUnitTest`, `git diff --check`, `./gradlew.bat :app:assembleDebug`, and APK metadata check for `versionName = 1.13.52`, `versionCode = 300`.
 - Current `1.13.51 / versionCode 299` status:
   - Event check-in idle auto-checkout notifications now include the event title in the collapsed notification title, e.g. `已自动签退：课程名`, instead of only using a generic title.
   - Database version remains `27`; no schema migration was added.

@@ -5,23 +5,33 @@
 - Repository root: `G:\Workspace\Project\PaykiTodo`
 - Branch: `main`
 - Current code version:
-  - `versionName = 1.13.48`
-  - `versionCode = 296`
+  - `versionName = 1.13.49`
+  - `versionCode = 297`
   - database version = `27`
 - Latest debug APK target in this round:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.13.48-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.13.49-debug.apk`
 - Latest signed release APK available locally:
   - `app/build/outputs/apk/release/PaykiTodo-1.13.11-release.apk`
 - Latest GitHub Release:
   - `https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.13.11`
 - Debug APK metadata inspection:
-  - `versionName = 1.13.48`, `versionCode = 296`
+  - `versionName = 1.13.49`, `versionCode = 297`
 
 ## Active Goal
 
-Active immediate task: continue auditing requirement / UX consistency and verify the course multi-slot reminder parsing fix from the current `1.13.48 / versionCode 296` local patch baseline.
+Active immediate task: continue auditing requirement / UX consistency and verify Desktop Web course multi-slot event creation from the current `1.13.49 / versionCode 297` local patch baseline.
 
-Latest status: `1.13.48` fixes a requirement / UX mismatch in `课程多时间段`: reminder input is now validated and resolved per slot's own start time rather than being parsed once against the editor's main start time. Debug build and metadata inspection passed.
+Latest status: `1.13.49` adds Desktop Web `课程多时间段` for new event creation, closing the phone/desktop parity gap for the course multi-slot feature. Debug build and metadata inspection passed.
+
+## What Changed In The Latest 1.13.49 Patch
+
+1. Desktop Web event creation now shows a `课程多时间段` card for new events only.
+2. The desktop card uses compact rows with weekday dropdown, start time, and end time fields; adding a slot defaults to the next weekday.
+3. Saving in course mode creates one weekly recurring event per slot through existing `POST /api/events` calls, so no backend route or database migration is required.
+4. Course mode locks recurrence to weekly, hides duplicate weekly-day chips, disables all-day, and computes reminder offsets per slot start time.
+5. Editing existing events hides course multi-slot mode and remains single-series editing.
+6. Version metadata moved to `1.13.49 / versionCode 297`; database version remains `27`.
+7. Verification passed: `node --check app/src/main/assets/desktop-web/app.js`, `./gradlew.bat :app:compileDebugKotlin`, `./gradlew.bat :app:testDebugUnitTest`, `git diff --check`, `./gradlew.bat :app:assembleDebug`, output metadata check, and `aapt dump badging` confirmed `versionName = 1.13.49`, `versionCode = 297`.
 
 ## What Changed In The Latest 1.13.48 Patch
 

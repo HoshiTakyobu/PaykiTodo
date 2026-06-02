@@ -8,8 +8,8 @@
 - Target platform: Android 14 / API 34
 - License: MIT License (`LICENSE`)
 - Current version in code:
-  - `versionName = "1.13.48"`
-  - `versionCode = 296`
+  - `versionName = "1.13.49"`
+  - `versionCode = 297`
   - database version = `27`
 
 ## Current Build Facts
@@ -22,7 +22,12 @@
 - Latest GitHub Release:
   - `https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.13.11`
 - Latest fully built debug APK:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.13.48-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.13.49-debug.apk`
+- Current `1.13.49 / versionCode 297` status:
+  - Desktop Web event creation now exposes `课程多时间段` for new events, matching the phone-side course multi-slot creation path.
+  - The desktop course mode uses compact rows with weekday dropdown plus start/end time fields, creates one weekly recurring event per slot through the existing `/api/events` endpoint, and hides duplicate weekly-day chips while course mode is enabled.
+  - Desktop course mode remains new-event-only; editing existing events stays single-series editing to avoid accidental bulk edits.
+  - Verification passed: `node --check app/src/main/assets/desktop-web/app.js`, `./gradlew.bat :app:compileDebugKotlin`, `./gradlew.bat :app:testDebugUnitTest`, `git diff --check`, `./gradlew.bat :app:assembleDebug`, output metadata check, and `aapt dump badging` confirmed `versionName = 1.13.49`, `versionCode = 297`.
 - Current `1.13.48 / versionCode 296` status:
   - Course multi-slot reminder parsing now validates and resolves reminder input per slot anchor instead of using only the editor's main start time.
   - A reminder syntax error in course multi-slot mode reports the concrete weekday and slot start time that failed.

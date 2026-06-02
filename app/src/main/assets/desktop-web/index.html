@@ -347,6 +347,17 @@
           </div>
         </div>
         <div class="event-reminder-dependent"><label>提醒时间</label><input id="event-reminder-offsets" placeholder="5,15,16:30,下午 2:30,周五 16:30,5月10日，14:30" /></div>
+        <div id="event-course-block" class="span-2 course-slot-card">
+          <div class="course-slot-head">
+            <label><input id="event-course-enabled" type="checkbox" /> 课程多时间段</label>
+            <span class="field-hint">新增日程时使用：一门课每周多个上课时间，共用标题、地点、备注、提醒和颜色。</span>
+          </div>
+          <div id="event-course-body" class="hidden">
+            <p class="field-hint">开启后固定创建每周循环日程；每个时间段会各自生成一条同名周循环日程。编辑已有日程时不启用批量修改。</p>
+            <div id="event-course-slots" class="course-slot-list"></div>
+            <button id="event-course-add" type="button" class="ghost mini">添加时间段</button>
+          </div>
+        </div>
         <div>
           <label>循环</label>
           <select id="event-recurrence-type">

@@ -455,6 +455,15 @@ button.ghost {
 .switch-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
 .switch-row label { display: inline-flex; align-items: center; gap: 8px; margin: 0; padding: 9px 12px; border-radius: 999px; background: rgba(53,104,212,.08); color: #2f4c78; }
 .switch-row input { width: auto; margin: 0; }
+.course-slot-card { display: flex; flex-direction: column; gap: 10px; }
+.course-slot-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.course-slot-head label { display: inline-flex; align-items: center; gap: 8px; margin: 0; }
+.course-slot-head input { width: auto; margin: 0; }
+.course-slot-list { display: flex; flex-direction: column; gap: 8px; }
+.course-slot-row { display: grid; grid-template-columns: minmax(120px, .9fr) minmax(110px, .8fr) minmax(110px, .8fr) auto; gap: 8px; align-items: end; padding: 10px; border-radius: 16px; border: 1px solid var(--card-border); background: var(--subtle-bg); }
+.course-slot-row label { margin: 0; color: var(--muted); font-size: 12px; }
+.course-slot-row select, .course-slot-row input { margin-top: 5px; }
+.course-slot-row button { align-self: end; }
 .weekday-chip-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .weekday-chip { min-width: 38px; padding: 8px 10px; border-radius: 999px; border: 1px solid var(--card-border); background: var(--input-bg); color: var(--muted); font-size: 13px; font-weight: 900; cursor: pointer; }
 .weekday-chip.active { border-color: rgba(53,104,212,.58); background: rgba(53,104,212,.12); color: var(--primary); box-shadow: 0 5px 14px rgba(53,104,212,.12); }

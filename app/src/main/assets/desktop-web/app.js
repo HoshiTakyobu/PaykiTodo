@@ -55,6 +55,7 @@ const state = {
   desktopHeartbeatTimer: null,
   editingTodoOriginalRecurring: false,
   editingEventOriginalRecurring: false,
+  eventCourseSlots: [],
   reviewImport: {
     fileName: '',
     candidates: [],
@@ -838,10 +839,106 @@ function setEventSeed(startMillis, endMillis) {
   state.pendingEventSeed = { startMillis, endMillis };
   writeDateTimeValue('event-start', formatDateTimeLocalValue(startMillis));
   writeDateTimeValue('event-end', formatDateTimeLocalValue(endMillis));
+  if (document.getElementById('event-course-enabled')?.checked) {
+    ensureEventCourseSlots();
+    renderEventCourseSlots();
+  }
 }
 
 function snapToQuarterHour(millis) {
   return Math.round(millis / FIFTEEN_MINUTES) * FIFTEEN_MINUTES;
+}
+
+function weekdayValueFromDate(date) {
+  const day = date.getDay();
+  return day === 0 ? 7 : day;
+}
+
+function timeValueFromDate(date) {
+  return String(date.getHours()).padStart(2, '0') + ':' + String(date.getMinutes()).padStart(2, '0');
+}
+
+function defaultEventCourseSlot() {
+  let start = null;
+  let end = null;
+  try {
+    const startValue = readDateTimeValue('event-start');
+    const endValue = readDateTimeValue('event-end');
+    start = startValue ? new Date(startValue) : null;
+    end = endValue ? new Date(endValue) : null;
+  } catch (_) {
+    start = null;
+    end = null;
+  }
+  const fallbackStart = start || new Date(snapToQuarterHour(Date.now() + THIRTY_MINUTES));
+  const fallbackEnd = end && end > fallbackStart ? end : new Date(fallbackStart.getTime() + THIRTY_MINUTES);
+  return {
+    weekday: weekdayValueFromDate(fallbackStart),
+    startTime: timeValueFromDate(fallbackStart),
+    endTime: timeValueFromDate(fallbackEnd)
+  };
+}
+
+function ensureEventCourseSlots() {
+  if (!state.eventCourseSlots.length) {
+    state.eventCourseSlots = [defaultEventCourseSlot()];
+  }
+}
+
+function renderEventCourseSlots() {
+  const host = document.getElementById('event-course-slots');
+  if (!host) return;
+  ensureEventCourseSlots();
+  host.innerHTML = state.eventCourseSlots.map((slot, index) => {
+    const canRemove = state.eventCourseSlots.length > 1;
+    return ''
+      + '<div class="course-slot-row" data-course-slot-index="' + index + '">'
+      +   '<label>周几<select data-course-slot-field="weekday">'
+      +     WEEKDAY_OPTIONS.map(day => '<option value="' + day.value + '"' + (Number(slot.weekday) === day.value ? ' selected' : '') + '>周' + escapeHtml(day.label) + '</option>').join('')
+      +   '</select></label>'
+      +   '<label>开始<input type="time" data-course-slot-field="startTime" value="' + escapeHtml(slot.startTime || '09:00') + '" /></label>'
+      +   '<label>结束<input type="time" data-course-slot-field="endTime" value="' + escapeHtml(slot.endTime || '10:00') + '" /></label>'
+      +   '<button type="button" class="ghost mini danger-lite-action" data-course-slot-remove="' + index + '"' + (canRemove ? '' : ' disabled') + '>删除</button>'
+      + '</div>';
+  }).join('');
+}
+
+function readEventCourseSlots() {
+  return state.eventCourseSlots.map(slot => ({
+    weekday: Number(slot.weekday),
+    startTime: String(slot.startTime || '').trim(),
+    endTime: String(slot.endTime || '').trim()
+  })).filter(slot => Number.isInteger(slot.weekday) && slot.weekday >= 1 && slot.weekday <= 7);
+}
+
+function nextOrSameWeekdayDate(baseDate, weekday) {
+  const date = new Date(baseDate.getFullYear(), baseDate.getMonth(), baseDate.getDate());
+  const current = weekdayValueFromDate(date);
+  const delta = (Number(weekday) - current + 7) % 7;
+  date.setDate(date.getDate() + delta);
+  return date;
+}
+
+function courseSlotDateTimeValue(baseDate, weekday, timeValue) {
+  const match = String(timeValue || '').match(/^(\d{1,2}):(\d{2})$/);
+  if (!match) throw new Error('课程时间段格式错误，请填写 HH:mm。');
+  const hour = Number(match[1]);
+  const minute = Number(match[2]);
+  if (hour < 0 || hour > 23 || minute < 0 || minute > 59) throw new Error('课程时间段超出有效时间范围。');
+  const date = nextOrSameWeekdayDate(baseDate, weekday);
+  date.setHours(hour, minute, 0, 0);
+  return formatDateTimeLocalValue(date.getTime());
+}
+
+function defaultCourseRecurrenceEndDate(baseDate) {
+  const date = new Date(baseDate.getFullYear(), baseDate.getMonth(), baseDate.getDate());
+  date.setDate(date.getDate() + 90);
+  return dayKey(date);
+}
+
+function weekdayLabel(value) {
+  const option = WEEKDAY_OPTIONS.find(day => day.value === Number(value));
+  return option ? '周' + option.label : '周' + value;
 }
 
 function activeTodos() {
@@ -3218,6 +3315,8 @@ function clearEventForm() {
   document.getElementById('event-all-day').checked = false;
   document.getElementById('event-ring').checked = true;
   document.getElementById('event-vibrate').checked = true;
+  state.eventCourseSlots = [defaultEventCourseSlot()];
+  setEventCourseModeEnabled(false, true);
 }
 
 function formatDateTimeLocalValue(millis) {
@@ -3246,6 +3345,36 @@ function setEventReminderEnabled(enabled) {
   });
   if (!enabled) {
     document.getElementById('event-reminder-offsets').value = '';
+  }
+}
+
+function setEventCourseModeEnabled(enabled, allowVisible = true) {
+  const block = document.getElementById('event-course-block');
+  const checkbox = document.getElementById('event-course-enabled');
+  const body = document.getElementById('event-course-body');
+  if (block) block.classList.toggle('hidden', !allowVisible);
+  if (checkbox) {
+    checkbox.checked = enabled && allowVisible;
+    checkbox.disabled = !allowVisible;
+  }
+  if (body) body.classList.toggle('hidden', !(enabled && allowVisible));
+  if (enabled && allowVisible) {
+    ensureEventCourseSlots();
+    renderEventCourseSlots();
+    document.getElementById('event-all-day').checked = false;
+    document.getElementById('event-recurrence-type').value = 'WEEKLY';
+    const baseStart = readDateTimeValue('event-start');
+    const baseDate = baseStart ? new Date(baseStart) : new Date();
+    if (!document.getElementById('event-recurrence-end').value) {
+      document.getElementById('event-recurrence-end').value = defaultCourseRecurrenceEndDate(baseDate);
+    }
+  }
+  document.getElementById('event-recurrence-type').disabled = enabled && allowVisible;
+  document.getElementById('event-all-day').disabled = enabled && allowVisible;
+  syncRecurrenceWeekdayVisibility('event');
+  if (enabled && allowVisible) {
+    document.getElementById('event-weekday-field')?.classList.add('hidden');
+    setWeekdayChipsEnabled('event', false);
   }
 }
 
@@ -3320,6 +3449,8 @@ function openEventEditor(item) {
   document.getElementById('event-all-day').checked = item.allDay === true;
   document.getElementById('event-ring').checked = item.ringEnabled !== false;
   document.getElementById('event-vibrate').checked = item.vibrateEnabled !== false;
+  state.eventCourseSlots = [];
+  setEventCourseModeEnabled(false, false);
   openModal('event-modal');
 }
 
@@ -3546,6 +3677,52 @@ document.getElementById('todo-reminder-enabled')?.addEventListener('change', eve
 document.getElementById('event-reminder-enabled')?.addEventListener('change', event => {
   setEventReminderEnabled(event.target.checked);
 });
+document.getElementById('event-course-enabled')?.addEventListener('change', event => {
+  if (event.target.checked) {
+    state.eventCourseSlots = [defaultEventCourseSlot()];
+  }
+  setEventCourseModeEnabled(event.target.checked, !state.editingEventId);
+});
+document.getElementById('event-course-add')?.addEventListener('click', () => {
+  ensureEventCourseSlots();
+  const last = state.eventCourseSlots[state.eventCourseSlots.length - 1] || defaultEventCourseSlot();
+  const nextWeekday = Number(last.weekday) >= 7 ? 1 : Number(last.weekday) + 1;
+  state.eventCourseSlots = state.eventCourseSlots.concat([{ ...last, weekday: nextWeekday }]);
+  renderEventCourseSlots();
+});
+document.getElementById('event-course-slots')?.addEventListener('input', event => {
+  const row = event.target.closest?.('[data-course-slot-index]');
+  const field = event.target.dataset?.courseSlotField;
+  if (!row || !field) return;
+  const index = Number(row.dataset.courseSlotIndex);
+  if (!Number.isInteger(index) || !state.eventCourseSlots[index]) return;
+  state.eventCourseSlots[index] = {
+    ...state.eventCourseSlots[index],
+    [field]: field === 'weekday' ? Number(event.target.value) : event.target.value
+  };
+});
+document.getElementById('event-course-slots')?.addEventListener('change', event => {
+  const row = event.target.closest?.('[data-course-slot-index]');
+  const field = event.target.dataset?.courseSlotField;
+  if (row && field) {
+    const index = Number(row.dataset.courseSlotIndex);
+    if (Number.isInteger(index) && state.eventCourseSlots[index]) {
+      state.eventCourseSlots[index] = {
+        ...state.eventCourseSlots[index],
+        [field]: field === 'weekday' ? Number(event.target.value) : event.target.value
+      };
+    }
+  }
+});
+document.getElementById('event-course-slots')?.addEventListener('click', event => {
+  const remove = event.target.closest?.('[data-course-slot-remove]');
+  if (!remove) return;
+  event.preventDefault();
+  const index = Number(remove.dataset.courseSlotRemove);
+  if (!Number.isInteger(index) || state.eventCourseSlots.length <= 1) return;
+  state.eventCourseSlots = state.eventCourseSlots.filter((_, currentIndex) => currentIndex !== index);
+  renderEventCourseSlots();
+});
 document.getElementById('todo-recurrence-type')?.addEventListener('change', event => {
   syncRecurrenceWeekdayVisibility('todo');
   if (state.editingTodoOriginalRecurring && event.target.value === 'NONE') {
@@ -3554,6 +3731,12 @@ document.getElementById('todo-recurrence-type')?.addEventListener('change', even
   }
 });
 document.getElementById('event-recurrence-type')?.addEventListener('change', event => {
+  if (document.getElementById('event-course-enabled')?.checked) {
+    event.target.value = 'WEEKLY';
+    syncRecurrenceWeekdayVisibility('event');
+    setWeekdayChipsEnabled('event', false);
+    return;
+  }
   syncRecurrenceWeekdayVisibility('event');
   if (state.editingEventOriginalRecurring && event.target.value === 'NONE') {
     const scopeSelect = document.getElementById('event-recurrence-scope');
@@ -4051,6 +4234,8 @@ document.getElementById('save-event').onclick = async () => {
     const startAtMillis = startAt ? new Date(startAt).getTime() : null;
     const recurrenceType = document.getElementById('event-recurrence-type').value;
     const eventReminderEnabled = document.getElementById('event-reminder-enabled')?.checked !== false;
+    const courseModeEnabled = document.getElementById('event-course-enabled')?.checked === true && !state.editingEventId;
+    const reminderRaw = document.getElementById('event-reminder-offsets').value;
     const payload = {
       title: document.getElementById('event-title').value,
       groupId: Number(document.getElementById('event-group').value || 0),
@@ -4060,7 +4245,7 @@ document.getElementById('save-event').onclick = async () => {
       endAt: endAt,
       allDay: document.getElementById('event-all-day').checked,
       accentColorHex: document.getElementById('event-color').value || DEFAULT_EVENT_COLOR,
-      reminderOffsetsMinutes: eventReminderEnabled ? parseReminderSpecs(document.getElementById('event-reminder-offsets').value, startAtMillis) : [],
+      reminderOffsetsMinutes: eventReminderEnabled && !courseModeEnabled ? parseReminderSpecs(reminderRaw, startAtMillis) : [],
       countdownEnabled: document.getElementById('event-countdown').checked,
       checkInEnabled: document.getElementById('event-check-in').checked,
       ringEnabled: eventReminderEnabled && document.getElementById('event-ring').checked,
@@ -4073,7 +4258,51 @@ document.getElementById('save-event').onclick = async () => {
         document.getElementById('event-weekdays').value
       )
     };
-    if (state.editingEventId) {
+    if (courseModeEnabled) {
+      if (!startAt) throw new Error('课程多时间段需要先填写起始日期作为起始周参考。');
+      const baseDate = new Date(startAt);
+      const recurrenceEnd = document.getElementById('event-recurrence-end').value || defaultCourseRecurrenceEndDate(baseDate);
+      document.getElementById('event-recurrence-end').value = recurrenceEnd;
+      const slots = readEventCourseSlots();
+      if (!slots.length) throw new Error('请至少填写一个课程时间段。');
+      const coursePayloads = [];
+      for (const slot of slots) {
+        const slotStart = courseSlotDateTimeValue(baseDate, slot.weekday, slot.startTime);
+        const slotEnd = courseSlotDateTimeValue(baseDate, slot.weekday, slot.endTime);
+        const slotStartMillis = new Date(slotStart).getTime();
+        if (new Date(slotEnd).getTime() <= slotStartMillis) {
+          throw new Error(weekdayLabel(slot.weekday) + ' ' + slot.startTime + '-' + slot.endTime + '：结束时间必须晚于开始时间');
+        }
+        let slotReminderOffsets = [];
+        if (eventReminderEnabled) {
+          try {
+            slotReminderOffsets = parseReminderSpecs(reminderRaw, slotStartMillis);
+          } catch (error) {
+            throw new Error(weekdayLabel(slot.weekday) + ' ' + slot.startTime + '：' + (error.message || '提醒时间无效'));
+          }
+        }
+        coursePayloads.push({
+          ...payload,
+          startAt: slotStart,
+          endAt: slotEnd,
+          allDay: false,
+          reminderOffsetsMinutes: slotReminderOffsets,
+          recurrence: {
+            enabled: true,
+            type: 'WEEKLY',
+            weeklyDays: [slot.weekday],
+            endDate: recurrenceEnd
+          }
+        });
+      }
+      for (const coursePayload of coursePayloads) {
+        await api('/api/events', {
+          method: 'POST',
+          body: JSON.stringify(coursePayload)
+        });
+      }
+      els.status.textContent = '已创建 ' + slots.length + ' 个课程时间段';
+    } else if (state.editingEventId) {
       await api(`/api/events/${state.editingEventId}`, { method: 'PUT', body: JSON.stringify(payload) });
     } else {
       await api('/api/events', { method: 'POST', body: JSON.stringify(payload) });

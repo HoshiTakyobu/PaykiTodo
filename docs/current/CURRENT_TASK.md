@@ -2,7 +2,7 @@
 
 ## Active Development Focus
 
-Active immediate task: continue requirement / UX consistency auditing and verify the course multi-slot reminder parsing fix from the `1.13.48 / versionCode 296` local patch baseline, using the previous reminder/Planning Desk goal as the latest verified work package:
+Active immediate task: continue requirement / UX consistency auditing and verify Desktop Web course multi-slot event creation from the `1.13.49 / versionCode 297` local patch baseline, using the previous reminder/Planning Desk goal as the latest verified work package:
 
 - `docs/goals/2026-06-01-paykitodo-reminder-ongoing-planning-ux-goal.md`
 
@@ -10,7 +10,7 @@ Do not commit secrets, signing material, API keys, private Base URLs, generated 
 
 ## Current Round Scope
 
-The current user request is to check current software behavior against requirements and UX expectations, then fix confirmed mismatches. The current concrete fix is for the phone-side Calendar course multi-slot editor: reminder input must be validated and resolved per generated slot, not once against the editor's main start time.
+The current user request is to check current software behavior against requirements and UX expectations, then fix confirmed mismatches. The current concrete fix is for desktop/phone parity: Desktop Web event creation must support the same course multi-slot creation workflow that phone-side Calendar now supports.
 
 Important constraints:
 
@@ -104,6 +104,7 @@ Completed behavior so far:
 17. In `1.13.46`, validation passed: `node --check app/src/main/assets/desktop-web/app.js`, local `review.xls` parse smoke test, `git diff --check`, `compileDebugKotlin`, `testDebugUnitTest`, `assembleDebug`, and APK metadata check for `versionName = 1.13.46`, `versionCode = 294`.
 18. In `1.13.47`, phone Calendar new-event creation adds `课程多时间段`: each selected weekday/time slot becomes one weekly recurring event series while sharing common event fields; validation passed with `compileDebugKotlin`, `testDebugUnitTest`, `git diff --check`, `assembleDebug`, output metadata check, and `aapt dump badging`.
 19. In `1.13.48`, course multi-slot reminder input is parsed per slot anchor and reports the failing weekday/time when invalid; validation passed with `compileDebugKotlin`, `testDebugUnitTest`, `git diff --check`, `assembleDebug`, output metadata check, and `aapt dump badging`.
+20. In `1.13.49`, Desktop Web event creation adds `课程多时间段` for new events, creates one weekly recurring event per slot through existing `/api/events`, hides duplicate weekly-day chips in course mode, and keeps existing-event editing single-series; validation passed with `node --check`, `compileDebugKotlin`, `testDebugUnitTest`, `git diff --check`, `assembleDebug`, output metadata check, and `aapt dump badging`.
 5. Recurring todo range delete now uses the hard-delete path instead of cancel/archive.
 6. Recurring todo current-instance delete records a `recurring_instance_skips` exception and then hard-deletes the row, so the occurrence does not enter history and does not regenerate.
 7. Backup / restore includes `recurring_instance_skips`, so single-instance recurring-todo deletions survive restore.

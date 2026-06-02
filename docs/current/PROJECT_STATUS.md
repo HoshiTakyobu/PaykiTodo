@@ -8,8 +8,8 @@
 - Target platform: Android 14 / API 34
 - License: MIT License (`LICENSE`)
 - Current version in code:
-  - `versionName = "1.13.50"`
-  - `versionCode = 298`
+  - `versionName = "1.13.51"`
+  - `versionCode = 299`
   - database version = `27`
 
 ## Current Build Facts
@@ -22,7 +22,11 @@
 - Latest GitHub Release:
   - `https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.13.11`
 - Latest fully built debug APK:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.13.50-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.13.51-debug.apk`
+- Current `1.13.51 / versionCode 299` status:
+  - Event check-in idle auto-checkout notifications now include the event title in the collapsed notification title, e.g. `已自动签退：课程名`, instead of only using a generic title.
+  - Database version remains `27`; no schema migration was added.
+  - Verification passed: `./gradlew.bat :app:compileDebugKotlin`, `./gradlew.bat :app:testDebugUnitTest`, `git diff --check`, `./gradlew.bat :app:assembleDebug`, APK metadata check, and `aapt dump badging` confirmed `versionName = 1.13.51`, `versionCode = 299`.
 - Current `1.13.50 / versionCode 298` status:
   - Notification small icons now use a dedicated monochrome vector `ic_stat_payki_todo` instead of a colored PNG bitmap wrapper, reducing status-bar rendering risk across OEM ROMs.
   - Adaptive launcher themed-icon monochrome layers now point to the same vector icon, while standard / round adaptive foregrounds keep the transparent main-logo art.

@@ -5,23 +5,30 @@
 - Repository root: `G:\Workspace\Project\PaykiTodo`
 - Branch: `main`
 - Current code version:
-  - `versionName = 1.13.50`
-  - `versionCode = 298`
+  - `versionName = 1.13.51`
+  - `versionCode = 299`
   - database version = `27`
 - Latest debug APK target in this round:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.13.50-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.13.51-debug.apk`
 - Latest signed release APK available locally:
   - `app/build/outputs/apk/release/PaykiTodo-1.13.11-release.apk`
 - Latest GitHub Release:
   - `https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.13.11`
 - Debug APK metadata inspection:
-  - `versionName = 1.13.50`, `versionCode = 298`
+  - `versionName = 1.13.51`, `versionCode = 299`
 
 ## Active Goal
 
-Active immediate task: continue auditing requirement / UX consistency from the current `1.13.50 / versionCode 298` local patch baseline.
+Active immediate task: continue auditing requirement / UX consistency from the current `1.13.51 / versionCode 299` local patch baseline.
 
-Latest status: `1.13.50` repairs the app icon resource chain for notifications and themed launcher icons by replacing the colored notification PNG wrapper with a monochrome vector small icon and pointing adaptive-icon monochrome layers to that vector. Debug build and icon resource inspection passed.
+Latest status: `1.13.51` improves event check-in auto-checkout notification readability by including the event title in the collapsed notification title. Debug build and metadata inspection passed.
+
+## What Changed In The Latest 1.13.51 Patch
+
+1. Idle auto-checkout notifications now title themselves as `已自动签退：{日程名}` instead of the generic `已自动签退`.
+2. The existing BigText content remains unchanged and still includes checkout time plus invested minutes.
+3. Version metadata moved to `1.13.51 / versionCode 299`; database version remains `27`.
+4. Verification passed: `./gradlew.bat :app:compileDebugKotlin`, `./gradlew.bat :app:testDebugUnitTest`, `git diff --check`, `./gradlew.bat :app:assembleDebug`, APK metadata check, and `aapt dump badging`.
 
 ## What Changed In The Latest 1.13.50 Patch
 

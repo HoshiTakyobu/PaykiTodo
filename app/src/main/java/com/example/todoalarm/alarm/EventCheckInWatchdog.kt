@@ -69,7 +69,7 @@ object EventCheckInWatchdog {
         )
         val notification = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_stat_payki_todo)
-            .setContentTitle("已自动签退")
+            .setContentTitle("已自动签退：$title")
             .setContentText(content)
             .setStyle(NotificationCompat.BigTextStyle().bigText(content))
             .setPriority(NotificationCompat.PRIORITY_LOW)

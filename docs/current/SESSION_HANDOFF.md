@@ -5,23 +5,30 @@
 - Repository root: `G:\Workspace\Project\PaykiTodo`
 - Branch: `main`
 - Current code version:
-  - `versionName = 1.13.52`
-  - `versionCode = 300`
+  - `versionName = 1.13.53`
+  - `versionCode = 301`
   - database version = `27`
 - Latest debug APK target in this round:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.13.52-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.13.53-debug.apk`
 - Latest signed release APK available locally:
   - `app/build/outputs/apk/release/PaykiTodo-1.13.11-release.apk`
 - Latest GitHub Release:
   - `https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.13.11`
 - Debug APK metadata inspection:
-  - pending for `1.13.52 / versionCode 300`
+  - `versionName = 1.13.53`, `versionCode = 301`
 
 ## Active Goal
 
-Active immediate task: continue auditing requirement / UX consistency from the current `1.13.52 / versionCode 300` local patch baseline.
+Active immediate task: continue auditing requirement / UX consistency from the current `1.13.53 / versionCode 301` local patch baseline.
 
-Latest status: `1.13.52` updates the phone Planning Desk beginner tutorial so it matches the current default free-writing workflow instead of stale node-first Outliner copy. Validation is pending.
+Latest status: `1.13.53` corrects Settings -> Calendar and reminders copy for ongoing event notifications: the notification setting applies to in-progress events and does not require the separate event reminder toggle. Debug build and metadata inspection passed.
+
+## What Changed In The Latest 1.13.53 Patch
+
+1. Settings -> Calendar and reminders now describes `日程进行时显示通知` as an in-progress event notification setting rather than incorrectly limiting it to "events with reminders".
+2. The copy now matches `OngoingEventNotifier.schedule()`, which schedules ongoing notifications for active events even when event reminders are disabled.
+3. Version metadata moved to `1.13.53 / versionCode 301`; database version remains `27`.
+4. Verification passed: `./gradlew.bat :app:compileDebugKotlin`, `./gradlew.bat :app:testDebugUnitTest`, `git diff --check`, `node --check app/src/main/assets/desktop-web/app.js`, `./gradlew.bat :app:assembleDebug`, and APK metadata check.
 
 ## What Changed In The Latest 1.13.52 Patch
 

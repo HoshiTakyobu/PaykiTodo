@@ -8,8 +8,8 @@
 - Target platform: Android 14 / API 34
 - License: MIT License (`LICENSE`)
 - Current version in code:
-  - `versionName = "1.13.52"`
-  - `versionCode = 300`
+  - `versionName = "1.13.53"`
+  - `versionCode = 301`
   - database version = `27`
 
 ## Current Build Facts
@@ -22,7 +22,12 @@
 - Latest GitHub Release:
   - `https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.13.11`
 - Latest fully built debug APK:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.13.52-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.13.53-debug.apk`
+- Current `1.13.53 / versionCode 301` status:
+  - Settings -> Calendar and reminders now describes ongoing event notifications accurately: when enabled, events can show a low-priority ongoing notification during the event without requiring the separate event reminder toggle.
+  - This aligns the settings copy with the implemented `OngoingEventNotifier` behavior and the current requirement that in-progress schedules remain visible until they end or are cleared.
+  - Database version remains `27`; no schema migration was added.
+  - Verification passed: `./gradlew.bat :app:compileDebugKotlin`, `./gradlew.bat :app:testDebugUnitTest`, `git diff --check`, `node --check app/src/main/assets/desktop-web/app.js`, `./gradlew.bat :app:assembleDebug`, and APK metadata check for `versionName = 1.13.53`, `versionCode = 301`.
 - Current `1.13.52 / versionCode 300` status:
   - Phone Planning Desk beginner tutorial now matches the current default free-writing workflow: write naturally first, then use recognition, then confirm imports in preview.
   - The tutorial now distinguishes Markdown rendering preview, recognition/import preview, and the optional Outliner draft workflow, reducing confusion from stale node-first copy.

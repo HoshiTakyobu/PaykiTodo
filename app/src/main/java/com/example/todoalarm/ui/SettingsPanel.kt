@@ -359,7 +359,7 @@ fun SettingsPanel(
 
                 SettingsSwitchRow(
                     title = "日程进行时显示通知",
-                    summary = "开启后，有提醒的日程在进行期间会显示低优先级常驻通知，日程结束后自动消失。",
+                    summary = "开启后，日程在进行期间会显示低优先级常驻通知；不要求单独开启日程提醒，日程结束后自动消失。",
                     checked = settings.ongoingEventNotificationEnabled,
                     onCheckedChange = onOngoingEventNotificationEnabledChange
                 )

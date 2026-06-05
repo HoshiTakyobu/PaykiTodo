@@ -5,23 +5,33 @@
 - Repository root: `G:\Workspace\Project\PaykiTodo`
 - Branch: `main`
 - Current code version:
-  - `versionName = 1.13.63`
-  - `versionCode = 311`
+  - `versionName = 1.13.64`
+  - `versionCode = 312`
   - database version = `28`
 - Latest debug APK target in this round:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.13.63-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.13.64-debug.apk`
 - Latest signed release APK available locally:
   - `app/build/outputs/apk/release/PaykiTodo-1.13.11-release.apk`
 - Latest GitHub Release:
   - `https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.13.11`
 - Debug APK metadata inspection:
-  - `versionName = 1.13.63`, `versionCode = 311`
+  - `versionName = 1.13.64`, `versionCode = 312`
 
 ## Active Goal
 
-Active immediate task: continue auditing requirement / UX consistency from the current `1.13.63 / versionCode 311` local patch baseline.
+Active immediate task: close the P0 strong-reminder gap from the current `1.13.64 / versionCode 312` local patch baseline, then continue with a separate UI/product-shell simplification round.
 
-Latest status: `1.13.63` continues weekly multi-slot Calendar work. Newly created multi-slot events persist a shared bundle id, and phone / Desktop Web editors can synchronize shared fields across bundled slots while preserving each slot's own weekday and time.
+Latest status: `1.13.64` upgrades Settings reminder diagnostics, makes calendar reminder defaults prefer full-screen delivery, and moves ongoing event notifications to a stronger v2 channel/layout. Full physical-device verification is still needed for OEM lock-screen behavior.
+
+## What Changed In The Latest 1.13.64 Patch
+
+1. Settings -> 提醒链路诊断 now shows strong-reminder readiness rows for notification permission, exact alarm, full-screen permission, battery optimization, DND bypass, and accessibility fallback.
+2. The reminder-chain test creates a short-delay full-screen test todo, forces full-screen delivery, and reports creation success/failure through a Toast.
+3. Diagnostic logs now show readable Chinese stage/status labels, so failures can be interpreted as scheduling, receiver, service, notification, full-screen launch, activity resume, or user-action stages.
+4. New/fallback calendar reminder defaults prefer `全屏界面提醒`; quick-create and batch-import paths use the configured default instead of hard-coding notification mode.
+5. Ongoing event notifications now use `ongoing_event_v2`, default notification importance, and a custom title/time/location layout; the old `ongoing_event` channel is deleted when v2 is ensured.
+6. Version metadata moved to `1.13.64 / versionCode 312`; database version remains `28`.
+7. Verification passed: `./gradlew.bat :app:compileDebugKotlin`, `./gradlew.bat :app:testDebugUnitTest`, `node --check app/src/main/assets/desktop-web/app.js`, `git diff --check`, `./gradlew.bat :app:assembleDebug`, output metadata inspection, and `aapt dump badging` for `versionName = 1.13.64`, `versionCode = 312`.
 
 ## What Changed In The Latest 1.13.63 Patch
 

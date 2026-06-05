@@ -2,7 +2,7 @@
 
 ## Active Development Focus
 
-Active immediate task: continue requirement / UX consistency auditing from the `1.13.63 / versionCode 311` local patch baseline, using the previous reminder/Planning Desk goal as the latest verified work package:
+Active immediate task: close the P0 strong-reminder usability gap from the `1.13.63 / versionCode 311` baseline, using the user's latest feedback that full-screen reminders and ongoing schedule notifications still feel too weak as the active product constraint.
 
 - `docs/goals/2026-06-01-paykitodo-reminder-ongoing-planning-ux-goal.md`
 
@@ -10,11 +10,11 @@ Do not commit secrets, signing material, API keys, private Base URLs, generated 
 
 ## Current Round Scope
 
-The current user request is to continue the weekly multi-slot Calendar feature beyond initial creation. The current concrete fix is multi-slot event group persistence and shared-field editing: newly created weekly multi-slot events now carry a shared bundle id, and phone / Desktop Web editors can synchronize shared fields across the bundle while preserving each slot's own weekday and time.
+The current concrete patch is `1.13.64 / versionCode 312`: strengthen reminder diagnostics, make calendar reminder defaults prefer full-screen delivery, and upgrade ongoing event notifications away from the old low-priority channel.
 
 Important constraints:
 
-1. Database version is now `28` because multi-slot bundle ids are persisted on event items and recurring templates.
+1. Database version remains `28`; this round does not add a schema migration.
 2. Concrete todo rows in the board widget should carry `EXTRA_OPEN_TODO_ID`.
 3. Concrete event rows in the schedule aggregate card should carry `EXTRA_OPEN_EVENT_ID`.
 4. Section titles and aggregate schedule card should still open the broader Todo / Calendar surface rather than a random detail.
@@ -37,6 +37,7 @@ Historical usability / correctness failures from the broader audit:
 13. Todo quick-preview bottom fixed actions must expose cancel/archive directly, not only through a top text action or inline explanation card.
 14. Todo quick-preview cancel/archive must be visually separated from edit/delete in the fixed bottom area, because cancel archives into history while delete is hard removal.
 15. Desktop Web Planning Desk recognition preview must not require manual weekday number input for weekly recurrence candidates.
+16. Product/UI cohesion remains a P1 follow-up: daily board, todo editor, calendar event editor, Planning Desk, and reminder surfaces need a design-system pass after the P0 reminder reliability loop is testable.
 
 ## Required Behavior
 
@@ -85,6 +86,11 @@ The quick-preview cancel/delete semantics fix was implemented and committed in `
 
 Completed behavior so far:
 
+1. In `1.13.64`, Settings -> 提醒链路诊断 now shows readiness rows for notification, exact alarm, full-screen, battery optimization, DND bypass, and accessibility fallback.
+2. In `1.13.64`, reminder chain tests create a short-delay full-screen test reminder and show immediate creation success/failure feedback.
+3. In `1.13.64`, diagnostic logs render readable stage/status names instead of raw enum-only entries.
+4. In `1.13.64`, new/fallback calendar reminder defaults prefer full-screen delivery, while explicit notification-mode choices remain supported.
+5. In `1.13.64`, ongoing event notifications use `ongoing_event_v2` with default importance and a more prominent custom layout.
 1. Quick todo preview dialogs now expose a visible `取消待办（归档）` action instead of hiding cancellation behind delete.
 2. The action sheet for active todo cards now also exposes `取消待办` directly, keeping cancel distinct from hard delete.
 3. Cancel remains a history-preserving archive action; delete remains a destructive removal path.

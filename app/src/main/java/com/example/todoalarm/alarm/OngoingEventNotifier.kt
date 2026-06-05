@@ -9,6 +9,8 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
+import android.view.View
+import android.widget.RemoteViews
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
@@ -22,7 +24,8 @@ import java.time.format.DateTimeFormatter
 import java.util.Locale
 
 object OngoingEventNotifier {
-    private const val CHANNEL_ID = "ongoing_event"
+    private const val CHANNEL_ID = "ongoing_event_v2"
+    private const val LEGACY_CHANNEL_ID = "ongoing_event"
     private const val NOTIFICATION_BASE_ID = 93_000
     const val ACTION_START = "com.paykitodo.app.ONGOING_EVENT_START"
     const val ACTION_END = "com.paykitodo.app.ONGOING_EVENT_END"
@@ -35,17 +38,21 @@ object OngoingEventNotifier {
     fun ensureChannel(context: Context) {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
         val manager = context.getSystemService(NotificationManager::class.java)
-        if (manager.getNotificationChannel(CHANNEL_ID) != null) return
-        manager.createNotificationChannel(
-            NotificationChannel(
-                CHANNEL_ID,
-                "进行中日程",
-                NotificationManager.IMPORTANCE_LOW
-            ).apply {
-                description = "日程进行期间的低优先级常驻提示"
-                setShowBadge(false)
-            }
-        )
+        if (manager.getNotificationChannel(CHANNEL_ID) == null) {
+            manager.createNotificationChannel(
+                NotificationChannel(
+                    CHANNEL_ID,
+                    "进行中日程",
+                    NotificationManager.IMPORTANCE_DEFAULT
+                ).apply {
+                    description = "日程进行期间的常驻提示，会在日程结束后自动消失"
+                    setShowBadge(false)
+                }
+            )
+        }
+        manager.getNotificationChannel(LEGACY_CHANNEL_ID)?.let {
+            manager.deleteNotificationChannel(LEGACY_CHANNEL_ID)
+        }
     }
 
     fun schedule(context: Context, event: TodoItem) {
@@ -115,10 +122,12 @@ object OngoingEventNotifier {
             intent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
+        val contentText = "进行中 · ${formatTimeRange(event)}"
+        val customContent = ongoingEventViews(context, event, contentText)
         val notification = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_stat_payki_todo)
-            .setContentTitle(event.title)
-            .setContentText("进行中 · ${formatTimeRange(event)}")
+            .setContentTitle("进行中：${event.title}")
+            .setContentText(contentText)
             .setSubText(event.location.takeIf { it.isNotBlank() })
             .setContentIntent(pendingIntent)
             .setOngoing(true)
@@ -126,10 +135,13 @@ object OngoingEventNotifier {
             .setWhen(startMillis)
             .setUsesChronometer(!event.allDay)
             .setShowWhen(true)
-            .setPriority(NotificationCompat.PRIORITY_LOW)
+            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
             .setCategory(NotificationCompat.CATEGORY_EVENT)
             .setVisibility(NotificationCompat.VISIBILITY_PRIVATE)
             .setOnlyAlertOnce(true)
+            .setStyle(NotificationCompat.DecoratedCustomViewStyle())
+            .setCustomContentView(customContent)
+            .setCustomBigContentView(customContent)
             .build()
         NotificationManagerCompat.from(context).notify(notificationId(event.id), notification)
     }
@@ -212,6 +224,17 @@ object OngoingEventNotifier {
     private fun isEnabled(context: Context): Boolean {
         val app = context.applicationContext as? TodoApplication ?: return true
         return app.settingsStore.currentSettings().ongoingEventNotificationEnabled
+    }
+
+    private fun ongoingEventViews(context: Context, event: TodoItem, contentText: String): RemoteViews {
+        return RemoteViews(context.packageName, R.layout.notification_ongoing_event).apply {
+            setTextViewText(R.id.ongoingEventEyebrow, "进行中日程")
+            setTextViewText(R.id.ongoingEventTitle, event.title.ifBlank { "未命名日程" })
+            setTextViewText(R.id.ongoingEventTime, contentText)
+            val location = event.location.trim()
+            setTextViewText(R.id.ongoingEventLocation, location)
+            setViewVisibility(R.id.ongoingEventLocation, if (location.isBlank()) View.GONE else View.VISIBLE)
+        }
     }
 
     private fun formatTimeRange(event: TodoItem): String {

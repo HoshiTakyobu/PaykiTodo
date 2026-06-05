@@ -1223,6 +1223,7 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
                 groupId = groups.firstOrNull { it.name == "例行" }?.id ?: groups.firstOrNull()?.id ?: 0L,
                 ringEnabled = true,
                 vibrateEnabled = true,
+                reminderDeliveryMode = ReminderDeliveryMode.FULLSCREEN,
                 recurrence = RecurrenceConfig()
             )
         ).firstOrNull() ?: return "测试提醒创建失败"
@@ -1234,7 +1235,7 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
             stage = ReminderChainStage.TEST_CREATED,
             status = ReminderChainStatus.OK,
             reminderAtMillis = created.reminderTriggerTimesMillis().minOrNull(),
-            message = "delaySeconds=$delaySeconds"
+            message = "delaySeconds=$delaySeconds; mode=${ReminderDeliveryMode.FULLSCREEN.name}"
         )
         scheduleReminderOrDisable(created)
         return null

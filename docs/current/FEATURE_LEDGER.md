@@ -77,7 +77,7 @@ This file tracks the product at a practical level for new coding sessions.
 - reminder todo cancel actions are labeled `取消待办（归档）` and use archive styling, matching quick-preview semantics that cancel enters history while delete is a hard removal
 - alarm mode loops sound and vibration until the user completes, snoozes, cancels, or acknowledges; after 5 minutes it stops continuous ringing, updates the notification to `未处理提醒`, and performs three 30-second retry bursts at 2-minute intervals
 - daily brief notification can be enabled from Settings with a configurable time, defaults to 08:00, summarizes today's todos/events and nearest <=7-day countdown target, and opens the daily board
-- calendar events can show a low-priority ongoing notification during the event using channel `ongoing_event`; start/end alarms are restored independently of whether the original reminder time has already passed, and the ongoing schedule notification no longer depends on the event reminder being enabled
+- calendar events can show a more visible ongoing notification during the event using channel `ongoing_event_v2`; start/end alarms are restored independently of whether the original reminder time has already passed, and the ongoing schedule notification no longer depends on the event reminder being enabled
 
 ### Board Announcements
 
@@ -234,7 +234,7 @@ This file tracks the product at a practical level for new coding sessions.
 - reboot / time change / timezone change recovery
 - accessibility fallback path
 - accessibility fallback event reminders can start an event check-in when `打卡追踪` is enabled
-- reminder diagnostics and settings-side tooling exist
+- Settings -> reminder diagnostics now includes a strong-reminder readiness panel for notification, exact alarm, full-screen permission, battery optimization, DND bypass, and accessibility fallback, plus a short-delay full-screen test reminder and readable chain-stage logs
 - reminder, desktop-sync foreground, capture, report, ongoing-event, and check-in watchdog notifications use the dedicated vector `ic_stat_payki_todo` small icon resource, so notification shade icons are monochrome-mask compliant instead of depending on a colored bitmap
 - calendar event acknowledgement preserves the configured reminder offsets instead of clearing the event's reminder setup
 - reminder playback can now select alarm, accessibility, notification, or media audio channels

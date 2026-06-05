@@ -824,7 +824,7 @@ fun DashboardScreen(
                 defaultReminderMinutesBefore = 5,
                 defaultRingEnabled = defaultReminderRing,
                 defaultVibrateEnabled = defaultReminderVibrate,
-                defaultReminderDeliveryMode = ReminderDeliveryMode.NOTIFICATION
+                defaultReminderDeliveryMode = uiState.settings.defaultCalendarReminderMode
             ),
             onDismiss = { batchImportVisible = false },
             onImport = { drafts ->

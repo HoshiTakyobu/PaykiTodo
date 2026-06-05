@@ -95,12 +95,17 @@ import com.example.todoalarm.data.PlanningAiProvider
 import com.example.todoalarm.data.PlanningAiTestResult
 import com.example.todoalarm.data.ReminderAudioChannel
 import com.example.todoalarm.data.ReminderChainLog
+import com.example.todoalarm.data.ReminderChainStage
+import com.example.todoalarm.data.ReminderChainStatus
 import com.example.todoalarm.data.ReminderDeliveryMode
 import com.example.todoalarm.data.WeekStartMode
 import com.example.todoalarm.sync.DesktopSyncStatus
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
+import java.time.Instant
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 
 private enum class SettingsSection {
     PERMISSIONS,
@@ -162,9 +167,11 @@ fun SettingsPanel(
     onCopyCrashLog: () -> Unit,
     onClearCrashLog: () -> Unit
 ) {
+    val context = LocalContext.current
     var showSnoozeDialog by remember { mutableStateOf(false) }
     var showCrashDialog by remember(crashLog) { mutableStateOf(false) }
     var showReminderTestDialog by remember { mutableStateOf(false) }
+    var reminderTestRunning by remember { mutableStateOf(false) }
     var selectedSection by remember { mutableStateOf<SettingsSection?>(null) }
     var desktopSyncAddressesExpanded by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
@@ -359,7 +366,7 @@ fun SettingsPanel(
 
                 SettingsSwitchRow(
                     title = "日程进行时显示通知",
-                    summary = "开启后，日程在进行期间会显示低优先级常驻通知；不要求单独开启日程提醒，日程结束后自动消失。",
+                    summary = "开启后，日程在进行期间会显示更醒目的常驻通知；不要求单独开启日程提醒，日程结束后自动消失。",
                     checked = settings.ongoingEventNotificationEnabled,
                     onCheckedChange = onOngoingEventNotificationEnabledChange
                 )
@@ -463,31 +470,53 @@ fun SettingsPanel(
 
         SettingsSection.DIAGNOSTICS -> SettingsSectionDialog("提醒链路诊断", { selectedSection = null }) {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    OutlinedButton(onClick = { showReminderTestDialog = true }) {
-                        Icon(Icons.Rounded.BugReport, contentDescription = null)
-                        Text("提醒链路测试")
-                    }
-                    OutlinedButton(onClick = { scope.launch { onClearReminderDiagnostics() } }) {
-                        Text("清空诊断")
-                    }
-                }
-                if (reminderChainLogs.isEmpty()) {
-                    Text("当前还没有诊断记录。", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
-                } else {
-                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        reminderChainLogs.take(12).forEach { log ->
-                            Surface(shape = RoundedCornerShape(18.dp), color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f)) {
-                                Column(modifier = Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                                    Text("${log.stage} · ${log.status}", fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
-                                    Text("todoId=${log.todoId} · ${log.source}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                    log.message?.takeIf { it.isNotBlank() }?.let {
-                                        Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                    }
+                ReminderReadinessCard(
+                    permissions = permissions,
+                    onRequestNotificationPermission = onRequestNotificationPermission,
+                    onRequestExactAlarmPermission = onRequestExactAlarmPermission,
+                    onRequestFullScreenPermission = onRequestFullScreenPermission,
+                    onRequestNotificationPolicyAccess = onRequestNotificationPolicyAccess,
+                    onRequestIgnoreBatteryOptimization = onRequestIgnoreBatteryOptimization,
+                    onRequestAccessibilityService = onRequestAccessibilityService
+                )
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(20.dp),
+                    color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.34f),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.20f))
+                ) {
+                    Column(modifier = Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Text("一键强提醒测试", fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
+                        Text(
+                            "会创建一条短延迟测试待办，强制使用全屏提醒、响铃和震动。到点后应直接打开提醒界面；如果只出通知栏，下面日志能看到卡在哪一步。",
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                        Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Button(
+                                onClick = { showReminderTestDialog = true },
+                                enabled = !reminderTestRunning
+                            ) {
+                                if (reminderTestRunning) {
+                                    CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+                                } else {
+                                    Icon(Icons.Rounded.BugReport, contentDescription = null)
                                 }
+                                Text(if (reminderTestRunning) "创建中" else "开始测试")
+                            }
+                            OutlinedButton(
+                                onClick = { scope.launch { onClearReminderDiagnostics() } },
+                                enabled = !reminderTestRunning
+                            ) {
+                                Text("清空日志")
                             }
                         }
                     }
+                }
+                if (reminderChainLogs.isEmpty()) {
+                    Text("当前还没有诊断记录。运行一次测试后，最近链路阶段会显示在这里。", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+                } else {
+                    ReminderChainLogList(reminderChainLogs.take(18))
                 }
             }
         }
@@ -565,7 +594,6 @@ fun SettingsPanel(
         }
 
         SettingsSection.DESKTOP_SYNC -> SettingsSectionDialog("电脑同步", { selectedSection = null }) {
-            val context = LocalContext.current
             Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
                 val syncStatusTitle = desktopSyncConnectionTitle(settings, desktopSyncStatus)
                 val syncStatusSummary = desktopSyncConnectionSummary(settings, desktopSyncStatus)
@@ -710,7 +738,15 @@ fun SettingsPanel(
             onDismiss = { showReminderTestDialog = false },
             onRun = { seconds ->
                 scope.launch {
-                    onRunReminderChainTest(seconds)
+                    reminderTestRunning = true
+                    val message = runCatching { onRunReminderChainTest(seconds) }
+                        .getOrElse { it.message ?: "测试提醒创建失败" }
+                    reminderTestRunning = false
+                    Toast.makeText(
+                        context,
+                        message ?: "已创建 ${seconds} 秒后的全屏提醒测试",
+                        Toast.LENGTH_SHORT
+                    ).show()
                     showReminderTestDialog = false
                 }
             }
@@ -748,6 +784,240 @@ private fun ReminderChainTestDialog(
             }
         }
     )
+}
+
+@Composable
+private fun ReminderReadinessCard(
+    permissions: PermissionSnapshot,
+    onRequestNotificationPermission: () -> Unit,
+    onRequestExactAlarmPermission: () -> Unit,
+    onRequestFullScreenPermission: () -> Unit,
+    onRequestNotificationPolicyAccess: () -> Unit,
+    onRequestIgnoreBatteryOptimization: () -> Unit,
+    onRequestAccessibilityService: () -> Unit
+) {
+    val criticalOk = permissions.notificationGranted &&
+        permissions.exactAlarmGranted &&
+        permissions.fullScreenGranted
+    val containerColor = if (criticalOk) {
+        MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.36f)
+    } else {
+        MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.42f)
+    }
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(20.dp),
+        color = containerColor,
+        border = BorderStroke(
+            width = 1.dp,
+            color = if (criticalOk) {
+                MaterialTheme.colorScheme.secondary.copy(alpha = 0.22f)
+            } else {
+                MaterialTheme.colorScheme.error.copy(alpha = 0.28f)
+            }
+        )
+    ) {
+        Column(modifier = Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Text(
+                text = if (criticalOk) "强提醒硬前提已满足" else "强提醒硬前提未满足",
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            Text(
+                text = if (criticalOk) {
+                    "现在可以运行测试提醒，验证锁屏 / 后台时是否真的弹出全屏界面。"
+                } else {
+                    "通知、精确闹钟或全屏权限缺失时，到点很可能只剩普通通知，甚至不准时。"
+                },
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                style = MaterialTheme.typography.bodySmall
+            )
+            ReadinessCheckRow(
+                title = "通知权限",
+                summary = "没有它，提醒通知和前台服务提示可能无法显示。",
+                ok = permissions.notificationGranted,
+                level = "必要",
+                onClick = onRequestNotificationPermission
+            )
+            ReadinessCheckRow(
+                title = "精确闹钟",
+                summary = "没有它，Android 可能把提醒延后到系统方便的时候。",
+                ok = permissions.exactAlarmGranted,
+                level = "必要",
+                onClick = onRequestExactAlarmPermission
+            )
+            ReadinessCheckRow(
+                title = "全屏提醒权限",
+                summary = "Android 14+ 会用它决定能否直接弹出全屏提醒界面。",
+                ok = permissions.fullScreenGranted,
+                level = "必要",
+                onClick = onRequestFullScreenPermission
+            )
+            ReadinessCheckRow(
+                title = "忽略电池优化",
+                summary = "建议开启；厂商省电策略可能杀后台服务或延后闹钟。",
+                ok = permissions.batteryOptimizationIgnored,
+                level = "建议",
+                onClick = onRequestIgnoreBatteryOptimization
+            )
+            ReadinessCheckRow(
+                title = "免打扰穿透",
+                summary = "如果你经常开免打扰，建议授权，否则响铃可能被系统压掉。",
+                ok = permissions.dndAccessGranted,
+                level = "增强",
+                onClick = onRequestNotificationPolicyAccess
+            )
+            ReadinessCheckRow(
+                title = "辅助功能兜底",
+                summary = "当系统限制全屏启动时，可作为强提醒兜底方案。",
+                ok = permissions.accessibilityServiceEnabled,
+                level = "兜底",
+                onClick = onRequestAccessibilityService
+            )
+        }
+    }
+}
+
+@Composable
+private fun ReadinessCheckRow(
+    title: String,
+    summary: String,
+    ok: Boolean,
+    level: String,
+    onClick: () -> Unit
+) {
+    Surface(
+        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
+        shape = RoundedCornerShape(16.dp),
+        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.76f),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.24f))
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Surface(
+                shape = RoundedCornerShape(50),
+                color = if (ok) MaterialTheme.colorScheme.primary.copy(alpha = 0.16f) else MaterialTheme.colorScheme.error.copy(alpha = 0.14f)
+            ) {
+                Text(
+                    text = if (ok) "已开" else "未开",
+                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.SemiBold,
+                    color = if (ok) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
+                )
+            }
+            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Text(title, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
+                    Text(level, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                Text(summary, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            Icon(
+                imageVector = Icons.AutoMirrored.Rounded.KeyboardArrowRight,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+}
+
+@Composable
+private fun ReminderChainLogList(logs: List<ReminderChainLog>) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(
+            "最近链路日志",
+            fontWeight = FontWeight.SemiBold,
+            color = MaterialTheme.colorScheme.onSurface
+        )
+        logs.forEach { log ->
+            val isError = log.status == ReminderChainStatus.ERROR || log.status == ReminderChainStatus.WARN
+            Surface(
+                shape = RoundedCornerShape(18.dp),
+                color = if (isError) {
+                    MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.34f)
+                } else {
+                    MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f)
+                },
+                border = BorderStroke(
+                    1.dp,
+                    if (isError) MaterialTheme.colorScheme.error.copy(alpha = 0.24f)
+                    else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.22f)
+                )
+            ) {
+                Column(modifier = Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            "${readableReminderStage(log.stage)} · ${readableReminderStatus(log.status)}",
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            modifier = Modifier.weight(1f)
+                        )
+                        Text(
+                            formatReminderLogTime(log.createdAtMillis),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Text("todoId=${log.todoId} · ${log.source}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    log.message?.takeIf { it.isNotBlank() }?.let {
+                        Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                }
+            }
+        }
+    }
+}
+
+private fun readableReminderStage(stage: String): String {
+    return when (stage) {
+        ReminderChainStage.TEST_CREATED -> "测试任务已创建"
+        ReminderChainStage.SCHEDULE_REQUESTED -> "请求调度"
+        ReminderChainStage.SCHEDULED -> "闹钟已调度"
+        ReminderChainStage.SCHEDULE_FAILED -> "调度失败"
+        ReminderChainStage.RECEIVER_EXACT -> "精确闹钟触发"
+        ReminderChainStage.RECEIVER_BACKUP -> "备用触发"
+        ReminderChainStage.POLL_DISPATCH -> "轮询派发"
+        ReminderChainStage.SERVICE_START -> "前台服务启动"
+        ReminderChainStage.SERVICE_ITEM_LOADED -> "提醒事项已读取"
+        ReminderChainStage.SERVICE_INVALID_ITEM -> "提醒事项无效"
+        ReminderChainStage.NOTIFICATION_POSTED -> "通知已发出"
+        ReminderChainStage.FULLSCREEN_ATTEMPT -> "尝试全屏"
+        ReminderChainStage.FULLSCREEN_ACTIVITY_LAUNCH -> "全屏界面已启动"
+        ReminderChainStage.FULLSCREEN_ACTIVITY_FAILED -> "全屏启动失败"
+        ReminderChainStage.ACCESSIBILITY_TRIGGER -> "辅助功能兜底触发"
+        ReminderChainStage.ACCESSIBILITY_OVERLAY -> "辅助浮层显示"
+        ReminderChainStage.REMINDER_ACTIVITY_RESUME -> "全屏界面可见"
+        ReminderChainStage.USER_COMPLETE -> "用户完成"
+        ReminderChainStage.USER_SNOOZE -> "用户延后"
+        ReminderChainStage.USER_CANCEL -> "用户取消"
+        else -> stage
+    }
+}
+
+private fun readableReminderStatus(status: String): String {
+    return when (status) {
+        ReminderChainStatus.OK -> "正常"
+        ReminderChainStatus.INFO -> "记录"
+        ReminderChainStatus.WARN -> "警告"
+        ReminderChainStatus.ERROR -> "错误"
+        else -> status
+    }
+}
+
+private val ReminderLogTimeFormatter = DateTimeFormatter.ofPattern("HH:mm:ss")
+
+private fun formatReminderLogTime(millis: Long): String {
+    return Instant.ofEpochMilli(millis)
+        .atZone(ZoneId.systemDefault())
+        .format(ReminderLogTimeFormatter)
 }
 
 @Composable

@@ -15,7 +15,7 @@ data class CalendarEventDraft(
     val reminderOffsetsMinutes: List<Int> = reminderMinutesBefore?.let { listOf(it) } ?: emptyList(),
     val ringEnabled: Boolean,
     val vibrateEnabled: Boolean,
-    val reminderDeliveryMode: ReminderDeliveryMode = ReminderDeliveryMode.NOTIFICATION,
+    val reminderDeliveryMode: ReminderDeliveryMode = ReminderDeliveryMode.FULLSCREEN,
     val countdownEnabled: Boolean = false,
     val checkInEnabled: Boolean = false,
     val recurrence: RecurrenceConfig = RecurrenceConfig(),

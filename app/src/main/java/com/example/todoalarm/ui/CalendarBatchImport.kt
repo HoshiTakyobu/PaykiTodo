@@ -1236,9 +1236,9 @@ internal object CalendarBatchImportHub {
 
     private fun parseModeCell(value: String): ReminderDeliveryMode {
         return when (value.trim().lowercase(Locale.ROOT)) {
-            "notification" -> ReminderDeliveryMode.NOTIFICATION
-            "fullscreen" -> ReminderDeliveryMode.FULLSCREEN
-            else -> ReminderDeliveryMode.NOTIFICATION
+            "notification", "通知栏", "通知栏提醒" -> ReminderDeliveryMode.NOTIFICATION
+            "fullscreen", "全屏", "全屏提醒", "全屏界面提醒" -> ReminderDeliveryMode.FULLSCREEN
+            else -> error("mode 仅支持 notification/fullscreen 或 通知栏/全屏")
         }
     }
 

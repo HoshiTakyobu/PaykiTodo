@@ -683,7 +683,7 @@ private fun JSONObject?.toSettings(): AppSettings {
         defaultVibrateEnabled = optBoolean("defaultVibrateEnabled", true),
         defaultVoiceEnabled = optBoolean("defaultVoiceEnabled", false),
         defaultCalendarReminderMode = ReminderDeliveryMode.fromStorage(
-            optString("defaultCalendarReminderMode", ReminderDeliveryMode.NOTIFICATION.name)
+            optString("defaultCalendarReminderMode", ReminderDeliveryMode.FULLSCREEN.name)
         ),
         autoCheckOutEventOnEnd = optBoolean("autoCheckOutEventOnEnd", true),
         showEventCheckInStatsOnComplete = optBoolean("showEventCheckInStatsOnComplete", true),

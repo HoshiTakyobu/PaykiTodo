@@ -8,8 +8,8 @@
 - Target platform: Android 14 / API 34
 - License: MIT License (`LICENSE`)
 - Current version in code:
-  - `versionName = "1.13.63"`
-  - `versionCode = 311`
+  - `versionName = "1.13.64"`
+  - `versionCode = 312`
   - database version = `28`
 
 ## Current Build Facts
@@ -22,7 +22,15 @@
 - Latest GitHub Release:
   - `https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.13.11`
 - Latest fully built debug APK:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.13.63-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.13.64-debug.apk`
+- Current `1.13.64 / versionCode 312` status:
+  - Settings -> 提醒链路诊断 now shows a strong-reminder readiness panel for notification, exact alarm, full-screen, battery, DND, and accessibility fallback state.
+  - Reminder chain tests now explicitly create a short-delay full-screen test reminder and report creation success/failure to the user.
+  - Reminder diagnostics render readable chain stages such as scheduling, notification post, full-screen attempt, full-screen launch, and activity resume.
+  - New / fallback calendar reminder defaults now prefer `全屏界面提醒`; calendar batch import and quick-create paths use the configured default instead of hard-coded notification mode.
+  - Ongoing event notifications moved to `ongoing_event_v2`, default notification importance, and a more prominent custom title/time/location layout while keeping the notification ongoing until the event ends.
+  - Database version remains `28`; no schema migration was added.
+  - Verification passed: `./gradlew.bat :app:compileDebugKotlin`, `./gradlew.bat :app:testDebugUnitTest`, `node --check app/src/main/assets/desktop-web/app.js`, `git diff --check`, `./gradlew.bat :app:assembleDebug`, and APK metadata inspection for `versionName = 1.13.64`, `versionCode = 312`.
 - Current `1.13.63 / versionCode 311` status:
   - Weekly multi-slot event creation now assigns the generated slot series a shared `multiSlotBundleId`, persisted on event items and recurring templates.
   - Phone Calendar editing exposes a compact `同步共享字段到同组全部时间段` switch for existing bundled multi-slot events.

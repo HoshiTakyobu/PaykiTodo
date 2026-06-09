@@ -60,8 +60,7 @@ interface TodoDao {
     @Query(
         """
         SELECT * FROM todo_items
-        WHERE itemType = 'TODO'
-        AND (:groupId IS NULL OR groupId = :groupId)
+        WHERE (:groupId IS NULL OR groupId = :groupId)
         AND (completed = 1 OR canceled = 1)
         ORDER BY
             COALESCE(completedAtMillis, canceledAtMillis, missedAtMillis, createdAtMillis) DESC,
@@ -73,12 +72,12 @@ interface TodoDao {
     @Query(
         """
         SELECT t.* FROM todo_items t
-        INNER JOIN todo_group_tags g ON t.id = g.todoId
-        WHERE t.itemType = 'TODO'
-        AND (t.completed = 1 OR t.canceled = 1)
-        AND g.groupId IN (:groupIds)
+        LEFT JOIN todo_group_tags g ON t.id = g.todoId
+        WHERE (t.completed = 1 OR t.canceled = 1)
+        AND (g.groupId IN (:groupIds) OR t.groupId IN (:groupIds))
         GROUP BY t.id
-        HAVING COUNT(DISTINCT g.groupId) = :requiredCount
+        HAVING COUNT(DISTINCT CASE WHEN g.groupId IN (:groupIds) THEN g.groupId END) = :requiredCount
+        OR (:requiredCount = 1 AND t.groupId IN (:groupIds))
         ORDER BY
             COALESCE(t.completedAtMillis, t.canceledAtMillis, t.missedAtMillis, t.createdAtMillis) DESC,
             t.createdAtMillis DESC
@@ -89,10 +88,9 @@ interface TodoDao {
     @Query(
         """
         SELECT DISTINCT t.* FROM todo_items t
-        INNER JOIN todo_group_tags g ON t.id = g.todoId
-        WHERE t.itemType = 'TODO'
-        AND (t.completed = 1 OR t.canceled = 1)
-        AND g.groupId IN (:groupIds)
+        LEFT JOIN todo_group_tags g ON t.id = g.todoId
+        WHERE (t.completed = 1 OR t.canceled = 1)
+        AND (g.groupId IN (:groupIds) OR t.groupId IN (:groupIds))
         ORDER BY
             COALESCE(t.completedAtMillis, t.canceledAtMillis, t.missedAtMillis, t.createdAtMillis) DESC,
             t.createdAtMillis DESC

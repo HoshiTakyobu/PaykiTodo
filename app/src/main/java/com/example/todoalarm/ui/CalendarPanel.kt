@@ -36,6 +36,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.CalendarMonth
+import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.rounded.Done
@@ -208,6 +209,7 @@ internal fun CalendarPanel(
     onGetEventCheckIns: suspend (Long) -> List<EventCheckIn>,
     onCompleteEvent: suspend (Long) -> EventCheckInCompletionSummary?,
     onMoveEvent: (TodoItem, LocalDateTime, LocalDateTime) -> Unit,
+    onCancelEvent: (TodoItem) -> Unit,
     onDeleteEvent: (TodoItem) -> Unit,
     onOpenBatchImport: () -> Unit,
     onSaveWeekAsTemplate: suspend (String, String, LocalDate) -> String?,
@@ -228,6 +230,7 @@ internal fun CalendarPanel(
     var detailsTarget by remember { mutableStateOf<TodoItem?>(null) }
     var pendingDraft by remember { mutableStateOf<PendingCalendarDraft?>(null) }
     var draggingEvent by remember { mutableStateOf<DraggingCalendarEvent?>(null) }
+    var pendingCancelTarget by remember { mutableStateOf<TodoItem?>(null) }
     var showTemplateManager by remember { mutableStateOf(false) }
     var showSaveWeekTemplate by remember { mutableStateOf(false) }
     var templateAnchorWeekStart by remember { mutableStateOf(currentWeekStart(LocalDate.now())) }
@@ -673,6 +676,14 @@ internal fun CalendarPanel(
                 detailsTarget = null
                 onEditEvent(item)
             },
+            onCancel = {
+                detailsTarget = null
+                if (item.isRecurring) {
+                    onCancelEvent(item)
+                } else {
+                    pendingCancelTarget = item
+                }
+            },
             onDelete = {
                 detailsTarget = null
                 pendingDeleteTarget = item
@@ -689,6 +700,20 @@ internal fun CalendarPanel(
             onConfirm = {
                 onMoveEvent(dragging.item, dragging.startAt, dragging.endAt)
                 draggingEvent = null
+            }
+        )
+    }
+
+    pendingCancelTarget?.let { item ->
+        PaykiDecisionBottomSheet(
+            title = "取消日程",
+            message = "确定取消“${item.title}”吗？取消后会进入历史记录；这不是删除。",
+            confirmLabel = "确认取消",
+            confirmLabelColor = Color(0xFFD97706),
+            onDismiss = { pendingCancelTarget = null },
+            onConfirm = {
+                pendingCancelTarget = null
+                onCancelEvent(item)
             }
         )
     }
@@ -2232,6 +2257,7 @@ private fun CalendarEventDetailsDialog(
     onCompleteEvent: suspend (Long) -> EventCheckInCompletionSummary?,
     onDismiss: () -> Unit,
     onEdit: () -> Unit,
+    onCancel: () -> Unit,
     onDelete: () -> Unit
 ) {
     val context = LocalContext.current
@@ -2334,6 +2360,7 @@ private fun CalendarEventDetailsDialog(
                 onComplete = if (canCompleteTrackedEvent) { { completeEvent() } } else null,
                 completeEnabled = !actionRunning,
                 completeLabel = if (actionRunning) "处理中…" else "完成日程",
+                onCancel = onCancel,
                 onEdit = onEdit,
                 onDelete = onDelete
             )
@@ -2429,6 +2456,7 @@ private fun CalendarEventDetailsFixedActions(
     onComplete: (() -> Unit)?,
     completeEnabled: Boolean,
     completeLabel: String,
+    onCancel: () -> Unit,
     onEdit: () -> Unit,
     onDelete: () -> Unit
 ) {
@@ -2458,6 +2486,18 @@ private fun CalendarEventDetailsFixedActions(
                     )
                     Text(completeLabel)
                 }
+            }
+            OutlinedButton(
+                modifier = Modifier.weight(1f),
+                onClick = onCancel
+            ) {
+                Icon(
+                    Icons.Rounded.Close,
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp),
+                    tint = Color(0xFFD97706)
+                )
+                Text("取消", color = Color(0xFFD97706))
             }
             OutlinedButton(
                 modifier = Modifier.weight(1f),

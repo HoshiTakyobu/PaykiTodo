@@ -553,7 +553,7 @@ class DesktopSyncCoordinator(
         val item = app.repository.getTodo(id) ?: return JSONObject().put("ok", false)
         val targetScope = parseRecurrenceScope(queryParam(path, "scope")) ?: RecurrenceScope.CURRENT
         val canceled = if (item.isEvent) {
-            app.repository.deleteCalendarEvent(item, targetScope)
+            app.repository.cancelCalendarEvent(item, targetScope)
         } else {
             app.repository.cancelTodo(item, targetScope)
         }

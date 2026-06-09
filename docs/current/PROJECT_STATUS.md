@@ -8,8 +8,8 @@
 - Target platform: Android 14 / API 34
 - License: MIT License (`LICENSE`)
 - Current version in code:
-  - `versionName = "1.13.67"`
-  - `versionCode = 315`
+  - `versionName = "1.13.68"`
+  - `versionCode = 316`
   - database version = `28`
 
 ## Current Build Facts
@@ -22,7 +22,15 @@
 - Latest GitHub Release:
   - `https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.13.11`
 - Latest fully built debug APK:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.13.67-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.13.68-debug.apk`
+- Current `1.13.68 / versionCode 316` status:
+  - Phone calendar event details preview now includes `取消` beside `修改` and `删除`; non-recurring event cancel asks for confirmation, while recurring event cancel asks for current / current-and-future / all scope.
+  - Desktop Web event preview now exposes `取消日程` and routes it through `/api/items/{id}/cancel`, preserving canceled events in history instead of hard-deleting them.
+  - `TodoRepository.cancelCalendarEvent` now marks events as `canceled = true`, clears reminder state, syncs linked Planning Desk nodes, and applies the selected recurrence scope.
+  - History queries now include completed/canceled todos and events, so canceled events become visible in the phone history section.
+  - Recurring event current-instance delete now records a recurring-instance skip and hard-deletes the instance, separating delete semantics from cancel/history semantics.
+  - Database version remains `28`; no schema migration was added.
+  - Verification passed: `node --check app/src/main/assets/desktop-web/app.js`, `git diff --check`, `./gradlew.bat :app:compileDebugKotlin`, `./gradlew.bat :app:testDebugUnitTest`, `./gradlew.bat :app:assembleDebug`, and APK metadata inspection for `versionName = 1.13.68`, `versionCode = 316`.
 - Current `1.13.67 / versionCode 315` status:
   - Phone calendar event details preview now mirrors the todo details interaction structure: the top bar keeps only back navigation, while `完成日程`, `修改`, and `删除` sit in one fixed bottom action row.
   - The duplicate full-width `完成日程` button was removed from the event detail body, avoiding repeated same-level actions in one preview sheet.

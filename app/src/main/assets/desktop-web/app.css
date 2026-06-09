@@ -385,8 +385,8 @@ button.ghost {
 .preview-actions { display: flex; align-items: center; justify-content: flex-end; gap: 10px; padding-top: 12px; border-top: 1px solid rgba(215,224,234,.72); }
 .preview-actions button, .preview-head-actions button { width: auto !important; min-width: 0; border-radius: 999px !important; padding: 9px 13px !important; }
 .todo-preview-actions { display: grid; grid-template-columns: auto minmax(220px, 1fr) auto; align-items: stretch; }
-.todo-preview-actions .archive-action { border-radius: 18px !important; padding: 11px 14px !important; text-align: left; font-weight: 950; color: #b45309 !important; background: rgba(217,119,6,.12) !important; border: 1px solid rgba(217,119,6,.24) !important; }
-.todo-preview-actions .archive-action span { display: block; margin-top: 3px; color: var(--notes-text); font-size: 12px; font-weight: 800; line-height: 1.35; }
+.preview-actions .archive-action { border-radius: 18px !important; padding: 11px 14px !important; text-align: left; font-weight: 950; color: #b45309 !important; background: rgba(217,119,6,.12) !important; border: 1px solid rgba(217,119,6,.24) !important; }
+.preview-actions .archive-action span { display: block; margin-top: 3px; color: var(--notes-text); font-size: 12px; font-weight: 800; line-height: 1.35; }
 .secondary-action { background: rgba(98,114,133,.1) !important; color: var(--notes-text) !important; border: 1px solid rgba(98,114,133,.14) !important; }
 .success-action { background: rgba(29,143,90,.12) !important; color: var(--action-success-text) !important; border: 1px solid rgba(29,143,90,.2) !important; }
 .event-checkin-panel { border-radius: 22px; border: 1px solid color-mix(in srgb, var(--accent, var(--primary)) 28%, var(--card-border)); background: color-mix(in srgb, var(--accent, var(--primary)) 8%, var(--card-bg-strong)); padding: 14px; }

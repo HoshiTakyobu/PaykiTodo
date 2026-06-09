@@ -1508,6 +1508,69 @@ class TodoRepository(
         return (canceledItems + planningLinkedCanceledItems).distinctBy { it.id }
     }
 
+    suspend fun cancelCalendarEvent(
+        item: TodoItem,
+        scope: RecurrenceScope = RecurrenceScope.CURRENT
+    ): List<TodoItem> {
+        if (!item.isEvent) return emptyList()
+        val now = System.currentTimeMillis()
+        val activeSeries = if (item.isRecurring) {
+            val seriesId = item.recurringSeriesId ?: return emptyList()
+            todoDao.getActiveBySeriesId(seriesId).filter { it.isEvent }
+        } else {
+            emptyList()
+        }
+        val splitDate = item.recurrenceScopeDate()
+        val targets = if (item.isRecurring && scope != RecurrenceScope.CURRENT) {
+            activeSeries.filter { candidate ->
+                when (scope) {
+                    RecurrenceScope.CURRENT -> candidate.id == item.id
+                    RecurrenceScope.CURRENT_AND_FUTURE -> candidate.isOnOrAfterRecurrenceDate(splitDate)
+                    RecurrenceScope.ALL -> true
+                }
+            }
+        } else {
+            listOfNotNull(todoDao.getById(item.id)).filter { it.isEvent && it.isActive }
+        }
+
+        if (targets.isEmpty()) return emptyList()
+        val canceledItems = targets.map { target ->
+            target.copy(
+                canceled = true,
+                canceledAtMillis = now,
+                completed = false,
+                completedAtMillis = null,
+                missed = false,
+                missedAtMillis = null,
+                reminderEnabled = false
+            )
+        }
+        todoDao.updateAll(canceledItems)
+        val planningLinkedCanceledItems = syncPlanningNodeCancellationFromItems(canceledItems, now)
+        if (item.isRecurring) {
+            item.recurringSeriesId?.let { seriesId ->
+                when (scope) {
+                    RecurrenceScope.CURRENT -> Unit
+                    RecurrenceScope.CURRENT_AND_FUTURE -> {
+                        todoDao.deleteRecurringSkipsFrom(seriesId, splitDate.toEpochDay())
+                        truncateTemplateBefore(
+                            seriesId = seriesId,
+                            template = todoDao.getTemplateBySeriesId(seriesId),
+                            activeSeries = activeSeries,
+                            splitDate = splitDate
+                        )
+                    }
+                    RecurrenceScope.ALL -> {
+                        todoDao.deleteRecurringSkipsBySeriesId(seriesId)
+                        todoDao.deleteTemplateBySeriesId(seriesId)
+                    }
+                }
+            }
+        }
+        notifyItemsChanged()
+        return (canceledItems + planningLinkedCanceledItems).distinctBy { it.id }
+    }
+
     suspend fun setCompleted(id: Long, completed: Boolean): TodoItem? {
         return setCompletedWithResult(id = id, completed = completed)?.item
     }
@@ -1857,19 +1920,16 @@ class TodoRepository(
         val seriesId = item.recurringSeriesId
         val deletedItems = when {
             item.isRecurring && scope == RecurrenceScope.CURRENT -> {
-                val now = System.currentTimeMillis()
                 val current = todoDao.getById(item.id)?.takeIf { it.isEvent && it.isActive } ?: return emptyList()
-                val canceled = current.copy(
-                    canceled = true,
-                    canceledAtMillis = now,
-                    completed = false,
-                    completedAtMillis = null,
-                    missed = false,
-                    missedAtMillis = null,
-                    reminderEnabled = false
-                )
-                todoDao.update(canceled)
-                (listOf(canceled) + syncPlanningNodeCancellationFromItems(listOf(canceled), now)).distinctBy { it.id }
+                current.recurringSeriesId?.let { currentSeriesId ->
+                    todoDao.insertRecurringSkip(
+                        RecurringInstanceSkip(
+                            seriesId = currentSeriesId,
+                            instanceEpochDay = current.recurrenceScopeDate().toEpochDay()
+                        )
+                    )
+                }
+                deleteItemsByIds(listOf(current.id))
             }
             !item.isRecurring -> {
                 deleteItemsByIds(listOf(item.id))

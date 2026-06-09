@@ -921,6 +921,14 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    fun cancelCalendarEvent(todoItem: TodoItem, scope: RecurrenceScope = RecurrenceScope.CURRENT) {
+        viewModelScope.launch {
+            val canceledItems = repository.cancelCalendarEvent(todoItem, scope)
+            clearReminderArtifacts(canceledItems.ifEmpty { listOf(todoItem) })
+            autoBackupIfEnabled()
+        }
+    }
+
     fun restoreTodo(todoItem: TodoItem) {
         viewModelScope.launch {
             val now = System.currentTimeMillis()

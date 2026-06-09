@@ -186,6 +186,8 @@ This file tracks the product at a practical level for new coding sessions.
 - day / multi-day / month / agenda style views exist in code, with ongoing refinement
 - normal events, all-day events, and recurring events
 - event location / notes / color / reminder settings
+- event cancellation is a first-class history-preserving action: phone and Desktop Web previews expose `取消日程`, canceled events are marked `canceled = true`, and delete remains hard removal
+- recurring event current-instance delete uses a recurring-instance skip plus hard delete, while recurring event cancel writes canceled history for the selected scope
 - phone and desktop event editors can set an event's primary group; phone uses a compact single-choice row, and the selected group is persisted for normal event creation/editing plus weekly multi-slot event creation
 - phone calendar keeps a bounded loaded event window and skips redundant Room queries when the requested visible date range is already covered, reducing timeline swipe churn without changing displayed events
 - Desktop Web event editor supports multi-line event titles, matching phone-side event title entry instead of forcing a single-line input

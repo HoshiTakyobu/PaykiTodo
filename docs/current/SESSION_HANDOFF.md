@@ -5,29 +5,39 @@
 - Repository root: `G:\Workspace\Project\PaykiTodo`
 - Branch: `main`
 - Current code version:
-  - `versionName = 1.13.67`
-  - `versionCode = 315`
+  - `versionName = 1.13.68`
+  - `versionCode = 316`
   - database version = `28`
 - Latest debug APK target in this round:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.13.67-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.13.68-debug.apk`
 - Latest signed release APK available locally:
   - `app/build/outputs/apk/release/PaykiTodo-1.13.11-release.apk`
 - Latest GitHub Release:
   - `https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.13.11`
 - Debug APK metadata inspection:
-  - `versionName = 1.13.67`, `versionCode = 315`
+  - `versionName = 1.13.68`, `versionCode = 316`
 
 ## Active Goal
 
-Active immediate task: align phone calendar event preview actions with the compact todo-preview action row and stop AI daily reports from mentioning investment duration when no check-in data exists.
+Active immediate task: implement the clarified shared cancel semantics: both todos and calendar events can be canceled into history, while delete remains hard removal.
 
-Latest status: `1.13.67` moves calendar event preview actions into one bottom row (`完成日程` / `修改` / `删除`), removes the duplicate completion button from the event details body, and makes AI daily-report investment wording conditional on positive event check-in minutes.
+Latest status: `1.13.68` adds true `取消日程` on phone and Desktop Web, routes event cancel into history, includes canceled events in history queries, and keeps delete as hard removal.
+
+## What Changed In The Latest 1.13.68 Patch
+
+1. Phone calendar event details preview now exposes `取消` beside edit/delete; one-off event cancel confirms first, recurring event cancel asks for current/current-and-future/all scope.
+2. Desktop Web event preview now exposes `取消日程` and calls `/api/items/{id}/cancel`, so canceled events are preserved as history instead of being hard-deleted.
+3. `TodoRepository.cancelCalendarEvent` marks events as canceled, clears reminder state, syncs linked Planning Desk nodes, and handles recurrence scope.
+4. History queries now include completed/canceled events as well as todos.
+5. Recurring event current-instance delete now writes a recurring-instance skip and hard-deletes the row, separating delete behavior from cancel/history behavior.
+6. Version metadata moved to `1.13.68 / versionCode 316`; database version remains `28`.
+7. Verification passed: `node --check app/src/main/assets/desktop-web/app.js`, `git diff --check`, `./gradlew.bat :app:compileDebugKotlin`, `./gradlew.bat :app:testDebugUnitTest`, `./gradlew.bat :app:assembleDebug`, and APK metadata inspection for `versionName = 1.13.68`, `versionCode = 316`.
 
 ## What Changed In The Latest 1.13.67 Patch
 
 1. Phone calendar event details preview now mirrors the todo details layout pattern: the top bar keeps only back navigation, while completion, edit, and delete actions live in a fixed bottom action row.
 2. The old top-right event edit/delete icons and the duplicate full-width `完成日程` body button were removed.
-3. No separate `取消日程` archive semantics were introduced; events still expose completion/edit/delete unless a future data model explicitly defines event cancellation history.
+3. Historical note: this patch did not yet introduce event cancel semantics; `1.13.68` later added true `取消日程` history behavior.
 4. AI daily reports now add `今日日程签到投入：Y 分钟` only when the daily event check-in total is positive.
 5. No-check-in daily reports omit investment wording entirely, and the AI prompt instructs providers not to infer or fabricate investment duration.
 6. Version metadata moved to `1.13.67 / versionCode 315`; database version remains `28`.

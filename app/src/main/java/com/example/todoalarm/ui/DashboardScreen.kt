@@ -90,6 +90,7 @@ private enum class ScopeDialogMode {
     CANCEL_TODO,
     DELETE_TODO,
     EDIT_EVENT,
+    CANCEL_EVENT,
     DELETE_EVENT
 }
 
@@ -136,6 +137,7 @@ fun DashboardScreen(
     onCompleteTodo: (TodoItem) -> Unit,
     onRestoreTodo: (TodoItem) -> Unit,
     onCancelTodo: (TodoItem, RecurrenceScope) -> Unit,
+    onCancelCalendarEvent: (TodoItem, RecurrenceScope) -> Unit,
     onSelectGroup: (Long?) -> Unit,
     onToggleGroupFilterMode: () -> Unit,
     onCreateGroup: suspend (String, String) -> String?,
@@ -287,6 +289,16 @@ fun DashboardScreen(
         } else {
             onDeleteTodo(item, RecurrenceScope.CURRENT)
             Toast.makeText(context, "任务已删除", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    fun requestCancelCalendarEvent(item: TodoItem) {
+        if (item.isRecurring && !item.isHistory) {
+            scopeDialogTarget = item
+            scopeDialogMode = ScopeDialogMode.CANCEL_EVENT
+        } else {
+            onCancelCalendarEvent(item, RecurrenceScope.CURRENT)
+            Toast.makeText(context, "日程已取消", Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -615,6 +627,7 @@ fun DashboardScreen(
                     onCompleteTodo = onCompleteTodo,
                     onRestoreTodo = onRestoreTodo,
                     onCancelTodo = ::requestCancelTodo,
+                    onCancelCalendarEvent = ::requestCancelCalendarEvent,
                     onDeleteTodo = ::requestDeleteTodo,
                     onDeleteCalendarEvent = { item ->
                         if (item.isRecurring) {
@@ -963,6 +976,7 @@ fun DashboardScreen(
             title = when (scopeDialogMode) {
                 ScopeDialogMode.EDIT_TODO, ScopeDialogMode.EDIT_EVENT -> "选择修改范围"
                 ScopeDialogMode.CANCEL_TODO -> "取消循环待办"
+                ScopeDialogMode.CANCEL_EVENT -> "取消循环日程"
                 ScopeDialogMode.DELETE_TODO -> "选择删除范围"
                 ScopeDialogMode.DELETE_EVENT -> "选择删除范围"
                 null -> "选择范围"
@@ -988,6 +1002,10 @@ fun DashboardScreen(
                         editorVisible = true
                     }
                     ScopeDialogMode.CANCEL_TODO -> onCancelTodo(item, selectedScope)
+                    ScopeDialogMode.CANCEL_EVENT -> {
+                        onCancelCalendarEvent(item, selectedScope)
+                        Toast.makeText(context, "日程已取消", Toast.LENGTH_SHORT).show()
+                    }
                     ScopeDialogMode.DELETE_TODO -> {
                         onDeleteTodo(item, selectedScope)
                         Toast.makeText(context, "任务已删除", Toast.LENGTH_SHORT).show()
@@ -1037,6 +1055,7 @@ private fun RecurrenceScopeDialog(
 private fun recurrenceScopeMessage(mode: ScopeDialogMode?): String {
     return when (mode) {
         ScopeDialogMode.CANCEL_TODO -> "请选择要取消哪一部分循环待办。取消会停止对应提醒并进入历史记录，不会直接删除。"
+        ScopeDialogMode.CANCEL_EVENT -> "请选择要取消哪一部分循环日程。取消会停止对应提醒并进入历史记录，不会直接删除。"
         ScopeDialogMode.DELETE_TODO -> "删除不会进入历史记录，请选择要删除哪一部分循环待办。"
         ScopeDialogMode.EDIT_TODO -> "请选择这次修改影响哪一部分循环待办。"
         ScopeDialogMode.EDIT_EVENT -> "请选择这次修改影响哪一部分循环日程。"
@@ -1047,11 +1066,11 @@ private fun recurrenceScopeMessage(mode: ScopeDialogMode?): String {
 
 private fun recurrenceScopeLabel(mode: ScopeDialogMode?, scope: RecurrenceScope): String {
     val noun = when (mode) {
-        ScopeDialogMode.EDIT_EVENT, ScopeDialogMode.DELETE_EVENT -> "日程"
+        ScopeDialogMode.EDIT_EVENT, ScopeDialogMode.CANCEL_EVENT, ScopeDialogMode.DELETE_EVENT -> "日程"
         else -> "任务"
     }
     val verb = when (mode) {
-        ScopeDialogMode.CANCEL_TODO -> "取消"
+        ScopeDialogMode.CANCEL_TODO, ScopeDialogMode.CANCEL_EVENT -> "取消"
         ScopeDialogMode.DELETE_TODO, ScopeDialogMode.DELETE_EVENT -> "删除"
         ScopeDialogMode.EDIT_TODO, ScopeDialogMode.EDIT_EVENT -> "修改"
         null -> "操作"

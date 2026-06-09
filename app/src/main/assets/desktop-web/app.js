@@ -3579,6 +3579,8 @@ function openEventPreview(item) {
   state.previewEventId = item.id;
   const accent = item.groupColorHex || item.accentColorHex || DEFAULT_EVENT_COLOR;
   const body = document.getElementById('event-preview-body');
+  const cancelButton = document.getElementById('preview-event-cancel');
+  const deleteButton = document.getElementById('preview-event-delete');
   if (!body) return;
   body.innerHTML = ''
     + '<div class="preview-title-row" style="--accent:' + accent + '">'
@@ -3592,6 +3594,9 @@ function openEventPreview(item) {
     + previewRow('铃', '提醒', reminderText(item))
     + (item.notes ? previewRow('记', '备注', item.notes) : '')
     + (item.checkInEnabled ? renderEventCheckInPanelLoading(item.id, accent) : previewRow('打', '打卡追踪', '未开启'));
+  const inactive = item.completed || item.canceled;
+  cancelButton?.classList.toggle('hidden', inactive);
+  deleteButton?.classList.toggle('hidden', inactive);
   openModal('event-preview-modal');
   if (item.checkInEnabled) loadEventCheckInPanel(item.id);
 }
@@ -4560,6 +4565,17 @@ document.getElementById('preview-event-edit').onclick = () => {
   if (!eventItem) return;
   closeModal('event-preview-modal');
   openEventEditor(eventItem);
+};
+
+document.getElementById('preview-event-cancel').onclick = async () => {
+  if (!state.previewEventId) return;
+  const eventItem = findEventById(state.previewEventId);
+  const scopeQuery = await recurrenceScopeQueryForItem(eventItem, '取消');
+  if (scopeQuery === null) return;
+  if (!eventItem?.isRecurring && !await confirmDanger('确认取消日程', '取消后会停止提醒，并进入历史记录；这不是删除。', '确认取消')) return;
+  await api(`/api/items/${state.previewEventId}/cancel${scopeQuery}`, { method: 'POST' });
+  closeModal('event-preview-modal');
+  await refreshAfterMutation();
 };
 
 document.getElementById('preview-event-delete').onclick = async () => {

@@ -407,6 +407,7 @@ internal fun DashboardBody(
     onCompleteTodo: (TodoItem) -> Unit,
     onRestoreTodo: (TodoItem) -> Unit,
     onCancelTodo: (TodoItem) -> Unit,
+    onCancelCalendarEvent: (TodoItem) -> Unit,
     onDeleteTodo: (TodoItem) -> Unit,
     onDeleteCalendarEvent: (TodoItem) -> Unit,
     onSelectGroup: (Long?) -> Unit,
@@ -513,6 +514,7 @@ internal fun DashboardBody(
                 onGetEventCheckIns = onGetEventCheckIns,
                 onCompleteEvent = onCompleteCalendarEvent,
                 onMoveEvent = onMoveCalendarEvent,
+                onCancelEvent = onCancelCalendarEvent,
                 onDeleteEvent = onDeleteCalendarEvent,
                 onOpenBatchImport = onOpenCalendarBatchImport,
                 onSaveWeekAsTemplate = onSaveWeekAsScheduleTemplate,
@@ -1045,17 +1047,23 @@ internal fun DashboardBody(
 
             DashboardSection.HISTORY -> {
                 if (completedHistoryItems.isEmpty()) {
-                    item { EmptyStateCard("完成后的任务会保存在这里。") }
+                    item { EmptyStateCard("完成或取消后的事项会保存在这里。") }
                 } else {
                     items(
                         items = completedHistoryItems,
                         key = { it.id },
-                        contentType = { "completed-todo-card" }
+                        contentType = { "completed-history-card" }
                     ) { item ->
                         CompletedTodoCard(
                             item = item,
                             groups = uiState.groups,
-                            onEdit = { onEdit(item) },
+                            onEdit = {
+                                if (item.isEvent) {
+                                    onEditCalendarEvent(item)
+                                } else {
+                                    onEdit(item)
+                                }
+                            },
                             onRestore = { onRestoreTodo(item) },
                             resolvedGroup = resolvedTodoGroups[item.id]
                         )

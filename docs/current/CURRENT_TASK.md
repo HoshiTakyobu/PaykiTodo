@@ -2,7 +2,7 @@
 
 ## Active Development Focus
 
-Active immediate task: align calendar event preview actions with the compact todo-preview pattern and stop AI reports from treating missing check-in data as `0 分钟投入`.
+Active immediate task: implement the clarified shared cancel semantics: both todos and calendar events can be canceled into history, while delete remains hard removal.
 
 - `docs/goals/2026-06-01-paykitodo-reminder-ongoing-planning-ux-goal.md`
 
@@ -10,15 +10,15 @@ Do not commit secrets, signing material, API keys, private Base URLs, generated 
 
 ## Current Round Scope
 
-The current concrete patch is `1.13.67 / versionCode 315`: move phone calendar event preview actions into one fixed bottom row, remove duplicated event-completion buttons, and make AI daily-report investment wording conditional on positive event check-in minutes.
+The current concrete patch is `1.13.68 / versionCode 316`: add true `取消日程` behavior on phone and Desktop Web, route event cancel into history, include canceled events in history queries, and keep delete as hard removal.
 
 Important constraints:
 
 1. Database version remains `28`; this round does not add a schema migration.
 2. Cancel/archive remains history-preserving for todos; delete remains hard removal and must not be relabeled as cancel.
-3. Calendar event details currently expose completion, edit, and delete. Do not invent a separate event-cancel/archive workflow unless the data model and history semantics are designed explicitly.
-4. Preview surfaces should not expose repeated same-level actions in both the title bar and body when a compact fixed action row is sufficient.
-5. AI reports must treat check-in minutes as optional evidence. If no positive check-in total is present, do not write or ask AI to infer investment duration.
+3. Calendar event details now expose cancel as a first-class history-preserving action; do not route cancel through delete.
+4. Delete remains hard removal and must not enter history. Current-instance recurring event delete should use recurring skip records so the instance is not regenerated.
+5. Preview surfaces should not expose repeated same-level actions in both the title bar and body when a compact fixed action row is sufficient.
 
 Historical usability / correctness failures from the broader audit:
 
@@ -86,6 +86,11 @@ The quick-preview cancel/delete semantics fix was implemented and committed in `
 
 Completed behavior so far:
 
+1. In `1.13.68`, phone calendar event details preview exposes `取消` beside edit/delete; non-recurring event cancel confirms first, recurring event cancel asks for current/current-and-future/all scope.
+2. In `1.13.68`, Desktop Web event preview exposes `取消日程` and uses `/api/items/{id}/cancel` so canceled events enter history.
+3. In `1.13.68`, repository cancel semantics are split: `cancelCalendarEvent` marks events canceled, while `deleteCalendarEvent` remains hard removal.
+4. In `1.13.68`, history queries include completed/canceled events as well as todos.
+5. In `1.13.68`, deleting only the current recurring event writes a recurring-instance skip and hard-deletes the row, avoiding the old canceled-tombstone delete behavior.
 1. In `1.13.67`, phone calendar event details preview keeps only back navigation in the top bar and moves `完成日程`, `修改`, and `删除` into a fixed bottom action row.
 2. In `1.13.67`, the duplicate full-width `完成日程` button was removed from the calendar event details body.
 3. In `1.13.67`, AI daily reports include event check-in investment only when the daily total is positive; no-check-in days no longer produce `0 分钟投入` wording.

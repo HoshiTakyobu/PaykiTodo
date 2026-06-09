@@ -186,6 +186,7 @@ class MainActivity : ComponentActivity() {
                     onCompleteTodo = viewModel::completeTodo,
                     onRestoreTodo = viewModel::restoreTodo,
                     onCancelTodo = viewModel::cancelTodo,
+                    onCancelCalendarEvent = viewModel::cancelCalendarEvent,
                     onSelectGroup = viewModel::selectGroup,
                     onToggleGroupFilterMode = viewModel::toggleGroupFilterMode,
                     onCreateGroup = viewModel::createGroup,

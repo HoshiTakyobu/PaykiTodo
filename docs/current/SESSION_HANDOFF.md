@@ -5,23 +5,33 @@
 - Repository root: `G:\Workspace\Project\PaykiTodo`
 - Branch: `main`
 - Current code version:
-  - `versionName = 1.13.64`
-  - `versionCode = 312`
+  - `versionName = 1.13.65`
+  - `versionCode = 313`
   - database version = `28`
 - Latest debug APK target in this round:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.13.64-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.13.65-debug.apk`
 - Latest signed release APK available locally:
   - `app/build/outputs/apk/release/PaykiTodo-1.13.11-release.apk`
 - Latest GitHub Release:
   - `https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.13.11`
 - Debug APK metadata inspection:
-  - `versionName = 1.13.64`, `versionCode = 312`
+  - `versionName = 1.13.65`, `versionCode = 313`
 
 ## Active Goal
 
-Active immediate task: close the P0 strong-reminder gap from the current `1.13.64 / versionCode 312` local patch baseline, then continue with a separate UI/product-shell simplification round.
+Active immediate task: close the todo preview cancel/archive UX regression from the current `1.13.64 / versionCode 312` baseline.
 
-Latest status: `1.13.64` upgrades Settings reminder diagnostics, makes calendar reminder defaults prefer full-screen delivery, and moves ongoing event notifications to a stronger v2 channel/layout. Full physical-device verification is still needed for OEM lock-screen behavior.
+Latest status: `1.13.65` collapses todo preview cancellation to one clear `取消待办` action, routes recurring todo cancellation through explicit scope selection, and aligns Desktop Web preview cancellation/deletion with the phone semantics.
+
+## What Changed In The Latest 1.13.65 Patch
+
+1. Phone todo details preview now keeps only one `取消待办` action in the fixed bottom area; the old top-bar cancel action and inline archive card were removed.
+2. Phone active-todo long-press actions use the same `取消待办` wording. Non-recurring todos still show a confirmation sheet; recurring todos open the recurrence-scope dialog before canceling.
+3. Recurring todo cancellation now asks for `仅取消当前任务` / `取消当前及之后任务` / `取消全部循环任务`.
+4. Desktop Web todo preview now mirrors the single `取消待办` entry and asks for recurring scope before canceling or deleting recurring todos.
+5. Desktop Web event preview delete now awaits the recurring-scope dialog and uses event-specific wording, avoiding malformed API URLs after the scope helper became asynchronous.
+6. Version metadata moved to `1.13.65 / versionCode 313`; database version remains `28`.
+7. Verification passed: `node --check app/src/main/assets/desktop-web/app.js`, `git diff --check`, `./gradlew.bat :app:compileDebugKotlin`, `./gradlew.bat :app:testDebugUnitTest`, `./gradlew.bat :app:assembleDebug`, and APK metadata inspection for `versionName = 1.13.65`, `versionCode = 313`.
 
 ## What Changed In The Latest 1.13.64 Patch
 

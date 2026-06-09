@@ -8,8 +8,8 @@
 - Target platform: Android 14 / API 34
 - License: MIT License (`LICENSE`)
 - Current version in code:
-  - `versionName = "1.13.64"`
-  - `versionCode = 312`
+  - `versionName = "1.13.65"`
+  - `versionCode = 313`
   - database version = `28`
 
 ## Current Build Facts
@@ -22,7 +22,15 @@
 - Latest GitHub Release:
   - `https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.13.11`
 - Latest fully built debug APK:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.13.64-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.13.65-debug.apk`
+- Current `1.13.65 / versionCode 313` status:
+  - Phone todo details preview now has a single `取消待办` archive action in the fixed bottom action area; the old top-bar cancel action and inline archive card were removed to avoid repeated cancel buttons in one preview surface.
+  - Phone active-todo long-press actions use the same `取消待办` wording. Non-recurring todos still show a confirmation sheet explaining that cancel enters history; recurring todos route directly into scope selection.
+  - Recurring todo cancellation now asks for a concrete scope: only the current task, current-and-future tasks, or the whole recurring series.
+  - Desktop Web todo preview now mirrors the single `取消待办` entry and asks for a recurring scope before canceling or deleting recurring todos.
+  - Desktop Web event preview delete now awaits the recurring-scope dialog and uses event-specific wording, avoiding malformed API URLs after the scope helper became asynchronous.
+  - Database version remains `28`; no schema migration was added.
+  - Verification passed: `node --check app/src/main/assets/desktop-web/app.js`, `git diff --check`, `./gradlew.bat :app:compileDebugKotlin`, `./gradlew.bat :app:testDebugUnitTest`, `./gradlew.bat :app:assembleDebug`, and APK metadata inspection for `versionName = 1.13.65`, `versionCode = 313`.
 - Current `1.13.64 / versionCode 312` status:
   - Settings -> 提醒链路诊断 now shows a strong-reminder readiness panel for notification, exact alarm, full-screen, battery, DND, and accessibility fallback state.
   - Reminder chain tests now explicitly create a short-delay full-screen test reminder and report creation success/failure to the user.

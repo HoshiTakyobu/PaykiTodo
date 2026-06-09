@@ -98,6 +98,7 @@ When reconstructing PaykiTodo state, use this priority order:
 
 ## Recent Repository-Native Updates
 
+- `1.13.65` 收敛待办预览取消入口：手机和电脑端待办详情预览只保留一个 `取消待办` 操作，循环待办取消前要求选择当前、当前及之后或全部循环任务范围，并修复桌面端循环日程预览删除在异步范围选择下可能拼出错误 API URL 的问题。
 - `1.13.27` fixed an ongoing-event notification audit bug: acknowledging or signing into an event full-screen reminder now clears only the reminder artifacts and preserves/re-schedules the event's ongoing notification alarms, while ongoing event notification IDs now use the full alarm request-code hash instead of `eventId % 10000`.
 - `1.13.26` unified phone-side todo preview entry points: search results, Planning Desk linked todos, notification routes, and widget/deep-link todo opens now land in the same detail preview that exposes cancel/archive, hard delete, edit, and restore where applicable. Planning Desk linked events continue routing to Calendar preview, while linked todos no longer jump straight into the editor.
 - `1.13.25` updated the built-in Wiki and current handoff docs to match the implemented quick-preview behavior: todo card bodies open details, the left circle completes only, cancel is labeled as archive/history, hard delete does not enter history, and recurring-todo single-instance delete is documented as a non-history skip record.

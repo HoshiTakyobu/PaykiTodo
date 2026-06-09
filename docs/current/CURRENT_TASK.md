@@ -2,7 +2,7 @@
 
 ## Active Development Focus
 
-Active immediate task: close the P0 strong-reminder usability gap from the `1.13.63 / versionCode 311` baseline, using the user's latest feedback that full-screen reminders and ongoing schedule notifications still feel too weak as the active product constraint.
+Active immediate task: close the todo preview cancel/archive UX regression from the `1.13.64 / versionCode 312` baseline, using the user's feedback that the preview surface had too many repeated cancel/archive buttons and unclear recurring-task cancellation scope.
 
 - `docs/goals/2026-06-01-paykitodo-reminder-ongoing-planning-ux-goal.md`
 
@@ -10,15 +10,15 @@ Do not commit secrets, signing material, API keys, private Base URLs, generated 
 
 ## Current Round Scope
 
-The current concrete patch is `1.13.64 / versionCode 312`: strengthen reminder diagnostics, make calendar reminder defaults prefer full-screen delivery, and upgrade ongoing event notifications away from the old low-priority channel.
+The current concrete patch is `1.13.65 / versionCode 313`: collapse todo preview cancellation to one clear `取消待办` action, route recurring todo cancellation through explicit scope selection, and keep Desktop Web preview behavior aligned with the phone.
 
 Important constraints:
 
 1. Database version remains `28`; this round does not add a schema migration.
-2. Concrete todo rows in the board widget should carry `EXTRA_OPEN_TODO_ID`.
-3. Concrete event rows in the schedule aggregate card should carry `EXTRA_OPEN_EVENT_ID`.
-4. Section titles and aggregate schedule card should still open the broader Todo / Calendar surface rather than a random detail.
-5. Announcement rows and empty / greeting rows should preserve their existing routes.
+2. Cancel/archive remains history-preserving; delete remains hard removal and must not be relabeled as cancel.
+3. The todo preview surface should not expose repeated cancel buttons in the top bar, body, and footer at the same time.
+4. Recurring todo cancellation must ask for scope: current instance, current-and-future, or the whole series.
+5. Desktop Web should use the same semantics as the phone preview and should not silently default recurring cancellation to current-and-future.
 
 Historical usability / correctness failures from the broader audit:
 
@@ -26,15 +26,15 @@ Historical usability / correctness failures from the broader audit:
 2. A schedule that is currently happening should remain visible in the Android notification shade as a non-dismissible ongoing notification until the event ends or is otherwise cleared.
 3. The todo reminder screen is still too incomplete: it needs a cancel-todo action, and snoozing after the DDL has already passed must push the DDL forward so the reminder loop remains usable.
 4. Phone Planning Desk input still feels constrained to a narrow row even when AI providers are configured; the user needs a note-like free writing surface that supports long natural text, multi-line input, and preview-first recognition.
-5. Todo quick-preview cancellation must stay reachable from the small preview sheet itself; cancel archives into history, delete remains hard deletion.
+5. Todo quick-preview cancellation must stay reachable from the small preview sheet itself, but as one clear action rather than duplicated buttons; cancel archives into history, delete remains hard deletion.
 6. Weekly recurring todo editing must not leave default weekdays stale after the DDL date is changed.
 7. Reminder surfaces must not visually present `取消待办` like a destructive delete action; cancellation is archive/history semantics.
 8. Quick action sheets and confirmation sheets must use the same cancel/archive wording as the main preview surfaces.
 9. Desktop Web todo editor must expose phone-side todo fields where the backend already supports them, including alarm mode and reminder-only visibility.
-10. Todo quick-preview cancel/archive must be visibly available inside the preview content itself, not only hidden in top text or footer actions.
+10. Todo quick-preview cancel/archive must be visibly available from the preview's fixed action area without duplicating the same action in the title and body.
 11. Desktop Web event editor must match phone-side event title input behavior, including multi-line titles.
 12. Desktop Web todo and event editors must expose reminder enable/disable explicitly, instead of forcing users to infer it by clearing reminder text.
-13. Todo quick-preview bottom fixed actions must expose cancel/archive directly, not only through a top text action or inline explanation card.
+13. Todo quick-preview bottom fixed actions must expose cancel/archive directly, not through extra top text actions or inline explanation cards.
 14. Todo quick-preview cancel/archive must be visually separated from edit/delete in the fixed bottom area, because cancel archives into history while delete is hard removal.
 15. Desktop Web Planning Desk recognition preview must not require manual weekday number input for weekly recurrence candidates.
 16. Product/UI cohesion remains a P1 follow-up: daily board, todo editor, calendar event editor, Planning Desk, and reminder surfaces need a design-system pass after the P0 reminder reliability loop is testable.
@@ -86,7 +86,11 @@ The quick-preview cancel/delete semantics fix was implemented and committed in `
 
 Completed behavior so far:
 
-1. In `1.13.64`, Settings -> 提醒链路诊断 now shows readiness rows for notification, exact alarm, full-screen, battery optimization, DND bypass, and accessibility fallback.
+1. In `1.13.65`, phone todo details preview keeps one bottom `取消待办` action and removes the top cancel text button plus inline archive card.
+2. In `1.13.65`, recurring todo cancellation asks for scope before executing: current task, current-and-future tasks, or all recurring tasks.
+3. In `1.13.65`, Desktop Web todo preview mirrors the single cancel entry and recurring-scope selection.
+4. In `1.13.65`, Desktop Web recurring event preview delete awaits the scope dialog and uses event-specific wording instead of producing a malformed API URL.
+5. In `1.13.64`, Settings -> 提醒链路诊断 now shows readiness rows for notification, exact alarm, full-screen, battery optimization, DND bypass, and accessibility fallback.
 2. In `1.13.64`, reminder chain tests create a short-delay full-screen test reminder and show immediate creation success/failure feedback.
 3. In `1.13.64`, diagnostic logs render readable stage/status names instead of raw enum-only entries.
 4. In `1.13.64`, new/fallback calendar reminder defaults prefer full-screen delivery, while explicit notification-mode choices remain supported.

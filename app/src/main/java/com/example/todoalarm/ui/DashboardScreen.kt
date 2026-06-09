@@ -958,14 +958,17 @@ fun DashboardScreen(
     }
 
     scopeDialogTarget?.let { item ->
+        val mode = scopeDialogMode
         RecurrenceScopeDialog(
             title = when (scopeDialogMode) {
                 ScopeDialogMode.EDIT_TODO, ScopeDialogMode.EDIT_EVENT -> "选择修改范围"
-                ScopeDialogMode.CANCEL_TODO -> "选择取消范围"
+                ScopeDialogMode.CANCEL_TODO -> "取消循环待办"
                 ScopeDialogMode.DELETE_TODO -> "选择删除范围"
                 ScopeDialogMode.DELETE_EVENT -> "选择删除范围"
                 null -> "选择范围"
             },
+            message = recurrenceScopeMessage(mode),
+            scopeLabel = { scope -> recurrenceScopeLabel(mode, scope) },
             onDismiss = {
                 scopeDialogTarget = null
                 scopeDialogMode = null
@@ -1005,18 +1008,20 @@ fun DashboardScreen(
 @Composable
 private fun RecurrenceScopeDialog(
     title: String,
+    message: String,
+    scopeLabel: (RecurrenceScope) -> String,
     onDismiss: () -> Unit,
     onSelect: (RecurrenceScope) -> Unit
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(title) },
-        text = { Text("循环任务需要先确定这次操作影响的范围。") },
+        text = { Text(message) },
         confirmButton = {
             androidx.compose.foundation.layout.Column {
                 RecurrenceScope.entries.forEach { scope ->
                     TextButton(onClick = { onSelect(scope) }) {
-                        Text(scope.label)
+                        Text(scopeLabel(scope))
                     }
                 }
             }
@@ -1027,6 +1032,35 @@ private fun RecurrenceScopeDialog(
             }
         }
     )
+}
+
+private fun recurrenceScopeMessage(mode: ScopeDialogMode?): String {
+    return when (mode) {
+        ScopeDialogMode.CANCEL_TODO -> "请选择要取消哪一部分循环待办。取消会停止对应提醒并进入历史记录，不会直接删除。"
+        ScopeDialogMode.DELETE_TODO -> "删除不会进入历史记录，请选择要删除哪一部分循环待办。"
+        ScopeDialogMode.EDIT_TODO -> "请选择这次修改影响哪一部分循环待办。"
+        ScopeDialogMode.EDIT_EVENT -> "请选择这次修改影响哪一部分循环日程。"
+        ScopeDialogMode.DELETE_EVENT -> "删除不会进入历史记录，请选择要删除哪一部分循环日程。"
+        null -> "循环事项需要先确定这次操作影响的范围。"
+    }
+}
+
+private fun recurrenceScopeLabel(mode: ScopeDialogMode?, scope: RecurrenceScope): String {
+    val noun = when (mode) {
+        ScopeDialogMode.EDIT_EVENT, ScopeDialogMode.DELETE_EVENT -> "日程"
+        else -> "任务"
+    }
+    val verb = when (mode) {
+        ScopeDialogMode.CANCEL_TODO -> "取消"
+        ScopeDialogMode.DELETE_TODO, ScopeDialogMode.DELETE_EVENT -> "删除"
+        ScopeDialogMode.EDIT_TODO, ScopeDialogMode.EDIT_EVENT -> "修改"
+        null -> "操作"
+    }
+    return when (scope) {
+        RecurrenceScope.CURRENT -> "仅${verb}当前$noun"
+        RecurrenceScope.CURRENT_AND_FUTURE -> "${verb}当前及之后$noun"
+        RecurrenceScope.ALL -> "${verb}全部循环$noun"
+    }
 }
 
 internal fun dashboardPadding() = androidx.compose.foundation.layout.PaddingValues(horizontal = 20.dp, vertical = 10.dp)

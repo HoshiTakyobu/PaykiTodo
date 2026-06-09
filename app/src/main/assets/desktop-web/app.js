@@ -3248,8 +3248,33 @@ function recurrenceScopeQuery(prefix, originalRecurring) {
   return '?scope=' + encodeURIComponent(scope);
 }
 
-function recurrenceScopeQueryForItem(item) {
-  return item?.isRecurring ? '?scope=CURRENT_AND_FUTURE' : '';
+async function recurrenceScopeQueryForItem(item, action = '操作') {
+  if (!item?.isRecurring) return '';
+  const isEvent = item.itemType === 'EVENT';
+  const noun = isEvent ? '日程' : '任务';
+  const seriesNoun = isEvent ? '循环日程' : '循环待办';
+  const result = await showFormDialog({
+    title: action + seriesNoun,
+    message: action === '取消' && !isEvent
+      ? '请选择要取消哪一部分循环待办。取消会停止对应提醒并进入历史记录，不会直接删除。'
+      : '请选择这次操作影响哪一部分' + seriesNoun + '。',
+    confirmLabel: '继续',
+    fields: [
+      {
+        id: 'scope',
+        label: '作用范围',
+        type: 'select',
+        value: 'CURRENT',
+        options: [
+          { value: 'CURRENT', label: '仅' + action + '当前' + noun },
+          { value: 'CURRENT_AND_FUTURE', label: action + '当前及之后' + noun },
+          { value: 'ALL', label: action + '全部' + seriesNoun }
+        ]
+      }
+    ]
+  });
+  const scope = result?.scope;
+  return scope ? '?scope=' + encodeURIComponent(scope) : null;
 }
 
 function setTodoReminderEnabled(enabled) {
@@ -3531,7 +3556,6 @@ function openTodoPreview(item) {
   const body = document.getElementById('todo-preview-body');
   const completeButton = document.getElementById('preview-todo-complete');
   const cancelButton = document.getElementById('preview-todo-cancel');
-  const cancelTopButton = document.getElementById('preview-todo-cancel-top');
   if (!body) return;
   body.innerHTML = ''
     + '<div class="preview-title-row" style="--accent:' + accent + '">'
@@ -3539,7 +3563,6 @@ function openTodoPreview(item) {
     +   '<div class="preview-main-title">' + escapeHtml(item.title) + '</div>'
     +   '<div class="pill">' + escapeHtml(todoStateLabel(item)) + '</div>'
     + '</div>'
-    + (item.completed || item.canceled ? '' : '<button type="button" class="preview-archive-card" data-preview-todo-cancel-inline="true"><strong>取消并归档</strong><span>停止后续提醒，进入历史记录；不是删除。</span></button>')
     + previewRow('分', '分组', todoGroupLabel(item))
     + previewRow('时', 'DDL', todoDueText(item))
     + previewRow('倒', '倒数日', item.countdownEnabled ? '已显示在每日看板倒数日' : '未开启')
@@ -3549,12 +3572,6 @@ function openTodoPreview(item) {
   const inactive = item.completed || item.canceled;
   completeButton?.classList.toggle('hidden', inactive);
   cancelButton?.classList.toggle('hidden', inactive);
-  cancelTopButton?.classList.toggle('hidden', inactive);
-  body.querySelector('[data-preview-todo-cancel-inline]')?.addEventListener('click', event => {
-    event.preventDefault();
-    event.stopPropagation();
-    document.getElementById('preview-todo-cancel')?.click();
-  });
   openModal('todo-preview-modal');
 }
 
@@ -4419,22 +4436,22 @@ document.getElementById('preview-todo-complete').onclick = async () => {
 
 document.getElementById('preview-todo-cancel').onclick = async () => {
   if (!state.previewTodoId) return;
-  if (!await confirmDanger('确认取消并归档', '取消后会停止提醒，并进入历史记录；这不是删除。', '取消并归档')) return;
   const todoItem = findTodoById(state.previewTodoId);
-  await api(`/api/items/${state.previewTodoId}/cancel${recurrenceScopeQueryForItem(todoItem)}`, { method: 'POST' });
+  const scopeQuery = await recurrenceScopeQueryForItem(todoItem, '取消');
+  if (scopeQuery === null) return;
+  if (!todoItem?.isRecurring && !await confirmDanger('确认取消待办', '取消后会停止提醒，并进入历史记录；这不是删除。', '确认取消')) return;
+  await api(`/api/items/${state.previewTodoId}/cancel${scopeQuery}`, { method: 'POST' });
   closeModal('todo-preview-modal');
   await refreshAfterMutation();
 };
 
-document.getElementById('preview-todo-cancel-top').onclick = async () => {
-  document.getElementById('preview-todo-cancel')?.click();
-};
-
 document.getElementById('preview-todo-delete').onclick = async () => {
   if (!state.previewTodoId) return;
-  if (!await confirmDanger('确认删除待办', '删除后会直接移除，不进入历史记录，也无法恢复。')) return;
   const todoItem = findTodoById(state.previewTodoId);
-  await api(`/api/items/${state.previewTodoId}${recurrenceScopeQueryForItem(todoItem)}`, { method: 'DELETE' });
+  const scopeQuery = await recurrenceScopeQueryForItem(todoItem, '删除');
+  if (scopeQuery === null) return;
+  if (!await confirmDanger('确认删除待办', '删除后会直接移除，不进入历史记录，也无法恢复。')) return;
+  await api(`/api/items/${state.previewTodoId}${scopeQuery}`, { method: 'DELETE' });
   closeModal('todo-preview-modal');
   await refreshAfterMutation();
 };
@@ -4547,9 +4564,11 @@ document.getElementById('preview-event-edit').onclick = () => {
 
 document.getElementById('preview-event-delete').onclick = async () => {
   if (!state.previewEventId) return;
-  if (!await confirmDanger('确认删除日程', '删除后无法恢复。')) return;
   const eventItem = findEventById(state.previewEventId);
-  await api(`/api/items/${state.previewEventId}${recurrenceScopeQueryForItem(eventItem)}`, { method: 'DELETE' });
+  const scopeQuery = await recurrenceScopeQueryForItem(eventItem, '删除');
+  if (scopeQuery === null) return;
+  if (!await confirmDanger('确认删除日程', '删除后无法恢复。')) return;
+  await api(`/api/items/${state.previewEventId}${scopeQuery}`, { method: 'DELETE' });
   closeModal('event-preview-modal');
   await refreshAfterMutation();
 };

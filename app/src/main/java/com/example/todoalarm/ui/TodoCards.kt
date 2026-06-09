@@ -194,11 +194,15 @@ internal fun ActiveTodoCard(
                 )
                 TodoActionRow(
                     icon = Icons.Rounded.Close,
-                    title = "取消待办（归档）",
+                    title = "取消待办",
                     tint = Color(0xFFD97706),
                     onClick = {
                         showActionSheet = false
-                        showCancelConfirm = true
+                        if (item.isRecurring && !item.isHistory) {
+                            onCancel()
+                        } else {
+                            showCancelConfirm = true
+                        }
                     }
                 )
                 TodoActionRow(
@@ -216,9 +220,9 @@ internal fun ActiveTodoCard(
 
     if (showCancelConfirm) {
         PaykiDecisionBottomSheet(
-            title = "取消待办（归档）",
+            title = "取消待办",
             message = "取消后会进入历史记录，后续提醒会停止；删除则会直接移除，不进入历史记录。",
-            confirmLabel = "取消并归档",
+            confirmLabel = "确认取消",
             confirmLabelColor = Color(0xFFD97706),
             onDismiss = { showCancelConfirm = false },
             onConfirm = {
@@ -563,7 +567,11 @@ internal fun TodoDetailsDialog(
     var confirmDelete by remember(item.id) { mutableStateOf(false) }
     val requestCancel = {
         if (onCancel != null) {
-            confirmCancel = true
+            if (item.isRecurring && !item.isHistory) {
+                onCancel()
+            } else {
+                confirmCancel = true
+            }
         }
     }
     val requestDelete = {
@@ -585,15 +593,6 @@ internal fun TodoDetailsDialog(
             ) {
                 IconButton(onClick = onDismiss) {
                     Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "返回", tint = MaterialTheme.colorScheme.onSurface)
-                }
-                onCancel?.let {
-                    TextButton(onClick = requestCancel) {
-                        Text(
-                            text = "取消并归档",
-                            color = Color(0xFFD97706),
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
                 }
             }
         },
@@ -632,10 +631,6 @@ internal fun TodoDetailsDialog(
             }
 
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.22f))
-
-            onCancel?.let {
-                TodoCancelArchiveAction(onClick = requestCancel)
-            }
 
             item.notes.takeIf { it.isNotBlank() }?.let {
                 Surface(
@@ -678,9 +673,9 @@ internal fun TodoDetailsDialog(
 
     if (confirmCancel && onCancel != null) {
         PaykiDecisionBottomSheet(
-            title = "取消待办（归档）",
+            title = "取消待办",
             message = "取消后会停止提醒，并进入历史记录；这不是删除，后续可以在历史记录里查看。",
-            confirmLabel = "取消并归档",
+            confirmLabel = "确认取消",
             confirmLabelColor = Color(0xFFD97706),
             onDismiss = { confirmCancel = false },
             onConfirm = {
@@ -808,65 +803,13 @@ private fun TodoFixedCancelArchiveButton(onClick: () -> Unit) {
                 verticalArrangement = Arrangement.spacedBy(2.dp)
             ) {
                 Text(
-                    text = "取消并归档",
+                    text = "取消待办",
                     color = accent,
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.Bold
                 )
                 Text(
                     text = "停止提醒并进入历史记录，不是删除。",
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    style = MaterialTheme.typography.bodySmall,
-                    lineHeight = 17.sp
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun TodoCancelArchiveAction(onClick: () -> Unit) {
-    val accent = Color(0xFFD97706)
-    Surface(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick),
-        shape = RoundedCornerShape(22.dp),
-        color = accent.copy(alpha = 0.12f),
-        border = BorderStroke(1.dp, accent.copy(alpha = 0.24f))
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 14.dp, vertical = 13.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Surface(
-                shape = RoundedCornerShape(12.dp),
-                color = accent.copy(alpha = 0.16f)
-            ) {
-                Icon(
-                    imageVector = Icons.Rounded.Close,
-                    contentDescription = null,
-                    tint = accent,
-                    modifier = Modifier
-                        .padding(8.dp)
-                        .size(20.dp)
-                )
-            }
-            Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(3.dp)
-            ) {
-                Text(
-                    text = "取消待办（归档）",
-                    color = accent,
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.Bold
-                )
-                Text(
-                    text = "停止后续提醒并进入历史记录，不会像删除一样直接移除。",
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     style = MaterialTheme.typography.bodySmall,
                     lineHeight = 17.sp

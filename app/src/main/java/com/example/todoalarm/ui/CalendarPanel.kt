@@ -2327,23 +2327,16 @@ private fun CalendarEventDetailsDialog(
                 IconButton(onClick = onDismiss) {
                     Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "返回", tint = MaterialTheme.colorScheme.onSurface)
                 }
-                Row(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
-                    if (canCompleteTrackedEvent) {
-                        IconButton(
-                            enabled = !actionRunning,
-                            onClick = { completeEvent() }
-                        ) {
-                            Icon(Icons.Rounded.Done, contentDescription = "完成日程", tint = MaterialTheme.colorScheme.primary)
-                        }
-                    }
-                    IconButton(onClick = onDelete) {
-                        Icon(Icons.Rounded.Delete, contentDescription = "删除", tint = Color(0xFFD14343))
-                    }
-                    IconButton(onClick = onEdit) {
-                        Icon(Icons.Rounded.Edit, contentDescription = "编辑", tint = MaterialTheme.colorScheme.onSurface)
-                    }
-                }
             }
+        },
+        bottomBar = {
+            CalendarEventDetailsFixedActions(
+                onComplete = if (canCompleteTrackedEvent) { { completeEvent() } } else null,
+                completeEnabled = !actionRunning,
+                completeLabel = if (actionRunning) "处理中…" else "完成日程",
+                onEdit = onEdit,
+                onDelete = onDelete
+            )
         },
         contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 18.dp, vertical = 8.dp)
     ) {
@@ -2414,17 +2407,6 @@ private fun CalendarEventDetailsDialog(
                 )
             }
 
-            if (canCompleteTrackedEvent) {
-                OutlinedButton(
-                    modifier = Modifier.fillMaxWidth(),
-                    enabled = !actionRunning,
-                    onClick = { completeEvent() }
-                ) {
-                    Icon(Icons.Rounded.Done, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                    Text(if (actionRunning) "处理中…" else "完成日程")
-                }
-            }
-
             item.notes.takeIf { it.isNotBlank() }?.let {
                 Surface(
                     shape = RoundedCornerShape(18.dp),
@@ -2437,6 +2419,68 @@ private fun CalendarEventDetailsDialog(
                         lineHeight = 20.sp
                     )
                 }
+            }
+        }
+    }
+}
+
+@Composable
+private fun CalendarEventDetailsFixedActions(
+    onComplete: (() -> Unit)?,
+    completeEnabled: Boolean,
+    completeLabel: String,
+    onEdit: () -> Unit,
+    onDelete: () -> Unit
+) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        color = MaterialTheme.colorScheme.surface,
+        tonalElevation = 0.dp,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.16f))
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 18.dp, vertical = 12.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            onComplete?.let {
+                OutlinedButton(
+                    modifier = Modifier.weight(1f),
+                    enabled = completeEnabled,
+                    onClick = it
+                ) {
+                    Icon(
+                        Icons.Rounded.Done,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp),
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                    Text(completeLabel)
+                }
+            }
+            OutlinedButton(
+                modifier = Modifier.weight(1f),
+                onClick = onEdit
+            ) {
+                Icon(
+                    Icons.Rounded.Edit,
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp)
+                )
+                Text("修改")
+            }
+            OutlinedButton(
+                modifier = Modifier.weight(1f),
+                onClick = onDelete
+            ) {
+                Icon(
+                    Icons.Rounded.Delete,
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp),
+                    tint = Color(0xFFD14343)
+                )
+                Text("删除", color = Color(0xFFD14343))
             }
         }
     }

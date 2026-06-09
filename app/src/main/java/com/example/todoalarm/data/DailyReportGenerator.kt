@@ -117,7 +117,7 @@ object DailyReportGenerator {
             val response = PlanningAiCaller.callWithFallback(
                 providers = settings.planningAiProviders,
                 request = PlanningAiRequest(
-                    systemPrompt = "你是 PaykiTodo 的温和复盘助手。请输出简短中文$reportType，不要寒暄，不要编造数据。",
+                    systemPrompt = "你是 PaykiTodo 的温和复盘助手。请输出简短中文$reportType，不要寒暄，不要编造数据；没有明示投入时长字段时不要推断或编造投入时长。",
                     prompt = prompt
                 )
             )
@@ -152,33 +152,36 @@ object DailyReportGenerator {
     }
 
     private fun buildDailyPrompt(context: DailyContext): String {
-        return """
-            请根据以下数据生成一份简短的中文日报，控制在 200 字以内。
-
-            日期：${context.date.format(DateFormatter)}
-            今天完成的待办（${context.todayCompleted.size} 条）：
-            ${context.todayCompleted.toBulletList { it.title }}
-
-            今天错过的待办（${context.todayMissed.size} 条）：
-            ${context.todayMissed.toBulletList { it.title }}
-
-            今天的日程（${context.todayEvents.size} 条）：
-            ${context.todayEvents.toBulletList { "${it.title}（${eventTimeLabel(it)}）" }}
-
-            今日日程投入：${context.todayEventCheckInMinutes} 分钟
-
-            明天的日程（${context.tomorrowEvents.size} 条）：
-            ${context.tomorrowEvents.toBulletList { "${it.title}（${eventTimeLabel(it)}）" }}
-
-            明天 DDL（${context.tomorrowDdls.size} 条）：
-            ${context.tomorrowDdls.toBulletList { "${it.title}（${formatMillis(it.dueAtMillis)}）" }}
-
-            格式要求：
-            1. 第一段 1-2 句，总结今天并肯定已完成部分。
-            2. 第二段 1-2 句，提示明天最紧要的 DDL 和日程。
-            3. 第三段可选，给一句温和建议，避免说教。
-            不要使用 Markdown 标题，直接写自然段落。
-        """.trimIndent()
+        return buildString {
+            appendLine("请根据以下数据生成一份简短的中文日报，控制在 200 字以内。")
+            appendLine()
+            appendLine("日期：${context.date.format(DateFormatter)}")
+            appendLine("今天完成的待办（${context.todayCompleted.size} 条）：")
+            appendLine(context.todayCompleted.toBulletList { it.title })
+            appendLine()
+            appendLine("今天错过的待办（${context.todayMissed.size} 条）：")
+            appendLine(context.todayMissed.toBulletList { it.title })
+            appendLine()
+            appendLine("今天的日程（${context.todayEvents.size} 条）：")
+            appendLine(context.todayEvents.toBulletList { "${it.title}（${eventTimeLabel(it)}）" })
+            if (context.todayEventCheckInMinutes > 0) {
+                appendLine()
+                appendLine("今日日程签到投入：${context.todayEventCheckInMinutes} 分钟")
+            }
+            appendLine()
+            appendLine("明天的日程（${context.tomorrowEvents.size} 条）：")
+            appendLine(context.tomorrowEvents.toBulletList { "${it.title}（${eventTimeLabel(it)}）" })
+            appendLine()
+            appendLine("明天 DDL（${context.tomorrowDdls.size} 条）：")
+            appendLine(context.tomorrowDdls.toBulletList { "${it.title}（${formatMillis(it.dueAtMillis)}）" })
+            appendLine()
+            appendLine("格式要求：")
+            appendLine("1. 第一段 1-2 句，总结今天并肯定已完成部分。")
+            appendLine("2. 第二段 1-2 句，提示明天最紧要的 DDL 和日程。")
+            appendLine("3. 第三段可选，给一句温和建议，避免说教。")
+            appendLine("4. 只有上方数据区提供“今日日程签到投入”时才提及投入时长；没有该字段时不要推断，也不要写“0 分钟”。")
+            append("不要使用 Markdown 标题，直接写自然段落。")
+        }.trim()
     }
 
     private fun buildWeeklyPrompt(context: WeeklyContext): String {
@@ -206,7 +209,9 @@ object DailyReportGenerator {
         return buildString {
             append("今天完成 ${context.todayCompleted.size} 条待办")
             append("。")
-            append("今日日程投入 ${context.todayEventCheckInMinutes} 分钟。")
+            if (context.todayEventCheckInMinutes > 0) {
+                append("有签到记录的日程投入 ${context.todayEventCheckInMinutes} 分钟。")
+            }
             if (context.todayMissed.isNotEmpty()) {
                 append("有 ${context.todayMissed.size} 条待办错过，需要尽快重新安排。")
             }

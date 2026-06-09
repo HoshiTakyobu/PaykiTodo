@@ -8,8 +8,8 @@
 - Target platform: Android 14 / API 34
 - License: MIT License (`LICENSE`)
 - Current version in code:
-  - `versionName = "1.13.66"`
-  - `versionCode = 314`
+  - `versionName = "1.13.67"`
+  - `versionCode = 315`
   - database version = `28`
 
 ## Current Build Facts
@@ -22,7 +22,14 @@
 - Latest GitHub Release:
   - `https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.13.11`
 - Latest fully built debug APK:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.13.66-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.13.67-debug.apk`
+- Current `1.13.67 / versionCode 315` status:
+  - Phone calendar event details preview now mirrors the todo details interaction structure: the top bar keeps only back navigation, while `完成日程`, `修改`, and `删除` sit in one fixed bottom action row.
+  - The duplicate full-width `完成日程` button was removed from the event detail body, avoiding repeated same-level actions in one preview sheet.
+  - AI daily reports now include event check-in investment only when the daily check-in total is positive; no-check-in days omit investment wording instead of reporting `0 分钟`.
+  - The AI daily prompt explicitly tells providers not to infer or fabricate investment duration when the data block does not provide the check-in field.
+  - Database version remains `28`; no schema migration was added.
+  - Verification passed: `node --check app/src/main/assets/desktop-web/app.js`, `git diff --check`, `./gradlew.bat :app:compileDebugKotlin`, `./gradlew.bat :app:testDebugUnitTest`, `./gradlew.bat :app:assembleDebug`, and APK metadata inspection for `versionName = 1.13.67`, `versionCode = 315`.
 - Current `1.13.66 / versionCode 314` status:
   - Full-screen todo reminder UI now acts as an immediate reminder surface only: it shows `我已完成` and fixed `延后 10 分钟`, while cancel/archive, custom snooze, and DDL postpone are removed from that screen.
   - The reminder headline copy was shortened, and the reminder time/title typography was reduced so the page is less likely to require vertical scrolling.
@@ -735,7 +742,7 @@ Legacy snapshot facts:
 - Settings -> `日历与提醒` includes `日程结束时自动签退`, `完成日程时显示投入统计`, and `闲置自动签退阈值`; defaults persist locally and are preserved in backup / restore snapshots.
 - Phone calendar-event details exposes `完成日程` only for check-in-enabled events; completion can auto-checkout the active record and, when enabled, show planned minutes, actual invested minutes, check-in count, investment rate, and auto-checkout status.
 - Desktop sync `/api/items/{id}/complete` uses the same event-completion path and includes `eventCheckInSummary` in its JSON response when completion statistics are enabled.
-- AI daily reports now collect today's event check-in minutes and render `今日日程投入：Y 分钟` in the AI prompt; the local fallback report also writes the same investment total.
+- AI daily reports now collect today's event check-in minutes but render `今日日程签到投入：Y 分钟` only when the daily total is positive; no-check-in days omit investment wording from both the AI prompt and the local fallback report.
 - Phone Planning Desk shortcut toolbar now defaults to a minimal `子任务` / `公告` pair; task, DDL, reminder, group, date, and schedule entry are intentionally handled through natural text, explicit tags, and the preview parser instead of a crowded button grid.
 - Phone Planning Desk overflow now supports `从图片识别日程`; image recognition uses only AI providers marked as supporting vision, compresses selected images before upload, appends Markdown recognition output to the current note, auto-opens the preview sheet when candidates are parsed, and still avoids direct database writes until the user confirms preview/import.
 - Settings -> `AI 调用配置` provider editing includes a compact `此服务支持图片识别` switch, persisted as `supportsVision` and excluded from any need to discover provider capabilities automatically.

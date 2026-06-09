@@ -2,7 +2,7 @@
 
 ## Active Development Focus
 
-Active immediate task: simplify reminder and todo-preview handling from the `1.13.65 / versionCode 313` baseline, using the user's feedback that the full-screen reminder page is too crowded and the todo preview cancel button should sit beside edit/delete instead of being a special standalone card.
+Active immediate task: align calendar event preview actions with the compact todo-preview pattern and stop AI reports from treating missing check-in data as `0 分钟投入`.
 
 - `docs/goals/2026-06-01-paykitodo-reminder-ongoing-planning-ux-goal.md`
 
@@ -10,15 +10,15 @@ Do not commit secrets, signing material, API keys, private Base URLs, generated 
 
 ## Current Round Scope
 
-The current concrete patch is `1.13.66 / versionCode 314`: make full-screen todo reminders a two-action surface (`我已完成` / `延后 10 分钟`), remove custom reminder/DDL/cancel controls from the ringing surface, and place todo preview cancellation beside edit/delete.
+The current concrete patch is `1.13.67 / versionCode 315`: move phone calendar event preview actions into one fixed bottom row, remove duplicated event-completion buttons, and make AI daily-report investment wording conditional on positive event check-in minutes.
 
 Important constraints:
 
 1. Database version remains `28`; this round does not add a schema migration.
-2. Cancel/archive remains history-preserving; delete remains hard removal and must not be relabeled as cancel.
-3. The full-screen reminder page should not behave like a full todo editor; complex DDL/cancel decisions belong to todo details or the editor.
-4. The todo preview surface should not expose repeated cancel buttons or a standalone archive card when a compact action row is sufficient.
-5. Recurring todo cancellation from todo details still asks for scope: current instance, current-and-future, or the whole series.
+2. Cancel/archive remains history-preserving for todos; delete remains hard removal and must not be relabeled as cancel.
+3. Calendar event details currently expose completion, edit, and delete. Do not invent a separate event-cancel/archive workflow unless the data model and history semantics are designed explicitly.
+4. Preview surfaces should not expose repeated same-level actions in both the title bar and body when a compact fixed action row is sufficient.
+5. AI reports must treat check-in minutes as optional evidence. If no positive check-in total is present, do not write or ask AI to infer investment duration.
 
 Historical usability / correctness failures from the broader audit:
 
@@ -86,6 +86,10 @@ The quick-preview cancel/delete semantics fix was implemented and committed in `
 
 Completed behavior so far:
 
+1. In `1.13.67`, phone calendar event details preview keeps only back navigation in the top bar and moves `完成日程`, `修改`, and `删除` into a fixed bottom action row.
+2. In `1.13.67`, the duplicate full-width `完成日程` button was removed from the calendar event details body.
+3. In `1.13.67`, AI daily reports include event check-in investment only when the daily total is positive; no-check-in days no longer produce `0 分钟投入` wording.
+4. In `1.13.67`, the AI daily prompt and system prompt explicitly tell providers not to infer or fabricate investment duration when no investment field is provided.
 1. In `1.13.66`, full-screen todo reminders show only `我已完成` and `延后 10 分钟`; custom snooze, cancel/archive, and DDL postpone were removed from the ringing surface.
 2. In `1.13.66`, full-screen reminder copy and typography were reduced so the page is less likely to require vertical scrolling.
 3. In `1.13.66`, the accessibility fallback reminder overlay mirrors the same simplified complete / 10-minute snooze action set.

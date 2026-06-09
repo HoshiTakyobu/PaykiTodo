@@ -1549,6 +1549,7 @@ private fun AiReportHelpSheet(onDismiss: () -> Unit) {
             ) {
             AiReportHelpCard("什么是 AI 日报") {
                 HelpBullet("AI 日报会汇总今天完成的待办、错过的待办、今日和明日日程、明日 DDL。")
+                HelpBullet("只有当天存在日程签到记录时，日报才会统计投入分钟数；没有签到数据时不会写“投入 0 分钟”。")
                 HelpBullet("它会调用你已配置的 AI 源生成 1-3 段中文总结，并给出「明天先做什么」的建议。")
                 HelpBullet("周报在每周日生成，覆盖本周累计数据。")
             }

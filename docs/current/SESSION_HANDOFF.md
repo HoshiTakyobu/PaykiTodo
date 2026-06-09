@@ -5,23 +5,33 @@
 - Repository root: `G:\Workspace\Project\PaykiTodo`
 - Branch: `main`
 - Current code version:
-  - `versionName = 1.13.66`
-  - `versionCode = 314`
+  - `versionName = 1.13.67`
+  - `versionCode = 315`
   - database version = `28`
 - Latest debug APK target in this round:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.13.66-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.13.67-debug.apk`
 - Latest signed release APK available locally:
   - `app/build/outputs/apk/release/PaykiTodo-1.13.11-release.apk`
 - Latest GitHub Release:
   - `https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.13.11`
 - Debug APK metadata inspection:
-  - `versionName = 1.13.66`, `versionCode = 314`
+  - `versionName = 1.13.67`, `versionCode = 315`
 
 ## Active Goal
 
-Active immediate task: simplify the full-screen reminder page and phone todo-preview action layout from the current `1.13.65 / versionCode 313` baseline.
+Active immediate task: align phone calendar event preview actions with the compact todo-preview action row and stop AI daily reports from mentioning investment duration when no check-in data exists.
 
-Latest status: `1.13.66` makes full-screen todo reminders a two-action surface (`我已完成` / `延后 10 分钟`), removes custom snooze / DDL postpone / cancel from the ringing surface, and places phone todo-preview cancellation beside edit/delete.
+Latest status: `1.13.67` moves calendar event preview actions into one bottom row (`完成日程` / `修改` / `删除`), removes the duplicate completion button from the event details body, and makes AI daily-report investment wording conditional on positive event check-in minutes.
+
+## What Changed In The Latest 1.13.67 Patch
+
+1. Phone calendar event details preview now mirrors the todo details layout pattern: the top bar keeps only back navigation, while completion, edit, and delete actions live in a fixed bottom action row.
+2. The old top-right event edit/delete icons and the duplicate full-width `完成日程` body button were removed.
+3. No separate `取消日程` archive semantics were introduced; events still expose completion/edit/delete unless a future data model explicitly defines event cancellation history.
+4. AI daily reports now add `今日日程签到投入：Y 分钟` only when the daily event check-in total is positive.
+5. No-check-in daily reports omit investment wording entirely, and the AI prompt instructs providers not to infer or fabricate investment duration.
+6. Version metadata moved to `1.13.67 / versionCode 315`; database version remains `28`.
+7. Verification passed: `node --check app/src/main/assets/desktop-web/app.js`, `git diff --check`, `./gradlew.bat :app:compileDebugKotlin`, `./gradlew.bat :app:testDebugUnitTest`, `./gradlew.bat :app:assembleDebug`, and APK metadata inspection for `versionName = 1.13.67`, `versionCode = 315`.
 
 ## What Changed In The Latest 1.13.66 Patch
 

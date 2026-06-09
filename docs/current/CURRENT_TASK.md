@@ -2,7 +2,7 @@
 
 ## Active Development Focus
 
-Active immediate task: close the todo preview cancel/archive UX regression from the `1.13.64 / versionCode 312` baseline, using the user's feedback that the preview surface had too many repeated cancel/archive buttons and unclear recurring-task cancellation scope.
+Active immediate task: simplify reminder and todo-preview handling from the `1.13.65 / versionCode 313` baseline, using the user's feedback that the full-screen reminder page is too crowded and the todo preview cancel button should sit beside edit/delete instead of being a special standalone card.
 
 - `docs/goals/2026-06-01-paykitodo-reminder-ongoing-planning-ux-goal.md`
 
@@ -10,15 +10,15 @@ Do not commit secrets, signing material, API keys, private Base URLs, generated 
 
 ## Current Round Scope
 
-The current concrete patch is `1.13.65 / versionCode 313`: collapse todo preview cancellation to one clear `取消待办` action, route recurring todo cancellation through explicit scope selection, and keep Desktop Web preview behavior aligned with the phone.
+The current concrete patch is `1.13.66 / versionCode 314`: make full-screen todo reminders a two-action surface (`我已完成` / `延后 10 分钟`), remove custom reminder/DDL/cancel controls from the ringing surface, and place todo preview cancellation beside edit/delete.
 
 Important constraints:
 
 1. Database version remains `28`; this round does not add a schema migration.
 2. Cancel/archive remains history-preserving; delete remains hard removal and must not be relabeled as cancel.
-3. The todo preview surface should not expose repeated cancel buttons in the top bar, body, and footer at the same time.
-4. Recurring todo cancellation must ask for scope: current instance, current-and-future, or the whole series.
-5. Desktop Web should use the same semantics as the phone preview and should not silently default recurring cancellation to current-and-future.
+3. The full-screen reminder page should not behave like a full todo editor; complex DDL/cancel decisions belong to todo details or the editor.
+4. The todo preview surface should not expose repeated cancel buttons or a standalone archive card when a compact action row is sufficient.
+5. Recurring todo cancellation from todo details still asks for scope: current instance, current-and-future, or the whole series.
 
 Historical usability / correctness failures from the broader audit:
 
@@ -86,11 +86,15 @@ The quick-preview cancel/delete semantics fix was implemented and committed in `
 
 Completed behavior so far:
 
-1. In `1.13.65`, phone todo details preview keeps one bottom `取消待办` action and removes the top cancel text button plus inline archive card.
-2. In `1.13.65`, recurring todo cancellation asks for scope before executing: current task, current-and-future tasks, or all recurring tasks.
-3. In `1.13.65`, Desktop Web todo preview mirrors the single cancel entry and recurring-scope selection.
-4. In `1.13.65`, Desktop Web recurring event preview delete awaits the scope dialog and uses event-specific wording instead of producing a malformed API URL.
-5. In `1.13.64`, Settings -> 提醒链路诊断 now shows readiness rows for notification, exact alarm, full-screen, battery optimization, DND bypass, and accessibility fallback.
+1. In `1.13.66`, full-screen todo reminders show only `我已完成` and `延后 10 分钟`; custom snooze, cancel/archive, and DDL postpone were removed from the ringing surface.
+2. In `1.13.66`, full-screen reminder copy and typography were reduced so the page is less likely to require vertical scrolling.
+3. In `1.13.66`, the accessibility fallback reminder overlay mirrors the same simplified complete / 10-minute snooze action set.
+4. In `1.13.66`, phone todo details preview places `取消待办` beside `修改` and `删除`, and removes the always-visible archive/delete hint sentence.
+5. In `1.13.65`, phone todo details preview keeps one bottom `取消待办` action and removes the top cancel text button plus inline archive card.
+6. In `1.13.65`, recurring todo cancellation asks for scope before executing: current task, current-and-future tasks, or all recurring tasks.
+7. In `1.13.65`, Desktop Web todo preview mirrors the single cancel entry and recurring-scope selection.
+8. In `1.13.65`, Desktop Web recurring event preview delete awaits the scope dialog and uses event-specific wording instead of producing a malformed API URL.
+9. In `1.13.64`, Settings -> 提醒链路诊断 now shows readiness rows for notification, exact alarm, full-screen, battery optimization, DND bypass, and accessibility fallback.
 2. In `1.13.64`, reminder chain tests create a short-delay full-screen test reminder and show immediate creation success/failure feedback.
 3. In `1.13.64`, diagnostic logs render readable stage/status names instead of raw enum-only entries.
 4. In `1.13.64`, new/fallback calendar reminder defaults prefer full-screen delivery, while explicit notification-mode choices remain supported.

@@ -8,8 +8,8 @@
 - Target platform: Android 14 / API 34
 - License: MIT License (`LICENSE`)
 - Current version in code:
-  - `versionName = "1.13.65"`
-  - `versionCode = 313`
+  - `versionName = "1.13.66"`
+  - `versionCode = 314`
   - database version = `28`
 
 ## Current Build Facts
@@ -22,7 +22,15 @@
 - Latest GitHub Release:
   - `https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.13.11`
 - Latest fully built debug APK:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.13.65-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.13.66-debug.apk`
+- Current `1.13.66 / versionCode 314` status:
+  - Full-screen todo reminder UI now acts as an immediate reminder surface only: it shows `我已完成` and fixed `延后 10 分钟`, while cancel/archive, custom snooze, and DDL postpone are removed from that screen.
+  - The reminder headline copy was shortened, and the reminder time/title typography was reduced so the page is less likely to require vertical scrolling.
+  - Accessibility fallback reminder overlay mirrors the same simplified action set, avoiding a separate cancel/custom-snooze/DDL-postpone path in fallback scenarios.
+  - Phone todo details preview bottom actions now place `取消待办`, `修改`, and `删除` in one row instead of rendering cancel as a separate full-width archive card.
+  - The always-visible archive/delete explanatory sentence was removed from todo details preview; the cancel confirmation still explains archive/history semantics when needed.
+  - Database version remains `28`; no schema migration was added.
+  - Verification passed: `node --check app/src/main/assets/desktop-web/app.js`, `git diff --check`, `./gradlew.bat :app:compileDebugKotlin`, `./gradlew.bat :app:testDebugUnitTest`, `./gradlew.bat :app:assembleDebug`, and APK metadata inspection for `versionName = 1.13.66`, `versionCode = 314`.
 - Current `1.13.65 / versionCode 313` status:
   - Phone todo details preview now has a single `取消待办` archive action in the fixed bottom action area; the old top-bar cancel action and inline archive card were removed to avoid repeated cancel buttons in one preview surface.
   - Phone active-todo long-press actions use the same `取消待办` wording. Non-recurring todos still show a confirmation sheet explaining that cancel enters history; recurring todos route directly into scope selection.

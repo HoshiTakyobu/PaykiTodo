@@ -666,8 +666,6 @@ internal fun TodoDetailsDialog(
                 )
             }
 
-            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.18f))
-            TodoArchiveHint(isHistory = item.completed || item.canceled)
         }
     }
 
@@ -720,14 +718,25 @@ private fun TodoDetailsFixedActions(
                 .padding(horizontal = 18.dp, vertical = 12.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            onCancel?.let {
-                TodoFixedCancelArchiveButton(onClick = it)
-            }
-            if (onRestore != null || onEdit != null || onDelete != null) {
+            if (onCancel != null || onRestore != null || onEdit != null || onDelete != null) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
+                    onCancel?.let {
+                        OutlinedButton(
+                            modifier = Modifier.weight(1f),
+                            onClick = it
+                        ) {
+                            Icon(
+                                Icons.Rounded.Close,
+                                contentDescription = null,
+                                modifier = Modifier.size(18.dp),
+                                tint = Color(0xFFD97706)
+                            )
+                            Text("取消待办", color = Color(0xFFD97706))
+                        }
+                    }
                     onRestore?.let {
                         OutlinedButton(
                             modifier = Modifier.weight(1f),
@@ -772,66 +781,6 @@ private fun TodoDetailsFixedActions(
             }
         }
     }
-}
-
-@Composable
-private fun TodoFixedCancelArchiveButton(onClick: () -> Unit) {
-    val accent = Color(0xFFD97706)
-    Surface(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick),
-        shape = RoundedCornerShape(18.dp),
-        color = accent.copy(alpha = 0.12f),
-        border = BorderStroke(1.dp, accent.copy(alpha = 0.30f))
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 14.dp, vertical = 12.dp),
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Icon(
-                Icons.Rounded.Close,
-                contentDescription = null,
-                tint = accent,
-                modifier = Modifier.size(20.dp)
-            )
-            Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(2.dp)
-            ) {
-                Text(
-                    text = "取消待办",
-                    color = accent,
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.Bold
-                )
-                Text(
-                    text = "停止提醒并进入历史记录，不是删除。",
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    style = MaterialTheme.typography.bodySmall,
-                    lineHeight = 17.sp
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun TodoArchiveHint(isHistory: Boolean) {
-    val text = if (isHistory) {
-        "这条待办已经进入历史记录。可恢复后重新安排，删除仍是不进入历史的彻底移除。"
-    } else {
-        "取消会归档到历史记录；删除会直接移除，不会进入历史。"
-    }
-    Text(
-        text = text,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-        style = MaterialTheme.typography.bodySmall,
-        lineHeight = 17.sp
-    )
 }
 
 @Composable

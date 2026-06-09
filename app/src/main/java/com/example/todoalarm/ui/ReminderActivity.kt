@@ -15,7 +15,6 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.RepeatMode
@@ -24,27 +23,17 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -71,7 +60,6 @@ import com.example.todoalarm.alarm.ReminderForegroundService
 import com.example.todoalarm.alarm.ReminderNotifier
 import com.example.todoalarm.data.ReminderChainStage
 import com.example.todoalarm.data.ReminderChainStatus
-import com.example.todoalarm.data.RecurrenceScope
 import com.example.todoalarm.data.TodoItem
 import com.example.todoalarm.ui.theme.TodoAlarmTheme
 import kotlinx.coroutines.delay
@@ -112,13 +100,10 @@ class ReminderActivity : ComponentActivity() {
                 ReminderScreen(
                     todoItem = todoItem,
                     taskGroup = taskGroup,
-                    defaultSnoozeMinutes = settings.defaultSnoozeMinutes,
                     onComplete = ::completeTodo,
                     onAcknowledge = ::acknowledgeEvent,
                     onCheckInEvent = ::checkInEvent,
-                    onSnooze = ::snooze,
-                    onPostponeDueAt = ::postponeDueAt,
-                    onCancel = ::cancelTodo
+                    onSnooze = ::snooze
                 )
             }
         }
@@ -244,44 +229,6 @@ class ReminderActivity : ComponentActivity() {
         }
     }
 
-    private fun postponeDueAt(targetDueAt: LocalDateTime) {
-        val item = todoItem ?: return
-        val targetMillis = targetDueAt.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
-        lifecycleScope.launch {
-            ReminderChainLogger.log(
-                context = this@ReminderActivity,
-                todoId = item.id,
-                source = "ReminderActivity",
-                stage = ReminderChainStage.USER_SNOOZE,
-                status = ReminderChainStatus.OK,
-                message = "postponeDueAt=$targetDueAt"
-            )
-            clearReminderArtifacts(listOf(item))
-            val updated = app.repository.postponeTodoDueAt(item.id, targetMillis)
-            if (updated != null) {
-                app.alarmScheduler.schedule(updated)
-            }
-            closeReminder(item.id)
-        }
-    }
-
-    private fun cancelTodo(scope: RecurrenceScope) {
-        val item = todoItem ?: return
-        lifecycleScope.launch {
-            ReminderChainLogger.log(
-                context = this@ReminderActivity,
-                todoId = item.id,
-                source = "ReminderActivity",
-                stage = ReminderChainStage.USER_CANCEL,
-                status = ReminderChainStatus.OK,
-                message = scope.name
-            )
-            val affected = app.repository.cancelTodo(item, scope)
-            clearReminderArtifacts(affected.ifEmpty { listOf(item) })
-            closeReminder(item.id)
-        }
-    }
-
     private fun clearReminderArtifacts(items: List<TodoItem>) {
         items.forEach { item ->
             app.alarmScheduler.cancel(item.id)
@@ -334,32 +281,16 @@ class ReminderActivity : ComponentActivity() {
 private fun ReminderScreen(
     todoItem: TodoItem?,
     taskGroup: ResolvedTaskGroup?,
-    defaultSnoozeMinutes: Int,
     onComplete: () -> Unit,
     onAcknowledge: () -> Unit,
     onCheckInEvent: () -> Unit,
-    onSnooze: (Int) -> Unit,
-    onPostponeDueAt: (LocalDateTime) -> Unit,
-    onCancel: (RecurrenceScope) -> Unit
+    onSnooze: (Int) -> Unit
 ) {
-    var customMinutes by remember(defaultSnoozeMinutes) { mutableStateOf(defaultSnoozeMinutes.toString()) }
-    val customSnoozeValidation = remember(customMinutes) { parseSnoozeInput(customMinutes) }
-    var ddlPostponeInput by remember(todoItem?.id) { mutableStateOf("") }
-    val currentDueAt = todoItem
-        ?.takeIf { it.isTodo && it.hasDueDate }
-        ?.dueDateTimeOrNull()
-    val ddlPostponeValidation = remember(ddlPostponeInput, currentDueAt) {
-        currentDueAt?.let { parseDdlPostponeInput(ddlPostponeInput, it) }
-    }
-    var helpTopic by remember { mutableStateOf<InputSyntaxHelpTopic?>(null) }
-    var showCancelScopeDialog by remember(todoItem?.id) { mutableStateOf(false) }
-    var notesExpanded by remember(todoItem?.id) { mutableStateOf(false) }
     var contentVisible by remember(todoItem?.id) { mutableStateOf(false) }
     val resolvedGroup = taskGroup
         ?: todoItem?.let { resolveTaskGroup(it, emptyList()) }
         ?: ResolvedTaskGroup(0, "例行", "#4CB782")
     val accent = colorFromHex(resolvedGroup.colorHex)
-    val outerScroll = rememberScrollState()
     val isEvent = todoItem?.isEvent == true
     val alarmMode = todoItem?.alarmMode == true
     val alarmPulseAlpha by rememberInfiniteTransition(label = "alarmModePulse").animateFloat(
@@ -379,11 +310,11 @@ private fun ReminderScreen(
     val mainTimeLabel = reminderMainTimeLabel(todoItem)
     val secondaryTimeLabel = reminderSecondaryTimeLabel(todoItem)
     val subHeadline = if (alarmMode) {
-        "闹钟模式已开启：完成、延后或取消后才会停止响铃。"
+        "闹钟模式：完成或延后后停止响铃。"
     } else if (isEvent) {
-        "提醒到了，确认或签到即可。"
+        "提醒到了"
     } else {
-        "请明确完成、延后或取消。"
+        ""
     }
     val primaryActionText = if (isEvent) "我知道了" else "我已完成"
     val titleText = todoItem?.title ?: "正在加载提醒内容..."
@@ -400,9 +331,9 @@ private fun ReminderScreen(
                     )
                 )
             )
-            .verticalScroll(outerScroll)
-            .padding(horizontal = 20.dp, vertical = 28.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+            .padding(horizontal = 22.dp, vertical = 26.dp),
+        verticalArrangement = Arrangement.SpaceBetween,
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
         AnimatedVisibility(
             visible = contentVisible,
@@ -411,9 +342,9 @@ private fun ReminderScreen(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(top = 10.dp),
+                    .padding(top = 8.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+                verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 Surface(
                     shape = RoundedCornerShape(999.dp),
@@ -425,7 +356,7 @@ private fun ReminderScreen(
                 ) {
                     Text(
                         text = if (alarmMode) "闹钟模式 · 操作后停止响铃" else "${taskGroupEmoji(resolvedGroup)} ${resolvedGroup.name}",
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 7.dp),
                         color = if (alarmMode) Color.White else accent,
                         style = MaterialTheme.typography.labelLarge,
                         fontWeight = FontWeight.Bold
@@ -434,7 +365,7 @@ private fun ReminderScreen(
 
                 Text(
                     text = mainTimeLabel,
-                    style = MaterialTheme.typography.displayMedium.copy(lineHeight = 58.sp),
+                    style = MaterialTheme.typography.displaySmall.copy(lineHeight = 46.sp),
                     fontWeight = FontWeight.ExtraBold,
                     color = if (alarmMode) Color(0xFFD32F2F) else accent,
                     textAlign = TextAlign.Center
@@ -443,26 +374,32 @@ private fun ReminderScreen(
                 Text(
                     text = titleText,
                     modifier = Modifier.fillMaxWidth(),
-                    style = MaterialTheme.typography.displaySmall.copy(lineHeight = 42.sp),
-                    fontWeight = FontWeight.Black,
+                    style = MaterialTheme.typography.headlineMedium.copy(lineHeight = 34.sp),
+                    fontWeight = FontWeight.ExtraBold,
                     color = MaterialTheme.colorScheme.onSurface,
-                    textAlign = TextAlign.Center
+                    textAlign = TextAlign.Center,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
                 )
 
                 Text(
                     text = secondaryTimeLabel,
-                    style = MaterialTheme.typography.titleMedium,
+                    style = MaterialTheme.typography.titleSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     fontWeight = FontWeight.SemiBold,
-                    textAlign = TextAlign.Center
+                    textAlign = TextAlign.Center,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
                 )
 
-                Text(
-                    text = subHeadline,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    textAlign = TextAlign.Center
-                )
+                if (subHeadline.isNotBlank()) {
+                    Text(
+                        text = subHeadline,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        textAlign = TextAlign.Center
+                    )
+                }
 
                 todoItem?.takeIf { it.isEvent && it.location.isNotBlank() }?.let { item ->
                     Surface(
@@ -482,15 +419,13 @@ private fun ReminderScreen(
 
                 todoItem?.notes?.takeIf { it.isNotBlank() }?.let { notes ->
                     Surface(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable { notesExpanded = !notesExpanded },
+                        modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(18.dp),
                         color = MaterialTheme.colorScheme.surface.copy(alpha = 0.78f)
                     ) {
                         Column(
-                            modifier = Modifier.padding(16.dp),
-                            verticalArrangement = Arrangement.spacedBy(6.dp)
+                            modifier = Modifier.padding(14.dp),
+                            verticalArrangement = Arrangement.spacedBy(4.dp)
                         ) {
                             Text(
                                 text = "📝 备注",
@@ -500,16 +435,10 @@ private fun ReminderScreen(
                             )
                             Text(
                                 text = notes,
-                                style = MaterialTheme.typography.bodyLarge.copy(lineHeight = 24.sp),
+                                style = MaterialTheme.typography.bodyMedium.copy(lineHeight = 20.sp),
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                maxLines = if (notesExpanded) Int.MAX_VALUE else 2,
+                                maxLines = 2,
                                 overflow = TextOverflow.Ellipsis
-                            )
-                            Text(
-                                text = if (notesExpanded) "收起备注" else "点按展开",
-                                style = MaterialTheme.typography.labelMedium,
-                                color = accent,
-                                fontWeight = FontWeight.Bold
                             )
                         }
                     }
@@ -524,7 +453,7 @@ private fun ReminderScreen(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(top = 10.dp),
+                    .padding(top = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 Row(
@@ -535,8 +464,8 @@ private fun ReminderScreen(
                         onClick = { if (isEvent) onAcknowledge() else onComplete() },
                         modifier = Modifier
                             .weight(1f)
-                            .height(56.dp),
-                        shape = RoundedCornerShape(18.dp),
+                            .height(58.dp),
+                        shape = RoundedCornerShape(20.dp),
                         colors = ButtonDefaults.buttonColors(
                             containerColor = if (alarmMode) Color(0xFFD32F2F) else Color(0xFF18794E)
                         )
@@ -545,21 +474,21 @@ private fun ReminderScreen(
                     }
                     if (!isEvent) {
                         FilledTonalButton(
-                            onClick = { onSnooze(5) },
+                            onClick = { onSnooze(10) },
                             modifier = Modifier
                                 .weight(1f)
-                                .height(56.dp),
-                            shape = RoundedCornerShape(18.dp)
+                                .height(58.dp),
+                            shape = RoundedCornerShape(20.dp)
                         ) {
-                            Text("延后 5 分钟")
+                            Text("延后 10 分钟")
                         }
                     } else if (todoItem?.checkInEnabled == true) {
                         FilledTonalButton(
                             onClick = onCheckInEvent,
                             modifier = Modifier
                                 .weight(1f)
-                                .height(56.dp),
-                            shape = RoundedCornerShape(18.dp),
+                                .height(58.dp),
+                            shape = RoundedCornerShape(20.dp),
                             colors = ButtonDefaults.filledTonalButtonColors(
                                 containerColor = accent.copy(alpha = 0.14f),
                                 contentColor = accent
@@ -569,210 +498,8 @@ private fun ReminderScreen(
                         }
                     }
                 }
-
-                if (!isEvent) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        FilledTonalButton(
-                            onClick = {
-                                if (todoItem?.isRecurring == true) {
-                                    showCancelScopeDialog = true
-                                } else {
-                                    onCancel(RecurrenceScope.CURRENT)
-                                }
-                            },
-                            modifier = Modifier
-                                .weight(1f)
-                                .height(56.dp),
-                            shape = RoundedCornerShape(18.dp),
-                            colors = ButtonDefaults.filledTonalButtonColors(
-                                containerColor = Color(0xFFD97706).copy(alpha = 0.16f),
-                                contentColor = Color(0xFFD97706)
-                            )
-                        ) {
-                            Text("取消待办（归档）")
-                        }
-                        FilledTonalButton(
-                            onClick = { onSnooze(10) },
-                            modifier = Modifier
-                                .weight(1f)
-                                .height(56.dp),
-                            shape = RoundedCornerShape(18.dp)
-                        ) {
-                            Text("延后 10 分钟")
-                        }
-                    }
-                }
-
-                if (!isEvent) {
-                    Surface(
-                        shape = RoundedCornerShape(22.dp),
-                        color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.42f)
-                    ) {
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(16.dp),
-                            verticalArrangement = Arrangement.spacedBy(12.dp)
-                        ) {
-                            Text(
-                                text = "自定义延后提醒",
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onSurface
-                            )
-                            Text(
-                                text = "设置下一次提醒；如果当前 DDL 已过期或早于下一次提醒，会自动把 DDL 推到提醒后 1 分钟。",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                OutlinedTextField(
-                                    value = customMinutes,
-                                    onValueChange = { customMinutes = it },
-                                    modifier = Modifier.weight(1f),
-                                    label = {
-                                        Row(verticalAlignment = Alignment.CenterVertically) {
-                                            Text("延后时间")
-                                            InputSyntaxHelpIconButton(
-                                                topic = InputSyntaxHelpTopic.Snooze,
-                                                onClick = { helpTopic = InputSyntaxHelpTopic.Snooze }
-                                            )
-                                        }
-                                    },
-                                    placeholder = { Text("5 或 16:30") },
-                                    isError = !customSnoozeValidation.isValid,
-                                    supportingText = {
-                                        Text(if (customSnoozeValidation.isValid) customSnoozeValidation.message else customSnoozeValidation.message)
-                                    },
-                                    singleLine = true
-                                )
-                                Button(
-                                    enabled = customSnoozeValidation.isValid,
-                                    onClick = {
-                                        onSnooze(customSnoozeValidation.minutes)
-                                    },
-                                    modifier = Modifier
-                                        .widthIn(min = 112.dp)
-                                        .height(56.dp),
-                                    shape = RoundedCornerShape(18.dp)
-                                ) {
-                                    Text("确认")
-                                }
-                            }
-                        }
-                    }
-                }
-
-                if (!isEvent && currentDueAt != null) {
-                    Surface(
-                        shape = RoundedCornerShape(22.dp),
-                        color = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.38f)
-                    ) {
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(16.dp),
-                            verticalArrangement = Arrangement.spacedBy(12.dp)
-                        ) {
-                            Text(
-                                text = "DDL 推迟",
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onSurface
-                            )
-                            Text(
-                                text = "会真正修改任务 DDL；目标必须晚于当前 DDL（${formatLocalDateTime(currentDueAt)}）。",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                OutlinedTextField(
-                                    value = ddlPostponeInput,
-                                    onValueChange = { ddlPostponeInput = it },
-                                    modifier = Modifier.weight(1f),
-                                    label = {
-                                        Row(verticalAlignment = Alignment.CenterVertically) {
-                                            Text("新的 DDL")
-                                            InputSyntaxHelpIconButton(
-                                                topic = InputSyntaxHelpTopic.DdlPostpone,
-                                                onClick = { helpTopic = InputSyntaxHelpTopic.DdlPostpone }
-                                            )
-                                        }
-                                    },
-                                    placeholder = { Text("30分钟 或 16:30") },
-                                    isError = ddlPostponeInput.isNotBlank() && ddlPostponeValidation?.isValid == false,
-                                    supportingText = {
-                                        val validation = ddlPostponeValidation
-                                        Text(
-                                            when {
-                                                ddlPostponeInput.isBlank() -> "例：30分钟、往后推45分钟、16:30、2026-05-22 16:30"
-                                                validation?.isValid == true -> validation.message
-                                                else -> validation?.message.orEmpty()
-                                            }
-                                        )
-                                    },
-                                    singleLine = true
-                                )
-                                Button(
-                                    enabled = ddlPostponeValidation?.isValid == true,
-                                    onClick = {
-                                        ddlPostponeValidation?.targetDueAt?.let(onPostponeDueAt)
-                                    },
-                                    modifier = Modifier
-                                        .widthIn(min = 112.dp)
-                                        .height(56.dp),
-                                    shape = RoundedCornerShape(18.dp)
-                                ) {
-                                    Text("推迟 DDL")
-                                }
-                            }
-                        }
-                    }
-                }
             }
         }
-    }
-
-    if (showCancelScopeDialog) {
-        AlertDialog(
-            onDismissRequest = { showCancelScopeDialog = false },
-            title = { Text("选择取消范围") },
-            text = { Text("循环任务需要先确定取消这一次、当前及后续，还是整个系列。") },
-            confirmButton = {
-                Column {
-                    RecurrenceScope.entries.forEach { scope ->
-                        TextButton(
-                            onClick = {
-                                showCancelScopeDialog = false
-                                onCancel(scope)
-                            }
-                        ) {
-                            Text(scope.label)
-                        }
-                    }
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showCancelScopeDialog = false }) {
-                    Text("关闭")
-                }
-            }
-        )
-    }
-
-    helpTopic?.let { topic ->
-        InputSyntaxHelpDialog(topic = topic, onDismiss = { helpTopic = null })
     }
 }
 

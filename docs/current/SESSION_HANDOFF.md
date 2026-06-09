@@ -5,23 +5,33 @@
 - Repository root: `G:\Workspace\Project\PaykiTodo`
 - Branch: `main`
 - Current code version:
-  - `versionName = 1.13.65`
-  - `versionCode = 313`
+  - `versionName = 1.13.66`
+  - `versionCode = 314`
   - database version = `28`
 - Latest debug APK target in this round:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.13.65-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.13.66-debug.apk`
 - Latest signed release APK available locally:
   - `app/build/outputs/apk/release/PaykiTodo-1.13.11-release.apk`
 - Latest GitHub Release:
   - `https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.13.11`
 - Debug APK metadata inspection:
-  - `versionName = 1.13.65`, `versionCode = 313`
+  - `versionName = 1.13.66`, `versionCode = 314`
 
 ## Active Goal
 
-Active immediate task: close the todo preview cancel/archive UX regression from the current `1.13.64 / versionCode 312` baseline.
+Active immediate task: simplify the full-screen reminder page and phone todo-preview action layout from the current `1.13.65 / versionCode 313` baseline.
 
-Latest status: `1.13.65` collapses todo preview cancellation to one clear `取消待办` action, routes recurring todo cancellation through explicit scope selection, and aligns Desktop Web preview cancellation/deletion with the phone semantics.
+Latest status: `1.13.66` makes full-screen todo reminders a two-action surface (`我已完成` / `延后 10 分钟`), removes custom snooze / DDL postpone / cancel from the ringing surface, and places phone todo-preview cancellation beside edit/delete.
+
+## What Changed In The Latest 1.13.66 Patch
+
+1. Full-screen todo reminders now show only `我已完成` and `延后 10 分钟`; cancel/archive, custom snooze, and DDL postpone were removed from the ringing page.
+2. The reminder headline copy was shortened, the main time/title typography was reduced, and the screen no longer uses a vertical scroll container for the normal reminder layout.
+3. Accessibility fallback reminder overlay now mirrors the same simplified complete / 10-minute snooze actions.
+4. Phone todo details preview places `取消待办`, `修改`, and `删除` in one row instead of using a standalone full-width archive card.
+5. Phone todo details preview no longer shows the always-visible archive/delete explanatory sentence; cancel confirmation still explains archive/history semantics.
+6. Version metadata moved to `1.13.66 / versionCode 314`; database version remains `28`.
+7. Verification passed: `node --check app/src/main/assets/desktop-web/app.js`, `git diff --check`, `./gradlew.bat :app:compileDebugKotlin`, `./gradlew.bat :app:testDebugUnitTest`, `./gradlew.bat :app:assembleDebug`, and APK metadata inspection for `versionName = 1.13.66`, `versionCode = 314`.
 
 ## What Changed In The Latest 1.13.65 Patch
 

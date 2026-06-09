@@ -74,7 +74,7 @@ This file tracks the product at a practical level for new coding sessions.
 ### Reminders / Notifications
 
 - reminder alerts use a flatter high-priority surface with centered large time/title, 56dp action buttons, collapsible notes, entry animation, and a distinct alarm-mode pulse
-- reminder todo cancel actions are labeled `取消待办（归档）` and use archive styling, matching quick-preview semantics that cancel enters history while delete is a hard removal
+- full-screen todo reminder surfaces are intentionally minimal: they expose completion and fixed 10-minute snooze only; cancel/archive and DDL changes are handled from todo details / editors instead of the ringing surface
 - alarm mode loops sound and vibration until the user completes, snoozes, cancels, or acknowledges; after 5 minutes it stops continuous ringing, updates the notification to `未处理提醒`, and performs three 30-second retry bursts at 2-minute intervals
 - daily brief notification can be enabled from Settings with a configurable time, defaults to 08:00, summarizes today's todos/events and nearest <=7-day countdown target, and opens the daily board
 - calendar events can show a more visible ongoing notification during the event using channel `ongoing_event_v2`; start/end alarms are restored independently of whether the original reminder time has already passed, and the ongoing schedule notification no longer depends on the event reminder being enabled
@@ -223,7 +223,7 @@ This file tracks the product at a practical level for new coding sessions.
 - recurring todo creation only expands an initial limited window and later replenishes future instances, reducing alarm burst size for long daily recurring tasks
 - todos and calendar events can store and schedule multiple configured reminder offsets
 - custom snooze input can parse either minutes or a concrete future time, has no 180-minute cap, and when the current DDL is already overdue or not later than the next reminder it will push DDL forward by one minute past the next reminder so the reminder loop keeps working
-- todo reminder screens expose an explicit `DDL 推迟` action; its input accepts positive minute increments, same-date clock targets, and full date-time targets, and rejects any target that is not later than the current DDL
+- todo detail/edit surfaces keep the complex DDL adjustment responsibility; the full-screen reminder surface no longer exposes custom snooze, cancel/archive, or `DDL 推迟`
 - notification reminder path
 - full-screen reminder path
 - reminder delivery policy respects the per-item `通知栏提醒` / `全屏界面提醒` choice: notification-mode items no longer actively launch the full-screen reminder surface unless work mode or alarm mode explicitly overrides them

@@ -7,13 +7,11 @@ import android.graphics.Color
 import android.graphics.PixelFormat
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
-import android.text.InputType
 import android.util.Log
 import android.view.Gravity
 import android.view.View
 import android.view.WindowManager
 import android.widget.Button
-import android.widget.EditText
 import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.ScrollView
@@ -28,16 +26,9 @@ import com.example.todoalarm.alarm.ReminderForegroundService
 import com.example.todoalarm.alarm.ReminderNotifier
 import com.example.todoalarm.data.ReminderChainStage
 import com.example.todoalarm.data.ReminderChainStatus
-import com.example.todoalarm.data.RecurrenceScope
 import com.example.todoalarm.data.TodoItem
 import com.example.todoalarm.ui.ReminderActivity
 import com.example.todoalarm.ui.ResolvedTaskGroup
-import com.example.todoalarm.ui.inputSyntaxHelpExample
-import com.example.todoalarm.ui.inputSyntaxHelpLines
-import com.example.todoalarm.ui.inputSyntaxHelpTitle
-import com.example.todoalarm.ui.parseDdlPostponeInput
-import com.example.todoalarm.ui.parseSnoozeInput
-import com.example.todoalarm.ui.InputSyntaxHelpTopic
 import com.example.todoalarm.ui.resolveTaskGroup
 import com.example.todoalarm.ui.taskGroupEmoji
 import kotlinx.coroutines.CoroutineScope
@@ -302,8 +293,8 @@ class ReminderAccessibilityOverlay(
         if (!item.isEvent) {
             actionRow.addView(spaceView())
             actionRow.addView(
-                filledButton("延后 5 分钟", Color.parseColor("#A16207")).apply {
-                    setOnClickListener { snoozeTodo(item.id, 5) }
+                filledButton("延后 10 分钟", Color.parseColor("#A16207")).apply {
+                    setOnClickListener { snoozeTodo(item.id, 10) }
                 },
                 weightedParams()
             )
@@ -317,141 +308,6 @@ class ReminderAccessibilityOverlay(
             )
         }
         card.addView(actionRow)
-
-        if (!item.isEvent) {
-            val quickSnoozeRow = LinearLayout(service).apply {
-                orientation = LinearLayout.HORIZONTAL
-                gravity = Gravity.CENTER
-                setPadding(0, dp(12), 0, 0)
-            }
-            quickSnoozeRow.addView(
-                filledButton("延后 10 分钟", Color.parseColor("#A16207")).apply {
-                    setOnClickListener { snoozeTodo(item.id, 10) }
-                },
-                LinearLayout.LayoutParams(
-                    LinearLayout.LayoutParams.MATCH_PARENT,
-                    LinearLayout.LayoutParams.WRAP_CONTENT
-                )
-            )
-            card.addView(quickSnoozeRow)
-
-            val cancelRow = LinearLayout(service).apply {
-                orientation = LinearLayout.HORIZONTAL
-                gravity = Gravity.CENTER
-                setPadding(0, dp(12), 0, 0)
-            }
-            cancelRow.addView(
-                filledButton("取消待办（归档）", Color.parseColor("#D97706")).apply {
-                    setOnClickListener {
-                        cancelTodo(item.id)
-                    }
-                },
-                LinearLayout.LayoutParams(
-                    LinearLayout.LayoutParams.MATCH_PARENT,
-                    LinearLayout.LayoutParams.WRAP_CONTENT
-                )
-            )
-            card.addView(cancelRow)
-
-            val customRow = LinearLayout(service).apply {
-                orientation = LinearLayout.HORIZONTAL
-                gravity = Gravity.CENTER_VERTICAL
-                setPadding(0, dp(12), 0, 0)
-            }
-            val customInput = EditText(service).apply {
-                hint = "5 或 16:30"
-                inputType = InputType.TYPE_CLASS_TEXT
-                setTextColor(Color.parseColor("#10243D"))
-                setHintTextColor(Color.parseColor("#6B7280"))
-                setTextSize(16f)
-                background = GradientDrawable().apply {
-                    cornerRadius = dp(16).toFloat()
-                    setColor(Color.parseColor("#FFFFFFFF"))
-                    setStroke(dp(1), Color.parseColor("#C8D7EA"))
-                }
-                setPadding(dp(14), dp(12), dp(14), dp(12))
-            }
-            customRow.addView(
-                customInput,
-                LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
-            )
-            customRow.addView(spaceView())
-            customRow.addView(
-                filledButton("?", Color.parseColor("#4E87E1")).apply {
-                    setOnClickListener {
-                        val topic = InputSyntaxHelpTopic.Snooze
-                        val message = inputSyntaxHelpLines(topic).joinToString("\n") + "\n\n示例：\n" + inputSyntaxHelpExample(topic)
-                        Toast.makeText(service, "${inputSyntaxHelpTitle(topic)}\n$message", Toast.LENGTH_LONG).show()
-                    }
-                },
-                LinearLayout.LayoutParams(
-                    LinearLayout.LayoutParams.WRAP_CONTENT,
-                    LinearLayout.LayoutParams.WRAP_CONTENT
-                )
-            )
-            customRow.addView(spaceView())
-            customRow.addView(
-                filledButton("延后", accent).apply {
-                    setOnClickListener {
-                        val parsed = parseSnoozeInput(customInput.text?.toString().orEmpty())
-                        if (!parsed.isValid) {
-                            Toast.makeText(service, parsed.message, Toast.LENGTH_SHORT).show()
-                        } else {
-                            snoozeTodo(item.id, parsed.minutes)
-                        }
-                    }
-                },
-                LinearLayout.LayoutParams(
-                    LinearLayout.LayoutParams.WRAP_CONTENT,
-                    LinearLayout.LayoutParams.WRAP_CONTENT
-                )
-            )
-            card.addView(customRow)
-
-            val currentDueAt = item.dueDateTimeOrNull()
-            if (currentDueAt != null) {
-                val ddlRow = LinearLayout(service).apply {
-                    orientation = LinearLayout.HORIZONTAL
-                    gravity = Gravity.CENTER_VERTICAL
-                    setPadding(0, dp(12), 0, 0)
-                }
-                val ddlInput = EditText(service).apply {
-                    hint = "DDL推迟：30分钟 或 16:30"
-                    inputType = InputType.TYPE_CLASS_TEXT
-                    setTextColor(Color.parseColor("#10243D"))
-                    setHintTextColor(Color.parseColor("#6B7280"))
-                    setTextSize(16f)
-                    background = GradientDrawable().apply {
-                        cornerRadius = dp(16).toFloat()
-                        setColor(Color.parseColor("#FFFFFFFF"))
-                        setStroke(dp(1), Color.parseColor("#C8D7EA"))
-                    }
-                    setPadding(dp(14), dp(12), dp(14), dp(12))
-                }
-                ddlRow.addView(
-                    ddlInput,
-                    LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
-                )
-                ddlRow.addView(spaceView())
-                ddlRow.addView(
-                    filledButton("推迟DDL", Color.parseColor("#7C3AED")).apply {
-                        setOnClickListener {
-                            val parsed = parseDdlPostponeInput(ddlInput.text?.toString().orEmpty(), currentDueAt)
-                            if (!parsed.isValid || parsed.targetDueAt == null) {
-                                Toast.makeText(service, parsed.message, Toast.LENGTH_SHORT).show()
-                            } else {
-                                postponeDueAt(item.id, parsed.targetDueAt)
-                            }
-                        }
-                    },
-                    LinearLayout.LayoutParams(
-                        LinearLayout.LayoutParams.WRAP_CONTENT,
-                        LinearLayout.LayoutParams.WRAP_CONTENT
-                    )
-                )
-                card.addView(ddlRow)
-            }
-        }
 
         content.addView(
             card,
@@ -586,61 +442,6 @@ class ReminderAccessibilityOverlay(
                 .cancel(ReminderNotifier.notificationId(todoId))
             hide(todoId)
             Toast.makeText(service, "已延后 $minutes 分钟", Toast.LENGTH_SHORT).show()
-        }
-    }
-
-    private fun cancelTodo(todoId: Long) {
-        serviceScope.launch {
-            withContext(Dispatchers.IO) {
-                val item = app.repository.getTodo(todoId) ?: return@withContext
-                ReminderChainLogger.log(
-                    context = service,
-                    todoId = item.id,
-                    source = "ReminderAccessibilityOverlay",
-                    stage = ReminderChainStage.USER_CANCEL,
-                    status = ReminderChainStatus.OK
-                )
-                app.repository.cancelTodo(item, RecurrenceScope.CURRENT)
-                app.alarmScheduler.cancel(item.id)
-                app.reminderNotifier.cancel(item.id)
-                ActiveReminderStore.clearIfMatches(service, item.id)
-                ActiveReminderStore.clearActivityHandoff(service, item.id)
-            }
-            service.stopService(Intent(service, ReminderForegroundService::class.java))
-            service.getSystemService(NotificationManager::class.java)
-                .cancel(ReminderNotifier.notificationId(todoId))
-            hide(todoId)
-            Toast.makeText(service, "待办已取消并归档", Toast.LENGTH_SHORT).show()
-        }
-    }
-
-    private fun postponeDueAt(todoId: Long, targetDueAt: LocalDateTime) {
-        serviceScope.launch {
-            withContext(Dispatchers.IO) {
-                val item = app.repository.getTodo(todoId) ?: return@withContext
-                ReminderChainLogger.log(
-                    context = service,
-                    todoId = item.id,
-                    source = "ReminderAccessibilityOverlay",
-                    stage = ReminderChainStage.USER_SNOOZE,
-                    status = ReminderChainStatus.OK,
-                    message = "postponeDueAt=$targetDueAt"
-                )
-                app.alarmScheduler.cancel(item.id)
-                val targetMillis = targetDueAt.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
-                val updated = app.repository.postponeTodoDueAt(item.id, targetMillis)
-                if (updated != null) {
-                    app.alarmScheduler.schedule(updated)
-                }
-                app.reminderNotifier.cancel(item.id)
-                ActiveReminderStore.clearIfMatches(service, item.id)
-                ActiveReminderStore.clearActivityHandoff(service, item.id)
-            }
-            service.stopService(Intent(service, ReminderForegroundService::class.java))
-            service.getSystemService(NotificationManager::class.java)
-                .cancel(ReminderNotifier.notificationId(todoId))
-            hide(todoId)
-            Toast.makeText(service, "DDL 已推迟", Toast.LENGTH_SHORT).show()
         }
     }
 

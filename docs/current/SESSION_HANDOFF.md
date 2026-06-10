@@ -5,11 +5,11 @@
 - Repository root: `G:\Workspace\Project\PaykiTodo`
 - Branch: `main`
 - Current code version:
-  - `versionName = 1.13.69`
-  - `versionCode = 317`
+  - `versionName = 1.13.70`
+  - `versionCode = 318`
   - database version = `28`
 - Latest debug APK target in this round:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.13.69-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.13.70-debug.apk`
 - Latest signed release APK available locally:
   - `app/build/outputs/apk/release/PaykiTodo-1.13.11-release.apk`
 - Latest GitHub Release:

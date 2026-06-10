@@ -5,29 +5,28 @@
 - Repository root: `G:\Workspace\Project\PaykiTodo`
 - Branch: `main`
 - Current code version:
-  - `versionName = 1.13.68`
-  - `versionCode = 316`
+  - `versionName = 1.13.69`
+  - `versionCode = 317`
   - database version = `28`
 - Latest debug APK target in this round:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.13.68-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.13.69-debug.apk`
 - Latest signed release APK available locally:
   - `app/build/outputs/apk/release/PaykiTodo-1.13.11-release.apk`
 - Latest GitHub Release:
   - `https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.13.11`
-- Debug APK metadata inspection:
-  - `versionName = 1.13.68`, `versionCode = 316`
 
 ## Active Goal
 
-Active immediate task: implement the clarified shared cancel semantics: both todos and calendar events can be canceled into history, while delete remains hard removal.
+Widget visual overhaul and UI detail refinements completed in version 1.13.69.
 
-Latest status: `1.13.68` adds true `取消日程` on phone and Desktop Web, routes event cancel into history, includes canceled events in history queries, and keeps delete as hard removal.
+## What Changed In The Latest 1.13.69 Patch
 
-## What Changed In The Latest 1.13.68 Patch
-
-1. Phone calendar event details preview now exposes `取消` beside edit/delete; one-off event cancel confirms first, recurring event cancel asks for current/current-and-future/all scope.
-2. Desktop Web event preview now exposes `取消日程` and calls `/api/items/{id}/cancel`, so canceled events are preserved as history instead of being hard-deleted.
-3. `TodoRepository.cancelCalendarEvent` marks events as canceled, clears reminder state, syncs linked Planning Desk nodes, and handles recurrence scope.
+1. Widget visual redesign: changed background to semi-transparent frosted glass (`#F5FFFFFF` light / `#F01C1E20` dark), removed scrim layer, unified all card backgrounds with consistent 20dp corner radius
+2. Improved color contrast: light mode text `#1A1A1A`/`#5A5A5A`, dark mode text `#F2F2F2`/`#B8B8B8`
+3. Tightened widget padding (6dp→4dp) and card spacing (3dp→2dp)
+4. Schedule card spacing reduced: "Tomorrow" label margin 8dp→6dp, event card margin 4dp→2dp
+5. Calendar all-day events now adaptive: 0 events = minimal height, 1-6 events = auto-fit all, >6 events = show first 6 + "+N more"
+6. Verified fixes from previous versions: dark mode overdue badge contrast, three-day pager boundary, countdown checkbox removal, countdown padding symmetry
 4. History queries now include completed/canceled events as well as todos.
 5. Recurring event current-instance delete now writes a recurring-instance skip and hard-deletes the row, separating delete behavior from cancel/history behavior.
 6. Version metadata moved to `1.13.68 / versionCode 316`; database version remains `28`.

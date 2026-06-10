@@ -5,12 +5,12 @@
     <color name="widget_inner_bg">#3F2F464C</color>
     <color name="widget_announcement_text">#5C3A0E</color>
     <color name="widget_outer_stroke">#5E4A2B</color>
-    <color name="widget_text_primary">#F2EFE8</color>
-    <color name="widget_text_secondary">#D3C8B5</color>
-    <color name="widget_text_muted">#B5AA98</color>
+    <color name="widget_text_primary">#F2F2F2</color>
+    <color name="widget_text_secondary">#B8B8B8</color>
+    <color name="widget_text_muted">#8A8A8A</color>
     <color name="widget_accent">#FFCB6B</color>
     <color name="widget_event_blue">#5A92FF</color>
     <color name="widget_todo_green">#4CB782</color>
-    <color name="widget_danger">#E89A9A</color>
+    <color name="widget_danger">#EF9A9A</color>
     <color name="widget_header">#FFCB6B</color>
 </resources>

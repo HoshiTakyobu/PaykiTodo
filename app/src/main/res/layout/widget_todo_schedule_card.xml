@@ -234,7 +234,7 @@
             android:id="@+id/widget_schedule_tomorrow_label"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
+            android:layout_marginTop="6dp"
             android:includeFontPadding="false"
             android:text="明天"
             android:textColor="@color/widget_text_muted"

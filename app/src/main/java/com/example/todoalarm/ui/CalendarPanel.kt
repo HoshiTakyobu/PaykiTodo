@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -1697,18 +1698,20 @@ private fun CalendarAllDaySection(
     dragModifier: Modifier,
     onOpenDetails: (TodoItem) -> Unit
 ) {
-    val rowCount = events.size.coerceIn(1, 3)
+    val rowCount = events.size.coerceIn(0, 6)
     val density = LocalDensity.current
     val rowHeightPx = with(density) { 28.dp.roundToPx() }
 
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .height((rowCount * 30).dp + 14.dp)
+            .heightIn(min = if (rowCount == 0) 0.dp else 36.dp, max = (6 * 30).dp + 14.dp)
             .padding(vertical = 4.dp)
     ) {
-        Box(modifier = Modifier.width(timeAxisWidth), contentAlignment = Alignment.TopStart) {
-            Text(text = "全天", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+        if (rowCount > 0) {
+            Box(modifier = Modifier.width(timeAxisWidth), contentAlignment = Alignment.TopStart) {
+                Text(text = "全天", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+            }
         }
         Box(
             modifier = Modifier
@@ -1717,7 +1720,7 @@ private fun CalendarAllDaySection(
                 .then(dragModifier)
         ) {
             events.forEachIndexed { rowIndex, item ->
-                if (rowIndex >= rowCount) return@forEachIndexed
+                if (rowIndex >= 6) return@forEachIndexed
                 val startDate = item.startAtMillis?.let(::millisToDate) ?: return@forEachIndexed
                 val endDateInclusive = item.endAtMillis?.let(::millisToDate)?.minusDays(1) ?: startDate
                 val startIndex = (dateWindow.indexOf(startDate) ?: visibleRange.first).coerceAtLeast(visibleRange.first)
@@ -1765,6 +1768,14 @@ private fun CalendarAllDaySection(
                         }
                     }
                 }
+            }
+            if (events.size > 6) {
+                Text(
+                    text = "+${events.size - 6} more",
+                    fontSize = 11.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                    modifier = Modifier.offset(x = 8.dp, y = (6 * 28).dp)
+                )
             }
         }
     }

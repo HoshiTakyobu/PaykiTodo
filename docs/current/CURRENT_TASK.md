@@ -2,7 +2,7 @@
 
 ## Active Development Focus
 
-Active immediate task: implement the clarified shared cancel semantics: both todos and calendar events can be canceled into history, while delete remains hard removal.
+Active immediate task: fix launcher `今日看板` widget schedule-card contrast after the `1.13.70` visual pass.
 
 - `docs/goals/2026-06-01-paykitodo-reminder-ongoing-planning-ux-goal.md`
 
@@ -10,15 +10,15 @@ Do not commit secrets, signing material, API keys, private Base URLs, generated 
 
 ## Current Round Scope
 
-The current concrete patch is `1.13.68 / versionCode 316`: add true `取消日程` behavior on phone and Desktop Web, route event cancel into history, include canceled events in history queries, and keep delete as hard removal.
+The current concrete patch is `1.13.71 / versionCode 319`: make widget schedule aggregate cards and schedule-row backgrounds readable in dark mode and robust against launcher day/night resource mixing.
 
 Important constraints:
 
 1. Database version remains `28`; this round does not add a schema migration.
-2. Cancel/archive remains history-preserving for todos; delete remains hard removal and must not be relabeled as cancel.
-3. Calendar event details now expose cancel as a first-class history-preserving action; do not route cancel through delete.
-4. Delete remains hard removal and must not enter history. Current-instance recurring event delete should use recurring skip records so the instance is not regenerated.
-5. Preview surfaces should not expose repeated same-level actions in both the title bar and body when a compact fixed action row is sufficient.
+2. The launcher board widget must not render white/pale schedule text on a light schedule card in dark-mode usage.
+3. Default widget resources should remain readable even if a launcher mixes default drawables with night text colors.
+4. Countdown widget layout and deep-link behavior are out of scope for this patch unless validation reveals a direct regression.
+5. Keep the user-visible changelog and current docs aligned with the app version.
 
 Historical usability / correctness failures from the broader audit:
 

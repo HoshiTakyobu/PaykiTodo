@@ -1,17 +1,17 @@
 <resources>
     <color name="launcher_background">#FFFFFF</color>
     <color name="widget_bg">#F2E7D4</color>
-    <color name="widget_item_bg">#FFFFFBF2</color>
+    <color name="widget_item_bg">#E822252B</color>
     <color name="widget_item_stroke">#E8D0A6</color>
-    <color name="widget_inner_bg">#FFF5EADB</color>
+    <color name="widget_inner_bg">#4D2F464C</color>
     <color name="widget_announcement_text">#5C3A0E</color>
     <color name="widget_outer_stroke">#D5B06A</color>
     <color name="widget_text_primary">#FFFFFF</color>
     <color name="widget_text_secondary">#C0C0C0</color>
-    <color name="widget_text_muted">#909090</color>
+    <color name="widget_text_muted">#B6B6B6</color>
     <color name="widget_accent">#FFA726</color>
     <color name="widget_event_blue">#2F73E8</color>
     <color name="widget_todo_green">#4CB782</color>
     <color name="widget_danger">#FF6B6B</color>
-    <color name="widget_header">#A85B00</color>
+    <color name="widget_header">#FFCB6B</color>
 </resources>

@@ -5,11 +5,11 @@
 - Repository root: `G:\Workspace\Project\PaykiTodo`
 - Branch: `main`
 - Current code version:
-  - `versionName = 1.13.70`
-  - `versionCode = 318`
+  - `versionName = 1.13.71`
+  - `versionCode = 319`
   - database version = `28`
 - Latest debug APK target in this round:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.13.70-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.13.71-debug.apk`
 - Latest signed release APK available locally:
   - `app/build/outputs/apk/release/PaykiTodo-1.13.11-release.apk`
 - Latest GitHub Release:
@@ -17,7 +17,15 @@
 
 ## Active Goal
 
-Widget visual overhaul and UI detail refinements completed in version 1.13.69.
+Fix the `今日看板` launcher widget schedule-card contrast regression introduced around the 1.13.70 visual pass.
+
+## What Changed In The Latest 1.13.71 Patch
+
+1. The board widget schedule aggregate card no longer depends on the default white `widget_todo_item_background` surface.
+2. Schedule event rows use a dark translucent background in both default and night resources, preventing white text from disappearing on pale launcher-rendered cards.
+3. Schedule empty-message surfaces and muted widget text were adjusted for clearer contrast on dark launcher backgrounds.
+4. Version metadata moved to `1.13.71 / versionCode 319`; database version remains `28`.
+5. Verification passed: `node --check app/src/main/assets/desktop-web/app.js`, `git diff --check`, `./gradlew.bat :app:compileDebugKotlin`, `./gradlew.bat :app:testDebugUnitTest`, `./gradlew.bat :app:assembleDebug`, and APK metadata inspection for `versionName = 1.13.71`, `versionCode = 319`.
 
 ## What Changed In The Latest 1.13.69 Patch
 

@@ -8,8 +8,8 @@
 - Target platform: Android 14 / API 34
 - License: MIT License (`LICENSE`)
 - Current version in code:
-  - `versionName = "1.13.68"`
-  - `versionCode = 316`
+  - `versionName = "1.13.71"`
+  - `versionCode = 319`
   - database version = `28`
 
 ## Current Build Facts
@@ -22,7 +22,13 @@
 - Latest GitHub Release:
   - `https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.13.11`
 - Latest fully built debug APK:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.13.68-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.13.71-debug.apk`
+- Current `1.13.71 / versionCode 319` status:
+  - The Android `今日看板` widget schedule aggregate card no longer relies on a default light card surface while using white widget text.
+  - Default and night schedule event-row backgrounds now use the same dark translucent surface, so event title/time/location remain visible in dark-mode launcher screenshots.
+  - The schedule empty-message background and widget muted text color were adjusted for better contrast on dark launcher surfaces.
+  - Database version remains `28`; no schema migration was added.
+  - Verification passed: `node --check app/src/main/assets/desktop-web/app.js`, `git diff --check`, `./gradlew.bat :app:compileDebugKotlin`, `./gradlew.bat :app:testDebugUnitTest`, `./gradlew.bat :app:assembleDebug`, and APK metadata inspection for `versionName = 1.13.71`, `versionCode = 319`.
 - Current `1.13.68 / versionCode 316` status:
   - Phone calendar event details preview now includes `取消` beside `修改` and `删除`; non-recurring event cancel asks for confirmation, while recurring event cancel asks for current / current-and-future / all scope.
   - Desktop Web event preview now exposes `取消日程` and routes it through `/api/items/{id}/cancel`, preserving canceled events in history instead of hard-deleting them.

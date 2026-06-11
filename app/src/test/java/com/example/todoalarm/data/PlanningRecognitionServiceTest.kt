@@ -13,7 +13,7 @@ class PlanningRecognitionServiceTest {
     @Test
     fun usesLocalParserWhenAiIsDisabled() {
         val result = runRecognition(
-            markdown = "- [ ] 整理材料 #ddl 2026-05-16 23:00",
+            markdown = "整理材料 ddl 2026-05-16 23:00",
             settings = AppSettings(planningAiEnabled = false)
         )
 
@@ -45,12 +45,11 @@ class PlanningRecognitionServiceTest {
     }
 
     @Test
-    fun prefersLocalParserWhenExplicitSyntaxCoversAllLines() {
+    fun prefersLocalParserWhenNaturalTimeCoversAllLines() {
         val local = PlanningMarkdownParser.parse(
             markdown = """
-                # 今日计划
-                - [ ] 整理材料 #ddl 2026-05-16 23:00
-                - [ ] 10:00-12:00 写论文 @图书馆3楼
+                整理材料 ddl 2026-05-16 23:00
+                10:00-12:00 写论文 @图书馆3楼
             """.trimIndent(),
             now = now,
             documentDate = LocalDate.of(2026, 5, 16)
@@ -58,9 +57,8 @@ class PlanningRecognitionServiceTest {
 
         assertTrue(shouldUseLocalPlanningResult(
             markdown = """
-                # 今日计划
-                - [ ] 整理材料 #ddl 2026-05-16 23:00
-                - [ ] 10:00-12:00 写论文 @图书馆3楼
+                整理材料 ddl 2026-05-16 23:00
+                10:00-12:00 写论文 @图书馆3楼
             """.trimIndent(),
             localResult = local
         ))
@@ -69,7 +67,7 @@ class PlanningRecognitionServiceTest {
     @Test
     fun doesNotPreferLocalParserWhenNaturalTextIsUncovered() {
         val markdown = """
-            - [ ] 整理材料 #ddl 2026-05-16 23:00
+            整理材料 ddl 2026-05-16 23:00
             明天下午和同学讨论一下论文
         """.trimIndent()
         val local = PlanningMarkdownParser.parse(markdown = markdown, now = now)
@@ -91,16 +89,16 @@ class PlanningRecognitionServiceTest {
     }
 
     @Test
-    fun localPreferenceKeepsExplicitParseErrorsVisible() {
-        val markdown = "- [ ] 整理材料 #ddl 2026-05-16 23:00 #remind abc"
+    fun localPreferenceSkipsLowConfidenceNoDdlFallback() {
+        val markdown = "整理材料"
         val local = PlanningMarkdownParser.parse(
             markdown = markdown,
             now = LocalDateTime.of(2026, 5, 15, 8, 0),
             documentDate = LocalDate.of(2026, 5, 16)
         )
 
-        assertEquals(PlanningParsedType.ERROR, local.candidates.single().type)
-        assertTrue(shouldUseLocalPlanningResult(markdown, local))
+        assertEquals(PlanningParsedType.TODO, local.candidates.single().type)
+        assertFalse(shouldUseLocalPlanningResult(markdown, local))
     }
 
     private fun runRecognition(markdown: String, settings: AppSettings): PlanningParseResult =

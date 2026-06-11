@@ -23,7 +23,7 @@ object PlanningRecognitionService {
         }
         if (shouldUseLocalPlanningResult(markdown, localResult)) return localResult
         return try {
-            PlanningAiRecognizer.recognize(markdown = markdown, providers = enabledProviders, now = now, defaultDate = defaultDate)
+            PlanningAiRecognizer.recognize(markdown = markdown, providers = enabledProviders, now = now)
         } catch (error: CancellationException) {
             throw error
         } catch (error: Exception) {
@@ -59,7 +59,18 @@ internal fun shouldUseLocalPlanningResult(markdown: String, localResult: Plannin
                 else -> index + 1
             }
         }
-    return actionableLines.isNotEmpty() && actionableLines.all { it in coveredLines }
+    if (actionableLines.isEmpty() || actionableLines.any { it !in coveredLines }) return false
+    val coveredCandidates = localResult.candidates.filter { it.lineNumber in actionableLines }
+    return coveredCandidates.none { it.isLowConfidencePlanningFallback() }
+}
+
+private fun PlanningParsedCandidate.isLowConfidencePlanningFallback(): Boolean {
+    return type == PlanningParsedType.TODO &&
+        dueAt == null &&
+        startAt == null &&
+        endAt == null &&
+        reminderOffsetsMinutes.isEmpty() &&
+        message.contains("未写 DDL")
 }
 
 private val PlanningRecognitionHeadingRegex = Regex("#{1,6}\\s+.+")

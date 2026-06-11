@@ -11,13 +11,9 @@ class PlanningMarkdownParserTest {
     private val now = LocalDateTime.of(2026, 5, 14, 8, 0)
 
     @Test
-    fun parsesNaturalScheduleWithDateContextWithoutLinkedTodoDefault() {
+    fun parsesNaturalScheduleWithInlineDateWithoutLinkedTodoDefault() {
         val result = PlanningMarkdownParser.parse(
-            """
-            # 明天
-
-            - [ ] 09:00-10:30 写论文 #group 课程
-            """.trimIndent(),
+            "明天 09:00-10:30 写论文",
             now = now
         )
 
@@ -25,7 +21,7 @@ class PlanningMarkdownParserTest {
         assertEquals("写论文", event.title)
         assertEquals(LocalDateTime.of(2026, 5, 15, 9, 0), event.startAt)
         assertEquals(LocalDateTime.of(2026, 5, 15, 10, 30), event.endAt)
-        assertEquals("课程", event.groupName)
+        assertEquals("", event.groupName)
         assertFalse(event.createLinkedTodo)
         assertEquals(listOf(5), event.reminderOffsetsMinutes)
     }
@@ -69,7 +65,7 @@ class PlanningMarkdownParserTest {
     @Test
     fun explicitDdlTakesPrecedenceOverNaturalScheduleText() {
         val result = PlanningMarkdownParser.parse(
-            "- [ ] 会议 9:00-10:00 讨论 #ddl 5.28",
+            "会议 9:00-10:00 讨论 ddl 5.28",
             now = now
         )
 
@@ -113,21 +109,19 @@ class PlanningMarkdownParserTest {
     }
 
     @Test
-    fun parsesFuzzyDayPeriodAsDdlOnlyWithDateContext() {
+    fun parsesFuzzyDayPeriodAsDdlOnlyWithExplicitDate() {
         val result = PlanningMarkdownParser.parse(
             """
-            # 今日计划
-            - [ ] 晚上交论文
-            - [ ] 上午开会
-            # 收集箱
-            - [ ] 晚上随便想想
+            今天 晚上交论文
+            今天 上午开会
+            晚上随便想想
             """.trimIndent(),
             now = now
         )
 
         val byTitle = result.candidates.associateBy { it.title }
-        assertEquals(LocalDateTime.of(2026, 5, 14, 22, 0), byTitle["晚上交论文"]?.dueAt)
-        assertEquals(LocalDateTime.of(2026, 5, 14, 12, 0), byTitle["上午开会"]?.dueAt)
+        assertEquals(LocalDateTime.of(2026, 5, 14, 22, 0), byTitle["交论文"]?.dueAt)
+        assertEquals(LocalDateTime.of(2026, 5, 14, 12, 0), byTitle["开会"]?.dueAt)
         assertEquals(null, byTitle["晚上随便想想"]?.dueAt)
     }
 
@@ -219,32 +213,28 @@ class PlanningMarkdownParserTest {
     }
 
     @Test
-    fun headingDateContextIsExplicitAndResetsOnPlainHeading() {
+    fun headingsDoNotProvideHiddenDateContext() {
         val result = PlanningMarkdownParser.parse(
             """
-            # 我的明天计划
-            - [ ] 描述标题任务 #ddl 09:00
             # 明天
-            - [ ] 明天任务 #ddl 09:00
-            # 收集箱
-            - [ ] 收集箱任务 #ddl 09:00
+            描述标题任务 ddl 09:00
+            # 明天
+            明天任务 ddl 09:00
+            明天 09:00 真正明天任务
             """.trimIndent(),
             now = now
         )
 
         val byTitle = result.candidates.associateBy { it.title }
         assertEquals(LocalDateTime.of(2026, 5, 14, 9, 0), byTitle["描述标题任务"]?.dueAt)
-        assertEquals(LocalDateTime.of(2026, 5, 15, 9, 0), byTitle["明天任务"]?.dueAt)
-        assertEquals(LocalDateTime.of(2026, 5, 14, 9, 0), byTitle["收集箱任务"]?.dueAt)
+        assertEquals(LocalDateTime.of(2026, 5, 14, 9, 0), byTitle["明天任务"]?.dueAt)
+        assertEquals(LocalDateTime.of(2026, 5, 15, 9, 0), byTitle["真正明天任务"]?.dueAt)
     }
 
     @Test
-    fun parsesDateHeadingWithDescription() {
+    fun parsesInlineDateWithDescription() {
         val result = PlanningMarkdownParser.parse(
-            """
-            # 5/28 周末计划
-            - [ ] 写论文 #ddl 23:59
-            """.trimIndent(),
+            "5/28 写论文 ddl 23:59",
             now = now
         )
 
@@ -253,13 +243,12 @@ class PlanningMarkdownParserTest {
     }
 
     @Test
-    fun parsesCompactWeekdayHeadingAsDateContext() {
+    fun parsesInlineWeekdayAsDateContext() {
         val result = PlanningMarkdownParser.parse(
             """
-            # 周五计划
-            - [ ] 写论文 #ddl 23:59
+            周五 写论文 ddl 23:59
             # 后天的事
-            - [ ] 描述标题任务 #ddl 23:59
+            描述标题任务 ddl 23:59
             """.trimIndent(),
             now = now
         )
@@ -369,7 +358,7 @@ class PlanningMarkdownParserTest {
         val result = PlanningMarkdownParser.parse(
             """
             - [ ] 保研材料准备
-              - [ ] 整理成绩单 #ddl 5.28 #group 保研
+              - [ ] 整理成绩单 ddl 5.28
             """.trimIndent(),
             now = now
         )
@@ -377,13 +366,13 @@ class PlanningMarkdownParserTest {
         val todo = result.candidates.first { it.title == "整理成绩单" }
         assertEquals(PlanningParsedType.TODO, todo.type)
         assertEquals(LocalDateTime.of(2026, 5, 28, 23, 59), todo.dueAt)
-        assertEquals("保研", todo.groupName)
+        assertEquals("", todo.groupName)
         assertEquals("所属大任务：保研材料准备", todo.notes)
     }
 
     @Test
     fun keepsUnsupportedSemanticTagsVisibleInTitle() {
-        val result = PlanningMarkdownParser.parse("- [ ] 给导师发邮件 #ddl 5.18 #important #project", now = now)
+        val result = PlanningMarkdownParser.parse("给导师发邮件 ddl 5.18 #important #project", now = now)
 
         val todo = result.candidates.single()
         assertEquals("给导师发邮件 #important #project", todo.title)
@@ -407,7 +396,7 @@ class PlanningMarkdownParserTest {
 
     @Test
     fun blocksPastDdlAtPreviewStage() {
-        val result = PlanningMarkdownParser.parse("- [ ] 过期事项 #ddl 今天 07:30", now = now)
+        val result = PlanningMarkdownParser.parse("过期事项 ddl 今天 07:30", now = now)
 
         val todo = result.candidates.single()
         assertEquals(PlanningParsedType.TODO, todo.type)
@@ -416,35 +405,28 @@ class PlanningMarkdownParserTest {
     }
 
     @Test
-    fun parsesCommaBetweenDateAndTimeInDdlAndReminder() {
+    fun parsesCommaBetweenDateAndTimeInDdl() {
         val result = PlanningMarkdownParser.parse(
-            "- [ ] 交材料 #ddl 5.28,23:59 #remind 5.28,22:00",
+            "交材料 ddl 5.28,23:59",
             now = now
         )
 
         val todo = result.candidates.single()
         assertEquals(PlanningParsedType.TODO, todo.type)
         assertEquals(LocalDateTime.of(2026, 5, 28, 23, 59), todo.dueAt)
-        assertEquals(listOf(119), todo.reminderOffsetsMinutes)
+        assertEquals(listOf(5), todo.reminderOffsetsMinutes)
     }
 
     @Test
-    fun marksImportedLinesWithoutDuplicatingExistingTag() {
+    fun markImportedLinesDoesNotModifyMemoText() {
         val markdown = """
-            - [ ] 第一条 #ddl 5.28
+            第一条 ddl 5.28
             - [ ] 第二条 #imported
-            - [ ] 第三条 #ddl 5.29
+            第三条 ddl 5.29
         """.trimIndent()
 
         val updated = PlanningMarkdownParser.markImportedLines(markdown, setOf(1, 2, 3))
 
-        assertEquals(
-            """
-            - [ ] 第一条 #ddl 5.28 #imported
-            - [ ] 第二条 #imported
-            - [ ] 第三条 #ddl 5.29 #imported
-            """.trimIndent(),
-            updated
-        )
+        assertEquals(markdown, updated)
     }
 }

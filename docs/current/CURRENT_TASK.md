@@ -2,7 +2,7 @@
 
 ## Active Development Focus
 
-Active immediate task: fix launcher `今日看板` widget schedule-card contrast after the `1.13.70` visual pass.
+Active immediate task: simplify Planning Desk back into a memo-style planning surface and remove hashtag/tag syntax from the visible workflow.
 
 - `docs/goals/2026-06-01-paykitodo-reminder-ongoing-planning-ux-goal.md`
 
@@ -10,14 +10,16 @@ Do not commit secrets, signing material, API keys, private Base URLs, generated 
 
 ## Current Round Scope
 
-The current concrete patch is `1.13.71 / versionCode 319`: make widget schedule aggregate cards and schedule-row backgrounds readable in dark mode and robust against launcher day/night resource mixing.
+The current concrete patch is `1.14.0 / versionCode 320`: rebuild the Planning Desk main path around natural memo input, recognition preview, and selected import.
+
+Validation for this patch has passed: `node --check app/src/main/assets/desktop-web/app.js`, `git diff --check`, `./gradlew.bat :app:compileDebugKotlin`, `./gradlew.bat :app:testDebugUnitTest`, `./gradlew.bat :app:assembleDebug`, and APK metadata inspection for `versionName = 1.14.0`, `versionCode = 320`.
 
 Important constraints:
 
 1. Database version remains `28`; this round does not add a schema migration.
-2. The launcher board widget must not render white/pale schedule text on a light schedule card in dark-mode usage.
-3. Default widget resources should remain readable even if a launcher mixes default drawables with night text colors.
-4. Countdown widget layout and deep-link behavior are out of scope for this patch unless validation reveals a direct regression.
+2. Phone Planning Desk should open as a large natural-text memo editor, not as Outliner / Markdown syntax tooling.
+3. Desktop Planning Desk should present a two-column memo editor + recognition preview workflow.
+4. Visible help/examples should not teach hashtag planning tags.
 5. Keep the user-visible changelog and current docs aligned with the app version.
 
 Historical usability / correctness failures from the broader audit:

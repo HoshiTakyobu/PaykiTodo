@@ -156,6 +156,7 @@ import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.roundToInt
 
+@Suppress("UNUSED_PARAMETER")
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun PlanningDeskPanel(
@@ -216,7 +217,6 @@ internal fun PlanningDeskPanel(
     var archiveDialog by remember { mutableStateOf(false) }
     var newDialog by remember { mutableStateOf(false) }
     var overflowMenuExpanded by remember { mutableStateOf(false) }
-    var shortcutBarExpanded by rememberSaveable { mutableStateOf(isNewUser) }
     var parsing by remember { mutableStateOf(false) }
     var mappingStates by remember(activeNote?.id) { mutableStateOf<List<PlanningLineMapping>>(emptyList()) }
     var refreshConfirmVisible by remember { mutableStateOf(false) }
@@ -230,7 +230,6 @@ internal fun PlanningDeskPanel(
     val outlineUndoStack = remember(activeNote?.id) { mutableStateListOf<PlanningNodeUndoEntry>() }
     var outlineUndoRunning by remember(activeNote?.id) { mutableStateOf(false) }
     val hasUnsavedChanges = activeNote != null && editorValue.text != activeNote.contentMarkdown
-    val draftNodeCount = remember(nodes) { nodes.count { it.isDraft } }
     val latestUndoSummary = remember(mappingStates) { latestPlanningUndoSummary(mappingStates) }
     val visionProviders = remember(planningAiProviders) {
         planningAiProviders
@@ -266,26 +265,27 @@ internal fun PlanningDeskPanel(
                 }
                 latestVisionImageUri = uri
                 val noteId = activeNote?.id
-                val result = onParse(recognizedMarkdown, noteId)
-                val drafts = result.candidates
-                    .map { it.toPlanningImportCandidate() }
-                    .filter { candidate -> candidate.importable && candidate.validate() == null }
-                if (noteId != null && drafts.isNotEmpty()) {
-                    var added = 0
-                    drafts.forEach { candidate ->
-                        if (onCreateNode(candidate.toPlanningNodeDraft(noteId)) == null) {
-                            added += 1
-                        }
-                    }
-                    Toast.makeText(context, "图片识别完成，已添加 $added 条草稿。", Toast.LENGTH_SHORT).show()
-                } else {
-                    val previousMarkdown = editorValue.text
-                    val updated = appendPlanningMarkdown(previousMarkdown, recognizedMarkdown)
-                    editorValue = TextFieldValue(text = updated, selection = TextRange(updated.length))
-                    markdownEditMode = true
-                    val lineCount = recognizedMarkdown.lines().count { it.isNotBlank() }
-                    Toast.makeText(context, "已追加 $lineCount 条识别结果，请检查格式后手动整理。", Toast.LENGTH_LONG).show()
+                val previousMarkdown = editorValue.text
+                val updated = appendPlanningMarkdown(previousMarkdown, recognizedMarkdown)
+                editorValue = TextFieldValue(text = updated, selection = TextRange(updated.length))
+                if (noteId != null) onSaveNote(noteId, updated)
+                val syncedMappings = noteId?.let { onSyncMappings(it, updated) }.orEmpty()
+                mappingStates = syncedMappings
+                val result = onParse(updated, noteId)
+                parseResult = result
+                editableCandidates.clear()
+                editableCandidates.addAll(
+                    result.candidates
+                        .map { it.toPlanningImportCandidate() }
+                        .map { it.withExistingPlanningMapping(syncedMappings) }
+                )
+                selectedIds.clear()
+                editableCandidates.forEach { candidate ->
+                    selectedIds[candidate.id] = candidate.importable && candidate.validate() == null
                 }
+                previewSheetVisible = true
+                val lineCount = recognizedMarkdown.lines().count { it.isNotBlank() }
+                Toast.makeText(context, "已追加 $lineCount 行识别结果，请在预览里确认。", Toast.LENGTH_LONG).show()
             } catch (error: PlanningVisionImageException) {
                 Toast.makeText(context, error.message ?: "图片过大，请裁剪后重试", Toast.LENGTH_LONG).show()
             } catch (error: Exception) {
@@ -381,18 +381,6 @@ internal fun PlanningDeskPanel(
                     modifier = Modifier.height(40.dp),
                     onClick = {
                         focusManager.clearFocus()
-                        scope.launch {
-                            val noteId = onOpenTodayNote()
-                            onSelectNote(noteId)
-                        }
-                    }
-                ) {
-                    Text("今日")
-                }
-                OutlinedButton(
-                    modifier = Modifier.height(40.dp),
-                    onClick = {
-                        focusManager.clearFocus()
                         documentSheetVisible = true
                     }
                 ) {
@@ -404,90 +392,57 @@ internal fun PlanningDeskPanel(
                         overflow = TextOverflow.Ellipsis
                     )
                 }
-                if (!markdownCompatMode) {
-                    OutlinedButton(
-                        modifier = Modifier.height(40.dp),
-                        onClick = {
-                            focusManager.clearFocus()
-                            outlinePreviewMode = !outlinePreviewMode
-                        }
-                    ) {
-                        Text(if (outlinePreviewMode) "编辑" else "预览")
+                OutlinedButton(
+                    modifier = Modifier.height(40.dp),
+                    onClick = {
+                        focusManager.clearFocus()
+                        helpSheetVisible = true
                     }
-                    if (draftNodeCount > 0) {
-                        Button(
-                            modifier = Modifier.height(40.dp),
-                            onClick = {
-                                focusManager.clearFocus()
-                                val noteId = activeNote?.id ?: return@Button
-                                scope.launch {
-                                    val undoEntry = captureOutlineUndo("批量发布草稿")
-                                    val message = onPublishAllDrafts(noteId)
-                                    message?.let { Toast.makeText(context, it, Toast.LENGTH_SHORT).show() }
-                                    if (message?.startsWith("已发布 0 条") != true) {
-                                        pushOutlineUndo(undoEntry)
+                ) {
+                    Icon(Icons.Rounded.Info, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Spacer(Modifier.width(4.dp))
+                    Text("说明")
+                }
+                Button(
+                    modifier = Modifier.height(40.dp),
+                    enabled = !parsing,
+                    onClick = {
+                        focusManager.clearFocus()
+                        val markdown = editorValue.text
+                        if (markdown.isBlank()) {
+                            Toast.makeText(context, "先像备忘录一样写几行计划", Toast.LENGTH_SHORT).show()
+                        } else {
+                            scope.launch {
+                                parsing = true
+                                try {
+                                    val noteId = activeNote?.id
+                                    val syncedMappings = noteId?.let { onSyncMappings(it, markdown) }.orEmpty()
+                                    mappingStates = syncedMappings
+                                    val result = onParse(markdown, noteId)
+                                    parseResult = result
+                                    editableCandidates.clear()
+                                    editableCandidates.addAll(
+                                        result.candidates
+                                            .map { it.toPlanningImportCandidate() }
+                                            .map { it.withExistingPlanningMapping(syncedMappings) }
+                                    )
+                                    selectedIds.clear()
+                                    editableCandidates.forEach { candidate ->
+                                        selectedIds[candidate.id] = candidate.importable && candidate.validate() == null
                                     }
-                                }
-                            }
-                        ) {
-                            Icon(Icons.AutoMirrored.Rounded.Send, contentDescription = null, modifier = Modifier.size(16.dp))
-                            Spacer(Modifier.width(4.dp))
-                            Text("发布${draftNodeCount}条")
-                        }
-                    }
-                } else {
-                    OutlinedButton(
-                        modifier = Modifier.height(40.dp),
-                        onClick = {
-                            focusManager.clearFocus()
-                            markdownCompatMode = false
-                        }
-                    ) {
-                        Text("大纲")
-                    }
-                    OutlinedButton(
-                        modifier = Modifier.height(40.dp),
-                        onClick = {
-                            focusManager.clearFocus()
-                            markdownEditMode = !markdownEditMode
-                        }
-                    ) {
-                        Text(if (markdownEditMode) "预览" else "编辑")
-                    }
-                    Button(
-                        modifier = Modifier.height(40.dp),
-                        enabled = !parsing,
-                        onClick = {
-                            focusManager.clearFocus()
-                            val markdown = editorValue.text
-                            if (markdown.isBlank()) {
-                                Toast.makeText(context, "没有可识别的内容", Toast.LENGTH_SHORT).show()
-                            } else {
-                                scope.launch {
-                                    parsing = true
-                                    try {
-                                        val result = onParse(markdown, activeNote?.id)
-                                        parseResult = result
-                                        editableCandidates.clear()
-                                        editableCandidates.addAll(result.candidates.map { it.toPlanningImportCandidate() })
-                                        selectedIds.clear()
-                                        editableCandidates.forEach { candidate ->
-                                            selectedIds[candidate.id] = candidate.importable && candidate.validate() == null
-                                        }
-                                        previewSheetVisible = true
-                                    } catch (error: Exception) {
-                                        Toast.makeText(context, error.message ?: "识别失败", Toast.LENGTH_SHORT).show()
-                                    } finally {
-                                        parsing = false
-                                    }
+                                    previewSheetVisible = true
+                                } catch (error: Exception) {
+                                    Toast.makeText(context, error.message ?: "识别失败", Toast.LENGTH_SHORT).show()
+                                } finally {
+                                    parsing = false
                                 }
                             }
                         }
-                    ) {
-                        Icon(Icons.Rounded.Search, contentDescription = null, modifier = Modifier.size(16.dp))
-                        Spacer(Modifier.width(4.dp))
-                        Text(if (parsing) "识别中" else "识别")
                     }
+                ) {
+                    Icon(Icons.Rounded.Search, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Spacer(Modifier.width(4.dp))
+                    Text(if (parsing) "识别中" else "识别计划")
                 }
                 if (hasUnsavedChanges) {
                     Text(
@@ -495,21 +450,6 @@ internal fun PlanningDeskPanel(
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
-                }
-                if (!markdownCompatMode) {
-                    IconButton(
-                        modifier = Modifier.size(40.dp),
-                        enabled = outlineUndoStack.isNotEmpty() && !outlineUndoRunning,
-                        onClick = {
-                            focusManager.clearFocus()
-                            scope.launch { restoreLastOutlineUndo() }
-                        }
-                    ) {
-                        Icon(
-                            Icons.AutoMirrored.Rounded.Undo,
-                            contentDescription = outlineUndoStack.lastOrNull()?.let { "撤销：${it.description}" } ?: "撤销"
-                        )
-                    }
                 }
                 androidx.compose.foundation.layout.Box {
                     IconButton(
@@ -559,44 +499,6 @@ internal fun PlanningDeskPanel(
                             leadingIcon = { Icon(Icons.Rounded.Image, contentDescription = null) }
                         )
                         DropdownMenuItem(
-                                text = { Text(if (markdownCompatMode) "切换到大纲模式" else "自由书写模式") },
-                            onClick = {
-                                overflowMenuExpanded = false
-                                focusManager.clearFocus()
-                                markdownCompatMode = !markdownCompatMode
-                            }
-                        )
-                        if (markdownCompatMode) {
-                            DropdownMenuItem(
-                                text = { Text("导出到 Markdown 兼容区") },
-                                onClick = {
-                                    overflowMenuExpanded = false
-                                    focusManager.clearFocus()
-                                    val noteId = activeNote?.id ?: return@DropdownMenuItem
-                                    scope.launch {
-                                        val markdown = onExportNodesMarkdown(noteId)
-                                        editorValue = TextFieldValue(markdown, selection = TextRange(markdown.length))
-                                        markdownEditMode = true
-                                        Toast.makeText(context, "已导出到 Markdown 兼容区。", Toast.LENGTH_SHORT).show()
-                                    }
-                                },
-                                enabled = activeNote != null
-                            )
-                            DropdownMenuItem(
-                                text = { Text("从 Markdown 导入大纲") },
-                                onClick = {
-                                    overflowMenuExpanded = false
-                                    focusManager.clearFocus()
-                                    val noteId = activeNote?.id ?: return@DropdownMenuItem
-                                    scope.launch {
-                                        markdownImportText = onExportNodesMarkdown(noteId)
-                                        markdownImportVisible = true
-                                    }
-                                },
-                                enabled = activeNote != null
-                            )
-                        }
-                        DropdownMenuItem(
                             text = { Text("归档") },
                             onClick = { overflowMenuExpanded = false; archiveDialog = true },
                             enabled = activeNote != null
@@ -611,7 +513,7 @@ internal fun PlanningDeskPanel(
             }
         }
 
-        if (!markdownCompatMode) {
+        if (PlanningLegacyOutlineUiEnabled) {
             PlanningOutlineEditor(
                 activeNote = activeNote,
                 nodes = nodes,
@@ -683,19 +585,7 @@ internal fun PlanningDeskPanel(
                     .fillMaxWidth()
                     .weight(1f)
             )
-        } else if (markdownEditMode) {
-            if (!shortcutBarExpanded) {
-                PlanningShortcutCollapsedHint(onExpand = { shortcutBarExpanded = true })
-            }
-            if (shortcutBarExpanded) {
-                PlanningShortcutBar(
-                    onAction = { _, action ->
-                        editorValue = applyPlanningShortcut(editorValue, action)
-                    },
-                    onHelp = { _, description -> Toast.makeText(context, description, Toast.LENGTH_LONG).show() }
-                )
-            }
-
+        } else {
             ElevatedCard(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -717,85 +607,39 @@ internal fun PlanningDeskPanel(
                     ) {
                         Text(
                             text = if (planningAiProviders.any { it.normalized().enabled }) {
-                                "自由书写：像备忘录一样写一整段，点“识别”后优先使用已启用 AI，失败时回到本地规则；结果先进入预览。"
+                                "像备忘录一样写，写完点“识别计划”。会优先用已启用 AI，失败时回到本地规则；结果只进预览，不会直接入库。"
                             } else {
-                                "自由书写：像备忘录一样写一整段，点“识别”后用本地规则解析；结果先进入预览，不会直接入库。"
+                                "像备忘录一样写，写完点“识别计划”。当前使用本地规则解析；结果只进预览，不会直接入库。"
                             },
                             modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
-                    Box(
+                    OutlinedTextField(
+                        value = editorValue,
+                        onValueChange = { editorValue = it },
                         modifier = Modifier
                             .fillMaxWidth()
-                            .weight(1f)
-                            .horizontalScroll(rememberScrollState())
-                    ) {
-                        OutlinedTextField(
-                            value = editorValue,
-                            onValueChange = { editorValue = autoContinuePlanningLine(editorValue, it) },
-                            modifier = Modifier
-                                .widthIn(min = 720.dp)
-                                .fillMaxHeight(),
-                            textStyle = MaterialTheme.typography.bodyLarge.copy(fontFamily = FontFamily.Monospace),
-                            shape = RoundedCornerShape(18.dp),
-                            placeholder = {
-                                Text(
-                                    text = "可以直接这样写：\n\n" +
-                                        "10:00-12:00 写论文 @图书馆3楼\n" +
-                                        "12:00-13:00 吃饭\n" +
-                                        "任务M ddl 15:00\n" +
-                                        "明天 16:30 交材料\n" +
-                                        "- [ ] 整理保研材料\n" +
-                                        "  - [ ] 打印成绩单",
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            },
-                            minLines = 16
-                        )
-                    }
+                            .weight(1f),
+                        textStyle = MaterialTheme.typography.bodyLarge.copy(fontFamily = FontFamily.Default),
+                        shape = RoundedCornerShape(18.dp),
+                        placeholder = {
+                            Text(
+                                text = "直接写就行，例如：\n\n" +
+                                    "10:00-12:00 写论文 @图书馆3楼\n" +
+                                    "12:00-13:00 吃饭\n" +
+                                    "任务M ddl 15:00\n" +
+                                    "明天 16:30 交材料\n" +
+                                    "整理保研材料\n" +
+                                    "打印成绩单",
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        },
+                        minLines = 18
+                    )
                 }
             }
-        } else {
-            PlanningMarkdownPreview(
-                markdown = editorValue.text,
-                mappings = mappingStates,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f),
-                onToggleCheckbox = { lineNumber ->
-                    val nextText = togglePlanningCheckbox(editorValue.text, lineNumber)
-                    editorValue = TextFieldValue(
-                        text = nextText,
-                        selection = androidx.compose.ui.text.TextRange(planningLineStartOffset(nextText, lineNumber))
-                    )
-                },
-                onRequestEdit = { lineNumber ->
-                    lineNumber?.let {
-                        editorValue = editorValue.copy(selection = androidx.compose.ui.text.TextRange(planningLineStartOffset(editorValue.text, it)))
-                    }
-                    markdownEditMode = true
-                },
-                onApplyConflictDocument = { mappingId ->
-                    val noteId = activeNote?.id ?: return@PlanningMarkdownPreview
-                    scope.launch {
-                        val result = onApplyConflictDocument(noteId, editorValue.text, mappingId)
-                        result.updatedMarkdown?.let { editorValue = TextFieldValue(it) }
-                        mappingStates = onSyncMappings(noteId, editorValue.text)
-                        Toast.makeText(context, result.message, Toast.LENGTH_SHORT).show()
-                    }
-                },
-                onApplyConflictItem = { mappingId ->
-                    val noteId = activeNote?.id ?: return@PlanningMarkdownPreview
-                    scope.launch {
-                        val result = onApplyConflictItem(noteId, editorValue.text, mappingId)
-                        result.updatedMarkdown?.let { editorValue = TextFieldValue(it) }
-                        mappingStates = onSyncMappings(noteId, editorValue.text)
-                        Toast.makeText(context, result.message, Toast.LENGTH_SHORT).show()
-                    }
-                }
-            )
         }
     }
 
@@ -980,7 +824,7 @@ internal fun PlanningDeskPanel(
     }
     pendingDeleteNode?.let { node ->
         ConfirmPlanningDialog(
-            title = "删除大纲事项？",
+            title = "删除规划事项？",
             message = "会同时删除它和子项关联的待办 / 日程：${node.text}",
             confirmText = "删除",
             onDismiss = { pendingDeleteNode = null },
@@ -2643,10 +2487,10 @@ private fun planningTutorialPages(): List<PlanningTutorialPage> {
             title = "1. 像备忘录一样一行一行写",
             subtitle = "自由书写 → 识别 → 预览确认",
             lines = listOf(
-                "规划台默认是自由书写区，不需要一开始就选日期、分组或提醒。",
+                "规划台现在就是一张备忘录，不需要先选日期、分组或提醒。",
                 "你可以像备忘录一样整段写：课程、DDL、想办的事、子任务都先放进同一份文档。",
-                "长行可以横向检查；手机粘贴多行文本也可以先放进这里再整理。",
-                "点顶部“识别”后才会解析，结果先进入预览，不会直接写入待办或日历。",
+                "手机粘贴多行文本也可以直接放进这里，不需要改成特殊语法。",
+                "点顶部“识别计划”后才会解析，结果先进入预览，不会直接写入待办或日历。",
                 "没有 DDL 的普通事项导入后会成为无 DDL 待办，统一显示在今日待办。"
             ),
             example = """
@@ -2661,8 +2505,8 @@ private fun planningTutorialPages(): List<PlanningTutorialPage> {
             lines = listOf(
                 "日程推荐写法：时间, 事件名, 地点；逗号、分号或明显地点词都可以辅助识别。",
                 "DDL 待办可以写：任务M ddl 15:00、交材料 截止明天 23:59。",
-                "大任务下面的小任务可以用缩进表达；识别预览会保留父任务线索。",
-                "如果你想用更结构化的节点编辑，可以点顶部“大纲”切换到草稿节点模式。"
+                "地点可以写在最后，例如 @图书馆3楼、地点：主楼B1-412，或用引号包起来。",
+                "大任务下面的小任务可以直接换行缩进写；识别预览会保留父任务线索。"
             ),
             example = """
                 10:00-12:00, 写论文, 图书馆3楼
@@ -2673,18 +2517,18 @@ private fun planningTutorialPages(): List<PlanningTutorialPage> {
             """.trimIndent()
         ),
         PlanningTutorialPage(
-            title = "3. 预览配置和 Markdown 兼容",
-            subtitle = "粗写之后再精修",
+            title = "3. 预览里再确认",
+            subtitle = "识别不是直接入库",
             lines = listOf(
-                "自由书写区的“预览”只负责查看 Markdown 渲染；真正导入前还要点“识别”。",
                 "识别预览里可以勾选、编辑标题、DDL、日程时间、地点、分组、提醒和重复规则。",
                 "如果配置了 AI，识别会优先尝试 AI；失败或未配置时会回到本地规则解析。",
-                "公告可写 #公告；图片、语音、系统分享会先进入规划台，仍然需要你检查后再发布。",
-                "大纲模式适合逐条草稿管理：节点右侧纸飞机发布，顶部“发布N条”可批量发布。"
+                "不确定的结果会留在预览里让你改；不勾选就不会导入。",
+                "导入后不会再往你的原文里塞井号标签，规划台应该保持像备忘录一样干净。"
             ),
             example = """
-                #公告 5.16-7.1 期间禁止游玩舞萌DX游戏
-                - [ ] 交材料 #ddl 5.28 23:59 #remind 30,5
+                识别结果：
+                日程：10:00-12:00 写论文 @图书馆3楼
+                待办：任务M DDL 今天 15:00
             """.trimIndent()
         )
     )
@@ -3788,6 +3632,7 @@ private fun currentPlanningCursorLine(value: TextFieldValue): Int {
 }
 
 private const val PlanningNodeUndoMaxSize = 20
+private const val PlanningLegacyOutlineUiEnabled = false
 
 private data class PlanningNodeUndoEntry(
     val description: String,
@@ -3797,6 +3642,30 @@ private data class PlanningNodeUndoEntry(
 private fun String.compactUndoLabel(maxLength: Int = 12): String {
     val clean = trim().replace(Regex("\\s+"), " ")
     return if (clean.length <= maxLength) clean else clean.take(maxLength) + "…"
+}
+
+private fun PlanningImportCandidate.withExistingPlanningMapping(
+    mappings: List<PlanningLineMapping>
+): PlanningImportCandidate {
+    if (imported || lineNumber <= 0 || mappings.isEmpty()) return this
+    val normalizedSource = normalizePlanningMappingLine(sourceLine)
+    val matched = mappings.any { mapping ->
+        mapping.status != MappingStatus.ORPHANED &&
+            mapping.lastKnownLineNumber == lineNumber &&
+            normalizePlanningMappingLine(mapping.trackedLineText) == normalizedSource
+    }
+    return if (matched) {
+        copy(imported = true, message = message.ifBlank { "这一行已经导入过，默认不重复导入。" })
+    } else {
+        this
+    }
+}
+
+private fun normalizePlanningMappingLine(raw: String): String {
+    return raw
+        .replace(Regex("\\s+#imported(?=\\s|$)", RegexOption.IGNORE_CASE), "")
+        .trim()
+        .replace(Regex("\\s+"), " ")
 }
 
 private fun syncCompletedMappingsToMarkdown(

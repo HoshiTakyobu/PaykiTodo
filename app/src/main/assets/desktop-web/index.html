@@ -102,53 +102,33 @@
           <div class="planning-toolbar">
             <div>
               <h2>规划台</h2>
-              <p class="muted">左侧“大纲事项”是主输入区：直接写、按 Enter 生成草稿；确认无误后点发布才进入手机端正式待办或日程。Markdown 兼容区只用于粘贴旧文本、批量识别或迁移。</p>
+              <p class="muted">像备忘录一样写计划，点“识别计划”后在右侧预览确认。这里不再要求学习井号标签、大纲节点或 Markdown 语法。</p>
             </div>
             <div class="toolbar-row">
               <select id="planning-note-select"></select>
               <button id="planning-new" class="ghost mini" title="创建一个新的规划文档">新建文档</button>
               <button id="planning-delete" class="ghost mini danger-lite-action" title="删除当前规划文档">删除文档</button>
-              <button id="planning-save" class="ghost mini" title="保存 Markdown 兼容编辑区内容">保存兼容区</button>
               <button id="planning-help" class="ghost mini">使用说明</button>
-              <button id="planning-publish-all" class="mini" disabled title="把当前文档里的草稿发布为正式待办或日程">发布草稿</button>
-              <button id="planning-parse" class="mini" title="识别 Markdown 兼容区或大纲导出的内容">识别预览</button>
+              <button id="planning-parse" class="mini" title="识别左侧备忘录内容">识别计划</button>
               <button id="planning-import" class="mini" title="导入右侧预览中勾选的候选项">导入选中</button>
-              <button id="planning-refresh" class="ghost mini" title="用当前文本刷新已导入事项">刷新已导入</button>
-              <button id="planning-postpone" class="ghost mini" title="批量顺延已导入事项">批量顺延</button>
-              <button id="planning-undo" class="ghost mini" title="撤销最近一次导入、刷新或顺延">撤销</button>
             </div>
           </div>
           <div class="planning-workspace">
             <div class="planning-editor-pane">
               <div id="planning-active-title" class="planning-active-title">我的规划</div>
-              <div class="planning-outline-shell">
-                <div class="planning-outline-head">
-                  <div>
-                    <strong>大纲事项</strong>
-                    <p class="muted">这里就是电脑端的主要输入区。写完一行按 Enter 添加；Shift+Enter 在当前输入框内换行。已有事项可以直接点击文字修改。</p>
-                  </div>
-                  <button id="planning-export-markdown" class="ghost mini" title="把当前大纲导出到下方 Markdown 兼容区">同步到 Markdown</button>
-                </div>
-                <div class="planning-outline-add">
-                  <div class="planning-outline-add-label">
-                    <strong>直接写下一条</strong>
-                    <span>例如：10:00-12:00, 【课程】习思想，&quot;@主楼B1-412&quot;；或 任务M ddl 15:00</span>
-                  </div>
-                  <textarea id="planning-root-input" rows="2" placeholder="在这里输入，Enter 添加为草稿；Shift+Enter 换行"></textarea>
-                  <button id="planning-root-add" class="mini">添加草稿</button>
-                </div>
-                <div id="planning-outline" class="planning-outline"></div>
-              </div>
-              <details class="planning-markdown-compat">
-                <summary>Markdown 兼容编辑（批量粘贴 / 旧识别导入，不是主输入区）</summary>
-                <p class="muted">日常请优先使用上方大纲事项。这里适合从 Word、Excel、Obsidian、聊天记录里粘贴大段文本，再点“识别预览”。直接编辑后请点“保存兼容区”。</p>
-                <textarea id="planning-editor" class="planning-editor"></textarea>
-              </details>
+              <textarea id="planning-editor" class="planning-editor" placeholder="直接写就行，例如：
+
+10:00-12:00 写论文 @图书馆3楼
+12:00-13:00 吃饭
+任务M ddl 15:00
+明天 16:30 交材料
+整理保研材料
+打印成绩单"></textarea>
             </div>
             <div class="planning-preview-shell">
               <div class="panel-head">
-                <h3>识别 / 导入预览</h3>
-                <p id="planning-preview-meta" class="muted">写完后点“识别预览”，这里会让你检查标题、时间、地点、分组和提醒。</p>
+                <h3>识别预览</h3>
+                <p id="planning-preview-meta" class="muted">写完后点“识别计划”，这里会让你检查标题、时间、地点、分组和提醒。</p>
               </div>
               <div id="planning-preview" class="planning-preview"></div>
             </div>
@@ -426,89 +406,44 @@
         <button class="sheet-text-button" data-close-modal="planning-help-modal">返回</button>
         <div class="modal-title-block">
           <h2>规划台使用说明</h2>
-          <p class="muted">先像备忘录一样写成草稿；确认后发布，才进入正式待办和日程。</p>
+          <p class="muted">先像备忘录一样写；识别后在预览里确认，才进入正式待办和日程。</p>
         </div>
         <button class="sheet-primary-action" data-close-modal="planning-help-modal">知道了</button>
       </div>
       <div class="planning-help-body">
         <section class="planning-help-card">
-          <h3>草稿和发布</h3>
+          <h3>1. 直接写</h3>
+          <p>规划台就是上游备忘录。先把脑子里的任务、课程、DDL、会议和想办的事写下来，不需要先决定它属于待办还是日程。</p>
+          <pre><code>10:00-12:00 写论文 @图书馆3楼
+12:00-13:00 吃饭
+任务M ddl 15:00
+明天 16:30 交材料
+整理保研材料
+打印成绩单</code></pre>
+        </section>
+        <section class="planning-help-card">
+          <h3>2. 常见自然写法</h3>
           <ul>
-            <li>左侧“大纲事项”里新增一行，只会创建规划台草稿，不会立即出现在待办、日历、每日看板或小组件。</li>
-            <li>每条草稿右侧有“发布”按钮；顶部“发布N条”会批量发布当前文档里的草稿。</li>
-            <li>发布时会按节点文本解析 DDL、日程时间段和地点；发布成功后才会生成正式待办或日程。</li>
-            <li>分享、拍照、语音和手机端图片识别写入的内容也先是草稿，需要人工检查后发布。</li>
+            <li>日程：<code>10:00-12:00 写论文 @图书馆3楼</code></li>
+            <li>逗号日程：<code>10:00-12:00, 【课程】习思想, "@主楼B1-412"</code></li>
+            <li>DDL：<code>交材料 ddl 5.29 23:59</code>、<code>任务M ddl 15:00</code>、<code>明天 16:30 交材料</code></li>
+            <li>无 DDL 待办：<code>整理保研材料</code>。导入后会作为今日待办显示。</li>
+            <li>地点：可以写 <code>@图书馆3楼</code>、<code>地点：主楼B1-412</code>，也可以用引号包起来。</li>
           </ul>
         </section>
         <section class="planning-help-card">
-          <h3>标题是用来分区的</h3>
-          <p><strong># 收集箱</strong>：先把脑子里的事情倒出来，不会自动设置日期或 DDL。</p>
-          <p><strong># 今日计划 / # 今天</strong>：下面没写日期的 10:00-11:30 会按今天理解。</p>
-          <p><strong># 明天</strong>：下面没写日期的时间段会按明天理解。</p>
-          <p><strong># 本周计划</strong>：只是普通分区；重要任务仍建议写 <code>#ddl</code>。</p>
-        </section>
-        <section class="planning-help-card">
-          <h3>常用写法</h3>
-          <ul>
-            <li>待办：<code>- [ ] 整理材料 #ddl 5.28 23:59</code>；只写日期默认当天 <code>23:59</code></li>
-            <li>子任务：在任务下一行缩进两个空格再写 <code>- [ ]</code></li>
-            <li>日程：<code>10:00-12:30 写课程论文</code>、<code>复习 14:00-16:00</code> 或 <code>5/28 下午 2:30～下午 4:00 小组讨论</code></li>
-            <li>分组：<code>#group 课程</code></li>
-            <li>提醒：<code>#remind 30,5</code> 表示提前 30 分钟和 5 分钟；也支持 <code>#remind 16:30</code>、<code>#remind 2:30 pm</code>、<code>#remind 下午 2:30</code>、<code>#remind 明天 16:30</code>、<code>#remind 周五 16:30</code>、<code>#remind 5月28日，14:30</code></li>
-            <li>公告：<code>#公告 5.16-7.1 期间禁止游玩舞萌DX游戏</code>；公告可写多条，会显示在每日看板、桌面小组件和电脑端顶部横幅里。</li>
-          </ul>
-        </section>
-        <section class="planning-help-card">
-          <h3>日期和提醒时间怎么写</h3>
-          <ul>
-            <li><code>#ddl</code> 支持 <code>16:30</code>、<code>5.28</code>、<code>5/28</code>、<code>5月28日</code>、<code>明天</code>、<code>周五</code>、<code>2026-05-28 14:30</code>。</li>
-            <li>日期和时间之间可以用空格，也可以用中文逗号，例如 <code>#ddl 5.28，23:59</code>。</li>
-            <li>常见全角分隔符会先归一化，例如 <code>5．28</code>、<code>14:00～16:00</code>。</li>
-            <li><code>#today</code>、<code>#tomorrow</code>、<code>#important</code>、<code>#project</code> 暂不写入正式待办属性，会保留在标题里。</li>
-            <li>提醒输入和待办 / 日程编辑界面共用同一套语法；任一提醒晚于 DDL / 日程开始时间时会阻止导入。</li>
-          </ul>
-        </section>
-        <section class="planning-help-card">
-          <h3>公告写法</h3>
-          <p>公告不再从设置页维护。直接在任意未归档规划文档里写显式公告行即可，可以多条同时生效。</p>
-          <ul>
-            <li><code>#公告 5.16-7.1 期间禁止游玩舞萌DX游戏</code></li>
-            <li><code>#公告 2026-05-16 2026-05-20 本周推进保研材料</code></li>
-            <li><code>&gt; [!公告] 长期提醒：先完成今天三件大事</code></li>
-          </ul>
-          <p>电脑端顶部公告横幅在短文本时静止显示，超过 60 字时自动横向滚动，鼠标悬停会暂停；网页整体会跟随系统深色模式。</p>
-        </section>
-        <section class="planning-help-card">
-          <h3>完整范例</h3>
-          <pre><code># 收集箱
-#公告 5.16-7.1 期间禁止游玩舞萌DX游戏
-- [ ] 想一下保研材料还缺什么
-- [ ] 问老师课程论文格式
-
-# 今日计划
-- [ ] 10:00-11:30 写课程论文 #group 课程 #remind 5
-- [ ] 晚上复习操作系统 #ddl 23:59 #remind 30,5
-
-# 明天
-- [ ] 09:00-10:30 背英语单词 #group 学习
-- [ ] 完成实验报告 #ddl 21:30 #remind 15,5
-
-# 本周计划
-- [ ] 完成课程论文初稿 #ddl 5.28 23:59 #group 课程
-- [ ] 整理保研竞赛材料 #ddl 5.30 18:00 #group 保研</code></pre>
-        </section>
-        <section class="planning-help-card">
-          <h3>识别和导入</h3>
+          <h3>3. 识别和导入</h3>
           <ol>
-            <li>日常建议直接在“大纲事项”里一行一行写，先形成草稿，再发布。</li>
-            <li>如果需要粘贴旧 Markdown 或大段文本，展开 Markdown 兼容编辑区后再写计划。</li>
-            <li>点击“识别”，如果设置里启用了完整 AI 源，会优先走 AI；否则会回到本地规则。右侧会出现待办、日程、跳过和错误条目。</li>
-            <li>导入不会隐式触发 AI 或本地识别；如果还没有预览结果，请先点击“识别”。</li>
-            <li>在预览里修正标题、DDL、开始/结束时间、提醒、分组和备注；这些时间字段同样支持上面的自然日期写法。</li>
-            <li>可用“全选可导入项 / 全不选”快速控制候选，至少勾选一条有效候选后才能导入。</li>
-            <li>勾选需要导入的条目，点击“导入选中”；这是兼容旧 Markdown 流程的正式导入，不等同于大纲草稿发布。电脑端也支持 <code>Ctrl+S</code> 保存、<code>Ctrl+Enter</code> 识别。</li>
-            <li>导入成功后原文会追加 <code>#imported</code> 并自动保存，避免重复导入。</li>
+            <li>写完后点“识别计划”。如果设置里启用了 AI 源，会优先走 AI；失败或未配置时回到本地规则。</li>
+            <li>右侧会出现待办、日程、跳过和错误条目。识别结果只是预览，不会直接入库。</li>
+            <li>在预览里修正标题、DDL、开始/结束时间、地点、分组、提醒和备注。</li>
+            <li>勾选需要导入的条目，点击“导入选中”。至少勾选一条有效候选后才能导入。</li>
+            <li>导入后不会往你的原文里追加井号标签；已导入状态由软件内部记录。</li>
           </ol>
+        </section>
+        <section class="planning-help-card">
+          <h3>4. 写得乱也没关系</h3>
+          <p>规划台的目标不是逼你记语法，而是把“先粗略写下来”变成正式待办/日程之前的缓冲区。看不准的地方就在预览里改。</p>
         </section>
       </div>
     </div>

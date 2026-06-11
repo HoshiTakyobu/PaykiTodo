@@ -141,7 +141,7 @@ fun SettingsPanel(
     onEventCheckInPreferencesChange: (Boolean, Boolean) -> Unit,
     onEventCheckInIdleAutoCheckOutHoursChange: (Int) -> Unit,
     onOngoingEventNotificationEnabledChange: (Boolean) -> Unit,
-    onPlanningOutlinerPreferencesChange: (Boolean, Boolean) -> Unit,
+    @Suppress("UNUSED_PARAMETER") onPlanningOutlinerPreferencesChange: (Boolean, Boolean) -> Unit,
     onReminderAudioStrategyChange: (ReminderAudioChannel, Int, Boolean, Int, Boolean) -> Unit,
     onPlanningAiProvidersChange: (Boolean, List<PlanningAiProvider>) -> Unit,
     onReportPreferencesChange: (Boolean, Int, Int, Boolean, Int, Int, AiReportRetention) -> Unit,
@@ -415,30 +415,6 @@ fun SettingsPanel(
                                 "8 小时" -> 8
                                 else -> 2
                             }
-                        )
-                    }
-                )
-                HorizontalDivider()
-                Text("规划台大纲", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
-                SettingsSwitchRow(
-                    title = "显示编辑提示行",
-                    summary = "在大纲行获得焦点时显示“时间 | 事项 | 地点”，用于提示自然输入格式。",
-                    checked = settings.planningOutlineHintVisible,
-                    onCheckedChange = {
-                        onPlanningOutlinerPreferencesChange(
-                            it,
-                            settings.planningEventEndTodoEnabled
-                        )
-                    }
-                )
-                SettingsSwitchRow(
-                    title = "日程结束同步 DDL 待办",
-                    summary = "开启后，规划台大纲里的日程会额外创建一个以结束时间为 DDL 的待办。",
-                    checked = settings.planningEventEndTodoEnabled,
-                    onCheckedChange = {
-                        onPlanningOutlinerPreferencesChange(
-                            settings.planningOutlineHintVisible,
-                            it
                         )
                     }
                 )

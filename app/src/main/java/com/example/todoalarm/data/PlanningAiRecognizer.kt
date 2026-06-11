@@ -14,14 +14,13 @@ object PlanningAiRecognizer {
     suspend fun recognize(
         markdown: String,
         providers: List<PlanningAiProvider>,
-        now: LocalDateTime = LocalDateTime.now(),
-        defaultDate: LocalDate? = null
+        now: LocalDateTime = LocalDateTime.now()
     ): PlanningParseResult {
         val response = PlanningAiCaller.callWithFallback(
             providers = providers,
             request = PlanningAiRequest(
-                systemPrompt = buildSystemPrompt(now, defaultDate),
-                prompt = buildUserPrompt(markdown, now, defaultDate)
+                systemPrompt = buildSystemPrompt(now),
+                prompt = buildUserPrompt(markdown, now)
             )
         )
         return parseAiContent(
@@ -80,7 +79,7 @@ object PlanningAiRecognizer {
                 sourceLine = sourceLine,
                 type = PlanningParsedType.SKIPPED,
                 imported = true,
-                message = "已带 #imported，默认跳过。"
+                message = "这一行已经导入过，默认跳过。"
             )
         }
 
@@ -278,9 +277,8 @@ object PlanningAiRecognizer {
         val groupName = rawGroupName.trim()
         if (groupName.isBlank()) return ""
         val source = sourceLine.trim()
-        if (Regex("""#(?:group|分组)(?=\s|$)""", RegexOption.IGNORE_CASE).containsMatchIn(source)) return groupName
         val escaped = Regex.escape(groupName)
-        val explicitPattern = Regex("""(?:分组|项目|课程)\s*[:：]\s*$escaped(?:\s|$|，|,|；|;)""")
+        val explicitPattern = Regex("""(?:分组|项目|类别|课程)\s*[:：]\s*$escaped(?:\s|$|，|,|；|;)""")
         return if (explicitPattern.containsMatchIn(source)) groupName else ""
     }
 
@@ -335,10 +333,10 @@ object PlanningAiRecognizer {
         return optString(name).takeIf { it.isNotBlank() }
     }
 
-    private fun buildUserPrompt(markdown: String, now: LocalDateTime, defaultDate: LocalDate?): String {
+    private fun buildUserPrompt(markdown: String, now: LocalDateTime): String {
         return """
             当前时间：${now.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)}
-            ${defaultDate?.let { "当前规划文档日期：$it。没有显式日期但有日期上下文的条目，优先按这个日期理解。" } ?: "当前规划文档没有指定日期。"}
+            规划文档名称或日期不作为默认日期；只按用户正文里写出的今天、明天、周五、5.29、具体日期等信息理解。
 
             用户写下的规划内容如下。请把它拆成待办和日程候选：
 
@@ -348,11 +346,9 @@ object PlanningAiRecognizer {
         """.trimIndent()
     }
 
-    private fun buildSystemPrompt(now: LocalDateTime, defaultDate: LocalDate?): String {
+    private fun buildSystemPrompt(now: LocalDateTime): String {
         val today = now.toLocalDate()
-        val documentDateRule = defaultDate?.let {
-            "当前规划文档日期是 $it。没有显式日期、但语义依赖当前规划文档日期的条目，可以按 $it 作为默认日期；行内显式日期必须优先于文档日期。"
-        } ?: "当前规划文档没有指定日期；没有显式日期时不要编造具体日期。"
+        val documentDateRule = "规划文档名称或日期不提供默认日期。没有显式日期时，日程可按今天 $today 预览；待办没有 DDL 就 dueAt=null。"
         return """
             你是 PaykiTodo 规划台的结构化识别器。你的任务是把用户随手写的中文规划、备忘、课程安排、DDL、会议、复习计划拆成可预览候选。
 
@@ -367,13 +363,13 @@ object PlanningAiRecognizer {
             2. todo 表示待办任务；title 必填；dueAt 可以为 null。用户只写日期但没写时间时，dueAt 用当天 23:59:00。没有 DDL 就 dueAt=null 且 reminderOffsetsMinutes=[]。
             3. event 表示有开始和结束时间的日程；startAt/endAt 必填，格式为 yyyy-MM-dd'T'HH:mm:ss。event 默认 createLinkedTodo=false；只有用户明确写了“同步待办 / 同时创建待办 / 也建一个DDL任务 / 日程结束作为DDL”这类意图时才设为 true。地点要放在 location 字段，不要塞进 notes；如果原文写了“@主楼B1-412”或“"@主楼B1-412"”，location 保留原文的 @，不要额外补 @。
             4. reminderOffsetsMinutes 表示提前多少分钟提醒。用户没写提醒时，有 DDL 或日程的候选默认 [5]；没有 DDL 的 todo 用 []。
-            5. groupName 只在用户明确写了分组标记时填写，例如“#group 入党”“分组：课程”“项目：保研”。不要从标题里擅自截取词语当分组；例如“入党表格填写”的 groupName 必须是空字符串，标题保持“入党表格填写”。
+            5. groupName 只在用户明确写了分组字段时填写，例如“分组：课程”“项目：保研”“类别：入党”。不要从标题里擅自截取词语当分组；例如“入党表格填写”的 groupName 必须是空字符串，标题保持“入党表格填写”。
             6. notes 用于保留上下文、父任务、资料等补充信息；不要把标题、时间、地点重复放进 notes。
             7. recurrence 用于循环规则：不循环输出 {"enabled":false,"type":"NONE","weeklyDays":[],"endDate":null}；明确写了每天/每周/每月/每年且能确定截止日期时才设置 enabled=true，type 可用 DAILY、WEEKLY、MONTHLY_NTH_WEEKDAY、MONTHLY_DAY、YEARLY_DATE、YEARLY_LUNAR_DATE；每周循环 weeklyDays 用 1-7 表示周一到周日；没有截止日期时不要启用循环，只在 message 提醒用户导入后设置。
             8. 已完成、已导入、明显只是标题/说明的内容可以输出 type="skip"。
             9. 不要编造用户没写的具体日期时间；如果无法确定具体时间，todo 的 dueAt 设为 null，event 不要输出或输出 skip。
             10. 相对日期要按今天 $today 解析，例如“今天/明天/后天/周五”。“晚上交材料”如有明确日期上下文，可以按 22:00；“上午”按 12:00，“下午”按 17:00，“早上”按 09:00。
-            11. 逗号分隔的轻量日程要按“时间段，标题，地点”理解，例如“10:00-12:00, 【课程】习思想，"@主楼B1-412"”应输出 event，title="【课程】习思想"，location="@主楼B1-412"，groupName=""，createLinkedTodo=false。不要把“【课程】”自动截成分组，除非原文明确写了“分组：课程”或“#group 课程”。
+            11. 逗号分隔的轻量日程要按“时间段，标题，地点”理解，例如“10:00-12:00, 【课程】习思想，"@主楼B1-412"”应输出 event，title="【课程】习思想"，location="@主楼B1-412"，groupName=""，createLinkedTodo=false。不要把“【课程】”自动截成分组，除非原文明确写了“分组：课程”。
         """.trimIndent()
     }
 }

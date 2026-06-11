@@ -8,8 +8,8 @@
 - Target platform: Android 14 / API 34
 - License: MIT License (`LICENSE`)
 - Current version in code:
-  - `versionName = "1.13.71"`
-  - `versionCode = 319`
+  - `versionName = "1.14.0"`
+  - `versionCode = 320`
   - database version = `28`
 
 ## Current Build Facts
@@ -22,7 +22,19 @@
 - Latest GitHub Release:
   - `https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.13.11`
 - Latest fully built debug APK:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.13.71-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.14.0-debug.apk`
+- Current `1.14.0 / versionCode 320` status:
+  - Phone Planning Desk now uses a memo-style natural-text main surface with document selection, help, `识别计划`, overflow actions, and preview-first import.
+  - Phone Planning Desk default UI no longer exposes shortcut syntax buttons, Outliner switching, Markdown preview, or draft-publish controls.
+  - Desktop Web Planning Desk now uses a left memo editor and right recognition preview, removing the visible Outliner / Markdown-compatible main entry.
+  - Planning Desk help examples now focus on direct natural writing such as `10:00-12:00 写论文 @图书馆3楼` and `任务M ddl 15:00`.
+  - Planning import no longer appends visible `#imported` markers to user text; duplicate prevention uses internal planning mappings.
+  - Local/AI recognition no longer treats the planning document date as a hidden default date for user-entered lines.
+  - Plain natural lines are now recognized as no-DDL todo candidates, while low-confidence no-DDL fallback no longer blocks AI recognition when AI sources are configured.
+  - Phone image recognition appends recognized text into the memo and opens the recognition preview instead of writing hidden Outliner drafts.
+  - Settings no longer exposes Planning Desk Outliner-specific toggles; historical Planning Desk syntax/design docs were moved under `docs/archive/historical/` and replaced with current memo-style docs.
+  - Database version remains `28`; no schema migration was added.
+  - Verification passed: `node --check app/src/main/assets/desktop-web/app.js`, `git diff --check`, `./gradlew.bat :app:compileDebugKotlin`, `./gradlew.bat :app:testDebugUnitTest`, `./gradlew.bat :app:assembleDebug`, and APK metadata inspection for `versionName = 1.14.0`, `versionCode = 320`.
 - Current `1.13.71 / versionCode 319` status:
   - The Android `今日看板` widget schedule aggregate card no longer relies on a default light card surface while using white widget text.
   - Default and night schedule event-row backgrounds now use the same dark translucent surface, so event title/time/location remain visible in dark-mode launcher screenshots.

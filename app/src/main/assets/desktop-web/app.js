@@ -1272,7 +1272,7 @@ function syncTopbar() {
   const todoMode = state.currentTab === 'todos';
   const eventMode = state.currentTab === 'events';
   els.panelTitle.textContent = todoMode ? '每日看板' : eventMode ? '日程时间轴' : '规划台';
-  els.viewCaption.textContent = todoMode ? '桌面端每日看板' : eventMode ? '桌面端日程模式' : '大纲草稿 / Markdown 兼容';
+  els.viewCaption.textContent = todoMode ? '桌面端每日看板' : eventMode ? '桌面端日程模式' : '备忘录式规划 / 识别预览';
   els.openCreate.textContent = todoMode ? '新增待办' : eventMode ? '新增日程' : '新建规划';
   els.openCreate.classList.toggle('hidden', state.currentTab === 'planning');
   const dataMode = todoMode && state.todosLoaded
@@ -1853,7 +1853,7 @@ function renderPlanningNotes() {
     els.planningNoteSelect.value = String(active.id);
     if (activeChanged) state.planningParseMarkdown = '';
     if (activeChanged || !state.planningDirty) {
-      els.planningEditor.value = state.planningNodesMarkdown || active.contentMarkdown || '';
+      els.planningEditor.value = active.contentMarkdown || state.planningNodesMarkdown || '';
       state.planningDirty = false;
     }
     if (els.planningActiveTitle) els.planningActiveTitle.textContent = active.title || '我的规划';
@@ -1957,7 +1957,7 @@ function renderPlanningOutline() {
   }
   const flattened = flattenPlanningNodes(state.planningNodes || []);
   if (!flattened.length) {
-    els.planningOutline.innerHTML = '<button type="button" class="planning-outline-empty" data-focus-planning-root="true">当前文档还没有大纲事项。点这里或上方输入框，写下第一件事：10:00-12:00 写论文 @图书馆3楼，或 任务M ddl 15:00。</button>';
+    els.planningOutline.innerHTML = '<button type="button" class="planning-outline-empty" data-focus-planning-root="true">当前文档还没有规划事项。点这里或上方输入框，写下第一件事：10:00-12:00 写论文 @图书馆3楼，或 任务M ddl 15:00。</button>';
     autosizePlanningTextarea(els.planningRootInput);
     return;
   }
@@ -2050,7 +2050,7 @@ async function flushPlanningOutlineInputs(options = {}) {
 
 function currentPlanningMarkdownForAction() {
   if (state.planningDirty) return els.planningEditor?.value || '';
-  return state.planningNodesMarkdown || els.planningEditor?.value || '';
+  return els.planningEditor?.value || activePlanningNote()?.contentMarkdown || state.planningNodesMarkdown || '';
 }
 
 function refreshPlanningMarkdownEditor(markdown = state.planningNodesMarkdown || '') {
@@ -2450,21 +2450,46 @@ function renderPlanningMappingPreview() {
   }).join('');
 }
 
+function normalizePlanningMappingLine(raw) {
+  return String(raw || '')
+    .replace(/\s+#imported(?=\s|$)/gi, '')
+    .trim()
+    .replace(/\s+/g, ' ');
+}
+
+function applyPlanningMappingStatus(item) {
+  const lineNumber = Number(item?.lineNumber || 0);
+  if (!lineNumber || item?.imported) return item;
+  const source = normalizePlanningMappingLine(item.sourceLine || '');
+  const matched = (state.planningMappings || []).some(mapping =>
+    mapping.status !== 'ORPHANED' &&
+    Number(mapping.lastKnownLineNumber || 0) === lineNumber &&
+    normalizePlanningMappingLine(mapping.currentLineText || mapping.originalLineText || '') === source
+  );
+  if (!matched) return item;
+  return {
+    ...item,
+    imported: true,
+    importable: false,
+    message: item.message || '这一行已经导入过，默认不重复导入。'
+  };
+}
+
 function renderPlanningPreview() {
   if (!els.planningPreview || !els.planningPreviewMeta) return;
   const result = state.planningParseResult;
   const parseButton = document.getElementById('planning-parse');
   if (parseButton) {
     parseButton.disabled = state.planningParsing;
-    parseButton.textContent = state.planningParsing ? '识别中' : '识别';
+    parseButton.textContent = state.planningParsing ? '识别中' : '识别计划';
   }
   if (!result) {
-    els.planningPreviewMeta.textContent = state.planningParsing ? '识别中…' : '尚未识别 · 写完大纲后点“识别预览”，会先同步最新草稿';
+    els.planningPreviewMeta.textContent = state.planningParsing ? '识别中…' : '尚未识别 · 在左侧像备忘录一样写完后点“识别计划”';
     const mappingHtml = renderPlanningMappingPreview();
-    els.planningPreview.innerHTML = mappingHtml || '<div class="empty-state">左侧大纲适合日常一条条写；右侧只负责检查识别结果。<br>需要从大段文本导入时，再展开 Markdown 兼容编辑区。</div>';
+    els.planningPreview.innerHTML = mappingHtml || '<div class="empty-state">左侧是自由书写区。你可以直接粘贴 Word、Excel、聊天记录或手写计划，再点“识别计划”。</div>';
     return;
   }
-  const candidates = result.candidates || [];
+  const candidates = (result.candidates || []).map(applyPlanningMappingStatus);
   const summary = '共 ' + candidates.length + ' 行，' + (result.importableCount || 0) + ' 条可导入。';
   els.planningPreviewMeta.textContent = result.message ? (summary + ' ' + result.message) : summary;
   const actions = candidates.length ? (
@@ -2698,7 +2723,6 @@ async function deletePlanningNote() {
 }
 
 async function parsePlanningEditor() {
-  await flushPlanningOutlineInputs({ createRoot: true });
   await flushPlanningAutosave();
   const markdown = currentPlanningMarkdownForAction();
   state.planningParsing = true;
@@ -2709,6 +2733,7 @@ async function parsePlanningEditor() {
       method: 'POST',
       body: JSON.stringify({ markdown, noteId: active && active.id })
     });
+    await loadPlanningMappings();
     state.planningParseMarkdown = markdown;
     renderPlanningPreview();
   } finally {
@@ -2718,7 +2743,6 @@ async function parsePlanningEditor() {
 }
 
 async function importSelectedPlanning() {
-  await flushPlanningOutlineInputs({ createRoot: true });
   if (!state.planningParseResult) {
     els.status.textContent = '请先点击“识别”生成预览，再勾选并导入';
     renderPlanningPreview();
@@ -4283,7 +4307,7 @@ els.planningNoteSelect?.addEventListener('change', async event => {
   const note = activePlanningNote();
   if (note && els.planningEditor) {
     await loadPlanningNodes();
-    els.planningEditor.value = state.planningNodesMarkdown || note.contentMarkdown || '';
+    els.planningEditor.value = note.contentMarkdown || state.planningNodesMarkdown || '';
     state.planningDirty = false;
     state.planningRenderedNoteId = note.id;
     state.planningParseResult = null;

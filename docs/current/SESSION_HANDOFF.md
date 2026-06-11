@@ -5,11 +5,11 @@
 - Repository root: `G:\Workspace\Project\PaykiTodo`
 - Branch: `main`
 - Current code version:
-  - `versionName = 1.13.71`
-  - `versionCode = 319`
+  - `versionName = 1.14.0`
+  - `versionCode = 320`
   - database version = `28`
 - Latest debug APK target in this round:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.13.71-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.14.0-debug.apk`
 - Latest signed release APK available locally:
   - `app/build/outputs/apk/release/PaykiTodo-1.13.11-release.apk`
 - Latest GitHub Release:
@@ -17,7 +17,22 @@
 
 ## Active Goal
 
-Fix the `今日看板` launcher widget schedule-card contrast regression introduced around the 1.13.70 visual pass.
+Simplify Planning Desk back into a memo-style planning surface: natural writing first, recognition preview second, selected import last.
+
+## What Changed In The Latest 1.14.0 Patch
+
+1. Phone Planning Desk now opens as a memo-style natural text editor with only document/help/recognize/overflow controls in the main toolbar.
+2. Phone default Planning Desk no longer exposes the shortcut syntax toolbar, Outliner switch, Markdown preview entry, or draft publishing path.
+3. Desktop Web Planning Desk now presents a two-column memo editor plus recognition preview instead of the old Outliner / Markdown-compatible split.
+4. Help text and examples now teach direct natural writing rather than hashtag planning tags.
+5. Planning import no longer appends visible `#imported` markers to user text; imported status is matched from internal planning mappings.
+6. Local and AI recognition no longer use the planning document date as a hidden default date.
+7. Plain natural lines now become no-DDL todo candidates, but low-confidence no-DDL fallback no longer prevents AI recognition when providers are configured.
+8. Phone image recognition appends recognized text to the memo and opens preview instead of creating hidden Outliner drafts.
+9. Planning Desk Outliner-specific Settings toggles were removed from the visible Settings UI.
+10. Legacy Planning Desk syntax/design docs were archived to `docs/archive/historical/`, while current docs describe only the memo-style workflow.
+11. Version metadata moved to `1.14.0 / versionCode 320`; database version remains `28`.
+12. Verification passed: `node --check app/src/main/assets/desktop-web/app.js`, `git diff --check`, `./gradlew.bat :app:compileDebugKotlin`, `./gradlew.bat :app:testDebugUnitTest`, `./gradlew.bat :app:assembleDebug`, and APK metadata inspection for `versionName = 1.14.0`, `versionCode = 320`.
 
 ## What Changed In The Latest 1.13.71 Patch
 

@@ -532,7 +532,7 @@ button.ghost {
 .planning-markdown-compat { margin-top: 12px; border-radius: 20px; border: 1px dashed var(--card-border); background: var(--subtle-bg); padding: 12px; }
 .planning-markdown-compat summary { cursor: pointer; color: var(--text); font-weight: 900; }
 .planning-markdown-compat p { margin: 8px 0 10px; font-size: 13px; line-height: 1.45; }
-.planning-editor { width: 100%; min-height: 620px; resize: vertical; border-radius: 24px; border: 1px solid var(--card-border); background: var(--card-bg-strong); padding: 18px; line-height: 1.65; font-family: Consolas, "Microsoft YaHei UI", monospace; font-size: 15px; color: var(--text); box-shadow: var(--card-shadow); }
+.planning-editor { width: 100%; min-height: 620px; resize: vertical; border-radius: 24px; border: 1px solid var(--card-border); background: var(--card-bg-strong); padding: 18px; line-height: 1.65; font-family: "Microsoft YaHei UI", "PingFang SC", system-ui, sans-serif; font-size: 15px; color: var(--text); box-shadow: var(--card-shadow); }
 .planning-editor:focus { outline: 2px solid rgba(53,104,212,.18); border-color: rgba(53,104,212,.42); }
 .planning-preview-shell { min-width: 0; border-radius: 24px; border: 1px solid var(--card-border); background: var(--board-bg); padding: 16px; overflow: hidden; }
 .planning-preview { display: flex; flex-direction: column; gap: 12px; max-height: 620px; overflow: auto; padding-right: 4px; }

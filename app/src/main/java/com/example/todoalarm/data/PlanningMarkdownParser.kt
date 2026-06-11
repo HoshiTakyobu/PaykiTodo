@@ -52,28 +52,19 @@ data class PlanningParsedCandidate(
 }
 
 object PlanningMarkdownParser {
+    @Suppress("UNUSED_PARAMETER")
     fun markImportedLines(markdown: String, importedLineNumbers: Set<Int>): String {
-        if (markdown.isEmpty() || importedLineNumbers.isEmpty()) return markdown
-        val hasTrailingNewline = markdown.endsWith("\n") || markdown.endsWith("\r")
-        val normalized = markdown.replace("\r\n", "\n").replace('\r', '\n')
-        val updated = normalized.lines().mapIndexed { index, line ->
-            val lineNumber = index + 1
-            if (lineNumber !in importedLineNumbers || line.isBlank() || hasSimpleTag(line, "imported")) {
-                line
-            } else {
-                "$line #imported"
-            }
-        }.joinToString("\n")
-        return if (hasTrailingNewline && !updated.endsWith("\n")) "$updated\n" else updated
+        return markdown
     }
 
     fun parse(
         markdown: String,
         now: LocalDateTime = LocalDateTime.now(),
+        @Suppress("UNUSED_PARAMETER")
         documentDate: LocalDate? = null
     ): PlanningParseResult {
         val candidates = mutableListOf<PlanningParsedCandidate>()
-        var dateContext: LocalDate? = documentDate
+        var dateContext: LocalDate? = null
         var topLevelTaskTitle: String? = null
 
         markdown.lineSequence().forEachIndexed { index, rawLine ->
@@ -84,7 +75,6 @@ object PlanningMarkdownParser {
 
             val headingText = headingTextOrNull(trimmed)
             if (headingText != null) {
-                dateContext = parseHeadingDateContext(headingText, now.toLocalDate())?.date ?: documentDate
                 topLevelTaskTitle = null
                 return@forEachIndexed
             }
@@ -97,7 +87,7 @@ object PlanningMarkdownParser {
             val indentLevel = checkbox?.indentLevel ?: plainBullet?.indentLevel ?: 0
             val imported = hasSimpleTag(content, "imported")
             if (imported) {
-                candidates += skipped(lineNumber, line, "已带 #imported，默认跳过。", imported = true)
+                candidates += skipped(lineNumber, line, "这一行已经导入过，默认跳过。", imported = true)
                 return@forEachIndexed
             }
             if (checkbox?.completed == true) {
@@ -138,29 +128,20 @@ object PlanningMarkdownParser {
         now: LocalDateTime
     ): PlanningParsedCandidate? {
         val bareDdl = bareDdlValue(content)
-        val explicitDdl = tagValue(content, "ddl") ?: bareDdl
-        val explicitSchedule = tagValue(content, "schedule")
-        val scheduleSource = explicitSchedule ?: content
-        val naturalEvent = if (explicitSchedule != null || explicitDdl == null) {
-            parseNaturalEvent(scheduleSource, dateContext, now)
+        val explicitDdl = bareDdl
+        val leadingDate = parseLeadingDate(normalizeSyntaxText(content), now.toLocalDate())
+        val naturalEvent = if (explicitDdl == null) {
+            parseNaturalEvent(content, dateContext, now)
         } else {
             null
         }
-        if (explicitSchedule != null || naturalEvent != null) {
-            val event = naturalEvent ?: return error(lineNumber, sourceLine, "无法识别 #schedule 后的日程时间。")
-            val title = if (explicitSchedule == null) {
-                event.title
-            } else {
-                cleanTitle(content).trim().ifBlank { event.title }
-            }
+        if (naturalEvent != null) {
+            val event = naturalEvent
+            val title = event.title
             if (title.isBlank()) return error(lineNumber, sourceLine, "日程标题不能为空。")
             if (!event.endAt.isAfter(event.startAt)) return error(lineNumber, sourceLine, "日程结束时间必须晚于开始时间。")
-            val reminderResult = parseReminderTag(content, event.startAt, now)
-            if (reminderResult != null && !reminderResult.isValid) {
-                return error(lineNumber, sourceLine, "提醒格式无效：${reminderResult.message}")
-            }
-            val reminder = reminderResult?.offsetsMinutes ?: listOf(DEFAULT_PLANNING_REMINDER_MINUTES)
-            val group = tagValue(content, "group").orEmpty()
+            val reminder = listOf(DEFAULT_PLANNING_REMINDER_MINUTES)
+            val group = ""
             val location = event.location.ifBlank { extractLocation(content) }
             val warnings = mutableListOf<String>()
             if (event.defaultToday) warnings += "未写日期，默认今天。"
@@ -186,40 +167,42 @@ object PlanningMarkdownParser {
             )
         }
 
-        if (!listItemPresent && !hasSimpleTag(content, "task") && explicitDdl == null) {
-            return parseNaturalTodoHints(
+        if (!listItemPresent && explicitDdl == null) {
+            parseNaturalTodoHints(
                 lineNumber = lineNumber,
                 sourceLine = sourceLine,
                 content = content,
                 dateContext = dateContext,
                 parentTitle = parentTitle,
                 now = now
+            )?.let { return it }
+            return noDdlTodo(
+                lineNumber = lineNumber,
+                sourceLine = sourceLine,
+                content = content,
+                parentTitle = parentTitle
             )
         }
 
         val naturalDdl = if (explicitDdl == null) parseNaturalDdlHint(content, dateContext, now) else null
-        val title = if (explicitDdl == null && naturalDdl != null) {
+        val title = if ((explicitDdl == null && naturalDdl != null) || (explicitDdl != null && leadingDate != null)) {
             cleanNaturalTodoTitle(content, stripLeadingDate = true, today = now.toLocalDate())
         } else {
             cleanTitle(content).trim()
         }
         if (title.isBlank()) return error(lineNumber, sourceLine, "待办标题不能为空。")
         val ddl = explicitDdl?.let { ddlText ->
-            parseDateTimeExpression(ddlText, defaultDate = dateContext, nowDate = now.toLocalDate(), defaultTime = LocalTime.of(23, 59))
+            parseDateTimeExpression(ddlText, defaultDate = leadingDate?.date ?: dateContext, nowDate = now.toLocalDate(), defaultTime = LocalTime.of(23, 59))
                 ?: return error(lineNumber, sourceLine, "无法识别 DDL：$ddlText")
         } ?: naturalDdl
-        val reminderResult = if (ddl != null) parseReminderTag(content, ddl, now) else null
-        if (reminderResult != null && !reminderResult.isValid) {
-            return error(lineNumber, sourceLine, "提醒格式无效：${reminderResult.message}")
-        }
-        val reminder = if (ddl != null) reminderResult?.offsetsMinutes ?: listOf(DEFAULT_PLANNING_REMINDER_MINUTES) else emptyList()
+        val reminder = if (ddl != null) listOf(DEFAULT_PLANNING_REMINDER_MINUTES) else emptyList()
         val warnings = mutableListOf<String>()
         if (ddl != null && !ddl.isAfter(now)) warnings += "DDL 已早于当前时间，导入前请调整。"
         val importBlocked = ddl != null && (!ddl.isAfter(now) || reminder.any { offset -> !ddl.minusMinutes(offset.toLong()).isAfter(now) })
         if (importBlocked && warnings.isEmpty()) warnings += "提醒时间已经过去，请调整 DDL 或提醒时间后再导入。"
         if (plainBulletPresent && ddl == null) warnings += "普通项目符号已识别为无 DDL 待办。"
         naturalTextMessage(content, naturalDdl != null)?.let { warnings += it }
-        val group = tagValue(content, "group").orEmpty()
+        val group = ""
         val notes = parentTitle?.let { "所属大任务：$it" }.orEmpty()
         return PlanningParsedCandidate(
             id = "line-$lineNumber",
@@ -248,11 +231,7 @@ object PlanningMarkdownParser {
         val ddl = parseNaturalDdlHint(content, dateContext, now) ?: return null
         val title = cleanNaturalTodoTitle(content, stripLeadingDate = true, today = now.toLocalDate()).trim()
         if (title.isBlank()) return error(lineNumber, sourceLine, "待办标题不能为空。")
-        val reminderResult = parseReminderTag(content, ddl, now)
-        if (reminderResult != null && !reminderResult.isValid) {
-            return error(lineNumber, sourceLine, "提醒格式无效：${reminderResult.message}")
-        }
-        val reminder = reminderResult?.offsetsMinutes ?: listOf(DEFAULT_PLANNING_REMINDER_MINUTES)
+        val reminder = listOf(DEFAULT_PLANNING_REMINDER_MINUTES)
         val warnings = mutableListOf("根据自然文本推断，建议确认")
         naturalTextMessage(content, true)?.let { warnings += it }
         if (!ddl.isAfter(now)) warnings += "DDL 已早于当前时间，导入前请调整。"
@@ -267,12 +246,35 @@ object PlanningMarkdownParser {
             type = PlanningParsedType.TODO,
             title = title,
             notes = parentTitle?.let { "所属大任务：$it" }.orEmpty(),
-            groupName = tagValue(content, "group").orEmpty(),
+            groupName = "",
             dueAt = ddl,
             reminderOffsetsMinutes = reminder,
             parentTitle = parentTitle,
             importBlocked = importBlocked,
             message = warnings.distinct().joinToString("；")
+        )
+    }
+
+    private fun noDdlTodo(
+        lineNumber: Int,
+        sourceLine: String,
+        content: String,
+        parentTitle: String?
+    ): PlanningParsedCandidate? {
+        val title = cleanTitle(content).trim()
+        if (title.isBlank()) return null
+        return PlanningParsedCandidate(
+            id = "line-$lineNumber",
+            lineNumber = lineNumber,
+            sourceLine = sourceLine,
+            type = PlanningParsedType.TODO,
+            title = title,
+            notes = parentTitle?.let { "所属大任务：$it" }.orEmpty(),
+            groupName = "",
+            dueAt = null,
+            reminderOffsetsMinutes = emptyList(),
+            parentTitle = parentTitle,
+            message = "未写 DDL，按无 DDL 待办预览。"
         )
     }
 
@@ -291,6 +293,17 @@ object PlanningMarkdownParser {
                     nowDate = now.toLocalDate(),
                     defaultTime = LocalTime.of(23, 59)
                 ) ?: LocalDateTime.of(leadingDate.date, LocalTime.of(23, 59))
+            }
+            val rest = leadingDate.rest.trimStart().trimStart(',', '，').trimStart()
+            TimePrefixRegex.find(rest)?.takeIf { it.range.first == 0 }?.let { timeMatch ->
+                parseTimeToken(timeMatch.value)?.let { time ->
+                    return LocalDateTime.of(leadingDate.date, time)
+                }
+            }
+            ChineseDayPeriodRegex.find(rest)?.takeIf { it.range.first == 0 }?.let { periodMatch ->
+                fuzzyPeriodDeadlineTime(periodMatch.value)?.let { time ->
+                    return LocalDateTime.of(leadingDate.date, time)
+                }
             }
         }
         DdlKeywordRegex.find(text)?.let { match ->
@@ -356,7 +369,7 @@ object PlanningMarkdownParser {
         val preprocessed = if (stripLeadingDate) {
             val normalized = normalizeSyntaxText(raw)
             parseLeadingDate(normalized, today)?.let { leadingDate ->
-                stripLeadingDateDdlPrefix(leadingDate.rest).takeIf { it != leadingDate.rest }
+                stripLeadingDateTodoPrefix(leadingDate.rest).takeIf { it != leadingDate.rest }
             } ?: raw
         } else {
             raw
@@ -369,7 +382,7 @@ object PlanningMarkdownParser {
             .replace(Regex("\\s+"), " ")
         if (stripLeadingDate) {
             parseLeadingDate(text, today)?.let { leadingDate ->
-                text = stripLeadingDateDdlPrefix(leadingDate.rest).trimStart().trimStart(',', '，')
+                text = stripLeadingDateTodoPrefix(leadingDate.rest).trimStart().trimStart(',', '，')
             }
         }
         return text
@@ -398,9 +411,24 @@ object PlanningMarkdownParser {
         return rest
     }
 
-    private fun parseReminderTag(content: String, anchor: LocalDateTime, now: LocalDateTime): ReminderTextParseResult? {
-        val raw = tagValue(content, "remind") ?: return null
-        return parseReminderTextInput(raw = raw, anchor = anchor, now = now, requireFuture = false)
+    private fun stripLeadingDateTodoPrefix(rawRest: String): String {
+        var rest = stripLeadingDateDdlPrefix(rawRest)
+            .trimStart()
+            .trimStart(',', '，')
+            .trimStart()
+        TimePrefixRegex.find(rest)?.takeIf { it.range.first == 0 }?.let { timeMatch ->
+            rest = rest.substring(timeMatch.range.last + 1)
+                .trimStart()
+                .trimStart(',', '，')
+                .trimStart()
+        }
+        ChineseDayPeriodRegex.find(rest)?.takeIf { it.range.first == 0 }?.let { periodMatch ->
+            rest = rest.substring(periodMatch.range.last + 1)
+                .trimStart()
+                .trimStart(',', '，')
+                .trimStart()
+        }
+        return rest
     }
 
     private fun parseNaturalEvent(text: String, dateContext: LocalDate?, now: LocalDateTime): ParsedNaturalEvent? {
@@ -625,7 +653,6 @@ object PlanningMarkdownParser {
     }
 
     private fun bareDdlValue(content: String): String? {
-        if (content.contains("#ddl")) return null
         val match = BareDdlRegex.find(content) ?: return null
         return match.groupValues[1].trim().takeIf { it.isNotBlank() }
     }

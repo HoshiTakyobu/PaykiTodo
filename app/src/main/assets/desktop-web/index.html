@@ -7,27 +7,54 @@
   <link rel="stylesheet" href="/app.css?v=__PAYKI_VERSION__" />
 </head>
 <body>
-  <div class="shell">
+  <div id="login-screen" class="login-screen">
+    <div class="login-aurora" aria-hidden="true"></div>
+    <div class="login-card">
+      <div class="login-brand">
+        <div class="login-logo">P</div>
+        <div>
+          <h1>PaykiTodo</h1>
+          <p>电脑端时间轴控制台 · v__PAYKI_VERSION__</p>
+        </div>
+      </div>
+      <div class="login-field">
+        <label for="token">访问密钥</label>
+        <p class="login-hint">打开手机 PaykiTodo 设置页里的「电脑同步」，输入屏幕上显示的 4 位访问密钥连接这台手机。</p>
+        <input id="token" type="password" maxlength="4" inputmode="latin" autocomplete="off" spellcheck="false" placeholder="• • • •" />
+        <button id="connect" class="login-submit">连接手机</button>
+        <div id="login-status" class="login-status">尚未连接</div>
+      </div>
+      <div class="login-foot">
+        <span>局域网直连</span><b>·</b><span>数据只在你的设备之间同步</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="shell hidden">
     <aside class="sidebar">
       <div class="sidebar-inner">
         <div class="brand-block">
-          <h1>PaykiTodo</h1>
-          <p class="muted">电脑端时间轴控制台 · v__PAYKI_VERSION__</p>
-        </div>
-        <div class="sidebar-card">
-          <label>访问密钥</label>
-          <p class="sidebar-tip">输入手机设置页里显示的 4 位访问密钥后，再连接这台手机。</p>
-          <div class="connect-stack">
-            <input id="token" type="password" maxlength="4" placeholder="例如 A7K3" />
-            <button id="connect">连接手机</button>
+          <div class="brand-logo">P</div>
+          <div>
+            <h1>PaykiTodo</h1>
+            <p class="muted">控制台 · v__PAYKI_VERSION__</p>
           </div>
-          <div id="status" class="muted status">尚未连接</div>
         </div>
-        <div class="sidebar-card">
-          <button class="ghost tab-btn active" data-tab="todos">每日看板</button>
-          <button class="ghost tab-btn" data-tab="events">日程时间轴</button>
-          <button class="ghost tab-btn" data-tab="planning">规划台</button>
+        <div class="conn-card">
+          <div class="conn-row">
+            <span class="conn-dot"></span>
+            <div class="conn-text">
+              <strong>已连接手机</strong>
+              <span id="shell-status" class="muted">已连接</span>
+            </div>
+          </div>
+          <button id="disconnect" class="ghost mini">断开</button>
         </div>
+        <nav class="side-nav">
+          <button class="nav-btn tab-btn active" data-tab="todos"><span class="nav-ico">▦</span>每日看板</button>
+          <button class="nav-btn tab-btn" data-tab="events"><span class="nav-ico">◷</span>日程时间轴</button>
+          <button class="nav-btn tab-btn" data-tab="planning"><span class="nav-ico">✎</span>规划台</button>
+        </nav>
       </div>
     </aside>
     <main class="content">

@@ -8,8 +8,8 @@
 - Target platform: Android 14 / API 34
 - License: MIT License (`LICENSE`)
 - Current version in code:
-  - `versionName = "1.14.0"`
-  - `versionCode = 320`
+  - `versionName = "1.14.1"`
+  - `versionCode = 321`
   - database version = `28`
 
 ## Current Build Facts
@@ -22,7 +22,15 @@
 - Latest GitHub Release:
   - `https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.13.11`
 - Latest fully built debug APK:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.14.0-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.14.1-debug.apk`
+- Current `1.14.1 / versionCode 321` status:
+  - Desktop Web sync console redesigned: connection now uses a dedicated full-screen login page instead of the sidebar key input.
+  - The login page presents an access-key card with brand block, key field, connect button, and inline status; on successful connect it transitions into the app shell.
+  - The app shell sidebar was rebuilt with a brand-logo block, a connected-status card with a disconnect button, and an icon-based nav for 每日看板 / 日程时间轴 / 规划台.
+  - The whole console was unified to a single dark control-room palette (removed the light/dark media-query split), with aurora background glows on the login screen.
+  - JS connect/disconnect now switch between login screen and app shell; heartbeat disconnection returns the user to the login screen.
+  - No behavior, API, or data changes; only Desktop Web front-end markup/styles/login-state and version metadata changed. Database version remains `28`.
+  - Verification passed: `node --check app/src/main/assets/desktop-web/app.js`, `git diff --check`, `./gradlew.bat :app:compileDebugKotlin`, `./gradlew.bat :app:assembleDebug`, and APK metadata inspection for `versionName = 1.14.1`, `versionCode = 321`.
 - Current `1.14.0 / versionCode 320` status:
   - Phone Planning Desk now uses a memo-style natural-text main surface with document selection, help, `识别计划`, overflow actions, and preview-first import.
   - Phone Planning Desk default UI no longer exposes shortcut syntax buttons, Outliner switching, Markdown preview, or draft-publish controls.

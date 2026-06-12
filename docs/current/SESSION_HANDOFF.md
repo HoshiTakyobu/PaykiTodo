@@ -5,11 +5,11 @@
 - Repository root: `G:\Workspace\Project\PaykiTodo`
 - Branch: `main`
 - Current code version:
-  - `versionName = 1.14.0`
-  - `versionCode = 320`
+  - `versionName = 1.14.1`
+  - `versionCode = 321`
   - database version = `28`
 - Latest debug APK target in this round:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.14.0-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.14.1-debug.apk`
 - Latest signed release APK available locally:
   - `app/build/outputs/apk/release/PaykiTodo-1.13.11-release.apk`
 - Latest GitHub Release:
@@ -17,22 +17,19 @@
 
 ## Active Goal
 
-Simplify Planning Desk back into a memo-style planning surface: natural writing first, recognition preview second, selected import last.
+Redesign the Desktop Web console: split login into a dedicated full-screen page and rework the overall shell into a dark control-console style.
 
-## What Changed In The Latest 1.14.0 Patch
+## What Changed In The Latest 1.14.1 Patch
 
-1. Phone Planning Desk now opens as a memo-style natural text editor with only document/help/recognize/overflow controls in the main toolbar.
-2. Phone default Planning Desk no longer exposes the shortcut syntax toolbar, Outliner switch, Markdown preview entry, or draft publishing path.
-3. Desktop Web Planning Desk now presents a two-column memo editor plus recognition preview instead of the old Outliner / Markdown-compatible split.
-4. Help text and examples now teach direct natural writing rather than hashtag planning tags.
-5. Planning import no longer appends visible `#imported` markers to user text; imported status is matched from internal planning mappings.
-6. Local and AI recognition no longer use the planning document date as a hidden default date.
-7. Plain natural lines now become no-DDL todo candidates, but low-confidence no-DDL fallback no longer prevents AI recognition when providers are configured.
-8. Phone image recognition appends recognized text to the memo and opens preview instead of creating hidden Outliner drafts.
-9. Planning Desk Outliner-specific Settings toggles were removed from the visible Settings UI.
-10. Legacy Planning Desk syntax/design docs were archived to `docs/archive/historical/`, while current docs describe only the memo-style workflow.
-11. Version metadata moved to `1.14.0 / versionCode 320`; database version remains `28`.
-12. Verification passed: `node --check app/src/main/assets/desktop-web/app.js`, `git diff --check`, `./gradlew.bat :app:compileDebugKotlin`, `./gradlew.bat :app:testDebugUnitTest`, `./gradlew.bat :app:assembleDebug`, and APK metadata inspection for `versionName = 1.14.0`, `versionCode = 320`.
+1. Desktop Web login is now a dedicated full-screen page (`#login-screen`) with a branded card, centered key input, and inline status, instead of the access-key box embedded in the sidebar.
+2. After a successful connect the login page hides and the main shell (`.shell`) is revealed; a new `disconnect()` returns the session to the login page and clears the token.
+3. Heartbeat disconnect now also returns the user to the login page so a dropped LAN connection no longer leaves a dead shell.
+4. The sidebar was reworked into a dark control-console layout: brand logo block, a live connection card (pulsing dot + `断开` button), and a vertical nav with icons replacing the old stacked tab buttons.
+5. The CSS palette was switched from a light/dark dual theme to a single dark control-console palette (deep navy background with aurora glows), and the login + sidebar components got matching styles.
+6. A `statusProxy` keeps the dozens of existing `els.status.textContent = ...` call sites working by mirroring text into both `#login-status` and `#shell-status`, so no render/logic call sites needed rewriting.
+7. Only Desktop Web static assets (`index.html`, `app.css`, `app.js`) and version metadata changed; no Kotlin, schema, or sync-protocol changes. Database version remains `28`.
+8. Version metadata moved to `1.14.1 / versionCode 321`.
+9. Verification passed: `node --check app/src/main/assets/desktop-web/app.js`, `git diff --check`, `./gradlew.bat :app:compileDebugKotlin`, `./gradlew.bat :app:assembleDebug`, and APK metadata inspection for `versionName = 1.14.1`, `versionCode = 321`.
 
 ## What Changed In The Latest 1.13.71 Patch
 

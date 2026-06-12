@@ -66,9 +66,31 @@ const state = {
   }
 };
 
+const statusProxy = {
+  set textContent(value) {
+    const login = document.getElementById('login-status');
+    const shell = document.getElementById('shell-status');
+    if (login) login.textContent = value;
+    if (shell) shell.textContent = value;
+  },
+  get textContent() {
+    return document.getElementById('shell-status')?.textContent || '';
+  }
+};
+
+function showAppShell() {
+  document.getElementById('login-screen')?.classList.add('hidden');
+  document.querySelector('.shell')?.classList.remove('hidden');
+}
+
+function showLoginScreen() {
+  document.querySelector('.shell')?.classList.add('hidden');
+  document.getElementById('login-screen')?.classList.remove('hidden');
+}
+
 const els = {
   token: document.getElementById('token'),
-  status: document.getElementById('status'),
+  status: statusProxy,
   desktopDailyBoard: document.getElementById('desktop-daily-board'),
   todoSummary: document.getElementById('todo-summary'),
   todoTimeline: document.getElementById('todo-timeline'),
@@ -1292,11 +1314,27 @@ function ensureSelectedEventDay() {
 }
 
 async function connect() {
-  state.token = els.token.value.trim();
+  const token = els.token.value.trim();
+  if (!token) {
+    els.status.textContent = '请输入手机端显示的 4 位访问密钥';
+    return;
+  }
+  state.token = token;
   state.planningLoaded = false;
+  els.status.textContent = '正在连接手机…';
   await loadSnapshot({ planning: false });
   startDesktopHeartbeat();
   els.status.textContent = '已连接';
+  showAppShell();
+}
+
+function disconnect() {
+  stopDesktopHeartbeat();
+  state.token = '';
+  state.snapshot = null;
+  if (els.token) els.token.value = '';
+  els.status.textContent = '已断开连接';
+  showLoginScreen();
 }
 
 function stopDesktopHeartbeat() {
@@ -1313,7 +1351,9 @@ function startDesktopHeartbeat() {
       await api('/api/status');
     } catch (error) {
       stopDesktopHeartbeat();
+      state.token = '';
       els.status.textContent = '电脑同步连接已断开，请在手机端重新开启后再连接';
+      showLoginScreen();
     }
   }, 60 * 1000);
 }
@@ -3975,6 +4015,7 @@ document.getElementById('event-recurrence-type')?.addEventListener('change', eve
   }
 });
 document.getElementById('connect').onclick = () => connect().catch(err => els.status.textContent = err.message);
+document.getElementById('disconnect')?.addEventListener('click', () => disconnect());
 els.token.addEventListener('keydown', event => {
   if (event.key !== 'Enter') return;
   event.preventDefault();

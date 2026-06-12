@@ -1177,10 +1177,23 @@ function buildEventSegment(item, key) {
 }
 
 function renderHourAxis() {
-  let html = '<div class="hour-axis-spacer"></div>';
+  const now = new Date();
+  const todayKey = dayKey(now);
+  const currentMinutes = now.getHours() * 60 + now.getMinutes();
+  const currentTimeOffset = (currentMinutes / 60) * HOUR_HEIGHT;
+
+  // 时间刻度列和右侧日程网格在同一个滚动容器里并排；右侧网格被 58px 的日期表头
+  // (EVENT_HEADER_HEIGHT) 往下推，所以这里每个标签和红线 chip 的 top 都要加上同样的偏移，
+  // 否则整列时间刻度会比日程网格高出 58px，全程错位。
+  let html = '';
   for (let hour = 0; hour < 24; hour += 1) {
-    html += '<div class="hour-label">' + String(hour).padStart(2, '0') + ':00</div>';
+    const top = EVENT_HEADER_HEIGHT + hour * HOUR_HEIGHT;
+    html += '<div class="hour-label" style="top:' + top + 'px">' + String(hour).padStart(2, '0') + ':00</div>';
   }
+
+  // 当前时间标签（红色 chip），和整点并列在最左边
+  html += '<div class="hour-current-chip" style="top:' + (EVENT_HEADER_HEIGHT + currentTimeOffset) + 'px">' + escapeHtml(formatTimeLabel(now.getTime())) + '</div>';
+
   return html;
 }
 
@@ -1197,11 +1210,7 @@ function renderCurrentLine(key) {
   const now = new Date();
   const todayKey = dayKey(now);
   const top = (now.getHours() * 60 + now.getMinutes()) / 60 * HOUR_HEIGHT;
-  const isToday = key === todayKey;
-  const chip = isToday
-    ? '<span class="current-line-chip">' + escapeHtml(formatTimeLabel(now.getTime())) + '</span>'
-    : '';
-  return '<div class="current-line ' + (key < todayKey ? 'past' : '') + '" style="top:' + top + 'px">' + chip + '</div>';
+  return '<div class="current-line ' + (key < todayKey ? 'past' : '') + '" style="top:' + top + 'px"></div>';
 }
 
 function visibleEventDayCount() {
@@ -4017,6 +4026,19 @@ document.getElementById('event-recurrence-type')?.addEventListener('change', eve
 });
 document.getElementById('connect').onclick = () => connect().catch(err => els.status.textContent = err.message);
 document.getElementById('disconnect')?.addEventListener('click', () => disconnect());
+document.getElementById('sidebar-toggle')?.addEventListener('click', () => {
+  const shell = document.querySelector('.shell');
+  const btn = document.getElementById('sidebar-toggle');
+  if (shell.classList.contains('sidebar-collapsed')) {
+    shell.classList.remove('sidebar-collapsed');
+    btn.textContent = '‹';
+    btn.title = '收起侧边栏';
+  } else {
+    shell.classList.add('sidebar-collapsed');
+    btn.textContent = '›';
+    btn.title = '展开侧边栏';
+  }
+});
 els.token.addEventListener('keydown', event => {
   if (event.key !== 'Enter') return;
   event.preventDefault();

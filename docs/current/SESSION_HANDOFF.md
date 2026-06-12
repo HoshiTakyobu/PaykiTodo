@@ -5,11 +5,11 @@
 - Repository root: `G:\Workspace\Project\PaykiTodo`
 - Branch: `main`
 - Current code version:
-  - `versionName = 1.14.3`
-  - `versionCode = 323`
+  - `versionName = 1.14.4`
+  - `versionCode = 324`
   - database version = `28`
 - Latest debug APK target in this round:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.14.3-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.14.4-debug.apk`
 - Latest signed release APK available locally:
   - `app/build/outputs/apk/release/PaykiTodo-1.13.11-release.apk`
 - Latest GitHub Release:
@@ -17,7 +17,17 @@
 
 ## Active Goal
 
-Implement the light calendar redesign (Scheme B) across the entire Desktop Web console after user feedback that the dark control-room style was "ugly". This round converted the whole site from dark to light theme, applied pastel event cards, fixed the timeline red-line chip misalignment bug, and hardened the desktop sync service against socket timeout crashes.
+Fix four Desktop Web issues the user reported after seeing the 1.14.3 light redesign on the real device: (1) sidebar text was invisible (white text left over from the dark sidebar design while `--sidebar` had been lightened), (2) the hour axis and day columns separated when the window was narrowed (two independent scroll contexts that the responsive breakpoint stacked vertically), (3) the red-line time chip should sit at the far-left axis aligned with the hour marks (matching the phone layout) instead of riding on the red line, and (4) the sidebar should become a collapsible left menu. All four are fixed in 1.14.4, plus an alignment bug discovered during the rework.
+
+## What Changed In The Latest 1.14.4 Patch
+
+1. Sidebar restored to dark blue (`--sidebar: #243246`) with white text — the 1.14.3 light-palette change had lightened `--sidebar` to `#f8fafc` while sidebar text stayed white, making it invisible. Reverted to the Slack/Notion "dark nav + light content" pattern.
+2. Calendar restructured to the phone layout model: the hour axis and day columns now live inside a single `#board-scroll` scroll container (two-column grid: 84px axis + timeline wrap), so they scroll together and can never separate. Removed the old separate `position: sticky` `.hour-axis` element and the responsive breakpoint rule that turned it static and stacked the layout.
+3. Red-line time chip moved back to the far-left hour axis, aligned with the hour marks (matching the phone `CalendarPanel.kt` layout where the current-time label sits left-aligned in the time column). The chip is no longer embedded in `.current-line`; `renderHourAxis()` regenerates it as `.hour-current-chip` and `renderCurrentLine()` outputs only the red line.
+4. Sidebar made collapsible: added a collapse/expand toggle button and `.shell.sidebar-collapsed` CSS state (narrow icon-only sidebar) with JS click handler next to the disconnect button.
+5. Alignment bug fixed (found during rework): inside `#board-scroll`, the left `.hour-axis` column and the right timeline column start at the grid top, but the right column's timed grid is pushed down 58px by the sticky `.event-day-headers`. Hour labels and the red chip now add `EVENT_HEADER_HEIGHT` (58px) to their `top`, and `.hour-axis` height is `calc(var(--hour-height) * 24 + 58px)`, so the time marks line up with the day grid. Verified the 58px offset and CSS height are present in the packaged APK.
+6. Changed files: `app.css` (sidebar palette, board scroll restructure, collapsible sidebar, chip + axis alignment), `app.js` (hour-axis/red-line rendering, sidebar toggle handler), `index.html` (board-scroll DOM restructure, collapse button), `build.gradle.kts` (version 1.14.4/324).
+7. Database version remains `28`. Verification passed: `node --check app.js`, CSS brace-pair check (495/495), `git diff --check`, `assembleDebug`, APK metadata confirmed 1.14.4/324, and grep of packaged APK assets confirmed the 58px offset + axis-height changes shipped. No Kotlin changed this round.
 
 ## What Changed In The Latest 1.14.3 Patch
 

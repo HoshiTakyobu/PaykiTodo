@@ -32,6 +32,7 @@
 
   <div class="shell hidden">
     <aside class="sidebar">
+      <button id="sidebar-toggle" class="sidebar-toggle" title="收起/展开侧边栏">‹</button>
       <div class="sidebar-inner">
         <div class="brand-block">
           <div class="brand-logo">P</div>
@@ -115,10 +116,12 @@
             </div>
           </div>
           <section class="schedule-board-shell">
-            <div id="hour-axis" class="hour-axis"></div>
             <div id="board-scroll" class="board-scroll">
-              <div id="event-day-headers" class="event-day-headers"></div>
-              <div id="event-timeline" class="event-timeline"></div>
+              <div id="hour-axis" class="hour-axis"></div>
+              <div class="board-timeline-wrap">
+                <div id="event-day-headers" class="event-day-headers"></div>
+                <div id="event-timeline" class="event-timeline"></div>
+              </div>
             </div>
           </section>
         </div>

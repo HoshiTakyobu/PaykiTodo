@@ -8,8 +8,8 @@
 - Target platform: Android 14 / API 34
 - License: MIT License (`LICENSE`)
 - Current version in code:
-  - `versionName = "1.14.3"`
-  - `versionCode = 323`
+  - `versionName = "1.14.4"`
+  - `versionCode = 324`
   - database version = `28`
 
 ## Current Build Facts
@@ -22,7 +22,16 @@
 - Latest GitHub Release:
   - `https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.13.11`
 - Latest fully built debug APK:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.14.3-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.14.4-debug.apk`
+- Current `1.14.4 / versionCode 324` status:
+  - Desktop Web calendar layout + sidebar overhaul addressing four user-reported issues after the 1.14.3 light redesign.
+  - **Sidebar text invisible (issue 1)**: 1.14.3 changed `--sidebar` to a light value (`#f8fafc`) but left sidebar text white, making it invisible on the light surface. Reverted `--sidebar` back to dark blue (`#243246`) so the classic "dark nav + light content" pattern reads correctly.
+  - **Time axis detached from day columns on narrow windows (issue 2)**: the previous structure had `.hour-axis` as a separate `position: sticky` element while `.board-scroll` had its own internal scroll, creating two independent scroll contexts that split apart at the responsive breakpoint. Restructured so `#hour-axis` and the day-header/timeline wrap are now siblings inside a single `#board-scroll` grid container (`grid-template-columns: 84px minmax(0,1fr)`), matching the phone version's single-scroll-container model so the axis and columns always scroll together and stay aligned.
+  - **Red-line time chip position (issue 3)**: per user, the current-time label should sit at the far left aligned with the hour marks (like the phone version), NOT attached to the red line — this reverses the 1.14.3 change. Moved chip generation back into `renderHourAxis()` so it renders in the left time column as `.hour-current-chip`, and `renderCurrentLine()` now emits only the bare red line.
+  - **Collapsible sidebar (issue 4)**: added a collapse/expand toggle; collapsed state narrows the sidebar to an icon rail, persisted via the toggle handler.
+  - **Alignment fix found during self-review**: the single-scroll grid puts a 58px day-header at the top of the right column, pushing the hour grid down by 58px while the left axis labels started at y=0 — a full-column 58px misalignment. Added `EVENT_HEADER_HEIGHT` (58px) offset to every hour label and the red chip's `top`, and set `.hour-axis` height to `calc(var(--hour-height) * 24 + 58px)` so both columns share the same vertical origin.
+  - Database version remains `28`. Changed: Desktop Web CSS (sidebar palette + single-scroll calendar layout + collapsible sidebar), JS (hour-axis/red-line rendering + 58px alignment + sidebar toggle), HTML (board-scroll structure + collapse button), version metadata. No Kotlin/schema changes this round.
+  - Verification passed: `node --check app/src/main/assets/desktop-web/app.js`, CSS brace-pair check (495/495), `git diff --check`, `./gradlew.bat :app:assembleDebug`, APK metadata confirmed `1.14.4 / 324`, and APK-content inspection confirming the 58px-offset JS and `.hour-axis` height CSS were packaged.
 - Current `1.14.3 / versionCode 323` status:
   - Desktop Web whole-site redesign: converted entire console from dark control-room style (1.14.1) to light theme with classic "dark sidebar + light content" pattern (Slack / Notion style).
   - Applied "light calendar with pastel event cards" design (Scheme B): event cards now use light tinted backgrounds (`color-mix(accent 13%, #fff)`) + solid accent left strip + dark title text, matching Apple Calendar / Google Calendar's standard visual language for much-improved readability and coordination.

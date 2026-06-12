@@ -5,11 +5,11 @@
 - Repository root: `G:\Workspace\Project\PaykiTodo`
 - Branch: `main`
 - Current code version:
-  - `versionName = 1.14.1`
-  - `versionCode = 321`
+  - `versionName = 1.14.2`
+  - `versionCode = 322`
   - database version = `28`
 - Latest debug APK target in this round:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.14.1-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.14.2-debug.apk`
 - Latest signed release APK available locally:
   - `app/build/outputs/apk/release/PaykiTodo-1.13.11-release.apk`
 - Latest GitHub Release:
@@ -17,7 +17,17 @@
 
 ## Active Goal
 
-Redesign the Desktop Web console: split login into a dedicated full-screen page and rework the overall shell into a dark control-console style.
+Finish the dark control-console redesign of the Desktop Web app: the 1.14.1 round only restyled the login page and sidebar shell, leaving light-theme hardcoded colors in the main content area. 1.14.2 cleans up those leftovers so the whole console reads correctly on the dark palette.
+
+## What Changed In The Latest 1.14.2 Patch
+
+1. Fixed dark-on-dark and white-on-dark leftovers in the main content area that the 1.14.1 palette switch missed: `.pill`, `.switch-row label`, `.preview-main-title`, `.event-checkin-record`(+`.active`), `.planning-message`, and `.planning-help-card code` now use dark-theme palette variables instead of hardcoded light-theme colors.
+2. The `.event-checkin-record` white-ish background (`rgba(255,255,255,.48/.62)`) was replaced with `--subtle-bg` / accent-on-subtle so check-in rows no longer flash as bright blocks on the dark board.
+3. All 31 card/sheet `box-shadow` values that used light-theme blue shadow tints (`rgba(46,64,98,..)` / `rgba(40,57,88,..)` / `rgba(36,57,86,..)`) were converted to black-based shadows so cards regain depth on the dark background.
+4. Intentional accent colors were kept: the current-time red chip (`#e53935`) and the color-swatch inset white highlight.
+5. CSS brace pairing (488/488) and `node --check app.js` verified; this round is still Desktop Web static assets + version metadata only, no Kotlin/schema/sync changes. Database version remains `28`.
+6. Version metadata moved to `1.14.2 / versionCode 322`.
+7. Verification passed: `node --check app/src/main/assets/desktop-web/app.js`, CSS brace check, `git diff --check`, `./gradlew.bat :app:compileDebugKotlin`, `./gradlew.bat :app:assembleDebug`, and APK metadata inspection for `versionName = 1.14.2`, `versionCode = 322`.
 
 ## What Changed In The Latest 1.14.1 Patch
 

@@ -8,8 +8,8 @@
 - Target platform: Android 14 / API 34
 - License: MIT License (`LICENSE`)
 - Current version in code:
-  - `versionName = "1.14.1"`
-  - `versionCode = 321`
+  - `versionName = "1.14.2"`
+  - `versionCode = 322`
   - database version = `28`
 
 ## Current Build Facts
@@ -22,7 +22,21 @@
 - Latest GitHub Release:
   - `https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.13.11`
 - Latest fully built debug APK:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.14.1-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.14.2-debug.apk`
+- Current `1.14.2 / versionCode 322` status:
+  - Desktop Web dark-console follow-up: removed leftover light-theme hardcoded colors that broke readability on the dark background after the 1.14.1 palette switch.
+  - Fixed dark-on-dark text in `.pill`, `.switch-row label`, and `.preview-main-title`, and replaced a translucent-white `.event-checkin-record` background with a theme surface.
+  - Recolored `.planning-message` and `.planning-help-card code` to theme variables instead of light-theme blue/brown.
+  - Replaced 31 light-theme card box-shadows (`rgba(46,64,98,...)` etc.) with dark-theme black shadows so main-content cards regain depth.
+  - No behavior, API, or data changes; only Desktop Web CSS and version metadata changed. Database version remains `28`.
+  - Verification passed: CSS brace-pairing check, `node --check app/src/main/assets/desktop-web/app.js`, `./gradlew.bat :app:compileDebugKotlin`, `./gradlew.bat :app:assembleDebug`, and APK metadata inspection for `versionName = 1.14.2`, `versionCode = 322`.
+- Current `1.14.2 / versionCode 322` status:
+  - Follow-up to the 1.14.1 console redesign: fixed dark-theme readability regressions left over from the palette switch.
+  - Removed light-theme hardcoded values that were unreadable on the dark control-room background: dark-on-dark text in `.pill`, `.switch-row label`, `.planning-message`, `.planning-help-card code`, the `.preview-main-title` mix, and the half-white `.event-checkin-record` / `.event-checkin-record.active` backgrounds.
+  - Converted all card/sheet/preview `box-shadow` values from light-theme blue-tinted shadows (`rgba(46,64,98,...)` etc.) to dark-theme black shadows so cards keep depth on the dark background.
+  - Intentional accent colors kept: the calendar current-time red chip (`#e53935`) and the color-swatch inset highlight.
+  - No behavior, API, or data changes; only Desktop Web styles and version metadata changed. Database version remains `28`.
+  - Verification passed: `node --check app/src/main/assets/desktop-web/app.js`, CSS brace-pair check, `git diff --check`, `./gradlew.bat :app:compileDebugKotlin`, `./gradlew.bat :app:assembleDebug`, and APK metadata inspection for `versionName = 1.14.2`, `versionCode = 322`.
 - Current `1.14.1 / versionCode 321` status:
   - Desktop Web sync console redesigned: connection now uses a dedicated full-screen login page instead of the sidebar key input.
   - The login page presents an access-key card with brand block, key field, connect button, and inline status; on successful connect it transitions into the app shell.

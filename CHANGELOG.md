@@ -2,6 +2,21 @@
 
 PaykiTodo 采用语义化倾向的应用版本号和递增 `versionCode`。本文件面向用户记录重要变化，不再保存每一次内部调试重建的完整流水账；完整历史可通过 Git commit、tag 和 `docs/archive/` 追溯。
 
+## v1.14.2
+
+发布日期：2026-06-12（本地调试构建，尚未创建 GitHub Release）
+
+### 修复
+
+- 修复电脑端深色主题下主内容区文字对比度不足和白底刺眼问题：`.pill`、`.switch-row label`、`.preview-main-title`、`.planning-message`、`.planning-help-card code`、`.event-checkin-record` 等组件文字色和背景色从浅色主题死值改为主题变量。
+- 统一卡片投影为深色主题该用的黑色半透明阴影，替换浅色主题遗留的浅蓝投影（`rgba(46,64,98)` / `rgba(40,57,88)` → `rgba(0,0,0)`），恢复深色背景下卡片立体层次感。
+
+### 构建
+
+- `versionName = 1.14.2`
+- `versionCode = 322`
+- 数据库版本保持 `28`，不新增迁移；仅改动电脑端 CSS 样式变量，未改 HTML / JS / Kotlin / 表结构。
+
 ## v1.14.1
 
 发布日期：2026-06-12（本地调试构建，尚未创建 GitHub Release）

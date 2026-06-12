@@ -8,8 +8,8 @@
 - Target platform: Android 14 / API 34
 - License: MIT License (`LICENSE`)
 - Current version in code:
-  - `versionName = "1.14.2"`
-  - `versionCode = 322`
+  - `versionName = "1.14.3"`
+  - `versionCode = 323`
   - database version = `28`
 
 ## Current Build Facts
@@ -22,14 +22,15 @@
 - Latest GitHub Release:
   - `https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.13.11`
 - Latest fully built debug APK:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.14.2-debug.apk`
-- Current `1.14.2 / versionCode 322` status:
-  - Desktop Web dark-console follow-up: removed leftover light-theme hardcoded colors that broke readability on the dark background after the 1.14.1 palette switch.
-  - Fixed dark-on-dark text in `.pill`, `.switch-row label`, and `.preview-main-title`, and replaced a translucent-white `.event-checkin-record` background with a theme surface.
-  - Recolored `.planning-message` and `.planning-help-card code` to theme variables instead of light-theme blue/brown.
-  - Replaced 31 light-theme card box-shadows (`rgba(46,64,98,...)` etc.) with dark-theme black shadows so main-content cards regain depth.
-  - No behavior, API, or data changes; only Desktop Web CSS and version metadata changed. Database version remains `28`.
-  - Verification passed: CSS brace-pairing check, `node --check app/src/main/assets/desktop-web/app.js`, `./gradlew.bat :app:compileDebugKotlin`, `./gradlew.bat :app:assembleDebug`, and APK metadata inspection for `versionName = 1.14.2`, `versionCode = 322`.
+  - `app/build/outputs/apk/debug/PaykiTodo-1.14.3-debug.apk`
+- Current `1.14.3 / versionCode 323` status:
+  - Desktop Web whole-site redesign: converted entire console from dark control-room style (1.14.1) to light theme with classic "dark sidebar + light content" pattern (Slack / Notion style).
+  - Applied "light calendar with pastel event cards" design (Scheme B): event cards now use light tinted backgrounds (`color-mix(accent 13%, #fff)`) + solid accent left strip + dark title text, matching Apple Calendar / Google Calendar's standard visual language for much-improved readability and coordination.
+  - Login page and sidebar adapted for light palette: login card is white-on-light with soft blue aurora glow; sidebar stays dark-blue with white text for navigation contrast.
+  - Fixed calendar timeline red-line time-chip misalignment bug: time chip (e.g. "16:40") was previously rendered in hour-axis layer with `EVENT_HEADER_HEIGHT` offset while the red line itself lived in day-column layer with no offset, causing structural coordinate-system mismatch. Now chip is embedded directly in `.current-line` and shares the same coordinate system, making misalignment structurally impossible.
+  - Fixed Desktop Sync service crash on socket timeout: `DesktopSyncServer.handleClient` only caught `HttpRequestException`, letting `SocketTimeoutException` (idle browser keepalive over 10s) and `IOException` (client disconnect) escape to thread and trigger uncaught-exception crash reporting. Now catches both for silent connection close, plus fallback `Exception` catch returning HTTP 500, ensuring no single request failure can crash the sync service.
+  - Database version remains `28`. Changed: Desktop Web CSS palette + login/event-card styles, JS timeline rendering logic, Kotlin sync exception handling, version metadata.
+  - Verification passed: `node --check app/src/main/assets/desktop-web/app.js`, CSS brace-pair check (488/488), `git diff --check`, `./gradlew.bat :app:compileDebugKotlin`, `./gradlew.bat :app:assembleDebug`, and APK metadata inspection for `versionName = 1.14.3`, `versionCode = 323`.
 - Current `1.14.2 / versionCode 322` status:
   - Follow-up to the 1.14.1 console redesign: fixed dark-theme readability regressions left over from the palette switch.
   - Removed light-theme hardcoded values that were unreadable on the dark control-room background: dark-on-dark text in `.pill`, `.switch-row label`, `.planning-message`, `.planning-help-card code`, the `.preview-main-title` mix, and the half-white `.event-checkin-record` / `.event-checkin-record.active` backgrounds.

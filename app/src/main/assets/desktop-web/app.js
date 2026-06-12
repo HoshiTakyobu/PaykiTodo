@@ -1181,9 +1181,6 @@ function renderHourAxis() {
   for (let hour = 0; hour < 24; hour += 1) {
     html += '<div class="hour-label">' + String(hour).padStart(2, '0') + ':00</div>';
   }
-  const now = new Date();
-  const top = EVENT_HEADER_HEIGHT + ((now.getHours() * 60 + now.getMinutes()) / 60 * HOUR_HEIGHT);
-  html += '<div class="hour-current-chip" style="top:' + top + 'px">' + escapeHtml(formatTimeLabel(now.getTime())) + '</div>';
   return html;
 }
 
@@ -1200,7 +1197,11 @@ function renderCurrentLine(key) {
   const now = new Date();
   const todayKey = dayKey(now);
   const top = (now.getHours() * 60 + now.getMinutes()) / 60 * HOUR_HEIGHT;
-  return '<div class="current-line ' + (key < todayKey ? 'past' : '') + '" style="top:' + top + 'px"></div>';
+  const isToday = key === todayKey;
+  const chip = isToday
+    ? '<span class="current-line-chip">' + escapeHtml(formatTimeLabel(now.getTime())) + '</span>'
+    : '';
+  return '<div class="current-line ' + (key < todayKey ? 'past' : '') + '" style="top:' + top + 'px">' + chip + '</div>';
 }
 
 function visibleEventDayCount() {

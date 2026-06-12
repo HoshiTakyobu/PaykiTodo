@@ -3,8 +3,10 @@ package com.example.todoalarm.sync
 import org.json.JSONObject
 import kotlinx.coroutines.runBlocking
 import java.io.ByteArrayOutputStream
+import java.io.IOException
 import java.io.OutputStream
 import java.net.InetSocketAddress
+import java.net.SocketTimeoutException
 import java.net.ServerSocket
 import java.net.Socket
 import java.nio.charset.StandardCharsets
@@ -85,8 +87,18 @@ class DesktopSyncServer(
                 }
             } catch (error: HttpRequestException) {
                 Response.json(JSONObject().put("error", error.message), error.statusCode)
+            } catch (_: SocketTimeoutException) {
+                // 浏览器保活连接空闲超过 soTimeout 后读超时是正常现象，安静关闭这条连接即可，
+                // 不要让异常逃逸到线程上，否则会被未捕获异常处理器上报成应用崩溃。
+                return
+            } catch (_: IOException) {
+                // 客户端中途断开（关闭标签页、断网、电脑休眠）会触发 IO 异常；同样安静关闭。
+                return
+            } catch (error: Exception) {
+                // 任何其它请求处理异常都只回 500，绝不让它逃逸到线程上崩溃整个应用。
+                Response.json(JSONObject().put("error", error.message ?: "服务器内部错误"), 500)
             }
-            writeResponse(client.getOutputStream(), response)
+            runCatching { writeResponse(client.getOutputStream(), response) }
         }
     }
 

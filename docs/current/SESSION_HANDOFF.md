@@ -5,11 +5,11 @@
 - Repository root: `G:\Workspace\Project\PaykiTodo`
 - Branch: `main`
 - Current code version:
-  - `versionName = 1.14.2`
-  - `versionCode = 322`
+  - `versionName = 1.14.3`
+  - `versionCode = 323`
   - database version = `28`
 - Latest debug APK target in this round:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.14.2-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.14.3-debug.apk`
 - Latest signed release APK available locally:
   - `app/build/outputs/apk/release/PaykiTodo-1.13.11-release.apk`
 - Latest GitHub Release:
@@ -17,7 +17,18 @@
 
 ## Active Goal
 
-Finish the dark control-console redesign of the Desktop Web app: the 1.14.1 round only restyled the login page and sidebar shell, leaving light-theme hardcoded colors in the main content area. 1.14.2 cleans up those leftovers so the whole console reads correctly on the dark palette.
+Implement the light calendar redesign (Scheme B) across the entire Desktop Web console after user feedback that the dark control-room style was "ugly". This round converted the whole site from dark to light theme, applied pastel event cards, fixed the timeline red-line chip misalignment bug, and hardened the desktop sync service against socket timeout crashes.
+
+## What Changed In The Latest 1.14.3 Patch
+
+1. Desktop Web whole-site light-theme conversion: reverted CSS `:root` palette from the 1.14.1/1.14.2 dark control-room values back to the original light-theme palette (light blue gradient background, white card surfaces, dark text).
+2. Sidebar stays dark blue with white text (the classic Slack / Notion "dark nav + light content" pattern), but login page and main content area are now light.
+3. Event cards redesigned to Scheme B (light calendar with pastel cards): `background: color-mix(in srgb, var(--accent) 13%, #fff)` creates light tinted card fills; left strip stays solid accent color; title uses `color-mix(accent 72%, #243446)` for dark readable text on the pastel background.
+4. Fixed calendar timeline red-line chip misalignment (structural bug): the time chip (e.g. "16:40") was rendered in `#hour-axis` with `EVENT_HEADER_HEIGHT` offset while `.current-line` (the red line) lived in day columns with no offset, causing them to sit in different coordinate systems and visually misalign. Moved chip generation from `renderHourAxis()` into `renderCurrentLine()` so chip is now embedded directly in `.current-line` as `<span class="current-line-chip">`, sharing the same `top` coordinate and making structural misalignment impossible.
+5. Fixed Desktop Sync service crash on socket timeout: `DesktopSyncServer.handleClient()` only caught `HttpRequestException`, letting `SocketTimeoutException` (browser keepalive idle >10s) and `IOException` (client disconnect mid-request) escape to the thread pool and trigger uncaught-exception crash reports. Added explicit `catch` blocks for both (silent `return`), plus fallback `catch (Exception)` returning HTTP 500, ensuring no single request can crash the service. Also wrapped `writeResponse` in `runCatching` for write-time errors.
+6. CSS `.current-line-chip` replaces the old `.hour-current-chip` positioning (now uses `position: absolute; left: 2px; top: 50%; transform: translateY(-50%)` to center-align on the red line).
+7. Changed files: `app.css` (palette + login/sidebar/event-card styles), `app.js` (red-line rendering), `DesktopSyncServer.kt` (exception handling), `build.gradle.kts` (version 1.14.3/323).
+8. Database version remains `28`. Verification passed: `node --check app.js`, CSS brace-pair check (488/488), `git diff --check`, `compileDebugKotlin`, `assembleDebug`, APK metadata confirmed 1.14.3/323.
 
 ## What Changed In The Latest 1.14.2 Patch
 

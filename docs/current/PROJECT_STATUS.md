@@ -8,8 +8,8 @@
 - Target platform: Android 14 / API 34
 - License: MIT License (`LICENSE`)
 - Current version in code:
-  - `versionName = "1.14.11"`
-  - `versionCode = 331`
+  - `versionName = "1.14.12"`
+  - `versionCode = 332`
   - database version = `28`
 
 ## Current Build Facts
@@ -22,7 +22,16 @@
 - Latest GitHub Release:
   - `https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.13.11`
 - Latest fully built debug APK:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.14.11-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.14.12-debug.apk`
+- Current `1.14.12 / versionCode 332` status:
+  - Phone Daily Board countdown rows now allow full multi-line target titles instead of truncating important event names to one line.
+  - Phone Daily Board `今日日程` title no longer shows a parenthesized count, the tomorrow schedule block no longer has its own collapse affordance, and the tomorrow block is shown with the today schedule card rather than depending on stale saved tomorrow-collapse state.
+  - Phone Daily Board today-schedule empty state now uses compact `暂无日程` copy instead of the oversized `太棒了！今天的日程都结束了~` message, with tighter spacing between today and tomorrow schedule content.
+  - Planning Desk import validation now allows past todo candidates when reminders are explicitly disabled, enabling historical backfill; enabled reminders whose trigger time is already past still block import.
+  - Phone Planning Desk import and Desktop Web Planning Desk import both use the relaxed no-reminder historical-todo path, while ordinary manual todo creation still rejects past DDLs.
+  - Desktop Web Planning Desk preview keeps edited candidate fields in local preview state and re-renders after toggling `启用提醒`, so disabling reminders immediately removes stale past-reminder warning copy from the visible card.
+  - Database version remains `28`; no Room schema migration was added. Changed: phone `DashboardChrome.kt`, Planning import shared model, phone ViewModel import validation, Desktop Sync import validation, Desktop Web Planning Desk preview JS, targeted tests, version metadata, current docs, and changelog.
+  - Verification passed: `node --check app/src/main/assets/desktop-web/app.js`, `./gradlew.bat :app:compileDebugKotlin`, `./gradlew.bat :app:testDebugUnitTest --tests com.example.todoalarm.data.PlanningImportCandidateTest`, `./gradlew.bat :app:testDebugUnitTest`, `git diff --check`, `./gradlew.bat :app:assembleDebug`, and APK metadata inspection for `versionName = 1.14.12`, `versionCode = 332`.
 - Current `1.14.11 / versionCode 331` status:
   - Desktop Web Planning Desk preview now exposes `启用提醒` and `提醒方式` for recognized todo/event candidates, matching the phone-side ability to decide whether a candidate should schedule a reminder and whether it should use full-screen or notification delivery.
   - Clearing the preview reminder input now disables reminders for that candidate instead of silently falling back to the Planning Desk default 5-minute reminder.

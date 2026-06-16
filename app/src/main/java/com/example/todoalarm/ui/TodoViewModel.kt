@@ -617,7 +617,12 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
         selected.forEachIndexed { index, candidate ->
             candidate.validate()?.let { return PlanningImportResult(message = "第 ${index + 1} 条：$it") }
             when (candidate.type) {
-                PlanningParsedType.TODO -> validateDraft(candidate.toTodoDraft(groups), null, RecurrenceScope.CURRENT)
+                PlanningParsedType.TODO -> validateDraft(
+                    draft = candidate.toTodoDraft(groups),
+                    original = null,
+                    scope = RecurrenceScope.CURRENT,
+                    allowPastDueAtWithoutReminder = true
+                )
                 PlanningParsedType.EVENT -> validateCalendarDraft(candidate.toEventDraft(groups), null, RecurrenceScope.CURRENT)
                 else -> null
             }?.let { return PlanningImportResult(message = "第 ${index + 1} 条：$it") }
@@ -1474,25 +1479,28 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
     private fun validateDraft(
         draft: TodoDraft,
         original: TodoItem?,
-        scope: RecurrenceScope
+        scope: RecurrenceScope,
+        allowPastDueAtWithoutReminder: Boolean = false
     ): String? {
         if (draft.title.isBlank()) return "标题不能为空"
 
         val isHistory = original?.isHistory == true
         val now = System.currentTimeMillis()
         val dueAtMillis = draft.dueAt?.toEpochMillis()
-        if (!isHistory && original == null && dueAtMillis != null && dueAtMillis <= now) {
+        val normalizedReminderOffsets = draft.normalizedReminderOffsetsMinutes
+        val allowHistoricalDueAt = allowPastDueAtWithoutReminder && normalizedReminderOffsets.isEmpty()
+        if (!isHistory && original == null && dueAtMillis != null && dueAtMillis <= now && !allowHistoricalDueAt) {
             return "DDL 必须晚于当前时间"
         }
 
         val reminderTriggerMillis = if (draft.dueAt == null) {
             emptyList()
         } else {
-            draft.normalizedReminderOffsetsMinutes
+            normalizedReminderOffsets
                 .map { requireNotNull(dueAtMillis) - it * 60_000L }
                 .distinct()
         }
-        if (draft.dueAt == null && draft.normalizedReminderOffsetsMinutes.isNotEmpty()) {
+        if (draft.dueAt == null && normalizedReminderOffsets.isNotEmpty()) {
             return "未设置 DDL 的任务不能启用提醒"
         }
         if (!isHistory && original == null && reminderTriggerMillis.any { it <= now }) {

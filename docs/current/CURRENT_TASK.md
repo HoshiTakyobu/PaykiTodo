@@ -2,21 +2,21 @@
 
 ## Active Development Focus
 
-Active immediate task: fix Desktop Web Planning Desk reminder controls so past events can be imported when reminders are disabled.
+Active immediate task: polish the phone Daily Board schedule/countdown display and finish Planning Desk no-reminder historical import behavior.
 
 Do not commit secrets, signing material, API keys, private Base URLs, generated APK/AAB outputs, or personal backups/logs. The repository already ignores `keystore.properties`, `release/`, `*.apk`, `*.jks`, `.env*`, and local temp files.
 
 ## Current Round Scope
 
-The current concrete patch is `1.14.11 / versionCode 331`: add explicit reminder enable/disable and reminder delivery controls to Desktop Web Planning Desk preview, and make empty reminder input persist as no reminder instead of falling back to the default 5-minute reminder.
+The current concrete patch is `1.14.12 / versionCode 332`: make Daily Board countdown and schedule sections less cramped / less verbose, and allow Planning Desk to import past todo candidates when reminders are explicitly disabled.
 
-Validation for this patch has passed: `./gradlew.bat :app:compileDebugKotlin`, `./gradlew.bat :app:testDebugUnitTest --tests com.example.todoalarm.data.PlanningImportCandidateTest`, `node --check app/src/main/assets/desktop-web/app.js`, `./gradlew.bat :app:testDebugUnitTest`, `git diff --check`, `./gradlew.bat :app:assembleDebug`, and APK metadata inspection for `versionName = 1.14.11`, `versionCode = 331`.
+Validation for this patch has passed: `node --check app/src/main/assets/desktop-web/app.js`, `./gradlew.bat :app:compileDebugKotlin`, `./gradlew.bat :app:testDebugUnitTest --tests com.example.todoalarm.data.PlanningImportCandidateTest`, `./gradlew.bat :app:testDebugUnitTest`, `git diff --check`, `./gradlew.bat :app:assembleDebug`, and APK metadata inspection for `versionName = 1.14.12`, `versionCode = 332`.
 
 Important constraints:
 
 1. Database version remains `28`; this round does not add a schema migration.
 2. Desktop Web Planning Desk must not force a reminder on candidates whose reminder input was cleared.
-3. Past events may be imported only when their reminders are disabled or absent; past reminder times remain invalid when reminders are enabled.
+3. Past events and past todo candidates may be imported only when their reminders are disabled or absent; past reminder times remain invalid when reminders are enabled.
 4. Keep the user-visible changelog and current docs aligned with the app version.
 
 Historical usability / correctness failures from the broader audit:

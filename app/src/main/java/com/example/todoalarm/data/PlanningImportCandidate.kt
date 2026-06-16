@@ -42,8 +42,9 @@ data class PlanningImportCandidate(
         return when (type) {
             PlanningParsedType.TODO -> {
                 if (dueAt != null) {
-                    if (!dueAt.isAfter(now)) return "DDL 必须晚于当前时间"
-                    if (offsets.any { !dueAt.minusMinutes(it.toLong()).isAfter(now) }) return "提醒时间必须晚于当前时间"
+                    if (offsets.any { !dueAt.minusMinutes(it.toLong()).isAfter(now) }) {
+                        return "提醒时间必须晚于当前时间"
+                    }
                 } else if (reminderEnabled) {
                     return "未设置 DDL 的待办不能设置提醒"
                 }

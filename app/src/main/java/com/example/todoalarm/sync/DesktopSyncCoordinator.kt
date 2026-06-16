@@ -801,6 +801,16 @@ class DesktopSyncCoordinator(
         require(selected.isNotEmpty()) { "没有可导入的规划条目" }
         selected.forEachIndexed { index, candidate ->
             candidate.validate()?.let { error("第 ${index + 1} 条：$it") }
+            when (candidate.type) {
+                PlanningParsedType.TODO -> validateTodoDraft(
+                    draft = candidate.toPlanningTodoDraft(groups),
+                    original = null,
+                    scope = RecurrenceScope.CURRENT,
+                    allowPastDueAtWithoutReminder = true
+                )
+                PlanningParsedType.EVENT -> validateEventDraft(candidate.toPlanningEventDraft(groups), null, RecurrenceScope.CURRENT)
+                else -> null
+            }?.let { error("第 ${index + 1} 条：$it") }
         }
         val batchId = UUID.randomUUID().toString()
         val importAtMillis = System.currentTimeMillis()
@@ -1025,16 +1035,19 @@ class DesktopSyncCoordinator(
     private fun validateTodoDraft(
         draft: TodoDraft,
         original: TodoItem?,
-        scope: RecurrenceScope
+        scope: RecurrenceScope,
+        allowPastDueAtWithoutReminder: Boolean = false
     ): String? {
         if (draft.title.isBlank()) return "标题不能为空"
         val now = System.currentTimeMillis()
         val isHistory = original?.isHistory == true
         val dueAtMillis = draft.dueAt?.atZone(java.time.ZoneId.systemDefault())?.toInstant()?.toEpochMilli()
-        if (!isHistory && original == null && dueAtMillis != null && dueAtMillis <= now) {
+        val normalizedReminderOffsets = draft.normalizedReminderOffsetsMinutes
+        val allowHistoricalDueAt = allowPastDueAtWithoutReminder && normalizedReminderOffsets.isEmpty()
+        if (!isHistory && original == null && dueAtMillis != null && dueAtMillis <= now && !allowHistoricalDueAt) {
             return "DDL 必须晚于当前时间"
         }
-        if (draft.dueAt == null && draft.normalizedReminderOffsetsMinutes.isNotEmpty()) {
+        if (draft.dueAt == null && normalizedReminderOffsets.isNotEmpty()) {
             return "未设置 DDL 的任务不能启用提醒"
         }
         val triggerTimes = if (draft.dueAt == null) {
@@ -1046,8 +1059,8 @@ class DesktopSyncCoordinator(
                 notes = draft.notes,
                 dueAtMillis = dueAtMillis ?: 0L,
                 reminderAtMillis = draft.reminderAt?.atZone(java.time.ZoneId.systemDefault())?.toInstant()?.toEpochMilli(),
-                reminderOffsetsCsv = draft.normalizedReminderOffsetsMinutes.joinToString(","),
-                reminderEnabled = draft.normalizedReminderOffsetsMinutes.isNotEmpty(),
+                reminderOffsetsCsv = normalizedReminderOffsets.joinToString(","),
+                reminderEnabled = normalizedReminderOffsets.isNotEmpty(),
                 ringEnabled = draft.ringEnabled,
                 vibrateEnabled = draft.vibrateEnabled,
                 groupId = draft.groupId

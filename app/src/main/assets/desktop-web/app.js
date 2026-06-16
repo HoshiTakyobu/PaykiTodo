@@ -40,6 +40,7 @@ const state = {
   planningDraggingNodeId: null,
   planningPendingCommits: [],
   planningParseMarkdown: '',
+  planningPreviewEdits: {},
   todosLoaded: false,
   todoOffset: 0,
   todoTotal: 0,
@@ -2425,6 +2426,32 @@ function planningReminderSummary(item) {
   return '提醒：' + raw + ' · ' + reminderModeLabel(item.reminderDeliveryMode || 'FULLSCREEN') + ' · 响铃 + 震动';
 }
 
+function editedPlanningCandidates() {
+  return (state.planningParseResult && state.planningParseResult.candidates || []).map(item => {
+    const edit = state.planningPreviewEdits && state.planningPreviewEdits[String(item.id)];
+    return edit ? { ...item, ...edit } : { ...item };
+  });
+}
+
+function rememberPlanningPreviewEdit(id, patch) {
+  const key = String(id);
+  state.planningPreviewEdits = state.planningPreviewEdits || {};
+  state.planningPreviewEdits[key] = { ...(state.planningPreviewEdits[key] || {}), ...patch };
+}
+
+function planningCandidateMessage(item) {
+  const message = String(item.message || '').trim();
+  if (!message) return '';
+  const rawReminder = String(item.reminderInputText || (item.reminderOffsetsMinutes || []).join(',')).trim();
+  const reminderEnabled = item.reminderEnabled !== false && rawReminder.length > 0;
+  if (reminderEnabled) return message;
+  return message.split('；')
+    .map(part => part.trim())
+    .filter(Boolean)
+    .filter(part => !part.includes('提醒时间已经过去') && !part.includes('提醒时间必须晚于当前时间') && !part.includes('DDL 已早于当前时间'))
+    .join('；');
+}
+
 function planningWeekdayChips(id, recurrenceType, weekdays) {
   const selected = new Set(recurrenceType === 'WEEKLY' ? parseWeekdays(Array.isArray(weekdays) ? weekdays.join(',') : weekdays) : []);
   const hiddenClass = recurrenceType === 'WEEKLY' ? '' : ' hidden';
@@ -2546,7 +2573,7 @@ function renderPlanningPreview() {
     els.planningPreview.innerHTML = mappingHtml || '<div class="empty-state">左侧是自由书写区。你可以直接粘贴 Word、Excel、聊天记录或手写计划，再点“识别计划”。</div>';
     return;
   }
-  const candidates = (result.candidates || []).map(applyPlanningMappingStatus);
+  const candidates = editedPlanningCandidates().map(applyPlanningMappingStatus);
   const summary = '共 ' + candidates.length + ' 行，' + (result.importableCount || 0) + ' 条可导入。';
   els.planningPreviewMeta.textContent = result.message ? (summary + ' ' + result.message) : summary;
   const actions = candidates.length ? (
@@ -2559,6 +2586,7 @@ function renderPlanningPreview() {
     const editable = item.type === 'TODO' || item.type === 'EVENT';
     const importable = editable ? (!item.imported && !item.completed) : (item.importable && !item.imported);
     const checked = importable && !item.importBlocked ? ' checked' : '';
+    const candidateMessage = planningCandidateMessage(item);
     const linked = item.type === 'EVENT' ? '<label class="planning-linked"><input type="checkbox" data-planning-linked="' + escapeHtml(item.id) + '"' + (item.createLinkedTodo ? ' checked' : '') + ' /> 同步创建以日程结束时间为 DDL 的待办任务</label>' : '';
     const editFields = editable ? (
       '<div class="planning-edit-grid">'
@@ -2593,7 +2621,7 @@ function renderPlanningPreview() {
       +   editFields
       +   (!editable ? '<div class="planning-meta-line">' + escapeHtml(planningTimeText(item)) + '</div>' : '<div class="planning-meta-line">' + escapeHtml(planningReminderSummary(item)) + '</div>')
       +   linked
-      +   (item.message ? '<div class="planning-message">' + escapeHtml(item.message) + '</div>' : '')
+      +   (candidateMessage ? '<div class="planning-message">' + escapeHtml(candidateMessage) + '</div>' : '')
       + '</article>';
   }).join('') || '<div class="empty-state">没有识别结果。</div>');
 }
@@ -2641,7 +2669,7 @@ async function resolvePlanningConflictItem(mappingId) {
 }
 
 function collectPlanningCandidates() {
-  const base = ((state.planningParseResult && state.planningParseResult.candidates) || []).map(item => ({ ...item }));
+  const base = editedPlanningCandidates();
   const byId = new Map(base.map(item => [String(item.id), item]));
   document.querySelectorAll('[data-planning-field]').forEach(node => {
     const item = byId.get(String(node.dataset.planningId));
@@ -2802,6 +2830,7 @@ async function parsePlanningEditor() {
   renderPlanningPreview();
   try {
     const active = activePlanningNote();
+    state.planningPreviewEdits = {};
     state.planningParseResult = await api('/api/planning/parse', {
       method: 'POST',
       body: JSON.stringify({ markdown, noteId: active && active.id })
@@ -2836,6 +2865,7 @@ async function importSelectedPlanning() {
     els.planningEditor.value = result.updatedMarkdown;
     state.planningDirty = true;
     state.planningParseMarkdown = '';
+    state.planningPreviewEdits = {};
     await savePlanningNote(true);
     state.planningParseResult = null;
     await loadPlanningMappings();
@@ -4380,6 +4410,33 @@ els.planningPreview?.addEventListener('click', event => {
 els.planningPreview?.addEventListener('change', event => {
   if (event.target.matches?.('[data-planning-field="recurrenceType"]')) {
     syncPlanningWeekdayVisibility(event.target.dataset.planningId);
+  }
+  if (event.target.matches?.('[data-planning-field]')) {
+    const field = event.target.dataset.planningField;
+    const id = event.target.dataset.planningId;
+    if (id && field) {
+      rememberPlanningPreviewEdit(id, { [field]: event.target.value || '' });
+    }
+  }
+  if (event.target.matches?.('[data-planning-flag]')) {
+    const flag = event.target.dataset.planningFlag;
+    const id = event.target.dataset.planningId;
+    if (id && flag) {
+      rememberPlanningPreviewEdit(id, { [flag]: event.target.checked });
+      if (flag === 'reminderEnabled') renderPlanningPreview();
+    }
+  }
+  if (event.target.matches?.('[data-planning-linked]')) {
+    rememberPlanningPreviewEdit(event.target.dataset.planningLinked, { createLinkedTodo: event.target.checked });
+  }
+});
+els.planningPreview?.addEventListener('input', event => {
+  if (event.target.matches?.('[data-planning-field]')) {
+    const field = event.target.dataset.planningField;
+    const id = event.target.dataset.planningId;
+    if (id && field) {
+      rememberPlanningPreviewEdit(id, { [field]: event.target.value || '' });
+    }
   }
 });
 els.planningNoteSelect?.addEventListener('change', async event => {

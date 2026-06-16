@@ -3143,6 +3143,7 @@ private fun PlanningCandidateCard(
     onCandidateChange: (PlanningImportCandidate) -> Unit
 ) {
     val validation = candidate.validate()
+    val previewMessage = candidate.previewMessage()
     val canSelect = validation == null
     ElevatedCard(
         shape = RoundedCornerShape(22.dp),
@@ -3275,9 +3276,24 @@ private fun PlanningCandidateCard(
                 )
             }
             if (validation != null) Text(validation, color = MaterialTheme.colorScheme.error)
-            if (validation == null && candidate.message.isNotBlank()) Text(candidate.message, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            if (validation == null && previewMessage.isNotBlank()) Text(previewMessage, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
+}
+
+private fun PlanningImportCandidate.previewMessage(): String {
+    if (message.isBlank()) return ""
+    if (normalizedReminderOffsets().isNotEmpty()) return message
+    return message
+        .split('；')
+        .map { it.trim() }
+        .filter { it.isNotBlank() }
+        .filterNot { part ->
+            part.contains("提醒时间已经过去") ||
+                part.contains("提醒时间必须晚于当前时间") ||
+                part.contains("DDL 已早于当前时间")
+        }
+        .joinToString("；")
 }
 
 @Composable

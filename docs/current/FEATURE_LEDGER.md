@@ -53,12 +53,12 @@ This file tracks the product at a practical level for new coding sessions.
 - board todo block includes missed active todos, today's normal todos, and active no-DDL todos
 - board intentionally stays a read-only overview for todos, schedules, announcements, and countdown targets
 - board view can show today's todos and today's / tomorrow's schedule summary together
-- board can show a `倒数日` card for active countdown-enabled todos / events; todos count down to DDL times, events count down to event start times, exact-time expired targets are hidden, and tapping rows opens the corresponding todo / event preview first instead of jumping straight into an editor
+- board can show a `倒数日` card for active countdown-enabled todos / events; todos count down to DDL times, events count down to event start times, exact-time expired targets are hidden, long target titles wrap fully, and tapping rows opens the corresponding todo / event preview first instead of jumping straight into an editor
 - board section title / empty-card areas navigate to the corresponding task or calendar surface while concrete todo / event rows keep their detail-preview behavior
 - board today's schedule hides timed events after they have ended
 - board currently running events can be visually highlighted with a gold outline and subtle glow
 - board greeting card supports compact collapse / expand behavior
-- board announcement, countdown, today-todo, today-schedule, and tomorrow-schedule cards support collapse / expand controls with locally persisted state
+- board announcement, countdown, today-todo, and the combined today/tomorrow schedule card support collapse / expand controls with locally persisted state; tomorrow itself no longer has a separate collapse button inside the schedule card
 - board background now uses separate light and dark image resources
 - board schedule rows align the left color strip to the measured height of the event text block
 - board schedule rows keep normal and in-progress color strips in one aligned column
@@ -66,8 +66,8 @@ This file tracks the product at a practical level for new coding sessions.
 - daily board schedule rows use compact Feishu-style density with explicit small line heights, one-line locations, tighter padding, and smaller in-progress check-in actions
 - board in-progress schedule rows show check-in status for check-in-enabled events and expose compact `签到` / `签退` actions
 - board in-progress schedule rows route check-in-enabled events to the independent full-screen check-in surface through `去签到` / `查看`, keeping the board focused on overview rather than inline operations
-- daily board shows a distinct completion message when today's schedule existed but all events have already ended
-- daily board always shows the tomorrow schedule section, including `明天暂无日程` when tomorrow has no events
+- daily board uses a compact `暂无日程` state when today's visible schedule is empty, including after all of today's events have ended
+- daily board always shows the tomorrow schedule section inside the expanded schedule card, including `明天暂无日程` when tomorrow has no events
 - daily board onboarding card is readable in dark mode, can be dismissed, and can be reset from Settings -> About -> 使用说明
 - daily board floating block titles have stronger dark-theme text shadow so they stay readable over the dark wallpaper background
 - board surface intentionally does not expose add / batch-add buttons
@@ -124,6 +124,7 @@ This file tracks the product at a practical level for new coding sessions.
 - the latest import / refresh / postpone batch can be undone
 - conflicts between imported items and source Markdown can be resolved either by overwriting the item from the document or rewriting the document from the current item
 - default Planning Desk import reminder is 5 minutes before, full-screen, ring + vibration, but preview can explicitly disable reminders and an empty reminder input is preserved as no reminder instead of being refilled
+- Planning Desk can import already-past todo/event candidates as historical backfill when reminders are disabled; enabled reminders whose trigger time is already past still block import to avoid stale notifications
 - planning notes are included in JSON backup / restore snapshots
 - planning mapping records are also included in JSON backup / restore snapshots
 - legacy notes may still carry `documentDateEpochDay`, but recognition no longer treats the planning document date as a hidden default for user-entered lines

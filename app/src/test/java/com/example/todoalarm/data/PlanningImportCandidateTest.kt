@@ -46,4 +46,39 @@ class PlanningImportCandidateTest {
 
         assertTrue(candidate.validate(now).orEmpty().contains("提醒时间必须晚于当前时间"))
     }
+
+    @Test
+    fun pastTodoWithoutReminderCanBeImported() {
+        val candidate = PlanningImportCandidate(
+            id = "todo-1",
+            lineNumber = 1,
+            sourceLine = "16:05 交材料",
+            type = PlanningParsedType.TODO,
+            title = "交材料",
+            dueAt = LocalDateTime.of(2026, 6, 16, 16, 5),
+            reminderOffsetsMinutes = emptyList(),
+            reminderEnabled = false,
+            reminderInputText = ""
+        )
+
+        assertNull(candidate.validate(now))
+        assertEquals(emptyList<Int>(), candidate.normalizedReminderOffsets())
+    }
+
+    @Test
+    fun pastTodoWithPastReminderStillRequiresAdjustment() {
+        val candidate = PlanningImportCandidate(
+            id = "todo-2",
+            lineNumber = 1,
+            sourceLine = "16:05 交材料",
+            type = PlanningParsedType.TODO,
+            title = "交材料",
+            dueAt = LocalDateTime.of(2026, 6, 16, 16, 5),
+            reminderOffsetsMinutes = listOf(5),
+            reminderEnabled = true,
+            reminderInputText = "5"
+        )
+
+        assertTrue(candidate.validate(now).orEmpty().contains("提醒时间必须晚于当前时间"))
+    }
 }

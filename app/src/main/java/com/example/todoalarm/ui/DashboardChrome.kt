@@ -667,7 +667,7 @@ internal fun DashboardBody(
     var countdownCollapsed by rememberSaveable { mutableStateOf(uiState.settings.boardCountdownCollapsed) }
     var boardTodosCollapsed by rememberSaveable { mutableStateOf(uiState.settings.boardTodayTodosCollapsed) }
     var boardTodayEventsCollapsed by rememberSaveable { mutableStateOf(uiState.settings.boardTodayEventsCollapsed) }
-    var boardTomorrowEventsCollapsed by rememberSaveable { mutableStateOf(uiState.settings.boardTomorrowEventsCollapsed) }
+    var boardTomorrowEventsCollapsed by rememberSaveable { mutableStateOf(false) }
     var boardAnnouncementCollapsed by rememberSaveable { mutableStateOf(uiState.settings.boardAnnouncementCollapsed) }
     val boardMoment by produceState(initialValue = LocalDateTime.now()) {
         while (true) {
@@ -843,23 +843,20 @@ internal fun DashboardBody(
 
                 item {
                     BoardBlockTitle(
-                        title = "今日日程（${todayScheduleItems.size}）",
+                        title = "今日日程",
                         collapsed = boardTodayEventsCollapsed,
                         onToggle = { boardTodayEventsCollapsed = !boardTodayEventsCollapsed },
                         onNavigate = onNavigateCalendar
                     )
                 }
-                if (!boardTodayEventsCollapsed || !boardTomorrowEventsCollapsed) {
+                if (!boardTodayEventsCollapsed) {
                     item {
                         TodayScheduleBoardCard(
                             today = boardDate,
                             now = boardMoment,
-                            hasTodayEvents = allTodayScheduleItems.isNotEmpty(),
                             todayEvents = todayScheduleItems,
                             tomorrowEvents = tomorrowScheduleItems,
                             todayCollapsed = boardTodayEventsCollapsed,
-                            tomorrowCollapsed = boardTomorrowEventsCollapsed,
-                            onToggleTomorrow = { boardTomorrowEventsCollapsed = !boardTomorrowEventsCollapsed },
                             onOpenEvent = onPreviewCalendarEvent,
                             onGetEventCheckIns = onGetEventCheckIns,
                             onLaunchCheckIn = onLaunchCheckIn,
@@ -1440,7 +1437,7 @@ private fun CountdownTargetRow(
         Row(
             modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
             horizontalArrangement = Arrangement.spacedBy(10.dp),
-            verticalAlignment = Alignment.CenterVertically
+            verticalAlignment = Alignment.Top
         ) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Text(
@@ -1472,10 +1469,9 @@ private fun CountdownTargetRow(
                 Text(
                     text = item.title,
                     color = MaterialTheme.colorScheme.onSurface,
-                    style = MaterialTheme.typography.titleMedium.copy(fontSize = 15.sp),
+                    style = MaterialTheme.typography.titleMedium.copy(fontSize = 15.sp, lineHeight = 18.sp),
                     fontWeight = FontWeight.SemiBold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
+                    overflow = TextOverflow.Visible
                 )
                 Text(
                     text = countdownMetaText(item, group),
@@ -1579,12 +1575,9 @@ private fun CollapsibleBoardCard(
 private fun TodayScheduleBoardCard(
     today: LocalDate,
     now: LocalDateTime,
-    hasTodayEvents: Boolean,
     todayEvents: List<TodoItem>,
     tomorrowEvents: List<TodoItem>,
     todayCollapsed: Boolean,
-    tomorrowCollapsed: Boolean,
-    onToggleTomorrow: () -> Unit,
     onOpenEvent: (TodoItem) -> Unit,
     onGetEventCheckIns: suspend (Long) -> List<EventCheckIn>,
     onLaunchCheckIn: (Long) -> Unit,
@@ -1630,20 +1623,19 @@ private fun TodayScheduleBoardCard(
 
             Column(
                 modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+                verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
                 if (!todayCollapsed) {
                     if (todayEvents.isEmpty()) {
                         Surface(
                             shape = RoundedCornerShape(18.dp),
-                            color = if (hasTodayEvents) Color(0xFFFFC94A).copy(alpha = 0.12f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.22f),
-                            border = if (hasTodayEvents) BorderStroke(0.8.dp, Color(0xFFFFC94A).copy(alpha = 0.46f)) else null
+                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.18f)
                         ) {
                             Text(
-                                text = if (hasTodayEvents) "太棒了！今天的日程都结束了~" else "今天暂无日程",
-                                modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
-                                color = if (hasTodayEvents) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
-                                style = MaterialTheme.typography.bodyLarge
+                                text = "暂无日程",
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 9.dp),
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                style = MaterialTheme.typography.bodyMedium.copy(fontSize = 13.sp, lineHeight = 16.sp)
                             )
                         }
                     } else {
@@ -1661,7 +1653,6 @@ private fun TodayScheduleBoardCard(
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
@@ -1670,32 +1661,23 @@ private fun TodayScheduleBoardCard(
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.SemiBold
                     )
-                    IconButton(onClick = onToggleTomorrow) {
-                        Icon(
-                            imageVector = if (tomorrowCollapsed) Icons.Rounded.ExpandMore else Icons.Rounded.ExpandLess,
-                            contentDescription = if (tomorrowCollapsed) "展开明日日程" else "收起明日日程",
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                }
+                if (tomorrowEvents.isEmpty()) {
+                    Surface(
+                        shape = RoundedCornerShape(16.dp),
+                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.18f),
+                        onClick = onNavigatePlanning
+                    ) {
+                        Text(
+                            text = "明天暂无日程 · 去规划台安排一下？",
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 9.dp),
+                            color = MaterialTheme.colorScheme.primary,
+                            style = MaterialTheme.typography.bodyMedium.copy(fontSize = 13.sp, lineHeight = 16.sp)
                         )
                     }
-                }
-                if (!tomorrowCollapsed) {
-                    if (tomorrowEvents.isEmpty()) {
-                        Surface(
-                            shape = RoundedCornerShape(16.dp),
-                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.18f),
-                            onClick = onNavigatePlanning
-                        ) {
-                            Text(
-                                text = "明天暂无日程 · 去规划台安排一下？",
-                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
-                                color = MaterialTheme.colorScheme.primary,
-                                style = MaterialTheme.typography.bodyMedium
-                            )
-                        }
-                    } else {
-                        tomorrowEvents.take(2).forEach { item ->
-                            BoardScheduleEventRow(item = item, now = null, onClick = { onOpenEvent(item) })
-                        }
+                } else {
+                    tomorrowEvents.take(2).forEach { item ->
+                        BoardScheduleEventRow(item = item, now = null, onClick = { onOpenEvent(item) })
                     }
                 }
             }

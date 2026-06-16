@@ -1438,8 +1438,8 @@ private fun CountdownTargetRow(
         border = BorderStroke(0.8.dp, accent.copy(alpha = 0.32f))
     ) {
         Row(
-            modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
-            horizontalArrangement = Arrangement.spacedBy(14.dp),
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -1461,26 +1461,26 @@ private fun CountdownTargetRow(
             }
             Box(
                 modifier = Modifier
-                    .width(4.dp)
-                    .height(44.dp)
+                    .width(3.dp)
+                    .height(38.dp)
                     .background(accent, RoundedCornerShape(999.dp))
             )
             Column(
                 modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(4.dp)
+                verticalArrangement = Arrangement.spacedBy(2.dp)
             ) {
                 Text(
                     text = item.title,
                     color = MaterialTheme.colorScheme.onSurface,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    maxLines = 2,
+                    style = MaterialTheme.typography.titleMedium.copy(fontSize = 15.sp),
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
                 Text(
                     text = countdownMetaText(item, group),
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    style = MaterialTheme.typography.bodySmall,
+                    style = MaterialTheme.typography.bodySmall.copy(fontSize = 12.sp),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -1773,13 +1773,13 @@ private fun BoardScheduleEventRow(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(IntrinsicSize.Min)
-                    .padding(start = 0.dp, top = 12.dp, end = 10.dp, bottom = 12.dp),
-                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                    .padding(start = 0.dp, top = 8.dp, end = 8.dp, bottom = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
                 verticalAlignment = Alignment.Top
             ) {
                 Box(
                     modifier = Modifier
-                        .width(5.dp)
+                        .width(3.dp)
                         .fillMaxHeight()
                         .background(
                             color = rowColor.copy(alpha = 0.96f),
@@ -1788,21 +1788,21 @@ private fun BoardScheduleEventRow(
                 )
                 Column(
                     modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                    verticalArrangement = Arrangement.spacedBy(2.dp)
                 ) {
                     Text(
                         text = item.title,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
+                        style = MaterialTheme.typography.titleMedium.copy(fontSize = 15.sp),
+                        fontWeight = FontWeight.SemiBold,
                         color = if (inProgress) gold else MaterialTheme.colorScheme.onSurface,
-                        maxLines = 2,
+                        maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
                     Text(
                         text = DailyBoardSnapshotBuilder.eventSecondaryText(item),
-                        color = MaterialTheme.colorScheme.onSurface,
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.Medium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        style = MaterialTheme.typography.bodySmall.copy(fontSize = 12.sp),
+                        fontWeight = FontWeight.Normal,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )

@@ -28,8 +28,9 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.pager.HorizontalPager
-import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.gestures.Orientation
+import androidx.compose.foundation.gestures.scrollable
+import androidx.compose.foundation.gestures.rememberScrollableState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -228,6 +229,7 @@ internal fun CalendarPanel(
     val anchorDateIndex = dateWindow.anchorIndex
     val verticalScroll = rememberScrollState()
     var didInitScroll by rememberSaveable { mutableStateOf(false) }
+    var horizontalOffsetPx by rememberSaveable { mutableStateOf(0f) }
     var detailsTarget by remember { mutableStateOf<TodoItem?>(null) }
     var pendingDraft by remember { mutableStateOf<PendingCalendarDraft?>(null) }
     var draggingEvent by remember { mutableStateOf<DraggingCalendarEvent?>(null) }
@@ -255,6 +257,7 @@ internal fun CalendarPanel(
     val currentDateIndex = dateWindow.indexOf(currentDate) ?: anchorDateIndex
 
     val eventsByDate = remember(events) { buildEventsByDate(events) }
+
     val calendarBackground = MaterialTheme.colorScheme.background
     val todayHighlightColor = Color(0x334C8BF5)
     val todayHighlightTextColor = Color(0xFF73A8FF)
@@ -277,23 +280,28 @@ internal fun CalendarPanel(
             val dayColumnWidthPx = with(density) { dayColumnWidth.toPx() }
             val maxHorizontalOffsetPx = ((dateWindow.size * dayColumnWidthPx) - viewportWidthPx).coerceAtLeast(0f)
             val selectedIndex = (dateWindow.indexOf(selectedDate) ?: anchorDateIndex).coerceIn(0, dateWindow.lastIndex)
-            val timelinePagerState = rememberPagerState(initialPage = selectedIndex) { dateWindow.size }
-            val timelinePagerIndex = timelinePagerState.currentPage.coerceIn(0, dateWindow.lastIndex)
+
+            val effectiveHorizontalOffsetPx = when {
+                viewMode == CalendarViewMode.THREE_DAY -> horizontalOffsetPx.coerceIn(0f, maxHorizontalOffsetPx)
+                viewMode == CalendarViewMode.DAY -> (selectedIndex * dayColumnWidthPx).coerceIn(0f, maxHorizontalOffsetPx)
+                else -> horizontalOffsetPx
+            }
             val timelineFocusIndex = when (viewMode) {
-                CalendarViewMode.THREE_DAY,
-                CalendarViewMode.DAY -> timelinePagerIndex
+                CalendarViewMode.THREE_DAY -> (((effectiveHorizontalOffsetPx + viewportWidthPx / 2f) / dayColumnWidthPx).toInt())
+                    .coerceIn(0, dateWindow.lastIndex)
+                CalendarViewMode.DAY -> selectedIndex
                 else -> selectedIndex
             }
             val timelineFocusDate = dateWindow.dateAt(timelineFocusIndex)
             val visibleRange = when {
                 viewMode == CalendarViewMode.THREE_DAY -> {
-                    val start = (timelinePagerIndex - 1 - CalendarOverscanDays).coerceAtLeast(0)
-                    val end = (timelinePagerIndex + 1 + CalendarOverscanDays).coerceAtMost(dateWindow.lastIndex)
+                    val start = (timelineFocusIndex - 1 - CalendarOverscanDays).coerceAtLeast(0)
+                    val end = (timelineFocusIndex + 1 + CalendarOverscanDays).coerceAtMost(dateWindow.lastIndex)
                     start..end
                 }
                 viewMode == CalendarViewMode.DAY -> {
-                    val start = (timelinePagerIndex - CalendarOverscanDays).coerceAtLeast(0)
-                    val end = (timelinePagerIndex + CalendarOverscanDays).coerceAtMost(dateWindow.lastIndex)
+                    val start = (timelineFocusIndex - CalendarOverscanDays).coerceAtLeast(0)
+                    val end = (timelineFocusIndex + CalendarOverscanDays).coerceAtMost(dateWindow.lastIndex)
                     start..end
                 }
                 else -> selectedIndex..(selectedIndex + 2).coerceAtMost(dateWindow.lastIndex)
@@ -307,6 +315,24 @@ internal fun CalendarPanel(
                     weekStartMode = weekStartMode
                 )
             }
+
+            val visibleTimedEventPlacements = remember(events, visibleDays) {
+                buildTimedEventPlacementsForDays(events, visibleDays)
+            }
+
+            val horizontalScrollableState = rememberScrollableState { delta ->
+                if (viewMode != CalendarViewMode.THREE_DAY) return@rememberScrollableState 0f
+                val previous = horizontalOffsetPx
+                horizontalOffsetPx = (horizontalOffsetPx - delta).coerceIn(0f, maxHorizontalOffsetPx)
+                previous - horizontalOffsetPx
+            }
+
+            val timelineHorizontalOffsetPx = when (viewMode) {
+                CalendarViewMode.THREE_DAY -> effectiveHorizontalOffsetPx
+                CalendarViewMode.DAY -> effectiveHorizontalOffsetPx
+                else -> 0f
+            }
+
             val hourHeight = 72.dp
             val boardHeight = hourHeight * 24
             val hourHeightPx = with(density) { hourHeight.toPx() }
@@ -385,25 +411,6 @@ internal fun CalendarPanel(
 
             LaunchedEffect(selectedDate) {
                 templateAnchorWeekStart = currentWeekStart(selectedDate)
-            }
-
-            LaunchedEffect(viewMode, selectedIndex) {
-                if ((viewMode == CalendarViewMode.DAY || viewMode == CalendarViewMode.THREE_DAY) &&
-                    !timelinePagerState.isScrollInProgress &&
-                    timelinePagerState.currentPage != selectedIndex
-                ) {
-                    timelinePagerState.scrollToPage(selectedIndex)
-                }
-            }
-
-            LaunchedEffect(viewMode, timelinePagerState.currentPage) {
-                if (viewMode == CalendarViewMode.DAY || viewMode == CalendarViewMode.THREE_DAY) {
-                    val pagerDate = dateWindow.dateAt(timelinePagerState.currentPage.coerceIn(0, dateWindow.lastIndex))
-                    if (pagerDate != selectedDate) {
-                        selectedDateEpochDay = pagerDate.toEpochDay()
-                        pendingDraft = null
-                    }
-                }
             }
 
             LaunchedEffect(agendaRefreshing, selectedDate) {
@@ -512,43 +519,40 @@ internal fun CalendarPanel(
 
                     CalendarViewMode.THREE_DAY,
                     CalendarViewMode.DAY -> {
-                        HorizontalPager(
-                            state = timelinePagerState,
-                            modifier = Modifier.fillMaxSize(),
-                            userScrollEnabled = !calendarEventDragActive,
-                            key = { page -> dateWindow.dateAt(page).toEpochDay() }
-                        ) { page ->
-                            val pageIndex = page.coerceIn(0, dateWindow.lastIndex)
-                            val threeDayAnchorIndex = if (viewMode == CalendarViewMode.THREE_DAY) {
-                                pageIndex.coerceIn(1, (dateWindow.lastIndex - 1).coerceAtLeast(1))
-                            } else {
-                                pageIndex
-                            }
-                            val pageVisibleRange = if (viewMode == CalendarViewMode.THREE_DAY) {
-                                (threeDayAnchorIndex - 1)..(threeDayAnchorIndex + 1).coerceAtMost(dateWindow.lastIndex)
-                            } else {
-                                pageIndex..pageIndex
-                            }
-                            val pageVisibleDays = remember(dateWindow, pageVisibleRange) {
-                                pageVisibleRange.map(dateWindow::dateAt)
-                            }
-                            val pageHorizontalOffsetPx = when (viewMode) {
-                                CalendarViewMode.THREE_DAY ->
-                                    ((threeDayAnchorIndex - 1) * dayColumnWidthPx)
-                                        .coerceIn(0f, maxHorizontalOffsetPx)
-                                CalendarViewMode.DAY ->
-                                    (pageIndex * dayColumnWidthPx).coerceIn(0f, maxHorizontalOffsetPx)
-                                else -> 0f
-                            }
-                            val pageAllDayEvents = remember(eventsByDate, pageVisibleDays) {
-                                pageVisibleDays
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .pointerInput(viewMode, selectedDate) {
+                                    if (viewMode == CalendarViewMode.DAY) {
+                                        var totalDrag = 0f
+                                        detectHorizontalDragGestures(
+                                            onDragEnd = {
+                                                when {
+                                                    totalDrag < -56f -> shiftViewBy(1)
+                                                    totalDrag > 56f -> shiftViewBy(-1)
+                                                }
+                                                totalDrag = 0f
+                                            }
+                                        ) { change, dragAmount ->
+                                            totalDrag += dragAmount
+                                            change.consume()
+                                        }
+                                    }
+                                }
+                                .then(
+                                    if (viewMode == CalendarViewMode.THREE_DAY) {
+                                        Modifier.scrollable(horizontalScrollableState, Orientation.Horizontal)
+                                    } else {
+                                        Modifier
+                                    }
+                                )
+                        ) {
+                            val visibleAllDayEvents = remember(eventsByDate, visibleDays) {
+                                visibleDays
                                     .flatMap { day -> eventsByDate[day].orEmpty() }
                                     .filter { it.allDay }
                                     .distinctBy { it.id }
                                     .sortedBy { it.startAtMillis ?: it.dueAtMillis }
-                            }
-                            val pageTimedEventPlacements = remember(events, pageVisibleDays) {
-                                buildTimedEventPlacementsForDays(events, pageVisibleDays)
                             }
 
                             Column(modifier = Modifier.fillMaxSize()) {
@@ -558,9 +562,9 @@ internal fun CalendarPanel(
                                     dayColumnWidth = dayColumnWidth,
                                     dayColumnWidthPx = dayColumnWidthPx,
                                     dateWindow = dateWindow,
-                                    visibleRange = pageVisibleRange,
+                                    visibleRange = visibleRange,
                                     currentDate = currentDate,
-                                    horizontalOffsetPx = pageHorizontalOffsetPx,
+                                    horizontalOffsetPx = timelineHorizontalOffsetPx,
                                     todayHighlightColor = todayHighlightColor,
                                     todayHighlightTextColor = todayHighlightTextColor,
                                     dragModifier = Modifier
@@ -571,9 +575,9 @@ internal fun CalendarPanel(
                                     viewportWidth = viewportWidth,
                                     dayColumnWidth = dayColumnWidth,
                                     dayColumnWidthPx = dayColumnWidthPx,
-                                    visibleRange = pageVisibleRange,
-                                    horizontalOffsetPx = pageHorizontalOffsetPx,
-                                    events = pageAllDayEvents,
+                                    visibleRange = visibleRange,
+                                    horizontalOffsetPx = timelineHorizontalOffsetPx,
+                                    events = visibleAllDayEvents,
                                     dateWindow = dateWindow,
                                     dragModifier = Modifier,
                                     onOpenDetails = ::openDetails
@@ -593,15 +597,15 @@ internal fun CalendarPanel(
                                         modifier = Modifier
                                             .width(viewportWidth),
                                         dateWindow = dateWindow,
-                                        visibleRange = pageVisibleRange,
+                                        visibleRange = visibleRange,
                                         dayColumnWidth = dayColumnWidth,
                                         dayColumnWidthPx = dayColumnWidthPx,
-                                        horizontalOffsetPx = pageHorizontalOffsetPx,
+                                        horizontalOffsetPx = timelineHorizontalOffsetPx,
                                         boardHeight = boardHeight,
                                         hourHeight = hourHeight,
                                         hourHeightPx = hourHeightPx,
                                         verticalScroll = verticalScroll,
-                                        visibleEventPlacements = pageTimedEventPlacements,
+                                        visibleEventPlacements = visibleTimedEventPlacements,
                                         pendingDraft = pendingDraft,
                                         onPendingDraftChange = { pendingDraft = it },
                                         onQuickCreateEvent = onQuickCreateEvent,

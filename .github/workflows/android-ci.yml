@@ -38,7 +38,14 @@ jobs:
 
       - name: Check whitespace on push
         if: github.event_name == 'push' && github.event.before != '0000000000000000000000000000000000000000'
-        run: git diff --check "${{ github.event.before }}..${{ github.sha }}"
+        run: |
+          BEFORE="${{ github.event.before }}"
+          SHA="${{ github.sha }}"
+          if git cat-file -e "${BEFORE}^{commit}" 2>/dev/null; then
+            git diff --check "${BEFORE}..${SHA}"
+          else
+            git diff-tree --check --no-commit-id -r "${SHA}"
+          fi
 
       - name: Run unit tests
         run: ./gradlew :app:testDebugUnitTest

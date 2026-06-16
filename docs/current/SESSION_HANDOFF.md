@@ -11,9 +11,9 @@
 - Latest debug APK target in this round:
   - `app/build/outputs/apk/debug/PaykiTodo-1.14.12-debug.apk`
 - Latest signed release APK available locally:
-  - `app/build/outputs/apk/release/PaykiTodo-1.13.11-release.apk`
+  - `app/build/outputs/apk/release/PaykiTodo-1.14.12-release.apk`
 - Latest GitHub Release:
-  - `https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.13.11`
+  - `https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.14.12`
 
 ## Active Goal
 

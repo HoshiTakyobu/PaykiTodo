@@ -14,13 +14,10 @@
 
 ## Current Build Facts
 
-- Latest `1.10.2` signed release APK:
-  - `app/build/outputs/apk/release/PaykiTodo-1.10.2-release.apk`
-  - Published as GitHub Release tag `v1.10.2`
 - Latest signed release APK built locally:
-  - `app/build/outputs/apk/release/PaykiTodo-1.13.11-release.apk`
+  - `app/build/outputs/apk/release/PaykiTodo-1.14.12-release.apk`
 - Latest GitHub Release:
-  - `https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.13.11`
+  - `https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.14.12`
 - Latest fully built debug APK:
   - `app/build/outputs/apk/debug/PaykiTodo-1.14.12-debug.apk`
 - Current `1.14.12 / versionCode 332` status:

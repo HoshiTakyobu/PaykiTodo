@@ -5,11 +5,11 @@
 - Repository root: `G:\Workspace\Project\PaykiTodo`
 - Branch: `main`
 - Current code version:
-  - `versionName = 1.14.10`
-  - `versionCode = 330`
+  - `versionName = 1.14.11`
+  - `versionCode = 331`
   - database version = `28`
 - Latest debug APK target in this round:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.14.10-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.14.11-debug.apk`
 - Latest signed release APK available locally:
   - `app/build/outputs/apk/release/PaykiTodo-1.13.11-release.apk`
 - Latest GitHub Release:
@@ -17,44 +17,43 @@
 
 ## Active Goal
 
-Fix the phone Calendar quality regression reported after the 1.14.x calendar changes, and make the Daily Board schedule rows visually tighter.
+Fix Desktop Web Planning Desk reminder behavior so users can import already-finished events by disabling reminders, without stale reminder notifications being created.
 
-## What Changed In The Latest 1.14.10 Patch
+## What Changed In The Latest 1.14.11 Patch
 
-1. **Calendar three-day view no longer starts from the wrong date window**
-   - 1.14.9 restored continuous horizontal scrolling but initialized `horizontalOffsetPx` to `0f`.
-   - Because `CalendarDateWindow` spans 730 days before and after the anchor date, offset `0f` made the first render focus around `anchorDate - 729 days`.
-   - That first render requested and placed events for an old empty range, making the calendar look blank even when current events existed.
-   - 1.14.10 uses a `Float.NaN` sentinel and derives the first effective horizontal offset from the selected date immediately, so the first `visibleDays` and `requestedEventRange` are centered on the intended date.
+1. **Desktop Planning Desk preview has explicit reminder controls**
+   - Recognized todo/event candidates now show `启用提醒`.
+   - Candidates now show `提醒方式` with `全屏提醒` and `通知栏提醒`.
+   - The preview summary says whether the candidate will import with a reminder or with no reminder.
 
-2. **Calendar target-date navigation still re-centers the three-day timeline**
-   - The existing `LaunchedEffect` now writes the selected-date-centered offset after layout dimensions are known.
-   - Date picker, section navigation, and event deep-link focus keep landing on the intended date instead of preserving a stale scroll offset.
-   - Manual horizontal swipes still update the offset continuously.
+2. **Empty reminder input now means no reminder**
+   - Clearing the preview reminder field sets `reminderEnabled=false`.
+   - The import model no longer refills empty reminders with the Planning Desk default 5-minute offset.
+   - Disabled reminders persist as empty reminder offsets for todos, events, and optional event-end linked todos.
 
-3. **Daily Board schedule rows are more compact**
-   - `BoardScheduleEventRow` now uses a smaller 14dp radius and tighter vertical padding.
-   - The extra inner `Surface` layer was removed so normal rows behave like a compact Feishu-style list item: transparent background, left accent strip, and a dense text block.
-   - Title/time/location use explicit compact font sizes and line heights; location is capped at one line.
-   - In-progress rows keep the gold border and check-in status, but the border and check-in button are smaller.
+3. **Past events can be backfilled safely**
+   - A past event with reminders disabled validates successfully.
+   - A past event with an enabled past reminder still fails validation, preserving the safety rule for actual reminders.
+   - Targeted unit coverage was added in `PlanningImportCandidateTest`.
 
-4. **Version and docs**
-   - Version metadata is `1.14.10 / versionCode 330`.
-   - Database version remains `28`; no schema migration was added.
-   - Updated `CHANGELOG.md`, `docs/current/PROJECT_STATUS.md`, `docs/current/FEATURE_LEDGER.md`, `docs/current/CURRENT_TASK.md`, and this handoff.
+4. **Shared import behavior is aligned**
+   - Desktop Sync import conversion and phone-side ViewModel Planning Desk import conversion both respect `reminderEnabled` and `reminderDeliveryMode`.
+   - Planning Desk parse JSON now includes `reminderEnabled` and `reminderDeliveryMode` for Desktop Web.
+   - Version metadata is `1.14.11 / versionCode 331`; database version remains `28`.
 
 ## Validation
 
 - Passed:
   - `./gradlew.bat :app:compileDebugKotlin`
+  - `./gradlew.bat :app:testDebugUnitTest --tests com.example.todoalarm.data.PlanningImportCandidateTest`
+  - `node --check app/src/main/assets/desktop-web/app.js`
   - `./gradlew.bat :app:testDebugUnitTest`
   - `git diff --check`
   - `./gradlew.bat :app:assembleDebug`
-  - APK metadata inspection for `versionName = 1.14.10`, `versionCode = 330`, `outputFile = PaykiTodo-1.14.10-debug.apk`
+  - APK metadata inspection for `versionName = 1.14.11`, `versionCode = 331`, `outputFile = PaykiTodo-1.14.11-debug.apk`
 
 ## Next Session Notes
 
-1. If the user still sees a blank calendar, check whether events are outside the initial vertical scroll viewport rather than outside the loaded date range.
-2. The current fix was structural for the first date-range calculation; physical-device or emulator UI smoke testing is still useful for confirming visual behavior.
-3. The Daily Board card density is now substantially tighter, but final visual acceptance still depends on the user's real phone screenshot.
-4. Do not reintroduce HorizontalPager unless there is a deliberate design decision; 1.14.9 intentionally restored continuous scrolling.
+1. If importing a past event still fails, check whether `同步创建以日程结束时间为 DDL 的待办任务` is selected; a linked todo with a past DDL may be the actual blocker.
+2. If the user wants richer parity with the phone editor later, Planning Desk preview can add alarm mode / ring / vibration controls, but this round intentionally only adds reminder enable/disable and delivery mode.
+3. The KSP incremental cache corrupted once during this round after parallel Gradle runs; it was fixed by stopping Gradle daemons and deleting `app/build/kspCaches`. Avoid parallel Gradle invocations in this repo.

@@ -1363,6 +1363,7 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     private fun PlanningImportCandidate.toTodoDraft(groups: List<TaskGroup>): TodoDraft {
+        val offsets = normalizedReminderOffsets()
         return TodoDraft(
             title = title,
             notes = notes,
@@ -1371,14 +1372,16 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
             groupId = resolvePlanningGroupId(groupName, groups),
             ringEnabled = true,
             vibrateEnabled = true,
+            reminderDeliveryMode = reminderDeliveryMode,
             countdownEnabled = countdownEnabled && dueAt != null,
             recurrence = recurrence,
-            reminderOffsetsMinutes = if (dueAt == null) emptyList() else normalizedReminderOffsets().ifEmpty { listOf(DEFAULT_PLANNING_REMINDER_MINUTES) }
+            reminderOffsetsMinutes = if (dueAt == null) emptyList() else offsets
         )
     }
 
     private fun PlanningImportCandidate.toLinkedTodoDraft(groups: List<TaskGroup>): TodoDraft {
         val ddl = requireNotNull(endAt) { "Linked todo requires event end time" }
+        val offsets = normalizedReminderOffsets()
         return TodoDraft(
             title = title,
             notes = notes,
@@ -1387,13 +1390,14 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
             groupId = resolvePlanningGroupId(groupName, groups),
             ringEnabled = true,
             vibrateEnabled = true,
+            reminderDeliveryMode = reminderDeliveryMode,
             recurrence = RecurrenceConfig(),
-            reminderOffsetsMinutes = normalizedReminderOffsets().ifEmpty { listOf(DEFAULT_PLANNING_REMINDER_MINUTES) }
+            reminderOffsetsMinutes = offsets
         )
     }
 
     private fun PlanningImportCandidate.toEventDraft(groups: List<TaskGroup>): CalendarEventDraft {
-        val offsets = normalizedReminderOffsets().ifEmpty { listOf(DEFAULT_PLANNING_REMINDER_MINUTES) }
+        val offsets = normalizedReminderOffsets()
         return CalendarEventDraft(
             title = title,
             notes = notes,
@@ -1402,11 +1406,11 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
             endAt = requireNotNull(endAt) { "Event requires endAt" },
             allDay = allDay,
             accentColorHex = groups.firstOrNull { it.name == groupName }?.colorHex ?: "#4E87E1",
-            reminderMinutesBefore = offsets.firstOrNull() ?: DEFAULT_PLANNING_REMINDER_MINUTES,
+            reminderMinutesBefore = offsets.firstOrNull(),
             reminderOffsetsMinutes = offsets,
             ringEnabled = true,
             vibrateEnabled = true,
-            reminderDeliveryMode = ReminderDeliveryMode.FULLSCREEN,
+            reminderDeliveryMode = reminderDeliveryMode,
             countdownEnabled = countdownEnabled,
             checkInEnabled = checkInEnabled,
             recurrence = recurrence,

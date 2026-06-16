@@ -18,8 +18,10 @@ data class PlanningImportCandidate(
     val countdownEnabled: Boolean = false,
     val checkInEnabled: Boolean = false,
     val reminderOffsetsMinutes: List<Int> = listOf(DEFAULT_PLANNING_REMINDER_MINUTES),
+    val reminderEnabled: Boolean = reminderOffsetsMinutes.isNotEmpty(),
     val reminderInputText: String = "",
     val reminderInputError: String = "",
+    val reminderDeliveryMode: ReminderDeliveryMode = ReminderDeliveryMode.FULLSCREEN,
     val recurrence: RecurrenceConfig = RecurrenceConfig(),
     val createLinkedTodo: Boolean = false,
     val defaultToday: Boolean = false,
@@ -42,7 +44,7 @@ data class PlanningImportCandidate(
                 if (dueAt != null) {
                     if (!dueAt.isAfter(now)) return "DDL 必须晚于当前时间"
                     if (offsets.any { !dueAt.minusMinutes(it.toLong()).isAfter(now) }) return "提醒时间必须晚于当前时间"
-                } else if (offsets.isNotEmpty()) {
+                } else if (reminderEnabled) {
                     return "未设置 DDL 的待办不能设置提醒"
                 }
                 recurrenceError(anchor = dueAt, label = "循环待办")?.let { return it }
@@ -62,6 +64,7 @@ data class PlanningImportCandidate(
     }
 
     fun normalizedReminderOffsets(): List<Int> {
+        if (!reminderEnabled) return emptyList()
         if (type == PlanningParsedType.TODO && dueAt == null) return emptyList()
         return reminderOffsetsMinutes
             .map { it.coerceAtLeast(0) }
@@ -96,8 +99,10 @@ fun PlanningParsedCandidate.toPlanningImportCandidate(): PlanningImportCandidate
         allDay = allDay,
         countdownEnabled = countdownEnabled,
         checkInEnabled = checkInEnabled,
+        reminderEnabled = reminderOffsetsMinutes.isNotEmpty(),
         reminderOffsetsMinutes = reminderOffsetsMinutes,
         reminderInputText = reminderOffsetsMinutes.joinToString(","),
+        reminderDeliveryMode = ReminderDeliveryMode.FULLSCREEN,
         recurrence = recurrence,
         createLinkedTodo = createLinkedTodo,
         defaultToday = defaultToday,

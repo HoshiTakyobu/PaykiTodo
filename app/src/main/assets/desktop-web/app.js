@@ -2418,6 +2418,13 @@ function planningEditableSelect(id, field, label, value, options) {
     + '</select></label>';
 }
 
+function planningReminderSummary(item) {
+  const raw = String(item.reminderInputText || (item.reminderOffsetsMinutes || []).join(',')).trim();
+  const enabled = item.reminderEnabled !== false && raw.length > 0;
+  if (!enabled) return '未启用提醒；导入后不会补发过去的提醒。';
+  return '提醒：' + raw + ' · ' + reminderModeLabel(item.reminderDeliveryMode || 'FULLSCREEN') + ' · 响铃 + 震动';
+}
+
 function planningWeekdayChips(id, recurrenceType, weekdays) {
   const selected = new Set(recurrenceType === 'WEEKLY' ? parseWeekdays(Array.isArray(weekdays) ? weekdays.join(',') : weekdays) : []);
   const hiddenClass = recurrenceType === 'WEEKLY' ? '' : ' hidden';
@@ -2561,10 +2568,15 @@ function renderPlanningPreview() {
         ? planningEditableField(item.id, 'dueAt', 'DDL', editableDateTimeValue(item.dueAt), '2026-05-28 14:30')
         : planningEditableField(item.id, 'location', '地点', item.location || '', '@主楼B1-412') + planningEditableField(item.id, 'startAt', '开始', editableDateTimeValue(item.startAt), '2026-05-28 10:00') + planningEditableField(item.id, 'endAt', '结束', editableDateTimeValue(item.endAt), '2026-05-28 12:00'))
       + planningEditableField(item.id, 'reminders', '提醒', item.reminderInputText || (item.reminderOffsetsMinutes || []).join(','), '5,15,16:30,05-10 15:00')
+      + planningEditableSelect(item.id, 'reminderDeliveryMode', '提醒方式', item.reminderDeliveryMode || 'FULLSCREEN', [
+        { value: 'FULLSCREEN', label: '全屏提醒' },
+        { value: 'NOTIFICATION', label: '通知栏提醒' }
+      ])
       + planningRecurrenceFields(item)
       + '</div>'
       + '<label class="planning-edit-field full"><span>备注</span><textarea data-planning-field="notes" data-planning-id="' + escapeHtml(item.id) + '" rows="2">' + escapeHtml(item.notes || '') + '</textarea></label>'
       + '<div class="planning-preview-options">'
+      +   '<label class="planning-linked"><input type="checkbox" data-planning-flag="reminderEnabled" data-planning-id="' + escapeHtml(item.id) + '"' + (item.reminderEnabled !== false && String(item.reminderInputText || (item.reminderOffsetsMinutes || []).join(',')).trim() ? ' checked' : '') + ' /> 启用提醒</label>'
       +   (item.type === 'EVENT' ? '<label class="planning-linked"><input type="checkbox" data-planning-flag="allDay" data-planning-id="' + escapeHtml(item.id) + '"' + (item.allDay ? ' checked' : '') + ' /> 全天</label>' : '')
       +   '<label class="planning-linked"><input type="checkbox" data-planning-flag="countdownEnabled" data-planning-id="' + escapeHtml(item.id) + '"' + (item.countdownEnabled ? ' checked' : '') + ' /> 倒数日</label>'
       +   (item.type === 'EVENT' ? '<label class="planning-linked"><input type="checkbox" data-planning-flag="checkInEnabled" data-planning-id="' + escapeHtml(item.id) + '"' + (item.checkInEnabled ? ' checked' : '') + ' /> 打卡追踪</label>' : '')
@@ -2579,7 +2591,7 @@ function renderPlanningPreview() {
       +   '</div>'
       +   '<div class="planning-source">' + escapeHtml(item.sourceLine || '') + '</div>'
       +   editFields
-      +   (!editable ? '<div class="planning-meta-line">' + escapeHtml(planningTimeText(item)) + '</div>' : '<div class="planning-meta-line">提醒默认全屏 · 响铃 + 震动。</div>')
+      +   (!editable ? '<div class="planning-meta-line">' + escapeHtml(planningTimeText(item)) + '</div>' : '<div class="planning-meta-line">' + escapeHtml(planningReminderSummary(item)) + '</div>')
       +   linked
       +   (item.message ? '<div class="planning-message">' + escapeHtml(item.message) + '</div>' : '')
       + '</article>';
@@ -2638,6 +2650,7 @@ function collectPlanningCandidates() {
     if (node.dataset.planningField === 'reminders') {
       item.reminderInputText = value;
       item.reminderOffsetsMinutes = value.split(/[,，]/).map(token => Number(token.trim())).filter(Number.isFinite).map(value => Math.max(0, Math.floor(value)));
+      if (!value.trim()) item.reminderEnabled = false;
     } else if (['dueAt', 'startAt', 'endAt'].includes(node.dataset.planningField)) {
       const trimmed = value.trim();
       const parsedMillis = trimmed ? parseLocalDateTimeMillis(trimmed, new Date()) : null;
@@ -2659,6 +2672,16 @@ function collectPlanningCandidates() {
   document.querySelectorAll('[data-planning-flag]').forEach(node => {
     const item = byId.get(String(node.dataset.planningId));
     if (item) item[node.dataset.planningFlag] = node.checked;
+  });
+  base.forEach(item => {
+    const rawReminder = String(item.reminderInputText || '').trim();
+    if (!rawReminder || item.reminderEnabled === false) {
+      item.reminderEnabled = false;
+      item.reminderOffsetsMinutes = [];
+      item.reminderInputText = rawReminder;
+    } else {
+      item.reminderEnabled = true;
+    }
   });
   document.querySelectorAll('[data-planning-linked]').forEach(node => {
     const item = byId.get(String(node.dataset.planningLinked));

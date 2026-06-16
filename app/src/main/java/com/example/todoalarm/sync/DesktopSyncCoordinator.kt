@@ -1396,8 +1396,10 @@ private fun PlanningParsedCandidate.toPlanningCandidateJson(): JSONObject {
         .put("allDay", allDay)
         .put("countdownEnabled", countdownEnabled)
         .put("checkInEnabled", checkInEnabled)
+        .put("reminderEnabled", reminderOffsetsMinutes.isNotEmpty())
         .put("reminderOffsetsMinutes", JSONArray(reminderOffsetsMinutes))
         .put("reminderInputText", reminderOffsetsMinutes.joinToString(","))
+        .put("reminderDeliveryMode", com.example.todoalarm.data.ReminderDeliveryMode.FULLSCREEN.name)
         .put("recurrence", recurrence.toPlanningJson())
         .put("createLinkedTodo", createLinkedTodo)
         .put("defaultToday", defaultToday)
@@ -1445,7 +1447,12 @@ private fun JSONArray.toPlanningImportCandidates(fallback: List<PlanningParsedCa
         val base = fallbackById[json.optString("id")]?.toPlanningImportCandidate()
             ?: json.toPlanningImportCandidateOrNull(index)
             ?: return@mapNotNull null
-        val reminderRaw = json.optStringOrNull("reminderInputText")
+        val reminderRaw = if (json.has("reminderInputText")) {
+            json.optString("reminderInputText")
+        } else {
+            base.reminderInputText
+        }
+        val reminderEnabled = json.optBoolean("reminderEnabled", base.reminderEnabled) && reminderRaw.isNotBlank()
         val edited = base.copy(
             title = json.optString("title", base.title),
             notes = json.optString("notes", base.notes),
@@ -1457,8 +1464,12 @@ private fun JSONArray.toPlanningImportCandidates(fallback: List<PlanningParsedCa
             allDay = json.optBoolean("allDay", base.allDay),
             countdownEnabled = json.optBoolean("countdownEnabled", base.countdownEnabled),
             checkInEnabled = json.optBoolean("checkInEnabled", base.checkInEnabled),
-            reminderOffsetsMinutes = json.optJSONArray("reminderOffsetsMinutes")?.toIntList().orEmpty(),
-            reminderInputText = reminderRaw.orEmpty(),
+            reminderOffsetsMinutes = if (reminderEnabled) json.optJSONArray("reminderOffsetsMinutes")?.toIntList().orEmpty() else emptyList(),
+            reminderEnabled = reminderEnabled,
+            reminderInputText = reminderRaw,
+            reminderDeliveryMode = com.example.todoalarm.data.ReminderDeliveryMode.fromStorage(
+                json.optString("reminderDeliveryMode", base.reminderDeliveryMode.name)
+            ),
             recurrence = parsePlanningRecurrence(json.optJSONObject("recurrence"), when (base.type) {
                 PlanningParsedType.TODO -> parsePlanningImportDateTime(json.optStringOrNull("dueAt"), defaultTime = LocalTime.of(23, 59)) ?: base.dueAt
                 PlanningParsedType.EVENT -> parsePlanningImportDateTime(json.optStringOrNull("startAt"), defaultTime = null) ?: base.startAt
@@ -1466,8 +1477,8 @@ private fun JSONArray.toPlanningImportCandidates(fallback: List<PlanningParsedCa
             }, base.recurrence),
             createLinkedTodo = json.optBoolean("createLinkedTodo", base.createLinkedTodo)
         )
-        if (reminderRaw.isNullOrBlank()) {
-            edited
+        if (!edited.reminderEnabled) {
+            edited.copy(reminderOffsetsMinutes = emptyList(), reminderInputError = "")
         } else {
             val anchor = when (edited.type) {
                 PlanningParsedType.TODO -> edited.dueAt
@@ -1516,7 +1527,9 @@ private fun JSONObject.toPlanningImportCandidateOrNull(index: Int): PlanningImpo
         countdownEnabled = optBoolean("countdownEnabled", false),
         checkInEnabled = optBoolean("checkInEnabled", false),
         reminderOffsetsMinutes = optJSONArray("reminderOffsetsMinutes")?.toIntList().orEmpty(),
+        reminderEnabled = optBoolean("reminderEnabled", optJSONArray("reminderOffsetsMinutes")?.length()?.let { it > 0 } ?: false),
         reminderInputText = optString("reminderInputText"),
+        reminderDeliveryMode = com.example.todoalarm.data.ReminderDeliveryMode.fromStorage(optString("reminderDeliveryMode")),
         recurrence = parsePlanningRecurrence(
             optJSONObject("recurrence"),
             when (type) {
@@ -1611,39 +1624,43 @@ private fun parsePlanningRecurrence(
     )
 }
 
-private fun PlanningImportCandidate.toPlanningTodoDraft(groups: List<com.example.todoalarm.data.TaskGroup>): TodoDraft {
-    return TodoDraft(
-        title = title,
-        notes = notes,
+    private fun PlanningImportCandidate.toPlanningTodoDraft(groups: List<com.example.todoalarm.data.TaskGroup>): TodoDraft {
+        val offsets = normalizedReminderOffsets()
+        return TodoDraft(
+            title = title,
+            notes = notes,
         dueAt = dueAt,
         reminderAt = null,
         groupId = resolvePlanningGroupId(groupName, groups),
         ringEnabled = true,
-        vibrateEnabled = true,
-        countdownEnabled = countdownEnabled && dueAt != null,
-        recurrence = recurrence,
-        reminderOffsetsMinutes = if (dueAt == null) emptyList() else normalizedReminderOffsets().ifEmpty { listOf(DEFAULT_PLANNING_REMINDER_MINUTES) }
-    )
-}
+            vibrateEnabled = true,
+            reminderDeliveryMode = reminderDeliveryMode,
+            countdownEnabled = countdownEnabled && dueAt != null,
+            recurrence = recurrence,
+            reminderOffsetsMinutes = if (dueAt == null) emptyList() else offsets
+        )
+    }
 
-private fun PlanningImportCandidate.toPlanningLinkedTodoDraft(groups: List<com.example.todoalarm.data.TaskGroup>): TodoDraft {
-    val ddl = requireNotNull(endAt) { "日程结束时间不存在" }
-    return TodoDraft(
-        title = title,
-        notes = notes,
+    private fun PlanningImportCandidate.toPlanningLinkedTodoDraft(groups: List<com.example.todoalarm.data.TaskGroup>): TodoDraft {
+        val ddl = requireNotNull(endAt) { "日程结束时间不存在" }
+        val offsets = normalizedReminderOffsets()
+        return TodoDraft(
+            title = title,
+            notes = notes,
         dueAt = ddl,
         reminderAt = null,
         groupId = resolvePlanningGroupId(groupName, groups),
-        ringEnabled = true,
-        vibrateEnabled = true,
-        recurrence = RecurrenceConfig(),
-        reminderOffsetsMinutes = normalizedReminderOffsets().ifEmpty { listOf(DEFAULT_PLANNING_REMINDER_MINUTES) }
-    )
-}
+            ringEnabled = true,
+            vibrateEnabled = true,
+            reminderDeliveryMode = reminderDeliveryMode,
+            recurrence = RecurrenceConfig(),
+            reminderOffsetsMinutes = offsets
+        )
+    }
 
-private fun PlanningImportCandidate.toPlanningEventDraft(groups: List<com.example.todoalarm.data.TaskGroup>): CalendarEventDraft {
-    val offsets = normalizedReminderOffsets().ifEmpty { listOf(DEFAULT_PLANNING_REMINDER_MINUTES) }
-    return CalendarEventDraft(
+    private fun PlanningImportCandidate.toPlanningEventDraft(groups: List<com.example.todoalarm.data.TaskGroup>): CalendarEventDraft {
+        val offsets = normalizedReminderOffsets()
+        return CalendarEventDraft(
         title = title,
         notes = notes,
         location = location,
@@ -1651,11 +1668,11 @@ private fun PlanningImportCandidate.toPlanningEventDraft(groups: List<com.exampl
         endAt = requireNotNull(endAt) { "日程结束时间不存在" },
         allDay = allDay,
         accentColorHex = groups.firstOrNull { it.name == groupName }?.colorHex ?: "#4E87E1",
-        reminderMinutesBefore = offsets.firstOrNull() ?: DEFAULT_PLANNING_REMINDER_MINUTES,
-        reminderOffsetsMinutes = offsets,
-        ringEnabled = true,
-        vibrateEnabled = true,
-        reminderDeliveryMode = com.example.todoalarm.data.ReminderDeliveryMode.FULLSCREEN,
+            reminderMinutesBefore = offsets.firstOrNull(),
+            reminderOffsetsMinutes = offsets,
+            ringEnabled = true,
+            vibrateEnabled = true,
+            reminderDeliveryMode = reminderDeliveryMode,
         countdownEnabled = countdownEnabled,
         checkInEnabled = checkInEnabled,
         recurrence = recurrence,

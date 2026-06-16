@@ -113,7 +113,7 @@ This file tracks the product at a practical level for new coding sessions.
 - legacy hashtag semantic tags such as `#ddl`, `#today`, `#tomorrow`, `#important`, and `#project` are no longer part of the documented Planning Desk workflow
 - natural schedule import creates calendar events by default; linked-todo creation is an explicit preview/editor choice, not automatic
 - planning import is preview-first and selection-based, not immediate database writes; import is disabled until at least one valid candidate is selected
-- planning preview cards are editable before import for title, group, notes, DDL/start/end times, mixed reminder input, and event linked-todo creation; preview has select-all / clear-all controls
+- planning preview cards are editable before import for title, group, notes, DDL/start/end times, mixed reminder input, reminder enable/disable, reminder delivery mode, and event linked-todo creation; preview has select-all / clear-all controls
 - planning recognition preview has a collapsible batch-settings area that can apply countdown to selected events / DDL-backed todos, linked-todo creation, check-in, and unified group changes to the currently selected candidates
 - successful planning import no longer appends visible `#imported` markers to user text; duplicate prevention relies on internal `planning_line_mappings`
 - imported planning lines now also create stable `planning_line_mappings` entries that link the source line to the created todo/event item
@@ -123,7 +123,7 @@ This file tracks the product at a practical level for new coding sessions.
 - Planning Desk batch postpone can shift unfinished imported items and the corresponding Markdown time text together
 - the latest import / refresh / postpone batch can be undone
 - conflicts between imported items and source Markdown can be resolved either by overwriting the item from the document or rewriting the document from the current item
-- default Planning Desk import reminder is 5 minutes before, full-screen, ring + vibration
+- default Planning Desk import reminder is 5 minutes before, full-screen, ring + vibration, but preview can explicitly disable reminders and an empty reminder input is preserved as no reminder instead of being refilled
 - planning notes are included in JSON backup / restore snapshots
 - planning mapping records are also included in JSON backup / restore snapshots
 - legacy notes may still carry `documentDateEpochDay`, but recognition no longer treats the planning document date as a hidden default for user-entered lines

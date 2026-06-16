@@ -8,8 +8,8 @@
 - Target platform: Android 14 / API 34
 - License: MIT License (`LICENSE`)
 - Current version in code:
-  - `versionName = "1.14.10"`
-  - `versionCode = 330`
+  - `versionName = "1.14.11"`
+  - `versionCode = 331`
   - database version = `28`
 
 ## Current Build Facts
@@ -22,7 +22,14 @@
 - Latest GitHub Release:
   - `https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.13.11`
 - Latest fully built debug APK:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.14.10-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.14.11-debug.apk`
+- Current `1.14.11 / versionCode 331` status:
+  - Desktop Web Planning Desk preview now exposes `启用提醒` and `提醒方式` for recognized todo/event candidates, matching the phone-side ability to decide whether a candidate should schedule a reminder and whether it should use full-screen or notification delivery.
+  - Clearing the preview reminder input now disables reminders for that candidate instead of silently falling back to the Planning Desk default 5-minute reminder.
+  - Past events can be imported when reminders are disabled, so users can backfill already-finished schedules without being blocked by a past reminder time and without risking a stale notification/full-screen reminder.
+  - Planning Desk import drafts preserve the candidate reminder switch and delivery mode for todos, events, and optional event-end linked todos; disabled reminders are persisted as empty reminder offsets.
+  - Database version remains `28`; no Room schema migration was added. Changed: Desktop Web `app.js`, Planning import shared model, Desktop Sync import conversion, phone ViewModel import conversion, targeted tests, version metadata, current docs, and changelog.
+  - Verification passed: `./gradlew.bat :app:compileDebugKotlin`, `./gradlew.bat :app:testDebugUnitTest --tests com.example.todoalarm.data.PlanningImportCandidateTest`, `node --check app/src/main/assets/desktop-web/app.js`, `./gradlew.bat :app:testDebugUnitTest`, `git diff --check`, `./gradlew.bat :app:assembleDebug`, and APK metadata inspection for `versionName = 1.14.11`, `versionCode = 331`.
 - Current `1.14.10 / versionCode 330` status:
   - Phone Calendar three-day view keeps the continuous horizontal-scroll model from 1.14.9, but no longer opens with an empty-looking old date window: the first visible range and first event query are derived from the selected date immediately instead of waiting for a later `LaunchedEffect` correction.
   - Date picker / deep-link / section navigation into Calendar three-day view re-centers the target date, so existing events near the intended date are included in the active visible-day placement list.

@@ -2,21 +2,21 @@
 
 ## Active Development Focus
 
-Active immediate task: fix the phone Calendar three-day-view quality regression and tighten Daily Board schedule rows.
+Active immediate task: fix Desktop Web Planning Desk reminder controls so past events can be imported when reminders are disabled.
 
 Do not commit secrets, signing material, API keys, private Base URLs, generated APK/AAB outputs, or personal backups/logs. The repository already ignores `keystore.properties`, `release/`, `*.apk`, `*.jks`, `.env*`, and local temp files.
 
 ## Current Round Scope
 
-The current concrete patch is `1.14.10 / versionCode 330`: keep Calendar three-day continuous scrolling usable by centering the initial visible range on the selected date, and make Daily Board schedule rows more compact.
+The current concrete patch is `1.14.11 / versionCode 331`: add explicit reminder enable/disable and reminder delivery controls to Desktop Web Planning Desk preview, and make empty reminder input persist as no reminder instead of falling back to the default 5-minute reminder.
 
-Validation for this patch has passed: `./gradlew.bat :app:compileDebugKotlin`, `./gradlew.bat :app:testDebugUnitTest`, `git diff --check`, `./gradlew.bat :app:assembleDebug`, and APK metadata inspection for `versionName = 1.14.10`, `versionCode = 330`.
+Validation for this patch has passed: `./gradlew.bat :app:compileDebugKotlin`, `./gradlew.bat :app:testDebugUnitTest --tests com.example.todoalarm.data.PlanningImportCandidateTest`, `node --check app/src/main/assets/desktop-web/app.js`, `./gradlew.bat :app:testDebugUnitTest`, `git diff --check`, `./gradlew.bat :app:assembleDebug`, and APK metadata inspection for `versionName = 1.14.11`, `versionCode = 331`.
 
 Important constraints:
 
 1. Database version remains `28`; this round does not add a schema migration.
-2. Phone Calendar three-day view should keep continuous scrolling, but initial visible dates must be centered on the selected date.
-3. Daily Board schedule rows should remain readable while reducing card height and line spacing.
+2. Desktop Web Planning Desk must not force a reminder on candidates whose reminder input was cleared.
+3. Past events may be imported only when their reminders are disabled or absent; past reminder times remain invalid when reminders are enabled.
 4. Keep the user-visible changelog and current docs aligned with the app version.
 
 Historical usability / correctness failures from the broader audit:

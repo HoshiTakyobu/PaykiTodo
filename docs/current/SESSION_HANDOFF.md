@@ -5,11 +5,11 @@
 - Repository root: `G:\Workspace\Project\PaykiTodo`
 - Branch: `main`
 - Current code version:
-  - `versionName = 1.14.7`
-  - `versionCode = 327`
+  - `versionName = 1.14.8`
+  - `versionCode = 328`
   - database version = `28`
 - Latest debug APK target in this round:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.14.7-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.14.8-debug.apk`
 - Latest signed release APK available locally:
   - `app/build/outputs/apk/release/PaykiTodo-1.13.11-release.apk`
 - Latest GitHub Release:
@@ -17,7 +17,22 @@
 
 ## Active Goal
 
-Emergency fix for calendar display failure caused by 1.14.6 scrolling logic changes.
+Optimize daily board event card density to match Feishu calendar design style.
+
+## What Changed In The Latest 1.14.8 Patch
+
+1. **每日看板卡片紧凑度优化**（参考飞书日历设计）：大幅减小卡片内边距和间距，提升信息密度，视觉更简洁：
+   - 倒计时卡片（DashboardChrome.kt L1441）：padding `14dp/12dp` → `10dp/8dp`，颜色条 `4dp` → `3dp`，高度 `44dp` → `38dp`，水平间距 `14dp` → `10dp`，标题最大行数 `2` → `1`，字重 `Bold` → `SemiBold`，字号 `titleMedium` → `15sp`，副标题 `bodySmall` → `12sp`，行间距 `4dp` → `2dp`
+   - 日程列表卡片（DashboardChrome.kt L1773）：padding top/bottom `12dp` → `8dp`，end `10dp` → `8dp`，颜色条 `5dp` → `3dp`，水平间距 `16dp` → `10dp`，标题最大行数 `2` → `1`，字重 `Bold` → `SemiBold`，字号 `titleMedium` → `15sp`，时间副标题颜色 `onSurface` → `onSurfaceVariant`，字号 `bodyMedium` → `12sp`，字重 `Medium` → `Normal`，行间距 `4dp` → `2dp`
+
+2. 修改文件：`DashboardChrome.kt`（两处卡片组件）、`build.gradle.kts`（版本1.14.8/328）
+
+3. 数据库版本保持 `28`。验证通过：`assembleDebug` 成功，APK 元数据确认 1.14.8/328。
+
+4. **未完成问题**：
+   - 日历界面仍然是翻页滚动（HorizontalPager），不是连续滚动 - 此问题需要专门设计方案，不能仓促修改（1.14.6的教训）
+
+## What Changed In The Latest 1.14.7 Emergency Patch
 
 ## What Changed In The Latest 1.14.7 Emergency Patch
 

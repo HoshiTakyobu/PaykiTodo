@@ -5,11 +5,11 @@
 - Repository root: `G:\Workspace\Project\PaykiTodo`
 - Branch: `main`
 - Current code version:
-  - `versionName = 1.14.4`
-  - `versionCode = 324`
+  - `versionName = 1.14.6`
+  - `versionCode = 326`
   - database version = `28`
 - Latest debug APK target in this round:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.14.4-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.14.6-debug.apk`
 - Latest signed release APK available locally:
   - `app/build/outputs/apk/release/PaykiTodo-1.13.11-release.apk`
 - Latest GitHub Release:
@@ -17,7 +17,45 @@
 
 ## Active Goal
 
-Fix four Desktop Web issues the user reported after seeing the 1.14.3 light redesign on the real device: (1) sidebar text was invisible (white text left over from the dark sidebar design while `--sidebar` had been lightened), (2) the hour axis and day columns separated when the window was narrowed (two independent scroll contexts that the responsive breakpoint stacked vertically), (3) the red-line time chip should sit at the far-left axis aligned with the hour marks (matching the phone layout) instead of riding on the red line, and (4) the sidebar should become a collapsible left menu. All four are fixed in 1.14.4, plus an alignment bug discovered during the rework.
+Fix critical Android calendar bugs and refine Desktop Web console based on user feedback after 1.14.4 release.
+
+## What Changed In The Latest 1.14.6 Patch
+
+1. **日历日程高度修复（Android）**：修复短时长日程显示错误，例如 17:00-17:10（10分钟）的日程被错误显示为约30分钟高度。根因是 `CalendarPanel.kt` 中三处最小值限制过大：
+   - L2913: `coerceAtLeast(20)` → `coerceAtLeast(5)` - 最小持续时间从20分钟降到5分钟
+   - L2079: `coerceAtLeast(48.dp)` → `coerceAtLeast(24.dp)` - 最小显示高度从48dp降到24dp  
+   - L1879: `minEventHeightPx = 48.dp.toPx()` → `24.dp.toPx()` - 可见性判断最小高度同步调整
+   - 效果：短日程（5-30分钟）现在按实际时长比例显示，不再被强制拉长
+
+2. **日历卡片紧凑度优化（Android）**：向飞书日历视觉风格学习，减小卡片内部间距：
+   - L2128: 垂直 padding `7.dp` → `4.dp`，水平 padding `7.dp` → `6.dp`
+   - L2129: 水平间距 `6.dp` → `5.dp`
+   - L2134: 颜色条宽度 `4.dp` → `3.dp`
+   - L2147: 标题行高 `14.sp` → `13.5.sp`
+   - L2156: 地点行高 `12.sp` → `11.5.sp`
+   - L2140: 行间距 `2.dp/1.dp` → `1.dp/0.dp`（有/无地点时）
+   - 效果：卡片更紧凑，信息密度更高，视觉风格更接近飞书
+
+3. **桌面Web颜色优先级修复**：修复日程卡片颜色显示逻辑，自定义颜色（`accentColorHex`）现在优先于分组颜色（`groupColorHex`）显示：
+   - `app.js` L1244: `renderAllDayEventPill()` - 全天日程卡片
+   - `app.js` L1274: `renderEventCard()` - 时间轴日程卡片
+   - `app.js` L3654: `openEventPreview()` - 日程预览界面
+   - 验证：已通过 `unzip -p` 确认修改打包进 APK
+
+4. **桌面Web侧边栏可读性提升**：
+   - `app.css` L292: 导航按钮文字透明度 `.66` → `.85`，字重 `800` → `600`
+   - `app.css` L265: muted 文字透明度 `.6` → `.75`
+   - 效果：深色侧边栏白色文字更清晰易读
+
+5. **桌面Web UI细节优化**：
+   - 勾选框样式：`18px × 18px` 固定尺寸，`vertical-align: middle` 垂直居中
+   - 颜色选择器：添加 `hover` 缩放效果（`scale(1.05)`）和 `transition` 动画
+
+6. **连续滚动尝试（部分回退）**：尝试将 `HorizontalPager` 改为 `horizontalScroll` 实现连续滚动，但因计算全部日期列总宽度导致 `Can't represent a size of 484078 in Constraints` 崩溃。回退到使用 `horizontalOffsetPx` + 可见范围渲染的方案，保留了状态管理改动（`rememberScrollState` 替代 `rememberPagerState`），但视图结构恢复到原 HorizontalPager 的模式。此问题需要后续重新设计实现连续滚动。
+
+7. 修改文件：`CalendarPanel.kt`（日程高度、卡片间距、状态管理）、`app.js`（颜色优先级3处）、`app.css`（侧边栏对比度、勾选框、颜色选择器）、`build.gradle.kts`（版本1.14.6/326）
+
+8. 数据库版本保持 `28`。验证通过：`assembleDebug` 成功，APK 元数据确认 1.14.6/326，`unzip -p` 确认颜色优先级修改已打包进 APK。
 
 ## What Changed In The Latest 1.14.4 Patch
 

@@ -63,6 +63,7 @@ This file tracks the product at a practical level for new coding sessions.
 - board schedule rows align the left color strip to the measured height of the event text block
 - board schedule rows keep normal and in-progress color strips in one aligned column
 - normal board schedule rows have no outer fill or border, while in-progress rows use a gold border with only subtle inner highlight
+- daily board schedule rows use compact Feishu-style density with explicit small line heights, one-line locations, tighter padding, and smaller in-progress check-in actions
 - board in-progress schedule rows show check-in status for check-in-enabled events and expose compact `签到` / `签退` actions
 - board in-progress schedule rows route check-in-enabled events to the independent full-screen check-in surface through `去签到` / `查看`, keeping the board focused on overview rather than inline operations
 - daily board shows a distinct completion message when today's schedule existed but all events have already ended
@@ -182,6 +183,7 @@ This file tracks the product at a practical level for new coding sessions.
 - recurring event current-instance delete uses a recurring-instance skip plus hard delete, while recurring event cancel writes canceled history for the selected scope
 - phone and desktop event editors can set an event's primary group; phone uses a compact single-choice row, and the selected group is persisted for normal event creation/editing plus weekly multi-slot event creation
 - phone calendar keeps a bounded loaded event window and skips redundant Room queries when the requested visible date range is already covered, reducing timeline swipe churn without changing displayed events
+- phone Calendar three-day continuous-scroll view initializes its first visible range around the selected date instead of the far start of the long date window, preventing an empty-looking first render when current events exist
 - Desktop Web event editor supports multi-line event titles, matching phone-side event title entry instead of forcing a single-line input
 - Desktop Web event editor exposes an explicit `启用提醒` switch; disabling it saves an empty reminder-offset list and disables reminder-dependent fields, while new events default to no reminder like the phone event editor
 - Desktop Web event creation supports `每周多时间段` for new events, matching the phone-side multi-slot workflow by creating one weekly recurring event per weekday/time slot through the batch event API; generated slots now share a persisted `multiSlotBundleId`

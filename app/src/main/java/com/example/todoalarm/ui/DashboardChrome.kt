@@ -1747,7 +1747,7 @@ private fun BoardScheduleEventRow(
         }
     }
     val gold = Color(0xFFFFC94A)
-    val rowShape = RoundedCornerShape(18.dp)
+    val rowShape = RoundedCornerShape(14.dp)
     val rowColor = if (inProgress) gold else tint
     Surface(
         modifier = Modifier
@@ -1755,88 +1755,87 @@ private fun BoardScheduleEventRow(
             .clickable(onClick = onClick),
         shape = rowShape,
         color = if (inProgress) rowColor.copy(alpha = 0.055f) else Color.Transparent,
-        border = if (inProgress) BorderStroke(1.4.dp, rowColor.copy(alpha = 0.92f)) else null
+        border = if (inProgress) BorderStroke(1.dp, rowColor.copy(alpha = 0.88f)) else null
     ) {
-        Surface(
+        Row(
             modifier = Modifier
                 .fillMaxWidth()
+                .height(IntrinsicSize.Min)
                 .padding(
                     start = if (inProgress) 2.dp else 0.dp,
-                    top = if (inProgress) 8.dp else 3.dp,
-                    end = if (inProgress) 5.dp else 0.dp,
-                    bottom = if (inProgress) 8.dp else 3.dp
+                    top = if (inProgress) 5.dp else 2.dp,
+                    end = if (inProgress) 5.dp else 4.dp,
+                    bottom = if (inProgress) 5.dp else 2.dp
                 ),
-            shape = RoundedCornerShape(14.dp),
-            color = if (inProgress) rowColor.copy(alpha = 0.015f) else Color.Transparent
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.Top
         ) {
-            Row(
+            Box(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .height(IntrinsicSize.Min)
-                    .padding(start = 0.dp, top = 8.dp, end = 8.dp, bottom = 8.dp),
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
-                verticalAlignment = Alignment.Top
+                    .width(3.dp)
+                    .fillMaxHeight()
+                    .background(
+                        color = rowColor.copy(alpha = 0.96f),
+                        shape = RoundedCornerShape(999.dp)
+                    )
+            )
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(top = 3.dp, bottom = 3.dp),
+                verticalArrangement = Arrangement.spacedBy(1.dp)
             ) {
-                Box(
-                    modifier = Modifier
-                        .width(3.dp)
-                        .fillMaxHeight()
-                        .background(
-                            color = rowColor.copy(alpha = 0.96f),
-                            shape = RoundedCornerShape(999.dp)
-                        )
+                Text(
+                    text = item.title,
+                    style = MaterialTheme.typography.titleMedium.copy(fontSize = 14.sp, lineHeight = 16.sp),
+                    fontWeight = FontWeight.SemiBold,
+                    color = if (inProgress) gold else MaterialTheme.colorScheme.onSurface,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
-                Column(
-                    modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(2.dp)
-                ) {
+                Text(
+                    text = DailyBoardSnapshotBuilder.eventSecondaryText(item),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp, lineHeight = 13.sp),
+                    fontWeight = FontWeight.Normal,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                item.location.takeIf { it.isNotBlank() }?.let {
                     Text(
-                        text = item.title,
-                        style = MaterialTheme.typography.titleMedium.copy(fontSize = 15.sp),
-                        fontWeight = FontWeight.SemiBold,
-                        color = if (inProgress) gold else MaterialTheme.colorScheme.onSurface,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                    Text(
-                        text = DailyBoardSnapshotBuilder.eventSecondaryText(item),
+                        text = it,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        style = MaterialTheme.typography.bodySmall.copy(fontSize = 12.sp),
-                        fontWeight = FontWeight.Normal,
+                        style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp, lineHeight = 13.sp),
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
-                    item.location.takeIf { it.isNotBlank() }?.let {
+                }
+                if (checkInStatus != null) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
                         Text(
-                            text = it,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            style = MaterialTheme.typography.bodySmall,
-                            maxLines = 2,
-                            overflow = TextOverflow.Ellipsis
+                            text = checkInStatus,
+                            color = if (activeCheckIn == null) MaterialTheme.colorScheme.onSurfaceVariant else gold,
+                            style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp, lineHeight = 13.sp),
+                            fontWeight = FontWeight.SemiBold,
+                            modifier = Modifier.weight(1f)
                         )
-                    }
-                    if (checkInStatus != null) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            Text(
-                                text = checkInStatus,
-                                color = if (activeCheckIn == null) MaterialTheme.colorScheme.onSurfaceVariant else gold,
-                                style = MaterialTheme.typography.bodySmall,
-                                fontWeight = FontWeight.SemiBold,
-                                modifier = Modifier.weight(1f)
-                            )
-                            if (onLaunchCheckIn != null) {
-                                TextButton(
-                                    colors = ButtonDefaults.textButtonColors(
-                                        contentColor = if (activeCheckIn == null) Color(0xFF2196F3) else Color(0xFF4CAF50)
-                                    ),
-                                    onClick = { onLaunchCheckIn(item.id) }
-                                ) {
-                                    Text(if (activeCheckIn == null) "去签到" else "查看")
-                                }
+                        if (onLaunchCheckIn != null) {
+                            TextButton(
+                                modifier = Modifier.height(28.dp),
+                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp),
+                                colors = ButtonDefaults.textButtonColors(
+                                    contentColor = if (activeCheckIn == null) Color(0xFF2196F3) else Color(0xFF4CAF50)
+                                ),
+                                onClick = { onLaunchCheckIn(item.id) }
+                            ) {
+                                Text(
+                                    text = if (activeCheckIn == null) "去签到" else "查看",
+                                    style = MaterialTheme.typography.labelSmall
+                                )
                             }
                         }
                     }

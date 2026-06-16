@@ -229,7 +229,7 @@ internal fun CalendarPanel(
     val anchorDateIndex = dateWindow.anchorIndex
     val verticalScroll = rememberScrollState()
     var didInitScroll by rememberSaveable { mutableStateOf(false) }
-    var horizontalOffsetPx by rememberSaveable { mutableStateOf(0f) }
+    var horizontalOffsetPx by rememberSaveable { mutableStateOf(Float.NaN) }
     var detailsTarget by remember { mutableStateOf<TodoItem?>(null) }
     var pendingDraft by remember { mutableStateOf<PendingCalendarDraft?>(null) }
     var draggingEvent by remember { mutableStateOf<DraggingCalendarEvent?>(null) }
@@ -280,9 +280,17 @@ internal fun CalendarPanel(
             val dayColumnWidthPx = with(density) { dayColumnWidth.toPx() }
             val maxHorizontalOffsetPx = ((dateWindow.size * dayColumnWidthPx) - viewportWidthPx).coerceAtLeast(0f)
             val selectedIndex = (dateWindow.indexOf(selectedDate) ?: anchorDateIndex).coerceIn(0, dateWindow.lastIndex)
+            val selectedCenteredHorizontalOffsetPx =
+                ((selectedIndex - 1).coerceAtLeast(0) * dayColumnWidthPx).coerceIn(0f, maxHorizontalOffsetPx)
 
             val effectiveHorizontalOffsetPx = when {
-                viewMode == CalendarViewMode.THREE_DAY -> horizontalOffsetPx.coerceIn(0f, maxHorizontalOffsetPx)
+                viewMode == CalendarViewMode.THREE_DAY -> {
+                    if (horizontalOffsetPx.isNaN()) {
+                        selectedCenteredHorizontalOffsetPx
+                    } else {
+                        horizontalOffsetPx.coerceIn(0f, maxHorizontalOffsetPx)
+                    }
+                }
                 viewMode == CalendarViewMode.DAY -> (selectedIndex * dayColumnWidthPx).coerceIn(0f, maxHorizontalOffsetPx)
                 else -> horizontalOffsetPx
             }
@@ -322,8 +330,12 @@ internal fun CalendarPanel(
 
             val horizontalScrollableState = rememberScrollableState { delta ->
                 if (viewMode != CalendarViewMode.THREE_DAY) return@rememberScrollableState 0f
-                val previous = horizontalOffsetPx
-                horizontalOffsetPx = (horizontalOffsetPx - delta).coerceIn(0f, maxHorizontalOffsetPx)
+                val previous = if (horizontalOffsetPx.isNaN()) {
+                    selectedCenteredHorizontalOffsetPx
+                } else {
+                    horizontalOffsetPx.coerceIn(0f, maxHorizontalOffsetPx)
+                }
+                horizontalOffsetPx = (previous - delta).coerceIn(0f, maxHorizontalOffsetPx)
                 previous - horizontalOffsetPx
             }
 
@@ -411,6 +423,12 @@ internal fun CalendarPanel(
 
             LaunchedEffect(selectedDate) {
                 templateAnchorWeekStart = currentWeekStart(selectedDate)
+            }
+
+            LaunchedEffect(viewMode, selectedDate, dayColumnWidthPx, maxHorizontalOffsetPx) {
+                if (viewMode == CalendarViewMode.THREE_DAY) {
+                    horizontalOffsetPx = selectedCenteredHorizontalOffsetPx
+                }
             }
 
             LaunchedEffect(agendaRefreshing, selectedDate) {

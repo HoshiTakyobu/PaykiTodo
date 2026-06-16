@@ -2,25 +2,22 @@
 
 ## Active Development Focus
 
-Active immediate task: simplify Planning Desk back into a memo-style planning surface and remove hashtag/tag syntax from the visible workflow.
-
-- `docs/goals/2026-06-01-paykitodo-reminder-ongoing-planning-ux-goal.md`
+Active immediate task: fix the phone Calendar three-day-view quality regression and tighten Daily Board schedule rows.
 
 Do not commit secrets, signing material, API keys, private Base URLs, generated APK/AAB outputs, or personal backups/logs. The repository already ignores `keystore.properties`, `release/`, `*.apk`, `*.jks`, `.env*`, and local temp files.
 
 ## Current Round Scope
 
-The current concrete patch is `1.14.0 / versionCode 320`: rebuild the Planning Desk main path around natural memo input, recognition preview, and selected import.
+The current concrete patch is `1.14.10 / versionCode 330`: keep Calendar three-day continuous scrolling usable by centering the initial visible range on the selected date, and make Daily Board schedule rows more compact.
 
-Validation for this patch has passed: `node --check app/src/main/assets/desktop-web/app.js`, `git diff --check`, `./gradlew.bat :app:compileDebugKotlin`, `./gradlew.bat :app:testDebugUnitTest`, `./gradlew.bat :app:assembleDebug`, and APK metadata inspection for `versionName = 1.14.0`, `versionCode = 320`.
+Validation for this patch has passed: `./gradlew.bat :app:compileDebugKotlin`, `./gradlew.bat :app:testDebugUnitTest`, `git diff --check`, `./gradlew.bat :app:assembleDebug`, and APK metadata inspection for `versionName = 1.14.10`, `versionCode = 330`.
 
 Important constraints:
 
 1. Database version remains `28`; this round does not add a schema migration.
-2. Phone Planning Desk should open as a large natural-text memo editor, not as Outliner / Markdown syntax tooling.
-3. Desktop Planning Desk should present a two-column memo editor + recognition preview workflow.
-4. Visible help/examples should not teach hashtag planning tags.
-5. Keep the user-visible changelog and current docs aligned with the app version.
+2. Phone Calendar three-day view should keep continuous scrolling, but initial visible dates must be centered on the selected date.
+3. Daily Board schedule rows should remain readable while reducing card height and line spacing.
+4. Keep the user-visible changelog and current docs aligned with the app version.
 
 Historical usability / correctness failures from the broader audit:
 

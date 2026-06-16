@@ -8,8 +8,8 @@
 - Target platform: Android 14 / API 34
 - License: MIT License (`LICENSE`)
 - Current version in code:
-  - `versionName = "1.14.4"`
-  - `versionCode = 324`
+  - `versionName = "1.14.10"`
+  - `versionCode = 330`
   - database version = `28`
 
 ## Current Build Facts
@@ -22,7 +22,13 @@
 - Latest GitHub Release:
   - `https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.13.11`
 - Latest fully built debug APK:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.14.4-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.14.10-debug.apk`
+- Current `1.14.10 / versionCode 330` status:
+  - Phone Calendar three-day view keeps the continuous horizontal-scroll model from 1.14.9, but no longer opens with an empty-looking old date window: the first visible range and first event query are derived from the selected date immediately instead of waiting for a later `LaunchedEffect` correction.
+  - Date picker / deep-link / section navigation into Calendar three-day view re-centers the target date, so existing events near the intended date are included in the active visible-day placement list.
+  - Daily Board schedule rows were compacted again toward a Feishu-style event-list density: smaller row radius, tighter vertical padding, explicit 14sp/11sp line heights, one-line location, smaller in-progress border, and a 28dp check-in action button.
+  - Database version remains `28`; no Room schema migration was added. Changed: phone `CalendarPanel.kt`, phone `DashboardChrome.kt`, version metadata, current docs, and changelog.
+  - Verification passed: `./gradlew.bat :app:compileDebugKotlin`, `./gradlew.bat :app:testDebugUnitTest`, `git diff --check`, `./gradlew.bat :app:assembleDebug`, and APK metadata inspection for `versionName = 1.14.10`, `versionCode = 330`.
 - Current `1.14.4 / versionCode 324` status:
   - Desktop Web calendar layout + sidebar overhaul addressing four user-reported issues after the 1.14.3 light redesign.
   - **Sidebar text invisible (issue 1)**: 1.14.3 changed `--sidebar` to a light value (`#f8fafc`) but left sidebar text white, making it invisible on the light surface. Reverted `--sidebar` back to dark blue (`#243246`) so the classic "dark nav + light content" pattern reads correctly.

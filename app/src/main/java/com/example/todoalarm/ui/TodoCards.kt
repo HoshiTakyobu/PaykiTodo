@@ -194,7 +194,7 @@ internal fun ActiveTodoCard(
                 )
                 TodoActionRow(
                     icon = Icons.Rounded.Close,
-                    title = "取消待办",
+                    title = "取消",
                     tint = Color(0xFFD97706),
                     onClick = {
                         showActionSheet = false
@@ -734,7 +734,7 @@ private fun TodoDetailsFixedActions(
                                 modifier = Modifier.size(18.dp),
                                 tint = Color(0xFFD97706)
                             )
-                            Text("取消待办", color = Color(0xFFD97706))
+                            Text("取消", color = Color(0xFFD97706))
                         }
                     }
                     onRestore?.let {

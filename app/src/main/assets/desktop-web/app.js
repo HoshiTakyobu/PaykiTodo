@@ -1241,7 +1241,7 @@ function renderEventDayAllDayStrip(key, allDayItems) {
 }
 
 function renderAllDayEventPill(item, key) {
-  const accent = item.groupColorHex || item.accentColorHex || '#4e87e1';
+  const accent = item.accentColorHex || item.groupColorHex || '#4e87e1';
   const startKey = dayKeyFromMillis(eventStart(item));
   const endKey = dayKeyFromMillis(Math.max(eventStart(item), eventEnd(item) - 1));
   const range = startKey === endKey ? '全天' : formatCompactDateLabel(startKey) + ' - ' + formatCompactDateLabel(endKey);
@@ -1271,7 +1271,7 @@ function renderVisibleRangeTitle(keys) {
 
 function renderEventCard(segment) {
   const item = segment.item;
-  const accent = item.groupColorHex || item.accentColorHex || '#4e87e1';
+  const accent = item.accentColorHex || item.groupColorHex || '#4e87e1';
   const meta = [item.groupName || '未分组', item.location || '', item.isRecurring ? '循环' : ''].filter(Boolean).join(' · ');
   return ''
     + '<article class="event-card" role="button" tabindex="0" aria-label="编辑日程：' + escapeHtml(item.title) + '" data-event-id="' + escapeHtml(String(item.id ?? '')) + '" style="--accent:' + accent + ';top:' + segment.top + 'px;height:' + segment.height + 'px">'
@@ -3651,7 +3651,7 @@ function openTodoPreview(item) {
 
 function openEventPreview(item) {
   state.previewEventId = item.id;
-  const accent = item.groupColorHex || item.accentColorHex || DEFAULT_EVENT_COLOR;
+  const accent = item.accentColorHex || item.groupColorHex || DEFAULT_EVENT_COLOR;
   const body = document.getElementById('event-preview-body');
   const cancelButton = document.getElementById('preview-event-cancel');
   const deleteButton = document.getElementById('preview-event-delete');

@@ -1630,7 +1630,7 @@ private fun TodayScheduleBoardCard(
 
             Column(
                 modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+                verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 if (!todayCollapsed) {
                     if (todayEvents.isEmpty()) {

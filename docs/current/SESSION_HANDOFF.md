@@ -5,11 +5,11 @@
 - Repository root: `G:\Workspace\Project\PaykiTodo`
 - Branch: `main`
 - Current code version:
-  - `versionName = 1.14.8`
-  - `versionCode = 328`
+  - `versionName = 1.14.9`
+  - `versionCode = 329`
   - database version = `28`
 - Latest debug APK target in this round:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.14.8-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.14.9-debug.apk`
 - Latest signed release APK available locally:
   - `app/build/outputs/apk/release/PaykiTodo-1.13.11-release.apk`
 - Latest GitHub Release:
@@ -17,7 +17,32 @@
 
 ## Active Goal
 
-Optimize daily board event card density to match Feishu calendar design style.
+Restore continuous horizontal scroll in calendar three-day view (removing HorizontalPager pagination).
+
+## What Changed In The Latest 1.14.9 Patch
+
+1. **恢复日历三日视图连续滚动**：移除 1.13.10 引入的 HorizontalPager 翻页机制，恢复到之前的连续滚动实现（参考 1.13.9 之前的版本）：
+   - 移除 `HorizontalPager` 和 `rememberPagerState` 相关代码
+   - 添加 `horizontalScrollableState`（rememberScrollableState）实现三日视图的连续左右滚动
+   - 三日视图：使用 `Modifier.scrollable(horizontalScrollableState, Orientation.Horizontal)` 实现连续滚动
+   - 日视图：保留翻页手势（`detectHorizontalDragGestures`，左右滑动超过56px切换日期）
+   - 添加 `horizontalOffsetPx` 状态变量（`rememberSaveable`）跟踪滚动偏移
+   - 计算 `effectiveHorizontalOffsetPx`：三日视图使用 `horizontalOffsetPx`，日视图使用 `selectedIndex * dayColumnWidthPx`
+   - `timelineFocusIndex` 根据 `effectiveHorizontalOffsetPx` 动态计算当前显示的中心日期
+   - 移除 HorizontalPager 相关的 `LaunchedEffect`（scrollToPage、currentPage 监听）
+   - 所有子组件统一使用 `timelineHorizontalOffsetPx` 实现视图偏移
+
+2. 技术实现细节：
+   - `horizontalScrollableState` 的 lambda 更新 `horizontalOffsetPx`，限制在 `[0, maxHorizontalOffsetPx]` 范围内
+   - `visibleRange` 根据 `timelineFocusIndex` 动态计算，包含中心日期前后各1天加上 overscan
+   - `visibleTimedEventPlacements` 直接调用 `buildTimedEventPlacementsForDays(events, visibleDays)`，简化数据流
+   - 手势处理：日视图积累 `totalDrag`，结束时判断方向并调用 `shiftViewBy(±1)`
+
+3. 修改文件：`CalendarPanel.kt`（移除 HorizontalPager，恢复 scrollable + 手势）、`build.gradle.kts`（版本1.14.9/329）
+
+4. 数据库版本保持 `28`。验证通过：`assembleDebug` 成功，APK 元数据确认 1.14.9/329。
+
+5. **历史背景**：版本 1.13.10（提交 1d39fa4，2026-05-22）引入 HorizontalPager 用于"降低大量列表滚动复用成本"和"修正日历拖拽翻页冲突"。但用户反馈翻页体验不如之前的连续滚动，因此本次恢复到 1.13.9 之前的实现方式。
 
 ## What Changed In The Latest 1.14.8 Patch
 

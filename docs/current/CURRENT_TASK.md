@@ -2,21 +2,21 @@
 
 ## Active Development Focus
 
-Active immediate task: polish the phone Daily Board schedule/countdown display and finish Planning Desk no-reminder historical import behavior.
+Active immediate task: finish `1.14.13 / versionCode 333` fixes for Planning Desk natural/AI recognition, historical event import with filtered past reminders, Daily Board countdown row alignment, and full-screen reminder retry diagnostics.
 
 Do not commit secrets, signing material, API keys, private Base URLs, generated APK/AAB outputs, or personal backups/logs. The repository already ignores `keystore.properties`, `release/`, `*.apk`, `*.jks`, `.env*`, and local temp files.
 
 ## Current Round Scope
 
-The current concrete patch is `1.14.12 / versionCode 332`: make Daily Board countdown and schedule sections less cramped / less verbose, and allow Planning Desk to import past todo candidates when reminders are explicitly disabled.
+The current concrete patch is `1.14.13 / versionCode 333`: make Planning Desk recognize date-range natural schedules and event notes correctly, prefer AI recognition when configured, allow historical event import without backfilling already-past reminder triggers, align multi-line countdown rows, and avoid suppressing full-screen reminder retries before the reminder activity is actually visible.
 
-Validation for this patch has passed: `node --check app/src/main/assets/desktop-web/app.js`, `./gradlew.bat :app:compileDebugKotlin`, `./gradlew.bat :app:testDebugUnitTest --tests com.example.todoalarm.data.PlanningImportCandidateTest`, `./gradlew.bat :app:testDebugUnitTest`, `git diff --check`, `./gradlew.bat :app:assembleDebug`, and APK metadata inspection for `versionName = 1.14.12`, `versionCode = 332`.
+Validation for this patch has passed: targeted `PlanningMarkdownParserTest`, `PlanningImportCandidateTest`, `PlanningAiRecognizerTest`, `PlanningRecognitionServiceTest` with `--rerun-tasks`, `./gradlew.bat --no-daemon :app:compileDebugKotlin`, `./gradlew.bat --no-daemon :app:testDebugUnitTest`, `node --check app/src/main/assets/desktop-web/app.js`, `git diff --check`, `./gradlew.bat --no-daemon :app:assembleDebug`, and APK metadata inspection for `versionName = 1.14.13`, `versionCode = 333`.
 
 Important constraints:
 
 1. Database version remains `28`; this round does not add a schema migration.
 2. Desktop Web Planning Desk must not force a reminder on candidates whose reminder input was cleared.
-3. Past events and past todo candidates may be imported only when their reminders are disabled or absent; past reminder times remain invalid when reminders are enabled.
+3. Past event candidates may be imported even when reminders remain enabled; already-past event reminder triggers are not backfilled and only future recurrence reminders are scheduled. Past todo candidates still require reminders to be disabled.
 4. Keep the user-visible changelog and current docs aligned with the app version.
 
 Historical usability / correctness failures from the broader audit:

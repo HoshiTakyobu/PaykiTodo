@@ -119,6 +119,7 @@ class ReminderActivity : ComponentActivity() {
         super.onResume()
         todoItem?.let {
             ActiveReminderStore.refreshActive(this, it.id)
+            ActiveReminderStore.markReminderSurfaceShown(this, it.id)
             ReminderChainLogger.log(
                 context = this,
                 todoId = it.id,

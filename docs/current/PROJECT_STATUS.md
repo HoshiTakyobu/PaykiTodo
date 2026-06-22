@@ -8,8 +8,8 @@
 - Target platform: Android 14 / API 34
 - License: MIT License (`LICENSE`)
 - Current version in code:
-  - `versionName = "1.14.12"`
-  - `versionCode = 332`
+  - `versionName = "1.14.13"`
+  - `versionCode = 333`
   - database version = `28`
 
 ## Current Build Facts
@@ -19,7 +19,16 @@
 - Latest GitHub Release:
   - `https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.14.12`
 - Latest fully built debug APK:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.14.12-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.14.13-debug.apk`
+- Current `1.14.13 / versionCode 333` status:
+  - Planning Desk local parsing recognizes leading date ranges such as `06-22~06-24 19:00-21:00 ...` as one daily recurring event candidate ending on the last date, so the date range no longer pollutes the title and the repository can generate each daily occurrence.
+  - Planning Desk local parsing extracts `备注：...` / `备注:...` from natural event lines into notes while preserving the original Chinese punctuation instead of normalizing it into half-width punctuation.
+  - Planning Desk recognition now tries configured AI providers first when AI is enabled and at least one provider is complete; local parsing remains the fallback when AI is disabled, incomplete, or fails.
+  - Planning Desk event import now allows already-past / currently-running event candidates to keep their default reminder settings; the alarm scheduler filters already-past trigger times and schedules only future recurrence reminders, while ordinary manual event creation still rejects past reminder triggers.
+  - Phone Daily Board countdown rows use intrinsic-height layout: the left countdown block is vertically centered and the accent strip fills the row height when the target title wraps to multiple lines.
+  - Full-screen reminder launch retry is more reliable: the foreground service no longer marks the reminder surface as shown immediately after `startActivity`; only `ReminderActivity.onResume` writes the shown marker, preventing silent Android background-launch blocks from suppressing retries. Android 14+ full-screen permission state is logged, accessibility fallback is triggered when the permission is unavailable, and reminder notification channels moved to v10.
+  - Database version remains `28`; no Room schema migration was added. Changed: Planning Desk parser / AI recognizer / recognition service, Planning import shared validation, phone ViewModel import validation, Daily Board countdown row, reminder foreground service / activity / notification channels, version metadata, tests, README, current docs, and changelog.
+  - Verification passed: targeted `PlanningMarkdownParserTest`, `PlanningImportCandidateTest`, `PlanningAiRecognizerTest`, `PlanningRecognitionServiceTest` with `--rerun-tasks`; `./gradlew.bat --no-daemon :app:compileDebugKotlin`; `./gradlew.bat --no-daemon :app:testDebugUnitTest`; `node --check app/src/main/assets/desktop-web/app.js`; `git diff --check`; `./gradlew.bat --no-daemon :app:assembleDebug`; and APK metadata inspection for `versionName = 1.14.13`, `versionCode = 333`.
 - Current `1.14.12 / versionCode 332` status:
   - Phone Daily Board countdown rows now allow full multi-line target titles instead of truncating important event names to one line.
   - Phone Daily Board `今日日程` title no longer shows a parenthesized count, the tomorrow schedule block no longer has its own collapse affordance, and the tomorrow block is shown with the today schedule card rather than depending on stale saved tomorrow-collapse state.

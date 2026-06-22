@@ -109,7 +109,8 @@ This file tracks the product at a practical level for new coding sessions.
 - local rule parser also recognizes common Chinese natural DDL hints, including date-context fuzzy words such as `晚上交论文`, before-time forms such as `5点前` / `16:30之前` / `明天下午3点前`, and non-checkbox DDL keyword lines such as `交论文 截止明天 23:59`
 - Planning Desk preview warns when a todo DDL is inferred from natural text and flags recurrence hint words such as `每天` / `每周` without auto-creating recurrence rules
 - planning document titles, document dates, and heading-style lines no longer provide hidden default dates; users should write the intended date in the actual line when it matters
-- natural schedule parsing accepts inline leading dates, time ranges later in the line, slash dates, full-width separators, Chinese AM/PM, and full-width range separators
+- natural schedule parsing accepts inline leading dates, leading date ranges such as `06-22~06-24`, time ranges later in the line, slash dates, full-width separators, Chinese AM/PM, and full-width range separators
+- natural schedule parsing extracts `备注：...` / `备注:...` into event notes while preserving original Chinese punctuation
 - legacy hashtag semantic tags such as `#ddl`, `#today`, `#tomorrow`, `#important`, and `#project` are no longer part of the documented Planning Desk workflow
 - natural schedule import creates calendar events by default; linked-todo creation is an explicit preview/editor choice, not automatic
 - planning import is preview-first and selection-based, not immediate database writes; import is disabled until at least one valid candidate is selected
@@ -124,13 +125,13 @@ This file tracks the product at a practical level for new coding sessions.
 - the latest import / refresh / postpone batch can be undone
 - conflicts between imported items and source Markdown can be resolved either by overwriting the item from the document or rewriting the document from the current item
 - default Planning Desk import reminder is 5 minutes before, full-screen, ring + vibration, but preview can explicitly disable reminders and an empty reminder input is preserved as no reminder instead of being refilled
-- Planning Desk can import already-past todo/event candidates as historical backfill when reminders are disabled; enabled reminders whose trigger time is already past still block import to avoid stale notifications
+- Planning Desk can import already-past todo/event candidates as historical backfill when reminders are disabled; event candidates can also keep enabled reminders because already-past event reminder triggers are filtered rather than backfilled, while enabled past todo reminders still block import
 - planning notes are included in JSON backup / restore snapshots
 - planning mapping records are also included in JSON backup / restore snapshots
 - legacy notes may still carry `documentDateEpochDay`, but recognition no longer treats the planning document date as a hidden default for user-entered lines
 - Planning Desk `1.13.21` fixes explicit DDL-date precedence for phone / desktop parser paths: lines such as `5.29 【DDL】...`, `5.29【DDL】...`, `5.29 【DDL】14:00 ...`, and `5.29 【紧急】【DDL】14:00 ...` use the inline date/time instead of the planning note's document date, while DDL markers and time tokens are removed from the final title
 - Planning Desk `1.13.22` makes the mobile Planning Desk start as a wide free-writing surface, keeps `识别` preview-first instead of background direct-write capture, and keeps AI/local fallback understandable in the editor copy
-- Planning Desk recognition first runs local rules; if natural DDL / schedule / no-DDL todo parsing covers every actionable line, it uses local candidates directly instead of spending an AI call or risking AI reinterpretation. Explicit local parse errors stay visible in preview instead of being swallowed by AI fallback. Mixed free-form natural text can still call enabled AI providers, and AI prompts no longer receive the planning document date as a hidden default
+- Planning Desk recognition uses configured AI providers first when AI is enabled and at least one provider has Base URL / API Key / model; local rules remain the fallback when AI is disabled, provider setup is incomplete, or AI recognition fails. AI prompts no longer receive the planning document date as a hidden default
 - AI recognition for Planning Desk is now an optional Provider-based enhancement for DeepSeek / Qwen / OpenAI-compatible APIs; Settings exposes ordered multi-provider Base URL/API Key/model configuration, single-provider model-list fetching, single-provider connection testing, both phone and desktop Planning Desk recognition call enabled sources in order, local rules remain the fallback, and AI output enters preview before import
 - Planning Desk AI keeps group assignment conservative: AI `groupName` is preserved only when the source line explicitly contains a natural group field such as `分组：`, `项目：`, `类别：`, or `课程：`, so ordinary titles are not split into accidental groups
 - Planning Desk AI / preview candidates carry event location, all-day, countdown, check-in tracking, and recurrence fields; phone and desktop previews can edit those fields before import, and imports persist them into the final todo/event drafts
@@ -224,7 +225,8 @@ This file tracks the product at a practical level for new coding sessions.
 - notification reminder path
 - full-screen reminder path
 - reminder delivery policy respects the per-item `通知栏提醒` / `全屏界面提醒` choice: notification-mode items no longer actively launch the full-screen reminder surface unless work mode or alarm mode explicitly overrides them
-- full-screen reminder relaunch paths now keep a short recent-surface cooldown, so ordinary app resume / accessibility window events do not repeatedly foreground the same reminder immediately after it was already shown while locked-screen forced overlay behavior remains available
+- full-screen reminder relaunch paths keep a short recent-surface cooldown only after `ReminderActivity` actually reaches `onResume`, so silent Android background-launch blocks do not incorrectly suppress retries; Android 14+ full-screen permission state is logged and unavailable permission triggers the accessibility fallback path
+- reminder alarm notification channels use the current v10 channel IDs so old user/system channel downgrades do not keep suppressing high-priority full-screen reminder notifications
 - full-screen event reminders can start an event check-in when `打卡追踪` is enabled
 - ongoing-event notification end broadcasts now re-check the current event state before clearing the notification, so a moved / extended event is not prematurely removed by an old end alarm
 - foreground service and fallback chain work

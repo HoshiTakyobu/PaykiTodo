@@ -109,9 +109,9 @@ class ReminderNotifier(
 
     private fun ensureChannel(todoItem: TodoItem): String {
         val channelId = when {
-            todoItem.ringEnabled -> "paykitodo_alarm_audible_v9"
-            todoItem.vibrateEnabled -> "paykitodo_alarm_vibrate_v9"
-            else -> "paykitodo_alarm_silent_v9"
+            todoItem.ringEnabled -> "paykitodo_alarm_audible_v10"
+            todoItem.vibrateEnabled -> "paykitodo_alarm_vibrate_v10"
+            else -> "paykitodo_alarm_silent_v10"
         }
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return channelId
 

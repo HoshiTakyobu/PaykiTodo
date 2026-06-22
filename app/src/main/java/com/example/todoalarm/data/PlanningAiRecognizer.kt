@@ -171,11 +171,12 @@ object PlanningAiRecognizer {
         val importBlocked = when (type) {
             PlanningParsedType.TODO -> dueAt != null &&
                 (!dueAt.isAfter(now) || reminderOffsets.any { !dueAt.minusMinutes(it.toLong()).isAfter(now) })
-            PlanningParsedType.EVENT -> startAt != null &&
-                reminderOffsets.any { !startAt.minusMinutes(it.toLong()).isAfter(now) }
             else -> false
         }
+        val pastEventReminder = type == PlanningParsedType.EVENT && startAt != null &&
+            reminderOffsets.any { !startAt.minusMinutes(it.toLong()).isAfter(now) }
         if (importBlocked) messages += "提醒时间或 DDL 已经过期，请调整后再导入。"
+        if (pastEventReminder) messages += "已过去的提醒不会补发；导入后只安排未来提醒。"
 
         return PlanningParsedCandidate(
             id = "ai-$index",
@@ -364,8 +365,8 @@ object PlanningAiRecognizer {
             3. event 表示有开始和结束时间的日程；startAt/endAt 必填，格式为 yyyy-MM-dd'T'HH:mm:ss。event 默认 createLinkedTodo=false；只有用户明确写了“同步待办 / 同时创建待办 / 也建一个DDL任务 / 日程结束作为DDL”这类意图时才设为 true。地点要放在 location 字段，不要塞进 notes；如果原文写了“@主楼B1-412”或“"@主楼B1-412"”，location 保留原文的 @，不要额外补 @。
             4. reminderOffsetsMinutes 表示提前多少分钟提醒。用户没写提醒时，有 DDL 或日程的候选默认 [5]；没有 DDL 的 todo 用 []。
             5. groupName 只在用户明确写了分组字段时填写，例如“分组：课程”“项目：保研”“类别：入党”。不要从标题里擅自截取词语当分组；例如“入党表格填写”的 groupName 必须是空字符串，标题保持“入党表格填写”。
-            6. notes 用于保留上下文、父任务、资料等补充信息；不要把标题、时间、地点重复放进 notes。
-            7. recurrence 用于循环规则：不循环输出 {"enabled":false,"type":"NONE","weeklyDays":[],"endDate":null}；明确写了每天/每周/每月/每年且能确定截止日期时才设置 enabled=true，type 可用 DAILY、WEEKLY、MONTHLY_NTH_WEEKDAY、MONTHLY_DAY、YEARLY_DATE、YEARLY_LUNAR_DATE；每周循环 weeklyDays 用 1-7 表示周一到周日；没有截止日期时不要启用循环，只在 message 提醒用户导入后设置。
+            6. notes 用于保留上下文、父任务、资料等补充信息；不要把标题、时间、地点重复放进 notes。原文出现“备注：...”或“备注:...”时，把冒号后面的内容逐字放进 notes，保留中文标点、全角符号和原文措辞，不要把“，”改成“,”。
+            7. recurrence 用于循环规则：不循环输出 {"enabled":false,"type":"NONE","weeklyDays":[],"endDate":null}；明确写了每天/每周/每月/每年且能确定截止日期时才设置 enabled=true，type 可用 DAILY、WEEKLY、MONTHLY_NTH_WEEKDAY、MONTHLY_DAY、YEARLY_DATE、YEARLY_LUNAR_DATE；每周循环 weeklyDays 用 1-7 表示周一到周日；没有截止日期时不要启用循环，只在 message 提醒用户导入后设置。日期范围要识别为循环：例如“06-22~06-24 19:00-21:00 【合唱】省赛排练 @学生发展中心111”表示 2026-06-22、06-23、06-24 每天 19:00-21:00，输出一个 event，startAt 为 2026-06-22T19:00:00，endAt 为 2026-06-22T21:00:00，recurrence={"enabled":true,"type":"DAILY","weeklyDays":[],"endDate":"2026-06-24"}，title 不要包含“06-22~06-24”。
             8. 已完成、已导入、明显只是标题/说明的内容可以输出 type="skip"。
             9. 不要编造用户没写的具体日期时间；如果无法确定具体时间，todo 的 dueAt 设为 null，event 不要输出或输出 skip。
             10. 相对日期要按今天 $today 解析，例如“今天/明天/后天/周五”。“晚上交材料”如有明确日期上下文，可以按 22:00；“上午”按 12:00，“下午”按 17:00，“早上”按 09:00。

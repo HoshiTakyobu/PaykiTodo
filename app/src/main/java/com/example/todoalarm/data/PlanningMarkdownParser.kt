@@ -145,23 +145,28 @@ object PlanningMarkdownParser {
             val location = event.location.ifBlank { extractLocation(content) }
             val warnings = mutableListOf<String>()
             if (event.defaultToday) warnings += "未写日期，默认今天。"
-            val importBlocked = reminder.any { offset -> !event.startAt.minusMinutes(offset.toLong()).isAfter(now) }
-            if (importBlocked) warnings += "提醒时间已经过去，请调整日期或提醒时间后再导入。"
+            val pastReminder = reminder.any { offset -> !event.startAt.minusMinutes(offset.toLong()).isAfter(now) }
+            if (pastReminder) warnings += "已过去的提醒不会补发；导入后只安排未来提醒。"
+            val notes = listOfNotNull(
+                parentTitle?.let { "所属大任务：$it" },
+                event.notes.takeIf { it.isNotBlank() }
+            ).joinToString("\n")
             return PlanningParsedCandidate(
                 id = "line-$lineNumber",
                 lineNumber = lineNumber,
                 sourceLine = sourceLine,
                 type = PlanningParsedType.EVENT,
                 title = title,
-                notes = parentTitle?.let { "所属大任务：$it" }.orEmpty(),
+                notes = notes,
                 location = location,
                 groupName = group,
                 startAt = event.startAt,
                 endAt = event.endAt,
                 reminderOffsetsMinutes = reminder,
+                recurrence = event.recurrence,
                 createLinkedTodo = false,
                 defaultToday = event.defaultToday,
-                importBlocked = importBlocked,
+                importBlocked = false,
                 parentTitle = parentTitle,
                 message = warnings.joinToString("；")
             )
@@ -432,11 +437,19 @@ object PlanningMarkdownParser {
     }
 
     private fun parseNaturalEvent(text: String, dateContext: LocalDate?, now: LocalDateTime): ParsedNaturalEvent? {
-        val trimmed = normalizeSyntaxText(text).trim()
-        val leadingDate = parseLeadingDate(trimmed, now.toLocalDate())
-        val date = leadingDate?.date ?: dateContext ?: now.toLocalDate()
-        val defaultToday = leadingDate == null && dateContext == null
-        val rest = leadingDate?.rest?.trimStart() ?: trimmed
+        val rawTrimmed = text.trim()
+        val trimmed = normalizeSyntaxText(rawTrimmed)
+        val leadingRange = parseLeadingDateRange(trimmed, now.toLocalDate())
+        val leadingDate = if (leadingRange == null) parseLeadingDate(trimmed, now.toLocalDate()) else null
+        val date = leadingRange?.startDate ?: leadingDate?.date ?: dateContext ?: now.toLocalDate()
+        val defaultToday = leadingRange == null && leadingDate == null && dateContext == null
+        val rest = leadingRange?.rest?.trimStart() ?: leadingDate?.rest?.trimStart() ?: trimmed
+        val rawRestStart = when {
+            leadingRange != null -> leadingRange.restStartIndex
+            leadingDate != null -> trimmed.length - leadingDate.rest.length
+            else -> 0
+        }.coerceIn(0, rawTrimmed.length)
+        val rawRest = rawTrimmed.substring(rawRestStart).trimStart()
         val match = TimeRangeRegex.find(rest) ?: return null
         val startTime = parseTimeToken(match.groupValues[1]) ?: return null
         val endNextDay = match.groupValues[2].isNotBlank()
@@ -447,18 +460,45 @@ object PlanningMarkdownParser {
             endAt = endAt.plusDays(1)
         }
         val titleSource = listOf(
-            rest.substring(0, match.range.first).trim(),
-            rest.substring(match.range.last + 1).trim()
+            rawRest.substring(0, match.range.first).trim(),
+            rawRest.substring(match.range.last + 1).trim()
         ).filter { it.isNotBlank() }.joinToString(" ")
-        val titleLocation = splitTitleAndLocation(titleSource)
+        val titleNotes = splitTitleAndNotes(titleSource)
+        val titleLocation = splitTitleAndLocation(titleNotes.title)
+        val recurrence = if (leadingRange != null && !leadingRange.endDate.isEqual(leadingRange.startDate)) {
+            RecurrenceConfig(
+                enabled = true,
+                type = RecurrenceType.DAILY,
+                endDate = leadingRange.endDate
+            )
+        } else {
+            RecurrenceConfig()
+        }
         return ParsedNaturalEvent(
             startAt = startAt,
             endAt = endAt,
             title = cleanTitle(titleLocation.title),
             location = titleLocation.location,
+            notes = titleNotes.notes,
             matchedText = rest.substring(match.range),
-            defaultToday = defaultToday
+            defaultToday = defaultToday,
+            recurrence = recurrence
         )
+    }
+
+    private fun parseLeadingDateRange(text: String, today: LocalDate): ParsedLeadingDateRange? {
+        val firstMatch = LeadingDateRegex.find(text)?.takeIf { it.range.first == 0 } ?: return null
+        val afterFirst = text.substring(firstMatch.range.last + 1)
+        val separator = DateRangeSeparatorRegex.find(afterFirst)?.takeIf { it.range.first == 0 } ?: return null
+        val afterSeparator = afterFirst.substring(separator.range.last + 1)
+        val secondMatch = LeadingDateRegex.find(afterSeparator)?.takeIf { it.range.first == 0 } ?: return null
+        val rest = afterSeparator.substring(secondMatch.range.last + 1)
+        if (!isLeadingDateBoundary(rest)) return null
+        val start = parseDateExpression(firstMatch.value.trim(), today)?.date ?: return null
+        val end = parseDateExpression(secondMatch.value.trim(), today)?.date ?: return null
+        if (end.isBefore(start)) return null
+        val restStartIndex = firstMatch.value.length + separator.value.length + secondMatch.value.length
+        return ParsedLeadingDateRange(start, end, rest, restStartIndex)
     }
 
     private fun parseLeadingDate(text: String, today: LocalDate): ParsedLeadingDate? {
@@ -626,6 +666,16 @@ object PlanningMarkdownParser {
         return TitleLocation(title = text)
     }
 
+    private fun splitTitleAndNotes(raw: String): TitleNotes {
+        val text = raw.trim()
+        val match = NotesMarkerRegex.find(text) ?: return TitleNotes(title = text)
+        val title = text.substring(0, match.range.first)
+            .trim()
+            .trim(',', '，', '；', ';')
+        val notes = match.groupValues[1].trim()
+        return TitleNotes(title = title, notes = notes)
+    }
+
     private fun splitBareOrderedLocation(text: String): TitleLocation? {
         val separated = text
             .split(',', '，', '；', ';')
@@ -752,17 +802,29 @@ object PlanningMarkdownParser {
     private data class ParsedPlainListBullet(val indentLevel: Int, val content: String)
     private data class ParsedDate(val date: LocalDate)
     private data class ParsedLeadingDate(val date: LocalDate, val rest: String)
+    private data class ParsedLeadingDateRange(
+        val startDate: LocalDate,
+        val endDate: LocalDate,
+        val rest: String,
+        val restStartIndex: Int
+    )
     private data class ParsedNaturalEvent(
         val startAt: LocalDateTime,
         val endAt: LocalDateTime,
         val title: String,
         val location: String,
+        val notes: String,
         val matchedText: String,
-        val defaultToday: Boolean
+        val defaultToday: Boolean,
+        val recurrence: RecurrenceConfig
     )
     private data class TitleLocation(
         val title: String = "",
         val location: String = ""
+    )
+    private data class TitleNotes(
+        val title: String = "",
+        val notes: String = ""
     )
 
     private val HeadingRegex = Regex("^#{1,6}\\s+(.+)$")
@@ -777,12 +839,14 @@ object PlanningMarkdownParser {
     private val TimeTokenPattern = "(?:凌晨|早上|上午|中午|下午|晚上)?\\s*\\d{1,2}[:：]\\d{2}\\s*(?:[aApP][mM])?"
     private val TimeRangeRegex = Regex("($TimeTokenPattern)\\s*(?:-|~|至|到)\\s*(次日)?($TimeTokenPattern)")
     private val LeadingDateRegex = Regex("^(今天|今日|明天|明日|后天|周[一二三四五六日天]|星期[一二三四五六日天]|礼拜[一二三四五六日天]|\\d{4}[-./]\\d{1,2}[-./]\\d{1,2}|\\d{4}年\\d{1,2}月\\d{1,2}日?|\\d{1,2}[-./]\\d{1,2}|\\d{1,2}月\\d{1,2}日?)")
+    private val DateRangeSeparatorRegex = Regex("^\\s*(?:-|~|至|到)\\s*")
     private val BareDdlRegex = Regex("(?:^|\\s)ddl\\s+([^#]+)", RegexOption.IGNORE_CASE)
     private val DdlKeywordRegex = Regex("(截止|deadline|ddl)", RegexOption.IGNORE_CASE)
     private val DdlMarkerRegex = Regex("[【\\[]\\s*(DDL|deadline|截止)\\s*[】\\]]", RegexOption.IGNORE_CASE)
     private val InlineLocationRegex = Regex("(?:^|[\\s,，；;])(@[^\\s#\"'“”‘’，,；;]+)")
     private val QuotedLocationRegex = Regex("[\"“”'‘’](@[^\"“”'‘’#]+)[\"“”'‘’]")
     private val NamedLocationRegex = Regex("(?:^|[\\s,，；;])(地点|location|loc|place)\\s*[:：]\\s*(\"[^\"]+\"|“[^”]+”|'[^']+'|‘[^’]+’|[^#，,；;]+)", RegexOption.IGNORE_CASE)
+    private val NotesMarkerRegex = Regex("(?:^|[\\s,，；;])备注\\s*[:：]\\s*([\\s\\S]*)$")
     private val BareLocationLikeRegex = Regex("(楼|馆|室|教室|实验室|图书馆|主楼|校区|操场|食堂|会议室|[A-Za-z]+\\d|\\d+楼)")
     private val BeforeTimeRegex = Regex("(\\d{1,2})(?::(\\d{2})|点)(?:前|之前)")
     private val ChineseDayPeriodRegex = Regex("(早上|上午|中午|下午|晚上)")

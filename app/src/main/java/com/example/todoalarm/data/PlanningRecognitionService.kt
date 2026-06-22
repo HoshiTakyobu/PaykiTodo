@@ -21,7 +21,6 @@ object PlanningRecognitionService {
         if (enabledProviders.isEmpty()) {
             return localResult.copy(message = "AI 配置未完整，已使用本地规则")
         }
-        if (shouldUseLocalPlanningResult(markdown, localResult)) return localResult
         return try {
             PlanningAiRecognizer.recognize(markdown = markdown, providers = enabledProviders, now = now)
         } catch (error: CancellationException) {
@@ -43,34 +42,3 @@ object PlanningRecognitionService {
         }
     }
 }
-
-internal fun shouldUseLocalPlanningResult(markdown: String, localResult: PlanningParseResult): Boolean {
-    if (localResult.candidates.isEmpty()) return false
-    val coveredLines = localResult.candidates.map { it.lineNumber }.toSet()
-    val actionableLines = markdown
-        .replace("\r\n", "\n")
-        .replace('\r', '\n')
-        .lines()
-        .mapIndexedNotNull { index, rawLine ->
-            val trimmed = rawLine.trim()
-            when {
-                trimmed.isBlank() -> null
-                PlanningRecognitionHeadingRegex.matches(trimmed) -> null
-                else -> index + 1
-            }
-        }
-    if (actionableLines.isEmpty() || actionableLines.any { it !in coveredLines }) return false
-    val coveredCandidates = localResult.candidates.filter { it.lineNumber in actionableLines }
-    return coveredCandidates.none { it.isLowConfidencePlanningFallback() }
-}
-
-private fun PlanningParsedCandidate.isLowConfidencePlanningFallback(): Boolean {
-    return type == PlanningParsedType.TODO &&
-        dueAt == null &&
-        startAt == null &&
-        endAt == null &&
-        reminderOffsetsMinutes.isEmpty() &&
-        message.contains("未写 DDL")
-}
-
-private val PlanningRecognitionHeadingRegex = Regex("#{1,6}\\s+.+")

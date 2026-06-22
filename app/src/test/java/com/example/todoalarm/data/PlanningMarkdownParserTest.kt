@@ -63,6 +63,43 @@ class PlanningMarkdownParserTest {
     }
 
     @Test
+    fun parsesLeadingDateRangeAsDailyRecurringEventAndAllowsHistoricalImport() {
+        val result = PlanningMarkdownParser.parse(
+            "06-22~06-24 19:00-21:00 【合唱】省赛排练 @学生发展中心111",
+            now = LocalDateTime.of(2026, 6, 22, 22, 0)
+        )
+
+        val event = result.candidates.single()
+        assertEquals(PlanningParsedType.EVENT, event.type)
+        assertEquals("【合唱】省赛排练", event.title)
+        assertEquals("@学生发展中心111", event.location)
+        assertEquals(LocalDateTime.of(2026, 6, 22, 19, 0), event.startAt)
+        assertEquals(LocalDateTime.of(2026, 6, 22, 21, 0), event.endAt)
+        assertTrue(event.recurrence.enabled)
+        assertEquals(RecurrenceType.DAILY, event.recurrence.type)
+        assertEquals(LocalDate.of(2026, 6, 24), event.recurrence.endDate)
+        assertFalse(event.importBlocked)
+        assertTrue(event.importable)
+        assertTrue(event.message.contains("已过去的提醒不会补发"))
+    }
+
+    @Test
+    fun parsesNaturalEventNotesWithoutNormalizingChinesePunctuation() {
+        val result = PlanningMarkdownParser.parse(
+            "06-24 10:00-12:00 【党】转正与发展大会 @MB-B1-501 备注：请正式党员们务必参加，预备党员无特殊情况参加，如不能参加请私信请假",
+            now = LocalDateTime.of(2026, 6, 22, 22, 0)
+        )
+
+        val event = result.candidates.single()
+        assertEquals(PlanningParsedType.EVENT, event.type)
+        assertEquals("【党】转正与发展大会", event.title)
+        assertEquals("@MB-B1-501", event.location)
+        assertEquals("请正式党员们务必参加，预备党员无特殊情况参加，如不能参加请私信请假", event.notes)
+        assertEquals(LocalDateTime.of(2026, 6, 24, 10, 0), event.startAt)
+        assertEquals(LocalDateTime.of(2026, 6, 24, 12, 0), event.endAt)
+    }
+
+    @Test
     fun explicitDdlTakesPrecedenceOverNaturalScheduleText() {
         val result = PlanningMarkdownParser.parse(
             "会议 9:00-10:00 讨论 ddl 5.28",

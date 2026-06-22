@@ -623,7 +623,12 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
                     scope = RecurrenceScope.CURRENT,
                     allowPastDueAtWithoutReminder = true
                 )
-                PlanningParsedType.EVENT -> validateCalendarDraft(candidate.toEventDraft(groups), null, RecurrenceScope.CURRENT)
+                PlanningParsedType.EVENT -> validateCalendarDraft(
+                    draft = candidate.toEventDraft(groups),
+                    original = null,
+                    scope = RecurrenceScope.CURRENT,
+                    allowPastReminderTriggers = true
+                )
                 else -> null
             }?.let { return PlanningImportResult(message = "第 ${index + 1} 条：$it") }
         }
@@ -1537,7 +1542,8 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
     private fun validateCalendarDraft(
         draft: CalendarEventDraft,
         original: TodoItem?,
-        scope: RecurrenceScope
+        scope: RecurrenceScope,
+        allowPastReminderTriggers: Boolean = false
     ): String? {
         if (draft.title.isBlank()) return "日程标题不能为空"
         val now = System.currentTimeMillis()
@@ -1554,7 +1560,7 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
             return "提醒时间不能为负数"
         }
         val reminderAtMillis = draft.reminderTriggerTimesMillis()
-        if (reminderAtMillis.any { it <= now }) {
+        if (!allowPastReminderTriggers && reminderAtMillis.any { it <= now }) {
             return "提醒时间必须晚于当前时间"
         }
 

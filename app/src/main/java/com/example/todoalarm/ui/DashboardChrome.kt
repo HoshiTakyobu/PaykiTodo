@@ -1435,11 +1435,17 @@ private fun CountdownTargetRow(
         border = BorderStroke(0.8.dp, accent.copy(alpha = 0.32f))
     ) {
         Row(
-            modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
+            modifier = Modifier
+                .height(IntrinsicSize.Min)
+                .padding(horizontal = 10.dp, vertical = 8.dp),
             horizontalArrangement = Arrangement.spacedBy(10.dp),
-            verticalAlignment = Alignment.Top
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Column(
+                modifier = Modifier.widthIn(min = 52.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
+            ) {
                 Text(
                     text = remaining.primary,
                     color = accent,
@@ -1459,7 +1465,7 @@ private fun CountdownTargetRow(
             Box(
                 modifier = Modifier
                     .width(3.dp)
-                    .height(38.dp)
+                    .fillMaxHeight()
                     .background(accent, RoundedCornerShape(999.dp))
             )
             Column(

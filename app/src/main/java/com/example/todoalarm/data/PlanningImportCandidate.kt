@@ -56,7 +56,6 @@ data class PlanningImportCandidate(
                 val start = startAt ?: return "日程开始时间不能为空"
                 val end = endAt ?: return "日程结束时间不能为空"
                 if (!end.isAfter(start)) return "日程结束时间必须晚于开始时间"
-                if (offsets.any { !start.minusMinutes(it.toLong()).isAfter(now) }) return "提醒时间必须晚于当前时间"
                 recurrenceError(anchor = start, label = "循环日程")?.let { return it }
                 null
             }

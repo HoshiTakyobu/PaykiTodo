@@ -235,4 +235,64 @@ class PlanningAiRecognizerTest {
         assertEquals("@图书馆3楼", event.location)
         assertFalse(event.createLinkedTodo)
     }
+
+    @Test
+    fun aiPastEventWithReminderStaysImportableAndWarnsNoBackfill() {
+        val result = PlanningAiRecognizer.parseAiContent(
+            content = """
+                {
+                  "items": [
+                    {
+                      "type": "event",
+                      "lineNumber": 1,
+                      "sourceLine": "06-22 19:00-21:00 【合唱】省赛排练 @学生发展中心111",
+                      "title": "【合唱】省赛排练",
+                      "location": "@学生发展中心111",
+                      "startAt": "2026-06-22T19:00:00",
+                      "endAt": "2026-06-22T21:00:00",
+                      "reminderOffsetsMinutes": [5]
+                    }
+                  ]
+                }
+            """.trimIndent(),
+            originalMarkdown = "06-22 19:00-21:00 【合唱】省赛排练 @学生发展中心111",
+            providerName = "TestAI",
+            now = LocalDateTime.of(2026, 6, 22, 22, 0)
+        )
+
+        val event = result.candidates.single()
+        assertEquals(PlanningParsedType.EVENT, event.type)
+        assertFalse(event.importBlocked)
+        assertTrue(event.importable)
+        assertTrue(event.message.contains("已过去的提醒不会补发"))
+    }
+
+    @Test
+    fun aiNotesPreserveOriginalChinesePunctuation() {
+        val note = "请正式党员们务必参加，预备党员无特殊情况参加，如不能参加请私信请假"
+        val result = PlanningAiRecognizer.parseAiContent(
+            content = """
+                {
+                  "items": [
+                    {
+                      "type": "event",
+                      "lineNumber": 1,
+                      "sourceLine": "06-24 10:00-12:00 【党】转正与发展大会 @MB-B1-501 备注：$note",
+                      "title": "【党】转正与发展大会",
+                      "notes": "$note",
+                      "location": "@MB-B1-501",
+                      "startAt": "2026-06-24T10:00:00",
+                      "endAt": "2026-06-24T12:00:00"
+                    }
+                  ]
+                }
+            """.trimIndent(),
+            originalMarkdown = "06-24 10:00-12:00 【党】转正与发展大会 @MB-B1-501 备注：$note",
+            providerName = "TestAI",
+            now = LocalDateTime.of(2026, 6, 22, 22, 0)
+        )
+
+        val event = result.candidates.single()
+        assertEquals(note, event.notes)
+    }
 }

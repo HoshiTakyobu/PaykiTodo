@@ -1,6 +1,7 @@
 package com.example.todoalarm.alarm
 
 import android.app.Notification
+import android.app.NotificationManager
 import android.app.Service
 import android.content.BroadcastReceiver
 import android.content.Context
@@ -245,15 +246,20 @@ class ReminderForegroundService : Service() {
 
     private fun attemptFullscreenReminder(todoId: Long, force: Boolean = false) {
         ActiveReminderStore.refreshActive(this, todoId)
+        val locked = isDeviceLocked()
+        val fullScreenIntentAllowed = canUseFullScreenIntent()
         ReminderChainLogger.log(
             context = this,
             todoId = todoId,
             source = "ReminderForegroundService",
             stage = ReminderChainStage.FULLSCREEN_ATTEMPT,
-            status = ReminderChainStatus.INFO,
-            message = if (isDeviceLocked()) "locked" else "unlocked"
+            status = if (fullScreenIntentAllowed) ReminderChainStatus.INFO else ReminderChainStatus.WARN,
+            message = "locked=$locked; fullScreenIntentAllowed=$fullScreenIntentAllowed"
         )
-        if (isDeviceLocked()) {
+        if (!fullScreenIntentAllowed) {
+            triggerAccessibilityOverlay(todoId, forceOverlay = locked)
+        }
+        if (locked) {
             ActiveReminderStore.clearActivityHandoff(this, todoId)
             val overlayShown = ReminderAccessibilityService.showOverlayNow(todoId, forceOverlay = true)
             triggerAccessibilityOverlay(todoId, forceOverlay = true)
@@ -300,7 +306,6 @@ class ReminderForegroundService : Service() {
         ActiveReminderStore.markActivityHandoff(this, todoId)
         runCatching {
             startActivity(com.example.todoalarm.ui.ReminderActivity.createIntent(this, todoId))
-            ActiveReminderStore.markReminderSurfaceShown(this, todoId)
             ReminderChainLogger.log(
                 context = this,
                 todoId = todoId,
@@ -322,6 +327,12 @@ class ReminderForegroundService : Service() {
             ReminderAccessibilityService.showOverlayNow(todoId, forceOverlay = forceOverlay)
             triggerAccessibilityOverlay(todoId, forceOverlay = forceOverlay)
         }
+    }
+
+    private fun canUseFullScreenIntent(): Boolean {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.UPSIDE_DOWN_CAKE) return true
+        val notificationManager = getSystemService(NotificationManager::class.java) ?: return true
+        return notificationManager.canUseFullScreenIntent()
     }
 
     private fun ensureUserPresentReceiver() {

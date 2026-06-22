@@ -30,7 +30,7 @@ class PlanningImportCandidateTest {
     }
 
     @Test
-    fun pastEventWithPastReminderStillRequiresAdjustment() {
+    fun pastEventWithPastReminderCanBeImportedWithoutBackfillingOldReminder() {
         val candidate = PlanningImportCandidate(
             id = "event-2",
             lineNumber = 1,
@@ -44,7 +44,8 @@ class PlanningImportCandidateTest {
             reminderInputText = "5"
         )
 
-        assertTrue(candidate.validate(now).orEmpty().contains("提醒时间必须晚于当前时间"))
+        assertNull(candidate.validate(now))
+        assertEquals(listOf(5), candidate.normalizedReminderOffsets())
     }
 
     @Test

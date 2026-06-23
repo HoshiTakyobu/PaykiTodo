@@ -8,8 +8,8 @@
 - Target platform: Android 14 / API 34
 - License: MIT License (`LICENSE`)
 - Current version in code:
-  - `versionName = "1.14.16"`
-  - `versionCode = 336`
+  - `versionName = "1.14.17"`
+  - `versionCode = 337`
   - database version = `28`
 
 ## Current Build Facts
@@ -19,7 +19,13 @@
 - Latest GitHub Release:
   - `https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.14.12`
 - Latest fully built debug APK:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.14.16-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.14.17-debug.apk`
+- Current `1.14.17 / versionCode 337` status:
+  - Settings -> Desktop Sync no longer crashes when enabling sync on ROMs that reject network-state inspection: the manifest declares `ACCESS_NETWORK_STATE`, Wi-Fi / hotspot address detection is exception-safe, and failed inspection now produces a status hint instead of a process crash.
+  - Desktop Sync enable now rolls back the setting if foreground-service startup fails, so the settings surface stays usable instead of exiting.
+  - Local Codex resume state was normalized so only the main `【开发】PaykiTodo` entry remains active; old PaykiTodo side threads were archived after backing up the local state files.
+  - Database version remains `28`; no Room schema migration was added. Changed: Android manifest, Desktop Sync status/address inspection, ViewModel enable path, version metadata, README, changelog, current docs.
+  - Verification passed: `./gradlew.bat --no-daemon :app:compileDebugKotlin`; `./gradlew.bat --no-daemon :app:testDebugUnitTest`; `node --check app/src/main/assets/desktop-web/app.js`; `git diff --check`; `./gradlew.bat --no-daemon :app:assembleDebug`; APK metadata inspection for `versionName = 1.14.17`, `versionCode = 337`, output `PaykiTodo-1.14.17-debug.apk`.
 - Current `1.14.16 / versionCode 336` status:
   - Ongoing event notifications now set explicit RemoteViews text colors in code, call `setColorized(false)`, and avoid the decorated custom big-content style to reduce unreadable white/gray text on light OEM notification panels.
   - Desktop Web sidebar now separates `每日看板` and `待办`; the board remains a lightweight overview, while the todo tab directly loads the paged searchable todo management list.

@@ -1173,8 +1173,13 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
     fun updateDesktopSyncEnabled(enabled: Boolean) {
         settingsStore.updateDesktopSyncEnabled(enabled)
         if (enabled) {
-            DesktopSyncService.start(app)
-            app.desktopSyncCoordinator.ensureRunning()
+            runCatching {
+                DesktopSyncService.start(app)
+                app.desktopSyncCoordinator.ensureRunning()
+            }.onFailure {
+                app.desktopSyncCoordinator.stop()
+                settingsStore.updateDesktopSyncEnabled(false)
+            }
         } else {
             app.stopService(Intent(app, DesktopSyncService::class.java))
             app.desktopSyncCoordinator.stop()

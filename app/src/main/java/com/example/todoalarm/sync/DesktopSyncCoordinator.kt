@@ -125,7 +125,12 @@ class DesktopSyncCoordinator(
         } else {
             null
         }
-        val networkAddresses = if (enabledAndRunning) currentLocalNetworkAddresses() else LocalNetworkAddresses()
+        val networkAddresses = if (enabledAndRunning) {
+            runCatching { currentLocalNetworkAddresses() }
+                .getOrElse { LocalNetworkAddresses.networkInspectionUnavailable() }
+        } else {
+            LocalNetworkAddresses()
+        }
         return settings.toDesktopSyncStatus(
             running = enabledAndRunning,
             port = port,
@@ -1280,18 +1285,20 @@ class DesktopSyncCoordinator(
     }
 
     private fun activeWifiIpv4Addresses(): List<String> {
-        val manager = context.getSystemService(ConnectivityManager::class.java) ?: return emptyList()
-        val network = manager.activeNetwork ?: return emptyList()
-        val capabilities = manager.getNetworkCapabilities(network) ?: return emptyList()
-        if (!capabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)) return emptyList()
-        val linkProperties = manager.getLinkProperties(network) ?: return emptyList()
-        return linkProperties.linkAddresses
-            .mapNotNull { it.address as? Inet4Address }
-            .filterNot { it.isLoopbackAddress }
-            .mapNotNull { it.hostAddress }
-            .filter { it.isNotBlank() }
-            .distinct()
-            .sortedWith(compareBy<String> { ipv4Priority(it) }.thenBy { it })
+        return runCatching {
+            val manager = context.getSystemService(ConnectivityManager::class.java) ?: return emptyList()
+            val network = manager.activeNetwork ?: return emptyList()
+            val capabilities = manager.getNetworkCapabilities(network) ?: return emptyList()
+            if (!capabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)) return emptyList()
+            val linkProperties = manager.getLinkProperties(network) ?: return emptyList()
+            linkProperties.linkAddresses
+                .mapNotNull { it.address as? Inet4Address }
+                .filterNot { it.isLoopbackAddress }
+                .mapNotNull { it.hostAddress }
+                .filter { it.isNotBlank() }
+                .distinct()
+                .sortedWith(compareBy<String> { ipv4Priority(it) }.thenBy { it })
+        }.getOrDefault(emptyList())
     }
 
     private fun shareableInterfaceIpv4Addresses(): List<String> {
@@ -1335,7 +1342,17 @@ class DesktopSyncCoordinator(
         val ipAddresses: List<String> = emptyList(),
         val localNetworkAvailable: Boolean = false,
         val hint: String = ""
-    )
+    ) {
+        companion object {
+            fun networkInspectionUnavailable(): LocalNetworkAddresses {
+                return LocalNetworkAddresses(
+                    ipAddresses = emptyList(),
+                    localNetworkAvailable = false,
+                    hint = "电脑同步服务已启动，但当前系统暂时无法读取局域网地址；请确认网络状态权限和 Wi-Fi/热点状态后重试。"
+                )
+            }
+        }
+    }
 }
 
 private fun JSONObject.optStringOrNull(key: String): String? {

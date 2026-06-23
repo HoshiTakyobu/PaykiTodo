@@ -345,6 +345,7 @@ This file tracks the product at a practical level for new coding sessions.
 - desktop sync service auto-disables itself after 5 minutes without an authorized desktop heartbeat, covering both "电脑未输入密钥" and "已连接后断开" cases; desktop Web sends a 60-second authorized heartbeat after connection
 - desktop sync status now exposes authorized-heartbeat freshness and auto-stop countdown to the phone Settings panel, which distinguishes waiting-for-key from connected and refreshes while sync is enabled
 - desktop sync status filters connection addresses to active Wi-Fi or likely hotspot / Ethernet LAN addresses, hiding mobile-data / VPN / virtual-network addresses that ordinary desktop browsers cannot reach
+- desktop sync address/status inspection is permission- and ROM-failure safe: network-state read failures degrade to a status hint and service-start failures roll the setting back instead of crashing Settings
 - desktop sync can keep WiFi and a partial wake lock while the foreground service is running; the default-on `桌面同步期间保持网络唤醒` setting is surfaced in Settings and reflected in the foreground notification copy
 - desktop web has a `规划台` tab with a memo-style textarea editor, document selector, auto-save, `Ctrl+S` save, `Ctrl+Enter` parse, editable parse preview, selected import, and a help modal aligned with the phone-side natural-writing workflow
 - desktop web sidebar separates `每日看板` from an independent `待办` management tab; the board stays a lightweight overview while the todo tab directly loads the paged searchable todo list

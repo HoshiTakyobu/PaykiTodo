@@ -257,7 +257,7 @@ class ReminderForegroundService : Service() {
             message = "locked=$locked; fullScreenIntentAllowed=$fullScreenIntentAllowed"
         )
         if (!fullScreenIntentAllowed) {
-            triggerAccessibilityOverlay(todoId, forceOverlay = locked)
+            triggerAccessibilityOverlay(todoId, forceOverlay = true)
         }
         if (locked) {
             ActiveReminderStore.clearActivityHandoff(this, todoId)
@@ -286,7 +286,11 @@ class ReminderForegroundService : Service() {
             } else {
                 if (!ActiveReminderStore.isActivityHandoffPending(this@ReminderForegroundService, todoId)) return@launch
                 ActiveReminderStore.clearActivityHandoff(this@ReminderForegroundService, todoId)
-                launchReminderActivity(todoId)
+                val overlayShown = ReminderAccessibilityService.showOverlayNow(todoId, forceOverlay = true)
+                triggerAccessibilityOverlay(todoId, forceOverlay = true)
+                if (!overlayShown) {
+                    launchReminderActivity(todoId, force = true)
+                }
             }
         }
     }
@@ -323,9 +327,8 @@ class ReminderForegroundService : Service() {
                 status = ReminderChainStatus.WARN,
                 message = it.javaClass.simpleName
             )
-            val forceOverlay = isDeviceLocked()
-            ReminderAccessibilityService.showOverlayNow(todoId, forceOverlay = forceOverlay)
-            triggerAccessibilityOverlay(todoId, forceOverlay = forceOverlay)
+            ReminderAccessibilityService.showOverlayNow(todoId, forceOverlay = true)
+            triggerAccessibilityOverlay(todoId, forceOverlay = true)
         }
     }
 

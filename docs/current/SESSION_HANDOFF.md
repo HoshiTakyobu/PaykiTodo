@@ -41,9 +41,13 @@ Finish and verify the 1.14.13 fix round for Planning Desk recognition/import, Da
    - `ReminderActivity.onResume` now marks the surface as actually shown, preventing silent Android background-launch blocks from suppressing scheduled retries.
    - Android 14+ full-screen-intent permission state is logged during full-screen attempts.
    - Missing full-screen permission triggers the accessibility fallback broadcast.
+   - If the phone is unlocked and Android leaves the Activity handoff pending, the retry path now forces the accessibility full-screen overlay instead of repeatedly relying on a background Activity launch.
    - Reminder notification channels were moved to v10 to avoid old downgraded channel settings suppressing high-priority delivery.
 
-5. **Version**
+5. **Ongoing event notification readability**
+   - The in-progress schedule notification uses its own light content background and dark text colors, instead of reusing widget white text that was unreadable on light notification shades.
+
+6. **Version**
    - Version metadata is `1.14.13 / versionCode 333`; database version remains `28`.
 
 ## Validation
@@ -60,5 +64,6 @@ Finish and verify the 1.14.13 fix round for Planning Desk recognition/import, Da
 ## Next Session Notes
 
 1. If the user says full-screen still does not pop on the physical phone, ask them to open Settings -> Advanced -> 提醒链路诊断 and check whether the latest log reaches `全屏界面已启动` but not `全屏界面可见`; that distinction now matters.
-2. Android/OEM full-screen behavior still needs physical-device validation. Passing emulator/build tests cannot prove lock-screen or vendor background-launch behavior.
-3. If a configured AI provider returns malformed JSON or bad recurrence fields, local parsing still remains the fallback; do not reintroduce the old “local covers all lines, skip AI” shortcut.
+2. If unlocked reminders still only show a notification, confirm whether PaykiTodo's accessibility service is enabled; the unlocked-over-other-app fallback now depends on that service when Android blocks background Activity launches.
+3. Android/OEM full-screen behavior still needs physical-device validation. Passing emulator/build tests cannot prove lock-screen or vendor background-launch behavior.
+4. If a configured AI provider returns malformed JSON or bad recurrence fields, local parsing still remains the fallback; do not reintroduce the old “local covers all lines, skip AI” shortcut.

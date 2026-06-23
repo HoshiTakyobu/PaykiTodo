@@ -14,4 +14,10 @@
     <color name="widget_todo_green">#4CB782</color>
     <color name="widget_danger">#FF6B6B</color>
     <color name="widget_header">#FFCB6B</color>
+    <color name="notification_ongoing_bg">#F8FAFC</color>
+    <color name="notification_ongoing_stroke">#D9E2EC</color>
+    <color name="notification_ongoing_accent">#B45309</color>
+    <color name="notification_ongoing_title">#111827</color>
+    <color name="notification_ongoing_secondary">#374151</color>
+    <color name="notification_ongoing_muted">#6B7280</color>
 </resources>

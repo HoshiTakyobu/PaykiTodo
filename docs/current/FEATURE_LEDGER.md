@@ -79,6 +79,7 @@ This file tracks the product at a practical level for new coding sessions.
 - alarm mode loops sound and vibration until the user completes, snoozes, cancels, or acknowledges; after 5 minutes it stops continuous ringing, updates the notification to `未处理提醒`, and performs three 30-second retry bursts at 2-minute intervals
 - daily brief notification can be enabled from Settings with a configurable time, defaults to 08:00, summarizes today's todos/events and nearest <=7-day countdown target, and opens the daily board
 - calendar events can show a more visible ongoing notification during the event using channel `ongoing_event_v2`; start/end alarms are restored independently of whether the original reminder time has already passed, and the ongoing schedule notification no longer depends on the event reminder being enabled
+- ongoing event notifications explicitly set RemoteViews text colors in code and avoid the decorated custom big-content style, reducing unreadable white/gray text on OEM light notification panels
 
 ### Board Announcements
 
@@ -346,6 +347,10 @@ This file tracks the product at a practical level for new coding sessions.
 - desktop sync status filters connection addresses to active Wi-Fi or likely hotspot / Ethernet LAN addresses, hiding mobile-data / VPN / virtual-network addresses that ordinary desktop browsers cannot reach
 - desktop sync can keep WiFi and a partial wake lock while the foreground service is running; the default-on `桌面同步期间保持网络唤醒` setting is surfaced in Settings and reflected in the foreground notification copy
 - desktop web has a `规划台` tab with a memo-style textarea editor, document selector, auto-save, `Ctrl+S` save, `Ctrl+Enter` parse, editable parse preview, selected import, and a help modal aligned with the phone-side natural-writing workflow
+- desktop web sidebar separates `每日看板` from an independent `待办` management tab; the board stays a lightweight overview while the todo tab directly loads the paged searchable todo list
+- desktop web calendar timeline supports dragging timed event cards in 15-minute increments across visible day columns; recurring-event drags update the current instance by default, and already-ended event cards fade visually
+- desktop web event color presets render as compact visible swatches rather than full-width modal buttons
+- desktop web recurring todo cards explain that generated instances are intentionally limited to a near-future window while the recurrence template keeps the real end date and replenishes future instances over time
 - desktop web Planning Desk uses phone-local `/api/planning/*` routes, edits the same Room planning notes as the phone UI, saves before switching documents, blocks empty selected imports, keeps imported state in internal mappings instead of writing visible hashtag markers, and reuses the same AI recognition / local fallback path as the phone Planning Desk
 - desktop web Planning Desk now shows the current note title and mapping status preview; legacy refresh/postpone/undo internals remain available behind the sync API but are not the default visible planning entry
 - desktop web Planning Desk create-note, refresh-imported, postpone-imported, and child-node creation flows use PaykiTodo in-app form dialogs instead of browser-native `prompt` / `confirm`; postponement exposes mapped item and scope as dropdowns rather than manual row-number / `1/2/3` input

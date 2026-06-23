@@ -17,7 +17,7 @@ const TODO_PAGE_LIMIT = 80;
 const state = {
   token: '',
   snapshot: null,
-  currentTab: 'todos',
+  currentTab: 'board',
   selectedEventDay: dayKey(new Date()),
   editingTodoId: null,
   editingEventId: null,
@@ -52,6 +52,7 @@ const state = {
   eventRangeStart: null,
   eventRangeEnd: null,
   eventLoadSerial: 0,
+  eventDragSuppressClickUntil: 0,
   eventCheckInLoadSerial: 0,
   desktopHeartbeatTimer: null,
   editingTodoOriginalRecurring: false,
@@ -1031,6 +1032,11 @@ function recurrenceLabel(item) {
   return (labels[item.recurrenceType] || item.recurrenceType) + end;
 }
 
+function recurringWindowHint(item) {
+  if (!item.isRecurring || !item.recurrenceEndDate || item.isHistory) return '';
+  return '循环截止到 ' + item.recurrenceEndDate + '；列表只生成近未来实例，远期实例会随日期推进自动补齐。编辑时可选择“当前及之后”或“整个循环系列”。';
+}
+
 function previewRow(icon, label, value) {
   if (!value) return '';
   return ''
@@ -1121,6 +1127,7 @@ function renderTodoItem(item) {
     +     '<div class="timeline-card-meta">' + escapeHtml(meta || '无附加信息') + '</div>'
     +     (item.notes ? '<div class="timeline-card-notes">' + escapeHtml(item.notes) + '</div>' : '')
     +     '<div class="timeline-card-meta">' + escapeHtml(reminderText(item)) + '</div>'
+    +     (recurringWindowHint(item) ? '<div class="timeline-card-meta recurring-hint">' + escapeHtml(recurringWindowHint(item)) + '</div>' : '')
     +   '</button>'
     + '</article>';
 }
@@ -1274,13 +1281,124 @@ function renderEventCard(segment) {
   const item = segment.item;
   const accent = item.accentColorHex || item.groupColorHex || '#4e87e1';
   const meta = [item.groupName || '未分组', item.location || '', item.isRecurring ? '循环' : ''].filter(Boolean).join(' · ');
+  const classes = ['event-card'];
+  if (eventEnd(item) <= Date.now()) classes.push('past-event');
   return ''
-    + '<article class="event-card" role="button" tabindex="0" aria-label="编辑日程：' + escapeHtml(item.title) + '" data-event-id="' + escapeHtml(String(item.id ?? '')) + '" style="--accent:' + accent + ';top:' + segment.top + 'px;height:' + segment.height + 'px">'
+    + '<article class="' + classes.join(' ') + '" role="button" tabindex="0" aria-label="编辑日程：' + escapeHtml(item.title) + '" data-event-id="' + escapeHtml(String(item.id ?? '')) + '" style="--accent:' + accent + ';top:' + segment.top + 'px;height:' + segment.height + 'px">'
     +   '<div class="event-card-title">' + escapeHtml(item.title) + '</div>'
     +   '<div class="event-card-meta">' + escapeHtml(segment.startLabel) + ' - ' + escapeHtml(segment.endLabel) + '</div>'
     +   '<div class="event-card-meta">' + escapeHtml(meta || '定时日程') + '</div>'
     +   (item.notes ? '<div class="event-card-notes">' + escapeHtml(item.notes) + '</div>' : '')
     + '</article>';
+}
+
+function eventPayloadFromItem(item, startMillis, endMillis) {
+  const recurrenceType = item.isRecurring ? (item.recurrenceType || 'NONE') : 'NONE';
+  return {
+    title: item.title || '',
+    groupId: Number(item.groupId || 0),
+    location: item.location || '',
+    notes: item.notes || '',
+    startAt: formatDateTimeLocalValue(startMillis),
+    endAt: formatDateTimeLocalValue(endMillis),
+    allDay: item.allDay === true,
+    accentColorHex: item.accentColorHex || item.groupColorHex || DEFAULT_EVENT_COLOR,
+    reminderOffsetsMinutes: item.reminderEnabled === true ? (item.reminderOffsetsMinutes || []) : [],
+    countdownEnabled: item.countdownEnabled === true,
+    checkInEnabled: item.checkInEnabled === true,
+    ringEnabled: item.ringEnabled !== false,
+    vibrateEnabled: item.vibrateEnabled !== false,
+    reminderDeliveryMode: item.reminderDeliveryMode || 'NOTIFICATION',
+    multiSlotBundleId: item.multiSlotBundleId || null,
+    syncMultiSlotBundleSharedFields: false,
+    scope: 'CURRENT',
+    recurrence: {
+      enabled: item.isRecurring === true && recurrenceType !== 'NONE',
+      type: recurrenceType,
+      weeklyDays: parseWeekdays(item.recurrenceWeekdays),
+      endDate: item.recurrenceEndDate || null
+    }
+  };
+}
+
+async function moveEventByDrag(item, startMillis, endMillis) {
+  if (!item?.id) return;
+  const payload = eventPayloadFromItem(item, startMillis, endMillis);
+  await api('/api/events/' + encodeURIComponent(item.id), { method: 'PUT', body: JSON.stringify(payload) });
+  state.eventsLoaded = false;
+  await ensureEventData();
+  els.status.textContent = '已移动日程到 ' + formatDateTimeLabel(startMillis);
+}
+
+function beginEventDrag(pointerEvent, node) {
+  if (!pointerEvent.isPrimary || pointerEvent.button !== 0) return;
+  const item = findEventById(node.dataset.eventId);
+  if (!item || item.allDay) return;
+  const originalStart = eventStart(item);
+  const originalEnd = eventEnd(item);
+  const duration = Math.max(THIRTY_MINUTES, originalEnd - originalStart);
+  const originRect = node.getBoundingClientRect();
+  const pointerOffsetMinutes = Math.max(0, Math.round(((pointerEvent.clientY - originRect.top) / HOUR_HEIGHT) * 60));
+  const startX = pointerEvent.clientX;
+  const startY = pointerEvent.clientY;
+  let moved = false;
+  let targetStart = originalStart;
+
+  const resolveTargetStart = event => {
+    const column = document.elementFromPoint(event.clientX, event.clientY)?.closest?.('[data-column-day]');
+    if (!column) return targetStart;
+    const rect = column.getBoundingClientRect();
+    const relativeY = Math.max(0, Math.min(rect.height, event.clientY - rect.top));
+    const minutes = Math.max(0, Math.min(24 * 60 - 15, Math.round((relativeY / HOUR_HEIGHT) * 60) - pointerOffsetMinutes));
+    const snappedMinutes = Math.round(minutes / 15) * 15;
+    return dayStartMillis(column.dataset.columnDay) + snappedMinutes * 60 * 1000;
+  };
+
+  const onMove = event => {
+    if (!event.isPrimary) return;
+    const dx = event.clientX - startX;
+    const dy = event.clientY - startY;
+    if (Math.abs(dx) > 4 || Math.abs(dy) > 4) moved = true;
+    if (!moved) return;
+    node.classList.add('dragging');
+    node.style.pointerEvents = 'none';
+    targetStart = resolveTargetStart(event);
+    node.style.transform = 'translate(' + dx + 'px,' + dy + 'px)';
+  };
+
+  const cleanup = () => {
+    node.releasePointerCapture?.(pointerEvent.pointerId);
+    node.removeEventListener('pointermove', onMove);
+    node.removeEventListener('pointerup', onUp);
+    node.removeEventListener('pointercancel', onCancel);
+    node.classList.remove('dragging');
+    node.style.transform = '';
+    node.style.pointerEvents = '';
+  };
+
+  const onCancel = () => cleanup();
+  const onUp = async event => {
+    if (!moved) {
+      cleanup();
+      return;
+    }
+    state.eventDragSuppressClickUntil = Date.now() + 450;
+    targetStart = snapToQuarterHour(resolveTargetStart(event));
+    cleanup();
+    if (targetStart === originalStart) return;
+    try {
+      els.status.textContent = '正在移动日程…';
+      await moveEventByDrag(item, targetStart, targetStart + duration);
+    } catch (error) {
+      els.status.textContent = error.message || '移动日程失败';
+      await ensureEventData().catch(() => {});
+    }
+  };
+
+  node.setPointerCapture?.(pointerEvent.pointerId);
+  node.addEventListener('pointermove', onMove);
+  node.addEventListener('pointerup', onUp);
+  node.addEventListener('pointercancel', onCancel);
 }
 
 function openEventEditorById(id) {
@@ -1302,11 +1420,12 @@ function openEventPreviewById(id) {
 }
 
 function syncTopbar() {
+  const boardMode = state.currentTab === 'board';
   const todoMode = state.currentTab === 'todos';
   const eventMode = state.currentTab === 'events';
-  els.panelTitle.textContent = todoMode ? '每日看板' : eventMode ? '日程时间轴' : '规划台';
-  els.viewCaption.textContent = todoMode ? '桌面端每日看板' : eventMode ? '桌面端日程模式' : '备忘录式规划 / 识别预览';
-  els.openCreate.textContent = todoMode ? '新增待办' : eventMode ? '新增日程' : '新建规划';
+  els.panelTitle.textContent = boardMode ? '每日看板' : todoMode ? '待办' : eventMode ? '日程时间轴' : '规划台';
+  els.viewCaption.textContent = boardMode ? '桌面端每日看板' : todoMode ? '独立待办管理' : eventMode ? '桌面端日程模式' : '备忘录式规划 / 识别预览';
+  els.openCreate.textContent = eventMode ? '新增日程' : todoMode || boardMode ? '新增待办' : '新建规划';
   els.openCreate.classList.toggle('hidden', state.currentTab === 'planning');
   const dataMode = todoMode && state.todosLoaded
     ? '待办按需数据'
@@ -1877,9 +1996,11 @@ function renderEvents() {
     };
   });
   document.querySelectorAll('[data-event-id]').forEach(node => {
+    node.onpointerdown = event => beginEventDrag(event, node);
     node.onclick = event => {
       event.preventDefault();
       event.stopPropagation();
+      if (Date.now() < state.eventDragSuppressClickUntil) return;
       openEventEditorById(node.dataset.eventId);
     };
     node.onkeydown = event => {
@@ -3934,6 +4055,7 @@ function bindActions() {
     node.onclick = event => {
       event.preventDefault();
       event.stopPropagation();
+      if (Date.now() < state.eventDragSuppressClickUntil) return;
       openEventEditorById(node.dataset.eventId);
     };
   });
@@ -4468,6 +4590,7 @@ window.addEventListener('beforeunload', event => {
   event.returnValue = '';
 });
 els.openCreate.onclick = () => {
+  const creatingEvent = state.currentTab === 'events';
   if (state.currentTab === 'events') {
     clearEventForm();
     const start = snapToQuarterHour(Date.now() + THIRTY_MINUTES);
@@ -4475,7 +4598,7 @@ els.openCreate.onclick = () => {
   } else {
     clearTodoForm();
   }
-  openModal(state.currentTab === 'todos' ? 'todo-modal' : 'event-modal');
+  openModal(creatingEvent ? 'event-modal' : 'todo-modal');
 };
 if (els.eventTimeline) {
   els.eventTimeline.addEventListener('click', event => {
@@ -4483,6 +4606,7 @@ if (els.eventTimeline) {
     if (!eventNode) return;
     event.preventDefault();
     event.stopPropagation();
+    if (Date.now() < state.eventDragSuppressClickUntil) return;
     openEventEditorById(eventNode.dataset.eventId);
   });
 }
@@ -4503,6 +4627,10 @@ document.querySelectorAll('[data-tab]').forEach(node => {
         .catch(err => els.status.textContent = err.message);
     } else if (state.currentTab === 'todos') {
       renderTodos();
+      ensureTodoData().catch(err => els.status.textContent = err.message);
+      renderAnnouncements();
+    } else if (state.currentTab === 'board') {
+      renderDesktopDailyBoard();
       renderAnnouncements();
     }
   };

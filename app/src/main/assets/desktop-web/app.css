@@ -501,6 +501,7 @@ button.ghost {
 .pill { flex-shrink: 0; display: inline-flex; align-items: center; padding: 5px 9px; border-radius: 999px; font-size: 12px; font-weight: 800; color: var(--action-secondary-text); background: rgba(91,140,255,.14); }
 .timeline-card-meta, .timeline-card-notes, .event-card-meta, .event-card-notes { font-size: 13px; color: var(--muted); line-height: 1.48; white-space: pre-wrap; word-break: break-word; }
 .timeline-card-notes, .event-card-notes { margin-top: 5px; color: var(--notes-text); }
+.timeline-card-meta.recurring-hint { margin-top: 6px; padding: 7px 9px; border-radius: 12px; background: rgba(53,104,212,.08); color: var(--action-secondary-text); font-weight: 800; }
 .actions { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 10px; }
 .actions button { width: auto; min-width: 64px; padding: 7px 10px; border-radius: 999px; font-size: 12px; border: 1px solid transparent; }
 .actions .secondary { background: rgba(53,104,212,.1); color: var(--action-secondary-text); border-color: rgba(53,104,212,.18); }
@@ -610,7 +611,10 @@ button.ghost {
 .event-all-day-range { font-size: 10px; font-weight: 800; color: var(--muted); white-space: nowrap; }
 .hour-row { position: absolute; left: 0; right: 0; height: var(--hour-height); border-top: 1px solid rgba(188,201,217,.9); pointer-events: none; }
 .half-row { position: absolute; left: 0; right: 0; border-top: 1px dashed rgba(188,201,217,.4); pointer-events: none; }
-.event-card { position: absolute; z-index: 2; left: 7px; right: 7px; min-height: 34px; border-radius: 14px; padding: 7px 9px 7px 11px; border: 1px solid color-mix(in srgb, var(--accent, var(--primary)) 26%, var(--card-border)); border-left: 5px solid var(--accent, var(--primary)); background: color-mix(in srgb, var(--accent, var(--primary)) 13%, #fff); box-shadow: 0 6px 16px rgba(36,57,86,.10); overflow: hidden; cursor: pointer; transition: transform .16s ease, box-shadow .16s ease; animation: card-rise .16s ease-out both; }
+.event-card { position: absolute; z-index: 2; left: 7px; right: 7px; min-height: 34px; border-radius: 14px; padding: 7px 9px 7px 11px; border: 1px solid color-mix(in srgb, var(--accent, var(--primary)) 26%, var(--card-border)); border-left: 5px solid var(--accent, var(--primary)); background: color-mix(in srgb, var(--accent, var(--primary)) 13%, #fff); box-shadow: 0 6px 16px rgba(36,57,86,.10); overflow: hidden; cursor: grab; touch-action: none; transition: transform .16s ease, box-shadow .16s ease, opacity .16s ease, filter .16s ease; animation: card-rise .16s ease-out both; }
+.event-card:active { cursor: grabbing; }
+.event-card.dragging { z-index: 8; opacity: .82; box-shadow: 0 22px 48px rgba(36,57,86,.24); }
+.event-card.past-event { opacity: .46; filter: saturate(.55); }
 .event-card .event-card-meta, .event-card .event-card-notes { font-size: 12px; line-height: 1.35; }
 .current-line { position: absolute; left: 0; right: 0; height: 2px; background: rgba(229,57,53,.88); pointer-events: none; z-index: 4; }
 .current-line.past { background: rgba(229,57,53,.42); }
@@ -749,17 +753,21 @@ button.ghost {
 .weekday-chip:disabled { opacity: .42; cursor: not-allowed; box-shadow: none; }
 .weekday-value-input { display: none !important; }
 .event-color-field { display: flex; flex-direction: column; gap: 10px; }
-.color-swatch-row { display: flex; align-items: center; gap: 9px; flex-wrap: wrap; }
+.color-swatch-row { display: grid; grid-template-columns: repeat(auto-fill, 30px); align-items: center; gap: 9px; }
 .color-swatch {
-  width: 28px;
-  height: 28px;
-  min-width: 28px;
-  padding: 0;
-  border-radius: 50%;
-  border: 2px solid transparent;
-  background: var(--swatch);
+  width: 28px !important;
+  height: 28px !important;
+  min-width: 28px !important;
+  max-width: 28px !important;
+  padding: 0 !important;
+  border-radius: 50% !important;
+  border: 2px solid transparent !important;
+  background: var(--swatch) !important;
+  background-color: var(--swatch) !important;
   box-shadow: inset 0 0 0 1px rgba(255,255,255,.55), 0 4px 12px rgba(0,0,0,.14);
   cursor: pointer;
+  display: inline-block !important;
+  flex: 0 0 28px !important;
   transition: border-color .2s ease, transform .2s ease;
 }
 .color-swatch:hover {

@@ -126,6 +126,8 @@ object OngoingEventNotifier {
         val customContent = ongoingEventViews(context, event, contentText)
         val notification = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_stat_payki_todo)
+            .setColor(ContextCompat.getColor(context, R.color.notification_ongoing_accent))
+            .setColorized(false)
             .setContentTitle("进行中：${event.title}")
             .setContentText(contentText)
             .setSubText(event.location.takeIf { it.isNotBlank() })
@@ -139,9 +141,8 @@ object OngoingEventNotifier {
             .setCategory(NotificationCompat.CATEGORY_EVENT)
             .setVisibility(NotificationCompat.VISIBILITY_PRIVATE)
             .setOnlyAlertOnce(true)
-            .setStyle(NotificationCompat.DecoratedCustomViewStyle())
             .setCustomContentView(customContent)
-            .setCustomBigContentView(customContent)
+            .setCustomHeadsUpContentView(customContent)
             .build()
         NotificationManagerCompat.from(context).notify(notificationId(event.id), notification)
     }
@@ -228,6 +229,10 @@ object OngoingEventNotifier {
 
     private fun ongoingEventViews(context: Context, event: TodoItem, contentText: String): RemoteViews {
         return RemoteViews(context.packageName, R.layout.notification_ongoing_event).apply {
+            setTextColor(R.id.ongoingEventEyebrow, ContextCompat.getColor(context, R.color.notification_ongoing_accent))
+            setTextColor(R.id.ongoingEventTitle, ContextCompat.getColor(context, R.color.notification_ongoing_title))
+            setTextColor(R.id.ongoingEventTime, ContextCompat.getColor(context, R.color.notification_ongoing_secondary))
+            setTextColor(R.id.ongoingEventLocation, ContextCompat.getColor(context, R.color.notification_ongoing_muted))
             setTextViewText(R.id.ongoingEventEyebrow, "进行中日程")
             setTextViewText(R.id.ongoingEventTitle, event.title.ifBlank { "未命名日程" })
             setTextViewText(R.id.ongoingEventTime, contentText)

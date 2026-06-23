@@ -8,8 +8,8 @@
 - Target platform: Android 14 / API 34
 - License: MIT License (`LICENSE`)
 - Current version in code:
-  - `versionName = "1.14.15"`
-  - `versionCode = 335`
+  - `versionName = "1.14.16"`
+  - `versionCode = 336`
   - database version = `28`
 
 ## Current Build Facts
@@ -19,7 +19,15 @@
 - Latest GitHub Release:
   - `https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.14.12`
 - Latest fully built debug APK:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.14.15-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.14.16-debug.apk`
+- Current `1.14.16 / versionCode 336` status:
+  - Ongoing event notifications now set explicit RemoteViews text colors in code, call `setColorized(false)`, and avoid the decorated custom big-content style to reduce unreadable white/gray text on light OEM notification panels.
+  - Desktop Web sidebar now separates `每日看板` and `待办`; the board remains a lightweight overview, while the todo tab directly loads the paged searchable todo management list.
+  - Desktop Web recurring todo cards explain that only near-future instances are generated while the recurrence template keeps the real end date and replenishes future instances as time advances.
+  - Desktop Web calendar timed event cards can be dragged in 15-minute increments across visible day columns; recurring-event drags update the current instance by default, and already-ended events fade visually.
+  - Desktop Web event color presets now render as compact visible swatches rather than full-width blank modal buttons.
+  - Database version remains `28`; no Room schema migration was added. Changed: ongoing event notification builder/RemoteViews, Desktop Web HTML/CSS/JS, version metadata, README, changelog, current docs.
+  - Verification passed: `node --check app/src/main/assets/desktop-web/app.js`; `./gradlew.bat --no-daemon :app:compileDebugKotlin`; `./gradlew.bat --no-daemon :app:testDebugUnitTest`; `git diff --check`; `./gradlew.bat --no-daemon :app:assembleDebug`; APK metadata inspection for `versionName = 1.14.16`, `versionCode = 336`, output `PaykiTodo-1.14.16-debug.apk`.
 - Current `1.14.15 / versionCode 335` status:
   - Planning Desk local parsing now extracts natural reminder clauses such as `提醒时间：提前1h，06-24 22:10` from event lines, converts them to reminder offsets, and keeps the clause out of the event title.
   - The shared reminder parser accepts relative lead-time tokens such as `提前1h`, `提前 30 分钟`, and `提前2天`.

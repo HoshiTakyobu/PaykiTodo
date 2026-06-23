@@ -295,4 +295,34 @@ class PlanningAiRecognizerTest {
         val event = result.candidates.single()
         assertEquals(note, event.notes)
     }
+
+    @Test
+    fun stripsReminderClauseFromAiEventTitleAndParsesOffsetsFromSourceLine() {
+        val result = PlanningAiRecognizer.parseAiContent(
+            content = """
+                {
+                  "items": [
+                    {
+                      "type": "event",
+                      "lineNumber": 1,
+                      "sourceLine": "06-25 14:00-22:00 【合唱】大艺展省赛录音 @成都大学 提醒时间：提前1h，06-24 22:10",
+                      "title": "【合唱】大艺展省赛录音 提醒时间：提前1h，06-24 22:10",
+                      "location": "@成都大学",
+                      "startAt": "2026-06-25T14:00:00",
+                      "endAt": "2026-06-25T22:00:00"
+                    }
+                  ]
+                }
+            """.trimIndent(),
+            originalMarkdown = "06-25 14:00-22:00 【合唱】大艺展省赛录音 @成都大学 提醒时间：提前1h，06-24 22:10",
+            providerName = "TestAI",
+            now = LocalDateTime.of(2026, 6, 23, 12, 0)
+        )
+
+        val event = result.candidates.single()
+        assertEquals("【合唱】大艺展省赛录音", event.title)
+        assertEquals("@成都大学", event.location)
+        assertEquals(listOf(950, 60), event.reminderOffsetsMinutes)
+        assertTrue(event.message.contains("已从原文识别提醒"))
+    }
 }

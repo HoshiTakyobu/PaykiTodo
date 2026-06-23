@@ -1,6 +1,8 @@
 package com.example.todoalarm.sync
 
 import android.content.Context
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
 import com.example.todoalarm.TodoApplication
 import com.example.todoalarm.alarm.ActiveReminderStore
 import com.example.todoalarm.alarm.ReminderDispatchTracker
@@ -123,13 +125,16 @@ class DesktopSyncCoordinator(
         } else {
             null
         }
+        val networkAddresses = if (enabledAndRunning) currentLocalNetworkAddresses() else LocalNetworkAddresses()
         return settings.toDesktopSyncStatus(
             running = enabledAndRunning,
             port = port,
-            ipAddresses = if (enabledAndRunning) currentIpv4Addresses() else emptyList(),
+            ipAddresses = networkAddresses.ipAddresses,
             connected = connected,
             lastAuthorizedAtMillis = lastAuthorizedAt,
-            secondsUntilAutoStop = secondsUntilAutoStop
+            secondsUntilAutoStop = secondsUntilAutoStop,
+            localNetworkAvailable = networkAddresses.localNetworkAvailable,
+            networkHint = networkAddresses.hint
         )
     }
 
@@ -1250,18 +1255,71 @@ class DesktopSyncCoordinator(
             .mapValues { entry -> entry.value.map { it.groupId }.filter { it > 0 }.distinct().sorted() }
     }
 
-    private fun currentIpv4Addresses(): List<String> {
+    private fun currentLocalNetworkAddresses(): LocalNetworkAddresses {
+        val wifiAddresses = activeWifiIpv4Addresses()
+        if (wifiAddresses.isNotEmpty()) {
+            return LocalNetworkAddresses(
+                ipAddresses = wifiAddresses,
+                localNetworkAvailable = true,
+                hint = "已检测到当前 Wi-Fi 局域网地址。"
+            )
+        }
+        val fallbackAddresses = shareableInterfaceIpv4Addresses()
+        if (fallbackAddresses.isNotEmpty()) {
+            return LocalNetworkAddresses(
+                ipAddresses = fallbackAddresses,
+                localNetworkAvailable = true,
+                hint = "未检测到普通 Wi-Fi，但发现疑似热点/以太网局域网地址；如果电脑连接的是手机热点，可尝试这些地址。"
+            )
+        }
+        return LocalNetworkAddresses(
+            ipAddresses = emptyList(),
+            localNetworkAvailable = false,
+            hint = "当前未检测到 Wi-Fi 或热点局域网地址；仅移动数据、VPN 或虚拟网卡地址不会显示，因为电脑通常无法访问。"
+        )
+    }
+
+    private fun activeWifiIpv4Addresses(): List<String> {
+        val manager = context.getSystemService(ConnectivityManager::class.java) ?: return emptyList()
+        val network = manager.activeNetwork ?: return emptyList()
+        val capabilities = manager.getNetworkCapabilities(network) ?: return emptyList()
+        if (!capabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)) return emptyList()
+        val linkProperties = manager.getLinkProperties(network) ?: return emptyList()
+        return linkProperties.linkAddresses
+            .mapNotNull { it.address as? Inet4Address }
+            .filterNot { it.isLoopbackAddress }
+            .mapNotNull { it.hostAddress }
+            .filter { it.isNotBlank() }
+            .distinct()
+            .sortedWith(compareBy<String> { ipv4Priority(it) }.thenBy { it })
+    }
+
+    private fun shareableInterfaceIpv4Addresses(): List<String> {
         return runCatching {
             Collections.list(NetworkInterface.getNetworkInterfaces())
-                .filter { it.isUp && !it.isLoopback }
+                .filter { network ->
+                    network.isUp &&
+                        !network.isLoopback &&
+                        likelyShareableInterface(network.name)
+                }
                 .flatMap { network -> Collections.list(network.inetAddresses) }
                 .filterIsInstance<Inet4Address>()
                 .filterNot { it.isLoopbackAddress }
                 .map { it.hostAddress ?: "" }
                 .filter { it.isNotBlank() }
+                .filter { it.startsWith("192.168.") }
                 .distinct()
                 .sortedWith(compareBy<String> { ipv4Priority(it) }.thenBy { it })
         }.getOrDefault(emptyList())
+    }
+
+    private fun likelyShareableInterface(name: String): Boolean {
+        val normalized = name.lowercase(Locale.ROOT)
+        return normalized.startsWith("wlan") ||
+            normalized.startsWith("swlan") ||
+            normalized.startsWith("ap") ||
+            normalized.startsWith("br") ||
+            normalized.startsWith("eth")
     }
 
     private fun ipv4Priority(address: String): Int {
@@ -1272,6 +1330,12 @@ class DesktopSyncCoordinator(
             else -> 3
         }
     }
+
+    private data class LocalNetworkAddresses(
+        val ipAddresses: List<String> = emptyList(),
+        val localNetworkAvailable: Boolean = false,
+        val hint: String = ""
+    )
 }
 
 private fun JSONObject.optStringOrNull(key: String): String? {

@@ -626,14 +626,17 @@ fun SettingsPanel(
                             Text("显示连接地址")
                         }
                     } else if (desktopSyncStatus.ipAddresses.isEmpty()) {
-                        Text("未检测到可用的局域网 IPv4 地址。", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(
+                            desktopSyncStatus.networkHint.ifBlank { "未检测到可用的局域网 IPv4 地址。" },
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                         OutlinedButton(onClick = { desktopSyncAddressesExpanded = false }, modifier = Modifier.fillMaxWidth()) {
                             Text("隐藏连接地址")
                         }
                     } else {
                         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                             Text(
-                                "优先使用 192.168.* 这类 Wi-Fi 地址；10.* / 172.16-31.* 通常来自 VPN、热点或虚拟网卡，电脑连不上时可换一个地址试。",
+                                desktopSyncStatus.networkHint.ifBlank { "请让电脑和手机处于同一个 Wi-Fi / 手机热点局域网，再在电脑浏览器打开下方地址。" },
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -643,7 +646,7 @@ fun SettingsPanel(
                                     Row(modifier = Modifier.fillMaxWidth().padding(start = 12.dp, top = 6.dp, bottom = 6.dp, end = 4.dp), verticalAlignment = Alignment.CenterVertically) {
                                         Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                                             Text(
-                                                text = if (index == 0 && ip.startsWith("192.168.")) "推荐 Wi-Fi 地址" else "可选网络地址",
+                                                text = if (index == 0) "推荐局域网地址" else "可选局域网地址",
                                                 color = MaterialTheme.colorScheme.primary,
                                                 style = MaterialTheme.typography.labelSmall,
                                                 fontWeight = FontWeight.SemiBold
@@ -1158,6 +1161,17 @@ private fun PlanningAiConfigPanel(
     }
     val requiredMissing = hasRequiredMissing(enabled, providers)
     val hasUnsavedChanges = enabled != settings.planningAiEnabled || providers != persistedProviders
+    val enabledProviders = providers.filter { it.enabled }
+    val completeEnabledProviders = enabledProviders.filter {
+        it.baseUrl.isNotBlank() && it.apiKey.isNotBlank() && it.model.isNotBlank()
+    }
+    val incompleteEnabledCount = enabledProviders.size - completeEnabledProviders.size
+    val visionEnabledCount = completeEnabledProviders.count { it.supportsVision }
+    val aiSummary = when {
+        !enabled -> "AI 识别当前关闭；规划台会只使用本地规则。"
+        completeEnabledProviders.isEmpty() -> "当前没有可用于规划台识别的完整 AI 源；会自动回退本地规则。"
+        else -> "当前可用于规划台识别：${completeEnabledProviders.size} 个；可用于图片识别：${visionEnabledCount} 个；配置不完整：${incompleteEnabledCount} 个。"
+    }
 
     Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
         Surface(
@@ -1171,6 +1185,32 @@ private fun PlanningAiConfigPanel(
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurface
             )
+        }
+
+        Surface(
+            shape = RoundedCornerShape(18.dp),
+            color = if (enabled && completeEnabledProviders.isNotEmpty()) {
+                MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.32f)
+            } else {
+                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.30f)
+            },
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.24f))
+        ) {
+            Column(modifier = Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text("AI 源整体状态", fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
+                Text(
+                    aiSummary,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                if (enabled && completeEnabledProviders.isNotEmpty()) {
+                    Text(
+                        "识别时会按列表顺序调用；某个源失败后才尝试下一个源。",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
         }
 
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {

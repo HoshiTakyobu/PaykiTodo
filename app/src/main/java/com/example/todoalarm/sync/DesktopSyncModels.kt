@@ -18,7 +18,9 @@ data class DesktopSyncStatus(
     val ipAddresses: List<String>,
     val connected: Boolean = false,
     val lastAuthorizedAtMillis: Long = 0L,
-    val secondsUntilAutoStop: Long? = null
+    val secondsUntilAutoStop: Long? = null,
+    val localNetworkAvailable: Boolean = false,
+    val networkHint: String = ""
 )
 
 data class DesktopSyncSnapshot(
@@ -55,6 +57,8 @@ fun DesktopSyncStatus.toJson(): JSONObject {
         } else {
             put("secondsUntilAutoStop", secondsUntilAutoStop)
         }
+        put("localNetworkAvailable", localNetworkAvailable)
+        put("networkHint", networkHint)
     }
 }
 
@@ -178,7 +182,9 @@ fun AppSettings.toDesktopSyncStatus(
     ipAddresses: List<String>,
     connected: Boolean = false,
     lastAuthorizedAtMillis: Long = 0L,
-    secondsUntilAutoStop: Long? = null
+    secondsUntilAutoStop: Long? = null,
+    localNetworkAvailable: Boolean = ipAddresses.isNotEmpty(),
+    networkHint: String = ""
 ): DesktopSyncStatus {
     return DesktopSyncStatus(
         enabled = desktopSyncEnabled,
@@ -188,6 +194,8 @@ fun AppSettings.toDesktopSyncStatus(
         ipAddresses = ipAddresses,
         connected = connected,
         lastAuthorizedAtMillis = lastAuthorizedAtMillis,
-        secondsUntilAutoStop = secondsUntilAutoStop
+        secondsUntilAutoStop = secondsUntilAutoStop,
+        localNetworkAvailable = localNetworkAvailable,
+        networkHint = networkHint
     )
 }

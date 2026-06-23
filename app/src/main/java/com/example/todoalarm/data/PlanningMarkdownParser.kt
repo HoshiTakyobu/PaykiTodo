@@ -140,13 +140,14 @@ object PlanningMarkdownParser {
             val title = event.title
             if (title.isBlank()) return error(lineNumber, sourceLine, "日程标题不能为空。")
             if (!event.endAt.isAfter(event.startAt)) return error(lineNumber, sourceLine, "日程结束时间必须晚于开始时间。")
-            val reminder = listOf(DEFAULT_PLANNING_REMINDER_MINUTES)
+            val reminder = event.reminderOffsetsMinutes.ifEmpty { listOf(DEFAULT_PLANNING_REMINDER_MINUTES) }
             val group = ""
             val location = event.location.ifBlank { extractLocation(content) }
             val warnings = mutableListOf<String>()
             if (event.defaultToday) warnings += "未写日期，默认今天。"
             val pastReminder = reminder.any { offset -> !event.startAt.minusMinutes(offset.toLong()).isAfter(now) }
             if (pastReminder) warnings += "已过去的提醒不会补发；导入后只安排未来提醒。"
+            event.reminderMessage.takeIf { it.isNotBlank() }?.let { warnings += it }
             val notes = listOfNotNull(
                 parentTitle?.let { "所属大任务：$it" },
                 event.notes.takeIf { it.isNotBlank() }
@@ -463,7 +464,8 @@ object PlanningMarkdownParser {
             rawRest.substring(0, match.range.first).trim(),
             rawRest.substring(match.range.last + 1).trim()
         ).filter { it.isNotBlank() }.joinToString(" ")
-        val titleNotes = splitTitleAndNotes(titleSource)
+        val titleReminder = splitTitleAndReminder(titleSource, startAt, now)
+        val titleNotes = splitTitleAndNotes(titleReminder.title)
         val titleLocation = splitTitleAndLocation(titleNotes.title)
         val recurrence = if (leadingRange != null && !leadingRange.endDate.isEqual(leadingRange.startDate)) {
             RecurrenceConfig(
@@ -480,10 +482,44 @@ object PlanningMarkdownParser {
             title = cleanTitle(titleLocation.title),
             location = titleLocation.location,
             notes = titleNotes.notes,
+            reminderOffsetsMinutes = titleReminder.reminderOffsetsMinutes,
+            reminderMessage = titleReminder.message,
             matchedText = rest.substring(match.range),
             defaultToday = defaultToday,
             recurrence = recurrence
         )
+    }
+
+    private fun splitTitleAndReminder(raw: String, anchor: LocalDateTime, now: LocalDateTime): TitleReminder {
+        val match = ReminderClauseRegex.find(raw) ?: return TitleReminder(title = raw)
+        val before = raw.substring(0, match.range.first)
+            .trim()
+            .trim(',', '，', '；', ';')
+        val reminderRaw = match.groupValues[1].trim()
+        if (reminderRaw.isBlank()) {
+            return TitleReminder(
+                title = before,
+                message = "提醒时间为空，已使用默认 5 分钟提醒。"
+            )
+        }
+        val parsed = parseReminderTextInput(
+            raw = reminderRaw,
+            anchor = anchor,
+            now = now,
+            requireFuture = false
+        )
+        return if (parsed.isValid) {
+            TitleReminder(
+                title = before,
+                reminderOffsetsMinutes = parsed.offsetsMinutes,
+                message = "已识别提醒：${parsed.message}"
+            )
+        } else {
+            TitleReminder(
+                title = before,
+                message = "提醒写法未识别（${parsed.message}），已使用默认 5 分钟提醒。"
+            )
+        }
     }
 
     private fun parseLeadingDateRange(text: String, today: LocalDate): ParsedLeadingDateRange? {
@@ -814,6 +850,8 @@ object PlanningMarkdownParser {
         val title: String,
         val location: String,
         val notes: String,
+        val reminderOffsetsMinutes: List<Int>,
+        val reminderMessage: String,
         val matchedText: String,
         val defaultToday: Boolean,
         val recurrence: RecurrenceConfig
@@ -825,6 +863,11 @@ object PlanningMarkdownParser {
     private data class TitleNotes(
         val title: String = "",
         val notes: String = ""
+    )
+    private data class TitleReminder(
+        val title: String = "",
+        val reminderOffsetsMinutes: List<Int> = emptyList(),
+        val message: String = ""
     )
 
     private val HeadingRegex = Regex("^#{1,6}\\s+(.+)$")
@@ -847,6 +890,7 @@ object PlanningMarkdownParser {
     private val QuotedLocationRegex = Regex("[\"“”'‘’](@[^\"“”'‘’#]+)[\"“”'‘’]")
     private val NamedLocationRegex = Regex("(?:^|[\\s,，；;])(地点|location|loc|place)\\s*[:：]\\s*(\"[^\"]+\"|“[^”]+”|'[^']+'|‘[^’]+’|[^#，,；;]+)", RegexOption.IGNORE_CASE)
     private val NotesMarkerRegex = Regex("(?:^|[\\s,，；;])备注\\s*[:：]\\s*([\\s\\S]*)$")
+    private val ReminderClauseRegex = Regex("(?:^|[\\s,，；;])(?:提醒(?:时间)?|remind(?:er)?)\\s*[:：]?\\s*([\\s\\S]+)$", RegexOption.IGNORE_CASE)
     private val BareLocationLikeRegex = Regex("(楼|馆|室|教室|实验室|图书馆|主楼|校区|操场|食堂|会议室|[A-Za-z]+\\d|\\d+楼)")
     private val BeforeTimeRegex = Regex("(\\d{1,2})(?::(\\d{2})|点)(?:前|之前)")
     private val ChineseDayPeriodRegex = Regex("(早上|上午|中午|下午|晚上)")

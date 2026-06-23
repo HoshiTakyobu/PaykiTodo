@@ -8,8 +8,8 @@
 - Target platform: Android 14 / API 34
 - License: MIT License (`LICENSE`)
 - Current version in code:
-  - `versionName = "1.14.14"`
-  - `versionCode = 334`
+  - `versionName = "1.14.15"`
+  - `versionCode = 335`
   - database version = `28`
 
 ## Current Build Facts
@@ -19,7 +19,15 @@
 - Latest GitHub Release:
   - `https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.14.12`
 - Latest fully built debug APK:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.14.14-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.14.15-debug.apk`
+- Current `1.14.15 / versionCode 335` status:
+  - Planning Desk local parsing now extracts natural reminder clauses such as `提醒时间：提前1h，06-24 22:10` from event lines, converts them to reminder offsets, and keeps the clause out of the event title.
+  - The shared reminder parser accepts relative lead-time tokens such as `提前1h`, `提前 30 分钟`, and `提前2天`.
+  - Planning Desk AI post-processing strips reminder clauses from AI-returned titles and can recover reminder offsets from either the AI title or original source line when the model returns imperfect JSON.
+  - Settings -> AI 调用配置 now shows an overall source-status card with complete recognition providers, vision-capable providers, and incomplete enabled providers.
+  - Settings -> Desktop Sync now exposes only Wi-Fi / likely hotspot LAN addresses instead of every non-loopback IPv4, and explains when mobile-data / VPN / virtual-network addresses are not useful for browser connection.
+  - Database version remains `28`; no Room schema migration was added. Changed: Planning Desk parser / AI recognizer / reminder text parser, Desktop Sync status/address selection, Settings AI/sync UI, targeted tests, version metadata, README, changelog, current docs.
+  - Verification passed: `./gradlew.bat --no-daemon :app:compileDebugKotlin`; targeted `ReminderTextParserTest`, `PlanningMarkdownParserTest`, and `PlanningAiRecognizerTest`; `./gradlew.bat --no-daemon :app:testDebugUnitTest`; `node --check app/src/main/assets/desktop-web/app.js`; `git diff --check`; `./gradlew.bat --no-daemon :app:assembleDebug`; APK metadata inspection for `versionName = 1.14.15`, `versionCode = 335`, output `PaykiTodo-1.14.15-debug.apk`.
 - Current `1.14.14 / versionCode 334` status:
   - Build metadata was incremented immediately after the `1.14.13` Planning Desk / countdown / full-screen reminder fix round, so the next installable debug APK has a distinct Android upgrade version.
   - `AGENTS.md` now explicitly requires bumping `versionName` and `versionCode` before any user-visible feature change, bug fix, reminder/sync/data behavior change, or APK build meant for installation, unless the user explicitly asks for a no-version metadata rebuild.

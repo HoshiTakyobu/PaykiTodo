@@ -141,12 +141,29 @@ private fun parseReminderTriggerToken(token: String, anchor: LocalDateTime, toda
         return anchor.minusMinutes(minutes.toLong())
     }
 
+    parseLeadTimeMinutes(text)?.let { minutes ->
+        return anchor.minusMinutes(minutes.toLong())
+    }
+
     parseTimeToken(text)?.let { return LocalDateTime.of(anchor.toLocalDate(), it) }
 
     val leadingDate = parseLeadingDate(text, today) ?: return null
     val rest = leadingDate.rest.trimStart().trimStart(',').trimStart()
     val time = parseTimeToken(rest) ?: return null
     return LocalDateTime.of(leadingDate.date, time)
+}
+
+private fun parseLeadTimeMinutes(text: String): Int? {
+    val match = LeadTimeRegex.matchEntire(text) ?: return null
+    val value = match.groupValues[1].toIntOrNull() ?: return null
+    if (value < 0) return null
+    val unit = match.groupValues[2].lowercase(Locale.ROOT)
+    return when (unit) {
+        "m", "min", "mins", "minute", "minutes", "分钟", "分" -> value
+        "h", "hr", "hrs", "hour", "hours", "小时", "时" -> value * 60
+        "d", "day", "days", "天", "日" -> value * 24 * 60
+        else -> null
+    }
 }
 
 private fun parseLeadingDate(text: String, today: LocalDate): ParsedLeadingDate? {
@@ -270,3 +287,4 @@ private val ChineseMonthDayRegex = Regex("^(\\d{1,2})月(\\d{1,2})日?$")
 private val TimeOnlyRegex = Regex("^(凌晨|早上|上午|中午|下午|晚上)?\\s*(\\d{1,2})[:：](\\d{2})\\s*([aApP][mM])?$")
 private val LeadingDateRegex = Regex("^(今天|今日|明天|明日|后天|周[一二三四五六日天]|星期[一二三四五六日天]|礼拜[一二三四五六日天]|\\d{4}[-./]\\d{1,2}[-./]\\d{1,2}|\\d{4}年\\d{1,2}月\\d{1,2}日?|\\d{1,2}[-./]\\d{1,2}|\\d{1,2}月\\d{1,2}日?)")
 private val ReminderDateOnlyRegex = Regex("^(今天|今日|明天|明日|后天|周[一二三四五六日天]|星期[一二三四五六日天]|礼拜[一二三四五六日天]|\\d{4}[-./]\\d{1,2}[-./]\\d{1,2}|\\d{4}年\\d{1,2}月\\d{1,2}日?|\\d{1,2}[-./]\\d{1,2}|\\d{1,2}月\\d{1,2}日?)$")
+private val LeadTimeRegex = Regex("^提前\\s*(\\d+)\\s*(m|min|mins|minute|minutes|分钟|分|h|hr|hrs|hour|hours|小时|时|d|day|days|天|日)$", RegexOption.IGNORE_CASE)

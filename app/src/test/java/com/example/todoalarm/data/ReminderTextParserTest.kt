@@ -70,6 +70,19 @@ class ReminderTextParserTest {
     }
 
     @Test
+    fun parsesRelativeLeadTimeReminderTokens() {
+        val parsed = parseReminderTextInput(
+            raw = "提前1h，提前 30 分钟，提前2天",
+            anchor = anchor,
+            now = now,
+            requireFuture = false
+        )
+
+        assertTrue(parsed.isValid)
+        assertEquals(listOf(2880, 60, 30), parsed.offsetsMinutes)
+    }
+
+    @Test
     fun parsesChinesePeriodSnoozeTarget() {
         val parsed = parseSnoozeTextInput(raw = "上午 9:30", now = now)
 

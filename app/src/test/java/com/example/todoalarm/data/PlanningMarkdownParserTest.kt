@@ -100,6 +100,23 @@ class PlanningMarkdownParserTest {
     }
 
     @Test
+    fun parsesNaturalEventReminderClauseWithoutPollutingTitle() {
+        val result = PlanningMarkdownParser.parse(
+            "06-25 14:00-22:00 【合唱】大艺展省赛录音 @成都大学 提醒时间：提前1h，06-24 22:10",
+            now = LocalDateTime.of(2026, 6, 23, 12, 0)
+        )
+
+        val event = result.candidates.single()
+        assertEquals(PlanningParsedType.EVENT, event.type)
+        assertEquals("【合唱】大艺展省赛录音", event.title)
+        assertEquals("@成都大学", event.location)
+        assertEquals(LocalDateTime.of(2026, 6, 25, 14, 0), event.startAt)
+        assertEquals(LocalDateTime.of(2026, 6, 25, 22, 0), event.endAt)
+        assertEquals(listOf(950, 60), event.reminderOffsetsMinutes)
+        assertTrue(event.message.contains("已识别提醒"))
+    }
+
+    @Test
     fun explicitDdlTakesPrecedenceOverNaturalScheduleText() {
         val result = PlanningMarkdownParser.parse(
             "会议 9:00-10:00 讨论 ddl 5.28",

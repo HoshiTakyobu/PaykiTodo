@@ -108,11 +108,6 @@ object PlanningAiRecognizer {
         } else {
             ""
         }
-        val title = if (type == PlanningParsedType.EVENT) {
-            cleanAiEventTitle(rawTitle, location)
-        } else {
-            rawTitle
-        }
         val groupName = sanitizeAiGroupName(
             rawGroupName = item.optString("groupName").ifBlank { item.optString("group") },
             sourceLine = sourceLine
@@ -120,13 +115,27 @@ object PlanningAiRecognizer {
         val dueAt = parseAiDateTime(item.optNullableString("dueAt"), defaultTime = LocalTime.of(23, 59))
         val startAt = parseAiDateTime(item.optNullableString("startAt"))
         val endAt = parseAiDateTime(item.optNullableString("endAt"))
-        val reminderOffsets = parseReminderOffsets(item, type, dueAt, startAt)
+        val rawCleanedTitle = if (type == PlanningParsedType.EVENT) {
+            cleanAiEventTitle(rawTitle, location)
+        } else {
+            rawTitle
+        }
+        val reminderAnchor = if (type == PlanningParsedType.EVENT) startAt else dueAt
+        val titleReminder = parseAiReminderClause(rawCleanedTitle, reminderAnchor, now)
+        val sourceReminder = parseAiReminderClause(sourceLine, reminderAnchor, now)
+        val title = titleReminder.title.ifBlank { rawCleanedTitle }.trim()
+        val explicitReminderOffsets = titleReminder.reminderOffsetsMinutes.ifEmpty { sourceReminder.reminderOffsetsMinutes }
+        val reminderOffsets = explicitReminderOffsets.ifEmpty { parseReminderOffsets(item, type, dueAt, startAt) }
         val recurrence = parseAiRecurrence(item.optJSONObject("recurrence"), if (type == PlanningParsedType.TODO) dueAt else startAt)
         val allDay = item.optBoolean("allDay", false)
         val countdownEnabled = item.optBoolean("countdownEnabled", false)
         val checkInEnabled = item.optBoolean("checkInEnabled", false)
         val messages = mutableListOf("AI 识别结果，建议确认")
         item.optString("message").takeIf { it.isNotBlank() }?.let { messages += it.trim() }
+        titleReminder.message.takeIf { it.isNotBlank() }?.let { messages += it }
+        if (titleReminder.message.isBlank()) {
+            sourceReminder.message.takeIf { it.isNotBlank() }?.let { messages += it }
+        }
         providerName.takeIf { it.isNotBlank() }?.let { messages += "来源：$it" }
 
         if (type == PlanningParsedType.SKIPPED) {
@@ -221,6 +230,32 @@ object PlanningAiRecognizer {
         return raw.trim()
             .trim('"', '\'', '“', '”', '‘', '’', ',', '，', '；', ';')
             .replace(Regex("^@{2,}"), "@")
+    }
+
+    private fun parseAiReminderClause(text: String, anchor: LocalDateTime?, now: LocalDateTime): AiReminderClause {
+        val match = AiReminderClauseRegex.find(text) ?: return AiReminderClause(title = text)
+        val title = text.substring(0, match.range.first)
+            .trim()
+            .trim(',', '，', '；', ';')
+        val reminderRaw = match.groupValues[1].trim()
+        if (anchor == null || reminderRaw.isBlank()) {
+            return AiReminderClause(title = title)
+        }
+        val parsed = parseReminderTextInput(
+            raw = reminderRaw,
+            anchor = anchor,
+            now = now,
+            requireFuture = false
+        )
+        return if (parsed.isValid) {
+            AiReminderClause(
+                title = title,
+                reminderOffsetsMinutes = parsed.offsetsMinutes,
+                message = "已从原文识别提醒：${parsed.message}"
+            )
+        } else {
+            AiReminderClause(title = title)
+        }
     }
 
     private fun parseAiRecurrence(json: JSONObject?, anchor: LocalDateTime?): RecurrenceConfig {
@@ -328,6 +363,13 @@ object PlanningAiRecognizer {
 
     private val AiQuotedLocationRegex = Regex("[\"“”'‘’](@[^\"“”'‘’#]+)[\"“”'‘’]")
     private val AiInlineLocationRegex = Regex("(?:^|[\\s,，；;])(@[^\\s#\"'“”‘’，,；;]+)")
+    private val AiReminderClauseRegex = Regex("(?:^|[\\s,，；;])(?:提醒(?:时间)?|remind(?:er)?)\\s*[:：]?\\s*([\\s\\S]+)$", RegexOption.IGNORE_CASE)
+
+    private data class AiReminderClause(
+        val title: String,
+        val reminderOffsetsMinutes: List<Int> = emptyList(),
+        val message: String = ""
+    )
 
     private fun JSONObject.optNullableString(name: String): String? {
         if (!has(name) || isNull(name)) return null
@@ -364,6 +406,7 @@ object PlanningAiRecognizer {
             2. todo 表示待办任务；title 必填；dueAt 可以为 null。用户只写日期但没写时间时，dueAt 用当天 23:59:00。没有 DDL 就 dueAt=null 且 reminderOffsetsMinutes=[]。
             3. event 表示有开始和结束时间的日程；startAt/endAt 必填，格式为 yyyy-MM-dd'T'HH:mm:ss。event 默认 createLinkedTodo=false；只有用户明确写了“同步待办 / 同时创建待办 / 也建一个DDL任务 / 日程结束作为DDL”这类意图时才设为 true。地点要放在 location 字段，不要塞进 notes；如果原文写了“@主楼B1-412”或“"@主楼B1-412"”，location 保留原文的 @，不要额外补 @。
             4. reminderOffsetsMinutes 表示提前多少分钟提醒。用户没写提醒时，有 DDL 或日程的候选默认 [5]；没有 DDL 的 todo 用 []。
+               如果用户写了“提醒时间：提前1h，06-24 22:10”“提醒：提前30分钟”“提前 2 小时提醒”等自然提醒表达，要把它们换算成相对目标时间的分钟数，例如日程 06-25 14:00 的 “06-24 22:10” 是提前 950 分钟；这些提醒文字不要放进 title。
             5. groupName 只在用户明确写了分组字段时填写，例如“分组：课程”“项目：保研”“类别：入党”。不要从标题里擅自截取词语当分组；例如“入党表格填写”的 groupName 必须是空字符串，标题保持“入党表格填写”。
             6. notes 用于保留上下文、父任务、资料等补充信息；不要把标题、时间、地点重复放进 notes。原文出现“备注：...”或“备注:...”时，把冒号后面的内容逐字放进 notes，保留中文标点、全角符号和原文措辞，不要把“，”改成“,”。
             7. recurrence 用于循环规则：不循环输出 {"enabled":false,"type":"NONE","weeklyDays":[],"endDate":null}；明确写了每天/每周/每月/每年且能确定截止日期时才设置 enabled=true，type 可用 DAILY、WEEKLY、MONTHLY_NTH_WEEKDAY、MONTHLY_DAY、YEARLY_DATE、YEARLY_LUNAR_DATE；每周循环 weeklyDays 用 1-7 表示周一到周日；没有截止日期时不要启用循环，只在 message 提醒用户导入后设置。日期范围要识别为循环：例如“06-22~06-24 19:00-21:00 【合唱】省赛排练 @学生发展中心111”表示 2026-06-22、06-23、06-24 每天 19:00-21:00，输出一个 event，startAt 为 2026-06-22T19:00:00，endAt 为 2026-06-22T21:00:00，recurrence={"enabled":true,"type":"DAILY","weeklyDays":[],"endDate":"2026-06-24"}，title 不要包含“06-22~06-24”。

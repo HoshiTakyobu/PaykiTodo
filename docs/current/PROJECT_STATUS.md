@@ -8,8 +8,8 @@
 - Target platform: Android 14 / API 34
 - License: MIT License (`LICENSE`)
 - Current version in code:
-  - `versionName = "1.14.13"`
-  - `versionCode = 333`
+  - `versionName = "1.14.14"`
+  - `versionCode = 334`
   - database version = `28`
 
 ## Current Build Facts
@@ -19,7 +19,12 @@
 - Latest GitHub Release:
   - `https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.14.12`
 - Latest fully built debug APK:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.14.13-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.14.14-debug.apk`
+- Current `1.14.14 / versionCode 334` status:
+  - Build metadata was incremented immediately after the `1.14.13` Planning Desk / countdown / full-screen reminder fix round, so the next installable debug APK has a distinct Android upgrade version.
+  - `AGENTS.md` now explicitly requires bumping `versionName` and `versionCode` before any user-visible feature change, bug fix, reminder/sync/data behavior change, or APK build meant for installation, unless the user explicitly asks for a no-version metadata rebuild.
+  - Database version remains `28`; no Room schema migration was added. Changed: version metadata, README, changelog, current docs, and `AGENTS.md`.
+  - Verification passed: `git diff --check`, `./gradlew.bat --no-daemon :app:assembleDebug`, and APK metadata inspection for `versionName = 1.14.14`, `versionCode = 334`, output `PaykiTodo-1.14.14-debug.apk`.
 - Current `1.14.13 / versionCode 333` status:
   - Planning Desk local parsing recognizes leading date ranges such as `06-22~06-24 19:00-21:00 ...` as one daily recurring event candidate ending on the last date, so the date range no longer pollutes the title and the repository can generate each daily occurrence.
   - Planning Desk local parsing extracts `备注：...` / `备注:...` from natural event lines into notes while preserving the original Chinese punctuation instead of normalizing it into half-width punctuation.

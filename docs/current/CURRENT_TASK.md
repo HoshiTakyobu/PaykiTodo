@@ -2,15 +2,15 @@
 
 ## Active Development Focus
 
-Active immediate task: finish `1.14.13 / versionCode 333` fixes for Planning Desk natural/AI recognition, historical event import with filtered past reminders, Daily Board countdown row alignment, and full-screen reminder retry diagnostics.
+Active immediate task: finish `1.14.14 / versionCode 334` install-version metadata rebuild after the `1.14.13` Planning Desk / countdown / full-screen reminder fix round and the AGENTS version-bump rule hardening.
 
 Do not commit secrets, signing material, API keys, private Base URLs, generated APK/AAB outputs, or personal backups/logs. The repository already ignores `keystore.properties`, `release/`, `*.apk`, `*.jks`, `.env*`, and local temp files.
 
 ## Current Round Scope
 
-The current concrete patch is `1.14.13 / versionCode 333`: make Planning Desk recognize date-range natural schedules and event notes correctly, prefer AI recognition when configured, allow historical event import without backfilling already-past reminder triggers, align multi-line countdown rows, and avoid suppressing full-screen reminder retries before the reminder activity is actually visible.
+The current concrete patch is `1.14.14 / versionCode 334`: increment the installable APK metadata after the `1.14.13` behavior fixes, and document the rule that future user-visible fixes or installable APK builds must bump `versionName` and `versionCode` first.
 
-Validation for this patch has passed: targeted `PlanningMarkdownParserTest`, `PlanningImportCandidateTest`, `PlanningAiRecognizerTest`, `PlanningRecognitionServiceTest` with `--rerun-tasks`, `./gradlew.bat --no-daemon :app:compileDebugKotlin`, `./gradlew.bat --no-daemon :app:testDebugUnitTest`, `node --check app/src/main/assets/desktop-web/app.js`, `git diff --check`, `./gradlew.bat --no-daemon :app:assembleDebug`, and APK metadata inspection for `versionName = 1.14.13`, `versionCode = 333`.
+Validation for this metadata rebuild has passed: `git diff --check`, `./gradlew.bat --no-daemon :app:assembleDebug`, and APK metadata inspection for `versionName = 1.14.14`, `versionCode = 334`, output `PaykiTodo-1.14.14-debug.apk`.
 
 Important constraints:
 

@@ -8,8 +8,8 @@
 - Target platform: Android 14 / API 34
 - License: MIT License (`LICENSE`)
 - Current version in code:
-  - `versionName = "1.14.17"`
-  - `versionCode = 337`
+  - `versionName = "1.14.18"`
+  - `versionCode = 338`
   - database version = `28`
 
 ## Current Build Facts
@@ -19,7 +19,13 @@
 - Latest GitHub Release:
   - `https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.14.12`
 - Latest fully built debug APK:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.14.17-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.14.18-debug.apk`
+- Current `1.14.18 / versionCode 338` status:
+  - Desktop Sync address selection no longer trusts the active Wi-Fi link address alone. It now merges active-network link addresses with real `NetworkInterface` candidates, ranks trusted Wi-Fi / hotspot / Ethernet interfaces first, and hides VPN, virtual-interface, mobile-data, or low-confidence bridge addresses when a better LAN address is available.
+  - The observed failure mode is explained: addresses such as `172.19.0.1` can be exposed by virtual / bridge / VPN-like interfaces and are often not reachable from the desktop even while the phone is on Wi-Fi; when `wlan0` / hotspot exposes `192.168.0.100`, that address should be recommended instead.
+  - Added unit coverage for wrong `172.19.0.1` plus real `192.168.0.100`, trusted `172.*` hotspot fallback, mobile-data / VPN-only hiding, and Ethernet `10.*` allowance.
+  - Database version remains `28`; no Room schema migration was added. Changed: Desktop Sync address selector, coordinator address collection, Wiki desktop-sync help, version metadata, README, changelog, current docs.
+  - Verification passed: `./gradlew.bat --no-daemon :app:compileDebugKotlin`; targeted `DesktopSyncAddressSelectorTest`; `./gradlew.bat --no-daemon :app:testDebugUnitTest`; `node --check app/src/main/assets/desktop-web/app.js`; `git diff --check`; `./gradlew.bat --no-daemon :app:assembleDebug`; APK metadata inspection for `versionName = 1.14.18`, `versionCode = 338`; Pixel_8 emulator installed and launched `PaykiTodo-1.14.18-debug.apk`, Settings -> Desktop Sync enabled without crash, displayed emulator LAN address `10.0.2.15:18765`, and ADB forward `127.0.0.1:18766 -> emulator:18765` loaded the Web console HTML successfully.
 - Current `1.14.17 / versionCode 337` status:
   - Settings -> Desktop Sync no longer crashes when enabling sync on ROMs that reject network-state inspection: the manifest declares `ACCESS_NETWORK_STATE`, Wi-Fi / hotspot address detection is exception-safe, and failed inspection now produces a status hint instead of a process crash.
   - Desktop Sync enable now rolls back the setting if foreground-service startup fails, so the settings surface stays usable instead of exiting.

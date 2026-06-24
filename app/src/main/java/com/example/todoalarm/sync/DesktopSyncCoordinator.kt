@@ -1261,30 +1261,17 @@ class DesktopSyncCoordinator(
     }
 
     private fun currentLocalNetworkAddresses(): LocalNetworkAddresses {
-        val wifiAddresses = activeWifiIpv4Addresses()
-        if (wifiAddresses.isNotEmpty()) {
-            return LocalNetworkAddresses(
-                ipAddresses = wifiAddresses,
-                localNetworkAvailable = true,
-                hint = "已检测到当前 Wi-Fi 局域网地址。"
-            )
-        }
-        val fallbackAddresses = shareableInterfaceIpv4Addresses()
-        if (fallbackAddresses.isNotEmpty()) {
-            return LocalNetworkAddresses(
-                ipAddresses = fallbackAddresses,
-                localNetworkAvailable = true,
-                hint = "未检测到普通 Wi-Fi，但发现疑似热点/以太网局域网地址；如果电脑连接的是手机热点，可尝试这些地址。"
-            )
-        }
+        val selection = DesktopSyncAddressSelector.select(
+            activeWifiIpv4AddressCandidates() + networkInterfaceIpv4AddressCandidates()
+        )
         return LocalNetworkAddresses(
-            ipAddresses = emptyList(),
-            localNetworkAvailable = false,
-            hint = "当前未检测到 Wi-Fi 或热点局域网地址；仅移动数据、VPN 或虚拟网卡地址不会显示，因为电脑通常无法访问。"
+            ipAddresses = selection.ipAddresses,
+            localNetworkAvailable = selection.localNetworkAvailable,
+            hint = selection.hint
         )
     }
 
-    private fun activeWifiIpv4Addresses(): List<String> {
+    private fun activeWifiIpv4AddressCandidates(): List<DesktopSyncAddressCandidate> {
         return runCatching {
             val manager = context.getSystemService(ConnectivityManager::class.java) ?: return emptyList()
             val network = manager.activeNetwork ?: return emptyList()
@@ -1296,46 +1283,39 @@ class DesktopSyncCoordinator(
                 .filterNot { it.isLoopbackAddress }
                 .mapNotNull { it.hostAddress }
                 .filter { it.isNotBlank() }
+                .map { address ->
+                    DesktopSyncAddressCandidate(
+                        address = address,
+                        interfaceName = linkProperties.interfaceName,
+                        source = DesktopSyncAddressSource.ACTIVE_WIFI
+                    )
+                }
                 .distinct()
-                .sortedWith(compareBy<String> { ipv4Priority(it) }.thenBy { it })
         }.getOrDefault(emptyList())
     }
 
-    private fun shareableInterfaceIpv4Addresses(): List<String> {
+    private fun networkInterfaceIpv4AddressCandidates(): List<DesktopSyncAddressCandidate> {
         return runCatching {
             Collections.list(NetworkInterface.getNetworkInterfaces())
                 .filter { network ->
                     network.isUp &&
-                        !network.isLoopback &&
-                        likelyShareableInterface(network.name)
+                        !network.isLoopback
                 }
-                .flatMap { network -> Collections.list(network.inetAddresses) }
-                .filterIsInstance<Inet4Address>()
-                .filterNot { it.isLoopbackAddress }
-                .map { it.hostAddress ?: "" }
-                .filter { it.isNotBlank() }
-                .filter { it.startsWith("192.168.") }
+                .flatMap { network ->
+                    Collections.list(network.inetAddresses)
+                        .filterIsInstance<Inet4Address>()
+                        .filterNot { it.isLoopbackAddress }
+                        .mapNotNull { address -> address.hostAddress?.takeIf { it.isNotBlank() } }
+                        .map { address ->
+                            DesktopSyncAddressCandidate(
+                                address = address,
+                                interfaceName = network.name,
+                                source = DesktopSyncAddressSource.NETWORK_INTERFACE
+                            )
+                        }
+                }
                 .distinct()
-                .sortedWith(compareBy<String> { ipv4Priority(it) }.thenBy { it })
         }.getOrDefault(emptyList())
-    }
-
-    private fun likelyShareableInterface(name: String): Boolean {
-        val normalized = name.lowercase(Locale.ROOT)
-        return normalized.startsWith("wlan") ||
-            normalized.startsWith("swlan") ||
-            normalized.startsWith("ap") ||
-            normalized.startsWith("br") ||
-            normalized.startsWith("eth")
-    }
-
-    private fun ipv4Priority(address: String): Int {
-        return when {
-            address.startsWith("192.168.") -> 0
-            address.startsWith("10.") -> 1
-            address.matches(Regex("^172\\.(1[6-9]|2\\d|3[0-1])\\..*")) -> 2
-            else -> 3
-        }
     }
 
     private data class LocalNetworkAddresses(

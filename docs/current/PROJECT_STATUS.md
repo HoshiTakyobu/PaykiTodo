@@ -8,8 +8,8 @@
 - Target platform: Android 14 / API 34
 - License: MIT License (`LICENSE`)
 - Current version in code:
-  - `versionName = "1.14.19"`
-  - `versionCode = 339`
+  - `versionName = "1.14.20"`
+  - `versionCode = 340`
   - database version = `28`
 
 ## Current Build Facts
@@ -19,7 +19,15 @@
 - Latest GitHub Release:
   - `https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.14.12`
 - Latest fully built debug APK:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.14.19-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.14.20-debug.apk`
+- Current `1.14.20 / versionCode 340` status:
+  - Implemented the `WIDGET_AND_RECURRENCE_DIALOG_UI_REDESIGN.md` handoff. The redesign doc header now records that the redesign is implemented in this version instead of being a deferred design-only handoff.
+  - Android 今日看板 Widget schedule section title now renders `今日日程` without a parenthesized count (`TodoWidgetService.kt`), and the static picker preview (`widget_todo_preview.xml`) matches. `今日待办（N）` keeps its count.
+  - Android 今日看板 Widget visual hierarchy was slimmed without dropping any click route: section title size dropped from 21sp to 18sp with a softer shadow (`widget_todo_section.xml`); the shared soft-card background lowered its fill alpha, thinned its border, and reduced its radius (`widget_todo_soft_card_background.xml`); task cards dropped elevation 2dp -> 0dp and minHeight 68dp -> 60dp (`widget_todo_task_card.xml`); the schedule aggregate card stays but its inner empty-message and event-row backgrounds became near-transparent so the left accent strip is the main identifier (`widget_schedule_inner_background.xml`, `widget_schedule_event_background.xml`, `widget_schedule_event_active_background.xml`).
+  - Android 倒数日 Widget empty state moved from a centered bold card to a top-aligned, start-aligned two-line muted hint `暂无倒数目标 / 在待办或日程中打开倒数日` with a new lighter background (`widget_countdown.xml`, new `widget_countdown_empty_background.xml`).
+  - Recurring scope selection dialog (`DashboardScreen.kt`) was rebuilt from the cramped `AlertDialog` with three TextButtons in `confirmButton` into a custom rounded `Dialog` with one option card per scope. Each card shows a bold title plus an explanatory subline; delete scopes use error-colored title and border; a single trailing `关闭` sits apart from the option cards. Cancel/edit/delete/edit-event business routing and recurrence scopes are unchanged; only the selection UI and copy changed.
+  - Database version remains `28`; no Room schema migration was added. Changed: `TodoWidgetService.kt`, widget layouts/drawables, `DashboardScreen.kt`, version metadata, README, changelog, redesign doc, current docs.
+  - Verification passed: `./gradlew.bat --no-daemon :app:compileDebugKotlin`; `./gradlew.bat --no-daemon :app:assembleDebug`; APK metadata inspection (`aapt dump badging`) for `versionName = 1.14.20`, `versionCode = 340`, output `PaykiTodo-1.14.20-debug.apk`.
 - Current `1.14.19 / versionCode 339` status:
   - AI Report archive content now starts directly with search/filter controls instead of repeating a second `AI 报告` heading under the top navigation title.
   - Added `docs/current/WIDGET_AND_RECURRENCE_DIALOG_UI_REDESIGN.md` as a handoff document for the next UI implementation pass. It maps the current Android Widget files, explains why the today-board widget feels overly card-like, documents the requested `今日日程` title without a count, proposes a top-aligned countdown-widget empty state, and describes a better bottom-sheet-style recurring-scope selector for cancel/edit/delete operations.

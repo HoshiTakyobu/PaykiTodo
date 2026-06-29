@@ -33,16 +33,16 @@
             android:id="@+id/widget_countdown_empty"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_gravity="center"
-            android:background="@drawable/widget_todo_soft_card_background"
-            android:gravity="center"
-            android:paddingStart="12dp"
+            android:layout_gravity="top"
+            android:background="@drawable/widget_countdown_empty_background"
+            android:gravity="start|center_vertical"
+            android:lineSpacingExtra="3dp"
+            android:paddingStart="14dp"
             android:paddingTop="12dp"
-            android:paddingEnd="12dp"
+            android:paddingEnd="14dp"
             android:paddingBottom="12dp"
-            android:text="还没有设置倒数目标。编辑待办或日程时打开倒数日开关。"
+            android:text="暂无倒数目标\n在待办或日程中打开倒数日"
             android:textColor="@color/widget_text_muted"
-            android:textSize="14sp"
-            android:textStyle="bold" />
+            android:textSize="13sp" />
     </FrameLayout>
 </FrameLayout>

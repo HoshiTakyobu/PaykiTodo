@@ -9,11 +9,13 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.Row
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.PostAdd
 import androidx.compose.material.icons.rounded.Search
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
@@ -973,16 +975,9 @@ fun DashboardScreen(
     scopeDialogTarget?.let { item ->
         val mode = scopeDialogMode
         RecurrenceScopeDialog(
-            title = when (scopeDialogMode) {
-                ScopeDialogMode.EDIT_TODO, ScopeDialogMode.EDIT_EVENT -> "选择修改范围"
-                ScopeDialogMode.CANCEL_TODO -> "取消循环待办"
-                ScopeDialogMode.CANCEL_EVENT -> "取消循环日程"
-                ScopeDialogMode.DELETE_TODO -> "选择删除范围"
-                ScopeDialogMode.DELETE_EVENT -> "选择删除范围"
-                null -> "选择范围"
-            },
-            message = recurrenceScopeMessage(mode),
-            scopeLabel = { scope -> recurrenceScopeLabel(mode, scope) },
+            title = recurrenceScopeDialogTitle(mode),
+            subtitle = recurrenceScopeDialogSubtitle(mode),
+            options = recurrenceScopeOptions(mode),
             onDismiss = {
                 scopeDialogTarget = null
                 scopeDialogMode = null
@@ -1026,59 +1021,165 @@ fun DashboardScreen(
 @Composable
 private fun RecurrenceScopeDialog(
     title: String,
-    message: String,
-    scopeLabel: (RecurrenceScope) -> String,
+    subtitle: String,
+    options: List<RecurrenceScopeOptionUi>,
     onDismiss: () -> Unit,
     onSelect: (RecurrenceScope) -> Unit
 ) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(title) },
-        text = { Text(message) },
-        confirmButton = {
-            androidx.compose.foundation.layout.Column {
-                RecurrenceScope.entries.forEach { scope ->
-                    TextButton(onClick = { onSelect(scope) }) {
-                        Text(scopeLabel(scope))
+    androidx.compose.ui.window.Dialog(onDismissRequest = onDismiss) {
+        androidx.compose.material3.Surface(
+            shape = androidx.compose.foundation.shape.RoundedCornerShape(28.dp),
+            color = MaterialTheme.colorScheme.surface,
+            tonalElevation = 6.dp,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            androidx.compose.foundation.layout.Column(
+                modifier = Modifier.padding(horizontal = 20.dp, vertical = 22.dp)
+            ) {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                androidx.compose.foundation.layout.Spacer(Modifier.height(6.dp))
+                Text(
+                    text = subtitle,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                androidx.compose.foundation.layout.Spacer(Modifier.height(18.dp))
+                options.forEachIndexed { index, option ->
+                    RecurrenceScopeOptionCard(option = option, onClick = { onSelect(option.scope) })
+                    if (index != options.lastIndex) {
+                        androidx.compose.foundation.layout.Spacer(Modifier.height(10.dp))
+                    }
+                }
+                androidx.compose.foundation.layout.Spacer(Modifier.height(14.dp))
+                androidx.compose.foundation.layout.Box(
+                    modifier = Modifier.fillMaxWidth(),
+                    contentAlignment = Alignment.CenterEnd
+                ) {
+                    TextButton(onClick = onDismiss) {
+                        Text("关闭")
                     }
                 }
             }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("关闭")
-            }
         }
-    )
+    }
 }
 
-private fun recurrenceScopeMessage(mode: ScopeDialogMode?): String {
+@Composable
+private fun RecurrenceScopeOptionCard(
+    option: RecurrenceScopeOptionUi,
+    onClick: () -> Unit
+) {
+    val borderColor = if (option.destructive) {
+        MaterialTheme.colorScheme.error.copy(alpha = 0.55f)
+    } else {
+        MaterialTheme.colorScheme.outlineVariant
+    }
+    val titleColor = if (option.destructive) {
+        MaterialTheme.colorScheme.error
+    } else {
+        MaterialTheme.colorScheme.onSurface
+    }
+    androidx.compose.material3.Surface(
+        onClick = onClick,
+        shape = androidx.compose.foundation.shape.RoundedCornerShape(20.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f),
+        border = androidx.compose.foundation.BorderStroke(1.dp, borderColor),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        androidx.compose.foundation.layout.Column(
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp)
+        ) {
+            Text(
+                text = option.title,
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                color = titleColor
+            )
+            androidx.compose.foundation.layout.Spacer(Modifier.height(4.dp))
+            Text(
+                text = option.description,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+}
+
+private data class RecurrenceScopeOptionUi(
+    val scope: RecurrenceScope,
+    val title: String,
+    val description: String,
+    val destructive: Boolean = false
+)
+
+private fun recurrenceScopeDialogTitle(mode: ScopeDialogMode?): String {
     return when (mode) {
-        ScopeDialogMode.CANCEL_TODO -> "请选择要取消哪一部分循环待办。取消会停止对应提醒并进入历史记录，不会直接删除。"
-        ScopeDialogMode.CANCEL_EVENT -> "请选择要取消哪一部分循环日程。取消会停止对应提醒并进入历史记录，不会直接删除。"
-        ScopeDialogMode.DELETE_TODO -> "删除不会进入历史记录，请选择要删除哪一部分循环待办。"
-        ScopeDialogMode.EDIT_TODO -> "请选择这次修改影响哪一部分循环待办。"
-        ScopeDialogMode.EDIT_EVENT -> "请选择这次修改影响哪一部分循环日程。"
-        ScopeDialogMode.DELETE_EVENT -> "删除不会进入历史记录，请选择要删除哪一部分循环日程。"
+        ScopeDialogMode.CANCEL_TODO -> "取消循环待办"
+        ScopeDialogMode.CANCEL_EVENT -> "取消循环日程"
+        ScopeDialogMode.DELETE_TODO -> "删除循环待办"
+        ScopeDialogMode.DELETE_EVENT -> "删除循环日程"
+        ScopeDialogMode.EDIT_TODO, ScopeDialogMode.EDIT_EVENT -> "选择修改范围"
+        null -> "选择范围"
+    }
+}
+
+private fun recurrenceScopeDialogSubtitle(mode: ScopeDialogMode?): String {
+    return when (mode) {
+        ScopeDialogMode.CANCEL_TODO, ScopeDialogMode.CANCEL_EVENT -> "取消会进入历史记录，不等于删除。"
+        ScopeDialogMode.DELETE_TODO, ScopeDialogMode.DELETE_EVENT -> "删除不会进入历史记录，无法通过历史记录恢复。"
+        ScopeDialogMode.EDIT_TODO, ScopeDialogMode.EDIT_EVENT -> "决定这次编辑影响哪一部分循环事项。"
         null -> "循环事项需要先确定这次操作影响的范围。"
     }
 }
 
-private fun recurrenceScopeLabel(mode: ScopeDialogMode?, scope: RecurrenceScope): String {
-    val noun = when (mode) {
-        ScopeDialogMode.EDIT_EVENT, ScopeDialogMode.CANCEL_EVENT, ScopeDialogMode.DELETE_EVENT -> "日程"
-        else -> "任务"
-    }
-    val verb = when (mode) {
-        ScopeDialogMode.CANCEL_TODO, ScopeDialogMode.CANCEL_EVENT -> "取消"
-        ScopeDialogMode.DELETE_TODO, ScopeDialogMode.DELETE_EVENT -> "删除"
-        ScopeDialogMode.EDIT_TODO, ScopeDialogMode.EDIT_EVENT -> "修改"
-        null -> "操作"
-    }
-    return when (scope) {
-        RecurrenceScope.CURRENT -> "仅${verb}当前$noun"
-        RecurrenceScope.CURRENT_AND_FUTURE -> "${verb}当前及之后$noun"
-        RecurrenceScope.ALL -> "${verb}全部循环$noun"
+private fun recurrenceScopeOptions(mode: ScopeDialogMode?): List<RecurrenceScopeOptionUi> {
+    return when (mode) {
+        ScopeDialogMode.CANCEL_TODO -> listOf(
+            RecurrenceScopeOptionUi(RecurrenceScope.CURRENT, "仅取消当前任务", "只归档这一次，后续循环任务照常生成。"),
+            RecurrenceScopeOptionUi(RecurrenceScope.CURRENT_AND_FUTURE, "取消当前及之后任务", "保留过去记录，从这一次开始停止后续循环。"),
+            RecurrenceScopeOptionUi(RecurrenceScope.ALL, "取消全部循环任务", "整个循环系列都会标记为已取消。")
+        )
+        ScopeDialogMode.CANCEL_EVENT -> listOf(
+            RecurrenceScopeOptionUi(RecurrenceScope.CURRENT, "仅取消当前日程", "只取消这一次，后续日程照常生成。"),
+            RecurrenceScopeOptionUi(RecurrenceScope.CURRENT_AND_FUTURE, "取消当前及之后日程", "保留过去记录，从这一次开始停止后续日程。"),
+            RecurrenceScopeOptionUi(RecurrenceScope.ALL, "取消全部循环日程", "整个循环系列都会标记为已取消。")
+        )
+        ScopeDialogMode.DELETE_TODO -> listOf(
+            RecurrenceScopeOptionUi(RecurrenceScope.CURRENT, "仅删除当前任务", "只移除这一次，不写入历史记录。", destructive = true),
+            RecurrenceScopeOptionUi(RecurrenceScope.CURRENT_AND_FUTURE, "删除当前及之后任务", "删除本次和未来实例，过去记录保留。", destructive = true),
+            RecurrenceScopeOptionUi(RecurrenceScope.ALL, "删除全部循环任务", "删除整个循环系列，请谨慎操作。", destructive = true)
+        )
+        ScopeDialogMode.DELETE_EVENT -> listOf(
+            RecurrenceScopeOptionUi(RecurrenceScope.CURRENT, "仅删除当前日程", "只移除这一次，不写入历史记录。", destructive = true),
+            RecurrenceScopeOptionUi(RecurrenceScope.CURRENT_AND_FUTURE, "删除当前及之后日程", "删除本次和未来实例，过去记录保留。", destructive = true),
+            RecurrenceScopeOptionUi(RecurrenceScope.ALL, "删除全部循环日程", "删除整个循环系列，请谨慎操作。", destructive = true)
+        )
+        ScopeDialogMode.EDIT_TODO -> listOf(
+            RecurrenceScopeOptionUi(RecurrenceScope.CURRENT, "仅修改当前任务", "只改变这一次，后续循环保持原规则。"),
+            RecurrenceScopeOptionUi(RecurrenceScope.CURRENT_AND_FUTURE, "修改当前及之后任务", "从这一次开始应用新的内容、时间或提醒。"),
+            RecurrenceScopeOptionUi(RecurrenceScope.ALL, "修改全部循环任务", "整个循环系列使用新的设置。")
+        )
+        ScopeDialogMode.EDIT_EVENT -> listOf(
+            RecurrenceScopeOptionUi(RecurrenceScope.CURRENT, "仅修改当前日程", "只改变这一次，后续循环保持原规则。"),
+            RecurrenceScopeOptionUi(RecurrenceScope.CURRENT_AND_FUTURE, "修改当前及之后日程", "从这一次开始应用新的内容、时间或提醒。"),
+            RecurrenceScopeOptionUi(RecurrenceScope.ALL, "修改全部循环日程", "整个循环系列使用新的设置。")
+        )
+        null -> RecurrenceScope.entries.map { scope ->
+            RecurrenceScopeOptionUi(
+                scope = scope,
+                title = when (scope) {
+                    RecurrenceScope.CURRENT -> "仅当前"
+                    RecurrenceScope.CURRENT_AND_FUTURE -> "当前及之后"
+                    RecurrenceScope.ALL -> "全部循环"
+                },
+                description = ""
+            )
+        }
     }
 }
 

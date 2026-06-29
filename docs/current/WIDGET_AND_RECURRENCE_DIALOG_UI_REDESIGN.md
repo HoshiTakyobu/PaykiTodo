@@ -1,8 +1,17 @@
 # Widget 与循环范围弹窗 UI 改版交接文档
 
-状态：设计交接稿，当前轮次不直接实施 Widget / 循环范围弹窗代码改版。
+状态：本设计已在 `1.14.20 / versionCode 340` 落地实施。下面的“改版设计建议”章节作为实现依据保留；实际落地见各文件改动与 `docs/current/SESSION_HANDOFF.md`。
 
-当前源码基线：`1.14.18 / versionCode 338`。本文件用于把用户反馈、现有代码结构、可执行改版方向整理给后续前端 / UI 实现工具。
+原始设计交接基线：`1.14.18 / versionCode 338`。本文件最初用于把用户反馈、现有代码结构、可执行改版方向整理给后续前端 / UI 实现工具，现已据此完成实现。
+
+## 0. 已实施改动（1.14.20）
+
+- 今日看板 Widget 日程标题去掉数量：`TodoWidgetService.kt` 渲染 `今日日程`，`widget_todo_preview.xml` 预览同步为 `今日日程`。`今日待办（N）` 按文档建议保留数量。
+- 分区标题瘦身：`widget_todo_section.xml` 字号由 `21sp` 降到 `18sp`，阴影减弱，`paddingTop` 调为 `8dp`；预览中两个分区标题同步降为 `18sp`。
+- 待办卡片轻量化（方案 A）：`widget_todo_task_card.xml` 去掉 `elevation`，去掉 `minHeight`；共享底 `widget_todo_soft_card_background.xml` 降低 alpha、减细描边、半径降为 `18dp`，保留左侧色条作为主锚点；预览内联待办卡 elevation 同步为 0。
+- 日程聚合卡减少嵌套卡片感：`widget_schedule_inner_background.xml` 空状态底改为近透明无描边，`widget_schedule_event_background.xml` 事件行底改为近透明、半径降为 `12dp`，`widget_schedule_event_active_background.xml` 半径同步 `12dp` 并保留强调描边，让左侧色条成为主要识别元素。
+- 倒数日 Widget 空状态顶部对齐：`widget_countdown.xml` 的 `widget_countdown_empty` 由居中改为 `top` + `start|center_vertical`，文案改为 `暂无倒数目标\n在待办或日程中打开倒数日`，去掉整体 bold，使用新轻量底 `widget_countdown_empty_background.xml`。
+- 循环范围弹窗改为选项卡片样式：`DashboardScreen.kt` 的 `RecurrenceScopeDialog` 由 `AlertDialog` 改为自定义 `Dialog` + 三张 `Surface(onClick)` 选项卡，每张含主标题 + 副说明；新增 `RecurrenceScopeOptionUi` 模型与 `recurrenceScopeDialogTitle/Subtitle/recurrenceScopeOptions(mode)`，删除场景使用 error 描边与红色标题。底部 `关闭` 独立于选项区。选择后的取消/删除/修改业务逻辑保持不变。
 
 ## 1. 本文覆盖的问题
 

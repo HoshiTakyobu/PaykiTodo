@@ -312,7 +312,7 @@ private class TodoWidgetFactory(
             }
         }
 
-        output += sectionRow(-3L, "今日日程（${snapshot.visibleTodayEvents.size}）", highlight = true, opensCalendar = true)
+        output += sectionRow(-3L, "今日日程", highlight = true, opensCalendar = true)
         output += scheduleRow(snapshot, activeCheckIns)
         return output.take(60)
     }

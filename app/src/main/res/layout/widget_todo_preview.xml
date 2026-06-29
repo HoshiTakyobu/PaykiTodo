@@ -91,7 +91,7 @@
             android:includeFontPadding="false"
             android:text="今日待办（2）"
             android:textColor="@color/widget_text_primary"
-            android:textSize="21sp"
+            android:textSize="18sp"
             android:textStyle="bold" />
 
         <LinearLayout
@@ -99,7 +99,7 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="9dp"
             android:background="@drawable/widget_todo_soft_card_background"
-            android:elevation="2dp"
+            android:elevation="0dp"
             android:orientation="horizontal">
 
             <ImageView
@@ -176,9 +176,9 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="14dp"
             android:includeFontPadding="false"
-            android:text="今日日程（1）"
+            android:text="今日日程"
             android:textColor="@color/widget_text_primary"
-            android:textSize="21sp"
+            android:textSize="18sp"
             android:textStyle="bold" />
 
         <LinearLayout

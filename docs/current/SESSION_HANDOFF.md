@@ -5,11 +5,11 @@
 - Repository root: `G:\Workspace\Project\PaykiTodo`
 - Branch: `main`
 - Current code version:
-  - `versionName = 1.14.20`
-  - `versionCode = 340`
+  - `versionName = 1.14.21`
+  - `versionCode = 341`
   - database version = `28`
 - Latest debug APK:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.14.20-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.14.21-debug.apk`
 - Latest signed release APK available locally:
   - `app/build/outputs/apk/release/PaykiTodo-1.14.12-release.apk`
 - Latest GitHub Release:
@@ -17,31 +17,22 @@
 
 ## Completed In This Round
 
-实施了 `docs/current/WIDGET_AND_RECURRENCE_DIALOG_UI_REDESIGN.md` 的全部四块改版（该文档原为设计交接稿，本轮已落地实现）。
+本轮升级 AI 日报/周报与规划识别器的 prompt 工程，未改动数据库版本与循环语义。
 
-1. **今日日程去数量**
-   - `TodoWidgetService.kt` 渲染 `今日日程`，不再带 `（N）`；`今日待办（N）` 保持原样。
-   - `widget_todo_preview.xml` 同步显示 `今日日程`。
+1. **AI 日报/周报 prompt 全面化**
+   - `DailyReportGenerator.kt` 新增 `buildReportSystemPrompt(reportType)`，把原来"简短、不寒暄"的一句话 system prompt 扩成一份完整写作规范：纯文本中文小节、覆盖数据区每个维度、先客观分析再给具体建议、无数据维度简短带过、不编造。
+   - 重写 `buildDailyPrompt`：日报目标 350-500 字，加入完成率、星期、今日/明日日程（带地点后缀）、签到投入、明日 DDL；写作要求拆成"今日回顾 / 需要补救 / 时间投入 / 明日重点 / 一句建议"中文小节。
+   - 重写 `buildWeeklyPrompt`：周报目标 450-650 字，取数从 12 条放宽到 20 条，写作要求拆成"本周概览 / 完成亮点 / 遗留与反思 / 节奏观察 / 下周重点 / 一句建议"。
+   - 新增辅助 `todoLine`（标题 + DDL + 备注摘要 40 字内）、`eventLocationSuffix`（地点后缀）、`weekdayLabel`（中文星期）。
+   - 保留原有硬约束：没有"今日日程签到投入"字段时不推断、不写"0 分钟"；只用数据区内容、不编造。
 
-2. **倒数日 Widget 空状态**
-   - `widget_countdown.xml` 的 `widget_countdown_empty` 从居中粗体卡片改为顶部对齐、左对齐、非粗体的两行轻提示：`暂无倒数目标 / 在待办或日程中打开倒数日`。
-   - 新增轻量背景 `app/src/main/res/drawable/widget_countdown_empty_background.xml`。
+2. **规划识别器相对日期推算强化**
+   - `PlanningAiRecognizer.kt` 的 `buildUserPrompt` 注入"当前时间（星期）"和"今天/明天/后天"绝对日期锚点。
+   - `buildSystemPrompt` 在"今天是 X"处补星期，新增 `weekdayLabel`；把第 10 条相对日期规则扩写为逐字推算规范：今天/明天/后天/大后天/昨天、单独星期=未来最近那天、本周X/下周X/下下周X、X 天后、时段词到时刻映射（早上 09:00、上午 12:00、中午 12:00、下午 17:00、傍晚 18:00、晚上 22:00）、推理示例、无法确定时 `dueAt=null` 并在 message 说明，绝不把相对词原样留在标题里。
 
-3. **今日看板 Widget 容器瘦身**
-   - `widget_todo_section.xml`：标题 21sp → 18sp，弱化阴影。
-   - `widget_todo_soft_card_background.xml`：降低 alpha、细化描边、圆角 22dp → 18dp（待办卡、空状态卡、倒数日预览共用此底）。
-   - `widget_todo_task_card.xml`：取消 elevation，minHeight 68dp → 60dp，保留左侧色条。
-   - 日程聚合卡内部：`widget_schedule_inner_background.xml` 近透明，`widget_schedule_event_background.xml` 去底色减圆角，`widget_schedule_event_active_background.xml` 圆角对齐 12dp 并保留高亮描边。
-   - `widget_todo_preview.xml`：两处分区标题 18sp、内联待办卡 elevation 0dp。
-
-4. **循环范围弹窗改版**
-   - `DashboardScreen.kt`：`RecurrenceScopeDialog` 从 `AlertDialog` 改为自定义 `Dialog + Surface`，呈现标题 + 副说明 + 三张选项卡片（主标题 + 解释文案），删除场景使用 error 描边/标题色，底部独立“关闭”。
-   - 新增 `RecurrenceScopeOptionUi`、`recurrenceScopeDialogTitle(mode)`、`recurrenceScopeDialogSubtitle(mode)`、`recurrenceScopeOptions(mode)`；移除旧的 `recurrenceScopeMessage` / `recurrenceScopeLabel` 与未使用的 `AlertDialog` 导入。
-   - 选择后的业务回调（编辑/取消/删除待办与日程的 scope）保持不变，未改动仓库层循环语义。
-
-5. **版本与文档**
-   - 版本元数据升级到 `1.14.20 / versionCode 340`。
-   - 更新了 redesign 文档状态行、CHANGELOG、`PROJECT_STATUS.md`、`CURRENT_TASK.md` 和本交接。
+3. **版本与文档**
+   - 版本元数据升级到 `1.14.21 / versionCode 341`。
+   - 更新 `README.md` 当前源码版本、`CHANGELOG.md`、`PROJECT_STATUS.md`、`CURRENT_TASK.md` 和本交接。
 
 ## Validation
 
@@ -49,9 +40,10 @@ Passed:
 
 - `./gradlew.bat --no-daemon :app:compileDebugKotlin`
 - `./gradlew.bat --no-daemon :app:assembleDebug`
-- APK metadata inspection (`aapt dump badging`) for `versionName = 1.14.20`, `versionCode = 340`, output `app/build/outputs/apk/debug/PaykiTodo-1.14.20-debug.apk`
+- APK metadata inspection (`aapt dump badging`) for `versionName = 1.14.21`, `versionCode = 341`, output `app/build/outputs/apk/debug/PaykiTodo-1.14.21-debug.apk`
+- Installed on `emulator-5554` and launched `MainActivity` without crash.
 
-未执行（本轮纯 UI/资源改动，可按需补充）：模拟器/真机安装冒烟、`testDebugUnitTest`。
+未执行：真实 provider key 下的日报/周报实际生成观感抽查与规划识别相对日期解析冒烟（本地无 key，且 key 不入库）。
 
 ## Still Required Before Reporting Complete
 
@@ -59,7 +51,7 @@ Passed:
 
 ## Notes For Next Session
 
-- 循环范围弹窗的底层 recurrence 语义未改动；如需调整循环实例生成/删除逻辑，应另开专项数据任务。
-- Widget 改动均为 RemoteViews 兼容路径（XML + 资源），未引入 Glance。OEM launcher 实际渲染、深色桌面对比度建议真机确认。
-- `widget_todo_soft_card_background.xml` 为多处共用底图，后续若再调它，会同时影响待办卡 / 空状态卡 / 倒数日预览。
+- 本轮纯 prompt 文案改动，没有改动报告的本地兜底生成（`buildLocalDaily` 等）逻辑结构；如果要让本地兜底也更全面，需另外改这些函数。
+- 规划识别相对日期推算依赖模型遵循 prompt；若后续发现仍有把"周五"原样留在标题的情况，应考虑在解析后做一层后处理校正，而不是只靠 prompt。
+- 日报/周报字数目标已上调，注意观察实际 token 消耗与 provider 超时；如有截断可在 `PlanningAiRequest` 侧调整。
 - Do not commit or write Desktop Sync tokens, AI keys, private Base URLs, signing files, generated APKs, or local diagnostic logs.

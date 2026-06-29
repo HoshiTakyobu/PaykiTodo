@@ -8,8 +8,8 @@
 - Target platform: Android 14 / API 34
 - License: MIT License (`LICENSE`)
 - Current version in code:
-  - `versionName = "1.14.20"`
-  - `versionCode = 340`
+  - `versionName = "1.14.21"`
+  - `versionCode = 341`
   - database version = `28`
 
 ## Current Build Facts
@@ -19,7 +19,14 @@
 - Latest GitHub Release:
   - `https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.14.12`
 - Latest fully built debug APK:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.14.20-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.14.21-debug.apk`
+- Current `1.14.21 / versionCode 341` status:
+  - AI 日报/周报 system prompt 与数据 prompt 全面扩写（`DailyReportGenerator.kt`）。日报从"简短 200 字"改为"全面 350-500 字"、周报从"简短 260 字"改为"全面 450-650 字"，要求纯文本中文小节（如"今日回顾：""需要补救：""明日重点：""一句建议："）、覆盖数据区每个维度（完成率、错过/逾期、日程时间分布、签到投入、临近 DDL 与后续日程）、点名具体事项、先客观分析再给可执行建议。
+  - 数据 prompt 信息量增强：新增完成率（已完成/计划数 + 百分比）、日期带星期、待办行附带 DDL 与备注摘要（`todoLine`）、日程行附带地点后缀（`eventLocationSuffix`），周报日程/DDL 取数从 12 条放宽到 20 条。
+  - 仍保留"无签到投入字段不要推断、不要写 0 分钟""只依据数据区、不编造"的硬约束。
+  - 规划识别器相对日期推算强化（`PlanningAiRecognizer.kt`）：system/user prompt 都注入今天的星期，并给出"今天/明天/后天"绝对日期锚点；新增规则要求把"周五/下周三/X 天后/这周X/下周X"等相对词逐字推算成绝对日期写进 dueAt/startAt/endAt，绝不把相对词原样留在标题里；补充时段词到具体时刻的映射与推理示例；无法可靠确定日期时 dueAt 设 null 并在 message 说明，不要瞎猜。
+  - Database version remains `28`; no Room schema migration was added. Changed: `DailyReportGenerator.kt`, `PlanningAiRecognizer.kt`, version metadata, README, changelog, current docs.
+  - Verification passed: `./gradlew.bat --no-daemon :app:compileDebugKotlin`; `./gradlew.bat --no-daemon :app:assembleDebug`; APK metadata inspection for `versionName = 1.14.21`, `versionCode = 341`, output `PaykiTodo-1.14.21-debug.apk`; installed on emulator-5554 and launched MainActivity without crash.
 - Current `1.14.20 / versionCode 340` status:
   - Implemented the `WIDGET_AND_RECURRENCE_DIALOG_UI_REDESIGN.md` handoff. The redesign doc header now records that the redesign is implemented in this version instead of being a deferred design-only handoff.
   - Android 今日看板 Widget schedule section title now renders `今日日程` without a parenthesized count (`TodoWidgetService.kt`), and the static picker preview (`widget_todo_preview.xml`) matches. `今日待办（N）` keeps its count.

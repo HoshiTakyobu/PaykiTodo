@@ -378,8 +378,9 @@ object PlanningAiRecognizer {
 
     private fun buildUserPrompt(markdown: String, now: LocalDateTime): String {
         return """
-            当前时间：${now.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)}
-            规划文档名称或日期不作为默认日期；只按用户正文里写出的今天、明天、周五、5.29、具体日期等信息理解。
+            当前时间：${now.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)}（${weekdayLabel(now.toLocalDate())}）
+            参照日期锚点：今天=${now.toLocalDate()}（${weekdayLabel(now.toLocalDate())}），明天=${now.toLocalDate().plusDays(1)}（${weekdayLabel(now.toLocalDate().plusDays(1))}），后天=${now.toLocalDate().plusDays(2)}（${weekdayLabel(now.toLocalDate().plusDays(2))}）。
+            规划文档名称或日期不作为默认日期；只按用户正文里写出的“今天/明天/后天/周五/下周三/5.29/具体日期”等信息，相对今天这个锚点来推算真实日期。
 
             用户写下的规划内容如下。请把它拆成待办和日程候选：
 
@@ -389,13 +390,26 @@ object PlanningAiRecognizer {
         """.trimIndent()
     }
 
+    private fun weekdayLabel(date: LocalDate): String {
+        return when (date.dayOfWeek) {
+            DayOfWeek.MONDAY -> "周一"
+            DayOfWeek.TUESDAY -> "周二"
+            DayOfWeek.WEDNESDAY -> "周三"
+            DayOfWeek.THURSDAY -> "周四"
+            DayOfWeek.FRIDAY -> "周五"
+            DayOfWeek.SATURDAY -> "周六"
+            DayOfWeek.SUNDAY -> "周日"
+        }
+    }
+
     private fun buildSystemPrompt(now: LocalDateTime): String {
         val today = now.toLocalDate()
+        val todayWeekday = weekdayLabel(today)
         val documentDateRule = "规划文档名称或日期不提供默认日期。没有显式日期时，日程可按今天 $today 预览；待办没有 DDL 就 dueAt=null。"
         return """
             你是 PaykiTodo 规划台的结构化识别器。你的任务是把用户随手写的中文规划、备忘、课程安排、DDL、会议、复习计划拆成可预览候选。
 
-            必须只输出 JSON，不要输出 Markdown、解释、寒暄或代码块。今天是 $today，当前时间是 ${now.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)}。
+            必须只输出 JSON，不要输出 Markdown、解释、寒暄或代码块。今天是 $today（$todayWeekday），当前时间是 ${now.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)}。
             $documentDateRule
 
             输出格式：
@@ -412,7 +426,13 @@ object PlanningAiRecognizer {
             7. recurrence 用于循环规则：不循环输出 {"enabled":false,"type":"NONE","weeklyDays":[],"endDate":null}；明确写了每天/每周/每月/每年且能确定截止日期时才设置 enabled=true，type 可用 DAILY、WEEKLY、MONTHLY_NTH_WEEKDAY、MONTHLY_DAY、YEARLY_DATE、YEARLY_LUNAR_DATE；每周循环 weeklyDays 用 1-7 表示周一到周日；没有截止日期时不要启用循环，只在 message 提醒用户导入后设置。日期范围要识别为循环：例如“06-22~06-24 19:00-21:00 【合唱】省赛排练 @学生发展中心111”表示 2026-06-22、06-23、06-24 每天 19:00-21:00，输出一个 event，startAt 为 2026-06-22T19:00:00，endAt 为 2026-06-22T21:00:00，recurrence={"enabled":true,"type":"DAILY","weeklyDays":[],"endDate":"2026-06-24"}，title 不要包含“06-22~06-24”。
             8. 已完成、已导入、明显只是标题/说明的内容可以输出 type="skip"。
             9. 不要编造用户没写的具体日期时间；如果无法确定具体时间，todo 的 dueAt 设为 null，event 不要输出或输出 skip。
-            10. 相对日期要按今天 $today 解析，例如“今天/明天/后天/周五”。“晚上交材料”如有明确日期上下文，可以按 22:00；“上午”按 12:00，“下午”按 17:00，“早上”按 09:00。
+            10. 相对日期必须结合今天 $today（$todayWeekday）逐字推理出绝对日期，并写进 dueAt / startAt / endAt，绝不要把相对词原样留在标题里：
+                - “今天”=$today；“明天”=今天+1 天；“后天”=今天+2 天；“大后天”=今天+3 天；“昨天”=今天-1 天。
+                - 单独的星期（“周五 / 星期五 / 周日”）指“从今天起、未来最近的那个星期几”；如果那个星期几就是今天，按今天处理，除非用户明确说“下周”。
+                - “这周X / 本周X”指今天所在周（周一为一周开始）的那个星期几，可能已经过去；“下周X”指下一周的那个星期几；“下下周X”再加一周。
+                - “X 天后 / X 周后 / 下个月今天”等也要换算成绝对日期。
+                - 一天内的时段词按：早上=09:00，上午=12:00（截止类）或上午时段，中午=12:00，下午=17:00，傍晚=18:00，晚上=22:00；用户给了具体时刻以具体时刻为准。
+                - 推理示例（假设今天是 $today $todayWeekday）：用户写“明天下午3点开组会”，输出 event，startAt=今天+1天的 15:00。用户写“周五前交报告”，把“周五”解析为未来最近的周五日期，dueAt 设为该日 23:59:00。无法可靠确定具体日期时，todo 的 dueAt 设为 null 并在 message 说明，不要瞎猜一个日期。
             11. 逗号分隔的轻量日程要按“时间段，标题，地点”理解，例如“10:00-12:00, 【课程】习思想，"@主楼B1-412"”应输出 event，title="【课程】习思想"，location="@主楼B1-412"，groupName=""，createLinkedTodo=false。不要把“【课程】”自动截成分组，除非原文明确写了“分组：课程”。
         """.trimIndent()
     }

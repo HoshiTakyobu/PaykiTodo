@@ -117,7 +117,7 @@ object DailyReportGenerator {
             val response = PlanningAiCaller.callWithFallback(
                 providers = settings.planningAiProviders,
                 request = PlanningAiRequest(
-                    systemPrompt = "你是 PaykiTodo 的温和复盘助手。请输出简短中文$reportType，不要寒暄，不要编造数据；没有明示投入时长字段时不要推断或编造投入时长。",
+                    systemPrompt = buildReportSystemPrompt(reportType),
                     prompt = prompt
                 )
             )
@@ -151,58 +151,94 @@ object DailyReportGenerator {
         return report.copy(id = id)
     }
 
+    private fun buildReportSystemPrompt(reportType: String): String {
+        return """
+            你是 PaykiTodo 的复盘助手，负责把用户的待办与日程数据写成一份全面、具体、可读的中文$reportType。
+
+            写作要求：
+            1. 用纯文本输出，禁止使用 Markdown 标题（不要出现 # ## 这类符号）、代码块或表格；可以用「今日回顾」「日程与投入」「明日重点」这样的中文小节标签独立成行来分段。
+            2. 内容要全面，覆盖数据区提供的每一个维度：完成情况、错过/逾期情况、日程安排与时间分布、签到投入、临近的 DDL 和后续日程。不要只挑一两点说。
+            3. 要具体，点名关键事项的标题，不要只给笼统的数量统计；在合适处可以引用具体时间或时间段。
+            4. 客观真实，只能依据数据区内容，不要编造任何用户没有提供的事项、数字或时间；数据区没有「签到投入」字段时，不要推断、也不要写「0 分钟」。
+            5. 有分析也有建议：先客观陈述与简要分析（例如完成节奏、负荷是否集中、有无连续错过），再给具体可执行的下一步建议，避免空泛说教和寒暄。
+            6. 语气温和、鼓励但不浮夸；如果某个维度确实没有数据，简短带过即可，不要强行扩写。
+        """.trimIndent()
+    }
+
     private fun buildDailyPrompt(context: DailyContext): String {
+        val completionRate = run {
+            val planned = context.todayCompleted.size + context.todayMissed.size
+            if (planned > 0) "${context.todayCompleted.size}/$planned（约 ${context.todayCompleted.size * 100 / planned}%）" else "今天没有以今天为 DDL 的待办"
+        }
         return buildString {
-            appendLine("请根据以下数据生成一份简短的中文日报，控制在 200 字以内。")
+            appendLine("请根据以下真实数据，生成一份内容充实、覆盖全面的中文日报，约 350-500 字。")
+            appendLine("只使用下面提供的数据，不要编造没有出现的任务、日程或数字。")
             appendLine()
-            appendLine("日期：${context.date.format(DateFormatter)}")
+            appendLine("【日期】${context.date.format(DateFormatter)}（${weekdayLabel(context.date)}）")
+            appendLine("【今日待办完成情况】完成率 $completionRate")
+            appendLine()
             appendLine("今天完成的待办（${context.todayCompleted.size} 条）：")
-            appendLine(context.todayCompleted.toBulletList { it.title })
+            appendLine(context.todayCompleted.toBulletList { todoLine(it) })
             appendLine()
-            appendLine("今天错过的待办（${context.todayMissed.size} 条）：")
-            appendLine(context.todayMissed.toBulletList { it.title })
+            appendLine("今天错过 / 逾期的待办（${context.todayMissed.size} 条）：")
+            appendLine(context.todayMissed.toBulletList { todoLine(it) })
             appendLine()
             appendLine("今天的日程（${context.todayEvents.size} 条）：")
-            appendLine(context.todayEvents.toBulletList { "${it.title}（${eventTimeLabel(it)}）" })
+            appendLine(context.todayEvents.toBulletList { "${it.title}（${eventTimeLabel(it)}${eventLocationSuffix(it)}）" })
             if (context.todayEventCheckInMinutes > 0) {
                 appendLine()
                 appendLine("今日日程签到投入：${context.todayEventCheckInMinutes} 分钟")
             }
             appendLine()
             appendLine("明天的日程（${context.tomorrowEvents.size} 条）：")
-            appendLine(context.tomorrowEvents.toBulletList { "${it.title}（${eventTimeLabel(it)}）" })
+            appendLine(context.tomorrowEvents.toBulletList { "${it.title}（${eventTimeLabel(it)}${eventLocationSuffix(it)}）" })
             appendLine()
             appendLine("明天 DDL（${context.tomorrowDdls.size} 条）：")
             appendLine(context.tomorrowDdls.toBulletList { "${it.title}（${formatMillis(it.dueAtMillis)}）" })
             appendLine()
-            appendLine("格式要求：")
-            appendLine("1. 第一段 1-2 句，总结今天并肯定已完成部分。")
-            appendLine("2. 第二段 1-2 句，提示明天最紧要的 DDL 和日程。")
-            appendLine("3. 第三段可选，给一句温和建议，避免说教。")
-            appendLine("4. 只有上方数据区提供“今日日程签到投入”时才提及投入时长；没有该字段时不要推断，也不要写“0 分钟”。")
-            append("不要使用 Markdown 标题，直接写自然段落。")
+            appendLine("写作要求：")
+            appendLine("1. 用中文纯文本分段，每段前可加一个简短中文小标题加冒号，例如“今日回顾：”“值得肯定：”“需要补救：”“明日重点：”“一句建议：”。不要使用 Markdown 的 # 号、星号或表格。")
+            appendLine("2. 今日回顾：结合完成率和具体完成的待办，说清楚今天实际推进了什么，点名 1-3 件具体任务，不要只说“完成了若干待办”。")
+            appendLine("3. 需要补救：如果有错过 / 逾期待办，逐条点名并指出建议尽快重排；没有则说明今天没有遗留。")
+            appendLine("4. 时间投入：只有上方提供“今日日程签到投入”时才分析投入时长；没有该字段不要推断，也不要写“0 分钟”。")
+            appendLine("5. 明日重点：结合明天的 DDL 和日程，排出最紧要的 1-3 件事，并提示时间冲突或紧凑时段。")
+            appendLine("6. 一句建议：给一句具体、贴合今天数据的温和建议，避免空泛说教。")
+            append("7. 内容要具体、有信息量，但语气克制平实，不要为了凑字数重复同一句话。")
         }.trim()
     }
 
     private fun buildWeeklyPrompt(context: WeeklyContext): String {
-        return """
-            请根据以下数据生成一份简短中文周报，控制在 260 字以内。
-
-            周期：${context.weekStart.format(DateFormatter)} 至 ${context.weekEnd.format(DateFormatter)}
-            本周完成待办（${context.completedTodos.size} 条）：
-            ${context.completedTodos.toBulletList { it.title }}
-
-            本周错过待办（${context.missedTodos.size} 条）：
-            ${context.missedTodos.toBulletList { it.title }}
-
-            本周日程（${context.events.size} 条）：
-            ${context.events.take(12).toBulletList { "${it.title}（${eventTimeLabel(it)}）" }}
-
-            下周 DDL（${context.upcomingDdls.size} 条）：
-            ${context.upcomingDdls.take(12).toBulletList { "${it.title}（${formatMillis(it.dueAtMillis)}）" }}
-
-            请输出自然段落：先总结本周，再指出下周优先事项，最后给一句温和建议。不要使用 Markdown 标题。
-        """.trimIndent()
+        val completionRate = run {
+            val planned = context.completedTodos.size + context.missedTodos.size
+            if (planned > 0) "${context.completedTodos.size}/$planned（约 ${context.completedTodos.size * 100 / planned}%）" else "本周没有以本周为 DDL 的待办"
+        }
+        return buildString {
+            appendLine("请根据以下真实数据，生成一份内容充实、覆盖全面的中文周报，约 450-650 字。")
+            appendLine("只使用下面提供的数据，不要编造没有出现的任务、日程或数字。")
+            appendLine()
+            appendLine("【周期】${context.weekStart.format(DateFormatter)} 至 ${context.weekEnd.format(DateFormatter)}")
+            appendLine("【本周待办完成情况】完成率 $completionRate")
+            appendLine()
+            appendLine("本周完成待办（${context.completedTodos.size} 条）：")
+            appendLine(context.completedTodos.toBulletList { todoLine(it) })
+            appendLine()
+            appendLine("本周错过 / 逾期待办（${context.missedTodos.size} 条）：")
+            appendLine(context.missedTodos.toBulletList { todoLine(it) })
+            appendLine()
+            appendLine("本周日程（${context.events.size} 条）：")
+            appendLine(context.events.take(20).toBulletList { "${it.title}（${eventTimeLabel(it)}${eventLocationSuffix(it)}）" })
+            appendLine()
+            appendLine("下周 DDL（${context.upcomingDdls.size} 条）：")
+            appendLine(context.upcomingDdls.take(20).toBulletList { "${it.title}（${formatMillis(it.dueAtMillis)}）" })
+            appendLine()
+            appendLine("写作要求：")
+            appendLine("1. 用中文纯文本分段，每段前可加一个简短中文小标题加冒号，例如“本周概览：”“完成亮点：”“遗留与反思：”“节奏观察：”“下周重点：”“一句建议：”。不要使用 Markdown 的 # 号、星号或表格。")
+            appendLine("2. 本周概览结合完成率说明整体推进程度；完成亮点点名 2-4 件本周具体完成的代表性任务。")
+            appendLine("3. 遗留与反思逐条或归类说明错过 / 逾期的待办，并指出可能的改进方向。")
+            appendLine("4. 节奏观察结合本周日程分布，说明忙碌时段或类型集中情况；数据不足时简要说明即可，不要编造。")
+            appendLine("5. 下周重点结合下周 DDL 与已知日程，排出优先级最高的几件事并提示时间风险。")
+            append("6. 一句建议要具体贴合数据，语气温和克制，不要空泛说教或重复凑字数。")
+        }.trim()
     }
 
     private fun buildLocalDaily(context: DailyContext): String {
@@ -246,6 +282,35 @@ object DailyReportGenerator {
 
     private fun <T> List<T>.toBulletList(label: (T) -> String): String {
         return if (isEmpty()) "（无）" else joinToString("\n") { "- ${label(it)}" }
+    }
+
+    private fun todoLine(item: TodoItem): String {
+        return buildString {
+            append(item.title)
+            if (item.hasDueDate) {
+                append("（DDL ").append(formatMillis(item.dueAtMillis)).append("）")
+            }
+            item.notes.trim().takeIf { it.isNotBlank() }?.let {
+                append("，备注：").append(it.replace(Regex("\\s+"), " ").take(40))
+            }
+        }
+    }
+
+    private fun eventLocationSuffix(item: TodoItem): String {
+        val location = item.location.trim()
+        return if (location.isBlank()) "" else "，地点 $location"
+    }
+
+    private fun weekdayLabel(date: LocalDate): String {
+        return when (date.dayOfWeek) {
+            DayOfWeek.MONDAY -> "周一"
+            DayOfWeek.TUESDAY -> "周二"
+            DayOfWeek.WEDNESDAY -> "周三"
+            DayOfWeek.THURSDAY -> "周四"
+            DayOfWeek.FRIDAY -> "周五"
+            DayOfWeek.SATURDAY -> "周六"
+            DayOfWeek.SUNDAY -> "周日"
+        }
     }
 
     private fun eventTimeLabel(item: TodoItem): String {

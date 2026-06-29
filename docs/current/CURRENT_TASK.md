@@ -2,34 +2,26 @@
 
 ## Active Development Focus
 
-Active immediate task: finish `1.14.20 / versionCode 340` Widget 与循环范围弹窗 UI 改版实施轮次。
+Active immediate task: finish `1.14.21 / versionCode 341` AI 报告 prompt 升级与规划识别器相对日期推算强化轮次。
 
 Do not commit secrets, signing material, API keys, private Base URLs, generated APK/AAB outputs, or personal backups/logs.
 
 ## Current Round Scope
 
-This round implements the redesign described in `docs/current/WIDGET_AND_RECURRENCE_DIALOG_UI_REDESIGN.md`，按文档第 9 节建议顺序逐项落地：
+This round upgrades the prompt engineering behind AI 日报/周报 and the planning recognizer, without touching repository/recurrence semantics or data schema:
 
-1. 今日看板 Widget `今日日程` 标题去掉数量。
-2. 倒数日 Widget 空状态从居中粗体卡片改为顶部轻提示。
-3. 今日看板 Widget 容器层级瘦身，减少“全是同一种圆角卡片”的堆叠感。
-4. 循环待办 / 日程范围选择弹窗从 `AlertDialog` 改为选项卡片样式自定义弹窗。
-5. 不改动仓库层循环语义；只改 UI 选择面板和 Widget 视觉。
+1. AI 日报/周报 system prompt 与数据 prompt 从"简短"改为"全面、具体、覆盖每个数据维度"，纯文本中文小节、先分析再建议。
+2. 数据 prompt 增加完成率、星期、待办 DDL/备注摘要、日程地点后缀，周报取数放宽到 20 条。
+3. 规划识别器注入星期与绝对日期锚点，强制把相对日期词逐字推算成绝对日期，绝不把相对词留在标题里。
+4. 不改动数据库版本（保持 `28`）、不改动循环语义。
 
 ## Current Status
 
 Implemented so far:
 
-1. 版本号升级到 `1.14.20 / versionCode 340`；数据库版本保持 `28`。
-2. `TodoWidgetService.kt` 的今日日程分区标题渲染为 `今日日程`，不再带 `（N）`；`今日待办（N）` 保持不变。
-3. `widget_todo_preview.xml` 同步显示 `今日日程`，两个分区标题字号 21sp → 18sp，内联待办卡 elevation 改 0dp。
-4. 倒数日 Widget 空状态（`widget_countdown.xml`）改为顶部对齐、左对齐、非粗体两行文案“暂无倒数目标 / 在待办或日程中打开倒数日”，使用新轻量背景 `widget_countdown_empty_background.xml`。
-5. Widget 容器瘦身：
-   - `widget_todo_section.xml` 标题 21sp → 18sp、弱化阴影、调整 padding。
-   - `widget_todo_soft_card_background.xml` 降低底色 alpha、细化描边、圆角 22dp → 18dp（待办卡 / 空状态卡 / 倒数日预览共用）。
-   - `widget_todo_task_card.xml` 取消 elevation、minHeight 68dp → 60dp，保留左侧色条作为主锚点。
-   - `widget_schedule_inner_background.xml` 改为近透明底，`widget_schedule_event_background.xml` 去底色减圆角让左侧色条成为主识别元素，`widget_schedule_event_active_background.xml` 圆角对齐 12dp 并保留高亮描边。
-6. 循环范围弹窗重构：新增 `RecurrenceScopeOptionUi` 模型、`recurrenceScopeDialogTitle/Subtitle/Options(mode)` 生成函数；`RecurrenceScopeDialog` 改为自定义 `Dialog + Surface`，标题 + 副说明 + 三张可点击选项卡（主标题 + 解释），删除场景使用 error 描边/标题色，底部独立“关闭”按钮。业务回调保持不变。
+1. 版本号升级到 `1.14.21 / versionCode 341`；数据库版本保持 `28`。
+2. `DailyReportGenerator.kt`：新增 `buildReportSystemPrompt`，重写 `buildDailyPrompt`/`buildWeeklyPrompt`，新增 `todoLine`/`eventLocationSuffix`/`weekdayLabel` 辅助；日报目标 350-500 字、周报 450-650 字，中文小节分段，保留"无签到投入不写 0 分钟""不编造"约束。
+3. `PlanningAiRecognizer.kt`：`buildUserPrompt`/`buildSystemPrompt` 注入今天星期与今天/明天/后天绝对日期锚点，新增 `weekdayLabel`，扩写相对日期推算规则（周X/下周X/X 天后等逐字算绝对日期、时段词到时刻映射、推理示例、无法确定时 dueAt=null）。
 
 ## Validation
 
@@ -37,9 +29,10 @@ Completed for this round:
 
 1. `./gradlew.bat --no-daemon :app:compileDebugKotlin`
 2. `./gradlew.bat --no-daemon :app:assembleDebug`
-3. APK metadata inspection for `versionName = 1.14.20`, `versionCode = 340`, output `app/build/outputs/apk/debug/PaykiTodo-1.14.20-debug.apk`
+3. APK metadata inspection for `versionName = 1.14.21`, `versionCode = 341`, output `app/build/outputs/apk/debug/PaykiTodo-1.14.21-debug.apk`
+4. Installed on `emulator-5554` and launched `MainActivity` without crash.
 
 ## Remaining
 
 1. Commit the completed round with a concrete Chinese commit message.
-2. 真机/模拟器验证 Widget 渲染与循环弹窗交互（OEM launcher 渲染建议真机确认）。
+2. 真实 provider key 下抽查一次日报/周报实际生成观感与规划识别相对日期解析（本地无 key，未冒烟）。

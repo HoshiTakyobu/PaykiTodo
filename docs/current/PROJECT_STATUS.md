@@ -8,8 +8,8 @@
 - Target platform: Android 14 / API 34
 - License: MIT License (`LICENSE`)
 - Current version in code:
-  - `versionName = "1.14.18"`
-  - `versionCode = 338`
+  - `versionName = "1.14.19"`
+  - `versionCode = 339`
   - database version = `28`
 
 ## Current Build Facts
@@ -19,7 +19,12 @@
 - Latest GitHub Release:
   - `https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.14.12`
 - Latest fully built debug APK:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.14.18-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.14.19-debug.apk`
+- Current `1.14.19 / versionCode 339` status:
+  - AI Report archive content now starts directly with search/filter controls instead of repeating a second `AI 报告` heading under the top navigation title.
+  - Added `docs/current/WIDGET_AND_RECURRENCE_DIALOG_UI_REDESIGN.md` as a handoff document for the next UI implementation pass. It maps the current Android Widget files, explains why the today-board widget feels overly card-like, documents the requested `今日日程` title without a count, proposes a top-aligned countdown-widget empty state, and describes a better bottom-sheet-style recurring-scope selector for cancel/edit/delete operations.
+  - Database version remains `28`; no Room schema migration was added. Changed: AI Report phone UI, widget/dialog redesign handoff document, version metadata, README, changelog, current docs.
+  - Verification passed: `./gradlew.bat --no-daemon :app:compileDebugKotlin`; `node --check app/src/main/assets/desktop-web/app.js`; `git diff --check`; `./gradlew.bat --no-daemon :app:assembleDebug`; APK metadata inspection for `versionName = 1.14.19`, `versionCode = 339`, output `PaykiTodo-1.14.19-debug.apk`.
 - Current `1.14.18 / versionCode 338` status:
   - Desktop Sync address selection no longer trusts the active Wi-Fi link address alone. It now merges active-network link addresses with real `NetworkInterface` candidates, ranks trusted Wi-Fi / hotspot / Ethernet interfaces first, and hides VPN, virtual-interface, mobile-data, or low-confidence bridge addresses when a better LAN address is available.
   - The observed failure mode is explained: addresses such as `172.19.0.1` can be exposed by virtual / bridge / VPN-like interfaces and are often not reachable from the desktop even while the phone is on Wi-Fi; when `wlan0` / hotspot exposes `192.168.0.100`, that address should be recommended instead.

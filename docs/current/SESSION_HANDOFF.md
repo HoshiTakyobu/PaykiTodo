@@ -5,11 +5,11 @@
 - Repository root: `G:\Workspace\Project\PaykiTodo`
 - Branch: `main`
 - Current code version:
-  - `versionName = 1.14.18`
-  - `versionCode = 338`
+  - `versionName = 1.14.19`
+  - `versionCode = 339`
   - database version = `28`
 - Latest debug APK:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.14.18-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.14.19-debug.apk`
 - Latest signed release APK available locally:
   - `app/build/outputs/apk/release/PaykiTodo-1.14.12-release.apk`
 - Latest GitHub Release:
@@ -17,54 +17,52 @@
 
 ## Completed In This Round So Far
 
-1. **Desktop Sync address mechanism audit**
-   - The bad `172.19.0.1:18765` address is not a reliable same-LAN browser entry. It can come from virtual / bridge / VPN-like or low-confidence interface exposure while the phone is still on Wi-Fi.
-   - The previous coordinator logic trusted active Wi-Fi `LinkProperties` as soon as it returned any IPv4, so a bad `172.*` value could prevent the real `wlan0` / hotspot address such as `192.168.0.100` from being recommended.
+1. **Current baseline inspection**
+   - Repository baseline before edits was `1.14.18 / versionCode 338`, database version `28`.
+   - Local branch was `main...origin/main [ahead 9]`.
 
-2. **Address selector implementation**
-   - Added `DesktopSyncAddressSelector` as a pure Kotlin, unit-testable selection layer.
-   - `DesktopSyncCoordinator` now collects both active Wi-Fi link candidates and all up non-loopback `NetworkInterface` candidates, then delegates ranking/filtering to the selector.
-   - Trusted Wi-Fi / hotspot / Ethernet interfaces are ranked first; `192.168.*` is preferred when available.
-   - Trusted `10.*` and trusted `172.*` are still allowed for real hotspot / Ethernet LAN cases.
-   - VPN, virtual-interface, mobile-data, and low-confidence bridge addresses are hidden when a better LAN address exists.
+2. **AI Report duplicate heading cleanup**
+   - `app/src/main/java/com/example/todoalarm/ui/AiReportPanel.kt` no longer renders the inner `AI 报告` headline row below the already-present top navigation title.
+   - The content area now starts with the search box and filter chips, reducing redundant screen chrome.
 
-3. **Docs and user-facing help**
-   - Version metadata moved to `1.14.18 / versionCode 338`.
-   - README, CHANGELOG, built-in Wiki, `PROJECT_STATUS.md`, and `CURRENT_TASK.md` now describe the corrected Desktop Sync address behavior.
+3. **Widget and recurring-scope UI handoff document**
+   - Added `docs/current/WIDGET_AND_RECURRENCE_DIALOG_UI_REDESIGN.md`.
+   - The document intentionally does not implement Widget or recurring-dialog UI changes. It is a frontend handoff for another AI/tool.
+   - It maps current files for:
+     - `TodoWidgetProvider.kt`
+     - `TodoWidgetService.kt`
+     - `CountdownWidgetProvider.kt`
+     - `CountdownWidgetService.kt`
+     - `widget_todo*.xml`
+     - `widget_countdown*.xml`
+     - `DashboardScreen.kt` recurring scope dialog
+   - It documents the requested follow-up changes:
+     - change Widget schedule title from `今日日程（N）` to `今日日程`;
+     - avoid making every Widget element feel like the same rounded rectangle;
+     - move countdown Widget empty state away from center-heavy presentation;
+     - replace the current cramped `AlertDialog` recurrence-scope selector with a clearer option-card / bottom-sheet style.
+
+4. **Version and docs**
+   - Version metadata moved to `1.14.19 / versionCode 339`.
+   - README, CHANGELOG, `PROJECT_STATUS.md`, `CURRENT_TASK.md`, and this handoff were updated.
 
 ## Validation So Far
 
 Passed:
 
 - `./gradlew.bat --no-daemon :app:compileDebugKotlin`
-- `./gradlew.bat --no-daemon :app:testDebugUnitTest --tests com.example.todoalarm.sync.DesktopSyncAddressSelectorTest`
-- `./gradlew.bat --no-daemon :app:testDebugUnitTest`
 - `node --check app/src/main/assets/desktop-web/app.js`
 - `git diff --check`
 - `./gradlew.bat --no-daemon :app:assembleDebug`
-- APK metadata inspection:
-  - package: `com.paykitodo.app`
-  - `versionName = 1.14.18`
-  - `versionCode = 338`
-  - output: `app/build/outputs/apk/debug/PaykiTodo-1.14.18-debug.apk`
-- Pixel_8 emulator / ADB verification:
-  - installed and launched the 1.14.18 debug APK on `emulator-5554`;
-  - opened Settings -> Desktop Sync;
-  - enabling Desktop Sync did not crash and showed the running/waiting-for-desktop status;
-  - expanding connection addresses displayed emulator LAN URL `http://10.0.2.15:18765`;
-  - `adb forward tcp:18766 tcp:18765` plus `http://127.0.0.1:18766/` returned HTTP 200 and PaykiTodo Web console HTML;
-  - the ADB port forward was removed and the app was force-stopped after verification.
-
-Note:
-
-- An earlier parallel Gradle run caused a KSP generated-file race (`FileAlreadyExistsException` for `AppDatabase_Impl.java`). The same compile path passed when run sequentially, so this was a parallel-build artifact, not a source failure.
+- APK metadata inspection for `versionName = 1.14.19`, `versionCode = 339`, output `app/build/outputs/apk/debug/PaykiTodo-1.14.19-debug.apk`
 
 ## Still Required Before Reporting Complete
 
-1. Commit the completed round.
+1. Commit the round.
 
 ## Notes For Next Session
 
-- Do not regress the selector into a simple “hide all 172” rule. Some real phone-hotspot LANs can use trusted `172.*` addresses.
-- The intended rule is: prefer the real Wi-Fi / hotspot / Ethernet interface address; hide low-confidence or virtual-looking addresses when a better LAN candidate exists.
-- Do not commit or write Desktop Sync tokens, AI keys, private Base URLs, signing files, or local diagnostic logs.
+- Do not mistake the Widget and recurrence-dialog redesign document for implemented code. It is intentionally a design handoff only.
+- If implementing the Widget follow-up later, the smallest first code change is in `TodoWidgetService.kt`: render `今日日程` without the parenthesized count, and sync `widget_todo_preview.xml`.
+- If implementing the recurring-scope dialog follow-up later, keep the underlying repository recurrence semantics unchanged unless a separate data-logic task is explicitly opened.
+- Do not commit or write Desktop Sync tokens, AI keys, private Base URLs, signing files, generated APKs, or local diagnostic logs.

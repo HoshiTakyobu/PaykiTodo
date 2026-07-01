@@ -410,6 +410,7 @@ internal fun DashboardBody(
     onCancelCalendarEvent: (TodoItem) -> Unit,
     onDeleteTodo: (TodoItem) -> Unit,
     onDeleteCalendarEvent: (TodoItem) -> Unit,
+    activityActions: ActivityBoardActions = ActivityBoardActions(),
     onSelectGroup: (Long?) -> Unit,
     onToggleGroupFilterMode: () -> Unit,
     onCreateGroup: suspend (String, String) -> String?,
@@ -669,6 +670,9 @@ internal fun DashboardBody(
     var boardTodayEventsCollapsed by rememberSaveable { mutableStateOf(uiState.settings.boardTodayEventsCollapsed) }
     var boardTomorrowEventsCollapsed by rememberSaveable { mutableStateOf(false) }
     var boardAnnouncementCollapsed by rememberSaveable { mutableStateOf(uiState.settings.boardAnnouncementCollapsed) }
+    var showStartTimerDialog by remember { mutableStateOf(false) }
+    var showManualRecordDialog by remember { mutableStateOf(false) }
+    var activityDetailTarget by remember { mutableStateOf<com.example.todoalarm.data.ActivityRecord?>(null) }
     val boardMoment by produceState(initialValue = LocalDateTime.now()) {
         while (true) {
             delay(30_000L)
@@ -787,6 +791,17 @@ internal fun DashboardBody(
                     CompactGreetingCard(quote = uiState.currentQuote)
                 }
 
+                uiState.activeActivityRecord?.let { activeRecord ->
+                    item {
+                        ActivityTimerBar(
+                            record = activeRecord,
+                            onPause = activityActions.onPauseTimer,
+                            onResume = activityActions.onResumeTimer,
+                            onFinish = activityActions.onFinishTimer
+                        )
+                    }
+                }
+
                 if (visibleCountdownItems.isNotEmpty()) {
                     item {
                         CollapsibleBoardCard(
@@ -839,6 +854,17 @@ internal fun DashboardBody(
                             )
                         }
                     }
+                }
+
+                item {
+                    TodayActivityCard(
+                        records = uiState.todayActivityRecords,
+                        groupsById = groupsById,
+                        timerActive = uiState.activeActivityRecord != null,
+                        onStartTimer = { showStartTimerDialog = true },
+                        onAddRecord = { showManualRecordDialog = true },
+                        onRecordClick = { activityDetailTarget = it }
+                    )
                 }
 
                 item {
@@ -1107,6 +1133,40 @@ internal fun DashboardBody(
                 }
             } else {
                 null
+            }
+        )
+    }
+
+    if (showStartTimerDialog) {
+        StartActivityTimerDialog(
+            groups = uiState.groups,
+            onDismiss = { showStartTimerDialog = false },
+            onStart = { title, groupId ->
+                showStartTimerDialog = false
+                activityActions.onStartTimer(title, groupId)
+            }
+        )
+    }
+
+    if (showManualRecordDialog) {
+        ManualActivityRecordDialog(
+            groups = uiState.groups,
+            onDismiss = { showManualRecordDialog = false },
+            onSave = { title, startAtMillis, durationMinutes, groupId, notes ->
+                showManualRecordDialog = false
+                activityActions.onAddManualRecord(title, startAtMillis, durationMinutes, groupId, notes)
+            }
+        )
+    }
+
+    activityDetailTarget?.let { record ->
+        ActivityRecordDetailDialog(
+            record = record,
+            group = record.groupId?.let { groupsById[it] },
+            onDismiss = { activityDetailTarget = null },
+            onDelete = {
+                activityDetailTarget = null
+                activityActions.onDeleteRecord(record)
             }
         )
     }

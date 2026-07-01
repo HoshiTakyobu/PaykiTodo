@@ -122,6 +122,16 @@
         </service>
 
         <service
+            android:name=".alarm.ActivityTimerService"
+            android:enabled="true"
+            android:exported="false"
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="记录实际活动时长" />
+        </service>
+
+        <service
             android:name=".widget.TodoWidgetService"
             android:exported="false"
             android:permission="android.permission.BIND_REMOTEVIEWS" />
@@ -159,6 +169,11 @@
 
         <receiver
             android:name=".alarm.OngoingEventReceiver"
+            android:exported="false" />
+
+        <receiver
+            android:name=".alarm.ActivityTimerReceiver"
+            android:enabled="true"
             android:exported="false" />
 
         <receiver

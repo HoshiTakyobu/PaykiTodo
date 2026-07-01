@@ -5,11 +5,11 @@
 - Repository root: `G:\Workspace\Project\PaykiTodo`
 - Branch: `main`
 - Current code version:
-  - `versionName = 1.14.21`
-  - `versionCode = 341`
-  - database version = `28`
+  - `versionName = 1.15.0`
+  - `versionCode = 342`
+  - database version = `29`
 - Latest debug APK:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.14.21-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.15.0-debug.apk`
 - Latest signed release APK available locally:
   - `app/build/outputs/apk/release/PaykiTodo-1.14.12-release.apk`
 - Latest GitHub Release:
@@ -17,22 +17,33 @@
 
 ## Completed In This Round
 
-本轮升级 AI 日报/周报与规划识别器的 prompt 工程，未改动数据库版本与循环语义。
+本轮按 `docs/goals/2026-06-30-paykitodo-1.15.0-activity-timer-goal.md` 落地「实际记录层」（活动计时器 + 随手补记），新增数据库版本 29 与 `activity_records` 表，未改动循环/完成语义。
 
-1. **AI 日报/周报 prompt 全面化**
-   - `DailyReportGenerator.kt` 新增 `buildReportSystemPrompt(reportType)`，把原来"简短、不寒暄"的一句话 system prompt 扩成一份完整写作规范：纯文本中文小节、覆盖数据区每个维度、先客观分析再给具体建议、无数据维度简短带过、不编造。
-   - 重写 `buildDailyPrompt`：日报目标 350-500 字，加入完成率、星期、今日/明日日程（带地点后缀）、签到投入、明日 DDL；写作要求拆成"今日回顾 / 需要补救 / 时间投入 / 明日重点 / 一句建议"中文小节。
-   - 重写 `buildWeeklyPrompt`：周报目标 450-650 字，取数从 12 条放宽到 20 条，写作要求拆成"本周概览 / 完成亮点 / 遗留与反思 / 节奏观察 / 下周重点 / 一句建议"。
-   - 新增辅助 `todoLine`（标题 + DDL + 备注摘要 40 字内）、`eventLocationSuffix`（地点后缀）、`weekdayLabel`（中文星期）。
-   - 保留原有硬约束：没有"今日日程签到投入"字段时不推断、不写"0 分钟"；只用数据区内容、不编造。
+1. **数据层（任务 1）**
+   - 新增 `ActivityRecord.kt`：`activity_records` 实体、`ActivityRecordState`（RUNNING/PAUSED/FINISHED）、`ActivityRecordSource`（TIMER/MANUAL）、`effectiveDurationMillis` 扩展。
+   - `DatabaseMigrations.kt` 新增 `MIGRATION_28_29`（建表 + 两个索引），`AppDatabase.kt` 注册实体并升到 `version = 29`，`TodoApplication.kt` 挂载迁移；Room schema `app/schemas/.../29.json` 已导出。
+   - `TodoDao.kt` 新增 activity 记录的增删改查、观察当前活动记录、按范围/全部查询已完成记录、清空。
+   - `TodoRepository.kt` 新增秒表状态机：`startActivityTimer`（开始前先 finish 旧记录）、`pauseActivityTimer`、`resumeActivityTimer`、`finishActivityTimer`（有效用时 <5 秒丢弃不写库）、`addManualRecord`、`updateActivityRecordDetails`、`deleteActivityRecord`、观察/范围查询。
 
-2. **规划识别器相对日期推算强化**
-   - `PlanningAiRecognizer.kt` 的 `buildUserPrompt` 注入"当前时间（星期）"和"今天/明天/后天"绝对日期锚点。
-   - `buildSystemPrompt` 在"今天是 X"处补星期，新增 `weekdayLabel`；把第 10 条相对日期规则扩写为逐字推算规范：今天/明天/后天/大后天/昨天、单独星期=未来最近那天、本周X/下周X/下下周X、X 天后、时段词到时刻映射（早上 09:00、上午 12:00、中午 12:00、下午 17:00、傍晚 18:00、晚上 22:00）、推理示例、无法确定时 `dueAt=null` 并在 message 说明，绝不把相对词原样留在标题里。
+2. **服务层（任务 2）**
+   - 新增 `ActivityTimerService.kt`：`specialUse` 前台服务，常驻通知 `setUsesChronometer(true)` 自动走秒，通知渠道 `activity_timer`（LOW、无声），带「暂停/继续」「结束」动作按钮；`start`/`refresh`/`stop` 入口。
+   - 新增 `ActivityTimerReceiver.kt`：处理 `ACTION_PAUSE_TIMER`/`ACTION_RESUME_TIMER`/`ACTION_FINISH_TIMER`，转发 Repository 并刷新/停止服务。
+   - `AndroidManifest.xml` 新增 service（`foregroundServiceType="specialUse"` + subtype 属性）与 receiver 声明。
+   - 新增矢量图标 `ic_play_arrow.xml`、`ic_pause.xml`、`ic_stop.xml`。
 
-3. **版本与文档**
-   - 版本元数据升级到 `1.14.21 / versionCode 341`。
-   - 更新 `README.md` 当前源码版本、`CHANGELOG.md`、`PROJECT_STATUS.md`、`CURRENT_TASK.md` 和本交接。
+3. **ViewModel 层（任务 3）**
+   - `TodoViewModel.kt` 暴露 `activeActivityRecord`、`todayActivityRecords` 流（合并进看板 UI state），`startTimer`/`pauseTimer`/`resumeTimer`/`finishTimer`/`addManualActivityRecord`/`deleteActivityRecord` 动作联动前台服务。
+
+4. **UI 层（任务 4）**
+   - 看板顶部计时条（每秒刷新走动时长）、「今日待办」与「今日日程」之间的「今日做了什么」卡、右下角「开始记录」FAB。
+   - 新增 `ActivityTimerSection.kt`、`ActivityRecordDialogs.kt`（开始记录 / 随手补记 / 记录详情对话框），`DashboardScreen.kt`、`DashboardChrome.kt`、`MainActivity.kt` 接线回调。
+
+5. **报告层（任务 5）**
+   - `DailyReportGenerator.kt`：`DailyContext`/`WeeklyContext` 新增实际记录字段与分钟合计，数据 prompt 与写作要求接入「今日/本周实际记录」，新增 `activityLine` 汇总。
+
+6. **备份/版本/文档（任务 6）**
+   - `BackupModels.kt` 的 `AppSnapshot` 新增 `activityRecords`；`BackupManager.kt` 导出/导入 JSON；`TodoRepository.kt` 导出全部已完成记录、导入去重并重置自增主键。
+   - 版本升到 `1.15.0 / versionCode 342`；更新 README、CHANGELOG、PROJECT_STATUS、CURRENT_TASK、本交接与 LEDGER。
 
 ## Validation
 
@@ -40,18 +51,22 @@ Passed:
 
 - `./gradlew.bat --no-daemon :app:compileDebugKotlin`
 - `./gradlew.bat --no-daemon :app:assembleDebug`
-- APK metadata inspection (`aapt dump badging`) for `versionName = 1.14.21`, `versionCode = 341`, output `app/build/outputs/apk/debug/PaykiTodo-1.14.21-debug.apk`
-- Installed on `emulator-5554` and launched `MainActivity` without crash.
+- APK output-metadata inspection：`versionName = 1.15.0`、`versionCode = 342`、`PaykiTodo-1.15.0-debug.apk`
+- Room schema `app/schemas/com.example.todoalarm.data.AppDatabase/29.json` 已生成
 
-未执行：真实 provider key 下的日报/周报实际生成观感抽查与规划识别相对日期解析冒烟（本地无 key，且 key 不入库）。
+未执行：
+
+- 模拟器/真机安装冒烟：本会话环境 `adb` 不在 PATH，无法从这里安装启动。下次会话应在有 `adb` 的环境安装 `PaykiTodo-1.15.0-debug.apk`，走一遍 goal 文档验证清单（开始/暂停/继续/结束、<5 秒丢弃、通知走秒与动作按钮、杀进程后计时恢复、看板计时条与「今日做了什么」卡、随手补记、备份/恢复含 activity_records）。
+- 真实 provider key 下日报/周报接入实际记录的观感抽查（本地无 key，key 不入库）。
 
 ## Still Required Before Reporting Complete
 
-1. Commit the round with a concrete Chinese commit message.
+1. 已提交本轮：见 git 历史。
+2. 待下次会话补做安装冒烟与真实 key 报告观感抽查。
 
 ## Notes For Next Session
 
-- 本轮纯 prompt 文案改动，没有改动报告的本地兜底生成（`buildLocalDaily` 等）逻辑结构；如果要让本地兜底也更全面，需另外改这些函数。
-- 规划识别相对日期推算依赖模型遵循 prompt；若后续发现仍有把"周五"原样留在标题的情况，应考虑在解析后做一层后处理校正，而不是只靠 prompt。
-- 日报/周报字数目标已上调，注意观察实际 token 消耗与 provider 超时；如有截断可在 `PlanningAiRequest` 侧调整。
+- 计时器为秒表模型：同一时刻只允许一条非 FINISHED 记录，`startActivityTimer` 会先结束旧记录（沿用 <5 秒丢弃）。若未来要支持多计时并行，需要重构该约束与 `getActiveActivityRecord` 的 LIMIT 1 查询。
+- 前台服务不自持久化状态，重启后靠库中活动记录恢复；若发现杀进程后通知丢失，检查 `ActivityTimerService.start` 是否在进程重建后被重新触发。
+- goal 文档中「不做」项（电脑同步、独立 Widget、待办自动完成、动循环逻辑）本轮均未触碰，保持后续可扩展。
 - Do not commit or write Desktop Sync tokens, AI keys, private Base URLs, signing files, generated APKs, or local diagnostic logs.

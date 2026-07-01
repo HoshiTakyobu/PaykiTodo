@@ -8,9 +8,9 @@
 - Target platform: Android 14 / API 34
 - License: MIT License (`LICENSE`)
 - Current version in code:
-  - `versionName = "1.14.21"`
-  - `versionCode = 341`
-  - database version = `28`
+  - `versionName = "1.15.0"`
+  - `versionCode = 342`
+  - database version = `29`
 
 ## Current Build Facts
 
@@ -19,7 +19,18 @@
 - Latest GitHub Release:
   - `https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.14.12`
 - Latest fully built debug APK:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.14.21-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.15.0-debug.apk`
+- Current `1.15.0 / versionCode 342` status:
+  - 新增与待办/日程并列的「实际记录」层：正向计时器（秒表模型）+ 随手补记 + 看板「今日做了什么」卡 + AI 日报/周报接入实际记录。
+  - 数据层（`ActivityRecord.kt`、`TodoDao.kt`、`TodoRepository.kt`）：新增 `activity_records` 实体与状态机（RUNNING/PAUSED/FINISHED，来源 TIMER/MANUAL），`startActivityTimer`（开始前先结束旧记录）、`pauseActivityTimer`、`resumeActivityTimer`、`finishActivityTimer`（有效用时 <5 秒直接丢弃不写库）、`addManualRecord`、观察当前记录与今日已完成记录、范围查询。
+  - 服务层（`ActivityTimerService.kt`、`ActivityTimerReceiver.kt`）：`specialUse` 前台服务常驻通知，`setUsesChronometer(true)` 自动走秒，通知渠道 `activity_timer`（LOW、无声），带「暂停/继续」「结束」动作按钮广播；杀进程后计时状态由库中活动记录恢复。
+  - ViewModel（`TodoViewModel.kt`）：暴露 `activeActivityRecord`、`todayActivityRecords` 流，`startTimer`/`pauseTimer`/`resumeTimer`/`finishTimer`/`addManualActivityRecord`/`deleteActivityRecord` 动作，并联动前台服务启动/刷新/停止。
+  - UI（`DashboardScreen.kt`、`ActivityTimerSection.kt`、`ActivityRecordDialogs.kt`、`DashboardChrome.kt`、`MainActivity.kt`、`ic_play_arrow`/`ic_pause`/`ic_stop`）：看板顶部计时条（每秒刷新）、「今日待办」与「今日日程」之间的「今日做了什么」卡、右下角「开始记录」FAB、开始记录 / 随手补记 / 记录详情对话框。
+  - 报告层（`DailyReportGenerator.kt`）：`DailyContext`/`WeeklyContext` 新增 `todayActivityRecords`/`todayActivityMinutes` 与 `weekActivityRecords`/`weekActivityMinutes`，数据 prompt 与写作要求接入实际记录，`activityLine` 汇总时段与分钟。
+  - 备份（`BackupModels.kt`、`BackupManager.kt`、`TodoRepository.kt`）：`AppSnapshot` 新增 `activityRecords`，导出全部已完成记录、导入去重并重置自增主键。
+  - Database version raised `28` -> `29` with `MIGRATION_28_29` adding `activity_records`; Room schema `29.json` exported. Changed: data/service/viewmodel/ui/report/backup layers, manifest（新增 service + receiver 声明），version metadata, README, changelog, current docs.
+  - Verification passed: `./gradlew.bat --no-daemon :app:compileDebugKotlin`; `./gradlew.bat --no-daemon :app:assembleDebug`; APK metadata inspection for `versionName = 1.15.0`, `versionCode = 342`, output `PaykiTodo-1.15.0-debug.apk`; Room schema `29.json` generated.
+  - 未执行：模拟器/真机安装冒烟（本会话环境 `adb` 不在 PATH），以及真实 provider key 下日报/周报接入实际记录的观感抽查。
 - Current `1.14.21 / versionCode 341` status:
   - AI 日报/周报 system prompt 与数据 prompt 全面扩写（`DailyReportGenerator.kt`）。日报从"简短 200 字"改为"全面 350-500 字"、周报从"简短 260 字"改为"全面 450-650 字"，要求纯文本中文小节（如"今日回顾：""需要补救：""明日重点：""一句建议："）、覆盖数据区每个维度（完成率、错过/逾期、日程时间分布、签到投入、临近 DDL 与后续日程）、点名具体事项、先客观分析再给可执行建议。
   - 数据 prompt 信息量增强：新增完成率（已完成/计划数 + 百分比）、日期带星期、待办行附带 DDL 与备注摘要（`todoLine`）、日程行附带地点后缀（`eventLocationSuffix`），周报日程/DDL 取数从 12 条放宽到 20 条。

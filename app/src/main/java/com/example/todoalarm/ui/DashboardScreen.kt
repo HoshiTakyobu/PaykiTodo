@@ -140,6 +140,12 @@ fun DashboardScreen(
     onRestoreTodo: (TodoItem) -> Unit,
     onCancelTodo: (TodoItem, RecurrenceScope) -> Unit,
     onCancelCalendarEvent: (TodoItem, RecurrenceScope) -> Unit,
+    onStartActivityTimer: (String, Long?) -> Unit,
+    onPauseActivityTimer: () -> Unit,
+    onResumeActivityTimer: () -> Unit,
+    onFinishActivityTimer: () -> Unit,
+    onAddManualActivityRecord: (String, Long, Int, Long?, String) -> Unit,
+    onDeleteActivityRecord: (com.example.todoalarm.data.ActivityRecord) -> Unit,
     onSelectGroup: (Long?) -> Unit,
     onToggleGroupFilterMode: () -> Unit,
     onCreateGroup: suspend (String, String) -> String?,
@@ -639,6 +645,14 @@ fun DashboardScreen(
                             onDeleteCalendarEvent(item, RecurrenceScope.CURRENT)
                         }
                     },
+                    activityActions = ActivityBoardActions(
+                        onStartTimer = onStartActivityTimer,
+                        onPauseTimer = onPauseActivityTimer,
+                        onResumeTimer = onResumeActivityTimer,
+                        onFinishTimer = onFinishActivityTimer,
+                        onAddManualRecord = onAddManualActivityRecord,
+                        onDeleteRecord = onDeleteActivityRecord
+                    ),
                     onSelectGroup = onSelectGroup,
                     onToggleGroupFilterMode = onToggleGroupFilterMode,
                     onCreateGroup = onCreateGroup,

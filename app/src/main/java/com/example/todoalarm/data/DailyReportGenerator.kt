@@ -70,6 +70,8 @@ object DailyReportGenerator {
         val dayStart = date.atStartOfDay(zone).toInstant().toEpochMilli()
         val dayEndExclusive = date.plusDays(1).atStartOfDay(zone).toInstant().toEpochMilli()
         val tomorrowEndExclusive = date.plusDays(2).atStartOfDay(zone).toInstant().toEpochMilli()
+        val activityRecords = app.repository.getFinishedActivityRecordsInRange(dayStart, dayEndExclusive)
+            .sortedBy { it.startAtMillis }
         return DailyContext(
             date = date,
             todayEventCheckInMinutes = app.repository.getTodayEventCheckInMinutes(date),
@@ -84,7 +86,9 @@ object DailyReportGenerator {
                 .filter { DailyBoardSnapshotBuilder.eventOverlapsDay(it, date.plusDays(1)) }
                 .sortedBy { it.startAtMillis ?: it.dueAtMillis },
             tomorrowDdls = app.repository.getActiveTodosDueInRange(dayEndExclusive, tomorrowEndExclusive)
-                .sortedBy { it.dueAtMillis }
+                .sortedBy { it.dueAtMillis },
+            todayActivityRecords = activityRecords,
+            todayActivityMinutes = activityRecords.sumOf { (it.effectiveDurationMillis() / 60_000L) }.toInt()
         )
     }
 
@@ -95,6 +99,8 @@ object DailyReportGenerator {
         val startMillis = weekStart.atStartOfDay(zone).toInstant().toEpochMilli()
         val endExclusiveMillis = weekEnd.plusDays(1).atStartOfDay(zone).toInstant().toEpochMilli()
         val nextWeekEndExclusiveMillis = weekEnd.plusDays(8).atStartOfDay(zone).toInstant().toEpochMilli()
+        val activityRecords = app.repository.getFinishedActivityRecordsInRange(startMillis, endExclusiveMillis)
+            .sortedBy { it.startAtMillis }
         return WeeklyContext(
             weekStart = weekStart,
             weekEnd = weekEnd,
@@ -106,7 +112,9 @@ object DailyReportGenerator {
                 .filter { item -> (0..6).any { DailyBoardSnapshotBuilder.eventOverlapsDay(item, weekStart.plusDays(it.toLong())) } }
                 .sortedBy { it.startAtMillis ?: it.dueAtMillis },
             upcomingDdls = app.repository.getActiveTodosDueInRange(endExclusiveMillis, nextWeekEndExclusiveMillis)
-                .sortedBy { it.dueAtMillis }
+                .sortedBy { it.dueAtMillis },
+            weekActivityRecords = activityRecords,
+            weekActivityMinutes = activityRecords.sumOf { (it.effectiveDurationMillis() / 60_000L) }.toInt()
         )
     }
 
@@ -196,14 +204,18 @@ object DailyReportGenerator {
             appendLine("明天 DDL（${context.tomorrowDdls.size} 条）：")
             appendLine(context.tomorrowDdls.toBulletList { "${it.title}（${formatMillis(it.dueAtMillis)}）" })
             appendLine()
+            appendLine("今日实际记录（${context.todayActivityRecords.size} 条，总计 ${context.todayActivityMinutes} 分钟）：")
+            appendLine(context.todayActivityRecords.toBulletList { activityLine(it) })
+            appendLine()
             appendLine("写作要求：")
-            appendLine("1. 用中文纯文本分段，每段前可加一个简短中文小标题加冒号，例如“今日回顾：”“值得肯定：”“需要补救：”“明日重点：”“一句建议：”。不要使用 Markdown 的 # 号、星号或表格。")
+            appendLine("1. 用中文纯文本分段，每段前可加一个简短中文小标题加冒号，例如“今日回顾：”“值得肯定：”“需要补救：”“实际做了什么：”“明日重点：”“一句建议：”。不要使用 Markdown 的 # 号、星号或表格。")
             appendLine("2. 今日回顾：结合完成率和具体完成的待办，说清楚今天实际推进了什么，点名 1-3 件具体任务，不要只说“完成了若干待办”。")
             appendLine("3. 需要补救：如果有错过 / 逾期待办，逐条点名并指出建议尽快重排；没有则说明今天没有遗留。")
-            appendLine("4. 时间投入：只有上方提供“今日日程签到投入”时才分析投入时长；没有该字段不要推断，也不要写“0 分钟”。")
-            appendLine("5. 明日重点：结合明天的 DDL 和日程，排出最紧要的 1-3 件事，并提示时间冲突或紧凑时段。")
-            appendLine("6. 一句建议：给一句具体、贴合今天数据的温和建议，避免空泛说教。")
-            append("7. 内容要具体、有信息量，但语气克制平实，不要为了凑字数重复同一句话。")
+            appendLine("4. 实际做了什么：结合“今日实际记录”，说明今天真正花时间在哪些事上、与计划的偏差、时间分配是否合理；没有记录时简要带过，不要编造。")
+            appendLine("5. 时间投入：只有上方提供“今日日程签到投入”时才分析签到投入时长；没有该字段不要推断，也不要写“0 分钟”。")
+            appendLine("6. 明日重点：结合明天的 DDL 和日程，排出最紧要的 1-3 件事，并提示时间冲突或紧凑时段。")
+            appendLine("7. 一句建议：给一句具体、贴合今天数据的温和建议，避免空泛说教。")
+            append("8. 内容要具体、有信息量，但语气克制平实，不要为了凑字数重复同一句话。")
         }.trim()
     }
 
@@ -231,13 +243,17 @@ object DailyReportGenerator {
             appendLine("下周 DDL（${context.upcomingDdls.size} 条）：")
             appendLine(context.upcomingDdls.take(20).toBulletList { "${it.title}（${formatMillis(it.dueAtMillis)}）" })
             appendLine()
+            appendLine("本周实际记录（${context.weekActivityRecords.size} 条，总计 ${context.weekActivityMinutes} 分钟）：")
+            appendLine(context.weekActivityRecords.take(30).toBulletList { activityLine(it) })
+            appendLine()
             appendLine("写作要求：")
-            appendLine("1. 用中文纯文本分段，每段前可加一个简短中文小标题加冒号，例如“本周概览：”“完成亮点：”“遗留与反思：”“节奏观察：”“下周重点：”“一句建议：”。不要使用 Markdown 的 # 号、星号或表格。")
+            appendLine("1. 用中文纯文本分段，每段前可加一个简短中文小标题加冒号，例如“本周概览：”“完成亮点：”“遗留与反思：”“实际投入：”“节奏观察：”“下周重点：”“一句建议：”。不要使用 Markdown 的 # 号、星号或表格。")
             appendLine("2. 本周概览结合完成率说明整体推进程度；完成亮点点名 2-4 件本周具体完成的代表性任务。")
             appendLine("3. 遗留与反思逐条或归类说明错过 / 逾期的待办，并指出可能的改进方向。")
-            appendLine("4. 节奏观察结合本周日程分布，说明忙碌时段或类型集中情况；数据不足时简要说明即可，不要编造。")
-            appendLine("5. 下周重点结合下周 DDL 与已知日程，排出优先级最高的几件事并提示时间风险。")
-            append("6. 一句建议要具体贴合数据，语气温和克制，不要空泛说教或重复凑字数。")
+            appendLine("4. 实际投入：结合本周实际记录，说明这周时间真正花在哪些事上、总投入大致多少；没有记录时简要带过，不要编造。")
+            appendLine("5. 节奏观察结合本周日程分布，说明忙碌时段或类型集中情况；数据不足时简要说明即可，不要编造。")
+            appendLine("6. 下周重点结合下周 DDL 与已知日程，排出优先级最高的几件事并提示时间风险。")
+            append("7. 一句建议要具体贴合数据，语气温和克制，不要空泛说教或重复凑字数。")
         }.trim()
     }
 
@@ -301,6 +317,22 @@ object DailyReportGenerator {
         return if (location.isBlank()) "" else "，地点 $location"
     }
 
+    private fun activityLine(record: ActivityRecord): String {
+        val minutes = (record.effectiveDurationMillis() / 60_000L).toInt()
+        val start = toLocalDateTime(record.startAtMillis)
+        val end = record.endAtMillis?.let(::toLocalDateTime)
+        val timeRange = if (end != null) {
+            "${start.format(ClockFormatter)}-${end.format(ClockFormatter)}"
+        } else {
+            start.format(ClockFormatter)
+        }
+        val title = record.title.trim().ifBlank { "未命名记录" }
+        val notesSuffix = record.notes.trim().takeIf { it.isNotBlank() }
+            ?.let { "，备注：${it.replace(Regex("\\s+"), " ").take(40)}" }
+            .orEmpty()
+        return "$title（$timeRange，${minutes}分钟）$notesSuffix"
+    }
+
     private fun weekdayLabel(date: LocalDate): String {
         return when (date.dayOfWeek) {
             DayOfWeek.MONDAY -> "周一"
@@ -354,7 +386,9 @@ object DailyReportGenerator {
         val todayMissed: List<TodoItem>,
         val todayEvents: List<TodoItem>,
         val tomorrowEvents: List<TodoItem>,
-        val tomorrowDdls: List<TodoItem>
+        val tomorrowDdls: List<TodoItem>,
+        val todayActivityRecords: List<ActivityRecord> = emptyList(),
+        val todayActivityMinutes: Int = 0
     )
 
     private data class WeeklyContext(
@@ -363,7 +397,9 @@ object DailyReportGenerator {
         val completedTodos: List<TodoItem>,
         val missedTodos: List<TodoItem>,
         val events: List<TodoItem>,
-        val upcomingDdls: List<TodoItem>
+        val upcomingDdls: List<TodoItem>,
+        val weekActivityRecords: List<ActivityRecord> = emptyList(),
+        val weekActivityMinutes: Int = 0
     )
 
     private const val LOCAL_PROVIDER_NAME = "本地模板"

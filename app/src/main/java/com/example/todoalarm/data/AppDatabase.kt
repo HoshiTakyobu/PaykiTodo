@@ -16,9 +16,10 @@ import androidx.room.RoomDatabase
         AiReport::class,
         EventCheckIn::class,
         TodoGroupTag::class,
-        RecurringInstanceSkip::class
+        RecurringInstanceSkip::class,
+        ActivityRecord::class
     ],
-    version = 28,
+    version = 29,
     exportSchema = true
 )
 abstract class AppDatabase : RoomDatabase() {

@@ -939,4 +939,39 @@ interface TodoDao {
 
     @Query("DELETE FROM ai_reports")
     suspend fun clearAiReports()
+
+    // ---- Activity records (正向计时 / 实际记录) ----
+
+    @Insert
+    suspend fun insertActivityRecord(record: ActivityRecord): Long
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertActivityRecords(records: List<ActivityRecord>): List<Long>
+
+    @Update
+    suspend fun updateActivityRecord(record: ActivityRecord)
+
+    @Query("DELETE FROM activity_records WHERE id = :id")
+    suspend fun deleteActivityRecord(id: Long)
+
+    @Query("SELECT * FROM activity_records WHERE id = :id LIMIT 1")
+    suspend fun getActivityRecord(id: Long): ActivityRecord?
+
+    @Query("SELECT * FROM activity_records WHERE state != 'FINISHED' ORDER BY createdAtMillis DESC LIMIT 1")
+    suspend fun getActiveActivityRecord(): ActivityRecord?
+
+    @Query("SELECT * FROM activity_records WHERE state != 'FINISHED' ORDER BY createdAtMillis DESC LIMIT 1")
+    fun observeActiveActivityRecord(): Flow<ActivityRecord?>
+
+    @Query("SELECT * FROM activity_records WHERE state = 'FINISHED' AND startAtMillis >= :startMillis AND startAtMillis < :endMillis ORDER BY startAtMillis ASC")
+    suspend fun getFinishedActivityRecordsInRange(startMillis: Long, endMillis: Long): List<ActivityRecord>
+
+    @Query("SELECT * FROM activity_records WHERE state = 'FINISHED' AND startAtMillis >= :startMillis AND startAtMillis < :endMillis ORDER BY startAtMillis ASC")
+    fun observeFinishedActivityRecordsInRange(startMillis: Long, endMillis: Long): Flow<List<ActivityRecord>>
+
+    @Query("SELECT * FROM activity_records WHERE state = 'FINISHED' ORDER BY startAtMillis ASC")
+    suspend fun getAllFinishedActivityRecords(): List<ActivityRecord>
+
+    @Query("DELETE FROM activity_records")
+    suspend fun clearActivityRecords()
 }

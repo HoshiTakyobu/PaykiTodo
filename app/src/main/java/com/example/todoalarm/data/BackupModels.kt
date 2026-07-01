@@ -15,5 +15,6 @@ data class BackupSnapshot(
     val todoGroupTags: List<TodoGroupTag> = emptyList(),
     val eventCheckIns: List<EventCheckIn> = emptyList(),
     val recurringInstanceSkips: List<RecurringInstanceSkip> = emptyList(),
+    val activityRecords: List<ActivityRecord> = emptyList(),
     val settings: AppSettings
 )

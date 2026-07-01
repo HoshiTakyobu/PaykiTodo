@@ -66,6 +66,7 @@ internal fun BackupSnapshot.toJson(): JSONObject {
         put("todoGroupTags", JSONArray(todoGroupTags.map { it.toJson() }))
         put("eventCheckIns", JSONArray(eventCheckIns.map { it.toJson() }))
         put("recurringInstanceSkips", JSONArray(recurringInstanceSkips.map { it.toJson() }))
+        put("activityRecords", JSONArray(activityRecords.map { it.toJson() }))
     }
 }
 
@@ -335,6 +336,22 @@ private fun RecurringInstanceSkip.toJson(): JSONObject {
     }
 }
 
+private fun ActivityRecord.toJson(): JSONObject {
+    return JSONObject().apply {
+        put("id", id)
+        put("title", title)
+        put("groupId", groupId)
+        put("startAtMillis", startAtMillis)
+        put("accumulatedMillis", accumulatedMillis)
+        put("lastResumeAtMillis", lastResumeAtMillis)
+        put("state", state.name)
+        put("endAtMillis", endAtMillis)
+        put("source", source.name)
+        put("notes", notes)
+        put("createdAtMillis", createdAtMillis)
+    }
+}
+
 internal fun backupSnapshotFromJson(json: JSONObject): BackupSnapshot {
     return BackupSnapshot(
         exportedAtMillis = json.optLong("exportedAtMillis", System.currentTimeMillis()),
@@ -351,6 +368,7 @@ internal fun backupSnapshotFromJson(json: JSONObject): BackupSnapshot {
         todoGroupTags = json.optJSONArray("todoGroupTags").toTodoGroupTags(),
         eventCheckIns = json.optJSONArray("eventCheckIns").toEventCheckIns(),
         recurringInstanceSkips = json.optJSONArray("recurringInstanceSkips").toRecurringInstanceSkips(),
+        activityRecords = json.optJSONArray("activityRecords").toActivityRecords(),
         settings = json.optJSONObject("settings").toSettings()
     )
 }
@@ -666,6 +684,38 @@ private fun JSONArray?.toRecurringInstanceSkips(): List<RecurringInstanceSkip> {
                     id = item.optLong("id", 0L),
                     seriesId = seriesId,
                     instanceEpochDay = instanceEpochDay,
+                    createdAtMillis = item.optLong("createdAtMillis", System.currentTimeMillis())
+                )
+            )
+        }
+    }
+}
+
+private fun JSONArray?.toActivityRecords(): List<ActivityRecord> {
+    if (this == null) return emptyList()
+    return buildList(length()) {
+        for (index in 0 until length()) {
+            val item = optJSONObject(index) ?: continue
+            val startAtMillis = item.optLong("startAtMillis", Long.MIN_VALUE)
+            if (startAtMillis == Long.MIN_VALUE) continue
+            val state = runCatching {
+                ActivityRecordState.valueOf(item.optString("state", "FINISHED"))
+            }.getOrDefault(ActivityRecordState.FINISHED)
+            val source = runCatching {
+                ActivityRecordSource.valueOf(item.optString("source", "TIMER"))
+            }.getOrDefault(ActivityRecordSource.TIMER)
+            add(
+                ActivityRecord(
+                    id = item.optLong("id", 0L),
+                    title = item.optString("title", ""),
+                    groupId = if (item.isNull("groupId")) null else item.optLong("groupId"),
+                    startAtMillis = startAtMillis,
+                    accumulatedMillis = item.optLong("accumulatedMillis", 0L),
+                    lastResumeAtMillis = if (item.isNull("lastResumeAtMillis")) null else item.optLong("lastResumeAtMillis"),
+                    state = state,
+                    endAtMillis = if (item.isNull("endAtMillis")) null else item.optLong("endAtMillis"),
+                    source = source,
+                    notes = item.optString("notes", ""),
                     createdAtMillis = item.optLong("createdAtMillis", System.currentTimeMillis())
                 )
             )

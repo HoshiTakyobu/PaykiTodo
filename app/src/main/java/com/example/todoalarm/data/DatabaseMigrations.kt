@@ -434,6 +434,44 @@ object DatabaseMigrations {
         }
     }
 
+    val MIGRATION_28_29 = object : Migration(28, 29) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            createActivityRecordsTable(db)
+        }
+    }
+
+    private fun createActivityRecordsTable(db: SupportSQLiteDatabase) {
+        db.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS `activity_records` (
+                `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                `title` TEXT NOT NULL,
+                `groupId` INTEGER,
+                `startAtMillis` INTEGER NOT NULL,
+                `accumulatedMillis` INTEGER NOT NULL DEFAULT 0,
+                `lastResumeAtMillis` INTEGER,
+                `state` TEXT NOT NULL,
+                `endAtMillis` INTEGER,
+                `source` TEXT NOT NULL,
+                `notes` TEXT NOT NULL DEFAULT '',
+                `createdAtMillis` INTEGER NOT NULL
+            )
+            """.trimIndent()
+        )
+        db.execSQL(
+            """
+            CREATE INDEX IF NOT EXISTS `index_activity_records_state_created`
+            ON `activity_records` (`state`, `createdAtMillis`)
+            """.trimIndent()
+        )
+        db.execSQL(
+            """
+            CREATE INDEX IF NOT EXISTS `index_activity_records_groupId`
+            ON `activity_records` (`groupId`)
+            """.trimIndent()
+        )
+    }
+
     private fun ensureMultiSlotBundleColumns(db: SupportSQLiteDatabase) {
         if (tableExists(db, "todo_items") && !tableHasColumns(db, "todo_items", listOf("multiSlotBundleId"))) {
             db.execSQL("ALTER TABLE `todo_items` ADD COLUMN `multiSlotBundleId` TEXT")

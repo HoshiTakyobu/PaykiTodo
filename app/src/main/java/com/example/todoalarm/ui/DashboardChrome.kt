@@ -141,7 +141,6 @@ import com.example.todoalarm.data.ThemeMode
 import com.example.todoalarm.data.TodoItem
 import com.example.todoalarm.data.TodoRepository
 import com.example.todoalarm.data.WeekStartMode
-import com.example.todoalarm.ui.theme.PaykiGreetingFontFamily
 import android.widget.Toast
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
@@ -198,36 +197,36 @@ internal fun DashboardDrawer(
     ModalDrawerSheet(
         modifier = Modifier
             .fillMaxHeight()
-            .fillMaxWidth(0.75f)
-            .widthIn(min = 280.dp, max = 420.dp),
+            .fillMaxWidth(0.82f)
+            .widthIn(min = 280.dp, max = 360.dp),
         drawerContainerColor = MaterialTheme.colorScheme.surface,
-        drawerShape = RoundedCornerShape(topEnd = 28.dp, bottomEnd = 28.dp)
+        drawerShape = RoundedCornerShape(topEnd = 18.dp, bottomEnd = 18.dp)
     ) {
         Column(
             modifier = Modifier
                 .fillMaxHeight()
-                .padding(horizontal = 18.dp, vertical = 24.dp),
-            verticalArrangement = Arrangement.spacedBy(18.dp)
+                .padding(horizontal = 12.dp, vertical = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             Column(
                 modifier = Modifier
                     .weight(1f)
                     .verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(10.dp)
+                verticalArrangement = Arrangement.spacedBy(6.dp)
             ) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    Surface(shape = CircleShape, color = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)) {
-                        Box(Modifier.size(52.dp), contentAlignment = Alignment.Center) {
+                    Surface(shape = RoundedCornerShape(12.dp), color = MaterialTheme.colorScheme.primaryContainer) {
+                        Box(Modifier.size(42.dp), contentAlignment = Alignment.Center) {
                             Image(
                                 painter = painterResource(id = R.drawable.ic_launcher_art_transparent),
                                 contentDescription = "应用图标",
                                 modifier = Modifier
-                                    .size(52.dp)
-                                    .clip(CircleShape),
+                                    .size(42.dp)
+                                    .clip(RoundedCornerShape(12.dp)),
                                 contentScale = ContentScale.Crop
                             )
                         }
@@ -235,8 +234,8 @@ internal fun DashboardDrawer(
                     Text(
                         "PaykiTodo",
                         modifier = Modifier.weight(1f),
-                        style = MaterialTheme.typography.headlineSmall,
-                        fontWeight = FontWeight.Bold,
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.SemiBold,
                         color = MaterialTheme.colorScheme.onSurface,
                         maxLines = 1,
                         softWrap = false,
@@ -245,8 +244,8 @@ internal fun DashboardDrawer(
                 }
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.45f))
                 Column(
-                    modifier = Modifier.padding(top = 6.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                    modifier = Modifier.padding(top = 2.dp),
+                    verticalArrangement = Arrangement.spacedBy(2.dp)
                 ) {
                     listOf(
                         DashboardSection.BOARD,
@@ -287,12 +286,10 @@ internal fun DashboardDrawer(
                 }
             }
 
-            Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.CenterStart) {
-                ThemeModeSwitcher(
-                    selectedThemeMode = selectedThemeMode,
-                    onThemeModeChange = onThemeModeChange
-                )
-            }
+            ThemeModeSwitcher(
+                selectedThemeMode = selectedThemeMode,
+                onThemeModeChange = onThemeModeChange
+            )
         }
     }
 }
@@ -311,7 +308,7 @@ internal fun DashboardTopBar(
         ),
         navigationIcon = {
             IconButton(onClick = onMenu) {
-                Surface(shape = CircleShape, color = MaterialTheme.colorScheme.surface.copy(alpha = 0.78f)) {
+                Surface(shape = RoundedCornerShape(10.dp), color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.9f)) {
                     Box(Modifier.size(36.dp), contentAlignment = Alignment.Center) {
                         Icon(Icons.Rounded.Menu, contentDescription = "打开菜单", tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.95f))
                     }
@@ -321,14 +318,8 @@ internal fun DashboardTopBar(
         title = {
             Text(
                 title,
-                style = MaterialTheme.typography.titleLarge.copy(
-                    shadow = Shadow(
-                        color = Color.Black.copy(alpha = 0.22f),
-                        offset = Offset(0f, 2f),
-                        blurRadius = 7f
-                    )
-                ),
-                fontWeight = FontWeight.Bold,
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.SemiBold,
                 color = MaterialTheme.colorScheme.onSurface
             )
         },
@@ -1212,7 +1203,7 @@ private fun RecurringTodoSeriesCard(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onToggle),
-        shape = RoundedCornerShape(22.dp),
+        shape = RoundedCornerShape(16.dp),
         color = MaterialTheme.colorScheme.surface.copy(alpha = 0.94f),
         border = BorderStroke(1.dp, accent.copy(alpha = 0.30f))
     ) {
@@ -1276,7 +1267,7 @@ private fun RecurringSeriesLimitNotice(
 ) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(18.dp),
+        shape = RoundedCornerShape(12.dp),
         color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.42f)
     ) {
         Text(
@@ -1299,7 +1290,7 @@ private fun AnnouncementBanner(text: String, rangeLabel: String? = null) {
         modifier = Modifier
             .fillMaxWidth()
             .height(44.dp),
-        shape = RoundedCornerShape(22.dp),
+        shape = RoundedCornerShape(12.dp),
         color = background
     ) {
         Row(
@@ -1336,7 +1327,7 @@ private fun CompactGreetingCard(
 ) {
     var collapsed by rememberSaveable { mutableStateOf(true) }
     ElevatedCard(
-        shape = RoundedCornerShape(24.dp),
+        shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f))
     ) {
         Row(
@@ -1345,13 +1336,13 @@ private fun CompactGreetingCard(
                 .background(
                     Brush.horizontalGradient(
                         listOf(
-                            MaterialTheme.colorScheme.primary.copy(alpha = 0.14f),
-                            MaterialTheme.colorScheme.tertiary.copy(alpha = 0.10f),
+                            MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.72f),
+                            MaterialTheme.colorScheme.surface,
                             MaterialTheme.colorScheme.surface
                         )
                     )
                 )
-                .padding(horizontal = 18.dp, vertical = 16.dp),
+                .padding(horizontal = 16.dp, vertical = 12.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -1361,9 +1352,8 @@ private fun CompactGreetingCard(
             ) {
                 Text(
                     text = "${timeGreeting()}，Payki",
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold,
-                    fontFamily = PaykiGreetingFontFamily,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
                     color = MaterialTheme.colorScheme.onSurface
                 )
                 if (!collapsed) {
@@ -1392,7 +1382,7 @@ private fun CompactGreetingCard(
 @Composable
 private fun OnboardingCard(onDismiss: () -> Unit) {
     ElevatedCard(
-        shape = RoundedCornerShape(24.dp),
+        shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.92f))
     ) {
         Column(modifier = Modifier.padding(horizontal = 18.dp, vertical = 16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -1421,13 +1411,13 @@ private fun CountdownBoardCard(
     onOpenEvent: (TodoItem) -> Unit
 ) {
     ElevatedCard(
-        shape = RoundedCornerShape(28.dp),
+        shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.96f))
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 18.dp, vertical = 16.dp),
+                .padding(horizontal = 16.dp, vertical = 14.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             Row(
@@ -1490,7 +1480,7 @@ private fun CountdownTargetRow(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick),
-        shape = RoundedCornerShape(20.dp),
+        shape = RoundedCornerShape(12.dp),
         color = accent.copy(alpha = if (isSystemInDarkTheme()) 0.18f else 0.10f),
         border = BorderStroke(0.8.dp, accent.copy(alpha = 0.32f))
     ) {
@@ -1587,7 +1577,6 @@ private fun BoardBlockTitle(
     onToggle: (() -> Unit)? = null,
     onNavigate: (() -> Unit)? = null
 ) {
-    val isDarkTheme = MaterialTheme.colorScheme.background.luminance() < 0.3f
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -1597,15 +1586,8 @@ private fun BoardBlockTitle(
     ) {
         Text(
             text = title,
-            style = MaterialTheme.typography.titleLarge.copy(
-                fontSize = 22.sp,
-                shadow = Shadow(
-                    color = Color.Black.copy(alpha = if (isDarkTheme) 0.55f else 0.14f),
-                    offset = Offset(0f, 1.5f),
-                    blurRadius = if (isDarkTheme) 10f else 4f
-                )
-            ),
-            fontWeight = FontWeight.Bold,
+            style = MaterialTheme.typography.titleMedium.copy(fontSize = 18.sp),
+            fontWeight = FontWeight.SemiBold,
             color = MaterialTheme.colorScheme.onSurface
         )
         if (collapsed != null && onToggle != null) {
@@ -1652,14 +1634,14 @@ private fun TodayScheduleBoardCard(
 ) {
     ElevatedCard(
         modifier = Modifier.clickable(onClick = onNavigateCalendar),
-        shape = RoundedCornerShape(28.dp),
+        shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.96f))
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 18.dp, vertical = 18.dp),
-            horizontalArrangement = Arrangement.spacedBy(16.dp),
+                .padding(horizontal = 16.dp, vertical = 14.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalAlignment = Alignment.Top
         ) {
             Column(
@@ -1694,7 +1676,7 @@ private fun TodayScheduleBoardCard(
                 if (!todayCollapsed) {
                     if (todayEvents.isEmpty()) {
                         Surface(
-                            shape = RoundedCornerShape(18.dp),
+                            shape = RoundedCornerShape(10.dp),
                             color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.18f)
                         ) {
                             Text(
@@ -1910,15 +1892,8 @@ internal fun SectionTitle(title: String) {
     Text(
         title,
         modifier = Modifier.padding(horizontal = 2.dp, vertical = 2.dp),
-        style = MaterialTheme.typography.titleLarge.copy(
-            fontSize = 24.sp,
-            shadow = Shadow(
-                color = Color.Black.copy(alpha = 0.16f),
-                offset = Offset(0f, 1.5f),
-                blurRadius = 5f
-            )
-        ),
-        fontWeight = FontWeight.Bold,
+        style = MaterialTheme.typography.titleLarge.copy(fontSize = 20.sp),
+        fontWeight = FontWeight.SemiBold,
         color = MaterialTheme.colorScheme.onSurface
     )
 }
@@ -1929,17 +1904,20 @@ internal fun EmptyStateCard(
     actionLabel: String? = null,
     onAction: (() -> Unit)? = null
 ) {
-    ElevatedCard(shape = RoundedCornerShape(22.dp)) {
+    ElevatedCard(
+        shape = RoundedCornerShape(14.dp),
+        colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surface)
+    ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(20.dp),
+                .padding(horizontal = 16.dp, vertical = 14.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             Text(
                 text,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                style = MaterialTheme.typography.bodyLarge
+                style = MaterialTheme.typography.bodyMedium
             )
             if (!actionLabel.isNullOrBlank() && onAction != null) {
                 TextButton(onClick = onAction) {
@@ -2110,9 +2088,9 @@ private fun DrawerSectionButton(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick),
-        shape = RoundedCornerShape(18.dp),
+        shape = RoundedCornerShape(10.dp),
         color = if (selected) {
-            MaterialTheme.colorScheme.primary.copy(alpha = 0.14f)
+            MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.72f)
         } else {
             Color.Transparent
         }
@@ -2120,21 +2098,21 @@ private fun DrawerSectionButton(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 12.dp, vertical = 12.dp),
-            horizontalArrangement = Arrangement.spacedBy(14.dp),
+                .padding(horizontal = 12.dp, vertical = 10.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Icon(
                 imageVector = icon,
                 contentDescription = null,
-                modifier = Modifier.size(24.dp),
+                modifier = Modifier.size(21.dp),
                 tint = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
             )
             Text(
                 text = label,
                 modifier = Modifier.weight(1f),
-                style = MaterialTheme.typography.titleMedium.copy(fontSize = 19.sp),
-                fontWeight = FontWeight.Bold,
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium,
                 color = if (selected) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant
             )
             trailingContent?.invoke(this)
@@ -2162,14 +2140,42 @@ private fun ThemeModeSwitcher(
 
     Box {
         Surface(
-            shape = CircleShape,
-            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.14f)
+            onClick = { expanded = true },
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(10.dp),
+            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.48f)
         ) {
-            IconButton(onClick = { expanded = true }) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 12.dp, vertical = 9.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
                 Icon(
                     imageVector = currentIcon,
-                    contentDescription = currentLabel,
+                    contentDescription = null,
+                    modifier = Modifier.size(21.dp),
                     tint = MaterialTheme.colorScheme.primary
+                )
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "界面外观",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Text(
+                        text = currentLabel,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                Icon(
+                    imageVector = Icons.Rounded.ExpandMore,
+                    contentDescription = currentLabel,
+                    modifier = Modifier.size(20.dp),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         }

@@ -2,42 +2,36 @@
 
 ## Active Development Focus
 
-Active immediate task: finish `1.15.0 / versionCode 342` 活动计时器（实际记录层）轮次，落地 `docs/goals/2026-06-30-paykitodo-1.15.0-activity-timer-goal.md` 的六项任务。
+The `1.15.1 / versionCode 343` connection reliability and phone / desktop visual-system refresh is complete. No next feature round is selected yet.
 
 Do not commit secrets, signing material, API keys, private Base URLs, generated APK/AAB outputs, or personal backups/logs.
 
 ## Current Round Scope
 
-This round adds an independent 实际记录层 (activity records) that sits alongside todos/events and answers "我今天到底做了什么"：
-
-1. 数据层：新增 `ActivityRecord` 实体（RUNNING/PAUSED/FINISHED、TIMER/MANUAL），数据库升级 `28 → 29`（新增 `activity_records` 表 + 两个索引），DAO/Repository 秒表模型（同一时刻只允许一条非 FINISHED 记录，finish 时有效用时 <5 秒直接丢弃）。
-2. 服务层：`ActivityTimerService` 前台服务（`specialUse` 类型、`activity_timer` LOW 通知渠道、`setUsesChronometer` 自动走秒、暂停/继续/结束动作按钮）+ `ActivityTimerReceiver` 广播接收器，均已在 Manifest 声明。
-3. ViewModel 层：暴露 `activeActivityRecord` / `todayActivityRecords` 流并接入合并状态；提供 start/pause/resume/finish/addManual/delete 动作，动作后同步 start/refresh/stop 前台服务。
-4. UI 层：看板顶部计时条（每秒刷新）、「今日做了什么」卡、右下角「开始记录」FAB、开始记录/随手补记/记录详情对话框。
-5. 报告层：`DailyContext` / `WeeklyContext` 新增 `todayActivityRecords`/`todayActivityMinutes` 与周维度字段，日报/周报数据 prompt 与写作要求接入实际记录。
-6. 备份/版本/文档：`AppSnapshot` 新增 `activityRecords`，导出全部已完成记录、导入按 id 重置去重；版本升级 `1.15.0 / 342`；同步 README、CHANGELOG、STATUS、HANDOFF、LEDGER。
-
-不做（本轮明确不做）：电脑同步、独立 Widget、挂待办自动完成、改动循环/完成逻辑。
+1. Desktop Sync address selection: allow valid unicast IPv4 addresses reported by active Wi-Fi or trusted physical LAN interfaces, including campus CGNAT and campus public IPv4; keep mobile-data, VPN, loopback, multicast, and link-local addresses hidden.
+2. Theme following: explicitly observe Android `uiMode` changes and refresh again on activity resume so `SYSTEM` follows OEM light / dark changes reliably.
+3. Phone UI: replace the old beige/brown palette and oversized rounded surfaces; tighten drawer navigation, Settings menu density, Settings detail presentation, and recurring-item scope choices.
+4. Desktop Web: make the 4-character token case-insensitive, normalize input, remove aurora / gradient / glass styling, use a compact workstation layout, and add system dark-mode variables.
+5. Version / docs / verification: bump to `1.15.1 / 343`, update public/current docs, run focused unit tests, full debug tests, JS syntax validation, assemble the APK, and perform emulator smoke checks where available.
 
 ## Current Status
 
-全部六项任务代码已实现并接通（数据层 → 服务 → ViewModel → UI → 报告 → 备份），编译与打包通过。
+- All four behavior/UI areas are implemented and verified.
+- Phone app content no longer uses the old landscape wallpaper; board/todo/chrome surfaces now match the refreshed drawer and Settings visual system.
+- `DesktopSyncAddressSelectorTest` covers private Wi-Fi, hotspot, campus CGNAT, campus public IPv4, mobile data, and VPN filtering.
+- Database version remains `29`; no migration is required.
 
 ## Validation
 
-Completed for this round:
+Completed:
 
-1. `./gradlew.bat --no-daemon :app:compileDebugKotlin` — 通过。
-2. `./gradlew.bat --no-daemon :app:assembleDebug` — 通过。
-3. Room schema `29.json` 已生成于 `app/schemas/com.example.todoalarm.data.AppDatabase/29.json`。
-4. APK metadata inspection：`output-metadata.json` 记录 `versionName = 1.15.0`、`versionCode = 342`、输出 `app/build/outputs/apk/debug/PaykiTodo-1.15.0-debug.apk`。
+1. `node --check app/src/main/assets/desktop-web/app.js` — passed.
+2. `git diff --check` — passed after code and final documentation updates.
+3. `./gradlew.bat --no-daemon :app:testDebugUnitTest --tests com.example.todoalarm.sync.DesktopSyncAddressSelectorTest` — passed.
+4. `./gradlew.bat --no-daemon :app:testDebugUnitTest` — passed.
+5. `./gradlew.bat --no-daemon :app:compileDebugKotlin` and `:app:assembleDebug` — passed.
+6. APK metadata — `1.15.1 / versionCode 343`, output `app/build/outputs/apk/debug/PaykiTodo-1.15.1-debug.apk`.
+7. Emulator — launch, board, todo, drawer, Settings bottom sheet, live light/dark switching, and recurring-scope selection passed without a fatal exception.
+8. ADB-forwarded Web — lowercase token authorization returned HTTP 200; light/dark board, event timeline, and Planning Desk rendered successfully.
 
-未执行（本地环境限制）：
-
-- 真机/模拟器安装冒烟（本机 `adb` 不在 PATH，未做启动、计时、暂停、继续、结束、<5 秒丢弃、杀进程续跑、看板计时条、今日做了什么卡、补记对话框、备份/恢复的手动验证）。
-- 真实 provider key 下 AI 日报/周报实际记录段落观感抽查（本地无 key，key 不入库）。
-
-## Remaining
-
-1. Commit the completed round with a concrete Chinese commit message.
-2. 在有 `adb` 与模拟器/真机的环境按目标文档「验证清单」逐条冒烟，尤其是杀进程后计时续跑与 <5 秒丢弃。
+Physical campus Wi-Fi reachability and OEM-specific notification/widget behavior remain manual device checks, not unfinished code in this round.

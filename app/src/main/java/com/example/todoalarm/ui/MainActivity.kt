@@ -9,6 +9,7 @@ import android.content.Intent
 import android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION
 import android.content.Intent.FLAG_GRANT_WRITE_URI_PERMISSION
 import android.content.pm.PackageManager
+import android.content.res.Configuration
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -67,6 +68,7 @@ class MainActivity : ComponentActivity() {
     private var previewStopJob: Job? = null
     private var launchRoute by mutableStateOf<DashboardLaunchRoute?>(null)
     private var launchRouteSerial by mutableStateOf(0)
+    private var systemDarkTheme by mutableStateOf(false)
 
     private val notificationPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
@@ -136,6 +138,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        refreshSystemTheme(resources.configuration)
         enableEdgeToEdge()
         lastCrashLog = CrashLogger.readLastCrash(this)
         refreshPermissions()
@@ -149,7 +152,10 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             val uiState = viewModel.uiState.collectAsStateWithLifecycle().value
-            TodoAlarmTheme(themeMode = uiState.settings.themeMode) {
+            TodoAlarmTheme(
+                themeMode = uiState.settings.themeMode,
+                systemDarkTheme = systemDarkTheme
+            ) {
                 DashboardScreen(
                     uiState = uiState,
                     planningNotes = viewModel.planningNotes,
@@ -292,11 +298,22 @@ class MainActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
+        refreshSystemTheme(resources.configuration)
         CrashLogger.markLaunchSuccessful(this)
         refreshPermissions()
         viewModel.refreshTaskStates()
         EventCheckInWatchdog.runOnce(applicationContext)
         maybeRouteToReminder()
+    }
+
+    override fun onConfigurationChanged(newConfig: Configuration) {
+        super.onConfigurationChanged(newConfig)
+        refreshSystemTheme(newConfig)
+    }
+
+    private fun refreshSystemTheme(configuration: Configuration) {
+        systemDarkTheme = configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK ==
+            Configuration.UI_MODE_NIGHT_YES
     }
 
     override fun onNewIntent(intent: Intent) {

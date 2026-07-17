@@ -85,4 +85,53 @@ class DesktopSyncAddressSelectorTest {
         assertTrue(selection.localNetworkAvailable)
         assertEquals(listOf("10.0.0.15"), selection.ipAddresses)
     }
+
+    @Test
+    fun allowsCampusCgnatAddressReportedByActiveWifi() {
+        val selection = DesktopSyncAddressSelector.select(
+            listOf(
+                DesktopSyncAddressCandidate(
+                    address = "100.83.12.4",
+                    interfaceName = null,
+                    source = DesktopSyncAddressSource.ACTIVE_WIFI
+                )
+            )
+        )
+
+        assertTrue(selection.localNetworkAvailable)
+        assertEquals(listOf("100.83.12.4"), selection.ipAddresses)
+        assertTrue(selection.hint.contains("校园网"))
+    }
+
+    @Test
+    fun allowsCampusPublicIpv4OnPhysicalWifiInterface() {
+        val selection = DesktopSyncAddressSelector.select(
+            listOf(
+                DesktopSyncAddressCandidate(
+                    address = "202.115.32.18",
+                    interfaceName = "wlan0",
+                    source = DesktopSyncAddressSource.NETWORK_INTERFACE
+                )
+            )
+        )
+
+        assertTrue(selection.localNetworkAvailable)
+        assertEquals(listOf("202.115.32.18"), selection.ipAddresses)
+    }
+
+    @Test
+    fun rejectsPublicIpv4FromMobileDataInterface() {
+        val selection = DesktopSyncAddressSelector.select(
+            listOf(
+                DesktopSyncAddressCandidate(
+                    address = "39.144.18.22",
+                    interfaceName = "rmnet_data0",
+                    source = DesktopSyncAddressSource.NETWORK_INTERFACE
+                )
+            )
+        )
+
+        assertFalse(selection.localNetworkAvailable)
+        assertEquals(emptyList<String>(), selection.ipAddresses)
+    }
 }

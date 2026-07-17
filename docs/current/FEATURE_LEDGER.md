@@ -59,7 +59,7 @@ This file tracks the product at a practical level for new coding sessions.
 - board currently running events can be visually highlighted with a gold outline and subtle glow
 - board greeting card supports compact collapse / expand behavior
 - board announcement, countdown, today-todo, and the combined today/tomorrow schedule card support collapse / expand controls with locally persisted state; tomorrow itself no longer has a separate collapse button inside the schedule card
-- board background now uses separate light and dark image resources
+- phone app board / task / settings surfaces use a neutral light/dark background with a subtle teal top tint instead of the old full-screen landscape wallpaper; launcher widgets keep their independent image resources
 - board schedule rows align the left color strip to the measured height of the event text block
 - board schedule rows keep normal and in-progress color strips in one aligned column
 - normal board schedule rows have no outer fill or border, while in-progress rows use a gold border with only subtle inner highlight
@@ -69,7 +69,7 @@ This file tracks the product at a practical level for new coding sessions.
 - daily board uses a compact `暂无日程` state when today's visible schedule is empty, including after all of today's events have ended
 - daily board always shows the tomorrow schedule section inside the expanded schedule card, including `明天暂无日程` when tomorrow has no events
 - daily board onboarding card is readable in dark mode, can be dismissed, and can be reset from Settings -> About -> 使用说明
-- daily board floating block titles have stronger dark-theme text shadow so they stay readable over the dark wallpaper background
+- daily board section titles use compact semibold typography without wallpaper-compensating text shadows
 - board surface intentionally does not expose add / batch-add buttons
 
 ### Reminders / Notifications
@@ -344,7 +344,7 @@ This file tracks the product at a practical level for new coding sessions.
 - desktop sync enable immediately starts the phone-side foreground service / LAN server; status reads start the foreground service when needed instead of creating a hidden server without notification
 - desktop sync service auto-disables itself after 5 minutes without an authorized desktop heartbeat, covering both "电脑未输入密钥" and "已连接后断开" cases; desktop Web sends a 60-second authorized heartbeat after connection
 - desktop sync status now exposes authorized-heartbeat freshness and auto-stop countdown to the phone Settings panel, which distinguishes waiting-for-key from connected and refreshes while sync is enabled
-- desktop sync status filters connection addresses through a shared selector that merges active Wi-Fi link candidates with real network-interface candidates, prefers trusted Wi-Fi / hotspot / Ethernet addresses such as `192.168.*`, keeps trusted `10.*` / `172.*` LAN fallbacks when needed, and hides VPN / virtual-interface / mobile-data / low-confidence bridge addresses that ordinary desktop browsers cannot reach
+- desktop sync status filters connection addresses through a shared selector that merges active Wi-Fi link candidates with real network-interface candidates; it accepts campus CGNAT / campus public IPv4 reported by active Wi-Fi or trusted physical LAN interfaces while still hiding mobile-data, VPN, loopback, multicast, link-local, and low-confidence virtual addresses
 - desktop sync address/status inspection is permission- and ROM-failure safe: network-state read failures degrade to a status hint and service-start failures roll the setting back instead of crashing Settings
 - desktop sync can keep WiFi and a partial wake lock while the foreground service is running; the default-on `桌面同步期间保持网络唤醒` setting is surfaced in Settings and reflected in the foreground notification copy
 - desktop web has a `规划台` tab with a memo-style textarea editor, document selector, auto-save, `Ctrl+S` save, `Ctrl+Enter` parse, editable parse preview, selected import, and a help modal aligned with the phone-side natural-writing workflow
@@ -364,6 +364,8 @@ This file tracks the product at a practical level for new coding sessions.
 - desktop web calendar timeline now loads only the visible date range through `/api/events?start=...&end=...`, and stale event-range responses are ignored when the user switches dates quickly
 - desktop web todo / event mutations and Planning Desk import / refresh / undo paths refresh the current page's needed data instead of reloading one complete snapshot after every operation
 - desktop web follows system dark mode through CSS variables for timeline cards, event cards, modal sheets, summary cards, tab buttons, sidebar cards, Planning Desk, inputs, and announcement surfaces
+- desktop Web access-token validation is case-insensitive in both browser normalization and the phone HTTP server
+- desktop Web login, sidebar, top bar, cards, timeline, Planning Desk, and modal surfaces use a compact neutral workstation visual system instead of aurora / purple gradient / glass styling
 
 ### Search
 

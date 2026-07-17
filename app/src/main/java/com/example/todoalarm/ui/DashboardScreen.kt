@@ -3,9 +3,7 @@ package com.example.todoalarm.ui
 import android.app.Activity
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -13,6 +11,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.PostAdd
 import androidx.compose.material.icons.rounded.Search
@@ -41,11 +40,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
-import com.example.todoalarm.R
 import com.example.todoalarm.data.CalendarEventDraft
 import com.example.todoalarm.data.DataHealthCleanResult
 import com.example.todoalarm.data.DataHealthReport
@@ -454,8 +451,6 @@ fun DashboardScreen(
         }
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
-            val darkMode = uiState.settings.themeMode == ThemeMode.DARK ||
-                (uiState.settings.themeMode == ThemeMode.SYSTEM && isSystemInDarkTheme())
             if (section == DashboardSection.CALENDAR) {
                 Box(
                     modifier = Modifier
@@ -463,21 +458,16 @@ fun DashboardScreen(
                         .background(MaterialTheme.colorScheme.background)
                 )
             } else {
-                Image(
-                    painter = painterResource(id = if (darkMode) R.drawable.dashboard_bg_dark else R.drawable.dashboard_bg_light),
-                    contentDescription = null,
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Crop
-                )
+                val darkMode = MaterialTheme.colorScheme.background.luminance() < 0.5f
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
                         .background(
                             Brush.verticalGradient(
                                 listOf(
-                                    if (darkMode) Color(0x3A081723) else Color(0x0FFFFFFF),
-                                    if (darkMode) Color(0x240B1822) else Color(0x06000000),
-                                    if (darkMode) Color(0x16040B10) else Color(0x12000000)
+                                    if (darkMode) Color(0xFF10211F) else Color(0xFFEDF7F5),
+                                    MaterialTheme.colorScheme.background,
+                                    MaterialTheme.colorScheme.background
                                 )
                             )
                         )
@@ -1042,34 +1032,52 @@ private fun RecurrenceScopeDialog(
 ) {
     androidx.compose.ui.window.Dialog(onDismissRequest = onDismiss) {
         androidx.compose.material3.Surface(
-            shape = androidx.compose.foundation.shape.RoundedCornerShape(28.dp),
+            shape = androidx.compose.foundation.shape.RoundedCornerShape(18.dp),
             color = MaterialTheme.colorScheme.surface,
-            tonalElevation = 6.dp,
+            tonalElevation = 2.dp,
             modifier = Modifier.fillMaxWidth()
         ) {
             androidx.compose.foundation.layout.Column(
-                modifier = Modifier.padding(horizontal = 20.dp, vertical = 22.dp)
+                modifier = Modifier.padding(horizontal = 18.dp, vertical = 18.dp)
             ) {
                 Text(
                     text = title,
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold,
                     color = MaterialTheme.colorScheme.onSurface
                 )
-                androidx.compose.foundation.layout.Spacer(Modifier.height(6.dp))
+                androidx.compose.foundation.layout.Spacer(Modifier.height(4.dp))
                 Text(
                     text = subtitle,
-                    style = MaterialTheme.typography.bodyMedium,
+                    style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-                androidx.compose.foundation.layout.Spacer(Modifier.height(18.dp))
-                options.forEachIndexed { index, option ->
-                    RecurrenceScopeOptionCard(option = option, onClick = { onSelect(option.scope) })
-                    if (index != options.lastIndex) {
-                        androidx.compose.foundation.layout.Spacer(Modifier.height(10.dp))
+                androidx.compose.foundation.layout.Spacer(Modifier.height(14.dp))
+                androidx.compose.material3.Surface(
+                    shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
+                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.22f),
+                    border = androidx.compose.foundation.BorderStroke(
+                        1.dp,
+                        MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.7f)
+                    )
+                ) {
+                    androidx.compose.foundation.layout.Column {
+                        options.forEachIndexed { index, option ->
+                            RecurrenceScopeOptionRow(
+                                index = index + 1,
+                                option = option,
+                                onClick = { onSelect(option.scope) }
+                            )
+                            if (index != options.lastIndex) {
+                                androidx.compose.material3.HorizontalDivider(
+                                    modifier = Modifier.padding(start = 58.dp),
+                                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.58f)
+                                )
+                            }
+                        }
                     }
                 }
-                androidx.compose.foundation.layout.Spacer(Modifier.height(14.dp))
+                androidx.compose.foundation.layout.Spacer(Modifier.height(8.dp))
                 androidx.compose.foundation.layout.Box(
                     modifier = Modifier.fillMaxWidth(),
                     contentAlignment = Alignment.CenterEnd
@@ -1084,15 +1092,11 @@ private fun RecurrenceScopeDialog(
 }
 
 @Composable
-private fun RecurrenceScopeOptionCard(
+private fun RecurrenceScopeOptionRow(
+    index: Int,
     option: RecurrenceScopeOptionUi,
     onClick: () -> Unit
 ) {
-    val borderColor = if (option.destructive) {
-        MaterialTheme.colorScheme.error.copy(alpha = 0.55f)
-    } else {
-        MaterialTheme.colorScheme.outlineVariant
-    }
     val titleColor = if (option.destructive) {
         MaterialTheme.colorScheme.error
     } else {
@@ -1100,26 +1104,50 @@ private fun RecurrenceScopeOptionCard(
     }
     androidx.compose.material3.Surface(
         onClick = onClick,
-        shape = androidx.compose.foundation.shape.RoundedCornerShape(20.dp),
-        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f),
-        border = androidx.compose.foundation.BorderStroke(1.dp, borderColor),
+        color = Color.Transparent,
         modifier = Modifier.fillMaxWidth()
     ) {
-        androidx.compose.foundation.layout.Column(
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp)
+        androidx.compose.foundation.layout.Row(
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 11.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            Text(
-                text = option.title,
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
-                color = titleColor
-            )
-            androidx.compose.foundation.layout.Spacer(Modifier.height(4.dp))
-            Text(
-                text = option.description,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+            if (index > 0) {
+                androidx.compose.material3.Surface(
+                    modifier = Modifier.size(32.dp),
+                    shape = androidx.compose.foundation.shape.CircleShape,
+                    color = if (option.destructive) {
+                        MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.58f)
+                    } else {
+                        MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.72f)
+                    }
+                ) {
+                    androidx.compose.foundation.layout.Box(contentAlignment = Alignment.Center) {
+                        Text(
+                            text = index.toString(),
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                            color = titleColor
+                        )
+                    }
+                }
+            }
+            androidx.compose.foundation.layout.Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(2.dp)
+            ) {
+                Text(
+                    text = option.title,
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold,
+                    color = titleColor
+                )
+                Text(
+                    text = option.description,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
         }
     }
 }
@@ -1154,34 +1182,34 @@ private fun recurrenceScopeDialogSubtitle(mode: ScopeDialogMode?): String {
 private fun recurrenceScopeOptions(mode: ScopeDialogMode?): List<RecurrenceScopeOptionUi> {
     return when (mode) {
         ScopeDialogMode.CANCEL_TODO -> listOf(
-            RecurrenceScopeOptionUi(RecurrenceScope.CURRENT, "仅取消当前任务", "只归档这一次，后续循环任务照常生成。"),
-            RecurrenceScopeOptionUi(RecurrenceScope.CURRENT_AND_FUTURE, "取消当前及之后任务", "保留过去记录，从这一次开始停止后续循环。"),
-            RecurrenceScopeOptionUi(RecurrenceScope.ALL, "取消全部循环任务", "整个循环系列都会标记为已取消。")
+            RecurrenceScopeOptionUi(RecurrenceScope.CURRENT, "仅取消这一次", "这次进入历史记录，后续任务照常生成。"),
+            RecurrenceScopeOptionUi(RecurrenceScope.CURRENT_AND_FUTURE, "从这次起停止", "保留过去记录，并停止本次及后续任务。"),
+            RecurrenceScopeOptionUi(RecurrenceScope.ALL, "取消整个系列", "所有已生成和后续任务都标记为已取消。")
         )
         ScopeDialogMode.CANCEL_EVENT -> listOf(
-            RecurrenceScopeOptionUi(RecurrenceScope.CURRENT, "仅取消当前日程", "只取消这一次，后续日程照常生成。"),
-            RecurrenceScopeOptionUi(RecurrenceScope.CURRENT_AND_FUTURE, "取消当前及之后日程", "保留过去记录，从这一次开始停止后续日程。"),
-            RecurrenceScopeOptionUi(RecurrenceScope.ALL, "取消全部循环日程", "整个循环系列都会标记为已取消。")
+            RecurrenceScopeOptionUi(RecurrenceScope.CURRENT, "仅取消这一次", "只取消这次日程，后续日程照常生成。"),
+            RecurrenceScopeOptionUi(RecurrenceScope.CURRENT_AND_FUTURE, "从这次起停止", "保留过去记录，并停止本次及后续日程。"),
+            RecurrenceScopeOptionUi(RecurrenceScope.ALL, "取消整个系列", "整个循环日程都会标记为已取消。")
         )
         ScopeDialogMode.DELETE_TODO -> listOf(
-            RecurrenceScopeOptionUi(RecurrenceScope.CURRENT, "仅删除当前任务", "只移除这一次，不写入历史记录。", destructive = true),
-            RecurrenceScopeOptionUi(RecurrenceScope.CURRENT_AND_FUTURE, "删除当前及之后任务", "删除本次和未来实例，过去记录保留。", destructive = true),
-            RecurrenceScopeOptionUi(RecurrenceScope.ALL, "删除全部循环任务", "删除整个循环系列，请谨慎操作。", destructive = true)
+            RecurrenceScopeOptionUi(RecurrenceScope.CURRENT, "仅删除这一次", "直接移除，不写入历史记录。", destructive = true),
+            RecurrenceScopeOptionUi(RecurrenceScope.CURRENT_AND_FUTURE, "从这次起删除", "删除本次和未来任务，过去记录保留。", destructive = true),
+            RecurrenceScopeOptionUi(RecurrenceScope.ALL, "删除整个系列", "永久删除整个循环系列。", destructive = true)
         )
         ScopeDialogMode.DELETE_EVENT -> listOf(
-            RecurrenceScopeOptionUi(RecurrenceScope.CURRENT, "仅删除当前日程", "只移除这一次，不写入历史记录。", destructive = true),
-            RecurrenceScopeOptionUi(RecurrenceScope.CURRENT_AND_FUTURE, "删除当前及之后日程", "删除本次和未来实例，过去记录保留。", destructive = true),
-            RecurrenceScopeOptionUi(RecurrenceScope.ALL, "删除全部循环日程", "删除整个循环系列，请谨慎操作。", destructive = true)
+            RecurrenceScopeOptionUi(RecurrenceScope.CURRENT, "仅删除这一次", "直接移除，不写入历史记录。", destructive = true),
+            RecurrenceScopeOptionUi(RecurrenceScope.CURRENT_AND_FUTURE, "从这次起删除", "删除本次和未来日程，过去记录保留。", destructive = true),
+            RecurrenceScopeOptionUi(RecurrenceScope.ALL, "删除整个系列", "永久删除整个循环系列。", destructive = true)
         )
         ScopeDialogMode.EDIT_TODO -> listOf(
-            RecurrenceScopeOptionUi(RecurrenceScope.CURRENT, "仅修改当前任务", "只改变这一次，后续循环保持原规则。"),
-            RecurrenceScopeOptionUi(RecurrenceScope.CURRENT_AND_FUTURE, "修改当前及之后任务", "从这一次开始应用新的内容、时间或提醒。"),
-            RecurrenceScopeOptionUi(RecurrenceScope.ALL, "修改全部循环任务", "整个循环系列使用新的设置。")
+            RecurrenceScopeOptionUi(RecurrenceScope.CURRENT, "仅修改这一次", "后续任务继续使用原来的循环规则。"),
+            RecurrenceScopeOptionUi(RecurrenceScope.CURRENT_AND_FUTURE, "从这次起应用", "本次及后续任务使用新的内容和时间。"),
+            RecurrenceScopeOptionUi(RecurrenceScope.ALL, "修改整个系列", "所有循环任务统一使用新的设置。")
         )
         ScopeDialogMode.EDIT_EVENT -> listOf(
-            RecurrenceScopeOptionUi(RecurrenceScope.CURRENT, "仅修改当前日程", "只改变这一次，后续循环保持原规则。"),
-            RecurrenceScopeOptionUi(RecurrenceScope.CURRENT_AND_FUTURE, "修改当前及之后日程", "从这一次开始应用新的内容、时间或提醒。"),
-            RecurrenceScopeOptionUi(RecurrenceScope.ALL, "修改全部循环日程", "整个循环系列使用新的设置。")
+            RecurrenceScopeOptionUi(RecurrenceScope.CURRENT, "仅修改这一次", "后续日程继续使用原来的循环规则。"),
+            RecurrenceScopeOptionUi(RecurrenceScope.CURRENT_AND_FUTURE, "从这次起应用", "本次及后续日程使用新的内容和时间。"),
+            RecurrenceScopeOptionUi(RecurrenceScope.ALL, "修改整个系列", "所有循环日程统一使用新的设置。")
         )
         null -> RecurrenceScope.entries.map { scope ->
             RecurrenceScopeOptionUi(

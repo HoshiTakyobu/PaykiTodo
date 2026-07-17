@@ -8,8 +8,8 @@
 - Target platform: Android 14 / API 34
 - License: MIT License (`LICENSE`)
 - Current version in code:
-  - `versionName = "1.15.0"`
-  - `versionCode = 342`
+  - `versionName = "1.15.1"`
+  - `versionCode = 343`
   - database version = `29`
 
 ## Current Build Facts
@@ -19,7 +19,14 @@
 - Latest GitHub Release:
   - `https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.14.12`
 - Latest fully built debug APK:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.15.0-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.15.1-debug.apk`
+- Current `1.15.1 / versionCode 343` status:
+  - Desktop Sync address selection accepts valid unicast IPv4 addresses reported by active Wi-Fi or trusted physical WLAN/Ethernet interfaces, including campus CGNAT and campus public IPv4, while rejecting mobile-data, VPN, loopback, multicast, and link-local candidates. The UI explains that campus client isolation can still prevent direct access.
+  - The Android `SYSTEM` theme mode now reacts to `uiMode` configuration changes immediately and recalibrates on resume, covering OEMs that do not reliably recreate the activity.
+  - The phone visual system uses neutral gray surfaces with teal/blue accents and smaller shared shapes. The old landscape wallpaper was removed from app content surfaces; drawer navigation, Settings menu/details, board headings/cards, todo cards, and recurring-operation scope choices now use one compact hierarchy. Widget image resources remain unchanged.
+  - Desktop Web token validation is case-insensitive in both the browser and phone server. Login, sidebar, daily board, todo/event management, timeline, Planning Desk, inputs, and modals use a compact neutral workstation style with complete system dark-mode variables.
+  - Database version remains `29`; no Room migration was added. Changed: Desktop Sync address/token handling, Android theme/configuration behavior, phone chrome/settings/board/todo UI, desktop Web HTML/CSS/JS, version metadata, tests, README, changelog, and current docs.
+  - Verification passed: focused `DesktopSyncAddressSelectorTest`; full `:app:testDebugUnitTest`; `:app:compileDebugKotlin`; `:app:assembleDebug`; `node --check`; `git diff --check`; emulator install/launch plus drawer, Settings bottom sheet, live light/dark switching, board, todo, and recurring-scope smoke tests; ADB-forwarded Web login with lowercase token and rendered light/dark board, event timeline, and Planning Desk.
 - Current `1.15.0 / versionCode 342` status:
   - 新增与待办/日程并列的「实际记录」层：正向计时器（秒表模型）+ 随手补记 + 看板「今日做了什么」卡 + AI 日报/周报接入实际记录。
   - 数据层（`ActivityRecord.kt`、`TodoDao.kt`、`TodoRepository.kt`）：新增 `activity_records` 实体与状态机（RUNNING/PAUSED/FINISHED，来源 TIMER/MANUAL），`startActivityTimer`（开始前先结束旧记录）、`pauseActivityTimer`、`resumeActivityTimer`、`finishActivityTimer`（有效用时 <5 秒直接丢弃不写库）、`addManualRecord`、观察当前记录与今日已完成记录、范围查询。

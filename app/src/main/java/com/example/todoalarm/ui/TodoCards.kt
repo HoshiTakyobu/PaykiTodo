@@ -378,7 +378,7 @@ private fun TodoCardShell(
     val accent = categoryColor(group)
     Surface(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(24.dp),
+        shape = RoundedCornerShape(16.dp),
         color = MaterialTheme.colorScheme.surface,
         tonalElevation = 0.dp,
         shadowElevation = 0.dp,
@@ -390,7 +390,7 @@ private fun TodoCardShell(
                 .drawBehind {
                     drawRect(
                         color = accent,
-                        size = Size(width = 8.dp.toPx(), height = size.height)
+                        size = Size(width = 5.dp.toPx(), height = size.height)
                     )
                 }
         ) {
@@ -407,7 +407,7 @@ private fun TodoCardShell(
                             Modifier
                         }
                     )
-                    .padding(start = 20.dp, end = 12.dp, top = 14.dp, bottom = 14.dp)
+                    .padding(start = 16.dp, end = 12.dp, top = 12.dp, bottom = 12.dp)
             ) {
                 content()
             }

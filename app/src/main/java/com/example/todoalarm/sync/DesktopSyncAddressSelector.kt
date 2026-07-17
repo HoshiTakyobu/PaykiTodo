@@ -24,7 +24,7 @@ internal object DesktopSyncAddressSelector {
         val valid = candidates
             .mapNotNull { candidate ->
                 val address = candidate.address.trim()
-                if (!isPrivateIpv4(address)) return@mapNotNull null
+                if (!isShareableIpv4(candidate.copy(address = address))) return@mapNotNull null
                 candidate.copy(address = address, interfaceName = candidate.interfaceName?.trim()?.takeIf { it.isNotBlank() })
             }
             .distinctBy { "${it.source}:${it.interfaceName.orEmpty()}:${it.address}" }
@@ -90,7 +90,7 @@ internal object DesktopSyncAddressSelector {
                 when {
                     hasTrustedWifi -> "已检测到当前 Wi-Fi / 热点局域网地址，优先显示最可能被电脑访问的地址。"
                     hasBridgeOnly -> "未检测到普通 Wi-Fi 地址，但发现疑似热点/以太网桥接地址；电脑连接手机热点时可尝试。"
-                    else -> "已检测到可能可用的局域网地址；若电脑连不上，请确认手机和电脑处于同一 Wi-Fi / 热点。"
+                    else -> "已检测到可能可用的局域网地址；若电脑连不上，请确认手机和电脑处于同一 Wi-Fi / 热点。校园网还可能开启设备隔离，此时地址会显示，但电脑仍可能无法直连。"
                 }
             )
             if (hiddenLowConfidenceCount > 0) {
@@ -144,15 +144,24 @@ internal object DesktopSyncAddressSelector {
             best.address.startsWith("192.168.")
     }
 
-    private fun isPrivateIpv4(address: String): Boolean {
+    private fun isShareableIpv4(candidate: DesktopSyncAddressCandidate): Boolean {
+        val address = candidate.address
         val parts = address.split(".").mapNotNull { it.toIntOrNull() }
         if (parts.size != 4 || parts.any { it !in 0..255 }) return false
-        return when {
-            parts[0] == 10 -> true
-            parts[0] == 192 && parts[1] == 168 -> true
-            parts[0] == 172 && parts[1] in 16..31 -> true
-            else -> false
-        }
+        if (parts[0] == 0 || parts[0] == 127 || parts[0] >= 224) return false
+        if (parts[0] == 169 && parts[1] == 254) return false
+
+        val name = candidate.interfaceName.normalizedInterfaceName()
+        return isPrivateIpv4(parts) ||
+            candidate.source == DesktopSyncAddressSource.ACTIVE_WIFI ||
+            isTrustedLanInterface(name) ||
+            isBridgeInterface(name)
+    }
+
+    private fun isPrivateIpv4(parts: List<Int>): Boolean {
+        return parts[0] == 10 ||
+            (parts[0] == 192 && parts[1] == 168) ||
+            (parts[0] == 172 && parts[1] in 16..31)
     }
 
     private fun isTrustedLanInterface(name: String): Boolean {

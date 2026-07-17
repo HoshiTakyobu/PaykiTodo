@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>PaykiTodo Desktop Sync</title>
+  <title>PaykiTodo 电脑端</title>
   <link rel="stylesheet" href="/app.css?v=__PAYKI_VERSION__" />
 </head>
 <body>
@@ -14,13 +14,13 @@
         <div class="login-logo">P</div>
         <div>
           <h1>PaykiTodo</h1>
-          <p>电脑端时间轴控制台 · v__PAYKI_VERSION__</p>
+          <p>局域网工作台 · v__PAYKI_VERSION__</p>
         </div>
       </div>
       <div class="login-field">
         <label for="token">访问密钥</label>
-        <p class="login-hint">打开手机 PaykiTodo 设置页里的「电脑同步」，输入屏幕上显示的 4 位访问密钥连接这台手机。</p>
-        <input id="token" type="password" maxlength="4" inputmode="latin" autocomplete="off" spellcheck="false" placeholder="• • • •" />
+        <p class="login-hint">打开手机「设置 → 电脑同步」，输入屏幕上的 4 位密钥。密钥不区分大小写。</p>
+        <input id="token" type="password" maxlength="4" inputmode="latin" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="• • • •" />
         <button id="connect" class="login-submit">连接手机</button>
         <div id="login-status" class="login-status">尚未连接</div>
       </div>

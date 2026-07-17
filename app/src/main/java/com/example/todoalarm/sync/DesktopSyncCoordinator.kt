@@ -222,10 +222,10 @@ class DesktopSyncCoordinator(
     }
 
     private fun authorize(headers: Map<String, String>): Boolean {
-        val expected = settingsStore.currentSettings().desktopSyncToken
+        val expected = settingsStore.currentSettings().desktopSyncToken.trim()
         val provided = headers.entries.firstOrNull { it.key.equals("X-Payki-Token", ignoreCase = true) }?.value
             ?: headers.entries.firstOrNull { it.key.equals("Authorization", ignoreCase = true) }?.value?.removePrefix("Bearer ")
-        return expected.isNotBlank() && provided == expected
+        return expected.isNotBlank() && provided?.trim()?.equals(expected, ignoreCase = true) == true
     }
 
     private suspend fun buildSnapshot(boardOnly: Boolean = false): DesktopSyncSnapshot {

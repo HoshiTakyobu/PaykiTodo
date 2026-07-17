@@ -1444,11 +1444,12 @@ function ensureSelectedEventDay() {
 }
 
 async function connect() {
-  const token = els.token.value.trim();
+  const token = els.token.value.trim().toUpperCase();
   if (!token) {
     els.status.textContent = '请输入手机端显示的 4 位访问密钥';
     return;
   }
+  els.token.value = token;
   state.token = token;
   state.planningLoaded = false;
   els.status.textContent = '正在连接手机…';
@@ -4218,6 +4219,10 @@ els.token.addEventListener('keydown', event => {
   if (event.key !== 'Enter') return;
   event.preventDefault();
   connect().catch(err => els.status.textContent = err.message);
+});
+els.token.addEventListener('input', () => {
+  const normalized = els.token.value.replace(/\s+/g, '').toUpperCase().slice(0, 4);
+  if (els.token.value !== normalized) els.token.value = normalized;
 });
 document.getElementById('refresh').onclick = () => refreshCurrentData().catch(err => els.status.textContent = err.message);
 window.addEventListener('resize', () => {

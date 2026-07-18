@@ -141,6 +141,7 @@ import com.example.todoalarm.data.ThemeMode
 import com.example.todoalarm.data.TodoItem
 import com.example.todoalarm.data.TodoRepository
 import com.example.todoalarm.data.WeekStartMode
+import com.example.todoalarm.ui.theme.PaykiGreetingFontFamily
 import android.widget.Toast
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
@@ -308,7 +309,7 @@ internal fun DashboardTopBar(
         ),
         navigationIcon = {
             IconButton(onClick = onMenu) {
-                Surface(shape = RoundedCornerShape(10.dp), color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.9f)) {
+                Surface(shape = CircleShape, color = MaterialTheme.colorScheme.surface.copy(alpha = 0.78f)) {
                     Box(Modifier.size(36.dp), contentAlignment = Alignment.Center) {
                         Icon(Icons.Rounded.Menu, contentDescription = "打开菜单", tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.95f))
                     }
@@ -318,8 +319,14 @@ internal fun DashboardTopBar(
         title = {
             Text(
                 title,
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.SemiBold,
+                style = MaterialTheme.typography.titleLarge.copy(
+                    shadow = Shadow(
+                        color = Color.Black.copy(alpha = 0.22f),
+                        offset = Offset(0f, 2f),
+                        blurRadius = 7f
+                    )
+                ),
+                fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSurface
             )
         },
@@ -401,7 +408,6 @@ internal fun DashboardBody(
     onCancelCalendarEvent: (TodoItem) -> Unit,
     onDeleteTodo: (TodoItem) -> Unit,
     onDeleteCalendarEvent: (TodoItem) -> Unit,
-    activityActions: ActivityBoardActions = ActivityBoardActions(),
     onSelectGroup: (Long?) -> Unit,
     onToggleGroupFilterMode: () -> Unit,
     onCreateGroup: suspend (String, String) -> String?,
@@ -661,9 +667,6 @@ internal fun DashboardBody(
     var boardTodayEventsCollapsed by rememberSaveable { mutableStateOf(uiState.settings.boardTodayEventsCollapsed) }
     var boardTomorrowEventsCollapsed by rememberSaveable { mutableStateOf(false) }
     var boardAnnouncementCollapsed by rememberSaveable { mutableStateOf(uiState.settings.boardAnnouncementCollapsed) }
-    var showStartTimerDialog by remember { mutableStateOf(false) }
-    var showManualRecordDialog by remember { mutableStateOf(false) }
-    var activityDetailTarget by remember { mutableStateOf<com.example.todoalarm.data.ActivityRecord?>(null) }
     val boardMoment by produceState(initialValue = LocalDateTime.now()) {
         while (true) {
             delay(30_000L)
@@ -782,17 +785,6 @@ internal fun DashboardBody(
                     CompactGreetingCard(quote = uiState.currentQuote)
                 }
 
-                uiState.activeActivityRecord?.let { activeRecord ->
-                    item {
-                        ActivityTimerBar(
-                            record = activeRecord,
-                            onPause = activityActions.onPauseTimer,
-                            onResume = activityActions.onResumeTimer,
-                            onFinish = activityActions.onFinishTimer
-                        )
-                    }
-                }
-
                 if (visibleCountdownItems.isNotEmpty()) {
                     item {
                         CollapsibleBoardCard(
@@ -845,17 +837,6 @@ internal fun DashboardBody(
                             )
                         }
                     }
-                }
-
-                item {
-                    TodayActivityCard(
-                        records = uiState.todayActivityRecords,
-                        groupsById = groupsById,
-                        timerActive = uiState.activeActivityRecord != null,
-                        onStartTimer = { showStartTimerDialog = true },
-                        onAddRecord = { showManualRecordDialog = true },
-                        onRecordClick = { activityDetailTarget = it }
-                    )
                 }
 
                 item {
@@ -1128,39 +1109,6 @@ internal fun DashboardBody(
         )
     }
 
-    if (showStartTimerDialog) {
-        StartActivityTimerDialog(
-            groups = uiState.groups,
-            onDismiss = { showStartTimerDialog = false },
-            onStart = { title, groupId ->
-                showStartTimerDialog = false
-                activityActions.onStartTimer(title, groupId)
-            }
-        )
-    }
-
-    if (showManualRecordDialog) {
-        ManualActivityRecordDialog(
-            groups = uiState.groups,
-            onDismiss = { showManualRecordDialog = false },
-            onSave = { title, startAtMillis, durationMinutes, groupId, notes ->
-                showManualRecordDialog = false
-                activityActions.onAddManualRecord(title, startAtMillis, durationMinutes, groupId, notes)
-            }
-        )
-    }
-
-    activityDetailTarget?.let { record ->
-        ActivityRecordDetailDialog(
-            record = record,
-            group = record.groupId?.let { groupsById[it] },
-            onDismiss = { activityDetailTarget = null },
-            onDelete = {
-                activityDetailTarget = null
-                activityActions.onDeleteRecord(record)
-            }
-        )
-    }
 }
 
 @Composable
@@ -1327,7 +1275,7 @@ private fun CompactGreetingCard(
 ) {
     var collapsed by rememberSaveable { mutableStateOf(true) }
     ElevatedCard(
-        shape = RoundedCornerShape(16.dp),
+        shape = RoundedCornerShape(24.dp),
         colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f))
     ) {
         Row(
@@ -1336,13 +1284,13 @@ private fun CompactGreetingCard(
                 .background(
                     Brush.horizontalGradient(
                         listOf(
-                            MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.72f),
-                            MaterialTheme.colorScheme.surface,
+                            MaterialTheme.colorScheme.primary.copy(alpha = 0.14f),
+                            MaterialTheme.colorScheme.tertiary.copy(alpha = 0.10f),
                             MaterialTheme.colorScheme.surface
                         )
                     )
                 )
-                .padding(horizontal = 16.dp, vertical = 12.dp),
+                .padding(horizontal = 18.dp, vertical = 16.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -1352,8 +1300,9 @@ private fun CompactGreetingCard(
             ) {
                 Text(
                     text = "${timeGreeting()}，Payki",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    fontFamily = PaykiGreetingFontFamily,
                     color = MaterialTheme.colorScheme.onSurface
                 )
                 if (!collapsed) {

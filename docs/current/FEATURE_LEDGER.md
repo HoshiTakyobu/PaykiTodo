@@ -59,7 +59,8 @@ This file tracks the product at a practical level for new coding sessions.
 - board currently running events can be visually highlighted with a gold outline and subtle glow
 - board greeting card supports compact collapse / expand behavior
 - board announcement, countdown, today-todo, and the combined today/tomorrow schedule card support collapse / expand controls with locally persisted state; tomorrow itself no longer has a separate collapse button inside the schedule card
-- phone app board / task / settings surfaces use a neutral light/dark background with a subtle teal top tint instead of the old full-screen landscape wallpaper; launcher widgets keep their independent image resources
+- phone daily board uses the user-selected `dashboard_bg_light` / `dashboard_bg_dark` landscape artwork, original Forest / Clay / Ocean palette, and custom `payki_greeting` font; these assets are protected visual identity rather than generic modernization targets
+- activity timer / `今日做了什么` / manual actual-record controls are not part of the active board product; the board stays focused on todos, schedules, announcements, and countdown targets
 - board schedule rows align the left color strip to the measured height of the event text block
 - board schedule rows keep normal and in-progress color strips in one aligned column
 - normal board schedule rows have no outer fill or border, while in-progress rows use a gold border with only subtle inner highlight

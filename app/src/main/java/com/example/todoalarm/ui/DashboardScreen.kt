@@ -3,6 +3,7 @@ package com.example.todoalarm.ui
 import android.app.Activity
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -41,8 +42,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
+import com.example.todoalarm.R
 import com.example.todoalarm.data.CalendarEventDraft
 import com.example.todoalarm.data.DataHealthCleanResult
 import com.example.todoalarm.data.DataHealthReport
@@ -137,12 +141,6 @@ fun DashboardScreen(
     onRestoreTodo: (TodoItem) -> Unit,
     onCancelTodo: (TodoItem, RecurrenceScope) -> Unit,
     onCancelCalendarEvent: (TodoItem, RecurrenceScope) -> Unit,
-    onStartActivityTimer: (String, Long?) -> Unit,
-    onPauseActivityTimer: () -> Unit,
-    onResumeActivityTimer: () -> Unit,
-    onFinishActivityTimer: () -> Unit,
-    onAddManualActivityRecord: (String, Long, Int, Long?, String) -> Unit,
-    onDeleteActivityRecord: (com.example.todoalarm.data.ActivityRecord) -> Unit,
     onSelectGroup: (Long?) -> Unit,
     onToggleGroupFilterMode: () -> Unit,
     onCreateGroup: suspend (String, String) -> String?,
@@ -459,15 +457,21 @@ fun DashboardScreen(
                 )
             } else {
                 val darkMode = MaterialTheme.colorScheme.background.luminance() < 0.5f
+                Image(
+                    painter = painterResource(id = if (darkMode) R.drawable.dashboard_bg_dark else R.drawable.dashboard_bg_light),
+                    contentDescription = null,
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop
+                )
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
                         .background(
                             Brush.verticalGradient(
                                 listOf(
-                                    if (darkMode) Color(0xFF10211F) else Color(0xFFEDF7F5),
-                                    MaterialTheme.colorScheme.background,
-                                    MaterialTheme.colorScheme.background
+                                    if (darkMode) Color(0x3A081723) else Color(0x0FFFFFFF),
+                                    if (darkMode) Color(0x240B1822) else Color(0x06000000),
+                                    if (darkMode) Color(0x16040B10) else Color(0x12000000)
                                 )
                             )
                         )
@@ -635,14 +639,6 @@ fun DashboardScreen(
                             onDeleteCalendarEvent(item, RecurrenceScope.CURRENT)
                         }
                     },
-                    activityActions = ActivityBoardActions(
-                        onStartTimer = onStartActivityTimer,
-                        onPauseTimer = onPauseActivityTimer,
-                        onResumeTimer = onResumeActivityTimer,
-                        onFinishTimer = onFinishActivityTimer,
-                        onAddManualRecord = onAddManualActivityRecord,
-                        onDeleteRecord = onDeleteActivityRecord
-                    ),
                     onSelectGroup = onSelectGroup,
                     onToggleGroupFilterMode = onToggleGroupFilterMode,
                     onCreateGroup = onCreateGroup,

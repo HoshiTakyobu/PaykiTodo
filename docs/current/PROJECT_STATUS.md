@@ -8,8 +8,8 @@
 - Target platform: Android 14 / API 34
 - License: MIT License (`LICENSE`)
 - Current version in code:
-  - `versionName = "1.15.1"`
-  - `versionCode = 343`
+  - `versionName = "1.15.2"`
+  - `versionCode = 344`
   - database version = `29`
 
 ## Current Build Facts
@@ -19,7 +19,13 @@
 - Latest GitHub Release:
   - `https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.14.12`
 - Latest fully built debug APK:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.15.1-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.15.2-debug.apk`
+- Current `1.15.2 / versionCode 344` status:
+  - Restored the phone daily board's selected light/dark landscape backgrounds, Forest/Clay/Ocean palette, custom `payki_greeting` font, title shadow, circular menu backing, and greeting gradient while retaining live system-theme following and compact layout work from `1.15.1`.
+  - Added explicit palette-compatible primary/secondary/tertiary containers and outline colors so Material components do not fall back to default purple.
+  - Removed the activity-timer bar, `今日做了什么`, start/manual/detail dialogs, foreground service, receiver, Manifest entries, ViewModel flows/actions, repository timer state machine, and AI daily/weekly activity-record analysis.
+  - Database version remains `29`; `ActivityRecord`, `activity_records`, `MIGRATION_28_29`, and backup serialization remain only for upgrade/history compatibility. No destructive migration or schema downgrade was introduced.
+  - Verification passed: `:app:compileDebugKotlin`, full `:app:testDebugUnitTest`, `:app:assembleDebug`, APK metadata (`1.15.2 / 344`), merged-Manifest/runtime-reference scan, and Pixel_8 emulator light/dark board launch with no fatal exception. Output: `PaykiTodo-1.15.2-debug.apk`.
 - Current `1.15.1 / versionCode 343` status:
   - Desktop Sync address selection accepts valid unicast IPv4 addresses reported by active Wi-Fi or trusted physical WLAN/Ethernet interfaces, including campus CGNAT and campus public IPv4, while rejecting mobile-data, VPN, loopback, multicast, and link-local candidates. The UI explains that campus client isolation can still prevent direct access.
   - The Android `SYSTEM` theme mode now reacts to `uiMode` configuration changes immediately and recalibrates on resume, covering OEMs that do not reliably recreate the activity.

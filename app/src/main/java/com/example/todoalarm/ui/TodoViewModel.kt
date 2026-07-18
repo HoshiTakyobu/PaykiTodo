@@ -7,7 +7,6 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.todoalarm.TodoApplication
 import com.example.todoalarm.alarm.ActiveReminderStore
-import com.example.todoalarm.alarm.ActivityTimerService
 import com.example.todoalarm.alarm.DailyBriefScheduler
 import com.example.todoalarm.alarm.DailyReportScheduler
 import com.example.todoalarm.alarm.OngoingEventNotifier
@@ -15,7 +14,6 @@ import com.example.todoalarm.alarm.ReminderChainLogger
 import com.example.todoalarm.alarm.ReminderDispatchTracker
 import com.example.todoalarm.alarm.ReminderForegroundService
 import com.example.todoalarm.data.AppSettings
-import com.example.todoalarm.data.ActivityRecord
 import com.example.todoalarm.data.AiReport
 import com.example.todoalarm.data.AiReportRetention
 import com.example.todoalarm.data.AiReportType
@@ -76,7 +74,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.combine
@@ -101,8 +98,6 @@ data class TodoUiState(
     val upcomingItemGroups: List<UpcomingTodoDisplayGroup> = emptyList(),
     val calendarItems: List<TodoItem> = emptyList(),
     val countdownItems: List<TodoItem> = emptyList(),
-    val activeActivityRecord: ActivityRecord? = null,
-    val todayActivityRecords: List<ActivityRecord> = emptyList(),
     val activeAnnouncements: List<PlanningAnnouncement> = emptyList(),
     val settings: AppSettings = AppSettings(),
     val currentQuote: String = QuoteRepository.seedQuotes.first(),
@@ -214,56 +209,6 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
         )
 
     @OptIn(ExperimentalCoroutinesApi::class)
-    private val activityTodayRecordsFlow = todayDateFlow
-        .flatMapLatest { date -> repository.observeTodayFinishedActivityRecords(date) }
-
-    fun startActivityTimer(title: String, groupId: Long? = null) {
-        viewModelScope.launch {
-            repository.startActivityTimer(title, groupId)
-            ActivityTimerService.start(app)
-        }
-    }
-
-    fun pauseActivityTimer() {
-        viewModelScope.launch {
-            repository.pauseActivityTimer()
-            ActivityTimerService.refresh(app)
-        }
-    }
-
-    fun resumeActivityTimer() {
-        viewModelScope.launch {
-            repository.resumeActivityTimer()
-            ActivityTimerService.refresh(app)
-        }
-    }
-
-    fun finishActivityTimer() {
-        viewModelScope.launch {
-            repository.finishActivityTimer()
-            ActivityTimerService.stop(app)
-        }
-    }
-
-    fun addManualActivityRecord(
-        title: String,
-        startAtMillis: Long,
-        durationMinutes: Int,
-        groupId: Long? = null,
-        notes: String = ""
-    ) {
-        viewModelScope.launch {
-            repository.addManualRecord(title, startAtMillis, durationMinutes, groupId, notes)
-        }
-    }
-
-    fun deleteActivityRecord(record: ActivityRecord) {
-        viewModelScope.launch {
-            repository.deleteActivityRecord(record.id)
-        }
-    }
-
-    @OptIn(ExperimentalCoroutinesApi::class)
     val calendarItems = calendarEventWindowFlow
         .flatMapLatest { window ->
             val zone = ZoneId.systemDefault()
@@ -320,9 +265,7 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
         selectedGroupIdsFlow,
         groupFilterModeFlow,
         desktopSyncStatusFlow,
-        todayDateFlow,
-        repository.observeActiveActivityRecord(),
-        activityTodayRecordsFlow
+        todayDateFlow
     ) { values ->
         @Suppress("UNCHECKED_CAST")
         val groups = values[0] as List<TaskGroup>
@@ -342,9 +285,6 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
         val groupFilterMode = values[8] as GroupFilterMode
         val desktopSyncStatus = values[9] as DesktopSyncStatus
         val today = values[10] as LocalDate
-        val activeActivityRecord = values[11] as ActivityRecord?
-        @Suppress("UNCHECKED_CAST")
-        val todayActivityRecords = values[12] as List<ActivityRecord>
         val availableGroups = if (groups.isEmpty()) {
             withContext(Dispatchers.IO) { repository.ensureDefaultGroups() }
         } else {
@@ -375,8 +315,6 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
                 upcomingItemGroups = buildUpcomingTodoDisplayGroups(todoSections.upcomingItems),
                 calendarItems = sortedCalendarItems,
                 countdownItems = visibleCountdownItems,
-                activeActivityRecord = activeActivityRecord,
-                todayActivityRecords = todayActivityRecords,
                 activeAnnouncements = PlanningAnnouncementParser.activeAnnouncements(announcementNotes, today),
                 settings = settings,
                 currentQuote = currentQuote,

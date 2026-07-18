@@ -44,3 +44,9 @@ Do not change work mode into a normal ringing mode unless the product requiremen
 Commit messages should be specific enough to reconstruct what changed without opening the diff.
 
 Use a concise Chinese subject plus a multi-line Chinese body when the change affects behavior, UI, versioning, or docs. The body should mention the concrete behavior changes, not only the version number.
+
+## 5. Protected visual identity
+
+The phone daily board's light/dark landscape backgrounds, the `payki_greeting` font, and the established Forest / Clay / Ocean / Sand / Night palette are deliberate product assets selected by the user. Do not replace them with neutral solid backgrounds, generic typography, or a new global palette merely to make the interface look more "modern".
+
+Layout density, spacing, accessibility contrast, and component hierarchy may be improved around those assets. Replacing the assets themselves requires an explicit user request and a before/after visual review. New Material components must receive palette-compatible container, foreground, and outline colors so framework-default purple does not leak into the UI.

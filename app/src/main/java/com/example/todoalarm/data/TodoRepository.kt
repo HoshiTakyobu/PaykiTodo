@@ -4081,7 +4081,6 @@ class TodoRepository(
         private const val MISSED_GRACE_PERIOD_MILLIS = 60_000L
         private const val INITIAL_RECURRING_INSTANCE_LIMIT = 14
         private const val INITIAL_RECURRING_LOOKAHEAD_DAYS = 14L
-        private const val ACTIVITY_MIN_DURATION_MILLIS = 5_000L
         private val PlanningNodeDateTimeFormatter: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")
         private val PlanningNodeTimeFormatter: DateTimeFormatter = DateTimeFormatter.ofPattern("HH:mm")
         private val PlanningStructureTitleTexts = setOf(
@@ -4264,131 +4263,6 @@ class TodoRepository(
         return start to end
     }
 
-    // ---- Activity records (正向计时 / 实际记录) ----
-
-    /**
-     * 开始一段新的正向计时。秒表模型：同一时刻只允许一条进行中的记录，
-     * 若已有未结束记录会先把它结束（沿用 finish 的 <5 秒丢弃规则）。
-     */
-    suspend fun startActivityTimer(
-        title: String,
-        groupId: Long? = null,
-        nowMillis: Long = System.currentTimeMillis()
-    ): ActivityRecord {
-        finishActivityTimer(nowMillis)
-        val record = ActivityRecord(
-            title = title.trim(),
-            groupId = groupId,
-            startAtMillis = nowMillis,
-            accumulatedMillis = 0L,
-            lastResumeAtMillis = nowMillis,
-            state = ActivityRecordState.RUNNING,
-            source = ActivityRecordSource.TIMER,
-            createdAtMillis = nowMillis
-        )
-        val id = todoDao.insertActivityRecord(record)
-        return record.copy(id = id)
-    }
-
-    suspend fun pauseActivityTimer(nowMillis: Long = System.currentTimeMillis()): ActivityRecord? {
-        val active = todoDao.getActiveActivityRecord() ?: return null
-        if (active.state != ActivityRecordState.RUNNING) return active
-        val resume = active.lastResumeAtMillis ?: nowMillis
-        val added = (nowMillis - resume).coerceAtLeast(0L)
-        val updated = active.copy(
-            accumulatedMillis = active.accumulatedMillis + added,
-            lastResumeAtMillis = null,
-            state = ActivityRecordState.PAUSED
-        )
-        todoDao.updateActivityRecord(updated)
-        return updated
-    }
-
-    suspend fun resumeActivityTimer(nowMillis: Long = System.currentTimeMillis()): ActivityRecord? {
-        val active = todoDao.getActiveActivityRecord() ?: return null
-        if (active.state == ActivityRecordState.RUNNING) return active
-        val updated = active.copy(
-            lastResumeAtMillis = nowMillis,
-            state = ActivityRecordState.RUNNING
-        )
-        todoDao.updateActivityRecord(updated)
-        return updated
-    }
-
-    /**
-     * 结束当前计时。有效用时不足 [ACTIVITY_MIN_DURATION_MILLIS] 的记录直接丢弃，不写库。
-     * 返回结束后的记录；被丢弃或本就没有进行中记录时返回 null。
-     */
-    suspend fun finishActivityTimer(nowMillis: Long = System.currentTimeMillis()): ActivityRecord? {
-        val active = todoDao.getActiveActivityRecord() ?: return null
-        val effective = active.effectiveDurationMillis(nowMillis)
-        if (effective < ACTIVITY_MIN_DURATION_MILLIS) {
-            todoDao.deleteActivityRecord(active.id)
-            return null
-        }
-        val accumulated = if (active.state == ActivityRecordState.RUNNING && active.lastResumeAtMillis != null) {
-            active.accumulatedMillis + (nowMillis - active.lastResumeAtMillis).coerceAtLeast(0L)
-        } else {
-            active.accumulatedMillis
-        }
-        val finished = active.copy(
-            accumulatedMillis = accumulated,
-            lastResumeAtMillis = null,
-            state = ActivityRecordState.FINISHED,
-            endAtMillis = nowMillis
-        )
-        todoDao.updateActivityRecord(finished)
-        return finished
-    }
-
-    /** 随手补记一条已完成记录（不经过计时器）。 */
-    suspend fun addManualRecord(
-        title: String,
-        startAtMillis: Long,
-        durationMinutes: Int,
-        groupId: Long? = null,
-        notes: String = ""
-    ): ActivityRecord {
-        val durationMillis = (durationMinutes.coerceAtLeast(0)) * 60_000L
-        val now = System.currentTimeMillis()
-        val record = ActivityRecord(
-            title = title.trim(),
-            groupId = groupId,
-            startAtMillis = startAtMillis,
-            accumulatedMillis = durationMillis,
-            lastResumeAtMillis = null,
-            state = ActivityRecordState.FINISHED,
-            endAtMillis = startAtMillis + durationMillis,
-            source = ActivityRecordSource.MANUAL,
-            notes = notes.trim(),
-            createdAtMillis = now
-        )
-        val id = todoDao.insertActivityRecord(record)
-        return record.copy(id = id)
-    }
-
-    suspend fun updateActivityRecordDetails(record: ActivityRecord) {
-        todoDao.updateActivityRecord(record)
-    }
-
-    suspend fun deleteActivityRecord(id: Long) {
-        todoDao.deleteActivityRecord(id)
-    }
-
-    suspend fun getActiveActivityRecord(): ActivityRecord? = todoDao.getActiveActivityRecord()
-
-    fun observeActiveActivityRecord(): Flow<ActivityRecord?> = todoDao.observeActiveActivityRecord()
-
-    fun observeTodayFinishedActivityRecords(date: LocalDate = LocalDate.now()): Flow<List<ActivityRecord>> {
-        val zone = ZoneId.systemDefault()
-        val start = date.atStartOfDay(zone).toInstant().toEpochMilli()
-        val end = date.plusDays(1).atStartOfDay(zone).toInstant().toEpochMilli()
-        return todoDao.observeFinishedActivityRecordsInRange(start, end)
-    }
-
-    suspend fun getFinishedActivityRecordsInRange(startMillis: Long, endMillis: Long): List<ActivityRecord> {
-        return todoDao.getFinishedActivityRecordsInRange(startMillis, endMillis)
-    }
 }
 
 internal fun alignRecurringDateForAllScope(

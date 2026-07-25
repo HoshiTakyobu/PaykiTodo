@@ -6,6 +6,7 @@ import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.ComponentName
 import android.content.Intent
+import android.content.ActivityNotFoundException
 import android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION
 import android.content.Intent.FLAG_GRANT_WRITE_URI_PERMISSION
 import android.content.pm.PackageManager
@@ -437,11 +438,14 @@ class MainActivity : ComponentActivity() {
             val detailIntent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
                 data = Uri.fromParts("package", packageName, null)
             }
-            val pm = packageManager
-            when {
-                requestIntent.resolveActivity(pm) != null -> startActivity(requestIntent)
-                listIntent.resolveActivity(pm) != null -> startActivity(listIntent)
-                else -> startActivity(detailIntent)
+            try {
+                startActivity(requestIntent)
+            } catch (_: ActivityNotFoundException) {
+                try {
+                    startActivity(listIntent)
+                } catch (_: ActivityNotFoundException) {
+                    startActivity(detailIntent)
+                }
             }
         }
     }

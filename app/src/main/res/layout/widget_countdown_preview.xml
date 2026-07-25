@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@drawable/widget_board_background"
@@ -66,7 +67,8 @@
                 android:contentDescription="@null"
                 android:scaleType="fitXY"
                 android:src="@drawable/widget_vertical_pill"
-                android:tint="@color/widget_event_blue" />
+                android:tint="@color/widget_event_blue"
+                tools:ignore="UseAppTint" />
 
             <LinearLayout
                 android:layout_width="0dp"
@@ -150,7 +152,8 @@
                 android:contentDescription="@null"
                 android:scaleType="fitXY"
                 android:src="@drawable/widget_vertical_pill"
-                android:tint="@color/widget_todo_green" />
+                android:tint="@color/widget_todo_green"
+                tools:ignore="UseAppTint" />
 
             <LinearLayout
                 android:layout_width="0dp"

@@ -18,6 +18,9 @@ object DailyReportNotifier {
     private const val CHANNEL_ID = "ai_report_channel"
     private const val NOTIFICATION_ID_DAILY = 91_000
     private const val NOTIFICATION_ID_WEEKLY = 91_001
+    private const val STATE_PREFS = "paykitodo_ai_report_notifications"
+    private const val KEY_DAILY_REPORT_ID = "daily_report_id"
+    private const val KEY_WEEKLY_REPORT_ID = "weekly_report_id"
 
     fun ensureChannel(context: Context) {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
@@ -74,5 +77,19 @@ object DailyReportNotifier {
             if (weekly) NOTIFICATION_ID_WEEKLY else NOTIFICATION_ID_DAILY,
             notification
         )
+        context.getSharedPreferences(STATE_PREFS, Context.MODE_PRIVATE)
+            .edit()
+            .putLong(if (weekly) KEY_WEEKLY_REPORT_ID else KEY_DAILY_REPORT_ID, reportId)
+            .apply()
+    }
+
+    fun cancelReportNotification(context: Context, reportId: Long, weekly: Boolean) {
+        val key = if (weekly) KEY_WEEKLY_REPORT_ID else KEY_DAILY_REPORT_ID
+        val preferences = context.getSharedPreferences(STATE_PREFS, Context.MODE_PRIVATE)
+        if (preferences.getLong(key, Long.MIN_VALUE) != reportId) return
+        NotificationManagerCompat.from(context).cancel(
+            if (weekly) NOTIFICATION_ID_WEEKLY else NOTIFICATION_ID_DAILY
+        )
+        preferences.edit().remove(key).apply()
     }
 }

@@ -2502,61 +2502,68 @@ private fun CalendarEventDetailsFixedActions(
         tonalElevation = 0.dp,
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.16f))
     ) {
-        Row(
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 18.dp, vertical = 12.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+            verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             onComplete?.let {
-                OutlinedButton(
-                    modifier = Modifier.weight(1f),
+                Button(
+                    modifier = Modifier.fillMaxWidth(),
                     enabled = completeEnabled,
                     onClick = it
                 ) {
                     Icon(
                         Icons.Rounded.Done,
                         contentDescription = null,
-                        modifier = Modifier.size(18.dp),
-                        tint = MaterialTheme.colorScheme.primary
+                        modifier = Modifier.size(18.dp)
                     )
                     Text(completeLabel)
                 }
             }
-            OutlinedButton(
-                modifier = Modifier.weight(1f),
-                onClick = onCancel
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                Icon(
-                    Icons.Rounded.Close,
-                    contentDescription = null,
-                    modifier = Modifier.size(18.dp),
-                    tint = Color(0xFFD97706)
-                )
-                Text("取消", color = Color(0xFFD97706))
-            }
-            OutlinedButton(
-                modifier = Modifier.weight(1f),
-                onClick = onEdit
-            ) {
-                Icon(
-                    Icons.Rounded.Edit,
-                    contentDescription = null,
-                    modifier = Modifier.size(18.dp)
-                )
-                Text("修改")
-            }
-            OutlinedButton(
-                modifier = Modifier.weight(1f),
-                onClick = onDelete
-            ) {
-                Icon(
-                    Icons.Rounded.Delete,
-                    contentDescription = null,
-                    modifier = Modifier.size(18.dp),
-                    tint = Color(0xFFD14343)
-                )
-                Text("删除", color = Color(0xFFD14343))
+                OutlinedButton(
+                    modifier = Modifier.weight(1f),
+                    contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 8.dp, vertical = 10.dp),
+                    onClick = onCancel
+                ) {
+                    Icon(
+                        Icons.Rounded.Close,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp),
+                        tint = Color(0xFFD97706)
+                    )
+                    Text("取消", color = Color(0xFFD97706), maxLines = 1)
+                }
+                OutlinedButton(
+                    modifier = Modifier.weight(1f),
+                    contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 8.dp, vertical = 10.dp),
+                    onClick = onEdit
+                ) {
+                    Icon(
+                        Icons.Rounded.Edit,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Text("修改", maxLines = 1)
+                }
+                OutlinedButton(
+                    modifier = Modifier.weight(1f),
+                    contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 8.dp, vertical = 10.dp),
+                    onClick = onDelete
+                ) {
+                    Icon(
+                        Icons.Rounded.Delete,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp),
+                        tint = Color(0xFFD14343)
+                    )
+                    Text("删除", color = Color(0xFFD14343), maxLines = 1)
+                }
             }
         }
     }

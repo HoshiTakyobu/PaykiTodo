@@ -8,8 +8,8 @@
 - Target platform: Android 14 / API 34
 - License: MIT License (`LICENSE`)
 - Current version in code:
-  - `versionName = "1.15.3"`
-  - `versionCode = 345`
+  - `versionName = "1.15.4"`
+  - `versionCode = 346`
   - database version = `29`
 
 ## Current Build Facts
@@ -19,7 +19,14 @@
 - Latest GitHub Release:
   - `https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.14.12`
 - Latest fully built debug APK:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.15.3-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.15.4-debug.apk`
+- Current `1.15.4 / versionCode 346` status:
+  - Calendar event details use a full-width completion action above one compact cancel/edit/delete row, eliminating narrow-screen vertical label wrapping.
+  - History cards expose completed/canceled state, and historical events show their event time range and location rather than todo DDL fields.
+  - Deleting the report currently represented by a daily/weekly notification cancels that stale deep link without clearing a newer report notification.
+  - Background capture notifications explicitly guard Android 13+ permission changes; Desktop Sync WakeLock ownership is timeout-bounded and renewed by the existing watchdog while keep-alive remains enabled.
+  - Database version remains `29`; no schema or migration change was introduced.
+  - Verification passed: 22 unit-test suites / 134 tests, `:app:assembleDebug`, `:app:lintDebug`, APK metadata (`1.15.4 / 346`), `node --check`, `git diff --check`, expanded Desktop Sync / Planning API checks, desktop Web browser assertions, JSON export/import secret and duplicate checks, and Pixel_8 emulator UI/reminder/capture/check-in/report/history flows.
 - Current `1.15.3 / versionCode 345` status:
   - Fixed the shared todo/event editor dismissal deadlock: rejecting or dismissing the unsaved-change confirmation restores the original `ModalBottomSheet` instead of leaving its hidden modal window attached and blocking the app.
   - The editor top `取消` action and system/backdrop dismissal now share the same dirty-state guard; the confirmation uses an `AlertDialog` with explicit `继续编辑` / `放弃编辑` actions.

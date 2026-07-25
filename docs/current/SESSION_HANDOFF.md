@@ -4,51 +4,57 @@
 
 - Repository root: `G:\Workspace\Project\PaykiTodo`
 - Branch: `main`
-- Current code version: `1.15.3 / versionCode 345`
+- Current code version: `1.15.4 / versionCode 346`
 - Database version: `29` (unchanged; compatibility schema retained)
-- Latest debug APK: `app/build/outputs/apk/debug/PaykiTodo-1.15.3-debug.apk`
+- Latest debug APK: `app/build/outputs/apk/debug/PaykiTodo-1.15.4-debug.apk`
 - Latest signed release APK available locally: `app/build/outputs/apk/release/PaykiTodo-1.14.12-release.apk`
 - Latest GitHub Release: `https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.14.12`
 
 ## Completed In This Round
 
-1. **Fixed dirty-editor dismissal freeze**
-   - Root cause: `ModalBottomSheet` hid before invoking its dismiss callback; the callback opened a second bottom sheet while keeping the editor logically visible, leaving the first modal window hidden and blocking all later input.
-   - The editor now owns its `SheetState`, restores the same sheet when dirty dismissal is rejected, and uses `AlertDialog` for the discard decision.
-   - System Back, backdrop dismissal, and the top `取消` action share one guarded path. Dismissing the confirmation restores the editor with the current input; confirming discard exits normally.
+1. **Comprehensive functional audit**
+   - Reused and extended the existing API/browser audit and expanded the unit-test baseline to 134 tests rather than restarting verification.
+   - Verified phone board, todo/event/history/recurrence flows, Calendar, Search deep links, Planning Desk, AI reports, backup/restore, Wiki, share/camera/voice capture, event check-in, Desktop Sync, and reminders on Pixel_8.
+   - Desktop Web passed 20 browser assertions at desktop/mobile widths with no post-login runtime errors or horizontal overflow.
 
-2. **Fixed Calendar quick-create placeholder**
-   - Clicking a visible `新日程` pending card now clears the local pending draft while opening the event editor.
-   - A saved event immediately replaces the placeholder with its real title instead of requiring navigation or process restart.
+2. **Phone detail and history fixes**
+   - Event detail completion is a full-width primary action; cancel/edit/delete use one compact row and no longer wrap vertically on 360dp screens.
+   - History cards show completed/canceled state.
+   - Historical events show full start/end time and location rather than a todo-style DDL.
 
-3. **Corrected shared decision copy**
-   - Removed the fixed `删除后无法恢复，请确认后再继续。` subtitle from `PaykiDecisionBottomSheet` because the component is also used for moving and canceling items.
-   - Each caller's concrete message remains visible, including real irreversible-delete warnings where appropriate.
+3. **Notification and resource reliability**
+   - Deleting the AI report represented by the daily/weekly notification cancels that notification without clearing a newer report notification.
+   - Background capture notification delivery checks Android 13+ permission locally and handles a permission race without crashing.
+   - Desktop Sync WakeLock uses a 6-minute timeout and watchdog renewal at 4 minutes; stop/disable paths still release all locks.
+   - Battery-optimization Settings navigation no longer relies on package-visibility queries.
+
+4. **Lint cleanup**
+   - Android Lint ran fully and initially reported 5 errors.
+   - Fixed one notification permission error and precisely suppressed four false-positive AppCompat tint errors on RemoteViews preview ImageViews, retaining framework `android:tint` required by widget inflation.
+   - Final `:app:lintDebug` passed. Remaining warnings were reviewed; application-context CrashLogger storage, local-only Wiki JavaScript, and explicit alarm-app battery-optimization access are intentional.
 
 ## Validation Evidence
 
-- `./gradlew.bat --no-daemon :app:testDebugUnitTest :app:assembleDebug` passed: 21 suites, 132 tests, 0 failures/errors/skips.
-- APK metadata reports `versionName 1.15.3`, `versionCode 345`, application ID `com.paykitodo.app`.
-- `node --check app/src/main/assets/desktop-web/app.js` and `git diff --check` passed.
-- Emulator `emulator-5554` / AVD `Pixel_8` installed the final `PaykiTodo-1.15.3-debug.apk`.
-- Final APK passed event dirty-Back/confirmation-dismiss/editor-restore, top-cancel protection, discard confirmation, event create/render/details/delete, and temporary-data cleanup.
-- Todo dirty editor restoration and todo create/delete smoke checks passed on the same emulator.
-- Daily Board, Todo, Calendar, Planning Desk, Settings, Search, AI Reports, and History opened; Planning Desk local preview and authorized Desktop Sync status checks completed without a crash. Desktop Sync was disabled afterward and no access token is recorded here.
-- Final-session logcat contains no `FATAL EXCEPTION` or PaykiTodo ANR.
-- Android Lint is **not passed**: repeated `:app:lintDebug` attempts were blocked by timeouts downloading Android Lint artifacts from `dl.google.com`.
+- `./gradlew.bat --no-daemon :app:testDebugUnitTest :app:assembleDebug` passed: 22 suites, 134 tests, 0 failures/errors.
+- `./gradlew.bat --no-daemon :app:lintDebug` passed.
+- APK metadata reports `versionName 1.15.4`, `versionCode 346`, application ID `com.paykitodo.app`.
+- Emulator `emulator-5554` / AVD `Pixel_8` installed `PaykiTodo-1.15.4-debug.apk`.
+- Locked-screen 15-second diagnostic reminder woke and opened `ReminderActivity`; unlocked launcher state followed Android 14's background-launch block and retained the high-priority full-screen notification fallback. Fixed 10-minute snooze re-fired, and completion cleared the active reminder.
+- Backup JSON parsed successfully, omitted AI API keys and Desktop Sync enabled/token fields, and same-file import did not duplicate test items.
+- All `__AUDIT_*` records, reminder test items, temporary backups/screenshots, ADB forwards, and test notifications were cleaned. Desktop Sync was disabled and its exposed emulator token was rotated.
 
 ## Remaining Manual Checks
 
-1. Install `PaykiTodo-1.15.3-debug.apk` on the user's physical phone and repeat the exact event-editor Back / dismiss-confirmation flow.
-2. Verify full-screen reminder launch, real vibration/audio, lock-screen behavior, notification shade rendering, and background alarm reliability on the user's OEM ROM.
-3. Verify board/countdown widgets through the real launcher, including resize, minute refresh, tap deep links, and light/dark readability.
-4. Re-run `:app:lintDebug` when Google Maven / `dl.google.com` is reachable.
+1. Repeat event-editor dirty Back / dismiss-confirmation on the user's physical phone.
+2. Verify real vibration/audio, OEM lock-screen/full-screen policy, notification-shade rendering, and long background/reboot recovery.
+3. Verify board/countdown widgets through the real launcher, including picker previews, resize, minute refresh, tap targets, and light/dark readability.
+4. Treat unlocked Android 14 background full-screen launch as policy-dependent: the tested fallback notification is present, while locked-screen full-screen launch passed on the emulator.
 
 ## Notes For Next Session
 
-- Do not replace `dashboard_bg_light`, `dashboard_bg_dark`, `payki_greeting`, or the established palette merely for generic “modernization.” Improve spacing and contrast around them instead.
+- Do not replace `dashboard_bg_light`, `dashboard_bg_dark`, `payki_greeting`, or the established palette merely for generic modernization.
 - Do not reintroduce activity-timer UI/service/report behavior unless the user explicitly asks for a redesigned version.
-- Do not drop database version below `29` or remove `MIGRATION_28_29`; the retained activity-record schema is compatibility data, not an active feature.
-- Keep the editor discard decision as a separate dialog or otherwise prove that nested modal sheets cannot leave a hidden modal window attached.
-- Do not weaken the five-minute authorized-heartbeat shutdown rule for Desktop Sync.
-- Do not commit Desktop Sync tokens, AI keys, private Base URLs, signing files, generated APKs, screenshots, or local diagnostic logs.
+- Do not drop database version below `29` or remove `MIGRATION_28_29`; retained activity-record schema is compatibility data.
+- Keep editor discard confirmation separate from the editor `ModalBottomSheet` unless the replacement proves it cannot leave a hidden modal window attached.
+- Keep the five-minute authorized-heartbeat shutdown and bounded keep-alive locks for Desktop Sync.
+- Never commit Desktop Sync tokens, AI keys, private Base URLs, signing files, generated APKs, screenshots, backups, or local diagnostic logs.

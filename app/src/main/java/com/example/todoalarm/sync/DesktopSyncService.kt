@@ -30,6 +30,7 @@ class DesktopSyncService : Service() {
     private var startedAtMillis: Long = 0L
     private var wifiLock: WifiManager.WifiLock? = null
     private var wakeLock: PowerManager.WakeLock? = null
+    private var wakeLockAcquiredAtMillis: Long = 0L
     private var lastNotificationConnected: Boolean? = null
     private var lastNotificationKeepAlive: Boolean? = null
 
@@ -131,6 +132,7 @@ class DesktopSyncService : Service() {
         val lastAuthorizedAt = app.desktopSyncCoordinator.lastAuthorizedClientAtMillis()
         val referenceMillis = lastAuthorizedAt.takeIf { it > 0L } ?: startedAtMillis
         val connected = lastAuthorizedAt > 0L && now - lastAuthorizedAt < NO_CLIENT_AUTO_STOP_MILLIS
+        updateKeepAliveLocks(settings.desktopSyncWifiKeepAlive)
         updateForegroundNotification(keepAlive = settings.desktopSyncWifiKeepAlive, connected = connected)
 
         val remainingMillis = referenceMillis + NO_CLIENT_AUTO_STOP_MILLIS - now
@@ -214,11 +216,21 @@ class DesktopSyncService : Service() {
                 ?.createWifiLock(desktopSyncWifiLockMode(), "PaykiTodo:DesktopSync")
                 ?.apply { acquire() }
         }
+        val now = System.currentTimeMillis()
+        val shouldRenewWakeLock = wakeLock?.isHeld == true &&
+            now - wakeLockAcquiredAtMillis >= WAKE_LOCK_RENEW_MILLIS
+        if (shouldRenewWakeLock) {
+            wakeLock?.release()
+            wakeLock = null
+        }
         if (wakeLock?.isHeld != true) {
             val powerManager = applicationContext.getSystemService(POWER_SERVICE) as? PowerManager
             wakeLock = powerManager
                 ?.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "PaykiTodo:DesktopSync")
-                ?.apply { acquire() }
+                ?.apply {
+                    acquire(WAKE_LOCK_TIMEOUT_MILLIS)
+                    wakeLockAcquiredAtMillis = now
+                }
         }
     }
 
@@ -227,6 +239,7 @@ class DesktopSyncService : Service() {
             wakeLock?.release()
         }
         wakeLock = null
+        wakeLockAcquiredAtMillis = 0L
         if (wifiLock?.isHeld == true) {
             wifiLock?.release()
         }
@@ -238,6 +251,8 @@ class DesktopSyncService : Service() {
         private const val NOTIFICATION_ID = 42071
         const val NO_CLIENT_AUTO_STOP_MILLIS = 5 * 60 * 1000L
         private const val CONNECTION_WATCHDOG_INTERVAL_MILLIS = 15 * 1000L
+        private const val WAKE_LOCK_RENEW_MILLIS = 4 * 60 * 1000L
+        private const val WAKE_LOCK_TIMEOUT_MILLIS = 6 * 60 * 1000L
 
         fun start(context: Context) {
             ContextCompat.startForegroundService(context, Intent(context, DesktopSyncService::class.java))

@@ -334,7 +334,7 @@ internal fun CompletedTodoCard(
 
     TodoCardShell(group = displayGroup, onClick = { showDetails = true }) {
         Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            TitleRow(item = item, group = displayGroup, progress = 0f)
+            TitleRow(item = item, group = displayGroup, progress = 0f, showHistoryStatus = true)
             if (item.notes.isNotBlank()) {
                 Text(
                     text = item.notes,
@@ -362,6 +362,28 @@ internal fun CompletedTodoCard(
                 showDetails = false
                 onRestore()
             }
+        )
+    }
+}
+
+@Composable
+private fun HistoryStatusChip(item: TodoItem) {
+    val (label, tint) = when {
+        item.canceled -> "已取消" to Color(0xFFD97706)
+        item.completed -> "已完成" to Color(0xFF2E8B57)
+        item.missed -> "已错过" to Color(0xFFC62828)
+        else -> "已归档" to MaterialTheme.colorScheme.onSurfaceVariant
+    }
+    Surface(
+        shape = RoundedCornerShape(10.dp),
+        color = tint.copy(alpha = 0.12f)
+    ) {
+        Text(
+            text = label,
+            modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp),
+            color = tint,
+            style = MaterialTheme.typography.labelMedium,
+            fontWeight = FontWeight.SemiBold
         )
     }
 }
@@ -419,7 +441,8 @@ private fun TodoCardShell(
 private fun TitleRow(
     item: TodoItem,
     group: ResolvedTaskGroup,
-    progress: Float
+    progress: Float,
+    showHistoryStatus: Boolean = false
 ) {
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -427,6 +450,9 @@ private fun TitleRow(
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         CategoryChip(group)
+        if (showHistoryStatus) {
+            HistoryStatusChip(item)
+        }
         if (item.hiddenFromBoard) {
             HiddenReminderChip()
         }
@@ -646,7 +672,12 @@ internal fun TodoDetailsDialog(
                 }
             }
 
-            if (item.hasDueDate) {
+            if (item.isEvent) {
+                TodoInfoRow(label = "时间", value = formatEventDateTimeRange(item))
+                item.location.takeIf { it.isNotBlank() }?.let { location ->
+                    TodoInfoRow(label = "地点", value = location)
+                }
+            } else if (item.hasDueDate) {
                 TodoInfoRow(label = "DDL", value = formatLocalDateTime(reminderAtMillisToDateTime(item.dueAtMillis)))
             } else {
                 TodoInfoRow(label = "DDL", value = "未设置")

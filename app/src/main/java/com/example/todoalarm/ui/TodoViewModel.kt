@@ -8,6 +8,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.todoalarm.TodoApplication
 import com.example.todoalarm.alarm.ActiveReminderStore
 import com.example.todoalarm.alarm.DailyBriefScheduler
+import com.example.todoalarm.alarm.DailyReportNotifier
 import com.example.todoalarm.alarm.DailyReportScheduler
 import com.example.todoalarm.alarm.OngoingEventNotifier
 import com.example.todoalarm.alarm.ReminderChainLogger
@@ -1145,7 +1146,15 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     suspend fun deleteAiReport(reportId: Long): String? {
+        val report = repository.getAiReportById(reportId)
         repository.deleteAiReport(reportId)
+        report?.let {
+            DailyReportNotifier.cancelReportNotification(
+                context = app,
+                reportId = it.id,
+                weekly = it.type == AiReportType.WEEKLY
+            )
+        }
         autoBackupIfEnabled()
         return null
     }

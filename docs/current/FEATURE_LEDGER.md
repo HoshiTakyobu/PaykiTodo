@@ -152,6 +152,7 @@ This file tracks the product at a practical level for new coding sessions.
 - Android system share can send text or images to `添加到 PaykiTodo`; shared content now uses the capture recognition pipeline to directly create Planning Desk nodes and their linked official todos/events
 - launcher shortcuts expose `拍照添加` and `语音添加`; photo capture opens the system camera through FileProvider, voice capture uses Android SpeechRecognizer with zh-CN partial results, and both route results through background capture recognition
 - background capture recognition uses a `capture_processing` notification channel; completed capture notifications open the matching Planning Desk document after direct node insertion, while the phone Planning Desk Markdown compatibility capture starts background recognition only after an explicit confirmation instead of blocking the editor
+- background capture notification delivery explicitly checks Android 13+ notification permission in the delivery function and catches permission-state races, so sharing/camera/voice capture still writes Planning Desk drafts without crashing when notifications are denied
 - AI Provider API Keys and Desktop Sync access state / tokens are stored locally in settings and deliberately excluded from backup JSON export; importing a backup without AI keys preserves existing local keys, while importing an old backup that contains Desktop Sync enabled/token fields restores Desktop Sync as disabled and ignores the old token so the app can generate a fresh local access key after the user manually enables sync again
 - Planning Desk database migration is repaired in `1.7.5`: database version `10` includes `MIGRATION_9_10` to rebuild `planning_notes` tables created by the mismatched `1.7.0`-`1.7.4` migration
 - Planning Desk database version is now `11`; `MIGRATION_10_11` creates the `planning_line_mappings` table and indices
@@ -176,6 +177,7 @@ This file tracks the product at a practical level for new coding sessions.
 - reports are stored in the independent Room `ai_reports` archive rather than Planning Desk notes; the drawer exposes `AI 报告` after `规划台`
 - upgraded installs migrate legacy Planning Desk `AI 日报` / `AI 周报` note entries into `ai_reports`, delete the old report notes, and clear `lastOpenedPlanningNoteId` if it pointed to a removed report note
 - `AI 报告` supports keyword search, all / daily / weekly filters, all-time / recent-7 / recent-30 / recent-90-day range filters, card previews, full detail viewing, local-fallback/source pills, empty-state guidance, and delete confirmation from long press or detail view
+- deleting an AI report conditionally cancels the daily/weekly notification only when that fixed notification currently points to the deleted report, preventing stale deep links without removing a newer report notification
 - AI report retention can be set to 30 days / 90 days / 365 days / forever; generating a new report purges older archived reports according to the current setting
 - report notifications use a low-priority `ai_report_channel`, skip posting if Android 13+ notification permission is missing, and deep-link to the matching AI report detail
 - `DailyReportScheduler` schedules daily and Sunday weekly report alarms, cancels disabled schedules, and is invoked on app startup plus boot/time/timezone recovery; it uses exact alarms when allowed and safely falls back to system-allowed idle scheduling when exact-alarm permission is missing
@@ -185,10 +187,12 @@ This file tracks the product at a practical level for new coding sessions.
 
 - timeline-style calendar foundation
 - timeline quick-create clears the visible `新日程` pending placeholder as soon as its editor opens, so a successfully saved event immediately renders with its real title
+- phone event details keep `完成日程` as a full-width primary action and place cancel/edit/delete in a separate compact three-button row, so common narrow screens do not wrap action labels vertically
 - day / multi-day / month / agenda style views exist in code, with ongoing refinement
 - normal events, all-day events, and recurring events
 - event location / notes / color / reminder settings
 - event cancellation is a first-class history-preserving action: phone and Desktop Web previews expose `取消日程`, canceled events are marked `canceled = true`, and delete remains hard removal
+- phone history cards visibly distinguish `已完成` and `已取消`; historical event details show complete start/end time and location instead of treating event start as a todo DDL
 - recurring event current-instance delete uses a recurring-instance skip plus hard delete, while recurring event cancel writes canceled history for the selected scope
 - phone and desktop event editors can set an event's primary group; phone uses a compact single-choice row, and the selected group is persisted for normal event creation/editing plus weekly multi-slot event creation
 - phone calendar keeps a bounded loaded event window and skips redundant Room queries when the requested visible date range is already covered, reducing timeline swipe churn without changing displayed events

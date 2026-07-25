@@ -193,11 +193,15 @@ object BackgroundCaptureProcessor {
         notificationId: Int,
         builder: NotificationCompat.Builder
     ) {
-        if (!canPostResultNotifications(context)) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+        ) {
             return
         }
-        runCatching {
+        try {
             NotificationManagerCompat.from(context).notify(notificationId, builder.build())
+        } catch (_: SecurityException) {
+            // Permission state can change between the check and notification delivery.
         }
     }
 

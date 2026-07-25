@@ -16,6 +16,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Delete
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -24,11 +25,13 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.SheetState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -53,6 +56,30 @@ internal fun PaykiBottomSheet(
     content: @Composable ColumnScope.() -> Unit
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    PaykiBottomSheetHost(
+        onDismiss = onDismiss,
+        containerColor = containerColor,
+        showDragHandle = showDragHandle,
+        sheetState = sheetState,
+        topBar = topBar,
+        bottomBar = bottomBar,
+        contentPadding = contentPadding,
+        content = content
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun PaykiBottomSheetHost(
+    onDismiss: () -> Unit,
+    containerColor: Color,
+    showDragHandle: Boolean,
+    sheetState: SheetState,
+    topBar: @Composable () -> Unit,
+    bottomBar: @Composable () -> Unit,
+    contentPadding: PaddingValues,
+    content: @Composable ColumnScope.() -> Unit
+) {
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
@@ -92,6 +119,7 @@ internal fun PaykiBottomSheet(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun EditorBottomSheet(
     title: String,
@@ -104,14 +132,30 @@ internal fun EditorBottomSheet(
     content: @Composable ColumnScope.() -> Unit
 ) {
     var showDiscardConfirm by remember { mutableStateOf(false) }
-    PaykiBottomSheet(
-        onDismiss = {
-            if (hasUnsavedChanges) {
-                showDiscardConfirm = true
-            } else {
-                onDismiss()
-            }
-        },
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val requestDismiss = {
+        if (hasUnsavedChanges) {
+            showDiscardConfirm = true
+        } else {
+            onDismiss()
+        }
+    }
+
+    // ModalBottomSheet finishes hiding before invoking onDismissRequest. If dismissal is
+    // rejected because the editor is dirty, restore the same sheet before showing the dialog.
+    LaunchedEffect(showDiscardConfirm) {
+        if (showDiscardConfirm) {
+            sheetState.show()
+        }
+    }
+
+    PaykiBottomSheetHost(
+        onDismiss = requestDismiss,
+        containerColor = MaterialTheme.colorScheme.surface,
+        showDragHandle = true,
+        sheetState = sheetState,
+        bottomBar = {},
+        contentPadding = PaddingValues(horizontal = 20.dp, vertical = 16.dp),
         topBar = {
             Box(
                 modifier = Modifier
@@ -119,7 +163,7 @@ internal fun EditorBottomSheet(
                     .padding(horizontal = 8.dp, vertical = 2.dp)
             ) {
                 TextButton(
-                    onClick = onDismiss,
+                    onClick = requestDismiss,
                     modifier = Modifier.align(Alignment.CenterStart)
                 ) {
                     Text("取消")
@@ -163,14 +207,24 @@ internal fun EditorBottomSheet(
         )
     }
     if (showDiscardConfirm) {
-        PaykiDecisionBottomSheet(
-            title = "放弃本次编辑？",
-            message = "当前编辑内容尚未保存，确认后会丢弃本次修改。",
-            confirmLabel = "放弃编辑",
-            onDismiss = { showDiscardConfirm = false },
-            onConfirm = {
-                showDiscardConfirm = false
-                onDismiss()
+        AlertDialog(
+            onDismissRequest = { showDiscardConfirm = false },
+            title = { Text("放弃本次编辑？", fontWeight = FontWeight.Bold) },
+            text = { Text("当前编辑内容尚未保存，确认后会丢弃本次修改。") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showDiscardConfirm = false
+                        onDismiss()
+                    }
+                ) {
+                    Text("放弃编辑", color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDiscardConfirm = false }) {
+                    Text("继续编辑")
+                }
             }
         )
     }
@@ -225,12 +279,6 @@ internal fun PaykiDecisionBottomSheet(
                     color = MaterialTheme.colorScheme.onSurface,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis
-                )
-                Text(
-                    text = "删除后无法恢复，请确认后再继续。",
-                    textAlign = TextAlign.Center,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
 

@@ -8,8 +8,8 @@
 - Target platform: Android 14 / API 34
 - License: MIT License (`LICENSE`)
 - Current version in code:
-  - `versionName = "1.15.2"`
-  - `versionCode = 344`
+  - `versionName = "1.15.3"`
+  - `versionCode = 345`
   - database version = `29`
 
 ## Current Build Facts
@@ -19,7 +19,14 @@
 - Latest GitHub Release:
   - `https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.14.12`
 - Latest fully built debug APK:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.15.2-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.15.3-debug.apk`
+- Current `1.15.3 / versionCode 345` status:
+  - Fixed the shared todo/event editor dismissal deadlock: rejecting or dismissing the unsaved-change confirmation restores the original `ModalBottomSheet` instead of leaving its hidden modal window attached and blocking the app.
+  - The editor top `取消` action and system/backdrop dismissal now share the same dirty-state guard; the confirmation uses an `AlertDialog` with explicit `继续编辑` / `放弃编辑` actions.
+  - Removed the generic deletion-only subtitle from shared decision sheets so move/cancel/archive confirmations do not claim that the action is an unrecoverable delete.
+  - Fixed Calendar quick-create pending drafts: tapping the visible `新日程` card now clears the pending placeholder when opening the editor, so the saved event immediately replaces it.
+  - Database version remains `29`; no schema or migration change was introduced.
+  - Verification passed: 21 unit-test suites / 132 tests, `:app:assembleDebug`, APK metadata (`1.15.3 / 345`), `node --check`, `git diff --check`, and Pixel_8 emulator create/discard/restore/create/delete flows with no final-session PaykiTodo fatal exception or ANR. Android Lint did not complete because required artifacts from `dl.google.com` timed out, so it is not recorded as passed.
 - Current `1.15.2 / versionCode 344` status:
   - Restored the phone daily board's selected light/dark landscape backgrounds, Forest/Clay/Ocean palette, custom `payki_greeting` font, title shadow, circular menu backing, and greeting gradient while retaining live system-theme following and compact layout work from `1.15.1`.
   - Added explicit palette-compatible primary/secondary/tertiary containers and outline colors so Material components do not fall back to default purple.

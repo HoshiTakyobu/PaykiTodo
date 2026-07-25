@@ -7,6 +7,7 @@ This file tracks the product at a practical level for new coding sessions.
 ### Task / Todo System
 
 - create, edit, delete todo items
+- Shared todo/event editors protect dirty input on both system dismissal and the top `取消` action; dismissing the discard confirmation restores the same editor with its current input instead of leaving an invisible modal blocker
 - title / notes / multi-group tags / deadline / multi-reminder fields
 - Todo editor shows title / DDL / group first for new todos and folds notes / reminder input / reminder delivery mode / recurrence / ring / vibration into 更多选项, auto-expanding when editing existing todos that use advanced state
 - Todo editor can choose reminder delivery mode between full-screen reminder and notification reminder; the selected mode is persisted for todos and recurring todo templates
@@ -183,6 +184,7 @@ This file tracks the product at a practical level for new coding sessions.
 ### Calendar System
 
 - timeline-style calendar foundation
+- timeline quick-create clears the visible `新日程` pending placeholder as soon as its editor opens, so a successfully saved event immediately renders with its real title
 - day / multi-day / month / agenda style views exist in code, with ongoing refinement
 - normal events, all-day events, and recurring events
 - event location / notes / color / reminder settings

@@ -2010,7 +2010,10 @@ private fun CalendarTimedBoard(
                     horizontalOffsetPx = horizontalOffsetPx,
                     hourHeight = hourHeight,
                     draft = draft,
-                    onClick = { onQuickCreateEvent(draft.startAt, draft.endAt) }
+                    onClick = {
+                        onQuickCreateEvent(draft.startAt, draft.endAt)
+                        onPendingDraftChange(null)
+                    }
                 )
             }
 

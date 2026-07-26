@@ -51,6 +51,7 @@ This file tracks the product at a practical level for new coding sessions.
 ### Board / Dashboard
 
 - dedicated daily board entry exists in the drawer and is the default home section
+- phone drawer uses a grouped navigation hierarchy with a product identity header, always-visible primary and review destinations, fixed Settings / appearance utilities, and a descriptive bottom-sheet theme picker; all seven destinations remain directly reachable in light and dark modes
 - board todo block includes missed active todos, today's normal todos, and active no-DDL todos
 - board intentionally stays a read-only overview for todos, schedules, announcements, and countdown targets
 - board view can show today's todos and today's / tomorrow's schedule summary together

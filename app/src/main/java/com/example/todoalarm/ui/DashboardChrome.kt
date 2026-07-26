@@ -37,13 +37,13 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.BrightnessAuto
 import androidx.compose.material.icons.rounded.CalendarMonth
 import androidx.compose.material.icons.rounded.Campaign
+import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.DarkMode
 import androidx.compose.material.icons.rounded.History
 import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.Insights
 import androidx.compose.material.icons.rounded.LightMode
 import androidx.compose.material.icons.rounded.Menu
-import androidx.compose.material.icons.rounded.MoreHoriz
 import androidx.compose.material.icons.rounded.PostAdd
 import androidx.compose.material.icons.rounded.ExpandLess
 import androidx.compose.material.icons.rounded.ExpandMore
@@ -55,8 +55,6 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
@@ -102,7 +100,6 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
@@ -194,105 +191,121 @@ internal fun DashboardDrawer(
     onSelectSection: (DashboardSection) -> Unit,
     onThemeModeChange: (ThemeMode) -> Unit
 ) {
-    var moreExpanded by rememberSaveable { mutableStateOf(false) }
     ModalDrawerSheet(
         modifier = Modifier
             .fillMaxHeight()
-            .fillMaxWidth(0.82f)
-            .widthIn(min = 280.dp, max = 360.dp),
+            .fillMaxWidth(0.84f)
+            .widthIn(min = 292.dp, max = 380.dp),
         drawerContainerColor = MaterialTheme.colorScheme.surface,
-        drawerShape = RoundedCornerShape(topEnd = 18.dp, bottomEnd = 18.dp)
+        drawerShape = RoundedCornerShape(topEnd = 28.dp, bottomEnd = 28.dp)
     ) {
         Column(
             modifier = Modifier
                 .fillMaxHeight()
-                .padding(horizontal = 12.dp, vertical = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
+                .padding(horizontal = 16.dp, vertical = 14.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            Column(
-                modifier = Modifier
-                    .weight(1f)
-                    .verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(6.dp)
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(22.dp),
+                color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.52f)
             ) {
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 14.dp),
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    Surface(shape = RoundedCornerShape(12.dp), color = MaterialTheme.colorScheme.primaryContainer) {
-                        Box(Modifier.size(42.dp), contentAlignment = Alignment.Center) {
-                            Image(
-                                painter = painterResource(id = R.drawable.ic_launcher_art_transparent),
-                                contentDescription = "应用图标",
-                                modifier = Modifier
-                                    .size(42.dp)
-                                    .clip(RoundedCornerShape(12.dp)),
-                                contentScale = ContentScale.Crop
-                            )
-                        }
-                    }
-                    Text(
-                        "PaykiTodo",
-                        modifier = Modifier.weight(1f),
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.SemiBold,
-                        color = MaterialTheme.colorScheme.onSurface,
-                        maxLines = 1,
-                        softWrap = false,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
-                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.45f))
-                Column(
-                    modifier = Modifier.padding(top = 2.dp),
-                    verticalArrangement = Arrangement.spacedBy(2.dp)
-                ) {
-                    listOf(
-                        DashboardSection.BOARD,
-                        DashboardSection.ACTIVE,
-                        DashboardSection.CALENDAR,
-                        DashboardSection.PLANNING,
-                        DashboardSection.SETTINGS
-                    ).forEach { section ->
-                        DrawerSectionButton(
-                            section = section,
-                            selected = current == section,
-                            onClick = { onSelectSection(section) }
+                    Surface(
+                        shape = RoundedCornerShape(16.dp),
+                        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.78f)
+                    ) {
+                        Image(
+                            painter = painterResource(id = R.drawable.ic_launcher_art_transparent),
+                            contentDescription = "应用图标",
+                            modifier = Modifier
+                                .size(50.dp)
+                                .clip(RoundedCornerShape(16.dp)),
+                            contentScale = ContentScale.Crop
                         )
                     }
-                    DrawerSectionButton(
-                        label = "更多",
-                        icon = Icons.Rounded.MoreHoriz,
-                        selected = false,
-                        onClick = { moreExpanded = !moreExpanded },
-                        trailingContent = {
-                            Icon(
-                                imageVector = if (moreExpanded) Icons.Rounded.ExpandLess else Icons.Rounded.ExpandMore,
-                                contentDescription = if (moreExpanded) "折叠更多" else "展开更多",
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.size(22.dp)
-                            )
-                        }
-                    )
-                    if (moreExpanded) {
-                        listOf(DashboardSection.AI_REPORTS, DashboardSection.HISTORY).forEach { section ->
-                            DrawerSectionButton(
-                                section = section,
-                                selected = current == section,
-                                onClick = { onSelectSection(section) }
-                            )
-                        }
+                    Column(
+                        modifier = Modifier.weight(1f),
+                        verticalArrangement = Arrangement.spacedBy(2.dp)
+                    ) {
+                        Text(
+                            text = "PaykiTodo",
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                        Text(
+                            text = "把今天安排得更清楚",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
                     }
                 }
             }
 
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .verticalScroll(rememberScrollState())
+                    .padding(top = 6.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                DrawerGroupLabel("主要功能")
+                listOf(
+                    DashboardSection.BOARD,
+                    DashboardSection.ACTIVE,
+                    DashboardSection.CALENDAR,
+                    DashboardSection.PLANNING
+                ).forEach { section ->
+                    DrawerSectionButton(
+                        section = section,
+                        selected = current == section,
+                        onClick = { onSelectSection(section) }
+                    )
+                }
+
+                Spacer(Modifier.height(8.dp))
+                DrawerGroupLabel("回顾与记录")
+                listOf(DashboardSection.AI_REPORTS, DashboardSection.HISTORY).forEach { section ->
+                    DrawerSectionButton(
+                        section = section,
+                        selected = current == section,
+                        onClick = { onSelectSection(section) }
+                    )
+                }
+            }
+
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.55f))
+            DrawerSectionButton(
+                section = DashboardSection.SETTINGS,
+                selected = current == DashboardSection.SETTINGS,
+                onClick = { onSelectSection(DashboardSection.SETTINGS) }
+            )
             ThemeModeSwitcher(
                 selectedThemeMode = selectedThemeMode,
                 onThemeModeChange = onThemeModeChange
             )
         }
     }
+}
+
+@Composable
+private fun DrawerGroupLabel(label: String) {
+    Text(
+        text = label,
+        modifier = Modifier.padding(start = 12.dp, top = 4.dp, bottom = 2.dp),
+        style = MaterialTheme.typography.labelMedium,
+        fontWeight = FontWeight.SemiBold,
+        color = MaterialTheme.colorScheme.onSurfaceVariant
+    )
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -2036,10 +2049,11 @@ private fun DrawerSectionButton(
     Surface(
         modifier = Modifier
             .fillMaxWidth()
+            .height(52.dp)
             .clickable(onClick = onClick),
-        shape = RoundedCornerShape(10.dp),
+        shape = RoundedCornerShape(16.dp),
         color = if (selected) {
-            MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.72f)
+            MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.78f)
         } else {
             Color.Transparent
         }
@@ -2047,16 +2061,31 @@ private fun DrawerSectionButton(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 12.dp, vertical = 10.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                .padding(horizontal = 10.dp, vertical = 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                modifier = Modifier.size(21.dp),
-                tint = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
-            )
+            Surface(
+                shape = RoundedCornerShape(11.dp),
+                color = if (selected) {
+                    MaterialTheme.colorScheme.primary.copy(alpha = 0.16f)
+                } else {
+                    MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.58f)
+                }
+            ) {
+                Box(Modifier.size(34.dp), contentAlignment = Alignment.Center) {
+                    Icon(
+                        imageVector = icon,
+                        contentDescription = null,
+                        modifier = Modifier.size(20.dp),
+                        tint = if (selected) {
+                            MaterialTheme.colorScheme.primary
+                        } else {
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                        }
+                    )
+                }
+            }
             Text(
                 text = label,
                 modifier = Modifier.weight(1f),
@@ -2069,12 +2098,13 @@ private fun DrawerSectionButton(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun ThemeModeSwitcher(
     selectedThemeMode: ThemeMode,
     onThemeModeChange: (ThemeMode) -> Unit
 ) {
-    var expanded by remember { mutableStateOf(false) }
+    var showThemeSheet by rememberSaveable { mutableStateOf(false) }
     val systemDark = isSystemInDarkTheme()
     val currentIcon = when (selectedThemeMode) {
         ThemeMode.LIGHT -> Icons.Rounded.LightMode
@@ -2087,66 +2117,157 @@ private fun ThemeModeSwitcher(
         ThemeMode.SYSTEM -> "跟随系统"
     }
 
-    Box {
-        Surface(
-            onClick = { expanded = true },
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(10.dp),
-            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.48f)
+    Surface(
+        onClick = { showThemeSheet = true },
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(58.dp),
+        shape = RoundedCornerShape(16.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 10.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 12.dp, vertical = 9.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            Surface(
+                shape = RoundedCornerShape(11.dp),
+                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.14f)
             ) {
-                Icon(
-                    imageVector = currentIcon,
-                    contentDescription = null,
-                    modifier = Modifier.size(21.dp),
-                    tint = MaterialTheme.colorScheme.primary
-                )
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = "界面外观",
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.SemiBold,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                    Text(
-                        text = currentLabel,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                Box(Modifier.size(34.dp), contentAlignment = Alignment.Center) {
+                    Icon(
+                        imageVector = currentIcon,
+                        contentDescription = null,
+                        modifier = Modifier.size(20.dp),
+                        tint = MaterialTheme.colorScheme.primary
                     )
                 }
-                Icon(
-                    imageVector = Icons.Rounded.ExpandMore,
-                    contentDescription = currentLabel,
-                    modifier = Modifier.size(20.dp),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+            }
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "界面外观",
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Text(
+                    text = currentLabel,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
+            Icon(
+                imageVector = Icons.Rounded.ChevronRight,
+                contentDescription = "选择界面外观",
+                modifier = Modifier.size(20.dp),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
-        DropdownMenu(
-            expanded = expanded,
-            onDismissRequest = { expanded = false },
-            offset = DpOffset(x = 0.dp, y = (-8).dp)
+    }
+
+    if (showThemeSheet) {
+        val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+        ModalBottomSheet(
+            onDismissRequest = { showThemeSheet = false },
+            sheetState = sheetState,
+            shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
+            containerColor = MaterialTheme.colorScheme.surface
         ) {
-            ThemeMode.entries.forEach { mode ->
-                val icon = when (mode) {
-                    ThemeMode.LIGHT -> Icons.Rounded.LightMode
-                    ThemeMode.DARK -> Icons.Rounded.DarkMode
-                    ThemeMode.SYSTEM -> Icons.Rounded.BrightnessAuto
-                }
-                DropdownMenuItem(
-                    text = { Text(mode.label) },
-                    onClick = {
-                        expanded = false
-                        onThemeModeChange(mode)
-                    },
-                    leadingIcon = { Icon(icon, contentDescription = null) }
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(start = 20.dp, end = 20.dp, bottom = 24.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Text(
+                    text = "界面外观",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
                 )
+                Text(
+                    text = "选择浅色、深色，或跟随手机系统设置。",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(Modifier.height(4.dp))
+                ThemeMode.entries.forEach { mode ->
+                    val selected = mode == selectedThemeMode
+                    val icon = when (mode) {
+                        ThemeMode.LIGHT -> Icons.Rounded.LightMode
+                        ThemeMode.DARK -> Icons.Rounded.DarkMode
+                        ThemeMode.SYSTEM -> Icons.Rounded.BrightnessAuto
+                    }
+                    val description = when (mode) {
+                        ThemeMode.LIGHT -> "始终使用浅色山景"
+                        ThemeMode.DARK -> "始终使用深色夜景"
+                        ThemeMode.SYSTEM -> "随手机深浅色设置自动切换"
+                    }
+                    Surface(
+                        onClick = {
+                            showThemeSheet = false
+                            onThemeModeChange(mode)
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(16.dp),
+                        color = if (selected) {
+                            MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.72f)
+                        } else {
+                            Color.Transparent
+                        }
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            Surface(
+                                shape = RoundedCornerShape(12.dp),
+                                color = if (selected) {
+                                    MaterialTheme.colorScheme.primary.copy(alpha = 0.16f)
+                                } else {
+                                    MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.58f)
+                                }
+                            ) {
+                                Box(Modifier.size(40.dp), contentAlignment = Alignment.Center) {
+                                    Icon(
+                                        imageVector = icon,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(22.dp),
+                                        tint = if (selected) {
+                                            MaterialTheme.colorScheme.primary
+                                        } else {
+                                            MaterialTheme.colorScheme.onSurfaceVariant
+                                        }
+                                    )
+                                }
+                            }
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = mode.label,
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                                Text(
+                                    text = description,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                            if (selected) {
+                                Icon(
+                                    imageVector = Icons.Rounded.Check,
+                                    contentDescription = "当前使用",
+                                    modifier = Modifier.size(22.dp),
+                                    tint = MaterialTheme.colorScheme.primary
+                                )
+                            }
+                        }
+                    }
+                }
             }
         }
     }

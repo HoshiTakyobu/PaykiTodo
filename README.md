@@ -20,7 +20,7 @@ PaykiTodo 是一个以 **强提醒、本地可控、日程与待办一体化** �
 
 | 项目 | 内容 |
 | --- | --- |
-| 当前源码版本 | `v1.15.4` |
+| 当前源码版本 | `v1.15.5` |
 | 最新 GitHub Release | `v1.14.12` |
 | Android 包名 | `com.paykitodo.app` |
 | 最低系统 | Android 8.0 / API 26 |

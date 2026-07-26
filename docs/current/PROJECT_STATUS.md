@@ -8,8 +8,8 @@
 - Target platform: Android 14 / API 34
 - License: MIT License (`LICENSE`)
 - Current version in code:
-  - `versionName = "1.15.4"`
-  - `versionCode = 346`
+  - `versionName = "1.15.5"`
+  - `versionCode = 347`
   - database version = `29`
 
 ## Current Build Facts
@@ -19,7 +19,15 @@
 - Latest GitHub Release:
   - `https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.14.12`
 - Latest fully built debug APK:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.15.4-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.15.5-debug.apk`
+- Current `1.15.5 / versionCode 347` status:
+  - Phone navigation drawer now has a product identity card, grouped primary/review destinations, and fixed Settings/appearance utilities; AI Reports and History are no longer hidden behind an expandable `更多` row.
+  - Drawer rows share compact icon containers, 16dp selection surfaces, consistent text hierarchy, and palette-compatible light/dark states.
+  - Appearance selection now opens a descriptive Material bottom sheet with selected-state feedback instead of a floating dropdown anchored near the bottom of the drawer.
+  - Daily Board landscape artwork, custom greeting font, and Forest/Clay/Ocean/Sand/Night palettes remain unchanged.
+  - UI audit findings and the next Todo/Calendar/Planning rounds are recorded in `UI_MODERNIZATION_AUDIT.md`.
+  - Database version remains `29`; no schema or migration change was introduced.
+  - Verification passed: 22 unit-test suites / 134 tests, `:app:compileDebugKotlin`, `:app:assembleDebug`, `:app:lintDebug`, APK metadata (`1.15.5 / 347`), debug APK install/launch, all seven drawer routes, light/dark drawer rendering, and the theme bottom sheet on Pixel_8 emulator.
 - Current `1.15.4 / versionCode 346` status:
   - Calendar event details use a full-width completion action above one compact cancel/edit/delete row, eliminating narrow-screen vertical label wrapping.
   - History cards expose completed/canceled state, and historical events show their event time range and location rather than todo DDL fields.

@@ -46,6 +46,21 @@ Do not copy QQ's account, membership, or social structure. Borrow the useful nav
 - Tomorrow displays at most two rows, then exposes the remaining count and a Calendar route.
 - Empty tomorrow state links to Planning Desk without introducing a nested card.
 
+## Implemented In 1.15.7
+
+### Light contrast system
+
+- Increased the difference between the light blue-gray page layer, pure-white content surfaces, and gray-green control containers.
+- Darkened `onSurfaceVariant` so subtitles, time-axis labels, empty states, and Settings summaries remain readable.
+- Strengthened the Daily Board tomorrow band and count badge while retaining the landscape artwork.
+
+### Calendar work surface
+
+- Calendar toolbar and Calendar content are separate white surfaces with a visible page-background gap.
+- Removed heavy panel outlines after emulator review; contrast now comes from layer luminance rather than borders.
+- Strengthened toolbar button fills and compacted the timezone label to two centered lines.
+- Added initial-scroll top inset so the first visible hour label is not pressed against the rounded content edge.
+
 ## Remaining UI Work
 
 ### P1 - Todo

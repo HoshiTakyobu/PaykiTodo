@@ -8,8 +8,8 @@
 - Target platform: Android 14 / API 34
 - License: MIT License (`LICENSE`)
 - Current version in code:
-  - `versionName = "1.15.6"`
-  - `versionCode = 348`
+  - `versionName = "1.15.7"`
+  - `versionCode = 349`
   - database version = `29`
 
 ## Current Build Facts
@@ -19,7 +19,15 @@
 - Latest GitHub Release:
   - `https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.14.12`
 - Latest fully built debug APK:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.15.6-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.15.7-debug.apk`
+- Current `1.15.7 / versionCode 349` status:
+  - Light mode now has three visible layers: light blue-gray page background, pure-white content surfaces, and gray-green controls/weak containers.
+  - Secondary text and outlines are darker, improving Todo empty states, Settings summaries, drawer labels, Calendar timezone/time-axis labels, and Board schedule metadata.
+  - Calendar separates the month/action toolbar and date/time-grid into white surfaces with a visible background gap; toolbar fills are stronger without retaining the heavy outline prototype.
+  - Calendar timezone is a centered two-line label, and initial time-axis positioning reserves top space for the first visible hour label.
+  - Daily Board tomorrow band, count badge, divider, and card elevation are stronger in light mode; dark mode behavior and protected artwork remain unchanged.
+  - Database version remains `29`; no schema or migration change was introduced.
+  - Verification passed: 22 unit-test suites / 134 tests, `:app:compileDebugKotlin`, `:app:assembleDebug`, `:app:lintDebug`, APK metadata (`1.15.7 / 349`), and Pixel_8 emulator checks of Board, Drawer, Calendar, Todo, and Settings in light mode.
 - Current `1.15.6 / versionCode 348` status:
   - Light mode no longer uses Sand beige as the global background. Operational pages use cool white, cards use paper white, and weak containers use soft gray-green; Clay remains a small-area accent.
   - Calendar inherits the cool-white work surface, removing the previous full-page yellow/beige cast while retaining Forest/Ocean controls and highlights.

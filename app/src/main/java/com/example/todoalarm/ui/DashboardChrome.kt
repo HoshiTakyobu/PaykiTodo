@@ -1597,12 +1597,13 @@ private fun TodayScheduleBoardCard(
     val tomorrow = today.plusDays(1)
     val lightTheme = MaterialTheme.colorScheme.surface.luminance() > 0.5f
     val tomorrowBandColor = MaterialTheme.colorScheme.tertiaryContainer.copy(
-        alpha = if (lightTheme) 0.48f else 0.26f
+        alpha = if (lightTheme) 0.86f else 0.32f
     )
     ElevatedCard(
         modifier = Modifier.clickable(onClick = onNavigateCalendar),
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.96f))
+        colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.98f)),
+        elevation = CardDefaults.elevatedCardElevation(defaultElevation = if (lightTheme) 3.dp else 1.dp)
     ) {
         Column {
             Row(
@@ -1665,7 +1666,7 @@ private fun TodayScheduleBoardCard(
                         }
                         Surface(
                             shape = RoundedCornerShape(999.dp),
-                            color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.72f)
+                            color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.94f)
                         ) {
                             Text(
                                 text = "${todayEvents.size} 项",
@@ -1700,7 +1701,7 @@ private fun TodayScheduleBoardCard(
                 }
             }
 
-            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.72f))
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.94f))
 
             Column(
                 modifier = Modifier

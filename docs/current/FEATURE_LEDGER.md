@@ -75,6 +75,7 @@ This file tracks the product at a practical level for new coding sessions.
 - daily board onboarding card is readable in dark mode, can be dismissed, and can be reset from Settings -> About -> 使用说明
 - daily board section titles use compact semibold typography without wallpaper-compensating text shadows
 - light mode uses cool-white page backgrounds, paper-white surfaces, and soft gray-green weak containers instead of Sand beige as the global background; warm Clay remains an accent rather than a large-area fill
+- light mode uses a distinct light blue-gray page layer, pure-white content surfaces, darker secondary text, and visible gray-green controls; Calendar separates its toolbar and time-grid surfaces while the Board tomorrow band uses a stronger blue tint
 - board surface intentionally does not expose add / batch-add buttons
 
 ### Reminders / Notifications

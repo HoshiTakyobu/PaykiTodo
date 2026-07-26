@@ -415,8 +415,13 @@ internal fun CalendarPanel(
 
             LaunchedEffect(hourHeightPx) {
                 if (!didInitScroll) {
-                    val targetHour = (initialMoment.hour - 2).coerceAtLeast(0)
-                    verticalScroll.scrollTo((targetHour * hourHeightPx).roundToInt())
+                    val targetHour = (initialMoment.hour - 4).coerceAtLeast(0)
+                    val topLabelInsetPx = with(density) { 20.dp.toPx() }
+                    verticalScroll.scrollTo(
+                        ((targetHour * hourHeightPx) - topLabelInsetPx)
+                            .roundToInt()
+                            .coerceAtLeast(0)
+                    )
                     didInitScroll = true
                 }
             }
@@ -455,41 +460,57 @@ internal fun CalendarPanel(
                 openDetails(target)
             }
 
-            Column(modifier = Modifier.fillMaxSize()) {
-                CalendarBrowserHeader(
-                    titleMonth = headerMonthDate,
-                    viewMode = viewMode,
-                    onPickDate = ::openDatePicker,
-                    onToday = { revealDate(currentDate) },
-                    onChangeView = ::changeView,
-                    onOpenViewMenu = { showViewModeMenu = true },
-                    onDismissViewMenu = { showViewModeMenu = false },
-                    showViewModeMenu = showViewModeMenu,
-                    onOpenActions = { showActionsMenu = true },
-                    showActionsMenu = showActionsMenu,
-                    onDismissActions = { showActionsMenu = false },
-                    onQuickCreate = {
-                        showActionsMenu = false
-                        val startAt = LocalDateTime.now().withSecond(0).withNano(0).plusMinutes(2)
-                        onCreateEventAt(startAt, startAt.plusMinutes(30))
-                    },
-                    onOpenBatchImport = {
-                        showActionsMenu = false
-                        onOpenBatchImport()
-                    },
-                    onOpenTemplateManager = {
-                        showActionsMenu = false
-                        templateAnchorWeekStart = currentWeekStart(selectedDate)
-                        showTemplateManager = true
-                    },
-                    onSaveWeekTemplate = {
-                        showActionsMenu = false
-                        templateAnchorWeekStart = currentWeekStart(selectedDate)
-                        showSaveWeekTemplate = true
-                    }
-                )
+            Column(
+                modifier = Modifier.fillMaxSize(),
+                verticalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(18.dp),
+                    color = MaterialTheme.colorScheme.surface
+                ) {
+                    CalendarBrowserHeader(
+                        titleMonth = headerMonthDate,
+                        viewMode = viewMode,
+                        onPickDate = ::openDatePicker,
+                        onToday = { revealDate(currentDate) },
+                        onChangeView = ::changeView,
+                        onOpenViewMenu = { showViewModeMenu = true },
+                        onDismissViewMenu = { showViewModeMenu = false },
+                        showViewModeMenu = showViewModeMenu,
+                        onOpenActions = { showActionsMenu = true },
+                        showActionsMenu = showActionsMenu,
+                        onDismissActions = { showActionsMenu = false },
+                        onQuickCreate = {
+                            showActionsMenu = false
+                            val startAt = LocalDateTime.now().withSecond(0).withNano(0).plusMinutes(2)
+                            onCreateEventAt(startAt, startAt.plusMinutes(30))
+                        },
+                        onOpenBatchImport = {
+                            showActionsMenu = false
+                            onOpenBatchImport()
+                        },
+                        onOpenTemplateManager = {
+                            showActionsMenu = false
+                            templateAnchorWeekStart = currentWeekStart(selectedDate)
+                            showTemplateManager = true
+                        },
+                        onSaveWeekTemplate = {
+                            showActionsMenu = false
+                            templateAnchorWeekStart = currentWeekStart(selectedDate)
+                            showSaveWeekTemplate = true
+                        }
+                    )
+                }
 
-                when (viewMode) {
+                Surface(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f),
+                    shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp),
+                    color = MaterialTheme.colorScheme.surface
+                ) {
+                    when (viewMode) {
                     CalendarViewMode.MONTH -> {
                         Box(
                             modifier = Modifier
@@ -687,6 +708,7 @@ internal fun CalendarPanel(
             }
         }
     }
+    }
 
     detailsTarget?.let { item ->
         CalendarEventDetailsDialog(
@@ -811,7 +833,7 @@ private fun CalendarBrowserHeader(
             modifier = Modifier
                 .clickable(onClick = onPickDate),
             shape = RoundedCornerShape(18.dp),
-            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f)
+            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.9f)
         ) {
             Row(
                 modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
@@ -1571,7 +1593,7 @@ private fun CalendarHeaderActionButton(
 ) {
     Surface(
         shape = RoundedCornerShape(14.dp),
-        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.75f),
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.92f),
         modifier = Modifier.clickable(onClick = onClick)
     ) {
         Row(
@@ -1612,7 +1634,7 @@ private fun CalendarMenuActionButton(
 ) {
     Surface(
         shape = RoundedCornerShape(14.dp),
-        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.75f),
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.92f),
         modifier = Modifier.clickable(onClick = onClick)
     ) {
         Box(
@@ -1648,8 +1670,15 @@ private fun CalendarHeaderRow(
             .padding(bottom = 4.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Box(modifier = Modifier.width(timeAxisWidth), contentAlignment = Alignment.CenterStart) {
-            Text(text = timezoneShortLabel(), color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
+        Box(modifier = Modifier.width(timeAxisWidth), contentAlignment = Alignment.Center) {
+            Text(
+                text = timezoneShortLabel(),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                fontSize = 10.sp,
+                lineHeight = 12.sp,
+                fontWeight = FontWeight.Medium,
+                textAlign = TextAlign.Center
+            )
         }
         Box(
             modifier = Modifier
@@ -2990,7 +3019,7 @@ private fun timezoneShortLabel(): String {
     val hours = absMinutes / 60
     val minutes = absMinutes % 60
     val suffix = if (minutes == 0) "UTC$sign$hours" else "UTC$sign$hours:${minutes.toString().padStart(2, '0')}"
-    return "本地时间 $suffix"
+    return "本地\n$suffix"
 }
 
 private fun formatClockTime(dateTime: LocalDateTime): String {

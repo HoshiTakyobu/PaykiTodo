@@ -1594,106 +1594,177 @@ private fun TodayScheduleBoardCard(
     onNavigatePlanning: () -> Unit = {},
     onNavigateCalendar: () -> Unit = {}
 ) {
+    val tomorrow = today.plusDays(1)
+    val lightTheme = MaterialTheme.colorScheme.surface.luminance() > 0.5f
+    val tomorrowBandColor = MaterialTheme.colorScheme.tertiaryContainer.copy(
+        alpha = if (lightTheme) 0.48f else 0.26f
+    )
     ElevatedCard(
         modifier = Modifier.clickable(onClick = onNavigateCalendar),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.96f))
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 14.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalAlignment = Alignment.Top
-        ) {
-            Column(
-                modifier = Modifier.widthIn(min = 54.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(4.dp)
+        Column {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 14.dp),
+                horizontalArrangement = Arrangement.spacedBy(14.dp),
+                verticalAlignment = Alignment.Top
             ) {
-                Text(
-                    text = boardMonthLabel(today),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    style = MaterialTheme.typography.bodySmall,
-                    fontWeight = FontWeight.SemiBold
-                )
-                Text(
-                    text = boardWeekdayLabel(today),
-                    color = Color(0xFF5A92FF),
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.Bold
-                )
-                Text(
-                    text = today.dayOfMonth.toString(),
-                    style = MaterialTheme.typography.headlineLarge,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-            }
+                Column(
+                    modifier = Modifier.widthIn(min = 54.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(3.dp)
+                ) {
+                    Text(
+                        text = boardMonthLabel(today),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        style = MaterialTheme.typography.bodySmall,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    Text(
+                        text = boardWeekdayLabel(today),
+                        color = MaterialTheme.colorScheme.tertiary,
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        text = today.dayOfMonth.toString(),
+                        style = MaterialTheme.typography.headlineLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                }
 
-            Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
-                if (!todayCollapsed) {
-                    if (todayEvents.isEmpty()) {
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(7.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(7.dp)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .width(3.dp)
+                                    .height(16.dp)
+                                    .background(MaterialTheme.colorScheme.primary, RoundedCornerShape(999.dp))
+                            )
+                            Text(
+                                text = "今日剩余",
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.SemiBold,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                        }
                         Surface(
-                            shape = RoundedCornerShape(10.dp),
-                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.18f)
+                            shape = RoundedCornerShape(999.dp),
+                            color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.72f)
                         ) {
                             Text(
-                                text = "暂无日程",
-                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 9.dp),
+                                text = "${todayEvents.size} 项",
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
+                                color = MaterialTheme.colorScheme.primary,
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+
+                    if (!todayCollapsed) {
+                        if (todayEvents.isEmpty()) {
+                            Text(
+                                text = "今天已没有剩余日程",
+                                modifier = Modifier.padding(vertical = 5.dp),
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 style = MaterialTheme.typography.bodyMedium.copy(fontSize = 13.sp, lineHeight = 16.sp)
                             )
-                        }
-                    } else {
-                        todayEvents.forEach { item ->
-                            BoardScheduleEventRow(
-                                item = item,
-                                now = now,
-                                onGetEventCheckIns = onGetEventCheckIns,
-                                onLaunchCheckIn = onLaunchCheckIn,
-                                onClick = { onOpenEvent(item) }
-                            )
+                        } else {
+                            todayEvents.forEach { item ->
+                                BoardScheduleEventRow(
+                                    item = item,
+                                    now = now,
+                                    onGetEventCheckIns = onGetEventCheckIns,
+                                    onLaunchCheckIn = onLaunchCheckIn,
+                                    onClick = { onOpenEvent(item) }
+                                )
+                            }
                         }
                     }
                 }
+            }
 
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.72f))
+
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(tomorrowBandColor)
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Text(
-                        text = "明天",
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                }
-                if (tomorrowEvents.isEmpty()) {
-                    Surface(
-                        shape = RoundedCornerShape(16.dp),
-                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.18f),
-                        onClick = onNavigatePlanning
-                    ) {
+                    Column(verticalArrangement = Arrangement.spacedBy(1.dp)) {
                         Text(
-                            text = "明天暂无日程 · 去规划台安排一下？",
-                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 9.dp),
-                            color = MaterialTheme.colorScheme.primary,
-                            style = MaterialTheme.typography.bodyMedium.copy(fontSize = 13.sp, lineHeight = 16.sp)
+                            text = "明日安排",
+                            color = MaterialTheme.colorScheme.onSurface,
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        Text(
+                            text = "${boardMonthLabel(tomorrow)}${tomorrow.dayOfMonth}日 · ${boardWeekdayLabel(tomorrow)}",
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            style = MaterialTheme.typography.labelSmall
                         )
                     }
+                    Text(
+                        text = "${tomorrowEvents.size} 项",
+                        color = MaterialTheme.colorScheme.tertiary,
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+
+                if (tomorrowEvents.isEmpty()) {
+                    Text(
+                        text = "暂无安排 · 去规划台写下来",
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(10.dp))
+                            .clickable(onClick = onNavigatePlanning)
+                            .padding(vertical = 4.dp),
+                        color = MaterialTheme.colorScheme.primary,
+                        style = MaterialTheme.typography.bodyMedium.copy(fontSize = 13.sp, lineHeight = 16.sp)
+                    )
                 } else {
                     tomorrowEvents.take(2).forEach { item ->
                         BoardScheduleEventRow(item = item, now = null, onClick = { onOpenEvent(item) })
+                    }
+                    if (tomorrowEvents.size > 2) {
+                        Text(
+                            text = "还有 ${tomorrowEvents.size - 2} 项 · 查看日历",
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(10.dp))
+                                .clickable(onClick = onNavigateCalendar)
+                                .padding(vertical = 3.dp),
+                            color = MaterialTheme.colorScheme.primary,
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.SemiBold
+                        )
                     }
                 }
             }
         }
     }
-
 }
 
 @Composable

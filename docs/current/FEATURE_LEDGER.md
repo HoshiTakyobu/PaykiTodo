@@ -71,8 +71,10 @@ This file tracks the product at a practical level for new coding sessions.
 - board in-progress schedule rows route check-in-enabled events to the independent full-screen check-in surface through `去签到` / `查看`, keeping the board focused on overview rather than inline operations
 - daily board uses a compact `暂无日程` state when today's visible schedule is empty, including after all of today's events have ended
 - daily board always shows the tomorrow schedule section inside the expanded schedule card, including `明天暂无日程` when tomorrow has no events
+- daily board schedule card separates a paper-white `今日剩余` area from a full-width tinted `明日安排` area; both show counts, tomorrow shows its full date/weekday, and overflow beyond two rows links to Calendar
 - daily board onboarding card is readable in dark mode, can be dismissed, and can be reset from Settings -> About -> 使用说明
 - daily board section titles use compact semibold typography without wallpaper-compensating text shadows
+- light mode uses cool-white page backgrounds, paper-white surfaces, and soft gray-green weak containers instead of Sand beige as the global background; warm Clay remains an accent rather than a large-area fill
 - board surface intentionally does not expose add / batch-add buttons
 
 ### Reminders / Notifications

@@ -8,8 +8,8 @@
 - Target platform: Android 14 / API 34
 - License: MIT License (`LICENSE`)
 - Current version in code:
-  - `versionName = "1.15.5"`
-  - `versionCode = 347`
+  - `versionName = "1.15.6"`
+  - `versionCode = 348`
   - database version = `29`
 
 ## Current Build Facts
@@ -19,7 +19,14 @@
 - Latest GitHub Release:
   - `https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.14.12`
 - Latest fully built debug APK:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.15.5-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.15.6-debug.apk`
+- Current `1.15.6 / versionCode 348` status:
+  - Light mode no longer uses Sand beige as the global background. Operational pages use cool white, cards use paper white, and weak containers use soft gray-green; Clay remains a small-area accent.
+  - Calendar inherits the cool-white work surface, removing the previous full-page yellow/beige cast while retaining Forest/Ocean controls and highlights.
+  - Daily Board schedule card now separates `今日剩余` and `明日安排`: the upper area shows the remaining-today count, while the full-width tinted lower band shows tomorrow's date, weekday, count, Planning route, and overflow Calendar route.
+  - Dark landscape and gold/green schedule hierarchy remain intact; the protected Daily Board artwork and greeting font are unchanged.
+  - Database version remains `29`; no schema or migration change was introduced.
+  - Verification passed: 22 unit-test suites / 134 tests, `:app:compileDebugKotlin`, `:app:assembleDebug`, `:app:lintDebug`, APK metadata (`1.15.6 / 348`), and Pixel_8 emulator Calendar/Board checks in light and dark modes.
 - Current `1.15.5 / versionCode 347` status:
   - Phone navigation drawer now has a product identity card, grouped primary/review destinations, and fixed Settings/appearance utilities; AI Reports and History are no longer hidden behind an expandable `更多` row.
   - Drawer rows share compact icon containers, 16dp selection surfaces, consistent text hierarchy, and palette-compatible light/dark states.

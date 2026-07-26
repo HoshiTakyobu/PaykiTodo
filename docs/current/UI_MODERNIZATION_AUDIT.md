@@ -30,6 +30,22 @@ Do not copy QQ's account, membership, or social structure. Borrow the useful nav
 - Unified menu row height, 16dp selection shape, 34dp icon containers, text weight, and light/dark selection colors.
 - Replaced the floating dropdown theme menu with a Material bottom sheet containing descriptions and a selected checkmark.
 
+## Implemented In 1.15.6
+
+### Light color system
+
+- Removed Sand beige from the global light background role.
+- Operational page backgrounds now use cool white, cards use paper white, and subdued containers use soft gray-green.
+- Calendar inherits the cool neutral work surface instead of filling the timeline with warm beige.
+- Forest, Ocean, and Clay remain accent colors; warm colors are no longer large-area utility surfaces.
+
+### Daily Board schedule hierarchy
+
+- The upper schedule area is labeled `今日剩余` and shows the remaining-event count.
+- The lower area is a full-width tinted `明日安排` band with date, weekday, and count.
+- Tomorrow displays at most two rows, then exposes the remaining count and a Calendar route.
+- Empty tomorrow state links to Planning Desk without introducing a nested card.
+
 ## Remaining UI Work
 
 ### P1 - Todo

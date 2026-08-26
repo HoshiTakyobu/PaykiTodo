@@ -1,6 +1,7 @@
 package com.example.todoalarm.ui
 
 import android.content.Context
+import com.example.todoalarm.data.CODEX_CLI_USER_AGENT
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -117,7 +118,7 @@ class QuoteRepository(context: Context) {
                 readTimeout = 5000
                 requestMethod = "GET"
                 useCaches = false
-                setRequestProperty("User-Agent", USER_AGENT)
+                setRequestProperty("User-Agent", CODEX_CLI_USER_AGENT)
                 setRequestProperty("Accept-Language", "zh-CN,zh;q=0.9")
             }
             connection.inputStream.bufferedReader(Charsets.UTF_8).use { it.readText() }
@@ -229,9 +230,6 @@ class QuoteRepository(context: Context) {
         private const val MAX_ARTICLES_PER_SOURCE = 12
         private const val YULUKU_DISCOVER_LIMIT = 10
         private const val GEYAN_DISCOVER_LIMIT = 10
-        private const val USER_AGENT =
-            "Mozilla/5.0 (Linux; Android 14; PaykiTodo) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Mobile Safari/537.36"
-
         private val PARAGRAPH_PATTERN = Regex(
             "<p[^>]*>(.*?)</p>",
             setOf(RegexOption.IGNORE_CASE, RegexOption.DOT_MATCHES_ALL)

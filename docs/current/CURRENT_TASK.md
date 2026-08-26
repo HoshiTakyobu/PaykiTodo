@@ -2,28 +2,29 @@
 
 ## Active Development Focus
 
-The `1.15.7 / versionCode 349` light-contrast refinement round is complete.
+The `1.15.8 / versionCode 350` batch-completion, transactional-editor, AI-network, and Todo/Settings UI round is complete.
 
-The next UI round can return to Todo filter/action hierarchy. Do not reduce the light palette back to several nearly identical whites, and do not restore beige page backgrounds.
+The next round should start from user testing of the new batch-selection density and AI configuration transaction behavior. Do not reintroduce per-card save buttons or Android's default Dalvik User-Agent.
 
 ## Completed Scope
 
-1. Changed the page background from near-white to a visible light blue-gray layer.
-2. Kept content surfaces pure white and strengthened gray-green control containers.
-3. Darkened secondary text and outline roles across Drawer, Todo, Settings, Calendar, and Board.
-4. Split Calendar into a white toolbar surface and a separate white date/time-grid surface with a background gap.
-5. Removed the heavy Calendar outlines after emulator review while retaining the stronger layer contrast.
-6. Strengthened Calendar toolbar button fills, compacted the timezone label, and reserved top space for the first visible hour.
-7. Strengthened the Board tomorrow band, count badge, divider, and light-mode card elevation.
-8. Bumped to `1.15.7 / 349` without a database migration.
+1. Added a Todo batch-selection mode below group filters with individual selection, select-all-visible, clear, exit, and complete-selected actions.
+2. Reused existing completion/history/recurrence/reminder cleanup semantics and reduced automatic backup to one pass per completed batch.
+3. Changed shared todo/event editors so only the top-right completion action persists; all dismissal routes silently discard drafts.
+4. Changed AI configuration to one page-level draft covering Provider operations, overall enable state, report schedules, and retention.
+5. Removed separate AI/report save actions; the page-level top-right `完成` is the only persistence action.
+6. Limited model connectivity testing to one fixed message and one endpoint, with no retry or fallback after HTTP 429.
+7. Applied the locally verified Codex CLI `0.146.0` Windows User-Agent to AI and remote-quote HTTP requests.
+8. Refined Todo, Settings, and AI configuration surfaces around solid deep blue-gray operational backgrounds and less nested card styling.
+9. Bumped to `1.15.8 / 350` without a database migration.
 
 ## Validation
 
-- `:app:compileDebugKotlin` passed after the final Calendar surface structure was corrected.
-- `:app:assembleDebug` passed for `PaykiTodo-1.15.7-debug.apk`.
-- `:app:testDebugUnitTest` passed: 22 suites / 134 tests / 0 failures or errors.
+- `:app:compileDebugKotlin` passed.
+- `:app:testDebugUnitTest` passed: 22 suites / 137 tests / 0 failures or errors.
 - `:app:lintDebug` passed.
-- APK metadata reports `1.15.7 / versionCode 349`, package `com.paykitodo.app`.
-- Pixel_8 emulator visually checked Daily Board, Drawer, Calendar, Todo, and Settings in light mode.
+- `:app:assembleDebug` passed for `PaykiTodo-1.15.8-debug.apk`.
+- APK metadata reports `1.15.8 / versionCode 350`, package `com.paykitodo.app`.
+- Pixel_8 emulator verified batch completion, editor draft discard, AI draft discard/commit, and dark Todo/Settings/AI configuration rendering.
 
 Do not commit secrets, signing material, API keys, private Base URLs, generated APK/AAB outputs, emulator screenshots, or personal backups/logs.

@@ -71,6 +71,9 @@ internal fun ActiveTodoCard(
     groups: List<TaskGroup>,
     resolvedGroup: ResolvedTaskGroup? = null,
     forceShowDetailsKey: Int = 0,
+    selectionMode: Boolean = false,
+    selected: Boolean = false,
+    onSelectionToggle: () -> Unit = {},
     onEdit: () -> Unit,
     onComplete: () -> Unit,
     onCancel: () -> Unit,
@@ -101,9 +104,10 @@ internal fun ActiveTodoCard(
 
     TodoCardShell(
         group = displayGroup,
-        onClick = { showDetails = true },
+        onClick = { if (selectionMode) onSelectionToggle() else showDetails = true },
         onLongClick = null,
-        contentClickable = false
+        contentClickable = false,
+        selected = selectionMode && selected
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -112,21 +116,25 @@ internal fun ActiveTodoCard(
         ) {
             Box(modifier = Modifier.padding(top = 2.dp), contentAlignment = Alignment.Center) {
                 LightweightCompletionToggle(
-                    checked = completing,
-                    enabled = !completing,
-                    onCheck = { completing = true }
+                    checked = if (selectionMode) selected else completing,
+                    enabled = selectionMode || !completing,
+                    onCheck = {
+                        if (selectionMode) onSelectionToggle() else completing = true
+                    }
                 )
-                Firework(progress)
+                if (!selectionMode) Firework(progress)
             }
 
             Column(
                 modifier = Modifier
                     .weight(1f)
                     .combinedClickable(
-                        onClick = { showDetails = true },
-                        onLongClick = {
-                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                            showActionSheet = true
+                        onClick = { if (selectionMode) onSelectionToggle() else showDetails = true },
+                        onLongClick = if (selectionMode) null else {
+                            {
+                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                showActionSheet = true
+                            }
                         }
                     ),
                 verticalArrangement = Arrangement.spacedBy(6.dp)
@@ -159,7 +167,7 @@ internal fun ActiveTodoCard(
         }
     }
 
-    if (showDetails) {
+    if (!selectionMode && showDetails) {
         TodoDetailsDialog(
             item = item,
             groups = groups,
@@ -181,7 +189,7 @@ internal fun ActiveTodoCard(
         )
     }
 
-    if (showActionSheet) {
+    if (!selectionMode && showActionSheet) {
         PaykiBottomSheet(onDismiss = { showActionSheet = false }, showDragHandle = true) {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Text(
@@ -395,16 +403,21 @@ private fun TodoCardShell(
     onClick: () -> Unit,
     onLongClick: (() -> Unit)? = null,
     contentClickable: Boolean = true,
+    selected: Boolean = false,
     content: @Composable () -> Unit
 ) {
     val accent = categoryColor(group)
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
-        color = MaterialTheme.colorScheme.surface,
+        color = if (selected) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.34f) else MaterialTheme.colorScheme.surface,
         tonalElevation = 0.dp,
         shadowElevation = 0.dp,
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.14f))
+        border = BorderStroke(
+            1.dp,
+            if (selected) MaterialTheme.colorScheme.primary.copy(alpha = 0.62f)
+            else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.28f)
+        )
     ) {
         Box(
             modifier = Modifier

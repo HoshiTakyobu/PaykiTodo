@@ -2016,7 +2016,7 @@ private fun PlanningNodeTimeDialog(
                     val normalizedDue = dueAt.takeIf { startAt == null && endAt == null }
                     onConfirm(normalizedDue, startAt, endAt)
                 }
-            ) { Text("保存") }
+            ) { Text("完成") }
         },
         dismissButton = {
             Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -2048,7 +2048,7 @@ private fun PlanningNodeLocationDialog(
             )
         },
         confirmButton = {
-            TextButton(onClick = { onConfirm(value.trim().ifBlank { null }) }) { Text("保存") }
+            TextButton(onClick = { onConfirm(value.trim().ifBlank { null }) }) { Text("完成") }
         },
         dismissButton = {
             Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {

@@ -924,6 +924,23 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    fun completeTodos(todoItems: List<TodoItem>) {
+        val targets = todoItems
+            .filter { it.isTodo && !it.completed && !it.canceled }
+            .distinctBy { it.id }
+        if (targets.isEmpty()) return
+        viewModelScope.launch {
+            val affectedItems = buildList {
+                targets.forEach { item ->
+                    val result = repository.setCompletedWithResult(item.id, true)
+                    addAll(result?.affectedItems ?: listOf(item))
+                }
+            }.distinctBy { it.id }
+            clearReminderArtifacts(affectedItems)
+            autoBackupIfEnabled()
+        }
+    }
+
     fun cancelTodo(todoItem: TodoItem, scope: RecurrenceScope = RecurrenceScope.CURRENT) {
         viewModelScope.launch {
             val canceledItems = repository.cancelTodo(todoItem, scope)

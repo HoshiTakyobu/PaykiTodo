@@ -379,6 +379,118 @@ internal fun TopBarActionPill(
 }
 
 @Composable
+private fun TodoBatchSelectionBar(
+    selectionMode: Boolean,
+    selectedCount: Int,
+    selectableCount: Int,
+    allSelected: Boolean,
+    onEnterSelection: () -> Unit,
+    onToggleSelectAll: () -> Unit,
+    onCompleteSelected: () -> Unit,
+    onExitSelection: () -> Unit
+) {
+    Surface(
+        shape = RoundedCornerShape(16.dp),
+        color = if (selectionMode) {
+            MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.42f)
+        } else {
+            MaterialTheme.colorScheme.surface
+        },
+        border = BorderStroke(
+            1.dp,
+            if (selectionMode) MaterialTheme.colorScheme.primary.copy(alpha = 0.34f)
+            else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.38f)
+        )
+    ) {
+        if (!selectionMode) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 14.dp, vertical = 10.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Icon(
+                    Icons.Rounded.TaskAlt,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(20.dp)
+                )
+                Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Text(
+                        "批量完成",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Text(
+                        "选择多条待办后统一标记为已完成",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                TextButton(onClick = onEnterSelection, enabled = selectableCount > 0) {
+                    Text("选择")
+                }
+            }
+        } else {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 14.dp, vertical = 10.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                        Text(
+                            "已选择 $selectedCount 项",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Text(
+                            "当前可见 $selectableCount 项",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    TextButton(onClick = onExitSelection) { Text("退出") }
+                }
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    TextButton(
+                        onClick = onToggleSelectAll,
+                        enabled = selectableCount > 0,
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text(if (allSelected) "清空选择" else "全选可见")
+                    }
+                    Button(
+                        onClick = onCompleteSelected,
+                        enabled = selectedCount > 0,
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Icon(Icons.Rounded.Check, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(Modifier.width(6.dp))
+                        Text("完成所选")
+                    }
+                }
+            }
+        }
+    }
+}
+
+private fun List<Long>.toggleId(id: Long): List<Long> {
+    return if (id in this) filterNot { it == id } else this + id
+}
+
+@Composable
 internal fun DashboardBody(
     section: DashboardSection,
     settingsInitialSectionKey: String? = null,
@@ -416,6 +528,7 @@ internal fun DashboardBody(
     onQuickCreateCalendarEvent: (LocalDateTime, LocalDateTime) -> Unit,
     onMoveCalendarEvent: (TodoItem, LocalDateTime, LocalDateTime) -> Unit,
     onCompleteTodo: (TodoItem) -> Unit,
+    onCompleteTodos: (List<TodoItem>) -> Unit,
     onRestoreTodo: (TodoItem) -> Unit,
     onCancelTodo: (TodoItem) -> Unit,
     onCancelCalendarEvent: (TodoItem) -> Unit,
@@ -675,6 +788,8 @@ internal fun DashboardBody(
     var todayExpanded by rememberSaveable { mutableStateOf(true) }
     var upcomingExpanded by rememberSaveable(uiState.todayItems.isEmpty()) { mutableStateOf(uiState.todayItems.isEmpty()) }
     var expandedRecurringSeriesIds by rememberSaveable { mutableStateOf(emptyList<String>()) }
+    var todoBatchSelectionMode by rememberSaveable { mutableStateOf(false) }
+    var selectedTodoIds by rememberSaveable { mutableStateOf(emptyList<Long>()) }
     var countdownCollapsed by rememberSaveable { mutableStateOf(uiState.settings.boardCountdownCollapsed) }
     var boardTodosCollapsed by rememberSaveable { mutableStateOf(uiState.settings.boardTodayTodosCollapsed) }
     var boardTodayEventsCollapsed by rememberSaveable { mutableStateOf(uiState.settings.boardTodayEventsCollapsed) }
@@ -730,6 +845,47 @@ internal fun DashboardBody(
     }
     val activeAnnouncements = uiState.activeAnnouncements
     val expandedRecurringSeries = expandedRecurringSeriesIds.toSet()
+    val batchSelectableTodoItems = remember(
+        section,
+        missedExpanded,
+        todayExpanded,
+        upcomingExpanded,
+        expandedRecurringSeries,
+        uiState.missedItems,
+        uiState.todayItems,
+        uiState.upcomingItemGroups
+    ) {
+        if (section != DashboardSection.ACTIVE) {
+            emptyList()
+        } else {
+            buildList {
+                if (missedExpanded) addAll(uiState.missedItems)
+                if (todayExpanded) addAll(uiState.todayItems)
+                if (upcomingExpanded) {
+                    uiState.upcomingItemGroups.forEach { group ->
+                        val seriesId = group.seriesId
+                        if (group.isCollapsibleRecurringSeries && seriesId != null) {
+                            if (seriesId in expandedRecurringSeries) {
+                                addAll(group.items.take(UpcomingRecurringExpandedLimit))
+                            }
+                        } else {
+                            addAll(group.items)
+                        }
+                    }
+                }
+            }.distinctBy { it.id }
+        }
+    }
+    val batchSelectableTodoIds = remember(batchSelectableTodoItems) { batchSelectableTodoItems.map { it.id }.toSet() }
+    val selectedTodoIdSet = remember(selectedTodoIds) { selectedTodoIds.toSet() }
+    LaunchedEffect(section, batchSelectableTodoIds) {
+        if (section != DashboardSection.ACTIVE) {
+            todoBatchSelectionMode = false
+            selectedTodoIds = emptyList()
+        } else {
+            selectedTodoIds = selectedTodoIds.filter { it in batchSelectableTodoIds }
+        }
+    }
     var previewTodoTarget by remember { mutableStateOf<TodoItem?>(null) }
     LaunchedEffect(previewTodoId, previewTodoSerial, uiState.todayItems, uiState.missedItems, uiState.upcomingItems) {
         val targetId = previewTodoId ?: return@LaunchedEffect
@@ -898,6 +1054,38 @@ internal fun DashboardBody(
                     )
                 }
 
+                item {
+                    TodoBatchSelectionBar(
+                        selectionMode = todoBatchSelectionMode,
+                        selectedCount = selectedTodoIds.size,
+                        selectableCount = batchSelectableTodoItems.size,
+                        allSelected = batchSelectableTodoItems.isNotEmpty() && selectedTodoIds.size == batchSelectableTodoItems.size,
+                        onEnterSelection = {
+                            todoBatchSelectionMode = true
+                            selectedTodoIds = emptyList()
+                        },
+                        onToggleSelectAll = {
+                            selectedTodoIds = if (selectedTodoIds.size == batchSelectableTodoItems.size) {
+                                emptyList()
+                            } else {
+                                batchSelectableTodoItems.map { it.id }
+                            }
+                        },
+                        onCompleteSelected = {
+                            val selectedItems = batchSelectableTodoItems.filter { it.id in selectedTodoIdSet }
+                            if (selectedItems.isNotEmpty()) {
+                                onCompleteTodos(selectedItems)
+                                todoBatchSelectionMode = false
+                                selectedTodoIds = emptyList()
+                            }
+                        },
+                        onExitSelection = {
+                            todoBatchSelectionMode = false
+                            selectedTodoIds = emptyList()
+                        }
+                    )
+                }
+
                 if (
                     uiState.selectedGroupIds.size >= 2 &&
                     uiState.groupFilterMode == TodoRepository.GroupFilterMode.INTERSECTION &&
@@ -932,6 +1120,11 @@ internal fun DashboardBody(
                                 item = item,
                                 groups = uiState.groups,
                                 resolvedGroup = resolvedTodoGroups[item.id],
+                                selectionMode = todoBatchSelectionMode,
+                                selected = item.id in selectedTodoIdSet,
+                                onSelectionToggle = {
+                                    selectedTodoIds = selectedTodoIds.toggleId(item.id)
+                                },
                                 onEdit = { onEdit(item) },
                                 onComplete = { onCompleteTodo(item) },
                                 onCancel = { onCancelTodo(item) },
@@ -961,6 +1154,11 @@ internal fun DashboardBody(
                                 item = item,
                                 groups = uiState.groups,
                                 resolvedGroup = resolvedTodoGroups[item.id],
+                                selectionMode = todoBatchSelectionMode,
+                                selected = item.id in selectedTodoIdSet,
+                                onSelectionToggle = {
+                                    selectedTodoIds = selectedTodoIds.toggleId(item.id)
+                                },
                                 onEdit = { onEdit(item) },
                                 onComplete = { onCompleteTodo(item) },
                                 onCancel = { onCancelTodo(item) },
@@ -1012,6 +1210,11 @@ internal fun DashboardBody(
                                             item = item,
                                             groups = uiState.groups,
                                             resolvedGroup = resolvedTodoGroups[item.id],
+                                            selectionMode = todoBatchSelectionMode,
+                                            selected = item.id in selectedTodoIdSet,
+                                            onSelectionToggle = {
+                                                selectedTodoIds = selectedTodoIds.toggleId(item.id)
+                                            },
                                             onEdit = { onEdit(item) },
                                             onComplete = { onCompleteTodo(item) },
                                             onCancel = { onCancelTodo(item) },
@@ -1041,6 +1244,11 @@ internal fun DashboardBody(
                                         item = item,
                                         groups = uiState.groups,
                                         resolvedGroup = resolvedTodoGroups[item.id],
+                                        selectionMode = todoBatchSelectionMode,
+                                        selected = item.id in selectedTodoIdSet,
+                                        onSelectionToggle = {
+                                            selectedTodoIds = selectedTodoIds.toggleId(item.id)
+                                        },
                                         onEdit = { onEdit(item) },
                                         onComplete = { onCompleteTodo(item) },
                                         onCancel = { onCancelTodo(item) },

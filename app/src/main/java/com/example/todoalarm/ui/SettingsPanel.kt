@@ -124,6 +124,74 @@ private enum class SettingsSection {
     DESKTOP_SYNC
 }
 
+private data class PlanningAiConfigDraft(
+    val enabled: Boolean,
+    val providers: List<PlanningAiProvider>,
+    val dailyReportEnabled: Boolean,
+    val dailyReportTimeText: String,
+    val weeklyReportEnabled: Boolean,
+    val weeklyReportTimeText: String,
+    val retention: AiReportRetention
+) {
+    val requiredProviderMissing: Boolean
+        get() = enabled && providers.filter { it.enabled }.any {
+            it.baseUrl.isBlank() || it.apiKey.isBlank() || it.model.isBlank()
+        }
+    val dailyReportTime: Pair<Int, Int>?
+        get() = parseReportTime(dailyReportTimeText)
+    val weeklyReportTime: Pair<Int, Int>?
+        get() = parseReportTime(weeklyReportTimeText)
+    val reportTimeInvalid: Boolean
+        get() = (dailyReportEnabled && dailyReportTime == null) ||
+            (weeklyReportEnabled && weeklyReportTime == null)
+    val valid: Boolean
+        get() = !requiredProviderMissing && !reportTimeInvalid
+
+    companion object {
+        fun from(settings: AppSettings): PlanningAiConfigDraft {
+            val providers = settings.planningAiProviders.ifEmpty {
+                listOf(
+                    PlanningAiProvider(
+                        name = settings.planningAiProviderName.ifBlank { "DeepSeek / Qwen" },
+                        baseUrl = settings.planningAiBaseUrl,
+                        apiKey = settings.planningAiApiKey,
+                        model = settings.planningAiModel,
+                        enabled = settings.planningAiEnabled
+                    )
+                ).filter { it.baseUrl.isNotBlank() || it.apiKey.isNotBlank() || it.model.isNotBlank() }
+            }
+            return PlanningAiConfigDraft(
+                enabled = settings.planningAiEnabled,
+                providers = providers,
+                dailyReportEnabled = settings.dailyReportEnabled,
+                dailyReportTimeText = formatReportTime(settings.dailyReportHour, settings.dailyReportMinute),
+                weeklyReportEnabled = settings.weeklyReportEnabled,
+                weeklyReportTimeText = formatReportTime(settings.weeklyReportHour, settings.weeklyReportMinute),
+                retention = settings.aiReportRetention
+            )
+        }
+    }
+}
+
+private data class DailyBriefDraft(
+    val enabled: Boolean,
+    val timeText: String
+) {
+    val parsedTime: Pair<Int, Int>?
+        get() = parseReportTime(timeText)
+    val valid: Boolean
+        get() = !enabled || parsedTime != null
+
+    companion object {
+        fun from(settings: AppSettings): DailyBriefDraft {
+            return DailyBriefDraft(
+                enabled = settings.dailyBriefEnabled,
+                timeText = formatReportTime(settings.dailyBriefHour, settings.dailyBriefMinute)
+            )
+        }
+    }
+}
+
 @Composable
 fun SettingsPanel(
     settings: AppSettings,
@@ -176,6 +244,8 @@ fun SettingsPanel(
     var showReminderTestDialog by remember { mutableStateOf(false) }
     var reminderTestRunning by remember { mutableStateOf(false) }
     var selectedSection by remember { mutableStateOf<SettingsSection?>(null) }
+    var planningAiDraft by remember { mutableStateOf<PlanningAiConfigDraft?>(null) }
+    var dailyBriefDraft by remember { mutableStateOf<DailyBriefDraft?>(null) }
     var desktopSyncAddressesExpanded by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
 
@@ -237,7 +307,10 @@ fun SettingsPanel(
                     } else {
                         "已关闭"
                     },
-                    onClick = { selectedSection = SettingsSection.DAILY_BRIEF }
+                    onClick = {
+                        dailyBriefDraft = DailyBriefDraft.from(settings)
+                        selectedSection = SettingsSection.DAILY_BRIEF
+                    }
                 )
                 SettingsMenuDivider()
                 SettingsMenuItem(
@@ -248,7 +321,10 @@ fun SettingsPanel(
                     } else {
                         "为规划台 AI 识别配置多个 Base URL、API Key 和模型名"
                     },
-                    onClick = { selectedSection = SettingsSection.AI_CONFIG }
+                    onClick = {
+                        planningAiDraft = PlanningAiConfigDraft.from(settings)
+                        selectedSection = SettingsSection.AI_CONFIG
+                    }
                 )
                 SettingsMenuDivider()
                 SettingsMenuItem(
@@ -424,20 +500,61 @@ fun SettingsPanel(
             }
         }
 
-        SettingsSection.DAILY_BRIEF -> SettingsSectionDialog("每日摘要通知", { selectedSection = null }) {
-            DailyBriefPreferencesPanel(
-                settings = settings,
-                onChange = onDailyBriefPreferencesChange
-            )
+        SettingsSection.DAILY_BRIEF -> {
+            val draft = dailyBriefDraft ?: DailyBriefDraft.from(settings)
+            SettingsSectionDialog(
+                title = "每日摘要通知",
+                onDismiss = {
+                    dailyBriefDraft = null
+                    selectedSection = null
+                },
+                onDone = {
+                    val time = draft.parsedTime ?: (settings.dailyBriefHour to settings.dailyBriefMinute)
+                    onDailyBriefPreferencesChange(draft.enabled, time.first, time.second)
+                    dailyBriefDraft = null
+                    selectedSection = null
+                },
+                doneEnabled = draft.valid
+            ) {
+                DailyBriefPreferencesPanel(
+                    draft = draft,
+                    onDraftChange = { dailyBriefDraft = it }
+                )
+            }
         }
 
-        SettingsSection.AI_CONFIG -> SettingsSectionDialog("AI 调用配置", { selectedSection = null }) {
-            PlanningAiConfigPanel(
-                settings = settings,
-                onSave = onPlanningAiProvidersChange,
-                onReportPreferencesChange = onReportPreferencesChange,
-                onGenerateDailyReportNow = onGenerateDailyReportNow
-            )
+        SettingsSection.AI_CONFIG -> {
+            val draft = planningAiDraft ?: PlanningAiConfigDraft.from(settings)
+            SettingsSectionDialog(
+                title = "AI 调用配置",
+                onDismiss = {
+                    planningAiDraft = null
+                    selectedSection = null
+                },
+                onDone = {
+                    val dailyTime = draft.dailyReportTime ?: (settings.dailyReportHour to settings.dailyReportMinute)
+                    val weeklyTime = draft.weeklyReportTime ?: (settings.weeklyReportHour to settings.weeklyReportMinute)
+                    onPlanningAiProvidersChange(draft.enabled, draft.providers)
+                    onReportPreferencesChange(
+                        draft.dailyReportEnabled,
+                        dailyTime.first,
+                        dailyTime.second,
+                        draft.weeklyReportEnabled,
+                        weeklyTime.first,
+                        weeklyTime.second,
+                        draft.retention
+                    )
+                    planningAiDraft = null
+                    selectedSection = null
+                },
+                doneEnabled = draft.valid
+            ) {
+                PlanningAiConfigPanel(
+                    draft = draft,
+                    onDraftChange = { planningAiDraft = it },
+                    onGenerateDailyReportNow = onGenerateDailyReportNow
+                )
+            }
         }
 
         SettingsSection.ABOUT -> SettingsSectionDialog("关于 PaykiTodo", { selectedSection = null }) {
@@ -1121,202 +1238,116 @@ private fun PercentSettingRow(
 
 @Composable
 private fun PlanningAiConfigPanel(
-    settings: AppSettings,
-    onSave: (Boolean, List<PlanningAiProvider>) -> Unit,
-    onReportPreferencesChange: (Boolean, Int, Int, Boolean, Int, Int, AiReportRetention) -> Unit,
+    draft: PlanningAiConfigDraft,
+    onDraftChange: (PlanningAiConfigDraft) -> Unit,
     onGenerateDailyReportNow: suspend () -> String?
 ) {
-    val persistedProviders = remember(
-        settings.planningAiProviders,
-        settings.planningAiProviderName,
-        settings.planningAiBaseUrl,
-        settings.planningAiApiKey,
-        settings.planningAiModel,
-        settings.planningAiEnabled
-    ) {
-        settings.planningAiProviders.ifEmpty {
-            listOf(
-                PlanningAiProvider(
-                    name = settings.planningAiProviderName.ifBlank { "DeepSeek / Qwen" },
-                    baseUrl = settings.planningAiBaseUrl,
-                    apiKey = settings.planningAiApiKey,
-                    model = settings.planningAiModel,
-                    enabled = settings.planningAiEnabled
-                )
-            ).filter { it.baseUrl.isNotBlank() || it.apiKey.isNotBlank() || it.model.isNotBlank() }
-        }
-    }
-    var enabled by remember(settings.planningAiEnabled) { mutableStateOf(settings.planningAiEnabled) }
-    var providers by remember(persistedProviders) { mutableStateOf(persistedProviders) }
     var editingProvider by remember { mutableStateOf<PlanningAiProvider?>(null) }
     var deleteTarget by remember { mutableStateOf<PlanningAiProvider?>(null) }
-    var savedHint by remember { mutableStateOf(false) }
-    fun hasRequiredMissing(checkEnabled: Boolean, checkProviders: List<PlanningAiProvider>): Boolean {
-        return checkEnabled && checkProviders.filter { it.enabled }.any { it.baseUrl.isBlank() || it.apiKey.isBlank() || it.model.isBlank() }
-    }
-    fun saveIfValid(nextEnabled: Boolean, nextProviders: List<PlanningAiProvider>) {
-        if (hasRequiredMissing(nextEnabled, nextProviders)) {
-            savedHint = false
-            return
-        }
-        onSave(nextEnabled, nextProviders)
-        savedHint = true
-    }
-    val requiredMissing = hasRequiredMissing(enabled, providers)
-    val hasUnsavedChanges = enabled != settings.planningAiEnabled || providers != persistedProviders
-    val enabledProviders = providers.filter { it.enabled }
+    val enabledProviders = draft.providers.filter { it.enabled }
     val completeEnabledProviders = enabledProviders.filter {
         it.baseUrl.isNotBlank() && it.apiKey.isNotBlank() && it.model.isNotBlank()
     }
     val incompleteEnabledCount = enabledProviders.size - completeEnabledProviders.size
     val visionEnabledCount = completeEnabledProviders.count { it.supportsVision }
     val aiSummary = when {
-        !enabled -> "AI 识别当前关闭；规划台会只使用本地规则。"
+        !draft.enabled -> "AI 识别当前关闭；规划台会只使用本地规则。"
         completeEnabledProviders.isEmpty() -> "当前没有可用于规划台识别的完整 AI 源；会自动回退本地规则。"
         else -> "当前可用于规划台识别：${completeEnabledProviders.size} 个；可用于图片识别：${visionEnabledCount} 个；配置不完整：${incompleteEnabledCount} 个。"
     }
 
-    Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
         Surface(
-            shape = RoundedCornerShape(18.dp),
-            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.08f),
-            border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.18f))
+            shape = RoundedCornerShape(16.dp),
+            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.36f)
         ) {
-            Text(
-                text = "启用后，规划台“识别”会优先调用这里的 AI 源，把随手写的内容转成预览候选；AI 失败或未配置完整时会自动回到本地规则。AI 只生成候选，必须预览确认后才能导入。",
-                modifier = Modifier.padding(14.dp),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurface
-            )
-        }
-
-        Surface(
-            shape = RoundedCornerShape(18.dp),
-            color = if (enabled && completeEnabledProviders.isNotEmpty()) {
-                MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.32f)
-            } else {
-                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.30f)
-            },
-            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.24f))
-        ) {
-            Column(modifier = Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text("AI 源整体状态", fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
+            Column(modifier = Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text("AI 识别", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
                 Text(
                     aiSummary,
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-                if (enabled && completeEnabledProviders.isNotEmpty()) {
-                    Text(
-                        "识别时会按列表顺序调用；某个源失败后才尝试下一个源。",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                Text(
+                    "AI 只生成预览候选，不会直接写入待办或日程。点击右上角“完成”后，本页全部改动才会生效。",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+
+        PrefCard("AI 源") {
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                    Text("启用 AI 识别", fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
+                    Text("按列表顺序调用，失败后才尝试下一个源。", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                Switch(
+                    checked = draft.enabled,
+                    onCheckedChange = { onDraftChange(draft.copy(enabled = it)) }
+                )
+            }
+
+            if (draft.providers.isEmpty()) {
+                Text("当前还没有 AI 源。", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            } else {
+                draft.providers.forEachIndexed { index, provider ->
+                    PlanningAiProviderRow(
+                        index = index,
+                        total = draft.providers.size,
+                        provider = provider,
+                        onToggle = { checked ->
+                            onDraftChange(
+                                draft.copy(providers = draft.providers.map {
+                                    if (it.id == provider.id) it.copy(enabled = checked) else it
+                                })
+                            )
+                        },
+                        onMoveUp = {
+                            onDraftChange(draft.copy(providers = draft.providers.moveProvider(index, index - 1)))
+                        },
+                        onMoveDown = {
+                            onDraftChange(draft.copy(providers = draft.providers.moveProvider(index, index + 1)))
+                        },
+                        onEdit = { editingProvider = provider },
+                        onDelete = { deleteTarget = provider }
                     )
                 }
             }
-        }
 
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                Text("启用 AI 识别配置", fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
-                Text("识别时会按下方顺序从上到下轮询可用源。", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-            Switch(
-                checked = enabled,
-                onCheckedChange = { checked ->
-                    enabled = checked
-                    saveIfValid(checked, providers)
-                }
-            )
-        }
-
-        if (providers.isEmpty()) {
-            Text("当前还没有 AI 源。", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        } else {
-            providers.forEachIndexed { index, provider ->
-                PlanningAiProviderRow(
-                    index = index,
-                    total = providers.size,
-                    provider = provider,
-                    onToggle = { checked ->
-                        val updated = providers.map { if (it.id == provider.id) it.copy(enabled = checked) else it }
-                        providers = updated
-                        saveIfValid(enabled, updated)
-                    },
-                    onMoveUp = {
-                        val updated = providers.moveProvider(index, index - 1)
-                        providers = updated
-                        saveIfValid(enabled, updated)
-                    },
-                    onMoveDown = {
-                        val updated = providers.moveProvider(index, index + 1)
-                        providers = updated
-                        saveIfValid(enabled, updated)
-                    },
-                    onEdit = {
-                        editingProvider = provider
-                    },
-                    onDelete = {
-                        deleteTarget = provider
-                    }
+            if (draft.requiredProviderMissing) {
+                Text(
+                    text = "启用的 AI 源需要填写 Base URL、API Key 和模型名。",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error
+                )
+            } else {
+                Text(
+                    text = "API Key 只保存在本机设置中，备份 JSON 不会导出密钥。",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
-        }
 
-        if (requiredMissing) {
-            Text(
-                text = "启用的 AI 源需要填写 Base URL、API Key 和模型名。",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.error
-            )
-        } else if (hasUnsavedChanges && !savedHint) {
-            Text(
-                text = "当前有未保存的 AI 配置改动，请保存后再离开此页。",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.error
-            )
-        } else {
-            Text(
-                text = "真实 API Key 只保存在本机设置中；备份 JSON 不会导出 API Key。AI 输出会进入现有预览页，不会直接写入待办或日程。",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+            OutlinedButton(
+                onClick = {
+                    editingProvider = PlanningAiProvider(
+                        name = "",
+                        baseUrl = "",
+                        apiKey = "",
+                        model = "",
+                        enabled = true
+                    )
+                },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("添加 AI 源")
+            }
         }
-
-        OutlinedButton(
-            onClick = {
-                editingProvider = PlanningAiProvider(
-                    name = "",
-                    baseUrl = "",
-                    apiKey = "",
-                    model = "",
-                    enabled = true
-                )
-            },
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Text("添加 AI 源")
-        }
-
-        OutlinedButton(
-            onClick = {
-                onSave(enabled, providers)
-                savedHint = true
-            },
-            enabled = !requiredMissing,
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Text("保存 AI 调用配置")
-        }
-        if (savedHint) {
-            Text("已保存。", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
-        }
-
-        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.32f))
 
         AiReportPreferencesPanel(
-            settings = settings,
-            onChange = onReportPreferencesChange,
+            draft = draft,
+            onDraftChange = onDraftChange,
             onGenerateDailyReportNow = onGenerateDailyReportNow
         )
     }
@@ -1326,13 +1357,12 @@ private fun PlanningAiConfigPanel(
             provider = provider,
             onDismiss = { editingProvider = null },
             onConfirm = { updated ->
-                val updatedProviders = if (providers.any { it.id == updated.id }) {
-                    providers.map { if (it.id == updated.id) updated else it }
+                val updatedProviders = if (draft.providers.any { it.id == updated.id }) {
+                    draft.providers.map { if (it.id == updated.id) updated else it }
                 } else {
-                    providers + updated
+                    draft.providers + updated
                 }
-                providers = updatedProviders
-                saveIfValid(enabled, updatedProviders)
+                onDraftChange(draft.copy(providers = updatedProviders))
                 editingProvider = null
             }
         )
@@ -1345,9 +1375,7 @@ private fun PlanningAiConfigPanel(
             text = { Text("确定删除「${provider.name.ifBlank { "未命名服务" }}」吗？") },
             confirmButton = {
                 TextButton(onClick = {
-                    val updated = providers.filterNot { it.id == provider.id }
-                    providers = updated
-                    saveIfValid(enabled, updated)
+                    onDraftChange(draft.copy(providers = draft.providers.filterNot { it.id == provider.id }))
                     deleteTarget = null
                 }) {
                     Text("删除", color = MaterialTheme.colorScheme.error)
@@ -1364,56 +1392,26 @@ private fun PlanningAiConfigPanel(
 
 @Composable
 private fun DailyBriefPreferencesPanel(
-    settings: AppSettings,
-    onChange: (Boolean, Int, Int) -> Unit
+    draft: DailyBriefDraft,
+    onDraftChange: (DailyBriefDraft) -> Unit
 ) {
-    var enabled by remember(settings.dailyBriefEnabled) { mutableStateOf(settings.dailyBriefEnabled) }
-    var timeText by remember(settings.dailyBriefHour, settings.dailyBriefMinute) {
-        mutableStateOf(formatReportTime(settings.dailyBriefHour, settings.dailyBriefMinute))
-    }
-    var savedHint by remember { mutableStateOf(false) }
-    val parsedTime = parseReportTime(timeText)
-    val invalid = enabled && parsedTime == null
-
-    fun save() {
-        val time = parsedTime ?: (settings.dailyBriefHour to settings.dailyBriefMinute)
-        onChange(enabled, time.first, time.second)
-        savedHint = true
-    }
-
     PrefCard("每日摘要") {
         Text(
-            text = "每天在设定时间推送一条轻量通知，汇总今日待办、今日日程和 7 天内最近倒数日。点击通知会打开每日看板。",
+            text = "每天在设定时间推送一条轻量通知，汇总今日待办、今日日程和 7 天内最近倒数日。点击右上角“完成”后生效。",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
         ReportScheduleRow(
             title = "每天发送今日摘要",
             summary = "默认 08:00，不会全屏打扰",
-            enabled = enabled,
-            timeText = timeText,
-            timeValid = parsedTime != null,
-            onEnabledChange = {
-                enabled = it
-                savedHint = false
-            },
-            onTimeChange = {
-                timeText = it
-                savedHint = false
-            }
+            enabled = draft.enabled,
+            timeText = draft.timeText,
+            timeValid = draft.parsedTime != null,
+            onEnabledChange = { onDraftChange(draft.copy(enabled = it)) },
+            onTimeChange = { onDraftChange(draft.copy(timeText = it)) }
         )
-        if (invalid) {
+        if (!draft.valid) {
             Text("时间格式需要是 HH:mm，例如 08:00。", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
-        }
-        OutlinedButton(
-            onClick = { save() },
-            enabled = !invalid,
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Text("保存每日摘要设置")
-        }
-        if (savedHint) {
-            Text("每日摘要设置已保存，系统定时已重新调度。", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
         }
     }
 }
@@ -1421,36 +1419,15 @@ private fun DailyBriefPreferencesPanel(
 @Composable
 @OptIn(ExperimentalMaterial3Api::class)
 private fun AiReportPreferencesPanel(
-    settings: AppSettings,
-    onChange: (Boolean, Int, Int, Boolean, Int, Int, AiReportRetention) -> Unit,
+    draft: PlanningAiConfigDraft,
+    onDraftChange: (PlanningAiConfigDraft) -> Unit,
     onGenerateDailyReportNow: suspend () -> String?
 ) {
-    var dailyEnabled by remember(settings.dailyReportEnabled) { mutableStateOf(settings.dailyReportEnabled) }
-    var dailyTimeText by remember(settings.dailyReportHour, settings.dailyReportMinute) {
-        mutableStateOf(formatReportTime(settings.dailyReportHour, settings.dailyReportMinute))
-    }
-    var weeklyEnabled by remember(settings.weeklyReportEnabled) { mutableStateOf(settings.weeklyReportEnabled) }
-    var weeklyTimeText by remember(settings.weeklyReportHour, settings.weeklyReportMinute) {
-        mutableStateOf(formatReportTime(settings.weeklyReportHour, settings.weeklyReportMinute))
-    }
-    var retention by remember(settings.aiReportRetention) { mutableStateOf(settings.aiReportRetention) }
-    var savedHint by remember { mutableStateOf(false) }
     var runningNow by remember { mutableStateOf(false) }
     var runMessage by remember { mutableStateOf<String?>(null) }
     var showHelpSheet by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
-    val dailyTime = parseReportTime(dailyTimeText)
-    val weeklyTime = parseReportTime(weeklyTimeText)
-    val invalid = (dailyEnabled && dailyTime == null) || (weeklyEnabled && weeklyTime == null)
-
-    fun save() {
-        val daily = dailyTime ?: (settings.dailyReportHour to settings.dailyReportMinute)
-        val weekly = weeklyTime ?: (settings.weeklyReportHour to settings.weeklyReportMinute)
-        onChange(dailyEnabled, daily.first, daily.second, weeklyEnabled, weekly.first, weekly.second, retention)
-        savedHint = true
-        runMessage = null
-    }
 
     PrefCard("AI 日报 / 周报") {
         Text(
@@ -1461,52 +1438,49 @@ private fun AiReportPreferencesPanel(
         ReportScheduleRow(
             title = "启用日报",
             summary = "每天生成，默认 22:00",
-            enabled = dailyEnabled,
-            timeText = dailyTimeText,
-            timeValid = dailyTime != null,
+            enabled = draft.dailyReportEnabled,
+            timeText = draft.dailyReportTimeText,
+            timeValid = draft.dailyReportTime != null,
             onEnabledChange = {
-                dailyEnabled = it
-                savedHint = false
+                runMessage = null
+                onDraftChange(draft.copy(dailyReportEnabled = it))
             },
             onTimeChange = {
-                dailyTimeText = it
-                savedHint = false
+                runMessage = null
+                onDraftChange(draft.copy(dailyReportTimeText = it))
             }
         )
         ReportScheduleRow(
             title = "启用周报",
             summary = "每周日生成，默认 22:00",
-            enabled = weeklyEnabled,
-            timeText = weeklyTimeText,
-            timeValid = weeklyTime != null,
+            enabled = draft.weeklyReportEnabled,
+            timeText = draft.weeklyReportTimeText,
+            timeValid = draft.weeklyReportTime != null,
             onEnabledChange = {
-                weeklyEnabled = it
-                savedHint = false
+                runMessage = null
+                onDraftChange(draft.copy(weeklyReportEnabled = it))
             },
             onTimeChange = {
-                weeklyTimeText = it
-                savedHint = false
+                runMessage = null
+                onDraftChange(draft.copy(weeklyReportTimeText = it))
             }
         )
         CompactDropdownSetting(
             title = "报告保留时长",
-            value = retention.label,
+            value = draft.retention.label,
             options = AiReportRetention.entries.map { it.label },
             onSelect = { label ->
-                retention = AiReportRetention.entries.firstOrNull { it.label == label } ?: AiReportRetention.DAYS_90
-                savedHint = false
+                onDraftChange(
+                    draft.copy(
+                        retention = AiReportRetention.entries.firstOrNull { it.label == label }
+                            ?: AiReportRetention.DAYS_90
+                    )
+                )
             },
             summary = "超过保留期的 AI 日报 / 周报会在生成新报告后自动清理；选“永久”则不自动删除。"
         )
-        if (invalid) {
+        if (draft.reportTimeInvalid) {
             Text("时间格式需要是 HH:mm，例如 22:00。", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
-        }
-        OutlinedButton(
-            onClick = { save() },
-            enabled = !invalid,
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Text("保存日报 / 周报设置")
         }
         OutlinedButton(
             onClick = { showHelpSheet = true },
@@ -1533,9 +1507,6 @@ private fun AiReportPreferencesPanel(
             modifier = Modifier.fillMaxWidth()
         ) {
             Text(if (runningNow) "生成中..." else "立即生成一次日报")
-        }
-        if (savedHint) {
-            Text("日报 / 周报设置已保存，系统定时已重新调度。", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
         }
         runMessage?.let {
             Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
@@ -1580,8 +1551,9 @@ private fun AiReportHelpSheet(onDismiss: () -> Unit) {
             AiReportHelpCard("启用步骤") {
                 HelpBullet("1. 在本卡片打开「日报」开关，设置生成时间，默认 22:00。")
                 HelpBullet("2. 可选：打开「周报」开关。")
-                HelpBullet("3. 首次使用建议点击「立即生成一次日报」验证链路。")
-                HelpBullet("4. 报告生成后会有通知栏推送，点击通知可直达对应报告详情。")
+                HelpBullet("3. 点击右上角「完成」一次性保存 AI 源和日报 / 周报设置。")
+                HelpBullet("4. 首次使用建议点击「立即生成一次日报」验证链路。")
+                HelpBullet("5. 报告生成后会有通知栏推送，点击通知可直达对应报告详情。")
             }
             AiReportHelpCard("报告在哪看") {
                 HelpBullet("通知栏点击「AI 日报已生成」通知，会自动打开对应报告详情。")
@@ -1648,33 +1620,38 @@ private fun ReportScheduleRow(
     onTimeChange: (String) -> Unit
 ) {
     Surface(
-        shape = RoundedCornerShape(18.dp),
-        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.24f),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.24f))
+        shape = RoundedCornerShape(14.dp),
+        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.72f),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.28f))
     ) {
-        Row(
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 14.dp, vertical = 12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
+            verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                Text(title, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
-                Text(summary, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                    Text(title, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
+                    Text(summary, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                Switch(checked = enabled, onCheckedChange = onEnabledChange)
             }
             OutlinedTextField(
                 value = timeText,
                 onValueChange = { if (it.length <= 5) onTimeChange(it) },
-                modifier = Modifier.size(width = 92.dp, height = 58.dp),
+                modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
                 isError = !timeValid,
                 enabled = enabled,
-                label = { Text("时间") },
+                label = { Text("生成时间") },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text),
                 placeholder = { Text("22:00") }
             )
-            Switch(checked = enabled, onCheckedChange = onEnabledChange)
         }
     }
 }
@@ -1712,13 +1689,13 @@ private fun PlanningAiProviderRow(
                 onClick = onEdit,
                 onLongClick = onDelete
             ),
-        shape = RoundedCornerShape(18.dp),
-        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.24f),
+        shape = RoundedCornerShape(14.dp),
+        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.72f),
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.28f))
     ) {
         Column(
             modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
+            verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -1810,11 +1787,6 @@ private fun PlanningAiProviderRow(
                     }
                 }
             }
-            Text(
-                text = if (provider.enabled) "启用后识别时会按列表顺序尝试此源。" else "此源已停用，不参与识别轮询。",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
         }
     }
 }
@@ -2083,10 +2055,15 @@ private fun PlanningAiProviderDialog(
                 ) {
                     Text(if (testing) "测试中..." else "测试连接")
                 }
+                Text(
+                    text = "测试只发送 1 条固定消息，不自动重试或切换接口地址。",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
                 testResult?.let { result ->
                     val (message, color) = when (result) {
                         is PlanningAiTestResult.Success -> {
-                            "✓ 连接成功，模型：${result.model}，响应：${result.contentLength} 字" to Color(0xFF1B7F3A)
+                            "✓ 连接成功；配置模型：${result.model}；服务回答：${result.responseText}" to Color(0xFF1B7F3A)
                         }
                         is PlanningAiTestResult.Failure -> {
                             "✗ 失败：${result.message}" to MaterialTheme.colorScheme.error
@@ -2116,7 +2093,7 @@ private fun PlanningAiProviderDialog(
                 },
                 enabled = !missingRequired
             ) {
-                Text("保存")
+                Text("完成")
             }
         },
         dismissButton = {
@@ -2613,7 +2590,7 @@ private fun SettingsMenuCard(content: @Composable ColumnScope.() -> Unit) {
     Surface(
         shape = RoundedCornerShape(14.dp),
         color = MaterialTheme.colorScheme.surface,
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.62f))
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.34f))
     ) {
         Column(
             modifier = Modifier
@@ -2743,6 +2720,8 @@ private fun SettingsMenuItem(
 private fun SettingsSectionDialog(
     title: String,
     onDismiss: () -> Unit,
+    onDone: () -> Unit = onDismiss,
+    doneEnabled: Boolean = true,
     content: @Composable ColumnScope.() -> Unit
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
@@ -2771,7 +2750,7 @@ private fun SettingsSectionDialog(
                     fontWeight = FontWeight.SemiBold,
                     color = MaterialTheme.colorScheme.onSurface
                 )
-                TextButton(onClick = onDismiss) {
+                TextButton(onClick = onDone, enabled = doneEnabled) {
                     Text("完成")
                 }
             }
@@ -2795,15 +2774,15 @@ private fun PrefCard(
     content: @Composable ColumnScope.() -> Unit
 ) {
     Surface(
-        shape = RoundedCornerShape(12.dp),
-        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.2f),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.52f))
+        shape = RoundedCornerShape(16.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.32f),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.34f))
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(14.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             Text(
                 text = title,

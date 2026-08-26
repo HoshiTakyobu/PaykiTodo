@@ -8,8 +8,8 @@
 - Target platform: Android 14 / API 34
 - License: MIT License (`LICENSE`)
 - Current version in code:
-  - `versionName = "1.15.7"`
-  - `versionCode = 349`
+  - `versionName = "1.15.8"`
+  - `versionCode = 350`
   - database version = `29`
 
 ## Current Build Facts
@@ -19,7 +19,17 @@
 - Latest GitHub Release:
   - `https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.14.12`
 - Latest fully built debug APK:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.15.7-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.15.8-debug.apk`
+- Current `1.15.8 / versionCode 350` status:
+  - Todo management now has a batch-selection mode for visible filtered items, including per-card selection, select-all-visible, clear, exit, and batch completion.
+  - Batch completion reuses the existing completion/history/recurrence/reminder cleanup path and performs one automatic-backup pass after the batch.
+  - Shared todo/event editors now submit only through the top-right completion action; system back, top-left cancel, and sheet dismissal silently discard the current draft without a second confirmation dialog.
+  - Settings -> AI 调用配置 now keeps provider operations, the overall AI switch, report schedules, and retention in one page-level draft. Only the top-right `完成` persists the draft; dismissal discards it.
+  - AI connectivity testing sends exactly one fixed user message to one endpoint, does not retry HTTP 429, and displays the returned model answer.
+  - AI chat/model/vision calls and remote quote fetching set the locally verified Codex CLI `0.146.0` Windows User-Agent instead of Android's Dalvik/device-identifying default.
+  - Todo and Settings use a solid deep blue-gray operational workspace background; AI configuration uses fewer nested outlines and more consistent spacing while the protected Daily Board artwork remains unchanged.
+  - Database version remains `29`; no schema or migration change was introduced.
+  - Verification passed: 22 unit-test suites / 137 tests, `:app:compileDebugKotlin`, `:app:assembleDebug`, `:app:lintDebug`, APK metadata (`1.15.8 / 350`), and Pixel_8 emulator checks of batch completion, draft discard/commit, and dark Todo/Settings/AI configuration pages.
 - Current `1.15.7 / versionCode 349` status:
   - Light mode now has three visible layers: light blue-gray page background, pure-white content surfaces, and gray-green controls/weak containers.
   - Secondary text and outlines are darker, improving Todo empty states, Settings summaries, drawer labels, Calendar timezone/time-axis labels, and Board schedule metadata.

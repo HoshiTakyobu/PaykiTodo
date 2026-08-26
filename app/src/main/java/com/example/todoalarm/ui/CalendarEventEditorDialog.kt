@@ -275,76 +275,11 @@ internal fun CalendarEventEditorDialog(
     val confirmEnabled = title.isNotBlank() &&
         (if (courseModeActive) courseSlotsValid else eventEndValid) &&
         (!reminderEnabled || effectiveReminderValidation.isValid)
-    val hasUnsavedChanges = remember(
-        initialEvent?.id,
-        seedDraft,
-        title,
-        location,
-        notes,
-        allDay,
-        startAt,
-        endAt,
-        accentColorHex,
-        reminderEnabled,
-        reminderInput,
-        ringEnabled,
-        vibrateEnabled,
-        reminderDeliveryMode,
-        countdownEnabled,
-        checkInEnabled,
-        recurringEnabled,
-        recurrenceType,
-        weeklyDays,
-        recurrenceEndDate,
-        selectedGroupId,
-        courseMultiSlotEnabled,
-        courseSlots,
-        syncMultiSlotBundleSharedFields
-    ) {
-        if (initialEvent == null) {
-            title.isNotBlank() ||
-                location.isNotBlank() ||
-                notes.isNotBlank() ||
-                seedDraft != null ||
-                allDay ||
-                reminderEnabled ||
-                reminderInput != "15" ||
-                countdownEnabled ||
-                checkInEnabled ||
-                recurringEnabled ||
-                selectedGroupId != initialSelectedGroupId ||
-                courseMultiSlotEnabled ||
-                courseSlots.size > 1 ||
-                syncMultiSlotBundleSharedFields
-        } else {
-            title != initialEvent.title ||
-                location != initialEvent.location ||
-                notes != initialEvent.notes ||
-                allDay != initialEvent.allDay ||
-                startAt != (initialEvent.startAtMillis?.let(::reminderAtMillisToDateTime) ?: startAt) ||
-                endAt != (initialEvent.endAtMillis?.let(::reminderAtMillisToDateTime) ?: endAt) ||
-                accentColorHex != (initialEvent.accentColorHex ?: CalendarColorOptions.first()) ||
-                reminderEnabled != initialEvent.reminderEnabled ||
-                reminderInput != initialEvent.configuredReminderOffsetsMinutes.joinToString(",").ifBlank { "15" } ||
-                ringEnabled != initialEvent.ringEnabled ||
-                vibrateEnabled != initialEvent.vibrateEnabled ||
-                reminderDeliveryMode != initialEvent.reminderDeliveryModeEnum ||
-                countdownEnabled != initialEvent.countdownEnabled ||
-                checkInEnabled != initialEvent.checkInEnabled ||
-                selectedGroupId != initialSelectedGroupId ||
-                recurringEnabled != initialEvent.isRecurring ||
-                recurrenceType != initialEvent.recurrenceTypeEnum ||
-                weeklyDays != storageStringToWeekdays(initialEvent.recurrenceWeekdays) ||
-                recurrenceEndDate != (initialEvent.recurrenceEndDate ?: recurrenceEndDate)
-        }
-    }
-
     EditorBottomSheet(
         title = if (initialEvent == null) "新增日程" else "编辑日程",
-        confirmLabel = if (initialEvent == null) "创建" else "保存",
+        confirmLabel = "完成",
         confirmEnabled = confirmEnabled,
         onDismiss = onDismiss,
-        hasUnsavedChanges = hasUnsavedChanges,
         onConfirm = {
             val normalizedOffsets = if (reminderEnabled && reminderValidation.isValid) reminderValidation.offsetsMinutes else emptyList()
             val selectedGroup = sortedGroups.firstOrNull { it.id == selectedGroupId }

@@ -138,6 +138,7 @@ fun DashboardScreen(
     onDeleteTodo: (TodoItem, RecurrenceScope) -> Unit,
     onDeleteCalendarEvent: (TodoItem, RecurrenceScope) -> Unit,
     onCompleteTodo: (TodoItem) -> Unit,
+    onCompleteTodos: (List<TodoItem>) -> Unit,
     onRestoreTodo: (TodoItem) -> Unit,
     onCancelTodo: (TodoItem, RecurrenceScope) -> Unit,
     onCancelCalendarEvent: (TodoItem, RecurrenceScope) -> Unit,
@@ -449,7 +450,10 @@ fun DashboardScreen(
         }
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
-            if (section == DashboardSection.CALENDAR) {
+            val usesWorkspaceBackground = section == DashboardSection.CALENDAR ||
+                section == DashboardSection.ACTIVE ||
+                section == DashboardSection.SETTINGS
+            if (usesWorkspaceBackground) {
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
@@ -479,7 +483,7 @@ fun DashboardScreen(
             }
 
             Scaffold(
-                containerColor = if (section == DashboardSection.CALENDAR) MaterialTheme.colorScheme.background else Color.Transparent,
+                containerColor = if (usesWorkspaceBackground) MaterialTheme.colorScheme.background else Color.Transparent,
                 topBar = {
                     DashboardTopBar(
                         title = section.topBarTitle,
@@ -627,6 +631,7 @@ fun DashboardScreen(
                         }
                     },
                     onCompleteTodo = onCompleteTodo,
+                    onCompleteTodos = onCompleteTodos,
                     onRestoreTodo = onRestoreTodo,
                     onCancelTodo = ::requestCancelTodo,
                     onCancelCalendarEvent = ::requestCancelCalendarEvent,

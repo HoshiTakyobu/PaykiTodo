@@ -7,7 +7,7 @@ This file tracks the product at a practical level for new coding sessions.
 ### Task / Todo System
 
 - create, edit, delete todo items
-- Shared todo/event editors protect dirty input on both system dismissal and the top `取消` action; dismissing the discard confirmation restores the same editor with its current input instead of leaving an invisible modal blocker
+- Shared todo/event editors persist changes only through the top-right completion action; system dismissal, sheet dismissal, and the top `取消` action silently discard the current draft without writing data or showing a second discard confirmation
 - title / notes / multi-group tags / deadline / multi-reminder fields
 - Todo editor shows title / DDL / group first for new todos and folds notes / reminder input / reminder delivery mode / recurrence / ring / vibration into 更多选项, auto-expanding when editing existing todos that use advanced state
 - Todo editor can choose reminder delivery mode between full-screen reminder and notification reminder; the selected mode is persisted for todos and recurring todo templates
@@ -24,6 +24,7 @@ This file tracks the product at a practical level for new coding sessions.
 - lightweight comma-based todo batch import with preview validation
 - todo batch-import DDL supports same-day clock input such as `16:30` / `16：30`, plus Planning Desk-style natural date forms such as `5.28`, `5月28日`, `明天`, and `周五`; date-only values default to `23:59`
 - Todo page exposes todo batch import beside the bottom-right new-todo button instead of as a top content row
+- Todo page exposes batch completion below the group filters: selection mode can toggle individual visible cards, select or clear all currently visible filtered tasks, complete the selection through the existing completion/history/reminder path, or exit without changing data
 - drawer navigation exposes a single-line `待办` entry; group filtering and group management live in the todo page chip bar instead of an expandable drawer group list or standalone group page
 - todos support multiple group tags through `todo_group_tags`; phone-side group filtering is multi-select intersection filtering, and the todo editor uses compact multi-select group chips while preserving the first group as the primary display color
 - complete / cancel / restore flows
@@ -148,7 +149,9 @@ This file tracks the product at a practical level for new coding sessions.
 - Desktop Planning Desk import accepts AI-returned preview candidates directly even when their IDs do not match local-parser `line-*` IDs, preventing the browser from showing one AI candidate but importing zero selected items
 - AI source editing can fetch available models from OpenAI-compatible `/models` endpoints using only Base URL and API Key, then show a compact dropdown while preserving manual model-name entry for gateways that do not expose model discovery
 - AI source editing can mark an enabled provider as `此服务支持图片识别`; phone Planning Desk uses only these vision-capable providers for screenshot / timetable image recognition
-- Settings -> AI 调用配置 uses compact provider summary cards and now tries to persist valid provider add/edit/toggle/reorder/delete changes immediately; incomplete enabled providers show an in-page warning instead of silently relying on the user to remember a separate save step
+- Settings -> AI 调用配置 uses a page-level transactional draft: provider add/edit/toggle/reorder/delete operations, the overall AI switch, and report settings persist only when the top-right `完成` action is pressed; sheet/back dismissal discards the draft, while incomplete enabled providers show an in-page warning and disable completion
+- AI provider connectivity testing sends exactly one fixed model-identification message to one endpoint with no automatic retry; HTTP 429 stops immediately, and success displays the service's returned model answer
+- AI chat, model-list, vision, and remote-quote HTTP requests explicitly use the locally verified Windows Codex CLI User-Agent instead of Android's Dalvik default, preventing device model and Android build details from leaking through the request header
 - AI provider chat calls accept common OpenAI-compatible endpoint shapes: root Base URL tries `/v1/chat/completions` before `/chat/completions`, `/v1` appends `/chat/completions`, full `/chat/completions` URLs are used directly, and full `/models` URLs convert back to sibling `/chat/completions`; non-JSON HTML responses produce a Base URL hint
 - Planning Desk AI recognition is explicit-only: phone calls it from the `识别` button, desktop calls it from `识别` or `Ctrl+Enter`, and desktop import without preview no longer triggers AI silently
 - Phone Planning Desk overflow menu includes `从图片识别日程`: it opens the system image picker, compresses the selected image to a 1600px-long-side JPEG, sends an OpenAI-compatible vision request through vision-capable providers, appends the returned Markdown to the current planning note, auto-opens preview when candidates are parsed, and still requires preview/import confirmation before database writes
@@ -172,7 +175,7 @@ This file tracks the product at a practical level for new coding sessions.
 
 ### AI 日报 / 周报
 
-- Settings -> `AI 调用配置` includes an `AI 日报 / 周报` block with compact switches, HH:mm time fields, a report-retention dropdown, a save/re-schedule button, `了解 AI 日报`, and `立即生成一次日报`
+- Settings -> `AI 调用配置` includes an `AI 日报 / 周报` block with compact switches, HH:mm time fields, a report-retention dropdown, `了解 AI 日报`, and `立即生成一次日报`; schedule changes share the page-level top-right completion transaction instead of a separate save/re-schedule button
 - the `了解 AI 日报` guide is a centered dialog explaining what daily/weekly reports summarize, AI-source and fallback requirements, Android 12+ exact-alarm caveats, enable steps, the independent `AI 报告` archive, notification deep links, and common failure cases
 - daily reports collect today's completed todos, missed todos, today's events, tomorrow events, and tomorrow DDLs; today's event check-in investment minutes are included only when at least one check-in minute exists
 - weekly reports collect Monday-Sunday completed todos, missed todos, week events, and next-week DDLs

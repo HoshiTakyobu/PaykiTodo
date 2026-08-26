@@ -52,3 +52,21 @@ The phone daily board's light/dark landscape backgrounds, the `payki_greeting` f
 Starting with `1.15.7`, Sand is not the global light-mode background. Light operational screens use a visible light blue-gray page layer, pure-white content surfaces, and soft gray-green controls; secondary text must remain dark enough to read without relying on display brightness. Clay and other warm colors are limited to small accent roles. Do not restore large warm-yellow/beige backgrounds or collapse the light palette back into several nearly identical whites without a new explicit product decision.
 
 Layout density, spacing, accessibility contrast, and component hierarchy may be improved around the protected assets. Replacing the assets themselves requires an explicit user request and a before/after visual review. New Material components must receive palette-compatible container, foreground, and outline colors so framework-default purple does not leak into the UI.
+
+## 6. Editing is transactional
+
+Creation and editing surfaces should treat user input as a local draft until the user explicitly presses the page or sheet's primary `完成` action.
+
+- Back, top-left cancel, backdrop dismissal, or sheet swipe should discard the draft without writing data.
+- Do not show a second `放弃本次编辑` confirmation for ordinary form drafts; returning should behave as though the edit never happened.
+- Do not add separate `保存配置` / `保存设置` buttons inside a page that already has a top-right `完成` action. One completion action should commit the whole page draft.
+- Nested editors may use `完成` to update the parent page draft, but that nested action must not bypass the parent page transaction.
+- Destructive actions, permission requests, backup/export actions, and semantically named operations such as `保存本周模板` are not ordinary form commits and may keep their own explicit confirmation/action wording.
+
+## 7. Operational screen backgrounds
+
+Daily Board artwork is product identity, not a universal application background. High-density operational screens such as Todo, Settings, and AI configuration should use stable solid workspace surfaces with readable light/dark contrast.
+
+- Avoid pure-black full-page slabs in dark mode; use the established deep blue-gray workspace layer plus distinct content surfaces.
+- Keep 16dp-class section spacing, compact but readable row height, and clear title/summary/control hierarchy.
+- Avoid stacking several outlined cards inside another outlined card. Prefer one section surface with light internal grouping and a single obvious primary action.

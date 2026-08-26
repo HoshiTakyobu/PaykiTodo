@@ -191,6 +191,7 @@ class MainActivity : ComponentActivity() {
                     onDeleteTodo = viewModel::deleteTodo,
                     onDeleteCalendarEvent = viewModel::deleteCalendarEvent,
                     onCompleteTodo = viewModel::completeTodo,
+                    onCompleteTodos = viewModel::completeTodos,
                     onRestoreTodo = viewModel::restoreTodo,
                     onCancelTodo = viewModel::cancelTodo,
                     onCancelCalendarEvent = viewModel::cancelCalendarEvent,

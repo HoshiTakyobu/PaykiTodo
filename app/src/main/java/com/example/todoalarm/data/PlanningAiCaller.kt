@@ -30,7 +30,7 @@ data class PlanningAiResponse(
 )
 
 sealed class PlanningAiTestResult {
-    data class Success(val providerName: String, val model: String, val contentLength: Int) : PlanningAiTestResult()
+    data class Success(val providerName: String, val model: String, val responseText: String) : PlanningAiTestResult()
     data class Failure(val message: String) : PlanningAiTestResult()
 }
 
@@ -47,6 +47,9 @@ class PlanningAiHttpException(
 class PlanningAiNonJsonException(message: String) : IOException(message)
 
 object PlanningAiCaller {
+    internal const val CONNECTIVITY_TEST_PROMPT =
+        "Please introduce which model exactly you are, and just answer the specific model name."
+
     suspend fun callWithFallback(
         providers: List<PlanningAiProvider>,
         request: PlanningAiRequest
@@ -99,22 +102,31 @@ object PlanningAiCaller {
             return PlanningAiTestResult.Failure("Base URL、API Key 和模型名不能为空")
         }
         return try {
-            val response = callSingle(
-                provider = normalized.copy(enabled = true),
-                request = PlanningAiRequest(
-                    systemPrompt = "你是一个测试助手，只回 ok",
-                    prompt = "ping"
-                ),
-                connectTimeoutMs = 10_000,
-                readTimeoutMs = 20_000
+            val endpoint = endpointCandidates(normalized.baseUrl).firstOrNull()
+                ?: return PlanningAiTestResult.Failure("Base URL 无法生成可用的接口地址")
+            val testProvider = normalized.copy(enabled = true)
+            val body = buildChatCompletionBody(
+                provider = testProvider,
+                request = PlanningAiRequest(prompt = CONNECTIVITY_TEST_PROMPT),
+                maxTokens = 32,
+                temperature = 0.0
             )
+            val response = withContext(Dispatchers.IO) {
+                postChatCompletion(
+                    endpoint = endpoint,
+                    provider = testProvider,
+                    body = body,
+                    connectTimeoutMs = 10_000,
+                    readTimeoutMs = 20_000
+                )
+            }
             if (response.content.isBlank()) {
                 PlanningAiTestResult.Failure("响应为空")
             } else {
                 PlanningAiTestResult.Success(
                     providerName = normalized.name.ifBlank { "未命名服务" },
                     model = normalized.model,
-                    contentLength = response.content.length
+                    responseText = response.content.trim().take(120)
                 )
             }
         } catch (error: CancellationException) {
@@ -162,18 +174,7 @@ object PlanningAiCaller {
         connectTimeoutMs: Int = 15_000,
         readTimeoutMs: Int = 45_000
     ): PlanningAiResponse = withContext(Dispatchers.IO) {
-        val body = JSONObject().apply {
-            put("model", provider.model)
-            put(
-                "messages",
-                org.json.JSONArray().apply {
-                    if (request.systemPrompt.isNotBlank()) {
-                        put(JSONObject().put("role", "system").put("content", request.systemPrompt))
-                    }
-                    put(JSONObject().put("role", "user").put("content", request.prompt))
-                }
-            )
-        }.toString()
+        val body = buildChatCompletionBody(provider, request)
 
         var lastError: Exception? = null
         val endpoints = endpointCandidates(provider.baseUrl)
@@ -196,6 +197,28 @@ object PlanningAiCaller {
             }
         }
         throw lastError ?: IOException("没有可用的 AI 接口地址。")
+    }
+
+    internal fun buildChatCompletionBody(
+        provider: PlanningAiProvider,
+        request: PlanningAiRequest,
+        maxTokens: Int? = null,
+        temperature: Double? = null
+    ): String {
+        return JSONObject().apply {
+            put("model", provider.model)
+            put(
+                "messages",
+                JSONArray().apply {
+                    if (request.systemPrompt.isNotBlank()) {
+                        put(JSONObject().put("role", "system").put("content", request.systemPrompt))
+                    }
+                    put(JSONObject().put("role", "user").put("content", request.prompt))
+                }
+            )
+            maxTokens?.let { put("max_tokens", it) }
+            temperature?.let { put("temperature", it) }
+        }.toString()
     }
 
     private suspend fun callVisionSingle(
@@ -335,6 +358,7 @@ object PlanningAiCaller {
             connectTimeout = connectTimeoutMs
             readTimeout = readTimeoutMs
             setRequestProperty("Accept", "application/json")
+            setRequestProperty("User-Agent", CODEX_CLI_USER_AGENT)
             setRequestProperty("Authorization", "Bearer ${provider.apiKey}")
         }
         try {
@@ -418,6 +442,8 @@ object PlanningAiCaller {
             readTimeout = readTimeoutMs
             doOutput = true
             setRequestProperty("Content-Type", "application/json")
+            setRequestProperty("Accept", "application/json")
+            setRequestProperty("User-Agent", CODEX_CLI_USER_AGENT)
             setRequestProperty("Authorization", "Bearer ${provider.apiKey}")
         }
         try {
@@ -479,7 +505,7 @@ object PlanningAiCaller {
         return when (error) {
             is CancellationException -> false
             is SocketTimeoutException, is UnknownHostException -> true
-            is PlanningAiHttpException -> error.statusCode in setOf(401, 403, 429, 500, 502, 503, 504)
+            is PlanningAiHttpException -> error.statusCode in setOf(401, 403, 500, 502, 503, 504)
             is IOException -> true
             else -> false
         }

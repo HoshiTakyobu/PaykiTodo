@@ -8,8 +8,8 @@
 - Target platform: Android 14 / API 34
 - License: MIT License (`LICENSE`)
 - Current version in code:
-  - `versionName = "1.15.8"`
-  - `versionCode = 350`
+  - `versionName = "1.15.9"`
+  - `versionCode = 351`
   - database version = `29`
 
 ## Current Build Facts
@@ -19,7 +19,13 @@
 - Latest GitHub Release:
   - `https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.14.12`
 - Latest fully built debug APK:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.15.8-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.15.9-debug.apk`
+- Current `1.15.9 / versionCode 351` status:
+  - Daily Board and Todo pages now enter batch selection by long-pressing any active todo; the long-pressed item is selected immediately and no batch card is shown during ordinary browsing.
+  - Selection mode supports select-all-visible, clear, complete-selected, cancel-selected, and exit. Batch cancellation confirms once, writes canceled history entries, and cancels only the selected current occurrence for recurring todos.
+  - Todo group filtering is now a near-full-width, height-limited dropdown. Its first menu item is “管理分组”, which opens the group manager for create, edit, color selection, and delete actions; multi-group intersection/union remains available.
+  - Database version remains `29`; no schema or migration change was introduced.
+  - Verification passed: 22 unit-test suites / 137 tests, `:app:testDebugUnitTest`, `:app:lintDebug`, `:app:assembleDebug`, APK metadata (`1.15.9 / 351`), and Pixel_8 emulator checks of Todo/Board long-press selection, Back-to-exit-selection, group dropdown management entry, and batch-cancel confirmation.
 - Current `1.15.8 / versionCode 350` status:
   - Todo management now has a batch-selection mode for visible filtered items, including per-card selection, select-all-visible, clear, exit, and batch completion.
   - Batch completion reuses the existing completion/history/recurrence/reminder cleanup path and performs one automatic-backup pass after the batch.

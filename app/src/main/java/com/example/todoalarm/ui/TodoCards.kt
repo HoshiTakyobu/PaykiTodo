@@ -74,6 +74,7 @@ internal fun ActiveTodoCard(
     selectionMode: Boolean = false,
     selected: Boolean = false,
     onSelectionToggle: () -> Unit = {},
+    onEnterSelection: () -> Unit = {},
     onEdit: () -> Unit,
     onComplete: () -> Unit,
     onCancel: () -> Unit,
@@ -81,9 +82,6 @@ internal fun ActiveTodoCard(
 ) {
     var completing by remember(item.id) { mutableStateOf(false) }
     var showDetails by remember(item.id) { mutableStateOf(false) }
-    var showCancelConfirm by remember(item.id) { mutableStateOf(false) }
-    var showDeleteConfirm by remember(item.id) { mutableStateOf(false) }
-    var showActionSheet by remember(item.id) { mutableStateOf(false) }
     val haptic = LocalHapticFeedback.current
     val progress by animateFloatAsState(targetValue = if (completing) 1f else 0f, label = "complete_progress")
     val displayGroup = remember(item.id, item.groupId, item.categoryKey, item.itemType, item.allDay, item.accentColorHex, resolvedGroup, groups) {
@@ -105,8 +103,14 @@ internal fun ActiveTodoCard(
     TodoCardShell(
         group = displayGroup,
         onClick = { if (selectionMode) onSelectionToggle() else showDetails = true },
-        onLongClick = null,
-        contentClickable = false,
+        onLongClick = if (selectionMode) {
+            null
+        } else {
+            {
+                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                onEnterSelection()
+            }
+        },
         selected = selectionMode && selected
     ) {
         Row(
@@ -126,17 +130,7 @@ internal fun ActiveTodoCard(
             }
 
             Column(
-                modifier = Modifier
-                    .weight(1f)
-                    .combinedClickable(
-                        onClick = { if (selectionMode) onSelectionToggle() else showDetails = true },
-                        onLongClick = if (selectionMode) null else {
-                            {
-                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                showActionSheet = true
-                            }
-                        }
-                    ),
+                modifier = Modifier.weight(1f),
                 verticalArrangement = Arrangement.spacedBy(6.dp)
             ) {
                 TitleRow(item = item, group = displayGroup, progress = progress)
@@ -189,70 +183,6 @@ internal fun ActiveTodoCard(
         )
     }
 
-    if (!selectionMode && showActionSheet) {
-        PaykiBottomSheet(onDismiss = { showActionSheet = false }, showDragHandle = true) {
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                Text(
-                    text = item.title,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    maxLines = 2,
-                        overflow = TextOverflow.Ellipsis
-                )
-                TodoActionRow(
-                    icon = Icons.Rounded.Close,
-                    title = "取消",
-                    tint = Color(0xFFD97706),
-                    onClick = {
-                        showActionSheet = false
-                        if (item.isRecurring && !item.isHistory) {
-                            onCancel()
-                        } else {
-                            showCancelConfirm = true
-                        }
-                    }
-                )
-                TodoActionRow(
-                    icon = Icons.Rounded.Delete,
-                    title = "删除",
-                    tint = Color(0xFFD14343),
-                    onClick = {
-                        showActionSheet = false
-                        showDeleteConfirm = true
-                    }
-                )
-            }
-        }
-    }
-
-    if (showCancelConfirm) {
-        PaykiDecisionBottomSheet(
-            title = "取消待办",
-            message = "取消后会进入历史记录，后续提醒会停止；删除则会直接移除，不进入历史记录。",
-            confirmLabel = "确认取消",
-            confirmLabelColor = Color(0xFFD97706),
-            onDismiss = { showCancelConfirm = false },
-            onConfirm = {
-                showCancelConfirm = false
-                onCancel()
-            }
-        )
-    }
-
-    if (showDeleteConfirm) {
-        PaykiDecisionBottomSheet(
-            title = "删除任务",
-            message = "确定删除“${item.title}”？删除后无法恢复。",
-            confirmLabel = "删除",
-            confirmLabelColor = Color(0xFFD14343),
-            onDismiss = { showDeleteConfirm = false },
-            onConfirm = {
-                showDeleteConfirm = false
-                onDelete()
-            }
-        )
-    }
 }
 
 @Composable
@@ -296,33 +226,6 @@ private fun LightweightCompletionToggle(
                     cap = StrokeCap.Round
                 )
             }
-        }
-    }
-}
-
-@Composable
-private fun TodoActionRow(
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    title: String,
-    tint: Color,
-    onClick: () -> Unit
-) {
-    Surface(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick),
-        shape = RoundedCornerShape(18.dp),
-        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.28f)
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 14.dp, vertical = 13.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Icon(icon, contentDescription = null, tint = tint)
-            Text(title, color = tint, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyLarge)
         }
     }
 }

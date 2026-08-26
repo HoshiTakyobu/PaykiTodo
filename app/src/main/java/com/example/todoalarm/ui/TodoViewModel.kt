@@ -949,6 +949,23 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    fun cancelTodos(todoItems: List<TodoItem>) {
+        val targets = todoItems
+            .filter { it.isTodo && !it.completed && !it.canceled }
+            .distinctBy { it.id }
+        if (targets.isEmpty()) return
+        viewModelScope.launch {
+            val canceledItems = buildList {
+                targets.forEach { item ->
+                    // Batch cancellation deliberately affects only each selected occurrence.
+                    addAll(repository.cancelTodo(item, RecurrenceScope.CURRENT))
+                }
+            }.distinctBy { it.id }
+            clearReminderArtifacts(canceledItems)
+            autoBackupIfEnabled()
+        }
+    }
+
     fun cancelCalendarEvent(todoItem: TodoItem, scope: RecurrenceScope = RecurrenceScope.CURRENT) {
         viewModelScope.launch {
             val canceledItems = repository.cancelCalendarEvent(todoItem, scope)

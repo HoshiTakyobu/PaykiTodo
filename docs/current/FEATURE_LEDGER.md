@@ -24,8 +24,9 @@ This file tracks the product at a practical level for new coding sessions.
 - lightweight comma-based todo batch import with preview validation
 - todo batch-import DDL supports same-day clock input such as `16:30` / `16：30`, plus Planning Desk-style natural date forms such as `5.28`, `5月28日`, `明天`, and `周五`; date-only values default to `23:59`
 - Todo page exposes todo batch import beside the bottom-right new-todo button instead of as a top content row
-- Todo page exposes batch completion below the group filters: selection mode can toggle individual visible cards, select or clear all currently visible filtered tasks, complete the selection through the existing completion/history/reminder path, or exit without changing data
-- drawer navigation exposes a single-line `待办` entry; group filtering and group management live in the todo page chip bar instead of an expandable drawer group list or standalone group page
+- Daily Board and Todo pages enter batch selection by long-pressing an active todo; the long-pressed card is selected immediately, and ordinary browsing has no persistent batch-operation card
+- Batch selection can toggle individual visible cards, select or clear all currently visible filtered tasks, complete the selection through the existing completion/history/reminder path, cancel the selected current todo instances into history after one confirmation, or exit without changing data
+- drawer navigation exposes a single-line `待办` entry; group filtering and group management live in the todo page's near-full-width, height-limited dropdown instead of a horizontally scrolling chip bar, expandable drawer group list, or standalone group page
 - todos support multiple group tags through `todo_group_tags`; phone-side group filtering is multi-select intersection filtering, and the todo editor uses compact multi-select group chips while preserving the first group as the primary display color
 - complete / cancel / restore flows
 - active todo preview now uses the same bottom-sheet visual language as calendar event preview
@@ -54,7 +55,7 @@ This file tracks the product at a practical level for new coding sessions.
 - dedicated daily board entry exists in the drawer and is the default home section
 - phone drawer uses a grouped navigation hierarchy with a product identity header, always-visible primary and review destinations, fixed Settings / appearance utilities, and a descriptive bottom-sheet theme picker; all seven destinations remain directly reachable in light and dark modes
 - board todo block includes missed active todos, today's normal todos, and active no-DDL todos
-- board intentionally stays a read-only overview for todos, schedules, announcements, and countdown targets
+- board remains an overview-first surface for schedules, announcements, and countdown targets, while its todo cards support the same long-press batch completion/cancellation mode as the Todo page; editing still routes to the dedicated todo surface
 - board view can show today's todos and today's / tomorrow's schedule summary together
 - board can show a `倒数日` card for active countdown-enabled todos / events; todos count down to DDL times, events count down to event start times, exact-time expired targets are hidden, long target titles wrap fully, and tapping rows opens the corresponding todo / event preview first instead of jumping straight into an editor
 - board section title / empty-card areas navigate to the corresponding task or calendar surface while concrete todo / event rows keep their detail-preview behavior

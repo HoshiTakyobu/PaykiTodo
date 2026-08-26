@@ -2,29 +2,23 @@
 
 ## Active Development Focus
 
-The `1.15.8 / versionCode 350` batch-completion, transactional-editor, AI-network, and Todo/Settings UI round is complete.
+The `1.15.9 / versionCode 351` Todo interaction round is complete.
 
-The next round should start from user testing of the new batch-selection density and AI configuration transaction behavior. Do not reintroduce per-card save buttons or Android's default Dalvik User-Agent.
+The next round should start from physical-phone testing of long-press batch selection on the Daily Board and Todo page, including cancellation of recurring instances. Do not reintroduce per-card save buttons or Android's default Dalvik User-Agent.
 
 ## Completed Scope
 
-1. Added a Todo batch-selection mode below group filters with individual selection, select-all-visible, clear, exit, and complete-selected actions.
-2. Reused existing completion/history/recurrence/reminder cleanup semantics and reduced automatic backup to one pass per completed batch.
-3. Changed shared todo/event editors so only the top-right completion action persists; all dismissal routes silently discard drafts.
-4. Changed AI configuration to one page-level draft covering Provider operations, overall enable state, report schedules, and retention.
-5. Removed separate AI/report save actions; the page-level top-right `完成` is the only persistence action.
-6. Limited model connectivity testing to one fixed message and one endpoint, with no retry or fallback after HTTP 429.
-7. Applied the locally verified Codex CLI `0.146.0` Windows User-Agent to AI and remote-quote HTTP requests.
-8. Refined Todo, Settings, and AI configuration surfaces around solid deep blue-gray operational backgrounds and less nested card styling.
-9. Bumped to `1.15.8 / 350` without a database migration.
+1. 每日看板和待办页的待办卡片均支持长按进入批量选择，长按项自动选中；普通状态不再显示常驻批量入口。
+2. 选择模式支持逐项切换、全选可见、清空、完成所选、取消所选和退出；批量取消一次确认后逐条写入已取消历史，循环项只取消当前实例。
+3. 待办分组筛选改为近全宽、限高的下拉菜单，菜单顶部提供管理分组，并保留新建、编辑、删除和交集 / 并集切换。
+4. 保留 `1.15.8` 已完成的事务式编辑、AI 单请求测活、Codex CLI User-Agent 和 Todo/Settings 视觉层级改动。
+5. Bumped to `1.15.9 / 351` without a database migration.
 
 ## Validation
 
-- `:app:compileDebugKotlin` passed.
 - `:app:testDebugUnitTest` passed: 22 suites / 137 tests / 0 failures or errors.
-- `:app:lintDebug` passed.
-- `:app:assembleDebug` passed for `PaykiTodo-1.15.8-debug.apk`.
-- APK metadata reports `1.15.8 / versionCode 350`, package `com.paykitodo.app`.
-- Pixel_8 emulator verified batch completion, editor draft discard, AI draft discard/commit, and dark Todo/Settings/AI configuration rendering.
+- `:app:lintDebug` and `:app:assembleDebug` passed for `PaykiTodo-1.15.9-debug.apk`.
+- APK metadata reports `1.15.9 / versionCode 351`, package `com.paykitodo.app`.
+- Pixel_8 emulator verified the near-full-width group dropdown and top “管理分组” entry, long-press selection on Todo and Daily Board, complete/cancel actions, cancellation confirmation, and Back exiting selection before navigation.
 
 Do not commit secrets, signing material, API keys, private Base URLs, generated APK/AAB outputs, emulator screenshots, or personal backups/logs.

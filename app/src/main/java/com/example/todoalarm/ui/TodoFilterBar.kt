@@ -1,27 +1,37 @@
 package com.example.todoalarm.ui
 
-import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
+import androidx.compose.material.icons.rounded.ArrowDropDown
+import androidx.compose.material.icons.rounded.Check
+import androidx.compose.material.icons.rounded.Edit
+import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material.icons.rounded.TaskAlt
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
@@ -58,81 +68,129 @@ internal fun TodoFilterBar(
     onUpdateGroup: suspend (TaskGroup) -> String?,
     onDeleteGroup: suspend (Long) -> String?
 ) {
+    var expanded by remember { mutableStateOf(false) }
+    var showManager by remember { mutableStateOf(false) }
     var creating by remember { mutableStateOf(false) }
     var editingGroup by remember { mutableStateOf<TaskGroup?>(null) }
-    val sortedGroups = remember(groups) { groups.sortedWith(compareBy<TaskGroup> { it.sortOrder }.thenBy { it.id }) }
+    val sortedGroups = remember(groups) {
+        groups.sortedWith(compareBy<TaskGroup> { it.sortOrder }.thenBy { it.id })
+    }
+    val selectedGroups = remember(sortedGroups, selectedGroupIds) {
+        sortedGroups.filter { it.id in selectedGroupIds }
+    }
+    val summary = when {
+        selectedGroups.isEmpty() -> "全部分组"
+        selectedGroups.size == 1 -> selectedGroups.single().name
+        else -> "已选 ${selectedGroups.size} 个分组（${if (groupFilterMode == TodoRepository.GroupFilterMode.INTERSECTION) "交集" else "并集"}）"
+    }
 
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text(
-            text = "分组筛选",
-            style = MaterialTheme.typography.labelLarge,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            fontWeight = FontWeight.Bold
-        )
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .horizontalScroll(rememberScrollState()),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            TodoGroupChip(
-                label = "全部",
-                color = MaterialTheme.colorScheme.primary,
-                selected = selectedGroupIds.isEmpty(),
-                leadingIcon = true,
-                onClick = { onSelectGroup(null) }
+    BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Text(
+                text = "分组筛选",
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                fontWeight = FontWeight.Bold
             )
             Surface(
                 modifier = Modifier
-                    .size(36.dp)
-                    .clickable { creating = true },
-                shape = CircleShape,
-                color = MaterialTheme.colorScheme.primaryContainer,
-                border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.28f))
+                    .fillMaxWidth()
+                    .clickable { expanded = true },
+                shape = RoundedCornerShape(14.dp),
+                color = MaterialTheme.colorScheme.surface,
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.55f))
             ) {
-                Box(contentAlignment = Alignment.Center) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(start = 14.dp, end = 8.dp, top = 10.dp, bottom = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
                     Icon(
-                        imageVector = Icons.Rounded.Add,
-                        contentDescription = "新建分组",
-                        modifier = Modifier.size(18.dp),
-                        tint = MaterialTheme.colorScheme.onPrimaryContainer
+                        imageVector = Icons.Rounded.TaskAlt,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(19.dp)
                     )
+                    Spacer(Modifier.width(10.dp))
+                    Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                        Text(
+                            text = summary,
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Text(
+                            text = if (selectedGroupIds.isEmpty()) "显示所有待办" else "点击展开并调整分组范围",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Icon(Icons.Rounded.ArrowDropDown, contentDescription = "展开分组筛选")
                 }
             }
+        }
+
+        DropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false },
+            modifier = Modifier
+                .width(maxWidth)
+                .heightIn(max = 380.dp)
+        ) {
+            DropdownMenuItem(
+                text = {
+                    Text("管理分组", fontWeight = FontWeight.SemiBold)
+                },
+                leadingIcon = {
+                    Icon(Icons.Rounded.Settings, contentDescription = null)
+                },
+                onClick = {
+                    expanded = false
+                    showManager = true
+                }
+            )
+            HorizontalDivider()
+            GroupFilterMenuItem(
+                label = "全部",
+                color = MaterialTheme.colorScheme.primary,
+                selected = selectedGroupIds.isEmpty(),
+                onClick = { onSelectGroup(null); expanded = false }
+            )
             sortedGroups.forEach { group ->
-                TodoGroupChip(
+                GroupFilterMenuItem(
                     label = group.name,
                     color = colorFromHex(group.colorHex),
                     selected = group.id in selectedGroupIds,
-                    onClick = { onSelectGroup(group.id) },
-                    onLongClick = { editingGroup = group }
+                    onClick = { onSelectGroup(group.id) }
                 )
             }
             if (selectedGroupIds.size >= 2) {
-                FilterChip(
-                    selected = true,
-                    onClick = onToggleGroupFilterMode,
-                    label = {
+                HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+                DropdownMenuItem(
+                    text = {
                         Text(
-                            if (groupFilterMode == TodoRepository.GroupFilterMode.INTERSECTION) "∩ 交集"
-                            else "∪ 并集"
+                            if (groupFilterMode == TodoRepository.GroupFilterMode.INTERSECTION) {
+                                "当前为交集：切换为并集"
+                            } else {
+                                "当前为并集：切换为交集"
+                            }
                         )
-                    }
+                    },
+                    onClick = onToggleGroupFilterMode
                 )
             }
         }
-        Text(
-            text = if (selectedGroupIds.size >= 2) {
-                "当前多选：${if (groupFilterMode == TodoRepository.GroupFilterMode.INTERSECTION) "交集" else "并集"}；长按可管理分组。"
-            } else {
-                "长按可管理分组。"
-            },
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
     }
 
+    if (showManager) {
+        GroupManagerDialog(
+            groups = sortedGroups,
+            onDismiss = { showManager = false },
+            onCreate = { showManager = false; creating = true },
+            onEdit = { showManager = false; editingGroup = it }
+        )
+    }
     if (creating) {
         TodoGroupEditorDialog(
             initial = null,
@@ -140,7 +198,6 @@ internal fun TodoFilterBar(
             onConfirm = onCreateGroup
         )
     }
-
     editingGroup?.let { group ->
         TodoGroupEditorDialog(
             initial = group,
@@ -151,53 +208,87 @@ internal fun TodoFilterBar(
     }
 }
 
-@OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun TodoGroupChip(
+private fun GroupFilterMenuItem(
     label: String,
     color: Color,
     selected: Boolean,
-    leadingIcon: Boolean = false,
-    onClick: () -> Unit,
-    onLongClick: (() -> Unit)? = null
+    onClick: () -> Unit
 ) {
-    val container = if (selected) color.copy(alpha = 0.18f) else MaterialTheme.colorScheme.surface.copy(alpha = 0.72f)
-    val content = if (selected) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant
-    Surface(
-        modifier = Modifier.combinedClickable(
-            onClick = onClick,
-            onLongClick = onLongClick
-        ),
-        shape = RoundedCornerShape(999.dp),
-        color = container,
-        border = BorderStroke(1.dp, color.copy(alpha = if (selected) 0.75f else 0.36f))
-    ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-            horizontalArrangement = Arrangement.spacedBy(7.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            when {
-                leadingIcon -> Icon(
-                    imageVector = Icons.Rounded.TaskAlt,
-                    contentDescription = null,
-                    modifier = Modifier.size(16.dp),
-                    tint = color
-                )
-                else -> Box(
-                    modifier = Modifier
-                        .size(10.dp)
-                        .background(color, CircleShape)
-                )
-            }
+    DropdownMenuItem(
+        text = {
             Text(
                 text = label,
-                color = content,
-                style = MaterialTheme.typography.labelLarge,
-                fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium
+                fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal
             )
+        },
+        leadingIcon = {
+            Box(
+                modifier = Modifier
+                    .size(10.dp)
+                    .background(color, CircleShape)
+            )
+        },
+        trailingIcon = if (selected) {
+            { Icon(Icons.Rounded.Check, contentDescription = "已选择", tint = MaterialTheme.colorScheme.primary) }
+        } else {
+            null
+        },
+        onClick = onClick
+    )
+}
+
+@Composable
+private fun GroupManagerDialog(
+    groups: List<TaskGroup>,
+    onDismiss: () -> Unit,
+    onCreate: () -> Unit,
+    onEdit: (TaskGroup) -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("管理分组") },
+        text = {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(max = 380.dp)
+                    .verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                groups.forEach { group ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { onEdit(group) }
+                            .padding(vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(12.dp)
+                                .background(colorFromHex(group.colorHex), CircleShape)
+                        )
+                        Spacer(Modifier.width(10.dp))
+                        Text(group.name, modifier = Modifier.weight(1f))
+                        IconButton(onClick = { onEdit(group) }) {
+                            Icon(Icons.Rounded.Edit, contentDescription = "编辑分组")
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onCreate) {
+                Icon(Icons.Rounded.Add, contentDescription = null, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(4.dp))
+                Text("新建分组")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("完成") }
         }
-    }
+    )
 }
 
 @Composable
@@ -246,35 +337,23 @@ private fun TodoGroupEditorDialog(
                         ) {}
                     }
                 }
-                message?.let {
-                    Text(text = it, color = MaterialTheme.colorScheme.error)
-                }
+                message?.let { Text(text = it, color = MaterialTheme.colorScheme.error) }
             }
         },
         confirmButton = {
             TextButton(onClick = {
                 scope.launch {
                     val result = onConfirm(name.trim(), colorHex)
-                    if (result == null) {
-                        onDismiss()
-                    } else {
-                        message = result
-                    }
+                    if (result == null) onDismiss() else message = result
                 }
-            }) {
-                Text(if (initial == null) "创建" else "保存")
-            }
+            }) { Text(if (initial == null) "创建" else "完成") }
         },
         dismissButton = {
             Row {
                 if (initial != null && onDelete != null && !initial.isDefault) {
-                    TextButton(onClick = { showDeleteConfirm = true }) {
-                        Text("删除")
-                    }
+                    TextButton(onClick = { showDeleteConfirm = true }) { Text("删除") }
                 }
-                TextButton(onClick = onDismiss) {
-                    Text("取消")
-                }
+                TextButton(onClick = onDismiss) { Text("取消") }
             }
         }
     )
@@ -290,11 +369,7 @@ private fun TodoGroupEditorDialog(
                 scope.launch {
                     showDeleteConfirm = false
                     val result = onDelete()
-                    if (result == null) {
-                        onDismiss()
-                    } else {
-                        message = result
-                    }
+                    if (result == null) onDismiss() else message = result
                 }
             }
         )

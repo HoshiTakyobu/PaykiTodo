@@ -7,6 +7,9 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
+private val TodoDateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm", Locale.CHINA)
+private val TodoTimeFormatter = DateTimeFormatter.ofPattern("HH:mm", Locale.CHINA)
+
 fun reminderAtMillisToDateTime(reminderAtMillis: Long): LocalDateTime {
     return Instant.ofEpochMilli(reminderAtMillis)
         .atZone(ZoneId.systemDefault())
@@ -14,7 +17,7 @@ fun reminderAtMillisToDateTime(reminderAtMillis: Long): LocalDateTime {
 }
 
 fun formatLocalDateTime(dateTime: LocalDateTime): String {
-    return dateTime.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm", Locale.CHINA))
+    return dateTime.format(TodoDateTimeFormatter)
 }
 
 fun formatEventDateTimeRange(item: TodoItem): String {
@@ -28,9 +31,8 @@ fun formatEventDateTimeRange(item: TodoItem): String {
             "${start.monthValue}月${start.dayOfMonth}日 - ${endDate.monthValue}月${endDate.dayOfMonth}日 全天"
         }
     }
-    val timeFormatter = DateTimeFormatter.ofPattern("HH:mm", Locale.CHINA)
     return if (start.toLocalDate() == end.toLocalDate()) {
-        "${start.monthValue}月${start.dayOfMonth}日 ${start.format(timeFormatter)} - ${end.format(timeFormatter)}"
+        "${start.monthValue}月${start.dayOfMonth}日 ${start.format(TodoTimeFormatter)} - ${end.format(TodoTimeFormatter)}"
     } else {
         "${formatLocalDateTime(start)} - ${formatLocalDateTime(end)}"
     }

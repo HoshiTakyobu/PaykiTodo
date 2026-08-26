@@ -102,14 +102,7 @@ data class TodoUiState(
     val activeAnnouncements: List<PlanningAnnouncement> = emptyList(),
     val settings: AppSettings = AppSettings(),
     val currentQuote: String = QuoteRepository.seedQuotes.first(),
-    val dataReady: Boolean = false,
-    val desktopSyncStatus: DesktopSyncStatus = DesktopSyncStatus(
-        enabled = false,
-        running = false,
-        port = 18765,
-        token = "",
-        ipAddresses = emptyList()
-    )
+    val dataReady: Boolean = false
 )
 
 class TodoViewModel(application: Application) : AndroidViewModel(application) {
@@ -243,7 +236,7 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
     )
 
     @OptIn(ExperimentalCoroutinesApi::class)
-    private val desktopSyncStatusFlow = combine(settingsStore.settingsFlow, desktopSyncRefreshTick) { _, tick -> tick }
+    val desktopSyncStatus = combine(settingsStore.settingsFlow, desktopSyncRefreshTick) { _, tick -> tick }
         .mapLatest {
             withContext(Dispatchers.IO) {
                 app.desktopSyncCoordinator.status()
@@ -252,7 +245,13 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5_000),
-            initialValue = TodoUiState().desktopSyncStatus
+            initialValue = DesktopSyncStatus(
+                enabled = false,
+                running = false,
+                port = 18765,
+                token = "",
+                ipAddresses = emptyList()
+            )
         )
 
     val uiState = combine(
@@ -265,7 +264,6 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
         quoteFlow,
         selectedGroupIdsFlow,
         groupFilterModeFlow,
-        desktopSyncStatusFlow,
         todayDateFlow
     ) { values ->
         @Suppress("UNCHECKED_CAST")
@@ -284,8 +282,7 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
         @Suppress("UNCHECKED_CAST")
         val selectedGroupIds = values[7] as Set<Long>
         val groupFilterMode = values[8] as GroupFilterMode
-        val desktopSyncStatus = values[9] as DesktopSyncStatus
-        val today = values[10] as LocalDate
+        val today = values[9] as LocalDate
         val availableGroups = if (groups.isEmpty()) {
             withContext(Dispatchers.IO) { repository.ensureDefaultGroups() }
         } else {
@@ -319,8 +316,7 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
                 activeAnnouncements = PlanningAnnouncementParser.activeAnnouncements(announcementNotes, today),
                 settings = settings,
                 currentQuote = currentQuote,
-                dataReady = true,
-                desktopSyncStatus = desktopSyncStatus
+                dataReady = true
             )
         }
     }.stateIn(

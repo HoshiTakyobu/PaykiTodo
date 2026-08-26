@@ -159,6 +159,7 @@ class MainActivity : ComponentActivity() {
             ) {
                 DashboardScreen(
                     uiState = uiState,
+                    desktopSyncStatus = viewModel.desktopSyncStatus,
                     planningNotes = viewModel.planningNotes,
                     observeAiReports = viewModel::observeAiReports,
                     onGetAiReport = viewModel::getAiReportById,

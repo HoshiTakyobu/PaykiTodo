@@ -14,10 +14,12 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.PostAdd
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FabPosition
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -46,6 +48,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.Dp
 import com.example.todoalarm.R
 import com.example.todoalarm.data.CalendarEventDraft
 import com.example.todoalarm.data.DataHealthCleanResult
@@ -106,6 +109,7 @@ private enum class EditorKind {
 @Composable
 fun DashboardScreen(
     uiState: TodoUiState,
+    desktopSyncStatus: StateFlow<com.example.todoalarm.sync.DesktopSyncStatus>,
     planningNotes: StateFlow<List<PlanningNote>>,
     observeAiReports: (AiReportType?, Int, String, Long, Long) -> Flow<List<AiReport>>,
     onGetAiReport: suspend (Long) -> AiReport?,
@@ -245,6 +249,13 @@ fun DashboardScreen(
     var highlightedPlanningNodeId by rememberSaveable { mutableStateOf<Long?>(null) }
     var highlightedPlanningNodeSerial by rememberSaveable { mutableStateOf(0) }
     var calendarFocusDateEpochDay by rememberSaveable { mutableStateOf<Long?>(null) }
+    var todoBatchSelectionMode by rememberSaveable { mutableStateOf(false) }
+    var selectedTodoIds by rememberSaveable { mutableStateOf(emptyList<Long>()) }
+    var batchSelectableTodoItems by remember { mutableStateOf(emptyList<TodoItem>()) }
+    var showBatchCancelConfirm by rememberSaveable { mutableStateOf(false) }
+    val selectedTodoIdSet = remember(selectedTodoIds) { selectedTodoIds.toSet() }
+    val allVisibleTodosSelected = batchSelectableTodoItems.isNotEmpty() &&
+        selectedTodoIds.size == batchSelectableTodoItems.size
     val defaultReminderRing = if (uiState.settings.workQuietModeEnabled) false else uiState.settings.defaultRingEnabled
     val defaultReminderVibrate = if (uiState.settings.workQuietModeEnabled) true else uiState.settings.defaultVibrateEnabled
 
@@ -305,6 +316,12 @@ fun DashboardScreen(
             onCancelCalendarEvent(item, RecurrenceScope.CURRENT)
             Toast.makeText(context, "日程已取消", Toast.LENGTH_SHORT).show()
         }
+    }
+
+    fun exitTodoBatchSelection() {
+        showBatchCancelConfirm = false
+        todoBatchSelectionMode = false
+        selectedTodoIds = emptyList()
     }
 
     LaunchedEffect(launchRouteSerial) {
@@ -392,8 +409,18 @@ fun DashboardScreen(
         }
     }
 
+    LaunchedEffect(section, batchSelectableTodoItems) {
+        if (section != DashboardSection.ACTIVE && section != DashboardSection.BOARD) {
+            exitTodoBatchSelection()
+        } else {
+            val selectableIds = batchSelectableTodoItems.mapTo(mutableSetOf()) { it.id }
+            selectedTodoIds = selectedTodoIds.filter { it in selectableIds }
+        }
+    }
+
     BackHandler(enabled = !launchVisible) {
         when {
+            todoBatchSelectionMode -> exitTodoBatchSelection()
             editorVisible -> {
                 editorVisible = false
                 editingItem = null
@@ -450,80 +477,132 @@ fun DashboardScreen(
             )
         }
     ) {
-        Box(modifier = Modifier.fillMaxSize()) {
-            val usesWorkspaceBackground = section == DashboardSection.CALENDAR ||
-                section == DashboardSection.ACTIVE ||
-                section == DashboardSection.SETTINGS
-            if (usesWorkspaceBackground) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(MaterialTheme.colorScheme.background)
-                )
-            } else {
-                val darkMode = MaterialTheme.colorScheme.background.luminance() < 0.5f
-                Image(
-                    painter = painterResource(id = if (darkMode) R.drawable.dashboard_bg_dark else R.drawable.dashboard_bg_light),
-                    contentDescription = null,
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Crop
-                )
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(
-                            Brush.verticalGradient(
-                                listOf(
-                                    if (darkMode) Color(0x3A081723) else Color(0x0FFFFFFF),
-                                    if (darkMode) Color(0x240B1822) else Color(0x06000000),
-                                    if (darkMode) Color(0x16040B10) else Color(0x12000000)
+        val baseColorScheme = MaterialTheme.colorScheme
+        val darkMode = baseColorScheme.background.luminance() < 0.5f
+        val pageColorScheme = if (section == DashboardSection.ACTIVE && darkMode) {
+            baseColorScheme.copy(
+                background = Color(0xFF142933),
+                surface = Color(0xFF1D3640),
+                surfaceVariant = Color(0xFF294854),
+                outlineVariant = Color(0xFF49636D)
+            )
+        } else {
+            baseColorScheme
+        }
+        MaterialTheme(
+            colorScheme = pageColorScheme,
+            typography = MaterialTheme.typography,
+            shapes = MaterialTheme.shapes
+        ) {
+            Box(modifier = Modifier.fillMaxSize()) {
+                val usesWorkspaceBackground = section == DashboardSection.CALENDAR ||
+                    section == DashboardSection.ACTIVE ||
+                    section == DashboardSection.SETTINGS
+                if (usesWorkspaceBackground) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(MaterialTheme.colorScheme.background)
+                    )
+                } else {
+                    Image(
+                        painter = painterResource(id = if (darkMode) R.drawable.dashboard_bg_dark else R.drawable.dashboard_bg_light),
+                        contentDescription = null,
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop
+                    )
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(
+                                Brush.verticalGradient(
+                                    listOf(
+                                        if (darkMode) Color(0x3A081723) else Color(0x0FFFFFFF),
+                                        if (darkMode) Color(0x240B1822) else Color(0x06000000),
+                                        if (darkMode) Color(0x16040B10) else Color(0x12000000)
+                                    )
                                 )
                             )
-                        )
-                )
-            }
+                    )
+                }
 
-            Scaffold(
-                containerColor = if (usesWorkspaceBackground) MaterialTheme.colorScheme.background else Color.Transparent,
-                topBar = {
-                    DashboardTopBar(
-                        title = section.topBarTitle,
-                        onMenu = { scope.launch { drawerState.open() } },
-                        actions = {
-                            if (section == DashboardSection.BOARD) {
-                                IconButton(onClick = { searchVisible = true }) {
-                                    Icon(Icons.Rounded.Search, contentDescription = "全局搜索")
+                Scaffold(
+                    containerColor = if (usesWorkspaceBackground) MaterialTheme.colorScheme.background else Color.Transparent,
+                    topBar = {
+                        DashboardTopBar(
+                            title = if (todoBatchSelectionMode) {
+                                "多个待办 · 已选 ${selectedTodoIds.size} 项"
+                            } else {
+                                section.topBarTitle
+                            },
+                            navigationIcon = if (todoBatchSelectionMode) Icons.AutoMirrored.Rounded.ArrowBack else null,
+                            navigationContentDescription = if (todoBatchSelectionMode) "退出批量选择" else "打开菜单",
+                            onNavigationClick = if (todoBatchSelectionMode) {
+                                { exitTodoBatchSelection() }
+                            } else {
+                                { scope.launch { drawerState.open() } }
+                            },
+                            actions = {
+                                if (todoBatchSelectionMode) {
+                                    TextButton(
+                                        onClick = {
+                                            selectedTodoIds = if (allVisibleTodosSelected) {
+                                                emptyList()
+                                            } else {
+                                                batchSelectableTodoItems.map { it.id }
+                                            }
+                                        },
+                                        enabled = batchSelectableTodoItems.isNotEmpty()
+                                    ) {
+                                        Text(if (allVisibleTodosSelected) "清空" else "全选")
+                                    }
+                                } else if (section == DashboardSection.BOARD) {
+                                    IconButton(onClick = { searchVisible = true }) {
+                                        Icon(Icons.Rounded.Search, contentDescription = "全局搜索")
+                                    }
+                                }
+                            }
+                        )
+                    },
+                    floatingActionButtonPosition = if (todoBatchSelectionMode) FabPosition.Center else FabPosition.End,
+                    floatingActionButton = {
+                        if (todoBatchSelectionMode) {
+                            TodoBatchFloatingActions(
+                                selectedCount = selectedTodoIds.size,
+                                onCancelSelected = { showBatchCancelConfirm = true },
+                                onCompleteSelected = {
+                                    val selectedItems = batchSelectableTodoItems.filter { it.id in selectedTodoIdSet }
+                                    if (selectedItems.isNotEmpty()) {
+                                        onCompleteTodos(selectedItems)
+                                        exitTodoBatchSelection()
+                                    }
+                                }
+                            )
+                        } else if (section == DashboardSection.ACTIVE) {
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                SmallFloatingActionButton(
+                                    onClick = { todoBatchImportVisible = true },
+                                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                                ) {
+                                    Icon(Icons.Rounded.PostAdd, contentDescription = "批量添加待办")
+                                }
+                                FloatingActionButton(onClick = {
+                                    editingItem = null
+                                    editorKind = EditorKind.TODO
+                                    calendarDraftSeed = null
+                                    editScope = RecurrenceScope.CURRENT
+                                    editorVisible = true
+                                }) {
+                                    Text("+")
                                 }
                             }
                         }
-                    )
-                },
-                floatingActionButton = {
-                    if (section == DashboardSection.ACTIVE) {
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(12.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            SmallFloatingActionButton(
-                                onClick = { todoBatchImportVisible = true },
-                                containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                                contentColor = MaterialTheme.colorScheme.onSecondaryContainer
-                            ) {
-                                Icon(Icons.Rounded.PostAdd, contentDescription = "批量添加待办")
-                            }
-                            FloatingActionButton(onClick = {
-                                editingItem = null
-                                editorKind = EditorKind.TODO
-                                calendarDraftSeed = null
-                                editScope = RecurrenceScope.CURRENT
-                                editorVisible = true
-                            }) {
-                                Text("+")
-                            }
-                        }
                     }
-                }
-            ) { padding ->
+                ) { padding ->
                 DashboardBody(
                     section = section,
                     settingsInitialSectionKey = launchRoute?.settingsSectionKey,
@@ -536,6 +615,7 @@ fun DashboardScreen(
                     targetAiReportSerial = if (searchAiReportTargetId != null) searchAiReportTargetSerial else launchRouteSerial,
                     padding = padding,
                     uiState = uiState,
+                    desktopSyncStatus = desktopSyncStatus,
                     planningNotes = planningNotes,
                     observeAiReports = observeAiReports,
                     onGetAiReport = onGetAiReport,
@@ -632,8 +712,18 @@ fun DashboardScreen(
                         }
                     },
                     onCompleteTodo = onCompleteTodo,
-                    onCompleteTodos = onCompleteTodos,
-                    onCancelTodos = onCancelTodos,
+                    todoBatchSelectionMode = todoBatchSelectionMode,
+                    selectedTodoIds = selectedTodoIdSet,
+                    onToggleTodoSelection = { itemId ->
+                        selectedTodoIds = selectedTodoIds.toggleId(itemId)
+                    },
+                    onEnterTodoSelection = { itemId ->
+                        todoBatchSelectionMode = true
+                        selectedTodoIds = (selectedTodoIds + itemId).distinct()
+                    },
+                    onBatchSelectableItemsChange = { items ->
+                        batchSelectableTodoItems = items
+                    },
                     onRestoreTodo = onRestoreTodo,
                     onCancelTodo = ::requestCancelTodo,
                     onCancelCalendarEvent = ::requestCancelCalendarEvent,
@@ -742,6 +832,25 @@ fun DashboardScreen(
                 )
             }
         }
+    }
+    }
+
+    if (showBatchCancelConfirm) {
+        PaykiDecisionBottomSheet(
+            title = "取消所选待办",
+            message = "将所选 ${selectedTodoIds.size} 项分别取消，并写入历史记录。循环待办只取消当前选中的这一次。",
+            confirmLabel = "确认取消",
+            confirmLabelColor = Color(0xFFD97706),
+            onDismiss = { showBatchCancelConfirm = false },
+            onConfirm = {
+                val selectedItems = batchSelectableTodoItems.filter { it.id in selectedTodoIdSet }
+                showBatchCancelConfirm = false
+                if (selectedItems.isNotEmpty()) {
+                    onCancelTodos(selectedItems)
+                    exitTodoBatchSelection()
+                }
+            }
+        )
     }
 
     if (todoBatchImportVisible) {
@@ -1228,4 +1337,9 @@ private fun recurrenceScopeOptions(mode: ScopeDialogMode?): List<RecurrenceScope
     }
 }
 
-internal fun dashboardPadding() = androidx.compose.foundation.layout.PaddingValues(horizontal = 20.dp, vertical = 10.dp)
+internal fun dashboardPadding(bottom: Dp = 10.dp) = androidx.compose.foundation.layout.PaddingValues(
+    start = 20.dp,
+    top = 10.dp,
+    end = 20.dp,
+    bottom = bottom
+)

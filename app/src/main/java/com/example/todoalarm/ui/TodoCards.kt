@@ -4,6 +4,7 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -43,6 +44,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
@@ -87,21 +89,26 @@ internal fun ActiveTodoCard(
     val displayGroup = remember(item.id, item.groupId, item.categoryKey, item.itemType, item.allDay, item.accentColorHex, resolvedGroup, groups) {
         resolvedGroup ?: resolveTaskGroup(item, groups)
     }
+    val groupColor = remember(displayGroup.colorHex, displayGroup.name) { categoryColor(displayGroup) }
+    val deadlineLabel = remember(item.dueAtMillis) {
+        item.takeIf { it.hasDueDate }
+            ?.let { formatLocalDateTime(reminderAtMillisToDateTime(it.dueAtMillis)) }
+    }
 
-    LaunchedEffect(completing) {
-        if (completing) {
+    if (completing) {
+        LaunchedEffect(item.id) {
             delay(650)
             onComplete()
         }
     }
-    LaunchedEffect(forceShowDetailsKey) {
-        if (forceShowDetailsKey > 0) {
+    if (forceShowDetailsKey > 0) {
+        LaunchedEffect(forceShowDetailsKey) {
             showDetails = true
         }
     }
 
     TodoCardShell(
-        group = displayGroup,
+        accent = groupColor,
         onClick = { if (selectionMode) onSelectionToggle() else showDetails = true },
         onLongClick = if (selectionMode) {
             null
@@ -133,7 +140,7 @@ internal fun ActiveTodoCard(
                 modifier = Modifier.weight(1f),
                 verticalArrangement = Arrangement.spacedBy(6.dp)
             ) {
-                TitleRow(item = item, group = displayGroup, progress = progress)
+                TitleRow(item = item, group = displayGroup, accent = groupColor, progress = progress)
                 if (item.notes.isNotBlank()) {
                     StrikeText(
                         text = item.notes,
@@ -144,9 +151,9 @@ internal fun ActiveTodoCard(
                         overflow = TextOverflow.Ellipsis
                     )
                 }
-                if (item.hasDueDate) {
+                deadlineLabel?.let { value ->
                     DeadlineMeta(
-                        value = formatLocalDateTime(reminderAtMillisToDateTime(item.dueAtMillis)),
+                        value = value,
                         accent = if (item.missed) Color(0xFFC62828) else MaterialTheme.colorScheme.primary
                     )
                 }
@@ -242,10 +249,11 @@ internal fun CompletedTodoCard(
     val displayGroup = remember(item.id, item.groupId, item.categoryKey, item.itemType, item.allDay, item.accentColorHex, resolvedGroup, groups) {
         resolvedGroup ?: resolveTaskGroup(item, groups)
     }
+    val groupColor = remember(displayGroup.colorHex, displayGroup.name) { categoryColor(displayGroup) }
 
-    TodoCardShell(group = displayGroup, onClick = { showDetails = true }) {
+    TodoCardShell(accent = groupColor, onClick = { showDetails = true }) {
         Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            TitleRow(item = item, group = displayGroup, progress = 0f, showHistoryStatus = true)
+            TitleRow(item = item, group = displayGroup, accent = groupColor, progress = 0f, showHistoryStatus = true)
             if (item.notes.isNotBlank()) {
                 Text(
                     text = item.notes,
@@ -302,54 +310,54 @@ private fun HistoryStatusChip(item: TodoItem) {
 @Composable
 @OptIn(ExperimentalFoundationApi::class)
 private fun TodoCardShell(
-    group: ResolvedTaskGroup,
+    accent: Color,
     onClick: () -> Unit,
     onLongClick: (() -> Unit)? = null,
-    contentClickable: Boolean = true,
     selected: Boolean = false,
     content: @Composable () -> Unit
 ) {
-    val accent = categoryColor(group)
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        color = if (selected) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.34f) else MaterialTheme.colorScheme.surface,
-        tonalElevation = 0.dp,
-        shadowElevation = 0.dp,
-        border = BorderStroke(
-            1.dp,
-            if (selected) MaterialTheme.colorScheme.primary.copy(alpha = 0.62f)
-            else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.28f)
-        )
-    ) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .drawBehind {
-                    drawRect(
-                        color = accent,
-                        size = Size(width = 5.dp.toPx(), height = size.height)
-                    )
-                }
-        ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .then(
-                        if (contentClickable) {
-                            Modifier.combinedClickable(
-                                onClick = onClick,
-                                onLongClick = onLongClick
-                            )
-                        } else {
-                            Modifier
-                        }
-                    )
-                    .padding(start = 16.dp, end = 12.dp, top = 12.dp, bottom = 12.dp)
-            ) {
-                content()
+    val containerColor = if (selected) {
+        MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.34f)
+    } else {
+        MaterialTheme.colorScheme.surface
+    }
+    val borderColor = if (selected) {
+        MaterialTheme.colorScheme.primary.copy(alpha = 0.62f)
+    } else {
+        MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.28f)
+    }
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .drawBehind {
+                val radius = 16.dp.toPx()
+                val borderWidth = 1.dp.toPx()
+                drawRoundRect(
+                    color = containerColor,
+                    cornerRadius = CornerRadius(radius, radius)
+                )
+                drawRoundRect(
+                    color = borderColor,
+                    topLeft = Offset(borderWidth / 2f, borderWidth / 2f),
+                    size = Size(size.width - borderWidth, size.height - borderWidth),
+                    cornerRadius = CornerRadius(radius - borderWidth / 2f, radius - borderWidth / 2f),
+                    style = Stroke(width = borderWidth)
+                )
+                drawLine(
+                    color = accent,
+                    start = Offset(3.dp.toPx(), radius),
+                    end = Offset(3.dp.toPx(), (size.height - radius).coerceAtLeast(radius)),
+                    strokeWidth = 5.dp.toPx(),
+                    cap = StrokeCap.Round
+                )
             }
-        }
+            .combinedClickable(
+                onClick = onClick,
+                onLongClick = onLongClick
+            )
+            .padding(start = 16.dp, end = 12.dp, top = 12.dp, bottom = 12.dp)
+    ) {
+        content()
     }
 }
 
@@ -357,6 +365,7 @@ private fun TodoCardShell(
 private fun TitleRow(
     item: TodoItem,
     group: ResolvedTaskGroup,
+    accent: Color,
     progress: Float,
     showHistoryStatus: Boolean = false
 ) {
@@ -365,7 +374,7 @@ private fun TitleRow(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        CategoryChip(group)
+        CategoryChip(group, accent)
         if (showHistoryStatus) {
             HistoryStatusChip(item)
         }
@@ -384,40 +393,39 @@ private fun TitleRow(
 @Composable
 private fun HiddenReminderChip() {
     val tint = MaterialTheme.colorScheme.primary
-    Surface(shape = RoundedCornerShape(12.dp), color = tint.copy(alpha = 0.12f)) {
-        Row(
-            modifier = Modifier.padding(horizontal = 6.dp, vertical = 4.dp),
-            horizontalArrangement = Arrangement.spacedBy(3.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Icon(
-                imageVector = Icons.Rounded.NotificationsActive,
-                contentDescription = null,
-                modifier = Modifier.size(13.dp),
-                tint = tint
-            )
-            Text(
-                text = "仅提醒",
-                color = tint,
-                style = MaterialTheme.typography.labelMedium,
-                fontWeight = FontWeight.SemiBold
-            )
-        }
-    }
-}
-
-@Composable
-private fun CategoryChip(group: ResolvedTaskGroup) {
-    val tint = categoryColor(group)
-    Surface(shape = RoundedCornerShape(12.dp), color = tint.copy(alpha = 0.12f)) {
+    Row(
+        modifier = Modifier
+            .background(tint.copy(alpha = 0.12f), RoundedCornerShape(12.dp))
+            .padding(horizontal = 6.dp, vertical = 4.dp),
+        horizontalArrangement = Arrangement.spacedBy(3.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            imageVector = Icons.Rounded.NotificationsActive,
+            contentDescription = null,
+            modifier = Modifier.size(13.dp),
+            tint = tint
+        )
         Text(
-            text = group.name,
-            modifier = Modifier.padding(horizontal = 6.dp, vertical = 4.dp),
+            text = "仅提醒",
             color = tint,
             style = MaterialTheme.typography.labelMedium,
             fontWeight = FontWeight.SemiBold
         )
     }
+}
+
+@Composable
+private fun CategoryChip(group: ResolvedTaskGroup, accent: Color) {
+    Text(
+        text = group.name,
+        modifier = Modifier
+            .background(accent.copy(alpha = 0.12f), RoundedCornerShape(12.dp))
+            .padding(horizontal = 6.dp, vertical = 4.dp),
+        color = accent,
+        style = MaterialTheme.typography.labelMedium,
+        fontWeight = FontWeight.SemiBold
+    )
 }
 
 @Composable

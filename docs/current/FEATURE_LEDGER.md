@@ -25,7 +25,8 @@ This file tracks the product at a practical level for new coding sessions.
 - todo batch-import DDL supports same-day clock input such as `16:30` / `16：30`, plus Planning Desk-style natural date forms such as `5.28`, `5月28日`, `明天`, and `周五`; date-only values default to `23:59`
 - Todo page exposes todo batch import beside the bottom-right new-todo button instead of as a top content row
 - Daily Board and Todo pages enter batch selection by long-pressing an active todo; the long-pressed card is selected immediately, and ordinary browsing has no persistent batch-operation card
-- Batch selection can toggle individual visible cards, select or clear all currently visible filtered tasks, complete the selection through the existing completion/history/reminder path, cancel the selected current todo instances into history after one confirmation, or exit without changing data
+- Batch selection changes the top title to show the selected count, keeps select-all / clear in the top bar, and fixes icon-free rounded complete/cancel actions at the bottom so they remain reachable while scrolling; it can toggle individual visible cards, complete through the existing completion/history/reminder path, cancel selected current todo instances into history after one confirmation, or exit without changing data
+- Todo long-list rendering isolates Desktop Sync polling and Daily Board clock/derivation state from the Todo page, limits group resolution to the active section, reuses formatted colors/DDL text, and draws each card in one lightweight layer instead of nested surfaces
 - drawer navigation exposes a single-line `待办` entry; group filtering and group management live in the todo page's near-full-width, height-limited dropdown instead of a horizontally scrolling chip bar, expandable drawer group list, or standalone group page
 - todos support multiple group tags through `todo_group_tags`; phone-side group filtering is multi-select intersection filtering, and the todo editor uses compact multi-select group chips while preserving the first group as the primary display color
 - complete / cancel / restore flows
@@ -78,6 +79,7 @@ This file tracks the product at a practical level for new coding sessions.
 - daily board section titles use compact semibold typography without wallpaper-compensating text shadows
 - light mode uses cool-white page backgrounds, paper-white surfaces, and soft gray-green weak containers instead of Sand beige as the global background; warm Clay remains an accent rather than a large-area fill
 - light mode uses a distinct light blue-gray page layer, pure-white content surfaces, darker secondary text, and visible gray-green controls; Calendar separates its toolbar and time-grid surfaces while the Board tomorrow band uses a stronger blue tint
+- Todo dark mode uses an explicit deep blue-gray workspace and distinct card/weak-container layers instead of a pure-black page slab; protected Daily Board artwork remains separate
 - board surface intentionally does not expose add / batch-add buttons
 
 ### Reminders / Notifications

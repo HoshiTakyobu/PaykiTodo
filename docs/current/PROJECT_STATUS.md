@@ -8,8 +8,8 @@
 - Target platform: Android 14 / API 34
 - License: MIT License (`LICENSE`)
 - Current version in code:
-  - `versionName = "1.15.9"`
-  - `versionCode = 351`
+  - `versionName = "1.15.10"`
+  - `versionCode = 352`
   - database version = `29`
 
 ## Current Build Facts
@@ -19,7 +19,16 @@
 - Latest GitHub Release:
   - `https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.14.12`
 - Latest fully built debug APK:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.15.9-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.15.10-debug.apk`
+- Current `1.15.10 / versionCode 352` status:
+  - Todo batch mode changes the top title to `多个待办 · 已选 N 项`, exposes select-all / clear in the top bar, and uses Back or the top-left arrow to exit selection before navigating away.
+  - Cancel-selected and complete-selected are icon-free rounded rectangular actions fixed at the bottom of the screen. Normal create/import FABs are hidden during selection, and the list reserves bottom space so long-list items are not covered.
+  - Todo dark mode explicitly uses a layered deep blue-gray workspace (`#142933` background, `#1D3640` surface, `#294854` surface variant) instead of an almost-black page slab; the protected Daily Board artwork is unchanged.
+  - Desktop Sync status polling is separated from `TodoUiState` and collected only inside Settings. Todo no longer runs the Daily Board clock or board-only schedule/countdown derivations.
+  - Todo card rendering reuses resolved group colors and formatted DDL text, creates completion/detail effects only when active, and replaces nested card surfaces with one drawing layer. Group resolution is limited to the current section.
+  - A Pixel_8 emulator stress dataset of 102 todos improved from 13.00% to 10.93% janky frames; p95 improved 38ms -> 34ms, p99 57ms -> 44ms, and Slow UI thread frames 31 -> 23 during ten scripted fast scrolls. Physical-phone validation remains recommended.
+  - Database version remains `29`; no schema or migration change was introduced.
+  - Verification passed: 22 unit-test suites / 137 tests, `:app:testDebugUnitTest`, `:app:lintDebug`, `:app:assembleDebug`, APK metadata (`1.15.10 / 352`), and Pixel_8 emulator checks of Todo dark mode, long-press selection, fixed bottom actions after scrolling, and Back-to-exit-selection.
 - Current `1.15.9 / versionCode 351` status:
   - Daily Board and Todo pages now enter batch selection by long-pressing any active todo; the long-pressed item is selected immediately and no batch card is shown during ordinary browsing.
   - Selection mode supports select-all-visible, clear, complete-selected, cancel-selected, and exit. Batch cancellation confirms once, writes canceled history entries, and cancels only the selected current occurrence for recurring todos.

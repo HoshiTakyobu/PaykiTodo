@@ -989,6 +989,7 @@ function eventEnd(item) {
 function reminderModeLabel(mode) {
   if (mode === 'NOTIFICATION') return '通知栏提醒';
   if (mode === 'FULLSCREEN') return '全屏提醒';
+  if (mode === 'FULLSCREEN_AND_NOTIFICATION') return '全屏 + 通知栏提醒';
   return mode || '默认提醒';
 }
 
@@ -1282,7 +1283,7 @@ function renderEventCard(segment) {
   const accent = item.accentColorHex || item.groupColorHex || '#4e87e1';
   const meta = [item.groupName || '未分组', item.location || '', item.isRecurring ? '循环' : ''].filter(Boolean).join(' · ');
   const classes = ['event-card'];
-  if (eventEnd(item) <= Date.now()) classes.push('past-event');
+  if (item.completed === true) classes.push('completed-event');
   return ''
     + '<article class="' + classes.join(' ') + '" role="button" tabindex="0" aria-label="编辑日程：' + escapeHtml(item.title) + '" data-event-id="' + escapeHtml(String(item.id ?? '')) + '" style="--accent:' + accent + ';top:' + segment.top + 'px;height:' + segment.height + 'px">'
     +   '<div class="event-card-title">' + escapeHtml(item.title) + '</div>'
@@ -2718,15 +2719,14 @@ function renderPlanningPreview() {
         ? planningEditableField(item.id, 'dueAt', 'DDL', editableDateTimeValue(item.dueAt), '2026-05-28 14:30')
         : planningEditableField(item.id, 'location', '地点', item.location || '', '@主楼B1-412') + planningEditableField(item.id, 'startAt', '开始', editableDateTimeValue(item.startAt), '2026-05-28 10:00') + planningEditableField(item.id, 'endAt', '结束', editableDateTimeValue(item.endAt), '2026-05-28 12:00'))
       + planningEditableField(item.id, 'reminders', '提醒', item.reminderInputText || (item.reminderOffsetsMinutes || []).join(','), '5,15,16:30,05-10 15:00')
-      + planningEditableSelect(item.id, 'reminderDeliveryMode', '提醒方式', item.reminderDeliveryMode || 'FULLSCREEN', [
-        { value: 'FULLSCREEN', label: '全屏提醒' },
-        { value: 'NOTIFICATION', label: '通知栏提醒' }
-      ])
+      + '<div class="planning-reminder-channels"><span class="planning-edit-label">提醒方式</span>'
+      + '<label><input type="checkbox" data-planning-reminder-channel="fullscreen" data-planning-id="' + escapeHtml(item.id) + '"' + (item.reminderEnabled !== false && (item.reminderDeliveryMode === 'FULLSCREEN' || item.reminderDeliveryMode === 'FULLSCREEN_AND_NOTIFICATION') ? ' checked' : '') + ' /> 全屏提醒</label>'
+      + '<label><input type="checkbox" data-planning-reminder-channel="notification" data-planning-id="' + escapeHtml(item.id) + '"' + (item.reminderEnabled !== false && (item.reminderDeliveryMode === 'NOTIFICATION' || item.reminderDeliveryMode === 'FULLSCREEN_AND_NOTIFICATION') ? ' checked' : '') + ' /> 通知栏提醒</label>'
+      + '</div>'
       + planningRecurrenceFields(item)
       + '</div>'
       + '<label class="planning-edit-field full"><span>备注</span><textarea data-planning-field="notes" data-planning-id="' + escapeHtml(item.id) + '" rows="2">' + escapeHtml(item.notes || '') + '</textarea></label>'
       + '<div class="planning-preview-options">'
-      +   '<label class="planning-linked"><input type="checkbox" data-planning-flag="reminderEnabled" data-planning-id="' + escapeHtml(item.id) + '"' + (item.reminderEnabled !== false && String(item.reminderInputText || (item.reminderOffsetsMinutes || []).join(',')).trim() ? ' checked' : '') + ' /> 启用提醒</label>'
       +   (item.type === 'EVENT' ? '<label class="planning-linked"><input type="checkbox" data-planning-flag="allDay" data-planning-id="' + escapeHtml(item.id) + '"' + (item.allDay ? ' checked' : '') + ' /> 全天</label>' : '')
       +   '<label class="planning-linked"><input type="checkbox" data-planning-flag="countdownEnabled" data-planning-id="' + escapeHtml(item.id) + '"' + (item.countdownEnabled ? ' checked' : '') + ' /> 倒数日</label>'
       +   (item.type === 'EVENT' ? '<label class="planning-linked"><input type="checkbox" data-planning-flag="checkInEnabled" data-planning-id="' + escapeHtml(item.id) + '"' + (item.checkInEnabled ? ' checked' : '') + ' /> 打卡追踪</label>' : '')
@@ -2823,15 +2823,30 @@ function collectPlanningCandidates() {
     const item = byId.get(String(node.dataset.planningId));
     if (item) item[node.dataset.planningFlag] = node.checked;
   });
+  document.querySelectorAll('[data-planning-reminder-channel]').forEach(node => {
+    const item = byId.get(String(node.dataset.planningId));
+    if (!item) return;
+    item._planningReminderChannels = item._planningReminderChannels || { fullscreen: false, notification: false };
+    item._planningReminderChannels[node.dataset.planningReminderChannel] = node.checked;
+  });
   base.forEach(item => {
     const rawReminder = String(item.reminderInputText || '').trim();
-    if (!rawReminder || item.reminderEnabled === false) {
+    const channels = item._planningReminderChannels || {
+      fullscreen: item.reminderDeliveryMode === 'FULLSCREEN' || item.reminderDeliveryMode === 'FULLSCREEN_AND_NOTIFICATION',
+      notification: item.reminderDeliveryMode === 'NOTIFICATION' || item.reminderDeliveryMode === 'FULLSCREEN_AND_NOTIFICATION'
+    };
+    const hasReminderChannel = channels.fullscreen || channels.notification;
+    if (!rawReminder || !hasReminderChannel) {
       item.reminderEnabled = false;
       item.reminderOffsetsMinutes = [];
       item.reminderInputText = rawReminder;
     } else {
       item.reminderEnabled = true;
+      item.reminderDeliveryMode = channels.fullscreen && channels.notification
+        ? 'FULLSCREEN_AND_NOTIFICATION'
+        : (channels.fullscreen ? 'FULLSCREEN' : 'NOTIFICATION');
     }
+    delete item._planningReminderChannels;
   });
   document.querySelectorAll('[data-planning-linked]').forEach(node => {
     const item = byId.get(String(node.dataset.planningLinked));
@@ -3526,9 +3541,15 @@ async function recurrenceScopeQueryForItem(item, action = '操作') {
   return scope ? '?scope=' + encodeURIComponent(scope) : null;
 }
 
-function setTodoReminderEnabled(enabled) {
-  const checkbox = document.getElementById('todo-reminder-enabled');
-  if (checkbox) checkbox.checked = enabled;
+function setTodoReminderChannels(fullscreen, notification) {
+  const fullscreenCheckbox = document.getElementById('todo-reminder-fullscreen');
+  const notificationCheckbox = document.getElementById('todo-reminder-notification');
+  if (fullscreenCheckbox) fullscreenCheckbox.checked = fullscreen;
+  if (notificationCheckbox) notificationCheckbox.checked = notification;
+  const enabled = fullscreen || notification;
+  if (enabled && !document.getElementById('todo-reminder-spec').value.trim()) {
+    document.getElementById('todo-reminder-spec').value = '5';
+  }
   document.querySelectorAll('.todo-reminder-dependent').forEach(node => {
     node.classList.toggle('disabled-block', !enabled);
     node.querySelectorAll('input, select, textarea, button').forEach(input => {
@@ -3564,10 +3585,12 @@ function setTodoDueEnabled(enabled) {
     if (countdown) countdown.checked = false;
     if (hiddenBoard) hiddenBoard.checked = false;
     if (alarmMode) alarmMode.checked = false;
-    setTodoReminderEnabled(false);
+    setTodoReminderChannels(false, false);
   } else {
-    const reminderCheckbox = document.getElementById('todo-reminder-enabled');
-    setTodoReminderEnabled(reminderCheckbox?.checked !== false);
+    setTodoReminderChannels(
+      document.getElementById('todo-reminder-fullscreen')?.checked === true,
+      document.getElementById('todo-reminder-notification')?.checked === true
+    );
   }
 }
 function clearTodoForm() {
@@ -3581,8 +3604,7 @@ function clearTodoForm() {
   document.getElementById('todo-notes').value = '';
   writeDateTimeValue('todo-due', '');
   document.getElementById('todo-reminder-spec').value = '5';
-  document.getElementById('todo-reminder-mode').value = 'FULLSCREEN';
-  setTodoReminderEnabled(true);
+  setTodoReminderChannels(true, false);
   document.getElementById('todo-recurrence-type').value = 'NONE';
   document.getElementById('todo-recurrence-end').value = '';
   setWeekdays('todo', []);
@@ -3612,8 +3634,11 @@ function openTodoEditor(item) {
   setTodoDueEnabled(item.hasDueDate !== false);
   writeDateTimeValue('todo-due', item.hasDueDate ? formatDateTimeLocalValue(item.dueAtMillis) : '');
   document.getElementById('todo-reminder-spec').value = item.hasDueDate ? reminderSpecFromOffsets(item, item.dueAtMillis) : '';
-  document.getElementById('todo-reminder-mode').value = item.reminderDeliveryMode || 'FULLSCREEN';
-  setTodoReminderEnabled(item.hasDueDate !== false && item.reminderEnabled === true);
+  const todoReminderMode = item.reminderDeliveryMode || 'FULLSCREEN';
+  setTodoReminderChannels(
+    item.hasDueDate !== false && item.reminderEnabled === true && (todoReminderMode === 'FULLSCREEN' || todoReminderMode === 'FULLSCREEN_AND_NOTIFICATION'),
+    item.hasDueDate !== false && item.reminderEnabled === true && (todoReminderMode === 'NOTIFICATION' || todoReminderMode === 'FULLSCREEN_AND_NOTIFICATION')
+  );
   document.getElementById('todo-recurrence-type').value = recurrenceTypeValue(item);
   document.getElementById('todo-recurrence-end').value = item.recurrenceEndDate || '';
   setWeekdays('todo', item.recurrenceWeekdays);
@@ -3642,9 +3667,8 @@ function clearEventForm() {
   document.getElementById('event-notes').value = '';
   writeDateTimeValue('event-start', '');
   writeDateTimeValue('event-end', '');
-  document.getElementById('event-reminder-mode').value = 'NOTIFICATION';
   document.getElementById('event-reminder-offsets').value = '';
-  setEventReminderEnabled(false);
+  setEventReminderChannels(false, false);
   document.getElementById('event-recurrence-type').value = 'NONE';
   document.getElementById('event-recurrence-end').value = '';
   setWeekdays('event', []);
@@ -3676,9 +3700,15 @@ function recurrenceTypeValue(item) {
   return item.isRecurring ? (item.recurrenceType || 'NONE') : 'NONE';
 }
 
-function setEventReminderEnabled(enabled) {
-  const checkbox = document.getElementById('event-reminder-enabled');
-  if (checkbox) checkbox.checked = enabled;
+function setEventReminderChannels(fullscreen, notification) {
+  const fullscreenCheckbox = document.getElementById('event-reminder-fullscreen');
+  const notificationCheckbox = document.getElementById('event-reminder-notification');
+  if (fullscreenCheckbox) fullscreenCheckbox.checked = fullscreen;
+  if (notificationCheckbox) notificationCheckbox.checked = notification;
+  const enabled = fullscreen || notification;
+  if (enabled && !document.getElementById('event-reminder-offsets').value.trim()) {
+    document.getElementById('event-reminder-offsets').value = '15';
+  }
   document.querySelectorAll('.event-reminder-dependent').forEach(node => {
     node.classList.toggle('disabled-block', !enabled);
     node.querySelectorAll('input, select, textarea, button').forEach(input => {
@@ -3779,9 +3809,12 @@ function openEventEditor(item) {
   document.getElementById('event-notes').value = item.notes || '';
   writeDateTimeValue('event-start', formatDateTimeLocalValue(item.startAtMillis));
   writeDateTimeValue('event-end', formatDateTimeLocalValue(item.endAtMillis || item.startAtMillis));
-  document.getElementById('event-reminder-mode').value = item.reminderDeliveryMode || 'NOTIFICATION';
   document.getElementById('event-reminder-offsets').value = reminderSpecFromOffsets(item, item.startAtMillis);
-  setEventReminderEnabled(item.reminderEnabled === true);
+  const eventReminderMode = item.reminderDeliveryMode || 'NOTIFICATION';
+  setEventReminderChannels(
+    item.reminderEnabled === true && (eventReminderMode === 'FULLSCREEN' || eventReminderMode === 'FULLSCREEN_AND_NOTIFICATION'),
+    item.reminderEnabled === true && (eventReminderMode === 'NOTIFICATION' || eventReminderMode === 'FULLSCREEN_AND_NOTIFICATION')
+  );
   document.getElementById('event-recurrence-type').value = recurrenceTypeValue(item);
   document.getElementById('event-recurrence-end').value = item.recurrenceEndDate || '';
   setWeekdays('event', item.recurrenceWeekdays);
@@ -4128,11 +4161,29 @@ function bindActions() {
 }
 
 document.getElementById('todo-has-due')?.addEventListener('change', event => setTodoDueEnabled(event.target.checked));
-document.getElementById('todo-reminder-enabled')?.addEventListener('change', event => {
-  setTodoReminderEnabled(event.target.checked && document.getElementById('todo-has-due')?.checked !== false);
+document.getElementById('todo-reminder-fullscreen')?.addEventListener('change', () => {
+  setTodoReminderChannels(
+    document.getElementById('todo-reminder-fullscreen')?.checked === true,
+    document.getElementById('todo-reminder-notification')?.checked === true
+  );
 });
-document.getElementById('event-reminder-enabled')?.addEventListener('change', event => {
-  setEventReminderEnabled(event.target.checked);
+document.getElementById('todo-reminder-notification')?.addEventListener('change', () => {
+  setTodoReminderChannels(
+    document.getElementById('todo-reminder-fullscreen')?.checked === true,
+    document.getElementById('todo-reminder-notification')?.checked === true
+  );
+});
+document.getElementById('event-reminder-fullscreen')?.addEventListener('change', () => {
+  setEventReminderChannels(
+    document.getElementById('event-reminder-fullscreen')?.checked === true,
+    document.getElementById('event-reminder-notification')?.checked === true
+  );
+});
+document.getElementById('event-reminder-notification')?.addEventListener('change', () => {
+  setEventReminderChannels(
+    document.getElementById('event-reminder-fullscreen')?.checked === true,
+    document.getElementById('event-reminder-notification')?.checked === true
+  );
 });
 document.getElementById('event-course-enabled')?.addEventListener('change', event => {
   if (event.target.checked) {
@@ -4678,7 +4729,9 @@ document.getElementById('create-todo').onclick = async () => {
     const hasDueDate = document.getElementById('todo-has-due')?.checked !== false;
     const dueAt = hasDueDate ? readDateTimeValue('todo-due') : null;
     const dueAtMillis = dueAt ? new Date(dueAt).getTime() : null;
-    const todoReminderEnabled = hasDueDate && document.getElementById('todo-reminder-enabled')?.checked !== false;
+    const todoFullscreenReminder = hasDueDate && document.getElementById('todo-reminder-fullscreen')?.checked === true;
+    const todoNotificationReminder = hasDueDate && document.getElementById('todo-reminder-notification')?.checked === true;
+    const todoReminderEnabled = todoFullscreenReminder || todoNotificationReminder;
     const reminderOffsets = todoReminderEnabled ? parseReminderSpecs(document.getElementById('todo-reminder-spec').value, dueAtMillis) : [];
     const groupIds = readTodoEditorGroupIds();
     const recurrenceType = document.getElementById('todo-recurrence-type').value;
@@ -4695,7 +4748,7 @@ document.getElementById('create-todo').onclick = async () => {
       alarmMode: todoReminderEnabled && document.getElementById('todo-alarm-mode').checked,
       ringEnabled: todoReminderEnabled && document.getElementById('todo-ring').checked,
       vibrateEnabled: todoReminderEnabled && document.getElementById('todo-vibrate').checked,
-      reminderDeliveryMode: document.getElementById('todo-reminder-mode').value,
+      reminderDeliveryMode: todoFullscreenReminder && todoNotificationReminder ? 'FULLSCREEN_AND_NOTIFICATION' : (todoFullscreenReminder ? 'FULLSCREEN' : 'NOTIFICATION'),
       scope: recurrenceScopePayload('todo', state.editingTodoOriginalRecurring, hasDueDate ? recurrenceType : 'NONE'),
       recurrence: hasDueDate ? recurrencePayload(
         recurrenceType,
@@ -4769,7 +4822,9 @@ document.getElementById('save-event').onclick = async () => {
     const endAt = readDateTimeValue('event-end');
     const startAtMillis = startAt ? new Date(startAt).getTime() : null;
     const recurrenceType = document.getElementById('event-recurrence-type').value;
-    const eventReminderEnabled = document.getElementById('event-reminder-enabled')?.checked !== false;
+    const eventFullscreenReminder = document.getElementById('event-reminder-fullscreen')?.checked === true;
+    const eventNotificationReminder = document.getElementById('event-reminder-notification')?.checked === true;
+    const eventReminderEnabled = eventFullscreenReminder || eventNotificationReminder;
     const courseModeEnabled = document.getElementById('event-course-enabled')?.checked === true && !state.editingEventId;
     const reminderRaw = document.getElementById('event-reminder-offsets').value;
     const payload = {
@@ -4786,7 +4841,7 @@ document.getElementById('save-event').onclick = async () => {
       checkInEnabled: document.getElementById('event-check-in').checked,
       ringEnabled: eventReminderEnabled && document.getElementById('event-ring').checked,
       vibrateEnabled: eventReminderEnabled && document.getElementById('event-vibrate').checked,
-      reminderDeliveryMode: document.getElementById('event-reminder-mode').value,
+      reminderDeliveryMode: eventFullscreenReminder && eventNotificationReminder ? 'FULLSCREEN_AND_NOTIFICATION' : (eventFullscreenReminder ? 'FULLSCREEN' : 'NOTIFICATION'),
       multiSlotBundleId: state.editingEventMultiSlotBundleId,
       syncMultiSlotBundleSharedFields: !!state.editingEventMultiSlotBundleId && document.getElementById('event-multi-slot-sync')?.checked === true,
       scope: recurrenceScopePayload('event', state.editingEventOriginalRecurring, recurrenceType),

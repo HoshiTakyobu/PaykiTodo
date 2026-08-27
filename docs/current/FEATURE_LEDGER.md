@@ -9,13 +9,14 @@ This file tracks the product at a practical level for new coding sessions.
 - create, edit, delete todo items
 - Shared todo/event editors persist changes only through the top-right completion action; system dismissal, sheet dismissal, and the top `取消` action silently discard the current draft without writing data or showing a second discard confirmation
 - title / notes / multi-group tags / deadline / multi-reminder fields
+- reminder channels are independently selectable as `全屏提醒` and `通知栏提醒`; selecting neither disables reminder scheduling, while selecting both enables both delivery surfaces
 - Todo editor shows title / DDL / group first for new todos and folds notes / reminder input / reminder delivery mode / recurrence / ring / vibration into 更多选项, auto-expanding when editing existing todos that use advanced state
-- Todo editor can choose reminder delivery mode between full-screen reminder and notification reminder; the selected mode is persisted for todos and recurring todo templates
+- Todo editor persists independent full-screen and notification reminder channel selections for todos and recurring todo templates; either channel can be used alone or both can be selected together
 - Todo editor can enable `闹钟模式（持续响铃直到操作）` for DDL-backed reminders; alarm mode persists on todos and recurring templates, future recurring instances inherit it, and timeout downgrade leaves an explicit unhandled-reminder notification plus limited retry bursts
 - Todo editor can mark a DDL-backed task as `倒数日`; the task then uses its DDL date as the countdown target and appears on board / desktop / widget countdown surfaces
 - Todo editor can mark a DDL-backed task as `仅提醒，不在看板/日历显示`; the task still schedules reminders and remains manageable in My Tasks, but is filtered out of the phone daily board, Android board widget, desktop board, countdown board queries, and AI daily/weekly todo statistics
 - Desktop Web todo editor exposes and preserves `闹钟模式` and `仅提醒，不在看板显示`, matching the phone editor for these DDL-dependent todo fields
-- Desktop Web todo editor exposes an explicit `启用提醒` switch; disabling it saves an empty reminder-offset list and disables reminder-dependent fields instead of relying on clearing reminder text
+- Desktop Web todo and event editors use two independent channel checkboxes, `全屏提醒` and `通知栏提醒`, as the complete reminder switch; clearing both saves an empty reminder-offset list and does not schedule a reminder
 - Desktop Web todo and event editors use compact weekday multi-select chips for weekly recurrence instead of requiring manual `1,3,5` text input, and hide those chips for non-weekly recurrence rules
 - Desktop Web Planning Desk recognition preview uses the same weekday multi-select chips for weekly recurrence candidates, and clears weekly-day state when the candidate is changed away from `每周`
 - recurring todo templates persist `hiddenFromBoard`, and newly replenished recurring instances inherit the reminder-only visibility setting
@@ -208,7 +209,7 @@ This file tracks the product at a practical level for new coding sessions.
 - phone calendar keeps a bounded loaded event window and skips redundant Room queries when the requested visible date range is already covered, reducing timeline swipe churn without changing displayed events
 - phone Calendar three-day continuous-scroll view initializes its first visible range around the selected date instead of the far start of the long date window, preventing an empty-looking first render when current events exist
 - Desktop Web event editor supports multi-line event titles, matching phone-side event title entry instead of forcing a single-line input
-- Desktop Web event editor exposes an explicit `启用提醒` switch; disabling it saves an empty reminder-offset list and disables reminder-dependent fields, while new events default to no reminder like the phone event editor
+- Desktop Web event editor uses the same independent full-screen / notification channel checkboxes as the phone editor; clearing both saves an empty reminder-offset list, while new events keep their configured default channel preset
 - Desktop Web event creation supports `每周多时间段` for new events, matching the phone-side multi-slot workflow by creating one weekly recurring event per weekday/time slot through the batch event API; generated slots now share a persisted `multiSlotBundleId`
 - Desktop Web 日程时间轴 supports local weekly Excel import for `review.xls` / `.xlsx`: the browser reads the user-selected file only, parses date headers plus left-side time slots, lets internal cell time ranges override row times, handles merged-cell duration inference, previews candidates, marks existing / in-file duplicates, and imports only selected confirmed events without touching the Excel file or wallpaper workflow
 - Phone event creation supports `每周多时间段` for new events: multiple weekday + start/end slots share one event title, location, notes, reminder settings, color, countdown, and check-in configuration, then create one weekly recurring event series per slot; reminder input is validated and converted per slot anchor so each period gets reminder offsets relative to its own start time
@@ -245,7 +246,8 @@ This file tracks the product at a practical level for new coding sessions.
 - todo detail/edit surfaces keep the complex DDL adjustment responsibility; the full-screen reminder surface no longer exposes custom snooze, cancel/archive, or `DDL 推迟`
 - notification reminder path
 - full-screen reminder path
-- reminder delivery policy respects the per-item `通知栏提醒` / `全屏界面提醒` choice: notification-mode items no longer actively launch the full-screen reminder surface unless work mode or alarm mode explicitly overrides them
+- reminder delivery policy respects the independently selected `通知栏提醒` / `全屏界面提醒` channels: notification-only items never launch the full-screen surface, both selected keeps both surfaces, and no selected channel leaves the item unscheduled
+- changing an existing item to no reminder immediately cancels its stored AlarmManager reminder alarms, reminder notification, dispatch markers, and full-screen handoff state; event ongoing notifications remain independent
 - full-screen reminder relaunch paths keep a short recent-surface cooldown only after `ReminderActivity` actually reaches `onResume`, so silent Android background-launch blocks do not incorrectly suppress retries; Android 14+ full-screen permission state is logged and unavailable permission triggers the accessibility fallback path
 - reminder alarm notification channels use the current v10 channel IDs so old user/system channel downgrades do not keep suppressing high-priority full-screen reminder notifications
 - full-screen event reminders can start an event check-in when `打卡追踪` is enabled
@@ -260,7 +262,7 @@ This file tracks the product at a practical level for new coding sessions.
 - reminder playback can now select alarm, accessibility, notification, or media audio channels
 - PaykiTodo now tracks an internal reminder-volume percentage for self-played alert audio
 - an advanced temporary system-channel volume boost can raise the selected stream during reminder playback and restore the original volume afterward
-- work mode suppresses outward reminder sound by default, forces stronger vibration even when an individual item disabled vibration, and pushes calendar reminders into the full-screen / accessibility fallback chain
+- work mode suppresses outward reminder sound by default and forces stronger vibration even when an individual item disabled vibration, while respecting the item's selected full-screen / notification channels
 
 ### Packaging / Identity
 
@@ -335,7 +337,7 @@ This file tracks the product at a practical level for new coding sessions.
 - LAN browser-based desktop sync console exists
 - phone-side HTTP serving model exists
 - browser can perform limited data operations against the phone-side dataset
-- desktop web can edit existing todos with title, notes, DDL, reminder, reminder delivery mode, multi-group tags, recurrence, ring, and vibration fields
+- desktop web can edit existing todos with title, notes, DDL, independent full-screen / notification reminder channels, multi-group tags, recurrence, ring, and vibration fields
 - desktop web todo title editing uses a multiline textarea and preserves newline display in todo/event cards and previews
 - desktop web recurring todo/event editing exposes the same scope model as the phone side (`仅当前` / `当前及之后` / `整个循环系列`); turning a recurring todo into non-recurring defaults to `当前及之后` so future generated instances do not keep appearing
 - desktop web todo management has compact multi-select group filter chips with intersection semantics, and todo cards / previews / board rows display all group names instead of collapsing to one group

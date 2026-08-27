@@ -35,7 +35,7 @@ Work mode is a quiet strong-reminder mode. Its intent is to avoid outward sound 
 
 - suppress outward reminder sound by default
 - force the stronger vibration pattern, even if the individual item disabled vibration
-- keep calendar reminders on the full-screen / accessibility fallback chain
+- respect the item's selected full-screen / notification channels; work mode must not upgrade a notification-only item into a full-screen reminder
 
 Do not change work mode into a normal ringing mode unless the product requirement changes explicitly.
 

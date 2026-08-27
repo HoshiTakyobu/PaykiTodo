@@ -137,6 +137,7 @@ import com.example.todoalarm.data.PlanningPostponeScope
 import com.example.todoalarm.data.PlanningRefreshScope
 import com.example.todoalarm.data.RecurrenceConfig
 import com.example.todoalarm.data.RecurrenceType
+import com.example.todoalarm.data.ReminderDeliveryMode
 import com.example.todoalarm.data.TaskGroup
 import com.example.todoalarm.data.toPlanningImportCandidate
 import kotlinx.coroutines.Dispatchers
@@ -3258,7 +3259,32 @@ private fun PlanningCandidateCard(
                         )
                     }
                 )
-                Text("提醒默认全屏 · 响铃 + 震动", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text("提醒方式（可同时选择；都不选择即不提醒）", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    FilterChip(
+                        selected = candidate.reminderEnabled && candidate.reminderDeliveryMode.usesFullscreen,
+                        onClick = {
+                            val fullscreen = !(candidate.reminderEnabled && candidate.reminderDeliveryMode.usesFullscreen)
+                            val notification = candidate.reminderEnabled && candidate.reminderDeliveryMode.usesNotification
+                            onCandidateChange(candidate.withPlanningReminderChannels(fullscreen, notification))
+                        },
+                        label = { Text("全屏提醒") }
+                    )
+                    FilterChip(
+                        selected = candidate.reminderEnabled && candidate.reminderDeliveryMode.usesNotification,
+                        onClick = {
+                            val fullscreen = candidate.reminderEnabled && candidate.reminderDeliveryMode.usesFullscreen
+                            val notification = !(candidate.reminderEnabled && candidate.reminderDeliveryMode.usesNotification)
+                            onCandidateChange(candidate.withPlanningReminderChannels(fullscreen, notification))
+                        },
+                        label = { Text("通知栏提醒") }
+                    )
+                }
                 PlanningCandidateOptionRow(
                     candidate = candidate,
                     onCandidateChange = onCandidateChange
@@ -4121,6 +4147,17 @@ private fun PlanningImportCandidate.withPlanningReminderInput(raw: String): Plan
 
 private fun PlanningImportCandidate.revalidatePlanningReminderInput(): PlanningImportCandidate {
     return if (reminderInputText.isBlank()) this else withPlanningReminderInput(reminderInputText)
+}
+
+private fun PlanningImportCandidate.withPlanningReminderChannels(
+    fullscreen: Boolean,
+    notification: Boolean
+): PlanningImportCandidate {
+    return copy(
+        reminderEnabled = fullscreen || notification,
+        reminderDeliveryMode = ReminderDeliveryMode.fromSelections(fullscreen, notification)
+            ?: ReminderDeliveryMode.FULLSCREEN
+    )
 }
 
 private fun parsePlanningWeekdays(raw: String): Set<DayOfWeek> {

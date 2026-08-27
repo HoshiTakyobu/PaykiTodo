@@ -106,14 +106,13 @@ fun TodoEditorDialog(
     var dueAt by remember(initialTodo?.id) {
         mutableStateOf(initialTodo?.dueDateTimeOrNull() ?: now.plusHours(2))
     }
-    var reminderEnabled by remember(initialTodo?.id) {
-        mutableStateOf(
-            if (isHistory || initialTodo?.hasDueDate == false) {
-                false
-            } else {
-                initialTodo?.reminderEnabled ?: true
-            }
-        )
+    val initialReminderMode = initialTodo?.reminderDeliveryModeEnum ?: ReminderDeliveryMode.FULLSCREEN
+    val initialReminderEnabled = !isHistory && initialTodo?.hasDueDate != false && (initialTodo?.reminderEnabled ?: true)
+    var fullscreenReminderEnabled by remember(initialTodo?.id) {
+        mutableStateOf(initialReminderEnabled && initialReminderMode.usesFullscreen)
+    }
+    var notificationReminderEnabled by remember(initialTodo?.id) {
+        mutableStateOf(initialReminderEnabled && initialReminderMode.usesNotification)
     }
     var reminderAt by remember(initialTodo?.id) {
         mutableStateOf(initialTodo?.reminderAtMillis?.let(::reminderAtMillisToDateTime) ?: dueAt)
@@ -130,9 +129,11 @@ fun TodoEditorDialog(
     var alarmMode by remember(initialTodo?.id) {
         mutableStateOf(initialTodo?.alarmMode == true)
     }
-    var reminderDeliveryMode by remember(initialTodo?.id) {
-        mutableStateOf(initialTodo?.reminderDeliveryModeEnum ?: ReminderDeliveryMode.FULLSCREEN)
-    }
+    val reminderEnabled = hasDueDate && !isHistory && (fullscreenReminderEnabled || notificationReminderEnabled)
+    val reminderDeliveryMode = ReminderDeliveryMode.fromSelections(
+        fullscreen = fullscreenReminderEnabled,
+        notification = notificationReminderEnabled
+    ) ?: ReminderDeliveryMode.FULLSCREEN
     var countdownEnabled by remember(initialTodo?.id) {
         mutableStateOf(initialTodo?.countdownEnabled == true)
     }
@@ -166,7 +167,6 @@ fun TodoEditorDialog(
         mutableStateOf(initialTodo?.recurrenceEndDate ?: dueAt.toLocalDate().plusDays(90))
     }
     var recurrencePreview by remember { mutableStateOf<RecurrencePreviewResult?>(null) }
-    var showReminderDeliveryPicker by remember { mutableStateOf(false) }
     var showRecurrenceTypePicker by remember { mutableStateOf(false) }
     var helpTopic by remember { mutableStateOf<InputSyntaxHelpTopic?>(null) }
     var activeDateTimeTarget by remember { mutableStateOf<TodoDateTimeTarget?>(null) }
@@ -266,7 +266,8 @@ fun TodoEditorDialog(
                             onCheckedChange = { checked ->
                                 hasDueDate = checked
                                 if (!checked) {
-                                    reminderEnabled = false
+                                    fullscreenReminderEnabled = false
+                                    notificationReminderEnabled = false
                                     recurringEnabled = false
                                     countdownEnabled = false
                                     hiddenFromBoard = false
@@ -397,33 +398,42 @@ fun TodoEditorDialog(
                             }
 
                             TodoEditorBlock(title = "提醒") {
+                                Text(
+                                    "直接勾选需要的提醒方式；两项都不勾选即不提醒。",
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    style = MaterialTheme.typography.bodySmall
+                                )
                                 Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.SpaceBetween
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .horizontalScroll(rememberScrollState()),
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                                 ) {
-                                    Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                                        Text("提醒", fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
-                                    }
-                                    Switch(
-                                        checked = reminderEnabled,
-                                        onCheckedChange = {
-                                            reminderEnabled = it
-                                            if (it && initialTodo == null) {
+                                    FilterChip(
+                                        selected = fullscreenReminderEnabled,
+                                        onClick = {
+                                            fullscreenReminderEnabled = !fullscreenReminderEnabled
+                                            if (fullscreenReminderEnabled && initialTodo == null) {
                                                 reminderAt = dueAt
                                                 if (reminderInput.isBlank()) reminderInput = "5"
                                             }
                                         },
-                                        thumbContent = null
+                                        label = { Text("全屏提醒") }
+                                    )
+                                    FilterChip(
+                                        selected = notificationReminderEnabled,
+                                        onClick = {
+                                            notificationReminderEnabled = !notificationReminderEnabled
+                                            if (notificationReminderEnabled && initialTodo == null) {
+                                                reminderAt = dueAt
+                                                if (reminderInput.isBlank()) reminderInput = "5"
+                                            }
+                                        },
+                                        label = { Text("通知栏提醒") }
                                     )
                                 }
 
                                 if (reminderEnabled) {
-                                    TodoSelectionRow(
-                                        title = "提醒方式",
-                                        value = reminderDeliveryMode.label,
-                                        onClick = { showReminderDeliveryPicker = true }
-                                    )
                                     Row(
                                         modifier = Modifier.fillMaxWidth(),
                                         verticalAlignment = Alignment.CenterVertically,
@@ -491,23 +501,23 @@ fun TodoEditorDialog(
                                         minLines = 1,
                                         maxLines = 3
                                     )
-                                }
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .horizontalScroll(rememberScrollState()),
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                                ) {
-                                    FilterChip(
-                                        selected = ringEnabled,
-                                        onClick = { ringEnabled = !ringEnabled },
-                                        label = { Text("响铃") }
-                                    )
-                                    FilterChip(
-                                        selected = vibrateEnabled,
-                                        onClick = { vibrateEnabled = !vibrateEnabled },
-                                        label = { Text("震动") }
-                                    )
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .horizontalScroll(rememberScrollState()),
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                    ) {
+                                        FilterChip(
+                                            selected = ringEnabled,
+                                            onClick = { ringEnabled = !ringEnabled },
+                                            label = { Text("响铃") }
+                                        )
+                                        FilterChip(
+                                            selected = vibrateEnabled,
+                                            onClick = { vibrateEnabled = !vibrateEnabled },
+                                            label = { Text("震动") }
+                                        )
+                                    }
                                 }
                             }
 
@@ -615,29 +625,6 @@ fun TodoEditorDialog(
             title = "循环任务预览",
             preview = preview,
             onDismiss = { recurrencePreview = null }
-        )
-    }
-
-    if (showReminderDeliveryPicker) {
-        TodoSingleChoiceListDialog(
-            title = "选择提醒方式",
-            doneLabel = "完成",
-            options = ReminderDeliveryMode.entries.map { mode ->
-                TodoChoiceItem(
-                    key = mode.name,
-                    title = mode.label,
-                    subtitle = when (mode) {
-                        ReminderDeliveryMode.FULLSCREEN -> "到点直接弹出全屏提醒界面"
-                        ReminderDeliveryMode.NOTIFICATION -> "只走通知栏提醒，不主动弹出全屏界面"
-                    }
-                )
-            },
-            selectedKey = reminderDeliveryMode.name,
-            onSelect = { key ->
-                reminderDeliveryMode = ReminderDeliveryMode.entries.first { it.name == key }
-            },
-            onDismiss = { showReminderDeliveryPicker = false },
-            onDone = { showReminderDeliveryPicker = false }
         )
     }
 

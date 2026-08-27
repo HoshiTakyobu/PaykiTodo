@@ -247,16 +247,14 @@
             <div id="todo-due-preview" class="date-time-preview">选择 DDL 后显示日期预览</div>
           </div>
         </div>
-        <div class="todo-due-dependent">
-          <label><input id="todo-reminder-enabled" type="checkbox" checked /> 启用提醒</label>
+        <div class="todo-due-dependent reminder-channel-row">
+          <label><input id="todo-reminder-fullscreen" type="checkbox" checked /> 全屏提醒</label>
+          <label><input id="todo-reminder-notification" type="checkbox" /> 通知栏提醒</label>
+          <span class="field-hint">可同时勾选；都不勾选即不提醒。</span>
         </div>
         <div class="todo-due-dependent todo-reminder-dependent">
           <label>提醒时间</label>
           <input id="todo-reminder-spec" placeholder="5,15,16:30,下午 2:30,明天 16:30,5/10，14:30" />
-        </div>
-        <div class="todo-due-dependent todo-reminder-dependent">
-          <label>提醒方式</label>
-          <select id="todo-reminder-mode"><option value="FULLSCREEN">全屏提醒</option><option value="NOTIFICATION">通知栏提醒</option></select>
         </div>
         <div>
           <label>分组</label>
@@ -322,8 +320,11 @@
           </div>
         </div>
         <div><label>地点</label><input id="event-location" placeholder="地点" /></div>
-        <div><label><input id="event-reminder-enabled" type="checkbox" checked /> 启用提醒</label></div>
-        <div class="event-reminder-dependent"><label>提醒方式</label><select id="event-reminder-mode"><option value="NOTIFICATION">通知栏提醒</option><option value="FULLSCREEN">全屏提醒</option></select></div>
+        <div class="reminder-channel-row">
+          <label><input id="event-reminder-fullscreen" type="checkbox" /> 全屏提醒</label>
+          <label><input id="event-reminder-notification" type="checkbox" /> 通知栏提醒</label>
+          <span class="field-hint">可同时勾选；都不勾选即不提醒。</span>
+        </div>
         <div class="span-2"><label>备注</label><textarea id="event-notes" placeholder="备注"></textarea></div>
         <div>
           <label>开始</label>

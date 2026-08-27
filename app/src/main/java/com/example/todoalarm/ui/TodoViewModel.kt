@@ -1652,21 +1652,27 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
             } else {
                 app.alarmScheduler.cancel(item.id)
             }
+            if (!item.reminderEnabled || item.isHistory) {
+                clearDisabledReminderArtifacts(item.id)
+            }
             return
         }
         if (item.isTodo && !item.hasDueDate) {
+            clearDisabledReminderArtifacts(item.id)
             if (item.reminderEnabled || item.reminderAtMillis != null) {
-                ReminderDispatchTracker.clear(app, item.id)
                 repository.updateTodo(item.copy(reminderEnabled = false, reminderAtMillis = null))
             }
             return
         }
-        if (!item.reminderEnabled) return
+        if (!item.reminderEnabled) {
+            clearDisabledReminderArtifacts(item.id)
+            return
+        }
         ReminderDispatchTracker.clear(app, item.id)
         val scheduleMessage = alarmScheduler.schedule(item)
         if (scheduleMessage != null) {
             repository.updateTodo(item.copy(reminderEnabled = false))
-            alarmScheduler.cancel(item.id)
+            clearDisabledReminderArtifacts(item.id)
         }
     }
 
@@ -1730,6 +1736,19 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
             reminderNotifier.cancel(item.id)
             ReminderDispatchTracker.clear(app, item.id)
             ActiveReminderStore.clearIfMatches(app, item.id)
+        }
+    }
+
+    private fun clearDisabledReminderArtifacts(todoId: Long) {
+        val reminderWasActive = ActiveReminderStore.getActiveTodoId(app) == todoId
+        alarmScheduler.cancelReminderOnly(todoId)
+        reminderNotifier.cancel(todoId)
+        ReminderDispatchTracker.clear(app, todoId)
+        ActiveReminderStore.clearIfMatches(app, todoId)
+        ActiveReminderStore.clearActivityHandoff(app, todoId)
+        ActiveReminderStore.clearReminderSurfaceMarker(app, todoId)
+        if (reminderWasActive) {
+            app.stopService(Intent(app, ReminderForegroundService::class.java))
         }
     }
 

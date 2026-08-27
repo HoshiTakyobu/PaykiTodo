@@ -156,8 +156,13 @@ internal fun CalendarEventEditorDialog(
     var accentColorHex by remember(initialEvent?.id, seedDraft) {
         mutableStateOf(initialEvent?.accentColorHex ?: seedDraft?.accentColorHex ?: CalendarColorOptions.first())
     }
-    var reminderEnabled by remember(initialEvent?.id, seedDraft) {
-        mutableStateOf(initialEvent?.reminderEnabled == true || seedDraft?.normalizedReminderOffsetsMinutes?.isNotEmpty() == true)
+    val initialReminderMode = initialEvent?.reminderDeliveryModeEnum ?: seedDraft?.reminderDeliveryMode ?: defaultReminderDeliveryMode
+    val initialReminderEnabled = initialEvent?.reminderEnabled == true || seedDraft?.normalizedReminderOffsetsMinutes?.isNotEmpty() == true
+    var fullscreenReminderEnabled by remember(initialEvent?.id, seedDraft) {
+        mutableStateOf(initialReminderEnabled && initialReminderMode.usesFullscreen)
+    }
+    var notificationReminderEnabled by remember(initialEvent?.id, seedDraft) {
+        mutableStateOf(initialReminderEnabled && initialReminderMode.usesNotification)
     }
     var reminderOffsetsMinutes by remember(initialEvent?.id, seedDraft) {
         mutableStateOf(
@@ -191,9 +196,11 @@ internal fun CalendarEventEditorDialog(
     }
     var ringEnabled by remember(initialEvent?.id, seedDraft) { mutableStateOf(initialEvent?.ringEnabled ?: seedDraft?.ringEnabled ?: defaultRingEnabled) }
     var vibrateEnabled by remember(initialEvent?.id, seedDraft) { mutableStateOf(initialEvent?.vibrateEnabled ?: seedDraft?.vibrateEnabled ?: defaultVibrateEnabled) }
-    var reminderDeliveryMode by remember(initialEvent?.id, seedDraft) {
-        mutableStateOf(initialEvent?.reminderDeliveryModeEnum ?: seedDraft?.reminderDeliveryMode ?: defaultReminderDeliveryMode)
-    }
+    val reminderEnabled = fullscreenReminderEnabled || notificationReminderEnabled
+    val reminderDeliveryMode = ReminderDeliveryMode.fromSelections(
+        fullscreen = fullscreenReminderEnabled,
+        notification = notificationReminderEnabled
+    ) ?: ReminderDeliveryMode.FULLSCREEN
     var countdownEnabled by remember(initialEvent?.id, seedDraft) {
         mutableStateOf(initialEvent?.countdownEnabled == true || seedDraft?.countdownEnabled == true)
     }
@@ -220,7 +227,6 @@ internal fun CalendarEventEditorDialog(
     }
     var recurrencePreview by remember { mutableStateOf<RecurrencePreviewResult?>(null) }
     var showReminderPicker by remember { mutableStateOf(false) }
-    var showReminderDeliveryPicker by remember { mutableStateOf(false) }
     var showRecurrencePicker by remember { mutableStateOf(false) }
     var showGroupPicker by remember { mutableStateOf(false) }
     var helpTopic by remember { mutableStateOf<InputSyntaxHelpTopic?>(null) }
@@ -656,22 +662,26 @@ internal fun CalendarEventEditorDialog(
                 }
 
                 EditorBlock(title = "提醒") {
+                    Text(
+                        if (allDay) "全天日程按当天 09:00 作为基准；两项都不勾选即不提醒。" else "按开始时间提前提醒；两项都不勾选即不提醒。",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        style = MaterialTheme.typography.bodySmall
+                    )
                     Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        Column(
-                            modifier = Modifier.weight(1f),
-                            verticalArrangement = Arrangement.spacedBy(2.dp)
-                        ) {
-                            Text("提醒", fontWeight = FontWeight.SemiBold)
-                            Text(if (allDay) "全天日程按当天 09:00 作为基准" else "按开始时间提前提醒", color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        }
-                        Switch(
-                            checked = reminderEnabled,
-                            onCheckedChange = { reminderEnabled = it },
-                            thumbContent = null
+                        FilterChip(
+                            selected = fullscreenReminderEnabled,
+                            onClick = { fullscreenReminderEnabled = !fullscreenReminderEnabled },
+                            label = { Text("全屏提醒") }
+                        )
+                        FilterChip(
+                            selected = notificationReminderEnabled,
+                            onClick = { notificationReminderEnabled = !notificationReminderEnabled },
+                            label = { Text("通知栏提醒") }
                         )
                     }
 
@@ -748,12 +758,6 @@ internal fun CalendarEventEditorDialog(
                             minLines = 1,
                             maxLines = 3
                         )
-                        EditorSelectionRow(
-                            title = "提醒方式",
-                            value = reminderDeliveryMode.label,
-                            onClick = { showReminderDeliveryPicker = true }
-                        )
-
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -1058,29 +1062,6 @@ internal fun CalendarEventEditorDialog(
             }
         )
     }
-    if (showReminderDeliveryPicker) {
-        SingleChoiceListDialog(
-            title = "选择提醒方式",
-            doneLabel = "完成",
-            options = ReminderDeliveryMode.entries.map { mode ->
-                ChoiceItem(
-                    key = mode.name,
-                    title = mode.label,
-                    subtitle = when (mode) {
-                        ReminderDeliveryMode.FULLSCREEN -> "直接弹出提醒界面"
-                        ReminderDeliveryMode.NOTIFICATION -> "走通知栏提醒"
-                    }
-                )
-            },
-            selectedKey = reminderDeliveryMode.name,
-            onSelect = { key ->
-                reminderDeliveryMode = ReminderDeliveryMode.entries.first { it.name == key }
-            },
-            onDismiss = { showReminderDeliveryPicker = false },
-            onDone = { showReminderDeliveryPicker = false }
-        )
-    }
-
     if (showGroupPicker) {
         SingleChoiceListDialog(
             title = "选择日程分组",

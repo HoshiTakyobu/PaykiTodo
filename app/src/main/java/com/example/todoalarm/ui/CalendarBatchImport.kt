@@ -865,7 +865,8 @@ internal object CalendarBatchImportParser {
         return when (value.trim().lowercase(Locale.ROOT)) {
             "notification", "通知栏", "通知栏提醒" -> ReminderDeliveryMode.NOTIFICATION
             "fullscreen", "全屏", "全屏界面提醒" -> ReminderDeliveryMode.FULLSCREEN
-            else -> error("Mode 仅支持 Notification 或 Fullscreen")
+            "both", "all", "fullscreen_and_notification", "全屏+通知栏", "全屏和通知栏", "全屏 + 通知栏" -> ReminderDeliveryMode.FULLSCREEN_AND_NOTIFICATION
+            else -> error("Mode 支持 Notification、Fullscreen 或 Both")
         }
     }
 
@@ -1238,7 +1239,8 @@ internal object CalendarBatchImportHub {
         return when (value.trim().lowercase(Locale.ROOT)) {
             "notification", "通知栏", "通知栏提醒" -> ReminderDeliveryMode.NOTIFICATION
             "fullscreen", "全屏", "全屏提醒", "全屏界面提醒" -> ReminderDeliveryMode.FULLSCREEN
-            else -> error("mode 仅支持 notification/fullscreen 或 通知栏/全屏")
+            "both", "all", "fullscreen_and_notification", "全屏+通知栏", "全屏和通知栏", "全屏 + 通知栏" -> ReminderDeliveryMode.FULLSCREEN_AND_NOTIFICATION
+            else -> error("mode 支持 notification、fullscreen、both 或 通知栏/全屏/两者")
         }
     }
 

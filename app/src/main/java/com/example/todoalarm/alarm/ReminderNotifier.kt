@@ -29,7 +29,8 @@ class ReminderNotifier(
     fun build(
         todoItem: TodoItem,
         taskGroup: ResolvedTaskGroup = resolveTaskGroup(todoItem, emptyList()),
-        requestFullscreen: Boolean = false
+        requestFullscreen: Boolean = false,
+        showReminderContent: Boolean = true
     ): Notification {
         val channelId = ensureChannel(todoItem)
         val fullScreenIntent = reminderPendingIntent(todoItem.id)
@@ -37,15 +38,18 @@ class ReminderNotifier(
 
         return NotificationCompat.Builder(context, channelId)
             .setSmallIcon(R.drawable.ic_stat_payki_todo)
-            .setContentTitle("${taskGroupEmoji(taskGroup)} ${todoItem.title}")
-            .setContentText(body)
-            .setStyle(NotificationCompat.BigTextStyle().bigText(body))
-            .setPriority(NotificationCompat.PRIORITY_MAX)
-            .setCategory(NotificationCompat.CATEGORY_ALARM)
-            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+            .setContentTitle(if (showReminderContent) "${taskGroupEmoji(taskGroup)} ${todoItem.title}" else "PaykiTodo")
+            .setContentText(if (showReminderContent) body else "全屏提醒正在显示")
+            .setStyle(if (showReminderContent) NotificationCompat.BigTextStyle().bigText(body) else NotificationCompat.BigTextStyle().bigText("PaykiTodo 正在显示全屏提醒。"))
+            .setPriority(if (showReminderContent) NotificationCompat.PRIORITY_MAX else NotificationCompat.PRIORITY_MIN)
+            .setCategory(if (showReminderContent) NotificationCompat.CATEGORY_ALARM else NotificationCompat.CATEGORY_SERVICE)
+            .setVisibility(if (showReminderContent) NotificationCompat.VISIBILITY_PUBLIC else NotificationCompat.VISIBILITY_SECRET)
             .setOngoing(true)
             .setAutoCancel(false)
             .setOnlyAlertOnce(true)
+            .setSilent(!showReminderContent)
+            .setShowWhen(showReminderContent)
+            .setLocalOnly(!showReminderContent)
             .setDefaults(0)
             .setForegroundServiceBehavior(NotificationCompat.FOREGROUND_SERVICE_IMMEDIATE)
             .setContentIntent(fullScreenIntent)

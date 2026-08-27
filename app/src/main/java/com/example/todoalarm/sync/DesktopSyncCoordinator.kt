@@ -1190,18 +1190,33 @@ class DesktopSyncCoordinator(
     }
 
     private suspend fun scheduleReminderOrDisable(item: TodoItem) {
+        if (item.isEvent) {
+            if (!item.isHistory) {
+                app.alarmScheduler.schedule(item)
+            } else {
+                app.alarmScheduler.cancel(item.id)
+            }
+            if (!item.reminderEnabled || item.isHistory) {
+                clearDisabledReminderArtifacts(item.id)
+            }
+            return
+        }
         if (item.isTodo && !item.hasDueDate) {
+            clearDisabledReminderArtifacts(item.id)
             if (item.reminderEnabled || item.reminderAtMillis != null) {
-                ReminderDispatchTracker.clear(context, item.id)
                 app.repository.updateTodo(item.copy(reminderEnabled = false, reminderAtMillis = null))
             }
             return
         }
-        if (!item.reminderEnabled) return
+        if (!item.reminderEnabled) {
+            clearDisabledReminderArtifacts(item.id)
+            return
+        }
         ReminderDispatchTracker.clear(context, item.id)
         val message = app.alarmScheduler.schedule(item)
         if (message != null) {
             app.repository.updateTodo(item.copy(reminderEnabled = false))
+            clearDisabledReminderArtifacts(item.id)
         }
     }
 
@@ -1213,6 +1228,19 @@ class DesktopSyncCoordinator(
             ActiveReminderStore.clearIfMatches(context, item.id)
         }
         context.stopService(android.content.Intent(context, ReminderForegroundService::class.java))
+    }
+
+    private fun clearDisabledReminderArtifacts(todoId: Long) {
+        val reminderWasActive = ActiveReminderStore.getActiveTodoId(context) == todoId
+        app.alarmScheduler.cancelReminderOnly(todoId)
+        app.reminderNotifier.cancel(todoId)
+        ReminderDispatchTracker.clear(context, todoId)
+        ActiveReminderStore.clearIfMatches(context, todoId)
+        ActiveReminderStore.clearActivityHandoff(context, todoId)
+        ActiveReminderStore.clearReminderSurfaceMarker(context, todoId)
+        if (reminderWasActive) {
+            context.stopService(android.content.Intent(context, ReminderForegroundService::class.java))
+        }
     }
 
     private suspend fun reschedulePlanningOperationItems(result: PlanningOperationResult) {

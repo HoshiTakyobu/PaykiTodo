@@ -6,6 +6,10 @@ This file summarizes the original `【开发】PaykiTodo` session and the later 
 
 The original PaykiTodo sessions became large and increasingly unreliable. This file converts the important project history into a stable handoff artifact.
 
+## Latest In-Progress Round
+
+The `1.15.11 / versionCode 353` round changes reminder delivery from a single reminder-mode choice to two independent channels across the phone editor, desktop Web editor, Planning Desk preview, and batch-import paths. Neither channel selected means the item remains unscheduled; selecting both requests the full-screen surface and keeps the content notification. Disabling reminders on an existing item now also clears stored reminder alarms, notifications, dispatch markers, and full-screen handoff state without removing an event's independent ongoing notification. It also aligns desktop calendar hour labels with the grid rules and changes completed-event styling to opacity-only color preservation. The code changes and final verification are complete locally; commit is pending.
+
 ## Initial Product Request
 
 The original request was to build an Android 14 local single-device app that:
@@ -99,6 +103,7 @@ When reconstructing PaykiTodo state, use this priority order:
 ## Recent Repository-Native Updates
 
 - `1.15.10` 收口待办批量选择的顶部/底部操作布局：选择状态移入应用栏，取消/完成固定在底部并保留滚动安全区；待办深色模式改为分层深蓝灰工作区；隔离同步轮询、看板时钟和看板专属派生计算，减少待办卡片嵌套绘制与重复计算；102 条待办模拟器快速滚动的卡顿帧从 13.00% 降至 10.93%。
+- `1.15.11` 将手机端、电脑端和规划台的提醒渠道统一为全屏 / 通知栏独立勾选；清空两项会清理已有提醒闹钟、通知和全屏状态但保留日程进行中通知；电脑端整点标签与时间轴实线对齐，已完成日程仅降低透明度保留原色；`testDebugUnitTest`、`lintDebug`、`assembleDebug`、前端语法检查和差异检查均通过。
 - `1.15.9` 将每日看板和待办页的待办长按批量选择、批量取消/完成及分组筛选管理入口落地，循环待办批量取消只作用于所选当前实例并写入历史。
 - `1.15.8` 新增待办批量选择与统一完成，待办/日程编辑器改为仅“完成”提交、返回静默丢弃草稿；AI 配置改为页面级事务草稿，AI 测活固定单请求且 429 不重试，全部 AI/在线语录请求显式使用本机 Codex CLI UA；待办和设置页使用独立深蓝灰工作区并收紧 AI 配置层级。
 - `1.15.7` 进一步提高浅色模式对比：页面底层改为可辨认的浅蓝灰，内容纯白、控件灰绿、辅助文字加深；日历拆成独立工具栏和内容面板并去掉重描边，工具按钮底色更明确，时区与初始时间轴位置收口；看板“明日安排”蓝色分区和数量层级同步加强。

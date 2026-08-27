@@ -11,31 +11,39 @@ class ReminderDeliveryPolicyTest {
     fun notificationModeDoesNotForceFullscreen() {
         val item = reminderItem(mode = ReminderDeliveryMode.NOTIFICATION)
 
-        assertFalse(shouldUseFullscreenReminder(item, workQuietModeEnabled = false))
+        assertFalse(shouldUseFullscreenReminder(item))
     }
 
     @Test
     fun fullscreenModeRequestsFullscreen() {
         val item = reminderItem(mode = ReminderDeliveryMode.FULLSCREEN)
 
-        assertTrue(shouldUseFullscreenReminder(item, workQuietModeEnabled = false))
+        assertTrue(shouldUseFullscreenReminder(item))
     }
 
     @Test
-    fun workQuietModeOverridesNotificationMode() {
-        val item = reminderItem(mode = ReminderDeliveryMode.NOTIFICATION)
+    fun combinedModeRequestsFullscreenAndKeepsNotificationSemantics() {
+        val item = reminderItem(mode = ReminderDeliveryMode.FULLSCREEN_AND_NOTIFICATION)
 
-        assertTrue(shouldUseFullscreenReminder(item, workQuietModeEnabled = true))
+        assertTrue(shouldUseFullscreenReminder(item))
+        assertTrue(item.reminderDeliveryModeEnum.usesNotification)
     }
 
     @Test
-    fun alarmModeOverridesNotificationMode() {
+    fun alarmModeDoesNotOverrideNotificationMode() {
         val item = reminderItem(
             mode = ReminderDeliveryMode.NOTIFICATION,
             alarmMode = true
         )
 
-        assertTrue(shouldUseFullscreenReminder(item, workQuietModeEnabled = false))
+        assertFalse(shouldUseFullscreenReminder(item))
+    }
+
+    @Test
+    fun disabledReminderDoesNotRequestFullscreenEvenWithStoredFullscreenMode() {
+        val item = reminderItem(mode = ReminderDeliveryMode.FULLSCREEN).copy(reminderEnabled = false)
+
+        assertFalse(shouldUseFullscreenReminder(item))
     }
 
     private fun reminderItem(

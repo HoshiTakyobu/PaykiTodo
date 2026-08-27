@@ -8,8 +8,8 @@
 - Target platform: Android 14 / API 34
 - License: MIT License (`LICENSE`)
 - Current version in code:
-  - `versionName = "1.15.10"`
-  - `versionCode = 352`
+  - `versionName = "1.15.11"`
+  - `versionCode = 353`
   - database version = `29`
 
 ## Current Build Facts
@@ -19,7 +19,13 @@
 - Latest GitHub Release:
   - `https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.14.12`
 - Latest fully built debug APK:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.15.10-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.15.11-debug.apk`
+- Current `1.15.11 / versionCode 353` status:
+  - Phone, desktop Web, and Planning Desk reminder controls use independent full-screen and notification channel selections. Selecting neither disables reminder scheduling; selecting both preserves both delivery surfaces.
+  - Work mode and alarm mode no longer override an explicitly unselected full-screen channel; they continue to control reminder audio/vibration behavior and alarm persistence when a channel is selected.
+  - Desktop Web calendar hour labels use a fixed row alignment model to center labels on the corresponding hour rule. Completed events retain their configured color and only reduce opacity.
+  - Database version remains `29`; no schema or migration change was introduced.
+  - Verification passed: `:app:testDebugUnitTest`, `:app:lintDebug`, `:app:assembleDebug`, `node --check app/src/main/assets/desktop-web/app.js`, `git diff --check`, and APK metadata (`1.15.11 / 353`).
 - Current `1.15.10 / versionCode 352` status:
   - Todo batch mode changes the top title to `多个待办 · 已选 N 项`, exposes select-all / clear in the top bar, and uses Back or the top-left arrow to exit selection before navigating away.
   - Cancel-selected and complete-selected are icon-free rounded rectangular actions fixed at the bottom of the screen. Normal create/import FABs are hidden during selection, and the list reserves bottom space so long-list items are not covered.

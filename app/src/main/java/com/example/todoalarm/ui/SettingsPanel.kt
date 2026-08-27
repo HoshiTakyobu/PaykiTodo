@@ -437,7 +437,7 @@ fun SettingsPanel(
 
                 Spacer(modifier = Modifier.height(4.dp))
                 CompactDropdownSetting(
-                    title = "日历提醒默认方式",
+                    title = "日历默认提醒渠道",
                     value = settings.defaultCalendarReminderMode.label,
                     options = ReminderDeliveryMode.entries.map { it.label },
                     onSelect = { label -> ReminderDeliveryMode.entries.firstOrNull { it.label == label }?.let(onDefaultCalendarReminderModeChange) }

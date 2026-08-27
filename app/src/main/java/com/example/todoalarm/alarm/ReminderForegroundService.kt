@@ -86,11 +86,7 @@ class ReminderForegroundService : Service() {
                 message = "mode=${todoItem.reminderDeliveryMode}"
             )
 
-            val settings = app.settingsStore.currentSettings()
-            val useFullscreenReminder = shouldUseFullscreenReminder(
-                item = todoItem,
-                workQuietModeEnabled = settings.workQuietModeEnabled
-            )
+            val useFullscreenReminder = shouldUseFullscreenReminder(todoItem)
             if (useFullscreenReminder) {
                 ActiveReminderStore.markActive(this@ReminderForegroundService, todoId)
                 activeFullscreenTodoId = todoId
@@ -107,7 +103,8 @@ class ReminderForegroundService : Service() {
             val notification = notifier.build(
                 todoItem = todoItem,
                 taskGroup = taskGroup,
-                requestFullscreen = useFullscreenReminder
+                requestFullscreen = useFullscreenReminder,
+                showReminderContent = todoItem.reminderDeliveryModeEnum.usesNotification
             )
             startInForeground(todoId, notification)
             ReminderChainLogger.log(

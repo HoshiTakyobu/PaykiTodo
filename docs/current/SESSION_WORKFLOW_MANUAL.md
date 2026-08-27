@@ -32,6 +32,18 @@ The new session should first output:
 
 If it does not do this, stop it and tell it to follow `docs/current/START_NEW_SESSION.txt` exactly.
 
+### Context Recovery When The Chat Summary Is Stale
+
+The chat summary is disposable and can be behind the repository after a compaction or a rollout-index repair. If it reports an older app version than `app/build.gradle.kts` or `docs/current/PROJECT_STATUS.md`:
+
+1. Treat the repository version and current docs as authoritative.
+2. Read the matching `docs/current/CONTEXT_RECOVERY_*.md` file before making changes.
+3. Check `git log` and the latest `SESSION_HANDOFF.md` to reconstruct the most recent completed round.
+4. Do not delete, concatenate, rename, or repoint active Codex rollout/state files merely to make the chat summary look newer.
+5. Record the corrected baseline in the repository so the next compaction has a stable recovery source.
+
+If the same thread UUID has multiple rollout files, the newest completed repository handoff is historical evidence; the state database's active rollout remains the file currently being written and must not be replaced without a separately verified migration.
+
 ## What Files The Session Must Read First
 
 The repository bootstrap order is:
@@ -42,11 +54,12 @@ The repository bootstrap order is:
 4. `docs/current/FEATURE_LEDGER.md`
 5. `docs/current/CURRENT_TASK.md`
 6. `docs/current/SESSION_HANDOFF.md`
-7. `docs/current/PAYKITODO_SESSION_LEDGER.md`
-8. `README.md`
-9. `docs/current/PROJECT_BACKLOG.md`
-10. `CHANGELOG.md`
-11. `git status`
+7. `docs/current/CONTEXT_RECOVERY_V1_15_10.md`
+8. `docs/current/PAYKITODO_SESSION_LEDGER.md`
+9. `README.md`
+10. `docs/current/PROJECT_BACKLOG.md`
+11. `CHANGELOG.md`
+12. `git status`
 
 ## What To Do During The Session
 

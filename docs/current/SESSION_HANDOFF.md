@@ -9,6 +9,7 @@
 - Latest debug APK: `app/build/outputs/apk/debug/PaykiTodo-1.15.10-debug.apk`
 - Latest signed release APK available locally: `app/build/outputs/apk/release/PaykiTodo-1.14.12-release.apk`
 - Latest GitHub Release: `https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.14.12`
+- Context recovery record: `docs/current/CONTEXT_RECOVERY_V1_15_10.md`
 
 ## Completed In This Round
 

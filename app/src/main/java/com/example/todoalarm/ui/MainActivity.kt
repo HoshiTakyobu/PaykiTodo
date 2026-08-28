@@ -184,7 +184,6 @@ class MainActivity : ComponentActivity() {
                     onGetTodoById = viewModel::getTodoById,
                     onGetTodoGroupIds = viewModel::getTodoGroupIds,
                     onGetEventCheckIns = viewModel::getEventCheckIns,
-                    onCompleteCalendarEvent = viewModel::completeCalendarEvent,
                     onCalendarVisibleDateRangeChange = viewModel::updateCalendarEventWindow,
                     onUpdateTodo = viewModel::updateTodo,
                     onUpdateCalendarEvent = viewModel::updateCalendarEvent,

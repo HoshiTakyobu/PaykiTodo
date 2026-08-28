@@ -1,7 +1,6 @@
 package com.example.todoalarm.accessibility
 
 import android.accessibilityservice.AccessibilityService
-import android.app.NotificationManager
 import android.content.Intent
 import android.graphics.Color
 import android.graphics.PixelFormat
@@ -23,7 +22,6 @@ import com.example.todoalarm.alarm.AlarmScheduler
 import com.example.todoalarm.alarm.OngoingEventNotifier
 import com.example.todoalarm.alarm.ReminderChainLogger
 import com.example.todoalarm.alarm.ReminderForegroundService
-import com.example.todoalarm.alarm.ReminderNotifier
 import com.example.todoalarm.data.ReminderChainStage
 import com.example.todoalarm.data.ReminderChainStatus
 import com.example.todoalarm.data.TodoItem
@@ -341,13 +339,8 @@ class ReminderAccessibilityOverlay(
                 )
                 app.repository.setCompleted(item.id, true)
                 app.alarmScheduler.cancel(item.id)
-                app.reminderNotifier.cancel(item.id)
-                ActiveReminderStore.clearIfMatches(service, item.id)
-                ActiveReminderStore.clearActivityHandoff(service, item.id)
             }
-            service.stopService(Intent(service, ReminderForegroundService::class.java))
-            service.getSystemService(NotificationManager::class.java)
-                .cancel(ReminderNotifier.notificationId(todoId))
+            ReminderForegroundService.dismiss(service, todoId)
             hide(todoId)
             Toast.makeText(service, "任务已完成", Toast.LENGTH_SHORT).show()
         }
@@ -367,14 +360,9 @@ class ReminderAccessibilityOverlay(
                 )
                 app.repository.acknowledgeCalendarEvent(item.id)
                 app.alarmScheduler.cancelReminderOnly(item.id)
-                app.reminderNotifier.cancel(item.id)
-                ActiveReminderStore.clearIfMatches(service, item.id)
-                ActiveReminderStore.clearActivityHandoff(service, item.id)
                 OngoingEventNotifier.schedule(service, item.copy(reminderEnabled = false))
             }
-            service.stopService(Intent(service, ReminderForegroundService::class.java))
-            service.getSystemService(NotificationManager::class.java)
-                .cancel(ReminderNotifier.notificationId(todoId))
+            ReminderForegroundService.dismiss(service, todoId)
             hide(todoId)
             Toast.makeText(service, "日程提醒已确认", Toast.LENGTH_SHORT).show()
         }
@@ -398,16 +386,11 @@ class ReminderAccessibilityOverlay(
                 )
                 if (checkIn == null) return@withContext false
                 app.alarmScheduler.cancelReminderOnly(item.id)
-                app.reminderNotifier.cancel(item.id)
-                ActiveReminderStore.clearIfMatches(service, item.id)
-                ActiveReminderStore.clearActivityHandoff(service, item.id)
                 OngoingEventNotifier.schedule(service, item.copy(reminderEnabled = false))
                 true
             }
             if (success) {
-                service.stopService(Intent(service, ReminderForegroundService::class.java))
-                service.getSystemService(NotificationManager::class.java)
-                    .cancel(ReminderNotifier.notificationId(todoId))
+                ReminderForegroundService.dismiss(service, todoId)
                 hide(todoId)
                 Toast.makeText(service, "已签到", Toast.LENGTH_SHORT).show()
             } else {
@@ -433,13 +416,8 @@ class ReminderAccessibilityOverlay(
                 if (updated != null) {
                     app.alarmScheduler.schedule(updated)
                 }
-                app.reminderNotifier.cancel(item.id)
-                ActiveReminderStore.clearIfMatches(service, item.id)
-                ActiveReminderStore.clearActivityHandoff(service, item.id)
             }
-            service.stopService(Intent(service, ReminderForegroundService::class.java))
-            service.getSystemService(NotificationManager::class.java)
-                .cancel(ReminderNotifier.notificationId(todoId))
+            ReminderForegroundService.dismiss(service, todoId)
             hide(todoId)
             Toast.makeText(service, "已延后 $minutes 分钟", Toast.LENGTH_SHORT).show()
         }

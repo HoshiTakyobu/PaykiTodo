@@ -39,6 +39,7 @@ import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.CalendarMonth
 import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.ContentCopy
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.rounded.Done
@@ -107,7 +108,6 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.example.todoalarm.data.EventCheckIn
-import com.example.todoalarm.data.EventCheckInCompletionSummary
 import com.example.todoalarm.data.LunarCalendar
 import com.example.todoalarm.data.ScheduleTemplate
 import com.example.todoalarm.data.ScheduleTemplateType
@@ -209,7 +209,7 @@ internal fun CalendarPanel(
     onEditEvent: (TodoItem) -> Unit,
     onGetEventById: suspend (Long) -> TodoItem?,
     onGetEventCheckIns: suspend (Long) -> List<EventCheckIn>,
-    onCompleteEvent: suspend (Long) -> EventCheckInCompletionSummary?,
+    onCopyEvent: (TodoItem) -> Unit,
     onMoveEvent: (TodoItem, LocalDateTime, LocalDateTime) -> Unit,
     onCancelEvent: (TodoItem) -> Unit,
     onDeleteEvent: (TodoItem) -> Unit,
@@ -715,8 +715,11 @@ internal fun CalendarPanel(
             item = item,
             onGetEventById = onGetEventById,
             onGetEventCheckIns = onGetEventCheckIns,
-            onCompleteEvent = onCompleteEvent,
             onDismiss = { detailsTarget = null },
+            onCopy = {
+                detailsTarget = null
+                onCopyEvent(item)
+            },
             onEdit = {
                 detailsTarget = null
                 onEditEvent(item)
@@ -2319,8 +2322,8 @@ private fun CalendarEventDetailsDialog(
     item: TodoItem,
     onGetEventById: suspend (Long) -> TodoItem?,
     onGetEventCheckIns: suspend (Long) -> List<EventCheckIn>,
-    onCompleteEvent: suspend (Long) -> EventCheckInCompletionSummary?,
     onDismiss: () -> Unit,
+    onCopy: () -> Unit,
     onEdit: () -> Unit,
     onCancel: () -> Unit,
     onDelete: () -> Unit
@@ -2333,7 +2336,6 @@ private fun CalendarEventDetailsDialog(
     var checkInLoading by remember(item.id) { mutableStateOf(item.checkInEnabled) }
     var actionRunning by remember(item.id) { mutableStateOf(false) }
     var refreshSerial by remember(item.id) { mutableStateOf(0) }
-    var completionSummary by remember(item.id) { mutableStateOf<EventCheckInCompletionSummary?>(null) }
     val lifecycleOwner = LocalLifecycleOwner.current
     val activeCheckIn = checkIns.firstOrNull { it.checkOutAtMillis == null }
     val nowMillis by produceState(initialValue = System.currentTimeMillis(), activeCheckIn?.id) {
@@ -2383,26 +2385,6 @@ private fun CalendarEventDetailsDialog(
         }
     }
 
-    val canCompleteTrackedEvent = displayItem.checkInEnabled && !displayItem.completed
-
-    fun completeEvent() {
-        if (!canCompleteTrackedEvent || actionRunning) return
-        scope.launch {
-            actionRunning = true
-            try {
-                val summary = onCompleteEvent(displayItem.id)
-                completionSummary = summary
-                displayItem = onGetEventById(displayItem.id) ?: displayItem.copy(completed = true)
-                if (displayItem.checkInEnabled) {
-                    checkIns = onGetEventCheckIns(displayItem.id)
-                }
-                Toast.makeText(context, "日程已完成", Toast.LENGTH_SHORT).show()
-            } finally {
-                actionRunning = false
-            }
-        }
-    }
-
     PaykiBottomSheet(
         onDismiss = onDismiss,
         showDragHandle = false,
@@ -2418,13 +2400,13 @@ private fun CalendarEventDetailsDialog(
                 IconButton(onClick = onDismiss) {
                     Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "返回", tint = MaterialTheme.colorScheme.onSurface)
                 }
+                IconButton(onClick = onCopy) {
+                    Icon(Icons.Rounded.ContentCopy, contentDescription = "创建副本", tint = MaterialTheme.colorScheme.onSurface)
+                }
             }
         },
         bottomBar = {
             CalendarEventDetailsFixedActions(
-                onComplete = if (canCompleteTrackedEvent) { { completeEvent() } } else null,
-                completeEnabled = !actionRunning,
-                completeLabel = if (actionRunning) "处理中…" else "完成日程",
                 onCancel = onCancel,
                 onEdit = onEdit,
                 onDelete = onDelete
@@ -2465,10 +2447,6 @@ private fun CalendarEventDetailsDialog(
             }
 
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.22f))
-
-            completionSummary?.let { summary ->
-                EventCompletionSummaryCard(summary = summary, tint = tint)
-            }
 
             item.location.takeIf { it.isNotBlank() }?.let {
                 EventInfoRow(
@@ -2518,9 +2496,6 @@ private fun CalendarEventDetailsDialog(
 
 @Composable
 private fun CalendarEventDetailsFixedActions(
-    onComplete: (() -> Unit)?,
-    completeEnabled: Boolean,
-    completeLabel: String,
     onCancel: () -> Unit,
     onEdit: () -> Unit,
     onDelete: () -> Unit
@@ -2537,20 +2512,6 @@ private fun CalendarEventDetailsFixedActions(
                 .padding(horizontal = 18.dp, vertical = 12.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            onComplete?.let {
-                Button(
-                    modifier = Modifier.fillMaxWidth(),
-                    enabled = completeEnabled,
-                    onClick = it
-                ) {
-                    Icon(
-                        Icons.Rounded.Done,
-                        contentDescription = null,
-                        modifier = Modifier.size(18.dp)
-                    )
-                    Text(completeLabel)
-                }
-            }
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -2594,81 +2555,6 @@ private fun CalendarEventDetailsFixedActions(
                     Text("删除", color = Color(0xFFD14343), maxLines = 1)
                 }
             }
-        }
-    }
-}
-
-@Composable
-private fun EventCompletionSummaryCard(
-    summary: EventCheckInCompletionSummary,
-    tint: Color
-) {
-    Surface(
-        shape = RoundedCornerShape(20.dp),
-        color = tint.copy(alpha = if (MaterialTheme.colorScheme.surface.luminance() > 0.5f) 0.12f else 0.20f)
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(14.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
-            Text("投入统计", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
-            if (summary.autoCheckedOut) {
-                Text(
-                    "已自动签退进行中的签到。",
-                    color = tint,
-                    style = MaterialTheme.typography.bodySmall,
-                    fontWeight = FontWeight.SemiBold
-                )
-            }
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                EventCompletionMetric(
-                    modifier = Modifier.weight(1f),
-                    label = "计划",
-                    value = formatCheckInMinutes(summary.plannedMinutes)
-                )
-                EventCompletionMetric(
-                    modifier = Modifier.weight(1f),
-                    label = "实际",
-                    value = formatCheckInMinutes(summary.investedMinutes)
-                )
-                EventCompletionMetric(
-                    modifier = Modifier.weight(1f),
-                    label = "投入率",
-                    value = summary.investmentRatePercent?.let { "$it%" } ?: "-"
-                )
-            }
-            Text(
-                "签到 ${summary.checkInCount} 次",
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                style = MaterialTheme.typography.bodySmall
-            )
-        }
-    }
-}
-
-@Composable
-private fun EventCompletionMetric(
-    modifier: Modifier = Modifier,
-    label: String,
-    value: String
-) {
-    Surface(
-        modifier = modifier,
-        shape = RoundedCornerShape(14.dp),
-        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.62f)
-    ) {
-        Column(
-            modifier = Modifier.padding(horizontal = 10.dp, vertical = 9.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Text(label, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelSmall)
-            Text(value, color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Bold)
         }
     }
 }
@@ -2783,9 +2669,16 @@ private fun recurrencePreviewLine(item: TodoItem): String? {
 }
 
 private fun eventReminderSummary(item: TodoItem): String? {
-    val offsets = item.configuredReminderOffsetsMinutes
-    if (offsets.isNotEmpty()) {
-        return offsets.sortedDescending().joinToString("、") { reminderOffsetLabel(it) }
+    val summaries = buildList {
+        item.configuredReminderOffsetsMinutes.takeIf { it.isNotEmpty() }?.let { offsets ->
+            add("普通提醒：${offsets.sortedDescending().joinToString("、") { reminderOffsetLabel(it) }}")
+        }
+        item.configuredCheckInReminderOffsetsMinutes.takeIf { item.checkInEnabled && it.isNotEmpty() }?.let { offsets ->
+            add("签到提醒：${offsets.sortedDescending().joinToString("、") { reminderOffsetLabel(it) }}")
+        }
+    }
+    if (summaries.isNotEmpty()) {
+        return summaries.joinToString("\n")
     }
     val reminderAt = item.reminderAtMillis?.let(::reminderAtMillisToDateTime) ?: return null
     return "提醒时间：${formatLocalDateTime(reminderAt)}"

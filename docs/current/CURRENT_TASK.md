@@ -2,27 +2,29 @@
 
 ## Active Development Focus
 
-The `1.15.11 / versionCode 353` reminder-channel and desktop-calendar visual round is complete in code and verification; the remaining local step is to record the focused commit.
-
-The next round should start from physical-phone verification of the two reminder channels and continued testing with the user's real todo volume. Focus on whether the remaining list jank is acceptable on the target OEM device before adding larger architectural changes such as paging or baseline profiles.
+The `1.15.12 / versionCode 354` reminder and calendar semantics round is complete in code and verification. The remaining local action is the required focused commit; do not push unless the user explicitly asks.
 
 ## Completed Scope
 
-1. 手机端、电脑端编辑器和规划台识别预览将全屏提醒与通知栏提醒改为两个独立渠道；两项都不选即不提醒，两项都选时并行展示。
-2. 工作模式和闹钟模式不再绕过渠道选择强制触发全屏；已选择全屏时仍保留原有强提醒能力。
-3. 电脑端日历左侧整点标签与右侧整点实线垂直对齐，完成日程保留原色并仅降低透明度。
-4. 版本升级到 `1.15.11 / 353`，数据库版本保持 `29`。
-5. 上一轮已完成待办批量选择顶部/底部操作布局、深色工作区、同步轮询隔离和长列表局部性能收口。
+1. Unified reminder dismissal now removes the matching notification, foreground reminder service, sound/vibration session, accessibility overlay, dispatch state, and full-screen handoff markers after todo completion/cancellation or stale-notification entry.
+2. Calendar events are no longer completable. Phone UI, repository completion paths, Planning Desk synchronization, and Desktop Sync reject the event-completion state; event cancellation remains history-preserving.
+3. Phone and Desktop Web event details can create a copy that retains editable fields but does not retain the source database ID or multi-slot bundle identity.
+4. Phone and Desktop Web todo/event editors use the same multi-select reminder presets plus custom input. Check-in-enabled events have independent check-in reminder offsets.
+5. Ordinary and check-in reminders are merged and deduplicated for scheduling, and persist through recurring templates, multi-slot events, weekly templates, backup/restore, and Desktop Sync.
+6. Event/group color selection uses the same ordered 12-color palette on phone and desktop, with compact rounded-square swatches.
+7. Database version is `30` with `MIGRATION_29_30`; app version is `1.15.12 / 354`.
 
 ## Validation
 
-- `:app:testDebugUnitTest` passed.
-- `:app:lintDebug` passed.
-- `:app:assembleDebug` passed.
-- `node --check app/src/main/assets/desktop-web/app.js` passed.
-- `git diff --check` passed.
-- APK metadata confirms `PaykiTodo-1.15.11-debug.apk`, `versionName 1.15.11`, `versionCode 353`.
-- Pixel_8 emulator verified the layered dark Todo workspace, long-press selection title, fixed bottom actions after scrolling from the first selected item to approximately the twentieth item, and system Back exiting selection mode.
-- 102-todo scripted fast-scroll comparison improved janky frames 13.00% -> 10.93%, p95 38ms -> 34ms, p99 57ms -> 44ms, and Slow UI thread frames 31 -> 23.
+1. 26 unit-test suites / 145 tests passed with zero failures.
+2. `:app:lintDebug`, `:app:assembleDebug`, `node --check`, and `git diff --check` passed.
+3. APK metadata confirms `PaykiTodo-1.15.12-debug.apk`, `versionName 1.15.12`, and `versionCode 354`.
+4. Room schema `30.json` contains the new todo-item and recurring-template check-in reminder columns.
+5. `emulator-5554` / Pixel_8 verified accessibility enabled/bound, full-screen + notification coexistence, completion cleanup, event copy, no event completion action, reminder menus, check-in reminder control, and color swatches.
+
+## Remaining Before Handoff
+
+1. Create one detailed Chinese feature commit.
+2. Do not push unless the user explicitly asks.
 
 Do not commit secrets, signing material, API keys, private Base URLs, generated APK/AAB outputs, emulator screenshots, test databases, or personal backups/logs.

@@ -4,15 +4,14 @@ import android.content.Context
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
 import com.example.todoalarm.TodoApplication
-import com.example.todoalarm.alarm.ActiveReminderStore
 import com.example.todoalarm.alarm.ReminderDispatchTracker
 import com.example.todoalarm.alarm.ReminderForegroundService
 import com.example.todoalarm.data.AppSettingsStore
 import com.example.todoalarm.data.CalendarEventDraft
+import com.example.todoalarm.data.DEFAULT_ITEM_ACCENT_COLOR_HEX
 import com.example.todoalarm.data.DEFAULT_PLANNING_REMINDER_MINUTES
 import com.example.todoalarm.data.DailyBoardSnapshotBuilder
 import com.example.todoalarm.data.EventCheckIn
-import com.example.todoalarm.data.EventCheckInCompletionSummary
 import com.example.todoalarm.data.PlanningImportCandidate
 import com.example.todoalarm.data.PlanningLineMapping
 import com.example.todoalarm.data.PlanningLineMatcher
@@ -421,6 +420,7 @@ class DesktopSyncCoordinator(
         val startAt = LocalDateTime.parse(json.getString("startAt"))
         val endAt = LocalDateTime.parse(json.getString("endAt"))
         val reminderOffsets = json.optJSONArray("reminderOffsetsMinutes")?.toIntList().orEmpty()
+        val checkInReminderOffsets = json.optJSONArray("checkInReminderOffsetsMinutes")?.toIntList().orEmpty()
         val recurrence = parseRecurrence(json.optJSONObject("recurrence"), startAt.toLocalDate())
         return sanitizeEventDraft(
             title = json.optString("title").trim(),
@@ -429,13 +429,14 @@ class DesktopSyncCoordinator(
             startAt = startAt,
             endAt = endAt,
             allDay = json.optBoolean("allDay", false),
-            accentColorHex = json.optString("accentColorHex", "#4E87E1"),
+            accentColorHex = json.optString("accentColorHex", DEFAULT_ITEM_ACCENT_COLOR_HEX),
             reminderOffsetsMinutes = reminderOffsets,
             ringEnabled = json.optBoolean("ringEnabled", true),
             vibrateEnabled = json.optBoolean("vibrateEnabled", true),
             reminderDeliveryMode = com.example.todoalarm.data.ReminderDeliveryMode.fromStorage(json.optString("reminderDeliveryMode")),
             countdownEnabled = json.optBoolean("countdownEnabled", false),
             checkInEnabled = json.optBoolean("checkInEnabled", false),
+            checkInReminderOffsetsMinutes = checkInReminderOffsets,
             recurrence = recurrence,
             groupId = groupId,
             multiSlotBundleId = json.optStringOrNull("multiSlotBundleId")
@@ -451,6 +452,11 @@ class DesktopSyncCoordinator(
         val startAt = LocalDateTime.parse(json.getString("startAt"))
         val endAt = LocalDateTime.parse(json.getString("endAt"))
         val reminderOffsets = json.optJSONArray("reminderOffsetsMinutes")?.toIntList().orEmpty()
+        val checkInReminderOffsets = if (json.has("checkInReminderOffsetsMinutes")) {
+            json.optJSONArray("checkInReminderOffsetsMinutes")?.toIntList().orEmpty()
+        } else {
+            original.configuredCheckInReminderOffsetsMinutes
+        }
         val recurrence = parseRecurrence(json.optJSONObject("recurrence"), startAt.toLocalDate())
         val targetScope = resolveDesktopRecurrenceScope(
             original = original,
@@ -464,13 +470,14 @@ class DesktopSyncCoordinator(
             startAt = startAt,
             endAt = endAt,
             allDay = json.optBoolean("allDay", false),
-            accentColorHex = json.optString("accentColorHex", original.accentColorHex?.ifBlank { "#4E87E1" } ?: "#4E87E1"),
+            accentColorHex = json.optString("accentColorHex", original.accentColorHex?.ifBlank { DEFAULT_ITEM_ACCENT_COLOR_HEX } ?: DEFAULT_ITEM_ACCENT_COLOR_HEX),
             reminderOffsetsMinutes = reminderOffsets,
             ringEnabled = json.optBoolean("ringEnabled", true),
             vibrateEnabled = json.optBoolean("vibrateEnabled", true),
             reminderDeliveryMode = com.example.todoalarm.data.ReminderDeliveryMode.fromStorage(json.optString("reminderDeliveryMode")),
             countdownEnabled = json.optBoolean("countdownEnabled", original.countdownEnabled),
             checkInEnabled = json.optBoolean("checkInEnabled", original.checkInEnabled),
+            checkInReminderOffsetsMinutes = checkInReminderOffsets,
             recurrence = recurrence,
             groupId = groupId,
             multiSlotBundleId = json.optStringOrNull("multiSlotBundleId") ?: original.multiSlotBundleId
@@ -538,23 +545,18 @@ class DesktopSyncCoordinator(
 
     private suspend fun markCompleted(path: String): JSONObject {
         val id = path.substringAfter("/api/items/").substringBefore('/').toLong()
-        val settings = settingsStore.currentSettings()
+        val item = app.repository.getTodo(id) ?: return JSONObject().put("ok", false).put("error", "事项不存在")
+        if (item.isEvent) {
+            return JSONObject().put("ok", false).put("error", "日程不支持完成操作，请使用取消日程")
+        }
         val result = app.repository.setCompletedWithResult(
             id = id,
-            completed = true,
-            autoCheckOutEventOnEnd = settings.autoCheckOutEventOnEnd
+            completed = true
         )
         val updated = result?.item
         result?.affectedItems?.let(::clearReminderArtifacts)
         autoBackupIfNeeded()
-        return JSONObject()
-            .put("ok", updated != null)
-            .put(
-                "eventCheckInSummary",
-                result?.eventCheckInSummary
-                    ?.takeIf { settings.showEventCheckInStatsOnComplete }
-                    ?.toDesktopJson()
-            )
+        return JSONObject().put("ok", updated != null)
     }
 
     private suspend fun cancelItem(path: String): JSONObject {
@@ -945,7 +947,7 @@ class DesktopSyncCoordinator(
         if (requestedName.isNotBlank()) {
             val existing = groups.firstOrNull { it.name == requestedName }
             if (existing != null) return existing.id
-            return app.repository.createGroup(requestedName, json.optString("groupColorHex", "#4E87E1")).id
+            return app.repository.createGroup(requestedName, json.optString("groupColorHex", DEFAULT_ITEM_ACCENT_COLOR_HEX)).id
         }
         return groups.firstOrNull { it.name == "例行" }?.id ?: groups.firstOrNull()?.id ?: 0L
     }
@@ -1156,6 +1158,7 @@ class DesktopSyncCoordinator(
         reminderDeliveryMode: com.example.todoalarm.data.ReminderDeliveryMode,
         countdownEnabled: Boolean,
         checkInEnabled: Boolean,
+        checkInReminderOffsetsMinutes: List<Int>,
         recurrence: RecurrenceConfig,
         groupId: Long,
         multiSlotBundleId: String? = null
@@ -1175,6 +1178,7 @@ class DesktopSyncCoordinator(
             reminderDeliveryMode = reminderDeliveryMode,
             countdownEnabled = countdownEnabled,
             checkInEnabled = checkInEnabled,
+            checkInReminderOffsetsMinutes = checkInReminderOffsetsMinutes,
             recurrence = recurrence,
             multiSlotBundleId = multiSlotBundleId?.takeIf { it.isNotBlank() },
             groupId = groupId
@@ -1183,9 +1187,13 @@ class DesktopSyncCoordinator(
         val validOffsets = baseDraft.normalizedReminderOffsetsMinutes.filter { minutes ->
             baseDraft.reminderAnchorAt.minusMinutes(minutes.toLong()).atZone(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli() > now
         }
+        val validCheckInOffsets = baseDraft.normalizedCheckInReminderOffsetsMinutes.filter { minutes ->
+            baseDraft.reminderAnchorAt.minusMinutes(minutes.toLong()).atZone(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli() > now
+        }
         return baseDraft.copy(
             reminderMinutesBefore = validOffsets.firstOrNull(),
-            reminderOffsetsMinutes = validOffsets
+            reminderOffsetsMinutes = validOffsets,
+            checkInReminderOffsetsMinutes = validCheckInOffsets
         )
     }
 
@@ -1223,24 +1231,13 @@ class DesktopSyncCoordinator(
     private fun clearReminderArtifacts(items: List<TodoItem>) {
         items.forEach { item ->
             app.alarmScheduler.cancel(item.id)
-            app.reminderNotifier.cancel(item.id)
-            ReminderDispatchTracker.clear(context, item.id)
-            ActiveReminderStore.clearIfMatches(context, item.id)
+            ReminderForegroundService.dismiss(context, item.id)
         }
-        context.stopService(android.content.Intent(context, ReminderForegroundService::class.java))
     }
 
     private fun clearDisabledReminderArtifacts(todoId: Long) {
-        val reminderWasActive = ActiveReminderStore.getActiveTodoId(context) == todoId
         app.alarmScheduler.cancelReminderOnly(todoId)
-        app.reminderNotifier.cancel(todoId)
-        ReminderDispatchTracker.clear(context, todoId)
-        ActiveReminderStore.clearIfMatches(context, todoId)
-        ActiveReminderStore.clearActivityHandoff(context, todoId)
-        ActiveReminderStore.clearReminderSurfaceMarker(context, todoId)
-        if (reminderWasActive) {
-            context.stopService(android.content.Intent(context, ReminderForegroundService::class.java))
-        }
+        ReminderForegroundService.dismiss(context, todoId)
     }
 
     private suspend fun reschedulePlanningOperationItems(result: PlanningOperationResult) {
@@ -1769,7 +1766,7 @@ private fun parsePlanningRecurrence(
         startAt = requireNotNull(startAt) { "日程开始时间不存在" },
         endAt = requireNotNull(endAt) { "日程结束时间不存在" },
         allDay = allDay,
-        accentColorHex = groups.firstOrNull { it.name == groupName }?.colorHex ?: "#4E87E1",
+        accentColorHex = groups.firstOrNull { it.name == groupName }?.colorHex ?: DEFAULT_ITEM_ACCENT_COLOR_HEX,
             reminderMinutesBefore = offsets.firstOrNull(),
             reminderOffsetsMinutes = offsets,
             ringEnabled = true,
@@ -1796,15 +1793,4 @@ private fun EventCheckIn.toDesktopJson(): JSONObject {
         .put("checkInAtMillis", checkInAtMillis)
         .put("checkOutAtMillis", checkOutAtMillis)
         .put("durationMinutes", durationMinutes)
-}
-
-private fun EventCheckInCompletionSummary.toDesktopJson(): JSONObject {
-    return JSONObject()
-        .put("eventId", eventId)
-        .put("title", title)
-        .put("plannedMinutes", plannedMinutes)
-        .put("investedMinutes", investedMinutes)
-        .put("checkInCount", checkInCount)
-        .put("investmentRatePercent", investmentRatePercent)
-        .put("autoCheckedOut", autoCheckedOut)
 }

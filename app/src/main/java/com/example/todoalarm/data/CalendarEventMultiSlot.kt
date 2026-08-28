@@ -20,6 +20,9 @@ fun buildWeeklyMultiSlotEventDrafts(
     baseDate: LocalDate = baseDraft.startAt.toLocalDate(),
     recurrenceEndDate: LocalDate = baseDraft.recurrence.endDate
         ?: baseDate.plusDays(DEFAULT_MULTI_SLOT_EVENT_DAYS),
+    checkInReminderOffsetsForSlot: (CalendarEventTimeSlot, LocalDateTime) -> List<Int> = { _, _ ->
+        baseDraft.normalizedCheckInReminderOffsetsMinutes
+    },
     reminderOffsetsForSlot: (CalendarEventTimeSlot, LocalDateTime) -> List<Int> = { _, _ ->
         baseDraft.normalizedReminderOffsetsMinutes
     }
@@ -35,12 +38,14 @@ fun buildWeeklyMultiSlotEventDrafts(
         val slotStartAt = LocalDateTime.of(slotDate, slot.startTime)
         val slotEndAt = LocalDateTime.of(slotDate, slot.endTime)
         val offsets = normalizeReminderOffsets(reminderOffsetsForSlot(slot, slotStartAt))
+        val checkInOffsets = normalizeReminderOffsets(checkInReminderOffsetsForSlot(slot, slotStartAt))
         baseDraft.copy(
             startAt = slotStartAt,
             endAt = slotEndAt,
             allDay = false,
             reminderMinutesBefore = offsets.minOrNull(),
             reminderOffsetsMinutes = offsets,
+            checkInReminderOffsetsMinutes = checkInOffsets,
             multiSlotBundleId = bundleId,
             recurrence = RecurrenceConfig(
                 enabled = true,

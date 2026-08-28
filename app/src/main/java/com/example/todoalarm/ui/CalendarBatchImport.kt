@@ -65,7 +65,7 @@ internal data class CalendarBatchImportDefaults(
     val defaultRingEnabled: Boolean,
     val defaultVibrateEnabled: Boolean,
     val defaultReminderDeliveryMode: ReminderDeliveryMode,
-    val defaultAccentColorHex: String = "#4E87E1"
+    val defaultAccentColorHex: String = PaykiColorPresets.DefaultEvent
 )
 
 internal data class CalendarBatchImportPreviewItem(

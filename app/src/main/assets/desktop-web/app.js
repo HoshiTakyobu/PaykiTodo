@@ -2,8 +2,17 @@ const HOUR_HEIGHT = 64;
 const EVENT_HEADER_HEIGHT = 58;
 const FIFTEEN_MINUTES = 15 * 60 * 1000;
 const THIRTY_MINUTES = 30 * 60 * 1000;
-const DEFAULT_EVENT_COLOR = '#4e87e1';
-const EVENT_COLOR_PRESETS = ['#4E87E1', '#4CB782', '#FF6B4A', '#BF7B4D', '#8B5CF6', '#0F766E', '#D97706', '#E11D48'];
+const DEFAULT_EVENT_COLOR = '#df58a5';
+const EVENT_COLOR_PRESETS = ['#DF58A5', '#F54A45', '#FF811A', '#FFC60A', '#35BD4B', '#33D6C0', '#336DF4', '#3EC3F7', '#4752E6', '#7A35F0', '#BF3DBF', '#8F959E'];
+const REMINDER_OFFSET_PRESETS = [
+  { minutes: 5, label: '提前 5 分钟' },
+  { minutes: 15, label: '提前 15 分钟' },
+  { minutes: 30, label: '提前 30 分钟' },
+  { minutes: 60, label: '提前 1 小时' },
+  { minutes: 120, label: '提前 2 小时' },
+  { minutes: 1440, label: '提前 1 天' },
+  { minutes: 2880, label: '提前 2 天' }
+];
 const WEEKDAY_OPTIONS = [
   { value: 1, label: '一' },
   { value: 2, label: '二' },
@@ -708,7 +717,7 @@ function todoGroupLabel(item) {
 
 function todoGroupAccent(item) {
   const primaryGroup = groupById(todoGroupIds(item)[0]);
-  return item?.groupColorHex || primaryGroup?.colorHex || item?.accentColorHex || '#4e87e1';
+  return item?.groupColorHex || primaryGroup?.colorHex || item?.accentColorHex || DEFAULT_EVENT_COLOR;
 }
 
 function todoMatchesSelectedGroups(item) {
@@ -763,7 +772,7 @@ function renderTodoGroupChips(selectedIds) {
   }
   host.innerHTML = groups.map(group => {
     const active = selected.has(String(group.id));
-    const color = group.colorHex || '#4e87e1';
+    const color = group.colorHex || DEFAULT_EVENT_COLOR;
     return ''
       + '<button type="button" class="group-chip editor-chip' + (active ? ' active' : '') + '" data-todo-group-editor="' + escapeHtml(String(group.id)) + '" style="--chip-color:' + escapeHtml(color) + '">'
       +   '<span class="group-chip-dot"></span>'
@@ -798,7 +807,7 @@ function renderTodoGroupFilterChips() {
     +     '<span>全部</span>'
     +   '</button>'
     +   groups.map(group => {
-      const color = group.colorHex || '#4e87e1';
+      const color = group.colorHex || DEFAULT_EVENT_COLOR;
       const active = selected.has(String(group.id));
       return ''
         + '<button type="button" class="group-chip filter-chip' + (active ? ' active' : '') + '" data-todo-group-filter="' + escapeHtml(String(group.id)) + '" style="--chip-color:' + escapeHtml(color) + '">'
@@ -1250,7 +1259,7 @@ function renderEventDayAllDayStrip(key, allDayItems) {
 }
 
 function renderAllDayEventPill(item, key) {
-  const accent = item.accentColorHex || item.groupColorHex || '#4e87e1';
+  const accent = item.accentColorHex || item.groupColorHex || DEFAULT_EVENT_COLOR;
   const startKey = dayKeyFromMillis(eventStart(item));
   const endKey = dayKeyFromMillis(Math.max(eventStart(item), eventEnd(item) - 1));
   const range = startKey === endKey ? '全天' : formatCompactDateLabel(startKey) + ' - ' + formatCompactDateLabel(endKey);
@@ -1280,7 +1289,7 @@ function renderVisibleRangeTitle(keys) {
 
 function renderEventCard(segment) {
   const item = segment.item;
-  const accent = item.accentColorHex || item.groupColorHex || '#4e87e1';
+  const accent = item.accentColorHex || item.groupColorHex || DEFAULT_EVENT_COLOR;
   const meta = [item.groupName || '未分组', item.location || '', item.isRecurring ? '循环' : ''].filter(Boolean).join(' · ');
   const classes = ['event-card'];
   if (item.completed === true) classes.push('completed-event');
@@ -1784,7 +1793,7 @@ function renderBoardNowCard(nowMillis, visibleTodayEvents, todoItems) {
   const nextEvent = visibleTodayEvents.find(item => eventStart(item) > nowMillis);
   if (nextEvent) {
     return ''
-      + '<button type="button" class="desktop-now-card" data-event-preview-id="' + escapeHtml(String(nextEvent.id ?? '')) + '" style="--accent:' + escapeHtml(nextEvent.accentColorHex || nextEvent.groupColorHex || '#4e87e1') + '">'
+      + '<button type="button" class="desktop-now-card" data-event-preview-id="' + escapeHtml(String(nextEvent.id ?? '')) + '" style="--accent:' + escapeHtml(nextEvent.accentColorHex || nextEvent.groupColorHex || DEFAULT_EVENT_COLOR) + '">'
       +   '<span>下一项日程</span>'
       +   '<strong>' + escapeHtml(nextEvent.title || '未命名日程') + '</strong>'
       +   '<small>' + escapeHtml(eventTimeText(nextEvent)) + '</small>'
@@ -1824,7 +1833,7 @@ function renderBoardCountdownCard(items, boardDateKey) {
 }
 
 function renderBoardCountdownRow(item, boardDateKey) {
-  const accent = item.itemType === 'EVENT' ? (item.accentColorHex || item.groupColorHex || '#4e87e1') : todoGroupAccent(item);
+  const accent = item.itemType === 'EVENT' ? (item.accentColorHex || item.groupColorHex || DEFAULT_EVENT_COLOR) : todoGroupAccent(item);
   const target = countdownTargetMillis(item);
   const remain = target ? remainingCountdownDisplay(target) : { primary: '--', secondary: '' };
   const rowAttr = item.itemType === 'EVENT'
@@ -1916,7 +1925,7 @@ function renderBoardScheduleCard(dateKey, nowMillis, allTodayEvents, visibleToda
 }
 
 function renderBoardEventRow(item, nowMillis) {
-  const accent = item.accentColorHex || item.groupColorHex || '#4e87e1';
+  const accent = item.accentColorHex || item.groupColorHex || DEFAULT_EVENT_COLOR;
   const inProgress = nowMillis != null && eventStart(item) <= nowMillis && nowMillis < eventEnd(item);
   const classes = 'desktop-board-row event' + (inProgress ? ' in-progress' : '');
   const meta = [eventTimeText(item), item.location || '', item.notes || ''].filter(Boolean).join(' · ');
@@ -3403,14 +3412,103 @@ function parseReminderSpecs(text, anchorMillis) {
 }
 
 function setInputInvalid(id, invalid) {
-  document.getElementById(id)?.classList.toggle('input-invalid', invalid);
+  const node = document.getElementById(id);
+  node?.classList.toggle('input-invalid', invalid);
+  node?.classList.toggle('invalid', invalid);
 }
 
-function reminderSpecFromOffsets(item, anchorMillis) {
-  const offsets = item.reminderOffsetsMinutes || [];
-  if (offsets.length) return offsets.join(',');
-  if (item.reminderAtMillis && anchorMillis) return String(Math.round((anchorMillis - item.reminderAtMillis) / 60000));
-  return '';
+function reminderOffsetLabel(minutes) {
+  const preset = REMINDER_OFFSET_PRESETS.find(option => option.minutes === Number(minutes));
+  if (preset) return preset.label;
+  if (minutes % 1440 === 0) return '提前 ' + (minutes / 1440) + ' 天';
+  if (minutes % 60 === 0) return '提前 ' + (minutes / 60) + ' 小时';
+  return '提前 ' + minutes + ' 分钟';
+}
+
+function bindReminderOffsetPicker(prefix) {
+  const host = document.getElementById(prefix + '-reminder-picker');
+  if (!host) return;
+  host.innerHTML = ''
+    + '<details>'
+    +   '<summary class="reminder-offset-summary"><span data-reminder-summary></span></summary>'
+    +   '<div class="reminder-offset-menu">'
+    +     REMINDER_OFFSET_PRESETS.map(option => (
+            '<label class="reminder-offset-option">'
+            + '<input type="checkbox" data-reminder-offset="' + option.minutes + '" />'
+            + '<span>' + escapeHtml(option.label) + '</span>'
+            + '</label>'
+          )).join('')
+    +     '<button type="button" class="ghost reminder-custom-trigger">自定义提醒时间</button>'
+    +     '<div class="reminder-custom-shell hidden">'
+    +       '<input type="text" data-reminder-custom placeholder="例：20，或 16:30，或 2026-09-01 08:00" />'
+    +       '<p class="field-hint">可输入提前分钟或具体时间；多个值使用逗号分隔。</p>'
+    +     '</div>'
+    +   '</div>'
+    + '</details>';
+  host.querySelectorAll('[data-reminder-offset]').forEach(input => {
+    input.addEventListener('change', () => syncReminderOffsetPicker(prefix));
+  });
+  const customShell = host.querySelector('.reminder-custom-shell');
+  const customInput = host.querySelector('[data-reminder-custom]');
+  host.querySelector('.reminder-custom-trigger')?.addEventListener('click', () => {
+    customShell?.classList.remove('hidden');
+    customInput?.focus();
+  });
+  customInput?.addEventListener('input', () => syncReminderOffsetPicker(prefix));
+  syncReminderOffsetPicker(prefix);
+}
+
+function reminderPickerSpec(prefix) {
+  const host = document.getElementById(prefix + '-reminder-picker');
+  if (!host) return '';
+  const presetTokens = Array.from(host.querySelectorAll('[data-reminder-offset]:checked'))
+    .map(input => input.dataset.reminderOffset)
+    .filter(Boolean);
+  const custom = String(host.querySelector('[data-reminder-custom]')?.value || '').trim();
+  return presetTokens.concat(custom ? [custom] : []).join(',');
+}
+
+function setReminderPickerOffsets(prefix, offsets) {
+  const host = document.getElementById(prefix + '-reminder-picker');
+  if (!host) return;
+  const normalized = Array.from(new Set((offsets || []).map(Number).filter(value => Number.isFinite(value) && value >= 0)));
+  const presetValues = new Set(REMINDER_OFFSET_PRESETS.map(option => option.minutes));
+  host.querySelectorAll('[data-reminder-offset]').forEach(input => {
+    input.checked = normalized.includes(Number(input.dataset.reminderOffset));
+  });
+  const customValues = normalized.filter(value => !presetValues.has(value));
+  const customInput = host.querySelector('[data-reminder-custom]');
+  const customShell = host.querySelector('.reminder-custom-shell');
+  if (customInput) customInput.value = customValues.join(',');
+  customShell?.classList.toggle('hidden', customValues.length === 0);
+  syncReminderOffsetPicker(prefix);
+}
+
+function syncReminderOffsetPicker(prefix) {
+  const host = document.getElementById(prefix + '-reminder-picker');
+  if (!host) return;
+  const labels = Array.from(host.querySelectorAll('[data-reminder-offset]:checked'))
+    .map(input => reminderOffsetLabel(Number(input.dataset.reminderOffset)));
+  const custom = String(host.querySelector('[data-reminder-custom]')?.value || '').trim();
+  if (custom) labels.push('自定义：' + custom);
+  const summary = host.querySelector('[data-reminder-summary]');
+  if (summary) summary.textContent = labels.join('、') || host.dataset.emptySummary || '未选择提醒时间';
+}
+
+function setReminderPickerEnabled(prefix, enabled) {
+  const host = document.getElementById(prefix + '-reminder-picker');
+  if (!host) return;
+  host.classList.toggle('disabled', !enabled);
+  host.querySelectorAll('input, button').forEach(control => { control.disabled = !enabled; });
+  if (!enabled) host.querySelector('details')?.removeAttribute('open');
+}
+
+function setEventCheckInReminderEnabled() {
+  const enabled = document.getElementById('event-check-in')?.checked === true
+    && (document.getElementById('event-reminder-fullscreen')?.checked === true
+      || document.getElementById('event-reminder-notification')?.checked === true);
+  document.getElementById('event-checkin-reminder-block')?.classList.toggle('disabled-block', !enabled);
+  setReminderPickerEnabled('event-checkin', enabled);
 }
 
 function parseWeekdays(text) {
@@ -3547,8 +3645,8 @@ function setTodoReminderChannels(fullscreen, notification) {
   if (fullscreenCheckbox) fullscreenCheckbox.checked = fullscreen;
   if (notificationCheckbox) notificationCheckbox.checked = notification;
   const enabled = fullscreen || notification;
-  if (enabled && !document.getElementById('todo-reminder-spec').value.trim()) {
-    document.getElementById('todo-reminder-spec').value = '5';
+  if (enabled && !reminderPickerSpec('todo')) {
+    setReminderPickerOffsets('todo', [5]);
   }
   document.querySelectorAll('.todo-reminder-dependent').forEach(node => {
     node.classList.toggle('disabled-block', !enabled);
@@ -3557,9 +3655,10 @@ function setTodoReminderChannels(fullscreen, notification) {
     });
   });
   if (!enabled) {
-    document.getElementById('todo-reminder-spec').value = '';
+    setReminderPickerOffsets('todo', []);
     document.getElementById('todo-alarm-mode').checked = false;
   }
+  setReminderPickerEnabled('todo', enabled);
 }
 
 function setTodoDueEnabled(enabled) {
@@ -3574,7 +3673,7 @@ function setTodoDueEnabled(enabled) {
   setWeekdayChipsEnabled('todo', enabled);
   if (!enabled) {
     writeDateTimeValue('todo-due', '');
-    document.getElementById('todo-reminder-spec').value = '';
+    setReminderPickerOffsets('todo', []);
     document.getElementById('todo-recurrence-type').value = 'NONE';
     document.getElementById('todo-recurrence-end').value = '';
     setWeekdays('todo', []);
@@ -3603,7 +3702,7 @@ function clearTodoForm() {
   document.getElementById('todo-title').value = '';
   document.getElementById('todo-notes').value = '';
   writeDateTimeValue('todo-due', '');
-  document.getElementById('todo-reminder-spec').value = '5';
+  setReminderPickerOffsets('todo', [5]);
   setTodoReminderChannels(true, false);
   document.getElementById('todo-recurrence-type').value = 'NONE';
   document.getElementById('todo-recurrence-end').value = '';
@@ -3633,7 +3732,7 @@ function openTodoEditor(item) {
   if (hasDueCheckbox) hasDueCheckbox.disabled = item.isRecurring === true;
   setTodoDueEnabled(item.hasDueDate !== false);
   writeDateTimeValue('todo-due', item.hasDueDate ? formatDateTimeLocalValue(item.dueAtMillis) : '');
-  document.getElementById('todo-reminder-spec').value = item.hasDueDate ? reminderSpecFromOffsets(item, item.dueAtMillis) : '';
+  setReminderPickerOffsets('todo', item.hasDueDate ? (item.reminderOffsetsMinutes || []) : []);
   const todoReminderMode = item.reminderDeliveryMode || 'FULLSCREEN';
   setTodoReminderChannels(
     item.hasDueDate !== false && item.reminderEnabled === true && (todoReminderMode === 'FULLSCREEN' || todoReminderMode === 'FULLSCREEN_AND_NOTIFICATION'),
@@ -3667,7 +3766,8 @@ function clearEventForm() {
   document.getElementById('event-notes').value = '';
   writeDateTimeValue('event-start', '');
   writeDateTimeValue('event-end', '');
-  document.getElementById('event-reminder-offsets').value = '';
+  setReminderPickerOffsets('event', []);
+  setReminderPickerOffsets('event-checkin', []);
   setEventReminderChannels(false, false);
   document.getElementById('event-recurrence-type').value = 'NONE';
   document.getElementById('event-recurrence-end').value = '';
@@ -3676,6 +3776,7 @@ function clearEventForm() {
   setRecurrenceScopeBlock('event', false);
   document.getElementById('event-countdown').checked = false;
   document.getElementById('event-check-in').checked = false;
+  setEventCheckInReminderEnabled();
   document.getElementById('event-all-day').checked = false;
   document.getElementById('event-ring').checked = true;
   document.getElementById('event-vibrate').checked = true;
@@ -3700,14 +3801,14 @@ function recurrenceTypeValue(item) {
   return item.isRecurring ? (item.recurrenceType || 'NONE') : 'NONE';
 }
 
-function setEventReminderChannels(fullscreen, notification) {
+function setEventReminderChannels(fullscreen, notification, ensureOrdinaryDefault = true) {
   const fullscreenCheckbox = document.getElementById('event-reminder-fullscreen');
   const notificationCheckbox = document.getElementById('event-reminder-notification');
   if (fullscreenCheckbox) fullscreenCheckbox.checked = fullscreen;
   if (notificationCheckbox) notificationCheckbox.checked = notification;
   const enabled = fullscreen || notification;
-  if (enabled && !document.getElementById('event-reminder-offsets').value.trim()) {
-    document.getElementById('event-reminder-offsets').value = '15';
+  if (enabled && ensureOrdinaryDefault && !reminderPickerSpec('event')) {
+    setReminderPickerOffsets('event', [15]);
   }
   document.querySelectorAll('.event-reminder-dependent').forEach(node => {
     node.classList.toggle('disabled-block', !enabled);
@@ -3716,8 +3817,11 @@ function setEventReminderChannels(fullscreen, notification) {
     });
   });
   if (!enabled) {
-    document.getElementById('event-reminder-offsets').value = '';
+    setReminderPickerOffsets('event', []);
+    setReminderPickerOffsets('event-checkin', []);
   }
+  setReminderPickerEnabled('event', enabled);
+  setEventCheckInReminderEnabled();
 }
 
 function setEventCourseModeEnabled(enabled, allowVisible = true) {
@@ -3809,11 +3913,13 @@ function openEventEditor(item) {
   document.getElementById('event-notes').value = item.notes || '';
   writeDateTimeValue('event-start', formatDateTimeLocalValue(item.startAtMillis));
   writeDateTimeValue('event-end', formatDateTimeLocalValue(item.endAtMillis || item.startAtMillis));
-  document.getElementById('event-reminder-offsets').value = reminderSpecFromOffsets(item, item.startAtMillis);
+  setReminderPickerOffsets('event', item.reminderOffsetsMinutes || []);
+  setReminderPickerOffsets('event-checkin', item.checkInReminderOffsetsMinutes || []);
   const eventReminderMode = item.reminderDeliveryMode || 'NOTIFICATION';
   setEventReminderChannels(
     item.reminderEnabled === true && (eventReminderMode === 'FULLSCREEN' || eventReminderMode === 'FULLSCREEN_AND_NOTIFICATION'),
-    item.reminderEnabled === true && (eventReminderMode === 'NOTIFICATION' || eventReminderMode === 'FULLSCREEN_AND_NOTIFICATION')
+    item.reminderEnabled === true && (eventReminderMode === 'NOTIFICATION' || eventReminderMode === 'FULLSCREEN_AND_NOTIFICATION'),
+    false
   );
   document.getElementById('event-recurrence-type').value = recurrenceTypeValue(item);
   document.getElementById('event-recurrence-end').value = item.recurrenceEndDate || '';
@@ -3824,6 +3930,7 @@ function openEventEditor(item) {
   document.getElementById('event-multi-slot-sync-block').classList.toggle('hidden', !state.editingEventMultiSlotBundleId);
   document.getElementById('event-countdown').checked = item.countdownEnabled === true;
   document.getElementById('event-check-in').checked = item.checkInEnabled === true;
+  setEventCheckInReminderEnabled();
   document.getElementById('event-all-day').checked = item.allDay === true;
   document.getElementById('event-ring').checked = item.ringEnabled !== false;
   document.getElementById('event-vibrate').checked = item.vibrateEnabled !== false;
@@ -4185,6 +4292,7 @@ document.getElementById('event-reminder-notification')?.addEventListener('change
     document.getElementById('event-reminder-notification')?.checked === true
   );
 });
+document.getElementById('event-check-in')?.addEventListener('change', setEventCheckInReminderEnabled);
 document.getElementById('event-course-enabled')?.addEventListener('change', event => {
   if (event.target.checked) {
     state.eventCourseSlots = [defaultEventCourseSlot()];
@@ -4725,14 +4833,14 @@ document.addEventListener('keydown', event => {
 
 document.getElementById('create-todo').onclick = async () => {
   try {
-    setInputInvalid('todo-reminder-spec', false);
+    setInputInvalid('todo-reminder-picker', false);
     const hasDueDate = document.getElementById('todo-has-due')?.checked !== false;
     const dueAt = hasDueDate ? readDateTimeValue('todo-due') : null;
     const dueAtMillis = dueAt ? new Date(dueAt).getTime() : null;
     const todoFullscreenReminder = hasDueDate && document.getElementById('todo-reminder-fullscreen')?.checked === true;
     const todoNotificationReminder = hasDueDate && document.getElementById('todo-reminder-notification')?.checked === true;
     const todoReminderEnabled = todoFullscreenReminder || todoNotificationReminder;
-    const reminderOffsets = todoReminderEnabled ? parseReminderSpecs(document.getElementById('todo-reminder-spec').value, dueAtMillis) : [];
+    const reminderOffsets = todoReminderEnabled ? parseReminderSpecs(reminderPickerSpec('todo'), dueAtMillis) : [];
     const groupIds = readTodoEditorGroupIds();
     const recurrenceType = document.getElementById('todo-recurrence-type').value;
     const payload = {
@@ -4765,7 +4873,7 @@ document.getElementById('create-todo').onclick = async () => {
     closeModal('todo-modal');
     await refreshAfterMutation();
   } catch (error) {
-    setInputInvalid('todo-reminder-spec', true);
+    setInputInvalid('todo-reminder-picker', true);
     els.status.textContent = error.message || '保存待办失败';
   }
 };
@@ -4817,7 +4925,8 @@ document.getElementById('preview-todo-delete').onclick = async () => {
 
 document.getElementById('save-event').onclick = async () => {
   try {
-    setInputInvalid('event-reminder-offsets', false);
+    setInputInvalid('event-reminder-picker', false);
+    setInputInvalid('event-checkin-reminder-picker', false);
     const startAt = readDateTimeValue('event-start');
     const endAt = readDateTimeValue('event-end');
     const startAtMillis = startAt ? new Date(startAt).getTime() : null;
@@ -4826,7 +4935,25 @@ document.getElementById('save-event').onclick = async () => {
     const eventNotificationReminder = document.getElementById('event-reminder-notification')?.checked === true;
     const eventReminderEnabled = eventFullscreenReminder || eventNotificationReminder;
     const courseModeEnabled = document.getElementById('event-course-enabled')?.checked === true && !state.editingEventId;
-    const reminderRaw = document.getElementById('event-reminder-offsets').value;
+    const reminderRaw = reminderPickerSpec('event');
+    const checkInReminderRaw = reminderPickerSpec('event-checkin');
+    const checkInEnabled = document.getElementById('event-check-in').checked;
+    let reminderOffsets = [];
+    let checkInReminderOffsets = [];
+    if (eventReminderEnabled && !courseModeEnabled) {
+      try {
+        reminderOffsets = parseReminderSpecs(reminderRaw, startAtMillis);
+      } catch (error) {
+        throw new Error('普通提醒：' + (error.message || '时间无效'));
+      }
+      if (checkInEnabled) {
+        try {
+          checkInReminderOffsets = parseReminderSpecs(checkInReminderRaw, startAtMillis);
+        } catch (error) {
+          throw new Error('签到提醒：' + (error.message || '时间无效'));
+        }
+      }
+    }
     const payload = {
       title: document.getElementById('event-title').value,
       groupId: Number(document.getElementById('event-group').value || 0),
@@ -4836,9 +4963,10 @@ document.getElementById('save-event').onclick = async () => {
       endAt: endAt,
       allDay: document.getElementById('event-all-day').checked,
       accentColorHex: document.getElementById('event-color').value || DEFAULT_EVENT_COLOR,
-      reminderOffsetsMinutes: eventReminderEnabled && !courseModeEnabled ? parseReminderSpecs(reminderRaw, startAtMillis) : [],
+      reminderOffsetsMinutes: reminderOffsets,
       countdownEnabled: document.getElementById('event-countdown').checked,
-      checkInEnabled: document.getElementById('event-check-in').checked,
+      checkInEnabled: checkInEnabled,
+      checkInReminderOffsetsMinutes: checkInReminderOffsets,
       ringEnabled: eventReminderEnabled && document.getElementById('event-ring').checked,
       vibrateEnabled: eventReminderEnabled && document.getElementById('event-vibrate').checked,
       reminderDeliveryMode: eventFullscreenReminder && eventNotificationReminder ? 'FULLSCREEN_AND_NOTIFICATION' : (eventFullscreenReminder ? 'FULLSCREEN' : 'NOTIFICATION'),
@@ -4867,11 +4995,19 @@ document.getElementById('save-event').onclick = async () => {
           throw new Error(weekdayLabel(slot.weekday) + ' ' + slot.startTime + '-' + slot.endTime + '：结束时间必须晚于开始时间');
         }
         let slotReminderOffsets = [];
+        let slotCheckInReminderOffsets = [];
         if (eventReminderEnabled) {
           try {
             slotReminderOffsets = parseReminderSpecs(reminderRaw, slotStartMillis);
           } catch (error) {
             throw new Error(weekdayLabel(slot.weekday) + ' ' + slot.startTime + '：' + (error.message || '提醒时间无效'));
+          }
+          if (checkInEnabled) {
+            try {
+              slotCheckInReminderOffsets = parseReminderSpecs(checkInReminderRaw, slotStartMillis);
+            } catch (error) {
+              throw new Error(weekdayLabel(slot.weekday) + ' ' + slot.startTime + '：签到提醒' + (error.message || '时间无效'));
+            }
           }
         }
         coursePayloads.push({
@@ -4880,6 +5016,7 @@ document.getElementById('save-event').onclick = async () => {
           endAt: slotEnd,
           allDay: false,
           reminderOffsetsMinutes: slotReminderOffsets,
+          checkInReminderOffsetsMinutes: slotCheckInReminderOffsets,
           recurrence: {
             enabled: true,
             type: 'WEEKLY',
@@ -4902,7 +5039,8 @@ document.getElementById('save-event').onclick = async () => {
     closeModal('event-modal');
     await refreshAfterMutation();
   } catch (error) {
-    setInputInvalid('event-reminder-offsets', true);
+    const checkInError = String(error.message || '').includes('签到提醒');
+    setInputInvalid(checkInError ? 'event-checkin-reminder-picker' : 'event-reminder-picker', true);
     els.status.textContent = error.message || '保存日程失败';
   }
 };
@@ -4921,6 +5059,22 @@ document.getElementById('preview-event-edit').onclick = () => {
   if (!eventItem) return;
   closeModal('event-preview-modal');
   openEventEditor(eventItem);
+};
+
+document.getElementById('preview-event-copy').onclick = () => {
+  const eventItem = findEventById(state.previewEventId);
+  if (!eventItem) return;
+  closeModal('event-preview-modal');
+  openEventEditor(eventItem);
+  state.editingEventId = null;
+  state.editingEventOriginalRecurring = false;
+  state.editingEventMultiSlotBundleId = null;
+  document.getElementById('event-modal-title').textContent = '创建日程副本';
+  document.getElementById('save-event').textContent = '创建副本';
+  document.getElementById('delete-event').classList.add('hidden');
+  setRecurrenceScopeBlock('event', false);
+  document.getElementById('event-multi-slot-sync').checked = false;
+  document.getElementById('event-multi-slot-sync-block').classList.add('hidden');
 };
 
 document.getElementById('preview-event-cancel').onclick = async () => {
@@ -4975,6 +5129,9 @@ document.addEventListener('click', event => {
 });
 
 bindDigitInputs();
+bindReminderOffsetPicker('todo');
+bindReminderOffsetPicker('event');
+bindReminderOffsetPicker('event-checkin');
 bindEventColorPresets();
 bindReviewImportControls();
 syncTopbar();

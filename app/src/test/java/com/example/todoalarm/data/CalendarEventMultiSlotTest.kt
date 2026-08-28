@@ -41,6 +41,8 @@ class CalendarEventMultiSlotTest {
             assertFalse(draft.allDay)
             assertEquals(baseDraft.title, draft.title)
             assertEquals(baseDraft.location, draft.location)
+            assertTrue(draft.checkInEnabled)
+            assertEquals(listOf(30), draft.normalizedCheckInReminderOffsetsMinutes)
         }
     }
 
@@ -93,6 +95,8 @@ class CalendarEventMultiSlotTest {
             accentColorHex = "#4E87E1",
             reminderMinutesBefore = 15,
             reminderOffsetsMinutes = listOf(15),
+            checkInEnabled = true,
+            checkInReminderOffsetsMinutes = listOf(30),
             ringEnabled = true,
             vibrateEnabled = true,
             recurrence = RecurrenceConfig()

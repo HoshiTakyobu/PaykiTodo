@@ -4,42 +4,45 @@
 
 - Repository root: `G:\Workspace\Project\PaykiTodo`
 - Branch: `main`
-- Current code version: `1.15.11 / versionCode 353`
-- Database version: `29` (unchanged; compatibility schema retained)
-- Latest debug APK: `app/build/outputs/apk/debug/PaykiTodo-1.15.11-debug.apk`
+- Baseline commit: `befeb9e`
+- Current code version: `1.15.12 / versionCode 354`
+- Database version: `30`
+- Latest debug APK: `app/build/outputs/apk/debug/PaykiTodo-1.15.12-debug.apk`
 - Latest signed release APK available locally: `app/build/outputs/apk/release/PaykiTodo-1.14.12-release.apk`
 - Latest GitHub Release: `https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.14.12`
-- Context recovery record: `docs/current/CONTEXT_RECOVERY_V1_15_10.md`
 
 ## Completed In This Round
 
-1. Phone, desktop Web, and Planning Desk reminder controls now independently select full-screen and notification delivery. Neither selected means no reminder scheduling; both selected means both surfaces are delivered.
-2. Work mode and alarm mode no longer force a notification-only item into the full-screen path; the selected channels remain the source of truth for delivery.
-3. Desktop Web calendar hour labels align to the hour rules, and completed event cards keep their original color while using opacity only.
-4. Todo batch selection, dark workspace, isolated Desktop Sync polling, and local list rendering optimizations remain from the previous round.
+1. Confirmed the repository baseline was already `1.15.11 / 353`; sessions showing `1.15.10` were stale chat summaries rather than a code rollback.
+2. Added matching-item reminder dismissal so completed/canceled todos no longer leave a foreground notification, sound/vibration service, dispatch record, accessibility overlay, or stale full-screen handoff behind. Missing/history notification entry exits safely.
+3. Removed event completion from phone details, ViewModel/UI callbacks, Planning Desk completion sync, repository completion, and Desktop Sync completion API behavior.
+4. Added phone and Desktop Web event copy actions. Copies preserve editable fields and recurrence configuration while dropping source identity and multi-slot bundle identity.
+5. Added ordinary/check-in reminder multi-select controls with fixed 5/15/30-minute, 1/2-hour, 1/2-day presets plus custom input on phone and Desktop Web.
+6. Added `checkInReminderOffsetsCsv` to event items and check-in fields to recurring templates; merged ordinary/check-in trigger times are deduplicated.
+7. Extended recurring generation, multi-slot events, weekly schedule templates, backup/restore, Desktop Sync payloads, and desktop editor round trips for check-in reminders.
+8. Replaced phone/desktop event and group preset colors with the ordered 12-color palette and rounded-square swatches.
+9. Added focused tests for trigger merging, disabled check-in behavior, event completion eligibility, multi-slot inheritance, schedule-template compatibility, and copy identity.
 
 ## Validation Evidence
 
-- `:app:testDebugUnitTest`, `:app:lintDebug`, `:app:assembleDebug`, `node --check app/src/main/assets/desktop-web/app.js`, and `git diff --check` passed.
-- Reused `emulator-5554` / AVD `Pixel_8`, installed `PaykiTodo-1.15.10-debug.apk`, and checked:
-  - Todo page dark workspace uses deep blue-gray layers;
-  - long-pressing a todo changes the title to `多个待办 · 已选 1 项`;
-  - `取消所选` / `完成所选` remain fixed after scrolling from the first selected item to approximately `Perf Todo 020`;
-  - system Back exits selection mode and returns to the ordinary `待办` title.
-- 102-todo fast-scroll benchmark, ten scripted swipes:
-  - before: 300 frames, 39 janky (13.00%), p95 38ms, p99 57ms, Slow UI thread 31;
-  - after: 311 frames, 34 janky (10.93%), p95 34ms, p99 44ms, Slow UI thread 23.
+- Full unit tests passed: 26 suites / 145 tests / zero failures.
+- `:app:lintDebug`, `:app:assembleDebug`, `node --check app/src/main/assets/desktop-web/app.js`, and `git diff --check` passed.
+- APK metadata: package `com.paykitodo.app`, `versionName 1.15.12`, `versionCode 354`, min API 26, target API 34.
+- Room schema `app/schemas/com.example.todoalarm.data.AppDatabase/30.json` was generated and contains the new item/template check-in reminder columns.
+- Reused `emulator-5554` / AVD `Pixel_8` and installed `PaykiTodo-1.15.12-debug.apk`.
+- Android accessibility manager confirmed `ReminderAccessibilityService` in both Enabled and Bound services.
+- Diagnostics test produced the full-screen `ReminderActivity` while the foreground notification remained posted; no accessibility overlay conflict was visible.
+- Pressing `我已完成` removed notification ID `10105`, stopped `ReminderForegroundService`, emptied `paykitodo_active_reminder.xml`, and returned to `MainActivity`.
+- Calendar smoke test confirmed event detail contains `创建副本` and only `取消 / 修改 / 删除`, with no `完成日程` action. Copy opened a populated new-event editor.
+- Event editor showed all seven fixed reminder presets plus `自定义提醒时间`, an independent `签到提醒` selector when check-in was enabled, and the ordered rounded-square color swatches.
 
-## Next Recommended Round
+## Next Actions
 
-1. Install the rebuilt `PaykiTodo-1.15.11-debug.apk` on the physical phone and verify no-channel, notification-only, full-screen-only, and combined reminder behavior.
-2. If physical-device jank remains substantial, capture a Perfetto/System Trace before introducing paging, baseline profiles, or further card simplification; do not guess from emulator-only numbers.
-3. Recheck Daily Board long-press selection with a real today/no-DDL todo because the retained emulator stress dataset contains future items and the final check focused on the Todo page.
+1. Create the required detailed Chinese commit for this completed round.
+2. Do not push unless the user explicitly asks.
+3. Physical-phone verification is still recommended for OEM lock-screen/full-screen behavior, real vibration/sound, and notification shade presentation.
 
-4. Before the next feature round, commit the completed `1.15.11` reminder/calendar changes with a Chinese behavior-focused message. Do not push unless the user explicitly asks.
+## Safety Notes
 
-## Notes
-
-- `emulator-5554` may still be running.
-- Emulator stress data is local-only and must not be committed.
 - Never commit Desktop Sync tokens, AI keys, private Base URLs, signing files, generated APKs, screenshots, backups, test databases, or local diagnostic logs.
+- Emulator behavior does not prove OEM lock-screen/full-screen reliability; physical-phone verification remains necessary for the user's ROM.

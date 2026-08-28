@@ -144,6 +144,8 @@ private fun RecurringTaskTemplate.toJson(): JSONObject {
         put("accentColorHex", accentColorHex)
         put("countdownEnabled", countdownEnabled)
         put("hiddenFromBoard", hiddenFromBoard)
+        put("checkInEnabled", checkInEnabled)
+        put("checkInReminderOffsetsCsv", checkInReminderOffsetsCsv)
         put("multiSlotBundleId", multiSlotBundleId)
         put("allDay", allDay)
         put("groupId", groupId)
@@ -184,6 +186,7 @@ private fun TodoItem.toJson(): JSONObject {
         put("countdownEnabled", countdownEnabled)
         put("hiddenFromBoard", hiddenFromBoard)
         put("checkInEnabled", checkInEnabled)
+        put("checkInReminderOffsetsCsv", checkInReminderOffsetsCsv)
         put("totalCheckInMinutes", totalCheckInMinutes)
         put("reminderAtMillis", reminderAtMillis)
         put("reminderOffsetsCsv", reminderOffsetsCsv)
@@ -408,6 +411,8 @@ private fun JSONArray?.toTemplates(): List<RecurringTaskTemplate> {
                     accentColorHex = item.optStringOrNull("accentColorHex"),
                     countdownEnabled = item.optBoolean("countdownEnabled", false),
                     hiddenFromBoard = item.optBoolean("hiddenFromBoard", false),
+                    checkInEnabled = item.optBoolean("checkInEnabled", false),
+                    checkInReminderOffsetsCsv = item.optString("checkInReminderOffsetsCsv", ""),
                     multiSlotBundleId = item.optStringOrNull("multiSlotBundleId"),
                     allDay = item.optBoolean("allDay", false),
                     groupId = item.optLong("groupId", 0L),
@@ -456,6 +461,7 @@ private fun JSONArray?.toTasks(): List<TodoItem> {
                     countdownEnabled = item.optBoolean("countdownEnabled", false),
                     hiddenFromBoard = item.optBoolean("hiddenFromBoard", false),
                     checkInEnabled = item.optBoolean("checkInEnabled", false),
+                    checkInReminderOffsetsCsv = item.optString("checkInReminderOffsetsCsv", ""),
                     totalCheckInMinutes = item.optInt("totalCheckInMinutes", 0),
                     reminderAtMillis = item.optLongOrNull("reminderAtMillis"),
                     reminderOffsetsCsv = item.optString("reminderOffsetsCsv", item.optIntOrNull("reminderOffsetMinutes")?.toString().orEmpty()),

@@ -226,7 +226,7 @@ private fun SearchTodoRow(item: TodoItem, groups: List<TaskGroup>, onClick: () -
 private fun SearchEventRow(item: TodoItem, onClick: () -> Unit) {
     SearchResultRow(
         icon = Icons.Rounded.CalendarMonth,
-        tint = colorFromHex(item.accentColorHex ?: "#4E87E1"),
+        tint = colorFromHex(item.accentColorHex ?: PaykiColorPresets.DefaultEvent),
         title = item.title,
         subtitle = listOfNotNull(
             item.startAtMillis?.let { formatLocalDateTime(reminderAtMillisToDateTime(it)) },

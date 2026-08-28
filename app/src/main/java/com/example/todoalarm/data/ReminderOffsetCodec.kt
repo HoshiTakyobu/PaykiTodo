@@ -28,7 +28,7 @@ internal fun decodeReminderOffsets(csv: String?, fallback: Int? = null): List<In
 
 internal fun CalendarEventDraft.reminderTriggerTimesMillis(): List<Long> {
     val anchorMillis = reminderAnchorAt.toEpochMillis()
-    return normalizedReminderOffsetsMinutes
+    return normalizedAllReminderOffsetsMinutes
         .map { anchorMillis - it * 60_000L }
         .distinct()
         .sorted()
@@ -47,7 +47,11 @@ internal fun TodoItem.reminderTriggerTimesMillis(): List<Long> {
         return listOfNotNull(reminderAtMillis)
     }
     val anchorMillis = eventReminderAnchorMillis()
-    return configuredReminderOffsetsMinutes
+    val offsets = normalizeReminderOffsets(
+        configuredReminderOffsetsMinutes +
+            configuredCheckInReminderOffsetsMinutes.takeIf { checkInEnabled }.orEmpty()
+    )
+    return offsets
         .map { anchorMillis - it * 60_000L }
         .distinct()
         .sorted()

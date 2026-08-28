@@ -18,6 +18,7 @@ data class CalendarEventDraft(
     val reminderDeliveryMode: ReminderDeliveryMode = ReminderDeliveryMode.FULLSCREEN,
     val countdownEnabled: Boolean = false,
     val checkInEnabled: Boolean = false,
+    val checkInReminderOffsetsMinutes: List<Int> = emptyList(),
     val recurrence: RecurrenceConfig = RecurrenceConfig(),
     val multiSlotBundleId: String? = null,
     val groupId: Long = 0,
@@ -25,6 +26,12 @@ data class CalendarEventDraft(
 ) {
     val normalizedReminderOffsetsMinutes: List<Int>
         get() = normalizeReminderOffsets(reminderOffsetsMinutes, reminderMinutesBefore)
+
+    val normalizedCheckInReminderOffsetsMinutes: List<Int>
+        get() = if (checkInEnabled) normalizeReminderOffsets(checkInReminderOffsetsMinutes) else emptyList()
+
+    val normalizedAllReminderOffsetsMinutes: List<Int>
+        get() = normalizeReminderOffsets(normalizedReminderOffsetsMinutes + normalizedCheckInReminderOffsetsMinutes)
 
     val reminderAnchorAt: LocalDateTime
         get() = if (allDay) {

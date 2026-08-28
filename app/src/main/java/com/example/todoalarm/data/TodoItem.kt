@@ -73,6 +73,8 @@ data class TodoItem(
     @ColumnInfo(defaultValue = "0")
     val hiddenFromBoard: Boolean = false,
     val checkInEnabled: Boolean = false,
+    @ColumnInfo(defaultValue = "")
+    val checkInReminderOffsetsCsv: String = "",
     val totalCheckInMinutes: Int = 0,
     val reminderAtMillis: Long?,
     val reminderOffsetsCsv: String = "",
@@ -118,6 +120,9 @@ data class TodoItem(
     val isActive: Boolean
         get() = !isHistory
 
+    val canBeMarkedCompleted: Boolean
+        get() = isTodo
+
     val isRecurring: Boolean
         get() = recurringSeriesId != null && recurrenceTypeEnum != RecurrenceType.NONE
 
@@ -129,6 +134,9 @@ data class TodoItem(
 
     val configuredReminderOffsetsMinutes: List<Int>
         get() = decodeReminderOffsets(reminderOffsetsCsv, reminderOffsetMinutes)
+
+    val configuredCheckInReminderOffsetsMinutes: List<Int>
+        get() = decodeReminderOffsets(checkInReminderOffsetsCsv)
 
     val recurrenceEndDate: LocalDate?
         get() = recurrenceEndEpochDay?.let(LocalDate::ofEpochDay)

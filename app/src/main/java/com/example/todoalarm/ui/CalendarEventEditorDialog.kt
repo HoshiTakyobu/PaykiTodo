@@ -20,7 +20,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -61,7 +60,6 @@ import com.example.todoalarm.data.RecurrenceType
 import com.example.todoalarm.data.TaskGroup
 import com.example.todoalarm.data.TodoItem
 import com.example.todoalarm.data.buildWeeklyMultiSlotEventDrafts
-import com.example.todoalarm.data.normalizeReminderOffsets
 import com.example.todoalarm.data.previewCalendarRecurrence
 import com.example.todoalarm.data.storageStringToWeekdays
 import com.example.todoalarm.data.toEpochMillis
@@ -73,11 +71,6 @@ import java.time.LocalTime
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
-private data class ReminderLeadTimeOption(
-    val minutes: Int,
-    val label: String
-)
-
 private data class CourseTimeSlot(
     val weekday: DayOfWeek,
     val startTime: LocalTime,
@@ -87,27 +80,6 @@ private data class CourseTimeSlot(
 private data class CourseTimeSlotTarget(
     val index: Int,
     val editingStart: Boolean
-)
-
-private val ReminderLeadTimeOptions = listOf(
-    ReminderLeadTimeOption(5, "提前 5 分钟"),
-    ReminderLeadTimeOption(10, "提前 10 分钟"),
-    ReminderLeadTimeOption(15, "提前 15 分钟"),
-    ReminderLeadTimeOption(30, "提前 30 分钟"),
-    ReminderLeadTimeOption(60, "提前 1 小时"),
-    ReminderLeadTimeOption(120, "提前 2 小时"),
-    ReminderLeadTimeOption(24 * 60, "提前 1 天"),
-    ReminderLeadTimeOption(48 * 60, "提前 2 天")
-)
-private val CalendarColorOptions = listOf(
-    "#4E87E1",
-    "#4CB782",
-    "#FF6B4A",
-    "#BF7B4D",
-    "#8B5CF6",
-    "#0F766E",
-    "#D97706",
-    "#E11D48"
 )
 
 @OptIn(ExperimentalLayoutApi::class)
@@ -154,22 +126,15 @@ internal fun CalendarEventEditorDialog(
         mutableStateOf(initialEvent?.endAtMillis?.let(::reminderAtMillisToDateTime) ?: seedDraft?.endAt ?: now.plusHours(3))
     }
     var accentColorHex by remember(initialEvent?.id, seedDraft) {
-        mutableStateOf(initialEvent?.accentColorHex ?: seedDraft?.accentColorHex ?: CalendarColorOptions.first())
+        mutableStateOf(initialEvent?.accentColorHex ?: seedDraft?.accentColorHex ?: PaykiColorPresets.DefaultEvent)
     }
     val initialReminderMode = initialEvent?.reminderDeliveryModeEnum ?: seedDraft?.reminderDeliveryMode ?: defaultReminderDeliveryMode
-    val initialReminderEnabled = initialEvent?.reminderEnabled == true || seedDraft?.normalizedReminderOffsetsMinutes?.isNotEmpty() == true
+    val initialReminderEnabled = initialEvent?.reminderEnabled == true || seedDraft?.normalizedAllReminderOffsetsMinutes?.isNotEmpty() == true
     var fullscreenReminderEnabled by remember(initialEvent?.id, seedDraft) {
         mutableStateOf(initialReminderEnabled && initialReminderMode.usesFullscreen)
     }
     var notificationReminderEnabled by remember(initialEvent?.id, seedDraft) {
         mutableStateOf(initialReminderEnabled && initialReminderMode.usesNotification)
-    }
-    var reminderOffsetsMinutes by remember(initialEvent?.id, seedDraft) {
-        mutableStateOf(
-            initialEvent?.configuredReminderOffsetsMinutes?.takeIf { it.isNotEmpty() }
-                ?: seedDraft?.normalizedReminderOffsetsMinutes?.takeIf { it.isNotEmpty() }
-                ?: listOf(15)
-        )
     }
     var reminderInput by remember(initialEvent?.id, seedDraft) {
         mutableStateOf(
@@ -178,20 +143,12 @@ internal fun CalendarEventEditorDialog(
                 ?: listOf(15)).joinToString(",")
         )
     }
-    var reminderAt by remember(initialEvent?.id, seedDraft) {
+    var checkInReminderInput by remember(initialEvent?.id, seedDraft) {
         mutableStateOf(
-            initialEvent?.reminderAtMillis?.let(::reminderAtMillisToDateTime)
-                ?: seedDraft?.let { draft ->
-                    draft.normalizedReminderOffsetsMinutes.firstOrNull()?.let { minutes ->
-                        val anchor = if (draft.allDay) {
-                            LocalDateTime.of(draft.startAt.toLocalDate(), LocalTime.of(9, 0))
-                        } else {
-                            draft.startAt
-                        }
-                        anchor.minusMinutes(minutes.toLong())
-                    }
-                }
-                ?: startAt.minusMinutes((reminderOffsetsMinutes.firstOrNull() ?: 15).toLong())
+            (initialEvent?.configuredCheckInReminderOffsetsMinutes?.takeIf { it.isNotEmpty() }
+                ?: seedDraft?.normalizedCheckInReminderOffsetsMinutes?.takeIf { it.isNotEmpty() })
+                ?.joinToString(",")
+                .orEmpty()
         )
     }
     var ringEnabled by remember(initialEvent?.id, seedDraft) { mutableStateOf(initialEvent?.ringEnabled ?: seedDraft?.ringEnabled ?: defaultRingEnabled) }
@@ -226,10 +183,8 @@ internal fun CalendarEventEditorDialog(
         mutableStateOf(initialEvent?.recurrenceEndDate ?: seedDraft?.recurrence?.endDate ?: startAt.toLocalDate().plusDays(90))
     }
     var recurrencePreview by remember { mutableStateOf<RecurrencePreviewResult?>(null) }
-    var showReminderPicker by remember { mutableStateOf(false) }
     var showRecurrencePicker by remember { mutableStateOf(false) }
     var showGroupPicker by remember { mutableStateOf(false) }
-    var helpTopic by remember { mutableStateOf<InputSyntaxHelpTopic?>(null) }
     var activeDateTimeTarget by remember { mutableStateOf<CalendarDateTimeTarget?>(null) }
     var activeLunarDateTarget by remember { mutableStateOf<CalendarDateTarget?>(null) }
     var courseMultiSlotEnabled by remember(initialEvent?.id) { mutableStateOf(false) }
@@ -250,11 +205,28 @@ internal fun CalendarEventEditorDialog(
     val courseSlotsValid = courseSlots.isNotEmpty() && courseSlots.all { it.endTime.isAfter(it.startTime) }
     val reminderAnchor = if (allDay) LocalDateTime.of(startAt.toLocalDate(), LocalTime.of(9, 0)) else startAt
     val reminderValidation = remember(reminderInput, reminderAnchor, reminderEnabled, initialEvent?.id) {
-        if (!reminderEnabled) {
+        if (!reminderEnabled || reminderInput.isBlank()) {
             ReminderInputValidation(isValid = true)
         } else {
             parseReminderInput(
                 raw = reminderInput,
+                anchor = reminderAnchor,
+                requireFuture = initialEvent == null
+            )
+        }
+    }
+    val checkInReminderValidation = remember(
+        checkInReminderInput,
+        reminderAnchor,
+        reminderEnabled,
+        checkInEnabled,
+        initialEvent?.id
+    ) {
+        if (!reminderEnabled || !checkInEnabled || checkInReminderInput.isBlank()) {
+            ReminderInputValidation(isValid = true)
+        } else {
+            parseReminderInput(
+                raw = checkInReminderInput,
                 anchor = reminderAnchor,
                 requireFuture = initialEvent == null
             )
@@ -268,7 +240,7 @@ internal fun CalendarEventEditorDialog(
         startAt,
         initialEvent?.id
     ) {
-        validateCourseReminderInput(
+        if (reminderInput.isBlank()) ReminderInputValidation(isValid = true) else validateCourseReminderInput(
             raw = reminderInput,
             baseDate = startAt.toLocalDate(),
             courseSlots = courseSlots,
@@ -276,11 +248,29 @@ internal fun CalendarEventEditorDialog(
             requireFuture = initialEvent == null
         )
     }
+    val courseCheckInReminderValidation = remember(
+        checkInReminderInput,
+        reminderEnabled,
+        checkInEnabled,
+        courseModeActive,
+        courseSlots,
+        startAt,
+        initialEvent?.id
+    ) {
+        if (checkInReminderInput.isBlank()) ReminderInputValidation(isValid = true) else validateCourseReminderInput(
+            raw = checkInReminderInput,
+            baseDate = startAt.toLocalDate(),
+            courseSlots = courseSlots,
+            reminderEnabled = reminderEnabled && checkInEnabled && courseModeActive,
+            requireFuture = initialEvent == null
+        )
+    }
     val effectiveReminderValidation = if (courseModeActive) courseReminderValidation else reminderValidation
+    val effectiveCheckInReminderValidation = if (courseModeActive) courseCheckInReminderValidation else checkInReminderValidation
     val eventEndValid = if (allDay) !endAt.toLocalDate().isBefore(startAt.toLocalDate()) else endAt.isAfter(startAt)
     val confirmEnabled = title.isNotBlank() &&
         (if (courseModeActive) courseSlotsValid else eventEndValid) &&
-        (!reminderEnabled || effectiveReminderValidation.isValid)
+        (!reminderEnabled || (effectiveReminderValidation.isValid && effectiveCheckInReminderValidation.isValid))
     EditorBottomSheet(
         title = if (initialEvent == null) "新增日程" else "编辑日程",
         confirmLabel = "完成",
@@ -288,6 +278,13 @@ internal fun CalendarEventEditorDialog(
         onDismiss = onDismiss,
         onConfirm = {
             val normalizedOffsets = if (reminderEnabled && reminderValidation.isValid) reminderValidation.offsetsMinutes else emptyList()
+            val normalizedCheckInOffsets = if (
+                reminderEnabled && checkInEnabled && checkInReminderValidation.isValid
+            ) {
+                checkInReminderValidation.offsetsMinutes
+            } else {
+                emptyList()
+            }
             val selectedGroup = sortedGroups.firstOrNull { it.id == selectedGroupId }
             val baseDraft = CalendarEventDraft(
                 title = title,
@@ -304,6 +301,7 @@ internal fun CalendarEventEditorDialog(
                 reminderDeliveryMode = reminderDeliveryMode,
                 countdownEnabled = countdownEnabled,
                 checkInEnabled = checkInEnabled,
+                checkInReminderOffsetsMinutes = normalizedCheckInOffsets,
                 recurrence = RecurrenceConfig(
                     enabled = recurringEnabled,
                     type = recurrenceType,
@@ -325,18 +323,30 @@ internal fun CalendarEventEditorDialog(
                         )
                     },
                     baseDate = startAt.toLocalDate(),
-                    recurrenceEndDate = recurrenceEndDate
-                ) { _, slotStartAt ->
-                    if (reminderEnabled) {
-                        parseReminderInput(
-                            raw = reminderInput,
-                            anchor = slotStartAt,
-                            requireFuture = initialEvent == null
-                        ).offsetsMinutes
-                    } else {
-                        emptyList()
+                    recurrenceEndDate = recurrenceEndDate,
+                    checkInReminderOffsetsForSlot = { _, slotStartAt ->
+                        if (reminderEnabled && checkInEnabled && checkInReminderInput.isNotBlank()) {
+                            parseReminderInput(
+                                raw = checkInReminderInput,
+                                anchor = slotStartAt,
+                                requireFuture = initialEvent == null
+                            ).offsetsMinutes
+                        } else {
+                            emptyList()
+                        }
+                    },
+                    reminderOffsetsForSlot = { _, slotStartAt ->
+                        if (reminderEnabled && reminderInput.isNotBlank()) {
+                            parseReminderInput(
+                                raw = reminderInput,
+                                anchor = slotStartAt,
+                                requireFuture = initialEvent == null
+                            ).offsetsMinutes
+                        } else {
+                            emptyList()
+                        }
                     }
-                }
+                )
                 onConfirmMultiple?.invoke(courseDrafts) ?: onConfirm(courseDrafts.first())
             } else {
                 if (syncMultiSlotBundleSharedFields && initialEvent?.multiSlotBundleId?.isNotBlank() == true) {
@@ -686,77 +696,30 @@ internal fun CalendarEventEditorDialog(
                     }
 
                     if (reminderEnabled) {
-                        Surface(
-                            shape = RoundedCornerShape(18.dp),
-                            color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.28f)
-                        ) {
-                            Column(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = 14.dp, vertical = 12.dp),
-                                verticalArrangement = Arrangement.spacedBy(3.dp)
-                            ) {
-                                Text(
-                                    text = if (effectiveReminderValidation.isValid) {
-                                        if (courseModeActive) {
-                                            "每个时间段会按自己的开始时间解析提醒"
-                                        } else {
-                                            effectiveReminderValidation.message
-                                        }
-                                    } else {
-                                        "输入存在非法项"
-                                    },
-                                    fontWeight = FontWeight.SemiBold,
-                                    color = if (effectiveReminderValidation.isValid) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.error
-                                )
-                                Text(
-                                    text = buildReminderMetaLabel(
-                                        reminderDeliveryMode = reminderDeliveryMode,
-                                        ringEnabled = ringEnabled,
-                                        vibrateEnabled = vibrateEnabled
-                                    ),
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                        }
-
-                        if (!effectiveReminderValidation.isValid) {
-                            Text(
-                                text = "非法输入：${effectiveReminderValidation.message}",
-                                color = MaterialTheme.colorScheme.error,
-                                style = MaterialTheme.typography.bodySmall,
-                                fontWeight = FontWeight.SemiBold
+                        ReminderOffsetSelector(
+                            label = "普通提醒",
+                            rawInput = reminderInput,
+                            validation = effectiveReminderValidation,
+                            onRawInputChange = { reminderInput = it },
+                            emptySummary = "不设置普通提醒"
+                        )
+                        if (checkInEnabled) {
+                            ReminderOffsetSelector(
+                                label = "签到提醒",
+                                rawInput = checkInReminderInput,
+                                validation = effectiveCheckInReminderValidation,
+                                onRawInputChange = { checkInReminderInput = it },
+                                emptySummary = "不设置签到提醒"
                             )
                         }
-                        OutlinedTextField(
-                            value = reminderInput,
-                            onValueChange = {
-                                reminderInput = it
-                                reminderOffsetsMinutes = parseReminderInput(
-                                    raw = it,
-                                    anchor = reminderAnchor,
-                                    requireFuture = initialEvent == null
-                                ).offsetsMinutes
-                            },
-                            label = {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Text("提醒时间")
-                                    InputSyntaxHelpIconButton(
-                                        topic = InputSyntaxHelpTopic.Reminder,
-                                        onClick = { helpTopic = InputSyntaxHelpTopic.Reminder }
-                                    )
-                                }
-                            },
-                            placeholder = { Text("例：5（提前5分钟）或 5,15,16:30") },
-                            isError = !effectiveReminderValidation.isValid,
-                            supportingText = {
-                                Text("数字=提前分钟；HH:mm=当天时刻；MM-DD HH:mm=当年；YYYY-MM-DD HH:mm=完整时刻。用英文逗号分隔。")
-                            },
-                            modifier = Modifier.fillMaxWidth(),
-                            singleLine = false,
-                            minLines = 1,
-                            maxLines = 3
+                        Text(
+                            text = buildReminderMetaLabel(
+                                reminderDeliveryMode = reminderDeliveryMode,
+                                ringEnabled = ringEnabled,
+                                vibrateEnabled = vibrateEnabled
+                            ),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Row(
                             modifier = Modifier
@@ -874,6 +837,13 @@ internal fun CalendarEventEditorDialog(
                             OutlinedButton(
                                 onClick = {
                                     val normalizedOffsets = if (reminderEnabled && reminderValidation.isValid) reminderValidation.offsetsMinutes else emptyList()
+                                    val normalizedCheckInOffsets = if (
+                                        reminderEnabled && checkInEnabled && checkInReminderValidation.isValid
+                                    ) {
+                                        checkInReminderValidation.offsetsMinutes
+                                    } else {
+                                        emptyList()
+                                    }
                                     recurrencePreview = previewCalendarRecurrence(
                                         CalendarEventDraft(
                                             title = title,
@@ -890,6 +860,7 @@ internal fun CalendarEventEditorDialog(
                                             reminderDeliveryMode = reminderDeliveryMode,
                                             countdownEnabled = countdownEnabled,
                                             checkInEnabled = checkInEnabled,
+                                            checkInReminderOffsetsMinutes = normalizedCheckInOffsets,
                                             recurrence = RecurrenceConfig(
                                                 enabled = true,
                                                 type = recurrenceType,
@@ -916,21 +887,19 @@ internal fun CalendarEventEditorDialog(
                             .horizontalScroll(rememberScrollState()),
                         horizontalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
-                        CalendarColorOptions.forEach { candidate ->
+                        PaykiColorPresets.Rainbow12.forEach { candidate ->
                             Box(
                                 modifier = Modifier
-                                    .clip(CircleShape)
+                                    .size(34.dp)
+                                    .clip(RoundedCornerShape(7.dp))
                                     .background(colorFromHex(candidate))
                                     .border(
                                         width = if (accentColorHex == candidate) 3.dp else 1.dp,
                                         color = if (accentColorHex == candidate) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.outlineVariant,
-                                        shape = CircleShape
+                                        shape = RoundedCornerShape(7.dp)
                                     )
                                     .clickable { accentColorHex = candidate }
-                                    .padding(3.dp)
-                            ) {
-                                Spacer(Modifier.size(if (accentColorHex == candidate) 30.dp else 26.dp))
-                            }
+                            ) {}
                         }
                     }
                 }
@@ -942,29 +911,6 @@ internal fun CalendarEventEditorDialog(
             preview = preview,
             onDismiss = { recurrencePreview = null }
         )
-    }
-
-    if (showReminderPicker) {
-        ReminderSelectionDialog(
-            selectedOffsets = reminderOffsetsMinutes,
-            anchorDateTime = if (allDay) LocalDateTime.of(startAt.toLocalDate(), LocalTime.of(9, 0)) else startAt,
-            customReminderAt = reminderAt,
-            onDismiss = { showReminderPicker = false },
-            onPickedCustomTime = { picked ->
-                reminderAt = picked
-                val anchor = if (allDay) LocalDateTime.of(startAt.toLocalDate(), LocalTime.of(9, 0)) else startAt
-                val offset = ((anchor.toEpochMillis() - picked.toEpochMillis()) / 60_000L).toInt().coerceAtLeast(0)
-                reminderOffsetsMinutes = normalizeReminderOffsets(reminderOffsetsMinutes + offset)
-            },
-            onConfirm = {
-                reminderOffsetsMinutes = normalizeReminderOffsets(it)
-                showReminderPicker = false
-            }
-        )
-    }
-
-    helpTopic?.let { topic ->
-        InputSyntaxHelpDialog(topic = topic, onDismiss = { helpTopic = null })
     }
 
     activeDateTimeTarget?.let { target ->
@@ -1351,85 +1297,6 @@ private fun SingleChoiceListDialog(
     )
 }
 
-@Composable
-private fun ReminderSelectionDialog(
-    selectedOffsets: List<Int>,
-    anchorDateTime: LocalDateTime,
-    customReminderAt: LocalDateTime,
-    onDismiss: () -> Unit,
-    onPickedCustomTime: (LocalDateTime) -> Unit,
-    onConfirm: (List<Int>) -> Unit
-) {
-    var workingSelection by remember(selectedOffsets) { mutableStateOf(selectedOffsets) }
-    var showCustomPicker by remember { mutableStateOf(false) }
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("选择提醒时间", fontWeight = FontWeight.Bold) },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Text("日程开始时", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                ReminderLeadTimeOptions.forEach { option ->
-                    val selected = option.minutes in workingSelection
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable {
-                                workingSelection = normalizeReminderOffsets(
-                                    if (selected) workingSelection - option.minutes else workingSelection + option.minutes
-                                )
-                            }
-                            .padding(vertical = 12.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-                        Text(option.label, modifier = Modifier.weight(1f), color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface)
-                        if (selected) {
-                            Icon(Icons.Rounded.Check, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                        }
-                    }
-                }
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable {
-                            showCustomPicker = true
-                        }
-                        .padding(vertical = 12.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                        Text("自定义", color = MaterialTheme.colorScheme.onSurface)
-                        Text(formatLocalDateTime(customReminderAt), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
-                    Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-            }
-        },
-        confirmButton = {
-            TextButton(onClick = { onConfirm(workingSelection) }) { Text("完成") }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text("取消") }
-        }
-    )
-
-    if (showCustomPicker) {
-        WheelDateTimePickerDialog(
-            title = "选择自定义提醒时间",
-            initialDateTime = customReminderAt,
-            onDismiss = { showCustomPicker = false },
-            onConfirm = { picked ->
-                onPickedCustomTime(picked)
-                val offset = ((anchorDateTime.toEpochMillis() - picked.toEpochMillis()) / 60_000L).toInt().coerceAtLeast(0)
-                workingSelection = normalizeReminderOffsets(workingSelection + offset)
-                showCustomPicker = false
-            }
-        )
-    }
-}
-
 private enum class CalendarDateTimeTarget {
     StartAt,
     EndAt
@@ -1630,14 +1497,6 @@ private fun EditorMiddlePill(
     }
 }
 
-private fun reminderLeadTimeLabel(minutes: Int): String {
-    return ReminderLeadTimeOptions.firstOrNull { it.minutes == minutes }?.label ?: when {
-        minutes % (24 * 60) == 0 -> "提前 ${minutes / (24 * 60)} 天"
-        minutes % 60 == 0 -> "提前 ${minutes / 60} 小时"
-        else -> "提前 $minutes 分钟"
-    }
-}
-
 private fun buildReminderMetaLabel(
     reminderDeliveryMode: ReminderDeliveryMode,
     ringEnabled: Boolean,
@@ -1660,6 +1519,7 @@ private fun validateCourseReminderInput(
 ): ReminderInputValidation {
     if (!reminderEnabled) return ReminderInputValidation(isValid = true)
     val now = LocalDateTime.now().withSecond(0).withNano(0)
+    var representative: ReminderInputValidation? = null
     courseSlots.sortedWith(compareBy<CourseTimeSlot> { it.weekday.value }.thenBy { it.startTime }).forEach { slot ->
         val slotDate = nextOrSameWeekday(baseDate, slot.weekday)
         val slotStartAt = LocalDateTime.of(slotDate, slot.startTime)
@@ -1674,18 +1534,11 @@ private fun validateCourseReminderInput(
                 message = "${slot.weekday.shortLabel()} ${formatLocalTime(slot.startTime)}：${parsed.message}"
             )
         }
+        if (representative == null) representative = parsed
     }
-    return ReminderInputValidation(
-        isValid = true,
+    return (representative ?: ReminderInputValidation(isValid = true)).copy(
         message = "每个时间段会按自己的开始时间解析提醒"
     )
-}
-
-private fun reminderSelectionSummary(reminderOffsetsMinutes: List<Int>): String {
-    if (reminderOffsetsMinutes.isEmpty()) return "未选择"
-    return reminderOffsetsMinutes
-        .sortedDescending()
-        .joinToString("、") { reminderLeadTimeLabel(it) }
 }
 
 private data class RecurrenceChoiceItem(

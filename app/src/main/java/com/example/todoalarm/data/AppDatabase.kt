@@ -19,7 +19,7 @@ import androidx.room.RoomDatabase
         RecurringInstanceSkip::class,
         ActivityRecord::class
     ],
-    version = 29,
+    version = 30,
     exportSchema = true
 )
 abstract class AppDatabase : RoomDatabase() {

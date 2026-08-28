@@ -140,8 +140,8 @@ class ReminderActivity : ComponentActivity() {
         lifecycleScope.launch {
             val item = app.repository.getTodo(todoId)
             if (item == null || item.isHistory) {
-                ActiveReminderStore.clearIfMatches(this@ReminderActivity, todoId)
-                ActiveReminderStore.clearActivityHandoff(this@ReminderActivity, todoId)
+                app.alarmScheduler.cancel(todoId)
+                ReminderForegroundService.dismiss(this@ReminderActivity, todoId)
                 finish()
                 return@launch
             }
@@ -233,25 +233,20 @@ class ReminderActivity : ComponentActivity() {
     private fun clearReminderArtifacts(items: List<TodoItem>) {
         items.forEach { item ->
             app.alarmScheduler.cancel(item.id)
-            app.reminderNotifier.cancel(item.id)
-            ActiveReminderStore.clearIfMatches(this, item.id)
-            ActiveReminderStore.clearActivityHandoff(this, item.id)
+            ReminderForegroundService.dismiss(this, item.id)
         }
     }
 
     private fun clearEventReminderArtifactsAndKeepOngoing(item: TodoItem) {
         app.alarmScheduler.cancelReminderOnly(item.id)
-        app.reminderNotifier.cancel(item.id)
-        ActiveReminderStore.clearIfMatches(this, item.id)
-        ActiveReminderStore.clearActivityHandoff(this, item.id)
+        ReminderForegroundService.dismiss(this, item.id)
         if (item.isEvent && !item.isHistory) {
             OngoingEventNotifier.schedule(this, item.copy(reminderEnabled = false))
         }
     }
 
     private fun closeReminder(todoId: Long) {
-        stopService(Intent(this, ReminderForegroundService::class.java))
-        getSystemService(NotificationManager::class.java).cancel(ReminderNotifier.notificationId(todoId))
+        ReminderForegroundService.dismiss(this, todoId)
         finish()
     }
 

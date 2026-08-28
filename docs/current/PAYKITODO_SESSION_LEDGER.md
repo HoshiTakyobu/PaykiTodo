@@ -8,7 +8,7 @@ The original PaykiTodo sessions became large and increasingly unreliable. This f
 
 ## Latest In-Progress Round
 
-The `1.15.11 / versionCode 353` round changes reminder delivery from a single reminder-mode choice to two independent channels across the phone editor, desktop Web editor, Planning Desk preview, and batch-import paths. Neither channel selected means the item remains unscheduled; selecting both requests the full-screen surface and keeps the content notification. Disabling reminders on an existing item now also clears stored reminder alarms, notifications, dispatch markers, and full-screen handoff state without removing an event's independent ongoing notification. It also aligns desktop calendar hour labels with the grid rules and changes completed-event styling to opacity-only color preservation. The code changes and final verification are complete locally; commit is pending.
+The `1.15.12 / versionCode 354` round fixes stale reminder sessions after todo completion/cancellation, removes the unsupported calendar-event completion state, adds phone/desktop event copying, replaces free-form-only reminder fields with shared multi-select presets plus custom input, adds independent check-in reminder offsets, and synchronizes an ordered 12-color palette across phone and desktop. Database version `30` stores check-in reminder offsets on event items and recurring templates. Focused compilation/tests have passed; full build, lint, and emulator reminder/UI verification remain before commit.
 
 ## Initial Product Request
 

@@ -206,6 +206,7 @@
       <div id="event-preview-body" class="preview-body"></div>
       <div class="preview-actions event-preview-actions">
         <button id="preview-event-cancel" class="archive-action">取消日程<span>停止提醒并进入历史记录，不是删除</span></button>
+        <button id="preview-event-copy" class="ghost">创建副本</button>
         <button id="preview-event-edit" class="sheet-primary-action">编辑</button>
         <button id="preview-event-delete" class="danger-action">删除</button>
       </div>
@@ -254,7 +255,7 @@
         </div>
         <div class="todo-due-dependent todo-reminder-dependent">
           <label>提醒时间</label>
-          <input id="todo-reminder-spec" placeholder="5,15,16:30,下午 2:30,明天 16:30,5/10，14:30" />
+          <div id="todo-reminder-picker" class="reminder-offset-picker" data-empty-summary="未选择提醒时间"></div>
         </div>
         <div>
           <label>分组</label>
@@ -316,7 +317,7 @@
           <div id="event-color-presets" class="color-swatch-row" aria-label="日程颜色预设"></div>
           <div class="color-custom-row">
             <span>自定义</span>
-            <input id="event-color" type="color" value="#4e87e1" />
+            <input id="event-color" type="color" value="#df58a5" />
           </div>
         </div>
         <div><label>地点</label><input id="event-location" placeholder="地点" /></div>
@@ -362,7 +363,15 @@
             <div id="event-end-preview" class="date-time-preview">选择结束时间后显示日期预览</div>
           </div>
         </div>
-        <div class="event-reminder-dependent"><label>提醒时间</label><input id="event-reminder-offsets" placeholder="5,15,16:30,下午 2:30,周五 16:30,5月10日，14:30" /></div>
+        <div class="event-reminder-dependent">
+          <label>普通提醒</label>
+          <div id="event-reminder-picker" class="reminder-offset-picker" data-empty-summary="不设置普通提醒"></div>
+        </div>
+        <div id="event-checkin-reminder-block" class="event-reminder-dependent disabled-block">
+          <label>签到提醒</label>
+          <div id="event-checkin-reminder-picker" class="reminder-offset-picker" data-empty-summary="不设置签到提醒"></div>
+          <p class="field-hint">仅在开启打卡追踪后生效，提醒时间以日程开始时刻为基准。</p>
+        </div>
         <div id="event-course-block" class="span-2 course-slot-card">
           <div class="course-slot-head">
             <label><input id="event-course-enabled" type="checkbox" /> 每周多时间段</label>

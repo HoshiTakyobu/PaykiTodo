@@ -208,5 +208,9 @@ class ReminderAccessibilityService : AccessibilityService() {
             )
             return true
         }
+
+        fun hideOverlayNow(todoId: Long? = null) {
+            activeService?.overlay?.hide(todoId)
+        }
     }
 }

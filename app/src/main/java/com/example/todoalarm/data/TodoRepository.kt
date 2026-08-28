@@ -11,7 +11,6 @@ import java.time.YearMonth
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.UUID
-import kotlin.math.roundToInt
 
 class TodoRepository(
     private val todoDao: TodoDao,
@@ -1577,29 +1576,11 @@ class TodoRepository(
 
     suspend fun setCompletedWithResult(
         id: Long,
-        completed: Boolean,
-        autoCheckOutEventOnEnd: Boolean = false
+        completed: Boolean
     ): CompletedItemResult? {
         val item = todoDao.getById(id) ?: return null
+        if (completed && !item.canBeMarkedCompleted) return null
         val now = System.currentTimeMillis()
-        var autoCheckedOut = false
-        if (completed && autoCheckOutEventOnEnd && item.isEvent && item.checkInEnabled) {
-            val active = todoDao.getActiveCheckIn(item.id)
-            if (active != null) {
-                val durationMinutes = ((now - active.checkInAtMillis).coerceAtLeast(0L) / 60_000L).toInt()
-                todoDao.checkOutEvent(
-                    id = active.id,
-                    checkOutAtMillis = now,
-                    durationMinutes = durationMinutes
-                )
-                autoCheckedOut = true
-            }
-        }
-        val totalCheckInMinutes = if (item.isEvent && item.checkInEnabled) {
-            todoDao.getTotalCheckInMinutesForEvent(item.id)
-        } else {
-            item.totalCheckInMinutes
-        }
         val updated = item.copy(
             completed = completed,
             completedAtMillis = if (completed) now else null,
@@ -1607,7 +1588,6 @@ class TodoRepository(
             canceledAtMillis = null,
             missed = if (completed) false else item.missed,
             missedAtMillis = if (completed) null else item.missedAtMillis,
-            totalCheckInMinutes = totalCheckInMinutes,
             reminderEnabled = if (completed) {
                 false
             } else {
@@ -1619,17 +1599,7 @@ class TodoRepository(
         notifyItemsChanged()
         return CompletedItemResult(
             item = updated,
-            affectedItems = (listOf(updated) + planningLinkedItems).distinctBy { it.id },
-            eventCheckInSummary = if (completed && updated.isEvent && updated.checkInEnabled) {
-                val checkIns = todoDao.getCheckInsForEvent(updated.id)
-                updated.toEventCheckInCompletionSummary(
-                    investedMinutes = totalCheckInMinutes,
-                    checkInCount = checkIns.size,
-                    autoCheckedOut = autoCheckedOut
-                )
-            } else {
-                null
-            }
+            affectedItems = (listOf(updated) + planningLinkedItems).distinctBy { it.id }
         )
     }
 
@@ -2312,7 +2282,7 @@ class TodoRepository(
                     startAt = start,
                     endAt = end,
                     allDay = resolved.allDay,
-                    accentColorHex = group?.colorHex ?: "#4E87E1",
+                    accentColorHex = group?.colorHex ?: DEFAULT_ITEM_ACCENT_COLOR_HEX,
                     reminderMinutesBefore = reminderOffsets?.firstOrNull() ?: DEFAULT_PLANNING_REMINDER_MINUTES,
                     reminderOffsetsMinutes = reminderOffsets ?: listOf(DEFAULT_PLANNING_REMINDER_MINUTES),
                     ringEnabled = true,
@@ -2330,7 +2300,7 @@ class TodoRepository(
         if (created.isTodo) {
             replaceGroupTags(listOf(created), listOf(groupId))
         }
-        if (completed) {
+        if (completed && created.isTodo) {
             created = created.copy(
                 completed = true,
                 completedAtMillis = now,
@@ -2429,7 +2399,7 @@ class TodoRepository(
                     startAt = start,
                     endAt = end,
                     allDay = previous.allDay,
-                    accentColorHex = previous.accentColorHex ?: "#4E87E1",
+                    accentColorHex = previous.accentColorHex ?: DEFAULT_ITEM_ACCENT_COLOR_HEX,
                     reminderMinutesBefore = previous.configuredReminderOffsetsMinutes.firstOrNull() ?: DEFAULT_PLANNING_REMINDER_MINUTES,
                     reminderOffsetsMinutes = previous.configuredReminderOffsetsMinutes.ifEmpty { listOf(DEFAULT_PLANNING_REMINDER_MINUTES) },
                     ringEnabled = previous.ringEnabled,
@@ -2437,12 +2407,12 @@ class TodoRepository(
                     reminderDeliveryMode = previous.reminderDeliveryModeEnum,
                     countdownEnabled = previous.countdownEnabled,
                     checkInEnabled = previous.checkInEnabled,
+                    checkInReminderOffsetsMinutes = previous.configuredCheckInReminderOffsetsMinutes,
                     groupId = previous.groupId
                 )
                 buildCalendarEventItem(draft, now = previous.createdAtMillis, existing = previous).copy(
-                    completed = completed,
-                    completedAtMillis = if (completed) previous.completedAtMillis ?: now else null,
-                    reminderEnabled = if (completed) false else buildCalendarEventItem(draft, now = previous.createdAtMillis, existing = previous).reminderEnabled
+                    completed = false,
+                    completedAtMillis = null
                 )
             }
         }
@@ -2622,6 +2592,7 @@ class TodoRepository(
         now: Long
     ): TodoItem? {
         val item = todoDao.getById(itemId) ?: return null
+        if (completed && !item.canBeMarkedCompleted) return item
         val updated = item.copy(
             completed = completed,
             completedAtMillis = if (completed) now else null,
@@ -3048,7 +3019,7 @@ class TodoRepository(
     private suspend fun resolvePlanningGroupId(groupName: String, groups: List<TaskGroup>, fallbackGroupId: Long): Long {
         if (groupName.isNotBlank()) {
             groups.firstOrNull { it.name.equals(groupName.trim(), ignoreCase = true) }?.let { return it.id }
-            return createGroup(groupName.trim(), "#4E87E1").id
+            return createGroup(groupName.trim(), DEFAULT_ITEM_ACCENT_COLOR_HEX).id
         }
         return fallbackGroupId.takeIf { it > 0 } ?: groups.firstOrNull { it.name == "例行" }?.id ?: groups.firstOrNull()?.id ?: 0L
     }
@@ -3594,8 +3565,10 @@ class TodoRepository(
         val eventStartAtMillis = eventDisplayStartMillis(draft)
         val eventEndAtMillis = eventDisplayEndMillis(draft)
         val normalizedOffsets = draft.normalizedReminderOffsetsMinutes
+        val normalizedCheckInOffsets = draft.normalizedCheckInReminderOffsetsMinutes
+        val normalizedAllOffsets = draft.normalizedAllReminderOffsetsMinutes
         val reminderAtMillis = draft.reminderTriggerTimesMillis().minOrNull()
-        val offsetMinutes = reminderAtMillis?.let { ((eventStartAtMillis - it) / 60_000L).toInt() }
+        val offsetMinutes = normalizedOffsets.firstOrNull()
         val reminderOffsetsCsv = encodeReminderOffsets(normalizedOffsets, draft.reminderMinutesBefore)
         val recurrence = draft.recurrence
         val startDate = draft.startAt.toLocalDate()
@@ -3613,10 +3586,11 @@ class TodoRepository(
             accentColorHex = draft.accentColorHex,
             countdownEnabled = draft.countdownEnabled,
             checkInEnabled = draft.checkInEnabled,
+            checkInReminderOffsetsCsv = encodeReminderOffsets(normalizedCheckInOffsets),
             totalCheckInMinutes = existing?.totalCheckInMinutes ?: 0,
             reminderAtMillis = reminderAtMillis,
             reminderOffsetsCsv = reminderOffsetsCsv,
-            reminderEnabled = normalizedOffsets.isNotEmpty(),
+            reminderEnabled = normalizedAllOffsets.isNotEmpty(),
             ringEnabled = draft.ringEnabled,
             vibrateEnabled = draft.vibrateEnabled,
             voiceEnabled = false,
@@ -3743,6 +3717,8 @@ class TodoRepository(
             location = draft.location.trim(),
             accentColorHex = draft.accentColorHex,
             countdownEnabled = draft.countdownEnabled,
+            checkInEnabled = draft.checkInEnabled,
+            checkInReminderOffsetsCsv = encodeReminderOffsets(draft.normalizedCheckInReminderOffsetsMinutes),
             multiSlotBundleId = draft.multiSlotBundleId?.takeIf { it.isNotBlank() },
             allDay = draft.allDay,
             groupId = draft.groupId,
@@ -3790,6 +3766,8 @@ class TodoRepository(
                     groupId = draft.groupId,
                     reminderOffsetMinutes = normalizedOffsets.firstOrNull(),
                     reminderOffsetsCsv = encodeReminderOffsets(normalizedOffsets, draft.reminderMinutesBefore),
+                    checkInEnabled = draft.checkInEnabled,
+                    checkInReminderOffsetsCsv = encodeReminderOffsets(draft.normalizedCheckInReminderOffsetsMinutes),
                     ringEnabled = draft.ringEnabled,
                     vibrateEnabled = draft.vibrateEnabled,
                     reminderDeliveryMode = draft.reminderDeliveryMode.name,
@@ -3914,13 +3892,15 @@ class TodoRepository(
                         startAt = startAt,
                         endAt = startAt.plusMinutes(duration.toLong()),
                         allDay = template.allDay,
-                        accentColorHex = template.accentColorHex ?: "#4E87E1",
+                        accentColorHex = template.accentColorHex ?: DEFAULT_ITEM_ACCENT_COLOR_HEX,
                         reminderMinutesBefore = template.reminderOffsetMinutes,
                         reminderOffsetsMinutes = template.configuredReminderOffsetsMinutes,
                         ringEnabled = template.ringEnabled,
                         vibrateEnabled = template.vibrateEnabled,
                         reminderDeliveryMode = ReminderDeliveryMode.fromStorage(template.reminderDeliveryMode),
                         countdownEnabled = template.countdownEnabled,
+                        checkInEnabled = template.checkInEnabled,
+                        checkInReminderOffsetsMinutes = template.configuredCheckInReminderOffsetsMinutes,
                         recurrence = template.toRecurrenceConfig(),
                         multiSlotBundleId = template.multiSlotBundleId,
                         groupId = template.groupId
@@ -4205,7 +4185,7 @@ class TodoRepository(
         val groups = ensureDefaultGroups()
         val existing = groups.firstOrNull { it.name.equals(normalized, ignoreCase = true) }
         if (existing != null) return existing.id
-        return createGroup(normalized, "#4E87E1").id
+        return createGroup(normalized, DEFAULT_ITEM_ACCENT_COLOR_HEX).id
     }
 
     private fun reminderAnchorMillis(draft: CalendarEventDraft): Long {
@@ -4228,28 +4208,6 @@ class TodoRepository(
             draft.endAt
         }
         return end.toEpochMillis()
-    }
-
-    private fun TodoItem.toEventCheckInCompletionSummary(
-        investedMinutes: Int,
-        checkInCount: Int,
-        autoCheckedOut: Boolean
-    ): EventCheckInCompletionSummary {
-        val start = startAtMillis ?: dueAtMillis
-        val end = endAtMillis ?: start
-        val plannedMinutes = ((end - start).coerceAtLeast(0L) / 60_000L).toInt()
-        val safeInvested = investedMinutes.coerceAtLeast(0)
-        return EventCheckInCompletionSummary(
-            eventId = id,
-            title = title,
-            plannedMinutes = plannedMinutes,
-            investedMinutes = safeInvested,
-            checkInCount = checkInCount,
-            investmentRatePercent = plannedMinutes.takeIf { it > 0 }?.let {
-                ((safeInvested.toDouble() / it.toDouble()) * 100.0).roundToInt()
-            },
-            autoCheckedOut = autoCheckedOut
-        )
     }
 
     private fun notifyItemsChanged() {

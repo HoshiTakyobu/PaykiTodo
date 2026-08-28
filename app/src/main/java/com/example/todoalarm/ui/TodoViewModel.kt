@@ -25,7 +25,6 @@ import com.example.todoalarm.data.DailyBoardSnapshotBuilder
 import com.example.todoalarm.data.DataHealthCleanResult
 import com.example.todoalarm.data.DataHealthReport
 import com.example.todoalarm.data.EventCheckIn
-import com.example.todoalarm.data.EventCheckInCompletionSummary
 import com.example.todoalarm.data.GlobalSearchResult
 import com.example.todoalarm.data.PlanningAnnouncement
 import com.example.todoalarm.data.PlanningAnnouncementParser
@@ -373,20 +372,6 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
 
     suspend fun getEventCheckIns(eventId: Long): List<EventCheckIn> {
         return withContext(Dispatchers.IO) { repository.getCheckInsForEvent(eventId) }
-    }
-
-    suspend fun completeCalendarEvent(eventId: Long): EventCheckInCompletionSummary? {
-        val settings = settingsStore.currentSettings()
-        val result = withContext(Dispatchers.IO) {
-            repository.setCompletedWithResult(
-                id = eventId,
-                completed = true,
-                autoCheckOutEventOnEnd = settings.autoCheckOutEventOnEnd
-            )
-        } ?: return null
-        clearReminderArtifacts(result.affectedItems)
-        autoBackupIfEnabled()
-        return result.eventCheckInSummary.takeIf { settings.showEventCheckInStatsOnComplete }
     }
 
     fun observeAiReports(
@@ -1459,7 +1444,7 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
             startAt = requireNotNull(startAt) { "Event requires startAt" },
             endAt = requireNotNull(endAt) { "Event requires endAt" },
             allDay = allDay,
-            accentColorHex = groups.firstOrNull { it.name == groupName }?.colorHex ?: "#4E87E1",
+            accentColorHex = groups.firstOrNull { it.name == groupName }?.colorHex ?: PaykiColorPresets.DefaultEvent,
             reminderMinutesBefore = offsets.firstOrNull(),
             reminderOffsetsMinutes = offsets,
             ringEnabled = true,
@@ -1733,23 +1718,13 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
     private fun clearReminderArtifacts(items: List<TodoItem>) {
         items.forEach { item ->
             alarmScheduler.cancel(item.id)
-            reminderNotifier.cancel(item.id)
-            ReminderDispatchTracker.clear(app, item.id)
-            ActiveReminderStore.clearIfMatches(app, item.id)
+            ReminderForegroundService.dismiss(app, item.id)
         }
     }
 
     private fun clearDisabledReminderArtifacts(todoId: Long) {
-        val reminderWasActive = ActiveReminderStore.getActiveTodoId(app) == todoId
         alarmScheduler.cancelReminderOnly(todoId)
-        reminderNotifier.cancel(todoId)
-        ReminderDispatchTracker.clear(app, todoId)
-        ActiveReminderStore.clearIfMatches(app, todoId)
-        ActiveReminderStore.clearActivityHandoff(app, todoId)
-        ActiveReminderStore.clearReminderSurfaceMarker(app, todoId)
-        if (reminderWasActive) {
-            app.stopService(Intent(app, ReminderForegroundService::class.java))
-        }
+        ReminderForegroundService.dismiss(app, todoId)
     }
 
     private fun overlapsWeek(item: TodoItem, weekStart: LocalDate): Boolean {

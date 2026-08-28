@@ -198,11 +198,12 @@ This file tracks the product at a practical level for new coding sessions.
 
 - timeline-style calendar foundation
 - timeline quick-create clears the visible `新日程` pending placeholder as soon as its editor opens, so a successfully saved event immediately renders with its real title
-- phone event details keep `完成日程` as a full-width primary action and place cancel/edit/delete in a separate compact three-button row, so common narrow screens do not wrap action labels vertically
+- phone event details do not expose a completion action; calendar events can be canceled into history or deleted, but only todos can enter the completed state
 - day / multi-day / month / agenda style views exist in code, with ongoing refinement
 - normal events, all-day events, and recurring events
 - event location / notes / color / reminder settings
 - event cancellation is a first-class history-preserving action: phone and Desktop Web previews expose `取消日程`, canceled events are marked `canceled = true`, and delete remains hard removal
+- phone and Desktop Web event details expose `创建副本`; the copy editor preserves editable event/reminder/check-in/recurrence fields while dropping the original database identity and multi-slot bundle identity
 - phone history cards visibly distinguish `已完成` and `已取消`; historical event details show complete start/end time and location instead of treating event start as a todo DDL
 - recurring event current-instance delete uses a recurring-instance skip plus hard delete, while recurring event cancel writes canceled history for the selected scope
 - phone and desktop event editors can set an event's primary group; phone uses a compact single-choice row, and the selected group is persisted for normal event creation/editing plus weekly multi-slot event creation
@@ -218,13 +219,15 @@ This file tracks the product at a practical level for new coding sessions.
 - event editor exposes an optional `打卡追踪` switch under `日程标记`; moving an event preserves both countdown and check-in marker state
 - event data now supports optional check-in tracking fields and accumulated invested minutes; repository and desktop-sync APIs can create check-ins, check out active records, list event check-ins, and recompute total event investment time
 - event details bottom sheet shows a `打卡追踪` card for enabled events, including total invested time, active `签到中` status, closed / active segment rows, and a `去签到` / `查看签到` jump into the full-screen check-in surface
-- event details bottom sheet exposes `完成日程` for check-in-enabled events; completion marks the event complete, can automatically check out an active record, and can show a summary card with planned time, actual invested time, check-in count, and investment rate
+- repository, Planning Desk synchronization, and Desktop Sync completion paths reject attempts to mark calendar events complete, preventing hidden event-completion states from reappearing outside the phone UI
 - phone check-in operations now have an independent full-screen `CheckInActivity` with event title, live clock, large state button, sign-out confirmation, multi-segment re-check-in support, auto-backup after successful sign-in/out, and main-surface refresh after returning
 - event check-in has an idle auto-checkout watchdog with a configurable threshold; app startup / resume and widget refresh can close stale active records at the event end time and send a low-priority auto-checkout notification whose collapsed title includes the event name
 - check-in-enabled event reminders expose `签到` directly on the full-screen reminder page and the accessibility fallback overlay; signing in also acknowledges the current event reminder so the strong-reminder surface closes
-- Settings -> `日历与提醒` exposes event check-in behavior switches for automatic checkout when completing an event and showing investment statistics after completion; both default to on and persist locally
+- Settings -> `日历与提醒` can automatically sign out an active check-in when the event ends; event completion statistics are no longer part of the calendar model
 - Settings -> `日历与提醒` also exposes `闲置自动签退阈值`, defaulting to 2 hours, with backup / restore preservation
-- calendar reminder editing accepts the same comma-separated multi-reminder syntax as todos
+- todo and calendar reminder editors use a multi-select dropdown with 5/15/30-minute, 1/2-hour, and 1/2-day presets plus custom reminder input
+- check-in-enabled events can store independent check-in reminder offsets; ordinary and check-in offsets are merged and deduplicated when alarms are scheduled
+- recurring templates, weekly multi-slot events, weekly schedule templates, backup/restore, and Desktop Sync preserve check-in reminder offsets
 - event preview keeps showing configured reminder offsets after reminder acknowledgement
 - timeline pending event draft can be canceled by long-pressing blank timeline space and is cleared when opening an existing event
 - text-based batch import support
@@ -248,6 +251,7 @@ This file tracks the product at a practical level for new coding sessions.
 - full-screen reminder path
 - reminder delivery policy respects the independently selected `通知栏提醒` / `全屏界面提醒` channels: notification-only items never launch the full-screen surface, both selected keeps both surfaces, and no selected channel leaves the item unscheduled
 - changing an existing item to no reminder immediately cancels its stored AlarmManager reminder alarms, reminder notification, dispatch markers, and full-screen handoff state; event ongoing notifications remain independent
+- completing/canceling a todo or entering from a stale notification also stops the matching foreground reminder service, sound/vibration session, accessibility overlay, notification, and reminder-session markers; the service tracks its current item ID so cleanup does not stop an unrelated reminder
 - full-screen reminder relaunch paths keep a short recent-surface cooldown only after `ReminderActivity` actually reaches `onResume`, so silent Android background-launch blocks do not incorrectly suppress retries; Android 14+ full-screen permission state is logged and unavailable permission triggers the accessibility fallback path
 - reminder alarm notification channels use the current v10 channel IDs so old user/system channel downgrades do not keep suppressing high-priority full-screen reminder notifications
 - full-screen event reminders can start an event check-in when `打卡追踪` is enabled
@@ -346,8 +350,9 @@ This file tracks the product at a practical level for new coding sessions.
 - desktop web todo and event reminder editors accept mixed reminder syntax matching the phone-side examples, including minutes, same-day time, current-year date-time, and full date-time
 - desktop sync API accepts todo `reminderOffsetsMinutes`, allowing desktop-created / edited todos to persist multiple reminders
 - desktop sync API exposes and accepts todo `groupIds`, so desktop-created / edited todos preserve phone-side multi-group relationships
-- desktop sync API exposes event `checkInEnabled` / `totalCheckInMinutes`, provides event check-in endpoints for listing records / checking in / checking out, and returns `eventCheckInSummary` from item completion when event completion statistics are enabled
+- desktop sync API exposes event `checkInEnabled`, `checkInReminderOffsetsMinutes`, and `totalCheckInMinutes`, provides event check-in endpoints for listing records / checking in / checking out, and rejects event completion requests
 - desktop Web event editor exposes `打卡追踪`; event preview renders a check-in card for enabled events, lists records, shows total invested time / active segment state, and can call `签到` / `签退`
+- desktop Web todo/event editors use the same multi-select reminder presets and custom input as phone; enabled event check-in adds a separate check-in reminder selector
 - desktop web todo / event editors use a bottom-sheet-like visual structure with cancel / centered title / save actions
 - desktop web editor fields are card-styled, and timeline / event card buttons are lighter and less form-like
 - desktop Web UI resources are separated under `app/src/main/assets/desktop-web/`, while Android sync service code stays in `sync/`
@@ -369,7 +374,7 @@ This file tracks the product at a practical level for new coding sessions.
 - desktop web has a `规划台` tab with a memo-style textarea editor, document selector, auto-save, `Ctrl+S` save, `Ctrl+Enter` parse, editable parse preview, selected import, and a help modal aligned with the phone-side natural-writing workflow
 - desktop web sidebar separates `每日看板` from an independent `待办` management tab; the board stays a lightweight overview while the todo tab directly loads the paged searchable todo list
 - desktop web calendar timeline supports dragging timed event cards in 15-minute increments across visible day columns; recurring-event drags update the current instance by default, and already-ended event cards fade visually
-- desktop web event color presets render as compact visible swatches rather than full-width modal buttons
+- desktop web event color presets match the phone's ordered 12-color palette and render as compact rounded-square swatches rather than full-width modal buttons
 - desktop web recurring todo cards explain that generated instances are intentionally limited to a near-future window while the recurrence template keeps the real end date and replenishes future instances over time
 - desktop web Planning Desk uses phone-local `/api/planning/*` routes, edits the same Room planning notes as the phone UI, saves before switching documents, blocks empty selected imports, keeps imported state in internal mappings instead of writing visible hashtag markers, and reuses the same AI recognition / local fallback path as the phone Planning Desk
 - desktop web Planning Desk now shows the current note title and mapping status preview; legacy refresh/postpone/undo internals remain available behind the sync API but are not the default visible planning entry

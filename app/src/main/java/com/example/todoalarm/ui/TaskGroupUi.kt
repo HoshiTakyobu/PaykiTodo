@@ -16,7 +16,7 @@ fun resolveTaskGroup(item: TodoItem, groups: List<TaskGroup>): ResolvedTaskGroup
         return ResolvedTaskGroup(
             id = 0,
             name = if (item.allDay) "全天" else "日程",
-            colorHex = item.accentColorHex ?: "#4E87E1"
+            colorHex = item.accentColorHex ?: PaykiColorPresets.DefaultEvent
         )
     }
     val matched = groups.firstOrNull { it.id == item.groupId }
@@ -31,7 +31,7 @@ fun resolveTaskGroup(item: TodoItem, groupsById: Map<Long, TaskGroup>): Resolved
         return ResolvedTaskGroup(
             id = 0,
             name = if (item.allDay) "全天" else "日程",
-            colorHex = item.accentColorHex ?: "#4E87E1"
+            colorHex = item.accentColorHex ?: PaykiColorPresets.DefaultEvent
         )
     }
     val matched = groupsById[item.groupId]

@@ -57,7 +57,6 @@ import com.example.todoalarm.data.AiReport
 import com.example.todoalarm.data.AiReportType
 import com.example.todoalarm.data.AiReportRetention
 import com.example.todoalarm.data.EventCheckIn
-import com.example.todoalarm.data.EventCheckInCompletionSummary
 import com.example.todoalarm.data.GlobalSearchResult
 import com.example.todoalarm.data.PlanningImportCandidate
 import com.example.todoalarm.data.PlanningImportResult
@@ -134,7 +133,6 @@ fun DashboardScreen(
     onGetTodoById: suspend (Long) -> TodoItem?,
     onGetTodoGroupIds: suspend (Long) -> List<Long>,
     onGetEventCheckIns: suspend (Long) -> List<EventCheckIn>,
-    onCompleteCalendarEvent: suspend (Long) -> EventCheckInCompletionSummary?,
     onCalendarVisibleDateRangeChange: (LocalDate, LocalDate) -> Unit,
     onUpdateTodo: suspend (TodoItem, TodoDraft, RecurrenceScope) -> String?,
     onUpdateCalendarEvent: suspend (TodoItem, com.example.todoalarm.data.CalendarEventDraft, RecurrenceScope) -> String?,
@@ -621,7 +619,13 @@ fun DashboardScreen(
                     onGetAiReport = onGetAiReport,
                     onGetTodoById = onGetTodoById,
                     onGetEventCheckIns = onGetEventCheckIns,
-                    onCompleteCalendarEvent = onCompleteCalendarEvent,
+                    onCopyCalendarEvent = { item ->
+                        editorKind = EditorKind.CALENDAR
+                        editingItem = null
+                        calendarDraftSeed = item.toCalendarCopyDraft()
+                        editScope = RecurrenceScope.CURRENT
+                        editorVisible = true
+                    },
                     historyItems = historyItems,
                     calendarItems = calendarItems,
                     scheduleTemplates = scheduleTemplates,
@@ -661,7 +665,7 @@ fun DashboardScreen(
                             startAt = startAt,
                             endAt = endAt,
                             allDay = false,
-                            accentColorHex = "#4E87E1",
+                            accentColorHex = PaykiColorPresets.DefaultEvent,
                             reminderMinutesBefore = 15,
                             reminderOffsetsMinutes = listOf(15),
                             ringEnabled = defaultReminderRing,
@@ -691,7 +695,7 @@ fun DashboardScreen(
                                 startAt = startAt,
                                 endAt = endAt,
                                 allDay = item.allDay,
-                                accentColorHex = item.accentColorHex ?: "#4E87E1",
+                                accentColorHex = item.accentColorHex ?: PaykiColorPresets.DefaultEvent,
                                 reminderMinutesBefore = item.configuredReminderOffsetsMinutes.minOrNull(),
                                 reminderOffsetsMinutes = item.configuredReminderOffsetsMinutes,
                                 ringEnabled = item.ringEnabled,
@@ -699,6 +703,7 @@ fun DashboardScreen(
                                 reminderDeliveryMode = item.reminderDeliveryModeEnum,
                                 countdownEnabled = item.countdownEnabled,
                                 checkInEnabled = item.checkInEnabled,
+                                checkInReminderOffsetsMinutes = item.configuredCheckInReminderOffsetsMinutes,
                                 recurrence = recurrence,
                                 groupId = item.groupId
                             )
@@ -1270,6 +1275,42 @@ private data class RecurrenceScopeOptionUi(
     val description: String,
     val destructive: Boolean = false
 )
+
+internal fun TodoItem.toCalendarCopyDraft(): CalendarEventDraft {
+    check(isEvent) { "Only calendar events can be copied" }
+    val startAt = reminderAtMillisToDateTime(startAtMillis ?: dueAtMillis)
+    val endAt = reminderAtMillisToDateTime(endAtMillis ?: startAtMillis ?: dueAtMillis)
+    val recurrence = if (isRecurring) {
+        RecurrenceConfig(
+            enabled = true,
+            type = recurrenceTypeEnum,
+            weeklyDays = storageStringToWeekdays(recurrenceWeekdays),
+            endDate = recurrenceEndDate
+        )
+    } else {
+        RecurrenceConfig()
+    }
+    return CalendarEventDraft(
+        title = title,
+        notes = notes,
+        location = location,
+        startAt = startAt,
+        endAt = endAt,
+        allDay = allDay,
+        accentColorHex = accentColorHex ?: PaykiColorPresets.DefaultEvent,
+        reminderMinutesBefore = configuredReminderOffsetsMinutes.firstOrNull(),
+        reminderOffsetsMinutes = configuredReminderOffsetsMinutes,
+        ringEnabled = ringEnabled,
+        vibrateEnabled = vibrateEnabled,
+        reminderDeliveryMode = reminderDeliveryModeEnum,
+        countdownEnabled = countdownEnabled,
+        checkInEnabled = checkInEnabled,
+        checkInReminderOffsetsMinutes = configuredCheckInReminderOffsetsMinutes,
+        recurrence = recurrence,
+        multiSlotBundleId = null,
+        groupId = groupId
+    )
+}
 
 private fun recurrenceScopeDialogTitle(mode: ScopeDialogMode?): String {
     return when (mode) {

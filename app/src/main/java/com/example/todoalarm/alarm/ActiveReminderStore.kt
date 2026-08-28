@@ -10,6 +10,7 @@ object ActiveReminderStore {
     private const val KEY_HANDOFF_UNTIL = "handoff_until"
     private const val KEY_SURFACE_TODO_ID = "surface_todo_id"
     private const val KEY_SURFACE_SHOWN_AT = "surface_shown_at"
+    private const val KEY_SERVICE_TODO_ID = "service_todo_id"
     private const val ACTIVE_SESSION_TIMEOUT_MS = 24 * 60 * 60 * 1000L
 
     fun markActive(context: Context, todoId: Long) {
@@ -123,5 +124,23 @@ object ActiveReminderStore {
             .remove(KEY_SURFACE_TODO_ID)
             .remove(KEY_SURFACE_SHOWN_AT)
             .apply()
+    }
+
+    fun markServiceActive(context: Context, todoId: Long) {
+        context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            .edit()
+            .putLong(KEY_SERVICE_TODO_ID, todoId)
+            .apply()
+    }
+
+    fun getServiceTodoId(context: Context): Long {
+        return context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            .getLong(KEY_SERVICE_TODO_ID, -1L)
+    }
+
+    fun clearServiceIfMatches(context: Context, todoId: Long) {
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        if (prefs.getLong(KEY_SERVICE_TODO_ID, -1L) != todoId) return
+        prefs.edit().remove(KEY_SERVICE_TODO_ID).apply()
     }
 }

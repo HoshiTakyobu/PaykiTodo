@@ -168,11 +168,10 @@ fun TodoEditorDialog(
     }
     var recurrencePreview by remember { mutableStateOf<RecurrencePreviewResult?>(null) }
     var showRecurrenceTypePicker by remember { mutableStateOf(false) }
-    var helpTopic by remember { mutableStateOf<InputSyntaxHelpTopic?>(null) }
     var activeDateTimeTarget by remember { mutableStateOf<TodoDateTimeTarget?>(null) }
     var showDueLunarPicker by remember { mutableStateOf(false) }
     val reminderValidation = remember(reminderInput, dueAt, reminderEnabled, hasDueDate, isHistory, initialTodo?.id) {
-        if (!reminderEnabled || !hasDueDate || isHistory) {
+        if (!reminderEnabled || !hasDueDate || isHistory || reminderInput.isBlank()) {
             ReminderInputValidation(isValid = true)
         } else {
             parseReminderInput(
@@ -453,53 +452,11 @@ fun TodoEditorDialog(
                                             thumbContent = null
                                         )
                                     }
-                                    Surface(
-                                        shape = RoundedCornerShape(18.dp),
-                                        color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.24f)
-                                    ) {
-                                        Column(
-                                            modifier = Modifier
-                                                .fillMaxWidth()
-                                                .padding(horizontal = 14.dp, vertical = 12.dp),
-                                            verticalArrangement = Arrangement.spacedBy(3.dp)
-                                        ) {
-                                            Text("提醒时间", fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
-                                            Text(
-                                                text = if (reminderValidation.isValid) reminderValidation.message else "输入存在非法项",
-                                                style = MaterialTheme.typography.bodySmall,
-                                                color = if (reminderValidation.isValid) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.error
-                                            )
-                                        }
-                                    }
-                                    if (!reminderValidation.isValid) {
-                                        Text(
-                                            text = "非法输入：${reminderValidation.message}",
-                                            color = MaterialTheme.colorScheme.error,
-                                            style = MaterialTheme.typography.bodySmall,
-                                            fontWeight = FontWeight.SemiBold
-                                        )
-                                    }
-                                    OutlinedTextField(
-                                        value = reminderInput,
-                                        onValueChange = { reminderInput = it },
-                                        label = {
-                                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                                Text("提醒时间")
-                                                InputSyntaxHelpIconButton(
-                                                    topic = InputSyntaxHelpTopic.Reminder,
-                                                    onClick = { helpTopic = InputSyntaxHelpTopic.Reminder }
-                                                )
-                                            }
-                                        },
-                                        placeholder = { Text("例：5（提前5分钟）或 5,15,16:30") },
-                                        isError = !reminderValidation.isValid,
-                                        supportingText = {
-                                            Text("数字=提前分钟；HH:mm=当天时刻；MM-DD HH:mm=当年；YYYY-MM-DD HH:mm=完整时刻。用英文逗号分隔。")
-                                        },
-                                        modifier = Modifier.fillMaxWidth(),
-                                        singleLine = false,
-                                        minLines = 1,
-                                        maxLines = 3
+                                    ReminderOffsetSelector(
+                                        label = "提醒时间",
+                                        rawInput = reminderInput,
+                                        validation = reminderValidation,
+                                        onRawInputChange = { reminderInput = it }
                                     )
                                     Row(
                                         modifier = Modifier
@@ -648,10 +605,6 @@ fun TodoEditorDialog(
             onDismiss = { showRecurrenceTypePicker = false },
             onDone = { showRecurrenceTypePicker = false }
         )
-    }
-
-    helpTopic?.let { topic ->
-        InputSyntaxHelpDialog(topic = topic, onDismiss = { helpTopic = null })
     }
 
     if (showDueLunarPicker) {

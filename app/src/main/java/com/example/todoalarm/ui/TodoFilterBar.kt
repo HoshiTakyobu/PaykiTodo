@@ -52,11 +52,6 @@ import com.example.todoalarm.data.TaskGroup
 import com.example.todoalarm.data.TodoRepository
 import kotlinx.coroutines.launch
 
-private val TodoGroupColorPalette = listOf(
-    "#BF7B4D", "#FF6B4A", "#4E87E1", "#4CB782", "#8B5CF6",
-    "#E11D48", "#0F766E", "#D97706", "#2563EB", "#16A34A"
-)
-
 @Composable
 internal fun TodoFilterBar(
     groups: List<TaskGroup>,
@@ -299,7 +294,7 @@ private fun TodoGroupEditorDialog(
     onDelete: (suspend () -> String?)? = null
 ) {
     var name by remember(initial?.id) { mutableStateOf(initial?.name.orEmpty()) }
-    var colorHex by remember(initial?.id) { mutableStateOf(initial?.colorHex ?: TodoGroupColorPalette.first()) }
+    var colorHex by remember(initial?.id) { mutableStateOf(initial?.colorHex ?: PaykiColorPresets.Rainbow12.first()) }
     var message by remember { mutableStateOf<String?>(null) }
     var showDeleteConfirm by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
@@ -322,12 +317,12 @@ private fun TodoGroupEditorDialog(
                         .horizontalScroll(rememberScrollState()),
                     horizontalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    TodoGroupColorPalette.forEach { candidate ->
+                    PaykiColorPresets.Rainbow12.forEach { candidate ->
                         Surface(
                             modifier = Modifier
-                                .size(if (candidate == colorHex) 36.dp else 30.dp)
+                                .size(34.dp)
                                 .clickable { colorHex = candidate },
-                            shape = CircleShape,
+                            shape = RoundedCornerShape(7.dp),
                             color = colorFromHex(candidate),
                             border = if (candidate == colorHex) {
                                 BorderStroke(3.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.58f))

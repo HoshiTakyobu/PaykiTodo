@@ -32,6 +32,8 @@ class ReminderForegroundService : Service() {
     private var wakeLock: PowerManager.WakeLock? = null
     private var userPresentReceiver: BroadcastReceiver? = null
     private var activeFullscreenTodoId: Long = -1L
+    private var foregroundTodoId: Long = -1L
+    private var keepDetachedNotification = false
 
     override fun onCreate() {
         super.onCreate()
@@ -39,6 +41,7 @@ class ReminderForegroundService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        keepDetachedNotification = false
         val explicitTodoId = intent?.getLongExtra(AlarmScheduler.EXTRA_TODO_ID, -1L) ?: -1L
         val todoId = if (explicitTodoId > 0L) {
             explicitTodoId
@@ -71,7 +74,7 @@ class ReminderForegroundService : Service() {
                     status = ReminderChainStatus.WARN,
                     message = if (todoItem == null) "null" else "history_or_disabled"
                 )
-                ActiveReminderStore.clearIfMatches(this@ReminderForegroundService, todoId)
+                dismiss(this@ReminderForegroundService, todoId)
                 stopSelf(startId)
                 return@launch
             }
@@ -134,6 +137,7 @@ class ReminderForegroundService : Service() {
                 @Suppress("DEPRECATION")
                 stopForeground(false)
             }
+            keepDetachedNotification = true
             stopSelf(startId)
         }
 
@@ -144,6 +148,9 @@ class ReminderForegroundService : Service() {
 
     override fun onDestroy() {
         alertController.shutdown()
+        if (!keepDetachedNotification) {
+            removeForegroundNotification()
+        }
         wakeLock?.let {
             if (it.isHeld) {
                 it.release()
@@ -152,17 +159,35 @@ class ReminderForegroundService : Service() {
         wakeLock = null
         reminderNotifier = null
         unregisterUserPresentReceiver()
+        foregroundTodoId.takeIf { it > 0L }?.let { todoId ->
+            ActiveReminderStore.clearServiceIfMatches(this, todoId)
+        }
         activeFullscreenTodoId = -1L
+        foregroundTodoId = -1L
         serviceJob.cancel()
         super.onDestroy()
     }
 
     private fun startInForeground(todoId: Long, notification: Notification) {
+        foregroundTodoId = todoId
+        ActiveReminderStore.markServiceActive(this, todoId)
         val id = ReminderNotifier.notificationId(todoId)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
             startForeground(id, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE)
         } else {
             startForeground(id, notification)
+        }
+    }
+
+    private fun removeForegroundNotification() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            stopForeground(STOP_FOREGROUND_REMOVE)
+        } else {
+            @Suppress("DEPRECATION")
+            stopForeground(true)
+        }
+        foregroundTodoId.takeIf { it > 0L }?.let { todoId ->
+            getSystemService(NotificationManager::class.java)?.cancel(ReminderNotifier.notificationId(todoId))
         }
     }
 
@@ -382,6 +407,19 @@ class ReminderForegroundService : Service() {
                 context,
                 Intent(context, ReminderForegroundService::class.java).putExtra(AlarmScheduler.EXTRA_TODO_ID, todoId)
             )
+        }
+
+        fun dismiss(context: Context, todoId: Long) {
+            ReminderAccessibilityService.hideOverlayNow(todoId)
+            context.getSystemService(NotificationManager::class.java)
+                ?.cancel(ReminderNotifier.notificationId(todoId))
+            ReminderDispatchTracker.clear(context, todoId)
+            ActiveReminderStore.clearIfMatches(context, todoId)
+            ActiveReminderStore.clearActivityHandoff(context, todoId)
+            ActiveReminderStore.clearReminderSurfaceMarker(context, todoId)
+            if (ActiveReminderStore.getServiceTodoId(context) == todoId) {
+                context.stopService(Intent(context, ReminderForegroundService::class.java))
+            }
         }
     }
 }

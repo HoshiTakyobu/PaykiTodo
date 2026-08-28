@@ -440,6 +440,20 @@ object DatabaseMigrations {
         }
     }
 
+    val MIGRATION_29_30 = object : Migration(29, 30) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            if (!tableHasColumns(db, "todo_items", listOf("checkInReminderOffsetsCsv"))) {
+                db.execSQL("ALTER TABLE `todo_items` ADD COLUMN `checkInReminderOffsetsCsv` TEXT NOT NULL DEFAULT ''")
+            }
+            if (!tableHasColumns(db, "recurring_task_templates", listOf("checkInEnabled"))) {
+                db.execSQL("ALTER TABLE `recurring_task_templates` ADD COLUMN `checkInEnabled` INTEGER NOT NULL DEFAULT 0")
+            }
+            if (!tableHasColumns(db, "recurring_task_templates", listOf("checkInReminderOffsetsCsv"))) {
+                db.execSQL("ALTER TABLE `recurring_task_templates` ADD COLUMN `checkInReminderOffsetsCsv` TEXT NOT NULL DEFAULT ''")
+            }
+        }
+    }
+
     private fun createActivityRecordsTable(db: SupportSQLiteDatabase) {
         db.execSQL(
             """

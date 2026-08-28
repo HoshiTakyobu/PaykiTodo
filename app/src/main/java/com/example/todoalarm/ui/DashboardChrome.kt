@@ -116,7 +116,6 @@ import com.example.todoalarm.data.DataHealthCleanResult
 import com.example.todoalarm.data.DataHealthReport
 import com.example.todoalarm.data.DailyBoardSnapshotBuilder
 import com.example.todoalarm.data.EventCheckIn
-import com.example.todoalarm.data.EventCheckInCompletionSummary
 import com.example.todoalarm.data.PlanningAiProvider
 import com.example.todoalarm.data.PlanningImportCandidate
 import com.example.todoalarm.data.PlanningImportResult
@@ -461,7 +460,7 @@ internal fun DashboardBody(
     onGetAiReport: suspend (Long) -> AiReport?,
     onGetTodoById: suspend (Long) -> TodoItem?,
     onGetEventCheckIns: suspend (Long) -> List<EventCheckIn>,
-    onCompleteCalendarEvent: suspend (Long) -> EventCheckInCompletionSummary?,
+    onCopyCalendarEvent: (TodoItem) -> Unit,
     historyItems: StateFlow<List<TodoItem>>,
     calendarItems: StateFlow<List<TodoItem>>,
     scheduleTemplates: StateFlow<List<ScheduleTemplate>>,
@@ -591,7 +590,7 @@ internal fun DashboardBody(
                 onEditEvent = onEditCalendarEvent,
                 onGetEventById = onGetTodoById,
                 onGetEventCheckIns = onGetEventCheckIns,
-                onCompleteEvent = onCompleteCalendarEvent,
+                onCopyEvent = onCopyCalendarEvent,
                 onMoveEvent = onMoveCalendarEvent,
                 onCancelEvent = onCancelCalendarEvent,
                 onDeleteEvent = onDeleteCalendarEvent,

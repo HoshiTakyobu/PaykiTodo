@@ -23,6 +23,10 @@ data class RecurringTaskTemplate(
     val countdownEnabled: Boolean = false,
     @ColumnInfo(defaultValue = "0")
     val hiddenFromBoard: Boolean = false,
+    @ColumnInfo(defaultValue = "0")
+    val checkInEnabled: Boolean = false,
+    @ColumnInfo(defaultValue = "")
+    val checkInReminderOffsetsCsv: String = "",
     val multiSlotBundleId: String? = null,
     val allDay: Boolean = false,
     val groupId: Long,
@@ -49,4 +53,7 @@ data class RecurringTaskTemplate(
 ) {
     val configuredReminderOffsetsMinutes: List<Int>
         get() = decodeReminderOffsets(reminderOffsetsCsv, reminderOffsetMinutes)
+
+    val configuredCheckInReminderOffsetsMinutes: List<Int>
+        get() = decodeReminderOffsets(checkInReminderOffsetsCsv)
 }

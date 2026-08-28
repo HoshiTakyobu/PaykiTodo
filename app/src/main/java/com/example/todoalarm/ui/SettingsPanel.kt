@@ -453,23 +453,12 @@ fun SettingsPanel(
                 Spacer(modifier = Modifier.height(4.dp))
                 SettingsSwitchRow(
                     title = "日程结束时自动签退",
-                    summary = "开启后，完成开启打卡追踪的日程时会先结束仍在进行的签到。",
+                    summary = "开启后，日程结束时会自动结束仍在进行的签到。",
                     checked = settings.autoCheckOutEventOnEnd,
                     onCheckedChange = {
                         onEventCheckInPreferencesChange(
                             it,
                             settings.showEventCheckInStatsOnComplete
-                        )
-                    }
-                )
-                SettingsSwitchRow(
-                    title = "完成日程时显示投入统计",
-                    summary = "开启后，完成打卡追踪日程时显示计划时长、实际投入和投入率。",
-                    checked = settings.showEventCheckInStatsOnComplete,
-                    onCheckedChange = {
-                        onEventCheckInPreferencesChange(
-                            settings.autoCheckOutEventOnEnd,
-                            it
                         )
                     }
                 )

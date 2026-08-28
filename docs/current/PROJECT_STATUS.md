@@ -8,9 +8,9 @@
 - Target platform: Android 14 / API 34
 - License: MIT License (`LICENSE`)
 - Current version in code:
-  - `versionName = "1.15.11"`
-  - `versionCode = 353`
-  - database version = `29`
+  - `versionName = "1.15.12"`
+  - `versionCode = 354`
+  - database version = `30`
 
 ## Current Build Facts
 
@@ -19,7 +19,16 @@
 - Latest GitHub Release:
   - `https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.14.12`
 - Latest fully built debug APK:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.15.11-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.15.12-debug.apk`
+- Current `1.15.12 / versionCode 354` status:
+  - Completing or canceling a todo now dismisses its foreground reminder service, notification, sound/vibration session, accessibility overlay, dispatch state, and stale handoff markers; stale notification taps exit safely when the item is already historical or missing.
+  - Calendar events cannot be marked complete from phone UI, repository completion APIs, Planning Desk synchronization, or Desktop Sync. Cancel remains the historical-state operation for events.
+  - Phone and desktop event details can create a copy that preserves editable event fields while dropping the original database ID and multi-slot bundle identity.
+  - Todo/event reminder time editors use the same multi-select preset list plus custom input. Check-in-enabled events support independent check-in reminder offsets, merged and deduplicated with ordinary reminders.
+  - Check-in reminder settings persist through recurring templates, multi-slot events, weekly schedule templates, backup/restore, and Desktop Sync. Database `29 -> 30` adds the required item/template columns.
+  - Phone and desktop event/group color controls share the ordered 12-color preset palette and rounded-square swatches; new events default to `#DF58A5`.
+  - Verification passed: 26 unit-test suites / 145 tests, `:app:lintDebug`, `:app:assembleDebug`, JavaScript syntax, `git diff --check`, APK metadata (`1.15.12 / 354`), Room schema `30.json`, and Pixel_8 emulator reminder/editor smoke tests.
+  - Emulator evidence: accessibility service enabled and bound; full-screen `ReminderActivity` and its foreground notification coexisted without an overlay conflict; completing the test todo removed the notification, foreground reminder service, and active reminder store; event details had no completion action and opened a populated copy editor; ordinary/check-in reminder selectors and the ordered color swatches rendered.
 - Current `1.15.11 / versionCode 353` status:
   - Phone, desktop Web, and Planning Desk reminder controls use independent full-screen and notification channel selections. Selecting neither disables reminder scheduling; selecting both preserves both delivery surfaces.
   - Work mode and alarm mode no longer override an explicitly unselected full-screen channel; they continue to control reminder audio/vibration behavior and alarm persistence when a channel is selected.

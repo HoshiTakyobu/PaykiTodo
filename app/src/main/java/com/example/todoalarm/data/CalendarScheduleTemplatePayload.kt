@@ -20,6 +20,8 @@ data class ScheduleTemplateEntry(
     val accentColorHex: String,
     val reminderMinutesBefore: Int?,
     val reminderOffsetsMinutes: List<Int>,
+    val checkInEnabled: Boolean,
+    val checkInReminderOffsetsMinutes: List<Int>,
     val ringEnabled: Boolean,
     val vibrateEnabled: Boolean,
     val reminderDeliveryMode: ReminderDeliveryMode
@@ -63,9 +65,11 @@ fun buildScheduleTemplatePayload(
                 endDayOffset = weekStart.until(endDateTime.toLocalDate()).days,
                 endMinuteOfDay = endDateTime.toLocalTime().toSecondOfDay() / 60,
                 allDay = item.allDay,
-                accentColorHex = item.accentColorHex ?: "#4E87E1",
+                accentColorHex = item.accentColorHex ?: DEFAULT_ITEM_ACCENT_COLOR_HEX,
                 reminderMinutesBefore = item.reminderOffsetMinutes,
                 reminderOffsetsMinutes = item.configuredReminderOffsetsMinutes,
+                checkInEnabled = item.checkInEnabled,
+                checkInReminderOffsetsMinutes = item.configuredCheckInReminderOffsetsMinutes,
                 ringEnabled = item.ringEnabled,
                 vibrateEnabled = item.vibrateEnabled,
                 reminderDeliveryMode = item.reminderDeliveryModeEnum
@@ -95,6 +99,8 @@ fun ScheduleTemplatePayload.toJsonString(): String {
                     put("accentColorHex", entry.accentColorHex)
                     put("reminderMinutesBefore", entry.reminderMinutesBefore)
                     put("reminderOffsetsMinutes", JSONArray(entry.reminderOffsetsMinutes))
+                    put("checkInEnabled", entry.checkInEnabled)
+                    put("checkInReminderOffsetsMinutes", JSONArray(entry.checkInReminderOffsetsMinutes))
                     put("ringEnabled", entry.ringEnabled)
                     put("vibrateEnabled", entry.vibrateEnabled)
                     put("reminderDeliveryMode", entry.reminderDeliveryMode.name)
@@ -122,7 +128,7 @@ fun parseScheduleTemplatePayload(payloadJson: String): ScheduleTemplatePayload {
                     endDayOffset = item.optInt("endDayOffset"),
                     endMinuteOfDay = item.optInt("endMinuteOfDay"),
                     allDay = item.optBoolean("allDay"),
-                    accentColorHex = item.optString("accentColorHex", "#4E87E1"),
+                    accentColorHex = item.optString("accentColorHex", DEFAULT_ITEM_ACCENT_COLOR_HEX),
                     reminderMinutesBefore = item.optIntOrNull("reminderMinutesBefore"),
                     reminderOffsetsMinutes = item.optJSONArray("reminderOffsetsMinutes")?.let { array ->
                         buildList {
@@ -131,6 +137,8 @@ fun parseScheduleTemplatePayload(payloadJson: String): ScheduleTemplatePayload {
                             }
                         }
                     } ?: item.optIntOrNull("reminderMinutesBefore")?.let { listOf(it) }.orEmpty(),
+                    checkInEnabled = item.optBoolean("checkInEnabled", false),
+                    checkInReminderOffsetsMinutes = item.optJSONArray("checkInReminderOffsetsMinutes")?.toIntList().orEmpty(),
                     ringEnabled = item.optBoolean("ringEnabled", true),
                     vibrateEnabled = item.optBoolean("vibrateEnabled", true),
                     reminderDeliveryMode = ReminderDeliveryMode.fromStorage(item.optString("reminderDeliveryMode"))
@@ -161,6 +169,8 @@ fun ScheduleTemplatePayload.toDraftsForWeek(targetWeekStart: LocalDate): List<Ca
             accentColorHex = entry.accentColorHex,
             reminderMinutesBefore = entry.reminderMinutesBefore,
             reminderOffsetsMinutes = entry.reminderOffsetsMinutes,
+            checkInEnabled = entry.checkInEnabled,
+            checkInReminderOffsetsMinutes = entry.checkInReminderOffsetsMinutes,
             ringEnabled = entry.ringEnabled,
             vibrateEnabled = entry.vibrateEnabled,
             reminderDeliveryMode = entry.reminderDeliveryMode,
@@ -189,6 +199,8 @@ fun ScheduleTemplatePayload.toWeeklyRecurringDrafts(
             accentColorHex = entry.accentColorHex,
             reminderMinutesBefore = entry.reminderMinutesBefore,
             reminderOffsetsMinutes = entry.reminderOffsetsMinutes,
+            checkInEnabled = entry.checkInEnabled,
+            checkInReminderOffsetsMinutes = entry.checkInReminderOffsetsMinutes,
             ringEnabled = entry.ringEnabled,
             vibrateEnabled = entry.vibrateEnabled,
             reminderDeliveryMode = entry.reminderDeliveryMode,
@@ -210,4 +222,12 @@ private fun minuteOfDayToTime(minutes: Int): LocalTime {
 
 private fun JSONObject.optIntOrNull(key: String): Int? {
     return if (has(key) && !isNull(key)) optInt(key) else null
+}
+
+private fun JSONArray.toIntList(): List<Int> {
+    return buildList {
+        for (index in 0 until length()) {
+            add(optInt(index))
+        }
+    }
 }

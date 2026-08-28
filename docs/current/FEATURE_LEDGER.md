@@ -192,6 +192,10 @@ This file tracks the product at a practical level for new coding sessions.
 - AI report retention can be set to 30 days / 90 days / 365 days / forever; generating a new report purges older archived reports according to the current setting
 - report notifications use a low-priority `ai_report_channel`, skip posting if Android 13+ notification permission is missing, and deep-link to the matching AI report detail
 - `DailyReportScheduler` schedules daily and Sunday weekly report alarms, cancels disabled schedules, and is invoked on app startup plus boot/time/timezone recovery; it uses exact alarms when allowed and safely falls back to system-allowed idle scheduling when exact-alarm permission is missing
+- daily/weekly receivers always reschedule the next alarm in a `finally` path, so database, notification, and other non-AI failures cannot silently terminate future reports
+- app startup checks the most recent missing daily/weekly period only when the prior recorded trigger is absent or overdue, avoiding a false previous-day recovery after first enabling reports; scheduled generation reuses an existing same-period report to prevent duplicates, while manual immediate generation remains explicit and force-generating
+- `AiReportRuntimeStateStore` persists next trigger time and exact/inexact mode, last attempt/success/failure, provider/local-fallback status, and sanitized AI or full-chain errors
+- Desktop Sync exposes authenticated read-only `/api/ai-report/status` diagnostics with schedule/settings state and recent report metadata/previews, deliberately excluding provider API keys and Base URLs
 - backup / restore snapshots include `aiReports` and the report-retention preference, so exported JSON preserves report history and cleanup policy while still excluding AI API keys
 
 ### Calendar System
@@ -354,6 +358,10 @@ This file tracks the product at a practical level for new coding sessions.
 - desktop Web event editor exposes `打卡追踪`; event preview renders a check-in card for enabled events, lists records, shows total invested time / active segment state, and can call `签到` / `签退`
 - desktop Web todo/event editors use the same multi-select reminder presets and custom input as phone; enabled event check-in adds a separate check-in reminder selector
 - desktop web todo / event editors use a bottom-sheet-like visual structure with cancel / centered title / save actions
+- Desktop Web uses a light top-navigation workstation with a compact upper-right connection indicator instead of the older dark admin sidebar
+- Desktop Web Calendar keeps a continuous 7-day desktop grid and responds to narrower widths with 3-day or 1-day columns; Excel import is collapsed by default to preserve calendar focus
+- Desktop Web event editors use a centered flat dialog and phone-aligned field order: title, start/end, location, reminders/check-in, notes, recurrence, group, and color
+- Desktop Web includes an `AI 报告` tab for report scheduling health, sanitized failure diagnosis, and recent report previews
 - desktop web editor fields are card-styled, and timeline / event card buttons are lighter and less form-like
 - desktop Web UI resources are separated under `app/src/main/assets/desktop-web/`, while Android sync service code stays in `sync/`
 - desktop Web packaging / future extraction guidance is documented in `docs/current/DESKTOP_WEB_ARCHITECTURE.md`
@@ -408,8 +416,8 @@ This file tracks the product at a practical level for new coding sessions.
 ### Data / Performance
 
 - `todo_items` has Room indices for board todo queries, board event range queries, active reminders, group+DDL sorting, recurring-series lookup, desktop todo paging / sorting, and active countdown lookup.
-- Database version is `27`; `MIGRATION_13_14` creates the initial `todo_items` performance indices on upgraded installs, `MIGRATION_14_15` adds / backfills `planning_notes.hasAnnouncementHint` plus the indexed announcement lookup path, `MIGRATION_15_16` adds desktop todo paging plus AI-report generated-time/type indices, `MIGRATION_16_17` adds countdown fields / indices for todos and recurring templates, `MIGRATION_17_18` removes `focus_sessions` while adding `event_check_ins`, `todo_group_tags`, todo check-in fields, and a backfill from existing todo `groupId` values into the multi-group join table, `MIGRATION_18_19` adds `planning_notes.documentDateEpochDay` for today-note date context, `MIGRATION_19_20` creates `planning_nodes` plus migrates Planning Desk Markdown lines into node rows, `MIGRATION_20_21` adds optional event-end linked todo IDs, `MIGRATION_21_22` adds `syncEnabled` for structure headings, `MIGRATION_22_23` adds `planning_nodes.isDraft` for explicit Planning Desk publish, `MIGRATION_23_24` adds reminder-only board visibility / note-node fields, `MIGRATION_24_25` adds `alarmMode` to todos and recurring templates, `MIGRATION_25_26` adds large-list runtime indices, and `MIGRATION_26_27` creates `recurring_instance_skips` for non-history single-instance recurring-todo hard delete.
-- Room schema export is enabled and `app/schemas/com.example.todoalarm.data.AppDatabase/27.json` is committed as the current database-27 reference schema.
+- Database version is `30`; migrations through `MIGRATION_26_27` cover the existing planning, reminder, performance, and recurring-skip schema, `MIGRATION_27_28` adds multi-slot bundle identity, `MIGRATION_28_29` preserves the activity-record compatibility table, and `MIGRATION_29_30` adds event check-in reminder offsets to items and recurring templates.
+- Room schema export is enabled and `app/schemas/com.example.todoalarm.data.AppDatabase/30.json` is committed as the current database-30 reference schema.
 - Desktop Web first connection now uses a lightweight board snapshot (`/api/snapshot?scope=board`); todo management uses paged/searchable `/api/todos?offset=...&limit=...&q=...`, and the event timeline uses visible-range `/api/events?start=...&end=...` instead of sharing one full snapshot for every management tab.
 - Main phone board/task UI uses active-todo-only observation and today/tomorrow event range observation instead of merging all todos and full active events into ordinary board/task state.
 - Main phone board/task UI uses the shared active-todo section classifier for missed / today / upcoming lists, so no-DDL active todos keep the same "today every day" behavior in My Tasks and the board.

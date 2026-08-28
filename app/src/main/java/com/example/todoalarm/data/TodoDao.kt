@@ -911,11 +911,30 @@ interface TodoDao {
     @Query("SELECT * FROM ai_reports ORDER BY generatedAtMillis DESC, id DESC")
     suspend fun getAllAiReports(): List<AiReport>
 
+    @Query("SELECT * FROM ai_reports ORDER BY generatedAtMillis DESC, id DESC LIMIT :limit")
+    suspend fun getRecentAiReports(limit: Int): List<AiReport>
+
     @Query("SELECT * FROM ai_reports WHERE type = :type ORDER BY generatedAtMillis DESC, id DESC")
     suspend fun getAiReportsByType(type: AiReportType): List<AiReport>
 
     @Query("SELECT * FROM ai_reports WHERE id = :id LIMIT 1")
     suspend fun getAiReportById(id: Long): AiReport?
+
+    @Query(
+        """
+        SELECT * FROM ai_reports
+        WHERE type = :type
+        AND periodStartMillis = :periodStartMillis
+        AND periodEndMillis = :periodEndMillis
+        ORDER BY generatedAtMillis DESC, id DESC
+        LIMIT 1
+        """
+    )
+    suspend fun getAiReportForPeriod(
+        type: AiReportType,
+        periodStartMillis: Long,
+        periodEndMillis: Long
+    ): AiReport?
 
     @Query("SELECT * FROM ai_reports WHERE generatedAtMillis < :cutoffMillis ORDER BY generatedAtMillis ASC")
     suspend fun getAiReportsBefore(cutoffMillis: Long): List<AiReport>

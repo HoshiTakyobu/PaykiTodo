@@ -17,19 +17,37 @@ object DailyReportGenerator {
     private val DateTimeLabelFormatter = DateTimeFormatter.ofPattern("M月d日 HH:mm", Locale.CHINA)
     private val ClockFormatter = DateTimeFormatter.ofPattern("HH:mm", Locale.CHINA)
 
-    suspend fun generateDaily(app: TodoApplication): AiReport {
-        val today = LocalDate.now()
-        val context = collectDailyContext(app, today)
-        val aiReport = callAiIfPossible(app, buildDailyPrompt(context), reportType = "日报")
-        val content = aiReport?.content?.trim()?.takeIf { it.isNotBlank() } ?: buildLocalDaily(context)
+    suspend fun generateDaily(app: TodoApplication): AiReport = generateDailyDetailed(app).report
+
+    suspend fun generateDailyDetailedIfMissing(
+        app: TodoApplication,
+        date: LocalDate = LocalDate.now()
+    ): AiReportGenerationResult {
+        val existing = app.repository.getAiReportForPeriod(
+            type = AiReportType.DAILY,
+            periodStartMillis = dayStartMillis(date),
+            periodEndMillis = dayEndMillis(date)
+        )
+        return existing?.let {
+            AiReportGenerationResult(report = it, aiAttempted = false, reusedExistingReport = true)
+        } ?: generateDailyDetailed(app, date)
+    }
+
+    suspend fun generateDailyDetailed(
+        app: TodoApplication,
+        date: LocalDate = LocalDate.now()
+    ): AiReportGenerationResult {
+        val context = collectDailyContext(app, date)
+        val aiOutcome = callAiIfPossible(app, buildDailyPrompt(context), reportType = "日报")
+        val content = aiOutcome.report?.content?.trim()?.takeIf { it.isNotBlank() } ?: buildLocalDaily(context)
         val report = saveReport(
             app = app,
             type = AiReportType.DAILY,
             content = content,
-            providerName = aiReport?.providerName ?: LOCAL_PROVIDER_NAME,
-            isLocalFallback = aiReport == null,
-            periodStartMillis = dayStartMillis(today),
-            periodEndMillis = dayEndMillis(today)
+            providerName = aiOutcome.report?.providerName ?: LOCAL_PROVIDER_NAME,
+            isLocalFallback = aiOutcome.report == null,
+            periodStartMillis = dayStartMillis(date),
+            periodEndMillis = dayEndMillis(date)
         )
         DailyReportNotifier.postReportNotification(
             context = app.applicationContext,
@@ -38,20 +56,44 @@ object DailyReportGenerator {
             preview = content,
             weekly = false
         )
-        return report
+        return AiReportGenerationResult(
+            report = report,
+            aiAttempted = aiOutcome.attempted,
+            aiFailureMessage = aiOutcome.failureMessage
+        )
     }
 
-    suspend fun generateWeekly(app: TodoApplication): AiReport {
-        val today = LocalDate.now()
-        val context = collectWeeklyContext(app, today)
-        val aiReport = callAiIfPossible(app, buildWeeklyPrompt(context), reportType = "周报")
-        val content = aiReport?.content?.trim()?.takeIf { it.isNotBlank() } ?: buildLocalWeekly(context)
+    suspend fun generateWeekly(app: TodoApplication): AiReport = generateWeeklyDetailed(app).report
+
+    suspend fun generateWeeklyDetailedIfMissing(
+        app: TodoApplication,
+        periodEndDate: LocalDate = LocalDate.now()
+    ): AiReportGenerationResult {
+        val weekStart = periodEndDate.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
+        val weekEnd = periodEndDate.with(TemporalAdjusters.nextOrSame(DayOfWeek.SUNDAY))
+        val existing = app.repository.getAiReportForPeriod(
+            type = AiReportType.WEEKLY,
+            periodStartMillis = dayStartMillis(weekStart),
+            periodEndMillis = dayEndMillis(weekEnd)
+        )
+        return existing?.let {
+            AiReportGenerationResult(report = it, aiAttempted = false, reusedExistingReport = true)
+        } ?: generateWeeklyDetailed(app, periodEndDate)
+    }
+
+    suspend fun generateWeeklyDetailed(
+        app: TodoApplication,
+        periodEndDate: LocalDate = LocalDate.now()
+    ): AiReportGenerationResult {
+        val context = collectWeeklyContext(app, periodEndDate)
+        val aiOutcome = callAiIfPossible(app, buildWeeklyPrompt(context), reportType = "周报")
+        val content = aiOutcome.report?.content?.trim()?.takeIf { it.isNotBlank() } ?: buildLocalWeekly(context)
         val report = saveReport(
             app = app,
             type = AiReportType.WEEKLY,
             content = content,
-            providerName = aiReport?.providerName ?: LOCAL_PROVIDER_NAME,
-            isLocalFallback = aiReport == null,
+            providerName = aiOutcome.report?.providerName ?: LOCAL_PROVIDER_NAME,
+            isLocalFallback = aiOutcome.report == null,
             periodStartMillis = dayStartMillis(context.weekStart),
             periodEndMillis = dayEndMillis(context.weekEnd)
         )
@@ -62,7 +104,11 @@ object DailyReportGenerator {
             preview = content,
             weekly = true
         )
-        return report
+        return AiReportGenerationResult(
+            report = report,
+            aiAttempted = aiOutcome.attempted,
+            aiFailureMessage = aiOutcome.failureMessage
+        )
     }
 
     private suspend fun collectDailyContext(app: TodoApplication, date: LocalDate): DailyContext {
@@ -110,9 +156,9 @@ object DailyReportGenerator {
         )
     }
 
-    private suspend fun callAiIfPossible(app: TodoApplication, prompt: String, reportType: String): ReportText? {
+    private suspend fun callAiIfPossible(app: TodoApplication, prompt: String, reportType: String): AiCallOutcome {
         val settings = app.settingsStore.currentSettings()
-        if (!settings.planningAiEnabled) return null
+        if (!settings.planningAiEnabled) return AiCallOutcome(report = null, attempted = false)
         return runCatching {
             val response = PlanningAiCaller.callWithFallback(
                 providers = settings.planningAiProviders,
@@ -121,11 +167,31 @@ object DailyReportGenerator {
                     prompt = prompt
                 )
             )
-            ReportText(
-                content = response.content,
-                providerName = response.provider.name.ifBlank { response.provider.model }.ifBlank { "AI 源" }
+            AiCallOutcome(
+                report = ReportText(
+                    content = response.content,
+                    providerName = response.provider.name.ifBlank { response.provider.model }.ifBlank { "AI 源" }
+                ),
+                attempted = true
             )
-        }.getOrNull()
+        }.getOrElse { throwable ->
+            AiCallOutcome(
+                report = null,
+                attempted = true,
+                failureMessage = sanitizeAiFailure(throwable)
+            )
+        }
+    }
+
+    private fun sanitizeAiFailure(throwable: Throwable): String {
+        val message = throwable.message.orEmpty()
+            .replace(Regex("https?://\\S+", RegexOption.IGNORE_CASE), "<服务地址>")
+            .replace(Regex("(?i)(api[-_ ]?key|authorization|bearer)\\s*[:=]?\\s*\\S+")) { match ->
+                "${match.groupValues[1]}=<已隐藏>"
+            }
+            .trim()
+            .take(500)
+        return if (message.isBlank()) throwable::class.java.simpleName else "${throwable::class.java.simpleName}: $message"
     }
 
     private suspend fun saveReport(
@@ -310,6 +376,7 @@ object DailyReportGenerator {
             DayOfWeek.FRIDAY -> "周五"
             DayOfWeek.SATURDAY -> "周六"
             DayOfWeek.SUNDAY -> "周日"
+            else -> "未知"
         }
     }
 
@@ -347,6 +414,12 @@ object DailyReportGenerator {
         val providerName: String
     )
 
+    private data class AiCallOutcome(
+        val report: ReportText?,
+        val attempted: Boolean,
+        val failureMessage: String? = null
+    )
+
     private data class DailyContext(
         val date: LocalDate,
         val todayEventCheckInMinutes: Int,
@@ -368,3 +441,10 @@ object DailyReportGenerator {
 
     private const val LOCAL_PROVIDER_NAME = "本地模板"
 }
+
+data class AiReportGenerationResult(
+    val report: AiReport,
+    val aiAttempted: Boolean,
+    val aiFailureMessage: String? = null,
+    val reusedExistingReport: Boolean = false
+)

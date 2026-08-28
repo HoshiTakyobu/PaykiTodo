@@ -41,7 +41,6 @@ class TodoApplication : Application() {
         val skipReminderRecovery = SafeStartupGuard.enterStartup(this)
         runCatching {
             DailyReportNotifier.ensureChannel(this)
-            DailyReportScheduler.scheduleNext(this)
             DailyBriefNotifier.ensureChannel(this)
             DailyBriefScheduler.scheduleNext(this)
             OngoingEventNotifier.ensureChannel(this)
@@ -68,6 +67,10 @@ class TodoApplication : Application() {
                     }
                 }
                 LegacyAiReportMigration.migrateIfNeeded(this@TodoApplication)
+                runCatching { DailyReportScheduler.recoverMostRecentMissedReports(this@TodoApplication) }
+                    .onFailure(CrashLogger::recordNonFatal)
+                runCatching { DailyReportScheduler.scheduleNext(applicationContext) }
+                    .onFailure(CrashLogger::recordNonFatal)
                 if (settingsStore.currentSettings().desktopSyncEnabled) {
                     DesktopSyncService.start(applicationContext)
                 }

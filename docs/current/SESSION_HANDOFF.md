@@ -4,45 +4,53 @@
 
 - Repository root: `G:\Workspace\Project\PaykiTodo`
 - Branch: `main`
-- Baseline commit: `befeb9e`
-- Current code version: `1.15.12 / versionCode 354`
+- Pre-round baseline commit: `70b58ef`
+- Current code version: `1.15.13 / versionCode 355`
 - Database version: `30`
-- Latest debug APK: `app/build/outputs/apk/debug/PaykiTodo-1.15.12-debug.apk`
+- Latest debug APK: `app/build/outputs/apk/debug/PaykiTodo-1.15.13-debug.apk`
 - Latest signed release APK available locally: `app/build/outputs/apk/release/PaykiTodo-1.14.12-release.apk`
 - Latest GitHub Release: `https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.14.12`
+- This round must not be pushed unless the user explicitly requests it.
 
 ## Completed In This Round
 
-1. Confirmed the repository baseline was already `1.15.11 / 353`; sessions showing `1.15.10` were stale chat summaries rather than a code rollback.
-2. Added matching-item reminder dismissal so completed/canceled todos no longer leave a foreground notification, sound/vibration service, dispatch record, accessibility overlay, or stale full-screen handoff behind. Missing/history notification entry exits safely.
-3. Removed event completion from phone details, ViewModel/UI callbacks, Planning Desk completion sync, repository completion, and Desktop Sync completion API behavior.
-4. Added phone and Desktop Web event copy actions. Copies preserve editable fields and recurrence configuration while dropping source identity and multi-slot bundle identity.
-5. Added ordinary/check-in reminder multi-select controls with fixed 5/15/30-minute, 1/2-hour, 1/2-day presets plus custom input on phone and Desktop Web.
-6. Added `checkInReminderOffsetsCsv` to event items and check-in fields to recurring templates; merged ordinary/check-in trigger times are deduplicated.
-7. Extended recurring generation, multi-slot events, weekly schedule templates, backup/restore, Desktop Sync payloads, and desktop editor round trips for check-in reminders.
-8. Replaced phone/desktop event and group preset colors with the ordered 12-color palette and rounded-square swatches.
-9. Added focused tests for trigger merging, disabled check-in behavior, event completion eligibility, multi-slot inheritance, schedule-template compatibility, and copy identity.
+1. Diagnosed the missing AI daily-report design. The previous installed version had no persistent runtime diagnostics, so the exact historical cause cannot be proven; source review found that any non-AI exception in `DailyReportReceiver` prevented all future report scheduling.
+2. Changed daily/weekly receivers to record attempts and outcomes, catch full-chain failures, and always schedule the next run from `finally`.
+3. Added startup recovery for the most recent due daily/weekly period only when the previous trigger is unknown or overdue, plus same-period duplicate prevention for scheduled generation. A first future trigger is not mistaken for a missed report; manual immediate generation remains force-generating.
+4. Added `AiReportRuntimeStateStore` for next trigger/exactness, last attempt, last success, provider/local fallback, sanitized AI failure, and full-chain failure state.
+5. Added authenticated read-only `GET /api/ai-report/status`, returning report settings, scheduler capability/state, sanitized errors, and recent report metadata/previews without API keys or Base URLs.
+6. Added a Desktop Web `AI 报告` tab that visualizes scheduling health, failure/fallback state, and recent reports.
+7. Reworked Desktop Web from a dark sidebar/admin-console layout to a light Feishu-like top navigation with compact connection status, responsive fixed-week Calendar, collapsible Excel import, flatter event cards, centered editors, and reordered event fields.
+8. Added coherent dark-mode variables for the new desktop layout and recorded the desktop workstation rules in `UI_DESIGN_RULES.md`.
+9. Upgraded the app to `1.15.13 / versionCode 355`; database remains version `30` with no migration.
+
+## Diagnosis Limits And Network Evidence
+
+- A final read-only request to the user-provided phone service returned HTTP `502 Bad Gateway` for both snapshot and report-status paths, meaning the public forwarding endpoint could not currently reach the phone service.
+- The previous installed app version did not expose `/api/ai-report/status`, so yesterday night's exact cause cannot be reconstructed after the fact.
+- AI-source failure alone normally generates a local fallback report. A completely missing report is therefore more consistent with disabled/missed scheduling, unsaved settings, or the non-AI failure-to-reschedule defect fixed in this round.
+- After `1.15.13` is installed, diagnostics can distinguish AI failure with local fallback, whole-chain failure, disabled scheduling, and exact/inexact next-alarm state.
 
 ## Validation Evidence
 
-- Full unit tests passed: 26 suites / 145 tests / zero failures.
+- Full unit tests passed: 27 suites / 152 tests / zero failures or skips.
 - `:app:lintDebug`, `:app:assembleDebug`, `node --check app/src/main/assets/desktop-web/app.js`, and `git diff --check` passed.
-- APK metadata: package `com.paykitodo.app`, `versionName 1.15.12`, `versionCode 354`, min API 26, target API 34.
-- Room schema `app/schemas/com.example.todoalarm.data.AppDatabase/30.json` was generated and contains the new item/template check-in reminder columns.
-- Reused `emulator-5554` / AVD `Pixel_8` and installed `PaykiTodo-1.15.12-debug.apk`.
-- Android accessibility manager confirmed `ReminderAccessibilityService` in both Enabled and Bound services.
-- Diagnostics test produced the full-screen `ReminderActivity` while the foreground notification remained posted; no accessibility overlay conflict was visible.
-- Pressing `我已完成` removed notification ID `10105`, stopped `ReminderForegroundService`, emptied `paykitodo_active_reminder.xml`, and returned to `MainActivity`.
-- Calendar smoke test confirmed event detail contains `创建副本` and only `取消 / 修改 / 删除`, with no `完成日程` action. Copy opened a populated new-event editor.
-- Event editor showed all seven fixed reminder presets plus `自定义提醒时间`, an independent `签到提醒` selector when check-in was enabled, and the ordered rounded-square color swatches.
+- APK metadata: package `com.paykitodo.app`, `versionName 1.15.13`, `versionCode 355`, min API 26, target API 34.
+- Sensitive-value scan found no tracked/worktree matches for the temporary phone address or access token.
+- Browser screenshots verified the Calendar, AI Report diagnostics, and reordered event editor:
+  - `E:\Temp\payki-desktop-calendar-1.15.13b.png`
+  - `E:\Temp\payki-desktop-reports-1.15.13e.png`
+  - `E:\Temp\payki-desktop-event-editor-1.15.13b.png`
+- Reused `emulator-5554` / AVD `Pixel_8`, set timezone to `Asia/Shanghai`, scheduled an exact daily report, observed it fire at the configured minute, persist a local-fallback report, and schedule the following day's run. The temporary daily-report switch was restored to disabled afterward.
 
 ## Next Actions
 
-1. Create the required detailed Chinese commit for this completed round.
-2. Do not push unless the user explicitly asks.
-3. Physical-phone verification is still recommended for OEM lock-screen/full-screen behavior, real vibration/sound, and notification shade presentation.
+1. Install `PaykiTodo-1.15.13-debug.apk` on the physical phone.
+2. After the next scheduled report time, open Desktop Web -> `AI 报告` and inspect next trigger, last attempt, success/fallback, or sanitized full-chain failure.
+3. Use physical-phone verification for OEM background scheduling and notification behavior; emulator results do not prove Vivo/OriginOS battery-policy behavior.
+4. Continue Desktop Web visual changes only from concrete review feedback; preserve the light top-navigation/fixed-week direction.
 
 ## Safety Notes
 
 - Never commit Desktop Sync tokens, AI keys, private Base URLs, signing files, generated APKs, screenshots, backups, test databases, or local diagnostic logs.
-- Emulator behavior does not prove OEM lock-screen/full-screen reliability; physical-phone verification remains necessary for the user's ROM.
+- The report-status endpoint is authenticated and read-only, but the four-character Desktop Sync key should still be rotated if it was shared publicly.

@@ -8,8 +8,8 @@
 - Target platform: Android 14 / API 34
 - License: MIT License (`LICENSE`)
 - Current version in code:
-  - `versionName = "1.15.12"`
-  - `versionCode = 354`
+  - `versionName = "1.15.13"`
+  - `versionCode = 355`
   - database version = `30`
 
 ## Current Build Facts
@@ -19,7 +19,15 @@
 - Latest GitHub Release:
   - `https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.14.12`
 - Latest fully built debug APK:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.15.12-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.15.13-debug.apk`
+- Current `1.15.13 / versionCode 355` status:
+  - AI daily/weekly report receivers always schedule the next run in `finally`, so database, notification, or other non-AI failures cannot silently terminate all future schedules.
+  - Startup recovery checks the most recent missing daily/weekly period only when the prior trigger is unknown or overdue, avoiding an incorrect previous-day report after first enabling the feature. Scheduled generation reuses an existing same-period report instead of duplicating it; manual generation remains force-generating.
+  - Runtime state records exact/inexact next alarms, last attempt, last success, AI local-fallback details, and sanitized full-chain failures.
+  - Authenticated read-only `GET /api/ai-report/status` exposes report settings, scheduling state, failures, and recent report metadata/previews without API keys or Base URLs.
+  - Desktop Web uses a light top navigation, compact connection status, responsive fixed-week Calendar, collapsible Excel import, flatter event cards, centered editors, a reordered event form, and an AI-report diagnostics tab with coherent dark-mode variables.
+  - Historical diagnosis limitation: the physical-phone endpoint was unavailable during final inspection and the installed previous version had no report runtime endpoint, so the exact cause of the prior night's missing report cannot be proven retroactively. Source review did identify the concrete failure-to-reschedule defect fixed above.
+  - Verification passed: 27 unit-test suites / 152 tests, `:app:lintDebug`, `:app:assembleDebug`, JavaScript syntax, `git diff --check`, APK metadata (`1.15.13 / 355`), browser screenshots, and a Pixel_8 exact daily-report alarm test with next-run rescheduling and local fallback persistence.
 - Current `1.15.12 / versionCode 354` status:
   - Completing or canceling a todo now dismisses its foreground reminder service, notification, sound/vibration session, accessibility overlay, dispatch state, and stale handoff markers; stale notification taps exit safely when the item is already historical or missing.
   - Calendar events cannot be marked complete from phone UI, repository completion APIs, Planning Desk synchronization, or Desktop Sync. Cancel remains the historical-state operation for events.

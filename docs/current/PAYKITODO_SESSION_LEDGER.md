@@ -8,7 +8,7 @@ The original PaykiTodo sessions became large and increasingly unreliable. This f
 
 ## Latest In-Progress Round
 
-The `1.15.12 / versionCode 354` round fixes stale reminder sessions after todo completion/cancellation, removes the unsupported calendar-event completion state, adds phone/desktop event copying, replaces free-form-only reminder fields with shared multi-select presets plus custom input, adds independent check-in reminder offsets, and synchronizes an ordered 12-color palette across phone and desktop. Database version `30` stores check-in reminder offsets on event items and recurring templates. Focused compilation/tests have passed; full build, lint, and emulator reminder/UI verification remain before commit.
+The `1.15.13 / versionCode 355` round hardens AI daily/weekly reporting and modernizes Desktop Web. Report alarms now reschedule after both success and failure, startup recovers the most recent missing period only when the prior trigger is unknown or overdue, scheduled runs avoid duplicate same-period reports, and persistent diagnostics distinguish exact/inexact scheduling, AI fallback, success, and whole-chain failure. Desktop Web now uses a Feishu-like light top navigation, responsive fixed-week Calendar, flatter event surfaces, centered editors, and a dedicated AI-report diagnostics tab. Database version remains `30`. Full unit tests, lint, debug build, JavaScript checks, browser screenshots, and an emulator exact-alarm report test passed. No push is authorized unless the user explicitly requests it.
 
 ## Initial Product Request
 

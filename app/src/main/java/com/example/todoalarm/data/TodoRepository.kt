@@ -1974,9 +1974,17 @@ class TodoRepository(
 
     suspend fun getAllAiReports(): List<AiReport> = todoDao.getAllAiReports()
 
+    suspend fun getRecentAiReports(limit: Int): List<AiReport> = todoDao.getRecentAiReports(limit.coerceIn(1, 50))
+
     suspend fun getAiReportsByType(type: AiReportType): List<AiReport> = todoDao.getAiReportsByType(type)
 
     suspend fun getAiReportById(id: Long): AiReport? = todoDao.getAiReportById(id)
+
+    suspend fun getAiReportForPeriod(
+        type: AiReportType,
+        periodStartMillis: Long,
+        periodEndMillis: Long
+    ): AiReport? = todoDao.getAiReportForPeriod(type, periodStartMillis, periodEndMillis)
 
     suspend fun deleteAiReport(reportId: Long) {
         todoDao.deleteAiReport(reportId)

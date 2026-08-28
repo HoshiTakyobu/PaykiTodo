@@ -1,9 +1,12 @@
 package com.example.todoalarm.sync
 
+import android.app.AlarmManager
 import android.content.Context
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
+import android.os.Build
 import com.example.todoalarm.TodoApplication
+import com.example.todoalarm.alarm.AiReportRuntimeStateStore
 import com.example.todoalarm.alarm.ReminderDispatchTracker
 import com.example.todoalarm.alarm.ReminderForegroundService
 import com.example.todoalarm.data.AppSettingsStore
@@ -167,6 +170,7 @@ class DesktopSyncCoordinator(
         return runCatching {
             when {
                 method == "GET" && path == "/api/status" -> DesktopSyncServer.Response.json(status().toJson())
+                method == "GET" && routePath == "/api/ai-report/status" -> DesktopSyncServer.Response.json(aiReportStatus())
                 method == "GET" && routePath == "/api/snapshot" -> {
                     val snapshot = buildSnapshot(boardOnly = queryParam(path, "scope") == "board")
                     DesktopSyncServer.Response.json(
@@ -259,6 +263,58 @@ class DesktopSyncCoordinator(
             todayBoard = board.toDesktopSyncBoard(nowMillis = nowMillis),
             partial = boardOnly
         )
+    }
+
+    private suspend fun aiReportStatus(): JSONObject {
+        val settings = settingsStore.currentSettings()
+        val runtime = AiReportRuntimeStateStore(context).current()
+        val exactAlarmAllowed = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            context.getSystemService(AlarmManager::class.java).canScheduleExactAlarms()
+        } else {
+            true
+        }
+        val recentReports = app.repository.getRecentAiReports(12)
+        return JSONObject().apply {
+            put("dailyEnabled", settings.dailyReportEnabled)
+            put("dailyHour", settings.dailyReportHour)
+            put("dailyMinute", settings.dailyReportMinute)
+            put("weeklyEnabled", settings.weeklyReportEnabled)
+            put("weeklyHour", settings.weeklyReportHour)
+            put("weeklyMinute", settings.weeklyReportMinute)
+            put("retention", settings.aiReportRetention.name)
+            put("aiEnabled", settings.planningAiEnabled)
+            put("enabledProviderCount", settings.planningAiProviders.count { it.enabled })
+            put("exactAlarmAllowed", exactAlarmAllowed)
+            put("runtime", JSONObject().apply {
+                put("nextDailyAtMillis", runtime.nextDailyAtMillis)
+                put("nextDailyScheduleMode", runtime.nextDailyScheduleMode)
+                put("nextWeeklyAtMillis", runtime.nextWeeklyAtMillis)
+                put("nextWeeklyScheduleMode", runtime.nextWeeklyScheduleMode)
+                put("lastAttemptType", runtime.lastAttemptType)
+                put("lastAttemptAtMillis", runtime.lastAttemptAtMillis)
+                put("lastSuccessType", runtime.lastSuccessType)
+                put("lastSuccessAtMillis", runtime.lastSuccessAtMillis)
+                put("lastSuccessReportId", runtime.lastSuccessReportId)
+                put("lastSuccessProviderName", runtime.lastSuccessProviderName)
+                put("lastSuccessUsedLocalFallback", runtime.lastSuccessUsedLocalFallback)
+                put("lastAiFailureMessage", runtime.lastAiFailureMessage)
+                put("lastFailureType", runtime.lastFailureType)
+                put("lastFailureAtMillis", runtime.lastFailureAtMillis)
+                put("lastFailureMessage", runtime.lastFailureMessage)
+            })
+            put("recentReports", JSONArray(recentReports.map { report ->
+                JSONObject().apply {
+                    put("id", report.id)
+                    put("type", report.type.name)
+                    put("generatedAtMillis", report.generatedAtMillis)
+                    put("periodStartMillis", report.periodStartMillis)
+                    put("periodEndMillis", report.periodEndMillis)
+                    put("providerName", report.providerName)
+                    put("isLocalFallback", report.isLocalFallback)
+                    put("preview", report.content.replace(Regex("\\s+"), " ").trim().take(180))
+                }
+            }))
+        }
     }
 
     private suspend fun desktopTodos(path: String): JSONObject {

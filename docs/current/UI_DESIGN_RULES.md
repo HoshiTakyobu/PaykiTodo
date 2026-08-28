@@ -70,3 +70,14 @@ Daily Board artwork is product identity, not a universal application background.
 - Avoid pure-black full-page slabs in dark mode; use the established deep blue-gray workspace layer plus distinct content surfaces.
 - Keep 16dp-class section spacing, compact but readable row height, and clear title/summary/control hierarchy.
 - Avoid stacking several outlined cards inside another outlined card. Prefer one section surface with light internal grouping and a single obvious primary action.
+
+## 8. Desktop Web workstation layout
+
+Desktop Web is a user-facing companion workspace, not an internal admin console.
+
+- Prefer a light, low-height top navigation with the product identity on the left, primary work areas in the center, and compact connection state on the right.
+- Keep the Calendar as the primary desktop scheduling surface: seven continuous days on wide screens, then three or one day on narrower screens instead of squeezing seven unreadable columns.
+- Use flat white content surfaces, restrained borders, small radii, and blue as a limited action/selection accent. Avoid dark permanent sidebars, heavy gradients, large dashboard cards, and excessive nested panels.
+- Secondary utilities such as Excel import should be collapsed by default so they do not compete with the current task.
+- Desktop editor dialogs should be centered, keyboard-friendly, and ordered by user workflow rather than database field order. For events: title, time, location, reminder/check-in, notes, recurrence, group, color.
+- Dark mode must redefine the complete surface/text/border variable set; do not let a light-only redesign fall back to mixed or unreadable colors.

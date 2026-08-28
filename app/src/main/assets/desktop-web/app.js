@@ -63,6 +63,7 @@ const state = {
   eventLoadSerial: 0,
   eventDragSuppressClickUntil: 0,
   eventCheckInLoadSerial: 0,
+  aiReportStatus: null,
   desktopHeartbeatTimer: null,
   editingTodoOriginalRecurring: false,
   editingEventOriginalRecurring: false,
@@ -131,7 +132,8 @@ const els = {
   reviewXlsParse: document.getElementById('review-xls-parse'),
   reviewXlsImport: document.getElementById('review-xls-import'),
   reviewXlsMeta: document.getElementById('review-xls-meta'),
-  reviewXlsPreview: document.getElementById('review-xls-preview')
+  reviewXlsPreview: document.getElementById('review-xls-preview'),
+  aiReportStatus: document.getElementById('ai-report-status')
 };
 
 function headers() {
@@ -1233,8 +1235,9 @@ function renderCurrentLine(key) {
 
 function visibleEventDayCount() {
   const width = Math.max(0, els.boardScroll?.clientWidth || 0);
-  if (!width) return 7;
-  return Math.max(1, Math.min(10, Math.max(7, Math.floor(width / 128))));
+  if (width && width < 640) return 1;
+  if (width && width < 960) return 3;
+  return 7;
 }
 
 function getVisibleEventKeys() {
@@ -1433,15 +1436,19 @@ function syncTopbar() {
   const boardMode = state.currentTab === 'board';
   const todoMode = state.currentTab === 'todos';
   const eventMode = state.currentTab === 'events';
-  els.panelTitle.textContent = boardMode ? '每日看板' : todoMode ? '待办' : eventMode ? '日程时间轴' : '规划台';
-  els.viewCaption.textContent = boardMode ? '桌面端每日看板' : todoMode ? '独立待办管理' : eventMode ? '桌面端日程模式' : '备忘录式规划 / 识别预览';
+  const planningMode = state.currentTab === 'planning';
+  const reportMode = state.currentTab === 'reports';
+  els.panelTitle.textContent = boardMode ? '每日看板' : todoMode ? '待办' : eventMode ? '日历' : planningMode ? '规划台' : 'AI 报告';
+  els.viewCaption.textContent = boardMode ? '今天真正需要处理的事情' : todoMode ? '任务与历史记录' : eventMode ? '按周查看与安排日程' : planningMode ? '备忘录式规划与识别' : '日报调度、AI 状态与历史记录';
   els.openCreate.textContent = eventMode ? '新增日程' : todoMode || boardMode ? '新增待办' : '新建规划';
-  els.openCreate.classList.toggle('hidden', state.currentTab === 'planning');
+  els.openCreate.classList.toggle('hidden', planningMode || reportMode);
   const dataMode = todoMode && state.todosLoaded
     ? '待办按需数据'
     : eventMode && visibleEventRangeLoaded()
       ? '日程范围数据'
-      : state.snapshot?.partial
+      : reportMode
+        ? '日报诊断数据'
+        : state.snapshot?.partial
         ? '看板轻量数据'
         : '完整数据';
   els.snapshotMeta.textContent = state.snapshot
@@ -1643,6 +1650,65 @@ async function refreshCurrentData() {
     todos: state.currentTab === 'todos' && state.todosLoaded,
     events: state.currentTab === 'events'
   });
+  if (state.currentTab === 'reports') await loadAiReportStatus();
+}
+
+async function loadAiReportStatus() {
+  state.aiReportStatus = await api('/api/ai-report/status');
+  renderAiReportStatus();
+}
+
+function reportTypeLabel(type) {
+  return type === 'WEEKLY' ? '周报' : type === 'DAILY' ? '日报' : '暂无';
+}
+
+function reportScheduleLabel(enabled, hour, minute, nextAtMillis, mode) {
+  if (!enabled) return '未启用';
+  const time = String(hour).padStart(2, '0') + ':' + String(minute).padStart(2, '0');
+  const next = Number(nextAtMillis || 0) > 0 ? formatDateTimeLabel(nextAtMillis) : '等待系统安排';
+  const modeText = mode === 'EXACT' ? '精确闹钟' : mode === 'INEXACT' ? '系统弹性调度' : '调度方式未知';
+  return time + ' · 下次 ' + next + ' · ' + modeText;
+}
+
+function renderAiReportStatus() {
+  if (!els.aiReportStatus) return;
+  const data = state.aiReportStatus;
+  if (!data) {
+    els.aiReportStatus.innerHTML = '<div class="empty-state">尚未读取 AI 日报状态。</div>';
+    return;
+  }
+  const runtime = data.runtime || {};
+  const reports = data.recentReports || [];
+  const successText = runtime.lastSuccessAtMillis
+    ? reportTypeLabel(runtime.lastSuccessType) + ' · ' + formatDateTimeLabel(runtime.lastSuccessAtMillis)
+    : '尚无成功记录';
+  const sourceText = runtime.lastSuccessAtMillis
+    ? (runtime.lastSuccessUsedLocalFallback ? '本地模板' : (runtime.lastSuccessProviderName || 'AI 源'))
+    : '—';
+  const failure = runtime.lastFailureMessage || runtime.lastAiFailureMessage || '';
+  const healthClass = runtime.lastFailureMessage ? 'danger' : runtime.lastSuccessAtMillis ? 'success' : 'neutral';
+  const reportRows = reports.length ? reports.map(report => ''
+    + '<article class="report-history-row">'
+    +   '<div class="report-history-icon ' + (report.isLocalFallback ? 'local' : 'ai') + '">' + (report.type === 'WEEKLY' ? '周' : '日') + '</div>'
+    +   '<div class="report-history-main">'
+    +     '<div class="report-history-title"><strong>' + escapeHtml(report.type === 'WEEKLY' ? 'AI 周报' : 'AI 日报') + '</strong><span>' + escapeHtml(formatDateTimeLabel(report.generatedAtMillis)) + '</span></div>'
+    +     '<p>' + escapeHtml(report.preview || '暂无摘要') + '</p>'
+    +     '<small>' + escapeHtml(report.isLocalFallback ? '本地模板兜底' : (report.providerName || 'AI 源')) + '</small>'
+    +   '</div>'
+    + '</article>').join('') : '<div class="report-empty">尚无日报或周报记录。</div>';
+  els.aiReportStatus.innerHTML = ''
+    + '<section class="report-hero">'
+    +   '<div><div class="eyebrow">运行诊断</div><h2>AI 日报是否按计划工作，一眼就能看清</h2><p>这里不会显示 API Key 或 Base URL，只展示调度与生成结果。</p></div>'
+    +   '<div class="report-health ' + healthClass + '"><span>最近结果</span><strong>' + escapeHtml(successText) + '</strong><small>' + escapeHtml(sourceText) + '</small></div>'
+    + '</section>'
+    + '<section class="report-stat-grid">'
+    +   '<article class="report-stat"><span>日报计划</span><strong>' + escapeHtml(data.dailyEnabled ? '已启用' : '未启用') + '</strong><p>' + escapeHtml(data.dailyEnabled ? reportScheduleLabel(true, data.dailyHour, data.dailyMinute, runtime.nextDailyAtMillis, runtime.nextDailyScheduleMode) : ('在手机设置中开启后，每天 ' + String(data.dailyHour).padStart(2, '0') + ':' + String(data.dailyMinute).padStart(2, '0') + ' 生成')) + '</p></article>'
+    +   '<article class="report-stat"><span>周报计划</span><strong>' + escapeHtml(data.weeklyEnabled ? '已启用' : '未启用') + '</strong><p>' + escapeHtml(data.weeklyEnabled ? reportScheduleLabel(true, data.weeklyHour, data.weeklyMinute, runtime.nextWeeklyAtMillis, runtime.nextWeeklyScheduleMode) : ('在手机设置中开启后，每周日 ' + String(data.weeklyHour).padStart(2, '0') + ':' + String(data.weeklyMinute).padStart(2, '0') + ' 生成')) + '</p></article>'
+    +   '<article class="report-stat"><span>AI 调用</span><strong>' + escapeHtml(data.aiEnabled ? ('已启用 · ' + data.enabledProviderCount + ' 个源') : '未启用') + '</strong><p>' + escapeHtml(data.aiEnabled ? ('将按配置顺序尝试 ' + data.enabledProviderCount + ' 个 AI 源，全部失败时自动使用本地模板') : '当前直接使用本地模板；启用 AI 后可生成更完整的复盘') + '</p></article>'
+    + '</section>'
+    + (failure ? '<section class="report-warning"><strong>' + escapeHtml(runtime.lastFailureMessage ? '日报链路最近发生异常' : '最近一次 AI 调用失败，报告已用本地模板生成') + '</strong><p>' + escapeHtml(failure) + '</p></section>' : '')
+    + '<section class="report-history"><div class="report-section-head"><div><h3>最近报告</h3><p>按生成时间倒序显示，便于确认昨晚是否真正写入数据库。</p></div><button type="button" class="ghost mini" data-refresh-ai-report="true">刷新状态</button></div>' + reportRows + '</section>';
+  document.querySelector('[data-refresh-ai-report]')?.addEventListener('click', () => loadAiReportStatus().catch(error => { els.status.textContent = error.message; }));
 }
 
 async function refreshAfterMutation() {
@@ -4796,6 +4862,8 @@ document.querySelectorAll('[data-tab]').forEach(node => {
     } else if (state.currentTab === 'board') {
       renderDesktopDailyBoard();
       renderAnnouncements();
+    } else if (state.currentTab === 'reports') {
+      loadAiReportStatus().catch(err => els.status.textContent = err.message);
     }
   };
 });

@@ -81,3 +81,13 @@ Desktop Web is a user-facing companion workspace, not an internal admin console.
 - Secondary utilities such as Excel import should be collapsed by default so they do not compete with the current task.
 - Desktop editor dialogs should be centered, keyboard-friendly, and ordered by user workflow rather than database field order. For events: title, time, location, reminder/check-in, notes, recurrence, group, color.
 - Dark mode must redefine the complete surface/text/border variable set; do not let a light-only redesign fall back to mixed or unreadable colors.
+
+## 9. Explicit reference images are binding
+
+When the user supplies concrete UI reference screenshots and asks for reproduction, do not reinterpret the request as a generic style direction such as "modern", "Feishu-like", or "similar colors".
+
+- Match the visible geometry first: viewport scale, top-bar height, sidebar width, content boundaries, grid density, dialog position, dialog proportions, and internal split lines.
+- Use browser screenshots at the same effective output size as the reference whenever possible. For the `1.15.14` Desktop Web Calendar references, verification used `1638x989` CSS pixels with `deviceScaleFactor = 1.25`, producing `2048x1236` output.
+- Compare actual rendered screenshots, not only DOM/CSS source. Treat overflow, inherited widths/padding, browser auto-scroll, and hidden off-screen controls as blocking defects.
+- Preserve PaykiTodo-specific capabilities and backend contracts, but express them inside the reference composition rather than restoring generic cards or admin-dashboard scaffolding.
+- Do not claim reference-level completion after changing only palette, radius, or typography.

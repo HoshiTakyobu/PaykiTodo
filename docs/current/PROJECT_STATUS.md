@@ -8,8 +8,8 @@
 - Target platform: Android 14 / API 34
 - License: MIT License (`LICENSE`)
 - Current version in code:
-  - `versionName = "1.15.13"`
-  - `versionCode = 355`
+  - `versionName = "1.15.14"`
+  - `versionCode = 356`
   - database version = `30`
 
 ## Current Build Facts
@@ -19,7 +19,15 @@
 - Latest GitHub Release:
   - `https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.14.12`
 - Latest fully built debug APK:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.15.13-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.15.14-debug.apk`
+- Current `1.15.14 / versionCode 356` status:
+  - Desktop Web Calendar reproduces the supplied Feishu references at the layout level: 58px top navigation, 296px mini-calendar sidebar, unframed full-width calendar grid, restrained blue accent, and thin neutral separators.
+  - Day, week, and month views are functional; the sidebar supports month/date navigation, search, group visibility filtering, and collapsed Excel import.
+  - The event editor uses a reference-proportioned two-column window with form fields on the left and a live day timeline preview on the right while preserving PaykiTodo reminder, recurrence, check-in, multi-slot, group, color, location, and notes fields.
+  - Legacy CSS inheritance defects that caused a 10,124px-wide document, second-row header actions, and a full-width close button were removed.
+  - Browser verification at `1638x989` / DPR `1.25` covered day/week/month switching, search, group/date controls, blank-grid creation, existing-event editing, and live preview with no page errors.
+  - 27 unit-test suites / 152 tests, `:app:lintDebug`, `:app:assembleDebug`, JavaScript syntax, and `git diff --check` passed. APK metadata confirms `1.15.14 / 356`, min API 26, and target API 34.
+  - `PaykiTodo-1.15.14-debug.apk` was installed on `emulator-5554` / Pixel_8 for final Desktop Sync browser verification.
 - Current `1.15.13 / versionCode 355` status:
   - AI daily/weekly report receivers always schedule the next run in `finally`, so database, notification, or other non-AI failures cannot silently terminate all future schedules.
   - Startup recovery checks the most recent missing daily/weekly period only when the prior trigger is unknown or overdue, avoiding an incorrect previous-day report after first enabling the feature. Scheduled generation reuses an existing same-period report instead of duplicating it; manual generation remains force-generating.

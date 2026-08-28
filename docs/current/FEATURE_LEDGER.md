@@ -201,6 +201,10 @@ This file tracks the product at a practical level for new coding sessions.
 ### Calendar System
 
 - timeline-style calendar foundation
+- Desktop Web Calendar `1.15.14` uses a screenshot-matched Feishu-style workstation composition at 125% Windows scaling: 58px top navigation, 296px mini-calendar sidebar, unframed continuous calendar grid, restrained blue action/selection accents, and thin neutral separators
+- Desktop Web Calendar supports functional day, seven-day week, and 42-cell month views; mini-calendar month/date navigation, event/location search, per-group visibility filtering, and collapsed Excel import share the left sidebar
+- Desktop Web event editing opens a reference-proportioned two-column window with the PaykiTodo event form on the left and a live single-day timeline preview on the right; title/date/time/color edits update the preview without changing save semantics
+- Desktop Web calendar CSS explicitly neutralizes old full-width navigation/modal-button inheritance, preventing document-width expansion, off-screen tab scrolling, second-row header actions, and stretched close controls
 - timeline quick-create clears the visible `新日程` pending placeholder as soon as its editor opens, so a successfully saved event immediately renders with its real title
 - phone event details do not expose a completion action; calendar events can be canceled into history or deleted, but only todos can enter the completed state
 - day / multi-day / month / agenda style views exist in code, with ongoing refinement

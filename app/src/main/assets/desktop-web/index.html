@@ -34,14 +34,23 @@
     <aside class="sidebar">
       <button id="sidebar-toggle" class="sidebar-toggle" title="收起/展开侧边栏">‹</button>
       <div class="sidebar-inner">
-        <div class="brand-block">
+        <div class="brand-block" aria-hidden="true">
           <div class="brand-logo">P</div>
           <div>
             <h1>PaykiTodo</h1>
             <p class="muted">控制台 · v__PAYKI_VERSION__</p>
           </div>
         </div>
-        <div class="conn-card">
+        <nav class="side-nav">
+          <button class="nav-btn tab-btn active" data-tab="board">每日看板</button>
+          <button class="nav-btn tab-btn" data-tab="todos">待办</button>
+          <button class="nav-btn tab-btn" data-tab="events">日历</button>
+          <button class="nav-btn tab-btn" data-tab="planning">规划台</button>
+          <button class="nav-btn tab-btn" data-tab="reports">AI 报告</button>
+        </nav>
+        <div class="desktop-header-actions">
+          <button id="open-create" class="header-create-button">新增待办</button>
+          <div class="conn-card" title="电脑同步连接状态">
           <div class="conn-row">
             <span class="conn-dot"></span>
             <div class="conn-text">
@@ -49,15 +58,9 @@
               <span id="shell-status" class="muted">已连接</span>
             </div>
           </div>
-          <button id="disconnect" class="ghost mini">断开</button>
+          </div>
+          <button id="disconnect" class="header-icon-button" title="断开电脑同步" aria-label="断开电脑同步">⇱</button>
         </div>
-        <nav class="side-nav">
-          <button class="nav-btn tab-btn active" data-tab="board"><span class="nav-ico">▦</span>每日看板</button>
-          <button class="nav-btn tab-btn" data-tab="todos"><span class="nav-ico">✓</span>待办</button>
-          <button class="nav-btn tab-btn" data-tab="events"><span class="nav-ico">◷</span>日历</button>
-          <button class="nav-btn tab-btn" data-tab="planning"><span class="nav-ico">✎</span>规划台</button>
-          <button class="nav-btn tab-btn" data-tab="reports"><span class="nav-ico">◫</span>AI 报告</button>
-        </nav>
       </div>
     </aside>
     <main class="content">
@@ -70,7 +73,6 @@
         <div class="toolbar-row">
           <button id="jump-today" class="ghost mini">今天</button>
           <button id="refresh" class="ghost mini">刷新</button>
-          <button id="open-create" class="mini">新增待办</button>
         </div>
       </div>
       <div id="announcements-banner" class="announcements-banner hidden"></div>
@@ -90,38 +92,57 @@
         </div>
       </section>
 
-      <section id="events-panel" class="tab">
-        <details class="calendar-import-drawer">
-          <summary>从周历 Excel 导入日程</summary>
-          <div class="review-import-panel">
-            <div class="panel-head">
-              <h2>周历 Excel 导入</h2>
-              <p class="muted">选择电脑本地的 <code>review.xls</code> 后，仅生成日程预览，不修改文件、不归档、不设置壁纸。</p>
-            </div>
-            <div class="review-import-controls">
-              <input id="review-xls-file" type="file" accept=".xls,.xlsx,.xlsm,.xlsb" />
-              <button id="review-xls-parse" class="mini">解析预览</button>
-              <button id="review-xls-import" class="mini" disabled>导入选中</button>
-            </div>
-            <div id="review-xls-meta" class="muted">未选择文件。浏览器安全限制下，需要手动选择本地文件。</div>
-            <div id="review-xls-preview" class="review-import-preview"></div>
+      <section id="events-panel" class="tab calendar-workspace">
+        <aside class="calendar-sidebar-panel">
+          <div class="mini-calendar-head">
+            <button id="event-mini-month-title" type="button">2026年8月</button>
+            <span class="mini-calendar-spacer"></span>
+            <button id="event-mini-prev" class="mini-calendar-arrow" type="button" aria-label="上个月">‹</button>
+            <button id="event-mini-next" class="mini-calendar-arrow" type="button" aria-label="下个月">›</button>
           </div>
-        </details>
-        <div class="card-panel schedule-panel">
+          <div class="mini-calendar-weekdays" aria-hidden="true"><span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span><span>日</span></div>
+          <div id="event-mini-calendar" class="mini-calendar-grid"></div>
+          <label class="calendar-search-box">
+            <span aria-hidden="true">⌕</span>
+            <input id="event-calendar-search" type="search" placeholder="搜索日程、地点" />
+          </label>
+          <div class="calendar-side-section">
+            <div class="calendar-side-section-title">我的日历</div>
+            <div id="event-calendar-groups" class="calendar-group-list"></div>
+          </div>
+          <details class="calendar-import-drawer">
+            <summary>导入周历 Excel</summary>
+            <div class="review-import-panel">
+              <p class="muted">只读取本地文件并生成预览，不修改原表。</p>
+              <div class="review-import-controls">
+                <input id="review-xls-file" type="file" accept=".xls,.xlsx,.xlsm,.xlsb" />
+                <button id="review-xls-parse" class="mini">解析预览</button>
+                <button id="review-xls-import" class="mini" disabled>导入选中</button>
+              </div>
+              <div id="review-xls-meta" class="muted">未选择文件。</div>
+              <div id="review-xls-preview" class="review-import-preview"></div>
+            </div>
+          </details>
+        </aside>
+        <div class="schedule-panel calendar-main-panel">
           <div class="schedule-head schedule-toolbar">
-            <div>
-              <div id="event-selected-date" class="schedule-date-title">今天</div>
+            <div class="schedule-toolbar-primary">
+              <button id="event-calendar-today" class="calendar-toolbar-button" type="button">今天</button>
+              <button id="event-prev-day" class="calendar-toolbar-arrow" title="上一段" aria-label="上一段">‹</button>
+              <button id="event-next-day" class="calendar-toolbar-arrow" title="下一段" aria-label="下一段">›</button>
+              <label class="calendar-range-control">
+                <span id="event-selected-date" class="schedule-date-title">今天</span>
+                <span aria-hidden="true">⌄</span>
+                <input id="event-anchor-date" type="date" aria-label="选择日期" />
+              </label>
               <div id="event-selected-subtitle" class="muted">未连接</div>
             </div>
-            <div class="schedule-toolbar-actions">
-              <button id="event-prev-day" class="ghost mini icon-button" title="上一天" aria-label="上一天">‹</button>
-              <button id="event-next-day" class="ghost mini icon-button" title="下一天" aria-label="下一天">›</button>
-              <div class="inline-picker">
-                <label for="event-anchor-date">起始日期</label>
-                <input id="event-anchor-date" type="date" />
-              </div>
-              <button id="apply-event-day" class="ghost mini">跳转</button>
+            <div class="calendar-view-switch" role="group" aria-label="日历视图">
+              <button type="button" data-event-view="day">日</button>
+              <button type="button" data-event-view="week" class="active">周</button>
+              <button type="button" data-event-view="month">月</button>
             </div>
+            <button id="apply-event-day" class="hidden" type="button">跳转</button>
           </div>
           <section class="schedule-board-shell">
             <div id="board-scroll" class="board-scroll">
@@ -309,17 +330,17 @@
   </div>
 
   <div id="event-modal" class="modal-backdrop hidden">
-    <div class="modal-sheet compact-sheet wide-sheet">
-      <div class="modal-handle"></div>
-      <div class="modal-head">
-        <button class="sheet-text-button" data-close-modal="event-modal">取消</button>
-        <div class="modal-title-block">
-          <h2 id="event-modal-title">新增日程</h2>
+    <div class="modal-sheet compact-sheet wide-sheet event-editor-window">
+      <div class="event-editor-form-pane">
+        <div class="modal-handle"></div>
+        <div class="modal-head">
+          <div class="modal-title-block">
+            <h2 id="event-modal-title">新增日程</h2>
+          </div>
+          <button class="event-editor-close" data-close-modal="event-modal" type="button" aria-label="关闭">×</button>
         </div>
-        <button id="save-event" class="sheet-primary-action">创建日程</button>
-      </div>
-      <div class="editor-body">
-      <div class="form-grid editor-grid">
+        <div class="editor-body">
+        <div class="form-grid editor-grid">
         <div class="span-2 event-field-title"><label>标题</label><textarea id="event-title" class="primary-editor-field title-editor-field" placeholder="标题，支持换行" rows="2"></textarea></div>
         <div class="event-field-group"><label>分组</label><select id="event-group"></select></div>
         <div class="event-color-field event-field-color">
@@ -421,9 +442,35 @@
           <p class="field-hint">选择周几后会自动生成循环规则；不需要手动输入 1,3,5。</p>
         </div>
         <div class="span-2 switch-row event-field-switches"><label><input id="event-countdown" type="checkbox" /> 倒数日</label><label><input id="event-check-in" type="checkbox" /> 打卡追踪</label><label><input id="event-all-day" type="checkbox" /> 全天</label><label class="event-reminder-dependent"><input id="event-ring" type="checkbox" checked /> 铃声</label><label class="event-reminder-dependent"><input id="event-vibrate" type="checkbox" checked /> 震动</label></div>
+        </div>
+        </div>
+        <div class="event-editor-footer">
+          <button id="delete-event" class="danger hidden">删除日程</button>
+          <span class="event-editor-footer-spacer"></span>
+          <button class="sheet-text-button" data-close-modal="event-modal">取消</button>
+          <button id="save-event" class="sheet-primary-action">创建日程</button>
+        </div>
       </div>
-      </div>
-      <div class="modal-actions destructive-row"><button id="delete-event" class="danger hidden">删除日程</button></div>
+      <aside class="event-editor-preview-pane" aria-label="日程时间预览">
+        <div class="event-preview-toolbar">
+          <button id="event-preview-today" type="button">今天</button>
+          <button id="event-preview-prev" type="button" aria-label="前一天">‹</button>
+          <button id="event-preview-next" type="button" aria-label="后一天">›</button>
+          <strong id="event-editor-preview-date">日期预览</strong>
+        </div>
+        <div class="event-preview-day-head">
+          <span>GMT+8</span>
+          <strong id="event-editor-preview-weekday">日程</strong>
+        </div>
+        <div class="event-preview-timeline">
+          <div id="event-editor-preview-hours" class="event-preview-hours"></div>
+          <div id="event-editor-preview-grid" class="event-preview-grid"></div>
+          <div id="event-editor-preview-block" class="event-editor-preview-block">
+            <strong>新日程</strong>
+            <span>时间预览</span>
+          </div>
+        </div>
+      </aside>
     </div>
   </div>
 

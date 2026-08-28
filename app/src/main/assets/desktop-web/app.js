@@ -1,5 +1,5 @@
-const HOUR_HEIGHT = 64;
-const EVENT_HEADER_HEIGHT = 58;
+const HOUR_HEIGHT = 56;
+const EVENT_HEADER_HEIGHT = 64;
 const FIFTEEN_MINUTES = 15 * 60 * 1000;
 const THIRTY_MINUTES = 30 * 60 * 1000;
 const DEFAULT_EVENT_COLOR = '#df58a5';
@@ -28,6 +28,11 @@ const state = {
   snapshot: null,
   currentTab: 'board',
   selectedEventDay: dayKey(new Date()),
+  eventViewMode: 'week',
+  eventMiniMonth: dayKey(new Date()).slice(0, 7) + '-01',
+  eventQuery: '',
+  hiddenEventGroupIds: [],
+  eventEditorPreviewDayOffset: 0,
   editingTodoId: null,
   editingEventId: null,
   previewTodoId: null,
@@ -121,6 +126,13 @@ const els = {
   eventPrevDay: document.getElementById('event-prev-day'),
   eventNextDay: document.getElementById('event-next-day'),
   applyEventDay: document.getElementById('apply-event-day'),
+  eventCalendarToday: document.getElementById('event-calendar-today'),
+  eventMiniMonthTitle: document.getElementById('event-mini-month-title'),
+  eventMiniCalendar: document.getElementById('event-mini-calendar'),
+  eventMiniPrev: document.getElementById('event-mini-prev'),
+  eventMiniNext: document.getElementById('event-mini-next'),
+  eventCalendarSearch: document.getElementById('event-calendar-search'),
+  eventCalendarGroups: document.getElementById('event-calendar-groups'),
   planningNoteSelect: document.getElementById('planning-note-select'),
   planningEditor: document.getElementById('planning-editor'),
   planningOutline: document.getElementById('planning-outline'),
@@ -865,20 +877,70 @@ function updateDateTimePreview(prefix) {
   if (!preview) {
     node.classList.add('is-empty');
     node.textContent = '完整填写日期时间后显示预览';
+    if (prefix.startsWith('event-')) renderEventEditorPreview();
     return;
   }
   node.classList.remove('is-empty');
   node.innerHTML = '<strong>' + escapeHtml(preview.main) + '</strong>' + escapeHtml(preview.sub);
+  if (prefix.startsWith('event-')) renderEventEditorPreview();
 }
 
 function setEventSeed(startMillis, endMillis) {
   state.pendingEventSeed = { startMillis, endMillis };
+  state.eventEditorPreviewDayOffset = 0;
   writeDateTimeValue('event-start', formatDateTimeLocalValue(startMillis));
   writeDateTimeValue('event-end', formatDateTimeLocalValue(endMillis));
   if (document.getElementById('event-course-enabled')?.checked) {
     ensureEventCourseSlots();
     renderEventCourseSlots();
   }
+}
+
+function readEventEditorDate(prefix) {
+  try {
+    const value = readDateTimeValue(prefix);
+    return value ? new Date(value) : null;
+  } catch (_) {
+    return null;
+  }
+}
+
+function renderEventEditorPreview() {
+  const hours = document.getElementById('event-editor-preview-hours');
+  const grid = document.getElementById('event-editor-preview-grid');
+  const block = document.getElementById('event-editor-preview-block');
+  const dateLabel = document.getElementById('event-editor-preview-date');
+  const weekdayLabel = document.getElementById('event-editor-preview-weekday');
+  if (!hours || !grid || !block || !dateLabel || !weekdayLabel) return;
+
+  const start = readEventEditorDate('event-start') || new Date();
+  const end = readEventEditorDate('event-end') || new Date(start.getTime() + THIRTY_MINUTES);
+  const previewDate = new Date(start);
+  previewDate.setDate(previewDate.getDate() + Number(state.eventEditorPreviewDayOffset || 0));
+  const previewKey = dayKey(previewDate);
+  const startKey = dayKey(start);
+  dateLabel.textContent = (previewDate.getMonth() + 1) + '月' + previewDate.getDate() + '日 ' + formatWeekday(previewDate);
+  weekdayLabel.textContent = formatWeekday(previewDate) + ' · ' + previewDate.getDate();
+  hours.innerHTML = Array.from({ length: 15 }, (_, index) => {
+    const hour = index + 9;
+    return '<span style="top:' + (index * 58) + 'px">' + String(hour).padStart(2, '0') + ':00</span>';
+  }).join('');
+  grid.innerHTML = Array.from({ length: 15 }, (_, index) => '<span style="top:' + (index * 58) + 'px"></span>').join('');
+
+  if (previewKey !== startKey) {
+    block.classList.add('hidden');
+    return;
+  }
+  const startMinutes = start.getHours() * 60 + start.getMinutes();
+  const endMinutes = Math.max(startMinutes + 30, end.getHours() * 60 + end.getMinutes());
+  const top = ((startMinutes - 9 * 60) / 60) * 58;
+  const height = Math.max(28, ((endMinutes - startMinutes) / 60) * 58);
+  block.classList.remove('hidden');
+  block.style.top = Math.max(0, top) + 'px';
+  block.style.height = height + 'px';
+  block.style.setProperty('--accent', document.getElementById('event-color')?.value || DEFAULT_EVENT_COLOR);
+  block.querySelector('strong').textContent = document.getElementById('event-title')?.value.trim() || '添加主题';
+  block.querySelector('span').textContent = formatTimeLabel(start.getTime()) + ' - ' + formatTimeLabel(end.getTime());
 }
 
 function snapToQuarterHour(millis) {
@@ -1234,13 +1296,29 @@ function renderCurrentLine(key) {
 }
 
 function visibleEventDayCount() {
-  const width = Math.max(0, els.boardScroll?.clientWidth || 0);
-  if (width && width < 640) return 1;
-  if (width && width < 960) return 3;
+  if (state.eventViewMode === 'day') return 1;
+  if (state.eventViewMode === 'month') return 42;
   return 7;
 }
 
+function startOfCalendarWeek(key) {
+  const date = dateFromKey(key);
+  const mondayOffset = (date.getDay() + 6) % 7;
+  date.setDate(date.getDate() - mondayOffset);
+  return dayKey(date);
+}
+
+function monthGridStart(key) {
+  const date = dateFromKey(key);
+  date.setDate(1);
+  return startOfCalendarWeek(dayKey(date));
+}
+
 function getVisibleEventKeys() {
+  if (state.eventViewMode === 'month') {
+    const start = monthGridStart(state.selectedEventDay);
+    return Array.from({ length: 42 }, (_, index) => addDays(start, index));
+  }
   const count = visibleEventDayCount();
   return Array.from({ length: count }, (_, index) => addDays(state.selectedEventDay, index));
 }
@@ -1249,10 +1327,12 @@ function renderEventDayHeader(key, items) {
   const classes = ['event-day-header'];
   if (key === dayKey(new Date())) classes.push('today');
   if (key === state.selectedEventDay) classes.push('selected');
+  const date = dateFromKey(key);
   return ''
     + '<button class="' + classes.join(' ') + '" data-day="' + key + '">'
-    +   '<div class="event-day-header-date">' + escapeHtml(formatCompactDateLabel(key) + ' ' + formatWeekday(dateFromKey(key))) + '</div>'
-    +   '<div class="event-day-header-meta">' + items.length + ' 项</div>'
+    +   '<div class="event-day-header-weekday">' + escapeHtml(formatWeekday(date)) + '</div>'
+    +   '<div class="event-day-header-date">' + escapeHtml(String(date.getDate())) + '</div>'
+    +   (items.length ? '<div class="event-day-header-meta">' + items.length + '</div>' : '')
     + '</button>';
 }
 
@@ -1286,7 +1366,16 @@ function renderEventDayColumn(key, timed, allDayItems) {
 
 function renderVisibleRangeTitle(keys) {
   if (!keys.length) return formatFullDateLabel(dateFromKey(state.selectedEventDay));
-  if (keys.length === 1) return formatFullDateLabel(dateFromKey(keys[0]));
+  const first = dateFromKey(keys[0]);
+  const last = dateFromKey(keys[keys.length - 1]);
+  if (state.eventViewMode === 'month') {
+    const selected = dateFromKey(state.selectedEventDay);
+    return selected.getFullYear() + '年' + (selected.getMonth() + 1) + '月';
+  }
+  if (keys.length === 1) return first.getFullYear() + '年' + (first.getMonth() + 1) + '月' + first.getDate() + '日';
+  if (first.getFullYear() === last.getFullYear() && first.getMonth() === last.getMonth()) {
+    return first.getFullYear() + '年' + (first.getMonth() + 1) + '月' + first.getDate() + '日 - ' + last.getDate() + '日';
+  }
   return formatCompactDateLabel(keys[0]) + ' - ' + formatCompactDateLabel(keys[keys.length - 1]);
 }
 
@@ -1303,6 +1392,85 @@ function renderEventCard(segment) {
     +   '<div class="event-card-meta">' + escapeHtml(meta || '定时日程') + '</div>'
     +   (item.notes ? '<div class="event-card-notes">' + escapeHtml(item.notes) + '</div>' : '')
     + '</article>';
+}
+
+function eventMatchesCalendarFilters(item) {
+  const hiddenGroups = new Set((state.hiddenEventGroupIds || []).map(String));
+  if (hiddenGroups.has(String(item.groupId ?? ''))) return false;
+  const query = String(state.eventQuery || '').trim().toLocaleLowerCase();
+  if (!query) return true;
+  return [item.title, item.location, item.notes, item.groupName]
+    .filter(Boolean)
+    .some(value => String(value).toLocaleLowerCase().includes(query));
+}
+
+function renderCalendarGroups() {
+  if (!els.eventCalendarGroups) return;
+  const hiddenGroups = new Set((state.hiddenEventGroupIds || []).map(String));
+  const groups = state.snapshot?.groups || [];
+  els.eventCalendarGroups.innerHTML = groups.length
+    ? groups.map(group => {
+      const groupId = String(group.id ?? '');
+      const color = group.colorHex || '#336DF4';
+      return ''
+        + '<label class="calendar-group-row">'
+        +   '<input type="checkbox" data-calendar-group-id="' + escapeHtml(groupId) + '" ' + (hiddenGroups.has(groupId) ? '' : 'checked') + ' />'
+        +   '<span class="calendar-group-color" style="--group-color:' + escapeHtml(color) + '"></span>'
+        +   '<span>' + escapeHtml(group.name || '未命名分组') + '</span>'
+        + '</label>';
+    }).join('')
+    : '<div class="calendar-side-empty">暂无分组</div>';
+}
+
+function miniCalendarKeys(monthKey) {
+  const start = monthGridStart(monthKey);
+  return Array.from({ length: 42 }, (_, index) => addDays(start, index));
+}
+
+function renderMiniCalendar() {
+  if (!els.eventMiniCalendar || !els.eventMiniMonthTitle) return;
+  const monthDate = dateFromKey(state.eventMiniMonth);
+  const visibleSet = state.eventViewMode === 'month' ? new Set() : new Set(getVisibleEventKeys());
+  const today = dayKey(new Date());
+  els.eventMiniMonthTitle.textContent = monthDate.getFullYear() + '年' + (monthDate.getMonth() + 1) + '月';
+  els.eventMiniCalendar.innerHTML = miniCalendarKeys(state.eventMiniMonth).map(key => {
+    const date = dateFromKey(key);
+    const classes = ['mini-calendar-day'];
+    if (date.getMonth() !== monthDate.getMonth()) classes.push('outside');
+    if (visibleSet.has(key)) classes.push('in-range');
+    if (key === state.selectedEventDay) classes.push('selected');
+    if (key === today) classes.push('today');
+    return '<button type="button" class="' + classes.join(' ') + '" data-mini-calendar-day="' + key + '">' + date.getDate() + '</button>';
+  }).join('');
+}
+
+function renderMonthEventPill(item) {
+  const accent = item.accentColorHex || item.groupColorHex || DEFAULT_EVENT_COLOR;
+  const time = item.allDay ? '全天' : formatTimeLabel(eventStart(item));
+  return ''
+    + '<button type="button" class="month-event-pill" data-event-id="' + escapeHtml(String(item.id ?? '')) + '" style="--accent:' + escapeHtml(accent) + '">'
+    +   '<span>' + escapeHtml(time) + '</span>'
+    +   '<strong>' + escapeHtml(item.title || '未命名日程') + '</strong>'
+    + '</button>';
+}
+
+function renderEventMonthGrid(visibleDays) {
+  const selectedMonth = dateFromKey(state.selectedEventDay).getMonth();
+  const weekdayHead = ['一', '二', '三', '四', '五', '六', '日']
+    .map(label => '<div class="month-weekday">' + label + '</div>').join('');
+  const cells = visibleDays.map(day => {
+    const date = dateFromKey(day.key);
+    const classes = ['month-day-cell'];
+    if (date.getMonth() !== selectedMonth) classes.push('outside');
+    if (day.key === dayKey(new Date())) classes.push('today');
+    return ''
+      + '<div class="' + classes.join(' ') + '" data-month-day="' + day.key + '">'
+      +   '<button type="button" class="month-day-number" data-day="' + day.key + '">' + date.getDate() + '</button>'
+      +   '<div class="month-day-events">' + day.items.slice(0, 3).map(renderMonthEventPill).join('') + '</div>'
+      +   (day.items.length > 3 ? '<button type="button" class="month-more" data-day="' + day.key + '">还有 ' + (day.items.length - 3) + ' 项</button>' : '')
+      + '</div>';
+  }).join('');
+  return '<div class="event-month-view"><div class="month-weekday-row">' + weekdayHead + '</div><div class="month-grid">' + cells + '</div></div>';
 }
 
 function eventPayloadFromItem(item, startMillis, endMillis) {
@@ -1438,9 +1606,10 @@ function syncTopbar() {
   const eventMode = state.currentTab === 'events';
   const planningMode = state.currentTab === 'planning';
   const reportMode = state.currentTab === 'reports';
+  document.body.dataset.activeTab = state.currentTab;
   els.panelTitle.textContent = boardMode ? '每日看板' : todoMode ? '待办' : eventMode ? '日历' : planningMode ? '规划台' : 'AI 报告';
   els.viewCaption.textContent = boardMode ? '今天真正需要处理的事情' : todoMode ? '任务与历史记录' : eventMode ? '按周查看与安排日程' : planningMode ? '备忘录式规划与识别' : '日报调度、AI 状态与历史记录';
-  els.openCreate.textContent = eventMode ? '新增日程' : todoMode || boardMode ? '新增待办' : '新建规划';
+  els.openCreate.textContent = eventMode ? '创建日程' : todoMode || boardMode ? '新增待办' : '新建规划';
   els.openCreate.classList.toggle('hidden', planningMode || reportMode);
   const dataMode = todoMode && state.todosLoaded
     ? '待办按需数据'
@@ -2007,6 +2176,12 @@ function renderBoardEventRow(item, nowMillis) {
 }
 
 function renderEvents() {
+  document.body.dataset.eventView = state.eventViewMode;
+  document.querySelectorAll('[data-event-view]').forEach(button => {
+    button.classList.toggle('active', button.dataset.eventView === state.eventViewMode);
+  });
+  renderMiniCalendar();
+  renderCalendarGroups();
   if (!visibleEventRangeLoaded()) {
     els.eventDayHeaders.innerHTML = '';
     els.hourAxis.innerHTML = '';
@@ -2014,7 +2189,7 @@ function renderEvents() {
     ensureEventData().catch(err => els.status.textContent = err.message);
     return;
   }
-  const events = activeEvents().slice().sort((a, b) => eventStart(a) - eventStart(b));
+  const events = activeEvents().filter(eventMatchesCalendarFilters).slice().sort((a, b) => eventStart(a) - eventStart(b));
   const dayMap = new Map();
   events.forEach(item => {
     let cursor = new Date(eventStart(item));
@@ -2043,19 +2218,26 @@ function renderEvents() {
   const totalAllDay = visibleDays.reduce((sum, day) => sum + day.allDay.length, 0);
   els.eventDayHeaders.style.setProperty('--day-count', String(visibleKeys.length || 1));
   els.eventTimeline.style.setProperty('--day-count', String(visibleKeys.length || 1));
-  els.eventDayHeaders.innerHTML = visibleDays.map(day => renderEventDayHeader(day.key, day.items)).join('');
   if (els.eventAnchorDate) els.eventAnchorDate.value = state.selectedEventDay;
   els.eventSelectedDate.textContent = renderVisibleRangeTitle(visibleKeys);
-  els.eventSelectedSubtitle.textContent = '起始日：' + formatCompactDateLabel(state.selectedEventDay) + ' · 连续 ' + visibleKeys.length + ' 天 · 定时 ' + totalTimed + ' 项 · 全天 ' + totalAllDay + ' 项';
-  els.hourAxis.innerHTML = renderHourAxis();
-  els.eventTimeline.innerHTML = visibleDays.map(day => renderEventDayColumn(day.key, day.timed, day.allDay)).join('');
+  els.eventSelectedSubtitle.textContent = totalTimed + totalAllDay ? ('定时 ' + totalTimed + ' · 全天 ' + totalAllDay) : '';
+  if (state.eventViewMode === 'month') {
+    els.eventDayHeaders.innerHTML = '';
+    els.hourAxis.innerHTML = '';
+    els.eventTimeline.innerHTML = renderEventMonthGrid(visibleDays);
+  } else {
+    els.eventDayHeaders.innerHTML = visibleDays.map(day => renderEventDayHeader(day.key, day.items)).join('');
+    els.hourAxis.innerHTML = renderHourAxis();
+    els.eventTimeline.innerHTML = visibleDays.map(day => renderEventDayColumn(day.key, day.timed, day.allDay)).join('');
+  }
   if (els.boardScroll) {
-    if (visibleKeys.includes(dayKey(new Date()))) {
-      const nowDate = new Date();
-      els.boardScroll.scrollTop = Math.max(0, EVENT_HEADER_HEIGHT + ((nowDate.getHours() * 60 + nowDate.getMinutes()) / 60 * HOUR_HEIGHT) - 180);
+    if (state.eventViewMode === 'month') {
+      els.boardScroll.scrollTop = 0;
+    } else if (visibleKeys.includes(dayKey(new Date()))) {
+      els.boardScroll.scrollTop = 8 * HOUR_HEIGHT;
     } else {
       const firstTimed = visibleDays.flatMap(day => day.timed).sort((a, b) => a.top - b.top)[0];
-      els.boardScroll.scrollTop = firstTimed ? Math.max(0, EVENT_HEADER_HEIGHT + firstTimed.top - 80) : 0;
+      els.boardScroll.scrollTop = firstTimed ? Math.max(0, firstTimed.top - HOUR_HEIGHT) : 0;
     }
   }
   document.querySelectorAll('[data-column-day]').forEach(node => {
@@ -2072,8 +2254,10 @@ function renderEvents() {
       openModal('event-modal');
     };
   });
-  document.querySelectorAll('[data-event-id]').forEach(node => {
+  document.querySelectorAll('.event-card[data-event-id]').forEach(node => {
     node.onpointerdown = event => beginEventDrag(event, node);
+  });
+  document.querySelectorAll('[data-event-id]').forEach(node => {
     node.onclick = event => {
       event.preventDefault();
       event.stopPropagation();
@@ -2082,6 +2266,16 @@ function renderEvents() {
     };
     node.onkeydown = event => {
       if (event.key === 'Enter' || event.key === ' ') node.click();
+    };
+  });
+  document.querySelectorAll('[data-month-day]').forEach(node => {
+    node.onclick = event => {
+      if (event.target.closest('[data-event-id]')) return;
+      const key = node.dataset.monthDay;
+      const startMillis = dayStartMillis(key) + 9 * 60 * 60 * 1000;
+      clearEventForm();
+      setEventSeed(startMillis, startMillis + THIRTY_MINUTES);
+      openModal('event-modal');
     };
   });
   bindActions();
@@ -3822,6 +4016,7 @@ function clearEventForm() {
   state.editingEventOriginalRecurring = false;
   state.editingEventMultiSlotBundleId = null;
   state.pendingEventSeed = null;
+  state.eventEditorPreviewDayOffset = 0;
   fillGroupSelect('event-group');
   document.getElementById('event-modal-title').textContent = '新增日程';
   document.getElementById('save-event').textContent = '创建日程';
@@ -3850,6 +4045,7 @@ function clearEventForm() {
   document.getElementById('event-multi-slot-sync-block').classList.add('hidden');
   state.eventCourseSlots = [defaultEventCourseSlot()];
   setEventCourseModeEnabled(false, true);
+  renderEventEditorPreview();
 }
 
 function formatDateTimeLocalValue(millis) {
@@ -3935,6 +4131,7 @@ function setEventColor(value) {
   if (!input) return;
   input.value = normalizeHexColor(value || DEFAULT_EVENT_COLOR);
   syncEventColorPresets();
+  renderEventEditorPreview();
 }
 
 function syncEventColorPresets() {
@@ -3957,7 +4154,10 @@ function bindEventColorPresets() {
     if (!swatch) return;
     setEventColor(swatch.dataset.eventColorPreset || DEFAULT_EVENT_COLOR);
   });
-  input.addEventListener('input', syncEventColorPresets);
+  input.addEventListener('input', () => {
+    syncEventColorPresets();
+    renderEventEditorPreview();
+  });
   syncEventColorPresets();
 }
 
@@ -3969,6 +4169,7 @@ function openEventEditor(item) {
   state.editingEventOriginalRecurring = item.isRecurring === true;
   state.editingEventMultiSlotBundleId = item.multiSlotBundleId || null;
   state.pendingEventSeed = null;
+  state.eventEditorPreviewDayOffset = 0;
   fillGroupSelect('event-group', item.groupId);
   document.getElementById('event-modal-title').textContent = '编辑日程';
   document.getElementById('save-event').textContent = '保存修改';
@@ -4077,6 +4278,7 @@ function openModal(id) {
   const node = document.getElementById(id);
   if (!node) return;
   node.classList.remove('hidden');
+  if (id === 'event-modal') renderEventEditorPreview();
   const focusTarget = node.querySelector('.primary-editor-field') || node.querySelector('input, textarea, select, button');
   if (focusTarget) focusTarget.focus();
 }
@@ -4359,6 +4561,22 @@ document.getElementById('event-reminder-notification')?.addEventListener('change
   );
 });
 document.getElementById('event-check-in')?.addEventListener('change', setEventCheckInReminderEnabled);
+['event-title', 'event-location', 'event-notes', 'event-group'].forEach(id => {
+  document.getElementById(id)?.addEventListener('input', renderEventEditorPreview);
+  document.getElementById(id)?.addEventListener('change', renderEventEditorPreview);
+});
+document.getElementById('event-preview-today')?.addEventListener('click', () => {
+  state.eventEditorPreviewDayOffset = 0;
+  renderEventEditorPreview();
+});
+document.getElementById('event-preview-prev')?.addEventListener('click', () => {
+  state.eventEditorPreviewDayOffset = Number(state.eventEditorPreviewDayOffset || 0) - 1;
+  renderEventEditorPreview();
+});
+document.getElementById('event-preview-next')?.addEventListener('click', () => {
+  state.eventEditorPreviewDayOffset = Number(state.eventEditorPreviewDayOffset || 0) + 1;
+  renderEventEditorPreview();
+});
 document.getElementById('event-course-enabled')?.addEventListener('change', event => {
   if (event.target.checked) {
     state.eventCourseSlots = [defaultEventCourseSlot()];
@@ -4456,24 +4674,92 @@ window.addEventListener('resize', () => {
 document.getElementById('jump-today').onclick = () => {
   if (state.currentTab === 'events') {
     state.selectedEventDay = dayKey(new Date());
+    state.eventMiniMonth = state.selectedEventDay.slice(0, 7) + '-01';
+    state.eventsLoaded = false;
     renderEvents();
   } else {
     els.desktopDailyBoard?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 };
 els.eventPrevDay.onclick = () => {
-  state.selectedEventDay = addDays(state.selectedEventDay, -1);
+  if (state.eventViewMode === 'month') {
+    const date = dateFromKey(state.selectedEventDay);
+    date.setMonth(date.getMonth() - 1);
+    state.selectedEventDay = dayKey(date);
+  } else {
+    state.selectedEventDay = addDays(state.selectedEventDay, state.eventViewMode === 'week' ? -7 : -1);
+  }
+  state.eventMiniMonth = state.selectedEventDay.slice(0, 7) + '-01';
+  state.eventsLoaded = false;
   renderEvents();
 };
 els.eventNextDay.onclick = () => {
-  state.selectedEventDay = addDays(state.selectedEventDay, 1);
+  if (state.eventViewMode === 'month') {
+    const date = dateFromKey(state.selectedEventDay);
+    date.setMonth(date.getMonth() + 1);
+    state.selectedEventDay = dayKey(date);
+  } else {
+    state.selectedEventDay = addDays(state.selectedEventDay, state.eventViewMode === 'week' ? 7 : 1);
+  }
+  state.eventMiniMonth = state.selectedEventDay.slice(0, 7) + '-01';
+  state.eventsLoaded = false;
   renderEvents();
 };
 els.applyEventDay.onclick = () => {
   if (!els.eventAnchorDate.value) return;
   state.selectedEventDay = els.eventAnchorDate.value;
+  state.eventMiniMonth = state.selectedEventDay.slice(0, 7) + '-01';
+  state.eventsLoaded = false;
   renderEvents();
 };
+els.eventAnchorDate?.addEventListener('change', () => els.applyEventDay?.click());
+els.eventCalendarToday?.addEventListener('click', () => {
+  state.selectedEventDay = dayKey(new Date());
+  state.eventMiniMonth = state.selectedEventDay.slice(0, 7) + '-01';
+  state.eventsLoaded = false;
+  renderEvents();
+});
+els.eventMiniPrev?.addEventListener('click', () => {
+  const date = dateFromKey(state.eventMiniMonth);
+  date.setMonth(date.getMonth() - 1);
+  state.eventMiniMonth = dayKey(date).slice(0, 7) + '-01';
+  renderMiniCalendar();
+});
+els.eventMiniNext?.addEventListener('click', () => {
+  const date = dateFromKey(state.eventMiniMonth);
+  date.setMonth(date.getMonth() + 1);
+  state.eventMiniMonth = dayKey(date).slice(0, 7) + '-01';
+  renderMiniCalendar();
+});
+els.eventMiniCalendar?.addEventListener('click', event => {
+  const day = event.target.closest?.('[data-mini-calendar-day]');
+  if (!day) return;
+  state.selectedEventDay = day.dataset.miniCalendarDay;
+  state.eventMiniMonth = state.selectedEventDay.slice(0, 7) + '-01';
+  state.eventsLoaded = false;
+  renderEvents();
+});
+els.eventCalendarSearch?.addEventListener('input', event => {
+  state.eventQuery = event.target.value || '';
+  renderEvents();
+});
+els.eventCalendarGroups?.addEventListener('change', event => {
+  const checkbox = event.target.closest?.('[data-calendar-group-id]');
+  if (!checkbox) return;
+  const hidden = new Set((state.hiddenEventGroupIds || []).map(String));
+  if (checkbox.checked) hidden.delete(checkbox.dataset.calendarGroupId); else hidden.add(checkbox.dataset.calendarGroupId);
+  state.hiddenEventGroupIds = Array.from(hidden);
+  renderEvents();
+});
+document.querySelectorAll('[data-event-view]').forEach(button => {
+  button.addEventListener('click', () => {
+    state.eventViewMode = button.dataset.eventView || 'week';
+    if (state.eventViewMode === 'week') state.selectedEventDay = startOfCalendarWeek(state.selectedEventDay);
+    state.eventMiniMonth = state.selectedEventDay.slice(0, 7) + '-01';
+    state.eventsLoaded = false;
+    renderEvents();
+  });
+});
 document.getElementById('planning-new')?.addEventListener('click', () => createPlanningNote().catch(err => els.status.textContent = err.message));
 document.getElementById('planning-delete')?.addEventListener('click', () => deletePlanningNote().catch(err => els.status.textContent = err.message));
 document.getElementById('planning-save')?.addEventListener('click', () => savePlanningNote().catch(err => els.status.textContent = err.message));
@@ -4850,6 +5136,8 @@ document.querySelectorAll('[data-tab]').forEach(node => {
     node.classList.add('active');
     syncTopbar();
     if (state.currentTab === 'events') {
+      if (state.eventViewMode === 'week') state.selectedEventDay = startOfCalendarWeek(state.selectedEventDay);
+      state.eventMiniMonth = state.selectedEventDay.slice(0, 7) + '-01';
       ensureEventData().catch(err => els.status.textContent = err.message);
     } else if (state.currentTab === 'planning') {
       loadPlanningNotes()

@@ -8,7 +8,7 @@ The original PaykiTodo sessions became large and increasingly unreliable. This f
 
 ## Latest In-Progress Round
 
-The `1.15.13 / versionCode 355` round hardens AI daily/weekly reporting and modernizes Desktop Web. Report alarms now reschedule after both success and failure, startup recovers the most recent missing period only when the prior trigger is unknown or overdue, scheduled runs avoid duplicate same-period reports, and persistent diagnostics distinguish exact/inexact scheduling, AI fallback, success, and whole-chain failure. Desktop Web now uses a Feishu-like light top navigation, responsive fixed-week Calendar, flatter event surfaces, centered editors, and a dedicated AI-report diagnostics tab. Database version remains `30`. Full unit tests, lint, debug build, JavaScript checks, browser screenshots, and an emulator exact-alarm report test passed. No push is authorized unless the user explicitly requests it.
+The `1.15.14 / versionCode 356` round replaces the generic Desktop Web Calendar with a screenshot-matched reproduction of the user's three Feishu references. The browser now uses the same top-nav/sidebar/calendar proportions at 125% Windows scaling, functional day/week/month views, mini-calendar navigation, search/group filtering, and a two-column event editor with a live timeline preview. The round also fixes legacy CSS inheritance that previously expanded the page to about 10,124px, pushed header actions onto a second row, and stretched the close button. Database version remains `30`. Browser interaction checks and the debug build passed on the Pixel_8 emulator Desktop Sync surface. No push is authorized unless the user explicitly requests it.
 
 ## Initial Product Request
 

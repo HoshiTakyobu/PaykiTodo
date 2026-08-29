@@ -69,6 +69,9 @@ const state = {
   eventDragSuppressClickUntil: 0,
   eventCheckInLoadSerial: 0,
   aiReportStatus: null,
+  aiConfigDraft: null,
+  aiProviderModels: {},
+  aiProviderFeedback: {},
   desktopHeartbeatTimer: null,
   editingTodoOriginalRecurring: false,
   editingEventOriginalRecurring: false,
@@ -141,6 +144,8 @@ const els = {
   planningPreview: document.getElementById('planning-preview'),
   planningPreviewMeta: document.getElementById('planning-preview-meta'),
   reviewXlsFile: document.getElementById('review-xls-file'),
+  reviewXlsOpen: document.getElementById('review-xls-open'),
+  reviewXlsPanel: document.getElementById('review-xls-panel'),
   reviewXlsParse: document.getElementById('review-xls-parse'),
   reviewXlsImport: document.getElementById('review-xls-import'),
   reviewXlsMeta: document.getElementById('review-xls-meta'),
@@ -586,12 +591,14 @@ async function importSelectedReviewEvents() {
 }
 
 function bindReviewImportControls() {
+  els.reviewXlsOpen?.addEventListener('click', () => els.reviewXlsFile?.click());
   els.reviewXlsFile?.addEventListener('change', () => {
     const file = els.reviewXlsFile?.files?.[0];
     if (!file) {
       resetReviewImportPreview();
       return;
     }
+    els.reviewXlsPanel?.classList.remove('hidden');
     resetReviewImportPreview('已选择 ' + file.name + '。点击“解析预览”后会按表头日期和左侧节次时间生成候选；年份按距离今天最近的同月日推断。');
   });
   els.reviewXlsParse?.addEventListener('click', async () => {
@@ -1264,10 +1271,7 @@ function renderHourAxis() {
   const currentMinutes = now.getHours() * 60 + now.getMinutes();
   const currentTimeOffset = (currentMinutes / 60) * HOUR_HEIGHT;
 
-  // 时间刻度列和右侧日程网格在同一个滚动容器里并排；右侧网格被 58px 的日期表头
-  // (EVENT_HEADER_HEIGHT) 往下推，所以这里每个标签和红线 chip 的 top 都要加上同样的偏移，
-  // 否则整列时间刻度会比日程网格高出 58px，全程错位。
-  let html = '';
+  let html = '<div class="hour-axis-header">GMT+8</div>';
   for (let hour = 0; hour < 24; hour += 1) {
     const top = EVENT_HEADER_HEIGHT + hour * HOUR_HEIGHT;
     html += '<div class="hour-label" style="top:' + top + 'px">' + String(hour).padStart(2, '0') + ':00</div>';
@@ -1291,8 +1295,9 @@ function renderHourGrid() {
 function renderCurrentLine(key) {
   const now = new Date();
   const todayKey = dayKey(now);
+  if (key !== todayKey) return '';
   const top = (now.getHours() * 60 + now.getMinutes()) / 60 * HOUR_HEIGHT;
-  return '<div class="current-line ' + (key < todayKey ? 'past' : '') + '" style="top:' + top + 'px"></div>';
+  return '<div class="current-line" style="top:' + top + 'px"></div>';
 }
 
 function visibleEventDayCount() {
@@ -1320,12 +1325,15 @@ function getVisibleEventKeys() {
     return Array.from({ length: 42 }, (_, index) => addDays(start, index));
   }
   const count = visibleEventDayCount();
-  return Array.from({ length: count }, (_, index) => addDays(state.selectedEventDay, index));
+  const start = state.eventViewMode === 'week' ? startOfCalendarWeek(state.selectedEventDay) : state.selectedEventDay;
+  return Array.from({ length: count }, (_, index) => addDays(start, index));
 }
 
 function renderEventDayHeader(key, items) {
   const classes = ['event-day-header'];
-  if (key === dayKey(new Date())) classes.push('today');
+  const today = dayKey(new Date());
+  if (key < today) classes.push('past');
+  if (key === today) classes.push('today');
   if (key === state.selectedEventDay) classes.push('selected');
   const date = dateFromKey(key);
   return ''
@@ -1346,8 +1354,10 @@ function renderAllDayEventPill(item, key) {
   const startKey = dayKeyFromMillis(eventStart(item));
   const endKey = dayKeyFromMillis(Math.max(eventStart(item), eventEnd(item) - 1));
   const range = startKey === endKey ? '全天' : formatCompactDateLabel(startKey) + ' - ' + formatCompactDateLabel(endKey);
+  const classes = ['event-all-day-pill'];
+  if (eventEnd(item) <= Date.now()) classes.push('past-event');
   return ''
-    + '<button type="button" class="event-all-day-pill" data-event-id="' + escapeHtml(String(item.id ?? '')) + '" style="--accent:' + accent + '">'
+    + '<button type="button" class="' + classes.join(' ') + '" data-event-id="' + escapeHtml(String(item.id ?? '')) + '" style="--accent:' + accent + '">'
     +   '<span class="event-all-day-dot"></span>'
     +   '<span class="event-all-day-title">' + escapeHtml(item.title) + '</span>'
     +   '<span class="event-all-day-range">' + escapeHtml(range) + '</span>'
@@ -1385,6 +1395,7 @@ function renderEventCard(segment) {
   const meta = [item.groupName || '未分组', item.location || '', item.isRecurring ? '循环' : ''].filter(Boolean).join(' · ');
   const classes = ['event-card'];
   if (item.completed === true) classes.push('completed-event');
+  if (eventEnd(item) <= Date.now()) classes.push('past-event');
   return ''
     + '<article class="' + classes.join(' ') + '" role="button" tabindex="0" aria-label="编辑日程：' + escapeHtml(item.title) + '" data-event-id="' + escapeHtml(String(item.id ?? '')) + '" style="--accent:' + accent + ';top:' + segment.top + 'px;height:' + segment.height + 'px">'
     +   '<div class="event-card-title">' + escapeHtml(item.title) + '</div>'
@@ -1447,8 +1458,10 @@ function renderMiniCalendar() {
 function renderMonthEventPill(item) {
   const accent = item.accentColorHex || item.groupColorHex || DEFAULT_EVENT_COLOR;
   const time = item.allDay ? '全天' : formatTimeLabel(eventStart(item));
+  const classes = ['month-event-pill'];
+  if (eventEnd(item) <= Date.now()) classes.push('past-event');
   return ''
-    + '<button type="button" class="month-event-pill" data-event-id="' + escapeHtml(String(item.id ?? '')) + '" style="--accent:' + escapeHtml(accent) + '">'
+    + '<button type="button" class="' + classes.join(' ') + '" data-event-id="' + escapeHtml(String(item.id ?? '')) + '" style="--accent:' + escapeHtml(accent) + '">'
     +   '<span>' + escapeHtml(time) + '</span>'
     +   '<strong>' + escapeHtml(item.title || '未命名日程') + '</strong>'
     + '</button>';
@@ -1462,7 +1475,9 @@ function renderEventMonthGrid(visibleDays) {
     const date = dateFromKey(day.key);
     const classes = ['month-day-cell'];
     if (date.getMonth() !== selectedMonth) classes.push('outside');
-    if (day.key === dayKey(new Date())) classes.push('today');
+    const today = dayKey(new Date());
+    if (day.key < today) classes.push('past');
+    if (day.key === today) classes.push('today');
     return ''
       + '<div class="' + classes.join(' ') + '" data-month-day="' + day.key + '">'
       +   '<button type="button" class="month-day-number" data-day="' + day.key + '">' + date.getDate() + '</button>'
@@ -1819,12 +1834,179 @@ async function refreshCurrentData() {
     todos: state.currentTab === 'todos' && state.todosLoaded,
     events: state.currentTab === 'events'
   });
-  if (state.currentTab === 'reports') await loadAiReportStatus();
+  if (state.currentTab === 'reports') await loadAiReportWorkspace();
 }
 
 async function loadAiReportStatus() {
   state.aiReportStatus = await api('/api/ai-report/status');
   renderAiReportStatus();
+}
+
+function createAiConfigDraft(config) {
+  return {
+    enabled: config?.enabled === true,
+    providers: (config?.providers || []).map(provider => ({ ...provider, apiKey: '' })),
+    dailyReportEnabled: config?.dailyReportEnabled === true,
+    dailyReportTime: config?.dailyReportTime || '22:00',
+    weeklyReportEnabled: config?.weeklyReportEnabled === true,
+    weeklyReportTime: config?.weeklyReportTime || '22:00',
+    retention: config?.retention || 'DAYS_90',
+    retentionOptions: config?.retentionOptions || []
+  };
+}
+
+async function loadAiReportWorkspace() {
+  const [status, config] = await Promise.all([
+    api('/api/ai-report/status'),
+    api('/api/ai-config')
+  ]);
+  state.aiReportStatus = status;
+  state.aiConfigDraft = createAiConfigDraft(config);
+  state.aiProviderModels = {};
+  state.aiProviderFeedback = {};
+  renderAiReportStatus();
+}
+
+function aiProviderById(id) {
+  return (state.aiConfigDraft?.providers || []).find(provider => String(provider.id) === String(id));
+}
+
+function syncAiDraftFromDom() {
+  const draft = state.aiConfigDraft;
+  if (!draft || !els.aiReportStatus) return draft;
+  const globalEnabled = els.aiReportStatus.querySelector('[data-ai-global-enabled]');
+  if (globalEnabled) draft.enabled = globalEnabled.checked;
+  ['dailyReportEnabled', 'weeklyReportEnabled'].forEach(field => {
+    const node = els.aiReportStatus.querySelector('[data-ai-field="' + field + '"]');
+    if (node) draft[field] = node.checked;
+  });
+  ['dailyReportTime', 'weeklyReportTime', 'retention'].forEach(field => {
+    const node = els.aiReportStatus.querySelector('[data-ai-field="' + field + '"]');
+    if (node) draft[field] = node.value;
+  });
+  els.aiReportStatus.querySelectorAll('[data-ai-provider]').forEach(card => {
+    const provider = aiProviderById(card.dataset.aiProvider);
+    if (!provider) return;
+    card.querySelectorAll('[data-provider-field]').forEach(node => {
+      const field = node.dataset.providerField;
+      provider[field] = node.type === 'checkbox' ? node.checked : node.value;
+    });
+  });
+  return draft;
+}
+
+function aiProviderPayload(provider) {
+  return {
+    id: provider.id,
+    name: provider.name || '',
+    baseUrl: provider.baseUrl || '',
+    apiKey: provider.apiKey || '',
+    model: provider.model || '',
+    enabled: provider.enabled !== false,
+    supportsVision: provider.supportsVision === true
+  };
+}
+
+function validateAiConfigDraft(draft) {
+  const timePattern = /^(?:[01]\d|2[0-3]):[0-5]\d$/;
+  if (!timePattern.test(draft.dailyReportTime || '')) return '日报时间需要使用 HH:mm 格式';
+  if (!timePattern.test(draft.weeklyReportTime || '')) return '周报时间需要使用 HH:mm 格式';
+  if (draft.enabled) {
+    const invalid = draft.providers.find(provider => provider.enabled !== false && (
+      !String(provider.baseUrl || '').trim() ||
+      (!provider.apiKeyConfigured && !String(provider.apiKey || '').trim()) ||
+      !String(provider.model || '').trim()
+    ));
+    if (invalid) return '启用的 AI 源需要填写 Base URL、API Key 和模型名';
+  }
+  return '';
+}
+
+async function saveAiConfigDraft() {
+  const draft = syncAiDraftFromDom();
+  const validation = validateAiConfigDraft(draft);
+  if (validation) throw new Error(validation);
+  const data = await api('/api/ai-config', {
+    method: 'PUT',
+    body: JSON.stringify({
+      enabled: draft.enabled,
+      providers: draft.providers.map(aiProviderPayload),
+      dailyReportEnabled: draft.dailyReportEnabled,
+      dailyReportTime: draft.dailyReportTime,
+      weeklyReportEnabled: draft.weeklyReportEnabled,
+      weeklyReportTime: draft.weeklyReportTime,
+      retention: draft.retention
+    })
+  });
+  state.aiConfigDraft = createAiConfigDraft(data.config);
+  state.aiProviderFeedback = {};
+  await loadAiReportStatus();
+  els.status.textContent = 'AI 调用与日报设置已保存';
+}
+
+async function fetchAiProviderModels(providerId) {
+  syncAiDraftFromDom();
+  const provider = aiProviderById(providerId);
+  if (!provider) return;
+  state.aiProviderFeedback[providerId] = '正在获取模型…';
+  renderAiReportStatus();
+  const data = await api('/api/ai/providers/models', {
+    method: 'POST',
+    body: JSON.stringify({ provider: aiProviderPayload(provider) })
+  });
+  if (!data.ok) {
+    state.aiProviderFeedback[providerId] = '获取失败：' + (data.message || '未知错误');
+  } else {
+    state.aiProviderModels[providerId] = data.models || [];
+    if (!provider.model && state.aiProviderModels[providerId].length) provider.model = state.aiProviderModels[providerId][0];
+    state.aiProviderFeedback[providerId] = '已获取 ' + state.aiProviderModels[providerId].length + ' 个模型';
+  }
+  renderAiReportStatus();
+}
+
+async function testAiProvider(providerId) {
+  syncAiDraftFromDom();
+  const provider = aiProviderById(providerId);
+  if (!provider) return;
+  state.aiProviderFeedback[providerId] = '正在发送单次测活请求…';
+  renderAiReportStatus();
+  const data = await api('/api/ai/providers/test', {
+    method: 'POST',
+    body: JSON.stringify({ provider: aiProviderPayload(provider) })
+  });
+  state.aiProviderFeedback[providerId] = data.ok
+    ? ('连接成功：' + (data.responseText || data.model || '模型已响应'))
+    : ('连接失败：' + (data.message || '未知错误'));
+  renderAiReportStatus();
+}
+
+function renderAiProviderCard(provider, index, total) {
+  const models = state.aiProviderModels[provider.id] || [];
+  const feedback = state.aiProviderFeedback[provider.id] || '';
+  const keyHint = provider.apiKeyConfigured
+    ? ('已保存在手机，留空则保留' + (provider.apiKeyPreview ? '（尾号 ' + provider.apiKeyPreview + '）' : ''))
+    : '请输入 API Key';
+  const modelOptions = models.map(model => '<option value="' + escapeHtml(model) + '"></option>').join('');
+  return ''
+    + '<article class="ai-provider-card" data-ai-provider="' + escapeHtml(provider.id) + '">'
+    +   '<div class="ai-provider-head"><div><strong>' + escapeHtml(provider.name || ('AI 源 ' + (index + 1))) + '</strong><span>优先级 ' + (index + 1) + '</span></div><label class="report-switch"><input type="checkbox" data-provider-field="enabled" ' + (provider.enabled !== false ? 'checked' : '') + ' /><span>启用</span></label></div>'
+    +   '<div class="ai-provider-grid">'
+    +     '<label><span>显示名</span><input data-provider-field="name" value="' + escapeHtml(provider.name || '') + '" placeholder="例如 DeepSeek" /></label>'
+    +     '<label><span>模型名</span><input data-provider-field="model" list="ai-models-' + escapeHtml(provider.id) + '" value="' + escapeHtml(provider.model || '') + '" placeholder="例如 deepseek-chat" /><datalist id="ai-models-' + escapeHtml(provider.id) + '">' + modelOptions + '</datalist></label>'
+    +     '<label class="span-2"><span>Base URL</span><input data-provider-field="baseUrl" value="' + escapeHtml(provider.baseUrl || '') + '" placeholder="https://api.example.com/v1" /></label>'
+    +     '<label class="span-2"><span>API Key</span><input data-provider-field="apiKey" type="password" value="' + escapeHtml(provider.apiKey || '') + '" placeholder="' + escapeHtml(keyHint) + '" autocomplete="new-password" /></label>'
+    +   '</div>'
+    +   '<div class="ai-provider-actions">'
+    +     '<label class="report-switch"><input type="checkbox" data-provider-field="supportsVision" ' + (provider.supportsVision ? 'checked' : '') + ' /><span>支持图片识别</span></label>'
+    +     '<span class="ai-provider-action-spacer"></span>'
+    +     '<button type="button" class="ghost mini" data-ai-provider-up="' + escapeHtml(provider.id) + '" ' + (index === 0 ? 'disabled' : '') + '>上移</button>'
+    +     '<button type="button" class="ghost mini" data-ai-provider-down="' + escapeHtml(provider.id) + '" ' + (index === total - 1 ? 'disabled' : '') + '>下移</button>'
+    +     '<button type="button" class="ghost mini" data-ai-fetch-models="' + escapeHtml(provider.id) + '">获取模型</button>'
+    +     '<button type="button" class="ghost mini" data-ai-test-provider="' + escapeHtml(provider.id) + '">测试连接</button>'
+    +     '<button type="button" class="ghost mini danger-lite-action" data-ai-provider-delete="' + escapeHtml(provider.id) + '">删除</button>'
+    +   '</div>'
+    +   (feedback ? '<div class="ai-provider-feedback">' + escapeHtml(feedback) + '</div>' : '')
+    + '</article>';
 }
 
 function reportTypeLabel(type) {
@@ -1848,6 +2030,7 @@ function renderAiReportStatus() {
   }
   const runtime = data.runtime || {};
   const reports = data.recentReports || [];
+  const draft = state.aiConfigDraft;
   const successText = runtime.lastSuccessAtMillis
     ? reportTypeLabel(runtime.lastSuccessType) + ' · ' + formatDateTimeLabel(runtime.lastSuccessAtMillis)
     : '尚无成功记录';
@@ -1865,7 +2048,25 @@ function renderAiReportStatus() {
     +     '<small>' + escapeHtml(report.isLocalFallback ? '本地模板兜底' : (report.providerName || 'AI 源')) + '</small>'
     +   '</div>'
     + '</article>').join('') : '<div class="report-empty">尚无日报或周报记录。</div>';
-  els.aiReportStatus.innerHTML = ''
+  const retentionOptions = (draft?.retentionOptions || []).map(option =>
+    '<option value="' + escapeHtml(option.value) + '" ' + (option.value === draft.retention ? 'selected' : '') + '>' + escapeHtml(option.label) + '</option>'
+  ).join('');
+  const configSection = draft ? ''
+    + '<section class="report-config">'
+    +   '<div class="report-config-head"><div><div class="eyebrow">手机端共享配置</div><h2>AI 调用与报告</h2><p>所有内容先保留为本页草稿；只有点击“完成”才写入手机，直接离开不会保存。API Key 不会从手机回传到浏览器。</p></div><button type="button" class="sheet-primary-action" data-ai-save="true">完成</button></div>'
+    +   '<div class="report-config-grid">'
+    +     '<article class="report-config-card"><div><strong>启用 AI 调用</strong><p>规划台识别和 AI 日报按下面的顺序尝试可用源，全部失败时日报使用本地模板。</p></div><label class="report-switch"><input type="checkbox" data-ai-global-enabled ' + (draft.enabled ? 'checked' : '') + ' /><span>' + (draft.enabled ? '已启用' : '未启用') + '</span></label></article>'
+    +     '<article class="report-config-card report-schedule-card"><div><strong>日报</strong><p>每天设定时间生成。</p></div><label class="report-switch"><input type="checkbox" data-ai-field="dailyReportEnabled" ' + (draft.dailyReportEnabled ? 'checked' : '') + ' /><span>启用</span></label><input type="time" data-ai-field="dailyReportTime" value="' + escapeHtml(draft.dailyReportTime) + '" /></article>'
+    +     '<article class="report-config-card report-schedule-card"><div><strong>周报</strong><p>每周日设定时间生成。</p></div><label class="report-switch"><input type="checkbox" data-ai-field="weeklyReportEnabled" ' + (draft.weeklyReportEnabled ? 'checked' : '') + ' /><span>启用</span></label><input type="time" data-ai-field="weeklyReportTime" value="' + escapeHtml(draft.weeklyReportTime) + '" /></article>'
+    +     '<article class="report-config-card report-retention-card"><div><strong>报告保留时长</strong><p>生成新报告后自动清理超过保留期的记录。</p></div><select data-ai-field="retention">' + retentionOptions + '</select></article>'
+    +   '</div>'
+    +   '<div class="ai-provider-section-head"><div><h3>AI 源</h3><p>支持添加多个 OpenAI 兼容服务；测试连接只发送一条固定消息，不做并发探测或自动重试。</p></div><button type="button" class="ghost mini" data-ai-provider-add="true">添加 AI 源</button></div>'
+    +   '<div class="ai-provider-list">' + (draft.providers.length
+          ? draft.providers.map((provider, index) => renderAiProviderCard(provider, index, draft.providers.length)).join('')
+          : '<div class="report-empty">尚未添加 AI 源。日报仍可使用本地模板。</div>') + '</div>'
+    +   '<div class="report-config-footer"><button type="button" class="ghost" data-ai-generate-daily="true">立即生成一次日报</button><span>生成结果会写入手机端“AI 报告”归档。</span></div>'
+    + '</section>' : '<section class="report-warning"><strong>AI 配置尚未加载</strong><p>刷新页面后重试。</p></section>';
+  els.aiReportStatus.innerHTML = configSection
     + '<section class="report-hero">'
     +   '<div><div class="eyebrow">运行诊断</div><h2>AI 日报是否按计划工作，一眼就能看清</h2><p>这里不会显示 API Key 或 Base URL，只展示调度与生成结果。</p></div>'
     +   '<div class="report-health ' + healthClass + '"><span>最近结果</span><strong>' + escapeHtml(successText) + '</strong><small>' + escapeHtml(sourceText) + '</small></div>'
@@ -1877,7 +2078,82 @@ function renderAiReportStatus() {
     + '</section>'
     + (failure ? '<section class="report-warning"><strong>' + escapeHtml(runtime.lastFailureMessage ? '日报链路最近发生异常' : '最近一次 AI 调用失败，报告已用本地模板生成') + '</strong><p>' + escapeHtml(failure) + '</p></section>' : '')
     + '<section class="report-history"><div class="report-section-head"><div><h3>最近报告</h3><p>按生成时间倒序显示，便于确认昨晚是否真正写入数据库。</p></div><button type="button" class="ghost mini" data-refresh-ai-report="true">刷新状态</button></div>' + reportRows + '</section>';
-  document.querySelector('[data-refresh-ai-report]')?.addEventListener('click', () => loadAiReportStatus().catch(error => { els.status.textContent = error.message; }));
+  document.querySelector('[data-refresh-ai-report]')?.addEventListener('click', () => loadAiReportWorkspace().catch(error => { els.status.textContent = error.message; }));
+}
+
+function bindAiReportControls() {
+  els.aiReportStatus?.addEventListener('click', async event => {
+    const save = event.target.closest?.('[data-ai-save]');
+    const add = event.target.closest?.('[data-ai-provider-add]');
+    const remove = event.target.closest?.('[data-ai-provider-delete]');
+    const moveUp = event.target.closest?.('[data-ai-provider-up]');
+    const moveDown = event.target.closest?.('[data-ai-provider-down]');
+    const fetchModels = event.target.closest?.('[data-ai-fetch-models]');
+    const test = event.target.closest?.('[data-ai-test-provider]');
+    const generate = event.target.closest?.('[data-ai-generate-daily]');
+    try {
+      if (save) {
+        save.disabled = true;
+        save.textContent = '保存中…';
+        await saveAiConfigDraft();
+        return;
+      }
+      if (add) {
+        syncAiDraftFromDom();
+        const id = globalThis.crypto?.randomUUID?.() || ('provider-' + Date.now());
+        state.aiConfigDraft.providers.push({
+          id,
+          name: '',
+          baseUrl: '',
+          apiKey: '',
+          model: '',
+          enabled: true,
+          supportsVision: false,
+          apiKeyConfigured: false,
+          apiKeyPreview: ''
+        });
+        renderAiReportStatus();
+        return;
+      }
+      if (remove) {
+        syncAiDraftFromDom();
+        state.aiConfigDraft.providers = state.aiConfigDraft.providers.filter(provider => String(provider.id) !== String(remove.dataset.aiProviderDelete));
+        renderAiReportStatus();
+        return;
+      }
+      if (moveUp || moveDown) {
+        syncAiDraftFromDom();
+        const id = (moveUp || moveDown).dataset[moveUp ? 'aiProviderUp' : 'aiProviderDown'];
+        const index = state.aiConfigDraft.providers.findIndex(provider => String(provider.id) === String(id));
+        const target = index + (moveUp ? -1 : 1);
+        if (index >= 0 && target >= 0 && target < state.aiConfigDraft.providers.length) {
+          const providers = state.aiConfigDraft.providers.slice();
+          [providers[index], providers[target]] = [providers[target], providers[index]];
+          state.aiConfigDraft.providers = providers;
+          renderAiReportStatus();
+        }
+        return;
+      }
+      if (fetchModels) {
+        await fetchAiProviderModels(fetchModels.dataset.aiFetchModels);
+        return;
+      }
+      if (test) {
+        await testAiProvider(test.dataset.aiTestProvider);
+        return;
+      }
+      if (generate) {
+        generate.disabled = true;
+        generate.textContent = '生成中…';
+        const result = await api('/api/ai-report/generate-daily', { method: 'POST', body: '{}' });
+        els.status.textContent = result.message || '日报已生成';
+        await loadAiReportStatus();
+      }
+    } catch (error) {
+      els.status.textContent = error.message || 'AI 配置操作失败';
+      renderAiReportStatus();
+    }
+  });
 }
 
 async function refreshAfterMutation() {
@@ -2181,7 +2457,6 @@ function renderEvents() {
     button.classList.toggle('active', button.dataset.eventView === state.eventViewMode);
   });
   renderMiniCalendar();
-  renderCalendarGroups();
   if (!visibleEventRangeLoaded()) {
     els.eventDayHeaders.innerHTML = '';
     els.hourAxis.innerHTML = '';
@@ -4754,7 +5029,6 @@ els.eventCalendarGroups?.addEventListener('change', event => {
 document.querySelectorAll('[data-event-view]').forEach(button => {
   button.addEventListener('click', () => {
     state.eventViewMode = button.dataset.eventView || 'week';
-    if (state.eventViewMode === 'week') state.selectedEventDay = startOfCalendarWeek(state.selectedEventDay);
     state.eventMiniMonth = state.selectedEventDay.slice(0, 7) + '-01';
     state.eventsLoaded = false;
     renderEvents();
@@ -5136,7 +5410,6 @@ document.querySelectorAll('[data-tab]').forEach(node => {
     node.classList.add('active');
     syncTopbar();
     if (state.currentTab === 'events') {
-      if (state.eventViewMode === 'week') state.selectedEventDay = startOfCalendarWeek(state.selectedEventDay);
       state.eventMiniMonth = state.selectedEventDay.slice(0, 7) + '-01';
       ensureEventData().catch(err => els.status.textContent = err.message);
     } else if (state.currentTab === 'planning') {
@@ -5151,7 +5424,7 @@ document.querySelectorAll('[data-tab]').forEach(node => {
       renderDesktopDailyBoard();
       renderAnnouncements();
     } else if (state.currentTab === 'reports') {
-      loadAiReportStatus().catch(err => els.status.textContent = err.message);
+      loadAiReportWorkspace().catch(err => els.status.textContent = err.message);
     }
   };
 });
@@ -5490,4 +5763,5 @@ bindReminderOffsetPicker('event');
 bindReminderOffsetPicker('event-checkin');
 bindEventColorPresets();
 bindReviewImportControls();
+bindAiReportControls();
 syncTopbar();

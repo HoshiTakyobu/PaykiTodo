@@ -8,8 +8,8 @@
 - Target platform: Android 14 / API 34
 - License: MIT License (`LICENSE`)
 - Current version in code:
-  - `versionName = "1.15.14"`
-  - `versionCode = 356`
+  - `versionName = "1.15.15"`
+  - `versionCode = 357`
   - database version = `30`
 
 ## Current Build Facts
@@ -19,7 +19,16 @@
 - Latest GitHub Release:
   - `https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.14.12`
 - Latest fully built debug APK:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.15.14-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.15.15-debug.apk`
+- Current `1.15.15 / versionCode 357` status:
+  - Desktop Web Calendar removes the misleading sidebar group list, exposes Excel import as an explicit preview action, moves connection controls to the sidebar's top-left area, and draws the date-range chevron with CSS.
+  - Day view preserves the selected date and loads that date's visible event range; week view calculates a Monday-starting seven-day range from the selected date; month view retains its 42-cell grid.
+  - Calendar headers now distinguish past, today, and future dates. Today uses bright blue text and a light blue circular date background; past dates are muted. The current-time line is restricted to today's column.
+  - Ended events, all-day events, and month-view event pills use a shared faded/saturated-down state. GMT+8 is a real axis header aligned with the date header and hour rules.
+  - Desktop Web AI Reports now shares phone AI configuration: provider CRUD/order, model retrieval, one-shot connectivity test, report schedules, retention, and immediate daily generation. API keys remain masked and the page saves only through its top-right completion action.
+  - Phone Calendar horizontal drag work was moved out of ordinary per-pixel Compose recomposition; visible-date queries and event placement update only when the focused day changes.
+  - Browser verification at `1638x989` / DPR `1.25` covered day/week/month switching, search, date and group controls, event creation/edit preview, and runtime errors. Emulator scroll statistics: 441 frames, p50 `21ms`, p90 `34ms`, p95 `40ms`, p99 `81ms`, 9.98% janky frames.
+  - 27 unit-test suites / 152 tests, `:app:compileDebugKotlin`, `:app:testDebugUnitTest`, `:app:lintDebug`, `:app:assembleDebug`, JavaScript syntax, and `git diff --check` passed. APK metadata confirms `1.15.15 / 357`.
 - Current `1.15.14 / versionCode 356` status:
   - Desktop Web Calendar reproduces the supplied Feishu references at the layout level: 58px top navigation, 296px mini-calendar sidebar, unframed full-width calendar grid, restrained blue accent, and thin neutral separators.
   - Day, week, and month views are functional; the sidebar supports month/date navigation, search, group visibility filtering, and collapsed Excel import.

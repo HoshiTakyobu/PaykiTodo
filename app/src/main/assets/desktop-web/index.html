@@ -41,6 +41,18 @@
             <p class="muted">控制台 · v__PAYKI_VERSION__</p>
           </div>
         </div>
+        <div class="desktop-connection-actions">
+          <div class="conn-card" title="电脑同步连接状态">
+            <div class="conn-row">
+              <span class="conn-dot"></span>
+              <div class="conn-text">
+                <strong>已连接手机</strong>
+                <span id="shell-status" class="muted">已连接</span>
+              </div>
+            </div>
+          </div>
+          <button id="disconnect" class="header-icon-button" title="断开电脑同步" aria-label="断开电脑同步">⇱</button>
+        </div>
         <nav class="side-nav">
           <button class="nav-btn tab-btn active" data-tab="board">每日看板</button>
           <button class="nav-btn tab-btn" data-tab="todos">待办</button>
@@ -50,16 +62,6 @@
         </nav>
         <div class="desktop-header-actions">
           <button id="open-create" class="header-create-button">新增待办</button>
-          <div class="conn-card" title="电脑同步连接状态">
-          <div class="conn-row">
-            <span class="conn-dot"></span>
-            <div class="conn-text">
-              <strong>已连接手机</strong>
-              <span id="shell-status" class="muted">已连接</span>
-            </div>
-          </div>
-          </div>
-          <button id="disconnect" class="header-icon-button" title="断开电脑同步" aria-label="断开电脑同步">⇱</button>
         </div>
       </div>
     </aside>
@@ -106,23 +108,17 @@
             <span aria-hidden="true">⌕</span>
             <input id="event-calendar-search" type="search" placeholder="搜索日程、地点" />
           </label>
-          <div class="calendar-side-section">
-            <div class="calendar-side-section-title">我的日历</div>
-            <div id="event-calendar-groups" class="calendar-group-list"></div>
-          </div>
-          <details class="calendar-import-drawer">
-            <summary>导入周历 Excel</summary>
-            <div class="review-import-panel">
-              <p class="muted">只读取本地文件并生成预览，不修改原表。</p>
-              <div class="review-import-controls">
-                <input id="review-xls-file" type="file" accept=".xls,.xlsx,.xlsm,.xlsb" />
-                <button id="review-xls-parse" class="mini">解析预览</button>
-                <button id="review-xls-import" class="mini" disabled>导入选中</button>
-              </div>
-              <div id="review-xls-meta" class="muted">未选择文件。</div>
-              <div id="review-xls-preview" class="review-import-preview"></div>
+          <button id="review-xls-open" type="button" class="calendar-import-button">导入周历 Excel</button>
+          <div id="review-xls-panel" class="review-import-panel hidden">
+            <p class="muted">只读取本地文件并生成预览，不修改原表。</p>
+            <div class="review-import-controls">
+              <input id="review-xls-file" type="file" accept=".xls,.xlsx,.xlsm,.xlsb" />
+              <button id="review-xls-parse" class="mini">解析预览</button>
+              <button id="review-xls-import" class="mini" disabled>导入选中</button>
             </div>
-          </details>
+            <div id="review-xls-meta" class="muted">未选择文件。</div>
+            <div id="review-xls-preview" class="review-import-preview"></div>
+          </div>
         </aside>
         <div class="schedule-panel calendar-main-panel">
           <div class="schedule-head schedule-toolbar">
@@ -132,7 +128,7 @@
               <button id="event-next-day" class="calendar-toolbar-arrow" title="下一段" aria-label="下一段">›</button>
               <label class="calendar-range-control">
                 <span id="event-selected-date" class="schedule-date-title">今天</span>
-                <span aria-hidden="true">⌄</span>
+                <span class="calendar-range-chevron" aria-hidden="true"></span>
                 <input id="event-anchor-date" type="date" aria-label="选择日期" />
               </label>
               <div id="event-selected-subtitle" class="muted">未连接</div>

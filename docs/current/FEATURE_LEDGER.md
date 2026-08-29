@@ -201,7 +201,7 @@ This file tracks the product at a practical level for new coding sessions.
 ### Calendar System
 
 - timeline-style calendar foundation
-- Desktop Web Calendar `1.15.14` uses a screenshot-matched Feishu-style workstation composition at 125% Windows scaling: 58px top navigation, 296px mini-calendar sidebar, unframed continuous calendar grid, restrained blue action/selection accents, and thin neutral separators
+- Desktop Web Calendar `1.15.15` uses a screenshot-matched Feishu-style workstation composition at 125% Windows scaling: 58px top navigation, 296px mini-calendar sidebar, unframed continuous calendar grid, restrained blue action/selection accents, and thin neutral separators; the misleading sidebar group list is removed and Excel import is an explicit preview action
 - Desktop Web Calendar supports functional day, seven-day week, and 42-cell month views; mini-calendar month/date navigation, event/location search, per-group visibility filtering, and collapsed Excel import share the left sidebar
 - Desktop Web event editing opens a reference-proportioned two-column window with the PaykiTodo event form on the left and a live single-day timeline preview on the right; title/date/time/color edits update the preview without changing save semantics
 - Desktop Web calendar CSS explicitly neutralizes old full-width navigation/modal-button inheritance, preventing document-width expansion, off-screen tab scrolling, second-row header actions, and stretched close controls
@@ -366,6 +366,7 @@ This file tracks the product at a practical level for new coding sessions.
 - Desktop Web Calendar keeps a continuous 7-day desktop grid and responds to narrower widths with 3-day or 1-day columns; Excel import is collapsed by default to preserve calendar focus
 - Desktop Web event editors use a centered flat dialog and phone-aligned field order: title, start/end, location, reminders/check-in, notes, recurrence, group, and color
 - Desktop Web includes an `AI 报告` tab for report scheduling health, sanitized failure diagnosis, and recent report previews
+- Desktop Web `AI 报告` also edits the phone's AI provider list and report settings, retrieves provider models, sends one fixed single-request connectivity test, and saves the whole page only through `完成`; API keys remain masked in browser responses
 - desktop web editor fields are card-styled, and timeline / event card buttons are lighter and less form-like
 - desktop Web UI resources are separated under `app/src/main/assets/desktop-web/`, while Android sync service code stays in `sync/`
 - desktop Web packaging / future extraction guidance is documented in `docs/current/DESKTOP_WEB_ARCHITECTURE.md`
@@ -439,6 +440,7 @@ This file tracks the product at a practical level for new coding sessions.
 - Phone Calendar subscribes only to active events overlapping the current padded visible date range, while notification / deep-link navigation to a far event expands that query range before focusing the target date.
 - Calendar day / three-day timed-event overlap placement is now computed only for the currently visible page days, and timed-event card rendering is vertically culled to the viewport plus overscan, reducing timeline paging and scrolling work when many events are present.
 - Calendar day / three-day timed-event placement now runs only for the currently rendered page days, current-time markers refresh once per minute, and vertical overscan is narrowed to reduce repeated scroll recomposition.
+- Phone Calendar horizontal drag offset reads are handled in layout/draw phases instead of ordinary per-pixel Compose state propagation; only a focused-day change reloads the visible Room range and recalculates event placement. The latest emulator swipe run measured 441 frames with p50 `21ms`, p90 `34ms`, p95 `40ms`, and 9.98% janky frames.
 - Dashboard todo cards reuse pre-resolved group data from a per-state group map, avoiding repeated group-list scans across visible cards while scrolling many todos.
 - Countdown-enabled todos / events are included in phone board, independent countdown widget, and desktop board data without requiring a full historical scan; exact-time past countdown targets are filtered out before rendering.
 - Schedule-template saving reads active events overlapping the selected week, and desktop Planning Desk note update / mapping refresh paths read single notes by ID instead of scanning all planning notes.

@@ -283,22 +283,32 @@ internal fun CalendarPanel(
             val selectedCenteredHorizontalOffsetPx =
                 ((selectedIndex - 1).coerceAtLeast(0) * dayColumnWidthPx).coerceIn(0f, maxHorizontalOffsetPx)
 
-            val effectiveHorizontalOffsetPx = when {
-                viewMode == CalendarViewMode.THREE_DAY -> {
-                    if (horizontalOffsetPx.isNaN()) {
+            val horizontalOffsetProvider: () -> Float = {
+                when (viewMode) {
+                    CalendarViewMode.THREE_DAY -> if (horizontalOffsetPx.isNaN()) {
                         selectedCenteredHorizontalOffsetPx
                     } else {
                         horizontalOffsetPx.coerceIn(0f, maxHorizontalOffsetPx)
                     }
+                    CalendarViewMode.DAY -> (selectedIndex * dayColumnWidthPx).coerceIn(0f, maxHorizontalOffsetPx)
+                    else -> 0f
                 }
-                viewMode == CalendarViewMode.DAY -> (selectedIndex * dayColumnWidthPx).coerceIn(0f, maxHorizontalOffsetPx)
-                else -> horizontalOffsetPx
             }
-            val timelineFocusIndex = when (viewMode) {
-                CalendarViewMode.THREE_DAY -> (((effectiveHorizontalOffsetPx + viewportWidthPx / 2f) / dayColumnWidthPx).toInt())
-                    .coerceIn(0, dateWindow.lastIndex)
-                CalendarViewMode.DAY -> selectedIndex
-                else -> selectedIndex
+            val timelineFocusIndex by remember(
+                viewMode,
+                selectedIndex,
+                viewportWidthPx,
+                dayColumnWidthPx,
+                dateWindow,
+                horizontalOffsetProvider
+            ) {
+                derivedStateOf {
+                    when (viewMode) {
+                        CalendarViewMode.THREE_DAY -> (((horizontalOffsetProvider() + viewportWidthPx / 2f) / dayColumnWidthPx).toInt())
+                            .coerceIn(0, dateWindow.lastIndex)
+                        else -> selectedIndex
+                    }
+                }
             }
             val timelineFocusDate = dateWindow.dateAt(timelineFocusIndex)
             val visibleRange = when {
@@ -337,12 +347,6 @@ internal fun CalendarPanel(
                 }
                 horizontalOffsetPx = (previous - delta).coerceIn(0f, maxHorizontalOffsetPx)
                 previous - horizontalOffsetPx
-            }
-
-            val timelineHorizontalOffsetPx = when (viewMode) {
-                CalendarViewMode.THREE_DAY -> effectiveHorizontalOffsetPx
-                CalendarViewMode.DAY -> effectiveHorizontalOffsetPx
-                else -> 0f
             }
 
             val hourHeight = 72.dp
@@ -603,7 +607,7 @@ internal fun CalendarPanel(
                                     dateWindow = dateWindow,
                                     visibleRange = visibleRange,
                                     currentDate = currentDate,
-                                    horizontalOffsetPx = timelineHorizontalOffsetPx,
+                                    horizontalOffsetProvider = horizontalOffsetProvider,
                                     todayHighlightColor = todayHighlightColor,
                                     todayHighlightTextColor = todayHighlightTextColor,
                                     dragModifier = Modifier
@@ -615,7 +619,7 @@ internal fun CalendarPanel(
                                     dayColumnWidth = dayColumnWidth,
                                     dayColumnWidthPx = dayColumnWidthPx,
                                     visibleRange = visibleRange,
-                                    horizontalOffsetPx = timelineHorizontalOffsetPx,
+                                    horizontalOffsetProvider = horizontalOffsetProvider,
                                     events = visibleAllDayEvents,
                                     dateWindow = dateWindow,
                                     dragModifier = Modifier,
@@ -639,7 +643,7 @@ internal fun CalendarPanel(
                                         visibleRange = visibleRange,
                                         dayColumnWidth = dayColumnWidth,
                                         dayColumnWidthPx = dayColumnWidthPx,
-                                        horizontalOffsetPx = timelineHorizontalOffsetPx,
+                                        horizontalOffsetProvider = horizontalOffsetProvider,
                                         boardHeight = boardHeight,
                                         hourHeight = hourHeight,
                                         hourHeightPx = hourHeightPx,
@@ -1662,7 +1666,7 @@ private fun CalendarHeaderRow(
     dateWindow: CalendarDateWindow,
     visibleRange: IntRange,
     currentDate: LocalDate,
-    horizontalOffsetPx: Float,
+    horizontalOffsetProvider: () -> Float,
     todayHighlightColor: Color,
     todayHighlightTextColor: Color,
     dragModifier: Modifier
@@ -1696,7 +1700,7 @@ private fun CalendarHeaderRow(
                 Box(
                     modifier = Modifier
                         .offset {
-                            IntOffset(dayLeftPx(dayIndex, dayColumnWidthPx, horizontalOffsetPx), 0)
+                            IntOffset(dayLeftPx(dayIndex, dayColumnWidthPx, horizontalOffsetProvider()), 0)
                         }
                         .width(dayColumnWidth),
                     contentAlignment = Alignment.Center
@@ -1746,7 +1750,7 @@ private fun CalendarAllDaySection(
     dayColumnWidth: Dp,
     dayColumnWidthPx: Float,
     visibleRange: IntRange,
-    horizontalOffsetPx: Float,
+    horizontalOffsetProvider: () -> Float,
     events: List<TodoItem>,
     dateWindow: CalendarDateWindow,
     dragModifier: Modifier,
@@ -1787,7 +1791,7 @@ private fun CalendarAllDaySection(
                         modifier = Modifier
                             .offset {
                                 IntOffset(
-                                    x = dayLeftPx(startIndex, dayColumnWidthPx, horizontalOffsetPx) + with(density) { 4.dp.roundToPx() },
+                                    x = dayLeftPx(startIndex, dayColumnWidthPx, horizontalOffsetProvider()) + with(density) { 4.dp.roundToPx() },
                                     y = rowIndex * rowHeightPx
                                 )
                             }
@@ -1907,7 +1911,7 @@ private fun CalendarTimedBoard(
     visibleRange: IntRange,
     dayColumnWidth: Dp,
     dayColumnWidthPx: Float,
-    horizontalOffsetPx: Float,
+    horizontalOffsetProvider: () -> Float,
     boardHeight: Dp,
     hourHeight: Dp,
     hourHeightPx: Float,
@@ -1923,7 +1927,6 @@ private fun CalendarTimedBoard(
 ) {
     val density = LocalDensity.current
     val outline = MaterialTheme.colorScheme.outline
-    val latestHorizontalOffsetPx by rememberUpdatedState(horizontalOffsetPx)
     val latestPendingDraft by rememberUpdatedState(pendingDraft)
 
     BoxWithConstraints(
@@ -1970,7 +1973,7 @@ private fun CalendarTimedBoard(
                             onPendingDraftChange(null)
                         },
                         onTap = { tapOffset ->
-                            val dayIndex = ((tapOffset.x + latestHorizontalOffsetPx) / dayColumnWidthPx)
+                            val dayIndex = ((tapOffset.x + horizontalOffsetProvider()) / dayColumnWidthPx)
                                 .toInt()
                                 .coerceIn(0, dateWindow.lastIndex)
                             val rawMinutes = ((tapOffset.y / hourHeightPx) * 60f).roundToInt().coerceIn(0, 23 * 60 + 59)
@@ -1992,6 +1995,7 @@ private fun CalendarTimedBoard(
                 }
         ) {
             Canvas(modifier = Modifier.fillMaxSize()) {
+                val horizontalOffsetPx = horizontalOffsetProvider()
                 visibleRange.forEach { dayIndex ->
                     val x = dayLeftPx(dayIndex, dayColumnWidthPx, horizontalOffsetPx).toFloat()
                     drawLine(
@@ -2025,7 +2029,7 @@ private fun CalendarTimedBoard(
                         dayIndex = dayIndex,
                         dayColumnWidth = dayColumnWidth,
                         dayColumnWidthPx = dayColumnWidthPx,
-                        horizontalOffsetPx = horizontalOffsetPx,
+                        horizontalOffsetProvider = horizontalOffsetProvider,
                         hourHeight = hourHeight,
                         onClick = { onOpenDetails(placement.segment.item) },
                         onMove = onMoveEvent,
@@ -2039,7 +2043,7 @@ private fun CalendarTimedBoard(
                     dayIndex = dateWindow.indexOf(draft.startAt.toLocalDate()) ?: return@let,
                     dayColumnWidth = dayColumnWidth,
                     dayColumnWidthPx = dayColumnWidthPx,
-                    horizontalOffsetPx = horizontalOffsetPx,
+                    horizontalOffsetProvider = horizontalOffsetProvider,
                     hourHeight = hourHeight,
                     draft = draft,
                     onClick = {
@@ -2053,7 +2057,7 @@ private fun CalendarTimedBoard(
                 currentDayIndex = currentDayIndex,
                 visibleRange = visibleRange,
                 dayColumnWidthPx = dayColumnWidthPx,
-                horizontalOffsetPx = horizontalOffsetPx,
+                horizontalOffsetProvider = horizontalOffsetProvider,
                 boardHeightPx = with(density) { boardHeight.toPx() },
                 hourHeightPx = hourHeightPx
             )
@@ -2067,7 +2071,7 @@ private fun PendingDraftCard(
     dayIndex: Int,
     dayColumnWidth: Dp,
     dayColumnWidthPx: Float,
-    horizontalOffsetPx: Float,
+    horizontalOffsetProvider: () -> Float,
     hourHeight: Dp,
     draft: PendingCalendarDraft,
     onClick: () -> Unit
@@ -2076,13 +2080,18 @@ private fun PendingDraftCard(
     val durationMinutes = 30L
     val topOffset = hourHeight * (startMinutes / 60f)
     val accent = Color(0xFF4C8BF5)
+    val density = LocalDensity.current
+    val horizontalInsetPx = with(density) { 4.dp.roundToPx() }
+    val topOffsetPx = with(density) { topOffset.roundToPx() }
 
     Box(
         modifier = Modifier
-            .offset(
-                x = with(LocalDensity.current) { dayLeftPx(dayIndex, dayColumnWidthPx, horizontalOffsetPx).toDp() } + 4.dp,
-                y = topOffset
-            )
+            .offset {
+                IntOffset(
+                    x = dayLeftPx(dayIndex, dayColumnWidthPx, horizontalOffsetProvider()) + horizontalInsetPx,
+                    y = topOffsetPx
+                )
+            }
             .width(dayColumnWidth - 8.dp)
             .height(hourHeight * (durationMinutes / 60f))
             .clickable(onClick = onClick)
@@ -2118,7 +2127,7 @@ private fun TimedEventCard(
     dayIndex: Int,
     dayColumnWidth: Dp,
     dayColumnWidthPx: Float,
-    horizontalOffsetPx: Float,
+    horizontalOffsetProvider: () -> Float,
     hourHeight: Dp,
     onClick: () -> Unit,
     onMove: (TodoItem, LocalDateTime, LocalDateTime) -> Unit,
@@ -2135,12 +2144,12 @@ private fun TimedEventCard(
     val eventWidth = (dayColumnWidth / placement.columnCount) - 8.dp
     val eventHeight = (hourHeight * (durationMinutes / 60f)).coerceAtLeast(24.dp)
     val duration = Duration.between(startDateTime, endDateTime)
-    val baseLeft = with(LocalDensity.current) { dayLeftPx(dayIndex, dayColumnWidthPx, horizontalOffsetPx).toDp() }
-    val leftOffset = baseLeft +
-        (dayColumnWidth / placement.columnCount) * placement.columnIndex +
-        4.dp
     val haptic = LocalHapticFeedback.current
     val density = LocalDensity.current
+    val columnOffsetPx = with(density) {
+        (((dayColumnWidth / placement.columnCount) * placement.columnIndex) + 4.dp).roundToPx()
+    }
+    val topOffsetPx = with(density) { topOffset.roundToPx() }
     var dragTranslationX by remember(item.id) { mutableFloatStateOf(0f) }
     var dragTranslationY by remember(item.id) { mutableFloatStateOf(0f) }
     val showLocation = durationMinutes >= 60 || eventHeight >= 64.dp || eventWidth >= 118.dp
@@ -2158,7 +2167,12 @@ private fun TimedEventCard(
 
     Surface(
         modifier = Modifier
-            .offset(x = leftOffset, y = topOffset)
+            .offset {
+                IntOffset(
+                    x = dayLeftPx(dayIndex, dayColumnWidthPx, horizontalOffsetProvider()) + columnOffsetPx,
+                    y = topOffsetPx
+                )
+            }
             .width(eventWidth)
             .height(eventHeight)
             .graphicsLayer {
@@ -2249,7 +2263,7 @@ private fun CurrentTimeLine(
     currentDayIndex: Int,
     visibleRange: IntRange,
     dayColumnWidthPx: Float,
-    horizontalOffsetPx: Float,
+    horizontalOffsetProvider: () -> Float,
     boardHeightPx: Float,
     hourHeightPx: Float
 ) {
@@ -2261,11 +2275,10 @@ private fun CurrentTimeLine(
     }
     val minutes = currentMoment.hour * 60 + currentMoment.minute
     val y = (minutes / 60f) * hourHeightPx
-    val splitX = currentDayIndex * dayColumnWidthPx - horizontalOffsetPx
-
     Box(modifier = Modifier.fillMaxSize()) {
         Canvas(modifier = Modifier.fillMaxSize()) {
             if (currentDayIndex < 0 || y !in 0f..boardHeightPx) return@Canvas
+            val splitX = currentDayIndex * dayColumnWidthPx - horizontalOffsetProvider()
 
             val strokeWidth = 3.dp.toPx()
             val markerRadius = 6.dp.toPx()

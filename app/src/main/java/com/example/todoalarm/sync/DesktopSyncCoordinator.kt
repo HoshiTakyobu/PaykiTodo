@@ -7,15 +7,22 @@ import android.net.NetworkCapabilities
 import android.os.Build
 import com.example.todoalarm.TodoApplication
 import com.example.todoalarm.alarm.AiReportRuntimeStateStore
+import com.example.todoalarm.alarm.DailyReportScheduler
 import com.example.todoalarm.alarm.ReminderDispatchTracker
 import com.example.todoalarm.alarm.ReminderForegroundService
 import com.example.todoalarm.data.AppSettingsStore
+import com.example.todoalarm.data.AiReportRetention
 import com.example.todoalarm.data.CalendarEventDraft
 import com.example.todoalarm.data.DEFAULT_ITEM_ACCENT_COLOR_HEX
 import com.example.todoalarm.data.DEFAULT_PLANNING_REMINDER_MINUTES
 import com.example.todoalarm.data.DailyBoardSnapshotBuilder
+import com.example.todoalarm.data.DailyReportGenerator
 import com.example.todoalarm.data.EventCheckIn
 import com.example.todoalarm.data.PlanningImportCandidate
+import com.example.todoalarm.data.PlanningAiCaller
+import com.example.todoalarm.data.PlanningAiModelFetchResult
+import com.example.todoalarm.data.PlanningAiProvider
+import com.example.todoalarm.data.PlanningAiTestResult
 import com.example.todoalarm.data.PlanningLineMapping
 import com.example.todoalarm.data.PlanningLineMatcher
 import com.example.todoalarm.data.MappingStatus
@@ -171,6 +178,11 @@ class DesktopSyncCoordinator(
             when {
                 method == "GET" && path == "/api/status" -> DesktopSyncServer.Response.json(status().toJson())
                 method == "GET" && routePath == "/api/ai-report/status" -> DesktopSyncServer.Response.json(aiReportStatus())
+                method == "GET" && routePath == "/api/ai-config" -> DesktopSyncServer.Response.json(aiConfig())
+                method == "PUT" && routePath == "/api/ai-config" -> DesktopSyncServer.Response.json(updateAiConfig(JSONObject(body)))
+                method == "POST" && routePath == "/api/ai/providers/models" -> DesktopSyncServer.Response.json(fetchAiProviderModels(JSONObject(body)))
+                method == "POST" && routePath == "/api/ai/providers/test" -> DesktopSyncServer.Response.json(testAiProvider(JSONObject(body)))
+                method == "POST" && routePath == "/api/ai-report/generate-daily" -> DesktopSyncServer.Response.json(generateDailyReportNow())
                 method == "GET" && routePath == "/api/snapshot" -> {
                     val snapshot = buildSnapshot(boardOnly = queryParam(path, "scope") == "board")
                     DesktopSyncServer.Response.json(
@@ -315,6 +327,146 @@ class DesktopSyncCoordinator(
                 }
             }))
         }
+    }
+
+    private fun aiConfig(): JSONObject {
+        val settings = settingsStore.currentSettings()
+        return JSONObject().apply {
+            put("enabled", settings.planningAiEnabled)
+            put("providers", JSONArray(settings.planningAiProviders.map(::planningAiProviderJson)))
+            put("dailyReportEnabled", settings.dailyReportEnabled)
+            put("dailyReportTime", formatClock(settings.dailyReportHour, settings.dailyReportMinute))
+            put("weeklyReportEnabled", settings.weeklyReportEnabled)
+            put("weeklyReportTime", formatClock(settings.weeklyReportHour, settings.weeklyReportMinute))
+            put("retention", settings.aiReportRetention.name)
+            put("retentionOptions", JSONArray(AiReportRetention.entries.map { retention ->
+                JSONObject().put("value", retention.name).put("label", retention.label)
+            }))
+        }
+    }
+
+    private fun updateAiConfig(payload: JSONObject): JSONObject {
+        val existingById = settingsStore.currentSettings().planningAiProviders.associateBy { it.id }
+        val providerArray = payload.optJSONArray("providers") ?: JSONArray()
+        val providers = buildList {
+            for (index in 0 until providerArray.length()) {
+                val providerJson = providerArray.optJSONObject(index) ?: continue
+                add(planningAiProviderFromJson(providerJson, existingById))
+            }
+        }
+        val enabled = payload.optBoolean("enabled", false)
+        val incompleteEnabled = enabled && providers.any { provider ->
+            provider.enabled && (provider.baseUrl.isBlank() || provider.apiKey.isBlank() || provider.model.isBlank())
+        }
+        require(!incompleteEnabled) { "启用的 AI 源需要填写 Base URL、API Key 和模型名" }
+        val dailyTime = parseClock(payload.optString("dailyReportTime"), "日报时间")
+        val weeklyTime = parseClock(payload.optString("weeklyReportTime"), "周报时间")
+        val retention = AiReportRetention.entries.firstOrNull { it.name == payload.optString("retention") }
+            ?: AiReportRetention.DAYS_90
+
+        settingsStore.updatePlanningAiProviders(enabled, providers)
+        settingsStore.updateReportPreferences(
+            dailyEnabled = payload.optBoolean("dailyReportEnabled", false),
+            dailyHour = dailyTime.first,
+            dailyMinute = dailyTime.second,
+            weeklyEnabled = payload.optBoolean("weeklyReportEnabled", false),
+            weeklyHour = weeklyTime.first,
+            weeklyMinute = weeklyTime.second,
+            retention = retention
+        )
+        DailyReportScheduler.scheduleNext(context.applicationContext)
+        return JSONObject().put("ok", true).put("config", aiConfig())
+    }
+
+    private suspend fun fetchAiProviderModels(payload: JSONObject): JSONObject {
+        val provider = planningAiProviderForAction(payload)
+        return when (val result = PlanningAiCaller.fetchModels(provider)) {
+            is PlanningAiModelFetchResult.Success -> JSONObject()
+                .put("ok", true)
+                .put("providerName", result.providerName)
+                .put("endpoint", result.endpoint)
+                .put("models", JSONArray(result.models))
+            is PlanningAiModelFetchResult.Failure -> JSONObject()
+                .put("ok", false)
+                .put("message", result.message)
+        }
+    }
+
+    private suspend fun testAiProvider(payload: JSONObject): JSONObject {
+        val provider = planningAiProviderForAction(payload)
+        return when (val result = PlanningAiCaller.testProvider(provider)) {
+            is PlanningAiTestResult.Success -> JSONObject()
+                .put("ok", true)
+                .put("providerName", result.providerName)
+                .put("model", result.model)
+                .put("responseText", result.responseText)
+            is PlanningAiTestResult.Failure -> JSONObject()
+                .put("ok", false)
+                .put("message", result.message)
+        }
+    }
+
+    private suspend fun generateDailyReportNow(): JSONObject {
+        val result = DailyReportGenerator.generateDailyDetailed(app)
+        autoBackupIfNeeded()
+        return JSONObject()
+            .put("ok", true)
+            .put("reportId", result.report.id)
+            .put("providerName", result.report.providerName)
+            .put("usedLocalFallback", result.report.isLocalFallback)
+            .put("message", if (result.report.isLocalFallback) "日报已用本地模板生成" else "AI 日报已生成")
+    }
+
+    private fun planningAiProviderForAction(payload: JSONObject): PlanningAiProvider {
+        val providerJson = payload.optJSONObject("provider") ?: payload
+        val existingById = settingsStore.currentSettings().planningAiProviders.associateBy { it.id }
+        return planningAiProviderFromJson(providerJson, existingById).copy(enabled = true)
+    }
+
+    private fun planningAiProviderFromJson(
+        payload: JSONObject,
+        existingById: Map<String, PlanningAiProvider>
+    ): PlanningAiProvider {
+        val id = payload.optString("id").ifBlank { UUID.randomUUID().toString() }
+        val existing = existingById[id]
+        val suppliedApiKey = payload.optString("apiKey")
+        return PlanningAiProvider(
+            id = id,
+            name = payload.optString("name"),
+            baseUrl = payload.optString("baseUrl"),
+            apiKey = suppliedApiKey.ifBlank { existing?.apiKey.orEmpty() },
+            model = payload.optString("model"),
+            enabled = payload.optBoolean("enabled", true),
+            supportsVision = payload.optBoolean("supportsVision", false)
+        ).normalized()
+    }
+
+    private fun planningAiProviderJson(provider: PlanningAiProvider): JSONObject {
+        return JSONObject().apply {
+            put("id", provider.id)
+            put("name", provider.name)
+            put("baseUrl", provider.baseUrl)
+            put("model", provider.model)
+            put("enabled", provider.enabled)
+            put("supportsVision", provider.supportsVision)
+            put("apiKeyConfigured", provider.apiKey.isNotBlank())
+            put("apiKeyPreview", provider.apiKey.takeLast(4).takeIf { provider.apiKey.isNotBlank() }.orEmpty())
+        }
+    }
+
+    private fun parseClock(value: String, fieldName: String): Pair<Int, Int> {
+        val parts = value.trim().split(':')
+        require(parts.size == 2) { "${fieldName}需要使用 HH:mm 格式" }
+        val hour = parts[0].toIntOrNull()
+        val minute = parts[1].toIntOrNull()
+        require(hour != null && minute != null && hour in 0..23 && minute in 0..59) {
+            "${fieldName}需要使用 HH:mm 格式"
+        }
+        return hour to minute
+    }
+
+    private fun formatClock(hour: Int, minute: Int): String {
+        return "%02d:%02d".format(Locale.ROOT, hour.coerceIn(0, 23), minute.coerceIn(0, 59))
     }
 
     private suspend fun desktopTodos(path: String): JSONObject {

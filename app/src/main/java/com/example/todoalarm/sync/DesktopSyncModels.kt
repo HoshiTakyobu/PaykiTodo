@@ -5,6 +5,7 @@ import com.example.todoalarm.data.DailyBoardSnapshot
 import com.example.todoalarm.data.PlanningAnnouncement
 import com.example.todoalarm.data.TaskGroup
 import com.example.todoalarm.data.TodoItem
+import com.example.todoalarm.data.WeekStartMode
 import org.json.JSONArray
 import org.json.JSONObject
 import java.time.Instant
@@ -30,6 +31,7 @@ data class DesktopSyncSnapshot(
     val events: List<TodoItem>,
     val announcements: List<PlanningAnnouncement> = emptyList(),
     val todayBoard: DesktopDailyBoardSnapshot,
+    val weekStartMode: WeekStartMode = WeekStartMode.MONDAY,
     val partial: Boolean = false
 )
 
@@ -73,6 +75,7 @@ fun DesktopSyncSnapshot.toJson(
         put("todos", JSONArray(todos.map { it.toDesktopJson(groupsById[it.groupId], todoGroupIdsByTodoId[it.id].orEmpty()) }))
         put("events", JSONArray(events.map { it.toDesktopJson(groupsById[it.groupId]) }))
         put("announcements", JSONArray(announcements.map { it.toDesktopJson() }))
+        put("weekStartMode", weekStartMode.name)
         put("todayBoard", todayBoard.toDesktopJson(groupsById, todoGroupIdsByTodoId))
     }
 }

@@ -64,6 +64,7 @@ import com.example.todoalarm.data.TodoItem
 import com.example.todoalarm.ui.theme.TodoAlarmTheme
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.ZoneId
 
@@ -102,6 +103,7 @@ class ReminderActivity : ComponentActivity() {
                     taskGroup = taskGroup,
                     onComplete = ::completeTodo,
                     onAcknowledge = ::acknowledgeEvent,
+                    onAcknowledgeReminder = ::acknowledgeReminder,
                     onCheckInEvent = ::checkInEvent,
                     onSnooze = ::snooze
                 )
@@ -230,6 +232,22 @@ class ReminderActivity : ComponentActivity() {
         }
     }
 
+    private fun acknowledgeReminder() {
+        val item = todoItem ?: return
+        lifecycleScope.launch {
+            ReminderChainLogger.log(
+                context = this@ReminderActivity,
+                todoId = item.id,
+                source = "ReminderActivity",
+                stage = ReminderChainStage.USER_ACKNOWLEDGE,
+                status = ReminderChainStatus.OK,
+                message = "planned_todo_ack"
+            )
+            app.alarmScheduler.cancelTriggeredReminderAlarms(item.id)
+            closeReminder(item.id)
+        }
+    }
+
     private fun clearReminderArtifacts(items: List<TodoItem>) {
         items.forEach { item ->
             app.alarmScheduler.cancel(item.id)
@@ -280,6 +298,7 @@ private fun ReminderScreen(
     taskGroup: ResolvedTaskGroup?,
     onComplete: () -> Unit,
     onAcknowledge: () -> Unit,
+    onAcknowledgeReminder: () -> Unit,
     onCheckInEvent: () -> Unit,
     onSnooze: (Int) -> Unit
 ) {
@@ -289,6 +308,8 @@ private fun ReminderScreen(
         ?: ResolvedTaskGroup(0, "例行", "#4CB782")
     val accent = colorFromHex(resolvedGroup.colorHex)
     val isEvent = todoItem?.isEvent == true
+    val isPlannedTodo = !isEvent && todoItem?.hasDueDate == true &&
+        todoItem.dueDateTimeOrNull()?.toLocalDate()?.isAfter(LocalDate.now()) == true
     val alarmMode = todoItem?.alarmMode == true
     val alarmPulseAlpha by rememberInfiniteTransition(label = "alarmModePulse").animateFloat(
         initialValue = 0.18f,
@@ -477,7 +498,18 @@ private fun ReminderScreen(
                                 .height(58.dp),
                             shape = RoundedCornerShape(20.dp)
                         ) {
-                            Text("延后 10 分钟")
+                            Text("延后10分钟提醒")
+                        }
+                        if (isPlannedTodo) {
+                            FilledTonalButton(
+                                onClick = onAcknowledgeReminder,
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .height(58.dp),
+                                shape = RoundedCornerShape(20.dp)
+                            ) {
+                                Text("我知道了")
+                            }
                         }
                     } else if (todoItem?.checkInEnabled == true) {
                         FilledTonalButton(

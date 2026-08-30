@@ -8,7 +8,7 @@ The original PaykiTodo sessions became large and increasingly unreliable. This f
 
 ## Latest In-Progress Round
 
-The `1.15.14 / versionCode 356` round replaces the generic Desktop Web Calendar with a screenshot-matched reproduction of the user's three Feishu references. The browser now uses the same top-nav/sidebar/calendar proportions at 125% Windows scaling, functional day/week/month views, mini-calendar navigation, search/group filtering, and a two-column event editor with a live timeline preview. The round also fixes legacy CSS inheritance that previously expanded the page to about 10,124px, pushed header actions onto a second row, and stretched the close button. Database version remains `30`. Browser interaction checks and the debug build passed on the Pixel_8 emulator Desktop Sync surface. No push is authorized unless the user explicitly requests it.
+The active `1.15.16 / versionCode 358` round reuses the phone launcher icon in Desktop Web, simplifies desktop todo management to `待办 / 历史待办`, synchronizes Desktop Calendar week ordering with the phone `WeekStartMode`, removes live chronometer updates from ongoing event notifications, exposes LAN addresses automatically in Desktop Sync Settings, and adds a non-mutating `我知道了` operation for future todo reminders. The existing `1.15.15` calendar and browser work remains the baseline. Database version remains `30`; no push is authorized unless the user explicitly requests it.
 
 ## Initial Product Request
 

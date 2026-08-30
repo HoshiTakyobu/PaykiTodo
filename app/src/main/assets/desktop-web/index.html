@@ -11,7 +11,7 @@
     <div class="login-aurora" aria-hidden="true"></div>
     <div class="login-card">
       <div class="login-brand">
-        <div class="login-logo">P</div>
+        <img class="login-logo" src="__PAYKI_ICON_DATA__" alt="PaykiTodo 应用图标" />
         <div>
           <h1>PaykiTodo</h1>
           <p>局域网工作台 · v__PAYKI_VERSION__</p>
@@ -35,7 +35,7 @@
       <button id="sidebar-toggle" class="sidebar-toggle" title="收起/展开侧边栏">‹</button>
       <div class="sidebar-inner">
         <div class="brand-block" aria-hidden="true">
-          <div class="brand-logo">P</div>
+          <img class="brand-logo" src="__PAYKI_ICON_DATA__" alt="PaykiTodo 应用图标" />
           <div>
             <h1>PaykiTodo</h1>
             <p class="muted">控制台 · v__PAYKI_VERSION__</p>
@@ -84,12 +84,7 @@
       </section>
 
       <section id="todos-panel" class="tab">
-        <div id="todo-summary" class="summary-grid"></div>
         <div class="card-panel timeline-panel">
-          <div class="panel-head">
-            <h2>待办主时间轴</h2>
-            <p class="muted">首屏优先加载每日看板；完整管理视图按需加载后，按已错过、今日、计划中、历史记录分区展示。无 DDL 待办统一归入今日待办。</p>
-          </div>
           <div id="todo-timeline" class="timeline-root"></div>
         </div>
       </section>
@@ -102,7 +97,7 @@
             <button id="event-mini-prev" class="mini-calendar-arrow" type="button" aria-label="上个月">‹</button>
             <button id="event-mini-next" class="mini-calendar-arrow" type="button" aria-label="下个月">›</button>
           </div>
-          <div class="mini-calendar-weekdays" aria-hidden="true"><span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span><span>日</span></div>
+          <div id="event-mini-weekdays" class="mini-calendar-weekdays" aria-hidden="true"></div>
           <div id="event-mini-calendar" class="mini-calendar-grid"></div>
           <label class="calendar-search-box">
             <span aria-hidden="true">⌕</span>
@@ -138,6 +133,13 @@
               <button type="button" data-event-view="week" class="active">周</button>
               <button type="button" data-event-view="month">月</button>
             </div>
+            <label class="calendar-week-start-control">
+              <span>周起始</span>
+              <select id="calendar-week-start" aria-label="选择每周第一天">
+                <option value="MONDAY">周一</option>
+                <option value="SUNDAY">周日</option>
+              </select>
+            </label>
             <button id="apply-event-day" class="hidden" type="button">跳转</button>
           </div>
           <section class="schedule-board-shell">

@@ -29,6 +29,7 @@ const state = {
   currentTab: 'board',
   selectedEventDay: dayKey(new Date()),
   eventViewMode: 'week',
+  weekStartMode: 'MONDAY',
   eventMiniMonth: dayKey(new Date()).slice(0, 7) + '-01',
   eventQuery: '',
   hiddenEventGroupIds: [],
@@ -112,7 +113,6 @@ const els = {
   token: document.getElementById('token'),
   status: statusProxy,
   desktopDailyBoard: document.getElementById('desktop-daily-board'),
-  todoSummary: document.getElementById('todo-summary'),
   todoTimeline: document.getElementById('todo-timeline'),
   eventSelectedDate: document.getElementById('event-selected-date'),
   eventSelectedSubtitle: document.getElementById('event-selected-subtitle'),
@@ -134,6 +134,8 @@ const els = {
   eventMiniCalendar: document.getElementById('event-mini-calendar'),
   eventMiniPrev: document.getElementById('event-mini-prev'),
   eventMiniNext: document.getElementById('event-mini-next'),
+  calendarWeekStart: document.getElementById('calendar-week-start'),
+  eventMiniWeekdays: document.getElementById('event-mini-weekdays'),
   eventCalendarSearch: document.getElementById('event-calendar-search'),
   eventCalendarGroups: document.getElementById('event-calendar-groups'),
   planningNoteSelect: document.getElementById('planning-note-select'),
@@ -1186,10 +1188,6 @@ function countdownDays(item, boardDateKey) {
   return Math.round((targetStart - start) / (24 * 60 * 60 * 1000));
 }
 
-function renderSummaryCard(label, value) {
-  return '<div class="summary-card"><div class="summary-label">' + escapeHtml(label) + '</div><div class="summary-value">' + value + '</div></div>';
-}
-
 function renderTodoItem(item) {
   const accent = todoGroupAccent(item);
   const marker = todoMarker(item);
@@ -1227,9 +1225,6 @@ function renderTodoSection(section) {
 }
 
 function renderTodoPagerControls() {
-  const loaded = state.snapshot?.todos?.length || 0;
-  const total = state.todoTotal || loaded;
-  const visibleLoaded = (state.snapshot?.todos || []).filter(todoMatchesSelectedGroups).length;
   const query = state.todoQuery || '';
   const hasSearch = query.trim().length > 0;
   const canLoadMore = state.todoHasMore && !state.todoLoading;
@@ -1241,10 +1236,7 @@ function renderTodoPagerControls() {
     +     '<button type="button" class="ghost mini" data-search-todos="true">' + (state.todoLoading ? '加载中' : '搜索') + '</button>'
     +     (hasSearch ? '<button type="button" class="ghost mini" data-clear-todo-search="true">清空</button>' : '')
     +   '</div>'
-    +   '<div class="todo-page-meta">'
-    +     '显示 ' + visibleLoaded + ' / 已加载 ' + loaded + ' / 共 ' + total + ' 条'
-    +     (hasSearch ? ' · 搜索：' + escapeHtml(query) : '')
-    +   '</div>'
+    +   (hasSearch ? '<div class="todo-page-meta">搜索：' + escapeHtml(query) + '</div>' : '')
     +   '<button type="button" class="ghost mini todo-load-more" data-load-more-todos="true" ' + (canLoadMore ? '' : 'disabled') + '>'
     +     (state.todoLoading ? '加载中…' : (state.todoHasMore ? '加载更多' : '没有更多'))
     +   '</button>'
@@ -1308,8 +1300,10 @@ function visibleEventDayCount() {
 
 function startOfCalendarWeek(key) {
   const date = dateFromKey(key);
-  const mondayOffset = (date.getDay() + 6) % 7;
-  date.setDate(date.getDate() - mondayOffset);
+  const offset = state.weekStartMode === 'SUNDAY'
+    ? date.getDay()
+    : (date.getDay() + 6) % 7;
+  date.setDate(date.getDate() - offset);
   return dayKey(date);
 }
 
@@ -1469,7 +1463,9 @@ function renderMonthEventPill(item) {
 
 function renderEventMonthGrid(visibleDays) {
   const selectedMonth = dateFromKey(state.selectedEventDay).getMonth();
-  const weekdayHead = ['一', '二', '三', '四', '五', '六', '日']
+  const weekdayHead = (state.weekStartMode === 'SUNDAY'
+    ? ['日', '一', '二', '三', '四', '五', '六']
+    : ['一', '二', '三', '四', '五', '六', '日'])
     .map(label => '<div class="month-weekday">' + label + '</div>').join('');
   const cells = visibleDays.map(day => {
     const date = dateFromKey(day.key);
@@ -1486,6 +1482,21 @@ function renderEventMonthGrid(visibleDays) {
       + '</div>';
   }).join('');
   return '<div class="event-month-view"><div class="month-weekday-row">' + weekdayHead + '</div><div class="month-grid">' + cells + '</div></div>';
+}
+
+function currentWeekdayLabels() {
+  return state.weekStartMode === 'SUNDAY'
+    ? ['日', '一', '二', '三', '四', '五', '六']
+    : ['一', '二', '三', '四', '五', '六', '日'];
+}
+
+function renderWeekStartControl() {
+  if (els.calendarWeekStart) els.calendarWeekStart.value = state.weekStartMode;
+  if (els.eventMiniWeekdays) {
+    els.eventMiniWeekdays.innerHTML = currentWeekdayLabels()
+      .map(label => '<span>' + label + '</span>')
+      .join('');
+  }
 }
 
 function eventPayloadFromItem(item, startMillis, endMillis) {
@@ -1693,6 +1704,7 @@ function startDesktopHeartbeat() {
 async function loadSnapshot(options = {}) {
   const shouldLoadPlanning = options.planning === true || state.currentTab === 'planning';
   state.snapshot = await api('/api/snapshot?scope=board');
+  state.weekStartMode = state.snapshot.weekStartMode === 'SUNDAY' ? 'SUNDAY' : 'MONDAY';
   state.todosLoaded = false;
   resetTodoPageState();
   state.eventsLoaded = false;
@@ -1723,6 +1735,7 @@ function ensureSnapshotContainer() {
     todos: [],
     events: [],
     announcements: [],
+    weekStartMode: 'MONDAY',
     todayBoard: null
   };
 }
@@ -2219,39 +2232,23 @@ function renderTodos() {
     const todoItems = board.todoItems || [];
     const visibleTodayEvents = board.visibleTodayEvents || [];
     const tomorrowEvents = board.tomorrowEvents || [];
-    els.todoSummary.innerHTML = [
-      renderSummaryCard('今日待办', todoItems.length),
-      renderSummaryCard('今日日程', visibleTodayEvents.length),
-      renderSummaryCard('明日日程', tomorrowEvents.length),
-      renderSummaryCard('加载模式', '轻量')
-    ].join('');
     els.todoTimeline.innerHTML = ''
       + '<div class="empty-state">'
-      +   '<strong>当前仅加载每日看板数据。</strong><br />'
-      +   '为了减少电脑端首屏读取压力，完整待办时间轴会按需加载。'
+      +   '<strong>待办</strong><br />'
+      +   '加载完整待办后，可按分组筛选并查看历史待办。'
       +   '<div class="actions"><button type="button" class="ghost mini" data-load-todos="true">加载待办管理列表</button></div>'
       + '</div>';
     bindActions();
     return;
   }
-  const now = Date.now();
-  const today = dayKey(new Date());
   const activeAll = activeTodos();
   const historyAll = historyTodos();
   const active = activeAll.filter(todoMatchesSelectedGroups).slice().sort((a, b) => (a.hasDueDate ? (a.dueAtMillis || Number.MAX_SAFE_INTEGER) : Number.MAX_SAFE_INTEGER) - (b.hasDueDate ? (b.dueAtMillis || Number.MAX_SAFE_INTEGER) : Number.MAX_SAFE_INTEGER));
   const history = historyAll.filter(todoMatchesSelectedGroups).slice().sort((a, b) => (b.completedAtMillis || b.canceledAtMillis || b.missedAtMillis || b.dueAtMillis || 0) - (a.completedAtMillis || a.canceledAtMillis || a.missedAtMillis || a.dueAtMillis || 0));
   const sections = [
-    { key: 'missed', title: '已错过', empty: '当前没有已错过的待办。', items: active.filter(item => item.missed || (item.hasDueDate && (item.dueAtMillis || 0) < now && dayKeyFromMillis(item.dueAtMillis) < today)) },
-    { key: 'today', title: '今日待办', empty: '今天暂时没有待办。', items: active.filter(item => !item.missed && (!item.hasDueDate || dayKeyFromMillis(item.dueAtMillis) === today)) },
-    { key: 'upcoming', title: '计划中', empty: '后续暂时没有排期。', items: active.filter(item => item.hasDueDate && !item.missed && dayKeyFromMillis(item.dueAtMillis) > today) },
-    { key: 'history', title: '历史记录', empty: '暂无历史记录。', items: history }
+    { key: 'active', title: '待办', empty: '当前没有未完成的待办。', items: active },
+    { key: 'history', title: '历史待办', empty: '暂无历史待办。', items: history }
   ];
-  els.todoSummary.innerHTML = [
-    renderSummaryCard('已加载活动', activeAll.length),
-    renderSummaryCard('已加载今日', sections[1].items.length),
-    renderSummaryCard('已加载历史', historyAll.length),
-    renderSummaryCard('总匹配', state.todoTotal || state.snapshot?.todos?.length || 0)
-  ].join('');
   renderDesktopDailyBoard();
   els.todoTimeline.innerHTML = ''
     + renderTodoPagerControls()
@@ -2453,6 +2450,7 @@ function renderBoardEventRow(item, nowMillis) {
 
 function renderEvents() {
   document.body.dataset.eventView = state.eventViewMode;
+  renderWeekStartControl();
   document.querySelectorAll('[data-event-view]').forEach(button => {
     button.classList.toggle('active', button.dataset.eventView === state.eventViewMode);
   });
@@ -5033,6 +5031,23 @@ document.querySelectorAll('[data-event-view]').forEach(button => {
     state.eventsLoaded = false;
     renderEvents();
   });
+});
+els.calendarWeekStart?.addEventListener('change', async event => {
+  const nextMode = event.target.value === 'SUNDAY' ? 'SUNDAY' : 'MONDAY';
+  if (nextMode === state.weekStartMode) return;
+  try {
+    await api('/api/calendar-preferences', {
+      method: 'PUT',
+      body: JSON.stringify({ weekStartMode: nextMode })
+    });
+    state.weekStartMode = nextMode;
+    state.eventsLoaded = false;
+    state.eventMiniMonth = state.selectedEventDay.slice(0, 7) + '-01';
+    renderEvents();
+  } catch (error) {
+    event.target.value = state.weekStartMode;
+    els.status.textContent = error.message || '保存周起始日失败';
+  }
 });
 document.getElementById('planning-new')?.addEventListener('click', () => createPlanningNote().catch(err => els.status.textContent = err.message));
 document.getElementById('planning-delete')?.addEventListener('click', () => deletePlanningNote().catch(err => els.status.textContent = err.message));

@@ -45,6 +45,7 @@ import com.example.todoalarm.data.RecurrenceScope
 import com.example.todoalarm.data.RecurrenceType
 import com.example.todoalarm.data.TodoDraft
 import com.example.todoalarm.data.TodoItem
+import com.example.todoalarm.data.WeekStartMode
 import com.example.todoalarm.data.parseReminderTextInput
 import com.example.todoalarm.data.reminderTriggerTimesMillis
 import com.example.todoalarm.data.storageStringToWeekdays
@@ -180,6 +181,7 @@ class DesktopSyncCoordinator(
                 method == "GET" && routePath == "/api/ai-report/status" -> DesktopSyncServer.Response.json(aiReportStatus())
                 method == "GET" && routePath == "/api/ai-config" -> DesktopSyncServer.Response.json(aiConfig())
                 method == "PUT" && routePath == "/api/ai-config" -> DesktopSyncServer.Response.json(updateAiConfig(JSONObject(body)))
+                method == "PUT" && routePath == "/api/calendar-preferences" -> DesktopSyncServer.Response.json(updateCalendarPreferences(JSONObject(body)))
                 method == "POST" && routePath == "/api/ai/providers/models" -> DesktopSyncServer.Response.json(fetchAiProviderModels(JSONObject(body)))
                 method == "POST" && routePath == "/api/ai/providers/test" -> DesktopSyncServer.Response.json(testAiProvider(JSONObject(body)))
                 method == "POST" && routePath == "/api/ai-report/generate-daily" -> DesktopSyncServer.Response.json(generateDailyReportNow())
@@ -273,8 +275,20 @@ class DesktopSyncCoordinator(
             events = snapshotEvents,
             announcements = announcements,
             todayBoard = board.toDesktopSyncBoard(nowMillis = nowMillis),
+            weekStartMode = settingsStore.currentSettings().weekStartMode,
             partial = boardOnly
         )
+    }
+
+    private fun updateCalendarPreferences(payload: JSONObject): JSONObject {
+        val weekStartMode = WeekStartMode.entries.firstOrNull {
+            it.name.equals(payload.optString("weekStartMode"), ignoreCase = true)
+        } ?: error("周起始日只能选择周一或周日")
+        settingsStore.updateWeekStartMode(weekStartMode)
+        return JSONObject()
+            .put("ok", true)
+            .put("weekStartMode", weekStartMode.name)
+            .put("message", "已设置为${weekStartMode.label}")
     }
 
     private suspend fun aiReportStatus(): JSONObject {

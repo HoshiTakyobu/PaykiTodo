@@ -43,6 +43,7 @@ object ReminderChainStage {
     const val REMINDER_ACTIVITY_RESUME = "REMINDER_ACTIVITY_RESUME"
     const val USER_COMPLETE = "USER_COMPLETE"
     const val USER_SNOOZE = "USER_SNOOZE"
+    const val USER_ACKNOWLEDGE = "USER_ACKNOWLEDGE"
     const val USER_CANCEL = "USER_CANCEL"
     const val TEST_CREATED = "TEST_CREATED"
 }

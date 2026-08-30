@@ -1,6 +1,9 @@
 package com.example.todoalarm.sync
 
 import android.content.Context
+import android.annotation.SuppressLint
+import android.util.Base64
+import com.example.todoalarm.R
 import java.nio.charset.StandardCharsets
 
 object DesktopSyncWebAssets {
@@ -8,6 +11,7 @@ object DesktopSyncWebAssets {
 
     fun indexHtml(context: Context): String {
         return readAsset(context, "index.html")
+            .replace("__PAYKI_ICON_DATA__", appIconDataUri(context))
             .replace("__PAYKI_VERSION__", appVersionName(context))
     }
 
@@ -49,5 +53,13 @@ object DesktopSyncWebAssets {
         return runCatching {
             context.packageManager.getPackageInfo(context.packageName, 0).versionName ?: "unknown"
         }.getOrDefault("unknown")
+    }
+
+    @SuppressLint("ResourceType")
+    private fun appIconDataUri(context: Context): String {
+        return runCatching {
+            val bytes = context.resources.openRawResource(R.drawable.ic_launcher_art_transparent).use { it.readBytes() }
+            "data:image/png;base64," + Base64.encodeToString(bytes, Base64.NO_WRAP)
+        }.getOrDefault("")
     }
 }

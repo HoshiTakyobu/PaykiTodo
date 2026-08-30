@@ -36,6 +36,7 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.time.Instant
+import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -296,6 +297,15 @@ class ReminderAccessibilityOverlay(
                 },
                 weightedParams()
             )
+            if (item.hasDueDate && item.dueDateTimeOrNull()?.toLocalDate()?.isAfter(LocalDate.now()) == true) {
+                actionRow.addView(spaceView())
+                actionRow.addView(
+                    filledButton("我知道了", Color.parseColor("#53657A")).apply {
+                        setOnClickListener { acknowledgePlannedTodo(item.id) }
+                    },
+                    weightedParams()
+                )
+            }
         } else if (item.checkInEnabled) {
             actionRow.addView(spaceView())
             actionRow.addView(
@@ -420,6 +430,26 @@ class ReminderAccessibilityOverlay(
             ReminderForegroundService.dismiss(service, todoId)
             hide(todoId)
             Toast.makeText(service, "已延后 $minutes 分钟", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private fun acknowledgePlannedTodo(todoId: Long) {
+        serviceScope.launch {
+            withContext(Dispatchers.IO) {
+                val item = app.repository.getTodo(todoId) ?: return@withContext
+                ReminderChainLogger.log(
+                    context = service,
+                    todoId = item.id,
+                    source = "ReminderAccessibilityOverlay",
+                    stage = ReminderChainStage.USER_ACKNOWLEDGE,
+                    status = ReminderChainStatus.OK,
+                    message = "planned_todo_ack"
+                )
+                app.alarmScheduler.cancelTriggeredReminderAlarms(item.id)
+            }
+            ReminderForegroundService.dismiss(service, todoId)
+            hide(todoId)
+            Toast.makeText(service, "本次提醒已关闭，任务保持不变", Toast.LENGTH_SHORT).show()
         }
     }
 

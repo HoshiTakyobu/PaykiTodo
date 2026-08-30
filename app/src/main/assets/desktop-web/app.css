@@ -1872,6 +1872,7 @@ body[data-active-tab="events"] #announcements-banner { display: none !important;
   color: var(--feishu-blue);
   background: transparent;
 }
+.mini-calendar-day.today.in-range { background: #ebecee; }
 .mini-calendar-day.today::after {
   content: "";
   position: absolute;
@@ -2054,6 +2055,9 @@ body[data-active-tab="events"] #announcements-banner { display: none !important;
 }
 .calendar-view-switch button:hover { background: var(--feishu-hover); }
 .calendar-view-switch button.active { color: var(--feishu-blue); background: #e8efff; }
+.calendar-week-start-control { display: inline-flex; align-items: center; gap: 7px; color: var(--feishu-muted); font-size: 12px; font-weight: 600; white-space: nowrap; }
+.calendar-week-start-control select { height: 32px; padding: 0 10px; border: 1px solid var(--feishu-line); border-radius: 6px; background: var(--card-bg-strong); color: var(--feishu-text); font: inherit; }
+.login-logo, .brand-logo { object-fit: contain; display: block; background: #fff; }
 .schedule-board-shell { min-height: 0; flex: 1; }
 .board-scroll {
   width: 100%;

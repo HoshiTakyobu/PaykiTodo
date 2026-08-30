@@ -180,6 +180,24 @@ class AlarmScheduler(
         cancelReminderAlarms(todoId)
     }
 
+    fun cancelTriggeredReminderAlarms(todoId: Long, nowMillis: Long = System.currentTimeMillis()) {
+        val prefs = context.getSharedPreferences(SCHEDULE_PREFS, Context.MODE_PRIVATE)
+        val scheduledTimes = prefs.getStringSet(scheduledSetKey(todoId), emptySet()).orEmpty()
+            .mapNotNull { it.toLongOrNull() }
+        val (triggeredTimes, pendingTimes) = scheduledTimes.partition { it <= nowMillis }
+        triggeredTimes.forEach { scheduledAt ->
+            alarmManager.cancel(buildBroadcastIntent(todoId, scheduledAt, ACTION_EXACT, EXACT_OFFSET))
+            alarmManager.cancel(buildBroadcastIntent(todoId, scheduledAt, ACTION_BACKUP, BACKUP_OFFSET))
+        }
+        prefs.edit().apply {
+            if (pendingTimes.isEmpty()) {
+                remove(scheduledSetKey(todoId))
+            } else {
+                putStringSet(scheduledSetKey(todoId), pendingTimes.map { it.toString() }.toSet())
+            }
+        }.apply()
+    }
+
     private fun cancelReminderAlarms(todoId: Long) {
         alarmManager.cancel(buildBroadcastIntent(todoId, 0L, ACTION_EXACT, EXACT_OFFSET))
         alarmManager.cancel(buildBroadcastIntent(todoId, 0L, ACTION_BACKUP, BACKUP_OFFSET))

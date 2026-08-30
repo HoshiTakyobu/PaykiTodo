@@ -134,9 +134,10 @@ object OngoingEventNotifier {
             .setContentIntent(pendingIntent)
             .setOngoing(true)
             .setAutoCancel(false)
+            // 只展示日程的计划时间段，避免每秒刷新进行时长造成额外耗电。
             .setWhen(startMillis)
-            .setUsesChronometer(!event.allDay)
-            .setShowWhen(true)
+            .setUsesChronometer(false)
+            .setShowWhen(false)
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
             .setCategory(NotificationCompat.CATEGORY_EVENT)
             .setVisibility(NotificationCompat.VISIBILITY_PRIVATE)

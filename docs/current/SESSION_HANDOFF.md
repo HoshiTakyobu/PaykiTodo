@@ -4,26 +4,26 @@
 
 - Repository root: `G:\Workspace\Project\PaykiTodo`
 - Branch: `main`
-- Pre-round baseline commit: `8fdb6c1`
-- Current code version: `1.15.15 / versionCode 357`
+- Pre-round baseline commit: `2edb774`
+- Current code version: `1.15.16 / versionCode 358`
 - Database version: `30`
-- Latest debug APK: `app/build/outputs/apk/debug/PaykiTodo-1.15.15-debug.apk`
+- Latest debug APK: `app/build/outputs/apk/debug/PaykiTodo-1.15.16-debug.apk`
 - Latest signed release APK available locally: `app/build/outputs/apk/release/PaykiTodo-1.14.12-release.apk`
 - Latest GitHub Release: `https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.14.12`
 - This round must not be pushed unless the user explicitly requests it.
 
 ## Completed In This Round
 
-1. Carried the Feishu-reference Desktop Web Calendar forward with the 58px top navigation, 296px mini-calendar sidebar, full-bleed calendar grid, restrained blue accent, and light separators.
-2. Removed the misleading sidebar group list, turned Excel import into an explicit preview action, and moved connection state/disconnect controls to the sidebar's top-left area.
-3. Added functional day/week/month segmented views with selected-date-preserving day navigation, month-grid event pills, mini-calendar navigation, search, and date controls.
-4. Added distinct past/today/future header states, a light blue today circle, today-only current-time line, ended-event fade treatment, and a real GMT+8 axis header aligned to the date grid.
-5. Preserved the reference-proportioned two-column event editor and all PaykiTodo event fields, including reminders, check-in reminders, recurrence, multi-slot schedules, notes, group, color, countdown, and check-in tracking.
-6. Added the Desktop Web AI report configuration workspace: provider CRUD/order, model retrieval, one-shot test, report schedules, retention, immediate daily generation, page-level draft save, and masked API-key handling.
-7. Moved phone Calendar horizontal drag offset reads to layout/draw phases so per-pixel motion does not recompose the whole calendar; date-range queries and placement update only when the focused day changes.
-8. Upgraded the app to `1.15.15 / versionCode 357`; database remains `30` with no migration.
+1. Desktop Web brand/login surfaces now use the phone launcher artwork served from the Android resource.
+2. Desktop Web todo management now renders only `待办` and `历史待办`; obsolete summary cards and the old timeline heading were removed while group filtering remains.
+3. Desktop Calendar week, month, and mini-calendar calculations now use the shared phone `WeekStartMode`; the web UI persists Monday-start or Sunday-start through the authenticated calendar-preferences endpoint.
+4. Today's mini-calendar cell retains the gray selected-week range background under the blue today ring.
+5. Ongoing event notifications no longer display a live chronometer and retain only the planned event range.
+6. Future todo reminder surfaces now include a non-mutating `我知道了` action in the activity and accessibility overlay; it clears the already-triggered alarm pair and current reminder session while preserving later reminders for the same todo.
+7. Desktop Sync Settings directly displays available LAN URLs when the service is running and no longer has show/hide address buttons.
+8. Database remains `30`; the app version is `1.15.16 / versionCode 358`.
 
-## Browser Verification Evidence
+## Preserved Browser Verification Evidence
 
 - Reference inputs:
   - `E:\Temp\codex-clipboard-1T2xav.png`
@@ -43,23 +43,30 @@
   - title edits update the right-side preview live
   - existing event opens with its saved title
   - no browser page errors in the checked flows
-- 27 unit-test suites / 152 tests passed with zero failures or skips.
+- The browser screenshots and interaction checks above are preserved from the `1.15.15` calendar baseline.
 - Emulator calendar swipe statistics: 441 frames, p50 `21ms`, p90 `34ms`, p95 `40ms`, p99 `81ms`, 9.98% janky frames, and 21 slow UI-thread frames.
-- `:app:lintDebug`, `:app:assembleDebug`, JavaScript syntax, and `git diff --check` passed.
-- APK metadata confirms package `com.paykitodo.app`, `versionName 1.15.15`, `versionCode 357`, min API 26, and target API 34.
+
+## 1.15.16 Verification
+
+- Passed `:app:compileDebugKotlin`, `:app:testDebugUnitTest` (26 suites), `:app:lintDebug`, `:app:assembleDebug`, JavaScript syntax, APK metadata inspection, and `git diff --check`.
+- Lint result: 0 errors and 121 existing warnings.
+- The current APK launches successfully on `emulator-5554`; `MainActivity` remains resumed and no Android runtime crash was reported in the launch smoke test.
+- Emulator Desktop Sync automatically displayed its reachable LAN address. The forwarded page returned HTTP 200, contained the embedded launcher icon and week-start selector, and no longer contained the removed todo timeline heading or summary container. Desktop Sync was disabled again after verification.
+- Debug APK metadata: package `com.paykitodo.app`, `versionName 1.15.16`, `versionCode 358`, min API 26, target API 34.
 
 ## Emulator Evidence
 
 - Reused device: `emulator-5554` / AVD `Pixel_8`.
-- Installed APK: `app/build/outputs/apk/debug/PaykiTodo-1.15.14-debug.apk`.
-- Desktop Sync was enabled only to serve the browser verification page through local ADB port forwarding.
+- Installed APK: `app/build/outputs/apk/debug/PaykiTodo-1.15.16-debug.apk`.
+- Desktop Sync was enabled only for the runtime page smoke check and disabled again afterward.
 - The emulator-only access key is intentionally not recorded here.
 
 ## Next Actions
 
-1. Review the Calendar and event editor in the user's normal desktop browser and Windows zoom configuration.
+1. Review `docs/current/UX_FOLLOW_UP_PLAN.md` with the user and select the next concrete UX slice before implementation.
 2. Treat future visual feedback as reference-image delta work, not a broad redesign prompt.
-3. Do not push until the user explicitly requests it.
+3. Repeat reminder behavior on a physical phone because OEM full-screen, lock-screen, vibration, and notification behavior cannot be proven completely by the emulator.
+4. Do not push until the user explicitly requests it.
 
 ## Safety Notes
 

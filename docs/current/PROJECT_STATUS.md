@@ -8,8 +8,8 @@
 - Target platform: Android 14 / API 34
 - License: MIT License (`LICENSE`)
 - Current version in code:
-  - `versionName = "1.15.15"`
-  - `versionCode = 357`
+  - `versionName = "1.15.16"`
+  - `versionCode = 358`
   - database version = `30`
 
 ## Current Build Facts
@@ -19,7 +19,14 @@
 - Latest GitHub Release:
   - `https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.14.12`
 - Latest fully built debug APK:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.15.15-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.15.16-debug.apk`
+- Current `1.15.16 / versionCode 358` status:
+  - Desktop Web reuses the phone launcher art, simplifies todo management to `待办 / 历史待办`, keeps group filtering, and removes summary statistics and the old timeline heading.
+  - Desktop Calendar reads and writes the shared `WeekStartMode` setting, allowing only Monday-start or Sunday-start ordering across week, month, and mini-calendar views; today's range cell keeps its gray range background behind the blue ring.
+  - Ongoing event notifications show only the planned time range and no longer use a live chronometer.
+  - Desktop Sync Settings shows detected LAN connection URLs directly when the service is running; manual show/hide address controls were removed.
+  - Future-date todo reminders expose a non-mutating `我知道了` action in the full-screen activity and accessibility fallback overlay. It dismisses the current reminder while preserving later scheduled reminders for the same todo.
+  - Verification passed: JavaScript syntax, `:app:compileDebugKotlin`, `:app:testDebugUnitTest`, `:app:lintDebug`, `:app:assembleDebug`, APK metadata inspection, `git diff --check`, emulator launch, and an HTTP 200 Desktop Sync page smoke check.
 - Current `1.15.15 / versionCode 357` status:
   - Desktop Web Calendar removes the misleading sidebar group list, exposes Excel import as an explicit preview action, moves connection controls to the sidebar's top-left area, and draws the date-range chevron with CSS.
   - Day view preserves the selected date and loads that date's visible event range; week view calculates a Monday-starting seven-day range from the selected date; month view retains its 42-cell grid.

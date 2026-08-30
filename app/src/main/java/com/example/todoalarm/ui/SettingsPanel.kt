@@ -246,19 +246,12 @@ fun SettingsPanel(
     var selectedSection by remember { mutableStateOf<SettingsSection?>(null) }
     var planningAiDraft by remember { mutableStateOf<PlanningAiConfigDraft?>(null) }
     var dailyBriefDraft by remember { mutableStateOf<DailyBriefDraft?>(null) }
-    var desktopSyncAddressesExpanded by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
 
     LaunchedEffect(initialSectionSerial) {
         selectedSection = when (initialSectionKey) {
             MainActivity.SETTINGS_SECTION_DESKTOP_SYNC -> SettingsSection.DESKTOP_SYNC
             else -> selectedSection
-        }
-    }
-
-    LaunchedEffect(selectedSection, settings.desktopSyncEnabled, desktopSyncStatus.running) {
-        if (selectedSection != SettingsSection.DESKTOP_SYNC || !settings.desktopSyncEnabled || !desktopSyncStatus.running) {
-            desktopSyncAddressesExpanded = false
         }
     }
 
@@ -730,18 +723,11 @@ fun SettingsPanel(
                     Text("连接地址", fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
                     if (!desktopSyncStatus.running) {
                         Text("电脑同步服务正在启动。如果几秒后仍没有出现地址，请关闭再重新开启电脑同步。", color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    } else if (!desktopSyncAddressesExpanded) {
-                        OutlinedButton(onClick = { desktopSyncAddressesExpanded = true }, modifier = Modifier.fillMaxWidth()) {
-                            Text("显示连接地址")
-                        }
                     } else if (desktopSyncStatus.ipAddresses.isEmpty()) {
                         Text(
                             desktopSyncStatus.networkHint.ifBlank { "未检测到可用的局域网 IPv4 地址。" },
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
-                        OutlinedButton(onClick = { desktopSyncAddressesExpanded = false }, modifier = Modifier.fillMaxWidth()) {
-                            Text("隐藏连接地址")
-                        }
                     } else {
                         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                             Text(
@@ -775,9 +761,6 @@ fun SettingsPanel(
                                         }) { Text("复制") }
                                     }
                                 }
-                            }
-                            OutlinedButton(onClick = { desktopSyncAddressesExpanded = false }, modifier = Modifier.fillMaxWidth()) {
-                                Text("隐藏连接地址")
                             }
                         }
                     }
@@ -1085,6 +1068,7 @@ private fun readableReminderStage(stage: String): String {
         ReminderChainStage.REMINDER_ACTIVITY_RESUME -> "全屏界面可见"
         ReminderChainStage.USER_COMPLETE -> "用户完成"
         ReminderChainStage.USER_SNOOZE -> "用户延后"
+        ReminderChainStage.USER_ACKNOWLEDGE -> "用户知道了"
         ReminderChainStage.USER_CANCEL -> "用户取消"
         else -> stage
     }

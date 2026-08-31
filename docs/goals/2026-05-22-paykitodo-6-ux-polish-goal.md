@@ -228,7 +228,7 @@ data class PlanningUndoEntry(
 
 class PlanningUndoStack(private val maxSize: Int = 20) {
     private val stack = ArrayDeque<PlanningUndoEntry>()
-    
+
     fun push(entry: PlanningUndoEntry) { ... }
     fun pop(): PlanningUndoEntry? { ... }
     fun canUndo(): Boolean = stack.isNotEmpty()

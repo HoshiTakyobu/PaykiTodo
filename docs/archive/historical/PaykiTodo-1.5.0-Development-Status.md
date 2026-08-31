@@ -69,7 +69,7 @@
 
 ## Current Limitations
 
-- Week/month/list views are functional first-pass views, not full Feishu-level polished views.
+- Week/month/list views are functional first-pass views, with interaction polish still pending.
 - ICS support is first-pass and focuses on common `VEVENT` fields only.
 - Reminder diagnostics list is intentionally compact and currently lives inside settings.
 - Schedule-template manager is functional but still lightweight, and does not yet provide deep editing of template payload rows.

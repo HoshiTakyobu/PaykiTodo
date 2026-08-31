@@ -44,6 +44,14 @@ The chat summary is disposable and can be behind the repository after a compacti
 
 If the same thread UUID has multiple rollout files, the newest completed repository handoff is historical evidence; the state database's active rollout remains the file currently being written and must not be replaced without a separately verified migration.
 
+### Repaired PaykiTodo Thread
+
+Thread `019d4e16-8f61-78e3-9028-1dccf67f1661` previously resumed from the `17-19-59` rollout, whose last compacted summary stopped at `1.15.11`, while later `1.15.12`-`1.15.18` work was written to sibling rollouts with the same UUID.
+
+On 2026-08-31, an attempted pointer migration was reverted automatically by the running Codex process. The durable repair therefore kept the active `17-19-59` rollout in place, backed it up, and appended a structured compacted baseline marked `SESSION_BASELINE_REPAIR_V1_15_18_20260831`. That baseline records `1.15.18 / versionCode 360` and explicitly invalidates the older `1.15.11` summary. The stored working directory was also changed from `G:\Workspace` to `G:\Workspace\Project\PaykiTodo`.
+
+Do not repoint or replace the active rollout merely because sibling files contain newer historical work. First compare the state database pointer, the active rollout's last compacted summary, and the repository baseline. The forensic record is `docs/archive/historical/SESSION_STATE_REPAIR_2026-08-31.md`.
+
 ## What Files The Session Must Read First
 
 The repository bootstrap order is:

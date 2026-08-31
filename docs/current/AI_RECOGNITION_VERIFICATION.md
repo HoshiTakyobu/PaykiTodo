@@ -94,14 +94,14 @@ The phone editor auto-save effects call `onSaveNote` / `onSyncMappings` only. Th
 
 Use the same valid API Key and model, then test these chat-completion Base URL shapes in the provider dialog:
 
-1. `https://api.deepseek.com`
+1. `https://service.example.invalid`
    - Expect success through the automatic `/v1/chat/completions` candidate.
-2. `https://api.deepseek.com/v1`
+2. `https://service.example.invalid/v1`
    - Expect success after appending `/chat/completions`.
-3. `https://api.deepseek.com/v1/chat/completions`
+3. `https://service.example.invalid/v1/chat/completions`
    - Expect success with the exact endpoint.
-4. `https://api.deepseek.com/v1/models`
-   - Expect conversion to `https://api.deepseek.com/v1/chat/completions`.
+4. `https://service.example.invalid/v1/models`
+   - Expect conversion to `https://service.example.invalid/v1/chat/completions`.
 5. `https://example.com`
    - Expect a friendly non-JSON / Base URL hint, not a raw JSON parse exception.
 
@@ -109,13 +109,13 @@ Use the same valid API Key and model, then test these chat-completion Base URL s
 
 Use the same valid API Key, then test these Base URL shapes with `获取模型`:
 
-1. `https://api.deepseek.com`
+1. `https://service.example.invalid`
    - Expect `/v1/models` to be tried first.
-2. `https://api.deepseek.com/v1`
+2. `https://service.example.invalid/v1`
    - Expect `/v1/models`.
-3. `https://api.deepseek.com/v1/chat/completions`
-   - Expect conversion to `https://api.deepseek.com/v1/models`.
-4. `https://api.deepseek.com/v1/models`
+3. `https://service.example.invalid/v1/chat/completions`
+   - Expect conversion to `https://service.example.invalid/v1/models`.
+4. `https://service.example.invalid/v1/models`
    - Expect the exact endpoint.
 5. A provider that does not expose `/models`
    - Expect a readable failure and manual model-name fallback to remain usable.

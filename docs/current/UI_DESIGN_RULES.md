@@ -84,7 +84,7 @@ Desktop Web is a user-facing companion workspace, not an internal admin console.
 
 ## 9. Explicit reference images are binding
 
-When the user supplies concrete UI reference screenshots and asks for reproduction, do not reinterpret the request as a generic style direction such as "modern", "Feishu-like", or "similar colors".
+When the user supplies concrete UI reference screenshots and asks for reproduction, do not reinterpret the request as a generic style direction such as "modern" or "similar colors".
 
 - Match the visible geometry first: viewport scale, top-bar height, sidebar width, content boundaries, grid density, dialog position, dialog proportions, and internal split lines.
 - Use browser screenshots at the same effective output size as the reference whenever possible. For the `1.15.14` Desktop Web Calendar references, verification used `1638x989` CSS pixels with `deviceScaleFactor = 1.25`, producing `2048x1236` output.

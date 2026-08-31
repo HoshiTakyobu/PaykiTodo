@@ -17,6 +17,20 @@ Before making edits, read these files in order:
 
 Then read only the code files directly relevant to the current task.
 
+## Mandatory Resume Baseline Guard
+
+When a turn starts from a compacted summary, a handoff supplied by another model, or a vague continuation such as `继续`, do not act on that inherited version claim first.
+
+Before any substantive response or edit, verify all of the following inside this repository:
+
+1. `git status --short`
+2. `git log -1 --oneline --decorate`
+3. the app version from the Gradle version source
+4. the first section of `docs/current/PROJECT_STATUS.md`
+5. the current `docs/current/SESSION_HANDOFF.md`
+
+If the inherited summary disagrees with the repository, explicitly discard the summary as stale and continue from the repository. This guard applies even when the summary appears detailed or says that files are already modified.
+
 ## Rules
 
 1. Do not use old chat memory as the source of truth when repository files say otherwise.
@@ -32,6 +46,7 @@ Then read only the code files directly relevant to the current task.
 11. Goal-mode prompt files (under `docs/goals/`) that drove a completed work round must be committed into the repository as a separate archive commit after the feature work itself lands. Subject like `归档 X.Y.Z 目标文档`. Do not commit goal files that contain API keys, tokens, private Base URLs, signing material, or other secrets — redact or keep them outside git instead. See `docs/goals/README.md` for the naming convention.
 12. Version numbers must always be written with standard ASCII digits and dots, such as `v1.10.3`, `1.10.3`, or `1.11.0 / versionCode 222`. Never write version numbers as Chinese numerals or mixed text such as `一一零三`, `一零三`, or `一.一零.三` in chat-facing summaries, docs, commit messages, release notes, or APK build reports.
 13. Any user-visible feature change, bug fix, reminder/sync/data behavior change, or APK build meant for installation must bump `versionName` and `versionCode` before building/reporting the APK. Do not ship, hand off, or report a newly built debug/release APK with the same install version as the previous completed work round unless the user explicitly asks for a no-version metadata rebuild.
+14. Thread `019d4e16-8f61-78e3-9028-1dccf67f1661` has a history of duplicate rollout files. On 2026-08-31, the active `17-19-59` rollout was backed up and given a structured `1.15.18 / versionCode 360` compacted repair baseline because the running process would not retain a sibling-rollout pointer. On resume, verify the last compacted marker and the current repository; never trust an earlier `1.15.11` summary in that file. See `docs/archive/historical/SESSION_STATE_REPAIR_2026-08-31.md` if forensic details are needed.
 
 ## GitHub Public Repository Standards
 

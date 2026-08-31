@@ -70,7 +70,7 @@ This file tracks the product at a practical level for new coding sessions.
 - board schedule rows align the left color strip to the measured height of the event text block
 - board schedule rows keep normal and in-progress color strips in one aligned column
 - normal board schedule rows have no outer fill or border, while in-progress rows use a gold border with only subtle inner highlight
-- daily board schedule rows use compact Feishu-style density with explicit small line heights, one-line locations, tighter padding, and smaller in-progress check-in actions
+- daily board schedule rows use compact schedule-row density with explicit small line heights, one-line locations, tighter padding, and smaller in-progress check-in actions
 - board in-progress schedule rows show check-in status for check-in-enabled events and expose compact `签到` / `签退` actions
 - board in-progress schedule rows route check-in-enabled events to the independent full-screen check-in surface through `去签到` / `查看`, keeping the board focused on overview rather than inline operations
 - daily board uses a compact `暂无日程` state when today's visible schedule is empty, including after all of today's events have ended
@@ -201,7 +201,7 @@ This file tracks the product at a practical level for new coding sessions.
 ### Calendar System
 
 - timeline-style calendar foundation
-- Desktop Web Calendar `1.15.15` uses a screenshot-matched Feishu-style workstation composition at 125% Windows scaling: 58px top navigation, 296px mini-calendar sidebar, unframed continuous calendar grid, restrained blue action/selection accents, and thin neutral separators; the misleading sidebar group list is removed and Excel import is an explicit preview action
+- Desktop Web Calendar `1.15.15` uses a specified workstation composition at 125% Windows scaling: 58px top navigation, 296px mini-calendar sidebar, unframed continuous calendar grid, restrained blue action/selection accents, and thin neutral separators; the misleading sidebar group list is removed and Excel import is an explicit preview action
 - Desktop Web Calendar supports functional day, seven-day week, and 42-cell month views; mini-calendar month/date navigation, event/location search, per-group visibility filtering, and collapsed Excel import share the left sidebar
 - Desktop Web event editing opens a reference-proportioned two-column window with the PaykiTodo event form on the left and a live single-day timeline preview on the right; title/date/time/color edits update the preview without changing save semantics
 - Desktop Web calendar CSS explicitly neutralizes old full-width navigation/modal-button inheritance, preventing document-width expansion, off-screen tab scrolling, second-row header actions, and stretched close controls

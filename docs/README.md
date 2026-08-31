@@ -21,6 +21,8 @@ Older versioned requirement, design, recovery, status, and handoff documents liv
 They are kept for traceability, but they are not the current product baseline.
 Git history still preserves their original paths in earlier commits.
 
+Machine/session recovery incident records also live here. They explain past Codex rollout or index repairs but must never override `docs/current/PROJECT_STATUS.md`.
+
 ## Goal prompts
 
 - `docs/goals/`

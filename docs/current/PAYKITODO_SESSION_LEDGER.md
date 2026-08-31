@@ -63,7 +63,7 @@ These areas were implemented and then repeatedly revised based on user feedback,
 
 The original session shows repeated user focus on:
 
-- Feishu-like calendar polish and completion level
+- calendar polish and completion level
 - removing redundant calendar header controls
 - better themed wallpapers for light and dark contexts
 - clearer text contrast in dashboard, settings, and launch screens

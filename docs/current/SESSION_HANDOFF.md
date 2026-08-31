@@ -33,6 +33,13 @@
 - `git diff --check` and ignored-secret checks passed before publication.
 - GitHub Release asset and remote contributor attribution were rechecked after upload.
 
+## Session Integrity
+
+- The long-running PaykiTodo thread `019d4e16-8f61-78e3-9028-1dccf67f1661` had three live-looking rollout files under one UUID.
+- Its state database previously pointed to a rollout whose final compacted summary stopped at `1.15.11`, which caused later resumes to ignore the already released `1.15.18` baseline.
+- On 2026-08-31, both local Codex state stores and the active rollout were backed up. Because the running process restored the active `17-19-59` pointer, that rollout received a new structured compacted baseline for `1.15.18 / versionCode 360`, explicitly superseding the stale `1.15.11` summary.
+- The thread working-directory hint now points directly to this repository. No rollout was deleted or replaced; see `docs/archive/historical/SESSION_STATE_REPAIR_2026-08-31.md` for the exact diagnosis and rollback references.
+
 ## Physical Device Checks Still Needed
 
 1. Install the signed release on a clean/release-signed profile and confirm startup and data operations.

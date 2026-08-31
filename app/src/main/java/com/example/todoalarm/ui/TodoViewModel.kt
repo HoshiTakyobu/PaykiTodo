@@ -18,6 +18,7 @@ import com.example.todoalarm.data.AppSettings
 import com.example.todoalarm.data.AiReport
 import com.example.todoalarm.data.AiReportRetention
 import com.example.todoalarm.data.AiReportType
+import com.example.todoalarm.data.BackupSnapshot
 import com.example.todoalarm.data.CalendarEventDraft
 import com.example.todoalarm.data.DEFAULT_PLANNING_REMINDER_MINUTES
 import com.example.todoalarm.data.DailyReportGenerator
@@ -69,6 +70,9 @@ import com.example.todoalarm.data.toEpochMillis
 import com.example.todoalarm.data.storageStringToWeekdays
 import com.example.todoalarm.sync.DesktopSyncStatus
 import com.example.todoalarm.sync.DesktopSyncService
+import com.example.todoalarm.sync.RemoteBackupInspection
+import com.example.todoalarm.sync.diffAgainst
+import com.example.todoalarm.sync.remoteSummary
 import com.example.todoalarm.widget.TodoWidgetProvider
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.Dispatchers
@@ -1068,6 +1072,7 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
     fun updateRemoteSync(enabled: Boolean, serverUrl: String = settingsStore.currentSettings().remoteSyncServerUrl) {
         settingsStore.updateRemoteSync(enabled, serverUrl)
         if (enabled) {
+            settingsStore.remoteSyncCredentials()
             app.remoteSyncCoordinator.start()
             app.remoteSyncCoordinator.onLocalDataChanged()
         } else {
@@ -1084,6 +1089,24 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
             runCatching { app.remoteSyncCoordinator.syncNow() }
         }
         return "已开始远程同步"
+    }
+
+    suspend fun inspectRemoteBackup(): RemoteBackupInspection? {
+        val remoteSnapshot = app.remoteSyncCoordinator.downloadLatest() ?: return null
+        val localSnapshot = repository.exportSnapshot(settingsStore.currentSettings())
+        return RemoteBackupInspection(
+            snapshot = remoteSnapshot,
+            remote = remoteSnapshot.remoteSummary(),
+            local = localSnapshot.remoteSummary(),
+            diff = remoteSnapshot.diffAgainst(localSnapshot)
+        )
+    }
+
+    suspend fun restoreRemoteBackup(inspection: RemoteBackupInspection): String? {
+        return runCatching {
+            restoreSnapshotWithSafetyBackup(inspection.snapshot, "远程快照")
+            null
+        }.getOrElse { it.message ?: "远程恢复失败" }
     }
 
     fun updateBoardCollapseState(
@@ -1387,50 +1410,56 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
 
     suspend fun importBackup(sourceUri: Uri): String? {
         return runCatching {
-            val currentSettings = settingsStore.currentSettings()
-            val currentSnapshot = repository.exportSnapshot(currentSettings)
-            val existingItems = repository.getAllTodos()
-            val externalSafetyBackup = currentSettings.backupDirectoryUri?.let { directoryUri ->
-                runCatching { app.backupManager.autoBackupToDirectory(directoryUri, currentSnapshot) }.getOrNull()
-            }
-            if (externalSafetyBackup == null) {
-                app.backupManager.autoBackupToInternalStorage(currentSnapshot)
-            }
-
-            clearReminderArtifacts(existingItems)
-            ActiveReminderStore.clear(app)
-            app.stopService(Intent(app, ReminderForegroundService::class.java))
-
             val snapshot = app.backupManager.importFromUri(sourceUri)
-            repository.importSnapshot(snapshot)
-            settingsStore.replaceAll(
-                snapshot.settings.copy(
-                    backupDirectoryUri = currentSettings.backupDirectoryUri,
-                    autoBackupEnabled = currentSettings.autoBackupEnabled,
-                    remoteSyncEnabled = currentSettings.remoteSyncEnabled,
-                    remoteSyncServerUrl = currentSettings.remoteSyncServerUrl,
-                    remoteSyncDeviceId = currentSettings.remoteSyncDeviceId,
-                    remoteSyncSecret = currentSettings.remoteSyncSecret,
-                    desktopSyncEnabled = false,
-                    desktopSyncToken = currentSettings.desktopSyncToken,
-                    planningAiEnabled = currentSettings.planningAiEnabled,
-                    planningAiProviderName = currentSettings.planningAiProviderName,
-                    planningAiBaseUrl = currentSettings.planningAiBaseUrl,
-                    planningAiApiKey = currentSettings.planningAiApiKey,
-                    planningAiModel = currentSettings.planningAiModel,
-                    planningAiProviders = currentSettings.planningAiProviders
-                )
-            )
-            selectedGroupIdsFlow.value = emptySet()
-            refreshTaskStates()
-            repository.futureReminderItems(System.currentTimeMillis()).forEach(app.alarmScheduler::schedule)
-            DailyReportScheduler.scheduleNext(app)
-            DailyBriefScheduler.scheduleNext(app)
-            TodoWidgetProvider.notifyWidgetDataChanged(app)
-            val todoCount = snapshot.tasks.count { it.isTodo }
-            val eventCount = snapshot.tasks.count { it.isEvent }
-            "迁入完成：$todoCount 条待办、$eventCount 条日程、${snapshot.planningNotes.size} 个规划文档"
+            restoreSnapshotWithSafetyBackup(snapshot, "迁移包")
         }.getOrElse { it.message ?: "导入失败" }
+    }
+
+    private suspend fun restoreSnapshotWithSafetyBackup(
+        snapshot: BackupSnapshot,
+        sourceLabel: String
+    ): String {
+        val currentSettings = settingsStore.currentSettings()
+        val currentSnapshot = repository.exportSnapshot(currentSettings)
+        val externalSafetyBackup = currentSettings.backupDirectoryUri?.let { directoryUri ->
+            runCatching { app.backupManager.autoBackupToDirectory(directoryUri, currentSnapshot) }.getOrNull()
+        }
+        if (externalSafetyBackup == null) {
+            app.backupManager.autoBackupToInternalStorage(currentSnapshot)
+        }
+
+        clearReminderArtifacts(repository.getAllTodos())
+        ActiveReminderStore.clear(app)
+        app.stopService(Intent(app, ReminderForegroundService::class.java))
+
+        repository.importSnapshot(snapshot)
+        settingsStore.replaceAll(
+            snapshot.settings.copy(
+                backupDirectoryUri = currentSettings.backupDirectoryUri,
+                autoBackupEnabled = currentSettings.autoBackupEnabled,
+                remoteSyncEnabled = currentSettings.remoteSyncEnabled,
+                remoteSyncServerUrl = currentSettings.remoteSyncServerUrl,
+                remoteSyncDeviceId = currentSettings.remoteSyncDeviceId,
+                remoteSyncSecret = currentSettings.remoteSyncSecret,
+                desktopSyncEnabled = false,
+                desktopSyncToken = currentSettings.desktopSyncToken,
+                planningAiEnabled = currentSettings.planningAiEnabled,
+                planningAiProviderName = currentSettings.planningAiProviderName,
+                planningAiBaseUrl = currentSettings.planningAiBaseUrl,
+                planningAiApiKey = currentSettings.planningAiApiKey,
+                planningAiModel = currentSettings.planningAiModel,
+                planningAiProviders = currentSettings.planningAiProviders
+            )
+        )
+        selectedGroupIdsFlow.value = emptySet()
+        refreshTaskStates()
+        repository.futureReminderItems(System.currentTimeMillis()).forEach(app.alarmScheduler::schedule)
+        DailyReportScheduler.scheduleNext(app)
+        DailyBriefScheduler.scheduleNext(app)
+        TodoWidgetProvider.notifyWidgetDataChanged(app)
+        val todoCount = snapshot.tasks.count { it.isTodo }
+        val eventCount = snapshot.tasks.count { it.isEvent }
+        return "${sourceLabel}恢复完成：$todoCount 条待办、$eventCount 条日程、${snapshot.planningNotes.size} 个规划文档"
     }
 
     private fun refreshQuotesIfNeeded(force: Boolean) {

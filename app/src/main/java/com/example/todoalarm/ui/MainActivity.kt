@@ -302,6 +302,8 @@ class MainActivity : ComponentActivity() {
                     onRemoteSyncNow = {
                         Toast.makeText(this, viewModel.syncRemoteNow(), Toast.LENGTH_SHORT).show()
                     },
+                    onInspectRemoteBackup = viewModel::inspectRemoteBackup,
+                    onRestoreRemoteBackup = viewModel::restoreRemoteBackup,
                     onInspectDataHealth = viewModel::inspectDataHealth,
                     onCleanSafeDataHealthItems = viewModel::cleanSafeDataHealthItems,
                     onBoardCollapseStateChange = viewModel::updateBoardCollapseState

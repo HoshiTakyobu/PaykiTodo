@@ -58,6 +58,7 @@ This file tracks the product at a practical level for new coding sessions.
 - phone drawer uses a grouped navigation hierarchy with a product identity header, always-visible primary and review destinations, fixed Settings / appearance utilities, and a descriptive bottom-sheet theme picker; all seven destinations remain directly reachable in light and dark modes
 - board todo block includes missed active todos, today's normal todos, and active no-DDL todos
 - board remains an overview-first surface for schedules, announcements, and countdown targets, while its todo cards support the same long-press batch completion/cancellation mode as the Todo page; editing still routes to the dedicated todo surface
+- every todo full-screen reminder exposes `我知道了`, including same-day due todos; acknowledgement only dismisses the current reminder and leaves completion, cancellation, DDL, and later reminders unchanged
 - board view can show today's todos and today's / tomorrow's schedule summary together
 - board can show a `倒数日` card for active countdown-enabled todos / events; todos count down to DDL times, events count down to event start times, exact-time expired targets are hidden, long target titles wrap fully, and tapping rows opens the corresponding todo / event preview first instead of jumping straight into an editor
 - board section title / empty-card areas navigate to the corresponding task or calendar surface while concrete todo / event rows keep their detail-preview behavior
@@ -165,6 +166,8 @@ This file tracks the product at a practical level for new coding sessions.
 - background capture recognition uses a `capture_processing` notification channel; completed capture notifications open the matching Planning Desk document after direct node insertion, while the phone Planning Desk Markdown compatibility capture starts background recognition only after an explicit confirmation instead of blocking the editor
 - background capture notification delivery explicitly checks Android 13+ notification permission in the delivery function and catches permission-state races, so sharing/camera/voice capture still writes Planning Desk drafts without crashing when notifications are denied
 - AI Provider API Keys and Desktop Sync access state / tokens are stored locally in settings and deliberately excluded from backup JSON export; importing a backup without AI keys preserves existing local keys, while importing an old backup that contains Desktop Sync enabled/token fields restores Desktop Sync as disabled and ignores the old token so the app can generate a fresh local access key after the user manually enables sync again
+- remote snapshot inspection downloads and decrypts the latest server envelope without changing Room data, displays export time and record counts, and requires explicit replacement confirmation; restore first creates an internal or configured-directory `.paykibak` safety backup and preserves local credentials
+- Windows server snapshot mode uses the same PBKDF2-SHA256/AES-GCM envelope and `.paykibak` archive locally, renders read-only daily board/todo/calendar data, and never persists the remote synchronization secret
 - Planning Desk database migration is repaired in `1.7.5`: database version `10` includes `MIGRATION_9_10` to rebuild `planning_notes` tables created by the mismatched `1.7.0`-`1.7.4` migration
 - Planning Desk database version is now `11`; `MIGRATION_10_11` creates the `planning_line_mappings` table and indices
 - Planning Desk Outliner is user-facing in `1.12.10`: database version `22` stores `planning_nodes` with optional `linkedEndTodoId` and `syncEnabled`, migrates existing Markdown lines into tree nodes, keeps Markdown headings such as `# 今日计划` / `# 收集箱` as non-sync structure nodes instead of official todos/events, includes nodes in backup / restore, exposes repository / ViewModel CRUD plus Markdown import-export helpers, renders a phone outline editor by default, exposes desktop `/api/planning/nodes` routes, and adds desktop Web node editing plus up/down reorder and same-level drag reorder controls
@@ -343,7 +346,7 @@ This file tracks the product at a practical level for new coding sessions.
 - Settings includes a data health check surface that scans old completed todos, empty planning notes, stale draft nodes, expired AI reports, and overdue no-reminder todos; one-click cleanup only deletes safe items after confirmation
 - Debug-to-Release migration is supported through `.paykibak`; the import flow backs up current data first, restores reminders/widgets, keeps current installation credentials, and accepts legacy JSON
 - optional remote sync is local-first and AES-GCM encrypted; local data changes schedule a delayed upload and enabled sync has a one-minute fallback, while disabled sync cancels both jobs
-- the Azure/Nginx-compatible relay stores only encrypted payload bytes; automatic pull, conflict preview, and merge/restore UI are not implemented yet
+- the Azure/Nginx-compatible relay stores only encrypted payload bytes; the phone can inspect a remote snapshot and explicitly replace local data after a safety backup, while automatic pull and field-level conflict merge remain disabled
 
 ### Input Help
 
@@ -353,7 +356,7 @@ This file tracks the product at a practical level for new coding sessions.
 ### Desktop / LAN Assistance
 
 - LAN browser-based desktop sync console exists
-- Windows `win-x64` self-contained WebView2 shell builds to `desktop/dist/PaykiTodo.exe` and connects directly to the phone LAN console; server-backed desktop data mode is still pending
+- Windows `win-x64` self-contained WebView2 shell builds to `desktop/dist/PaykiTodo.exe`, connects directly to the phone LAN console, or locally decrypts a server snapshot in an explicitly read-only mode
 - phone-side HTTP serving model exists
 - browser can perform limited data operations against the phone-side dataset
 - desktop web can edit existing todos with title, notes, DDL, the combined reminder switch, multi-group tags, recurrence, ring, and vibration fields
@@ -468,7 +471,7 @@ This file tracks the product at a practical level for new coding sessions.
 - stronger reminder reliability across vendor ROM differences
 - more complete desktop-side operations
 - GitHub Release publishing / public distribution remains a manual step and requires explicit user authorization
-- remote-sync download, conflict preview, and safe merge flow remain pending
+- remote-sync automatic pull and field-level conflict merge remain disabled; the current flow is explicit summary review followed by replacement restore with a local safety backup
 - tighter documentation so a new session can reconstruct state without old transcripts
 
 ## Notes

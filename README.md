@@ -22,7 +22,7 @@ PaykiTodo 是一个以 **强提醒、本地可控、日程与待办一体化** �
 
 | 项目 | 内容 |
 | --- | --- |
-| 当前源码版本 | `v1.15.19`（本地开发中，尚未发布） |
+| 当前源码版本 | `v1.15.20`（本地开发中，尚未发布） |
 | 最新 GitHub Release | `v1.15.18` |
 | Android 包名 | `com.paykitodo.app` |
 | 支持系统 | Android 8.0 及以上 / API 26+ |
@@ -194,7 +194,7 @@ docs/templates/
 
 ### Windows 桌面端构建
 
-桌面端当前是对手机 LAN Web 工作台的 Windows 壳，默认发布为 self-contained `win-x64`，目标电脑无需安装 .NET 运行时；仍需要 Microsoft Edge WebView2 Runtime。它目前直接连接手机端电脑同步地址，服务器模式和双向冲突合并尚未完成。
+桌面端当前是对手机 LAN Web 工作台的 Windows 壳，默认发布为 self-contained `win-x64`，目标电脑无需安装 .NET 运行时；仍需要 Microsoft Edge WebView2 Runtime。它支持直接连接手机端电脑同步地址，也支持使用设备 ID 和远程同步密钥读取服务器加密快照的只读模式；服务器模式不修改手机数据，双向冲突合并仍未开放。
 
 ```powershell
 ./tools/Build-PaykiTodoDesktop.ps1

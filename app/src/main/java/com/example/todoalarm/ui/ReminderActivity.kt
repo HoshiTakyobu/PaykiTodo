@@ -318,8 +318,6 @@ private fun ReminderScreen(
         ?: ResolvedTaskGroup(0, "例行", "#4CB782")
     val accent = colorFromHex(resolvedGroup.colorHex)
     val isEvent = todoItem?.isEvent == true
-    val isPlannedTodo = !isEvent && todoItem?.hasDueDate == true &&
-        todoItem.dueDateTimeOrNull()?.toLocalDate()?.isAfter(LocalDate.now()) == true
     val alarmMode = todoItem?.alarmMode == true
     val alarmPulseAlpha by rememberInfiniteTransition(label = "alarmModePulse").animateFloat(
         initialValue = 0.18f,
@@ -510,16 +508,14 @@ private fun ReminderScreen(
                         ) {
                             Text("延后10分钟提醒")
                         }
-                        if (isPlannedTodo) {
-                            FilledTonalButton(
-                                onClick = onAcknowledgeReminder,
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .height(58.dp),
-                                shape = RoundedCornerShape(20.dp)
-                            ) {
-                                Text("我知道了")
-                            }
+                        FilledTonalButton(
+                            onClick = onAcknowledgeReminder,
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(58.dp),
+                            shape = RoundedCornerShape(20.dp)
+                        ) {
+                            Text("我知道了")
                         }
                     } else if (todoItem?.checkInEnabled == true) {
                         FilledTonalButton(

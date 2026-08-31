@@ -224,6 +224,7 @@ class AppSettingsStore(context: Context) {
                 preferences.edit().putString(KEY_REMOTE_SYNC_SECRET, it).apply()
             }
         }
+        refresh()
         return deviceId to secret
     }
 

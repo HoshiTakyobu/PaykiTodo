@@ -138,6 +138,7 @@ import com.example.todoalarm.data.ThemeMode
 import com.example.todoalarm.data.TodoItem
 import com.example.todoalarm.data.TodoRepository
 import com.example.todoalarm.data.WeekStartMode
+import com.example.todoalarm.sync.RemoteBackupInspection
 import com.example.todoalarm.sync.DesktopSyncStatus
 import com.example.todoalarm.ui.theme.PaykiGreetingFontFamily
 import android.widget.Toast
@@ -533,6 +534,8 @@ internal fun DashboardBody(
     onRemoteSyncEnabledChange: (Boolean, String) -> Unit,
     onRemoteSyncServerUrlChange: (String) -> Unit,
     onRemoteSyncNow: () -> Unit,
+    onInspectRemoteBackup: suspend () -> RemoteBackupInspection?,
+    onRestoreRemoteBackup: suspend (RemoteBackupInspection) -> String?,
     onInspectDataHealth: suspend () -> DataHealthReport,
     onCleanSafeDataHealthItems: suspend () -> DataHealthCleanResult,
     onOpenCalendarBatchImport: () -> Unit,
@@ -677,6 +680,8 @@ internal fun DashboardBody(
                 onRemoteSyncEnabledChange = onRemoteSyncEnabledChange,
                 onRemoteSyncServerUrlChange = onRemoteSyncServerUrlChange,
                 onRemoteSyncNow = onRemoteSyncNow,
+                onInspectRemoteBackup = onInspectRemoteBackup,
+                onRestoreRemoteBackup = onRestoreRemoteBackup,
                 onInspectDataHealth = onInspectDataHealth,
                 onCleanSafeDataHealthItems = onCleanSafeDataHealthItems,
                 onCopyCrashLog = permissions.copyCrashLog,

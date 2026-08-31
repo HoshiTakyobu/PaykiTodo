@@ -88,6 +88,10 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.core.content.pm.PackageInfoCompat
+import com.example.todoalarm.sync.RemoteBackupInspection
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 import com.example.todoalarm.data.AppSettings
 import com.example.todoalarm.data.AiReportRetention
 import com.example.todoalarm.data.DataHealthCleanResult
@@ -236,6 +240,8 @@ fun SettingsPanel(
     onRemoteSyncEnabledChange: (Boolean, String) -> Unit,
     onRemoteSyncServerUrlChange: (String) -> Unit,
     onRemoteSyncNow: () -> Unit,
+    onInspectRemoteBackup: suspend () -> RemoteBackupInspection?,
+    onRestoreRemoteBackup: suspend (RemoteBackupInspection) -> String?,
     onInspectDataHealth: suspend () -> DataHealthReport,
     onCleanSafeDataHealthItems: suspend () -> DataHealthCleanResult,
     onCopyCrashLog: () -> Unit,
@@ -609,6 +615,11 @@ fun SettingsPanel(
             var dataHealthMessage by remember { mutableStateOf<String?>(null) }
             var dataHealthConfirmVisible by remember { mutableStateOf(false) }
             var remoteSyncServerUrl by remember(settings.remoteSyncServerUrl) { mutableStateOf(settings.remoteSyncServerUrl) }
+            var remoteInspection by remember { mutableStateOf<RemoteBackupInspection?>(null) }
+            var remoteInspecting by remember { mutableStateOf(false) }
+            var remoteRestoring by remember { mutableStateOf(false) }
+            var remoteMessage by remember { mutableStateOf<String?>(null) }
+            var remoteRestoreConfirmVisible by remember { mutableStateOf(false) }
             Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                     Column(modifier = Modifier.weight(1f)) {
@@ -658,11 +669,93 @@ fun SettingsPanel(
                     placeholder = { Text("https://panel.example.com/paykitodo-sync") },
                     supportingText = { Text("必须使用 HTTPS；例如部署在 Nginx 路径 /paykitodo-sync 下。") }
                 )
+                if (settings.remoteSyncEnabled && settings.remoteSyncDeviceId.isNotBlank() && settings.remoteSyncSecret.isNotBlank()) {
+                    RemoteSyncCredentialRows(
+                        deviceId = settings.remoteSyncDeviceId,
+                        secret = settings.remoteSyncSecret,
+                        context = context
+                    )
+                }
                 OutlinedButton(
                     onClick = onRemoteSyncNow,
                     enabled = settings.remoteSyncEnabled && remoteSyncServerUrl.startsWith("https://", ignoreCase = true),
                     modifier = Modifier.fillMaxWidth()
                 ) { Text("立即上传本机加密数据") }
+                OutlinedButton(
+                    onClick = {
+                        scope.launch {
+                            remoteInspecting = true
+                            remoteMessage = null
+                            remoteInspection = runCatching { onInspectRemoteBackup() }
+                                .onFailure { remoteMessage = "检查失败：${it.message ?: it::class.java.simpleName}" }
+                                .getOrNull()
+                            if (remoteInspection == null && remoteMessage == null) {
+                                remoteMessage = "服务器上还没有可恢复的快照。"
+                            }
+                            remoteInspecting = false
+                        }
+                    },
+                    enabled = settings.remoteSyncEnabled && remoteSyncServerUrl.startsWith("https://", ignoreCase = true) && !remoteInspecting,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    if (remoteInspecting) CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
+                    else Text("检查远程备份")
+                }
+                remoteMessage?.let { message ->
+                    Text(
+                        message,
+                        color = if (message.contains("失败") || message.contains("错误")) {
+                            MaterialTheme.colorScheme.error
+                        } else {
+                            MaterialTheme.colorScheme.primary
+                        },
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
+                remoteInspection?.let { inspection ->
+                    RemoteBackupInspectionCard(
+                        inspection = inspection,
+                        restoring = remoteRestoring,
+                        onRestore = { remoteRestoreConfirmVisible = true }
+                    )
+                }
+                if (remoteRestoreConfirmVisible && remoteInspection != null) {
+                    AlertDialog(
+                        onDismissRequest = { if (!remoteRestoring) remoteRestoreConfirmVisible = false },
+                        title = { Text("确认恢复远程快照？") },
+                        text = {
+                            Text(
+                                "这会用服务器快照替换当前本地待办、日程、规划文档和历史数据。恢复前会自动保存当前本地快照，API Key、电脑同步密钥和服务器同步密钥继续保留在本机。"
+                            )
+                        },
+                        confirmButton = {
+                            TextButton(
+                                enabled = !remoteRestoring,
+                                onClick = {
+                                    remoteInspection?.let { selected ->
+                                        scope.launch {
+                                            remoteRestoring = true
+                                            val error = onRestoreRemoteBackup(selected)
+                                            if (error == null) {
+                                                remoteInspection = null
+                                                remoteMessage = "远程快照恢复完成，当前本地数据已替换。"
+                                            } else {
+                                                remoteMessage = error
+                                            }
+                                            remoteRestoring = false
+                                            remoteRestoreConfirmVisible = false
+                                        }
+                                    }
+                                }
+                            ) { Text("确认恢复") }
+                        },
+                        dismissButton = {
+                            TextButton(enabled = !remoteRestoring, onClick = { remoteRestoreConfirmVisible = false }) {
+                                Text("暂不恢复")
+                            }
+                        }
+                    )
+                }
                 HorizontalDivider()
                 DataHealthPanel(
                     report = dataHealthReport,
@@ -2523,6 +2616,117 @@ private fun DataHealthMetricRow(
                 fontWeight = FontWeight.Bold,
                 color = if (count > 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
             )
+        }
+    }
+}
+
+@Composable
+private fun RemoteBackupInspectionCard(
+    inspection: RemoteBackupInspection,
+    restoring: Boolean,
+    onRestore: () -> Unit
+) {
+    val remote = inspection.remote
+    val local = inspection.local
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.45f))
+    ) {
+        Column(
+            modifier = Modifier.padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Text("远程快照已找到", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+            Text(
+                "导出时间：${formatRemoteBackupTime(remote.exportedAtMillis)}",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Text(
+                "服务器：${remote.todoCount} 条待办、${remote.eventCount} 条日程、${remote.planningNoteCount} 个规划文档、${remote.historyCount} 条历史事项",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            Text(
+                "本机：${local.todoCount} 条待办、${local.eventCount} 条日程、${local.planningNoteCount} 个规划文档、${local.historyCount} 条历史事项",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            val diff = inspection.diff
+            Text(
+                if (!diff.hasChanges) {
+                    "差异：按事项 ID 对比，待办、日程和规划文档没有发现内容差异。"
+                } else {
+                    "差异：待办新增 ${diff.addedTodos}、缺失 ${diff.removedTodos}、变更 ${diff.changedTodos}；" +
+                        "日程新增 ${diff.addedEvents}、缺失 ${diff.removedEvents}、变更 ${diff.changedEvents}；" +
+                        "规划文档新增 ${diff.addedPlanningNotes}、缺失 ${diff.removedPlanningNotes}、变更 ${diff.changedPlanningNotes}。"
+                },
+                style = MaterialTheme.typography.bodySmall,
+                color = if (diff.hasChanges) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Text(
+                "这里只查看摘要，不会自动覆盖本地数据。确认恢复前会先自动保存当前本地快照。",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.tertiary
+            )
+            OutlinedButton(onClick = onRestore, enabled = !restoring, modifier = Modifier.fillMaxWidth()) {
+                if (restoring) CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
+                else Text("查看后恢复此快照")
+            }
+        }
+    }
+}
+
+private fun formatRemoteBackupTime(millis: Long): String {
+    return SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.CHINA).format(Date(millis))
+}
+
+@Composable
+private fun RemoteSyncCredentialRows(
+    deviceId: String,
+    secret: String,
+    context: android.content.Context
+) {
+    PrefCard("服务器模式连接信息") {
+        Text(
+            "把下面的设备 ID 和远程同步密钥填写到 Windows 客户端的服务器模式。密钥只在本机显示和使用，不会写入迁移包。",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        SettingsCopyRow("设备 ID", deviceId, context)
+        SettingsCopyRow("远程同步密钥", secret, context)
+    }
+}
+
+@Composable
+private fun SettingsCopyRow(
+    label: String,
+    value: String,
+    context: android.content.Context
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+            Text(label, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
+            Text(
+                value,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurface,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+        OutlinedButton(onClick = {
+            val clipboard = context.getSystemService(android.content.ClipboardManager::class.java)
+            clipboard?.setPrimaryClip(android.content.ClipData.newPlainText(label, value))
+            Toast.makeText(context, "${label}已复制", Toast.LENGTH_SHORT).show()
+        }) {
+            Text("复制")
         }
     }
 }

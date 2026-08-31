@@ -83,6 +83,7 @@ import com.example.todoalarm.data.ThemeMode
 import com.example.todoalarm.data.TodoDraft
 import com.example.todoalarm.data.TodoItem
 import com.example.todoalarm.data.WeekStartMode
+import com.example.todoalarm.sync.RemoteBackupInspection
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.delay
@@ -215,6 +216,8 @@ fun DashboardScreen(
     onRemoteSyncEnabledChange: (Boolean, String) -> Unit,
     onRemoteSyncServerUrlChange: (String) -> Unit,
     onRemoteSyncNow: () -> Unit,
+    onInspectRemoteBackup: suspend () -> RemoteBackupInspection?,
+    onRestoreRemoteBackup: suspend (RemoteBackupInspection) -> String?,
     onInspectDataHealth: suspend () -> DataHealthReport,
     onCleanSafeDataHealthItems: suspend () -> DataHealthCleanResult,
     onBoardCollapseStateChange: (Boolean, Boolean, Boolean, Boolean, Boolean) -> Unit
@@ -789,6 +792,8 @@ fun DashboardScreen(
                     onRemoteSyncEnabledChange = onRemoteSyncEnabledChange,
                     onRemoteSyncServerUrlChange = onRemoteSyncServerUrlChange,
                     onRemoteSyncNow = onRemoteSyncNow,
+                    onInspectRemoteBackup = onInspectRemoteBackup,
+                    onRestoreRemoteBackup = onRestoreRemoteBackup,
                     onInspectDataHealth = onInspectDataHealth,
                     onCleanSafeDataHealthItems = onCleanSafeDataHealthItems,
                     onOpenCalendarBatchImport = { batchImportVisible = true },

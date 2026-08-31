@@ -4,70 +4,44 @@
 
 - Repository root: `G:\Workspace\Project\PaykiTodo`
 - Branch: `main`
-- Pre-round baseline commit: `2edb774`
-- Current code version: `1.15.16 / versionCode 358`
+- Pre-round baseline commit: `e00d907`
+- Current code version: `1.15.18 / versionCode 360`
 - Database version: `30`
-- Latest debug APK: `app/build/outputs/apk/debug/PaykiTodo-1.15.16-debug.apk`
+- Latest debug APK: `app/build/outputs/apk/debug/PaykiTodo-1.15.18-debug.apk`
 - Latest signed release APK available locally: `app/build/outputs/apk/release/PaykiTodo-1.14.12-release.apk`
 - Latest GitHub Release: `https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.14.12`
 - This round must not be pushed unless the user explicitly requests it.
 
 ## Completed In This Round
 
-1. Desktop Web brand/login surfaces now use the phone launcher artwork served from the Android resource.
-2. Desktop Web todo management now renders only `待办` and `历史待办`; obsolete summary cards and the old timeline heading were removed while group filtering remains.
-3. Desktop Calendar week, month, and mini-calendar calculations now use the shared phone `WeekStartMode`; the web UI persists Monday-start or Sunday-start through the authenticated calendar-preferences endpoint.
-4. Today's mini-calendar cell retains the gray selected-week range background under the blue today ring.
-5. Ongoing event notifications no longer display a live chronometer and retain only the planned event range.
-6. Future todo reminder surfaces now include a non-mutating `我知道了` action in the activity and accessibility overlay; it clears the already-triggered alarm pair and current reminder session while preserving later reminders for the same todo.
-7. Desktop Sync Settings directly displays available LAN URLs when the service is running and no longer has show/hide address buttons.
-8. Database remains `30`; the app version is `1.15.16 / versionCode 358`.
+1. Removed the user-visible reminder enable switch from phone todo/event editors, phone Planning Desk preview, Desktop Web todo/event editors, and Desktop Web Planning Desk preview.
+2. Added independent full-screen and notification reminder checkboxes on all those surfaces.
+3. Restored exact channel persistence and routing for `FULLSCREEN`, `NOTIFICATION`, and `FULLSCREEN_AND_NOTIFICATION`; selecting neither disables scheduling.
+4. Full-screen selection controls only the full-screen attempt, and notification selection controls visible notification content and retained post-action detail notifications.
+5. Preserved the existing `1.15.17` behavior where snooze changes reminder time without shifting DDL and acknowledgement/snooze can leave a detail-opening normal notification when the notification channel is enabled.
+6. Rebuilt the Desktop Web hour axis from 24 real rows after the actual header, eliminating the duplicated JavaScript header offset that could visually separate labels from solid grid lines.
+7. Ended Desktop Web events now use parent-card opacity with no color-only saturation filter, so title, time, location, border, and background fade together.
+8. Version moved to `1.15.18 / versionCode 360`; database remains `30`.
 
-## Preserved Browser Verification Evidence
+## Verification
 
-- Reference inputs:
-  - `E:\Temp\codex-clipboard-1T2xav.png`
-  - `E:\Temp\codex-clipboard-jcrlI0.png`
-  - `E:\Temp\codex-clipboard-JmKfgt.png`
-- Final local screenshots, deliberately not tracked by Git:
-  - `E:\Temp\payki-calendar-reference-final.png`
-  - `E:\Temp\payki-editor-final-pass.png`
-  - `E:\Temp\payki-calendar-month-1.15.14-final.png`
-- Browser viewport: `1638x989`, device scale factor `1.25`, output `2048x1236`.
-- Verified results:
-  - week view: 7 day columns, correct range title, `创建日程` action
-  - day view: 1 day column
-  - month view: 42 date cells and visible event pills
-  - search: matching title returns the event; a nonexistent query returns none
-  - blank-grid click opens creation editor
-  - title edits update the right-side preview live
-  - existing event opens with its saved title
-  - no browser page errors in the checked flows
-- The browser screenshots and interaction checks above are preserved from the `1.15.15` calendar baseline.
-- Emulator calendar swipe statistics: 441 frames, p50 `21ms`, p90 `34ms`, p95 `40ms`, p99 `81ms`, 9.98% janky frames, and 21 slow UI-thread frames.
+- Passed `node --check app/src/main/assets/desktop-web/app.js`.
+- Passed `:app:compileDebugKotlin`.
+- Passed complete `:app:testDebugUnitTest`, including `ReminderDeliveryModeTest` four-state mapping and storage round-trip coverage.
+- Passed `:app:lintDebug` with no reported Lint errors.
+- Passed `:app:assembleDebug` and final `git diff --check`.
+- Headless Edge loaded a local visual fixture with production `app.css`; hour labels aligned to solid rules and the ended 18:30-21:00 event faded as a complete card.
+- APK metadata confirms package `com.paykitodo.app`, `versionName 1.15.18`, `versionCode 360`, min API 26, and target API 34.
 
-## 1.15.16 Verification
+## Physical Device Checks
 
-- Passed `:app:compileDebugKotlin`, `:app:testDebugUnitTest` (26 suites), `:app:lintDebug`, `:app:assembleDebug`, JavaScript syntax, APK metadata inspection, and `git diff --check`.
-- Lint result: 0 errors and 121 existing warnings.
-- The current APK launches successfully on `emulator-5554`; `MainActivity` remains resumed and no Android runtime crash was reported in the launch smoke test.
-- Emulator Desktop Sync automatically displayed its reachable LAN address. The forwarded page returned HTTP 200, contained the embedded launcher icon and week-start selector, and no longer contained the removed todo timeline heading or summary container. Desktop Sync was disabled again after verification.
-- Debug APK metadata: package `com.paykitodo.app`, `versionName 1.15.16`, `versionCode 358`, min API 26, target API 34.
-
-## Emulator Evidence
-
-- Reused device: `emulator-5554` / AVD `Pixel_8`.
-- Installed APK: `app/build/outputs/apk/debug/PaykiTodo-1.15.16-debug.apk`.
-- Desktop Sync was enabled only for the runtime page smoke check and disabled again afterward.
-- The emulator-only access key is intentionally not recorded here.
-
-## Next Actions
-
-1. Review `docs/current/UX_FOLLOW_UP_PLAN.md` with the user and select the next concrete UX slice before implementation.
-2. Treat future visual feedback as reference-image delta work, not a broad redesign prompt.
-3. Repeat reminder behavior on a physical phone because OEM full-screen, lock-screen, vibration, and notification behavior cannot be proven completely by the emulator.
-4. Do not push until the user explicitly requests it.
+1. Create or edit a todo and event with each of the four channel states and reopen the editor to verify exact checkbox round-trip.
+2. Trigger a notification-only reminder and confirm no full-screen activity appears.
+3. Trigger a full-screen-only reminder and confirm the foreground-service placeholder does not remain as a visible detail notification after acknowledgement.
+4. Trigger both channels and confirm the full-screen surface appears while the full reminder remains available in the notification shade.
+5. Reload Desktop Sync Calendar and confirm hour labels and ended-card opacity at the user's Windows scaling level.
 
 ## Safety Notes
 
 - Never commit Desktop Sync tokens, AI keys, private Base URLs, signing files, generated APKs, screenshots, backups, test databases, or local diagnostic logs.
+- Do not push until the user explicitly requests it.

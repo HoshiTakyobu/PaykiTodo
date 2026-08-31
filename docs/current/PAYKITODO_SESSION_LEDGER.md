@@ -8,7 +8,7 @@ The original PaykiTodo sessions became large and increasingly unreliable. This f
 
 ## Latest In-Progress Round
 
-The active `1.15.16 / versionCode 358` round reuses the phone launcher icon in Desktop Web, simplifies desktop todo management to `待办 / 历史待办`, synchronizes Desktop Calendar week ordering with the phone `WeekStartMode`, removes live chronometer updates from ongoing event notifications, exposes LAN addresses automatically in Desktop Sync Settings, and adds a non-mutating `我知道了` operation for future todo reminders. The existing `1.15.15` calendar and browser work remains the baseline. Database version remains `30`; no push is authorized unless the user explicitly requests it.
+The active `1.15.18 / versionCode 360` round restores independent full-screen and notification reminder selections across phone/Web/Planning Desk, keeps single-channel storage values intact, limits retained post-action notifications to items that selected the notification channel, aligns Desktop Web hour labels with their solid grid lines, and fades ended events as complete cards. It preserves the `1.15.17` event-preview and snooze/acknowledgement work. Database version remains `30`; no push is authorized unless the user explicitly requests it.
 
 ## Initial Product Request
 

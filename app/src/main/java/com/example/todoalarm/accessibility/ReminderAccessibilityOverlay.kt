@@ -358,8 +358,8 @@ class ReminderAccessibilityOverlay(
 
     private fun acknowledgeEvent(todoId: Long) {
         serviceScope.launch {
-            withContext(Dispatchers.IO) {
-                val item = app.repository.getTodo(todoId) ?: return@withContext
+            val retained = withContext(Dispatchers.IO) {
+                val item = app.repository.getTodo(todoId) ?: return@withContext null
                 ReminderChainLogger.log(
                     context = service,
                     todoId = item.id,
@@ -371,8 +371,10 @@ class ReminderAccessibilityOverlay(
                 app.repository.acknowledgeCalendarEvent(item.id)
                 app.alarmScheduler.cancelReminderOnly(item.id)
                 OngoingEventNotifier.schedule(service, item.copy(reminderEnabled = false))
+                item to resolveTaskGroup(item, app.repository.getGroup(item.groupId))
             }
-            ReminderForegroundService.dismiss(service, todoId)
+            if (retained == null) return@launch
+            ReminderForegroundService.dismissKeepingNotification(service, retained.first, "日程提醒已确认", retained.second)
             hide(todoId)
             Toast.makeText(service, "日程提醒已确认", Toast.LENGTH_SHORT).show()
         }
@@ -411,8 +413,8 @@ class ReminderAccessibilityOverlay(
 
     private fun snoozeTodo(todoId: Long, minutes: Int) {
         serviceScope.launch {
-            withContext(Dispatchers.IO) {
-                val item = app.repository.getTodo(todoId) ?: return@withContext
+            val retained = withContext(Dispatchers.IO) {
+                val item = app.repository.getTodo(todoId) ?: return@withContext null
                 ReminderChainLogger.log(
                     context = service,
                     todoId = item.id,
@@ -426,8 +428,10 @@ class ReminderAccessibilityOverlay(
                 if (updated != null) {
                     app.alarmScheduler.schedule(updated)
                 }
+                updated?.let { it to resolveTaskGroup(it, app.repository.getGroup(it.groupId)) }
             }
-            ReminderForegroundService.dismiss(service, todoId)
+            if (retained == null) return@launch
+            ReminderForegroundService.dismissKeepingNotification(service, retained.first, "已延后${minutes}分钟", retained.second)
             hide(todoId)
             Toast.makeText(service, "已延后 $minutes 分钟", Toast.LENGTH_SHORT).show()
         }
@@ -435,8 +439,8 @@ class ReminderAccessibilityOverlay(
 
     private fun acknowledgePlannedTodo(todoId: Long) {
         serviceScope.launch {
-            withContext(Dispatchers.IO) {
-                val item = app.repository.getTodo(todoId) ?: return@withContext
+            val retained = withContext(Dispatchers.IO) {
+                val item = app.repository.getTodo(todoId) ?: return@withContext null
                 ReminderChainLogger.log(
                     context = service,
                     todoId = item.id,
@@ -446,8 +450,10 @@ class ReminderAccessibilityOverlay(
                     message = "planned_todo_ack"
                 )
                 app.alarmScheduler.cancelTriggeredReminderAlarms(item.id)
+                item to resolveTaskGroup(item, app.repository.getGroup(item.groupId))
             }
-            ReminderForegroundService.dismiss(service, todoId)
+            if (retained == null) return@launch
+            ReminderForegroundService.dismissKeepingNotification(service, retained.first, "本次提醒已确认", retained.second)
             hide(todoId)
             Toast.makeText(service, "本次提醒已关闭，任务保持不变", Toast.LENGTH_SHORT).show()
         }

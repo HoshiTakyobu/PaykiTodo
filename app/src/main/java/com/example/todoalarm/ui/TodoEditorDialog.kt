@@ -27,6 +27,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.Icon
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
@@ -129,7 +130,7 @@ fun TodoEditorDialog(
     var alarmMode by remember(initialTodo?.id) {
         mutableStateOf(initialTodo?.alarmMode == true)
     }
-    val reminderEnabled = hasDueDate && !isHistory && (fullscreenReminderEnabled || notificationReminderEnabled)
+    val effectiveReminderEnabled = hasDueDate && !isHistory && (fullscreenReminderEnabled || notificationReminderEnabled)
     val reminderDeliveryMode = ReminderDeliveryMode.fromSelections(
         fullscreen = fullscreenReminderEnabled,
         notification = notificationReminderEnabled
@@ -170,8 +171,8 @@ fun TodoEditorDialog(
     var showRecurrenceTypePicker by remember { mutableStateOf(false) }
     var activeDateTimeTarget by remember { mutableStateOf<TodoDateTimeTarget?>(null) }
     var showDueLunarPicker by remember { mutableStateOf(false) }
-    val reminderValidation = remember(reminderInput, dueAt, reminderEnabled, hasDueDate, isHistory, initialTodo?.id) {
-        if (!reminderEnabled || !hasDueDate || isHistory || reminderInput.isBlank()) {
+    val reminderValidation = remember(reminderInput, dueAt, effectiveReminderEnabled, hasDueDate, isHistory, initialTodo?.id) {
+        if (!effectiveReminderEnabled || !hasDueDate || isHistory || reminderInput.isBlank()) {
             ReminderInputValidation(isValid = true)
         } else {
             parseReminderInput(
@@ -181,7 +182,7 @@ fun TodoEditorDialog(
             )
         }
     }
-    val confirmEnabled = title.isNotBlank() && (!reminderEnabled || !hasDueDate || isHistory || reminderValidation.isValid)
+    val confirmEnabled = title.isNotBlank() && (!effectiveReminderEnabled || !hasDueDate || isHistory || reminderValidation.isValid)
     LaunchedEffect(dueAt, recurrenceType, recurringEnabled, weeklyDaysManuallyEdited) {
         if (shouldAutoSyncTodoWeeklyDays(recurringEnabled, recurrenceType, weeklyDaysManuallyEdited)) {
             weeklyDays = setOf(dueAt.dayOfWeek)
@@ -206,12 +207,12 @@ fun TodoEditorDialog(
         confirmEnabled = confirmEnabled,
         onDismiss = onDismiss,
         onConfirm = {
-            val parsedReminderTimes = if (isHistory || !hasDueDate || !reminderEnabled || !reminderValidation.isValid) {
+            val parsedReminderTimes = if (isHistory || !hasDueDate || !effectiveReminderEnabled || !reminderValidation.isValid) {
                 emptyList()
             } else {
                 reminderValidation.triggerTimes
             }
-            val parsedReminderOffsets = if (isHistory || !hasDueDate || !reminderEnabled || !reminderValidation.isValid) {
+            val parsedReminderOffsets = if (isHistory || !hasDueDate || !effectiveReminderEnabled || !reminderValidation.isValid) {
                 emptyList()
             } else {
                 reminderValidation.offsetsMinutes
@@ -225,7 +226,7 @@ fun TodoEditorDialog(
                     groupId = primaryGroupId,
                     ringEnabled = ringEnabled,
                     vibrateEnabled = vibrateEnabled,
-                    alarmMode = alarmMode && hasDueDate && reminderEnabled && !isHistory,
+                    alarmMode = alarmMode && hasDueDate && effectiveReminderEnabled && !isHistory,
                     reminderDeliveryMode = reminderDeliveryMode,
                     countdownEnabled = countdownEnabled && hasDueDate,
                     hiddenFromBoard = hiddenFromBoard && hasDueDate,
@@ -403,36 +404,39 @@ fun TodoEditorDialog(
                                     style = MaterialTheme.typography.bodySmall
                                 )
                                 Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .horizontalScroll(rememberScrollState()),
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(20.dp),
+                                    verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    FilterChip(
-                                        selected = fullscreenReminderEnabled,
-                                        onClick = {
-                                            fullscreenReminderEnabled = !fullscreenReminderEnabled
-                                            if (fullscreenReminderEnabled && initialTodo == null) {
-                                                reminderAt = dueAt
-                                                if (reminderInput.isBlank()) reminderInput = "5"
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Checkbox(
+                                            checked = fullscreenReminderEnabled,
+                                            onCheckedChange = { enabled ->
+                                                fullscreenReminderEnabled = enabled
+                                                if (enabled && initialTodo == null) {
+                                                    reminderAt = dueAt
+                                                    if (reminderInput.isBlank()) reminderInput = "5"
+                                                }
                                             }
-                                        },
-                                        label = { Text("全屏提醒") }
-                                    )
-                                    FilterChip(
-                                        selected = notificationReminderEnabled,
-                                        onClick = {
-                                            notificationReminderEnabled = !notificationReminderEnabled
-                                            if (notificationReminderEnabled && initialTodo == null) {
-                                                reminderAt = dueAt
-                                                if (reminderInput.isBlank()) reminderInput = "5"
+                                        )
+                                        Text("全屏提醒")
+                                    }
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Checkbox(
+                                            checked = notificationReminderEnabled,
+                                            onCheckedChange = { enabled ->
+                                                notificationReminderEnabled = enabled
+                                                if (enabled && initialTodo == null) {
+                                                    reminderAt = dueAt
+                                                    if (reminderInput.isBlank()) reminderInput = "5"
+                                                }
                                             }
-                                        },
-                                        label = { Text("通知栏提醒") }
-                                    )
+                                        )
+                                        Text("通知栏提醒")
+                                    }
                                 }
 
-                                if (reminderEnabled) {
+                                if (effectiveReminderEnabled) {
                                     Row(
                                         modifier = Modifier.fillMaxWidth(),
                                         verticalAlignment = Alignment.CenterVertically,
@@ -548,11 +552,11 @@ fun TodoEditorDialog(
                                                     title = title,
                                                     notes = notes,
                                                     dueAt = dueAt,
-                                                    reminderAt = if (reminderEnabled && reminderValidation.isValid) reminderValidation.triggerTimes.minOrNull() else null,
+                                                    reminderAt = if (effectiveReminderEnabled && reminderValidation.isValid) reminderValidation.triggerTimes.minOrNull() else null,
                                                     groupId = primaryGroupId,
                                                     ringEnabled = ringEnabled,
                                                     vibrateEnabled = vibrateEnabled,
-                                                    alarmMode = alarmMode && reminderEnabled && hasDueDate && !isHistory,
+                                                    alarmMode = alarmMode && effectiveReminderEnabled && hasDueDate && !isHistory,
                                                     reminderDeliveryMode = reminderDeliveryMode,
                                                     hiddenFromBoard = hiddenFromBoard && hasDueDate,
                                                     recurrence = RecurrenceConfig(
@@ -561,7 +565,7 @@ fun TodoEditorDialog(
                                                         weeklyDays = weeklyDays,
                                                         endDate = recurrenceEndDate
                                                     ),
-                                                    reminderOffsetsMinutes = if (reminderEnabled && reminderValidation.isValid) reminderValidation.offsetsMinutes else emptyList(),
+                                                    reminderOffsetsMinutes = if (effectiveReminderEnabled && reminderValidation.isValid) reminderValidation.offsetsMinutes else emptyList(),
                                                     groupIds = selectedGroupIds
                                                 )
                                             )
@@ -615,7 +619,7 @@ fun TodoEditorDialog(
             onConfirm = { pickedDate ->
                 val pickedDue = LocalDateTime.of(pickedDate, dueAt.toLocalTime())
                 dueAt = pickedDue
-                if (reminderEnabled && initialTodo == null) {
+                if (effectiveReminderEnabled && initialTodo == null) {
                     reminderAt = pickedDue
                 }
                 showDueLunarPicker = false
@@ -637,7 +641,7 @@ fun TodoEditorDialog(
                 when (target) {
                     TodoDateTimeTarget.DueAt -> {
                         dueAt = picked
-                        if (reminderEnabled && initialTodo == null) {
+                        if (effectiveReminderEnabled && initialTodo == null) {
                             reminderAt = picked
                         }
                     }

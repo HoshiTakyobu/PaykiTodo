@@ -17,6 +17,8 @@ import com.example.todoalarm.TodoApplication
 import com.example.todoalarm.accessibility.ReminderAccessibilityService
 import com.example.todoalarm.data.ReminderChainStage
 import com.example.todoalarm.data.ReminderChainStatus
+import com.example.todoalarm.data.TodoItem
+import com.example.todoalarm.ui.ResolvedTaskGroup
 import com.example.todoalarm.ui.resolveTaskGroup
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -41,13 +43,21 @@ class ReminderForegroundService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        keepDetachedNotification = false
         val explicitTodoId = intent?.getLongExtra(AlarmScheduler.EXTRA_TODO_ID, -1L) ?: -1L
         val todoId = if (explicitTodoId > 0L) {
             explicitTodoId
         } else {
             ActiveReminderStore.getActiveTodoId(this)
         }
+        if (intent?.action == ACTION_DISMISS_KEEP_NOTIFICATION) {
+            stopAlertingKeepingNotification(
+                todoId = todoId,
+                startId = startId,
+                message = intent.getStringExtra(EXTRA_RETAINED_MESSAGE).orEmpty()
+            )
+            return START_NOT_STICKY
+        }
+        keepDetachedNotification = false
         if (todoId <= 0L) {
             stopSelf(startId)
             return START_NOT_STICKY
@@ -176,6 +186,38 @@ class ReminderForegroundService : Service() {
             startForeground(id, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE)
         } else {
             startForeground(id, notification)
+        }
+    }
+
+    private fun stopAlertingKeepingNotification(todoId: Long, startId: Int, message: String) {
+        alertController.stop()
+        ReminderAccessibilityService.hideOverlayNow(todoId)
+        ReminderDispatchTracker.clear(this, todoId)
+        ActiveReminderStore.clearIfMatches(this, todoId)
+        ActiveReminderStore.clearActivityHandoff(this, todoId)
+        ActiveReminderStore.clearReminderSurfaceMarker(this, todoId)
+        unregisterUserPresentReceiver()
+        if (foregroundTodoId == todoId) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                stopForeground(STOP_FOREGROUND_DETACH)
+            } else {
+                @Suppress("DEPRECATION")
+                stopForeground(false)
+            }
+        }
+        keepDetachedNotification = true
+        scope.launch {
+            val app = application as TodoApplication
+            val item = app.repository.getTodo(todoId)
+            if (item != null && !item.isHistory) {
+                val taskGroup = resolveTaskGroup(item, app.repository.getGroup(item.groupId))
+                (reminderNotifier ?: ReminderNotifier(this@ReminderForegroundService)).showRetained(
+                    todoItem = item,
+                    message = message,
+                    taskGroup = taskGroup
+                )
+            }
+            stopSelf(startId)
         }
     }
 
@@ -395,6 +437,8 @@ class ReminderForegroundService : Service() {
     }
 
     companion object {
+        private const val ACTION_DISMISS_KEEP_NOTIFICATION = "com.example.todoalarm.action.DISMISS_KEEP_NOTIFICATION"
+        private const val EXTRA_RETAINED_MESSAGE = "com.example.todoalarm.extra.RETAINED_MESSAGE"
         private const val REMINDER_SESSION_DURATION_MS = 5 * 60 * 1000L
         private const val ALARM_MODE_RETRY_INTERVAL_MS = 2 * 60 * 1000L
         private const val ALARM_MODE_RETRY_RING_MS = 30 * 1000L
@@ -419,6 +463,35 @@ class ReminderForegroundService : Service() {
             ActiveReminderStore.clearReminderSurfaceMarker(context, todoId)
             if (ActiveReminderStore.getServiceTodoId(context) == todoId) {
                 context.stopService(Intent(context, ReminderForegroundService::class.java))
+            }
+        }
+
+        fun dismissKeepingNotification(
+            context: Context,
+            todoItem: TodoItem,
+            message: String,
+            taskGroup: ResolvedTaskGroup
+        ) {
+            if (!todoItem.reminderDeliveryModeEnum.usesNotification) {
+                dismiss(context, todoItem.id)
+                return
+            }
+            val todoId = todoItem.id
+            ReminderAccessibilityService.hideOverlayNow(todoId)
+            ReminderDispatchTracker.clear(context, todoId)
+            ActiveReminderStore.clearIfMatches(context, todoId)
+            ActiveReminderStore.clearActivityHandoff(context, todoId)
+            ActiveReminderStore.clearReminderSurfaceMarker(context, todoId)
+            if (ActiveReminderStore.getServiceTodoId(context) == todoId) {
+                context.startService(
+                    Intent(context, ReminderForegroundService::class.java).apply {
+                        action = ACTION_DISMISS_KEEP_NOTIFICATION
+                        putExtra(AlarmScheduler.EXTRA_TODO_ID, todoId)
+                        putExtra(EXTRA_RETAINED_MESSAGE, message)
+                    }
+                )
+            } else {
+                ReminderNotifier(context).showRetained(todoItem, message, taskGroup)
             }
         }
     }

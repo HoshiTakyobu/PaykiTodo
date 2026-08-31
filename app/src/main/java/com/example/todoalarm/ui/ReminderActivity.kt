@@ -57,7 +57,6 @@ import com.example.todoalarm.alarm.AlarmScheduler
 import com.example.todoalarm.alarm.OngoingEventNotifier
 import com.example.todoalarm.alarm.ReminderChainLogger
 import com.example.todoalarm.alarm.ReminderForegroundService
-import com.example.todoalarm.alarm.ReminderNotifier
 import com.example.todoalarm.data.ReminderChainStage
 import com.example.todoalarm.data.ReminderChainStatus
 import com.example.todoalarm.data.TodoItem
@@ -183,8 +182,8 @@ class ReminderActivity : ComponentActivity() {
                 message = "event_ack"
             )
             app.repository.acknowledgeCalendarEvent(item.id)
-            clearEventReminderArtifactsAndKeepOngoing(item)
-            closeReminder(item.id)
+            clearEventReminderAlarmsAndKeepOngoing(item)
+            retainReminderNotification(item, "日程提醒已确认")
         }
     }
 
@@ -204,7 +203,7 @@ class ReminderActivity : ComponentActivity() {
                 message = if (checkIn == null) "event_check_in_failed" else "event_check_in"
             )
             if (checkIn != null) {
-                clearEventReminderArtifactsAndKeepOngoing(item)
+                clearEventReminderAlarmsAndKeepOngoing(item)
                 closeReminder(item.id)
             } else {
                 Toast.makeText(this@ReminderActivity, "无法签到：请确认日程已开启打卡追踪", Toast.LENGTH_SHORT).show()
@@ -223,12 +222,14 @@ class ReminderActivity : ComponentActivity() {
                 status = ReminderChainStatus.OK,
                 message = "minutes=$minutes"
             )
-            clearReminderArtifacts(listOf(item))
+            app.alarmScheduler.cancel(item.id)
             val updated = app.repository.snoozeTodo(item.id, nextMinuteAlignedReminder(minutes))
             if (updated != null) {
                 app.alarmScheduler.schedule(updated)
+                retainReminderNotification(updated, "已延后${minutes}分钟")
+            } else {
+                closeReminder(item.id)
             }
-            closeReminder(item.id)
         }
     }
 
@@ -244,7 +245,7 @@ class ReminderActivity : ComponentActivity() {
                 message = "planned_todo_ack"
             )
             app.alarmScheduler.cancelTriggeredReminderAlarms(item.id)
-            closeReminder(item.id)
+            retainReminderNotification(item, "本次提醒已确认")
         }
     }
 
@@ -255,12 +256,21 @@ class ReminderActivity : ComponentActivity() {
         }
     }
 
-    private fun clearEventReminderArtifactsAndKeepOngoing(item: TodoItem) {
+    private fun clearEventReminderAlarmsAndKeepOngoing(item: TodoItem) {
         app.alarmScheduler.cancelReminderOnly(item.id)
-        ReminderForegroundService.dismiss(this, item.id)
         if (item.isEvent && !item.isHistory) {
             OngoingEventNotifier.schedule(this, item.copy(reminderEnabled = false))
         }
+    }
+
+    private fun retainReminderNotification(item: TodoItem, message: String) {
+        ReminderForegroundService.dismissKeepingNotification(
+            context = this,
+            todoItem = item,
+            message = message,
+            taskGroup = taskGroup ?: resolveTaskGroup(item, emptyList())
+        )
+        finish()
     }
 
     private fun closeReminder(todoId: Long) {

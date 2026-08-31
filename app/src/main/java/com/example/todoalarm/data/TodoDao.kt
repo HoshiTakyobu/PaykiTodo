@@ -208,6 +208,7 @@ interface TodoDao {
         AND itemType = 'TODO'
         AND missed = 0
         AND dueAtMillis < :missBefore
+        AND (reminderEnabled = 0 OR reminderAtMillis <= :missBefore)
         ORDER BY dueAtMillis ASC
         """
     )

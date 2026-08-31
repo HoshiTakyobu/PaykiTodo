@@ -3259,31 +3259,44 @@ private fun PlanningCandidateCard(
                         )
                     }
                 )
-                Text("提醒方式（可同时选择；都不选择即不提醒）", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(
+                    "提醒方式（可同时选择；都不选择即不提醒）",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
                 Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .horizontalScroll(rememberScrollState()),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(20.dp)
                 ) {
-                    FilterChip(
-                        selected = candidate.reminderEnabled && candidate.reminderDeliveryMode.usesFullscreen,
-                        onClick = {
-                            val fullscreen = !(candidate.reminderEnabled && candidate.reminderDeliveryMode.usesFullscreen)
-                            val notification = candidate.reminderEnabled && candidate.reminderDeliveryMode.usesNotification
-                            onCandidateChange(candidate.withPlanningReminderChannels(fullscreen, notification))
-                        },
-                        label = { Text("全屏提醒") }
-                    )
-                    FilterChip(
-                        selected = candidate.reminderEnabled && candidate.reminderDeliveryMode.usesNotification,
-                        onClick = {
-                            val fullscreen = candidate.reminderEnabled && candidate.reminderDeliveryMode.usesFullscreen
-                            val notification = !(candidate.reminderEnabled && candidate.reminderDeliveryMode.usesNotification)
-                            onCandidateChange(candidate.withPlanningReminderChannels(fullscreen, notification))
-                        },
-                        label = { Text("通知栏提醒") }
-                    )
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Checkbox(
+                            checked = candidate.reminderEnabled && candidate.reminderDeliveryMode.usesFullscreen,
+                            onCheckedChange = { enabled ->
+                                onCandidateChange(
+                                    candidate.withPlanningReminderChannels(
+                                        fullscreen = enabled,
+                                        notification = candidate.reminderEnabled && candidate.reminderDeliveryMode.usesNotification
+                                    )
+                                )
+                            }
+                        )
+                        Text("全屏提醒")
+                    }
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Checkbox(
+                            checked = candidate.reminderEnabled && candidate.reminderDeliveryMode.usesNotification,
+                            onCheckedChange = { enabled ->
+                                onCandidateChange(
+                                    candidate.withPlanningReminderChannels(
+                                        fullscreen = candidate.reminderEnabled && candidate.reminderDeliveryMode.usesFullscreen,
+                                        notification = enabled
+                                    )
+                                )
+                            }
+                        )
+                        Text("通知栏提醒")
+                    }
                 }
                 PlanningCandidateOptionRow(
                     candidate = candidate,
@@ -4153,10 +4166,10 @@ private fun PlanningImportCandidate.withPlanningReminderChannels(
     fullscreen: Boolean,
     notification: Boolean
 ): PlanningImportCandidate {
+    val mode = ReminderDeliveryMode.fromSelections(fullscreen, notification)
     return copy(
-        reminderEnabled = fullscreen || notification,
-        reminderDeliveryMode = ReminderDeliveryMode.fromSelections(fullscreen, notification)
-            ?: ReminderDeliveryMode.FULLSCREEN
+        reminderEnabled = mode != null,
+        reminderDeliveryMode = mode ?: reminderDeliveryMode
     )
 }
 

@@ -10,6 +10,7 @@ import android.os.Build
 import androidx.core.app.NotificationCompat
 import com.example.todoalarm.R
 import com.example.todoalarm.data.TodoItem
+import com.example.todoalarm.ui.MainActivity
 import com.example.todoalarm.ui.ResolvedTaskGroup
 import com.example.todoalarm.ui.ReminderActivity
 import com.example.todoalarm.ui.formatLocalDateTime
@@ -92,6 +93,30 @@ class ReminderNotifier(
         notificationManager.notify(notificationId(todoItem.id), notification)
     }
 
+    fun showRetained(
+        todoItem: TodoItem,
+        message: String,
+        taskGroup: ResolvedTaskGroup = resolveTaskGroup(todoItem, emptyList())
+    ) {
+        val body = "$message · 点击查看详情"
+        val notification = NotificationCompat.Builder(context, ensureRetainedChannel())
+            .setSmallIcon(R.drawable.ic_stat_payki_todo)
+            .setContentTitle("${taskGroupEmoji(taskGroup)} ${todoItem.title}")
+            .setContentText(body)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(body))
+            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+            .setCategory(NotificationCompat.CATEGORY_REMINDER)
+            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+            .setOngoing(false)
+            .setAutoCancel(true)
+            .setOnlyAlertOnce(true)
+            .setSilent(true)
+            .setDefaults(0)
+            .setContentIntent(detailPendingIntent(todoItem))
+            .build()
+        notificationManager.notify(notificationId(todoItem.id), notification)
+    }
+
     fun createReminderIntent(todoId: Long): Intent = buildReminderIntent(todoId)
 
     fun reminderPendingIntent(todoId: Long): PendingIntent {
@@ -99,6 +124,23 @@ class ReminderNotifier(
             context,
             AlarmScheduler.requestCodeFor(todoId, 0L),
             buildReminderIntent(todoId),
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+    }
+
+    private fun detailPendingIntent(todoItem: TodoItem): PendingIntent {
+        val intent = Intent(context, MainActivity::class.java).apply {
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+            if (todoItem.isEvent) {
+                putExtra(MainActivity.EXTRA_OPEN_EVENT_ID, todoItem.id)
+            } else {
+                putExtra(MainActivity.EXTRA_OPEN_TODO_ID, todoItem.id)
+            }
+        }
+        return PendingIntent.getActivity(
+            context,
+            notificationId(todoItem.id),
+            intent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
     }
@@ -143,6 +185,25 @@ class ReminderNotifier(
             setSound(null, null)
         }
         notificationManager.createNotificationChannel(channel)
+        return channelId
+    }
+
+    private fun ensureRetainedChannel(): String {
+        val channelId = "paykitodo_reminder_retained_v1"
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return channelId
+        notificationManager.getNotificationChannel(channelId)?.let { return channelId }
+        notificationManager.createNotificationChannel(
+            NotificationChannel(
+                channelId,
+                "已确认的提醒",
+                NotificationManager.IMPORTANCE_DEFAULT
+            ).apply {
+                description = "保留已延后或已确认的事项提醒，点击可查看详情"
+                lockscreenVisibility = NotificationCompat.VISIBILITY_PUBLIC
+                enableVibration(false)
+                setSound(null, null)
+            }
+        )
         return channelId
     }
 

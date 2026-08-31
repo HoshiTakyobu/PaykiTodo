@@ -27,6 +27,7 @@ import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -678,21 +679,24 @@ internal fun CalendarEventEditorDialog(
                         style = MaterialTheme.typography.bodySmall
                     )
                     Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .horizontalScroll(rememberScrollState()),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(20.dp)
                     ) {
-                        FilterChip(
-                            selected = fullscreenReminderEnabled,
-                            onClick = { fullscreenReminderEnabled = !fullscreenReminderEnabled },
-                            label = { Text("全屏提醒") }
-                        )
-                        FilterChip(
-                            selected = notificationReminderEnabled,
-                            onClick = { notificationReminderEnabled = !notificationReminderEnabled },
-                            label = { Text("通知栏提醒") }
-                        )
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Checkbox(
+                                checked = fullscreenReminderEnabled,
+                                onCheckedChange = { fullscreenReminderEnabled = it }
+                            )
+                            Text("全屏提醒")
+                        }
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Checkbox(
+                                checked = notificationReminderEnabled,
+                                onCheckedChange = { notificationReminderEnabled = it }
+                            )
+                            Text("通知栏提醒")
+                        }
                     }
 
                     if (reminderEnabled) {

@@ -1,5 +1,4 @@
 const HOUR_HEIGHT = 56;
-const EVENT_HEADER_HEIGHT = 64;
 const FIFTEEN_MINUTES = 15 * 60 * 1000;
 const THIRTY_MINUTES = 30 * 60 * 1000;
 const DEFAULT_EVENT_COLOR = '#df58a5';
@@ -928,24 +927,32 @@ function renderEventEditorPreview() {
   previewDate.setDate(previewDate.getDate() + Number(state.eventEditorPreviewDayOffset || 0));
   const previewKey = dayKey(previewDate);
   const startKey = dayKey(start);
+  const previewStartHour = Math.min(9, start.getHours());
+  const previewHourCount = 24 - previewStartHour;
+  const previewGridTop = 22;
+  const previewHourHeight = 58;
   dateLabel.textContent = (previewDate.getMonth() + 1) + '月' + previewDate.getDate() + '日 ' + formatWeekday(previewDate);
   weekdayLabel.textContent = formatWeekday(previewDate) + ' · ' + previewDate.getDate();
-  hours.innerHTML = Array.from({ length: 15 }, (_, index) => {
-    const hour = index + 9;
-    return '<span style="top:' + (index * 58) + 'px">' + String(hour).padStart(2, '0') + ':00</span>';
+  hours.style.height = (previewHourCount * previewHourHeight) + 'px';
+  grid.style.height = (previewHourCount * previewHourHeight) + 'px';
+  hours.innerHTML = Array.from({ length: previewHourCount }, (_, index) => {
+    const hour = index + previewStartHour;
+    return '<span style="top:' + (index * previewHourHeight) + 'px">' + String(hour).padStart(2, '0') + ':00</span>';
   }).join('');
-  grid.innerHTML = Array.from({ length: 15 }, (_, index) => '<span style="top:' + (index * 58) + 'px"></span>').join('');
+  grid.innerHTML = Array.from({ length: previewHourCount }, (_, index) => '<span style="top:' + (index * previewHourHeight) + 'px"></span>').join('');
 
   if (previewKey !== startKey) {
     block.classList.add('hidden');
     return;
   }
   const startMinutes = start.getHours() * 60 + start.getMinutes();
-  const endMinutes = Math.max(startMinutes + 30, end.getHours() * 60 + end.getMinutes());
-  const top = ((startMinutes - 9 * 60) / 60) * 58;
-  const height = Math.max(28, ((endMinutes - startMinutes) / 60) * 58);
+  const endMinutes = dayKey(end) === startKey
+    ? Math.max(startMinutes + 30, end.getHours() * 60 + end.getMinutes())
+    : 24 * 60;
+  const top = previewGridTop + ((startMinutes - previewStartHour * 60) / 60) * previewHourHeight;
+  const height = Math.max(28, ((endMinutes - startMinutes) / 60) * previewHourHeight);
   block.classList.remove('hidden');
-  block.style.top = Math.max(0, top) + 'px';
+  block.style.top = Math.max(previewGridTop, top) + 'px';
   block.style.height = height + 'px';
   block.style.setProperty('--accent', document.getElementById('event-color')?.value || DEFAULT_EVENT_COLOR);
   block.querySelector('strong').textContent = document.getElementById('event-title')?.value.trim() || '添加主题';
@@ -1263,14 +1270,13 @@ function renderHourAxis() {
   const currentMinutes = now.getHours() * 60 + now.getMinutes();
   const currentTimeOffset = (currentMinutes / 60) * HOUR_HEIGHT;
 
-  let html = '<div class="hour-axis-header">GMT+8</div>';
+  let html = '<div class="hour-axis-header">GMT+8</div><div class="hour-axis-body">';
   for (let hour = 0; hour < 24; hour += 1) {
-    const top = EVENT_HEADER_HEIGHT + hour * HOUR_HEIGHT;
-    html += '<div class="hour-label" style="top:' + top + 'px">' + String(hour).padStart(2, '0') + ':00</div>';
+    html += '<div class="hour-axis-row"><div class="hour-label">' + String(hour).padStart(2, '0') + ':00</div></div>';
   }
 
   // 当前时间标签（红色 chip），和整点并列在最左边
-  html += '<div class="hour-current-chip" style="top:' + (EVENT_HEADER_HEIGHT + currentTimeOffset) + 'px">' + escapeHtml(formatTimeLabel(now.getTime())) + '</div>';
+  html += '<div class="hour-current-chip" style="top:' + currentTimeOffset + 'px">' + escapeHtml(formatTimeLabel(now.getTime())) + '</div></div>';
 
   return html;
 }

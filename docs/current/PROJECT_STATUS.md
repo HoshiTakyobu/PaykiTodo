@@ -8,8 +8,8 @@
 - Target platform: Android 14 / API 34
 - License: MIT License (`LICENSE`)
 - Current version in code:
-  - `versionName = "1.15.16"`
-  - `versionCode = 358`
+  - `versionName = "1.15.18"`
+  - `versionCode = 360`
   - database version = `30`
 
 ## Current Build Facts
@@ -19,7 +19,14 @@
 - Latest GitHub Release:
   - `https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.14.12`
 - Latest fully built debug APK:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.15.16-debug.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.15.18-debug.apk`
+- Current `1.15.18 / versionCode 360` status:
+  - Phone todo/event editors and Planning Desk candidate previews expose independent full-screen and notification reminder checkboxes. Desktop Web editors use the same controls and preserve all three stored channel modes.
+  - Selecting neither channel disables scheduling; selecting notification only does not launch full-screen UI; selecting full-screen only does not leave a visible retained notification; selecting both keeps both reminder surfaces.
+  - Desktop Web calendar hour labels are rendered as real rows beneath the actual header and align with solid hour rules. Ended events apply opacity to the complete parent card, including all text and metadata.
+  - The `1.15.17` event-editor preview, snooze-without-DDL-shift, and post-action detail-notification work remains in place.
+  - Database version remains `30`; no schema or migration change was introduced.
+  - Verification passed: JavaScript syntax, Kotlin Debug compilation, complete Debug unit tests, Android Lint, Debug APK assembly, APK metadata inspection, `git diff --check`, and headless Edge production-CSS visual inspection.
 - Current `1.15.16 / versionCode 358` status:
   - Desktop Web reuses the phone launcher art, simplifies todo management to `待办 / 历史待办`, keeps group filtering, and removes summary statistics and the old timeline heading.
   - Desktop Calendar reads and writes the shared `WeekStartMode` setting, allowing only Monday-start or Sunday-start ordering across week, month, and mini-calendar views; today's range cell keeps its gray range background behind the blue ring.

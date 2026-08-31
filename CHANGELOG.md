@@ -2,6 +2,28 @@
 
 PaykiTodo 采用语义化倾向的应用版本号和递增 `versionCode`。本文件面向用户记录重要变化，不再保存每一次内部调试重建的完整流水账；完整历史可通过 Git commit、tag 和 `docs/archive/` 追溯。
 
+## v1.15.19（开发中，尚未发布）
+
+### 数据迁移与安全
+
+- 设置中的备份统一支持 `.paykibak` ZIP 迁移包，包含待办、日程、循环模板、规划文档、历史记录和普通设置，并通过 `manifest.json` 中的 SHA-256 校验数据完整性。
+- 导入继续兼容旧版纯 JSON 备份；迁入 Release 前会保留当前安装环境的完整 AI 配置、电脑同步密钥、服务器同步密钥和文件授权，不把旧环境凭据误带入新安装。
+- 迁移包保留 AI provider 的名称、Base URL 和模型名但不包含 API Key，同时不包含 Desktop Sync Token、远程同步 Secret 或备份目录授权 URI；服务器同步服务只保存 AES-GCM 加密后的迁移包字节。
+
+### 服务器同步与 Windows 桌面端
+
+- 新增本地优先的远程同步基础：本地数据变化约 1 秒后触发加密上传，已启用同步时每分钟执行兜底循环，关闭同步后不再保留后台同步任务。
+- 新增兼容 Azure/Nginx 的密文中转服务和部署脚本；自动下载、差异预览、冲突合并仍未完成。
+- 新增 Windows `win-x64` self-contained 桌面壳，直接加载现有手机 LAN Web 工作台；服务器后端模式尚未作为完整桌面客户端提供。
+- Windows 桌面工程升级 Microsoft.Web.WebView2 到 `1.0.4191.47`。
+
+### 构建
+
+- `versionName = 1.15.19`
+- `versionCode = 361`
+- 数据库版本保持 `30`，无需迁移。
+- 已通过 Android 单元测试、Kotlin 编译、Android Lint、Debug/Release APK 构建、Release v2 签名验证及 Windows 桌面端发布验证。
+
 ## v1.15.18
 
 发布日期：2026-08-31（GitHub Release）

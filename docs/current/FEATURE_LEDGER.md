@@ -328,7 +328,8 @@ This file tracks the product at a practical level for new coding sessions.
 ### Data / Backup / Diagnostics
 
 - Room-based local storage
-- JSON import / export
+- `.paykibak` ZIP migration archive export / restore with manifest SHA-256 validation; legacy plain JSON backups remain importable
+- migration archives retain AI provider labels/Base URLs/model names without API keys, exclude backup-directory authorization URI, Desktop Sync token, and remote-sync device secret, and import preserves credentials from the current installation
 - backup / restore includes `todoGroupTags`; old backups without explicit multi-group tags are restored by backfilling each todo's original `groupId`
 - backup / restore includes `hiddenFromBoard` for todos and recurring templates plus `isNote` for Planning Desk nodes; old backups default the new fields to `false`
 - backup / restore includes `eventCheckIns`, and todo/event rows preserve `checkInEnabled` plus `totalCheckInMinutes`
@@ -340,6 +341,9 @@ This file tracks the product at a practical level for new coding sessions.
 - in-app Wiki keeps a left menu / right article layout on phone-sized screens instead of stacking all section buttons above the content
 - in-app Wiki documents current reminder, batch-import, Planning Desk, desktop Planning Desk, and snooze input syntax
 - Settings includes a data health check surface that scans old completed todos, empty planning notes, stale draft nodes, expired AI reports, and overdue no-reminder todos; one-click cleanup only deletes safe items after confirmation
+- Debug-to-Release migration is supported through `.paykibak`; the import flow backs up current data first, restores reminders/widgets, keeps current installation credentials, and accepts legacy JSON
+- optional remote sync is local-first and AES-GCM encrypted; local data changes schedule a delayed upload and enabled sync has a one-minute fallback, while disabled sync cancels both jobs
+- the Azure/Nginx-compatible relay stores only encrypted payload bytes; automatic pull, conflict preview, and merge/restore UI are not implemented yet
 
 ### Input Help
 
@@ -349,6 +353,7 @@ This file tracks the product at a practical level for new coding sessions.
 ### Desktop / LAN Assistance
 
 - LAN browser-based desktop sync console exists
+- Windows `win-x64` self-contained WebView2 shell builds to `desktop/dist/PaykiTodo.exe` and connects directly to the phone LAN console; server-backed desktop data mode is still pending
 - phone-side HTTP serving model exists
 - browser can perform limited data operations against the phone-side dataset
 - desktop web can edit existing todos with title, notes, DDL, the combined reminder switch, multi-group tags, recurrence, ring, and vibration fields
@@ -463,6 +468,7 @@ This file tracks the product at a practical level for new coding sessions.
 - stronger reminder reliability across vendor ROM differences
 - more complete desktop-side operations
 - GitHub Release publishing / public distribution remains a manual step and requires explicit user authorization
+- remote-sync download, conflict preview, and safe merge flow remain pending
 - tighter documentation so a new session can reconstruct state without old transcripts
 
 ## Notes

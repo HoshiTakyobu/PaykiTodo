@@ -5,7 +5,7 @@ data class BackupSnapshot(
     val groups: List<TaskGroup>,
     val templates: List<RecurringTaskTemplate>,
     val tasks: List<TodoItem>,
-    val pendingQuoteVersion: Int = 1,
+    val snapshotVersion: Int = 1,
     val reminderChainLogs: List<ReminderChainLog> = emptyList(),
     val scheduleTemplates: List<ScheduleTemplate> = emptyList(),
     val planningNotes: List<PlanningNote> = emptyList(),

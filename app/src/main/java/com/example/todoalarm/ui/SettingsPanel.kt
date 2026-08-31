@@ -233,6 +233,9 @@ fun SettingsPanel(
     onExportBackup: () -> Unit,
     onImportBackup: () -> Unit,
     onAutoBackupChange: (Boolean) -> Unit,
+    onRemoteSyncEnabledChange: (Boolean, String) -> Unit,
+    onRemoteSyncServerUrlChange: (String) -> Unit,
+    onRemoteSyncNow: () -> Unit,
     onInspectDataHealth: suspend () -> DataHealthReport,
     onCleanSafeDataHealthItems: suspend () -> DataHealthCleanResult,
     onCopyCrashLog: () -> Unit,
@@ -605,6 +608,7 @@ fun SettingsPanel(
             var dataHealthCleaning by remember { mutableStateOf(false) }
             var dataHealthMessage by remember { mutableStateOf<String?>(null) }
             var dataHealthConfirmVisible by remember { mutableStateOf(false) }
+            var remoteSyncServerUrl by remember(settings.remoteSyncServerUrl) { mutableStateOf(settings.remoteSyncServerUrl) }
             Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                     Column(modifier = Modifier.weight(1f)) {
@@ -613,11 +617,52 @@ fun SettingsPanel(
                     Switch(checked = settings.autoBackupEnabled, onCheckedChange = onAutoBackupChange)
                 }
                 Text(settings.backupDirectoryUri ?: "当前未选择备份目录", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+                Text(
+                    "迁移包可在卸载 Debug 版后保留，用于把待办、日程、规划文档、历史记录和普通设置迁入正式版。AI API Key 与电脑访问密钥不会写入文件。",
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    style = MaterialTheme.typography.bodySmall
+                )
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     OutlinedButton(onClick = onPickBackupDirectory, modifier = Modifier.fillMaxWidth()) { Text("选择备份目录") }
-                    OutlinedButton(onClick = onExportBackup, modifier = Modifier.fillMaxWidth()) { Text("导出 JSON") }
-                    OutlinedButton(onClick = onImportBackup, modifier = Modifier.fillMaxWidth()) { Text("导入 JSON") }
+                    OutlinedButton(onClick = onExportBackup, modifier = Modifier.fillMaxWidth()) { Text("导出迁移包") }
+                    OutlinedButton(onClick = onImportBackup, modifier = Modifier.fillMaxWidth()) { Text("从迁移包恢复") }
                 }
+                HorizontalDivider()
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text("服务器加密同步", fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
+                        Text(
+                            "手机仍以本地数据库为准；服务器只保存加密迁移包，用于跨网络备份与后续桌面同步。",
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
+                    Switch(
+                        checked = settings.remoteSyncEnabled,
+                        onCheckedChange = { onRemoteSyncEnabledChange(it, remoteSyncServerUrl) }
+                    )
+                }
+                OutlinedTextField(
+                    value = remoteSyncServerUrl,
+                    onValueChange = {
+                        remoteSyncServerUrl = it
+                        onRemoteSyncServerUrlChange(it)
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                    label = { Text("服务器 HTTPS 地址") },
+                    placeholder = { Text("https://panel.example.com/paykitodo-sync") },
+                    supportingText = { Text("必须使用 HTTPS；例如部署在 Nginx 路径 /paykitodo-sync 下。") }
+                )
+                OutlinedButton(
+                    onClick = onRemoteSyncNow,
+                    enabled = settings.remoteSyncEnabled && remoteSyncServerUrl.startsWith("https://", ignoreCase = true),
+                    modifier = Modifier.fillMaxWidth()
+                ) { Text("立即上传本机加密数据") }
                 HorizontalDivider()
                 DataHealthPanel(
                     report = dataHealthReport,

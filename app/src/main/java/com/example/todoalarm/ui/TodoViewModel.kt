@@ -69,6 +69,7 @@ import com.example.todoalarm.data.toEpochMillis
 import com.example.todoalarm.data.storageStringToWeekdays
 import com.example.todoalarm.sync.DesktopSyncStatus
 import com.example.todoalarm.sync.DesktopSyncService
+import com.example.todoalarm.widget.TodoWidgetProvider
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -1064,6 +1065,27 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
         desktopSyncRefreshTick.value = System.currentTimeMillis()
     }
 
+    fun updateRemoteSync(enabled: Boolean, serverUrl: String = settingsStore.currentSettings().remoteSyncServerUrl) {
+        settingsStore.updateRemoteSync(enabled, serverUrl)
+        if (enabled) {
+            app.remoteSyncCoordinator.start()
+            app.remoteSyncCoordinator.onLocalDataChanged()
+        } else {
+            app.remoteSyncCoordinator.stop()
+        }
+    }
+
+    fun updateRemoteSyncServerUrl(serverUrl: String) {
+        settingsStore.updateRemoteSyncServerUrl(serverUrl)
+    }
+
+    fun syncRemoteNow(): String {
+        viewModelScope.launch(Dispatchers.IO) {
+            runCatching { app.remoteSyncCoordinator.syncNow() }
+        }
+        return "已开始远程同步"
+    }
+
     fun updateBoardCollapseState(
         countdown: Boolean = settingsStore.currentSettings().boardCountdownCollapsed,
         todayTodos: Boolean = settingsStore.currentSettings().boardTodayTodosCollapsed,
@@ -1359,7 +1381,7 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
         return runCatching {
             val snapshot = repository.exportSnapshot(settingsStore.currentSettings())
             app.backupManager.exportToUri(targetUri, snapshot)
-            "导出完成"
+            "迁移包导出完成"
         }.getOrElse { it.message ?: "导出失败" }
     }
 
@@ -1368,9 +1390,10 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
             val currentSettings = settingsStore.currentSettings()
             val currentSnapshot = repository.exportSnapshot(currentSettings)
             val existingItems = repository.getAllTodos()
-            currentSettings.backupDirectoryUri?.let { directoryUri ->
-                app.backupManager.autoBackupToDirectory(directoryUri, currentSnapshot)
-            } ?: run {
+            val externalSafetyBackup = currentSettings.backupDirectoryUri?.let { directoryUri ->
+                runCatching { app.backupManager.autoBackupToDirectory(directoryUri, currentSnapshot) }.getOrNull()
+            }
+            if (externalSafetyBackup == null) {
                 app.backupManager.autoBackupToInternalStorage(currentSnapshot)
             }
 
@@ -1380,13 +1403,33 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
 
             val snapshot = app.backupManager.importFromUri(sourceUri)
             repository.importSnapshot(snapshot)
-            settingsStore.replaceAll(snapshot.settings)
+            settingsStore.replaceAll(
+                snapshot.settings.copy(
+                    backupDirectoryUri = currentSettings.backupDirectoryUri,
+                    autoBackupEnabled = currentSettings.autoBackupEnabled,
+                    remoteSyncEnabled = currentSettings.remoteSyncEnabled,
+                    remoteSyncServerUrl = currentSettings.remoteSyncServerUrl,
+                    remoteSyncDeviceId = currentSettings.remoteSyncDeviceId,
+                    remoteSyncSecret = currentSettings.remoteSyncSecret,
+                    desktopSyncEnabled = false,
+                    desktopSyncToken = currentSettings.desktopSyncToken,
+                    planningAiEnabled = currentSettings.planningAiEnabled,
+                    planningAiProviderName = currentSettings.planningAiProviderName,
+                    planningAiBaseUrl = currentSettings.planningAiBaseUrl,
+                    planningAiApiKey = currentSettings.planningAiApiKey,
+                    planningAiModel = currentSettings.planningAiModel,
+                    planningAiProviders = currentSettings.planningAiProviders
+                )
+            )
             selectedGroupIdsFlow.value = emptySet()
             refreshTaskStates()
             repository.futureReminderItems(System.currentTimeMillis()).forEach(app.alarmScheduler::schedule)
             DailyReportScheduler.scheduleNext(app)
             DailyBriefScheduler.scheduleNext(app)
-            "导入完成"
+            TodoWidgetProvider.notifyWidgetDataChanged(app)
+            val todoCount = snapshot.tasks.count { it.isTodo }
+            val eventCount = snapshot.tasks.count { it.isEvent }
+            "迁入完成：$todoCount 条待办、$eventCount 条日程、${snapshot.planningNotes.size} 个规划文档"
         }.getOrElse { it.message ?: "导入失败" }
     }
 

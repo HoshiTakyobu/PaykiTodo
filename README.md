@@ -22,7 +22,7 @@ PaykiTodo 是一个以 **强提醒、本地可控、日程与待办一体化** �
 
 | 项目 | 内容 |
 | --- | --- |
-| 当前源码版本 | `v1.15.18` |
+| 当前源码版本 | `v1.15.19`（本地开发中，尚未发布） |
 | 最新 GitHub Release | `v1.15.18` |
 | Android 包名 | `com.paykitodo.app` |
 | 支持系统 | Android 8.0 及以上 / API 26+ |
@@ -122,7 +122,7 @@ PaykiTodo 是一个以 **强提醒、本地可控、日程与待办一体化** �
 ### 9. 数据、备份与排障
 
 - 本地 Room 数据库。
-- JSON 备份与恢复。
+- `.paykibak` ZIP 迁移包导出与恢复，并兼容旧版纯 JSON 备份；迁移包不携带 AI API Key、电脑同步密钥、服务器同步密钥或文件授权配置。
 - 崩溃日志查看与复制。
 - 内置 Wiki / 使用说明。
 - 数据健康检查与安全清理。
@@ -186,6 +186,32 @@ docs/templates/
 ./gradlew.bat :app:assembleRelease
 ```
 
+也可以使用仓库内的 Windows 脚本确认 Debug、构建正式签名 Release、输出 SHA-256 并尝试验证签名：
+
+```powershell
+./tools/Build-PaykiTodoRelease.ps1
+```
+
+### Windows 桌面端构建
+
+桌面端当前是对手机 LAN Web 工作台的 Windows 壳，默认发布为 self-contained `win-x64`，目标电脑无需安装 .NET 运行时；仍需要 Microsoft Edge WebView2 Runtime。它目前直接连接手机端电脑同步地址，服务器模式和双向冲突合并尚未完成。
+
+```powershell
+./tools/Build-PaykiTodoDesktop.ps1
+```
+
+输出位置：
+
+```text
+desktop/dist/PaykiTodo.exe
+```
+
+如目标电脑已经安装 .NET 9，也可以使用更小的 framework-dependent 输出：
+
+```powershell
+./tools/Build-PaykiTodoDesktop.ps1 -FrameworkDependent
+```
+
 ## 隐私与数据边界
 
 PaykiTodo 当前是本地优先应用：
@@ -193,6 +219,7 @@ PaykiTodo 当前是本地优先应用：
 - 不要求账号登录。
 - 默认不上传待办、日程、规划文档或备份数据到项目作者服务器。
 - 电脑同步只在用户主动开启后，通过局域网访问手机端服务。
+- 服务器同步只有在用户主动配置并开启后才会工作；手机本地 Room 始终是主数据源，服务器只接收加密迁移包，不经过项目作者服务器。
 - AI 功能是可选项；只有用户配置并启用 AI 源时，规划台识别 / AI 报告相关文本才会发送到对应第三方模型服务。
 - API Key、Base URL 等敏感配置只应保存在本机，不应进入 Git、截图、日志或公开 Issue。
 

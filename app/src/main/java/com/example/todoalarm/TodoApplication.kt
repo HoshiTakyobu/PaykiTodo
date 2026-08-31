@@ -19,6 +19,7 @@ import com.example.todoalarm.data.LegacyAiReportMigration
 import com.example.todoalarm.data.TodoRepository
 import com.example.todoalarm.sync.DesktopSyncCoordinator
 import com.example.todoalarm.sync.DesktopSyncService
+import com.example.todoalarm.sync.RemoteSyncCoordinator
 import com.example.todoalarm.ui.QuoteRepository
 import com.example.todoalarm.widget.TodoWidgetProvider
 import kotlinx.coroutines.CoroutineExceptionHandler
@@ -82,6 +83,7 @@ class TodoApplication : Application() {
                 SafeStartupGuard.markStartupSuccessful(applicationContext)
             }
         }
+        remoteSyncCoordinator.start()
     }
 
     val database: AppDatabase by lazy {
@@ -126,6 +128,7 @@ class TodoApplication : Application() {
     val repository: TodoRepository by lazy {
         TodoRepository(database.todoDao()) {
             TodoWidgetProvider.notifyWidgetDataChanged(applicationContext)
+            remoteSyncCoordinator.onLocalDataChanged()
         }
     }
 
@@ -147,6 +150,10 @@ class TodoApplication : Application() {
             app = this,
             settingsStore = settingsStore
         )
+    }
+
+    val remoteSyncCoordinator: RemoteSyncCoordinator by lazy {
+        RemoteSyncCoordinator(this, settingsStore)
     }
 
     val alarmScheduler: AlarmScheduler by lazy {

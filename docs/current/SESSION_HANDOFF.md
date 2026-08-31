@@ -4,11 +4,13 @@
 
 - Repository root: `G:\Workspace\Project\PaykiTodo`
 - Branch: `main`
-- App version: `1.15.18 / versionCode 360`
+- App version: `1.15.19 / versionCode 361` (local development; not published)
 - Database version: `30`
 - GitHub Release: `https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.15.18`
-- Signed release APK: `app/build/outputs/apk/release/PaykiTodo-1.15.18-release.apk`
-- Debug APK: `app/build/outputs/apk/debug/PaykiTodo-1.15.18-debug.apk`
+- Latest public signed release APK: `app/build/outputs/apk/release/PaykiTodo-1.15.18-release.apk`
+- Current signed release APK: `app/build/outputs/apk/release/PaykiTodo-1.15.19-release.apk`
+- Current debug APK: `app/build/outputs/apk/debug/PaykiTodo-1.15.19-debug.apk`
+- Current Windows self-contained EXE: `desktop/dist/PaykiTodo.exe`
 
 ## Latest Product Changes
 
@@ -17,6 +19,14 @@
 3. Snooze/acknowledgement retains a normal detail notification only when the notification channel was selected.
 4. Desktop Web hour labels align with the solid calendar grid lines.
 5. Ended Desktop Web events fade as complete cards instead of only changing color.
+
+## Current Development Changes
+
+1. `.paykibak` ZIP migration archives include business data and ordinary settings, validate a SHA-256 payload checksum, retain provider labels/Base URLs/model names without API keys, and exclude remote-sync secrets, Desktop Sync credentials, and file authorization state.
+2. Import preserves the current installation's local credentials/backup authorization, restores schedules and widgets, and accepts legacy JSON backups.
+3. Remote sync is local-first: Room remains authoritative, data changes trigger a delayed encrypted upload, and enabled sync has a one-minute fallback loop. Turning it off cancels both jobs.
+4. The Azure relay accepts and stores ciphertext only. Automatic pull, conflict review, and merge UI are intentionally still pending.
+5. The Windows EXE is a self-contained WebView2 shell for direct LAN phone connections. It is not yet a server-backed desktop database client.
 
 ## Repository Publication Work
 
@@ -28,8 +38,9 @@
 
 ## Verification
 
-- JavaScript syntax, Kotlin Debug compilation, unit tests, Android Lint, Debug build, and Desktop Web calendar visual checks passed in the `1.15.18` development round.
-- Signed Release assembly and APK metadata/signature checks passed in the publication round.
+- JavaScript syntax, Kotlin compilation, unit tests, Android Lint, Debug/Release assembly, and Desktop Web calendar visual checks passed for the previous `1.15.18` round.
+- `1.15.19` Android unit tests, Debug/Release assembly, Lint, API-26 URL compatibility, APK metadata, and Release v2 signature verification passed.
+- `1.15.19` WebView2 framework-dependent and self-contained Windows publishes passed; the compiler still reports the non-fatal WebView2 `WindowsBase` reference warning.
 - `git diff --check` and ignored-secret checks passed before publication.
 - GitHub Release asset and remote contributor attribution were rechecked after upload.
 
@@ -46,6 +57,7 @@
 2. Test all four reminder-channel combinations on the user's physical phone.
 3. Test lock-screen and unlocked-other-app full-screen reminder behavior.
 4. Test both Android widgets in light/dark mode and after launcher resize.
+5. Test `.paykibak` export from Debug, uninstall Debug, install Release, and import on a physical phone.
 
 ## Safety Notes
 

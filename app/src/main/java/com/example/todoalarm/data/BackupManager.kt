@@ -14,33 +14,32 @@ class BackupManager(
     private val context: Context
 ) {
     fun exportToUri(targetUri: Uri, snapshot: BackupSnapshot) {
-        context.contentResolver.openOutputStream(targetUri)?.bufferedWriter()?.use { writer ->
-            writer.write(snapshot.toJson().toString(2))
+        context.contentResolver.openOutputStream(targetUri)?.use { output ->
+            BackupArchiveCodec.write(snapshot, output)
         } ?: error("无法写入所选文件")
     }
 
     fun importFromUri(sourceUri: Uri): BackupSnapshot {
-        val text = context.contentResolver.openInputStream(sourceUri)?.bufferedReader()?.use { it.readText() }
+        return context.contentResolver.openInputStream(sourceUri)?.use(BackupArchiveCodec::read)
             ?: error("无法读取所选文件")
-        return backupSnapshotFromJson(JSONObject(text))
     }
 
     fun autoBackupToDirectory(directoryUri: String, snapshot: BackupSnapshot): String {
         val tree = DocumentFile.fromTreeUri(context, Uri.parse(directoryUri))
             ?: error("备份目录不可访问")
-        val fileName = "PaykiTodo-backup-${timestamp()}.json"
-        val file = tree.createFile("application/json", fileName)
+        val fileName = "PaykiTodo-backup-${timestamp()}.${BackupArchiveCodec.FILE_EXTENSION}"
+        val file = tree.createFile(BackupArchiveCodec.MIME_TYPE, fileName)
             ?: error("无法在备份目录中创建文件")
-        context.contentResolver.openOutputStream(file.uri)?.bufferedWriter()?.use { writer ->
-            writer.write(snapshot.toJson().toString(2))
+        context.contentResolver.openOutputStream(file.uri)?.use { output ->
+            BackupArchiveCodec.write(snapshot, output)
         } ?: error("无法写入自动备份文件")
         return fileName
     }
 
     fun autoBackupToInternalStorage(snapshot: BackupSnapshot): String {
         val backupDir = File(context.filesDir, "backups").apply { mkdirs() }
-        val file = File(backupDir, "PaykiTodo-backup-${timestamp()}.json")
-        file.writeText(snapshot.toJson().toString(2))
+        val file = File(backupDir, "PaykiTodo-backup-${timestamp()}.${BackupArchiveCodec.FILE_EXTENSION}")
+        file.outputStream().use { output -> BackupArchiveCodec.write(snapshot, output) }
         return file.absolutePath
     }
 
@@ -52,7 +51,7 @@ class BackupManager(
 internal fun BackupSnapshot.toJson(): JSONObject {
     return JSONObject().apply {
         put("exportedAtMillis", exportedAtMillis)
-        put("snapshotVersion", pendingQuoteVersion)
+        put("snapshotVersion", snapshotVersion)
         put("settings", settings.toJson())
         put("groups", JSONArray(groups.map { it.toJson() }))
         put("templates", JSONArray(templates.map { it.toJson() }))
@@ -90,12 +89,13 @@ private fun AppSettings.toJson(): JSONObject {
         put("reminderBoostVolumePercent", reminderBoostVolumePercent)
         put("workQuietModeEnabled", workQuietModeEnabled)
         put("quoteIndex", quoteIndex)
-        put("backupDirectoryUri", backupDirectoryUri)
         put("autoBackupEnabled", autoBackupEnabled)
         put("desktopSyncWifiKeepAlive", desktopSyncWifiKeepAlive)
         put("lastOpenedPlanningNoteId", lastOpenedPlanningNoteId)
         put("planningOutlineHintVisible", planningOutlineHintVisible)
         put("planningEventEndTodoEnabled", planningEventEndTodoEnabled)
+        // Keep provider labels and models useful for migration, but never export API keys.
+        put("planningAiProviders", JSONArray(planningAiProvidersToJson(planningAiProviders, includeApiKey = false)))
         put("dailyBriefEnabled", dailyBriefEnabled)
         put("dailyBriefHour", dailyBriefHour)
         put("dailyBriefMinute", dailyBriefMinute)
@@ -105,11 +105,6 @@ private fun AppSettings.toJson(): JSONObject {
         put("boardTodayEventsCollapsed", boardTodayEventsCollapsed)
         put("boardTomorrowEventsCollapsed", boardTomorrowEventsCollapsed)
         put("boardAnnouncementCollapsed", boardAnnouncementCollapsed)
-        put("planningAiEnabled", planningAiEnabled)
-        put("planningAiProviderName", planningAiProviderName)
-        put("planningAiBaseUrl", planningAiBaseUrl)
-        put("planningAiModel", planningAiModel)
-        put("planningAiProviders", JSONArray(planningAiProvidersToJson(planningAiProviders, includeApiKey = false)))
         put("hasSeenOnboarding", hasSeenOnboarding)
         put("dailyReportEnabled", dailyReportEnabled)
         put("dailyReportHour", dailyReportHour)
@@ -358,7 +353,7 @@ private fun ActivityRecord.toJson(): JSONObject {
 internal fun backupSnapshotFromJson(json: JSONObject): BackupSnapshot {
     return BackupSnapshot(
         exportedAtMillis = json.optLong("exportedAtMillis", System.currentTimeMillis()),
-        pendingQuoteVersion = json.optInt("snapshotVersion", 1),
+        snapshotVersion = json.optInt("snapshotVersion", 1),
         groups = json.optJSONArray("groups").toGroups(),
         templates = json.optJSONArray("templates").toTemplates(),
         tasks = json.optJSONArray("tasks").toTasks(),

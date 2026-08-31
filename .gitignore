@@ -3,6 +3,11 @@
 .gradle-user-home/
 .gradle-home/
 build/
+**/bin/
+**/obj/
+desktop/dist/
+__pycache__/
+*.pyc
 local.properties
 *.iml
 .idea/
@@ -36,6 +41,8 @@ release/
 *.der
 *.key
 *.mobileprovision
+*.paykibak
+PaykiTodo-*.zip
 
 # Local environment / secrets
 .env

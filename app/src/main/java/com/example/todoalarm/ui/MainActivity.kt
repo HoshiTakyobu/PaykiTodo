@@ -40,6 +40,7 @@ import com.example.todoalarm.accessibility.ReminderAccessibilityService
 import com.example.todoalarm.alarm.ActiveReminderStore
 import com.example.todoalarm.alarm.AlarmScheduler
 import com.example.todoalarm.alarm.EventCheckInWatchdog
+import com.example.todoalarm.data.BackupArchiveCodec
 import com.example.todoalarm.data.ReminderAudioChannel
 import com.example.todoalarm.ui.theme.TodoAlarmTheme
 import kotlinx.coroutines.launch
@@ -90,7 +91,7 @@ class MainActivity : ComponentActivity() {
     }
 
     private val exportBackupLauncher = registerForActivityResult(
-        ActivityResultContracts.CreateDocument("application/json")
+        ActivityResultContracts.CreateDocument(BackupArchiveCodec.MIME_TYPE)
     ) { uri ->
         uri ?: return@registerForActivityResult
         lifecycleScope.launch {
@@ -282,9 +283,25 @@ class MainActivity : ComponentActivity() {
                         viewModel.deleteScheduleTemplate(templateId)
                     },
                     onPickBackupDirectory = { backupDirectoryLauncher.launch(null) },
-                    onExportBackup = { exportBackupLauncher.launch("PaykiTodo-backup.json") },
-                    onImportBackup = { importBackupLauncher.launch(arrayOf("application/json")) },
+                    onExportBackup = { exportBackupLauncher.launch("PaykiTodo-migration.paykibak") },
+                    onImportBackup = {
+                        importBackupLauncher.launch(
+                            arrayOf(
+                                BackupArchiveCodec.MIME_TYPE,
+                                "application/zip",
+                                "application/json",
+                                "application/octet-stream"
+                            )
+                        )
+                    },
                     onAutoBackupChange = viewModel::updateAutoBackupEnabled,
+                    onRemoteSyncEnabledChange = { enabled, serverUrl ->
+                        viewModel.updateRemoteSync(enabled, serverUrl)
+                    },
+                    onRemoteSyncServerUrlChange = viewModel::updateRemoteSyncServerUrl,
+                    onRemoteSyncNow = {
+                        Toast.makeText(this, viewModel.syncRemoteNow(), Toast.LENGTH_SHORT).show()
+                    },
                     onInspectDataHealth = viewModel::inspectDataHealth,
                     onCleanSafeDataHealthItems = viewModel::cleanSafeDataHealthItems,
                     onBoardCollapseStateChange = viewModel::updateBoardCollapseState

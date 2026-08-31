@@ -1,0 +1,22 @@
+[Unit]
+Description=PaykiTodo encrypted snapshot relay
+After=network.target
+
+[Service]
+Type=simple
+User=azureuser
+Group=azureuser
+WorkingDirectory=/home/azureuser/paykitodo-sync
+Environment=PAYKITODO_SYNC_PORT=36568
+Environment=PAYKITODO_SYNC_DATA=/home/azureuser/.local/share/paykitodo-sync
+ExecStart=/usr/bin/python3 /home/azureuser/paykitodo-sync/paykitodo_sync_server.py
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=/home/azureuser/.local/share/paykitodo-sync
+
+[Install]
+WantedBy=multi-user.target

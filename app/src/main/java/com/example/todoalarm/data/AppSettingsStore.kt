@@ -4,6 +4,7 @@ import android.content.Context
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import java.util.UUID
 
 enum class ThemeMode(val label: String) {
     SYSTEM("跟随系统"),
@@ -63,6 +64,10 @@ data class AppSettings(
     val quoteIndex: Int = 0,
     val backupDirectoryUri: String? = null,
     val autoBackupEnabled: Boolean = false,
+    val remoteSyncEnabled: Boolean = false,
+    val remoteSyncServerUrl: String = "",
+    val remoteSyncDeviceId: String = "",
+    val remoteSyncSecret: String = "",
     val desktopSyncEnabled: Boolean = false,
     val desktopSyncToken: String = "",
     val desktopSyncWifiKeepAlive: Boolean = true,
@@ -191,6 +196,35 @@ class AppSettingsStore(context: Context) {
     fun updateAutoBackupEnabled(enabled: Boolean) {
         preferences.edit().putBoolean(KEY_AUTO_BACKUP_ENABLED, enabled).apply()
         refresh()
+    }
+
+    fun updateRemoteSync(enabled: Boolean, serverUrl: String = currentSettings().remoteSyncServerUrl) {
+        preferences.edit()
+            .putBoolean(KEY_REMOTE_SYNC_ENABLED, enabled)
+            .putString(KEY_REMOTE_SYNC_SERVER_URL, serverUrl.trim().trimEnd('/'))
+            .apply()
+        refresh()
+    }
+
+    fun updateRemoteSyncServerUrl(serverUrl: String) {
+        preferences.edit().putString(KEY_REMOTE_SYNC_SERVER_URL, serverUrl.trim().trimEnd('/')).apply()
+        refresh()
+    }
+
+    fun remoteSyncCredentials(): Pair<String, String> {
+        val existingDeviceId = preferences.getString(KEY_REMOTE_SYNC_DEVICE_ID, null).orEmpty()
+        val deviceId = existingDeviceId.ifBlank {
+            UUID.randomUUID().toString().also {
+                preferences.edit().putString(KEY_REMOTE_SYNC_DEVICE_ID, it).apply()
+            }
+        }
+        val existingSecret = preferences.getString(KEY_REMOTE_SYNC_SECRET, null).orEmpty()
+        val secret = existingSecret.ifBlank {
+            generateRemoteSyncSecret().also {
+                preferences.edit().putString(KEY_REMOTE_SYNC_SECRET, it).apply()
+            }
+        }
+        return deviceId to secret
     }
 
     fun updateDesktopSyncEnabled(enabled: Boolean) {
@@ -370,6 +404,10 @@ class AppSettingsStore(context: Context) {
             .putInt(KEY_QUOTE_INDEX, settings.quoteIndex)
             .putString(KEY_BACKUP_DIR_URI, settings.backupDirectoryUri)
             .putBoolean(KEY_AUTO_BACKUP_ENABLED, settings.autoBackupEnabled)
+            .putBoolean(KEY_REMOTE_SYNC_ENABLED, settings.remoteSyncEnabled)
+            .putString(KEY_REMOTE_SYNC_SERVER_URL, settings.remoteSyncServerUrl)
+            .putString(KEY_REMOTE_SYNC_DEVICE_ID, settings.remoteSyncDeviceId)
+            .putString(KEY_REMOTE_SYNC_SECRET, settings.remoteSyncSecret)
             .putBoolean(KEY_DESKTOP_SYNC_ENABLED, settings.desktopSyncEnabled)
             .putString(KEY_DESKTOP_SYNC_TOKEN, settings.desktopSyncToken)
             .putBoolean(KEY_DESKTOP_SYNC_WIFI_KEEP_ALIVE, settings.desktopSyncWifiKeepAlive)
@@ -461,6 +499,10 @@ class AppSettingsStore(context: Context) {
             quoteIndex = preferences.getInt(KEY_QUOTE_INDEX, 0).coerceAtLeast(0),
             backupDirectoryUri = preferences.getString(KEY_BACKUP_DIR_URI, null),
             autoBackupEnabled = preferences.getBoolean(KEY_AUTO_BACKUP_ENABLED, false),
+            remoteSyncEnabled = preferences.getBoolean(KEY_REMOTE_SYNC_ENABLED, false),
+            remoteSyncServerUrl = preferences.getString(KEY_REMOTE_SYNC_SERVER_URL, "").orEmpty(),
+            remoteSyncDeviceId = preferences.getString(KEY_REMOTE_SYNC_DEVICE_ID, "").orEmpty(),
+            remoteSyncSecret = preferences.getString(KEY_REMOTE_SYNC_SECRET, "").orEmpty(),
             desktopSyncEnabled = preferences.getBoolean(KEY_DESKTOP_SYNC_ENABLED, false),
             desktopSyncToken = syncToken,
             desktopSyncWifiKeepAlive = preferences.getBoolean(KEY_DESKTOP_SYNC_WIFI_KEEP_ALIVE, true),
@@ -535,6 +577,15 @@ class AppSettingsStore(context: Context) {
         }
     }
 
+    private fun generateRemoteSyncSecret(): String {
+        val bytes = ByteArray(32)
+        java.security.SecureRandom().nextBytes(bytes)
+        return android.util.Base64.encodeToString(
+            bytes,
+            android.util.Base64.URL_SAFE or android.util.Base64.NO_WRAP or android.util.Base64.NO_PADDING
+        )
+    }
+
     companion object {
         private const val PREFS_NAME = "payki_todo_settings"
         private const val KEY_THEME_MODE = "theme_mode"
@@ -557,6 +608,10 @@ class AppSettingsStore(context: Context) {
         private const val KEY_QUOTE_INDEX = "quote_index"
         private const val KEY_BACKUP_DIR_URI = "backup_directory_uri"
         private const val KEY_AUTO_BACKUP_ENABLED = "auto_backup_enabled"
+        private const val KEY_REMOTE_SYNC_ENABLED = "remote_sync_enabled"
+        private const val KEY_REMOTE_SYNC_SERVER_URL = "remote_sync_server_url"
+        private const val KEY_REMOTE_SYNC_DEVICE_ID = "remote_sync_device_id"
+        private const val KEY_REMOTE_SYNC_SECRET = "remote_sync_secret"
         private const val KEY_DESKTOP_SYNC_ENABLED = "desktop_sync_enabled"
         private const val KEY_DESKTOP_SYNC_TOKEN = "desktop_sync_token"
         private const val KEY_DESKTOP_SYNC_WIFI_KEEP_ALIVE = "desktop_sync_wifi_keep_alive"

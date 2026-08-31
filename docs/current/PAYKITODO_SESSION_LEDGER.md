@@ -6,13 +6,13 @@ This file summarizes the original `【开发】PaykiTodo` session and the later 
 
 The original PaykiTodo sessions became large and increasingly unreliable. This file converts the important project history into a stable handoff artifact.
 
-## Latest In-Progress Round
+## Latest Released Round
 
-The active `1.15.18 / versionCode 360` round restores independent full-screen and notification reminder selections across phone/Web/Planning Desk, keeps single-channel storage values intact, limits retained post-action notifications to items that selected the notification channel, aligns Desktop Web hour labels with their solid grid lines, and fades ended events as complete cards. It preserves the `1.15.17` event-preview and snooze/acknowledgement work. Database version remains `30`; no push is authorized unless the user explicitly requests it.
+The released `1.15.18 / versionCode 360` round restores independent full-screen and notification reminder selections across phone/Web/Planning Desk, keeps single-channel storage values intact, limits retained post-action notifications to items that selected the notification channel, aligns Desktop Web hour labels with their solid grid lines, and fades ended events as complete cards. It preserves the `1.15.17` event-preview and snooze/acknowledgement work. Database version remains `30`; the signed APK is published in GitHub Release `v1.15.18`.
 
 ## Initial Product Request
 
-The original request was to build an Android 14 local single-device app that:
+The original request was to build a local-first Android app that:
 
 - opens directly to today-oriented task information
 - supports todo deadlines

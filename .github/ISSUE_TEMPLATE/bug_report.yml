@@ -11,8 +11,8 @@ body:
     id: version
     attributes:
       label: App version
-      description: Example: 1.13.11 / versionCode 259
-      placeholder: 1.13.11 / 259
+      description: Example: 1.15.18 / versionCode 360
+      placeholder: 1.15.18 / 360
     validations:
       required: true
   - type: input

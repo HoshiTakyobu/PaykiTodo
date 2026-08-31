@@ -9,10 +9,7 @@ This directory is intentionally split by document lifecycle.
 Use this folder as the live project baseline. New sessions should read `AGENTS.md`
 first, then the required files under `docs/current/`.
 
-Internal maintenance files that should not clutter the public repository root also live under `docs/current/`, including:
-
-- `START_NEW_SESSION.txt`
-- `PROJECT_BACKLOG.md`
+Internal maintenance files that should not clutter the public repository root also live under `docs/current/`, including project status, feature ledgers, active design notes, session handoff, the maintenance backlog, and the new-session bootstrap prompts.
 
 Long obsolete backlog material is archived under `docs/archive/historical/`.
 
@@ -20,7 +17,7 @@ Long obsolete backlog material is archived under `docs/archive/historical/`.
 
 - `docs/archive/historical/`
 
-Older versioned requirement, design, status, and handoff documents live here.
+Older versioned requirement, design, recovery, status, and handoff documents live here.
 They are kept for traceability, but they are not the current product baseline.
 Git history still preserves their original paths in earlier commits.
 

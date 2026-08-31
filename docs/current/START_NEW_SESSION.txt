@@ -10,15 +10,14 @@ Read in this order:
 4. docs/current/FEATURE_LEDGER.md
 5. docs/current/CURRENT_TASK.md
 6. docs/current/SESSION_HANDOFF.md
-7. docs/current/CONTEXT_RECOVERY_V1_15_10.md
-8. docs/current/PAYKITODO_SESSION_LEDGER.md
-9. docs/current/SESSION_WORKFLOW_MANUAL.md
-10. README.md
-11. docs/current/PROJECT_BACKLOG.md
-12. CHANGELOG.md
+7. docs/current/PAYKITODO_SESSION_LEDGER.md
+8. docs/current/SESSION_WORKFLOW_MANUAL.md
+9. README.md
+10. docs/current/PROJECT_BACKLOG.md
+11. CHANGELOG.md
 
 Then inspect:
-13. git status
+12. git status
 
 Rules:
 1. Treat repository files as the source of truth.

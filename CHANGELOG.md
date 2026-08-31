@@ -4,7 +4,7 @@ PaykiTodo 采用语义化倾向的应用版本号和递增 `versionCode`。本�
 
 ## v1.15.18
 
-发布日期：2026-08-31（本地调试构建，尚未创建 GitHub Release）
+发布日期：2026-08-31（GitHub Release）
 
 ### 提醒渠道
 
@@ -674,7 +674,7 @@ PaykiTodo 采用语义化倾向的应用版本号和递增 `versionCode`。本�
 
 ## v1.14.12
 
-发布日期：2026-06-16（本地调试构建，尚未创建 GitHub Release）
+发布日期：2026-06-16（GitHub Release）
 
 ### 每日看板显示修复
 
@@ -695,6 +695,7 @@ PaykiTodo 采用语义化倾向的应用版本号和递增 `versionCode`。本�
 - `versionName = 1.14.12`
 - `versionCode = 332`
 - 数据库版本保持 `28`，不新增迁移。
+- GitHub Release：<https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.14.12>
 
 ## v1.14.11
 

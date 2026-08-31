@@ -1,6 +1,6 @@
 # Contributing to PaykiTodo
 
-PaykiTodo is primarily a personal Android app, but contributions and local forks are welcome under the MIT License.
+PaykiTodo is a local-first Android todo and schedule assistant developed through maintainer-led, AI-assisted vibe coding. Contributions and local forks are welcome under the MIT License.
 
 ## Development environment
 

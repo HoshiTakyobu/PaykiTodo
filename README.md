@@ -5,7 +5,9 @@
 [![Android](https://img.shields.io/badge/platform-Android-green.svg)](app)
 [![CI](https://github.com/HoshiTakyobu/PaykiTodo/actions/workflows/android-ci.yml/badge.svg)](https://github.com/HoshiTakyobu/PaykiTodo/actions/workflows/android-ci.yml)
 
-PaykiTodo 是一个以 **强提醒、本地可控、日程与待办一体化** 为核心的 Android 个人任务管理应用。
+PaykiTodo 是一个以 **强提醒、本地可控、日程与待办一体化** 为核心的 Android 个人效率助手，可用于管理待办、DDL、日程、倒数日和规划草稿。
+
+项目采用用户需求与人工验收主导的 **AI 辅助 vibe coding** 方式持续开发：产品取舍、交互反馈和发布决策由维护者负责，AI 工具参与实现、测试、排障和文档维护。它不是限定于 Android 14 的实验项目，当前安装包支持 Android 8.0 及以上系统。
 
 它面向这样的使用场景：
 
@@ -21,13 +23,13 @@ PaykiTodo 是一个以 **强提醒、本地可控、日程与待办一体化** �
 | 项目 | 内容 |
 | --- | --- |
 | 当前源码版本 | `v1.15.18` |
-| 最新 GitHub Release | `v1.14.12` |
+| 最新 GitHub Release | `v1.15.18` |
 | Android 包名 | `com.paykitodo.app` |
-| 最低系统 | Android 8.0 / API 26 |
-| 目标系统 | Android 14 / API 34 |
+| 支持系统 | Android 8.0 及以上 / API 26+ |
+| 当前编译目标 | Android 14 / API 34 |
 | 开源协议 | MIT License |
-| 最新 Release 页面 | <https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.14.12> |
-| 最新 Release APK 下载 | <https://github.com/HoshiTakyobu/PaykiTodo/releases/download/v1.14.12/PaykiTodo-1.14.12-release.apk> |
+| 最新 Release 页面 | <https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.15.18> |
+| 最新 Release APK 下载 | <https://github.com/HoshiTakyobu/PaykiTodo/releases/download/v1.15.18/PaykiTodo-1.15.18-release.apk> |
 
 ## 功能概览
 

@@ -21,7 +21,7 @@ Please check:
 
 For bug reports, include:
 
-- app version, such as `1.13.11`;
+- app version, such as `1.15.18`;
 - Android version and device model;
 - whether the build is debug or release;
 - clear reproduction steps;

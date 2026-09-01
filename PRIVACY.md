@@ -1,6 +1,6 @@
 # Privacy Policy
 
-PaykiTodo is designed as a local-first Android app.
+PaykiTodo is designed as a local-first Android and Windows app.
 
 ## Data stored by the app
 
@@ -16,17 +16,18 @@ PaykiTodo may store the following data on the user's device:
 
 ## Network behavior
 
-PaykiTodo does not require an account system and does not send user data to a PaykiTodo-operated cloud service.
+PaykiTodo can be used without an account. Optional account sync only connects to the server URL explicitly configured by the user or deployment owner; the public project does not provide a default author-operated account service.
 
 Network access may happen in these user-controlled cases:
 
 1. **Desktop sync**: when the user enables desktop sync, the phone exposes a local LAN web console. Devices on the same network can connect using the displayed address and token.
-2. **AI features**: when the user configures and enables an OpenAI-compatible provider, selected Planning Desk text or AI-report context may be sent to that configured third-party provider.
-3. **User-initiated sharing / export**: exported backup files or copied logs are controlled by the user after export.
+2. **Optional account sync**: after the user registers or logs in, Android and Windows may upload an end-to-end encrypted PaykiTodo archive plus account/device/revision metadata to the configured server. The server does not receive the archive decryption secret.
+3. **AI features**: when the user configures and enables an OpenAI-compatible provider, selected Planning Desk text or AI-report context may be sent to that configured third-party provider.
+4. **User-initiated sharing / export**: exported backup files or copied logs are controlled by the user after export.
 
 ## API keys and private endpoints
 
-AI API keys, private Base URLs and similar secrets should remain on the user's device.
+AI API keys, private Base URLs, cloud tokens, account snapshot secrets and similar secrets should remain on the user's device.
 
 The app's backup format is designed not to export AI API keys. Developers and users must not paste secrets into:
 
@@ -39,7 +40,7 @@ The app's backup format is designed not to export AI API keys. Developers and us
 
 ## Backups
 
-JSON backups may contain personal todos, events, notes and planning content. Treat backups as private data.
+`.paykibak` backups and decrypted local cloud copies may contain personal todos, events, notes and planning content. Treat them as private data. Android cloud credentials use encrypted preferences when available; Windows cloud state and the local archive use current-user DPAPI protection.
 
 Before sharing a backup for debugging, remove personal information first.
 

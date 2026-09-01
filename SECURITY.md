@@ -26,6 +26,9 @@ Never commit:
 - AI API keys
 - private Base URLs
 - desktop sync tokens
+- cloud access / refresh tokens and account snapshot secrets
+- administrator credentials and private cloud deployment files
+- cloud SQLite databases
 - real user backups or logs containing personal data
 
 The repository `.gitignore` already covers the common local secret and build-artifact paths. Verify before committing:
@@ -38,6 +41,12 @@ git check-ignore -v keystore.properties release/PaykiTodo-release.jks
 ## Desktop sync warning
 
 Desktop sync exposes a local web service on the phone while enabled. Use it only on trusted networks and disable it when not needed.
+
+## Account sync warning
+
+The account API should listen only on loopback (default `127.0.0.1:18766`) and be exposed through an HTTPS reverse proxy. Do not expose the backend port directly. Keep the real environment file, administrator password, password pepper, hostname, certificate and cloud database outside Git. Configure Cloudflare/Nginx rate limiting before opening registration publicly.
+
+The current synchronization contract blocks revision conflicts but does not automatically merge concurrent field edits. A conflict must never be bypassed by manually forcing `If-Match` without first deciding which local copy should win.
 
 ## AI provider warning
 

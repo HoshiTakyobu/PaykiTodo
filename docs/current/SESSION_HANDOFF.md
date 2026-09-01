@@ -4,72 +4,45 @@
 
 - Repository root: `G:\Workspace\Project\PaykiTodo`
 - Branch: `main`
-- App version: `1.15.22 / versionCode 364` (local development; not published)
-- Database version: `30`
-- GitHub Release: `https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.15.18`
-- Latest public signed release APK: `app/build/outputs/apk/release/PaykiTodo-1.15.18-release.apk`
-- Current signed release APK: `app/build/outputs/apk/release/PaykiTodo-1.15.22-release.apk`
-- Current debug APK: `app/build/outputs/apk/debug/PaykiTodo-1.15.22-debug.apk`
-- Current Windows self-contained EXE: `desktop/dist/PaykiTodo.exe`
+- App version: `1.16.0 / versionCode 365` (local development; not published)
+- Room database version: `30`
+- Latest public GitHub Release: `v1.15.18`
+- Android outputs after final verification:
+  - `app/build/outputs/apk/debug/PaykiTodo-1.16.0-debug.apk`
+  - `app/build/outputs/apk/release/PaykiTodo-1.16.0-release.apk`
+- Windows output after final publish: `desktop/dist/PaykiTodo.exe`
 
-## Latest Product Changes
+## v1.16.0 Product Changes
 
-1. Phone and Desktop Web todo/event editors and Planning Desk candidates expose one frequent `提醒` switch; enabled means full-screen plus notification-bar delivery, disabled means no reminder scheduling.
-2. Legacy `FULLSCREEN`, `NOTIFICATION`, and `FULLSCREEN_AND_NOTIFICATION` storage values are read as the unified combined contract; they are not separate user choices anymore.
-3. Event reminders show only `我知道了`; todo intermediate reminders show `我已完成` + `我知道了`; only the final todo reminder adds fixed `延后10分钟`.
-4. Activity and accessibility-overlay action rows are responsive on narrow phones, and retained notification clicks re-check item state before opening a detail page.
-5. Desktop Web hour labels align with the solid calendar grid lines.
-6. Ended Desktop Web events fade as complete cards instead of only changing color.
-7. Every todo full-screen reminder now includes `我知道了`, including same-day due todos; acknowledgement only closes the current reminder.
-8. Desktop Web navigation now separates todo/event creation actions by tab, keeps navigation left and connection controls right, and wraps safely at narrow widths.
-9. Desktop Web calendar current-time rendering now matches the phone's full-width red line and current-day marker; mini-calendar selection is circular and briefly highlights the selected week column.
-
-## Current Development Changes
-
-1. `.paykibak` ZIP migration archives include business data and ordinary settings, validate a SHA-256 payload checksum, retain provider labels/Base URLs/model names without API keys, and exclude remote-sync secrets, Desktop Sync credentials, and file authorization state.
-2. Import preserves the current installation's local credentials/backup authorization, restores schedules and widgets, and accepts legacy JSON backups.
-3. Remote sync is local-first: Room remains authoritative, data changes trigger a delayed encrypted upload, and enabled sync has a one-minute fallback loop. Turning it off cancels both jobs.
-4. The Azure relay accepts and stores ciphertext only. Mobile inspection now shows a safe summary before explicit replacement restore, with a local safety backup first.
-5. The current Windows EXE is only a compatibility WebView2 shell: its phone-LAN mode embeds the phone's `18765` Web service, while its server mode only reads encrypted snapshots. The target EXE must instead own a local data copy and sync independently through the server; it must not depend on the phone-LAN mode.
-
-## Repository Publication Work
-
-1. README, changelog, support/contribution material, issue examples, privacy wording, and current maintainer docs now describe `v1.15.18`.
-2. README and GitHub About position PaykiTodo as an Android 8.0+ local-first todo and schedule assistant developed through maintainer-led, AI-assisted vibe coding.
-3. Old context-recovery snapshots were moved from `docs/current/` to `docs/archive/historical/`.
-4. Three `Co-Authored-By: Claude ...` trailers were removed by rewriting commit messages only; source trees were preserved.
-5. Repository topics describe Android, Kotlin, Compose, todo, calendar, reminder, local-first, and vibe coding.
+1. `server/paykitodo_cloud_server.py` implements user registration/login, short access tokens, rotating refresh tokens, devices, encrypted snapshot revisions, idempotent uploads, audit records, and a Basic-Auth administrator page with CSRF-protected state changes.
+2. The cloud origin defaults to `127.0.0.1:18766`; public clients use Cloudflare/Nginx HTTPS `443`. Real hostnames, IPs, certificates, environment values, cloud databases, and administrator credentials are not in Git.
+3. Android Settings -> Data and Backup exposes cloud registration/login, account state, revision, pending/conflict/error state, manual sync, cloud inspection, and logout.
+4. Android keeps Room authoritative, stores tokens/snapshot keys in encrypted preferences, uploads after local writes, pulls only when the local copy is clean, and blocks concurrent dirty revisions instead of silently overwriting.
+5. Windows cloud mode owns a DPAPI-protected local `.paykibak` working copy, works offline, and can add/edit/complete/cancel/delete todos, add/edit/cancel/delete events, configure core reminder/recurrence/countdown fields, and edit a Planning Desk memo.
+6. Windows phone-LAN compatibility mode still embeds the phone's `18765` page and directly changes phone data. It is not the cloud client and does not require the cloud account server.
+7. The legacy `/v1/sync/{deviceId}` encrypted relay remains available for old Android settings.
 
 ## Verification
 
-- JavaScript syntax, Kotlin compilation, unit tests, Android Lint, Debug/Release assembly, and Desktop Web calendar visual checks passed for the previous `1.15.18` round.
-- `1.15.21` passed 162 Android unit tests, Kotlin Debug/Release compilation, Android Lint, Debug/Release APK assembly, APK metadata inspection, Release v2 signature verification, JavaScript syntax check, `git diff --check`, and self-contained Windows publish.
-- `1.15.22` includes the Desktop Web UI changes described above; JavaScript syntax and diff checks are currently passing, with Android build verification pending.
-- The Windows publish retains the known non-fatal WebView2 `WindowsBase` version warning.
-- The private administrator hostname was found behind Cloudflare but returning `526`; its Azure origin certificate, independent Nginx route, and administrator backend are not deployed. The real hostname is intentionally excluded from Git.
-- `git diff --check` and ignored-secret checks passed before publication.
-- GitHub Release asset and remote contributor attribution were rechecked after upload.
+- Python cloud integration tests cover register/login, wrong password, token refresh, device list, versioned upload, idempotency, conflict rejection, encrypted snapshot download, and administrator authentication.
+- Android cloud tests cover stable cross-client account-key derivation and AES-GCM wrong-key rejection.
+- Android compile and full unit tests, Debug/Release APK assembly, Lint, Windows Release build/publish, and `git diff --check` must be rerun after the final documentation commit.
+- The existing non-fatal WebView2 `WindowsBase` assembly warning remains during Windows build.
 
-## Session Integrity
+## Deployment Still Required
 
-- The long-running PaykiTodo thread `019d4e16-8f61-78e3-9028-1dccf67f1661` had three live-looking rollout files under one UUID.
-- Its state database previously pointed to a rollout whose final compacted summary stopped at `1.15.11`, which caused later resumes to ignore the already released `1.15.18` baseline.
-- On 2026-08-31, both local Codex state stores and the active rollout were backed up. Because the running process restored the active `17-19-59` pointer, that rollout received a new structured compacted baseline for `1.15.18 / versionCode 360`, explicitly superseding the stale `1.15.11` summary.
-- The thread working-directory hint now points directly to this repository. No rollout was deleted or replaced; see `docs/archive/historical/SESSION_STATE_REPAIR_2026-08-31.md` for the exact diagnosis and rollback references.
+1. Create a private server environment file from `server/paykitodo-cloud.env.example` with random administrator/password-pepper secrets.
+2. Install the service as a dedicated `paykitodo` user, keep the SQLite database under `/var/lib/paykitodo`, and proxy the private hostname to `127.0.0.1:18766`.
+3. Configure a valid origin certificate and Cloudflare SSL/TLS Full (strict), WAF, login/registration rate limits, and origin firewall rules.
+4. Smoke-test with a disposable account before migrating real phone data.
 
-## Physical Device Checks Still Needed
+## Known Limitations
 
-1. Install the matching-signed `1.15.22` APK and confirm startup and data operations.
-2. Test reminder off/on in both todo and event editors on the user's physical phone.
-3. Test intermediate/final multi-reminder todo actions and the event-only `我知道了` action on narrow and ordinary phone widths.
-4. Test lock-screen and unlocked-other-app full-screen reminder behavior.
-5. Test both Android widgets in light/dark mode and after launcher resize.
-6. Test `.paykibak` export from Debug, uninstall Debug, install Release, and import on a physical phone.
-7. Test mobile remote inspection/restore and Windows server mode against a real server snapshot.
-8. Account login, bidirectional cloud sync, a writable standalone Windows local client, and the administrator panel remain future work; do not use the current snapshot relay or phone `18765` WebView mode as if those features existed.
+- Synchronization is versioned whole-snapshot sync, not field-level operation merge. Conflicts stop for explicit resolution.
+- The Windows client covers core writable todo/event/planning fields but is not yet feature-identical to every Android-only surface such as alarm delivery, widgets, AI reports, check-in runtime, and advanced recurrence scope operations.
+- The administrator page currently uses deployment-level Basic Auth rather than MFA; it is suitable only behind HTTPS and Cloudflare access controls until MFA is added.
 
-## Safety Notes
+## Safety
 
-- Never commit `keystore.properties`, `release/`, API keys, private Base URLs, Desktop Sync tokens, generated APKs/AABs, backups, logs with personal data, or local screenshots.
-- The release APK belongs in GitHub Release assets, not in Git history.
-- The Windows server-mode secret is session-only and must not enter desktop preferences, logs, screenshots, or documentation.
+- Never commit private domains, Azure IPs, Cloudflare settings, SSH keys, environment files, SQLite user databases, keystores, passwords, tokens, API keys, real backups, or user screenshots.
+- Do not push or create a GitHub Release until the user explicitly requests it.

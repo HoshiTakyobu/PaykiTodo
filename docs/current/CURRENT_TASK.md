@@ -2,7 +2,14 @@
 
 ## Active Focus
 
-The `v1.15.22` local development round fixes the Desktop Web header actions and calendar alignment on top of the `v1.15.21` reminder interaction work. It is not a GitHub Release yet; the latest public release remains `v1.15.18`.
+The `v1.16.0` local development round adds the first usable account/cloud and independent Windows client implementation on top of the `v1.15.22` desktop calendar work. It is not a GitHub Release yet; the latest public release remains `v1.15.18`.
+
+## Completed `v1.16.0` Scope
+
+1. Added the account registration, login, token refresh, device, versioned encrypted snapshot, conflict, and administrator APIs on loopback port `18766`.
+2. Added Android account UI and encrypted local account credentials while preserving Room as the local authority and `18765` as the separate LAN browser path.
+3. Added a writable, offline-capable Windows local client with DPAPI-protected state and core todo/event/planning operations.
+4. Added integration tests and public deployment/usage templates without private domain or server credentials.
 
 ## Completed `v1.15.22` Scope
 
@@ -29,16 +36,16 @@ The `v1.15.22` local development round fixes the Desktop Web header actions and 
 ## Latest Public Release Baseline
 
 1. `v1.15.18` remains the latest GitHub Release and public APK.
-2. The `1.15.22` source and local APKs are not published until the user explicitly requests a release.
+2. The `1.16.0` source and local APKs are not published until the user explicitly requests a release.
 
 ## Next Validation
 
-1. Install `1.15.22` Debug or Release on the matching signed profile and smoke-test startup, migration import, todo creation, event creation, and Desktop Sync.
+1. Install `1.16.0` Debug or Release on the matching signed profile and smoke-test startup, migration import, todo creation, event creation, and Desktop Sync.
 2. Verify the single reminder switch and the event/intermediate/final todo action layouts on a physical phone.
 3. Verify full-screen behavior while locked and while unlocked inside another app on the user's OEM ROM.
 4. Verify daily-board and countdown widgets after installation, resize, date change, and dark/light theme change.
 5. Physically test remote snapshot inspection and restore with a real server snapshot.
-6. Physically test Windows server mode against the deployed HTTPS relay; keep it read-only until a conflict model is designed.
-7. Do not present the current encrypted snapshot relay as account login or bidirectional sync; follow `docs/current/CLOUD_SYNC_AND_ADMIN_DESIGN.md` for the next architecture phase.
+6. Deploy the generic cloud service privately, then test Android + Windows login, offline edits, upload/pull, conflict blocking, logout, and device revocation against a test account.
+7. Add field-level merge or explicit conflict-resolution UI in a later round; the current encrypted snapshot contract intentionally stops before automatic merges.
 
 Do not commit signing material, AI keys, Desktop Sync tokens, private Base URLs, generated APK/AAB files, backups, screenshots with personal data, or local diagnostics.

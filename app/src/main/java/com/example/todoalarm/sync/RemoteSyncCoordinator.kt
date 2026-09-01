@@ -115,7 +115,7 @@ class RemoteSyncCoordinator(
             val remoteRevision = response.optLong("snapshotRevision", 0L)
             val localSnapshot = app.repository.exportSnapshot(settingsStore.currentSettings())
             val hasLocalData = localSnapshot.hasMeaningfulData()
-            val localDirty = remoteRevision == 0L || hasLocalData
+            val localDirty = hasLocalData
             settingsStore.saveRemoteAccountSession(
                 serverUrl = normalizedServer,
                 username = canonicalUsername,
@@ -125,7 +125,7 @@ class RemoteSyncCoordinator(
                 accessExpiresAt = response.getLong("accessExpiresAt"),
                 refreshExpiresAt = response.getLong("refreshExpiresAt"),
                 encryptionSecret = deriveAccountSecret(canonicalUsername, password),
-                revision = if (remoteRevision > 0L && hasLocalData) 0L else remoteRevision,
+                revision = if (hasLocalData) 0L else remoteRevision,
                 dirty = localDirty,
                 conflictRevision = if (remoteRevision > 0L && hasLocalData) remoteRevision else 0L
             )
@@ -231,6 +231,7 @@ class RemoteSyncCoordinator(
             }
             app.repository.importSnapshot(snapshot)
             settingsStore.replaceAll(snapshot.settings.withRemoteAccountFrom(current))
+            app.repository.ensureRecurringInstancesAhead()
             app.repository.futureReminderItems(System.currentTimeMillis()).forEach(app.alarmScheduler::schedule)
             TodoWidgetProvider.notifyWidgetDataChanged(app)
         } finally {
@@ -431,9 +432,8 @@ class RemoteSyncCoordinator(
 
     private fun openLegacyConnection(serverUrl: String, deviceId: String, secret: String, method: String): HttpURLConnection {
         val endpoint = "$serverUrl/v1/sync/${java.net.URLEncoder.encode(deviceId, "UTF-8")}"
-        val endpoint = "$serverUrl/v1/sync/${java.net.URLEncoder.encode(deviceId, "UTF-8")}"
         return (URL(endpoint).openConnection() as HttpURLConnection).apply {
-           requestMethod = method
+            requestMethod = method
             connectTimeout = 10_000
             readTimeout = 15_000
             useCaches = false

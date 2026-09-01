@@ -2,9 +2,10 @@
 
 ## 文档状态
 
-- 状态：设计确认前的架构基线，当前 `1.15.22` 尚未实现。
-- 当前服务器代码 `server/paykitodo_sync_server.py` 只是按设备 ID 保存加密快照的密文中转器。
-- 当前 Windows EXE 的服务器模式只是本地解密后的只读展示，不能修改服务器数据。
+- 状态：`1.16.0` 第一阶段实现基线。
+- 旧服务器代码 `server/paykitodo_sync_server.py` 继续为旧安装提供按设备 ID 的密文中转兼容。
+- 新服务器代码 `server/paykitodo_cloud_server.py` 已实现账号、令牌、设备、版本化密文快照和管理员页面，默认监听 `127.0.0.1:18766`。
+- Windows EXE 已拥有 DPAPI 保护的本地数据副本，可离线编辑并通过账号同步；手机 `18765` 仍是独立的 LAN 兼容模式。
 - 本文不包含账号密码、API Key、SSH 私钥、Cloudflare Token 或真实服务器地址之外的敏感凭据。
 
 ## 1. 产品边界
@@ -44,28 +45,26 @@ Windows EXE 在这种模式下不连接手机的 `18765`，不依赖手机在线
 
 ### 2.1 账号服务
 
-建议接口：
+第一阶段已实现接口：
 
-- `POST /api/v1/auth/register`
-- `POST /api/v1/auth/login`
-- `POST /api/v1/auth/refresh`
-- `POST /api/v1/auth/logout`
-- `GET /api/v1/account/devices`
-- `DELETE /api/v1/account/devices/{deviceId}`
+- `POST /v2/auth/register`
+- `POST /v2/auth/login`
+- `POST /v2/auth/refresh`
+- `POST /v2/auth/logout`
+- `GET /v2/devices`
+- `DELETE /v2/devices/{deviceId}`
 
-密码应在服务端使用 Argon2id（无法使用时才降级到高成本 PBKDF2-SHA256）存储摘要。访问 Token 短期有效，Refresh Token 只存哈希并可按设备撤销；登录、注册、找回密码和管理接口必须限流并记录安全事件。
+密码当前使用带随机盐和服务端 pepper 的 `scrypt` 保存摘要。访问 Token 短期有效，Refresh Token 只存哈希并按设备轮换/撤销；登录和注册有限流，安全动作写入审计表。管理员 MFA、找回密码和邮件验证仍属于后续安全增强。
 
 ### 2.2 同步服务
 
-建议接口：
+第一阶段已实现接口：
 
-- `GET /api/v1/sync/state`：返回服务器 revision、设备游标和安全元数据；
-- `POST /api/v1/sync/push`：提交客户端在某个 `baseRevision` 上产生的变更；
-- `GET /api/v1/sync/pull?after={revision}`：拉取其他设备已经提交的变更；
-- `POST /api/v1/sync/ack`：确认设备已应用 revision；
-- `POST /api/v1/sync/snapshot`：首次登录或灾难恢复时提交加密快照。
+- `GET /v2/sync/status`：返回服务器 revision 和快照元数据；
+- `GET /v2/sync/snapshot`：下载当前账户的端到端加密快照；
+- `PUT /v2/sync/snapshot`：携带 `If-Match` 基础 revision 和幂等操作 ID 上传快照。
 
-第一版可以在一次用户操作后上传加密变更包，并保留每分钟兜底拉取；不能只做“最后上传的一整包覆盖服务器”，否则手机和电脑同时修改时会静默丢数据。
+第一阶段仍是整包同步，但通过 revision 和 `If-Match` 阻止“最后上传静默覆盖”。本地无待上传修改时会自动拉取；两端都修改时停止并提示冲突。字段级操作日志、删除墓碑和自动合并仍属于下一阶段。
 
 ### 2.3 数据与加密
 
@@ -137,7 +136,7 @@ Windows 客户端不是手机 `18765` 网页的另一个名字，而应是拥有
 | --- | --- | --- |
 | 手机 LAN Web 服务 | 手机局域网地址 `:18765` | 电脑浏览器或当前 WebView2 兼容模式直连手机本地数据，不经过云服务器 |
 | 现有加密快照中继 | `127.0.0.1:36568` | 仅保存加密快照密文；由 Nginx 通过 HTTPS 路径代理 |
-| 未来 PaykiTodo API / Admin | `127.0.0.1:18766` | 账号、管理后台和双向同步服务的预留端口，目前尚未实现 |
+| PaykiTodo API / Admin | `127.0.0.1:18766` | 已实现账号、管理后台和版本化加密快照同步；公网仍只经 HTTPS 反代 |
 | 公网入口 | Cloudflare / Nginx `:443` | 外部只访问 HTTPS，不直接开放后端端口 |
 | Windows EXE 本地端口 | 无固定监听端口 | 云同步模式由 EXE 主动访问服务器；不承担手机 Web 服务职责 |
 

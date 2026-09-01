@@ -8,7 +8,7 @@
 - Supported Android: Android 8.0+ / API 26+
 - Compile and target SDK: Android 14 / API 34
 - License: MIT
-- App version: `1.15.22 / versionCode 364` (current local development source)
+- App version: `1.16.0 / versionCode 365` (current local development source)
 - Room database version: `30`
 
 ## Published Build
@@ -16,9 +16,9 @@
 - GitHub Release: `https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.15.18`
 - Release APK: `app/build/outputs/apk/release/PaykiTodo-1.15.18-release.apk`
 - Public asset name: `PaykiTodo-1.15.18-release.apk`
-- Current debug APK: `app/build/outputs/apk/debug/PaykiTodo-1.15.22-debug.apk`
-- Current signed release APK: `app/build/outputs/apk/release/PaykiTodo-1.15.22-release.apk`
-- Current Windows self-contained EXE: `desktop/dist/PaykiTodo.exe`
+- Current debug APK: `app/build/outputs/apk/debug/PaykiTodo-1.16.0-debug.apk` (after this round's build)
+- Current signed release APK: `app/build/outputs/apk/release/PaykiTodo-1.16.0-release.apk` (after this round's build)
+- Current Windows self-contained EXE: `desktop/dist/PaykiTodo.exe` (after this round's publish)
 - Release signing material remains local and ignored by Git.
 
 ## Product Positioning
@@ -33,16 +33,21 @@ PaykiTodo is a local-first Android assistant for todos, DDLs, schedules, countdo
 - One frequent reminder switch across phone and Desktop Web; disabled means no scheduling, enabled means full-screen plus notification-bar delivery.
 - Planning Desk memo workflow with local-rule parsing, optional OpenAI-compatible AI recognition, preview, correction, and confirmed import.
 - Local LAN Desktop Web console for board, todo, calendar, Planning Desk, AI reports, and Excel schedule import.
-- Optional encrypted remote-sync upload foundation; the Room database remains authoritative and the server stores only encrypted migration-package bytes. Account login, bidirectional device sync, conflict merge, and admin APIs are not implemented.
+- Optional account-based encrypted cloud sync; the Room database remains authoritative and the server stores only encrypted migration-package bytes. Account registration/login, refresh tokens, device revocation, versioned uploads, conflict blocking, and a separate administrator user/device overview are implemented.
 - Remote snapshot inspection shows export time and record counts before any restore; restore requires explicit confirmation and creates a local safety backup first.
-- Windows self-contained desktop shell currently supports the phone LAN Web console plus a server-snapshot read-only mode; these are compatibility capabilities only. The target standalone EXE must own a local data copy and synchronize with the server independently of the phone's `18765`; that writable account-synced client remains unimplemented.
+- Windows self-contained desktop client supports an independent encrypted local data copy, account login/registration, offline todo/event/planning edits, and versioned cloud synchronization. Its phone LAN option remains a clearly separate compatibility mode using the phone's `18765`.
 - Android daily-board and countdown widgets.
 - Local Room storage, `.paykibak` migration archive / legacy JSON restore, diagnostics, crash logs, and in-app Wiki.
 - Desktop Web calendar now uses the same current-time line convention as the phone calendar, separates today's date from the selected date, and flashes the selected week column briefly.
 
 See `README.md` for the public overview and `docs/current/FEATURE_LEDGER.md` for the detailed implementation ledger.
 
-## v1.15.22 Development Scope (not published)
+## v1.16.0 Development Scope (not published)
+
+- Added an account-based cloud API with password hashing, short-lived access tokens, refresh-token rotation, device management, audit records, and an independently protected administrator page.
+- Added Android cloud account login/registration, encrypted local token/key storage, local-first synchronization, automatic pull when clean, upload after local changes, and explicit conflict blocking.
+- Added an independent Windows cloud client with DPAPI-protected local account/data files, offline editing, core todo/event/reminder/recurrence/countdown/planning fields, and the existing phone LAN compatibility mode.
+- Added generic cloud server environment, systemd, Nginx, desktop usage, and integration-test materials without private hostnames, addresses, credentials, or certificates.
 
 - Split the desktop create controls into independent todo and event actions with tab-specific visibility.
 - Reordered the desktop header into left navigation and right-side creation/connection controls with responsive wrapping.
@@ -85,6 +90,8 @@ See `README.md` for the public overview and `docs/current/FEATURE_LEDGER.md` for
 - APK metadata inspection for package/version/min/target SDK
 - Release APK v2 signature verification with `apksigner`
 - `git diff --check`
+- `python -m unittest server.test_paykitodo_cloud_server -v`
+- `dotnet build desktop/PaykiTodo.Desktop/PaykiTodo.Desktop.csproj --configuration Release`
 - Desktop Web calendar screenshot verification using production CSS
 
 ## Remaining Real-Device Risk
@@ -92,10 +99,10 @@ See `README.md` for the public overview and `docs/current/FEATURE_LEDGER.md` for
 - Full-screen reminder behavior depends on Android/OEM permissions, background-launch policy, exact-alarm access, and battery management.
 - Launcher widget rendering and notification appearance can differ across OEM launchers and notification panels.
 - Desktop Sync requires a reachable trusted LAN; campus networks may expose an address while client isolation still blocks peer access.
-- Remote server sync intentionally remains snapshot-based: there is no account login, automatic pull, field-level conflict merge, or bidirectional background overwrite. The target design is recorded in `docs/current/CLOUD_SYNC_AND_ADMIN_DESIGN.md`.
-- The private PaykiTodo administrator hostname is intended to sit behind Cloudflare, but its independent origin service, Nginx server block, and certificate are not deployed. Real hostname, DNS values, and certificate paths are intentionally excluded from Git.
+- Remote sync is currently encrypted whole-snapshot synchronization rather than field-level operation merge. Conflicts are blocked and must be resolved by explicit local/remote restore; there is no automatic field-level merge.
+- The administrator service is implemented but not deployed to the owner's private hostname. Real hostname, DNS values, Cloudflare settings, and certificate paths are intentionally excluded from Git and still require private deployment.
 - Cloudflare WAF/rate-limit settings and the future administrator route still require the domain owner's Cloudflare session. Do not point the hostname at the existing panel or issue an origin certificate as if the administrator backend already existed.
-- The Windows EXE server mode is intentionally read-only; LAN mode still requires a running phone service and all modes require WebView2 Runtime.
+- The Windows cloud mode is writable against its local copy; LAN mode still requires a running phone service and all modes require WebView2 Runtime.
 - Desktop self-contained publish reports a non-fatal `WindowsBase` assembly version warning from the WebView2 package's WPF reference while compiling the WinForms shell.
 - A release build signed with a different key cannot directly replace a locally installed debug build. Export a backup before switching signatures.
 

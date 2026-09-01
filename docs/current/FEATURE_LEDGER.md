@@ -166,8 +166,9 @@ This file tracks the product at a practical level for new coding sessions.
 - background capture recognition uses a `capture_processing` notification channel; completed capture notifications open the matching Planning Desk document after direct node insertion, while the phone Planning Desk Markdown compatibility capture starts background recognition only after an explicit confirmation instead of blocking the editor
 - background capture notification delivery explicitly checks Android 13+ notification permission in the delivery function and catches permission-state races, so sharing/camera/voice capture still writes Planning Desk drafts without crashing when notifications are denied
 - AI Provider API Keys and Desktop Sync access state / tokens are stored locally in settings and deliberately excluded from backup JSON export; importing a backup without AI keys preserves existing local keys, while importing an old backup that contains Desktop Sync enabled/token fields restores Desktop Sync as disabled and ignores the old token so the app can generate a fresh local access key after the user manually enables sync again
-- remote snapshot inspection downloads and decrypts the latest server envelope without changing Room data, displays export time and record counts, and requires explicit replacement confirmation; restore first creates an internal or configured-directory `.paykibak` safety backup and preserves local credentials
-- Windows server snapshot mode uses the same PBKDF2-SHA256/AES-GCM envelope and `.paykibak` archive locally, renders read-only daily board/todo/calendar data, and never persists the remote synchronization secret
+- account cloud sync uses short-lived access tokens, rotated refresh tokens, per-device revocation, PBKDF2-SHA256/AES-GCM encrypted `.paykibak` payloads, server revisions, and idempotent upload operation IDs; conflicts stop instead of silently overwriting
+- Android stores cloud tokens and the account-derived snapshot secret in encrypted preferences, keeps Room locally authoritative, uploads after local writes, pulls clean remote revisions, and keeps the phone `18765` LAN service independent
+- Windows cloud mode stores its account and full local archive through current-user DPAPI, supports offline todo/event/planning writes, and syncs through the account server without depending on the phone; phone LAN remains a separate compatibility mode
 - Planning Desk database migration is repaired in `1.7.5`: database version `10` includes `MIGRATION_9_10` to rebuild `planning_notes` tables created by the mismatched `1.7.0`-`1.7.4` migration
 - Planning Desk database version is now `11`; `MIGRATION_10_11` creates the `planning_line_mappings` table and indices
 - Planning Desk Outliner is user-facing in `1.12.10`: database version `22` stores `planning_nodes` with optional `linkedEndTodoId` and `syncEnabled`, migrates existing Markdown lines into tree nodes, keeps Markdown headings such as `# 今日计划` / `# 收集箱` as non-sync structure nodes instead of official todos/events, includes nodes in backup / restore, exposes repository / ViewModel CRUD plus Markdown import-export helpers, renders a phone outline editor by default, exposes desktop `/api/planning/nodes` routes, and adds desktop Web node editing plus up/down reorder and same-level drag reorder controls
@@ -345,8 +346,8 @@ This file tracks the product at a practical level for new coding sessions.
 - in-app Wiki documents current reminder, batch-import, Planning Desk, desktop Planning Desk, and snooze input syntax
 - Settings includes a data health check surface that scans old completed todos, empty planning notes, stale draft nodes, expired AI reports, and overdue no-reminder todos; one-click cleanup only deletes safe items after confirmation
 - Debug-to-Release migration is supported through `.paykibak`; the import flow backs up current data first, restores reminders/widgets, keeps current installation credentials, and accepts legacy JSON
-- optional remote sync is local-first and AES-GCM encrypted; local data changes schedule a delayed upload and enabled sync has a one-minute fallback, while disabled sync cancels both jobs
-- the Azure/Nginx-compatible relay stores only encrypted payload bytes; the phone can inspect a remote snapshot and explicitly replace local data after a safety backup, while automatic pull and field-level conflict merge remain disabled
+- optional account sync is local-first and AES-GCM encrypted; local data changes schedule a delayed upload, enabled sync has a one-minute fallback, clean clients pull newer revisions, and conflicting dirty revisions are blocked
+- the generic Nginx-compatible cloud service stores only encrypted payload bytes and account/security metadata; field-level operation merge remains intentionally unimplemented
 
 ### Input Help
 
@@ -356,7 +357,7 @@ This file tracks the product at a practical level for new coding sessions.
 ### Desktop / LAN Assistance
 
 - LAN browser-based desktop sync console exists
-- Windows `win-x64` self-contained WebView2 shell builds to `desktop/dist/PaykiTodo.exe`, connects directly to the phone LAN console, or locally decrypts a server snapshot in an explicitly read-only mode
+- Windows `win-x64` self-contained WebView2 client builds to `desktop/dist/PaykiTodo.exe`, owns an encrypted local working copy in cloud mode, and retains direct phone LAN access only as a separate compatibility mode
 - phone-side HTTP serving model exists
 - browser can perform limited data operations against the phone-side dataset
 - desktop web can edit existing todos with title, notes, DDL, the combined reminder switch, multi-group tags, recurrence, ring, and vibration fields
@@ -471,7 +472,7 @@ This file tracks the product at a practical level for new coding sessions.
 - stronger reminder reliability across vendor ROM differences
 - more complete desktop-side operations
 - GitHub Release publishing / public distribution remains a manual step and requires explicit user authorization
-- remote-sync automatic pull and field-level conflict merge remain disabled; the current flow is explicit summary review followed by replacement restore with a local safety backup
+- remote-sync field-level conflict merge remains disabled; automatic pull is allowed only when the local copy is clean, while concurrent dirty revisions stop for explicit resolution
 - tighter documentation so a new session can reconstruct state without old transcripts
 
 ## Notes

@@ -212,7 +212,9 @@ class PaykiTodoCloudHandler(BaseHTTPRequestHandler):
     def dispatch(self, method: str) -> None:
         try:
             path = urlsplit(self.path).path.rstrip("/") or "/"
-            if method == "GET" and path == "/healthz":
+            if method == "GET" and path == "/":
+                self.redirect("/admin")
+            elif method == "GET" and path == "/healthz":
                 self.send_json(HTTPStatus.OK, {"ok": True, "service": "paykitodo-cloud", "apiVersion": 2})
             elif path == "/v2/auth/register" and method == "POST":
                 self.register()
@@ -522,12 +524,24 @@ class PaykiTodoCloudHandler(BaseHTTPRequestHandler):
         self.send_header("Cache-Control", "no-store")
         self.end_headers()
 
+    def admin_csrf_token(self) -> str:
+        message = time.strftime("%Y-%m-%d", time.gmtime()).encode("ascii")
+        return hmac.new(ADMIN_PASSWORD.encode("utf-8"), message, hashlib.sha256).hexdigest()
+
+    def require_admin_csrf(self) -> None:
+        body = self.read_body(4 * 1024).decode("utf-8", errors="replace")
+        values = parse_qs(body)
+        provided = values.get("csrf", [""])[0]
+        if not hmac.compare_digest(provided, self.admin_csrf_token()):
+            raise ApiError(HTTPStatus.FORBIDDEN, "invalid_csrf", "管理员操作校验失败，请刷新页面后重试")
+
     def admin_page(self) -> None:
         if not self.require_admin():
             return
         with DB.session() as connection:
             stats = connection.execute("SELECT (SELECT count(*) FROM users) users,(SELECT count(*) FROM devices WHERE revoked_at IS NULL) devices,(SELECT count(*) FROM snapshots) snapshots,(SELECT COALESCE(sum(length(payload)),0) FROM snapshots) bytes").fetchone()
             users = connection.execute("SELECT u.*,s.revision,s.updated_at,(SELECT count(*) FROM devices d WHERE d.user_id=u.id AND d.revoked_at IS NULL) device_count FROM users u LEFT JOIN snapshots s ON s.user_id=u.id ORDER BY u.created_at DESC LIMIT 500").fetchall()
+            devices = connection.execute("SELECT d.*,u.username FROM devices d JOIN users u ON u.id=d.user_id ORDER BY d.last_seen_at DESC LIMIT 500").fetchall()
             audits = connection.execute("SELECT a.*,u.username FROM audit_log a LEFT JOIN users u ON u.id=a.user_id ORDER BY a.created_at DESC LIMIT 80").fetchall()
         body = ["<!doctype html><html lang='zh-CN'><head><meta charset='utf-8'><meta name='viewport' content='width=device-width'><title>PaykiTodo 管理后台</title><style>",
                 "body{font-family:Segoe UI,Microsoft YaHei,sans-serif;margin:0;background:#f4f6f8;color:#1f2933}header{background:#fff;border-bottom:1px solid #dfe3e8;padding:18px 28px}main{padding:24px 28px;max-width:1400px;margin:auto}.stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}.card,section{background:#fff;border:1px solid #dfe3e8;border-radius:8px;padding:16px}.card b{display:block;font-size:28px;margin-top:6px}section{margin-top:18px;overflow:auto}table{border-collapse:collapse;width:100%;min-width:820px}th,td{text-align:left;padding:10px;border-bottom:1px solid #edf0f2;font-size:13px}th{color:#5b6570}button{border:1px solid #c8cfd6;background:#fff;border-radius:6px;padding:6px 10px;cursor:pointer}.danger{color:#b42318}.ok{color:#137333}@media(max-width:720px){.stats{grid-template-columns:1fr 1fr}main{padding:16px}}",
@@ -535,10 +549,16 @@ class PaykiTodoCloudHandler(BaseHTTPRequestHandler):
         for label, value in (("注册用户", stats["users"]), ("有效设备", stats["devices"]), ("云端快照", stats["snapshots"]), ("存储占用", f'{stats["bytes"] / 1024 / 1024:.1f} MB')):
             body.append(f"<div class='card'>{html.escape(str(label))}<b>{html.escape(str(value))}</b></div>")
         body.append("</div><section><h2>用户</h2><table><thead><tr><th>账号</th><th>显示名</th><th>状态</th><th>设备</th><th>快照版本</th><th>注册时间</th><th>操作</th></tr></thead><tbody>")
+        csrf = self.admin_csrf_token()
         for row in users:
             status = "已停用" if row["disabled"] else "正常"
             action = "启用" if row["disabled"] else "停用"
-            body.append(f"<tr><td>{html.escape(row['username'])}</td><td>{html.escape(row['display_name'])}</td><td class={'danger' if row['disabled'] else 'ok'}>{status}</td><td>{row['device_count']}</td><td>{row['revision'] or 0}</td><td>{self.format_time(row['created_at'])}</td><td><form method='post' action='/admin/users/{row['id']}/toggle'><button>{action}</button></form></td></tr>")
+            body.append(f"<tr><td>{html.escape(row['username'])}</td><td>{html.escape(row['display_name'])}</td><td class={'danger' if row['disabled'] else 'ok'}>{status}</td><td>{row['device_count']}</td><td>{row['revision'] or 0}</td><td>{self.format_time(row['created_at'])}</td><td><form method='post' action='/admin/users/{row['id']}/toggle'><input type='hidden' name='csrf' value='{csrf}'><button>{action}</button></form></td></tr>")
+        body.append("</tbody></table></section><section><h2>设备</h2><table><thead><tr><th>账号</th><th>设备名</th><th>平台</th><th>最后活跃</th><th>状态</th><th>操作</th></tr></thead><tbody>")
+        for row in devices:
+            revoked = row["revoked_at"] is not None
+            action = "-" if revoked else f"<form method='post' action='/admin/devices/{html.escape(row['id'])}/revoke'><input type='hidden' name='csrf' value='{csrf}'><button class='danger'>撤销</button></form>"
+            body.append(f"<tr><td>{html.escape(row['username'])}</td><td>{html.escape(row['name'])}</td><td>{html.escape(row['platform'])}</td><td>{self.format_time(row['last_seen_at'])}</td><td>{'已撤销' if revoked else '有效'}</td><td>{action}</td></tr>")
         body.append("</tbody></table></section><section><h2>最近操作</h2><table><thead><tr><th>时间</th><th>账号</th><th>动作</th><th>来源</th><th>详情</th></tr></thead><tbody>")
         for row in audits:
             body.append(f"<tr><td>{self.format_time(row['created_at'])}</td><td>{html.escape(row['username'] or '-')}</td><td>{html.escape(row['action'])}</td><td>{html.escape(row['remote_ip'])}</td><td>{html.escape(row['detail'])}</td></tr>")
@@ -548,6 +568,7 @@ class PaykiTodoCloudHandler(BaseHTTPRequestHandler):
     def admin_toggle_user(self, raw_id: str) -> None:
         if not self.require_admin():
             return
+        self.require_admin_csrf()
         try:
             user_id = int(raw_id)
         except ValueError as error:
@@ -568,6 +589,7 @@ class PaykiTodoCloudHandler(BaseHTTPRequestHandler):
     def admin_revoke_device(self, raw_id: str) -> None:
         if not self.require_admin():
             return
+        self.require_admin_csrf()
         if not DEVICE_ID_PATTERN.fullmatch(raw_id):
             raise ApiError(HTTPStatus.BAD_REQUEST, "invalid_device", "设备 ID 无效")
         with DB.session() as connection:

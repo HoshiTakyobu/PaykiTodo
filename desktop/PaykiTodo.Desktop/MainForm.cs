@@ -21,10 +21,16 @@ internal sealed class MainForm : Form
     private readonly Label deviceLabel = new();
     private readonly Label secretLabel = new();
     private readonly Button connectButton = new();
+    private readonly Button registerButton = new();
     private readonly Button disconnectButton = new();
     private readonly WebView2 browser = new();
     private readonly string preferencesPath;
+    private readonly DesktopSecureStore cloudStore = new();
+    private readonly SemaphoreSlim syncGate = new(1, 1);
+    private readonly System.Windows.Forms.Timer cloudSyncTimer = new() { Interval = 60_000 };
     private string? pendingToken;
+    private CloudAccountState? cloudState;
+    private DesktopSnapshotDocument? localDocument;
 
     public MainForm()
     {
@@ -41,7 +47,22 @@ internal sealed class MainForm : Form
         BuildToolbar();
         BuildBrowser();
         LoadPreferences();
+        LoadCloudState();
         UpdateModeFields();
+        cloudSyncTimer.Tick += async (_, _) =>
+        {
+            if (cloudState is null || localDocument is null || modeBox.SelectedIndex != 0) return;
+            try
+            {
+                await SyncCloudAsync();
+                RenderStandaloneClient();
+            }
+            catch (Exception error)
+            {
+                SetStatus("本地数据可继续使用；定时同步未完成：" + error.Message);
+            }
+        };
+        cloudSyncTimer.Start();
         Shown += async (_, _) => await InitializeBrowserAsync();
     }
 
@@ -51,18 +72,18 @@ internal sealed class MainForm : Form
         {
             Dock = DockStyle.Top,
             Height = 116,
-            ColumnCount = 8,
+            ColumnCount = 10,
             RowCount = 2,
             Padding = new Padding(10, 8, 10, 8)
         };
-        var widths = new[] { 70, 180, 70, 190, 70, 180, 100, 100 };
+        var widths = new[] { 70, 180, 70, 190, 70, 180, 100, 100, 100, 100 };
         foreach (var width in widths)
             toolbar.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, width));
         toolbar.RowStyles.Add(new RowStyle(SizeType.Percent, 50));
         toolbar.RowStyles.Add(new RowStyle(SizeType.Percent, 50));
 
         var modeLabel = CreateLabel("连接模式");
-        modeBox.Items.AddRange(new object[] { "手机 LAN", "服务器快照（只读）" });
+        modeBox.Items.AddRange(new object[] { "独立云客户端", "手机 LAN（兼容）" });
         modeBox.SelectedIndex = 0;
         modeBox.Dock = DockStyle.Fill;
         modeBox.DropDownStyle = ComboBoxStyle.DropDownList;
@@ -74,11 +95,12 @@ internal sealed class MainForm : Form
         tokenBox.MaxLength = 4;
         tokenBox.UseSystemPasswordChar = true;
 
-        serverLabel.Text = "服务器 URL";
-        serverBox.PlaceholderText = "https://example.com/paykitodo-sync";
-        deviceLabel.Text = "设备 ID";
-        deviceBox.PlaceholderText = "手机端远程同步设备 ID";
-        secretLabel.Text = "同步密钥";
+        serverLabel.Text = "云服务器";
+        serverBox.PlaceholderText = "https://sync.example.com";
+        deviceLabel.Text = "账号";
+        deviceBox.PlaceholderText = "你的 PaykiTodo 账号";
+        secretLabel.Text = "密码";
+        secretBox.PlaceholderText = "登录密码（不保存明文）";
         secretBox.UseSystemPasswordChar = true;
 
         foreach (var control in new Control[]
@@ -94,10 +116,13 @@ internal sealed class MainForm : Form
         connectButton.Text = "连接手机";
         connectButton.Dock = DockStyle.Fill;
         connectButton.Click += async (_, _) => await ConnectAsync();
+        registerButton.Text = "注册账号";
+        registerButton.Dock = DockStyle.Fill;
+        registerButton.Click += async (_, _) => await ConnectCloudAsync(register: true);
         disconnectButton.Text = "断开";
         disconnectButton.Dock = DockStyle.Fill;
         disconnectButton.Enabled = false;
-        disconnectButton.Click += (_, _) => Disconnect();
+        disconnectButton.Click += async (_, _) => await DisconnectAsync();
 
         toolbar.Controls.Add(modeLabel, 0, 0);
         toolbar.Controls.Add(modeBox, 1, 0);
@@ -106,7 +131,9 @@ internal sealed class MainForm : Form
         toolbar.Controls.Add(tokenLabel, 4, 0);
         toolbar.Controls.Add(tokenBox, 5, 0);
         toolbar.Controls.Add(connectButton, 6, 0);
-        toolbar.Controls.Add(disconnectButton, 7, 0);
+        toolbar.Controls.Add(registerButton, 7, 0);
+        toolbar.Controls.Add(disconnectButton, 8, 0);
+        toolbar.SetColumnSpan(disconnectButton, 2);
 
         toolbar.Controls.Add(serverLabel, 0, 1);
         toolbar.Controls.Add(serverBox, 1, 1);
@@ -116,6 +143,7 @@ internal sealed class MainForm : Form
         toolbar.SetColumnSpan(deviceBox, 2);
         toolbar.Controls.Add(secretLabel, 6, 1);
         toolbar.Controls.Add(secretBox, 7, 1);
+        toolbar.SetColumnSpan(secretBox, 3);
         Controls.Add(toolbar);
 
         var statusBar = new StatusStrip();
@@ -140,6 +168,8 @@ internal sealed class MainForm : Form
         {
             if (!args.IsSuccess)
                 SetStatus("WebView2 初始化失败：" + args.InitializationException?.Message);
+            else
+                browser.CoreWebView2.WebMessageReceived += BrowserOnWebMessageReceived;
         };
         Controls.Add(browser);
     }
@@ -152,6 +182,8 @@ internal sealed class MainForm : Form
             browser.CoreWebView2.Settings.AreDefaultContextMenusEnabled = true;
             browser.CoreWebView2.Settings.IsZoomControlEnabled = true;
             browser.CoreWebView2.Settings.AreDevToolsEnabled = Debugger.IsAttached;
+            if (cloudState is not null && localDocument is not null && modeBox.SelectedIndex == 0)
+                RenderStandaloneClient();
         }
         catch (WebView2RuntimeNotFoundException)
         {
@@ -167,20 +199,96 @@ internal sealed class MainForm : Form
     {
         if (modeBox.SelectedIndex == 1)
         {
-            await ConnectServerSnapshotAsync();
+            await ConnectPhoneLanAsync();
             return;
         }
 
-        var endpoint = NormalizeEndpoint(endpointBox.Text);
-        var token = tokenBox.Text.Trim().ToUpperInvariant();
-        if (endpoint is null)
+        if (cloudState is not null && localDocument is not null)
         {
-            SetStatus("请输入形如 http://192.168.0.100:18765 的手机地址");
+            try
+            {
+                await SyncCloudAsync();
+            }
+            catch (Exception error)
+            {
+                SetStatus("本地数据可继续使用；云同步未完成：" + error.Message);
+            }
+            RenderStandaloneClient();
+            disconnectButton.Enabled = true;
             return;
         }
-        if (token.Length == 0)
+        await ConnectCloudAsync(register: false);
+    }
+
+    private async Task ConnectCloudAsync(bool register)
+    {
+        var serverUrl = serverBox.Text.Trim();
+        var username = deviceBox.Text.Trim();
+        var password = secretBox.Text;
+        if (serverUrl.Length == 0 || username.Length == 0 || password.Length == 0)
         {
-            SetStatus("请输入手机端显示的访问密钥");
+            SetStatus(register ? "请填写云服务器、账号和注册密码" : "请填写云服务器、账号和密码");
+            return;
+        }
+
+        try
+        {
+            connectButton.Enabled = false;
+            registerButton.Enabled = false;
+            SetStatus(register ? "正在注册云账号…" : "正在登录云账号…");
+            var stored = cloudStore.Load();
+            var deviceId = stored?.State.Username.Equals(username, StringComparison.OrdinalIgnoreCase) == true
+                ? stored!.Value.State.DeviceId
+                : Guid.NewGuid().ToString("N");
+            var authentication = await CloudAccountSync.AuthenticateAsync(serverUrl, username, password, deviceId, register);
+            var useStored = stored is not null &&
+                stored.Value.State.Username.Equals(authentication.State.Username, StringComparison.OrdinalIgnoreCase) &&
+                stored.Value.State.ServerUrl.Equals(authentication.State.ServerUrl, StringComparison.OrdinalIgnoreCase);
+            localDocument = useStored ? stored!.Value.Document : localDocument ?? DesktopSnapshotDocument.CreateEmpty();
+            var initialState = useStored
+                ? authentication.State with
+                {
+                    Revision = stored!.Value.State.Revision,
+                    Dirty = stored.Value.State.Dirty
+                }
+                : authentication.State with
+                {
+                    Revision = 0,
+                    Dirty = localDocument.HasMeaningfulData
+                };
+            cloudState = initialState;
+            SaveCloudState();
+            try
+            {
+                await SyncCloudAsync();
+            }
+            catch (CloudRevisionConflictException error)
+            {
+                SetStatus(error.Message);
+            }
+            secretBox.Clear();
+            SavePreferences(endpointBox.Text, serverUrl, username);
+            connectButton.Enabled = false;
+            disconnectButton.Enabled = true;
+            registerButton.Enabled = false;
+            RenderStandaloneClient();
+        }
+        catch (Exception error)
+        {
+            SetStatus("云账号操作失败：" + error.Message);
+            connectButton.Enabled = true;
+            registerButton.Enabled = true;
+            disconnectButton.Enabled = false;
+        }
+    }
+
+    private async Task ConnectPhoneLanAsync()
+    {
+        var endpoint = NormalizeEndpoint(endpointBox.Text);
+        var token = tokenBox.Text.Trim().ToUpperInvariant();
+        if (endpoint is null || token.Length == 0)
+        {
+            SetStatus("请输入手机端显示的 http://地址和访问密钥");
             return;
         }
 
@@ -190,54 +298,150 @@ internal sealed class MainForm : Form
             pendingToken = token;
             endpointBox.Text = endpoint;
             SavePreferences(endpoint, serverBox.Text, deviceBox.Text);
-            SetStatus("正在连接手机…");
+            SetStatus("正在连接手机 LAN 网页（直接修改手机数据）…");
             browser.CoreWebView2.Navigate(endpoint);
             connectButton.Enabled = false;
             disconnectButton.Enabled = true;
         }
         catch (Exception error)
         {
-            SetStatus("连接失败：" + error.Message);
             connectButton.Enabled = true;
             disconnectButton.Enabled = false;
+            SetStatus("手机 LAN 连接失败：" + error.Message);
         }
     }
 
-    private async Task ConnectServerSnapshotAsync()
+    private async Task SyncCloudAsync()
     {
-        var serverUrl = NormalizeServerUrl(serverBox.Text);
-        var deviceId = deviceBox.Text.Trim();
-        var secret = secretBox.Text.Trim();
-        if (serverUrl is null)
-        {
-            SetStatus("服务器模式必须填写 HTTPS 地址");
-            return;
-        }
-        if (deviceId.Length == 0 || secret.Length == 0)
-        {
-            SetStatus("服务器模式需要设备 ID 和远程同步密钥");
-            return;
-        }
-
+        if (cloudState is null || localDocument is null) return;
+        await syncGate.WaitAsync();
         try
         {
-            connectButton.Enabled = false;
-            disconnectButton.Enabled = false;
-            SetStatus("正在下载并解密服务器快照…");
-            var snapshot = await ServerSnapshotReader.DownloadAsync(serverUrl, deviceId, secret);
-            SavePreferences(endpointBox.Text, serverUrl, deviceId);
-            await browser.EnsureCoreWebView2Async();
-            browser.NavigateToString(RenderServerSnapshot(snapshot));
-            connectButton.Enabled = true;
-            disconnectButton.Enabled = true;
-            SetStatus("已加载服务器快照（只读，不会修改手机数据）");
+            var result = await CloudAccountSync.SyncAsync(cloudState, localDocument);
+            cloudState = result.State;
+            localDocument = result.Document;
+            SaveCloudState();
+            SetStatus(result.Message);
+        }
+        catch (CloudRevisionConflictException error)
+        {
+            cloudState = cloudState with { Dirty = true };
+            SaveCloudState();
+            SetStatus(error.Message);
+            throw;
+        }
+        finally
+        {
+            syncGate.Release();
+        }
+    }
+
+    private void RenderStandaloneClient()
+    {
+        if (localDocument is null || browser.CoreWebView2 is null) return;
+        var displayState = cloudState ?? new CloudAccountState("", "本地未登录", "", "", "", 0, 0, "", 0, true);
+        browser.NavigateToString(DesktopHtmlRenderer.Render(localDocument, displayState));
+    }
+
+    private async void BrowserOnWebMessageReceived(object? sender, CoreWebView2WebMessageReceivedEventArgs args)
+    {
+        if (localDocument is null || modeBox.SelectedIndex != 0) return;
+        try
+        {
+            using var json = JsonDocument.Parse(args.WebMessageAsJson);
+            var root = json.RootElement;
+            var action = root.GetProperty("action").GetString() ?? "";
+            var id = root.TryGetProperty("id", out var idValue) ? idValue.GetInt64() : 0L;
+            switch (action)
+            {
+                case "addTodo":
+                case "addEvent":
+                    SaveEditedItem(action == "addEvent", null);
+                    break;
+                case "edit":
+                    SaveEditedItem(localDocument.EditFor(id)?.IsEvent ?? false, id);
+                    break;
+                case "complete":
+                    localDocument.Complete(id);
+                    await SaveLocalAndSyncAsync("已完成本地待办");
+                    break;
+                case "cancel":
+                    localDocument.Cancel(id);
+                    await SaveLocalAndSyncAsync("已取消并归档本地事项");
+                    break;
+                case "delete":
+                    localDocument.Delete(id);
+                    await SaveLocalAndSyncAsync("已删除本地事项");
+                    break;
+                case "savePlanning":
+                    localDocument.SavePlanningNote(
+                        id > 0 ? id : null,
+                        root.TryGetProperty("title", out var title) ? title.GetString() ?? "" : "",
+                        root.TryGetProperty("markdown", out var markdown) ? markdown.GetString() ?? "" : ""
+                    );
+                    await SaveLocalAndSyncAsync("规划已保存");
+                    break;
+            }
         }
         catch (Exception error)
         {
-            connectButton.Enabled = true;
-            disconnectButton.Enabled = false;
-            SetStatus("服务器快照读取失败：" + error.Message);
+            SetStatus("桌面操作失败：" + error.Message);
         }
+    }
+
+    private void SaveEditedItem(bool isEvent, long? existingId)
+    {
+        if (localDocument is null) return;
+        var existing = existingId.HasValue ? localDocument.EditFor(existingId.Value) : null;
+        var edit = ItemEditorDialog.ShowEditor(this, isEvent, localDocument.Groups, existing);
+        if (edit is null) return;
+        localDocument.SaveItem(edit, existingId);
+        _ = SaveLocalAndSyncAsync(existingId.HasValue ? "事项已在本地更新" : "事项已保存到本地");
+    }
+
+    private async Task SaveLocalAndSyncAsync(string localMessage)
+    {
+        if (localDocument is null) return;
+        if (cloudState is null)
+        {
+            cloudStore.SaveDocument(localDocument);
+            RenderStandaloneClient();
+            SetStatus(localMessage + "；当前未登录，数据已保存在本机");
+            return;
+        }
+        cloudState = cloudState with { Dirty = true };
+        cloudStore.Save(cloudState, localDocument);
+        RenderStandaloneClient();
+        SetStatus(localMessage + "，正在同步…");
+        try
+        {
+            await SyncCloudAsync();
+            RenderStandaloneClient();
+        }
+        catch (Exception error)
+        {
+            SetStatus(localMessage + "；云同步未完成：" + error.Message);
+        }
+    }
+
+    private void LoadCloudState()
+    {
+        var saved = cloudStore.Load();
+        if (saved is null)
+        {
+            localDocument = cloudStore.LoadDocument();
+            return;
+        }
+        cloudState = saved.Value.State;
+        localDocument = saved.Value.Document;
+        serverBox.Text = cloudState.ServerUrl;
+        deviceBox.Text = cloudState.Username;
+        SetStatus(cloudState.Dirty ? "已打开本地副本，存在待同步修改" : "已打开本地云端副本");
+    }
+
+    private void SaveCloudState()
+    {
+        if (cloudState is not null && localDocument is not null) cloudStore.Save(cloudState, localDocument);
     }
 
     private async void BrowserOnNavigationCompleted(object? sender, CoreWebView2NavigationCompletedEventArgs args)
@@ -264,8 +468,33 @@ internal sealed class MainForm : Form
         }
     }
 
-    private void Disconnect()
+    private async Task DisconnectAsync()
     {
+        if (modeBox.SelectedIndex == 0)
+        {
+            try
+            {
+                if (cloudState is not null)
+                    await CloudAccountSync.LogoutAsync(cloudState);
+            }
+            catch
+            {
+                // Local logout must still succeed when the cloud is unavailable.
+            }
+            finally
+            {
+                if (localDocument is not null) cloudStore.SaveDocument(localDocument);
+                cloudStore.ClearAccount();
+                cloudState = null;
+                secretBox.Clear();
+                connectButton.Enabled = true;
+                registerButton.Enabled = true;
+                disconnectButton.Enabled = false;
+                RenderStandaloneClient();
+                SetStatus("已退出云账号，本地数据仍保留并可离线编辑");
+            }
+            return;
+        }
         pendingToken = null;
         browser.CoreWebView2?.Navigate("about:blank");
         connectButton.Enabled = true;
@@ -307,17 +536,20 @@ internal sealed class MainForm : Form
 
     private void UpdateModeFields()
     {
-        var phoneMode = modeBox.SelectedIndex == 0;
+        var phoneMode = modeBox.SelectedIndex == 1;
         endpointBox.Enabled = phoneMode;
         tokenBox.Enabled = phoneMode;
         serverBox.Enabled = !phoneMode;
         deviceBox.Enabled = !phoneMode;
         secretBox.Enabled = !phoneMode;
-        connectButton.Text = phoneMode ? "连接手机" : "读取快照";
+        connectButton.Text = phoneMode ? "连接手机" : (cloudState is null ? "登录云账号" : "打开客户端");
+        registerButton.Enabled = !phoneMode && cloudState is null;
+        disconnectButton.Text = phoneMode ? "断开" : "退出账号";
+        disconnectButton.Enabled = phoneMode ? disconnectButton.Enabled : cloudState is not null;
         if (phoneMode)
-            SetStatus("请输入手机端电脑同步地址和访问密钥");
+            SetStatus("兼容模式：请输入手机端电脑同步地址和访问密钥");
         else
-            SetStatus("服务器模式只读展示，不会修改手机数据");
+            SetStatus(cloudState is null ? "独立客户端：登录云账号后使用本机数据" : "独立客户端：本机数据已就绪，可离线使用");
     }
 
     private void SetStatus(string message)

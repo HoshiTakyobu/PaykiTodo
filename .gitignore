@@ -54,5 +54,8 @@ PaykiTodo-*.zip
 # .example suffix; real hostnames, certificates, and local deployment
 # overrides must stay outside Git.
 server/*.conf
+server/*.env
+server/*.sqlite3
+server/*.sqlite3-*
 server/private/
 tools/*.local.ps1

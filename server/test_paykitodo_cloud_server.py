@@ -4,11 +4,13 @@ import base64
 import importlib.util
 import json
 import os
+import re
 import sys
 import tempfile
 import threading
 import unittest
 import urllib.error
+import urllib.parse
 import urllib.request
 from pathlib import Path
 
@@ -50,6 +52,23 @@ class CloudServerIntegrationTest(unittest.TestCase):
         request = urllib.request.Request(self.base_url + path, data=payload, method=method, headers=actual_headers)
         try:
             with urllib.request.urlopen(request, timeout=5) as response:
+                return response.status, dict(response.headers), response.read()
+        except urllib.error.HTTPError as error:
+            return error.code, dict(error.headers), error.read()
+
+    def request_form_without_redirect(self, path: str, body: dict[str, str], headers: dict[str, str]):
+        payload = urllib.parse.urlencode(body).encode("utf-8")
+        request = urllib.request.Request(
+            self.base_url + path,
+            data=payload,
+            method="POST",
+            headers={**headers, "Content-Type": "application/x-www-form-urlencoded"},
+        )
+        opener = urllib.request.build_opener(
+            type("NoRedirectHandler", (urllib.request.HTTPRedirectHandler,), {"redirect_request": lambda *_args: None})
+        )
+        try:
+            with opener.open(request, timeout=5) as response:
                 return response.status, dict(response.headers), response.read()
         except urllib.error.HTTPError as error:
             return error.code, dict(error.headers), error.read()
@@ -136,6 +155,78 @@ class CloudServerIntegrationTest(unittest.TestCase):
         page = raw.decode("utf-8")
         self.assertIn("PaykiTodo 管理后台", page)
         self.assertIn("tester_admin", page)
+
+    def test_admin_state_changes_require_csrf_and_revoke_device(self):
+        account = self.create_account("admin_actions")
+        credential = base64.b64encode(b"admin:test-admin-password").decode("ascii")
+        admin_headers = {"Authorization": f"Basic {credential}"}
+
+        status, _, raw = self.request("/admin", headers=admin_headers)
+        self.assertEqual(200, status, raw)
+        page = raw.decode("utf-8")
+        csrf = re.search(r"name='csrf' value='([^']+)'", page)
+        user_id = re.search(r"<tr><td>tester_admin_actions</td>.*?/admin/users/(\d+)/toggle", page, re.S)
+        self.assertIsNotNone(csrf)
+        self.assertIsNotNone(user_id)
+
+        status, _, _ = self.request_form_without_redirect(
+            f"/admin/users/{user_id.group(1)}/toggle",
+            {"csrf": "wrong-token"},
+            admin_headers,
+        )
+        self.assertEqual(403, status)
+
+        status, headers, _ = self.request_form_without_redirect(
+            f"/admin/users/{user_id.group(1)}/toggle",
+            {"csrf": csrf.group(1)},
+            admin_headers,
+        )
+        self.assertEqual(303, status)
+        self.assertEqual("/admin", headers["Location"])
+
+        status, _, raw = self.request("/v2/sync/status", headers={"Authorization": f"Bearer {account['accessToken']}"})
+        self.assertEqual(401, status)
+
+        status, _, raw = self.request("/admin", headers=admin_headers)
+        self.assertEqual(200, status, raw)
+        page = raw.decode("utf-8")
+        csrf = re.search(r"name='csrf' value='([^']+)'", page)
+        self.assertIsNotNone(csrf)
+        status, _, _ = self.request_form_without_redirect(
+            f"/admin/users/{user_id.group(1)}/toggle",
+            {"csrf": csrf.group(1)},
+            admin_headers,
+        )
+        self.assertEqual(303, status)
+
+        status, _, raw = self.request(
+            "/v2/auth/login",
+            "POST",
+            {
+                "username": "TESTER_ADMIN_ACTIONS",
+                "password": "correct horse battery staple",
+                "deviceId": "windows_device_admin_actions",
+                "deviceName": "PC",
+                "platform": "windows",
+            },
+        )
+        self.assertEqual(200, status, raw)
+        login = json.loads(raw)
+
+        status, _, raw = self.request("/admin", headers=admin_headers)
+        page = raw.decode("utf-8")
+        csrf = re.search(r"name='csrf' value='([^']+)'", page)
+        self.assertIsNotNone(csrf)
+        device_id = login["deviceId"]
+        status, headers, _ = self.request_form_without_redirect(
+            f"/admin/devices/{device_id}/revoke",
+            {"csrf": csrf.group(1)},
+            admin_headers,
+        )
+        self.assertEqual(303, status)
+        self.assertEqual("/admin", headers["Location"])
+        status, _, _ = self.request("/v2/sync/status", headers={"Authorization": f"Bearer {login['accessToken']}"})
+        self.assertEqual(401, status)
 
 
 if __name__ == "__main__":

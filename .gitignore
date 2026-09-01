@@ -57,5 +57,6 @@ server/*.conf
 server/*.env
 server/*.sqlite3
 server/*.sqlite3-*
+server/*-private*.conf
 server/private/
 tools/*.local.ps1

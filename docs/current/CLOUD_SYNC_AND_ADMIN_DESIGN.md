@@ -128,7 +128,7 @@ Windows 客户端不是手机 `18765` 网页的另一个名字，而应是拥有
 6. 在启用新服务前修改 Azure/Microsoft 密码、撤销旧会话、检查 MFA / OAuth 应用 / SSH 密钥，并轮换曾经暴露过的服务器凭据；
 7. 先在测试子域名和测试账号验证注册、双设备修改、断网恢复、冲突、注销和数据删除，再切换正式域名。
 
-2026-09-01 的只读核对结果：管理员 hostname 已经被配置为 Cloudflare 代理入口，但源站还没有对应的独立 Nginx server block、证书和管理员服务，因此此前访问返回 `526 Invalid SSL certificate`。它不是 1Panel，也不能通过改 DNS 变成 1Panel；应在独立管理员服务完成后，为私有 hostname 申请匹配的源站证书并添加独立 Nginx upstream，再在 Cloudflare 控制台核验 WAF / Rate Limiting。真实 hostname 和证书路径不进入 Git。
+2026-09-01 部署结果：私有管理员 hostname 已通过 Cloudflare 代理到独立的 Nginx server block，源站证书已按该 hostname 单独签发并启用自动续期；PaykiTodo API / Admin 服务运行在服务器 `127.0.0.1:18766`，不复用 1Panel，也不暴露后端端口。公网健康检查、账号注册/鉴权、管理员页面和管理操作均已验证。真实 hostname、证书路径、管理员密码和 Cloudflare 配置不进入 Git。
 
 ## 端口边界
 
@@ -165,6 +165,6 @@ Windows 客户端不是手机 `18765` 网页的另一个名字，而应是拥有
 
 ### Phase D：管理员后台与正式部署
 
-- 管理员 MFA、审计、用户 / 设备 / 活跃度 / 同步错误视图；
-- Cloudflare 防护、备份、监控、限流、密钥轮换和灾难恢复演练；
-- 经真实测试账号验收后才开放正式注册。
+- 已完成独立管理员页面、用户/设备状态、快照元数据、存储统计、活跃时间和审计视图；停用用户、撤销设备和 CSRF 防护已落地。
+- 已完成独立云服务、专用源站证书、Nginx `443` 反代和 Certbot 自动续期；现有 1Panel 与手机 LAN 服务保持独立。
+- Cloudflare WAF / Rate Limiting、管理员 MFA、监控、灾备和密钥轮换仍是正式扩大用户范围前的安全增强项。

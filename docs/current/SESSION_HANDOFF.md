@@ -11,6 +11,7 @@
   - `app/build/outputs/apk/debug/PaykiTodo-1.16.0-debug.apk`
   - `app/build/outputs/apk/release/PaykiTodo-1.16.0-release.apk`
 - Windows output after final publish: `desktop/dist/PaykiTodo.exe`
+- Private cloud deployment: service enabled on the Azure host, origin loopback `127.0.0.1:18766`, public access through the privately configured Cloudflare/Nginx HTTPS hostname, and the administrator page at `/admin`.
 
 ## v1.16.0 Product Changes
 
@@ -24,17 +25,18 @@
 
 ## Verification
 
-- Python cloud integration tests cover register/login, wrong password, token refresh, device list, versioned upload, idempotency, conflict rejection, encrypted snapshot download, and administrator authentication.
+- Python cloud integration tests cover register/login, wrong password, token refresh, device list, versioned upload, idempotency, conflict rejection, encrypted snapshot download, administrator authentication, CSRF rejection, user disable/enable, and device revocation.
+- Public deployment smoke checks cover HTTPS health, account registration/authentication, administrator page access, and cleanup of disposable deployment test accounts.
 - Android cloud tests cover stable cross-client account-key derivation and AES-GCM wrong-key rejection.
 - Android compile and full unit tests, Debug/Release APK assembly, Lint, Windows Release build/publish, and `git diff --check` must be rerun after the final documentation commit.
 - The existing non-fatal WebView2 `WindowsBase` assembly warning remains during Windows build.
 
-## Deployment Still Required
+## Deployment Completed / Follow-Up
 
-1. Create a private server environment file from `server/paykitodo-cloud.env.example` with random administrator/password-pepper secrets.
-2. Install the service as a dedicated `paykitodo` user, keep the SQLite database under `/var/lib/paykitodo`, and proxy the private hostname to `127.0.0.1:18766`.
-3. Configure a valid origin certificate and Cloudflare SSL/TLS Full (strict), WAF, login/registration rate limits, and origin firewall rules.
-4. Smoke-test with a disposable account before migrating real phone data.
+1. The private server environment is installed outside Git with random administrator/password-pepper secrets; the service runs as the dedicated `paykitodo` user and stores SQLite under `/var/lib/paykitodo`.
+2. Nginx proxies the private HTTPS hostname to `127.0.0.1:18766`; the hostname-specific origin certificate is installed and Certbot renewal is enabled. The old `paykitodo-sync.service` remains unchanged.
+3. Cloudflare proxy and HTTPS routing are working. WAF/rate-limit policy should be reviewed in the Cloudflare console before adding real users.
+4. Android and Windows real-client login/offline edit/conflict testing remains the next device-level acceptance step; do not migrate important data until that smoke test passes.
 
 ## Known Limitations
 

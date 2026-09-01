@@ -91,6 +91,7 @@ See `README.md` for the public overview and `docs/current/FEATURE_LEDGER.md` for
 - Release APK v2 signature verification with `apksigner`
 - `git diff --check`
 - `python -m unittest server.test_paykitodo_cloud_server -v`
+- 公网云服务健康检查、账号注册/鉴权和管理员页访问检查
 - `dotnet build desktop/PaykiTodo.Desktop/PaykiTodo.Desktop.csproj --configuration Release`
 - Desktop Web calendar screenshot verification using production CSS
 
@@ -100,8 +101,9 @@ See `README.md` for the public overview and `docs/current/FEATURE_LEDGER.md` for
 - Launcher widget rendering and notification appearance can differ across OEM launchers and notification panels.
 - Desktop Sync requires a reachable trusted LAN; campus networks may expose an address while client isolation still blocks peer access.
 - Remote sync is currently encrypted whole-snapshot synchronization rather than field-level operation merge. Conflicts are blocked and must be resolved by explicit local/remote restore; there is no automatic field-level merge.
-- The administrator service is implemented but not deployed to the owner's private hostname. Real hostname, DNS values, Cloudflare settings, and certificate paths are intentionally excluded from Git and still require private deployment.
-- Cloudflare WAF/rate-limit settings and the future administrator route still require the domain owner's Cloudflare session. Do not point the hostname at the existing panel or issue an origin certificate as if the administrator backend already existed.
+- The administrator service is deployed behind the owner's private Cloudflare hostname through an independent Nginx server block; the real hostname, DNS values, Cloudflare settings, certificate paths, administrator password, and server pepper remain outside Git.
+- The origin certificate is issued specifically for the private PaykiTodo hostname and Certbot renewal is enabled. The public route exposes only HTTPS `443`; the cloud process remains loopback-only on `18766` and is not the 1Panel service.
+- Cloudflare WAF/rate-limit policy still needs periodic review in the owner's Cloudflare account. The current application-level registration/login rate limits and administrator Basic Auth are active, but administrator MFA is not implemented yet.
 - The Windows cloud mode is writable against its local copy; LAN mode still requires a running phone service and all modes require WebView2 Runtime.
 - Desktop self-contained publish reports a non-fatal `WindowsBase` assembly version warning from the WebView2 package's WPF reference while compiling the WinForms shell.
 - A release build signed with a different key cannot directly replace a locally installed debug build. Export a backup before switching signatures.

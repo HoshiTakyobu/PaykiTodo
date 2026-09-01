@@ -2,7 +2,7 @@
 
 ## Active Focus
 
-The `v1.16.0` local development round adds the first usable account/cloud and independent Windows client implementation on top of the `v1.15.22` desktop calendar work. It is not a GitHub Release yet; the latest public release remains `v1.15.18`.
+The `v1.16.0` local development round adds the first usable account/cloud and independent Windows client implementation on top of the `v1.15.22` desktop calendar work. The private cloud service is now deployed and verified; it is not a GitHub Release yet, and the latest public release remains `v1.15.18`.
 
 ## Completed `v1.16.0` Scope
 
@@ -10,6 +10,8 @@ The `v1.16.0` local development round adds the first usable account/cloud and in
 2. Added Android account UI and encrypted local account credentials while preserving Room as the local authority and `18765` as the separate LAN browser path.
 3. Added a writable, offline-capable Windows local client with DPAPI-protected state and core todo/event/planning operations.
 4. Added integration tests and public deployment/usage templates without private domain or server credentials.
+5. Deployed the cloud API and administrator page behind the private HTTPS reverse proxy; the origin stays loopback-only on `18766`, with the existing phone LAN `18765` path unchanged.
+6. Verified public health, account registration/authentication, administrator access, administrator CSRF protection, account disable/enable, and device revocation.
 
 ## Completed `v1.15.22` Scope
 
@@ -45,7 +47,7 @@ The `v1.16.0` local development round adds the first usable account/cloud and in
 3. Verify full-screen behavior while locked and while unlocked inside another app on the user's OEM ROM.
 4. Verify daily-board and countdown widgets after installation, resize, date change, and dark/light theme change.
 5. Physically test remote snapshot inspection and restore with a real server snapshot.
-6. Deploy the generic cloud service privately, then test Android + Windows login, offline edits, upload/pull, conflict blocking, logout, and device revocation against a test account.
+6. Test Android + Windows login, offline edits, upload/pull, conflict blocking, logout, and device revocation against a disposable account on the deployed service.
 7. Add field-level merge or explicit conflict-resolution UI in a later round; the current encrypted snapshot contract intentionally stops before automatic merges.
 
 Do not commit signing material, AI keys, Desktop Sync tokens, private Base URLs, generated APK/AAB files, backups, screenshots with personal data, or local diagnostics.

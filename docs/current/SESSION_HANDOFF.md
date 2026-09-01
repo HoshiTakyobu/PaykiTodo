@@ -43,7 +43,7 @@
 - JavaScript syntax, Kotlin compilation, unit tests, Android Lint, Debug/Release assembly, and Desktop Web calendar visual checks passed for the previous `1.15.18` round.
 - `1.15.21` passed 162 Android unit tests, Kotlin Debug/Release compilation, Android Lint, Debug/Release APK assembly, APK metadata inspection, Release v2 signature verification, JavaScript syntax check, `git diff --check`, and self-contained Windows publish.
 - The Windows publish retains the known non-fatal WebView2 `WindowsBase` version warning.
-- DNS/origin inspection found `deployment.example.invalid` behind Cloudflare but returning `526`; the Azure origin certificate does not include that hostname and no administrator backend is deployed there.
+- The private administrator hostname was found behind Cloudflare but returning `526`; its Azure origin certificate, independent Nginx route, and administrator backend are not deployed. The real hostname is intentionally excluded from Git.
 - `git diff --check` and ignored-secret checks passed before publication.
 - GitHub Release asset and remote contributor attribution were rechecked after upload.
 

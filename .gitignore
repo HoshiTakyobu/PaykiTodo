@@ -49,3 +49,10 @@ PaykiTodo-*.zip
 .env.*
 *.secret
 *.secrets
+
+# Private server deployment configuration. Public examples use the
+# .example suffix; real hostnames, certificates, and local deployment
+# overrides must stay outside Git.
+server/*.conf
+server/private/
+tools/*.local.ps1

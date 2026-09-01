@@ -37,7 +37,7 @@ This file is the current high-level backlog for PaykiTodo. Historical long-form 
    - writable Windows local client with the same field contract as the phone and LAN fallback when the server is unavailable;
    - separate administrator panel with MFA, rate limits, aggregate activity metrics, and no default plaintext access to user content.
 7. Secure deployment before enabling public cloud access:
-   - confirm ownership and DNS for `deployment.example.invalid`;
+   - confirm ownership and DNS for the private PaykiTodo administrator hostname;
    - put the hostname behind Cloudflare proxy or Tunnel with Full (strict) TLS, WAF/rate limits, and restricted origin access;
    - rotate any credentials exposed during the prior Azure incident before deployment.
 

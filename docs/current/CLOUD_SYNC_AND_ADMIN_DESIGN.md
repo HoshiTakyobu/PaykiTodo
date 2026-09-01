@@ -80,7 +80,7 @@ Windows 客户端不是只读服务器快照查看器，而应具备：
 
 ## 5. 管理员后台
 
-`deployment.example.invalid` 应是单独部署的 PaykiTodo 管理入口，不是 `service.example.invalid` 的别名，也不应复用 1Panel 的管理页面。`service.example.invalid` 继续只用于 1Panel；服务器可以通过 1Panel 管理一个独立的 PaykiTodo API / Admin 容器或进程，并由 Nginx / OpenResty 为 `deployment.example.invalid` 配置独立的反向代理站点。
+管理员域名应指向单独部署的 PaykiTodo 管理入口，不是 1Panel 域名的别名，也不应复用 1Panel 的管理页面。1Panel 继续只用于服务器管理；服务器可以通过 1Panel 管理一个独立的 PaykiTodo API / Admin 容器或进程，并由 Nginx / OpenResty 为管理员域名配置独立的反向代理站点。
 
 它不应复用普通用户登录页：
 
@@ -94,7 +94,7 @@ Windows 客户端不是只读服务器快照查看器，而应具备：
 
 本仓库不能代替域名所有者完成 Cloudflare 登录。正式上线前需要用户在 Cloudflare 控制台确认并完成：
 
-1. 确认 `deployment.example.invalid` Zone 和 `deployment.example.invalid` 的所有权；
+1. 确认管理员域名所属 Zone 和 hostname 的所有权；
 2. 选择 DNS A/AAAA 记录 + 橙云代理，或优先选择 Cloudflare Tunnel，避免直接暴露源站；
 3. 开启 SSL/TLS `Full (strict)`，使用源站证书或 Tunnel，不允许明文 HTTP 作为账号接口；
 4. 为登录、注册、同步上传和管理员路径设置 WAF / Rate Limiting；
@@ -102,7 +102,16 @@ Windows 客户端不是只读服务器快照查看器，而应具备：
 6. 在启用新服务前修改 Azure/Microsoft 密码、撤销旧会话、检查 MFA / OAuth 应用 / SSH 密钥，并轮换曾经暴露过的服务器凭据；
 7. 先在测试子域名和测试账号验证注册、双设备修改、断网恢复、冲突、注销和数据删除，再切换正式域名。
 
-2026-09-01 的只读核对结果：`deployment.example.invalid` 已使用 Cloudflare nameserver，`deployment.example.invalid` 已解析到 Cloudflare 代理地址，但 HTTPS 返回 `526 Invalid SSL certificate`。Azure 源站目前只有 `service.example.invalid` 的 Nginx server block，现有证书仅覆盖 `deployment.example.invalid`、`deployment.example.invalid` 和 `service.example.invalid`，不覆盖 `deployment.example.invalid`。因此该域名目前既不是可用的管理员后台，也不能通过改 DNS 把它变成 1Panel；应在独立管理员服务完成后，为新域名申请匹配的源站证书并添加独立 Nginx upstream，再在 Cloudflare 控制台核验 WAF / Rate Limiting。
+2026-09-01 的只读核对结果：管理员 hostname 已经被配置为 Cloudflare 代理入口，但源站还没有对应的独立 Nginx server block、证书和管理员服务，因此此前访问返回 `526 Invalid SSL certificate`。它不是 1Panel，也不能通过改 DNS 变成 1Panel；应在独立管理员服务完成后，为私有 hostname 申请匹配的源站证书并添加独立 Nginx upstream，再在 Cloudflare 控制台核验 WAF / Rate Limiting。真实 hostname 和证书路径不进入 Git。
+
+## 端口边界
+
+| 组件 | 当前或目标监听地址 | 用途 |
+| --- | --- | --- |
+| 手机 LAN Web 服务 | 手机局域网地址 `:18765` | 电脑浏览器或桌面壳直连手机本地数据，不经过云服务器 |
+| 现有加密快照中继 | `127.0.0.1:36568` | 仅保存加密快照密文；由 Nginx 通过 HTTPS 路径代理 |
+| 未来 PaykiTodo API / Admin | `127.0.0.1:18766` | 账号、管理后台和双向同步服务的预留端口，目前尚未实现 |
+| 公网入口 | Cloudflare / Nginx `:443` | 外部只访问 HTTPS，不直接开放后端端口 |
 
 ## 7. 分阶段实施
 

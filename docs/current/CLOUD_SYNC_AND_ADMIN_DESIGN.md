@@ -80,7 +80,9 @@ Windows 客户端不是只读服务器快照查看器，而应具备：
 
 ## 5. 管理员后台
 
-`deployment.example.invalid` 应是单独的管理入口，不应复用普通用户登录页：
+`deployment.example.invalid` 应是单独部署的 PaykiTodo 管理入口，不是 `service.example.invalid` 的别名，也不应复用 1Panel 的管理页面。`service.example.invalid` 继续只用于 1Panel；服务器可以通过 1Panel 管理一个独立的 PaykiTodo API / Admin 容器或进程，并由 Nginx / OpenResty 为 `deployment.example.invalid` 配置独立的反向代理站点。
+
+它不应复用普通用户登录页：
 
 - 管理员单独账号、MFA、短会话、IP / 设备审计和高风险操作二次确认；
 - 用户列表只展示账号状态、创建时间、最近活跃、设备数、同步状态和存储用量等必要元数据；
@@ -100,7 +102,7 @@ Windows 客户端不是只读服务器快照查看器，而应具备：
 6. 在启用新服务前修改 Azure/Microsoft 密码、撤销旧会话、检查 MFA / OAuth 应用 / SSH 密钥，并轮换曾经暴露过的服务器凭据；
 7. 先在测试子域名和测试账号验证注册、双设备修改、断网恢复、冲突、注销和数据删除，再切换正式域名。
 
-2026-09-01 的只读核对结果：`deployment.example.invalid` 已使用 Cloudflare nameserver，`deployment.example.invalid` 已解析到 Cloudflare 代理地址，但 HTTPS 返回 `526 Invalid SSL certificate`。Azure 源站只有 `service.example.invalid` 的 Nginx server block，现有证书仅覆盖 `deployment.example.invalid`、`deployment.example.invalid` 和 `service.example.invalid`，不覆盖 `deployment.example.invalid`。因此该域名目前既不是可用的管理员后台，也不应临时复用现有 panel；应在管理员服务完成后再申请匹配的源站证书、添加独立 Nginx upstream，并在 Cloudflare 控制台核验 WAF / Rate Limiting。
+2026-09-01 的只读核对结果：`deployment.example.invalid` 已使用 Cloudflare nameserver，`deployment.example.invalid` 已解析到 Cloudflare 代理地址，但 HTTPS 返回 `526 Invalid SSL certificate`。Azure 源站目前只有 `service.example.invalid` 的 Nginx server block，现有证书仅覆盖 `deployment.example.invalid`、`deployment.example.invalid` 和 `service.example.invalid`，不覆盖 `deployment.example.invalid`。因此该域名目前既不是可用的管理员后台，也不能通过改 DNS 把它变成 1Panel；应在独立管理员服务完成后，为新域名申请匹配的源站证书并添加独立 Nginx upstream，再在 Cloudflare 控制台核验 WAF / Rate Limiting。
 
 ## 7. 分阶段实施
 

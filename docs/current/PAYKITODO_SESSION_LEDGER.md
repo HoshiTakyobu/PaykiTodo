@@ -12,7 +12,7 @@ The released `1.15.18 / versionCode 360` round restores independent full-screen 
 
 ## Current Development Round
 
-The local `1.15.21 / versionCode 363` source supersedes the user-facing channel-selection behavior from the released `1.15.18`: one `提醒` checkbox now means full-screen plus notification-bar delivery, while the old three enum values remain migration-compatible storage values. Reminder actions are event-only acknowledgement, intermediate-todo completion/acknowledgement, and final-todo fixed ten-minute snooze. Account login, bidirectional cloud sync, writable Windows local storage, and the administrator panel are not implemented; see `CLOUD_SYNC_AND_ADMIN_DESIGN.md`.
+The local `1.15.22 / versionCode 364` source includes the `1.15.21` reminder interaction work and additionally fixes Desktop Web navigation, tab-specific create actions, current-time line rendering, mini-calendar selection, and week-column feedback. One `提醒` checkbox now means full-screen plus notification-bar delivery, while the old three enum values remain migration-compatible storage values. Account login, bidirectional cloud sync, writable Windows local storage, and the administrator panel are not implemented; see `CLOUD_SYNC_AND_ADMIN_DESIGN.md`.
 
 ## Initial Product Request
 

@@ -4,12 +4,12 @@
 
 - Repository root: `G:\Workspace\Project\PaykiTodo`
 - Branch: `main`
-- App version: `1.15.21 / versionCode 363` (local development; not published)
+- App version: `1.15.22 / versionCode 364` (local development; not published)
 - Database version: `30`
 - GitHub Release: `https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.15.18`
 - Latest public signed release APK: `app/build/outputs/apk/release/PaykiTodo-1.15.18-release.apk`
-- Current signed release APK: `app/build/outputs/apk/release/PaykiTodo-1.15.21-release.apk`
-- Current debug APK: `app/build/outputs/apk/debug/PaykiTodo-1.15.21-debug.apk`
+- Current signed release APK: `app/build/outputs/apk/release/PaykiTodo-1.15.22-release.apk`
+- Current debug APK: `app/build/outputs/apk/debug/PaykiTodo-1.15.22-debug.apk`
 - Current Windows self-contained EXE: `desktop/dist/PaykiTodo.exe`
 
 ## Latest Product Changes
@@ -21,6 +21,8 @@
 5. Desktop Web hour labels align with the solid calendar grid lines.
 6. Ended Desktop Web events fade as complete cards instead of only changing color.
 7. Every todo full-screen reminder now includes `我知道了`, including same-day due todos; acknowledgement only closes the current reminder.
+8. Desktop Web navigation now separates todo/event creation actions by tab, keeps navigation left and connection controls right, and wraps safely at narrow widths.
+9. Desktop Web calendar current-time rendering now matches the phone's full-width red line and current-day marker; mini-calendar selection is circular and briefly highlights the selected week column.
 
 ## Current Development Changes
 
@@ -42,6 +44,7 @@
 
 - JavaScript syntax, Kotlin compilation, unit tests, Android Lint, Debug/Release assembly, and Desktop Web calendar visual checks passed for the previous `1.15.18` round.
 - `1.15.21` passed 162 Android unit tests, Kotlin Debug/Release compilation, Android Lint, Debug/Release APK assembly, APK metadata inspection, Release v2 signature verification, JavaScript syntax check, `git diff --check`, and self-contained Windows publish.
+- `1.15.22` includes the Desktop Web UI changes described above; JavaScript syntax and diff checks are currently passing, with Android build verification pending.
 - The Windows publish retains the known non-fatal WebView2 `WindowsBase` version warning.
 - The private administrator hostname was found behind Cloudflare but returning `526`; its Azure origin certificate, independent Nginx route, and administrator backend are not deployed. The real hostname is intentionally excluded from Git.
 - `git diff --check` and ignored-secret checks passed before publication.
@@ -56,7 +59,7 @@
 
 ## Physical Device Checks Still Needed
 
-1. Install the matching-signed `1.15.21` APK and confirm startup and data operations.
+1. Install the matching-signed `1.15.22` APK and confirm startup and data operations.
 2. Test reminder off/on in both todo and event editors on the user's physical phone.
 3. Test intermediate/final multi-reminder todo actions and the event-only `我知道了` action on narrow and ordinary phone widths.
 4. Test lock-screen and unlocked-other-app full-screen reminder behavior.

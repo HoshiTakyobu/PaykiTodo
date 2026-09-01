@@ -2414,3 +2414,199 @@ body[data-event-view="month"] .event-timeline { display: block; height: 100%; }
     transform: none;
   }
 }
+
+/* Desktop navigation and calendar alignment fixes. Keep these rules last so they
+   remain authoritative over the older responsive layers above. */
+.sidebar-inner {
+  min-width: 0;
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+}
+.side-nav {
+  order: 1;
+  min-width: 0;
+  flex: 1 1 auto;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.side-nav::-webkit-scrollbar { display: none; }
+.desktop-header-actions {
+  order: 2;
+  min-width: 0;
+  flex: 0 0 auto;
+  margin-left: auto;
+  gap: 8px;
+  flex-wrap: nowrap;
+}
+.desktop-header-actions .header-create-button {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+.desktop-connection-actions {
+  order: 3;
+  min-width: 0;
+  flex: 0 0 auto;
+  height: 58px;
+  margin: 0 0 0 16px;
+  padding-left: 16px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border-left: 0;
+}
+.desktop-connection-actions::before {
+  content: "|";
+  margin-right: 4px;
+  color: var(--calendar-muted);
+  font-size: 18px;
+  line-height: 1;
+}
+.conn-card {
+  width: auto;
+  min-width: 0;
+  height: 34px;
+  padding: 0 8px;
+}
+.conn-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.conn-text {
+  position: static;
+  width: auto;
+  height: auto;
+  overflow: visible;
+  clip: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  min-width: 0;
+  white-space: nowrap;
+}
+.conn-text strong { color: var(--calendar-text); font-size: 12px; font-weight: 600; }
+.conn-text .muted { color: var(--calendar-muted); font-size: 11px; }
+.header-create-button.hidden { display: none; }
+
+.mini-calendar-day {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  max-width: 37px;
+  justify-self: center;
+  aspect-ratio: 1;
+}
+.mini-calendar-day.today::after { display: none; }
+.mini-calendar-day.selected {
+  color: var(--calendar-blue);
+  font-weight: 600;
+}
+.mini-calendar-day.selected::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 30px;
+  height: 30px;
+  box-sizing: border-box;
+  border: 1.5px solid var(--calendar-blue);
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+.event-day-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  padding: 6px 8px;
+  text-align: center;
+  border-left: 1px solid var(--calendar-line);
+}
+.event-day-header-date { margin-top: 0; }
+.event-day-header.today .event-day-header-date { margin-top: 0; }
+.event-day-header.flash-selected,
+.event-day-column.flash-selected {
+  background: #fff4e5 !important;
+}
+.event-day-column.flash-selected .hour-row { border-top-color: #eadcc9; }
+
+.event-timeline { position: relative; }
+.current-line {
+  left: 0;
+  right: 0;
+  height: 3px;
+  z-index: 5;
+  transform: translateY(-50%);
+  background: transparent;
+  pointer-events: none;
+}
+.current-line::before,
+.current-line::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  border-radius: 999px;
+}
+.current-line.current-day-visible::before {
+  left: 0;
+  width: var(--current-day-percent);
+  background: #f3b2b2;
+}
+.current-line.current-day-visible::after {
+  left: var(--current-day-percent);
+  right: 0;
+  background: #e53935;
+}
+.current-line.current-day-hidden.before-current { background: #f3b2b2; }
+.current-line.current-day-hidden.after-current { background: #e53935; }
+.current-line-marker {
+  position: absolute;
+  top: 50%;
+  left: var(--current-day-percent);
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #d32f2f;
+  box-shadow: 0 0 0 2px rgba(255,255,255,.9);
+  transform: translate(-50%, -50%);
+}
+
+@media (max-width: 1100px) {
+  .sidebar-inner { padding-left: 16px; padding-right: 16px; }
+  .side-nav { gap: 20px; }
+  .header-create-button { min-width: 0; padding-left: 13px; padding-right: 13px; }
+  .desktop-connection-actions { margin-left: 10px; padding-left: 10px; }
+  .conn-text strong { font-size: 11px; }
+}
+
+@media (max-width: 800px) {
+  .sidebar-inner {
+    height: auto;
+    min-height: 58px;
+    flex-wrap: wrap;
+    padding-bottom: 6px;
+  }
+  .side-nav {
+    order: 1;
+    flex: 1 1 100%;
+    height: 48px;
+    min-height: 48px;
+  }
+  .desktop-header-actions {
+    order: 2;
+    height: 44px;
+    margin-left: auto;
+  }
+  .desktop-connection-actions {
+    order: 3;
+    height: 44px;
+    margin-left: 10px;
+    padding-left: 10px;
+  }
+  .desktop-connection-actions::before { display: none; }
+}

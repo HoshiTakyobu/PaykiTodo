@@ -68,6 +68,10 @@ const state = {
   eventLoadSerial: 0,
   eventDragSuppressClickUntil: 0,
   eventCheckInLoadSerial: 0,
+  eventFlashDay: null,
+  eventFlashTimer: null,
+  eventClockTimer: null,
+  eventClockDay: dayKey(new Date()),
   aiReportStatus: null,
   aiConfigDraft: null,
   aiProviderModels: {},
@@ -123,6 +127,7 @@ const els = {
   panelTitle: document.getElementById('panel-title'),
   viewCaption: document.getElementById('view-caption'),
   openCreate: document.getElementById('open-create'),
+  openEventCreate: document.getElementById('open-event-create'),
   boardScroll: document.getElementById('board-scroll'),
   eventAnchorDate: document.getElementById('event-anchor-date'),
   eventPrevDay: document.getElementById('event-prev-day'),
@@ -1263,9 +1268,7 @@ function buildEventSegment(item, key) {
 
 function renderHourAxis() {
   const now = new Date();
-  const todayKey = dayKey(now);
-  const currentMinutes = now.getHours() * 60 + now.getMinutes();
-  const currentTimeOffset = (currentMinutes / 60) * HOUR_HEIGHT;
+  const currentTimeOffset = currentTimeOffsetFor(now);
 
   let html = '<div class="hour-axis-header">GMT+8</div><div class="hour-axis-body">';
   for (let hour = 0; hour < 24; hour += 1) {
@@ -1273,9 +1276,14 @@ function renderHourAxis() {
   }
 
   // 当前时间标签（红色 chip），和整点并列在最左边
-  html += '<div class="hour-current-chip" style="top:' + currentTimeOffset + 'px">' + escapeHtml(formatTimeLabel(now.getTime())) + '</div></div>';
+  html += '<div class="hour-current-chip" data-current-time-indicator="chip" style="top:' + currentTimeOffset + 'px">' + escapeHtml(formatTimeLabel(now.getTime())) + '</div></div>';
 
   return html;
+}
+
+function currentTimeOffsetFor(date) {
+  const currentMinutes = date.getHours() * 60 + date.getMinutes();
+  return (currentMinutes / 60) * HOUR_HEIGHT;
 }
 
 function renderHourGrid() {
@@ -1287,12 +1295,47 @@ function renderHourGrid() {
   return html;
 }
 
-function renderCurrentLine(key) {
+function renderCurrentLine(visibleKeys) {
   const now = new Date();
   const todayKey = dayKey(now);
-  if (key !== todayKey) return '';
-  const top = (now.getHours() * 60 + now.getMinutes()) / 60 * HOUR_HEIGHT;
-  return '<div class="current-line" style="top:' + top + 'px"></div>';
+  if (!visibleKeys || !visibleKeys.length) return '';
+  const currentDayIndex = visibleKeys.indexOf(todayKey);
+  const currentDayVisible = currentDayIndex >= 0;
+  const lineTone = visibleKeys[visibleKeys.length - 1] < todayKey ? 'before-current' : 'after-current';
+  const classes = ['current-line', currentDayVisible ? 'current-day-visible' : 'current-day-hidden', lineTone];
+  const index = currentDayVisible ? currentDayIndex : 0;
+  const currentDayPercent = (index / visibleKeys.length) * 100 + '%';
+  return '<div class="' + classes.join(' ') + '" data-current-time-indicator="line" style="top:'
+    + currentTimeOffsetFor(now) + 'px;--current-day-index:' + index + ';--day-count:' + visibleKeys.length
+    + ';--current-day-percent:' + currentDayPercent + '">'
+    + (currentDayVisible ? '<span class="current-line-marker" aria-hidden="true"></span>' : '')
+    + '</div>';
+}
+
+function updateCurrentTimeIndicator() {
+  const now = new Date();
+  const todayKey = dayKey(now);
+  const top = currentTimeOffsetFor(now);
+  document.querySelectorAll('[data-current-time-indicator="line"]').forEach(node => {
+    node.style.top = top + 'px';
+  });
+  document.querySelectorAll('[data-current-time-indicator="chip"]').forEach(node => {
+    node.style.top = top + 'px';
+    node.textContent = formatTimeLabel(now.getTime());
+  });
+  if (state.eventClockDay === todayKey) return;
+  state.eventClockDay = todayKey;
+  if (state.currentTab === 'events' && state.snapshot) renderEvents();
+}
+
+function startCurrentTimeIndicator() {
+  if (state.eventClockTimer != null) window.clearTimeout(state.eventClockTimer);
+  const tick = () => {
+    updateCurrentTimeIndicator();
+    const delay = 60_000 - (Date.now() % 60_000) + 50;
+    state.eventClockTimer = window.setTimeout(tick, delay);
+  };
+  tick();
 }
 
 function visibleEventDayCount() {
@@ -1332,6 +1375,7 @@ function renderEventDayHeader(key, items) {
   if (key < today) classes.push('past');
   if (key === today) classes.push('today');
   if (key === state.selectedEventDay) classes.push('selected');
+  if (key === state.eventFlashDay) classes.push('flash-selected');
   const date = dateFromKey(key);
   return ''
     + '<button class="' + classes.join(' ') + '" data-day="' + key + '">'
@@ -1362,11 +1406,12 @@ function renderAllDayEventPill(item, key) {
 }
 
 function renderEventDayColumn(key, timed, allDayItems) {
+  const classes = ['event-day-column'];
+  if (key === state.eventFlashDay) classes.push('flash-selected');
   return ''
-    + '<div class="event-day-column" data-column-day="' + key + '">'
+    + '<div class="' + classes.join(' ') + '" data-column-day="' + key + '">'
     +   renderEventDayAllDayStrip(key, allDayItems)
     +   renderHourGrid()
-    +   renderCurrentLine(key)
     +   timed.map(renderEventCard).join('')
     + '</div>';
 }
@@ -1450,6 +1495,18 @@ function renderMiniCalendar() {
     if (key === today) classes.push('today');
     return '<button type="button" class="' + classes.join(' ') + '" data-mini-calendar-day="' + key + '">' + date.getDate() + '</button>';
   }).join('');
+}
+
+function flashEventDay(key) {
+  if (state.eventFlashTimer != null) window.clearTimeout(state.eventFlashTimer);
+  state.eventFlashDay = key;
+  renderEvents();
+  state.eventFlashTimer = window.setTimeout(() => {
+    state.eventFlashTimer = null;
+    if (state.eventFlashDay !== key) return;
+    state.eventFlashDay = null;
+    renderEvents();
+  }, 1000);
 }
 
 function renderMonthEventPill(item) {
@@ -1638,8 +1695,10 @@ function syncTopbar() {
   document.body.dataset.activeTab = state.currentTab;
   els.panelTitle.textContent = boardMode ? '每日看板' : todoMode ? '待办' : eventMode ? '日历' : planningMode ? '规划台' : 'AI 报告';
   els.viewCaption.textContent = boardMode ? '今天真正需要处理的事情' : todoMode ? '任务与历史记录' : eventMode ? '按周查看与安排日程' : planningMode ? '备忘录式规划与识别' : '日报调度、AI 状态与历史记录';
-  els.openCreate.textContent = eventMode ? '创建日程' : todoMode || boardMode ? '新增待办' : '新建规划';
-  els.openCreate.classList.toggle('hidden', planningMode || reportMode);
+  els.openCreate.textContent = '新增待办';
+  els.openCreate.classList.toggle('hidden', !(todoMode || boardMode));
+  els.openEventCreate.textContent = '创建日程';
+  els.openEventCreate.classList.toggle('hidden', !(eventMode || boardMode));
   const dataMode = todoMode && state.todosLoaded
     ? '待办按需数据'
     : eventMode && visibleEventRangeLoaded()
@@ -2504,7 +2563,8 @@ function renderEvents() {
   } else {
     els.eventDayHeaders.innerHTML = visibleDays.map(day => renderEventDayHeader(day.key, day.items)).join('');
     els.hourAxis.innerHTML = renderHourAxis();
-    els.eventTimeline.innerHTML = visibleDays.map(day => renderEventDayColumn(day.key, day.timed, day.allDay)).join('');
+    els.eventTimeline.innerHTML = renderCurrentLine(visibleKeys)
+      + visibleDays.map(day => renderEventDayColumn(day.key, day.timed, day.allDay)).join('');
   }
   if (els.boardScroll) {
     if (state.eventViewMode === 'month') {
@@ -4962,7 +5022,7 @@ els.eventMiniCalendar?.addEventListener('click', event => {
   state.selectedEventDay = day.dataset.miniCalendarDay;
   state.eventMiniMonth = state.selectedEventDay.slice(0, 7) + '-01';
   state.eventsLoaded = false;
-  renderEvents();
+  flashEventDay(state.selectedEventDay);
 });
 els.eventCalendarSearch?.addEventListener('input', event => {
   state.eventQuery = event.target.value || '';
@@ -5346,17 +5406,18 @@ window.addEventListener('beforeunload', event => {
   event.preventDefault();
   event.returnValue = '';
 });
+function openNewEventEditor() {
+  clearEventForm();
+  const start = snapToQuarterHour(Date.now() + THIRTY_MINUTES);
+  setEventSeed(start, start + THIRTY_MINUTES);
+  openModal('event-modal');
+}
+
 els.openCreate.onclick = () => {
-  const creatingEvent = state.currentTab === 'events';
-  if (state.currentTab === 'events') {
-    clearEventForm();
-    const start = snapToQuarterHour(Date.now() + THIRTY_MINUTES);
-    setEventSeed(start, start + THIRTY_MINUTES);
-  } else {
-    clearTodoForm();
-  }
-  openModal(creatingEvent ? 'event-modal' : 'todo-modal');
+  clearTodoForm();
+  openModal('todo-modal');
 };
+els.openEventCreate.onclick = openNewEventEditor;
 if (els.eventTimeline) {
   els.eventTimeline.addEventListener('click', event => {
     const eventNode = event.target.closest?.('[data-event-id]');
@@ -5728,3 +5789,4 @@ bindEventColorPresets();
 bindReviewImportControls();
 bindAiReportControls();
 syncTopbar();
+startCurrentTimeIndicator();

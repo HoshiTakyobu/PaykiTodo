@@ -8,7 +8,7 @@
 - Supported Android: Android 8.0+ / API 26+
 - Compile and target SDK: Android 14 / API 34
 - License: MIT
-- App version: `1.15.21 / versionCode 363` (current local development source)
+- App version: `1.15.22 / versionCode 364` (current local development source)
 - Room database version: `30`
 
 ## Published Build
@@ -16,8 +16,8 @@
 - GitHub Release: `https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.15.18`
 - Release APK: `app/build/outputs/apk/release/PaykiTodo-1.15.18-release.apk`
 - Public asset name: `PaykiTodo-1.15.18-release.apk`
-- Current debug APK: `app/build/outputs/apk/debug/PaykiTodo-1.15.21-debug.apk`
-- Current signed release APK: `app/build/outputs/apk/release/PaykiTodo-1.15.21-release.apk`
+- Current debug APK: `app/build/outputs/apk/debug/PaykiTodo-1.15.22-debug.apk`
+- Current signed release APK: `app/build/outputs/apk/release/PaykiTodo-1.15.22-release.apk`
 - Current Windows self-contained EXE: `desktop/dist/PaykiTodo.exe`
 - Release signing material remains local and ignored by Git.
 
@@ -38,8 +38,16 @@ PaykiTodo is a local-first Android assistant for todos, DDLs, schedules, countdo
 - Windows self-contained desktop shell currently supports the phone LAN Web console plus a server-snapshot read-only mode; these are compatibility capabilities only. The target standalone EXE must own a local data copy and synchronize with the server independently of the phone's `18765`; that writable account-synced client remains unimplemented.
 - Android daily-board and countdown widgets.
 - Local Room storage, `.paykibak` migration archive / legacy JSON restore, diagnostics, crash logs, and in-app Wiki.
+- Desktop Web calendar now uses the same current-time line convention as the phone calendar, separates today's date from the selected date, and flashes the selected week column briefly.
 
 See `README.md` for the public overview and `docs/current/FEATURE_LEDGER.md` for the detailed implementation ledger.
+
+## v1.15.22 Development Scope (not published)
+
+- Split the desktop create controls into independent todo and event actions with tab-specific visibility.
+- Reordered the desktop header into left navigation and right-side creation/connection controls with responsive wrapping.
+- Unified desktop calendar current-time rendering with the phone timeline and added minute-aligned refresh.
+- Fixed mini-calendar selected-day geometry and added one-second selected-week-column feedback.
 
 ## v1.15.21 Development Scope (not published)
 

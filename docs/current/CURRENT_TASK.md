@@ -2,7 +2,14 @@
 
 ## Active Focus
 
-The `v1.15.21` local development round completes the unified reminder interaction and narrow-screen reminder action layout on top of the `v1.15.20` migration / remote-snapshot foundation. It is not a GitHub Release yet; the latest public release remains `v1.15.18`.
+The `v1.15.22` local development round fixes the Desktop Web header actions and calendar alignment on top of the `v1.15.21` reminder interaction work. It is not a GitHub Release yet; the latest public release remains `v1.15.18`.
+
+## Completed `v1.15.22` Scope
+
+1. Split desktop todo and event creation buttons and made their visibility tab-specific.
+2. Reflowed the desktop header so navigation stays left while creation and connection controls stay right without narrow-window overlap.
+3. Matched the Desktop Web current-time line to the phone calendar's full-width red line and current-day marker convention.
+4. Added minute-aligned indicator refresh, fixed mini-calendar selection geometry, centered week headers, and one-second selected-column feedback.
 
 ## Completed `v1.15.21` Scope
 
@@ -22,11 +29,11 @@ The `v1.15.21` local development round completes the unified reminder interactio
 ## Latest Public Release Baseline
 
 1. `v1.15.18` remains the latest GitHub Release and public APK.
-2. The `1.15.21` source and local APKs are not published until the user explicitly requests a release.
+2. The `1.15.22` source and local APKs are not published until the user explicitly requests a release.
 
 ## Next Validation
 
-1. Install `1.15.21` Debug or Release on the matching signed profile and smoke-test startup, migration import, todo creation, event creation, and Desktop Sync.
+1. Install `1.15.22` Debug or Release on the matching signed profile and smoke-test startup, migration import, todo creation, event creation, and Desktop Sync.
 2. Verify the single reminder switch and the event/intermediate/final todo action layouts on a physical phone.
 3. Verify full-screen behavior while locked and while unlocked inside another app on the user's OEM ROM.
 4. Verify daily-board and countdown widgets after installation, resize, date change, and dark/light theme change.

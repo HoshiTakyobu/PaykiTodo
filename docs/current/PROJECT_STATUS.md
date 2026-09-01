@@ -35,7 +35,7 @@ PaykiTodo is a local-first Android assistant for todos, DDLs, schedules, countdo
 - Local LAN Desktop Web console for board, todo, calendar, Planning Desk, AI reports, and Excel schedule import.
 - Optional encrypted remote-sync upload foundation; the Room database remains authoritative and the server stores only encrypted migration-package bytes. Account login, bidirectional device sync, conflict merge, and admin APIs are not implemented.
 - Remote snapshot inspection shows export time and record counts before any restore; restore requires explicit confirmation and creates a local safety backup first.
-- Windows self-contained desktop shell currently supports the phone LAN Web console plus a server-snapshot read-only mode; the LAN mode uses the phone's `18765` and is not the target account-synced desktop client. The standalone EXE local data client and writable account sync remain unimplemented.
+- Windows self-contained desktop shell currently supports the phone LAN Web console plus a server-snapshot read-only mode; these are compatibility capabilities only. The target standalone EXE must own a local data copy and synchronize with the server independently of the phone's `18765`; that writable account-synced client remains unimplemented.
 - Android daily-board and countdown widgets.
 - Local Room storage, `.paykibak` migration archive / legacy JSON restore, diagnostics, crash logs, and in-app Wiki.
 

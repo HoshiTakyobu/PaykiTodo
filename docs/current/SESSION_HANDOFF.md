@@ -28,7 +28,7 @@
 2. Import preserves the current installation's local credentials/backup authorization, restores schedules and widgets, and accepts legacy JSON backups.
 3. Remote sync is local-first: Room remains authoritative, data changes trigger a delayed encrypted upload, and enabled sync has a one-minute fallback loop. Turning it off cancels both jobs.
 4. The Azure relay accepts and stores ciphertext only. Mobile inspection now shows a safe summary before explicit replacement restore, with a local safety backup first.
-5. The current Windows EXE is a self-contained WebView2 shell: its phone-LAN mode embeds the phone's `18765` Web service, while its server mode only reads encrypted snapshots. It is not yet the target standalone account-synced desktop client and never edits server data.
+5. The current Windows EXE is only a compatibility WebView2 shell: its phone-LAN mode embeds the phone's `18765` Web service, while its server mode only reads encrypted snapshots. The target EXE must instead own a local data copy and sync independently through the server; it must not depend on the phone-LAN mode.
 
 ## Repository Publication Work
 

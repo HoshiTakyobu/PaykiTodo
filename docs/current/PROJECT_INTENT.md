@@ -32,6 +32,15 @@ Current long-term direction includes:
 4. Lightweight desktop-side assistance through LAN browser control first, followed by an optional full Windows client with a local copy of the same account data
 5. Optional account-backed multi-device sync that preserves local-first operation and remains usable when the server expires
 
+## Computer Client Boundary
+
+正式 Windows EXE 与手机的“连接电脑”功能不是同一个服务：
+
+- 正式 Windows EXE 是独立客户端，拥有自己的本地数据副本，通过账号登录服务器与手机同步，数据流为“手机本地数据 ↔ 服务器 ↔ 电脑本地数据”。它不依赖手机的局域网 Web 服务，也不连接手机 `18765`。
+- “连接电脑”是保留的局域网兼容入口。电脑浏览器通过手机 `18765` 直接操作手机数据库，手机完成本地写入后再同步服务器。这条路径没有电脑本地数据副本。
+
+任何后续设计都不得把手机 `18765` 当成 Windows EXE 的云同步接口，也不得用当前 WebView2 兼容壳冒充正式桌面客户端。
+
 ## Non-Goals For Now
 
 These are not current primary goals:

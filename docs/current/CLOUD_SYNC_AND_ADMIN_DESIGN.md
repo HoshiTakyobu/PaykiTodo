@@ -1,0 +1,132 @@
+# PaykiTodo 账号、云同步与管理员后台设计
+
+## 文档状态
+
+- 状态：设计确认前的架构基线，当前 `1.15.21` 尚未实现。
+- 当前服务器代码 `server/paykitodo_sync_server.py` 只是按设备 ID 保存加密快照的密文中转器。
+- 当前 Windows EXE 的服务器模式只是本地解密后的只读展示，不能修改服务器数据。
+- 本文不包含账号密码、API Key、SSH 私钥、Cloudflare Token 或真实服务器地址之外的敏感凭据。
+
+## 1. 产品边界
+
+PaykiTodo 的每台设备都必须保留完整本地数据，Room / 本地数据库仍是设备离线时的可用副本。服务器的作用是：
+
+1. 账号登录后保存一份跨设备同步副本；
+2. 手机或 Windows 客户端完成一次本地写操作后，向服务器提交变化；
+3. 另一台已登录设备拉取变化并更新自己的本地数据库；
+4. 服务器到期、断网或 Cloudflare 故障时，手机仍可独立使用，局域网直连仍可直接操作手机本机数据。
+
+服务器不能成为唯一数据源，也不能让客户端每次打开都依赖服务器才能看到待办或日程。
+
+## 2. 目标组件
+
+### 2.1 账号服务
+
+建议接口：
+
+- `POST /api/v1/auth/register`
+- `POST /api/v1/auth/login`
+- `POST /api/v1/auth/refresh`
+- `POST /api/v1/auth/logout`
+- `GET /api/v1/account/devices`
+- `DELETE /api/v1/account/devices/{deviceId}`
+
+密码应在服务端使用 Argon2id（无法使用时才降级到高成本 PBKDF2-SHA256）存储摘要。访问 Token 短期有效，Refresh Token 只存哈希并可按设备撤销；登录、注册、找回密码和管理接口必须限流并记录安全事件。
+
+### 2.2 同步服务
+
+建议接口：
+
+- `GET /api/v1/sync/state`：返回服务器 revision、设备游标和安全元数据；
+- `POST /api/v1/sync/push`：提交客户端在某个 `baseRevision` 上产生的变更；
+- `GET /api/v1/sync/pull?after={revision}`：拉取其他设备已经提交的变更；
+- `POST /api/v1/sync/ack`：确认设备已应用 revision；
+- `POST /api/v1/sync/snapshot`：首次登录或灾难恢复时提交加密快照。
+
+第一版可以在一次用户操作后上传加密变更包，并保留每分钟兜底拉取；不能只做“最后上传的一整包覆盖服务器”，否则手机和电脑同时修改时会静默丢数据。
+
+### 2.3 数据与加密
+
+- 客户端生成随机账户数据密钥；服务器只保存加密快照和加密变更包，不能读取标题、地点、备注或 API Key。
+- 每台设备保存自己的设备密钥；账户数据密钥通过设备公钥分别包装，新增设备必须经过已登录设备确认或一次性恢复码授权。
+- 认证 Token 和数据加密密钥必须分离。注销、撤销设备或修改登录凭据不能直接把旧设备重新变成可信设备。
+- 同步包应有版本、客户端 ID、操作 ID、基础 revision、创建时间、校验和与幂等键；重复提交不能重复写入。
+- 迁移包 `.paykibak` 与云同步包分开处理，导入导出规则继续排除 AI API Key、电脑同步密钥、服务器 Secret 和本地文件授权状态。
+
+## 3. 冲突与本地一致性
+
+所有写操作按以下顺序执行：
+
+1. 先写本地 Room；
+2. 本地事务成功后把操作写入待上传队列；
+3. 网络可用时向服务器提交；
+4. 服务器按 revision 接收并返回冲突或已合并结果；
+5. 客户端在后台应用其他设备的操作，并刷新提醒、Widget 和日历缓存。
+
+待办、日程、分组、规划文档、循环模板和取消/删除墓碑需要明确各自的合并键。删除不能立即丢掉墓碑，否则离线设备重新上传旧对象时会把已删除事项复活。无法安全字段合并时必须显示冲突列表，不能静默使用“最后写入覆盖”。
+
+## 4. Windows EXE 目标
+
+Windows 客户端不是只读服务器快照查看器，而应具备：
+
+- 账号注册 / 登录 / 退出和设备撤销；
+- 本地数据库副本，断网时仍能查看和编辑；
+- 与手机相同的待办、日程、提醒、循环、规划台字段契约；
+- 每次本地修改后立即排队同步，后台按分钟兜底拉取；
+- 服务器不可用时显示“本地已保存，等待同步”，而不是阻止编辑；
+- 手机与电脑在同一局域网且用户开启“连接电脑”时，继续支持浏览器直接操作手机本机数据；这条路径不需要账号服务器。
+
+现有 WebView2 壳和 LAN Web API 可以复用界面契约，但不能把手机 HTTP API 当成云端协议。应先抽出跨端 DTO、同步操作模型和本地仓储，再将 WebView2 作为 Windows 本地客户端的界面。
+
+## 5. 管理员后台
+
+`deployment.example.invalid` 应是单独的管理入口，不应复用普通用户登录页：
+
+- 管理员单独账号、MFA、短会话、IP / 设备审计和高风险操作二次确认；
+- 用户列表只展示账号状态、创建时间、最近活跃、设备数、同步状态和存储用量等必要元数据；
+- 默认不显示用户待办、日程、备注等明文内容；如确需支持诊断，应使用用户主动授权的临时、可审计支持会话；
+- 支持禁用账号、撤销设备、清理异常会话、查看同步失败和限流事件；
+- 管理员操作写入不可篡改的审计日志，禁止把密码、Token、API Key 或解密密钥写入日志。
+
+## 6. Cloudflare 与服务器上线前置条件
+
+本仓库不能代替域名所有者完成 Cloudflare 登录。正式上线前需要用户在 Cloudflare 控制台确认并完成：
+
+1. 确认 `deployment.example.invalid` Zone 和 `deployment.example.invalid` 的所有权；
+2. 选择 DNS A/AAAA 记录 + 橙云代理，或优先选择 Cloudflare Tunnel，避免直接暴露源站；
+3. 开启 SSL/TLS `Full (strict)`，使用源站证书或 Tunnel，不允许明文 HTTP 作为账号接口；
+4. 为登录、注册、同步上传和管理员路径设置 WAF / Rate Limiting；
+5. 源站防火墙只允许 Cloudflare 到 HTTPS，SSH 仅允许维护者固定来源或临时访问；
+6. 在启用新服务前修改 Azure/Microsoft 密码、撤销旧会话、检查 MFA / OAuth 应用 / SSH 密钥，并轮换曾经暴露过的服务器凭据；
+7. 先在测试子域名和测试账号验证注册、双设备修改、断网恢复、冲突、注销和数据删除，再切换正式域名。
+
+2026-09-01 的只读核对结果：`deployment.example.invalid` 已使用 Cloudflare nameserver，`deployment.example.invalid` 已解析到 Cloudflare 代理地址，但 HTTPS 返回 `526 Invalid SSL certificate`。Azure 源站只有 `service.example.invalid` 的 Nginx server block，现有证书仅覆盖 `deployment.example.invalid`、`deployment.example.invalid` 和 `service.example.invalid`，不覆盖 `deployment.example.invalid`。因此该域名目前既不是可用的管理员后台，也不应临时复用现有 panel；应在管理员服务完成后再申请匹配的源站证书、添加独立 Nginx upstream，并在 Cloudflare 控制台核验 WAF / Rate Limiting。
+
+## 7. 分阶段实施
+
+### Phase A：协议与本地队列
+
+- 抽出 Android / Windows 共用 JSON DTO；
+- Room 增加同步操作队列、服务端 revision、设备 ID 和墓碑；
+- 所有待办 / 日程 / 规划文档写操作进入本地队列；
+- 仍只使用测试服务器，保留现有 LAN 与快照恢复路径。
+
+### Phase B：账号与双设备同步
+
+- 实现注册、登录、刷新、设备撤销和加密密钥包装；
+- 实现 push / pull / ack、幂等、断网重试和冲突提示；
+- 手机与 Windows 各保留完整本地副本；
+- 完成全字段 round-trip 和数据删除测试。
+
+### Phase C：Windows 可写客户端
+
+- WebView2 shell 连接本地 Windows 仓储而非只连接手机；
+- 复用手机端字段契约和核心交互，但适配桌面布局；
+- 云端不可用时仍可编辑并显示待同步状态；
+- LAN 模式继续作为独立的手机直连入口。
+
+### Phase D：管理员后台与正式部署
+
+- 管理员 MFA、审计、用户 / 设备 / 活跃度 / 同步错误视图；
+- Cloudflare 防护、备份、监控、限流、密钥轮换和灾难恢复演练；
+- 经真实测试账号验收后才开放正式注册。

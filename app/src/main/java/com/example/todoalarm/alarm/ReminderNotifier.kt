@@ -10,7 +10,6 @@ import android.os.Build
 import androidx.core.app.NotificationCompat
 import com.example.todoalarm.R
 import com.example.todoalarm.data.TodoItem
-import com.example.todoalarm.ui.MainActivity
 import com.example.todoalarm.ui.ResolvedTaskGroup
 import com.example.todoalarm.ui.ReminderActivity
 import com.example.todoalarm.ui.formatLocalDateTime
@@ -31,10 +30,12 @@ class ReminderNotifier(
         todoItem: TodoItem,
         taskGroup: ResolvedTaskGroup = resolveTaskGroup(todoItem, emptyList()),
         requestFullscreen: Boolean = false,
-        showReminderContent: Boolean = true
+        showReminderContent: Boolean = true,
+        triggeredAtMillis: Long? = null
     ): Notification {
         val channelId = ensureChannel(todoItem)
-        val fullScreenIntent = reminderPendingIntent(todoItem.id)
+        val fullScreenIntent = reminderPendingIntent(todoItem.id, triggeredAtMillis)
+        val notificationClickIntent = detailPendingIntent(todoItem)
         val body = reminderText(todoItem, taskGroup)
 
         return NotificationCompat.Builder(context, channelId)
@@ -53,7 +54,7 @@ class ReminderNotifier(
             .setLocalOnly(!showReminderContent)
             .setDefaults(0)
             .setForegroundServiceBehavior(NotificationCompat.FOREGROUND_SERVICE_IMMEDIATE)
-            .setContentIntent(fullScreenIntent)
+            .setContentIntent(notificationClickIntent)
             .apply {
                 if (requestFullscreen) {
                     setFullScreenIntent(fullScreenIntent, true)
@@ -74,8 +75,8 @@ class ReminderNotifier(
         taskGroup: ResolvedTaskGroup = resolveTaskGroup(todoItem, emptyList())
     ) {
         val channelId = ensureChannel(todoItem.copy(alarmMode = false))
-        val pendingIntent = reminderPendingIntent(todoItem.id)
-        val body = "你有一条未处理的提醒。闹钟模式已暂停响铃，请完成、延后或取消。"
+        val pendingIntent = detailPendingIntent(todoItem)
+        val body = "你有一条未处理的提醒。闹钟模式已暂停响铃，请完成任务或确认本次提醒。"
         val notification = NotificationCompat.Builder(context, channelId)
             .setSmallIcon(R.drawable.ic_stat_payki_todo)
             .setContentTitle("未处理提醒：${taskGroupEmoji(taskGroup)} ${todoItem.title}")
@@ -119,25 +120,20 @@ class ReminderNotifier(
 
     fun createReminderIntent(todoId: Long): Intent = buildReminderIntent(todoId)
 
-    fun reminderPendingIntent(todoId: Long): PendingIntent {
+    fun reminderPendingIntent(todoId: Long, triggeredAtMillis: Long? = null): PendingIntent {
         return PendingIntent.getActivity(
             context,
             AlarmScheduler.requestCodeFor(todoId, 0L),
-            buildReminderIntent(todoId),
+            buildReminderIntent(todoId, triggeredAtMillis),
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
     }
 
     private fun detailPendingIntent(todoItem: TodoItem): PendingIntent {
-        val intent = Intent(context, MainActivity::class.java).apply {
-            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP)
-            if (todoItem.isEvent) {
-                putExtra(MainActivity.EXTRA_OPEN_EVENT_ID, todoItem.id)
-            } else {
-                putExtra(MainActivity.EXTRA_OPEN_TODO_ID, todoItem.id)
-            }
+        val intent = Intent(context, ReminderNotificationClickReceiver::class.java).apply {
+            putExtra(AlarmScheduler.EXTRA_TODO_ID, todoItem.id)
         }
-        return PendingIntent.getActivity(
+        return PendingIntent.getBroadcast(
             context,
             notificationId(todoItem.id),
             intent,
@@ -149,8 +145,8 @@ class ReminderNotifier(
         notificationManager.cancel(notificationId(todoId))
     }
 
-    private fun buildReminderIntent(todoId: Long): Intent {
-        return ReminderActivity.createIntent(context, todoId)
+    private fun buildReminderIntent(todoId: Long, triggeredAtMillis: Long? = null): Intent {
+        return ReminderActivity.createIntent(context, todoId, triggeredAtMillis)
     }
 
     private fun ensureChannel(todoItem: TodoItem): String {

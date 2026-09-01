@@ -129,7 +129,6 @@ import com.example.todoalarm.data.PlanningOperationResult
 import com.example.todoalarm.data.PlanningParseResult
 import com.example.todoalarm.data.PlanningPostponeScope
 import com.example.todoalarm.data.PlanningRefreshScope
-import com.example.todoalarm.data.ReminderDeliveryMode
 import com.example.todoalarm.data.ReminderAudioChannel
 import com.example.todoalarm.data.ReminderChainLog
 import com.example.todoalarm.data.ScheduleTemplate
@@ -502,7 +501,6 @@ internal fun DashboardBody(
     onRequestAccessibilityService: () -> Unit,
     onWeekStartModeChange: (WeekStartMode) -> Unit,
     onDefaultSnoozeChange: (Int) -> Unit,
-    onDefaultCalendarReminderModeChange: (ReminderDeliveryMode) -> Unit,
     onEventCheckInPreferencesChange: (Boolean, Boolean) -> Unit,
     onEventCheckInIdleAutoCheckOutHoursChange: (Int) -> Unit,
     onOngoingEventNotificationEnabledChange: (Boolean) -> Unit,
@@ -652,7 +650,6 @@ internal fun DashboardBody(
                 onRequestAccessibilityService = onRequestAccessibilityService,
                 onWeekStartModeChange = onWeekStartModeChange,
                 onDefaultSnoozeChange = onDefaultSnoozeChange,
-                onDefaultCalendarReminderModeChange = onDefaultCalendarReminderModeChange,
                 onEventCheckInPreferencesChange = onEventCheckInPreferencesChange,
                 onEventCheckInIdleAutoCheckOutHoursChange = onEventCheckInIdleAutoCheckOutHoursChange,
                 onOngoingEventNotificationEnabledChange = onOngoingEventNotificationEnabledChange,

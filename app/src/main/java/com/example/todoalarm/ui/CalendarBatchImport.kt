@@ -539,7 +539,7 @@ internal fun CalendarBatchImportHelpDialog(
                         "如果不写 Remind，则默认提前 5 分钟提醒，并使用铃声+震动。",
                         "支持 Remind=5、Remind=15m、Remind=1h、Remind=2d、Remind=16:30、Remind=2:30 pm、Remind=明天 16:30、Remind=周五 16:30、Remind=5月28日，14:30、Remind=off。",
                         "日程批量字段用英文逗号分隔；Remind 内多个提醒建议用中文逗号，日期和时间连接也建议用空格或中文逗号。",
-                        "Mode=Notification 或 Mode=Fullscreen。",
+                        "旧文件中的 Mode=Notification / Mode=Fullscreen 仍可读取，但现在只由 Remind=... 或提醒开关决定是否提醒；开启提醒统一使用全屏+通知栏。",
                         "Ring=On/Off，Vibrate=On/Off。"
                     ),
                     code = """
@@ -552,7 +552,7 @@ internal fun CalendarBatchImportHelpDialog(
                     body = listOf(
                         "不写循环规则：按单次日程处理。",
                         "写了循环规则但不写循环截止日期：默认按起始日期后 90 天截止。",
-                        "批量导入默认是：提前 5 分钟、通知栏提醒、铃声开启、震动开启。",
+                        "批量导入默认是：提前 5 分钟、提醒开启（全屏+通知栏）、铃声开启、震动开启。",
                         "Weekly 不写方括号时，会按这条日程的起始星期循环。"
                     )
                 )
@@ -1237,10 +1237,12 @@ internal object CalendarBatchImportHub {
 
     private fun parseModeCell(value: String): ReminderDeliveryMode {
         return when (value.trim().lowercase(Locale.ROOT)) {
-            "notification", "通知栏", "通知栏提醒" -> ReminderDeliveryMode.NOTIFICATION
-            "fullscreen", "全屏", "全屏提醒", "全屏界面提醒" -> ReminderDeliveryMode.FULLSCREEN
+            // Keep accepting old batch files, but do not expose the old
+            // channel split in the current product behavior.
+            "notification", "通知栏", "通知栏提醒",
+            "fullscreen", "全屏", "全屏提醒", "全屏界面提醒",
             "both", "all", "fullscreen_and_notification", "全屏+通知栏", "全屏和通知栏", "全屏 + 通知栏" -> ReminderDeliveryMode.FULLSCREEN_AND_NOTIFICATION
-            else -> error("mode 支持 notification、fullscreen、both 或 通知栏/全屏/两者")
+            else -> error("mode 仅支持历史兼容值 notification、fullscreen 或 both")
         }
     }
 

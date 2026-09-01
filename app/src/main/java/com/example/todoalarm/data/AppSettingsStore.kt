@@ -50,7 +50,7 @@ data class AppSettings(
     val defaultRingEnabled: Boolean = true,
     val defaultVibrateEnabled: Boolean = true,
     val defaultVoiceEnabled: Boolean = false,
-    val defaultCalendarReminderMode: ReminderDeliveryMode = ReminderDeliveryMode.FULLSCREEN,
+    val defaultCalendarReminderMode: ReminderDeliveryMode = ReminderDeliveryMode.FULLSCREEN_AND_NOTIFICATION,
     val autoCheckOutEventOnEnd: Boolean = true,
     val showEventCheckInStatsOnComplete: Boolean = true,
     val eventCheckInIdleAutoCheckOutHours: Int = 2,
@@ -485,7 +485,7 @@ class AppSettingsStore(context: Context) {
             defaultVibrateEnabled = preferences.getBoolean(KEY_DEFAULT_VIBRATE, true),
             defaultVoiceEnabled = preferences.getBoolean(KEY_DEFAULT_VOICE, false),
             defaultCalendarReminderMode = ReminderDeliveryMode.fromStorage(
-                preferences.getString(KEY_DEFAULT_CALENDAR_REMINDER_MODE, ReminderDeliveryMode.FULLSCREEN.name)
+                preferences.getString(KEY_DEFAULT_CALENDAR_REMINDER_MODE, ReminderDeliveryMode.FULLSCREEN_AND_NOTIFICATION.name)
             ),
             autoCheckOutEventOnEnd = preferences.getBoolean(KEY_EVENT_AUTO_CHECK_OUT_ON_END, true),
             showEventCheckInStatsOnComplete = preferences.getBoolean(KEY_EVENT_SHOW_CHECK_IN_STATS_ON_COMPLETE, true),

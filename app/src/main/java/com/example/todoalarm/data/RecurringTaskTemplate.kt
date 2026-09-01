@@ -39,7 +39,7 @@ data class RecurringTaskTemplate(
     val vibrateEnabled: Boolean,
     @ColumnInfo(defaultValue = "0")
     val alarmMode: Boolean = false,
-    val reminderDeliveryMode: String = ReminderDeliveryMode.FULLSCREEN.name,
+    val reminderDeliveryMode: String = ReminderDeliveryMode.FULLSCREEN_AND_NOTIFICATION.name,
     val recurrenceType: String,
     val recurrenceWeekdays: String = "",
     val recurrenceMonthlyOrdinal: Int? = null,

@@ -1,31 +1,30 @@
 package com.example.todoalarm.data
 
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNull
 import org.junit.Test
 
 class ReminderDeliveryModeTest {
     @Test
-    fun selectionsPreserveAllFourReminderStates() {
-        assertNull(ReminderDeliveryMode.fromSelections(fullscreen = false, notification = false))
+    fun anyEnabledReminderUsesBothDeliverySurfaces() {
         assertEquals(
-            ReminderDeliveryMode.FULLSCREEN,
+            ReminderDeliveryMode.FULLSCREEN_AND_NOTIFICATION,
             ReminderDeliveryMode.fromSelections(fullscreen = true, notification = false)
         )
         assertEquals(
-            ReminderDeliveryMode.NOTIFICATION,
+            ReminderDeliveryMode.FULLSCREEN_AND_NOTIFICATION,
             ReminderDeliveryMode.fromSelections(fullscreen = false, notification = true)
         )
         assertEquals(
             ReminderDeliveryMode.FULLSCREEN_AND_NOTIFICATION,
             ReminderDeliveryMode.fromSelections(fullscreen = true, notification = true)
         )
+        assertEquals(null, ReminderDeliveryMode.fromSelections(fullscreen = false, notification = false))
     }
 
     @Test
-    fun storageRoundTripKeepsSingleChannelSelections() {
+    fun legacyStorageIsUpgradedToBothDeliverySurfaces() {
         ReminderDeliveryMode.entries.forEach { mode ->
-            assertEquals(mode, ReminderDeliveryMode.fromStorage(mode.name))
+            assertEquals(ReminderDeliveryMode.FULLSCREEN_AND_NOTIFICATION, ReminderDeliveryMode.fromStorage(mode.name))
         }
     }
 }

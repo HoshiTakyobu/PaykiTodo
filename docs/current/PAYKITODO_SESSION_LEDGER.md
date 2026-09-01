@@ -10,6 +10,10 @@ The original PaykiTodo sessions became large and increasingly unreliable. This f
 
 The released `1.15.18 / versionCode 360` round restores independent full-screen and notification reminder selections across phone/Web/Planning Desk, keeps single-channel storage values intact, limits retained post-action notifications to items that selected the notification channel, aligns Desktop Web hour labels with their solid grid lines, and fades ended events as complete cards. It preserves the `1.15.17` event-preview and snooze/acknowledgement work. Database version remains `30`; the signed APK is published in GitHub Release `v1.15.18`.
 
+## Current Development Round
+
+The local `1.15.21 / versionCode 363` source supersedes the user-facing channel-selection behavior from the released `1.15.18`: one `提醒` checkbox now means full-screen plus notification-bar delivery, while the old three enum values remain migration-compatible storage values. Reminder actions are event-only acknowledgement, intermediate-todo completion/acknowledgement, and final-todo fixed ten-minute snooze. Account login, bidirectional cloud sync, writable Windows local storage, and the administrator panel are not implemented; see `CLOUD_SYNC_AND_ADMIN_DESIGN.md`.
+
 ## Initial Product Request
 
 The original request was to build a local-first Android app that:

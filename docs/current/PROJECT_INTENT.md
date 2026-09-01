@@ -20,7 +20,7 @@ The target experience is:
 - tasks and schedule items live in one system
 - reminders can escalate beyond ordinary notification banners
 - the user can still control and inspect their own data locally
-- the app works even without a cloud backend or account system
+- the app works even without a cloud backend or account system; cloud services are an optional continuity layer, never the sole local data store
 
 ## Product Direction
 
@@ -29,15 +29,16 @@ Current long-term direction includes:
 1. Strong reminder reliability across foreground, background, lock-screen, and wake-back scenarios
 2. Better daily planning UX across tasks, day view, and calendar timeline
 3. Better local backup / restore / diagnostics / explainability
-4. Lightweight desktop-side assistance through LAN browser control rather than a heavy desktop client
+4. Lightweight desktop-side assistance through LAN browser control first, followed by an optional full Windows client with a local copy of the same account data
+5. Optional account-backed multi-device sync that preserves local-first operation and remains usable when the server expires
 
 ## Non-Goals For Now
 
 These are not current primary goals:
 
-- full multi-device cloud sync
+- account-backed multi-device cloud sync as an unimplemented future phase
 - team collaboration
-- complex account systems
+- complex account and administrator systems before the local / LAN product is stable
 - web-first productization
 - feature breadth for its own sake
 

@@ -1720,7 +1720,7 @@ private fun PlanningParsedCandidate.toPlanningCandidateJson(): JSONObject {
         .put("reminderEnabled", reminderOffsetsMinutes.isNotEmpty())
         .put("reminderOffsetsMinutes", JSONArray(reminderOffsetsMinutes))
         .put("reminderInputText", reminderOffsetsMinutes.joinToString(","))
-        .put("reminderDeliveryMode", com.example.todoalarm.data.ReminderDeliveryMode.FULLSCREEN.name)
+        .put("reminderDeliveryMode", com.example.todoalarm.data.ReminderDeliveryMode.FULLSCREEN_AND_NOTIFICATION.name)
         .put("recurrence", recurrence.toPlanningJson())
         .put("createLinkedTodo", createLinkedTodo)
         .put("defaultToday", defaultToday)

@@ -8,19 +8,19 @@ import org.junit.Test
 
 class ReminderDeliveryPolicyTest {
     @Test
-    fun notificationModeDoesNotRequestFullscreen() {
+    fun notificationModeIsUpgradedToFullscreenAndNotification() {
         val item = reminderItem(mode = ReminderDeliveryMode.NOTIFICATION)
 
-        assertFalse(shouldUseFullscreenReminder(item))
+        assertTrue(shouldUseFullscreenReminder(item))
         assertTrue(item.reminderDeliveryModeEnum.usesNotification)
     }
 
     @Test
-    fun fullscreenModeRequestsFullscreenWithoutNotificationSemantics() {
+    fun fullscreenModeKeepsBothDeliverySurfaces() {
         val item = reminderItem(mode = ReminderDeliveryMode.FULLSCREEN)
 
         assertTrue(shouldUseFullscreenReminder(item))
-        assertFalse(item.reminderDeliveryModeEnum.usesNotification)
+        assertTrue(item.reminderDeliveryModeEnum.usesNotification)
     }
 
     @Test
@@ -32,13 +32,13 @@ class ReminderDeliveryPolicyTest {
     }
 
     @Test
-    fun alarmModeDoesNotOverrideNotificationOnlySelection() {
+    fun alarmModeDoesNotChangeTheUnifiedDeliveryContract() {
         val item = reminderItem(
             mode = ReminderDeliveryMode.NOTIFICATION,
             alarmMode = true
         )
 
-        assertFalse(shouldUseFullscreenReminder(item))
+        assertTrue(shouldUseFullscreenReminder(item))
     }
 
     @Test

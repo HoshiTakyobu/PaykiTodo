@@ -19,9 +19,9 @@ import android.widget.Toast
 import com.example.todoalarm.TodoApplication
 import com.example.todoalarm.alarm.ActiveReminderStore
 import com.example.todoalarm.alarm.AlarmScheduler
-import com.example.todoalarm.alarm.OngoingEventNotifier
 import com.example.todoalarm.alarm.ReminderChainLogger
 import com.example.todoalarm.alarm.ReminderForegroundService
+import com.example.todoalarm.alarm.shouldOfferReminderSnooze
 import com.example.todoalarm.data.ReminderChainStage
 import com.example.todoalarm.data.ReminderChainStatus
 import com.example.todoalarm.data.TodoItem
@@ -36,7 +36,6 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.time.Instant
-import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -272,13 +271,15 @@ class ReminderAccessibilityOverlay(
             )
         }
 
-        val actionRow = LinearLayout(service).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER
+        val actionContainer = LinearLayout(service).apply {
+            orientation = LinearLayout.VERTICAL
             setPadding(0, dp(20), 0, 0)
         }
-        actionRow.addView(
-            filledButton(if (item.isEvent) "我知道了" else "我已完成", Color.parseColor("#18794E")).apply {
+        val primaryActionRow = LinearLayout(service).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER
+        }
+        val primaryButton = filledButton(if (item.isEvent) "我知道了" else "我已完成", Color.parseColor("#18794E")).apply {
                 setOnClickListener {
                     if (item.isEvent) {
                         acknowledgeEvent(item.id)
@@ -286,36 +287,40 @@ class ReminderAccessibilityOverlay(
                         completeTodo(item.id)
                     }
                 }
-            },
-            weightedParams()
-        )
-        if (!item.isEvent) {
-            actionRow.addView(spaceView())
-            actionRow.addView(
-                filledButton("延后 10 分钟", Color.parseColor("#A16207")).apply {
-                    setOnClickListener { snoozeTodo(item.id, 10) }
-                },
-                weightedParams()
-            )
-            if (item.hasDueDate && item.dueDateTimeOrNull()?.toLocalDate()?.isAfter(LocalDate.now()) == true) {
-                actionRow.addView(spaceView())
-                actionRow.addView(
-                    filledButton("我知道了", Color.parseColor("#53657A")).apply {
-                        setOnClickListener { acknowledgePlannedTodo(item.id) }
-                    },
-                    weightedParams()
-                )
             }
-        } else if (item.checkInEnabled) {
-            actionRow.addView(spaceView())
-            actionRow.addView(
-                filledButton("签到", accent).apply {
-                    setOnClickListener { checkInEvent(item.id) }
+        if (item.isEvent) {
+            primaryActionRow.addView(
+                primaryButton,
+                LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT)
+            )
+        } else {
+            primaryActionRow.addView(primaryButton, weightedParams())
+            primaryActionRow.addView(spaceView())
+            primaryActionRow.addView(
+                filledButton("我知道了", Color.parseColor("#53657A")).apply {
+                    setOnClickListener { acknowledgePlannedTodo(item.id) }
                 },
                 weightedParams()
             )
         }
-        card.addView(actionRow)
+        actionContainer.addView(
+            primaryActionRow,
+            LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT)
+        )
+        if (!item.isEvent && shouldOfferReminderSnooze(item, ActiveReminderStore.getTriggeredAtMillis(service, item.id))) {
+            actionContainer.addView(
+                filledButton("延后 10 分钟", Color.parseColor("#A16207")).apply {
+                    setOnClickListener { snoozeTodo(item.id, 10) }
+                },
+                LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply {
+                    topMargin = dp(10)
+                }
+            )
+        }
+        card.addView(
+            actionContainer,
+            LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT)
+        )
 
         content.addView(
             card,
@@ -368,46 +373,13 @@ class ReminderAccessibilityOverlay(
                     status = ReminderChainStatus.OK,
                     message = "event_ack"
                 )
-                app.repository.acknowledgeCalendarEvent(item.id)
-                app.alarmScheduler.cancelReminderOnly(item.id)
-                OngoingEventNotifier.schedule(service, item.copy(reminderEnabled = false))
+                app.alarmScheduler.cancelTriggeredReminderAlarms(item.id)
                 item to resolveTaskGroup(item, app.repository.getGroup(item.groupId))
             }
             if (retained == null) return@launch
             ReminderForegroundService.dismissKeepingNotification(service, retained.first, "日程提醒已确认", retained.second)
             hide(todoId)
             Toast.makeText(service, "日程提醒已确认", Toast.LENGTH_SHORT).show()
-        }
-    }
-
-    private fun checkInEvent(todoId: Long) {
-        serviceScope.launch {
-            val success = withContext(Dispatchers.IO) {
-                val item = app.repository.getTodo(todoId) ?: return@withContext false
-                val checkIn = app.repository.checkInEvent(item.id)
-                if (checkIn != null) {
-                    app.repository.acknowledgeCalendarEvent(item.id)
-                }
-                ReminderChainLogger.log(
-                    context = service,
-                    todoId = item.id,
-                    source = "ReminderAccessibilityOverlay",
-                    stage = ReminderChainStage.USER_COMPLETE,
-                    status = if (checkIn == null) ReminderChainStatus.WARN else ReminderChainStatus.OK,
-                    message = if (checkIn == null) "event_check_in_failed" else "event_check_in"
-                )
-                if (checkIn == null) return@withContext false
-                app.alarmScheduler.cancelReminderOnly(item.id)
-                OngoingEventNotifier.schedule(service, item.copy(reminderEnabled = false))
-                true
-            }
-            if (success) {
-                ReminderForegroundService.dismiss(service, todoId)
-                hide(todoId)
-                Toast.makeText(service, "已签到", Toast.LENGTH_SHORT).show()
-            } else {
-                Toast.makeText(service, "无法签到：请确认日程已开启打卡追踪", Toast.LENGTH_SHORT).show()
-            }
         }
     }
 
@@ -490,6 +462,11 @@ class ReminderAccessibilityOverlay(
             }
             minHeight = dp(54)
             minimumHeight = dp(54)
+            minWidth = 0
+            minimumWidth = 0
+            setPadding(dp(6), 0, dp(6), 0)
+            maxLines = 1
+            ellipsize = android.text.TextUtils.TruncateAt.END
         }
     }
 

@@ -13,16 +13,19 @@ enum class ReminderDeliveryMode(val label: String) {
 
     companion object {
         fun fromStorage(value: String?): ReminderDeliveryMode {
-            return entries.firstOrNull { it.name == value } ?: FULLSCREEN
+            // Older backups may still contain one-channel values. The current
+            // product contract treats every enabled reminder as both surfaces.
+            return when (value?.uppercase()) {
+                NOTIFICATION.name, FULLSCREEN.name, FULLSCREEN_AND_NOTIFICATION.name -> FULLSCREEN_AND_NOTIFICATION
+                else -> FULLSCREEN_AND_NOTIFICATION
+            }
         }
 
         fun fromSelections(
             fullscreen: Boolean,
             notification: Boolean
         ): ReminderDeliveryMode? = when {
-            fullscreen && notification -> FULLSCREEN_AND_NOTIFICATION
-            fullscreen -> FULLSCREEN
-            notification -> NOTIFICATION
+            fullscreen || notification -> FULLSCREEN_AND_NOTIFICATION
             else -> null
         }
     }

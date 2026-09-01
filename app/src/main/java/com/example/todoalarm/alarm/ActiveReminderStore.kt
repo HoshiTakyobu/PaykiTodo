@@ -5,6 +5,7 @@ import android.content.Context
 object ActiveReminderStore {
     private const val PREFS_NAME = "paykitodo_active_reminder"
     private const val KEY_TODO_ID = "active_todo_id"
+    private const val KEY_TRIGGERED_AT = "triggered_at"
     private const val KEY_UPDATED_AT = "updated_at"
     private const val KEY_HANDOFF_TODO_ID = "handoff_todo_id"
     private const val KEY_HANDOFF_UNTIL = "handoff_until"
@@ -13,12 +14,25 @@ object ActiveReminderStore {
     private const val KEY_SERVICE_TODO_ID = "service_todo_id"
     private const val ACTIVE_SESSION_TIMEOUT_MS = 24 * 60 * 60 * 1000L
 
-    fun markActive(context: Context, todoId: Long) {
+    fun markActive(context: Context, todoId: Long, triggeredAtMillis: Long?) {
         context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
             .edit()
             .putLong(KEY_TODO_ID, todoId)
+            .apply {
+                if (triggeredAtMillis != null && triggeredAtMillis > 0L) {
+                    putLong(KEY_TRIGGERED_AT, triggeredAtMillis)
+                } else {
+                    remove(KEY_TRIGGERED_AT)
+                }
+            }
             .putLong(KEY_UPDATED_AT, System.currentTimeMillis())
             .apply()
+    }
+
+    fun getTriggeredAtMillis(context: Context, todoId: Long): Long? {
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        if (prefs.getLong(KEY_TODO_ID, -1L) != todoId) return null
+        return prefs.getLong(KEY_TRIGGERED_AT, -1L).takeIf { it > 0L }
     }
 
     fun getActiveTodoId(context: Context): Long {
@@ -47,6 +61,7 @@ object ActiveReminderStore {
         context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
             .edit()
             .remove(KEY_TODO_ID)
+            .remove(KEY_TRIGGERED_AT)
             .remove(KEY_UPDATED_AT)
             .remove(KEY_HANDOFF_TODO_ID)
             .remove(KEY_HANDOFF_UNTIL)

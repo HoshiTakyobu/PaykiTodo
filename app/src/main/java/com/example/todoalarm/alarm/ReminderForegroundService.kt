@@ -62,6 +62,10 @@ class ReminderForegroundService : Service() {
             stopSelf(startId)
             return START_NOT_STICKY
         }
+        val triggeredAtMillis = intent
+            ?.getLongExtra(AlarmScheduler.EXTRA_REMINDER_AT, -1L)
+            ?.takeIf { it > 0L }
+            ?: ActiveReminderStore.getTriggeredAtMillis(this, todoId)
 
         ReminderChainLogger.log(
             context = this,
@@ -101,7 +105,7 @@ class ReminderForegroundService : Service() {
 
             val useFullscreenReminder = shouldUseFullscreenReminder(todoItem)
             if (useFullscreenReminder) {
-                ActiveReminderStore.markActive(this@ReminderForegroundService, todoId)
+                ActiveReminderStore.markActive(this@ReminderForegroundService, todoId, triggeredAtMillis)
                 activeFullscreenTodoId = todoId
                 ensureUserPresentReceiver()
             } else {
@@ -117,7 +121,8 @@ class ReminderForegroundService : Service() {
                 todoItem = todoItem,
                 taskGroup = taskGroup,
                 requestFullscreen = useFullscreenReminder,
-                showReminderContent = todoItem.reminderDeliveryModeEnum.usesNotification
+                showReminderContent = true,
+                triggeredAtMillis = triggeredAtMillis
             )
             startInForeground(todoId, notification)
             ReminderChainLogger.log(
@@ -132,9 +137,9 @@ class ReminderForegroundService : Service() {
             alertController.start(todoItem)
             wakeDevice()
             if (useFullscreenReminder) {
-                attemptFullscreenReminder(todoId)
+                attemptFullscreenReminder(todoId, triggeredAtMillis = triggeredAtMillis)
                 FULLSCREEN_RETRY_DELAYS_MS.forEach { delayMs ->
-                    scheduleReminderRetry(todoId, delayMs)
+                    scheduleReminderRetry(todoId, triggeredAtMillis, delayMs)
                 }
             }
             delay(REMINDER_SESSION_DURATION_MS)
@@ -308,7 +313,11 @@ class ReminderForegroundService : Service() {
         )
     }
 
-    private fun attemptFullscreenReminder(todoId: Long, force: Boolean = false) {
+    private fun attemptFullscreenReminder(
+        todoId: Long,
+        triggeredAtMillis: Long? = ActiveReminderStore.getTriggeredAtMillis(this, todoId),
+        force: Boolean = false
+    ) {
         ActiveReminderStore.refreshActive(this, todoId)
         val locked = isDeviceLocked()
         val fullScreenIntentAllowed = canUseFullScreenIntent()
@@ -328,14 +337,14 @@ class ReminderForegroundService : Service() {
             val overlayShown = ReminderAccessibilityService.showOverlayNow(todoId, forceOverlay = true)
             triggerAccessibilityOverlay(todoId, forceOverlay = true)
             if (!overlayShown) {
-                launchReminderActivity(todoId, force = true)
+                launchReminderActivity(todoId, triggeredAtMillis, force = true)
             }
             return
         }
-        launchReminderActivity(todoId, force = force)
+        launchReminderActivity(todoId, triggeredAtMillis, force = force)
     }
 
-    private fun scheduleReminderRetry(todoId: Long, delayMs: Long) {
+    private fun scheduleReminderRetry(todoId: Long, triggeredAtMillis: Long?, delayMs: Long) {
         scope.launch {
             delay(delayMs)
             if (ActiveReminderStore.getActiveTodoId(this@ReminderForegroundService) != todoId) return@launch
@@ -345,7 +354,7 @@ class ReminderForegroundService : Service() {
                 val overlayShown = ReminderAccessibilityService.showOverlayNow(todoId, forceOverlay = true)
                 triggerAccessibilityOverlay(todoId, forceOverlay = true)
                 if (!overlayShown) {
-                    launchReminderActivity(todoId, force = true)
+                    launchReminderActivity(todoId, triggeredAtMillis, force = true)
                 }
             } else {
                 if (!ActiveReminderStore.isActivityHandoffPending(this@ReminderForegroundService, todoId)) return@launch
@@ -353,13 +362,13 @@ class ReminderForegroundService : Service() {
                 val overlayShown = ReminderAccessibilityService.showOverlayNow(todoId, forceOverlay = true)
                 triggerAccessibilityOverlay(todoId, forceOverlay = true)
                 if (!overlayShown) {
-                    launchReminderActivity(todoId, force = true)
+                    launchReminderActivity(todoId, triggeredAtMillis, force = true)
                 }
             }
         }
     }
 
-    private fun launchReminderActivity(todoId: Long, force: Boolean = false) {
+    private fun launchReminderActivity(todoId: Long, triggeredAtMillis: Long?, force: Boolean = false) {
         if (!force && ActiveReminderStore.wasReminderSurfaceRecentlyShown(this, todoId, FULLSCREEN_RESHOW_COOLDOWN_MS)) {
             ReminderChainLogger.log(
                 context = this,
@@ -373,7 +382,7 @@ class ReminderForegroundService : Service() {
         }
         ActiveReminderStore.markActivityHandoff(this, todoId)
         runCatching {
-            startActivity(com.example.todoalarm.ui.ReminderActivity.createIntent(this, todoId))
+            startActivity(com.example.todoalarm.ui.ReminderActivity.createIntent(this, todoId, triggeredAtMillis))
             ReminderChainLogger.log(
                 context = this,
                 todoId = todoId,
@@ -446,10 +455,13 @@ class ReminderForegroundService : Service() {
         private const val FULLSCREEN_RESHOW_COOLDOWN_MS = 60 * 1000L
         private val FULLSCREEN_RETRY_DELAYS_MS = listOf(1_200L, 3_200L, 10_000L, 20_000L, 45_000L, 90_000L, 180_000L)
 
-        fun start(context: android.content.Context, todoId: Long) {
+        fun start(context: android.content.Context, todoId: Long, triggeredAtMillis: Long? = null) {
             ContextCompat.startForegroundService(
                 context,
-                Intent(context, ReminderForegroundService::class.java).putExtra(AlarmScheduler.EXTRA_TODO_ID, todoId)
+                Intent(context, ReminderForegroundService::class.java).apply {
+                    putExtra(AlarmScheduler.EXTRA_TODO_ID, todoId)
+                    triggeredAtMillis?.let { putExtra(AlarmScheduler.EXTRA_REMINDER_AT, it) }
+                }
             )
         }
 

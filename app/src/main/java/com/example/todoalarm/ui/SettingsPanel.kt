@@ -104,7 +104,6 @@ import com.example.todoalarm.data.ReminderAudioChannel
 import com.example.todoalarm.data.ReminderChainLog
 import com.example.todoalarm.data.ReminderChainStage
 import com.example.todoalarm.data.ReminderChainStatus
-import com.example.todoalarm.data.ReminderDeliveryMode
 import com.example.todoalarm.data.WeekStartMode
 import com.example.todoalarm.sync.DesktopSyncStatus
 import kotlinx.coroutines.delay
@@ -212,7 +211,6 @@ fun SettingsPanel(
     onRequestAccessibilityService: () -> Unit,
     onWeekStartModeChange: (WeekStartMode) -> Unit,
     onDefaultSnoozeChange: (Int) -> Unit,
-    onDefaultCalendarReminderModeChange: (ReminderDeliveryMode) -> Unit,
     onEventCheckInPreferencesChange: (Boolean, Boolean) -> Unit,
     onEventCheckInIdleAutoCheckOutHoursChange: (Int) -> Unit,
     onOngoingEventNotificationEnabledChange: (Boolean) -> Unit,
@@ -297,7 +295,7 @@ fun SettingsPanel(
                 SettingsMenuItem(
                     icon = Icons.Rounded.CalendarMonth,
                     title = "日历与提醒",
-                    summary = "默认延后时长、周起始日、日历默认提醒方式",
+                    summary = "默认延后时长、周起始日和日程进行中通知",
                     onClick = { selectedSection = SettingsSection.CALENDAR }
                 )
                 SettingsMenuDivider()
@@ -435,14 +433,6 @@ fun SettingsPanel(
                     value = settings.weekStartMode.label,
                     options = WeekStartMode.entries.map { it.label },
                     onSelect = { label -> WeekStartMode.entries.firstOrNull { it.label == label }?.let(onWeekStartModeChange) }
-                )
-
-                Spacer(modifier = Modifier.height(4.dp))
-                CompactDropdownSetting(
-                    title = "日历默认提醒渠道",
-                    value = settings.defaultCalendarReminderMode.label,
-                    options = ReminderDeliveryMode.entries.map { it.label },
-                    onSelect = { label -> ReminderDeliveryMode.entries.firstOrNull { it.label == label }?.let(onDefaultCalendarReminderModeChange) }
                 )
 
                 SettingsSwitchRow(

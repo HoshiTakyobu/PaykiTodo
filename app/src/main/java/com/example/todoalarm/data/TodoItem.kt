@@ -84,7 +84,7 @@ data class TodoItem(
     @ColumnInfo(defaultValue = "0")
     val alarmMode: Boolean = false,
     val voiceEnabled: Boolean = false,
-    val reminderDeliveryMode: String = ReminderDeliveryMode.FULLSCREEN.name,
+    val reminderDeliveryMode: String = ReminderDeliveryMode.FULLSCREEN_AND_NOTIFICATION.name,
     val groupId: Long = 0,
     val categoryKey: String = TodoCategory.ROUTINE.key,
     val completed: Boolean = false,

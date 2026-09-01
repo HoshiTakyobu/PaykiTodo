@@ -2263,7 +2263,7 @@ class TodoRepository(
                     groupId = groupId,
                     ringEnabled = true,
                     vibrateEnabled = true,
-                    reminderDeliveryMode = ReminderDeliveryMode.FULLSCREEN,
+                    reminderDeliveryMode = ReminderDeliveryMode.FULLSCREEN_AND_NOTIFICATION,
                     countdownEnabled = resolved.countdownEnabled && resolved.dueAt != null,
                     reminderOffsetsMinutes = resolved.dueAt?.let { reminderOffsets ?: listOf(DEFAULT_PLANNING_REMINDER_MINUTES) }.orEmpty()
                 )
@@ -2285,7 +2285,7 @@ class TodoRepository(
                     reminderOffsetsMinutes = reminderOffsets ?: listOf(DEFAULT_PLANNING_REMINDER_MINUTES),
                     ringEnabled = true,
                     vibrateEnabled = true,
-                    reminderDeliveryMode = ReminderDeliveryMode.FULLSCREEN,
+                    reminderDeliveryMode = ReminderDeliveryMode.FULLSCREEN_AND_NOTIFICATION,
                     countdownEnabled = resolved.countdownEnabled,
                     checkInEnabled = resolved.checkInEnabled,
                     groupId = groupId
@@ -2331,7 +2331,7 @@ class TodoRepository(
             groupId = groupId,
             ringEnabled = true,
             vibrateEnabled = true,
-            reminderDeliveryMode = ReminderDeliveryMode.FULLSCREEN,
+            reminderDeliveryMode = ReminderDeliveryMode.FULLSCREEN_AND_NOTIFICATION,
             countdownEnabled = false,
             reminderOffsetsMinutes = reminderOffsets,
             groupIds = listOf(groupId)

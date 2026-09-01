@@ -107,13 +107,9 @@ fun TodoEditorDialog(
     var dueAt by remember(initialTodo?.id) {
         mutableStateOf(initialTodo?.dueDateTimeOrNull() ?: now.plusHours(2))
     }
-    val initialReminderMode = initialTodo?.reminderDeliveryModeEnum ?: ReminderDeliveryMode.FULLSCREEN
     val initialReminderEnabled = !isHistory && initialTodo?.hasDueDate != false && (initialTodo?.reminderEnabled ?: true)
-    var fullscreenReminderEnabled by remember(initialTodo?.id) {
-        mutableStateOf(initialReminderEnabled && initialReminderMode.usesFullscreen)
-    }
-    var notificationReminderEnabled by remember(initialTodo?.id) {
-        mutableStateOf(initialReminderEnabled && initialReminderMode.usesNotification)
+    var reminderEnabled by remember(initialTodo?.id) {
+        mutableStateOf(initialReminderEnabled)
     }
     var reminderAt by remember(initialTodo?.id) {
         mutableStateOf(initialTodo?.reminderAtMillis?.let(::reminderAtMillisToDateTime) ?: dueAt)
@@ -130,11 +126,8 @@ fun TodoEditorDialog(
     var alarmMode by remember(initialTodo?.id) {
         mutableStateOf(initialTodo?.alarmMode == true)
     }
-    val effectiveReminderEnabled = hasDueDate && !isHistory && (fullscreenReminderEnabled || notificationReminderEnabled)
-    val reminderDeliveryMode = ReminderDeliveryMode.fromSelections(
-        fullscreen = fullscreenReminderEnabled,
-        notification = notificationReminderEnabled
-    ) ?: ReminderDeliveryMode.FULLSCREEN
+    val effectiveReminderEnabled = hasDueDate && !isHistory && reminderEnabled
+    val reminderDeliveryMode = ReminderDeliveryMode.FULLSCREEN_AND_NOTIFICATION
     var countdownEnabled by remember(initialTodo?.id) {
         mutableStateOf(initialTodo?.countdownEnabled == true)
     }
@@ -191,8 +184,6 @@ fun TodoEditorDialog(
     val shouldAutoExpandMore = remember(initialTodo?.id, defaultRingEnabled, defaultVibrateEnabled) {
         initialTodo != null && (
             initialTodo.notes.isNotBlank() ||
-                initialTodo.configuredReminderOffsetsMinutes.joinToString(",").ifBlank { "5" } != "5" ||
-                initialTodo.reminderDeliveryModeEnum != ReminderDeliveryMode.FULLSCREEN ||
                 initialTodo.recurrenceTypeEnum != RecurrenceType.NONE ||
                 initialTodo.hiddenFromBoard ||
                 initialTodo.alarmMode ||
@@ -266,8 +257,7 @@ fun TodoEditorDialog(
                             onCheckedChange = { checked ->
                                 hasDueDate = checked
                                 if (!checked) {
-                                    fullscreenReminderEnabled = false
-                                    notificationReminderEnabled = false
+                                    reminderEnabled = false
                                     recurringEnabled = false
                                     countdownEnabled = false
                                     hiddenFromBoard = false
@@ -342,6 +332,84 @@ fun TodoEditorDialog(
                     }
                 }
 
+                if (!isHistory && hasDueDate) {
+                    TodoEditorBlock(title = "提醒") {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Column(
+                                modifier = Modifier.weight(1f),
+                                verticalArrangement = Arrangement.spacedBy(2.dp)
+                            ) {
+                                Text("提醒", fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
+                                Text(
+                                    "开启后会同时进行全屏提醒和通知栏提醒。",
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    style = MaterialTheme.typography.bodySmall
+                                )
+                            }
+                            Checkbox(
+                                checked = reminderEnabled,
+                                onCheckedChange = { enabled ->
+                                    reminderEnabled = enabled
+                                    if (enabled && initialTodo == null) {
+                                        reminderAt = dueAt
+                                        if (reminderInput.isBlank()) reminderInput = "5"
+                                    }
+                                    if (!enabled) alarmMode = false
+                                }
+                            )
+                        }
+
+                        if (effectiveReminderEnabled) {
+                            ReminderOffsetSelector(
+                                label = "提醒时间",
+                                rawInput = reminderInput,
+                                validation = reminderValidation,
+                                onRawInputChange = { reminderInput = it }
+                            )
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                                    Text("闹钟模式（持续响铃直到操作）", fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
+                                    Text(
+                                        "适合吃药、重要 DDL 等绝对不能漏的提醒；5 分钟后会降级为通知并间歇重试。",
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        style = MaterialTheme.typography.bodySmall
+                                    )
+                                }
+                                Switch(
+                                    checked = alarmMode,
+                                    onCheckedChange = { alarmMode = it },
+                                    thumbContent = null
+                                )
+                            }
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .horizontalScroll(rememberScrollState()),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                FilterChip(
+                                    selected = ringEnabled,
+                                    onClick = { ringEnabled = !ringEnabled },
+                                    label = { Text("响铃") }
+                                )
+                                FilterChip(
+                                    selected = vibrateEnabled,
+                                    onClick = { vibrateEnabled = !vibrateEnabled },
+                                    label = { Text("震动") }
+                                )
+                            }
+                        }
+                    }
+                }
+
                 MoreOptionsToggle(
                     expanded = moreOptionsExpanded,
                     onToggle = { moreOptionsExpanded = !moreOptionsExpanded }
@@ -394,91 +462,6 @@ fun TodoEditorDialog(
                                         onCheckedChange = { hiddenFromBoard = it },
                                         thumbContent = null
                                     )
-                                }
-                            }
-
-                            TodoEditorBlock(title = "提醒") {
-                                Text(
-                                    "直接勾选需要的提醒方式；两项都不勾选即不提醒。",
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    style = MaterialTheme.typography.bodySmall
-                                )
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.spacedBy(20.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Row(verticalAlignment = Alignment.CenterVertically) {
-                                        Checkbox(
-                                            checked = fullscreenReminderEnabled,
-                                            onCheckedChange = { enabled ->
-                                                fullscreenReminderEnabled = enabled
-                                                if (enabled && initialTodo == null) {
-                                                    reminderAt = dueAt
-                                                    if (reminderInput.isBlank()) reminderInput = "5"
-                                                }
-                                            }
-                                        )
-                                        Text("全屏提醒")
-                                    }
-                                    Row(verticalAlignment = Alignment.CenterVertically) {
-                                        Checkbox(
-                                            checked = notificationReminderEnabled,
-                                            onCheckedChange = { enabled ->
-                                                notificationReminderEnabled = enabled
-                                                if (enabled && initialTodo == null) {
-                                                    reminderAt = dueAt
-                                                    if (reminderInput.isBlank()) reminderInput = "5"
-                                                }
-                                            }
-                                        )
-                                        Text("通知栏提醒")
-                                    }
-                                }
-
-                                if (effectiveReminderEnabled) {
-                                    Row(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.SpaceBetween
-                                    ) {
-                                        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                                            Text("闹钟模式（持续响铃直到操作）", fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
-                                            Text(
-                                                "适合吃药、重要 DDL 等绝对不能漏的提醒；5 分钟后会降级为通知并间歇重试。",
-                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                                style = MaterialTheme.typography.bodySmall
-                                            )
-                                        }
-                                        Switch(
-                                            checked = alarmMode,
-                                            onCheckedChange = { alarmMode = it },
-                                            thumbContent = null
-                                        )
-                                    }
-                                    ReminderOffsetSelector(
-                                        label = "提醒时间",
-                                        rawInput = reminderInput,
-                                        validation = reminderValidation,
-                                        onRawInputChange = { reminderInput = it }
-                                    )
-                                    Row(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .horizontalScroll(rememberScrollState()),
-                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                                    ) {
-                                        FilterChip(
-                                            selected = ringEnabled,
-                                            onClick = { ringEnabled = !ringEnabled },
-                                            label = { Text("响铃") }
-                                        )
-                                        FilterChip(
-                                            selected = vibrateEnabled,
-                                            onClick = { vibrateEnabled = !vibrateEnabled },
-                                            label = { Text("震动") }
-                                        )
-                                    }
                                 }
                             }
 

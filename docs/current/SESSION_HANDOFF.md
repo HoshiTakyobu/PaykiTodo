@@ -4,22 +4,23 @@
 
 - Repository root: `G:\Workspace\Project\PaykiTodo`
 - Branch: `main`
-- App version: `1.15.20 / versionCode 362` (local development; not published)
+- App version: `1.15.21 / versionCode 363` (local development; not published)
 - Database version: `30`
 - GitHub Release: `https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.15.18`
 - Latest public signed release APK: `app/build/outputs/apk/release/PaykiTodo-1.15.18-release.apk`
-- Current signed release APK: `app/build/outputs/apk/release/PaykiTodo-1.15.20-release.apk`
-- Current debug APK: `app/build/outputs/apk/debug/PaykiTodo-1.15.20-debug.apk`
+- Current signed release APK: `app/build/outputs/apk/release/PaykiTodo-1.15.21-release.apk`
+- Current debug APK: `app/build/outputs/apk/debug/PaykiTodo-1.15.21-debug.apk`
 - Current Windows self-contained EXE: `desktop/dist/PaykiTodo.exe`
 
 ## Latest Product Changes
 
-1. Phone and Desktop Web todo/event editors and Planning Desk candidates expose independent full-screen and notification reminder selections without a separate enable switch.
-2. Selecting neither channel disables scheduling; each single-channel mode remains independent; selecting both preserves both delivery surfaces.
-3. Snooze/acknowledgement retains a normal detail notification only when the notification channel was selected.
-4. Desktop Web hour labels align with the solid calendar grid lines.
-5. Ended Desktop Web events fade as complete cards instead of only changing color.
-6. Every todo full-screen reminder now includes `我知道了`, including same-day due todos; acknowledgement only closes the current reminder.
+1. Phone and Desktop Web todo/event editors and Planning Desk candidates expose one frequent `提醒` switch; enabled means full-screen plus notification-bar delivery, disabled means no reminder scheduling.
+2. Legacy `FULLSCREEN`, `NOTIFICATION`, and `FULLSCREEN_AND_NOTIFICATION` storage values are read as the unified combined contract; they are not separate user choices anymore.
+3. Event reminders show only `我知道了`; todo intermediate reminders show `我已完成` + `我知道了`; only the final todo reminder adds fixed `延后10分钟`.
+4. Activity and accessibility-overlay action rows are responsive on narrow phones, and retained notification clicks re-check item state before opening a detail page.
+5. Desktop Web hour labels align with the solid calendar grid lines.
+6. Ended Desktop Web events fade as complete cards instead of only changing color.
+7. Every todo full-screen reminder now includes `我知道了`, including same-day due todos; acknowledgement only closes the current reminder.
 
 ## Current Development Changes
 
@@ -40,8 +41,9 @@
 ## Verification
 
 - JavaScript syntax, Kotlin compilation, unit tests, Android Lint, Debug/Release assembly, and Desktop Web calendar visual checks passed for the previous `1.15.18` round.
-- `1.15.20` Kotlin compilation, clean Android unit tests, Android Lint, Debug/Release assembly, and APK metadata/signing checks passed for the source round.
-- `1.15.20` WebView2 Windows build passed with the existing non-fatal `WindowsBase` reference warning.
+- `1.15.21` passed 162 Android unit tests, Kotlin Debug/Release compilation, Android Lint, Debug/Release APK assembly, APK metadata inspection, Release v2 signature verification, JavaScript syntax check, `git diff --check`, and self-contained Windows publish.
+- The Windows publish retains the known non-fatal WebView2 `WindowsBase` version warning.
+- DNS/origin inspection found `deployment.example.invalid` behind Cloudflare but returning `526`; the Azure origin certificate does not include that hostname and no administrator backend is deployed there.
 - `git diff --check` and ignored-secret checks passed before publication.
 - GitHub Release asset and remote contributor attribution were rechecked after upload.
 
@@ -54,13 +56,14 @@
 
 ## Physical Device Checks Still Needed
 
-1. Install the signed release on a clean/release-signed profile and confirm startup and data operations.
-2. Test all four reminder-channel combinations on the user's physical phone.
-3. Test the todo `我知道了` action for a same-day due reminder.
+1. Install the matching-signed `1.15.21` APK and confirm startup and data operations.
+2. Test reminder off/on in both todo and event editors on the user's physical phone.
+3. Test intermediate/final multi-reminder todo actions and the event-only `我知道了` action on narrow and ordinary phone widths.
 4. Test lock-screen and unlocked-other-app full-screen reminder behavior.
 5. Test both Android widgets in light/dark mode and after launcher resize.
 6. Test `.paykibak` export from Debug, uninstall Debug, install Release, and import on a physical phone.
 7. Test mobile remote inspection/restore and Windows server mode against a real server snapshot.
+8. Account login, bidirectional cloud sync, a writable Windows local client, and the administrator panel remain future work; do not use the current snapshot relay as if those features existed.
 
 ## Safety Notes
 

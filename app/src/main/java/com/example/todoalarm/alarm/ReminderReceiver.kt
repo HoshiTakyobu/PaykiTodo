@@ -28,6 +28,10 @@ class ReminderReceiver : BroadcastReceiver() {
             if (ReminderDispatchTracker.wasDispatched(context, todoId, reminderAtMillis)) return
             ReminderDispatchTracker.markDispatched(context, todoId, reminderAtMillis)
         }
-        ReminderForegroundService.start(context, todoId)
+        ReminderForegroundService.start(
+            context = context,
+            todoId = todoId,
+            triggeredAtMillis = reminderAtMillis.takeIf { it > 0L }
+        )
     }
 }

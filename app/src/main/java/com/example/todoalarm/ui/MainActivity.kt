@@ -234,7 +234,6 @@ class MainActivity : ComponentActivity() {
                     onWeekStartModeChange = viewModel::updateWeekStartMode,
                     onNextQuote = viewModel::showNextQuote,
                     onDefaultSnoozeChange = viewModel::updateDefaultSnooze,
-                    onDefaultCalendarReminderModeChange = viewModel::updateDefaultCalendarReminderMode,
                     onEventCheckInPreferencesChange = viewModel::updateEventCheckInPreferences,
                     onEventCheckInIdleAutoCheckOutHoursChange = {
                         viewModel.updateEventCheckInPreferences(

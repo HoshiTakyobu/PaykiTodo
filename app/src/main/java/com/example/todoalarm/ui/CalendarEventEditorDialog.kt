@@ -91,7 +91,6 @@ internal fun CalendarEventEditorDialog(
     groups: List<TaskGroup> = emptyList(),
     defaultRingEnabled: Boolean,
     defaultVibrateEnabled: Boolean,
-    defaultReminderDeliveryMode: ReminderDeliveryMode,
     onDismiss: () -> Unit,
     onConfirm: (CalendarEventDraft) -> Unit,
     onConfirmMultiple: ((List<CalendarEventDraft>) -> Unit)? = null,
@@ -129,13 +128,9 @@ internal fun CalendarEventEditorDialog(
     var accentColorHex by remember(initialEvent?.id, seedDraft) {
         mutableStateOf(initialEvent?.accentColorHex ?: seedDraft?.accentColorHex ?: PaykiColorPresets.DefaultEvent)
     }
-    val initialReminderMode = initialEvent?.reminderDeliveryModeEnum ?: seedDraft?.reminderDeliveryMode ?: defaultReminderDeliveryMode
     val initialReminderEnabled = initialEvent?.reminderEnabled == true || seedDraft?.normalizedAllReminderOffsetsMinutes?.isNotEmpty() == true
-    var fullscreenReminderEnabled by remember(initialEvent?.id, seedDraft) {
-        mutableStateOf(initialReminderEnabled && initialReminderMode.usesFullscreen)
-    }
-    var notificationReminderEnabled by remember(initialEvent?.id, seedDraft) {
-        mutableStateOf(initialReminderEnabled && initialReminderMode.usesNotification)
+    var reminderEnabled by remember(initialEvent?.id, seedDraft) {
+        mutableStateOf(initialReminderEnabled)
     }
     var reminderInput by remember(initialEvent?.id, seedDraft) {
         mutableStateOf(
@@ -154,11 +149,7 @@ internal fun CalendarEventEditorDialog(
     }
     var ringEnabled by remember(initialEvent?.id, seedDraft) { mutableStateOf(initialEvent?.ringEnabled ?: seedDraft?.ringEnabled ?: defaultRingEnabled) }
     var vibrateEnabled by remember(initialEvent?.id, seedDraft) { mutableStateOf(initialEvent?.vibrateEnabled ?: seedDraft?.vibrateEnabled ?: defaultVibrateEnabled) }
-    val reminderEnabled = fullscreenReminderEnabled || notificationReminderEnabled
-    val reminderDeliveryMode = ReminderDeliveryMode.fromSelections(
-        fullscreen = fullscreenReminderEnabled,
-        notification = notificationReminderEnabled
-    ) ?: ReminderDeliveryMode.FULLSCREEN
+    val reminderDeliveryMode = ReminderDeliveryMode.FULLSCREEN_AND_NOTIFICATION
     var countdownEnabled by remember(initialEvent?.id, seedDraft) {
         mutableStateOf(initialEvent?.countdownEnabled == true || seedDraft?.countdownEnabled == true)
     }
@@ -673,30 +664,30 @@ internal fun CalendarEventEditorDialog(
                 }
 
                 EditorBlock(title = "提醒") {
-                    Text(
-                        if (allDay) "全天日程按当天 09:00 作为基准；两项都不勾选即不提醒。" else "按开始时间提前提醒；两项都不勾选即不提醒。",
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        style = MaterialTheme.typography.bodySmall
-                    )
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(20.dp)
+                        horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Checkbox(
-                                checked = fullscreenReminderEnabled,
-                                onCheckedChange = { fullscreenReminderEnabled = it }
+                        Column(
+                            modifier = Modifier.weight(1f),
+                            verticalArrangement = Arrangement.spacedBy(2.dp)
+                        ) {
+                            Text("提醒", fontWeight = FontWeight.SemiBold)
+                            Text(
+                                if (allDay) {
+                                    "全天日程按当天 09:00 作为基准；开启后同时进行全屏提醒和通知栏提醒。"
+                                } else {
+                                    "按开始时间提前提醒；开启后同时进行全屏提醒和通知栏提醒。"
+                                },
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                style = MaterialTheme.typography.bodySmall
                             )
-                            Text("全屏提醒")
                         }
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Checkbox(
-                                checked = notificationReminderEnabled,
-                                onCheckedChange = { notificationReminderEnabled = it }
-                            )
-                            Text("通知栏提醒")
-                        }
+                        Checkbox(
+                            checked = reminderEnabled,
+                            onCheckedChange = { reminderEnabled = it }
+                        )
                     }
 
                     if (reminderEnabled) {

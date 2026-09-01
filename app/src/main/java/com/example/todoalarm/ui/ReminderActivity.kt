@@ -6,7 +6,6 @@ import android.content.Context
 import android.content.Intent
 import android.os.Build
 import android.os.Bundle
-import android.widget.Toast
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.OnBackPressedCallback
@@ -27,6 +26,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -54,16 +54,15 @@ import androidx.lifecycle.lifecycleScope
 import com.example.todoalarm.TodoApplication
 import com.example.todoalarm.alarm.ActiveReminderStore
 import com.example.todoalarm.alarm.AlarmScheduler
-import com.example.todoalarm.alarm.OngoingEventNotifier
 import com.example.todoalarm.alarm.ReminderChainLogger
 import com.example.todoalarm.alarm.ReminderForegroundService
+import com.example.todoalarm.alarm.shouldOfferReminderSnooze
 import com.example.todoalarm.data.ReminderChainStage
 import com.example.todoalarm.data.ReminderChainStatus
 import com.example.todoalarm.data.TodoItem
 import com.example.todoalarm.ui.theme.TodoAlarmTheme
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.ZoneId
 
@@ -71,6 +70,7 @@ class ReminderActivity : ComponentActivity() {
     private val app by lazy { application as TodoApplication }
     private var todoItem by mutableStateOf<TodoItem?>(null)
     private var taskGroup by mutableStateOf<ResolvedTaskGroup?>(null)
+    private var triggeredAtMillis by mutableStateOf<Long?>(null)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -100,10 +100,10 @@ class ReminderActivity : ComponentActivity() {
                 ReminderScreen(
                     todoItem = todoItem,
                     taskGroup = taskGroup,
+                    triggeredAtMillis = triggeredAtMillis,
                     onComplete = ::completeTodo,
                     onAcknowledge = ::acknowledgeEvent,
                     onAcknowledgeReminder = ::acknowledgeReminder,
-                    onCheckInEvent = ::checkInEvent,
                     onSnooze = ::snooze
                 )
             }
@@ -149,6 +149,10 @@ class ReminderActivity : ComponentActivity() {
 
             ActiveReminderStore.clearActivityHandoff(this@ReminderActivity, todoId)
             ActiveReminderStore.refreshActive(this@ReminderActivity, todoId)
+            triggeredAtMillis = intent
+                .getLongExtra(AlarmScheduler.EXTRA_REMINDER_AT, -1L)
+                .takeIf { it > 0L }
+                ?: ActiveReminderStore.getTriggeredAtMillis(this@ReminderActivity, todoId)
             todoItem = item
             taskGroup = resolveTaskGroup(item, app.repository.getGroup(item.groupId))
         }
@@ -181,33 +185,8 @@ class ReminderActivity : ComponentActivity() {
                 status = ReminderChainStatus.OK,
                 message = "event_ack"
             )
-            app.repository.acknowledgeCalendarEvent(item.id)
-            clearEventReminderAlarmsAndKeepOngoing(item)
+            app.alarmScheduler.cancelTriggeredReminderAlarms(item.id)
             retainReminderNotification(item, "日程提醒已确认")
-        }
-    }
-
-    private fun checkInEvent() {
-        val item = todoItem ?: return
-        lifecycleScope.launch {
-            val checkIn = app.repository.checkInEvent(item.id)
-            if (checkIn != null) {
-                app.repository.acknowledgeCalendarEvent(item.id)
-            }
-            ReminderChainLogger.log(
-                context = this@ReminderActivity,
-                todoId = item.id,
-                source = "ReminderActivity",
-                stage = ReminderChainStage.USER_COMPLETE,
-                status = if (checkIn == null) ReminderChainStatus.WARN else ReminderChainStatus.OK,
-                message = if (checkIn == null) "event_check_in_failed" else "event_check_in"
-            )
-            if (checkIn != null) {
-                clearEventReminderAlarmsAndKeepOngoing(item)
-                closeReminder(item.id)
-            } else {
-                Toast.makeText(this@ReminderActivity, "无法签到：请确认日程已开启打卡追踪", Toast.LENGTH_SHORT).show()
-            }
         }
     }
 
@@ -256,13 +235,6 @@ class ReminderActivity : ComponentActivity() {
         }
     }
 
-    private fun clearEventReminderAlarmsAndKeepOngoing(item: TodoItem) {
-        app.alarmScheduler.cancelReminderOnly(item.id)
-        if (item.isEvent && !item.isHistory) {
-            OngoingEventNotifier.schedule(this, item.copy(reminderEnabled = false))
-        }
-    }
-
     private fun retainReminderNotification(item: TodoItem, message: String) {
         ReminderForegroundService.dismissKeepingNotification(
             context = this,
@@ -288,7 +260,7 @@ class ReminderActivity : ComponentActivity() {
     }
 
     companion object {
-        fun createIntent(context: Context, todoId: Long): Intent {
+        fun createIntent(context: Context, todoId: Long, triggeredAtMillis: Long? = null): Intent {
             return Intent(context, ReminderActivity::class.java).apply {
                 addFlags(
                     Intent.FLAG_ACTIVITY_NEW_TASK or
@@ -297,6 +269,7 @@ class ReminderActivity : ComponentActivity() {
                         Intent.FLAG_ACTIVITY_NO_USER_ACTION
                 )
                 putExtra(AlarmScheduler.EXTRA_TODO_ID, todoId)
+                triggeredAtMillis?.let { putExtra(AlarmScheduler.EXTRA_REMINDER_AT, it) }
             }
         }
     }
@@ -306,10 +279,10 @@ class ReminderActivity : ComponentActivity() {
 private fun ReminderScreen(
     todoItem: TodoItem?,
     taskGroup: ResolvedTaskGroup?,
+    triggeredAtMillis: Long?,
     onComplete: () -> Unit,
     onAcknowledge: () -> Unit,
     onAcknowledgeReminder: () -> Unit,
-    onCheckInEvent: () -> Unit,
     onSnooze: (Int) -> Unit
 ) {
     var contentVisible by remember(todoItem?.id) { mutableStateOf(false) }
@@ -318,6 +291,7 @@ private fun ReminderScreen(
         ?: ResolvedTaskGroup(0, "例行", "#4CB782")
     val accent = colorFromHex(resolvedGroup.colorHex)
     val isEvent = todoItem?.isEvent == true
+    val showSnooze = todoItem?.let { shouldOfferReminderSnooze(it, triggeredAtMillis) } == true
     val alarmMode = todoItem?.alarmMode == true
     val alarmPulseAlpha by rememberInfiniteTransition(label = "alarmModePulse").animateFloat(
         initialValue = 0.18f,
@@ -336,7 +310,7 @@ private fun ReminderScreen(
     val mainTimeLabel = reminderMainTimeLabel(todoItem)
     val secondaryTimeLabel = reminderSecondaryTimeLabel(todoItem)
     val subHeadline = if (alarmMode) {
-        "闹钟模式：完成或延后后停止响铃。"
+        if (showSnooze) "闹钟模式：完成或延后后停止响铃。" else "闹钟模式：完成或确认后停止响铃。"
     } else if (isEvent) {
         "提醒到了"
     } else {
@@ -484,7 +458,7 @@ private fun ReminderScreen(
             ) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     Button(
                         onClick = { if (isEvent) onAcknowledge() else onComplete() },
@@ -492,45 +466,36 @@ private fun ReminderScreen(
                             .weight(1f)
                             .height(58.dp),
                         shape = RoundedCornerShape(20.dp),
+                        contentPadding = PaddingValues(horizontal = 6.dp, vertical = 0.dp),
                         colors = ButtonDefaults.buttonColors(
                             containerColor = if (alarmMode) Color(0xFFD32F2F) else Color(0xFF18794E)
                         )
                     ) {
-                        Text(primaryActionText)
+                        Text(primaryActionText, maxLines = 1, softWrap = false, overflow = TextOverflow.Ellipsis)
                     }
                     if (!isEvent) {
-                        FilledTonalButton(
-                            onClick = { onSnooze(10) },
-                            modifier = Modifier
-                                .weight(1f)
-                                .height(58.dp),
-                            shape = RoundedCornerShape(20.dp)
-                        ) {
-                            Text("延后10分钟提醒")
-                        }
                         FilledTonalButton(
                             onClick = onAcknowledgeReminder,
                             modifier = Modifier
                                 .weight(1f)
                                 .height(58.dp),
-                            shape = RoundedCornerShape(20.dp)
-                        ) {
-                            Text("我知道了")
-                        }
-                    } else if (todoItem?.checkInEnabled == true) {
-                        FilledTonalButton(
-                            onClick = onCheckInEvent,
-                            modifier = Modifier
-                                .weight(1f)
-                                .height(58.dp),
                             shape = RoundedCornerShape(20.dp),
-                            colors = ButtonDefaults.filledTonalButtonColors(
-                                containerColor = accent.copy(alpha = 0.14f),
-                                contentColor = accent
-                            )
+                            contentPadding = PaddingValues(horizontal = 6.dp, vertical = 0.dp)
                         ) {
-                            Text("签到")
+                            Text("我知道了", maxLines = 1, softWrap = false, overflow = TextOverflow.Ellipsis)
                         }
+                    }
+                }
+                if (!isEvent && showSnooze) {
+                    FilledTonalButton(
+                        onClick = { onSnooze(10) },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(58.dp),
+                        shape = RoundedCornerShape(20.dp),
+                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp)
+                    ) {
+                        Text("延后10分钟", maxLines = 1, softWrap = false, overflow = TextOverflow.Ellipsis)
                     }
                 }
             }

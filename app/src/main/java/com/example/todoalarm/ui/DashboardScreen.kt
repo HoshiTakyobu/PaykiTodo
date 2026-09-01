@@ -183,7 +183,6 @@ fun DashboardScreen(
     onWeekStartModeChange: (WeekStartMode) -> Unit,
     onNextQuote: () -> Unit,
     onDefaultSnoozeChange: (Int) -> Unit,
-    onDefaultCalendarReminderModeChange: (ReminderDeliveryMode) -> Unit,
     onEventCheckInPreferencesChange: (Boolean, Boolean) -> Unit,
     onEventCheckInIdleAutoCheckOutHoursChange: (Int) -> Unit,
     onOngoingEventNotificationEnabledChange: (Boolean) -> Unit,
@@ -760,7 +759,6 @@ fun DashboardScreen(
                     onRequestAccessibilityService = onRequestAccessibilityService,
                     onWeekStartModeChange = onWeekStartModeChange,
                     onDefaultSnoozeChange = onDefaultSnoozeChange,
-                    onDefaultCalendarReminderModeChange = onDefaultCalendarReminderModeChange,
                     onEventCheckInPreferencesChange = onEventCheckInPreferencesChange,
                     onEventCheckInIdleAutoCheckOutHoursChange = onEventCheckInIdleAutoCheckOutHoursChange,
                     onOngoingEventNotificationEnabledChange = onOngoingEventNotificationEnabledChange,
@@ -1033,8 +1031,6 @@ fun DashboardScreen(
             groups = uiState.groups,
             defaultRingEnabled = editingItem?.ringEnabled ?: defaultReminderRing,
             defaultVibrateEnabled = editingItem?.vibrateEnabled ?: defaultReminderVibrate,
-            defaultReminderDeliveryMode = editingItem?.reminderDeliveryModeEnum
-                ?: uiState.settings.defaultCalendarReminderMode,
             onDismiss = {
                 editorVisible = false
                 editingItem = null

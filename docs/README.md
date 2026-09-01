@@ -11,6 +11,10 @@ first, then the required files under `docs/current/`.
 
 Internal maintenance files that should not clutter the public repository root also live under `docs/current/`, including project status, feature ledgers, active design notes, session handoff, the maintenance backlog, and the new-session bootstrap prompts.
 
+The planned account/cloud phase is documented in `docs/current/CLOUD_SYNC_AND_ADMIN_DESIGN.md`.
+It is a design boundary, not evidence that account login, bidirectional sync, a
+writable Windows client, or an administrator panel already exists.
+
 Long obsolete backlog material is archived under `docs/archive/historical/`.
 
 ## Historical archive

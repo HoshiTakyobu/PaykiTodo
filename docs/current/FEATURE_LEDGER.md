@@ -9,14 +9,14 @@ This file tracks the product at a practical level for new coding sessions.
 - create, edit, delete todo items
 - Shared todo/event editors persist changes only through the top-right completion action; system dismissal, sheet dismissal, and the top `取消` action silently discard the current draft without writing data or showing a second discard confirmation
 - title / notes / multi-group tags / deadline / multi-reminder fields
-- reminder delivery directly exposes independent full-screen and notification-bar checkboxes; selecting neither leaves the item unscheduled, while selecting both preserves both delivery surfaces
-- Todo editor shows title / DDL / group first for new todos and folds notes / reminder input / reminder delivery mode / recurrence / ring / vibration into 更多选项, auto-expanding when editing existing todos that use advanced state
-- Todo editor derives scheduling from the two channel selections and preserves `FULLSCREEN`, `NOTIFICATION`, and `FULLSCREEN_AND_NOTIFICATION` through todos and recurring templates
+- reminder delivery exposes one frequent `提醒` checkbox outside advanced options; disabled means unscheduled, while enabled always uses both the full-screen surface and the notification bar
+- Todo editor shows title / DDL / group and reminder controls in the primary editor flow, while notes / recurrence / ring / vibration remain advanced options and auto-expand when editing existing todos that use advanced state
+- legacy `FULLSCREEN`, `NOTIFICATION`, and `FULLSCREEN_AND_NOTIFICATION` values remain readable through backups, recurrence templates, batch imports, and Desktop Sync, but all enabled reminders normalize to the combined delivery contract
 - Todo editor can enable `闹钟模式（持续响铃直到操作）` for DDL-backed reminders; alarm mode persists on todos and recurring templates, future recurring instances inherit it, and timeout downgrade leaves an explicit unhandled-reminder notification plus limited retry bursts
 - Todo editor can mark a DDL-backed task as `倒数日`; the task then uses its DDL date as the countdown target and appears on board / desktop / widget countdown surfaces
 - Todo editor can mark a DDL-backed task as `仅提醒，不在看板/日历显示`; the task still schedules reminders and remains manageable in My Tasks, but is filtered out of the phone daily board, Android board widget, desktop board, countdown board queries, and AI daily/weekly todo statistics
 - Desktop Web todo editor exposes and preserves `闹钟模式` and `仅提醒，不在看板显示`, matching the phone editor for these DDL-dependent todo fields
-- Desktop Web todo and event editors match the phone with independent full-screen and notification checkboxes; clearing both saves an empty reminder-offset list and does not schedule a reminder
+- Desktop Web todo and event editors match the phone with one reminder checkbox; clearing it saves an empty reminder-offset list and does not schedule a reminder
 - Desktop Web todo and event editors use compact weekday multi-select chips for weekly recurrence instead of requiring manual `1,3,5` text input, and hide those chips for non-weekly recurrence rules
 - Desktop Web Planning Desk recognition preview uses the same weekday multi-select chips for weekly recurrence candidates, and clears weekly-day state when the candidate is changed away from `每周`
 - recurring todo templates persist `hiddenFromBoard`, and newly replenished recurring instances inherit the reminder-only visibility setting

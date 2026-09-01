@@ -1,0 +1,21 @@
+[Unit]
+Description=PaykiTodo account sync and administrator service
+After=network.target
+
+[Service]
+Type=simple
+User=paykitodo
+Group=paykitodo
+EnvironmentFile=/etc/paykitodo/cloud.env
+WorkingDirectory=/opt/paykitodo/server
+ExecStart=/usr/bin/python3 /opt/paykitodo/server/paykitodo_cloud_server.py
+Restart=on-failure
+RestartSec=3
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/paykitodo
+
+[Install]
+WantedBy=multi-user.target

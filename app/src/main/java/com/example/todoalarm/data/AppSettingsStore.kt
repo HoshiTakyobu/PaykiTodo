@@ -1,6 +1,9 @@
 package com.example.todoalarm.data
 
 import android.content.Context
+import android.content.SharedPreferences
+import androidx.security.crypto.EncryptedSharedPreferences
+import androidx.security.crypto.MasterKey
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -68,6 +71,16 @@ data class AppSettings(
     val remoteSyncServerUrl: String = "",
     val remoteSyncDeviceId: String = "",
     val remoteSyncSecret: String = "",
+    val remoteSyncUsername: String = "",
+    val remoteSyncAccessToken: String = "",
+    val remoteSyncRefreshToken: String = "",
+    val remoteSyncAccessExpiresAt: Long = 0L,
+    val remoteSyncRefreshExpiresAt: Long = 0L,
+    val remoteSyncRevision: Long = 0L,
+    val remoteSyncDirty: Boolean = false,
+    val remoteSyncConflictRevision: Long = 0L,
+    val remoteSyncLastSuccessAt: Long = 0L,
+    val remoteSyncLastError: String = "",
     val desktopSyncEnabled: Boolean = false,
     val desktopSyncToken: String = "",
     val desktopSyncWifiKeepAlive: Boolean = true,
@@ -102,6 +115,20 @@ data class AppSettings(
 
 class AppSettingsStore(context: Context) {
     private val preferences = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+    private val securePreferences: SharedPreferences = runCatching {
+        val masterKey = MasterKey.Builder(context)
+            .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
+            .build()
+        EncryptedSharedPreferences.create(
+            context,
+            PREFS_SECURE_NAME,
+            masterKey,
+            EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
+            EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
+        )
+    }.getOrElse {
+        context.getSharedPreferences(PREFS_SECURE_FALLBACK_NAME, Context.MODE_PRIVATE)
+    }
     private val _settings = MutableStateFlow(readSettings())
 
     val settingsFlow: StateFlow<AppSettings> = _settings.asStateFlow()
@@ -208,6 +235,111 @@ class AppSettingsStore(context: Context) {
 
     fun updateRemoteSyncServerUrl(serverUrl: String) {
         preferences.edit().putString(KEY_REMOTE_SYNC_SERVER_URL, serverUrl.trim().trimEnd('/')).apply()
+        refresh()
+    }
+
+    fun remoteSyncDeviceId(): String {
+        val existing = preferences.getString(KEY_REMOTE_SYNC_DEVICE_ID, null).orEmpty()
+        if (existing.isNotBlank()) return existing
+        return UUID.randomUUID().toString().replace("-", "").also { generated ->
+            preferences.edit().putString(KEY_REMOTE_SYNC_DEVICE_ID, generated).apply()
+            refresh()
+        }
+    }
+
+    fun saveRemoteAccountSession(
+        serverUrl: String,
+        username: String,
+        deviceId: String,
+        accessToken: String,
+        refreshToken: String,
+        accessExpiresAt: Long,
+        refreshExpiresAt: Long,
+        encryptionSecret: String,
+        revision: Long,
+        dirty: Boolean,
+        conflictRevision: Long = 0L
+    ) {
+        securePreferences.edit()
+            .putString(KEY_REMOTE_SYNC_ACCESS_TOKEN, accessToken)
+            .putString(KEY_REMOTE_SYNC_REFRESH_TOKEN, refreshToken)
+            .putString(KEY_REMOTE_SYNC_SECRET, encryptionSecret)
+            .apply()
+        preferences.edit()
+            .putBoolean(KEY_REMOTE_SYNC_ENABLED, true)
+            .putString(KEY_REMOTE_SYNC_SERVER_URL, serverUrl.trim().trimEnd('/'))
+            .putString(KEY_REMOTE_SYNC_USERNAME, username.trim().lowercase())
+            .putString(KEY_REMOTE_SYNC_DEVICE_ID, deviceId)
+            .putLong(KEY_REMOTE_SYNC_ACCESS_EXPIRES_AT, accessExpiresAt)
+            .putLong(KEY_REMOTE_SYNC_REFRESH_EXPIRES_AT, refreshExpiresAt)
+            .putLong(KEY_REMOTE_SYNC_REVISION, revision.coerceAtLeast(0L))
+            .putBoolean(KEY_REMOTE_SYNC_DIRTY, dirty)
+            .putLong(KEY_REMOTE_SYNC_CONFLICT_REVISION, conflictRevision.coerceAtLeast(0L))
+            .remove(KEY_REMOTE_SYNC_SECRET)
+            .remove(KEY_REMOTE_SYNC_LAST_ERROR)
+            .apply()
+        refresh()
+    }
+
+    fun updateRemoteAccountTokens(accessToken: String, refreshToken: String, accessExpiresAt: Long, refreshExpiresAt: Long) {
+        securePreferences.edit()
+            .putString(KEY_REMOTE_SYNC_ACCESS_TOKEN, accessToken)
+            .putString(KEY_REMOTE_SYNC_REFRESH_TOKEN, refreshToken)
+            .apply()
+        preferences.edit()
+            .putLong(KEY_REMOTE_SYNC_ACCESS_EXPIRES_AT, accessExpiresAt)
+            .putLong(KEY_REMOTE_SYNC_REFRESH_EXPIRES_AT, refreshExpiresAt)
+            .apply()
+        refresh()
+    }
+
+    fun markRemoteSyncDirty() {
+        if (currentSettings().remoteSyncUsername.isBlank()) return
+        preferences.edit().putBoolean(KEY_REMOTE_SYNC_DIRTY, true).apply()
+        refresh()
+    }
+
+    fun markRemoteSyncSuccess(revision: Long) {
+        preferences.edit()
+            .putLong(KEY_REMOTE_SYNC_REVISION, revision.coerceAtLeast(0L))
+            .putBoolean(KEY_REMOTE_SYNC_DIRTY, false)
+            .putLong(KEY_REMOTE_SYNC_CONFLICT_REVISION, 0L)
+            .putLong(KEY_REMOTE_SYNC_LAST_SUCCESS_AT, System.currentTimeMillis())
+            .remove(KEY_REMOTE_SYNC_LAST_ERROR)
+            .apply()
+        refresh()
+    }
+
+    fun markRemoteSyncConflict(remoteRevision: Long) {
+        preferences.edit()
+            .putLong(KEY_REMOTE_SYNC_CONFLICT_REVISION, remoteRevision.coerceAtLeast(0L))
+            .putString(KEY_REMOTE_SYNC_LAST_ERROR, "云端已有更新，请先拉取或恢复后再上传")
+            .apply()
+        refresh()
+    }
+
+    fun markRemoteSyncError(message: String) {
+        preferences.edit().putString(KEY_REMOTE_SYNC_LAST_ERROR, message.take(300)).apply()
+        refresh()
+    }
+
+    fun clearRemoteAccount() {
+        securePreferences.edit()
+            .remove(KEY_REMOTE_SYNC_ACCESS_TOKEN)
+            .remove(KEY_REMOTE_SYNC_REFRESH_TOKEN)
+            .remove(KEY_REMOTE_SYNC_SECRET)
+            .apply()
+        preferences.edit()
+            .putBoolean(KEY_REMOTE_SYNC_ENABLED, false)
+            .remove(KEY_REMOTE_SYNC_USERNAME)
+            .remove(KEY_REMOTE_SYNC_ACCESS_EXPIRES_AT)
+            .remove(KEY_REMOTE_SYNC_REFRESH_EXPIRES_AT)
+            .remove(KEY_REMOTE_SYNC_REVISION)
+            .remove(KEY_REMOTE_SYNC_DIRTY)
+            .remove(KEY_REMOTE_SYNC_CONFLICT_REVISION)
+            .remove(KEY_REMOTE_SYNC_LAST_SUCCESS_AT)
+            .remove(KEY_REMOTE_SYNC_LAST_ERROR)
+            .apply()
         refresh()
     }
 
@@ -377,6 +509,7 @@ class AppSettingsStore(context: Context) {
     }
 
     fun replaceAll(settings: AppSettings) {
+        val preserveRemoteAccountSecret = currentSettings().remoteSyncUsername.isNotBlank()
         val mergedPlanningAiProviders = mergePlanningAiApiKeys(settings.planningAiProviders)
         val primaryPlanningAiProvider = mergedPlanningAiProviders.firstOrNull()
         val preservedPlanningAiApiKey = primaryPlanningAiProvider?.apiKey?.ifBlank {
@@ -408,7 +541,13 @@ class AppSettingsStore(context: Context) {
             .putBoolean(KEY_REMOTE_SYNC_ENABLED, settings.remoteSyncEnabled)
             .putString(KEY_REMOTE_SYNC_SERVER_URL, settings.remoteSyncServerUrl)
             .putString(KEY_REMOTE_SYNC_DEVICE_ID, settings.remoteSyncDeviceId)
-            .putString(KEY_REMOTE_SYNC_SECRET, settings.remoteSyncSecret)
+            .apply {
+                if (!preserveRemoteAccountSecret) {
+                    putString(KEY_REMOTE_SYNC_SECRET, settings.remoteSyncSecret)
+                } else {
+                    remove(KEY_REMOTE_SYNC_SECRET)
+                }
+            }
             .putBoolean(KEY_DESKTOP_SYNC_ENABLED, settings.desktopSyncEnabled)
             .putString(KEY_DESKTOP_SYNC_TOKEN, settings.desktopSyncToken)
             .putBoolean(KEY_DESKTOP_SYNC_WIFI_KEEP_ALIVE, settings.desktopSyncWifiKeepAlive)
@@ -503,7 +642,18 @@ class AppSettingsStore(context: Context) {
             remoteSyncEnabled = preferences.getBoolean(KEY_REMOTE_SYNC_ENABLED, false),
             remoteSyncServerUrl = preferences.getString(KEY_REMOTE_SYNC_SERVER_URL, "").orEmpty(),
             remoteSyncDeviceId = preferences.getString(KEY_REMOTE_SYNC_DEVICE_ID, "").orEmpty(),
-            remoteSyncSecret = preferences.getString(KEY_REMOTE_SYNC_SECRET, "").orEmpty(),
+            remoteSyncSecret = securePreferences.getString(KEY_REMOTE_SYNC_SECRET, null)
+                ?: preferences.getString(KEY_REMOTE_SYNC_SECRET, "").orEmpty(),
+            remoteSyncUsername = preferences.getString(KEY_REMOTE_SYNC_USERNAME, "").orEmpty(),
+            remoteSyncAccessToken = securePreferences.getString(KEY_REMOTE_SYNC_ACCESS_TOKEN, "").orEmpty(),
+            remoteSyncRefreshToken = securePreferences.getString(KEY_REMOTE_SYNC_REFRESH_TOKEN, "").orEmpty(),
+            remoteSyncAccessExpiresAt = preferences.getLong(KEY_REMOTE_SYNC_ACCESS_EXPIRES_AT, 0L),
+            remoteSyncRefreshExpiresAt = preferences.getLong(KEY_REMOTE_SYNC_REFRESH_EXPIRES_AT, 0L),
+            remoteSyncRevision = preferences.getLong(KEY_REMOTE_SYNC_REVISION, 0L).coerceAtLeast(0L),
+            remoteSyncDirty = preferences.getBoolean(KEY_REMOTE_SYNC_DIRTY, false),
+            remoteSyncConflictRevision = preferences.getLong(KEY_REMOTE_SYNC_CONFLICT_REVISION, 0L).coerceAtLeast(0L),
+            remoteSyncLastSuccessAt = preferences.getLong(KEY_REMOTE_SYNC_LAST_SUCCESS_AT, 0L).coerceAtLeast(0L),
+            remoteSyncLastError = preferences.getString(KEY_REMOTE_SYNC_LAST_ERROR, "").orEmpty(),
             desktopSyncEnabled = preferences.getBoolean(KEY_DESKTOP_SYNC_ENABLED, false),
             desktopSyncToken = syncToken,
             desktopSyncWifiKeepAlive = preferences.getBoolean(KEY_DESKTOP_SYNC_WIFI_KEEP_ALIVE, true),
@@ -589,6 +739,8 @@ class AppSettingsStore(context: Context) {
 
     companion object {
         private const val PREFS_NAME = "payki_todo_settings"
+        private const val PREFS_SECURE_NAME = "payki_todo_secure_settings"
+        private const val PREFS_SECURE_FALLBACK_NAME = "payki_todo_secure_settings_fallback"
         private const val KEY_THEME_MODE = "theme_mode"
         private const val KEY_WEEK_START_MODE = "week_start_mode"
         private const val KEY_DEFAULT_SNOOZE = "default_snooze_minutes"
@@ -613,6 +765,16 @@ class AppSettingsStore(context: Context) {
         private const val KEY_REMOTE_SYNC_SERVER_URL = "remote_sync_server_url"
         private const val KEY_REMOTE_SYNC_DEVICE_ID = "remote_sync_device_id"
         private const val KEY_REMOTE_SYNC_SECRET = "remote_sync_secret"
+        private const val KEY_REMOTE_SYNC_USERNAME = "remote_sync_username"
+        private const val KEY_REMOTE_SYNC_ACCESS_TOKEN = "remote_sync_access_token"
+        private const val KEY_REMOTE_SYNC_REFRESH_TOKEN = "remote_sync_refresh_token"
+        private const val KEY_REMOTE_SYNC_ACCESS_EXPIRES_AT = "remote_sync_access_expires_at"
+        private const val KEY_REMOTE_SYNC_REFRESH_EXPIRES_AT = "remote_sync_refresh_expires_at"
+        private const val KEY_REMOTE_SYNC_REVISION = "remote_sync_revision"
+        private const val KEY_REMOTE_SYNC_DIRTY = "remote_sync_dirty"
+        private const val KEY_REMOTE_SYNC_CONFLICT_REVISION = "remote_sync_conflict_revision"
+        private const val KEY_REMOTE_SYNC_LAST_SUCCESS_AT = "remote_sync_last_success_at"
+        private const val KEY_REMOTE_SYNC_LAST_ERROR = "remote_sync_last_error"
         private const val KEY_DESKTOP_SYNC_ENABLED = "desktop_sync_enabled"
         private const val KEY_DESKTOP_SYNC_TOKEN = "desktop_sync_token"
         private const val KEY_DESKTOP_SYNC_WIFI_KEEP_ALIVE = "desktop_sync_wifi_keep_alive"

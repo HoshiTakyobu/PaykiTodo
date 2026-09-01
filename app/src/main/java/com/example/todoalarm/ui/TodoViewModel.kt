@@ -1084,6 +1084,26 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
         settingsStore.updateRemoteSyncServerUrl(serverUrl)
     }
 
+    suspend fun authenticateRemoteAccount(
+        serverUrl: String,
+        username: String,
+        password: String,
+        displayName: String,
+        register: Boolean
+    ): String? {
+        return app.remoteSyncCoordinator.authenticate(
+            serverUrl = serverUrl,
+            username = username,
+            password = password,
+            displayName = displayName,
+            register = register
+        )
+    }
+
+    fun logoutRemoteAccount() {
+        app.remoteSyncCoordinator.logout()
+    }
+
     fun syncRemoteNow(): String {
         viewModelScope.launch(Dispatchers.IO) {
             runCatching { app.remoteSyncCoordinator.syncNow() }

@@ -238,6 +238,8 @@ fun SettingsPanel(
     onRemoteSyncEnabledChange: (Boolean, String) -> Unit,
     onRemoteSyncServerUrlChange: (String) -> Unit,
     onRemoteSyncNow: () -> Unit,
+    onRemoteAccountAuthenticate: suspend (String, String, String, String, Boolean) -> String?,
+    onRemoteAccountLogout: () -> Unit,
     onInspectRemoteBackup: suspend () -> RemoteBackupInspection?,
     onRestoreRemoteBackup: suspend (RemoteBackupInspection) -> String?,
     onInspectDataHealth: suspend () -> DataHealthReport,
@@ -605,6 +607,10 @@ fun SettingsPanel(
             var dataHealthMessage by remember { mutableStateOf<String?>(null) }
             var dataHealthConfirmVisible by remember { mutableStateOf(false) }
             var remoteSyncServerUrl by remember(settings.remoteSyncServerUrl) { mutableStateOf(settings.remoteSyncServerUrl) }
+            var remoteUsername by remember(settings.remoteSyncUsername) { mutableStateOf(settings.remoteSyncUsername) }
+            var remoteDisplayName by remember { mutableStateOf("") }
+            var remotePassword by remember { mutableStateOf("") }
+            var remoteAuthenticating by remember { mutableStateOf(false) }
             var remoteInspection by remember { mutableStateOf<RemoteBackupInspection?>(null) }
             var remoteInspecting by remember { mutableStateOf(false) }
             var remoteRestoring by remember { mutableStateOf(false) }
@@ -629,24 +635,13 @@ fun SettingsPanel(
                     OutlinedButton(onClick = onImportBackup, modifier = Modifier.fillMaxWidth()) { Text("从迁移包恢复") }
                 }
                 HorizontalDivider()
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text("服务器加密同步", fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
-                        Text(
-                            "手机仍以本地数据库为准；服务器只保存加密迁移包，用于跨网络备份与后续桌面同步。",
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            style = MaterialTheme.typography.bodySmall
-                        )
-                    }
-                    Switch(
-                        checked = settings.remoteSyncEnabled,
-                        onCheckedChange = { onRemoteSyncEnabledChange(it, remoteSyncServerUrl) }
-                    )
-                }
+                val remoteLoggedIn = settings.remoteSyncUsername.isNotBlank() && settings.remoteSyncRefreshToken.isNotBlank()
+                Text("PaykiTodo 云同步", fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
+                Text(
+                    "手机始终保留完整本地数据；登录后，本机变更会加密同步到服务器，并由同一账号的 Windows 客户端获取。局域网电脑连接仍是另一项独立功能。",
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    style = MaterialTheme.typography.bodySmall
+                )
                 OutlinedTextField(
                     value = remoteSyncServerUrl,
                     onValueChange = {
@@ -656,45 +651,171 @@ fun SettingsPanel(
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true,
                     label = { Text("服务器 HTTPS 地址") },
-                    placeholder = { Text("https://panel.example.com/paykitodo-sync") },
-                    supportingText = { Text("必须使用 HTTPS；例如部署在 Nginx 路径 /paykitodo-sync 下。") }
+                    placeholder = { Text("https://sync.example.com") },
+                    supportingText = { Text(if (remoteLoggedIn) "切换服务器前请先退出当前账号。" else "公网服务器必须使用 HTTPS。") },
+                    enabled = !remoteLoggedIn && !remoteAuthenticating
                 )
-                if (settings.remoteSyncEnabled && settings.remoteSyncDeviceId.isNotBlank() && settings.remoteSyncSecret.isNotBlank()) {
-                    RemoteSyncCredentialRows(
-                        deviceId = settings.remoteSyncDeviceId,
-                        secret = settings.remoteSyncSecret,
-                        context = context
+                if (!remoteLoggedIn) {
+                    OutlinedTextField(
+                        value = remoteUsername,
+                        onValueChange = { remoteUsername = it },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true,
+                        label = { Text("账号") },
+                        placeholder = { Text("3-64 位字母、数字、点、横线或下划线") },
+                        enabled = !remoteAuthenticating
                     )
-                }
-                OutlinedButton(
-                    onClick = onRemoteSyncNow,
-                    enabled = settings.remoteSyncEnabled && remoteSyncServerUrl.startsWith("https://", ignoreCase = true),
-                    modifier = Modifier.fillMaxWidth()
-                ) { Text("立即上传本机加密数据") }
-                OutlinedButton(
-                    onClick = {
-                        scope.launch {
-                            remoteInspecting = true
-                            remoteMessage = null
-                            remoteInspection = runCatching { onInspectRemoteBackup() }
-                                .onFailure { remoteMessage = "检查失败：${it.message ?: it::class.java.simpleName}" }
-                                .getOrNull()
-                            if (remoteInspection == null && remoteMessage == null) {
-                                remoteMessage = "服务器上还没有可恢复的快照。"
-                            }
-                            remoteInspecting = false
+                    OutlinedTextField(
+                        value = remoteDisplayName,
+                        onValueChange = { remoteDisplayName = it },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true,
+                        label = { Text("显示名（注册时使用）") },
+                        enabled = !remoteAuthenticating
+                    )
+                    OutlinedTextField(
+                        value = remotePassword,
+                        onValueChange = { remotePassword = it },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true,
+                        label = { Text("密码") },
+                        visualTransformation = PasswordVisualTransformation(),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                        enabled = !remoteAuthenticating
+                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        OutlinedButton(
+                            onClick = {
+                                scope.launch {
+                                    remoteAuthenticating = true
+                                    remoteMessage = null
+                                    val error = onRemoteAccountAuthenticate(
+                                        remoteSyncServerUrl,
+                                        remoteUsername,
+                                        remotePassword,
+                                        remoteDisplayName,
+                                        false
+                                    )
+                                    remoteMessage = error ?: "登录成功，已开始同步。"
+                                    if (error == null) remotePassword = ""
+                                    remoteAuthenticating = false
+                                }
+                            },
+                            modifier = Modifier.weight(1f),
+                            enabled = !remoteAuthenticating && remoteSyncServerUrl.isNotBlank() && remoteUsername.isNotBlank() && remotePassword.isNotBlank()
+                        ) { Text("登录") }
+                        Button(
+                            onClick = {
+                                scope.launch {
+                                    remoteAuthenticating = true
+                                    remoteMessage = null
+                                    val error = onRemoteAccountAuthenticate(
+                                        remoteSyncServerUrl,
+                                        remoteUsername,
+                                        remotePassword,
+                                        remoteDisplayName,
+                                        true
+                                    )
+                                    remoteMessage = error ?: "注册成功，已开始同步。"
+                                    if (error == null) remotePassword = ""
+                                    remoteAuthenticating = false
+                                }
+                            },
+                            modifier = Modifier.weight(1f),
+                            enabled = !remoteAuthenticating && remoteSyncServerUrl.isNotBlank() && remoteUsername.isNotBlank() && remotePassword.length >= 10
+                        ) {
+                            if (remoteAuthenticating) CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
+                            else Text("注册账号")
                         }
-                    },
-                    enabled = settings.remoteSyncEnabled && remoteSyncServerUrl.startsWith("https://", ignoreCase = true) && !remoteInspecting,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    if (remoteInspecting) CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
-                    else Text("检查远程备份")
+                    }
+                    if (settings.remoteSyncEnabled && settings.remoteSyncUsername.isBlank() && settings.remoteSyncSecret.isNotBlank()) {
+                        Text(
+                            "检测到旧版设备密钥同步配置。它仍可兼容运行；登录云账号后会切换到多端账号同步。",
+                            color = MaterialTheme.colorScheme.tertiary,
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
+                } else {
+                    Surface(
+                        modifier = Modifier.fillMaxWidth(),
+                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f),
+                        shape = RoundedCornerShape(8.dp)
+                    ) {
+                        Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(settings.remoteSyncUsername, fontWeight = FontWeight.SemiBold)
+                                    Text(
+                                        when {
+                                            settings.remoteSyncConflictRevision > 0 -> "存在同步冲突 · 云端版本 ${settings.remoteSyncConflictRevision}"
+                                            settings.remoteSyncDirty -> "本机有修改，等待上传 · 当前版本 ${settings.remoteSyncRevision}"
+                                            else -> "已同步 · 当前版本 ${settings.remoteSyncRevision}"
+                                        },
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = if (settings.remoteSyncConflictRevision > 0) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                                Switch(
+                                    checked = settings.remoteSyncEnabled,
+                                    onCheckedChange = { onRemoteSyncEnabledChange(it, remoteSyncServerUrl) }
+                                )
+                            }
+                            if (settings.remoteSyncLastSuccessAt > 0L) {
+                                Text(
+                                    "最近成功：${SimpleDateFormat("MM-dd HH:mm", Locale.CHINA).format(Date(settings.remoteSyncLastSuccessAt))}",
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    style = MaterialTheme.typography.bodySmall
+                                )
+                            }
+                        }
+                    }
+                    OutlinedButton(
+                        onClick = onRemoteSyncNow,
+                        enabled = settings.remoteSyncEnabled,
+                        modifier = Modifier.fillMaxWidth()
+                    ) { Text(if (settings.remoteSyncDirty) "立即同步本机修改" else "检查云端更新") }
+                    OutlinedButton(
+                        onClick = {
+                            scope.launch {
+                                remoteInspecting = true
+                                remoteMessage = null
+                                remoteInspection = runCatching { onInspectRemoteBackup() }
+                                    .onFailure { remoteMessage = "检查失败：${it.message ?: it::class.java.simpleName}" }
+                                    .getOrNull()
+                                if (remoteInspection == null && remoteMessage == null) {
+                                    remoteMessage = "服务器上还没有可恢复的数据。"
+                                }
+                                remoteInspecting = false
+                            }
+                        },
+                        enabled = settings.remoteSyncEnabled && !remoteInspecting,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        if (remoteInspecting) CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
+                        else Text("检查云端数据")
+                    }
+                    TextButton(
+                        onClick = {
+                            onRemoteAccountLogout()
+                            remotePassword = ""
+                            remoteInspection = null
+                            remoteMessage = "已退出云账号，本机数据不会删除。"
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    ) { Text("退出云账号") }
                 }
-                remoteMessage?.let { message ->
+                val displayedRemoteMessage = remoteMessage ?: settings.remoteSyncLastError.takeIf { it.isNotBlank() }
+                displayedRemoteMessage?.let { message ->
                     Text(
                         message,
-                        color = if (message.contains("失败") || message.contains("错误")) {
+                        color = if (message.contains("失败") || message.contains("错误") || message.contains("冲突") || message.contains("覆盖")) {
                             MaterialTheme.colorScheme.error
                         } else {
                             MaterialTheme.colorScheme.primary
@@ -702,49 +823,51 @@ fun SettingsPanel(
                         style = MaterialTheme.typography.bodySmall
                     )
                 }
-                remoteInspection?.let { inspection ->
-                    RemoteBackupInspectionCard(
-                        inspection = inspection,
-                        restoring = remoteRestoring,
-                        onRestore = { remoteRestoreConfirmVisible = true }
-                    )
-                }
-                if (remoteRestoreConfirmVisible && remoteInspection != null) {
-                    AlertDialog(
-                        onDismissRequest = { if (!remoteRestoring) remoteRestoreConfirmVisible = false },
-                        title = { Text("确认恢复远程快照？") },
-                        text = {
-                            Text(
-                                "这会用服务器快照替换当前本地待办、日程、规划文档和历史数据。恢复前会自动保存当前本地快照，API Key、电脑同步密钥和服务器同步密钥继续保留在本机。"
-                            )
-                        },
-                        confirmButton = {
-                            TextButton(
-                                enabled = !remoteRestoring,
-                                onClick = {
-                                    remoteInspection?.let { selected ->
-                                        scope.launch {
-                                            remoteRestoring = true
-                                            val error = onRestoreRemoteBackup(selected)
-                                            if (error == null) {
-                                                remoteInspection = null
-                                                remoteMessage = "远程快照恢复完成，当前本地数据已替换。"
-                                            } else {
-                                                remoteMessage = error
+                if (remoteLoggedIn) {
+                    remoteInspection?.let { inspection ->
+                        RemoteBackupInspectionCard(
+                            inspection = inspection,
+                            restoring = remoteRestoring,
+                            onRestore = { remoteRestoreConfirmVisible = true }
+                        )
+                    }
+                    if (remoteRestoreConfirmVisible && remoteInspection != null) {
+                        AlertDialog(
+                            onDismissRequest = { if (!remoteRestoring) remoteRestoreConfirmVisible = false },
+                            title = { Text("确认使用云端数据？") },
+                            text = {
+                                Text(
+                                    "这会用云端快照替换当前本地待办、日程、规划文档和历史数据。恢复前会自动保存当前本地快照，账号令牌、AI API Key 和电脑连接密钥继续保留在本机。"
+                                )
+                            },
+                            confirmButton = {
+                                TextButton(
+                                    enabled = !remoteRestoring,
+                                    onClick = {
+                                        remoteInspection?.let { selected ->
+                                            scope.launch {
+                                                remoteRestoring = true
+                                                val error = onRestoreRemoteBackup(selected)
+                                                if (error == null) {
+                                                    remoteInspection = null
+                                                    remoteMessage = "云端数据恢复完成。"
+                                                } else {
+                                                    remoteMessage = error
+                                                }
+                                                remoteRestoring = false
+                                                remoteRestoreConfirmVisible = false
                                             }
-                                            remoteRestoring = false
-                                            remoteRestoreConfirmVisible = false
                                         }
                                     }
+                                ) { Text("确认恢复") }
+                            },
+                            dismissButton = {
+                                TextButton(enabled = !remoteRestoring, onClick = { remoteRestoreConfirmVisible = false }) {
+                                    Text("暂不恢复")
                                 }
-                            ) { Text("确认恢复") }
-                        },
-                        dismissButton = {
-                            TextButton(enabled = !remoteRestoring, onClick = { remoteRestoreConfirmVisible = false }) {
-                                Text("暂不恢复")
                             }
-                        }
-                    )
+                        )
+                    }
                 }
                 HorizontalDivider()
                 DataHealthPanel(

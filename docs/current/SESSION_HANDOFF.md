@@ -28,7 +28,7 @@
 2. Import preserves the current installation's local credentials/backup authorization, restores schedules and widgets, and accepts legacy JSON backups.
 3. Remote sync is local-first: Room remains authoritative, data changes trigger a delayed encrypted upload, and enabled sync has a one-minute fallback loop. Turning it off cancels both jobs.
 4. The Azure relay accepts and stores ciphertext only. Mobile inspection now shows a safe summary before explicit replacement restore, with a local safety backup first.
-5. The Windows EXE is a self-contained WebView2 shell for direct LAN phone connections and now also has a server-snapshot read-only mode. It never edits server data.
+5. The current Windows EXE is a self-contained WebView2 shell: its phone-LAN mode embeds the phone's `18765` Web service, while its server mode only reads encrypted snapshots. It is not yet the target standalone account-synced desktop client and never edits server data.
 
 ## Repository Publication Work
 
@@ -63,7 +63,7 @@
 5. Test both Android widgets in light/dark mode and after launcher resize.
 6. Test `.paykibak` export from Debug, uninstall Debug, install Release, and import on a physical phone.
 7. Test mobile remote inspection/restore and Windows server mode against a real server snapshot.
-8. Account login, bidirectional cloud sync, a writable Windows local client, and the administrator panel remain future work; do not use the current snapshot relay as if those features existed.
+8. Account login, bidirectional cloud sync, a writable standalone Windows local client, and the administrator panel remain future work; do not use the current snapshot relay or phone `18765` WebView mode as if those features existed.
 
 ## Safety Notes
 

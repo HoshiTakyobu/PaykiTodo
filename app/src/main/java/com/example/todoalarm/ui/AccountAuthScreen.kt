@@ -62,7 +62,6 @@ fun AccountAuthScreen(
     onRecover: suspend (String, String, String) -> String?,
     onRecoveryCode: (String) -> Unit,
     onExportMigration: () -> Unit = {},
-    onImportMigration: () -> Unit = {},
 ) {
     var mode by remember { mutableStateOf(AccountAuthMode.LOGIN) }
     var username by remember { mutableStateOf("") }
@@ -104,6 +103,7 @@ fun AccountAuthScreen(
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 20.dp, vertical = 28.dp),
+            verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Surface(
@@ -278,26 +278,16 @@ fun AccountAuthScreen(
             }
             Spacer(Modifier.height(20.dp))
             Text(
-                "需要从 Debug 版迁移数据时，可以在登录前导出或导入本机迁移包。迁移包不包含账号令牌、AI Key 或局域网密钥。",
+                "需要从 Debug 版迁出数据时，可以在登录前导出本机迁移包。登录成功后，请到“设置 -> 数据与备份”导入。迁移包不包含账号令牌、AI Key 或局域网密钥。",
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 style = MaterialTheme.typography.bodySmall,
             )
             Spacer(Modifier.height(8.dp))
-            Row(
+            OutlinedButton(
+                onClick = onExportMigration,
+                enabled = !busy,
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                OutlinedButton(
-                    onClick = onExportMigration,
-                    enabled = !busy,
-                    modifier = Modifier.weight(1f),
-                ) { Text("导出本机数据") }
-                OutlinedButton(
-                    onClick = onImportMigration,
-                    enabled = !busy,
-                    modifier = Modifier.weight(1f),
-                ) { Text("导入迁移包") }
-            }
+            ) { Text("导出本机数据") }
                 }
             }
         }

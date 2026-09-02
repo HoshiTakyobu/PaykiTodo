@@ -48,6 +48,12 @@ The account API should listen only on loopback (default `127.0.0.1:18766`) and b
 
 The current synchronization contract blocks revision conflicts but does not automatically merge concurrent field edits. A conflict must never be bypassed by manually forcing `If-Match` without first deciding which local copy should win.
 
+## Password storage
+
+Normal PaykiTodo account passwords are not stored in plaintext. The cloud service generates a per-account random salt and stores a `scrypt`-derived password hash; a server-side pepper is appended before derivation. Recovery codes use the same salted derivation, and access/refresh tokens are stored or compared through hashes rather than their plaintext values.
+
+The administrator login is a separate deployment credential used for the private management surface and legacy Basic Auth compatibility. The current service reads `PAYKITODO_ADMIN_PASSWORD` from the protected server environment because it must verify that credential and derive the legacy CSRF value; it is not part of the user account table and is never committed to Git. Protect the environment file with root-only permissions and rotate it with the ignored local helper. A future hash-only administrator credential mode would require changing the legacy Basic Auth and credential-reading workflow.
+
 ## AI provider warning
 
 AI recognition and reports may send selected text to the configured third-party provider. Use providers you trust, and avoid sending highly sensitive personal information.

@@ -4,14 +4,28 @@
 
 - Repository root: `G:\Workspace\Project\PaykiTodo`
 - Branch: `main`
-- App version: `1.16.5 / versionCode 370` (local validation; not published)
+- App version: `1.16.6 / versionCode 371` (local validation; not published)
 - Room database version: `30`
 - Latest public GitHub Release: `v1.15.18`
 - Android outputs after final verification:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.16.5-debug.apk`
-  - `app/build/outputs/apk/release/PaykiTodo-1.16.5-release.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.16.6-debug.apk`
+- `app/build/outputs/apk/release/PaykiTodo-1.16.6-release.apk`
 - Windows output after final publish: `desktop/dist/PaykiTodo.exe`
 - Private cloud deployment: service enabled on the Azure host, origin loopback `127.0.0.1:18766`, public access through the privately configured Cloudflare/Nginx HTTPS hostname, and the administrator page at `/admin`.
+
+## v1.16.6 Verification Evidence
+
+- Android `testDebugUnitTest`, `lintDebug`, `assembleDebug`, and signed `assembleRelease` passed.
+- `emulator-5554` was reinstalled with `PaykiTodo-1.16.6-debug.apk` after removing the incompatible Release-signed package. The unauthenticated account page was checked visually: the card is vertically centered, remains scrollable, and exposes only local export rather than migration import.
+- `python -m unittest server.test_paykitodo_cloud_server -v` passed all 5 integration tests.
+- `git diff --check` and PowerShell parser checks for the ignored local helpers passed. No production credential rotation was run.
+
+## v1.16.6 Product Changes
+
+1. The account login/register/recovery card is vertically centered and remains scrollable on compact screens.
+2. Unauthenticated users can export local data, but migration import is only exposed after successful login in `设置 -> 数据与备份`.
+3. Normal account and recovery passwords use salted `scrypt` hashes with server pepper; the separate administrator deployment credential remains outside Git in the protected server environment.
+4. Version metadata is `1.16.6 / versionCode 371`.
 
 ## v1.16.5 Product Changes
 

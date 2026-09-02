@@ -2,7 +2,24 @@
 
 ## Active Focus
 
-The `v1.16.5` local validation round fixes reminder-triggered crashes, permits historical calendar reminders without backfilling them, improves the Android account entry surface, and makes administrator password rotation explicit. The private cloud service is deployed separately from Git; no GitHub Release is being created in this round.
+The `v1.16.6` local validation round centers the Android account entry surface, moves migration import behind successful account authentication, and documents the actual password-storage boundary. The private cloud service is deployed separately from Git; no GitHub Release is being created in this round.
+
+## Completed `v1.16.6` Scope
+
+1. Vertically centered the account login/register/recovery card so it no longer sits against the top of the phone viewport while retaining scroll behavior for compact screens.
+2. Removed migration-package import from the unauthenticated surface; import remains available after login in `设置 -> 数据与备份`.
+3. Kept unauthenticated local export available so a Debug installation can export its data before the Release installation is authenticated.
+4. Documented that normal account passwords and recovery codes use salted `scrypt` hashes with server pepper, while the separate administrator deployment secret remains outside Git in the protected server environment.
+5. Raised Android and Windows application metadata to `1.16.6 / versionCode 371`.
+
+## Validation For `v1.16.6`
+
+1. Passed `testDebugUnitTest`, `lintDebug`, `assembleDebug`, and signed `assembleRelease`.
+2. Verified on `emulator-5554` that the unauthenticated screen exposes export but not import; the authenticated Settings -> Data and Backup code path still exposes both operations.
+3. Verified the account card is vertically centered on the emulator and remains scrollable through its `ScrollView` layout.
+4. Passed PowerShell syntax checks for the ignored local release-build and administrator-credential helpers without rotating production credentials.
+5. Passed `python -m unittest server.test_paykitodo_cloud_server -v`; the account tests cover salted password verification, recovery, token/session behavior, encrypted snapshot conflict handling, administrator login, CSRF, user disablement, and device revocation.
+6. Passed `git diff --check`; verified `user/`, signing files, environment files, and server database patterns are ignored.
 
 ## Completed `v1.16.5` Scope
 

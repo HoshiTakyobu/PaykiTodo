@@ -169,16 +169,6 @@ class MainActivity : ComponentActivity() {
                         onRecover = viewModel::recoverAccount,
                         onRecoveryCode = { recoveryCodeNotice = it },
                         onExportMigration = { exportBackupLauncher.launch("PaykiTodo-migration.paykibak") },
-                        onImportMigration = {
-                            importBackupLauncher.launch(
-                                arrayOf(
-                                    BackupArchiveCodec.MIME_TYPE,
-                                    "application/zip",
-                                    "application/json",
-                                    "application/octet-stream"
-                                )
-                            )
-                        },
                     )
                 } else DashboardScreen(
                     uiState = uiState,

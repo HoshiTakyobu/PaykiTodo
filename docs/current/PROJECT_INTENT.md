@@ -22,7 +22,7 @@ The target experience is:
 - the user can still control and inspect their own data locally
 - after the first account login, the app remains usable with its local Room copy even when the cloud backend is unavailable; the cloud service is a continuity layer, never the sole local data store
 
-The current Android build uses a normal PaykiTodo account as an access gate. A user can register or log in from the app, and can export or import a local `.paykibak` migration package before login so that Debug-to-Release signature migration does not depend on the cloud account path.
+The current Android build uses a normal PaykiTodo account as an access gate. A user can register or log in from the app, export a local `.paykibak` migration package before login, and import it only after successful login through `设置 -> 数据与备份`, so that Debug-to-Release signature migration remains available without exposing restore actions on the unauthenticated surface.
 
 ## Product Direction
 

@@ -8,7 +8,7 @@
 - Supported Android: Android 8.0+ / API 26+
 - Compile and target SDK: Android 14 / API 34
 - License: MIT
-- App version: `1.16.4 / versionCode 369` (current local validation source)
+- App version: `1.16.5 / versionCode 370` (current local validation source)
 - Room database version: `30`
 
 ## Published Build
@@ -16,8 +16,8 @@
 - GitHub Release: `https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.15.18`
 - Release APK: `app/build/outputs/apk/release/PaykiTodo-1.15.18-release.apk`
 - Public asset name: `PaykiTodo-1.15.18-release.apk`
-- Current debug APK: `app/build/outputs/apk/debug/PaykiTodo-1.16.4-debug.apk` (after this round's build)
-- Current signed release APK: `app/build/outputs/apk/release/PaykiTodo-1.16.4-release.apk` (after this round's build)
+- Current debug APK: `app/build/outputs/apk/debug/PaykiTodo-1.16.5-debug.apk` (after this round's build)
+- Current signed release APK: `app/build/outputs/apk/release/PaykiTodo-1.16.5-release.apk` (after this round's build)
 - Current Windows self-contained EXE: `desktop/dist/PaykiTodo.exe` (after this round's publish)
 - Release signing material remains local and ignored by Git.
 
@@ -31,6 +31,8 @@ PaykiTodo is a local-first Android assistant for todos, DDLs, schedules, countdo
 - Todo management with optional DDL, multiple groups, recurrence, reminder offsets, archive/cancel history, and countdown marking.
 - Calendar with day/week/month/list views, recurrence, locations, colors, reminders, check-in tracking, and multi-time-slot creation.
 - One frequent reminder switch across phone and Desktop Web; disabled means no scheduling, enabled means full-screen plus notification-bar delivery.
+- Reminder delivery falls back to a detailed notification when Android rejects a background foreground-service start, preventing `ForegroundServiceStartNotAllowedException` from crashing the app.
+- Already-started calendar events may retain historical reminder settings; missed trigger times are not backfilled while future recurring instances remain schedulable.
 - Planning Desk memo workflow with local-rule parsing, optional OpenAI-compatible AI recognition, preview, correction, and confirmed import.
 - Local LAN Desktop Web console for board, todo, calendar, Planning Desk, AI reports, and Excel schedule import.
 - Optional account-based encrypted cloud sync; the Room database remains authoritative and the server stores only encrypted migration-package bytes. Account registration/login, refresh tokens, device revocation, versioned uploads, conflict blocking, and a separate administrator user/device overview are implemented.
@@ -48,6 +50,14 @@ See `README.md` for the public overview and `docs/current/FEATURE_LEDGER.md` for
 - Stopped the phone LAN service explicitly during account logout and blocked unauthenticated secondary entry points, reminder surfaces, and widgets from exposing local data.
 - Made reminder dismissal remove stale notification/service artifacts and kept long-title reminder actions readable on narrow screens.
 - Changed automatic backups to one latest file updated after data changes instead of accumulating timestamped files.
+
+## v1.16.5 Validation Scope (not published)
+
+- Added a notification fallback when Android rejects the background foreground-service start, preventing reminder-triggered process crashes while preserving notification details and the full-screen pending intent.
+- Allowed reminders on already-started calendar events to remain saved without backfilling missed trigger times; future event reminders retain the future-time validation.
+- Redesigned the account entry surface with the existing dashboard artwork and launcher icon, while keeping migration actions available before login.
+- Added explicit `-Rotate` behavior to the ignored administrator credential helper; ordinary runs read the current credential, while rotation updates the server and restarts the cloud service.
+- Raised the application metadata to `1.16.5 / versionCode 370`.
 
 ## v1.16.4 Validation Scope (not published)
 

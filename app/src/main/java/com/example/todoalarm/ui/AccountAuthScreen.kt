@@ -1,7 +1,10 @@
 package com.example.todoalarm.ui
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -10,8 +13,11 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -31,8 +37,15 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
+import com.example.todoalarm.R
 import com.example.todoalarm.sync.AccountAuthResult
 import kotlinx.coroutines.launch
 
@@ -63,25 +76,69 @@ fun AccountAuthScreen(
     var agreementVisible by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
 
-    Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+    val darkMode = MaterialTheme.colorScheme.background.luminance() < 0.5f
+    Box(modifier = Modifier.fillMaxSize()) {
+        Image(
+            painter = painterResource(
+                id = if (darkMode) R.drawable.dashboard_bg_dark else R.drawable.dashboard_bg_light
+            ),
+            contentDescription = null,
+            modifier = Modifier.fillMaxSize(),
+            contentScale = ContentScale.Crop,
+        )
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    Brush.verticalGradient(
+                        listOf(
+                            if (darkMode) Color(0x990A151D) else Color(0x44FFFFFF),
+                            if (darkMode) Color(0xCC0A151D) else Color(0x66FFFFFF),
+                            if (darkMode) Color(0xEE0A151D) else Color(0x99FFFFFF),
+                        )
+                    )
+                )
+        )
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
-                .padding(horizontal = 28.dp, vertical = 48.dp),
-            verticalArrangement = Arrangement.Center,
+                .padding(horizontal = 20.dp, vertical = 28.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            Text("PaykiTodo", style = MaterialTheme.typography.headlineLarge)
-            Spacer(Modifier.height(8.dp))
-            Text(
-                when (mode) {
-                    AccountAuthMode.LOGIN -> "登录后继续使用你的待办和日程"
-                    AccountAuthMode.REGISTER -> "创建 PaykiTodo 账号"
-                    AccountAuthMode.RECOVER -> "使用恢复码重置密码"
-                },
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            Spacer(Modifier.height(28.dp))
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .widthIn(max = 460.dp),
+                shape = RoundedCornerShape(28.dp),
+                color = MaterialTheme.colorScheme.surface,
+                tonalElevation = 8.dp,
+                shadowElevation = 10.dp,
+            ) {
+                Column(
+                    modifier = Modifier.padding(horizontal = 24.dp, vertical = 28.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    Image(
+                        painter = painterResource(R.drawable.ic_launcher_art_transparent),
+                        contentDescription = "PaykiTodo 图标",
+                        modifier = Modifier
+                            .size(82.dp)
+                            .clip(RoundedCornerShape(22.dp)),
+                        contentScale = ContentScale.Fit,
+                    )
+                    Spacer(Modifier.height(14.dp))
+                    Text("PaykiTodo", style = MaterialTheme.typography.headlineMedium)
+                    Spacer(Modifier.height(6.dp))
+                    Text(
+                        when (mode) {
+                            AccountAuthMode.LOGIN -> "登录后继续使用你的待办和日程"
+                            AccountAuthMode.REGISTER -> "创建 PaykiTodo 账号"
+                            AccountAuthMode.RECOVER -> "使用恢复码重置密码"
+                        },
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Spacer(Modifier.height(24.dp))
 
             OutlinedTextField(
                 value = username,
@@ -240,6 +297,8 @@ fun AccountAuthScreen(
                     enabled = !busy,
                     modifier = Modifier.weight(1f),
                 ) { Text("导入迁移包") }
+            }
+                }
             }
         }
     }

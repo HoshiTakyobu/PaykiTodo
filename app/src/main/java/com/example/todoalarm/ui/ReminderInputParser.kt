@@ -27,6 +27,14 @@ internal data class DdlPostponeInputValidation(
     val message: String = ""
 )
 
+internal fun shouldRequireFutureCalendarReminder(
+    isNewEvent: Boolean,
+    reminderAnchor: LocalDateTime,
+    now: LocalDateTime
+): Boolean {
+    return isNewEvent && reminderAnchor.isAfter(now)
+}
+
 internal fun parseReminderInput(
     raw: String,
     anchor: LocalDateTime,

@@ -70,6 +70,24 @@ class ReminderNotifier(
         notificationManager.notify(notificationId(todoItem.id), build(todoItem, taskGroup))
     }
 
+    fun showTriggered(
+        todoItem: TodoItem,
+        taskGroup: ResolvedTaskGroup = resolveTaskGroup(todoItem, emptyList()),
+        requestFullscreen: Boolean,
+        triggeredAtMillis: Long? = null
+    ) {
+        notificationManager.notify(
+            notificationId(todoItem.id),
+            build(
+                todoItem = todoItem,
+                taskGroup = taskGroup,
+                requestFullscreen = requestFullscreen,
+                showReminderContent = true,
+                triggeredAtMillis = triggeredAtMillis
+            )
+        )
+    }
+
     fun showUnhandledAlarmMode(
         todoItem: TodoItem,
         taskGroup: ResolvedTaskGroup = resolveTaskGroup(todoItem, emptyList())

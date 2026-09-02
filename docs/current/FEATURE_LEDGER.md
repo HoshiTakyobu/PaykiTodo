@@ -8,6 +8,7 @@ This file tracks the product at a practical level for new coding sessions.
 
 - the Android app uses a normal PaykiTodo account login gate; after login, the local Room database remains usable offline and remains the authoritative working copy
 - the unauthenticated login surface exposes local `.paykibak` export/import actions, so Debug-to-Release migration can happen before registering or logging into a cloud account
+- the account login/register/recovery surface uses the existing dashboard artwork and PaykiTodo launcher icon and remains vertically scrollable on narrow screens
 - unauthenticated share, camera, voice, reminder-detail, widget, and phone-LAN entry points do not expose local data; an expired session stops cloud sync and the phone-LAN service
 - logout stops the phone-LAN service and refreshes widgets immediately
 - migration archives preserve business data and ordinary settings while excluding account tokens, cloud encryption secrets, AI API keys, Desktop Sync keys, and file-provider authorization

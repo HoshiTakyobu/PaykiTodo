@@ -1691,7 +1691,8 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
             return "提醒时间不能为负数"
         }
         val reminderAtMillis = draft.reminderTriggerTimesMillis()
-        if (!allowPastReminderTriggers && reminderAtMillis.any { it <= now }) {
+        val eventHasAlreadyStarted = startMillis <= now
+        if (!allowPastReminderTriggers && !eventHasAlreadyStarted && reminderAtMillis.any { it <= now }) {
             return "提醒时间必须晚于当前时间"
         }
 

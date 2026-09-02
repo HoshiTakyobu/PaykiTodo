@@ -21,6 +21,42 @@ class ReminderInputParserTest {
     }
 
     @Test
+    fun pastCalendarEventDoesNotRequireFutureReminder() {
+        assertFalse(
+            shouldRequireFutureCalendarReminder(
+                isNewEvent = true,
+                reminderAnchor = LocalDateTime.of(2026, 5, 16, 15, 0),
+                now = now
+            )
+        )
+    }
+
+    @Test
+    fun futureCalendarEventStillRequiresFutureReminder() {
+        assertTrue(
+            shouldRequireFutureCalendarReminder(
+                isNewEvent = true,
+                reminderAnchor = LocalDateTime.of(2026, 5, 20, 15, 0),
+                now = now
+            )
+        )
+    }
+
+    @Test
+    fun historicalReminderCanBeParsedWhenFutureCheckIsDisabled() {
+        val parsed = parseReminderInput(
+            raw = "5",
+            anchor = LocalDateTime.of(2026, 5, 16, 15, 0),
+            now = now,
+            requireFuture = false
+        )
+
+        assertTrue(parsed.isValid)
+        assertEquals(listOf(5), parsed.offsetsMinutes)
+        assertEquals(LocalDateTime.of(2026, 5, 16, 14, 55), parsed.triggerTimes.single())
+    }
+
+    @Test
     fun snoozeClockRejectsPastTarget() {
         val parsed = parseSnoozeInput(
             raw = "08:30",

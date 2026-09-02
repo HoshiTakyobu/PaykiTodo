@@ -2,7 +2,25 @@
 
 ## Active Focus
 
-The `v1.16.4` local validation round completes the account transition fix and Android Release UI audit on top of the account/cloud, migration, and independent Windows client implementation. The private cloud service is deployed separately from Git; no GitHub Release is being created in this round.
+The `v1.16.5` local validation round fixes reminder-triggered crashes, permits historical calendar reminders without backfilling them, improves the Android account entry surface, and makes administrator password rotation explicit. The private cloud service is deployed separately from Git; no GitHub Release is being created in this round.
+
+## Completed `v1.16.5` Scope
+
+1. Caught system-level failures when Android rejects a background foreground-service start and published a normal reminder notification fallback instead of crashing the process.
+2. Preserved full-screen reminder intent behavior during the notification fallback and recorded the rejection/fallback result in the reminder chain logs.
+3. Allowed a newly created calendar event that has already started to keep historical reminder offsets; the alarm scheduler continues to ignore past trigger times.
+4. Added an explicit editor notice for retained historical reminders and kept future calendar events subject to future reminder validation.
+5. Added the existing dashboard artwork and launcher icon to the account login/register/recovery screen with a scrollable narrow-screen layout.
+6. Added `-Rotate` to the ignored administrator credential helper; the default mode reads credentials and rotation mode writes a new password and restarts `paykitodo-cloud.service`.
+7. Raised Android and Windows application metadata to `1.16.5 / versionCode 370`.
+
+## Validation For `v1.16.5`
+
+1. Run `testDebugUnitTest`, `lintDebug`, `assembleDebug`, and signed `assembleRelease`.
+2. Verify the login page on the Android emulator in light and dark themes, including migration buttons and scroll behavior.
+3. Verify the reminder fallback through a controlled Android 12+ background-start denial or an injected unit-level start failure; physical OEM lock-screen and battery policies still require device testing.
+4. Verify creating an already-started calendar event with a past reminder saves successfully and does not schedule the missed trigger.
+5. Parse the administrator helper with PowerShell without running `-Rotate`; do not rotate the production credential during build verification.
 
 ## Completed `v1.16.4` Scope
 

@@ -4,14 +4,22 @@
 
 - Repository root: `G:\Workspace\Project\PaykiTodo`
 - Branch: `main`
-- App version: `1.16.4 / versionCode 369` (local validation; not published)
+- App version: `1.16.5 / versionCode 370` (local validation; not published)
 - Room database version: `30`
 - Latest public GitHub Release: `v1.15.18`
 - Android outputs after final verification:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.16.4-debug.apk`
-  - `app/build/outputs/apk/release/PaykiTodo-1.16.4-release.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.16.5-debug.apk`
+  - `app/build/outputs/apk/release/PaykiTodo-1.16.5-release.apk`
 - Windows output after final publish: `desktop/dist/PaykiTodo.exe`
 - Private cloud deployment: service enabled on the Azure host, origin loopback `127.0.0.1:18766`, public access through the privately configured Cloudflare/Nginx HTTPS hostname, and the administrator page at `/admin`.
+
+## v1.16.5 Product Changes
+
+1. Reminder delivery catches Android background foreground-service start rejection and falls back to a detailed notification, preserving the full-screen pending intent when configured.
+2. Already-started calendar events may retain past reminder settings; the scheduler ignores missed trigger times instead of treating the event as invalid.
+3. The account screen uses the existing dashboard background and launcher icon and remains scrollable for small devices.
+4. The administrator credential helper reads by default and rotates only with explicit `-Rotate`, including service restart and post-rotation verification.
+5. Version metadata is `1.16.5 / versionCode 370`.
 
 ## v1.16.2 Product Changes
 
@@ -57,6 +65,8 @@
 7. UI audit evidence is recorded in `docs/current/ANDROID_RELEASE_UI_AUDIT_1.16.3.md`; screenshots and XML dumps remain only in ignored `.tmp/audit-1.16.3/`.
 8. The cloud service was redeployed from the current source on 2026-09-02; its HTTPS reverse-proxy `/admin` check returned the in-page login UI without `WWW-Authenticate`.
 9. The local `user/Build-PaykiTodoRelease.ps1 -SkipDebugBuild` wrapper remains the local Release build entry point; signing material, output APKs, and checksums remain ignored local artifacts.
+
+10. On 2026-09-02, `PaykiTodo-1.16.5-release.apk` was installed on `emulator-5554` after clearing the emulator app data. The unauthenticated account screen was visually checked in its default light theme: dashboard background, launcher artwork, login form, agreement control, and local migration actions were all visible and the page remained scrollable. Dark-theme and physical-device OEM reminder behavior remain follow-up checks.
 
 ## Known Limitations
 

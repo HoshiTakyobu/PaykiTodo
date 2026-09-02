@@ -13,6 +13,7 @@ import android.os.IBinder
 import android.app.KeyguardManager
 import android.os.PowerManager
 import androidx.core.content.ContextCompat
+import com.example.todoalarm.CrashLogger
 import com.example.todoalarm.TodoApplication
 import com.example.todoalarm.accessibility.ReminderAccessibilityService
 import com.example.todoalarm.data.ReminderChainStage
@@ -521,13 +522,82 @@ class ReminderForegroundService : Service() {
         private val FULLSCREEN_RETRY_DELAYS_MS = listOf(1_200L, 3_200L, 10_000L, 20_000L, 45_000L, 90_000L, 180_000L)
 
         fun start(context: android.content.Context, todoId: Long, triggeredAtMillis: Long? = null) {
-            ContextCompat.startForegroundService(
-                context,
-                Intent(context, ReminderForegroundService::class.java).apply {
-                    putExtra(AlarmScheduler.EXTRA_TODO_ID, todoId)
-                    triggeredAtMillis?.let { putExtra(AlarmScheduler.EXTRA_REMINDER_AT, it) }
+            try {
+                ContextCompat.startForegroundService(
+                    context,
+                    Intent(context, ReminderForegroundService::class.java).apply {
+                        putExtra(AlarmScheduler.EXTRA_TODO_ID, todoId)
+                        triggeredAtMillis?.let { putExtra(AlarmScheduler.EXTRA_REMINDER_AT, it) }
+                    }
+                )
+            } catch (error: RuntimeException) {
+                // Android 12+ can reject a background foreground-service start. A reminder
+                // must still degrade to a normal notification instead of crashing the app.
+                ReminderChainLogger.log(
+                    context = context,
+                    todoId = todoId,
+                    source = "ReminderForegroundService",
+                    stage = ReminderChainStage.SERVICE_START,
+                    status = ReminderChainStatus.WARN,
+                    reminderAtMillis = triggeredAtMillis,
+                    message = "start_rejected=${error.javaClass.simpleName};fallback=notification"
+                )
+                showNotificationFallback(context, todoId, triggeredAtMillis)
+            }
+        }
+
+        private fun showNotificationFallback(
+            context: Context,
+            todoId: Long,
+            triggeredAtMillis: Long?
+        ) {
+            val app = context.applicationContext as? TodoApplication ?: return
+            app.applicationScope.launch {
+                runCatching {
+                    val item = app.repository.getTodo(todoId)
+                    if (item == null || item.isHistory || !item.reminderEnabled) return@runCatching
+                    if (triggeredAtMillis != null && !app.alarmScheduler.isReminderScheduled(todoId, triggeredAtMillis)) {
+                        return@runCatching
+                    }
+                    val requestFullscreen = shouldUseFullscreenReminder(item)
+                    if (requestFullscreen) {
+                        ActiveReminderStore.markActive(app, todoId, triggeredAtMillis)
+                    } else {
+                        ActiveReminderStore.clearIfMatches(app, todoId)
+                    }
+                    val taskGroup = resolveTaskGroup(item, app.repository.getGroup(item.groupId))
+                    ReminderNotifier(app).showTriggered(
+                        todoItem = item,
+                        taskGroup = taskGroup,
+                        requestFullscreen = requestFullscreen,
+                        triggeredAtMillis = triggeredAtMillis
+                    )
+                    ReminderChainLogger.log(
+                        context = app,
+                        todoId = todoId,
+                        source = "ReminderForegroundService",
+                        stage = ReminderChainStage.NOTIFICATION_POSTED,
+                        status = ReminderChainStatus.WARN,
+                        reminderAtMillis = triggeredAtMillis,
+                        message = if (requestFullscreen) {
+                            "foreground_service_rejected;fullscreen_notification_fallback"
+                        } else {
+                            "foreground_service_rejected;notification_fallback"
+                        }
+                    )
+                }.onFailure { error ->
+                    CrashLogger.recordNonFatal(error)
+                    ReminderChainLogger.log(
+                        context = app,
+                        todoId = todoId,
+                        source = "ReminderForegroundService",
+                        stage = ReminderChainStage.NOTIFICATION_POSTED,
+                        status = ReminderChainStatus.ERROR,
+                        reminderAtMillis = triggeredAtMillis,
+                        message = "notification_fallback_failed=${error.javaClass.simpleName}"
+                    )
                 }
-            )
+            }
         }
 
         fun dismiss(context: Context, todoId: Long) {

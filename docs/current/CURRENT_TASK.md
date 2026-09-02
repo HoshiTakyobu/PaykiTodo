@@ -2,7 +2,14 @@
 
 ## Active Focus
 
-The `v1.16.0` local development round adds the first usable account/cloud and independent Windows client implementation on top of the `v1.15.22` desktop calendar work. The private cloud service is now deployed and verified; it is not a GitHub Release yet, and the latest public release remains `v1.15.18`.
+The `v1.16.1` local development round keeps the first usable account/cloud and independent Windows client implementation from `v1.16.0`, and replaces the browser-native administrator authentication prompt with an in-page PaykiTodo login UI. The private cloud service is deployed separately from Git; it is not a GitHub Release yet, and the latest public release remains `v1.15.18`.
+
+## Completed `v1.16.1` Scope
+
+1. Unauthenticated `/admin` requests render a PaykiTodo-owned login page instead of returning a `WWW-Authenticate` challenge.
+2. Added cookie-based administrator sessions with logout and preserved CSRF checks for state-changing actions.
+3. Kept valid Basic Auth as a non-challenging compatibility path for scripts and tests.
+4. Raised Android and Windows application metadata to `1.16.1 / versionCode 366`.
 
 ## Completed `v1.16.0` Scope
 
@@ -42,7 +49,7 @@ The `v1.16.0` local development round adds the first usable account/cloud and in
 
 ## Next Validation
 
-1. Install `1.16.0` Debug or Release on the matching signed profile and smoke-test startup, migration import, todo creation, event creation, and Desktop Sync.
+1. Install `1.16.1` Debug or Release on the matching signed profile and smoke-test startup, migration import, todo creation, event creation, and Desktop Sync.
 2. Verify the single reminder switch and the event/intermediate/final todo action layouts on a physical phone.
 3. Verify full-screen behavior while locked and while unlocked inside another app on the user's OEM ROM.
 4. Verify daily-board and countdown widgets after installation, resize, date change, and dark/light theme change.

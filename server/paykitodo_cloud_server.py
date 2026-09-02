@@ -23,6 +23,7 @@ import time
 import uuid
 from dataclasses import dataclass
 from http import HTTPStatus
+from http.cookies import SimpleCookie
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, quote, urlsplit
@@ -35,12 +36,15 @@ REFRESH_TOKEN_SECONDS = 30 * 24 * 60 * 60
 USERNAME_PATTERN = re.compile(r"^[A-Za-z0-9_.-]{3,64}$")
 DEVICE_ID_PATTERN = re.compile(r"^[A-Za-z0-9_-]{8,128}$")
 OPERATION_ID_PATTERN = re.compile(r"^[A-Za-z0-9_.:-]{8,160}$")
+ADMIN_WEB_SESSION_SECONDS = 8 * 60 * 60
 DB_PATH = Path(os.environ.get("PAYKITODO_CLOUD_DB", "./paykitodo-cloud.sqlite3"))
 LISTEN_HOST = os.environ.get("PAYKITODO_CLOUD_HOST", "127.0.0.1")
 LISTEN_PORT = int(os.environ.get("PAYKITODO_CLOUD_PORT", "18766"))
 ADMIN_USER = os.environ.get("PAYKITODO_ADMIN_USER", "")
 ADMIN_PASSWORD = os.environ.get("PAYKITODO_ADMIN_PASSWORD", "")
 PASSWORD_PEPPER = os.environ.get("PAYKITODO_PASSWORD_PEPPER", "").encode("utf-8")
+ADMIN_WEB_SESSIONS: dict[str, tuple[int, str]] = {}
+ADMIN_WEB_SESSIONS_LOCK = threading.Lock()
 
 
 def now_seconds() -> int:
@@ -238,6 +242,10 @@ class PaykiTodoCloudHandler(BaseHTTPRequestHandler):
                 self.upload_snapshot()
             elif path == "/admin" and method == "GET":
                 self.admin_page()
+            elif path == "/admin/login" and method == "POST":
+                self.admin_login()
+            elif path == "/admin/logout" and method == "POST":
+                self.admin_logout()
             elif path.startswith("/admin/users/") and path.endswith("/toggle") and method == "POST":
                 self.admin_toggle_user(path.split("/")[3])
             elif path.startswith("/admin/devices/") and path.endswith("/revoke") and method == "POST":
@@ -504,27 +512,83 @@ class PaykiTodoCloudHandler(BaseHTTPRequestHandler):
         if not ADMIN_USER or not ADMIN_PASSWORD:
             raise ApiError(HTTPStatus.SERVICE_UNAVAILABLE, "admin_not_configured", "管理员后台尚未配置")
         value = self.headers.get("Authorization", "")
-        if not value.startswith("Basic "):
-            self.send_admin_unauthorized()
-            return False
-        try:
-            username, password = base64.b64decode(value[6:]).decode("utf-8").split(":", 1)
-        except (ValueError, UnicodeDecodeError):
-            self.send_admin_unauthorized()
-            return False
-        if not hmac.compare_digest(username, ADMIN_USER) or not hmac.compare_digest(password, ADMIN_PASSWORD):
-            self.send_admin_unauthorized()
-            return False
-        return True
+        if value.startswith("Basic "):
+            try:
+                username, password = base64.b64decode(value[6:]).decode("utf-8").split(":", 1)
+            except (ValueError, UnicodeDecodeError):
+                return False
+            return hmac.compare_digest(username, ADMIN_USER) and hmac.compare_digest(password, ADMIN_PASSWORD)
+        return self.admin_session() is not None
 
-    def send_admin_unauthorized(self) -> None:
-        self.send_response(HTTPStatus.UNAUTHORIZED)
-        self.send_header("WWW-Authenticate", 'Basic realm="PaykiTodo Admin", charset="UTF-8"')
-        self.send_header("Content-Length", "0")
-        self.send_header("Cache-Control", "no-store")
-        self.end_headers()
+    def admin_session(self) -> tuple[str, str] | None:
+        cookie = SimpleCookie()
+        try:
+            cookie.load(self.headers.get("Cookie", ""))
+        except ValueError:
+            return None
+        token = cookie.get("paykitodo_admin_session")
+        if token is None or not token.value:
+            return None
+        now = now_seconds()
+        with ADMIN_WEB_SESSIONS_LOCK:
+            session = ADMIN_WEB_SESSIONS.get(token.value)
+            if session is None:
+                return None
+            expires_at, csrf = session
+            if expires_at <= now:
+                ADMIN_WEB_SESSIONS.pop(token.value, None)
+                return None
+            return token.value, csrf
+
+    def create_admin_session(self) -> tuple[str, str]:
+        token = secrets.token_urlsafe(32)
+        csrf = secrets.token_urlsafe(32)
+        expires_at = now_seconds() + ADMIN_WEB_SESSION_SECONDS
+        with ADMIN_WEB_SESSIONS_LOCK:
+            ADMIN_WEB_SESSIONS[token] = (expires_at, csrf)
+            if len(ADMIN_WEB_SESSIONS) > 256:
+                now = now_seconds()
+                for key, (expiry, _) in list(ADMIN_WEB_SESSIONS.items()):
+                    if expiry <= now:
+                        ADMIN_WEB_SESSIONS.pop(key, None)
+        return token, csrf
+
+    def remove_admin_session(self) -> None:
+        session = self.admin_session()
+        if session is not None:
+            with ADMIN_WEB_SESSIONS_LOCK:
+                ADMIN_WEB_SESSIONS.pop(session[0], None)
+
+    def send_admin_login_page(self, error: str | None = None, status: HTTPStatus = HTTPStatus.OK) -> None:
+        error_html = f"<div class='error'>{html.escape(error)}</div>" if error else ""
+        body = f"<!doctype html><html lang='zh-CN'><head><meta charset='utf-8'><meta name='viewport' content='width=device-width'><title>登录 PaykiTodo 管理后台</title><style>body{{font-family:Segoe UI,Microsoft YaHei,sans-serif;margin:0;min-height:100vh;display:grid;place-items:center;background:#eef2f4;color:#1f2933}}main{{width:min(420px,calc(100vw - 32px));background:#fff;border:1px solid #dfe3e8;border-radius:10px;padding:28px;box-sizing:border-box;box-shadow:0 12px 30px rgba(31,41,51,.08)}}h1{{font-size:22px;margin:0 0 8px}}p{{color:#68737d;font-size:14px;line-height:1.6;margin:0 0 22px}}label{{display:block;font-size:13px;font-weight:600;margin:14px 0 6px}}input{{width:100%;box-sizing:border-box;border:1px solid #c8cfd6;border-radius:6px;padding:11px 12px;font:inherit}}button{{width:100%;margin-top:22px;border:0;border-radius:6px;padding:11px;background:#2f7d5c;color:#fff;font:inherit;font-weight:600;cursor:pointer}}.error{{background:#fff1f0;color:#b42318;border:1px solid #f2b8b5;border-radius:6px;padding:10px;font-size:13px}}</style></head><body><main><h1>PaykiTodo 管理后台</h1><p>请输入管理员账号和密码。这里是独立的 PaykiTodo 管理入口，不是 1Panel。</p>{error_html}<form method='post' action='/admin/login'><label for='username'>管理员账号</label><input id='username' name='username' autocomplete='username' required><label for='password'>管理员密码</label><input id='password' name='password' type='password' autocomplete='current-password' required><button type='submit'>登录管理后台</button></form></main></body></html>"
+        self.send_bytes(status, body.encode("utf-8"), "text/html; charset=utf-8")
+
+    def admin_login(self) -> None:
+        if not ADMIN_USER or not ADMIN_PASSWORD:
+            raise ApiError(HTTPStatus.SERVICE_UNAVAILABLE, "admin_not_configured", "管理员后台尚未配置")
+        if not RATE_LIMITER.allow(f"admin-login:{self.remote_ip}", 10, 10 * 60):
+            self.send_admin_login_page("登录尝试过于频繁，请稍后再试。", HTTPStatus.TOO_MANY_REQUESTS)
+            return
+        values = parse_qs(self.read_body(4 * 1024).decode("utf-8", errors="replace"))
+        username = values.get("username", [""])[0].strip()
+        password = values.get("password", [""])[0]
+        if not hmac.compare_digest(username, ADMIN_USER) or not hmac.compare_digest(password, ADMIN_PASSWORD):
+            self.send_admin_login_page("管理员账号或密码错误。", HTTPStatus.UNAUTHORIZED)
+            return
+        token, _ = self.create_admin_session()
+        with DB.session() as connection:
+            self.audit(connection, None, "admin_login", "web administrator login")
+        self.redirect("/admin", {"Set-Cookie": f"paykitodo_admin_session={token}; Path=/admin; Max-Age={ADMIN_WEB_SESSION_SECONDS}; HttpOnly; Secure; SameSite=Strict"})
+
+    def admin_logout(self) -> None:
+        self.remove_admin_session()
+        self.redirect("/admin", {"Set-Cookie": "paykitodo_admin_session=; Path=/admin; Max-Age=0; HttpOnly; Secure; SameSite=Strict"})
 
     def admin_csrf_token(self) -> str:
+        session = self.admin_session()
+        if session is not None:
+            return session[1]
         message = time.strftime("%Y-%m-%d", time.gmtime()).encode("ascii")
         return hmac.new(ADMIN_PASSWORD.encode("utf-8"), message, hashlib.sha256).hexdigest()
 
@@ -537,6 +601,7 @@ class PaykiTodoCloudHandler(BaseHTTPRequestHandler):
 
     def admin_page(self) -> None:
         if not self.require_admin():
+            self.send_admin_login_page()
             return
         with DB.session() as connection:
             stats = connection.execute("SELECT (SELECT count(*) FROM users) users,(SELECT count(*) FROM devices WHERE revoked_at IS NULL) devices,(SELECT count(*) FROM snapshots) snapshots,(SELECT COALESCE(sum(length(payload)),0) FROM snapshots) bytes").fetchone()
@@ -544,8 +609,8 @@ class PaykiTodoCloudHandler(BaseHTTPRequestHandler):
             devices = connection.execute("SELECT d.*,u.username FROM devices d JOIN users u ON u.id=d.user_id ORDER BY d.last_seen_at DESC LIMIT 500").fetchall()
             audits = connection.execute("SELECT a.*,u.username FROM audit_log a LEFT JOIN users u ON u.id=a.user_id ORDER BY a.created_at DESC LIMIT 80").fetchall()
         body = ["<!doctype html><html lang='zh-CN'><head><meta charset='utf-8'><meta name='viewport' content='width=device-width'><title>PaykiTodo 管理后台</title><style>",
-                "body{font-family:Segoe UI,Microsoft YaHei,sans-serif;margin:0;background:#f4f6f8;color:#1f2933}header{background:#fff;border-bottom:1px solid #dfe3e8;padding:18px 28px}main{padding:24px 28px;max-width:1400px;margin:auto}.stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}.card,section{background:#fff;border:1px solid #dfe3e8;border-radius:8px;padding:16px}.card b{display:block;font-size:28px;margin-top:6px}section{margin-top:18px;overflow:auto}table{border-collapse:collapse;width:100%;min-width:820px}th,td{text-align:left;padding:10px;border-bottom:1px solid #edf0f2;font-size:13px}th{color:#5b6570}button{border:1px solid #c8cfd6;background:#fff;border-radius:6px;padding:6px 10px;cursor:pointer}.danger{color:#b42318}.ok{color:#137333}@media(max-width:720px){.stats{grid-template-columns:1fr 1fr}main{padding:16px}}",
-                "</style></head><body><header><strong>PaykiTodo 管理后台</strong></header><main><div class='stats'>"]
+                "body{font-family:Segoe UI,Microsoft YaHei,sans-serif;margin:0;background:#f4f6f8;color:#1f2933}header{background:#fff;border-bottom:1px solid #dfe3e8;padding:18px 28px;display:flex;align-items:center;justify-content:space-between;gap:16px}header strong{font-size:19px}header span{color:#68737d;font-size:13px}main{padding:24px 28px;max-width:1400px;margin:auto}.stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}.card,section{background:#fff;border:1px solid #dfe3e8;border-radius:8px;padding:16px}.card b{display:block;font-size:28px;margin-top:6px}section{margin-top:18px;overflow:auto}table{border-collapse:collapse;width:100%;min-width:820px}th,td{text-align:left;padding:10px;border-bottom:1px solid #edf0f2;font-size:13px}th{color:#5b6570}button{border:1px solid #c8cfd6;background:#fff;border-radius:6px;padding:6px 10px;cursor:pointer}.danger{color:#b42318}.ok{color:#137333}.logout{color:#4b5563;background:#fff}@media(max-width:720px){.stats{grid-template-columns:1fr 1fr}main{padding:16px}header{padding:16px;align-items:flex-start}header span{display:none}}",
+                "</style></head><body><header><div><strong>PaykiTodo 管理后台</strong><br><span>用户、设备、同步状态和审计信息</span></div><form method='post' action='/admin/logout'><button class='logout'>退出管理后台</button></form></header><main><div class='stats'>"]
         for label, value in (("注册用户", stats["users"]), ("有效设备", stats["devices"]), ("云端快照", stats["snapshots"]), ("存储占用", f'{stats["bytes"] / 1024 / 1024:.1f} MB')):
             body.append(f"<div class='card'>{html.escape(str(label))}<b>{html.escape(str(value))}</b></div>")
         body.append("</div><section><h2>用户</h2><table><thead><tr><th>账号</th><th>显示名</th><th>状态</th><th>设备</th><th>快照版本</th><th>注册时间</th><th>操作</th></tr></thead><tbody>")
@@ -567,6 +632,7 @@ class PaykiTodoCloudHandler(BaseHTTPRequestHandler):
 
     def admin_toggle_user(self, raw_id: str) -> None:
         if not self.require_admin():
+            self.redirect("/admin")
             return
         self.require_admin_csrf()
         try:
@@ -588,6 +654,7 @@ class PaykiTodoCloudHandler(BaseHTTPRequestHandler):
 
     def admin_revoke_device(self, raw_id: str) -> None:
         if not self.require_admin():
+            self.redirect("/admin")
             return
         self.require_admin_csrf()
         if not DEVICE_ID_PATTERN.fullmatch(raw_id):
@@ -597,10 +664,12 @@ class PaykiTodoCloudHandler(BaseHTTPRequestHandler):
             connection.execute("DELETE FROM sessions WHERE device_id=?", (raw_id,))
         self.redirect("/admin")
 
-    def redirect(self, location: str) -> None:
+    def redirect(self, location: str, extra_headers: dict[str, str] | None = None) -> None:
         self.send_response(HTTPStatus.SEE_OTHER)
         self.send_header("Location", location)
         self.send_header("Content-Length", "0")
+        for name, value in (extra_headers or {}).items():
+            self.send_header(name, value)
         self.end_headers()
 
     @staticmethod

@@ -143,18 +143,30 @@ class CloudServerIntegrationTest(unittest.TestCase):
         self.assertEqual('"1"', response_headers["ETag"])
         self.assertEqual(payload, downloaded)
 
-    def test_admin_requires_basic_auth_and_renders_users(self):
+    def test_admin_opens_html_login_and_creates_cookie_session(self):
         self.create_account("admin")
-        status, response_headers, _ = self.request("/admin")
-        self.assertEqual(401, status)
-        self.assertIn("Basic", response_headers["WWW-Authenticate"])
+        status, response_headers, raw = self.request("/admin")
+        self.assertEqual(200, status, raw)
+        self.assertNotIn("WWW-Authenticate", response_headers)
+        self.assertIn("登录管理后台", raw.decode("utf-8"))
 
-        credential = base64.b64encode(b"admin:test-admin-password").decode("ascii")
-        status, _, raw = self.request("/admin", headers={"Authorization": f"Basic {credential}"})
+        status, response_headers, _ = self.request_form_without_redirect(
+            "/admin/login",
+            {"username": "admin", "password": "test-admin-password"},
+            {},
+        )
+        self.assertEqual(303, status)
+        self.assertIn("paykitodo_admin_session=", response_headers["Set-Cookie"])
+        cookie = response_headers["Set-Cookie"].split(";", 1)[0]
+
+        status, _, raw = self.request("/admin", headers={"Cookie": cookie})
         self.assertEqual(200, status, raw)
         page = raw.decode("utf-8")
         self.assertIn("PaykiTodo 管理后台", page)
         self.assertIn("tester_admin", page)
+
+        status, _, _ = self.request("/admin", headers={"Authorization": "Basic invalid"})
+        self.assertEqual(200, status)
 
     def test_admin_state_changes_require_csrf_and_revoke_device(self):
         account = self.create_account("admin_actions")

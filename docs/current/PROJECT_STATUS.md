@@ -8,7 +8,7 @@
 - Supported Android: Android 8.0+ / API 26+
 - Compile and target SDK: Android 14 / API 34
 - License: MIT
-- App version: `1.16.0 / versionCode 365` (current local development source)
+- App version: `1.16.1 / versionCode 366` (current local development source)
 - Room database version: `30`
 
 ## Published Build
@@ -16,8 +16,8 @@
 - GitHub Release: `https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.15.18`
 - Release APK: `app/build/outputs/apk/release/PaykiTodo-1.15.18-release.apk`
 - Public asset name: `PaykiTodo-1.15.18-release.apk`
-- Current debug APK: `app/build/outputs/apk/debug/PaykiTodo-1.16.0-debug.apk` (after this round's build)
-- Current signed release APK: `app/build/outputs/apk/release/PaykiTodo-1.16.0-release.apk` (after this round's build)
+- Current debug APK: `app/build/outputs/apk/debug/PaykiTodo-1.16.1-debug.apk` (after this round's build)
+- Current signed release APK: not rebuilt in this round; release signing material remains local and ignored by Git.
 - Current Windows self-contained EXE: `desktop/dist/PaykiTodo.exe` (after this round's publish)
 - Release signing material remains local and ignored by Git.
 
@@ -41,6 +41,11 @@ PaykiTodo is a local-first Android assistant for todos, DDLs, schedules, countdo
 - Desktop Web calendar now uses the same current-time line convention as the phone calendar, separates today's date from the selected date, and flashes the selected week column briefly.
 
 See `README.md` for the public overview and `docs/current/FEATURE_LEDGER.md` for the detailed implementation ledger.
+
+## v1.16.1 Development Scope (not published)
+
+- Replaced the browser-native administrator Basic Auth prompt with a PaykiTodo-owned HTML login page and cookie session flow.
+- Preserved CSRF-protected administrator actions and script-compatible valid Basic Auth without issuing an authentication challenge for ordinary browser requests.
 
 ## v1.16.0 Development Scope (not published)
 
@@ -103,7 +108,7 @@ See `README.md` for the public overview and `docs/current/FEATURE_LEDGER.md` for
 - Remote sync is currently encrypted whole-snapshot synchronization rather than field-level operation merge. Conflicts are blocked and must be resolved by explicit local/remote restore; there is no automatic field-level merge.
 - The administrator service is deployed behind the owner's private Cloudflare hostname through an independent Nginx server block; the real hostname, DNS values, Cloudflare settings, certificate paths, administrator password, and server pepper remain outside Git.
 - The origin certificate is issued specifically for the private PaykiTodo hostname and Certbot renewal is enabled. The public route exposes only HTTPS `443`; the cloud process remains loopback-only on `18766` and is not the 1Panel service.
-- Cloudflare WAF/rate-limit policy still needs periodic review in the owner's Cloudflare account. The current application-level registration/login rate limits and administrator Basic Auth are active, but administrator MFA is not implemented yet.
+- Cloudflare WAF/rate-limit policy still needs periodic review in the owner's Cloudflare account. The current application-level registration/login rate limits and administrator web-session login are active, but administrator MFA is not implemented yet.
 - The Windows cloud mode is writable against its local copy; LAN mode still requires a running phone service and all modes require WebView2 Runtime.
 - Desktop self-contained publish reports a non-fatal `WindowsBase` assembly version warning from the WebView2 package's WPF reference while compiling the WinForms shell.
 - A release build signed with a different key cannot directly replace a locally installed debug build. Export a backup before switching signatures.

@@ -2,10 +2,11 @@
 
 ## 文档状态
 
-- 状态：`1.16.0` 第一阶段实现基线。
+- 状态：`1.16.1` 第一阶段实现基线与管理员网页登录修复。
 - 旧服务器代码 `server/paykitodo_sync_server.py` 继续为旧安装提供按设备 ID 的密文中转兼容。
 - 新服务器代码 `server/paykitodo_cloud_server.py` 已实现账号、令牌、设备、版本化密文快照和管理员页面，默认监听 `127.0.0.1:18766`。
 - Windows EXE 已拥有 DPAPI 保护的本地数据副本，可离线编辑并通过账号同步；手机 `18765` 仍是独立的 LAN 兼容模式。
+- 管理后台未登录时显示站内登录页，使用 HttpOnly/Secure/SameSite 会话 Cookie；不再依赖浏览器原生 Basic Auth 弹窗。有效 Basic Auth 仅作为脚本兼容入口保留。
 - 本文不包含账号密码、API Key、SSH 私钥、Cloudflare Token 或真实服务器地址之外的敏感凭据。
 
 ## 1. 产品边界

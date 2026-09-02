@@ -26,10 +26,24 @@ class BackupManager(
             ?: error("无法读取所选文件")
     }
 
+    @Synchronized
     fun autoBackupToDirectory(directoryUri: String, snapshot: BackupSnapshot): String {
         val tree = DocumentFile.fromTreeUri(context, Uri.parse(directoryUri))
             ?: error("备份目录不可访问")
-        val file = tree.findFile(LATEST_BACKUP_FILE_NAME)
+        val existingFile = tree.findFile(LATEST_BACKUP_FILE_NAME)
+        val fingerprint = BackupArchiveCodec.contentFingerprint(snapshot)
+        val unchanged = existingFile?.let { file ->
+            runCatching {
+                context.contentResolver.openInputStream(file.uri)?.use(BackupArchiveCodec::read)
+            }.getOrNull()?.let { previous ->
+                BackupArchiveCodec.contentFingerprint(previous) == fingerprint
+            } == true
+        } == true
+        if (existingFile != null && unchanged) {
+            cleanupLegacyBackups(tree, existingFile)
+            return existingFile.name ?: LATEST_BACKUP_FILE_NAME
+        }
+        val file = existingFile
             ?: tree.createFile(BackupArchiveCodec.MIME_TYPE, LATEST_BACKUP_FILE_NAME)
             ?: error("无法在备份目录中创建文件")
         val output = runCatching {
@@ -39,14 +53,18 @@ class BackupManager(
         output.use { outputStream ->
             BackupArchiveCodec.write(snapshot, outputStream)
         }
+        cleanupLegacyBackups(tree, file)
+        return file.name ?: LATEST_BACKUP_FILE_NAME
+    }
+
+    private fun cleanupLegacyBackups(tree: DocumentFile, latestFile: DocumentFile) {
         tree.listFiles()
             .filter { candidate ->
-                candidate.uri != file.uri &&
+                candidate.uri != latestFile.uri &&
                     candidate.name?.startsWith(LEGACY_BACKUP_FILE_PREFIX) == true &&
                     candidate.name?.endsWith(".${BackupArchiveCodec.FILE_EXTENSION}") == true
             }
             .forEach { candidate -> candidate.delete() }
-        return file.name ?: LATEST_BACKUP_FILE_NAME
     }
 
     fun autoBackupToInternalStorage(snapshot: BackupSnapshot): String {

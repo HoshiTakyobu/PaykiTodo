@@ -200,10 +200,16 @@ class ReminderAccessibilityOverlay(
             TextView(service).apply {
                 text = item.title
                 setTextColor(Color.parseColor("#10243D"))
-                setTextSize(26f)
+                setTextSize(22f)
                 typeface = Typeface.DEFAULT_BOLD
                 setLineSpacing(0f, 1.1f)
                 setPadding(0, dp(16), 0, 0)
+                setSingleLine(false)
+                maxLines = Int.MAX_VALUE
+                layoutParams = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT
+                )
             }
         )
 
@@ -418,7 +424,7 @@ class ReminderAccessibilityOverlay(
                 updated?.let { it to resolveTaskGroup(it, app.repository.getGroup(it.groupId)) }
             }
             if (retained == null) return@launch
-            ReminderForegroundService.dismiss(service, todoId)
+            ReminderForegroundService.dismissForReschedule(service, todoId)
             hide(todoId)
             Toast.makeText(service, "已延后 $minutes 分钟", Toast.LENGTH_SHORT).show()
         }
@@ -469,7 +475,7 @@ class ReminderAccessibilityOverlay(
         return Button(service).apply {
             text = label
             setTextColor(Color.WHITE)
-            textSize = 16f
+            textSize = 15f
             typeface = Typeface.DEFAULT_BOLD
             background = GradientDrawable().apply {
                 cornerRadius = dp(18).toFloat()
@@ -480,8 +486,10 @@ class ReminderAccessibilityOverlay(
             minWidth = 0
             minimumWidth = 0
             setPadding(dp(6), 0, dp(6), 0)
-            maxLines = 1
-            ellipsize = android.text.TextUtils.TruncateAt.END
+            setSingleLine(true)
+            ellipsize = null
+            gravity = Gravity.CENTER
+            includeFontPadding = false
         }
     }
 

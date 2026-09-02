@@ -2,7 +2,15 @@
 
 ## Active Focus
 
-The `v1.16.2` local development round finishes the account boundary and Debug-to-Release migration path on top of the first usable account/cloud and independent Windows client implementation. The private cloud service is deployed separately from Git; it is not a GitHub Release yet, and the latest public release remains `v1.15.18`.
+The `v1.16.4` local validation round completes the account transition fix and Android Release UI audit on top of the account/cloud, migration, and independent Windows client implementation. The private cloud service is deployed separately from Git; no GitHub Release is being created in this round.
+
+## Completed `v1.16.4` Scope
+
+1. Moved Android login and registration network work to `Dispatchers.IO` so the authentication action does not block the UI thread.
+2. Refreshed the ViewModel authentication signal immediately after successful login or registration, so the app opens the daily board without requiring a restart or a polling tick.
+3. Installed the signed Release build on the Android emulator and verified login, relaunch persistence, daily board, drawer, todos, calendar, Planning Desk, settings, and appearance navigation.
+4. Added `docs/current/ANDROID_RELEASE_UI_AUDIT_1.16.3.md` with UI-tree evidence scope and residual physical-device risks.
+5. Restored the final build configuration to the HTTPS cloud endpoint; the local cleartext endpoint used for isolated emulator testing is not part of the final build.
 
 ## Completed `v1.16.2` Scope
 
@@ -57,7 +65,7 @@ The `v1.16.2` local development round finishes the account boundary and Debug-to
 
 ## Next Validation
 
-1. Install `1.16.2` Debug or Release on the matching signed profile and smoke-test startup, migration import, todo creation, event creation, and Desktop Sync.
+1. Install `1.16.4` Release on a physical device and smoke-test startup, migration import, todo creation, event creation, and Desktop Sync.
 2. Verify the single reminder switch and the event/intermediate/final todo action layouts on a physical phone.
 3. Verify full-screen behavior while locked and while unlocked inside another app on the user's OEM ROM.
 4. Verify daily-board and countdown widgets after installation, resize, date change, and dark/light theme change.

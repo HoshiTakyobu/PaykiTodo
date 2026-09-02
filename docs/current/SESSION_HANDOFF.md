@@ -4,12 +4,12 @@
 
 - Repository root: `G:\Workspace\Project\PaykiTodo`
 - Branch: `main`
-- App version: `1.16.2 / versionCode 367` (local development; not published)
+- App version: `1.16.4 / versionCode 369` (local validation; not published)
 - Room database version: `30`
 - Latest public GitHub Release: `v1.15.18`
 - Android outputs after final verification:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.16.2-debug.apk`
-  - `app/build/outputs/apk/release/PaykiTodo-1.16.2-release.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.16.4-debug.apk`
+  - `app/build/outputs/apk/release/PaykiTodo-1.16.4-release.apk`
 - Windows output after final publish: `desktop/dist/PaykiTodo.exe`
 - Private cloud deployment: service enabled on the Azure host, origin loopback `127.0.0.1:18766`, public access through the privately configured Cloudflare/Nginx HTTPS hostname, and the administrator page at `/admin`.
 
@@ -52,9 +52,11 @@
 3. Cloudflare proxy and HTTPS routing are working. WAF/rate-limit policy should be reviewed in the Cloudflare console before adding real users.
 4. Android and Windows real-client login/offline edit/conflict testing remains the next device-level acceptance step; do not migrate important data until that smoke test passes.
 
-5. Android emulator acceptance on 2026-09-02: AVD `Pixel_8` / device `emulator-5554` installed `PaykiTodo-1.16.2-debug.apk`, launched without a crash, and displayed the account login page. The UI tree confirmed the account fields, user agreement, `导出本机数据`, and `导入迁移包` actions. Physical Android reminder behavior and real Android/Windows account conflict testing remain outstanding.
-6. The cloud service was redeployed from the current source on 2026-09-02; its HTTPS reverse-proxy `/admin` check returned the in-page login UI without `WWW-Authenticate`.
-7. The local `user/Build-PaykiTodoRelease.ps1 -SkipDebugBuild` wrapper was run successfully after moving signing configuration to `user/`; it generated and independently verified the signed `1.16.2` Release APK. The output and checksum remain ignored local artifacts.
+5. Android Release acceptance on 2026-09-02: device `emulator-5554` installed signed `PaykiTodo-1.16.3-release.apk`, then the authentication refresh fix was verified and the current source was advanced to `1.16.4`. Login, relaunch persistence, daily board, drawer, todos, calendar, Planning Desk, settings, and appearance navigation were checked. Physical Android reminder behavior and real Android/Windows account conflict testing remain outstanding.
+6. The account transition fix runs login/registration on `Dispatchers.IO` and explicitly signals the ViewModel after success; without this, a successful server response could leave the login screen visible until a later lifecycle refresh.
+7. UI audit evidence is recorded in `docs/current/ANDROID_RELEASE_UI_AUDIT_1.16.3.md`; screenshots and XML dumps remain only in ignored `.tmp/audit-1.16.3/`.
+8. The cloud service was redeployed from the current source on 2026-09-02; its HTTPS reverse-proxy `/admin` check returned the in-page login UI without `WWW-Authenticate`.
+9. The local `user/Build-PaykiTodoRelease.ps1 -SkipDebugBuild` wrapper remains the local Release build entry point; signing material, output APKs, and checksums remain ignored local artifacts.
 
 ## Known Limitations
 

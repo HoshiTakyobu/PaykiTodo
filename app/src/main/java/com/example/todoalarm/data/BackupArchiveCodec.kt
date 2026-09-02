@@ -67,6 +67,11 @@ internal object BackupArchiveCodec {
         return read(ByteArrayInputStream(bytes))
     }
 
+    internal fun contentFingerprint(snapshot: BackupSnapshot): String {
+        val stableSnapshot = snapshot.copy(exportedAtMillis = 0L)
+        return stableSnapshot.toJson().toString().toByteArray(StandardCharsets.UTF_8).sha256()
+    }
+
     private fun readArchive(input: InputStream): BackupSnapshot {
         var manifestBytes: ByteArray? = null
         var snapshotBytes: ByteArray? = null

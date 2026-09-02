@@ -8,7 +8,7 @@
 - Supported Android: Android 8.0+ / API 26+
 - Compile and target SDK: Android 14 / API 34
 - License: MIT
-- App version: `1.16.2 / versionCode 367` (current local development source)
+- App version: `1.16.4 / versionCode 369` (current local validation source)
 - Room database version: `30`
 
 ## Published Build
@@ -16,8 +16,8 @@
 - GitHub Release: `https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.15.18`
 - Release APK: `app/build/outputs/apk/release/PaykiTodo-1.15.18-release.apk`
 - Public asset name: `PaykiTodo-1.15.18-release.apk`
-- Current debug APK: `app/build/outputs/apk/debug/PaykiTodo-1.16.2-debug.apk` (after this round's build)
-- Current signed release APK: `app/build/outputs/apk/release/PaykiTodo-1.16.2-release.apk` (after this round's build)
+- Current debug APK: `app/build/outputs/apk/debug/PaykiTodo-1.16.4-debug.apk` (after this round's build)
+- Current signed release APK: `app/build/outputs/apk/release/PaykiTodo-1.16.4-release.apk` (after this round's build)
 - Current Windows self-contained EXE: `desktop/dist/PaykiTodo.exe` (after this round's publish)
 - Release signing material remains local and ignored by Git.
 
@@ -48,6 +48,12 @@ See `README.md` for the public overview and `docs/current/FEATURE_LEDGER.md` for
 - Stopped the phone LAN service explicitly during account logout and blocked unauthenticated secondary entry points, reminder surfaces, and widgets from exposing local data.
 - Made reminder dismissal remove stale notification/service artifacts and kept long-title reminder actions readable on narrow screens.
 - Changed automatic backups to one latest file updated after data changes instead of accumulating timestamped files.
+
+## v1.16.4 Validation Scope (not published)
+
+- Moved account login/registration off the UI thread and refreshed the authenticated ViewModel state immediately after success.
+- Completed signed Release emulator navigation and UI audit for the account gate, board, drawer, todos, calendar, Planning Desk, settings, and appearance selector.
+- Recorded audit evidence and physical-device residual risks in `ANDROID_RELEASE_UI_AUDIT_1.16.3.md`.
 
 ## v1.16.1 Development Scope (not published)
 

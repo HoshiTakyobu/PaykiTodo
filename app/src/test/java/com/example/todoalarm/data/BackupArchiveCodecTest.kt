@@ -66,6 +66,20 @@ class BackupArchiveCodecTest {
     }
 
     @Test
+    fun contentFingerprintIgnoresExportTimestampButDetectsDataChanges() {
+        val source = sampleSnapshot()
+
+        assertEquals(
+            BackupArchiveCodec.contentFingerprint(source),
+            BackupArchiveCodec.contentFingerprint(source.copy(exportedAtMillis = 999_999_999L))
+        )
+        assertFalse(
+            BackupArchiveCodec.contentFingerprint(source) ==
+                BackupArchiveCodec.contentFingerprint(source.copy(settings = AppSettings(themeMode = ThemeMode.LIGHT)))
+        )
+    }
+
+    @Test
     fun archiveExcludesLocalCredentialsAndFileAuthorization() {
         val source = sampleSnapshot().copy(
             settings = AppSettings(

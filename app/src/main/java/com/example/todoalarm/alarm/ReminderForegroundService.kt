@@ -111,6 +111,20 @@ class ReminderForegroundService : Service() {
                 return@launch
             }
 
+            if (triggeredAtMillis != null && !app.alarmScheduler.isReminderScheduled(todoId, triggeredAtMillis)) {
+                ReminderChainLogger.log(
+                    context = this@ReminderForegroundService,
+                    todoId = todoId,
+                    source = "ReminderForegroundService",
+                    stage = ReminderChainStage.SERVICE_INVALID_ITEM,
+                    status = ReminderChainStatus.INFO,
+                    reminderAtMillis = triggeredAtMillis,
+                    message = "stale_alarm_ignored"
+                )
+                discardReminderStart(todoId, startId)
+                return@launch
+            }
+
             ReminderChainLogger.log(
                 context = this@ReminderForegroundService,
                 todoId = todoId,
@@ -262,6 +276,17 @@ class ReminderForegroundService : Service() {
         }
         getSystemService(NotificationManager::class.java)?.cancel(ReminderNotifier.notificationId(todoId))
         keepDetachedNotification = false
+        stopSelf(startId)
+    }
+
+    private fun discardReminderStart(todoId: Long, startId: Int) {
+        alertController.stop()
+        ReminderAccessibilityService.hideOverlayNow(todoId)
+        ReminderDispatchTracker.clear(this, todoId)
+        ActiveReminderStore.clearIfMatches(this, todoId)
+        ActiveReminderStore.clearActivityHandoff(this, todoId)
+        ActiveReminderStore.clearReminderSurfaceMarker(this, todoId)
+        getSystemService(NotificationManager::class.java)?.cancel(ReminderNotifier.notificationId(todoId))
         stopSelf(startId)
     }
 
@@ -528,6 +553,17 @@ class ReminderForegroundService : Service() {
             }
             context.getSystemService(NotificationManager::class.java)
                 ?.cancel(ReminderNotifier.notificationId(todoId))
+        }
+
+        fun dismissForReschedule(context: Context, todoId: Long) {
+            ReminderAccessibilityService.hideOverlayNow(todoId)
+            ReminderDispatchTracker.clear(context, todoId)
+            ActiveReminderStore.clearIfMatches(context, todoId)
+            ActiveReminderStore.clearActivityHandoff(context, todoId)
+            ActiveReminderStore.clearReminderSurfaceMarker(context, todoId)
+            context.getSystemService(NotificationManager::class.java)
+                ?.cancel(ReminderNotifier.notificationId(todoId))
+            context.stopService(Intent(context, ReminderForegroundService::class.java))
         }
 
         fun dismissKeepingNotification(

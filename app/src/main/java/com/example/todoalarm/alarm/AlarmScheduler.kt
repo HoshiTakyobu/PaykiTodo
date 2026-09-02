@@ -198,6 +198,14 @@ class AlarmScheduler(
         }.apply()
     }
 
+    fun isReminderScheduled(todoId: Long, reminderAtMillis: Long): Boolean {
+        if (reminderAtMillis <= 0L) return false
+        return context.getSharedPreferences(SCHEDULE_PREFS, Context.MODE_PRIVATE)
+            .getStringSet(scheduledSetKey(todoId), emptySet())
+            .orEmpty()
+            .contains(reminderAtMillis.toString())
+    }
+
     private fun cancelReminderAlarms(todoId: Long) {
         alarmManager.cancel(buildBroadcastIntent(todoId, 0L, ACTION_EXACT, EXACT_OFFSET))
         alarmManager.cancel(buildBroadcastIntent(todoId, 0L, ACTION_BACKUP, BACKUP_OFFSET))

@@ -218,7 +218,7 @@ class ReminderActivity : ComponentActivity() {
             val updated = app.repository.snoozeTodo(item.id, nextMinuteAlignedReminder(minutes))
             if (updated != null) {
                 app.alarmScheduler.schedule(updated)
-                ReminderForegroundService.dismiss(this@ReminderActivity, item.id)
+                ReminderForegroundService.dismissForReschedule(this@ReminderActivity, item.id)
                 finish()
             } else {
                 closeReminder(item.id)
@@ -394,6 +394,8 @@ private fun ReminderScreen(
                     color = MaterialTheme.colorScheme.onSurface,
                     textAlign = TextAlign.Center,
                     softWrap = true,
+                    maxLines = Int.MAX_VALUE,
+                    overflow = TextOverflow.Clip,
                 )
 
                 Text(
@@ -485,7 +487,13 @@ private fun ReminderScreen(
                             containerColor = if (alarmMode) Color(0xFFD32F2F) else Color(0xFF18794E)
                         )
                     ) {
-                        Text(primaryActionText, maxLines = 1, softWrap = false, overflow = TextOverflow.Ellipsis)
+                         Text(
+                             primaryActionText,
+                             maxLines = 1,
+                             softWrap = false,
+                             overflow = TextOverflow.Clip,
+                             style = MaterialTheme.typography.labelLarge
+                         )
                     }
                     if (!isEvent) {
                         FilledTonalButton(
@@ -496,7 +504,13 @@ private fun ReminderScreen(
                             shape = RoundedCornerShape(20.dp),
                             contentPadding = PaddingValues(horizontal = 6.dp, vertical = 0.dp)
                         ) {
-                            Text("我知道了", maxLines = 1, softWrap = false, overflow = TextOverflow.Ellipsis)
+                            Text(
+                                "我知道了",
+                                maxLines = 1,
+                                softWrap = false,
+                                overflow = TextOverflow.Clip,
+                                style = MaterialTheme.typography.labelLarge
+                            )
                         }
                     }
                 }
@@ -509,7 +523,13 @@ private fun ReminderScreen(
                         shape = RoundedCornerShape(20.dp),
                         contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp)
                     ) {
-                         Text("延后10分钟", maxLines = 1, softWrap = false, overflow = TextOverflow.Clip)
+                         Text(
+                             "延后10分钟",
+                             maxLines = 1,
+                             softWrap = false,
+                             overflow = TextOverflow.Clip,
+                             style = MaterialTheme.typography.labelLarge
+                         )
                     }
                 }
             }

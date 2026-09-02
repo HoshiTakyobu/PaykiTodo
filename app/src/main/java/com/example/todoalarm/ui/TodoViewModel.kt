@@ -455,14 +455,14 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
 
     suspend fun openOrCreateTodayPlanningNote(): Long {
         val today = LocalDate.now()
-        val existing = repository.getPlanningNoteByDocumentDate(today)
+        val datedNote = repository.getPlanningNoteByDocumentDate(today)
             ?: repository.getAllPlanningNotes()
                 .filter { !it.archived }
                 .firstOrNull { note -> planningTitleMatchesDate(note.title, today) }
-            ?: repository.createPlanningNote("${today.monthValue}月${today.dayOfMonth}日", today)
-        settingsStore.updateLastOpenedPlanningNoteId(existing.id)
-        autoBackupIfEnabled()
-        return existing.id
+        val note = datedNote ?: repository.createPlanningNote("${today.monthValue}月${today.dayOfMonth}日", today)
+        settingsStore.updateLastOpenedPlanningNoteId(note.id)
+        if (datedNote == null) autoBackupIfEnabled()
+        return note.id
     }
 
     suspend fun savePlanningNoteContent(noteId: Long, contentMarkdown: String): String? {
@@ -1090,11 +1090,19 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
     fun isAuthenticated(): Boolean = settingsStore.hasValidRemoteSession()
 
     suspend fun loginAccount(username: String, password: String): AccountAuthResult {
-        return app.remoteSyncCoordinator.login(username, password)
+        return withContext(Dispatchers.IO) {
+            app.remoteSyncCoordinator.login(username, password)
+        }.also { result ->
+            if (result.succeeded) authenticationTick.value = System.currentTimeMillis()
+        }
     }
 
     suspend fun registerAccount(username: String, displayName: String, password: String): AccountAuthResult {
-        return app.remoteSyncCoordinator.register(username, displayName, password)
+        return withContext(Dispatchers.IO) {
+            app.remoteSyncCoordinator.register(username, displayName, password)
+        }.also { result ->
+            if (result.succeeded) authenticationTick.value = System.currentTimeMillis()
+        }
     }
 
     suspend fun recoverAccount(username: String, recoveryCode: String, newPassword: String): String? {

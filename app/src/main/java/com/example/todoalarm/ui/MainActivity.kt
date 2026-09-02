@@ -31,6 +31,9 @@ import androidx.activity.viewModels
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -71,6 +74,7 @@ class MainActivity : ComponentActivity() {
     private var launchRoute by mutableStateOf<DashboardLaunchRoute?>(null)
     private var launchRouteSerial by mutableStateOf(0)
     private var systemDarkTheme by mutableStateOf(false)
+    private var recoveryCodeNotice by mutableStateOf<String?>(null)
 
     private val notificationPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
@@ -158,7 +162,25 @@ class MainActivity : ComponentActivity() {
                 themeMode = uiState.settings.themeMode,
                 systemDarkTheme = systemDarkTheme
             ) {
-                DashboardScreen(
+                if (!uiState.authenticated) {
+                    AccountAuthScreen(
+                        onLogin = viewModel::loginAccount,
+                        onRegister = viewModel::registerAccount,
+                        onRecover = viewModel::recoverAccount,
+                        onRecoveryCode = { recoveryCodeNotice = it },
+                        onExportMigration = { exportBackupLauncher.launch("PaykiTodo-migration.paykibak") },
+                        onImportMigration = {
+                            importBackupLauncher.launch(
+                                arrayOf(
+                                    BackupArchiveCodec.MIME_TYPE,
+                                    "application/zip",
+                                    "application/json",
+                                    "application/octet-stream"
+                                )
+                            )
+                        },
+                    )
+                } else DashboardScreen(
                     uiState = uiState,
                     desktopSyncStatus = viewModel.desktopSyncStatus,
                     planningNotes = viewModel.planningNotes,
@@ -294,21 +316,21 @@ class MainActivity : ComponentActivity() {
                         )
                     },
                     onAutoBackupChange = viewModel::updateAutoBackupEnabled,
-                    onRemoteSyncEnabledChange = { enabled, serverUrl ->
-                        viewModel.updateRemoteSync(enabled, serverUrl)
-                    },
-                    onRemoteSyncServerUrlChange = viewModel::updateRemoteSyncServerUrl,
-                    onRemoteSyncNow = {
-                        Toast.makeText(this, viewModel.syncRemoteNow(), Toast.LENGTH_SHORT).show()
-                    },
-                    onRemoteAccountAuthenticate = viewModel::authenticateRemoteAccount,
-                    onRemoteAccountLogout = viewModel::logoutRemoteAccount,
-                    onInspectRemoteBackup = viewModel::inspectRemoteBackup,
-                    onRestoreRemoteBackup = viewModel::restoreRemoteBackup,
+                    onLogoutAccount = viewModel::logoutRemoteAccount,
                     onInspectDataHealth = viewModel::inspectDataHealth,
                     onCleanSafeDataHealthItems = viewModel::cleanSafeDataHealthItems,
                     onBoardCollapseStateChange = viewModel::updateBoardCollapseState
                 )
+                recoveryCodeNotice?.let { code ->
+                    AlertDialog(
+                        onDismissRequest = { recoveryCodeNotice = null },
+                        title = { Text("请保存恢复码") },
+                        text = { Text("这是找回账号密码的唯一凭证，请立即抄录并妥善保管：\n\n$code") },
+                        confirmButton = {
+                            TextButton(onClick = { recoveryCodeNotice = null }) { Text("我已保存") }
+                        },
+                    )
+                }
             }
         }
     }

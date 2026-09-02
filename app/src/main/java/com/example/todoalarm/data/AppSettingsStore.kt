@@ -135,6 +135,20 @@ class AppSettingsStore(context: Context) {
 
     fun currentSettings(): AppSettings = _settings.value
 
+    fun hasValidRemoteSession(nowMillis: Long = System.currentTimeMillis()): Boolean {
+        val settings = currentSettings()
+        return settings.remoteSyncUsername.isNotBlank() &&
+            settings.remoteSyncRefreshToken.isNotBlank() &&
+            settings.remoteSyncRefreshExpiresAt > nowMillis / 1000L
+    }
+
+    fun clearExpiredRemoteSessionIfNeeded(nowMillis: Long = System.currentTimeMillis()): Boolean {
+        if (currentSettings().remoteSyncUsername.isBlank()) return false
+        if (hasValidRemoteSession(nowMillis)) return false
+        clearRemoteAccount()
+        return true
+    }
+
     fun updateThemeMode(themeMode: ThemeMode) {
         preferences.edit().putString(KEY_THEME_MODE, themeMode.name).apply()
         refresh()

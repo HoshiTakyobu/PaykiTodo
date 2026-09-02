@@ -49,6 +49,11 @@ class ReminderForegroundService : Service() {
         } else {
             ActiveReminderStore.getActiveTodoId(this)
         }
+        if (intent?.action == ACTION_DISMISS_WITHOUT_NOTIFICATION) {
+            keepDetachedNotification = false
+            stopAlertingWithoutNotification(todoId, startId)
+            return START_NOT_STICKY
+        }
         if (intent?.action == ACTION_DISMISS_KEEP_NOTIFICATION) {
             stopAlertingKeepingNotification(
                 todoId = todoId,
@@ -78,6 +83,19 @@ class ReminderForegroundService : Service() {
 
         scope.launch {
             val app = application as TodoApplication
+            if (!app.settingsStore.hasValidRemoteSession()) {
+                ReminderChainLogger.log(
+                    context = this@ReminderForegroundService,
+                    todoId = todoId,
+                    source = "ReminderForegroundService",
+                    stage = ReminderChainStage.SERVICE_INVALID_ITEM,
+                    status = ReminderChainStatus.WARN,
+                    message = "authentication_required"
+                )
+                dismiss(this@ReminderForegroundService, todoId)
+                stopSelf(startId)
+                return@launch
+            }
             val todoItem = app.repository.getTodo(todoId)
             if (todoItem == null || todoItem.isHistory || !todoItem.reminderEnabled) {
                 ReminderChainLogger.log(
@@ -224,6 +242,27 @@ class ReminderForegroundService : Service() {
             }
             stopSelf(startId)
         }
+    }
+
+    private fun stopAlertingWithoutNotification(todoId: Long, startId: Int) {
+        alertController.stop()
+        ReminderAccessibilityService.hideOverlayNow(todoId)
+        ReminderDispatchTracker.clear(this, todoId)
+        ActiveReminderStore.clearIfMatches(this, todoId)
+        ActiveReminderStore.clearActivityHandoff(this, todoId)
+        ActiveReminderStore.clearReminderSurfaceMarker(this, todoId)
+        unregisterUserPresentReceiver()
+        if (foregroundTodoId == todoId) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                stopForeground(STOP_FOREGROUND_REMOVE)
+            } else {
+                @Suppress("DEPRECATION")
+                stopForeground(true)
+            }
+        }
+        getSystemService(NotificationManager::class.java)?.cancel(ReminderNotifier.notificationId(todoId))
+        keepDetachedNotification = false
+        stopSelf(startId)
     }
 
     private fun removeForegroundNotification() {
@@ -447,6 +486,7 @@ class ReminderForegroundService : Service() {
 
     companion object {
         private const val ACTION_DISMISS_KEEP_NOTIFICATION = "com.example.todoalarm.action.DISMISS_KEEP_NOTIFICATION"
+        private const val ACTION_DISMISS_WITHOUT_NOTIFICATION = "com.example.todoalarm.action.DISMISS_WITHOUT_NOTIFICATION"
         private const val EXTRA_RETAINED_MESSAGE = "com.example.todoalarm.extra.RETAINED_MESSAGE"
         private const val REMINDER_SESSION_DURATION_MS = 5 * 60 * 1000L
         private const val ALARM_MODE_RETRY_INTERVAL_MS = 2 * 60 * 1000L
@@ -473,9 +513,21 @@ class ReminderForegroundService : Service() {
             ActiveReminderStore.clearIfMatches(context, todoId)
             ActiveReminderStore.clearActivityHandoff(context, todoId)
             ActiveReminderStore.clearReminderSurfaceMarker(context, todoId)
+            context.getSystemService(NotificationManager::class.java)
+                ?.cancel(ReminderNotifier.notificationId(todoId))
             if (ActiveReminderStore.getServiceTodoId(context) == todoId) {
+                runCatching {
+                    context.startService(
+                        Intent(context, ReminderForegroundService::class.java).apply {
+                            action = ACTION_DISMISS_WITHOUT_NOTIFICATION
+                            putExtra(AlarmScheduler.EXTRA_TODO_ID, todoId)
+                        }
+                    )
+                }
                 context.stopService(Intent(context, ReminderForegroundService::class.java))
             }
+            context.getSystemService(NotificationManager::class.java)
+                ?.cancel(ReminderNotifier.notificationId(todoId))
         }
 
         fun dismissKeepingNotification(

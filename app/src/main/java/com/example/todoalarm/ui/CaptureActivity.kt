@@ -2,10 +2,12 @@ package com.example.todoalarm.ui
 
 import android.net.Uri
 import android.os.Bundle
+import android.content.Intent
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.FileProvider
+import com.example.todoalarm.TodoApplication
 import java.io.File
 
 class CaptureActivity : ComponentActivity() {
@@ -22,6 +24,16 @@ class CaptureActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        val app = application as TodoApplication
+        if (!app.settingsStore.hasValidRemoteSession()) {
+            startActivity(
+                Intent(this, MainActivity::class.java).apply {
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+                }
+            )
+            finish()
+            return
+        }
         val uri = createCaptureUri()
         pendingPhotoUri = uri
         takePictureLauncher.launch(uri)

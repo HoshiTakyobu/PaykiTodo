@@ -8,7 +8,7 @@
 - Supported Android: Android 8.0+ / API 26+
 - Compile and target SDK: Android 14 / API 34
 - License: MIT
-- App version: `1.16.1 / versionCode 366` (current local development source)
+- App version: `1.16.2 / versionCode 367` (current local development source)
 - Room database version: `30`
 
 ## Published Build
@@ -16,8 +16,8 @@
 - GitHub Release: `https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.15.18`
 - Release APK: `app/build/outputs/apk/release/PaykiTodo-1.15.18-release.apk`
 - Public asset name: `PaykiTodo-1.15.18-release.apk`
-- Current debug APK: `app/build/outputs/apk/debug/PaykiTodo-1.16.1-debug.apk` (after this round's build)
-- Current signed release APK: `app/build/outputs/apk/release/PaykiTodo-1.16.1-release.apk` (built and signature-verified in this round)
+- Current debug APK: `app/build/outputs/apk/debug/PaykiTodo-1.16.2-debug.apk` (after this round's build)
+- Current signed release APK: `app/build/outputs/apk/release/PaykiTodo-1.16.2-release.apk` (after this round's build)
 - Current Windows self-contained EXE: `desktop/dist/PaykiTodo.exe` (after this round's publish)
 - Release signing material remains local and ignored by Git.
 
@@ -41,6 +41,13 @@ PaykiTodo is a local-first Android assistant for todos, DDLs, schedules, countdo
 - Desktop Web calendar now uses the same current-time line convention as the phone calendar, separates today's date from the selected date, and flashes the selected week column briefly.
 
 See `README.md` for the public overview and `docs/current/FEATURE_LEDGER.md` for the detailed implementation ledger.
+
+## v1.16.2 Development Scope (not published)
+
+- Added migration-package export/import actions to the unauthenticated login surface so Debug-to-Release data transfer remains available before account login.
+- Stopped the phone LAN service explicitly during account logout and blocked unauthenticated secondary entry points, reminder surfaces, and widgets from exposing local data.
+- Made reminder dismissal remove stale notification/service artifacts and kept long-title reminder actions readable on narrow screens.
+- Changed automatic backups to one latest file updated after data changes instead of accumulating timestamped files.
 
 ## v1.16.1 Development Scope (not published)
 

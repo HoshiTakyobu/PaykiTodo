@@ -70,6 +70,7 @@ import com.example.todoalarm.data.toEpochMillis
 import com.example.todoalarm.data.storageStringToWeekdays
 import com.example.todoalarm.sync.DesktopSyncStatus
 import com.example.todoalarm.sync.DesktopSyncService
+import com.example.todoalarm.sync.AccountAuthResult
 import com.example.todoalarm.sync.RemoteBackupInspection
 import com.example.todoalarm.sync.diffAgainst
 import com.example.todoalarm.sync.remoteSummary
@@ -106,7 +107,8 @@ data class TodoUiState(
     val activeAnnouncements: List<PlanningAnnouncement> = emptyList(),
     val settings: AppSettings = AppSettings(),
     val currentQuote: String = QuoteRepository.seedQuotes.first(),
-    val dataReady: Boolean = false
+    val dataReady: Boolean = false,
+    val authenticated: Boolean = false
 )
 
 class TodoViewModel(application: Application) : AndroidViewModel(application) {
@@ -121,6 +123,7 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
     private val selectedGroupIdsFlow = MutableStateFlow<Set<Long>>(emptySet())
     private val groupFilterModeFlow = MutableStateFlow(GroupFilterMode.INTERSECTION)
     private val desktopSyncRefreshTick = MutableStateFlow(0L)
+    private val authenticationTick = MutableStateFlow(0L)
     private val todayDateFlow = MutableStateFlow(LocalDate.now())
     private val calendarEventWindowFlow = MutableStateFlow(calendarEventWindowAround(LocalDate.now()))
     private var quoteRefreshJob: Job? = null
@@ -144,6 +147,17 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
                 repository.markMissedTasks()
                 dispatchDueReminders()
                 delay(nextReminderPollDelayMillis())
+            }
+        }
+        viewModelScope.launch {
+            while (true) {
+                if (settingsStore.clearExpiredRemoteSessionIfNeeded()) {
+                    app.remoteSyncCoordinator.stop()
+                    app.desktopSyncCoordinator.stop()
+                    app.stopService(Intent(app, DesktopSyncService::class.java))
+                }
+                authenticationTick.value = System.currentTimeMillis()
+                delay(30_000L)
             }
         }
         viewModelScope.launch {
@@ -268,7 +282,8 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
         quoteFlow,
         selectedGroupIdsFlow,
         groupFilterModeFlow,
-        todayDateFlow
+        todayDateFlow,
+        authenticationTick
     ) { values ->
         @Suppress("UNCHECKED_CAST")
         val groups = values[0] as List<TaskGroup>
@@ -287,6 +302,8 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
         val selectedGroupIds = values[7] as Set<Long>
         val groupFilterMode = values[8] as GroupFilterMode
         val today = values[9] as LocalDate
+        @Suppress("UNUSED_VARIABLE")
+        val authTick = values[10] as Long
         val availableGroups = if (groups.isEmpty()) {
             withContext(Dispatchers.IO) { repository.ensureDefaultGroups() }
         } else {
@@ -320,7 +337,8 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
                 activeAnnouncements = PlanningAnnouncementParser.activeAnnouncements(announcementNotes, today),
                 settings = settings,
                 currentQuote = currentQuote,
-                dataReady = true
+                dataReady = true,
+                authenticated = settingsStore.hasValidRemoteSession()
             )
         }
     }.stateIn(
@@ -1069,35 +1087,18 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
         desktopSyncRefreshTick.value = System.currentTimeMillis()
     }
 
-    fun updateRemoteSync(enabled: Boolean, serverUrl: String = settingsStore.currentSettings().remoteSyncServerUrl) {
-        settingsStore.updateRemoteSync(enabled, serverUrl)
-        if (enabled) {
-            settingsStore.remoteSyncCredentials()
-            app.remoteSyncCoordinator.start()
-            app.remoteSyncCoordinator.onLocalDataChanged()
-        } else {
-            app.remoteSyncCoordinator.stop()
-        }
+    fun isAuthenticated(): Boolean = settingsStore.hasValidRemoteSession()
+
+    suspend fun loginAccount(username: String, password: String): AccountAuthResult {
+        return app.remoteSyncCoordinator.login(username, password)
     }
 
-    fun updateRemoteSyncServerUrl(serverUrl: String) {
-        settingsStore.updateRemoteSyncServerUrl(serverUrl)
+    suspend fun registerAccount(username: String, displayName: String, password: String): AccountAuthResult {
+        return app.remoteSyncCoordinator.register(username, displayName, password)
     }
 
-    suspend fun authenticateRemoteAccount(
-        serverUrl: String,
-        username: String,
-        password: String,
-        displayName: String,
-        register: Boolean
-    ): String? {
-        return app.remoteSyncCoordinator.authenticate(
-            serverUrl = serverUrl,
-            username = username,
-            password = password,
-            displayName = displayName,
-            register = register
-        )
+    suspend fun recoverAccount(username: String, recoveryCode: String, newPassword: String): String? {
+        return app.remoteSyncCoordinator.recoverPassword(username, recoveryCode, newPassword)
     }
 
     fun logoutRemoteAccount() {
@@ -1477,6 +1478,7 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
         DailyReportScheduler.scheduleNext(app)
         DailyBriefScheduler.scheduleNext(app)
         TodoWidgetProvider.notifyWidgetDataChanged(app)
+        app.remoteSyncCoordinator.onLocalDataChanged()
         val todoCount = snapshot.tasks.count { it.isTodo }
         val eventCount = snapshot.tasks.count { it.isEvent }
         return "${sourceLabel}恢复完成：$todoCount 条待办、$eventCount 条日程、${snapshot.planningNotes.size} 个规划文档"

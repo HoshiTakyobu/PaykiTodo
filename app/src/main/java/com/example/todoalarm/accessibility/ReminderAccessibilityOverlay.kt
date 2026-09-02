@@ -57,6 +57,10 @@ class ReminderAccessibilityOverlay(
         if (overlayTodoId == todoId && overlayView != null) return
 
         serviceScope.launch {
+            if (!app.settingsStore.hasValidRemoteSession()) {
+                hide(todoId)
+                return@launch
+            }
             val item = withContext(Dispatchers.IO) { app.repository.getTodo(todoId) }
             if (item == null || item.isHistory) {
                 hide(todoId)
@@ -309,7 +313,7 @@ class ReminderAccessibilityOverlay(
         )
         if (!item.isEvent && shouldOfferReminderSnooze(item, ActiveReminderStore.getTriggeredAtMillis(service, item.id))) {
             actionContainer.addView(
-                filledButton("延后 10 分钟", Color.parseColor("#A16207")).apply {
+                filledButton("延后10分钟", Color.parseColor("#A16207")).apply {
                     setOnClickListener { snoozeTodo(item.id, 10) }
                 },
                 LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply {
@@ -330,11 +334,22 @@ class ReminderAccessibilityOverlay(
             )
         )
 
-        root.addView(
+        val contentScroll = ScrollView(service).apply {
+            isFillViewport = true
+            overScrollMode = View.OVER_SCROLL_IF_CONTENT_SCROLLS
+        }
+        contentScroll.addView(
             content,
             FrameLayout.LayoutParams(
                 FrameLayout.LayoutParams.MATCH_PARENT,
-                FrameLayout.LayoutParams.WRAP_CONTENT,
+                FrameLayout.LayoutParams.WRAP_CONTENT
+            )
+        )
+        root.addView(
+            contentScroll,
+            FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.MATCH_PARENT,
+                FrameLayout.LayoutParams.MATCH_PARENT,
                 Gravity.CENTER
             )
         )
@@ -403,7 +418,7 @@ class ReminderAccessibilityOverlay(
                 updated?.let { it to resolveTaskGroup(it, app.repository.getGroup(it.groupId)) }
             }
             if (retained == null) return@launch
-            ReminderForegroundService.dismissKeepingNotification(service, retained.first, "已延后${minutes}分钟", retained.second)
+            ReminderForegroundService.dismiss(service, todoId)
             hide(todoId)
             Toast.makeText(service, "已延后 $minutes 分钟", Toast.LENGTH_SHORT).show()
         }

@@ -92,6 +92,7 @@ class CloudServerIntegrationTest(unittest.TestCase):
     def test_register_login_tokens_and_device_list(self):
         account = self.create_account("auth")
         self.assertTrue(account["accessToken"])
+        self.assertRegex(account["recoveryCode"], r"^[A-F0-9]{4}(-[A-F0-9]{4}){3}$")
         self.assertEqual(0, account["snapshotRevision"])
 
         status, _, _ = self.request(
@@ -114,7 +115,50 @@ class CloudServerIntegrationTest(unittest.TestCase):
 
         status, _, raw = self.request("/v2/auth/refresh", "POST", {"refreshToken": login["refreshToken"]})
         self.assertEqual(200, status, raw)
-        self.assertNotEqual(login["accessToken"], json.loads(raw)["accessToken"])
+        refreshed = json.loads(raw)
+        self.assertNotEqual(login["accessToken"], refreshed["accessToken"])
+        self.assertEqual(login["refreshExpiresAt"], refreshed["refreshExpiresAt"])
+
+    def test_recovery_code_resets_password_and_revokes_sessions(self):
+        account = self.create_account("recovery")
+        recovery_code = account["recoveryCode"]
+        status, _, raw = self.request(
+            "/v2/auth/recover",
+            "POST",
+            {
+                "username": "tester_recovery",
+                "recoveryCode": recovery_code,
+                "newPassword": "new correct password",
+            },
+        )
+        self.assertEqual(200, status, raw)
+        status, _, _ = self.request(
+            "/v2/sync/status",
+            headers={"Authorization": f"Bearer {account['accessToken']}"},
+        )
+        self.assertEqual(401, status)
+        status, _, raw = self.request(
+            "/v2/auth/login",
+            "POST",
+            {
+                "username": "tester_recovery",
+                "password": "new correct password",
+                "deviceId": "android_device_recovery_new",
+                "deviceName": "Android 测试机",
+                "platform": "android",
+            },
+        )
+        self.assertEqual(200, status, raw)
+        status, _, _ = self.request(
+            "/v2/auth/recover",
+            "POST",
+            {
+                "username": "tester_recovery",
+                "recoveryCode": recovery_code.replace("-", ""),
+                "newPassword": "another correct password",
+            },
+        )
+        self.assertEqual(200, status)
 
     def test_versioned_snapshot_idempotency_and_conflict(self):
         account = self.create_account("sync")

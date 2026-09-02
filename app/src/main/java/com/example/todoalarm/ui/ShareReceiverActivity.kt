@@ -8,6 +8,7 @@ import android.os.Parcelable
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.lifecycle.lifecycleScope
+import com.example.todoalarm.TodoApplication
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -16,6 +17,7 @@ import java.io.File
 class ShareReceiverActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        if (!requireAuthenticatedSession()) return
         lifecycleScope.launch {
             val message = runCatching {
                 enqueueSharedCapture(intent)
@@ -25,6 +27,18 @@ class ShareReceiverActivity : ComponentActivity() {
             Toast.makeText(this@ShareReceiverActivity, message, Toast.LENGTH_SHORT).show()
             finish()
         }
+    }
+
+    private fun requireAuthenticatedSession(): Boolean {
+        val app = application as TodoApplication
+        if (app.settingsStore.hasValidRemoteSession()) return true
+        startActivity(
+            Intent(this, MainActivity::class.java).apply {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+            }
+        )
+        finish()
+        return false
     }
 
     private suspend fun enqueueSharedCapture(intent: Intent?): String {

@@ -7,8 +7,18 @@ plugins {
     id("com.google.devtools.ksp")
 }
 
-val paykiVersionName = "1.16.1"
-val paykiVersionCode = 366
+val paykiVersionName = "1.16.2"
+val paykiVersionCode = 367
+
+val paykiCloudProperties = Properties().apply {
+    val file = rootProject.file("user/cloud.properties")
+    if (file.isFile) file.inputStream().use(::load)
+}
+val paykiCloudBaseUrl = paykiCloudProperties.getProperty("baseUrl", "https://paykitodo.invalid")
+    .trim()
+    .trimEnd('/')
+    .takeIf { it.isNotBlank() }
+    ?: "https://paykitodo.invalid"
 
 project.setProperty("archivesBaseName", "PaykiTodo-$paykiVersionName")
 
@@ -65,6 +75,7 @@ android {
         targetSdk = 34
         versionCode = paykiVersionCode
         versionName = paykiVersionName
+        buildConfigField("String", "PAYKITODO_CLOUD_BASE_URL", "\"${paykiCloudBaseUrl.replace("\\", "\\\\").replace("\"", "\\\"")}\"")
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables { useSupportLibrary = true }
     }
@@ -97,7 +108,10 @@ android {
     }
 
     kotlinOptions { jvmTarget = "17" }
-    buildFeatures { compose = true }
+    buildFeatures {
+        compose = true
+        buildConfig = true
+    }
     composeOptions { kotlinCompilerExtensionVersion = "1.5.14" }
     packaging { resources { excludes += "/META-INF/{AL2.0,LGPL2.1}" } }
 }

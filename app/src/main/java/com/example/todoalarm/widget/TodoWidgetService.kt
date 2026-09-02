@@ -49,6 +49,10 @@ private class TodoWidgetFactory(
     override fun onDataSetChanged() {
         loadWidgetColors()
         val app = context.applicationContext as TodoApplication
+        if (!app.settingsStore.hasValidRemoteSession()) {
+            rows = listOf(emptyRow(-100L, "请先登录 PaykiTodo"))
+            return
+        }
         rows = runBlocking {
             val items = app.repository.getActiveItemsForBoardRange()
             val groups = app.repository.getAllGroups()

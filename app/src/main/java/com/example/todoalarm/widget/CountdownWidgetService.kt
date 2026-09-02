@@ -41,6 +41,10 @@ private class CountdownWidgetFactory(
     override fun onDataSetChanged() {
         loadColors()
         val app = context.applicationContext as TodoApplication
+        if (!app.settingsStore.hasValidRemoteSession()) {
+            rows = emptyList()
+            return
+        }
         val now = LocalDateTime.now()
         val nowMillis = System.currentTimeMillis()
         val loaded = runBlocking {

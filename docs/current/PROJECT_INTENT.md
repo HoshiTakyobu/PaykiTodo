@@ -20,7 +20,9 @@ The target experience is:
 - tasks and schedule items live in one system
 - reminders can escalate beyond ordinary notification banners
 - the user can still control and inspect their own data locally
-- the app works even without a cloud backend or account system; cloud services are an optional continuity layer, never the sole local data store
+- after the first account login, the app remains usable with its local Room copy even when the cloud backend is unavailable; the cloud service is a continuity layer, never the sole local data store
+
+The current Android build uses a normal PaykiTodo account as an access gate. A user can register or log in from the app, and can export or import a local `.paykibak` migration package before login so that Debug-to-Release signature migration does not depend on the cloud account path.
 
 ## Product Direction
 

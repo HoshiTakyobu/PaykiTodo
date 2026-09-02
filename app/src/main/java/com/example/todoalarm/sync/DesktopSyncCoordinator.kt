@@ -87,7 +87,7 @@ class DesktopSyncCoordinator(
     private var trackingStartedAtMillis: Long = 0L
 
     fun ensureRunning() {
-        if (!settingsStore.currentSettings().desktopSyncEnabled) {
+        if (!settingsStore.currentSettings().desktopSyncEnabled || !settingsStore.hasValidRemoteSession()) {
             stop()
             return
         }
@@ -120,10 +120,10 @@ class DesktopSyncCoordinator(
 
     fun status(): DesktopSyncStatus {
         val settings = settingsStore.currentSettings()
-        if (settings.desktopSyncEnabled && server == null) {
+        if (settings.desktopSyncEnabled && settingsStore.hasValidRemoteSession() && server == null) {
             DesktopSyncService.start(context.applicationContext)
         }
-        val enabledAndRunning = settings.desktopSyncEnabled && server != null
+        val enabledAndRunning = settings.desktopSyncEnabled && settingsStore.hasValidRemoteSession() && server != null
         val now = System.currentTimeMillis()
         val lastAuthorizedAt = lastAuthorizedClientAtMillis
         val connected = enabledAndRunning &&
@@ -159,6 +159,9 @@ class DesktopSyncCoordinator(
         body: String,
         headers: Map<String, String>
     ): DesktopSyncServer.Response {
+        if (!settingsStore.hasValidRemoteSession()) {
+            return DesktopSyncServer.Response.json(JSONObject().put("error", "请先登录 PaykiTodo。"), 401)
+        }
         val routePath = path.substringBefore('?')
         if (routePath == "/" || routePath == "/index.html") {
             return DesktopSyncServer.Response.html(DesktopSyncWebAssets.indexHtml(context))

@@ -40,6 +40,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
+import com.example.todoalarm.TodoApplication
 import com.example.todoalarm.ui.theme.TodoAlarmTheme
 import java.util.Locale
 
@@ -60,6 +61,16 @@ class VoiceCaptureActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        val app = application as TodoApplication
+        if (!app.settingsStore.hasValidRemoteSession()) {
+            startActivity(
+                Intent(this, MainActivity::class.java).apply {
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+                }
+            )
+            finish()
+            return
+        }
         setContent {
             TodoAlarmTheme {
                 VoiceCaptureScreen(

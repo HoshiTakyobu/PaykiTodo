@@ -6,13 +6,15 @@ import androidx.documentfile.provider.DocumentFile
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
 
 class BackupManager(
     private val context: Context
 ) {
+    private companion object {
+        const val LATEST_BACKUP_FILE_NAME = "PaykiTodo-latest.paykibak"
+        const val LEGACY_BACKUP_FILE_PREFIX = "PaykiTodo-backup-"
+    }
+
     fun exportToUri(targetUri: Uri, snapshot: BackupSnapshot) {
         context.contentResolver.openOutputStream(targetUri)?.use { output ->
             BackupArchiveCodec.write(snapshot, output)
@@ -27,24 +29,43 @@ class BackupManager(
     fun autoBackupToDirectory(directoryUri: String, snapshot: BackupSnapshot): String {
         val tree = DocumentFile.fromTreeUri(context, Uri.parse(directoryUri))
             ?: error("备份目录不可访问")
-        val fileName = "PaykiTodo-backup-${timestamp()}.${BackupArchiveCodec.FILE_EXTENSION}"
-        val file = tree.createFile(BackupArchiveCodec.MIME_TYPE, fileName)
+        val file = tree.findFile(LATEST_BACKUP_FILE_NAME)
+            ?: tree.createFile(BackupArchiveCodec.MIME_TYPE, LATEST_BACKUP_FILE_NAME)
             ?: error("无法在备份目录中创建文件")
-        context.contentResolver.openOutputStream(file.uri)?.use { output ->
-            BackupArchiveCodec.write(snapshot, output)
-        } ?: error("无法写入自动备份文件")
-        return fileName
+        val output = runCatching {
+            context.contentResolver.openOutputStream(file.uri, "wt")
+        }.getOrNull() ?: context.contentResolver.openOutputStream(file.uri)
+        if (output == null) error("无法写入自动备份文件")
+        output.use { outputStream ->
+            BackupArchiveCodec.write(snapshot, outputStream)
+        }
+        tree.listFiles()
+            .filter { candidate ->
+                candidate.uri != file.uri &&
+                    candidate.name?.startsWith(LEGACY_BACKUP_FILE_PREFIX) == true &&
+                    candidate.name?.endsWith(".${BackupArchiveCodec.FILE_EXTENSION}") == true
+            }
+            .forEach { candidate -> candidate.delete() }
+        return file.name ?: LATEST_BACKUP_FILE_NAME
     }
 
     fun autoBackupToInternalStorage(snapshot: BackupSnapshot): String {
         val backupDir = File(context.filesDir, "backups").apply { mkdirs() }
-        val file = File(backupDir, "PaykiTodo-backup-${timestamp()}.${BackupArchiveCodec.FILE_EXTENSION}")
-        file.outputStream().use { output -> BackupArchiveCodec.write(snapshot, output) }
+        val file = File(backupDir, LATEST_BACKUP_FILE_NAME)
+        val temporary = File(backupDir, "$LATEST_BACKUP_FILE_NAME.tmp")
+        temporary.outputStream().use { output ->
+            BackupArchiveCodec.write(snapshot, output)
+        }
+        if (file.exists() && !file.delete()) error("无法替换内部自动备份")
+        if (!temporary.renameTo(file)) error("无法完成内部自动备份")
+        backupDir.listFiles()
+            ?.filter { candidate ->
+                candidate != file &&
+                    candidate.name.startsWith(LEGACY_BACKUP_FILE_PREFIX) &&
+                    candidate.name.endsWith(".${BackupArchiveCodec.FILE_EXTENSION}")
+            }
+            ?.forEach { candidate -> candidate.delete() }
         return file.absolutePath
-    }
-
-    private fun timestamp(): String {
-        return SimpleDateFormat("yyyyMMdd-HHmmss", Locale.CHINA).format(Date())
     }
 }
 

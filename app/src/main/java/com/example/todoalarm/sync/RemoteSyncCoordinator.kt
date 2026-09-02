@@ -1,6 +1,8 @@
 package com.example.todoalarm.sync
 
+import android.content.Intent
 import android.os.Build
+import com.example.todoalarm.BuildConfig
 import com.example.todoalarm.TodoApplication
 import com.example.todoalarm.alarm.ReminderDispatchTracker
 import com.example.todoalarm.data.AppSettings
@@ -36,6 +38,13 @@ import javax.crypto.spec.PBEKeySpec
 import javax.crypto.spec.SecretKeySpec
 
 
+data class AccountAuthResult(
+    val error: String? = null,
+    val recoveryCode: String? = null
+) {
+    val succeeded: Boolean get() = error == null
+}
+
 class RemoteSyncCoordinator(
     private val app: TodoApplication,
     private val settingsStore: AppSettingsStore
@@ -48,7 +57,10 @@ class RemoteSyncCoordinator(
 
     fun start() {
         val settings = settingsStore.currentSettings()
-        if (!settings.remoteSyncEnabled) return
+        if (!settings.remoteSyncEnabled || !settingsStore.hasValidRemoteSession()) {
+            if (settings.remoteSyncUsername.isNotBlank()) settingsStore.clearExpiredRemoteSessionIfNeeded()
+            return
+        }
         if (periodicJob?.isActive == true) return
         periodicJob = scope.launch {
             while (isActive && settingsStore.currentSettings().remoteSyncEnabled) {
@@ -70,9 +82,10 @@ class RemoteSyncCoordinator(
     fun onLocalDataChanged() {
         if (applyingRemote.get()) return
         val settings = settingsStore.currentSettings()
-        if (!settings.remoteSyncEnabled) {
+        if (!settings.remoteSyncEnabled || !settingsStore.hasValidRemoteSession()) {
             pendingJob?.cancel()
             pendingJob = null
+            if (settings.remoteSyncUsername.isNotBlank()) settingsStore.clearExpiredRemoteSessionIfNeeded()
             return
         }
         if (settings.remoteSyncUsername.isNotBlank()) {
@@ -93,11 +106,42 @@ class RemoteSyncCoordinator(
         displayName: String,
         register: Boolean
     ): String? = syncMutex.withLock {
+        authenticateAccount(username, password, displayName, register).error
+    }
+
+    suspend fun login(username: String, password: String): AccountAuthResult {
+        return syncMutex.withLock { authenticateAccount(username, password, "", false) }
+    }
+
+    suspend fun register(username: String, displayName: String, password: String): AccountAuthResult {
+        return syncMutex.withLock { authenticateAccount(username, password, displayName, true) }
+    }
+
+    suspend fun recoverPassword(username: String, recoveryCode: String, newPassword: String): String? = syncMutex.withLock {
         runCatching {
-            val normalizedServer = normalizeServerUrl(serverUrl)
+            postJson(
+                cloudServerUrl(),
+                "/v2/auth/recover",
+                JSONObject()
+                    .put("username", username.trim().lowercase())
+                    .put("recoveryCode", recoveryCode.trim())
+                    .put("newPassword", newPassword)
+            )
+            null
+        }.getOrElse { error -> error.message ?: "找回密码失败" }
+    }
+
+    private suspend fun authenticateAccount(
+        username: String,
+        password: String,
+        displayName: String,
+        register: Boolean
+    ): AccountAuthResult {
+        return runCatching {
+            val normalizedServer = cloudServerUrl()
             val normalizedUsername = username.trim().lowercase()
             require(normalizedUsername.matches(Regex("[A-Za-z0-9_.-]{3,64}"))) { "账号格式无效" }
-            require(password.length >= if (register) 10 else 1) { "注册密码至少 10 位" }
+            require(password.length >= if (register) 10 else 1) { if (register) "注册密码至少 10 位" else "请输入密码" }
             val deviceId = settingsStore.remoteSyncDeviceId()
             val response = postJson(
                 normalizedServer,
@@ -129,19 +173,20 @@ class RemoteSyncCoordinator(
                 dirty = localDirty,
                 conflictRevision = if (remoteRevision > 0L && hasLocalData) remoteRevision else 0L
             )
+            TodoWidgetProvider.notifyWidgetDataChanged(app)
             start()
             when {
                 remoteRevision > 0L && hasLocalData -> {
                     settingsStore.markRemoteSyncConflict(remoteRevision)
-                    null
+                    AccountAuthResult(recoveryCode = response.optString("recoveryCode").takeIf { it.isNotBlank() })
                 }
                 else -> when (val result = syncAccountNow()) {
-                    is RemoteSyncResult.Failed -> result.message
-                    else -> null
+                    is RemoteSyncResult.Failed -> AccountAuthResult(result.message)
+                    else -> AccountAuthResult(recoveryCode = response.optString("recoveryCode").takeIf { it.isNotBlank() })
                 }
             }
         }.getOrElse { error ->
-            error.message ?: if (register) "注册失败" else "登录失败"
+            AccountAuthResult(error.message ?: if (register) "注册失败" else "登录失败")
         }
     }
 
@@ -150,25 +195,32 @@ class RemoteSyncCoordinator(
         scope.launch {
             runCatching {
                 if (settings.remoteSyncAccessToken.isNotBlank()) {
-                    postJson(settings.remoteSyncServerUrl, "/v2/auth/logout", JSONObject(), settings.remoteSyncAccessToken)
+                    postJson(cloudServerUrl(), "/v2/auth/logout", JSONObject(), settings.remoteSyncAccessToken)
                 }
             }
         }
         stop()
         settingsStore.clearRemoteAccount()
+        TodoWidgetProvider.notifyWidgetDataChanged(app)
+        app.desktopSyncCoordinator.stop()
+        app.stopService(Intent(app, DesktopSyncService::class.java))
     }
 
     suspend fun syncNow(): RemoteSyncResult = syncMutex.withLock {
         val settings = settingsStore.currentSettings()
         if (!settings.remoteSyncEnabled) return@withLock RemoteSyncResult.Disabled
-        if (settings.remoteSyncUsername.isBlank()) return@withLock syncLegacyNow(settings)
+        if (!settingsStore.hasValidRemoteSession()) {
+            if (settings.remoteSyncUsername.isNotBlank()) settingsStore.clearExpiredRemoteSessionIfNeeded()
+            return@withLock RemoteSyncResult.NotConfigured
+        }
+        if (settings.remoteSyncUsername.isBlank()) return@withLock RemoteSyncResult.NotConfigured
         syncAccountNow()
     }
 
     private suspend fun syncAccountNow(): RemoteSyncResult {
         var settings = settingsStore.currentSettings()
-        if (!settings.remoteSyncEnabled || settings.remoteSyncUsername.isBlank()) return RemoteSyncResult.NotConfigured
-        val serverUrl = normalizeServerUrl(settings.remoteSyncServerUrl)
+        if (!settings.remoteSyncEnabled || settings.remoteSyncUsername.isBlank() || !settingsStore.hasValidRemoteSession()) return RemoteSyncResult.NotConfigured
+        val serverUrl = cloudServerUrl()
         val accessToken = ensureAccessToken(serverUrl, settings)
         settings = settingsStore.currentSettings()
         val status = getJson(serverUrl, "/v2/sync/status", accessToken)
@@ -208,17 +260,15 @@ class RemoteSyncCoordinator(
     suspend fun downloadLatest(): BackupSnapshot? = syncMutex.withLock {
         val settings = settingsStore.currentSettings()
         if (!settings.remoteSyncEnabled) return@withLock null
-        val serverUrl = normalizeServerUrl(settings.remoteSyncServerUrl)
-        if (settings.remoteSyncUsername.isNotBlank()) {
+        if (settings.remoteSyncUsername.isNotBlank() && settingsStore.hasValidRemoteSession()) {
+            val serverUrl = cloudServerUrl()
             val token = ensureAccessToken(serverUrl, settings)
             return@withLock runCatching { downloadAccountSnapshot(serverUrl, token, settings.remoteSyncSecret) }
                 .getOrElse { error ->
                     if (error is RemoteNotFoundException) null else throw error
                 }
         }
-        val credentials = settingsStore.remoteSyncCredentials()
-        val encrypted = downloadLegacy(serverUrl, credentials.first, credentials.second) ?: return@withLock null
-        BackupArchiveCodec.decode(RemoteSyncCrypto.decrypt(encrypted, credentials.second))
+        return@withLock null
     }
 
     private suspend fun applyRemoteSnapshot(snapshot: BackupSnapshot) {
@@ -274,6 +324,10 @@ class RemoteSyncCoordinator(
 
     private fun ensureAccessToken(serverUrl: String, settings: AppSettings): String {
         val now = System.currentTimeMillis() / 1000L
+        if (settings.remoteSyncRefreshExpiresAt <= now) {
+            settingsStore.clearRemoteAccount()
+            throw IOException("登录已过期，请重新登录")
+        }
         if (settings.remoteSyncAccessToken.isNotBlank() && settings.remoteSyncAccessExpiresAt > now + 30L) {
             return settings.remoteSyncAccessToken
         }
@@ -373,6 +427,10 @@ class RemoteSyncCoordinator(
             setRequestProperty("Accept", "application/json, application/octet-stream")
             if (accessToken.isNotBlank()) setRequestProperty("Authorization", "Bearer $accessToken")
         }
+    }
+
+    private fun cloudServerUrl(): String {
+        return normalizeServerUrl(BuildConfig.PAYKITODO_CLOUD_BASE_URL)
     }
 
     private fun normalizeServerUrl(value: String): String {

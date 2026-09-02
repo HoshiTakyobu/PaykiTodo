@@ -137,7 +137,6 @@ import com.example.todoalarm.data.ThemeMode
 import com.example.todoalarm.data.TodoItem
 import com.example.todoalarm.data.TodoRepository
 import com.example.todoalarm.data.WeekStartMode
-import com.example.todoalarm.sync.RemoteBackupInspection
 import com.example.todoalarm.sync.DesktopSyncStatus
 import com.example.todoalarm.ui.theme.PaykiGreetingFontFamily
 import android.widget.Toast
@@ -529,13 +528,7 @@ internal fun DashboardBody(
     onExportBackup: () -> Unit,
     onImportBackup: () -> Unit,
     onAutoBackupChange: (Boolean) -> Unit,
-    onRemoteSyncEnabledChange: (Boolean, String) -> Unit,
-    onRemoteSyncServerUrlChange: (String) -> Unit,
-    onRemoteSyncNow: () -> Unit,
-    onRemoteAccountAuthenticate: suspend (String, String, String, String, Boolean) -> String?,
-    onRemoteAccountLogout: () -> Unit,
-    onInspectRemoteBackup: suspend () -> RemoteBackupInspection?,
-    onRestoreRemoteBackup: suspend (RemoteBackupInspection) -> String?,
+    onLogoutAccount: () -> Unit,
     onInspectDataHealth: suspend () -> DataHealthReport,
     onCleanSafeDataHealthItems: suspend () -> DataHealthCleanResult,
     onOpenCalendarBatchImport: () -> Unit,
@@ -676,13 +669,7 @@ internal fun DashboardBody(
                 onExportBackup = onExportBackup,
                 onImportBackup = onImportBackup,
                 onAutoBackupChange = onAutoBackupChange,
-                onRemoteSyncEnabledChange = onRemoteSyncEnabledChange,
-                onRemoteSyncServerUrlChange = onRemoteSyncServerUrlChange,
-                onRemoteSyncNow = onRemoteSyncNow,
-                onRemoteAccountAuthenticate = onRemoteAccountAuthenticate,
-                onRemoteAccountLogout = onRemoteAccountLogout,
-                onInspectRemoteBackup = onInspectRemoteBackup,
-                onRestoreRemoteBackup = onRestoreRemoteBackup,
+                onLogoutAccount = onLogoutAccount,
                 onInspectDataHealth = onInspectDataHealth,
                 onCleanSafeDataHealthItems = onCleanSafeDataHealthItems,
                 onCopyCrashLog = permissions.copyCrashLog,

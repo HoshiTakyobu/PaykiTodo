@@ -2,7 +2,15 @@
 
 ## Active Focus
 
-The `v1.16.1` local development round keeps the first usable account/cloud and independent Windows client implementation from `v1.16.0`, and replaces the browser-native administrator authentication prompt with an in-page PaykiTodo login UI. The private cloud service is deployed separately from Git; it is not a GitHub Release yet, and the latest public release remains `v1.15.18`.
+The `v1.16.2` local development round finishes the account boundary and Debug-to-Release migration path on top of the first usable account/cloud and independent Windows client implementation. The private cloud service is deployed separately from Git; it is not a GitHub Release yet, and the latest public release remains `v1.15.18`.
+
+## Completed `v1.16.2` Scope
+
+1. Added migration-package export/import actions to the unauthenticated login surface, so a user can preserve local data before uninstalling a Debug-signed build and restore it after installing a Release-signed build.
+2. Stopped the phone LAN service explicitly on account logout and blocked secondary entry points, reminders, and widgets from exposing data without a valid session.
+3. Made reminder acknowledgement/snooze remove stale notification and foreground-service artifacts, and kept long-title reminder actions readable on narrow screens.
+4. Changed automatic backup output to one latest archive updated on data changes, with cleanup of legacy timestamped archives.
+5. Raised Android and Windows application metadata to `1.16.2 / versionCode 367`.
 
 ## Completed `v1.16.1` Scope
 
@@ -49,7 +57,7 @@ The `v1.16.1` local development round keeps the first usable account/cloud and i
 
 ## Next Validation
 
-1. Install `1.16.1` Debug or Release on the matching signed profile and smoke-test startup, migration import, todo creation, event creation, and Desktop Sync.
+1. Install `1.16.2` Debug or Release on the matching signed profile and smoke-test startup, migration import, todo creation, event creation, and Desktop Sync.
 2. Verify the single reminder switch and the event/intermediate/final todo action layouts on a physical phone.
 3. Verify full-screen behavior while locked and while unlocked inside another app on the user's OEM ROM.
 4. Verify daily-board and countdown widgets after installation, resize, date change, and dark/light theme change.

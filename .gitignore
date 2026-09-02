@@ -22,6 +22,7 @@ LOCAL_STUDY_PLAN.md
 
 # Local scratch / verification artifacts (emulator screenshots, etc.)
 _tmp/
+/.tmp/
 
 # Local media overrides. Keep the committed app resource
 # app/src/main/res/raw/remind_vocal.mp3 trackable.

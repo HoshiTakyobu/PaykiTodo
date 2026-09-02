@@ -72,7 +72,7 @@ class TodoApplication : Application() {
                     .onFailure(CrashLogger::recordNonFatal)
                 runCatching { DailyReportScheduler.scheduleNext(applicationContext) }
                     .onFailure(CrashLogger::recordNonFatal)
-                if (settingsStore.currentSettings().desktopSyncEnabled) {
+                if (settingsStore.currentSettings().desktopSyncEnabled && settingsStore.hasValidRemoteSession()) {
                     DesktopSyncService.start(applicationContext)
                 }
                 delay(5_000L)

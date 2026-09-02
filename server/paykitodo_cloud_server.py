@@ -36,6 +36,7 @@ REFRESH_TOKEN_SECONDS = 30 * 24 * 60 * 60
 USERNAME_PATTERN = re.compile(r"^[A-Za-z0-9_.-]{3,64}$")
 DEVICE_ID_PATTERN = re.compile(r"^[A-Za-z0-9_-]{8,128}$")
 OPERATION_ID_PATTERN = re.compile(r"^[A-Za-z0-9_.:-]{8,160}$")
+RECOVERY_CODE_PATTERN = re.compile(r"^[A-F0-9]{16}$")
 ADMIN_WEB_SESSION_SECONDS = 8 * 60 * 60
 DB_PATH = Path(os.environ.get("PAYKITODO_CLOUD_DB", "./paykitodo-cloud.sqlite3"))
 LISTEN_HOST = os.environ.get("PAYKITODO_CLOUD_HOST", "127.0.0.1")
@@ -58,6 +59,15 @@ def token_hash(token: str) -> str:
 def password_hash(password: str, salt: bytes) -> bytes:
     material = password.encode("utf-8") + PASSWORD_PEPPER
     return hashlib.scrypt(material, salt=salt, n=2**14, r=8, p=1, dklen=32)
+
+
+def generate_recovery_code() -> str:
+    raw = secrets.token_hex(8).upper()
+    return "-".join(raw[index:index + 4] for index in range(0, len(raw), 4))
+
+
+def canonical_recovery_code(value: str) -> str:
+    return re.sub(r"[-\s]", "", value).upper()
 
 
 def canonical_username(value: str) -> str:
@@ -127,6 +137,8 @@ class CloudDatabase:
                     display_name TEXT NOT NULL,
                     password_salt BLOB NOT NULL,
                     password_hash BLOB NOT NULL,
+                    recovery_salt BLOB,
+                    recovery_hash BLOB,
                     created_at INTEGER NOT NULL,
                     last_login_at INTEGER,
                     disabled INTEGER NOT NULL DEFAULT 0
@@ -148,6 +160,7 @@ class CloudDatabase:
                     device_id TEXT NOT NULL REFERENCES devices(id) ON DELETE CASCADE,
                     access_expires_at INTEGER NOT NULL,
                     refresh_expires_at INTEGER NOT NULL,
+                    session_expires_at INTEGER NOT NULL,
                     created_at INTEGER NOT NULL
                 );
                 CREATE INDEX IF NOT EXISTS idx_sessions_refresh ON sessions(refresh_hash);
@@ -178,6 +191,15 @@ class CloudDatabase:
                 CREATE INDEX IF NOT EXISTS idx_audit_created ON audit_log(created_at DESC);
                 """
             )
+            columns = {row["name"] for row in connection.execute("PRAGMA table_info(users)").fetchall()}
+            if "recovery_salt" not in columns:
+                connection.execute("ALTER TABLE users ADD COLUMN recovery_salt BLOB")
+            if "recovery_hash" not in columns:
+                connection.execute("ALTER TABLE users ADD COLUMN recovery_hash BLOB")
+            session_columns = {row["name"] for row in connection.execute("PRAGMA table_info(sessions)").fetchall()}
+            if "session_expires_at" not in session_columns:
+                connection.execute("ALTER TABLE sessions ADD COLUMN session_expires_at INTEGER")
+                connection.execute("UPDATE sessions SET session_expires_at=refresh_expires_at WHERE session_expires_at IS NULL")
 
 
 DB = CloudDatabase(DB_PATH)
@@ -224,6 +246,8 @@ class PaykiTodoCloudHandler(BaseHTTPRequestHandler):
                 self.register()
             elif path == "/v2/auth/login" and method == "POST":
                 self.login()
+            elif path == "/v2/auth/recover" and method == "POST":
+                self.recover_password()
             elif path == "/v2/auth/refresh" and method == "POST":
                 self.refresh_session()
             elif path == "/v2/auth/logout" and method == "POST":
@@ -295,13 +319,15 @@ class PaykiTodoCloudHandler(BaseHTTPRequestHandler):
         body = self.read_json()
         username, display_name, password, device_id, device_name, platform = self.validate_credentials(body)
         salt = secrets.token_bytes(16)
+        recovery_code = generate_recovery_code()
+        recovery_salt = secrets.token_bytes(16)
         timestamp = now_seconds()
         try:
             with DB.session() as connection:
                 connection.execute("BEGIN IMMEDIATE")
                 cursor = connection.execute(
-                    "INSERT INTO users(username, display_name, password_salt, password_hash, created_at) VALUES(?,?,?,?,?)",
-                    (username, display_name, salt, password_hash(password, salt), timestamp),
+                    "INSERT INTO users(username, display_name, password_salt, password_hash, recovery_salt, recovery_hash, created_at) VALUES(?,?,?,?,?,?,?)",
+                    (username, display_name, salt, password_hash(password, salt), recovery_salt, password_hash(canonical_recovery_code(recovery_code), recovery_salt), timestamp),
                 )
                 user_id = int(cursor.lastrowid)
                 connection.execute(
@@ -313,7 +339,7 @@ class PaykiTodoCloudHandler(BaseHTTPRequestHandler):
                 connection.commit()
         except sqlite3.IntegrityError as error:
             raise ApiError(HTTPStatus.CONFLICT, "username_exists", "该账号已存在") from error
-        self.send_json(HTTPStatus.CREATED, {**tokens, "user": {"username": username, "displayName": display_name}, "deviceId": device_id, "snapshotRevision": 0})
+        self.send_json(HTTPStatus.CREATED, {**tokens, "user": {"username": username, "displayName": display_name}, "deviceId": device_id, "snapshotRevision": 0, "recoveryCode": recovery_code})
 
     def login(self) -> None:
         if not RATE_LIMITER.allow(f"login:{self.remote_ip}", 12, 10 * 60):
@@ -337,11 +363,64 @@ class PaykiTodoCloudHandler(BaseHTTPRequestHandler):
                 (device_id, row["id"], device_name, platform, timestamp, timestamp),
             )
             connection.execute("UPDATE users SET last_login_at = ? WHERE id = ?", (timestamp, row["id"]))
+            recovery_code = None
+            if row["recovery_hash"] is None:
+                recovery_code = generate_recovery_code()
+                recovery_salt = secrets.token_bytes(16)
+                connection.execute(
+                    "UPDATE users SET recovery_salt=?, recovery_hash=? WHERE id=?",
+                    (recovery_salt, password_hash(canonical_recovery_code(recovery_code), recovery_salt), row["id"]),
+                )
             tokens = self.create_session(connection, int(row["id"]), device_id)
             revision_row = connection.execute("SELECT revision FROM snapshots WHERE user_id = ?", (row["id"],)).fetchone()
             self.audit(connection, int(row["id"]), "login", f"{platform}:{device_name}")
             connection.commit()
-        self.send_json(HTTPStatus.OK, {**tokens, "user": {"username": username, "displayName": row["display_name"]}, "deviceId": device_id, "snapshotRevision": int(revision_row["revision"]) if revision_row else 0})
+        response = {**tokens, "user": {"username": username, "displayName": row["display_name"]}, "deviceId": device_id, "snapshotRevision": int(revision_row["revision"]) if revision_row else 0}
+        if recovery_code is not None:
+            response["recoveryCode"] = recovery_code
+        self.send_json(HTTPStatus.OK, response)
+
+    def recover_password(self) -> None:
+        if not RATE_LIMITER.allow(f"recover:{self.remote_ip}", 8, 15 * 60):
+            raise ApiError(HTTPStatus.TOO_MANY_REQUESTS, "rate_limited", "找回密码请求过于频繁")
+        body = self.read_json()
+        username = canonical_username(str(body.get("username", "")))
+        recovery_code = canonical_recovery_code(str(body.get("recoveryCode", "")))
+        new_password = str(body.get("newPassword", ""))
+        if not USERNAME_PATTERN.fullmatch(username):
+            raise ApiError(HTTPStatus.BAD_REQUEST, "invalid_username", "账号格式无效")
+        if not RECOVERY_CODE_PATTERN.fullmatch(recovery_code):
+            raise ApiError(HTTPStatus.BAD_REQUEST, "invalid_recovery_code", "恢复码格式无效")
+        if len(new_password) < 10 or len(new_password) > 256:
+            raise ApiError(HTTPStatus.BAD_REQUEST, "invalid_password", "新密码至少 10 位且不超过 256 位")
+        with DB.session() as connection:
+            connection.execute("BEGIN IMMEDIATE")
+            row = connection.execute(
+                "SELECT id,recovery_salt,recovery_hash,disabled FROM users WHERE username=?",
+                (username,),
+            ).fetchone()
+            valid = (
+                row is not None
+                and not row["disabled"]
+                and row["recovery_salt"] is not None
+                and row["recovery_hash"] is not None
+                and hmac.compare_digest(
+                    bytes(row["recovery_hash"]),
+                    password_hash(recovery_code, bytes(row["recovery_salt"])),
+                )
+            )
+            if not valid:
+                connection.rollback()
+                raise ApiError(HTTPStatus.UNAUTHORIZED, "invalid_recovery", "账号或恢复码错误")
+            salt = secrets.token_bytes(16)
+            connection.execute(
+                "UPDATE users SET password_salt=?,password_hash=? WHERE id=?",
+                (salt, password_hash(new_password, salt), row["id"]),
+            )
+            connection.execute("DELETE FROM sessions WHERE user_id=?", (row["id"],))
+            self.audit(connection, int(row["id"]), "password_recovered", "password reset with recovery code")
+            connection.commit()
+        self.send_json(HTTPStatus.OK, {"ok": True, "message": "密码已重置，请使用新密码登录"})
 
     def refresh_session(self) -> None:
         body = self.read_json()
@@ -359,7 +438,12 @@ class PaykiTodoCloudHandler(BaseHTTPRequestHandler):
                 raise ApiError(HTTPStatus.UNAUTHORIZED, "invalid_refresh_token", "登录已过期，请重新登录")
             connection.execute("BEGIN IMMEDIATE")
             connection.execute("DELETE FROM sessions WHERE refresh_hash=?", (row["refresh_hash"],))
-            tokens = self.create_session(connection, int(row["user_id"]), row["device_id"])
+            tokens = self.create_session(
+                connection,
+                int(row["user_id"]),
+                row["device_id"],
+                int(row["session_expires_at"]),
+            )
             connection.execute("UPDATE devices SET last_seen_at=? WHERE id=?", (timestamp, row["device_id"]))
             connection.commit()
         self.send_json(HTTPStatus.OK, tokens)
@@ -473,16 +557,24 @@ class PaykiTodoCloudHandler(BaseHTTPRequestHandler):
             raise ApiError(HTTPStatus.BAD_REQUEST, "invalid_device", "设备 ID 无效")
         return username, display_name, password, device_id, device_name, platform
 
-    def create_session(self, connection: sqlite3.Connection, user_id: int, device_id: str) -> dict[str, object]:
+    def create_session(
+        self,
+        connection: sqlite3.Connection,
+        user_id: int,
+        device_id: str,
+        session_expires_at: int | None = None,
+    ) -> dict[str, object]:
         access_token = secrets.token_urlsafe(32)
         refresh_token = secrets.token_urlsafe(48)
         timestamp = now_seconds()
         connection.execute("DELETE FROM sessions WHERE device_id=?", (device_id,))
+        session_deadline = session_expires_at or (timestamp + REFRESH_TOKEN_SECONDS)
+        access_deadline = min(timestamp + ACCESS_TOKEN_SECONDS, session_deadline)
         connection.execute(
-            "INSERT INTO sessions(access_hash,refresh_hash,user_id,device_id,access_expires_at,refresh_expires_at,created_at) VALUES(?,?,?,?,?,?,?)",
-            (token_hash(access_token), token_hash(refresh_token), user_id, device_id, timestamp + ACCESS_TOKEN_SECONDS, timestamp + REFRESH_TOKEN_SECONDS, timestamp),
+            "INSERT INTO sessions(access_hash,refresh_hash,user_id,device_id,access_expires_at,refresh_expires_at,session_expires_at,created_at) VALUES(?,?,?,?,?,?,?,?)",
+            (token_hash(access_token), token_hash(refresh_token), user_id, device_id, access_deadline, session_deadline, session_deadline, timestamp),
         )
-        return {"accessToken": access_token, "accessExpiresAt": timestamp + ACCESS_TOKEN_SECONDS, "refreshToken": refresh_token, "refreshExpiresAt": timestamp + REFRESH_TOKEN_SECONDS}
+        return {"accessToken": access_token, "accessExpiresAt": access_deadline, "refreshToken": refresh_token, "refreshExpiresAt": session_deadline}
 
     def bearer_token(self) -> str:
         value = self.headers.get("Authorization", "")

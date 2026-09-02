@@ -27,7 +27,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.FilledTonalButton
@@ -139,6 +141,17 @@ class ReminderActivity : ComponentActivity() {
             return
         }
         lifecycleScope.launch {
+            if (!app.settingsStore.hasValidRemoteSession()) {
+                app.alarmScheduler.cancel(todoId)
+                ReminderForegroundService.dismiss(this@ReminderActivity, todoId)
+                startActivity(
+                    Intent(this@ReminderActivity, MainActivity::class.java).apply {
+                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+                    }
+                )
+                finish()
+                return@launch
+            }
             val item = app.repository.getTodo(todoId)
             if (item == null || item.isHistory) {
                 app.alarmScheduler.cancel(todoId)
@@ -205,7 +218,8 @@ class ReminderActivity : ComponentActivity() {
             val updated = app.repository.snoozeTodo(item.id, nextMinuteAlignedReminder(minutes))
             if (updated != null) {
                 app.alarmScheduler.schedule(updated)
-                retainReminderNotification(updated, "已延后${minutes}分钟")
+                ReminderForegroundService.dismiss(this@ReminderActivity, item.id)
+                finish()
             } else {
                 closeReminder(item.id)
             }
@@ -322,6 +336,7 @@ private fun ReminderScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .verticalScroll(rememberScrollState())
             .background(
                 Brush.verticalGradient(
                     listOf(
@@ -332,7 +347,7 @@ private fun ReminderScreen(
                 )
             )
             .padding(horizontal = 22.dp, vertical = 26.dp),
-        verticalArrangement = Arrangement.SpaceBetween,
+        verticalArrangement = Arrangement.spacedBy(20.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         AnimatedVisibility(
@@ -374,12 +389,11 @@ private fun ReminderScreen(
                 Text(
                     text = titleText,
                     modifier = Modifier.fillMaxWidth(),
-                    style = MaterialTheme.typography.headlineMedium.copy(lineHeight = 34.sp),
+                    style = MaterialTheme.typography.headlineSmall.copy(lineHeight = 30.sp),
                     fontWeight = FontWeight.ExtraBold,
                     color = MaterialTheme.colorScheme.onSurface,
                     textAlign = TextAlign.Center,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis
+                    softWrap = true,
                 )
 
                 Text(
@@ -495,7 +509,7 @@ private fun ReminderScreen(
                         shape = RoundedCornerShape(20.dp),
                         contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp)
                     ) {
-                        Text("延后10分钟", maxLines = 1, softWrap = false, overflow = TextOverflow.Ellipsis)
+                         Text("延后10分钟", maxLines = 1, softWrap = false, overflow = TextOverflow.Clip)
                     }
                 }
             }

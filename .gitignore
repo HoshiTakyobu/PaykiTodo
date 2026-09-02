@@ -50,6 +50,9 @@ PaykiTodo-*.zip
 *.secret
 *.secrets
 
+# Owner-only credentials, signing material, and machine-local helper scripts.
+/user/
+
 # Private server deployment configuration. Public examples use the
 # .example suffix; real hostnames, certificates, and local deployment
 # overrides must stay outside Git.

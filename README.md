@@ -22,7 +22,7 @@ PaykiTodo 是一个以 **强提醒、本地可控、日程与待办一体化** �
 
 | 项目 | 内容 |
 | --- | --- |
-| 当前源码版本 | `v1.16.0`（本地开发中，尚未发布） |
+| 当前源码版本 | `v1.16.1`（本地开发中，尚未发布） |
 | 最新 GitHub Release | `v1.15.18` |
 | Android 包名 | `com.paykitodo.app` |
 | 支持系统 | Android 8.0 及以上 / API 26+ |
@@ -175,11 +175,11 @@ app/build/outputs/apk/debug/
 Release 签名材料不属于仓库内容，必须只保存在本地：
 
 ```text
-keystore.properties
-release/PaykiTodo-release.jks
+user/keystore.properties
+user/release/PaykiTodo-release.jks
 ```
 
-这两个路径已经在 `.gitignore` 中忽略。不要把真实密码、API Key、Token、私有 Base URL 或 keystore 提交到 Git。
+这两个路径以及整个 `user/` 目录已经在 `.gitignore` 中忽略。不要把真实密码、API Key、Token、私有 Base URL 或 keystore 提交到 Git。
 
 可参考安全模板：
 
@@ -197,7 +197,7 @@ docs/templates/
 也可以使用仓库内的 Windows 脚本确认 Debug、构建正式签名 Release、输出 SHA-256 并尝试验证签名：
 
 ```powershell
-./tools/Build-PaykiTodoRelease.ps1
+./user/Build-PaykiTodoRelease.ps1
 ```
 
 ### Windows 桌面端构建

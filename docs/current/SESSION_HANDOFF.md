@@ -46,6 +46,7 @@
 
 5. Android emulator acceptance on 2026-09-02: AVD `Pixel_8` / device `emulator-5554` installed `PaykiTodo-1.16.1-debug.apk`, launched without a crash, and opened the Daily Board, Todo, Calendar, Planning Desk, and Settings screens. The settings screen exposed cloud sync and the existing phone-LAN computer connection entry. Physical Android reminder behavior and real Android/Windows account conflict testing remain outstanding.
 6. The cloud service was redeployed from the current source on 2026-09-02; its HTTPS reverse-proxy `/admin` check returned the in-page login UI without `WWW-Authenticate`.
+7. The local `user/Build-PaykiTodoRelease.ps1 -SkipDebugBuild` wrapper was run successfully after moving signing configuration to `user/`; it generated and independently verified the signed `1.16.1` Release APK. The output and checksum remain ignored local artifacts.
 
 ## Known Limitations
 

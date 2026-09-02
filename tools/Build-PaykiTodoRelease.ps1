@@ -8,37 +8,40 @@ $ErrorActionPreference = 'Stop'
 $repo = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
 $gradle = Join-Path $repo 'gradlew.bat'
 $gradleFile = Join-Path $repo 'app\build.gradle.kts'
-$signingFile = Join-Path $repo 'keystore.properties'
+$signingFile = @(
+    (Join-Path $repo 'user\keystore.properties'),
+    (Join-Path $repo 'keystore.properties')
+) | Where-Object { Test-Path -LiteralPath $_ } | Select-Object -First 1
 
-if (-not (Test-Path -LiteralPath $gradle)) { throw "找不到 Gradle wrapper: $gradle" }
-if (-not (Test-Path -LiteralPath $signingFile)) {
-    throw '找不到 keystore.properties。请先根据 keystore.properties.example 填写本机签名配置。'
+if (-not (Test-Path -LiteralPath $gradle)) { throw "Gradle wrapper not found: $gradle" }
+if ([string]::IsNullOrWhiteSpace($signingFile)) {
+    throw 'Local signing configuration not found. Fill user\keystore.properties using keystore.properties.example.'
 }
 
 $versionText = Get-Content -LiteralPath $gradleFile -Raw
 $versionName = [regex]::Match($versionText, 'paykiVersionName\s*=\s*"([^"]+)"').Groups[1].Value
 $versionCode = [regex]::Match($versionText, 'paykiVersionCode\s*=\s*(\d+)').Groups[1].Value
 if ([string]::IsNullOrWhiteSpace($versionName) -or [string]::IsNullOrWhiteSpace($versionCode)) {
-    throw '无法从 app/build.gradle.kts 读取当前版本。'
+    throw 'Could not read the current version from app/build.gradle.kts.'
 }
 
 $debugApk = Join-Path $repo "app\build\outputs\apk\debug\PaykiTodo-$versionName-debug.apk"
 $releaseApk = Join-Path $repo "app\build\outputs\apk\release\PaykiTodo-$versionName-release.apk"
 
-Write-Host "PaykiTodo 正式包构建器"
-Write-Host "当前源码版本：$versionName / versionCode $versionCode"
-Write-Host '说明：Release 不是对 Debug APK 做二进制转换，而是用同一份源码和正式签名重新构建。'
+Write-Host 'PaykiTodo release builder'
+Write-Host "Source version: $versionName / versionCode $versionCode"
+Write-Host 'Release is rebuilt from source with the release configuration and signing key; it is not a binary conversion of a Debug APK.'
 
 if (-not $SkipDebugBuild -or -not (Test-Path -LiteralPath $debugApk)) {
-    Write-Host '正在确认 Debug 包可构建…'
+    Write-Host 'Checking that the Debug build succeeds...'
     & $gradle ':app:assembleDebug' '--console=plain'
-    if ($LASTEXITCODE -ne 0) { throw "Debug 构建失败，退出码 $LASTEXITCODE" }
+    if ($LASTEXITCODE -ne 0) { throw "Debug build failed with exit code $LASTEXITCODE" }
 }
 
-Write-Host '正在构建签名 Release 包（启用 R8 与资源压缩）…'
+Write-Host 'Building the signed Release APK with R8 and resource shrinking...'
 & $gradle ':app:assembleRelease' '--console=plain'
-if ($LASTEXITCODE -ne 0) { throw "Release 构建失败，退出码 $LASTEXITCODE" }
-if (-not (Test-Path -LiteralPath $releaseApk)) { throw "构建完成但找不到输出：$releaseApk" }
+if ($LASTEXITCODE -ne 0) { throw "Release build failed with exit code $LASTEXITCODE" }
+if (-not (Test-Path -LiteralPath $releaseApk)) { throw "Build completed but output was not found: $releaseApk" }
 
 $hash = (Get-FileHash -LiteralPath $releaseApk -Algorithm SHA256).Hash.ToLowerInvariant()
 $hashFile = "$releaseApk.sha256"
@@ -69,17 +72,17 @@ if ($sdkRoot -and (Test-Path -LiteralPath (Join-Path $sdkRoot 'build-tools'))) {
 }
 if ($apksigner) {
     & $apksigner verify $releaseApk
-    if ($LASTEXITCODE -ne 0) { throw "Release 签名校验失败，退出码 $LASTEXITCODE" }
-    Write-Host '签名校验：通过'
+    if ($LASTEXITCODE -ne 0) { throw "Release signature verification failed with exit code $LASTEXITCODE" }
+    Write-Host 'Signature verification: passed'
 } else {
-    Write-Warning '未找到 apksigner，已完成 Gradle Release 构建，但未执行独立签名校验。'
+    Write-Warning 'apksigner was not found. The Gradle Release build completed, but independent signature verification was skipped.'
 }
 
 $sizeMb = [math]::Round((Get-Item -LiteralPath $releaseApk).Length / 1MB, 2)
-Write-Host "Release APK：$releaseApk"
-Write-Host "Release 大小：$sizeMb MB"
-Write-Host "SHA-256：$hash"
-Write-Host "校验文件：$hashFile"
+Write-Host "Release APK: $releaseApk"
+Write-Host "Release size: $sizeMb MB"
+Write-Host "SHA-256: $hash"
+Write-Host "Checksum file: $hashFile"
 
 if ($OpenOutput) {
     Invoke-Item (Split-Path -Parent $releaseApk)

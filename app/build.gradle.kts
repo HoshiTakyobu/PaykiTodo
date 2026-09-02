@@ -12,7 +12,10 @@ val paykiVersionCode = 366
 
 project.setProperty("archivesBaseName", "PaykiTodo-$paykiVersionName")
 
-val releaseKeystorePropertiesFile = rootProject.file("keystore.properties")
+val releaseKeystorePropertiesFile = listOf(
+    rootProject.file("user/keystore.properties"),
+    rootProject.file("keystore.properties")
+).firstOrNull { it.isFile } ?: rootProject.file("user/keystore.properties")
 val releaseKeystoreProperties = Properties().apply {
     if (releaseKeystorePropertiesFile.isFile) {
         releaseKeystorePropertiesFile.inputStream().use(::load)
@@ -24,6 +27,10 @@ fun releaseSigningProperty(name: String): String {
 }
 
 val releaseStoreFile = releaseSigningProperty("storeFile")
+val releaseStorePath = listOf(
+    rootProject.file(releaseStoreFile),
+    releaseKeystorePropertiesFile.parentFile.resolve(releaseStoreFile)
+).firstOrNull { it.isFile }
 val releaseSigningConfigured = listOf(
     "storeFile",
     "storePassword",
@@ -32,7 +39,7 @@ val releaseSigningConfigured = listOf(
 ).all { key ->
     val value = releaseSigningProperty(key)
     value.isNotBlank() && !value.startsWith("REPLACE_WITH_")
-} && releaseStoreFile.isNotBlank() && rootProject.file(releaseStoreFile).isFile
+} && releaseStoreFile.isNotBlank() && releaseStorePath != null
 
 val releaseTaskRequested = gradle.startParameter.taskNames.any { taskName ->
     val simpleTaskName = taskName.substringAfterLast(":")
@@ -43,8 +50,8 @@ val releaseTaskRequested = gradle.startParameter.taskNames.any { taskName ->
 
 if (releaseTaskRequested && !releaseSigningConfigured) {
     throw GradleException(
-        "Release signing is not configured. Fill local keystore.properties and generate the keystore first. " +
-            "Use keystore.properties.example as the safe template; do not commit keystore.properties or release/*.jks."
+        "Release signing is not configured. Fill user/keystore.properties and generate the keystore first. " +
+            "Use keystore.properties.example as the safe template; do not commit user/ or release signing material."
     )
 }
 
@@ -65,7 +72,7 @@ android {
     signingConfigs {
         if (releaseSigningConfigured) {
             create("release") {
-                storeFile = rootProject.file(releaseStoreFile)
+                storeFile = releaseStorePath
                 storePassword = releaseSigningProperty("storePassword")
                 keyAlias = releaseSigningProperty("keyAlias")
                 keyPassword = releaseSigningProperty("keyPassword")

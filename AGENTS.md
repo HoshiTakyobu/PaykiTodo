@@ -62,17 +62,17 @@ Keep the repository presentable as a public Android project, not just as a local
 - Keep `SECURITY.md` because PaykiTodo includes LAN sync, optional AI API keys, local backups, and release signing. Security and secret-handling expectations should be visible to GitHub readers.
 - Never commit generated APK/AAB files, signing keystores, API keys, private Base URLs, backups, logs with personal data, or local machine diagnostics.
 - Do not keep unreferenced design intermediates, old launcher icon variants, or one-off generated assets in source directories unless they are deliberately documented as maintained source assets.
-- Before committing public-doc, release, signing, or repo-layout work, run `git diff --check` and verify ignored sensitive paths with `git check-ignore -v keystore.properties release/PaykiTodo-release.jks .env` or the closest relevant command.
+- Before committing public-doc, release, signing, or repo-layout work, run `git diff --check` and verify ignored sensitive paths with `git check-ignore -v user user/keystore.properties user/release/PaykiTodo-release.jks keystore.properties release/PaykiTodo-release.jks .env` or the closest relevant command.
 
 ## Release Signing And Secret Handling
 
 Release signing secrets never belong in `docs/` or in Git history.
 
 - Safe, commit-ready explanations and examples live under `docs/templates/`.
-- The real local signing config must be the ignored root-level file `keystore.properties`, usually copied from `keystore.properties.example`.
-- The generated keystore should live under the ignored root-level `release/` directory.
+- The real local signing config should be `user/keystore.properties`, copied from `keystore.properties.example`; Gradle keeps a root-level `keystore.properties` fallback for older local setups.
+- The generated keystore should live under the ignored `user/release/` directory; the old root-level `release/` path remains a compatibility fallback.
 - Do not echo keystore passwords, API keys, tokens, or private Base URLs into chat, docs, commit messages, or logs.
-- Before committing release-related work, verify `git check-ignore -v keystore.properties release/PaykiTodo-release.jks` and confirm no signing material appears in `git status --short`.
+- Before committing release-related work, verify `git check-ignore -v user user/keystore.properties user/release/PaykiTodo-release.jks keystore.properties release/PaykiTodo-release.jks` and confirm no signing material appears in `git status --short`.
 - Release APK / AAB artifacts are local distribution outputs and should not be committed unless the user explicitly asks for artifact tracking.
 
 ## Android Emulator Verification

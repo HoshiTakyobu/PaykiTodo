@@ -17,7 +17,7 @@
 - Release APK: `app/build/outputs/apk/release/PaykiTodo-1.15.18-release.apk`
 - Public asset name: `PaykiTodo-1.15.18-release.apk`
 - Current debug APK: `app/build/outputs/apk/debug/PaykiTodo-1.16.1-debug.apk` (after this round's build)
-- Current signed release APK: not rebuilt in this round; release signing material remains local and ignored by Git.
+- Current signed release APK: `app/build/outputs/apk/release/PaykiTodo-1.16.1-release.apk` (built and signature-verified in this round)
 - Current Windows self-contained EXE: `desktop/dist/PaykiTodo.exe` (after this round's publish)
 - Release signing material remains local and ignored by Git.
 

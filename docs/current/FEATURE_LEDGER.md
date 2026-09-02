@@ -7,7 +7,7 @@ This file tracks the product at a practical level for new coding sessions.
 ### Account Boundary And Local Migration
 
 - the Android app uses a normal PaykiTodo account login gate; after login, the local Room database remains usable offline and remains the authoritative working copy
-- the unauthenticated login surface exposes only local `.paykibak` export; migration import is gated behind successful account login and remains available under `设置 -> 数据与备份`
+- the unauthenticated login surface exposes no migration actions; `.paykibak` export and import are both available only after successful account login under `设置 -> 数据与备份`
 - the account login/register/recovery surface uses the existing dashboard artwork and PaykiTodo launcher icon and remains vertically scrollable on narrow screens
 - unauthenticated share, camera, voice, reminder-detail, widget, and phone-LAN entry points do not expose local data; an expired session stops cloud sync and the phone-LAN service
 - logout stops the phone-LAN service and refreshes widgets immediately

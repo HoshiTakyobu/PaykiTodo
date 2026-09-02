@@ -61,7 +61,6 @@ fun AccountAuthScreen(
     onRegister: suspend (String, String, String) -> AccountAuthResult,
     onRecover: suspend (String, String, String) -> String?,
     onRecoveryCode: (String) -> Unit,
-    onExportMigration: () -> Unit = {},
 ) {
     var mode by remember { mutableStateOf(AccountAuthMode.LOGIN) }
     var username by remember { mutableStateOf("") }
@@ -276,18 +275,6 @@ fun AccountAuthScreen(
                     else -> TextButton(enabled = !busy, onClick = { mode = AccountAuthMode.LOGIN; errorMessage = null }) { Text("返回登录") }
                 }
             }
-            Spacer(Modifier.height(20.dp))
-            Text(
-                "需要从 Debug 版迁出数据时，可以在登录前导出本机迁移包。登录成功后，请到“设置 -> 数据与备份”导入。迁移包不包含账号令牌、AI Key 或局域网密钥。",
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                style = MaterialTheme.typography.bodySmall,
-            )
-            Spacer(Modifier.height(8.dp))
-            OutlinedButton(
-                onClick = onExportMigration,
-                enabled = !busy,
-                modifier = Modifier.fillMaxWidth(),
-            ) { Text("导出本机数据") }
                 }
             }
         }

@@ -168,7 +168,6 @@ class MainActivity : ComponentActivity() {
                         onRegister = viewModel::registerAccount,
                         onRecover = viewModel::recoverAccount,
                         onRecoveryCode = { recoveryCodeNotice = it },
-                        onExportMigration = { exportBackupLauncher.launch("PaykiTodo-migration.paykibak") },
                     )
                 } else DashboardScreen(
                     uiState = uiState,

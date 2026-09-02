@@ -4,21 +4,27 @@
 
 - Repository root: `G:\Workspace\Project\PaykiTodo`
 - Branch: `main`
-- App version: `1.16.6 / versionCode 371` (local validation; not published)
+- App version: `1.16.7 / versionCode 372` (local validation; not published)
 - Room database version: `30`
 - Latest public GitHub Release: `v1.15.18`
 - Android outputs after final verification:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.16.6-debug.apk`
-- `app/build/outputs/apk/release/PaykiTodo-1.16.6-release.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.16.7-debug.apk`
+  - `app/build/outputs/apk/release/PaykiTodo-1.16.7-release.apk`
 - Windows output after final publish: `desktop/dist/PaykiTodo.exe`
 - Private cloud deployment: service enabled on the Azure host, origin loopback `127.0.0.1:18766`, public access through the privately configured Cloudflare/Nginx HTTPS hostname, and the administrator page at `/admin`.
 
-## v1.16.6 Verification Evidence
+## v1.16.7 Product Changes
+
+- The unauthenticated account page no longer exposes local migration export or import; both operations remain under authenticated `设置 -> 数据与备份`.
+- Debug-to-Release migration instructions now require logging in before exporting from the old installation and before importing into the new installation.
+- Version metadata is `1.16.7 / versionCode 372`.
+
+## v1.16.7 Verification Evidence
 
 - Android `testDebugUnitTest`, `lintDebug`, `assembleDebug`, and signed `assembleRelease` passed.
-- `emulator-5554` was reinstalled with `PaykiTodo-1.16.6-debug.apk` after removing the incompatible Release-signed package. The unauthenticated account page was checked visually: the card is vertically centered, remains scrollable, and exposes only local export rather than migration import.
+- `emulator-5554` was updated with `PaykiTodo-1.16.7-debug.apk`. The unauthenticated account page was checked visually: the card remains centered and the UI tree contains no local migration explanation, export action, or import action.
 - `python -m unittest server.test_paykitodo_cloud_server -v` passed all 5 integration tests.
-- `git diff --check` and PowerShell parser checks for the ignored local helpers passed. No production credential rotation was run.
+- PowerShell parser checks, `git diff --check`, and ignored sensitive-path checks passed. No production credential rotation was run.
 
 ## v1.16.6 Product Changes
 

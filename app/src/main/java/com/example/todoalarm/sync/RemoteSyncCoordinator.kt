@@ -45,6 +45,12 @@ data class AccountAuthResult(
     val succeeded: Boolean get() = error == null
 }
 
+internal data class InitialSyncState(
+    val revision: Long,
+    val dirty: Boolean,
+    val conflictRevision: Long
+)
+
 class RemoteSyncCoordinator(
     private val app: TodoApplication,
     private val settingsStore: AppSettingsStore
@@ -159,7 +165,7 @@ class RemoteSyncCoordinator(
             val remoteRevision = response.optLong("snapshotRevision", 0L)
             val localSnapshot = app.repository.exportSnapshot(settingsStore.currentSettings())
             val hasLocalData = localSnapshot.hasMeaningfulData()
-            val localDirty = hasLocalData
+            val initialSyncState = initialSyncState(hasLocalData, remoteRevision)
             settingsStore.saveRemoteAccountSession(
                 serverUrl = normalizedServer,
                 username = canonicalUsername,
@@ -169,9 +175,9 @@ class RemoteSyncCoordinator(
                 accessExpiresAt = response.getLong("accessExpiresAt"),
                 refreshExpiresAt = response.getLong("refreshExpiresAt"),
                 encryptionSecret = deriveAccountSecret(canonicalUsername, password),
-                revision = if (hasLocalData) 0L else remoteRevision,
-                dirty = localDirty,
-                conflictRevision = if (remoteRevision > 0L && hasLocalData) remoteRevision else 0L
+                revision = initialSyncState.revision,
+                dirty = initialSyncState.dirty,
+                conflictRevision = initialSyncState.conflictRevision
             )
             TodoWidgetProvider.notifyWidgetDataChanged(app)
             start()
@@ -532,6 +538,21 @@ class RemoteSyncCoordinator(
     companion object {
         private const val MAX_PAYLOAD_BYTES = 32 * 1024 * 1024
         private const val MAX_JSON_BYTES = 128 * 1024
+
+        internal fun initialSyncState(hasLocalData: Boolean, remoteRevision: Long): InitialSyncState {
+            val normalizedRemoteRevision = remoteRevision.coerceAtLeast(0L)
+            return if (hasLocalData) {
+                InitialSyncState(
+                    revision = 0L,
+                    dirty = true,
+                    conflictRevision = normalizedRemoteRevision.takeIf { it > 0L } ?: 0L
+                )
+            } else {
+                // An empty device must start at revision zero so an existing remote
+                // snapshot is downloaded during the first authenticated sync.
+                InitialSyncState(revision = 0L, dirty = false, conflictRevision = 0L)
+            }
+        }
 
         internal fun deriveAccountSecret(username: String, password: String): String {
             val material = "PaykiTodo Account Sync v2\u0000${username.trim().lowercase()}\u0000$password"

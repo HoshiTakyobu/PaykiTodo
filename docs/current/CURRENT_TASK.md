@@ -2,7 +2,14 @@
 
 ## Active Focus
 
-The `v1.16.7` local validation round removes all local-data migration actions from the unauthenticated Android account surface and keeps export/import behind successful account authentication. The private cloud service is deployed separately from Git; no GitHub Release is being created in this round.
+The `v1.16.8` local validation round fixes first-login cloud snapshot download on an empty device. The private cloud service is deployed separately from Git; no GitHub Release is being created in this round.
+
+## Completed `v1.16.8` Scope
+
+1. Empty authenticated devices now initialize local sync revision at `0`, so an existing cloud snapshot is downloaded.
+2. Devices with local data continue to upload to an empty cloud account or enter explicit conflict protection when the cloud already has data.
+3. Added regression tests for empty-device download, local-data conflict, and local-data upload initialization.
+4. Raised Android and Windows application metadata to `1.16.8 / versionCode 373`.
 
 ## Completed `v1.16.7` Scope
 

@@ -8,6 +8,30 @@ import org.junit.Test
 
 class RemoteSyncCoordinatorTest {
     @Test
+    fun emptyDeviceStartsAtZeroAndDownloadsExistingRemoteSnapshot() {
+        assertEquals(
+            InitialSyncState(0L, false, 0L),
+            RemoteSyncCoordinator.initialSyncState(hasLocalData = false, remoteRevision = 7L)
+        )
+    }
+
+    @Test
+    fun localDataWithExistingRemoteSnapshotStartsAsConflict() {
+        assertEquals(
+            InitialSyncState(0L, true, 7L),
+            RemoteSyncCoordinator.initialSyncState(hasLocalData = true, remoteRevision = 7L)
+        )
+    }
+
+    @Test
+    fun localDataWithEmptyRemoteSnapshotStartsDirtyForUpload() {
+        assertEquals(
+            InitialSyncState(0L, true, 0L),
+            RemoteSyncCoordinator.initialSyncState(hasLocalData = true, remoteRevision = 0L)
+        )
+    }
+
+    @Test
     fun accountSecretIsCanonicalAndStableAcrossClients() {
         val first = RemoteSyncCoordinator.deriveAccountSecret(" Alice.User ", "correct horse battery staple")
         val second = RemoteSyncCoordinator.deriveAccountSecret("alice.user", "correct horse battery staple")

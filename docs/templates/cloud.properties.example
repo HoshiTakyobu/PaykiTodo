@@ -1,0 +1,7 @@
+# Copy to user/cloud.properties and fill values locally.
+# This file is safe to commit because it contains no real hostname or secret.
+baseUrl=https://paykitodo.example.com
+
+# Public Cloudflare Turnstile Site Key. The private Secret Key belongs only in
+# the server environment variable PAYKITODO_TURNSTILE_SECRET_KEY.
+turnstileSiteKey=REPLACE_WITH_PUBLIC_SITE_KEY

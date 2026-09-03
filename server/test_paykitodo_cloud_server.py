@@ -12,6 +12,7 @@ import unittest
 import urllib.error
 import urllib.parse
 import urllib.request
+from unittest.mock import patch
 from pathlib import Path
 
 
@@ -118,6 +119,103 @@ class CloudServerIntegrationTest(unittest.TestCase):
         refreshed = json.loads(raw)
         self.assertNotEqual(login["accessToken"], refreshed["accessToken"])
         self.assertEqual(login["refreshExpiresAt"], refreshed["refreshExpiresAt"])
+
+    def test_turnstile_is_server_verified_when_configured(self):
+        previous_site_key = self.cloud.TURNSTILE_SITE_KEY
+        previous_secret_key = self.cloud.TURNSTILE_SECRET_KEY
+        self.cloud.TURNSTILE_SITE_KEY = "1x00000000000000000000AA"
+        self.cloud.TURNSTILE_SECRET_KEY = "test-only-turnstile-secret"
+        try:
+            status, _, raw = self.request(
+                "/v2/auth/challenge",
+                headers={"Accept": "text/html"},
+            )
+            self.assertEqual(200, status, raw)
+            self.assertIn(self.cloud.TURNSTILE_SITE_KEY, raw.decode("utf-8"))
+            self.assertNotIn(self.cloud.TURNSTILE_SECRET_KEY, raw.decode("utf-8"))
+
+            status, _, raw = self.request(
+                "/v2/auth/register",
+                "POST",
+                {
+                    "username": "tester_turnstile_missing",
+                    "displayName": "测试用户",
+                    "password": "correct horse battery staple",
+                    "deviceId": "android_device_turnstile_missing",
+                    "deviceName": "Android 测试机",
+                    "platform": "android",
+                },
+            )
+            self.assertEqual(403, status, raw)
+            self.assertEqual("human_verification_required", json.loads(raw)["error"])
+
+            class FakeResponse:
+                def __enter__(self):
+                    return self
+
+                def __exit__(self, *_args):
+                    return False
+
+                def read(self, _limit):
+                    return b'{"success":true,"action":"login"}'
+
+            real_urlopen = self.cloud.urllib.request.urlopen
+
+            def urlopen_side_effect(request, *args, **kwargs):
+                if request.full_url == self.cloud.TURNSTILE_SITEVERIFY_URL:
+                    return FakeResponse()
+                return real_urlopen(request, *args, **kwargs)
+
+            with patch.object(self.cloud.urllib.request, "urlopen", side_effect=urlopen_side_effect) as verify:
+                status, _, raw = self.request(
+                    "/v2/auth/register",
+                    "POST",
+                    {
+                        "username": "tester_turnstile_ok",
+                        "displayName": "测试用户",
+                        "password": "correct horse battery staple",
+                        "deviceId": "android_device_turnstile_ok",
+                        "deviceName": "Android 测试机",
+                        "platform": "android",
+                        "turnstileToken": "test-token",
+                    },
+                )
+            self.assertEqual(201, status, raw)
+            cloud_calls = [
+                call for call in verify.call_args_list
+                if call.args and call.args[0].full_url == self.cloud.TURNSTILE_SITEVERIFY_URL
+            ]
+            self.assertEqual(1, len(cloud_calls))
+        finally:
+            self.cloud.TURNSTILE_SITE_KEY = previous_site_key
+            self.cloud.TURNSTILE_SECRET_KEY = previous_secret_key
+
+    def test_turnstile_fails_closed_when_only_one_key_is_configured(self):
+        previous_site_key = self.cloud.TURNSTILE_SITE_KEY
+        previous_secret_key = self.cloud.TURNSTILE_SECRET_KEY
+        self.cloud.TURNSTILE_SITE_KEY = "1x00000000000000000000AA"
+        self.cloud.TURNSTILE_SECRET_KEY = ""
+        try:
+            status, _, raw = self.request("/v2/auth/challenge")
+            self.assertEqual(503, status, raw)
+            self.assertEqual("challenge_not_configured", json.loads(raw)["error"])
+
+            status, _, raw = self.request(
+                "/v2/auth/login",
+                "POST",
+                {
+                    "username": "tester_partial_config",
+                    "password": "correct horse battery staple",
+                    "deviceId": "android_device_partial_config",
+                    "deviceName": "Android 测试机",
+                    "platform": "android",
+                },
+            )
+            self.assertEqual(503, status, raw)
+            self.assertEqual("human_verification_unavailable", json.loads(raw)["error"])
+        finally:
+            self.cloud.TURNSTILE_SITE_KEY = previous_site_key
+            self.cloud.TURNSTILE_SECRET_KEY = previous_secret_key
 
     def test_recovery_code_resets_password_and_revokes_sessions(self):
         account = self.create_account("recovery")

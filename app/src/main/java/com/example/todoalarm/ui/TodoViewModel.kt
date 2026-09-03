@@ -1089,24 +1089,29 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
 
     fun isAuthenticated(): Boolean = settingsStore.hasValidRemoteSession()
 
-    suspend fun loginAccount(username: String, password: String): AccountAuthResult {
+    suspend fun loginAccount(username: String, password: String, turnstileToken: String?): AccountAuthResult {
         return withContext(Dispatchers.IO) {
-            app.remoteSyncCoordinator.login(username, password)
+            app.remoteSyncCoordinator.login(username, password, turnstileToken)
         }.also { result ->
             if (result.succeeded) authenticationTick.value = System.currentTimeMillis()
         }
     }
 
-    suspend fun registerAccount(username: String, displayName: String, password: String): AccountAuthResult {
+    suspend fun registerAccount(username: String, displayName: String, password: String, turnstileToken: String?): AccountAuthResult {
         return withContext(Dispatchers.IO) {
-            app.remoteSyncCoordinator.register(username, displayName, password)
+            app.remoteSyncCoordinator.register(username, displayName, password, turnstileToken)
         }.also { result ->
             if (result.succeeded) authenticationTick.value = System.currentTimeMillis()
         }
     }
 
-    suspend fun recoverAccount(username: String, recoveryCode: String, newPassword: String): String? {
-        return app.remoteSyncCoordinator.recoverPassword(username, recoveryCode, newPassword)
+    suspend fun recoverAccount(
+        username: String,
+        recoveryCode: String,
+        newPassword: String,
+        turnstileToken: String?
+    ): String? {
+        return app.remoteSyncCoordinator.recoverPassword(username, recoveryCode, newPassword, turnstileToken)
     }
 
     fun logoutRemoteAccount() {

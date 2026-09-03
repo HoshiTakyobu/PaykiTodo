@@ -2,6 +2,19 @@
 
 PaykiTodo 采用语义化倾向的应用版本号和递增 `versionCode`。本文件面向用户记录重要变化，不再保存每一次内部调试重建的完整流水账；完整历史可通过 Git commit、tag 和 `docs/archive/` 追溯。
 
+## v1.16.9（本地验证版）
+
+### 账号安全
+
+- 登录、注册和找回密码支持可选的 Cloudflare Turnstile 人机验证。
+- 人机验证由服务器向 Cloudflare 二次校验；客户端不保存或上传 Turnstile Secret Key。
+- 未配置服务端 Secret Key 时保持兼容，现有部署仍使用原有限流策略。
+
+### 版本与构建
+
+- `versionName = 1.16.9`
+- `versionCode = 374`
+
 ## v1.16.8（本地验证版）
 
 ### 账号同步

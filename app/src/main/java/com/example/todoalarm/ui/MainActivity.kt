@@ -37,6 +37,7 @@ import androidx.compose.material3.TextButton
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.example.todoalarm.BuildConfig
 import com.example.todoalarm.CrashLogger
 import com.example.todoalarm.TodoApplication
 import com.example.todoalarm.accessibility.ReminderAccessibilityService
@@ -168,6 +169,8 @@ class MainActivity : ComponentActivity() {
                         onRegister = viewModel::registerAccount,
                         onRecover = viewModel::recoverAccount,
                         onRecoveryCode = { recoveryCodeNotice = it },
+                        turnstileEnabled = BuildConfig.PAYKITODO_TURNSTILE_SITE_KEY.isNotBlank(),
+                        turnstileChallengeUrl = BuildConfig.PAYKITODO_CLOUD_BASE_URL.trimEnd('/') + "/v2/auth/challenge",
                     )
                 } else DashboardScreen(
                     uiState = uiState,

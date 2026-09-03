@@ -2,7 +2,21 @@
 
 ## Active Focus
 
-The `v1.16.8` local validation round fixes first-login cloud snapshot download on an empty device. The private cloud service is deployed separately from Git; no GitHub Release is being created in this round.
+The `v1.16.9` local validation round adds optional server-verified Cloudflare Turnstile protection to account authentication and keeps the private cloud service separately deployed from Git; no GitHub Release is being created in this round.
+
+## Completed `v1.16.9` Scope
+
+1. Android login, registration, and password recovery can obtain a Turnstile token from the configured challenge page.
+2. The cloud service verifies the token against Cloudflare before processing authentication requests; missing configuration keeps existing deployments compatible.
+3. Partial Turnstile configuration fails closed instead of silently accepting unverified authentication requests.
+4. Added safe public/private configuration templates and kept the Turnstile Secret Key out of Android and Git.
+5. Raised Android and Windows application metadata to `1.16.9 / versionCode 374`.
+
+## Validation For `v1.16.9`
+
+1. Passed the 7-test server integration suite, Android unit tests, Android Lint, and Debug/Release APK assembly.
+2. On `emulator-5554` / `Pixel_8`, installed and launched the Debug APK; package metadata reported `1.16.9 / versionCode 374`, and the account UI was visible without a fatal crash.
+3. The emulator did not have an authenticated test session, so a real scheduled reminder could not be triggered through the app. The service-start fallback remains covered by the production catch path and requires authenticated controlled runtime testing for end-to-end full-screen evidence.
 
 ## Completed `v1.16.8` Scope
 

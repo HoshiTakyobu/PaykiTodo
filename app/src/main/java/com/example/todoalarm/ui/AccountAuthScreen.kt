@@ -57,10 +57,12 @@ private enum class AccountAuthMode {
 
 @Composable
 fun AccountAuthScreen(
-    onLogin: suspend (String, String) -> AccountAuthResult,
-    onRegister: suspend (String, String, String) -> AccountAuthResult,
-    onRecover: suspend (String, String, String) -> String?,
+    onLogin: suspend (String, String, String?) -> AccountAuthResult,
+    onRegister: suspend (String, String, String, String?) -> AccountAuthResult,
+    onRecover: suspend (String, String, String, String?) -> String?,
     onRecoveryCode: (String) -> Unit,
+    turnstileEnabled: Boolean = false,
+    turnstileChallengeUrl: String = "",
 ) {
     var mode by remember { mutableStateOf(AccountAuthMode.LOGIN) }
     var username by remember { mutableStateOf("") }
@@ -72,6 +74,8 @@ fun AccountAuthScreen(
     var busy by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var agreementVisible by remember { mutableStateOf(false) }
+    var turnstileToken by remember { mutableStateOf<String?>(null) }
+    var turnstileReloadKey by remember { mutableStateOf(0) }
     val scope = rememberCoroutineScope()
 
     val darkMode = MaterialTheme.colorScheme.background.luminance() < 0.5f
@@ -208,6 +212,26 @@ fun AccountAuthScreen(
                 }
             }
 
+            if (turnstileEnabled && turnstileChallengeUrl.isNotBlank()) {
+                Text(
+                    text = "请完成人机验证",
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 12.dp),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    style = MaterialTheme.typography.bodySmall,
+                )
+                TurnstileChallenge(
+                    challengeUrl = turnstileChallengeUrl,
+                    reloadKey = turnstileReloadKey,
+                    onToken = { turnstileToken = it; errorMessage = null },
+                    onError = {
+                        turnstileToken = null
+                        errorMessage = "人机验证加载失败，请检查网络后重试。"
+                    },
+                )
+            }
+
             errorMessage?.let {
                 Spacer(Modifier.height(8.dp))
                 Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
@@ -221,20 +245,20 @@ fun AccountAuthScreen(
                         errorMessage = null
                         val result = when (mode) {
                             AccountAuthMode.LOGIN -> {
-                                if (!agreed) AccountAuthResult("请先勾选用户协议") else onLogin(username, password)
+                                if (!agreed) AccountAuthResult("请先勾选用户协议") else onLogin(username, password, turnstileToken)
                             }
                             AccountAuthMode.REGISTER -> {
                                 when {
                                     !agreed -> AccountAuthResult("请先勾选用户协议")
                                     password != passwordConfirmation -> AccountAuthResult("两次输入的密码不一致")
-                                    else -> onRegister(username, displayName, password)
+                                    else -> onRegister(username, displayName, password, turnstileToken)
                                 }
                             }
                             AccountAuthMode.RECOVER -> {
                                 if (password != passwordConfirmation) {
                                     AccountAuthResult("两次输入的密码不一致")
                                 } else {
-                                    val error = onRecover(username, recoveryCode, password)
+                                    val error = onRecover(username, recoveryCode, password, turnstileToken)
                                     AccountAuthResult(error)
                                 }
                             }
@@ -250,11 +274,14 @@ fun AccountAuthScreen(
                                 recoveryCode = ""
                             }
                         }
+                        turnstileToken = null
+                        if (turnstileEnabled) turnstileReloadKey += 1
                         busy = false
                     }
                 },
                 modifier = Modifier.fillMaxWidth(),
-                enabled = !busy && username.isNotBlank() && password.isNotBlank(),
+                enabled = !busy && username.isNotBlank() && password.isNotBlank() &&
+                    (!turnstileEnabled || !turnstileToken.isNullOrBlank()),
             ) {
                 if (busy) CircularProgressIndicator(strokeWidth = 2.dp)
                 else Text(
@@ -269,10 +296,25 @@ fun AccountAuthScreen(
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
                 when (mode) {
                     AccountAuthMode.LOGIN -> {
-                        TextButton(enabled = !busy, onClick = { mode = AccountAuthMode.REGISTER; errorMessage = null }) { Text("注册账号") }
-                        TextButton(enabled = !busy, onClick = { mode = AccountAuthMode.RECOVER; errorMessage = null }) { Text("忘记密码") }
+                        TextButton(enabled = !busy, onClick = {
+                            mode = AccountAuthMode.REGISTER
+                            errorMessage = null
+                            turnstileToken = null
+                            turnstileReloadKey += 1
+                        }) { Text("注册账号") }
+                        TextButton(enabled = !busy, onClick = {
+                            mode = AccountAuthMode.RECOVER
+                            errorMessage = null
+                            turnstileToken = null
+                            turnstileReloadKey += 1
+                        }) { Text("忘记密码") }
                     }
-                    else -> TextButton(enabled = !busy, onClick = { mode = AccountAuthMode.LOGIN; errorMessage = null }) { Text("返回登录") }
+                    else -> TextButton(enabled = !busy, onClick = {
+                        mode = AccountAuthMode.LOGIN
+                        errorMessage = null
+                        turnstileToken = null
+                        turnstileReloadKey += 1
+                    }) { Text("返回登录") }
                 }
             }
                 }

@@ -22,7 +22,7 @@ PaykiTodo 是一个以 **强提醒、本地可控、日程与待办一体化** �
 
 | 项目 | 内容 |
 | --- | --- |
-| 当前源码版本 | `v1.16.8`（本地开发中，尚未发布） |
+| 当前源码版本 | `v1.16.9`（本地开发中，尚未发布） |
 | 最新 GitHub Release | `v1.15.18` |
 | Android 包名 | `com.paykitodo.app` |
 | 支持系统 | Android 8.0 及以上 / API 26+ |
@@ -119,6 +119,7 @@ PaykiTodo 是一个以 **强提醒、本地可控、日程与待办一体化** �
 - 云端只保存 AES-GCM 加密迁移包和必要账号/设备元数据，不保存 AI API Key；令牌和本地解密密钥分别由 Android 加密偏好或 Windows DPAPI 保护。
 - 手机与电脑同时离线修改时，客户端会停止覆盖并提示冲突；当前版本不声称支持字段级自动合并。
 - 服务器和管理后台由用户自行部署，仓库只包含不带真实域名、IP、证书和密码的通用模板。
+- 账号服务可启用 Cloudflare Turnstile；验证由服务器向 Cloudflare Siteverify，Secret Key 只放服务器环境，不进入 Android APK 或 Git。
 
 ### 9. Android 桌面小组件
 

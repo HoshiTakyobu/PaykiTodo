@@ -8,7 +8,7 @@
 - Supported Android: Android 8.0+ / API 26+
 - Compile and target SDK: Android 14 / API 34
 - License: MIT
-- App version: `1.16.8 / versionCode 373` (current local validation source)
+- App version: `1.16.9 / versionCode 374` (current local validation source)
 - Room database version: `30`
 
 ## Published Build
@@ -16,8 +16,8 @@
 - GitHub Release: `https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.15.18`
 - Release APK: `app/build/outputs/apk/release/PaykiTodo-1.15.18-release.apk`
 - Public asset name: `PaykiTodo-1.15.18-release.apk`
-- Current debug APK: `app/build/outputs/apk/debug/PaykiTodo-1.16.8-debug.apk` (after this round's build)
-- Current signed release APK: `app/build/outputs/apk/release/PaykiTodo-1.16.8-release.apk` (after this round's build)
+- Current debug APK: `app/build/outputs/apk/debug/PaykiTodo-1.16.9-debug.apk` (after this round's build)
+- Current signed release APK: `app/build/outputs/apk/release/PaykiTodo-1.16.9-release.apk` (after this round's build)
 - Current Windows self-contained EXE: `desktop/dist/PaykiTodo.exe` (after this round's publish)
 - Release signing material remains local and ignored by Git.
 
@@ -43,6 +43,21 @@ PaykiTodo is a local-first Android assistant for todos, DDLs, schedules, countdo
 - Desktop Web calendar now uses the same current-time line convention as the phone calendar, separates today's date from the selected date, and flashes the selected week column briefly.
 
 See `README.md` for the public overview and `docs/current/FEATURE_LEDGER.md` for the detailed implementation ledger.
+
+## v1.16.9 Validation Scope (not published)
+
+- Added optional Cloudflare Turnstile to Android account login, registration, and password recovery.
+- Added server-side Turnstile Siteverify validation and a no-store challenge page; the server secret remains environment-only.
+- Turnstile configuration now fails closed when only the public Site Key or only the server Secret Key is present.
+- Kept IP rate limiting and made the feature disabled-compatible when Turnstile is not configured.
+- Raised the application metadata to `1.16.9 / versionCode 374`.
+
+## v1.16.9 Validation Evidence
+
+- `python -m unittest server.test_paykitodo_cloud_server -v`: 7 tests passed, including missing-token rejection, mocked Siteverify success, and incomplete-key fail-closed behavior.
+- `:app:testDebugUnitTest`, `:app:lintDebug`, `:app:assembleDebug`, and `:app:assembleRelease`: passed.
+- ADB smoke test: `emulator-5554` / `Pixel_8` installed `PaykiTodo-1.16.9-debug.apk`, reported versionCode `374`, opened `MainActivity`, and exposed the login/register/recovery UI without a fatal crash.
+- The authenticated reminder trigger was not executed on the emulator because no test account/session was configured. Full-screen launch, notification permission, exact-alarm permission, lock-screen behavior, and OEM background policy still require a controlled authenticated test and physical-device verification.
 
 ## v1.16.8 Validation Scope (not published)
 

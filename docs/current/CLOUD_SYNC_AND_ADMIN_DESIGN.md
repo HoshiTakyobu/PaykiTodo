@@ -2,7 +2,7 @@
 
 ## 文档状态
 
-- 状态：`1.16.5` 本地验证基线，包含提醒服务降级、过往日程提醒语义、账号登录页视觉更新和管理员凭据显式轮换。
+- 状态：`1.16.9` 本地验证基线，包含提醒服务降级、过往日程提醒语义、账号登录页视觉更新、管理员凭据显式轮换和可选 Turnstile 人机验证。
 - 旧服务器代码 `server/paykitodo_sync_server.py` 继续为旧安装提供按设备 ID 的密文中转兼容。
 - 新服务器代码 `server/paykitodo_cloud_server.py` 已实现账号、令牌、设备、版本化密文快照和管理员页面，默认监听 `127.0.0.1:18766`。
 - Windows EXE 已拥有 DPAPI 保护的本地数据副本，可离线编辑并通过账号同步；手机 `18765` 仍是独立的 LAN 兼容模式。
@@ -55,7 +55,7 @@ Windows EXE 在这种模式下不连接手机的 `18765`，不依赖手机在线
 - `GET /v2/devices`
 - `DELETE /v2/devices/{deviceId}`
 
-密码当前使用带随机盐和服务端 pepper 的 `scrypt` 保存摘要。访问 Token 短期有效，Refresh Token 只存哈希并按设备轮换/撤销；登录和注册有限流，安全动作写入审计表。管理员 MFA、找回密码和邮件验证仍属于后续安全增强。
+密码当前使用带随机盐和服务端 pepper 的 `scrypt` 保存摘要。访问 Token 短期有效，Refresh Token 只存哈希并按设备轮换/撤销；登录和注册有限流，安全动作写入审计表。登录、注册和找回密码可启用 Cloudflare Turnstile，服务器在处理请求前向 Cloudflare Siteverify，Secret Key 只存在服务器环境变量。管理员 MFA 和邮件验证仍属于后续安全增强。
 
 ### 2.2 同步服务
 

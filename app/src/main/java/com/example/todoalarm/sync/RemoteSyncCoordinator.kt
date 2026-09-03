@@ -110,20 +110,26 @@ class RemoteSyncCoordinator(
         username: String,
         password: String,
         displayName: String,
-        register: Boolean
+        register: Boolean,
+        turnstileToken: String? = null
     ): String? = syncMutex.withLock {
-        authenticateAccount(username, password, displayName, register).error
+        authenticateAccount(username, password, displayName, register, turnstileToken).error
     }
 
-    suspend fun login(username: String, password: String): AccountAuthResult {
-        return syncMutex.withLock { authenticateAccount(username, password, "", false) }
+    suspend fun login(username: String, password: String, turnstileToken: String? = null): AccountAuthResult {
+        return syncMutex.withLock { authenticateAccount(username, password, "", false, turnstileToken) }
     }
 
-    suspend fun register(username: String, displayName: String, password: String): AccountAuthResult {
-        return syncMutex.withLock { authenticateAccount(username, password, displayName, true) }
+    suspend fun register(username: String, displayName: String, password: String, turnstileToken: String? = null): AccountAuthResult {
+        return syncMutex.withLock { authenticateAccount(username, password, displayName, true, turnstileToken) }
     }
 
-    suspend fun recoverPassword(username: String, recoveryCode: String, newPassword: String): String? = syncMutex.withLock {
+    suspend fun recoverPassword(
+        username: String,
+        recoveryCode: String,
+        newPassword: String,
+        turnstileToken: String? = null
+    ): String? = syncMutex.withLock {
         runCatching {
             postJson(
                 cloudServerUrl(),
@@ -132,6 +138,9 @@ class RemoteSyncCoordinator(
                     .put("username", username.trim().lowercase())
                     .put("recoveryCode", recoveryCode.trim())
                     .put("newPassword", newPassword)
+                    .apply {
+                        turnstileToken?.trim()?.takeIf { it.isNotBlank() }?.let { put("turnstileToken", it) }
+                    }
             )
             null
         }.getOrElse { error -> error.message ?: "找回密码失败" }
@@ -141,7 +150,8 @@ class RemoteSyncCoordinator(
         username: String,
         password: String,
         displayName: String,
-        register: Boolean
+        register: Boolean,
+        turnstileToken: String?
     ): AccountAuthResult {
         return runCatching {
             val normalizedServer = cloudServerUrl()
@@ -159,6 +169,7 @@ class RemoteSyncCoordinator(
                     put("deviceId", deviceId)
                     put("deviceName", Build.MODEL.ifBlank { "Android 设备" })
                     put("platform", "android")
+                    turnstileToken?.trim()?.takeIf { it.isNotBlank() }?.let { put("turnstileToken", it) }
                 }
             )
             val canonicalUsername = response.getJSONObject("user").getString("username")

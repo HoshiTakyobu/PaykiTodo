@@ -4,14 +4,29 @@
 
 - Repository root: `G:\Workspace\Project\PaykiTodo`
 - Branch: `main`
-- App version: `1.16.8 / versionCode 373` (local validation; not published)
+- App version: `1.16.9 / versionCode 374` (local validation; not published)
 - Room database version: `30`
 - Latest public GitHub Release: `v1.15.18`
 - Android outputs after final verification:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.16.8-debug.apk`
-  - `app/build/outputs/apk/release/PaykiTodo-1.16.8-release.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.16.9-debug.apk`
+  - `app/build/outputs/apk/release/PaykiTodo-1.16.9-release.apk`
 - Windows output after final publish: `desktop/dist/PaykiTodo.exe`
 - Private cloud deployment: service enabled on the Azure host, origin loopback `127.0.0.1:18766`, public access through the privately configured Cloudflare/Nginx HTTPS hostname, and the administrator page at `/admin`.
+
+## v1.16.9 Product Changes
+
+- Added optional Cloudflare Turnstile to Android login, registration, and password recovery.
+- Authentication requests are accepted only after server-side Siteverify when a Turnstile Secret Key is configured; the secret remains outside Android and Git.
+- Partial Turnstile configuration fails closed instead of leaving the authentication endpoint unprotected.
+- Kept IP rate limiting as a second layer and preserved compatibility when the feature is not configured.
+
+## v1.16.9 Verification Evidence
+
+- `python -m unittest server.test_paykitodo_cloud_server -v`: 7 tests passed.
+- `:app:testDebugUnitTest`, `:app:lintDebug`, `:app:assembleDebug`, and `:app:assembleRelease`: passed.
+- ADB device `emulator-5554` / AVD `Pixel_8` installed `app/build/outputs/apk/debug/PaykiTodo-1.16.9-debug.apk`; package inspection reported `versionName=1.16.9` and `versionCode=374`.
+- The app launched `MainActivity` and the UI tree exposed the account login, registration, and password recovery controls. No fatal crash was observed during launch.
+- No authenticated reminder smoke test was run on the emulator. Because the app had no test account/session, the scheduled reminder could not be created through the UI; full-screen/notification behavior remains subject to the separate permission and OEM checks documented below.
 
 ## v1.16.8 Product Changes
 

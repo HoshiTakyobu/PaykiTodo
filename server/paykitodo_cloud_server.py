@@ -20,13 +20,14 @@ import secrets
 import sqlite3
 import threading
 import time
+import urllib.request
 import uuid
 from dataclasses import dataclass
 from http import HTTPStatus
 from http.cookies import SimpleCookie
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from urllib.parse import parse_qs, quote, urlsplit
+from urllib.parse import parse_qs, quote, urlencode, urlsplit
 
 
 MAX_JSON_BYTES = 128 * 1024
@@ -44,12 +45,19 @@ LISTEN_PORT = int(os.environ.get("PAYKITODO_CLOUD_PORT", "18766"))
 ADMIN_USER = os.environ.get("PAYKITODO_ADMIN_USER", "")
 ADMIN_PASSWORD = os.environ.get("PAYKITODO_ADMIN_PASSWORD", "")
 PASSWORD_PEPPER = os.environ.get("PAYKITODO_PASSWORD_PEPPER", "").encode("utf-8")
+TURNSTILE_SITE_KEY = os.environ.get("PAYKITODO_TURNSTILE_SITE_KEY", "").strip()
+TURNSTILE_SECRET_KEY = os.environ.get("PAYKITODO_TURNSTILE_SECRET_KEY", "").strip()
+TURNSTILE_SITEVERIFY_URL = "https://challenges.cloudflare.com/turnstile/v0/siteverify"
 ADMIN_WEB_SESSIONS: dict[str, tuple[int, str]] = {}
 ADMIN_WEB_SESSIONS_LOCK = threading.Lock()
 
 
 def now_seconds() -> int:
     return int(time.time())
+
+
+def turnstile_configured() -> bool:
+    return bool(TURNSTILE_SITE_KEY and TURNSTILE_SECRET_KEY)
 
 
 def token_hash(token: str) -> str:
@@ -248,6 +256,8 @@ class PaykiTodoCloudHandler(BaseHTTPRequestHandler):
                 self.login()
             elif path == "/v2/auth/recover" and method == "POST":
                 self.recover_password()
+            elif path == "/v2/auth/challenge" and method == "GET":
+                self.auth_challenge()
             elif path == "/v2/auth/refresh" and method == "POST":
                 self.refresh_session()
             elif path == "/v2/auth/logout" and method == "POST":
@@ -317,6 +327,7 @@ class PaykiTodoCloudHandler(BaseHTTPRequestHandler):
         if not RATE_LIMITER.allow(f"register:{self.remote_ip}", 8, 15 * 60):
             raise ApiError(HTTPStatus.TOO_MANY_REQUESTS, "rate_limited", "注册请求过于频繁")
         body = self.read_json()
+        self.verify_human_challenge(body)
         username, display_name, password, device_id, device_name, platform = self.validate_credentials(body)
         salt = secrets.token_bytes(16)
         recovery_code = generate_recovery_code()
@@ -345,6 +356,7 @@ class PaykiTodoCloudHandler(BaseHTTPRequestHandler):
         if not RATE_LIMITER.allow(f"login:{self.remote_ip}", 12, 10 * 60):
             raise ApiError(HTTPStatus.TOO_MANY_REQUESTS, "rate_limited", "登录尝试过于频繁")
         body = self.read_json()
+        self.verify_human_challenge(body)
         username, _, password, device_id, device_name, platform = self.validate_credentials(body, registering=False)
         timestamp = now_seconds()
         with DB.session() as connection:
@@ -384,6 +396,7 @@ class PaykiTodoCloudHandler(BaseHTTPRequestHandler):
         if not RATE_LIMITER.allow(f"recover:{self.remote_ip}", 8, 15 * 60):
             raise ApiError(HTTPStatus.TOO_MANY_REQUESTS, "rate_limited", "找回密码请求过于频繁")
         body = self.read_json()
+        self.verify_human_challenge(body)
         username = canonical_username(str(body.get("username", "")))
         recovery_code = canonical_recovery_code(str(body.get("recoveryCode", "")))
         new_password = str(body.get("newPassword", ""))
@@ -421,6 +434,64 @@ class PaykiTodoCloudHandler(BaseHTTPRequestHandler):
             self.audit(connection, int(row["id"]), "password_recovered", "password reset with recovery code")
             connection.commit()
         self.send_json(HTTPStatus.OK, {"ok": True, "message": "密码已重置，请使用新密码登录"})
+
+    def auth_challenge(self) -> None:
+        if not turnstile_configured():
+            raise ApiError(HTTPStatus.SERVICE_UNAVAILABLE, "challenge_not_configured", "人机验证尚未配置")
+        site_key = html.escape(TURNSTILE_SITE_KEY, quote=True)
+        body = f"""<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>PaykiTodo 人机验证</title>
+  <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+  <style>html,body{{margin:0;background:transparent;font-family:system-ui,sans-serif}}main{{min-height:76px;display:grid;place-items:center}}</style>
+</head>
+<body>
+  <main>
+    <div class="cf-turnstile" data-sitekey="{site_key}" data-theme="auto" data-callback="onToken" data-error-callback="onError" data-expired-callback="onError"></div>
+  </main>
+  <script>
+    function onToken(token) {{ if (window.PaykiTodoTurnstile) window.PaykiTodoTurnstile.onToken(token); }}
+    function onError() {{ if (window.PaykiTodoTurnstile) window.PaykiTodoTurnstile.onError(); }}
+  </script>
+</body>
+</html>"""
+        self.send_bytes(
+            HTTPStatus.OK,
+            body.encode("utf-8"),
+            "text/html; charset=utf-8",
+            {
+                "Cache-Control": "no-store",
+                "Content-Security-Policy": "default-src 'none'; script-src https://challenges.cloudflare.com; frame-src https://challenges.cloudflare.com; connect-src https://challenges.cloudflare.com; style-src 'unsafe-inline'",
+                "Referrer-Policy": "no-referrer",
+            },
+        )
+
+    def verify_human_challenge(self, body: dict[str, object]) -> None:
+        if not TURNSTILE_SITE_KEY and not TURNSTILE_SECRET_KEY:
+            return
+        if not turnstile_configured():
+            raise ApiError(HTTPStatus.SERVICE_UNAVAILABLE, "human_verification_unavailable", "人机验证配置不完整，请联系管理员")
+        token = str(body.get("turnstileToken", "")).strip()
+        if not token:
+            raise ApiError(HTTPStatus.FORBIDDEN, "human_verification_required", "请先完成人机验证")
+        payload = urlencode({"secret": TURNSTILE_SECRET_KEY, "response": token}).encode("ascii")
+        request = urllib.request.Request(
+            TURNSTILE_SITEVERIFY_URL,
+            data=payload,
+            method="POST",
+            headers={"Content-Type": "application/x-www-form-urlencoded"},
+        )
+        try:
+            with urllib.request.urlopen(request, timeout=5) as response:
+                result = json.loads(response.read(32 * 1024).decode("utf-8"))
+        except (OSError, UnicodeDecodeError, json.JSONDecodeError, ValueError) as error:
+            self.log_error("Turnstile verification failed: %r", error)
+            raise ApiError(HTTPStatus.SERVICE_UNAVAILABLE, "human_verification_unavailable", "人机验证服务暂时不可用，请稍后重试") from error
+        if not isinstance(result, dict) or result.get("success") is not True:
+            raise ApiError(HTTPStatus.FORBIDDEN, "human_verification_failed", "人机验证未通过，请重试")
 
     def refresh_session(self) -> None:
         body = self.read_json()

@@ -7,8 +7,8 @@ plugins {
     id("com.google.devtools.ksp")
 }
 
-val paykiVersionName = "1.16.8"
-val paykiVersionCode = 373
+val paykiVersionName = "1.16.9"
+val paykiVersionCode = 374
 
 val paykiCloudProperties = Properties().apply {
     val file = rootProject.file("user/cloud.properties")
@@ -19,6 +19,8 @@ val paykiCloudBaseUrl = paykiCloudProperties.getProperty("baseUrl", "https://pay
     .trimEnd('/')
     .takeIf { it.isNotBlank() }
     ?: "https://paykitodo.invalid"
+val paykiTurnstileSiteKey = paykiCloudProperties.getProperty("turnstileSiteKey", "")
+    .trim()
 
 project.setProperty("archivesBaseName", "PaykiTodo-$paykiVersionName")
 
@@ -76,6 +78,7 @@ android {
         versionCode = paykiVersionCode
         versionName = paykiVersionName
         buildConfigField("String", "PAYKITODO_CLOUD_BASE_URL", "\"${paykiCloudBaseUrl.replace("\\", "\\\\").replace("\"", "\\\"")}\"")
+        buildConfigField("String", "PAYKITODO_TURNSTILE_SITE_KEY", "\"${paykiTurnstileSiteKey.replace("\\", "\\\\").replace("\"", "\\\"")}\"")
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables { useSupportLibrary = true }
     }

@@ -4,14 +4,54 @@
 
 - Repository root: `G:\Workspace\Project\PaykiTodo`
 - Branch: `main`
-- App version: `1.16.9 / versionCode 374` (local validation; not published)
+- App version: `1.16.12 / versionCode 377` (local validation; not published)
 - Room database version: `30`
 - Latest public GitHub Release: `v1.15.18`
 - Android outputs after final verification:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.16.9-debug.apk`
-  - `app/build/outputs/apk/release/PaykiTodo-1.16.9-release.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.16.12-debug.apk`
+  - `app/build/outputs/apk/release/PaykiTodo-1.16.12-release.apk`
 - Windows output after final publish: `desktop/dist/PaykiTodo.exe`
 - Private cloud deployment: service enabled on the Azure host, origin loopback `127.0.0.1:18766`, public access through the privately configured Cloudflare/Nginx HTTPS hostname, and the administrator page at `/admin`.
+
+## v1.16.12 Product Changes
+
+- Normal reminder acknowledgement, completion, notification retention, and stale-alarm rejection preserve the current reminder's dispatch claim instead of clearing it.
+- Reminder dispatch state is reset only by deliberate todo/event schedule changes through Android or LAN Desktop Web, preventing the polling fallback from re-firing a past trigger.
+- AI reports remain AI-first with explicit local-template fallback; model discovery and ordered fallback remain available.
+- Synthetic periodic prompts intended to look like user activity are intentionally not generated.
+- Android and Windows metadata is `1.16.12 / versionCode 377`.
+
+## v1.16.12 Verification Evidence
+
+- `python -m unittest server.test_paykitodo_cloud_server -v`: 8 tests passed.
+- `:app:testDebugUnitTest`, `:app:lintDebug`, `:app:assembleDebug`, and `:app:assembleRelease` passed; Lint reported 0 errors and 125 non-blocking warnings.
+- ADB device `emulator-5554` / AVD `Pixel_8` installed and launched `PaykiTodo-1.16.12-debug.apk`; package metadata reported `versionName=1.16.12` and `versionCode=377`, and the account page rendered without a fatal crash.
+- Debug APK SHA-256: `C81760BD9E887D9BFA5E49A33BED10A30158EA0D122F4D22C848D7EB79233390`.
+- Release APK SHA-256: `C432619A1ECF7AFC70A80E51DA9BDBB04A6D5551A38AECC3A773A3BD6B7C4880`.
+- Windows EXE SHA-256: `39BE39CA7C26E36413102AE14331E56EA822FDD8A89EB7200FB3E959302447DE`.
+- Physical-device reminder behavior still requires an OEM test for lock-screen and full-screen delivery.
+- Windows publish completed with one existing non-fatal `WindowsBase` 4.0/5.0 WebView2/WPF assembly warning.
+
+## Operational Notes
+
+- When Android has permission to use notification full-screen intents, the system notification is the only reminder surface. The accessibility overlay and direct Activity launch are fallback paths for devices where Android rejects or cannot use that mechanism, reducing the chance of two different reminder UIs appearing for one trigger.
+- The production authentication challenge currently reports that Turnstile is not enabled because the private server environment has not been supplied both `PAYKITODO_TURNSTILE_SITE_KEY` and `PAYKITODO_TURNSTILE_SECRET_KEY`. Add both outside Git and restart the cloud service before expecting a real Cloudflare widget.
+- AI provider failover is limited to real planning/report/vision calls. No periodic prompts are generated to disguise automated traffic or evade provider safeguards.
+
+## v1.16.10 Product Changes
+
+- Reminder polling passes the concrete trigger timestamp into the foreground service, matching alarm-receiver deduplication.
+- New schedules omit the legacy `+2s` backup alarm; application startup cancels old backup PendingIntents.
+- Planning Desk direct Room writes and snapshot import notify the shared widget/remote-sync callback.
+- Turnstile WebView accepts the Cloudflare challenge host and third-party cookies and blocks HTTP/render-process failures.
+- AI reports remain AI-first with an explicit local-template fallback; synthetic anti-detection traffic is not generated.
+- Android and Windows metadata is `1.16.10 / versionCode 375`.
+
+## v1.16.10 Verification Evidence
+
+- Server integration tests and Android unit tests passed before the version bump.
+- The cloud source was redeployed on 2026-09-05; `/healthz` returned `200` and `/v2/auth/challenge` returned the current challenge page. The server environment still has no Turnstile keys, so it intentionally reports that protection is not configured until both owner-supplied values are added.
+- Final Android Lint, Debug/Release assembly, and emulator smoke verification remains after the version bump.
 
 ## v1.16.9 Product Changes
 

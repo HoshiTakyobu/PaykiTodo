@@ -142,6 +142,42 @@ class PlanningAiCallerTest {
         )
     }
 
+    @Test
+    fun providerCandidatesPrioritizePreferredModelsAcrossSourcesThenCurrentSource() {
+        val candidates = PlanningAiCaller.providerCandidates(
+            listOf(
+                testProvider("https://first.example.com/v1").copy(
+                    id = "first",
+                    model = "general-model",
+                    availableModels = listOf("general-model", "qwen-plus")
+                ),
+                testProvider("https://second.example.com/v1").copy(
+                    id = "second",
+                    model = "other-model",
+                    availableModels = listOf("deepseek-chat", "other-model")
+                )
+            )
+        )
+
+        assertEquals(
+            listOf(
+                "first:qwen-plus",
+                "second:deepseek-chat",
+                "first:general-model",
+                "second:other-model"
+            ),
+            candidates.map { "${it.id}:${it.model}" }
+        )
+    }
+
+    @Test
+    fun fetchedModelNamesPutPreferredFamiliesFirst() {
+        assertEquals(
+            listOf("deepseek-chat", "qwen-plus", "alpha", "zeta"),
+            PlanningAiCaller.prioritizeModelNames(listOf("zeta", "qwen-plus", "alpha", "deepseek-chat"))
+        )
+    }
+
     private fun testProvider(baseUrl: String): PlanningAiProvider {
         return PlanningAiProvider(
             name = "test",

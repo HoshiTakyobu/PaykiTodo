@@ -8,7 +8,7 @@
 - Supported Android: Android 8.0+ / API 26+
 - Compile and target SDK: Android 14 / API 34
 - License: MIT
-- App version: `1.16.9 / versionCode 374` (current local validation source)
+- App version: `1.16.12 / versionCode 377` (current local validation source)
 - Room database version: `30`
 
 ## Published Build
@@ -16,8 +16,8 @@
 - GitHub Release: `https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.15.18`
 - Release APK: `app/build/outputs/apk/release/PaykiTodo-1.15.18-release.apk`
 - Public asset name: `PaykiTodo-1.15.18-release.apk`
-- Current debug APK: `app/build/outputs/apk/debug/PaykiTodo-1.16.9-debug.apk` (after this round's build)
-- Current signed release APK: `app/build/outputs/apk/release/PaykiTodo-1.16.9-release.apk` (after this round's build)
+- Current debug APK: `app/build/outputs/apk/debug/PaykiTodo-1.16.12-debug.apk` (after this round's build)
+- Current signed release APK: `app/build/outputs/apk/release/PaykiTodo-1.16.12-release.apk` (after this round's build)
 - Current Windows self-contained EXE: `desktop/dist/PaykiTodo.exe` (after this round's publish)
 - Release signing material remains local and ignored by Git.
 
@@ -43,6 +43,42 @@ PaykiTodo is a local-first Android assistant for todos, DDLs, schedules, countdo
 - Desktop Web calendar now uses the same current-time line convention as the phone calendar, separates today's date from the selected date, and flashes the selected week column briefly.
 
 See `README.md` for the public overview and `docs/current/FEATURE_LEDGER.md` for the detailed implementation ledger.
+
+## v1.16.12 Validation Scope (not published)
+
+- Normal reminder acknowledgement, completion, notification retention, stale-alarm rejection, and service shutdown no longer clear the dispatch ledger for the current reminder time.
+- A reminder dispatch is cleared only when its schedule is deliberately rebuilt or a todo/event is rescheduled through Android or LAN Desktop Web, so a past trigger cannot be redispatched by the polling fallback.
+- Android uses the system notification full-screen intent as the only primary reminder surface; direct Activity and accessibility-overlay paths are reserved for devices where that system mechanism is unavailable.
+- AI reports remain AI-first, model discovery remains available from provider settings, and no synthetic anti-detection traffic is generated.
+- Raised Android and Windows application metadata to `1.16.12 / versionCode 377`.
+
+## v1.16.12 Validation Evidence
+
+- `python -m unittest server.test_paykitodo_cloud_server -v`: 8 tests passed.
+- `:app:testDebugUnitTest`: passed.
+- `:app:lintDebug`: passed with 0 errors and 125 non-blocking warnings.
+- `:app:assembleDebug` and `:app:assembleRelease`: passed.
+- ADB smoke test on `emulator-5554` / `Pixel_8`: installed and launched the Debug APK; package metadata reported `versionName=1.16.12` and `versionCode=377`; the account page rendered normally and showed the explicit “当前服务器未启用人机验证” state without a fatal crash.
+- Debug APK SHA-256: `C81760BD9E887D9BFA5E49A33BED10A30158EA0D122F4D22C848D7EB79233390`.
+- Release APK SHA-256: `C432619A1ECF7AFC70A80E51DA9BDBB04A6D5551A38AECC3A773A3BD6B7C4880`.
+- Windows EXE SHA-256: `39BE39CA7C26E36413102AE14331E56EA822FDD8A89EB7200FB3E959302447DE`.
+- Physical-device validation remains required for OEM lock-screen and full-screen reminder behavior.
+- Windows publish still emits a non-fatal `WindowsBase` 4.0/5.0 WebView2/WPF assembly warning; the build completes successfully.
+
+## v1.16.10 Validation Scope (not published)
+
+- Reminder polling passes the concrete trigger timestamp to the foreground service, matching receiver-side dispatch deduplication.
+- Removed newly scheduled `+2s` reminder backups and clean up legacy backup alarm PendingIntents at application startup.
+- Planning Desk direct writes and snapshot imports notify the local widget and remote-sync coordinator through one repository callback.
+- Turnstile WebView accepts the Cloudflare challenge host, third-party cookies, and reports HTTP/render-process failures as blocked states instead of allowing submission.
+- Raised the application metadata to `1.16.10 / versionCode 375`.
+- The public cloud environment was updated to the current server source. Its Turnstile keys are still absent, so the endpoint intentionally reports that protection is not configured until the owner supplies both keys.
+
+## v1.16.10 Validation Evidence
+
+- `python -m unittest server.test_paykitodo_cloud_server -v` and `:app:testDebugUnitTest` passed before the version bump.
+- Public `/healthz` returned `200` and `/v2/auth/challenge` returned the current server response after deployment; the response correctly reports missing Turnstile configuration and contains no widget until keys are configured.
+- Debug/Release APK assembly and final ADB smoke test remain to be run after the version bump.
 
 ## v1.16.9 Validation Scope (not published)
 

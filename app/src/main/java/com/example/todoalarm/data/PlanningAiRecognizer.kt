@@ -14,14 +14,16 @@ object PlanningAiRecognizer {
     suspend fun recognize(
         markdown: String,
         providers: List<PlanningAiProvider>,
-        now: LocalDateTime = LocalDateTime.now()
+        now: LocalDateTime = LocalDateTime.now(),
+        onSelectionChanged: suspend (PlanningAiProvider) -> Unit = {}
     ): PlanningParseResult {
         val response = PlanningAiCaller.callWithFallback(
             providers = providers,
             request = PlanningAiRequest(
                 systemPrompt = buildSystemPrompt(now),
                 prompt = buildUserPrompt(markdown, now)
-            )
+            ),
+            onSelectionChanged = onSelectionChanged
         )
         return parseAiContent(
             content = response.content,

@@ -29,6 +29,7 @@ class PlanningAiProviderSerializationTest {
         assertEquals("https://api.example.com/v1", restored.baseUrl)
         assertEquals("deepseek-v4-flash", restored.model)
         assertTrue(restored.supportsVision)
+        assertEquals(listOf("deepseek-v4-flash", "deepseek-reasoner"), restored.availableModels)
     }
 
     @Test
@@ -86,7 +87,8 @@ class PlanningAiProviderSerializationTest {
             apiKey = "secret-key",
             model = "deepseek-v4-flash",
             enabled = true,
-            supportsVision = true
+            supportsVision = true,
+            availableModels = listOf("deepseek-v4-flash", "deepseek-reasoner")
         )
     }
 }

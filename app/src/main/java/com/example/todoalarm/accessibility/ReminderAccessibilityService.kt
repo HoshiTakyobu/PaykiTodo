@@ -2,6 +2,7 @@ package com.example.todoalarm.accessibility
 
 import android.accessibilityservice.AccessibilityService
 import android.app.KeyguardManager
+import android.app.NotificationManager
 import android.content.BroadcastReceiver
 import android.content.Intent
 import android.content.IntentFilter
@@ -57,8 +58,15 @@ class ReminderAccessibilityService : AccessibilityService() {
             overlay.hide()
             return
         }
+        // The notification full-screen intent is the primary surface. Letting the
+        // accessibility service launch in parallel can produce a second, different UI.
+        if (canUseSystemFullScreenIntent()) return
 
         if (forceOverlay) {
+            if (overlay.isShowing(todoId)) return
+            if (ActiveReminderStore.wasReminderSurfaceRecentlyShown(this, todoId, REMINDER_SURFACE_RESHOW_COOLDOWN_MS)) {
+                return
+            }
             ActiveReminderStore.clearActivityHandoff(this, todoId)
             ReminderChainLogger.log(
                 context = this,
@@ -159,9 +167,9 @@ class ReminderAccessibilityService : AccessibilityService() {
 
     private fun launchReminderActivity(todoId: Long) {
         ActiveReminderStore.markActivityHandoff(this, todoId)
+        ActiveReminderStore.markReminderSurfaceShown(this, todoId)
         runCatching {
             startActivity(ReminderActivity.createIntent(this, todoId))
-            ActiveReminderStore.markReminderSurfaceShown(this, todoId)
             ReminderChainLogger.log(
                 context = this,
                 todoId = todoId,
@@ -171,6 +179,7 @@ class ReminderAccessibilityService : AccessibilityService() {
                 message = "accessibility_service"
             )
         }.onFailure {
+            ActiveReminderStore.clearReminderSurfaceMarker(this, todoId)
             ActiveReminderStore.clearActivityHandoff(this, todoId)
             ReminderChainLogger.log(
                 context = this,
@@ -187,6 +196,12 @@ class ReminderAccessibilityService : AccessibilityService() {
     private fun isDeviceLocked(): Boolean {
         val keyguardManager = getSystemService(KeyguardManager::class.java) ?: return false
         return keyguardManager.isDeviceLocked || keyguardManager.isKeyguardLocked
+    }
+
+    private fun canUseSystemFullScreenIntent(): Boolean {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.UPSIDE_DOWN_CAKE) return true
+        val notificationManager = getSystemService(NotificationManager::class.java) ?: return true
+        return notificationManager.canUseFullScreenIntent()
     }
 
     companion object {

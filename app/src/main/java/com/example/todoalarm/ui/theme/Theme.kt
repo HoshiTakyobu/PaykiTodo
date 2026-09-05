@@ -40,10 +40,10 @@ private val DarkColors = darkColorScheme(
     tertiary = Moss,
     background = Night,
     surface = NightSurface,
-    surfaceVariant = Color(0xFF243A44),
-    primaryContainer = Color(0xFF5B461C),
-    secondaryContainer = Color(0xFF294752),
-    tertiaryContainer = Color(0xFF2D4934),
+    surfaceVariant = Color(0xFF224650),
+    primaryContainer = Color(0xFF584719),
+    secondaryContainer = Color(0xFF184A5A),
+    tertiaryContainer = Color(0xFF1F4B35),
     onPrimary = Night,
     onSecondary = Night,
     onTertiary = Night,
@@ -52,9 +52,9 @@ private val DarkColors = darkColorScheme(
     onTertiaryContainer = Color(0xFFCDEACD),
     onBackground = Color(0xFFF2F4F5),
     onSurface = Color(0xFFF2F4F5),
-    onSurfaceVariant = Color(0xFFCDD6DA),
-    outline = Color(0xFF93A3AA),
-    outlineVariant = Color(0xFF40545D)
+    onSurfaceVariant = Color(0xFFD0E0E3),
+    outline = Color(0xFF86AAB0),
+    outlineVariant = Color(0xFF355C64)
 )
 
 private val PaykiShapes = Shapes(

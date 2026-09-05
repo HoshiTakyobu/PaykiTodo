@@ -2,7 +2,42 @@
 
 ## Active Focus
 
-The `v1.16.9` local validation round adds optional server-verified Cloudflare Turnstile protection to account authentication and keeps the private cloud service separately deployed from Git; no GitHub Release is being created in this round.
+The `v1.16.12` local validation round closes the remaining reminder redispatch path, verifies the AI-first report and model-selection behavior, and keeps the private cloud service separately deployed from Git; no GitHub Release is being created in this round.
+
+## Completed `v1.16.12` Scope
+
+1. Normal reminder acknowledgement, completion, notification retention, and stale-alarm rejection no longer erase the dispatch ledger for the current trigger.
+2. Reminder ledger reset remains limited to deliberate todo or event rescheduling, schedule rebuilding, item replacement, or deletion across both Android and LAN Desktop Web writes.
+3. Android uses the notification full-screen intent as the only primary reminder surface and enables direct Activity / accessibility fallback only when the system mechanism is unavailable.
+4. AI reports remain AI-first with a visible local-template fallback; provider model discovery and ordered fallback remain available.
+5. No periodic synthetic prompt traffic was added because it would disguise automated behavior and attempt to evade provider safeguards.
+6. Raised Android and Windows application metadata to `1.16.12 / versionCode 377`.
+
+## Validation For `v1.16.12`
+
+1. `python -m unittest server.test_paykitodo_cloud_server -v`: 8 tests passed.
+2. `:app:testDebugUnitTest`, `:app:lintDebug`, `:app:assembleDebug`, and `:app:assembleRelease` passed; Lint reported 0 errors and 125 non-blocking warnings.
+3. `emulator-5554` / `Pixel_8` installed and launched `PaykiTodo-1.16.12-debug.apk`; metadata reported `versionName=1.16.12` and `versionCode=377`, and the account page rendered without a fatal crash.
+4. Debug SHA-256: `C81760BD9E887D9BFA5E49A33BED10A30158EA0D122F4D22C848D7EB79233390`.
+5. Release SHA-256: `C432619A1ECF7AFC70A80E51DA9BDBB04A6D5551A38AECC3A773A3BD6B7C4880`.
+6. The remaining physical-device checks are OEM full-screen reminder delivery, lock-screen behavior, notification shade rendering, and battery policy.
+7. The signed release build is local-only in this round; no GitHub Release or push was performed.
+8. Windows publish completed; the known `WindowsBase` 4.0/5.0 WebView2/WPF warning is non-fatal.
+
+## Completed `v1.16.10` Scope
+
+1. Reminder polling now passes the exact trigger timestamp into `ReminderForegroundService`, so receiver and polling paths share one dispatch identity.
+2. New reminder scheduling no longer creates the old `+2s` backup alarm; application startup cancels legacy backup PendingIntents.
+3. Planning Desk mappings, nodes, note creation, status refresh, and snapshot import notify the widget and remote-sync coordinator after direct Room writes.
+4. Turnstile WebView allows the Cloudflare challenge host and third-party cookies and blocks HTTP/render-process failures.
+5. AI reports remain AI-first with an explicit local-template fallback; no synthetic periodic anti-detection traffic was added.
+6. Raised Android and Windows application metadata to `1.16.10 / versionCode 375`.
+
+## Validation For `v1.16.10`
+
+1. Server integration tests and Android unit tests passed before the version bump.
+2. The deployed cloud source now exposes `/healthz` and `/v2/auth/challenge`; the production environment still needs the owner's Turnstile Site Key and Secret Key before a real widget can appear.
+3. Run Android Lint, Debug/Release assembly, and emulator smoke tests after the final metadata update.
 
 ## Completed `v1.16.9` Scope
 

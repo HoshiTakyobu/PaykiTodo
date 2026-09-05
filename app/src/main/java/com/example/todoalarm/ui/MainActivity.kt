@@ -169,7 +169,8 @@ class MainActivity : ComponentActivity() {
                         onRegister = viewModel::registerAccount,
                         onRecover = viewModel::recoverAccount,
                         onRecoveryCode = { recoveryCodeNotice = it },
-                        turnstileEnabled = BuildConfig.PAYKITODO_TURNSTILE_SITE_KEY.isNotBlank(),
+                        turnstileEnabled = BuildConfig.PAYKITODO_CLOUD_BASE_URL.isNotBlank() &&
+                            !BuildConfig.PAYKITODO_CLOUD_BASE_URL.endsWith(".invalid"),
                         turnstileChallengeUrl = BuildConfig.PAYKITODO_CLOUD_BASE_URL.trimEnd('/') + "/v2/auth/challenge",
                     )
                 } else DashboardScreen(

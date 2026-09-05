@@ -133,6 +133,8 @@ class CloudServerIntegrationTest(unittest.TestCase):
             self.assertEqual(200, status, raw)
             self.assertIn(self.cloud.TURNSTILE_SITE_KEY, raw.decode("utf-8"))
             self.assertNotIn(self.cloud.TURNSTILE_SECRET_KEY, raw.decode("utf-8"))
+            self.assertIn('data-appearance="always"', raw.decode("utf-8"))
+            self.assertIn('data-action="account_auth"', raw.decode("utf-8"))
 
             status, _, raw = self.request(
                 "/v2/auth/register",
@@ -157,7 +159,7 @@ class CloudServerIntegrationTest(unittest.TestCase):
                     return False
 
                 def read(self, _limit):
-                    return b'{"success":true,"action":"login"}'
+                    return b'{"success":true,"action":"account_auth"}'
 
             real_urlopen = self.cloud.urllib.request.urlopen
 
@@ -186,6 +188,21 @@ class CloudServerIntegrationTest(unittest.TestCase):
                 if call.args and call.args[0].full_url == self.cloud.TURNSTILE_SITEVERIFY_URL
             ]
             self.assertEqual(1, len(cloud_calls))
+        finally:
+            self.cloud.TURNSTILE_SITE_KEY = previous_site_key
+            self.cloud.TURNSTILE_SECRET_KEY = previous_secret_key
+
+    def test_turnstile_challenge_explains_when_server_protection_is_disabled(self):
+        previous_site_key = self.cloud.TURNSTILE_SITE_KEY
+        previous_secret_key = self.cloud.TURNSTILE_SECRET_KEY
+        self.cloud.TURNSTILE_SITE_KEY = ""
+        self.cloud.TURNSTILE_SECRET_KEY = ""
+        try:
+            status, _, raw = self.request("/v2/auth/challenge")
+            self.assertEqual(200, status, raw)
+            page = raw.decode("utf-8")
+            self.assertIn("当前服务器未启用人机验证", page)
+            self.assertIn("onUnavailable", page)
         finally:
             self.cloud.TURNSTILE_SITE_KEY = previous_site_key
             self.cloud.TURNSTILE_SECRET_KEY = previous_secret_key
@@ -270,6 +287,13 @@ class CloudServerIntegrationTest(unittest.TestCase):
         status, _, raw = self.request("/v2/sync/snapshot", "PUT", payload, upload_headers)
         self.assertEqual(200, status, raw)
         self.assertEqual(1, json.loads(raw)["revision"])
+
+        status, _, raw = self.request("/admin", headers={"Authorization": "Basic " + base64.b64encode(b"admin:test-admin-password").decode("ascii")})
+        self.assertEqual(200, status, raw)
+        admin_page = raw.decode("utf-8")
+        self.assertIn("最近同步", admin_page)
+        self.assertIn("Android 测试机", admin_page)
+        self.assertIn("24 小时上传", admin_page)
 
         status, _, raw = self.request("/v2/sync/snapshot", "PUT", payload, upload_headers)
         self.assertEqual(200, status, raw)

@@ -11,7 +11,8 @@ object PlanningRecognitionService {
         markdown: String,
         settings: AppSettings,
         now: LocalDateTime = LocalDateTime.now(),
-        defaultDate: LocalDate? = null
+        defaultDate: LocalDate? = null,
+        onSelectionChanged: suspend (PlanningAiProvider) -> Unit = {}
     ): PlanningParseResult {
         val localResult = parseLocal(markdown, now, defaultDate)
         val enabledProviders = settings.planningAiProviders.filter {
@@ -22,7 +23,12 @@ object PlanningRecognitionService {
             return localResult.copy(message = "AI 配置未完整，已使用本地规则")
         }
         return try {
-            PlanningAiRecognizer.recognize(markdown = markdown, providers = enabledProviders, now = now)
+            PlanningAiRecognizer.recognize(
+                markdown = markdown,
+                providers = enabledProviders,
+                now = now,
+                onSelectionChanged = onSelectionChanged
+            )
         } catch (error: CancellationException) {
             throw error
         } catch (error: Exception) {

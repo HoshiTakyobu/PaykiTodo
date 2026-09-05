@@ -52,12 +52,12 @@ class AlarmScheduler(
             message = "itemType=${todoItem.itemType}"
         )
         val canUseAlarmClock = Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP
-        val canUseExactBackup = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+        val canUseExactAlarm = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             alarmManager.canScheduleExactAlarms()
         } else {
             true
         }
-        if (!canUseAlarmClock && !canUseExactBackup) {
+        if (!canUseAlarmClock && !canUseExactAlarm) {
             return "系统未授予精确闹钟权限，提醒尚未启用。"
         }
 
@@ -66,7 +66,6 @@ class AlarmScheduler(
 
         triggerTimes.forEach { scheduledAt ->
             val exactIntent = buildBroadcastIntent(todoItem.id, scheduledAt, ACTION_EXACT, EXACT_OFFSET)
-            val backupIntent = buildBroadcastIntent(todoItem.id, scheduledAt, ACTION_BACKUP, BACKUP_OFFSET)
             val primaryScheduled = when {
                 canUseAlarmClock -> safeSchedule(
                     todoItem = todoItem,
@@ -122,20 +121,6 @@ class AlarmScheduler(
 
             if (accepted) {
                 scheduledPrimaryTimes += scheduledAt
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && canUseExactBackup) {
-                    safeSchedule(
-                        todoItem = todoItem,
-                        scheduledAt = scheduledAt + BACKUP_DELAY_MILLIS,
-                        mode = "backupExact",
-                        onFailure = { firstFailure = firstFailure ?: it }
-                    ) {
-                        alarmManager.setExactAndAllowWhileIdle(
-                            AlarmManager.RTC_WAKEUP,
-                            scheduledAt + BACKUP_DELAY_MILLIS,
-                            backupIntent
-                        )
-                    }
-                }
             }
         }
 
@@ -178,6 +163,23 @@ class AlarmScheduler(
 
     fun cancelReminderOnly(todoId: Long) {
         cancelReminderAlarms(todoId)
+    }
+
+    fun cancelLegacyBackupAlarms() {
+        val prefs = context.getSharedPreferences(SCHEDULE_PREFS, Context.MODE_PRIVATE)
+        prefs.all.forEach { (key, value) ->
+            val todoId = key
+                .takeIf { it.startsWith(SCHEDULED_KEY_PREFIX) }
+                ?.removePrefix(SCHEDULED_KEY_PREFIX)
+                ?.toLongOrNull()
+                ?: return@forEach
+            (value as? Set<*>)
+                .orEmpty()
+                .mapNotNull { it?.toString()?.toLongOrNull() }
+                .forEach { scheduledAt ->
+                    alarmManager.cancel(buildBroadcastIntent(todoId, scheduledAt, ACTION_BACKUP, BACKUP_OFFSET))
+                }
+        }
     }
 
     fun cancelTriggeredReminderAlarms(todoId: Long, nowMillis: Long = System.currentTimeMillis()) {
@@ -305,14 +307,14 @@ class AlarmScheduler(
         private const val ACTION_BACKUP = "com.paykitodo.app.EXACT_BACKUP"
         private const val EXACT_OFFSET = 10_000
         private const val BACKUP_OFFSET = 20_000
-        private const val BACKUP_DELAY_MILLIS = 2_000L
         private const val SCHEDULE_PREFS = "paykitodo_scheduled_reminders"
+        private const val SCHEDULED_KEY_PREFIX = "scheduled_"
 
         fun requestCodeFor(todoId: Long, reminderAtMillis: Long): Int {
             val folded = todoId xor reminderAtMillis xor (reminderAtMillis ushr 32)
             return (folded xor (folded ushr 32)).toInt()
         }
 
-        private fun scheduledSetKey(todoId: Long): String = "scheduled_$todoId"
+        private fun scheduledSetKey(todoId: Long): String = "$SCHEDULED_KEY_PREFIX$todoId"
     }
 }

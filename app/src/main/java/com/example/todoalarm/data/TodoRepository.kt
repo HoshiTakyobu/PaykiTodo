@@ -255,11 +255,17 @@ class TodoRepository(
     suspend fun getPlanningNodesByLinkedTodo(linkedTodoId: Long): List<PlanningNode> = todoDao.getPlanningNodesByLinkedTodo(linkedTodoId)
 
     suspend fun insertPlanningMappings(mappings: List<PlanningLineMapping>) {
-        if (mappings.isNotEmpty()) todoDao.insertPlanningMappings(mappings)
+        if (mappings.isNotEmpty()) {
+            todoDao.insertPlanningMappings(mappings)
+            notifyItemsChanged()
+        }
     }
 
     suspend fun insertPlanningNodes(nodes: List<PlanningNode>) {
-        if (nodes.isNotEmpty()) todoDao.insertPlanningNodes(nodes)
+        if (nodes.isNotEmpty()) {
+            todoDao.insertPlanningNodes(nodes)
+            notifyItemsChanged()
+        }
     }
 
     suspend fun createPlanningNodeSnapshot(noteId: Long): PlanningNodeSnapshot {
@@ -865,6 +871,7 @@ class TodoRepository(
             archived = false
         )
         val id = todoDao.insertPlanningNote(note)
+        notifyItemsChanged()
         return note.copy(id = id)
     }
 
@@ -878,6 +885,7 @@ class TodoRepository(
             archived = false
         )
         val id = todoDao.insertPlanningNote(note)
+        notifyItemsChanged()
         return note.copy(id = id)
     }
 
@@ -892,6 +900,7 @@ class TodoRepository(
             documentDateEpochDay = documentDate?.toEpochDay()
         )
         val id = todoDao.insertPlanningNote(note)
+        notifyItemsChanged()
         return note.copy(id = id)
     }
 
@@ -964,7 +973,10 @@ class TodoRepository(
             )
         }
         val changed = updated.filterIndexed { index, next -> next != mappings[index] }
-        if (changed.isNotEmpty()) todoDao.updatePlanningMappings(changed)
+        if (changed.isNotEmpty()) {
+            todoDao.updatePlanningMappings(changed)
+            notifyItemsChanged()
+        }
         return PlanningMappingStatusSnapshot(todoDao.getMappingsForNote(noteId), changed.size)
     }
 
@@ -1315,6 +1327,7 @@ class TodoRepository(
         if (!item.isEvent) return item
         val updated = item.copy(reminderEnabled = false)
         todoDao.update(updated)
+        notifyItemsChanged()
         return updated
     }
 
@@ -1758,7 +1771,9 @@ class TodoRepository(
         val existing = todoDao.getAllGroups()
         if (existing.isNotEmpty()) return existing
         val ids = todoDao.insertGroups(DefaultTaskGroups.seed)
-        return DefaultTaskGroups.seed.zip(ids) { item, id -> item.copy(id = id) }
+        return DefaultTaskGroups.seed.zip(ids) { item, id -> item.copy(id = id) }.also {
+            notifyItemsChanged()
+        }
     }
 
     suspend fun createGroup(name: String, colorHex: String): TaskGroup {
@@ -1770,16 +1785,19 @@ class TodoRepository(
             isDefault = false
         )
         val id = todoDao.insertGroup(group)
+        notifyItemsChanged()
         return group.copy(id = id)
     }
 
     suspend fun updateGroup(group: TaskGroup) {
         todoDao.updateGroup(group)
+        notifyItemsChanged()
     }
 
     suspend fun deleteGroup(groupId: Long): Boolean {
         if (todoDao.countTasksInGroup(groupId) > 0) return false
         todoDao.deleteGroup(groupId)
+        notifyItemsChanged()
         return true
     }
 
@@ -1950,20 +1968,22 @@ class TodoRepository(
 
     suspend fun upsertScheduleTemplate(template: ScheduleTemplate): ScheduleTemplate {
         val id = todoDao.insertScheduleTemplate(template.copy(updatedAtMillis = System.currentTimeMillis()))
+        notifyItemsChanged()
         return template.copy(id = id)
     }
 
     suspend fun deleteScheduleTemplate(templateId: Long) {
         todoDao.deleteScheduleTemplate(templateId)
+        notifyItemsChanged()
     }
 
     suspend fun saveAiReport(report: AiReport): Long {
-        return todoDao.insertAiReport(report)
+        return todoDao.insertAiReport(report).also { notifyItemsChanged() }
     }
 
     suspend fun saveAiReports(reports: List<AiReport>): List<Long> {
         if (reports.isEmpty()) return emptyList()
-        return todoDao.insertAiReports(reports)
+        return todoDao.insertAiReports(reports).also { notifyItemsChanged() }
     }
 
     suspend fun getAllAiReports(): List<AiReport> = todoDao.getAllAiReports()
@@ -1982,12 +2002,15 @@ class TodoRepository(
 
     suspend fun deleteAiReport(reportId: Long) {
         todoDao.deleteAiReport(reportId)
+        notifyItemsChanged()
     }
 
     suspend fun purgeAiReportsOlderThan(retention: AiReportRetention): Int {
         val days = retention.days ?: return 0
         val cutoffMillis = System.currentTimeMillis() - days.toLong() * 24L * 60L * 60L * 1000L
-        return todoDao.purgeAiReportsBefore(cutoffMillis)
+        val deleted = todoDao.purgeAiReportsBefore(cutoffMillis)
+        if (deleted > 0) notifyItemsChanged()
+        return deleted
     }
 
     suspend fun exportSnapshot(settings: AppSettings): BackupSnapshot {
@@ -2074,6 +2097,7 @@ class TodoRepository(
         if (snapshot.aiReports.isNotEmpty()) {
             todoDao.insertAiReports(snapshot.aiReports)
         }
+        notifyItemsChanged()
     }
 
     private fun restoredTodoGroupTags(snapshot: BackupSnapshot): List<TodoGroupTag> {

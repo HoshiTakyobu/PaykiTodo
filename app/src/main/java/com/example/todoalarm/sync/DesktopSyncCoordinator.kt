@@ -1424,6 +1424,7 @@ class DesktopSyncCoordinator(
 
     private suspend fun scheduleReminderOrDisable(item: TodoItem) {
         if (item.isEvent) {
+            ReminderDispatchTracker.clear(context, item.id)
             if (!item.isHistory) {
                 app.alarmScheduler.schedule(item)
             } else {

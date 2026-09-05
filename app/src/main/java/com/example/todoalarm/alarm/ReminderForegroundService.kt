@@ -72,7 +72,6 @@ class ReminderForegroundService : Service() {
             ?.getLongExtra(AlarmScheduler.EXTRA_REMINDER_AT, -1L)
             ?.takeIf { it > 0L }
             ?: ActiveReminderStore.getTriggeredAtMillis(this, todoId)
-
         ReminderChainLogger.log(
             context = this,
             todoId = todoId,
@@ -189,7 +188,7 @@ class ReminderForegroundService : Service() {
             stopSelf(startId)
         }
 
-        return START_STICKY
+        return START_NOT_STICKY
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
@@ -230,7 +229,6 @@ class ReminderForegroundService : Service() {
     private fun stopAlertingKeepingNotification(todoId: Long, startId: Int, message: String) {
         alertController.stop()
         ReminderAccessibilityService.hideOverlayNow(todoId)
-        ReminderDispatchTracker.clear(this, todoId)
         ActiveReminderStore.clearIfMatches(this, todoId)
         ActiveReminderStore.clearActivityHandoff(this, todoId)
         ActiveReminderStore.clearReminderSurfaceMarker(this, todoId)
@@ -262,7 +260,6 @@ class ReminderForegroundService : Service() {
     private fun stopAlertingWithoutNotification(todoId: Long, startId: Int) {
         alertController.stop()
         ReminderAccessibilityService.hideOverlayNow(todoId)
-        ReminderDispatchTracker.clear(this, todoId)
         ActiveReminderStore.clearIfMatches(this, todoId)
         ActiveReminderStore.clearActivityHandoff(this, todoId)
         ActiveReminderStore.clearReminderSurfaceMarker(this, todoId)
@@ -283,7 +280,6 @@ class ReminderForegroundService : Service() {
     private fun discardReminderStart(todoId: Long, startId: Int) {
         alertController.stop()
         ReminderAccessibilityService.hideOverlayNow(todoId)
-        ReminderDispatchTracker.clear(this, todoId)
         ActiveReminderStore.clearIfMatches(this, todoId)
         ActiveReminderStore.clearActivityHandoff(this, todoId)
         ActiveReminderStore.clearReminderSurfaceMarker(this, todoId)
@@ -381,9 +377,12 @@ class ReminderForegroundService : Service() {
     private fun attemptFullscreenReminder(
         todoId: Long,
         triggeredAtMillis: Long? = ActiveReminderStore.getTriggeredAtMillis(this, todoId),
-        force: Boolean = false
     ) {
         ActiveReminderStore.refreshActive(this, todoId)
+        if (ActiveReminderStore.wasReminderSurfaceRecentlyShown(this, todoId, FULLSCREEN_RESHOW_COOLDOWN_MS)) {
+            logRecentSurfaceSkip(todoId)
+            return
+        }
         val locked = isDeviceLocked()
         val fullScreenIntentAllowed = canUseFullScreenIntent()
         ReminderChainLogger.log(
@@ -394,55 +393,59 @@ class ReminderForegroundService : Service() {
             status = if (fullScreenIntentAllowed) ReminderChainStatus.INFO else ReminderChainStatus.WARN,
             message = "locked=$locked; fullScreenIntentAllowed=$fullScreenIntentAllowed"
         )
-        if (!fullScreenIntentAllowed) {
-            triggerAccessibilityOverlay(todoId, forceOverlay = true)
-        }
+        // When Android accepts the notification full-screen intent, it is the only
+        // launch path. Starting the Activity here as well can show duplicate reminders.
+        if (fullScreenIntentAllowed) return
         if (locked) {
             ActiveReminderStore.clearActivityHandoff(this, todoId)
             val overlayShown = ReminderAccessibilityService.showOverlayNow(todoId, forceOverlay = true)
-            triggerAccessibilityOverlay(todoId, forceOverlay = true)
             if (!overlayShown) {
-                launchReminderActivity(todoId, triggeredAtMillis, force = true)
+                triggerAccessibilityOverlay(todoId, forceOverlay = true)
+            }
+            if (!overlayShown) {
+                launchReminderActivity(todoId, triggeredAtMillis)
             }
             return
         }
-        launchReminderActivity(todoId, triggeredAtMillis, force = force)
+        launchReminderActivity(todoId, triggeredAtMillis)
     }
 
     private fun scheduleReminderRetry(todoId: Long, triggeredAtMillis: Long?, delayMs: Long) {
         scope.launch {
             delay(delayMs)
             if (ActiveReminderStore.getActiveTodoId(this@ReminderForegroundService) != todoId) return@launch
+            if (canUseFullScreenIntent()) return@launch
+            if (ActiveReminderStore.wasReminderSurfaceRecentlyShown(this@ReminderForegroundService, todoId, FULLSCREEN_RESHOW_COOLDOWN_MS)) {
+                logRecentSurfaceSkip(todoId)
+                return@launch
+            }
             ActiveReminderStore.refreshActive(this@ReminderForegroundService, todoId)
             if (isDeviceLocked()) {
                 ActiveReminderStore.clearActivityHandoff(this@ReminderForegroundService, todoId)
                 val overlayShown = ReminderAccessibilityService.showOverlayNow(todoId, forceOverlay = true)
-                triggerAccessibilityOverlay(todoId, forceOverlay = true)
                 if (!overlayShown) {
-                    launchReminderActivity(todoId, triggeredAtMillis, force = true)
+                    triggerAccessibilityOverlay(todoId, forceOverlay = true)
+                }
+                if (!overlayShown) {
+                    launchReminderActivity(todoId, triggeredAtMillis)
                 }
             } else {
                 if (!ActiveReminderStore.isActivityHandoffPending(this@ReminderForegroundService, todoId)) return@launch
                 ActiveReminderStore.clearActivityHandoff(this@ReminderForegroundService, todoId)
                 val overlayShown = ReminderAccessibilityService.showOverlayNow(todoId, forceOverlay = true)
-                triggerAccessibilityOverlay(todoId, forceOverlay = true)
                 if (!overlayShown) {
-                    launchReminderActivity(todoId, triggeredAtMillis, force = true)
+                    triggerAccessibilityOverlay(todoId, forceOverlay = true)
+                }
+                if (!overlayShown) {
+                    launchReminderActivity(todoId, triggeredAtMillis)
                 }
             }
         }
     }
 
-    private fun launchReminderActivity(todoId: Long, triggeredAtMillis: Long?, force: Boolean = false) {
-        if (!force && ActiveReminderStore.wasReminderSurfaceRecentlyShown(this, todoId, FULLSCREEN_RESHOW_COOLDOWN_MS)) {
-            ReminderChainLogger.log(
-                context = this,
-                todoId = todoId,
-                source = "ReminderForegroundService",
-                stage = ReminderChainStage.FULLSCREEN_ATTEMPT,
-                status = ReminderChainStatus.INFO,
-                message = "skip_recent_surface"
-            )
+    private fun launchReminderActivity(todoId: Long, triggeredAtMillis: Long?) {
+        if (ActiveReminderStore.wasReminderSurfaceRecentlyShown(this, todoId, FULLSCREEN_RESHOW_COOLDOWN_MS)) {
+            logRecentSurfaceSkip(todoId)
             return
         }
         ActiveReminderStore.markActivityHandoff(this, todoId)
@@ -468,6 +471,17 @@ class ReminderForegroundService : Service() {
             ReminderAccessibilityService.showOverlayNow(todoId, forceOverlay = true)
             triggerAccessibilityOverlay(todoId, forceOverlay = true)
         }
+    }
+
+    private fun logRecentSurfaceSkip(todoId: Long) {
+        ReminderChainLogger.log(
+            context = this,
+            todoId = todoId,
+            source = "ReminderForegroundService",
+            stage = ReminderChainStage.FULLSCREEN_ATTEMPT,
+            status = ReminderChainStatus.INFO,
+            message = "skip_recent_surface"
+        )
     }
 
     private fun canUseFullScreenIntent(): Boolean {
@@ -519,9 +533,21 @@ class ReminderForegroundService : Service() {
         private const val ALARM_MODE_RETRY_RING_MS = 30 * 1000L
         private const val ALARM_MODE_RETRY_COUNT = 3
         private const val FULLSCREEN_RESHOW_COOLDOWN_MS = 60 * 1000L
-        private val FULLSCREEN_RETRY_DELAYS_MS = listOf(1_200L, 3_200L, 10_000L, 20_000L, 45_000L, 90_000L, 180_000L)
+        private val FULLSCREEN_RETRY_DELAYS_MS = listOf(1_500L, 4_000L, 10_000L)
 
         fun start(context: android.content.Context, todoId: Long, triggeredAtMillis: Long? = null) {
+            if (triggeredAtMillis != null && !ReminderDispatchTracker.claim(context, todoId, triggeredAtMillis)) {
+                ReminderChainLogger.log(
+                    context = context,
+                    todoId = todoId,
+                    source = "ReminderForegroundService",
+                    stage = ReminderChainStage.SERVICE_START,
+                    status = ReminderChainStatus.INFO,
+                    reminderAtMillis = triggeredAtMillis,
+                    message = "duplicate_start_ignored"
+                )
+                return
+            }
             try {
                 ContextCompat.startForegroundService(
                     context,
@@ -604,7 +630,6 @@ class ReminderForegroundService : Service() {
             ReminderAccessibilityService.hideOverlayNow(todoId)
             context.getSystemService(NotificationManager::class.java)
                 ?.cancel(ReminderNotifier.notificationId(todoId))
-            ReminderDispatchTracker.clear(context, todoId)
             ActiveReminderStore.clearIfMatches(context, todoId)
             ActiveReminderStore.clearActivityHandoff(context, todoId)
             ActiveReminderStore.clearReminderSurfaceMarker(context, todoId)
@@ -648,7 +673,6 @@ class ReminderForegroundService : Service() {
             }
             val todoId = todoItem.id
             ReminderAccessibilityService.hideOverlayNow(todoId)
-            ReminderDispatchTracker.clear(context, todoId)
             ActiveReminderStore.clearIfMatches(context, todoId)
             ActiveReminderStore.clearActivityHandoff(context, todoId)
             ActiveReminderStore.clearReminderSurfaceMarker(context, todoId)

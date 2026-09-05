@@ -28,9 +28,14 @@ object DailyReportGenerator {
             periodStartMillis = dayStartMillis(date),
             periodEndMillis = dayEndMillis(date)
         )
-        return existing?.let {
-            AiReportGenerationResult(report = it, aiAttempted = false, reusedExistingReport = true)
-        } ?: generateDailyDetailed(app, date)
+        if (existing != null && (!existing.isLocalFallback || !hasConfiguredAiProvider(app))) {
+            return AiReportGenerationResult(report = existing, aiAttempted = false, reusedExistingReport = true)
+        }
+        return generateDailyDetailed(app, date).also { result ->
+            if (existing?.isLocalFallback == true && existing.id != result.report.id) {
+                app.repository.deleteAiReport(existing.id)
+            }
+        }
     }
 
     suspend fun generateDailyDetailed(
@@ -52,8 +57,8 @@ object DailyReportGenerator {
         DailyReportNotifier.postReportNotification(
             context = app.applicationContext,
             reportId = report.id,
-            reportTitle = "AI 日报已生成",
-            preview = content,
+            reportTitle = if (report.isLocalFallback) "本地模板日报已生成" else "AI 日报已生成",
+            preview = fallbackNotificationPreview(aiOutcome.failureMessage, content),
             weekly = false
         )
         return AiReportGenerationResult(
@@ -76,9 +81,14 @@ object DailyReportGenerator {
             periodStartMillis = dayStartMillis(weekStart),
             periodEndMillis = dayEndMillis(weekEnd)
         )
-        return existing?.let {
-            AiReportGenerationResult(report = it, aiAttempted = false, reusedExistingReport = true)
-        } ?: generateWeeklyDetailed(app, periodEndDate)
+        if (existing != null && (!existing.isLocalFallback || !hasConfiguredAiProvider(app))) {
+            return AiReportGenerationResult(report = existing, aiAttempted = false, reusedExistingReport = true)
+        }
+        return generateWeeklyDetailed(app, periodEndDate).also { result ->
+            if (existing?.isLocalFallback == true && existing.id != result.report.id) {
+                app.repository.deleteAiReport(existing.id)
+            }
+        }
     }
 
     suspend fun generateWeeklyDetailed(
@@ -100,8 +110,8 @@ object DailyReportGenerator {
         DailyReportNotifier.postReportNotification(
             context = app.applicationContext,
             reportId = report.id,
-            reportTitle = "AI 周报已生成",
-            preview = content,
+            reportTitle = if (report.isLocalFallback) "本地模板周报已生成" else "AI 周报已生成",
+            preview = fallbackNotificationPreview(aiOutcome.failureMessage, content),
             weekly = true
         )
         return AiReportGenerationResult(
@@ -158,14 +168,21 @@ object DailyReportGenerator {
 
     private suspend fun callAiIfPossible(app: TodoApplication, prompt: String, reportType: String): AiCallOutcome {
         val settings = app.settingsStore.currentSettings()
-        if (!settings.planningAiEnabled) return AiCallOutcome(report = null, attempted = false)
+        if (!settings.planningAiEnabled) {
+            return AiCallOutcome(
+                report = null,
+                attempted = false,
+                failureMessage = "AI 调用未启用"
+            )
+        }
         return runCatching {
             val response = PlanningAiCaller.callWithFallback(
                 providers = settings.planningAiProviders,
                 request = PlanningAiRequest(
                     systemPrompt = buildReportSystemPrompt(reportType),
                     prompt = prompt
-                )
+                ),
+                onSelectionChanged = { app.activatePlanningAiProvider(it) }
             )
             AiCallOutcome(
                 report = ReportText(
@@ -180,6 +197,21 @@ object DailyReportGenerator {
                 attempted = true,
                 failureMessage = sanitizeAiFailure(throwable)
             )
+        }
+    }
+
+    private fun hasConfiguredAiProvider(app: TodoApplication): Boolean {
+        val settings = app.settingsStore.currentSettings()
+        return settings.planningAiEnabled && settings.planningAiProviders.any {
+            it.enabled && it.baseUrl.isNotBlank() && it.apiKey.isNotBlank() && it.model.isNotBlank()
+        }
+    }
+
+    private fun fallbackNotificationPreview(failureMessage: String?, content: String): String {
+        return if (failureMessage.isNullOrBlank()) {
+            content
+        } else {
+            "AI 未生成：$failureMessage。$content"
         }
     }
 

@@ -11,14 +11,19 @@ data class PlanningAiProvider(
     val apiKey: String,
     val model: String,
     val enabled: Boolean = true,
-    val supportsVision: Boolean = false
+    val supportsVision: Boolean = false,
+    val availableModels: List<String> = emptyList()
 ) {
     fun normalized(): PlanningAiProvider {
         return copy(
             name = name.trim(),
             baseUrl = baseUrl.trim(),
             apiKey = apiKey.trim(),
-            model = model.trim()
+            model = model.trim(),
+            availableModels = availableModels
+                .map(String::trim)
+                .filter(String::isNotBlank)
+                .distinct()
         )
     }
 }
@@ -34,6 +39,7 @@ fun planningAiProvidersToJson(providers: List<PlanningAiProvider>, includeApiKey
                 put("model", provider.model)
                 put("enabled", provider.enabled)
                 put("supportsVision", provider.supportsVision)
+                put("availableModels", JSONArray(provider.availableModels))
             }
         }
     ).toString()
@@ -53,7 +59,14 @@ fun planningAiProvidersFromJson(raw: String?): List<PlanningAiProvider> {
                     apiKey = item.optString("apiKey"),
                     model = item.optString("model"),
                     enabled = item.optBoolean("enabled", true),
-                    supportsVision = item.optBoolean("supportsVision", false)
+                    supportsVision = item.optBoolean("supportsVision", false),
+                    availableModels = item.optJSONArray("availableModels")?.let { models ->
+                        buildList {
+                            for (modelIndex in 0 until models.length()) {
+                                models.optString(modelIndex).takeIf(String::isNotBlank)?.let(::add)
+                            }
+                        }
+                    }.orEmpty()
                 ).normalized()
                 if (provider.name.isNotBlank() || provider.baseUrl.isNotBlank() || provider.model.isNotBlank()) {
                     add(provider)

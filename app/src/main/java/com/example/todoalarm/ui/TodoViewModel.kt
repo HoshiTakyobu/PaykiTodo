@@ -438,7 +438,8 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
         return PlanningRecognitionService.recognize(
             markdown = markdown,
             settings = settingsStore.currentSettings(),
-            defaultDate = documentDate
+            defaultDate = documentDate,
+            onSelectionChanged = { app.activatePlanningAiProvider(it) }
         )
     }
 
@@ -1233,10 +1234,14 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     suspend fun generateDailyReportNow(): String? {
-        runCatching { DailyReportGenerator.generateDaily(app) }
+        val result = runCatching { DailyReportGenerator.generateDailyDetailed(app) }
             .getOrElse { return "日报生成失败：${it.message ?: it::class.java.simpleName}" }
         autoBackupIfEnabled()
-        return "AI 日报已生成，并写入「AI 报告」归档。"
+        return if (result.report.isLocalFallback) {
+            "AI 未成功生成，已改用本地模板：${result.aiFailureMessage ?: "请检查 AI 配置"}"
+        } else {
+            "AI 日报已生成，并写入「AI 报告」归档。"
+        }
     }
 
     suspend fun deleteAiReport(reportId: Long): String? {
@@ -1740,6 +1745,7 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
 
     private suspend fun scheduleReminderOrDisable(item: TodoItem) {
         if (item.isEvent) {
+            ReminderDispatchTracker.clear(app, item.id)
             if (!item.isHistory) {
                 app.alarmScheduler.schedule(item)
             } else {
@@ -1775,7 +1781,6 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
             val reminderAtMillis = item.reminderTriggerTimesMillis()
                 .firstOrNull { it <= now && !ReminderDispatchTracker.wasDispatched(app, item.id, it) }
                 ?: return@forEach
-            ReminderDispatchTracker.markDispatched(app, item.id, reminderAtMillis)
             ReminderChainLogger.log(
                 context = app,
                 todoId = item.id,
@@ -1784,7 +1789,11 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
                 status = ReminderChainStatus.INFO,
                 reminderAtMillis = reminderAtMillis
             )
-            ReminderForegroundService.start(app, item.id)
+            ReminderForegroundService.start(
+                context = app,
+                todoId = item.id,
+                triggeredAtMillis = reminderAtMillis
+            )
         }
     }
 

@@ -144,7 +144,8 @@ object CapturePlanningPipeline {
         val result = PlanningRecognitionService.recognize(
             markdown = parseMarkdown,
             settings = app.settingsStore.currentSettings(),
-            defaultDate = documentDate
+            defaultDate = documentDate,
+            onSelectionChanged = { app.activatePlanningAiProvider(it) }
         )
         val candidates = result.candidates.map { it.toPlanningImportCandidate() }
         return CapturePlanningPreview(
@@ -176,7 +177,8 @@ object CapturePlanningPipeline {
         val result = PlanningRecognitionService.recognize(
             markdown = normalizedMarkdown,
             settings = app.settingsStore.currentSettings(),
-            defaultDate = documentDate
+            defaultDate = documentDate,
+            onSelectionChanged = { app.activatePlanningAiProvider(it) }
         )
         val candidates = result.candidates.map { it.toPlanningImportCandidate() }
         app.settingsStore.updateLastOpenedPlanningNoteId(note.id)
@@ -246,7 +248,8 @@ object CapturePlanningPipeline {
                 prompt = if (ordinal <= 1) CaptureVisionUserPrompt else "$CaptureVisionUserPrompt\n这是第 $ordinal 张图片。",
                 imageBase64 = encodedImage.base64,
                 imageMimeType = encodedImage.mimeType
-            )
+            ),
+            onSelectionChanged = { app.activatePlanningAiProvider(it) }
         )
         return response.content
             .replace("\r\n", "\n")

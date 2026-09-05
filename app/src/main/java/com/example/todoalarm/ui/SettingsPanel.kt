@@ -492,6 +492,43 @@ fun SettingsPanel(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     style = MaterialTheme.typography.bodySmall
                 )
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(14.dp),
+                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.32f)
+                ) {
+                    Column(
+                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        Text(
+                            "云端快照版本：${settings.remoteSyncRevision}",
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Text(
+                            text = when {
+                                settings.remoteSyncConflictRevision > 0L -> "存在同步冲突：云端版本 ${settings.remoteSyncConflictRevision}"
+                                settings.remoteSyncDirty -> "本机有变更，正在等待上传"
+                                settings.remoteSyncLastSuccessAt > 0L -> "最近同步：${formatSyncTimestamp(settings.remoteSyncLastSuccessAt)}"
+                                else -> "尚无成功同步记录"
+                            },
+                            color = if (settings.remoteSyncConflictRevision > 0L) {
+                                MaterialTheme.colorScheme.error
+                            } else {
+                                MaterialTheme.colorScheme.onSurfaceVariant
+                            },
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                        settings.remoteSyncLastError.takeIf(String::isNotBlank)?.let { error ->
+                            Text(
+                                "最近错误：$error",
+                                color = MaterialTheme.colorScheme.error,
+                                style = MaterialTheme.typography.bodySmall
+                            )
+                        }
+                    }
+                }
                 Text(
                     "账号用于识别你的 PaykiTodo 数据空间。手机仍以本地数据为准，账号登录失效后需要重新登录。",
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -1430,7 +1467,7 @@ private fun AiReportPreferencesPanel(
 
     PrefCard("AI 日报 / 周报") {
         Text(
-            text = "日报会在每天设定时间生成并写入「AI 报告」归档（抽屉 → AI 报告）；周报会在每周日设定时间写入同一归档。AI 配置不可用时会用本地模板兜底。若未开启「精确闹钟」权限，系统可能延后生成。",
+            text = "日报和周报会优先调用已配置的 AI 源，并写入「AI 报告」归档（抽屉 → AI 报告）。只有全部 AI 候选失败时才使用本地模板，通知会明确标注失败原因。若未开启「精确闹钟」权限，系统可能延后生成。",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -1544,7 +1581,9 @@ private fun AiReportHelpSheet(onDismiss: () -> Unit) {
             }
             AiReportHelpCard("使用前提") {
                 HelpBullet("至少配置一个可用的 AI 源，例如 DeepSeek、Qwen 或 OpenAI 兼容服务，并通过「测试连接」。")
-                HelpBullet("如果所有 AI 源都不可用，会自动用本地模板生成简短报告，不会生成空内容。")
+                HelpBullet("真实生成失败时会按优先模型、当前源其他模型、其他源的顺序切换；切换成功后会发送通知。")
+                HelpBullet("如果所有 AI 候选都不可用，会用本地模板兜底，并明确显示失败原因，不会再冒充 AI 结果。")
+                HelpBullet("应用不会在后台伪装普通对话进行测活；连接测试由用户手动触发，自动切换只发生在真实识别或报告生成时。")
                 HelpBullet("Android 12+ 建议授予「闹钟和提醒 / 精确闹钟」权限，否则系统可能延后几小时甚至跳过生成。")
             }
             AiReportHelpCard("启用步骤") {
@@ -1853,7 +1892,7 @@ private fun PlanningAiProviderDialog(
     var testing by remember { mutableStateOf(false) }
     var testResult by remember { mutableStateOf<PlanningAiTestResult?>(null) }
     var fetchingModels by remember { mutableStateOf(false) }
-    var fetchedModels by remember(provider.id) { mutableStateOf<List<String>>(emptyList()) }
+    var fetchedModels by remember(provider.id) { mutableStateOf(provider.availableModels) }
     var modelFetchResult by remember { mutableStateOf<PlanningAiModelFetchResult?>(null) }
     var modelMenuExpanded by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
@@ -2086,7 +2125,8 @@ private fun PlanningAiProviderDialog(
                             apiKey = apiKey,
                             model = model,
                             enabled = enabled,
-                            supportsVision = supportsVision
+                            supportsVision = supportsVision,
+                            availableModels = fetchedModels
                         ).normalized()
                     )
                 },
@@ -2513,6 +2553,13 @@ private fun formatAccountExpiry(epochSeconds: Long): String {
     return Instant.ofEpochSecond(epochSeconds)
         .atZone(ZoneId.systemDefault())
         .format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm", Locale.CHINA))
+}
+
+private fun formatSyncTimestamp(epochMillis: Long): String {
+    if (epochMillis <= 0L) return "未知"
+    return Instant.ofEpochMilli(epochMillis)
+        .atZone(ZoneId.systemDefault())
+        .format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss", Locale.CHINA))
 }
 
 @Composable

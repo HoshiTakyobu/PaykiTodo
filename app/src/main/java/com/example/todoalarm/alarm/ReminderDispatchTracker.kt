@@ -4,10 +4,23 @@ import android.content.Context
 
 object ReminderDispatchTracker {
     private const val PREFS_NAME = "paykitodo_reminder_dispatch"
+    private val lock = Any()
 
     fun wasDispatched(context: Context, todoId: Long, reminderAtMillis: Long): Boolean {
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         return prefs.getBoolean(key(todoId, reminderAtMillis), false)
+    }
+
+    fun claim(context: Context, todoId: Long, reminderAtMillis: Long): Boolean {
+        if (reminderAtMillis <= 0L) return true
+        return synchronized(lock) {
+            val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            if (prefs.getBoolean(key(todoId, reminderAtMillis), false)) {
+                false
+            } else {
+                prefs.edit().putBoolean(key(todoId, reminderAtMillis), true).commit()
+            }
+        }
     }
 
     fun markDispatched(context: Context, todoId: Long, dispatchedAtMillis: Long = System.currentTimeMillis()) {

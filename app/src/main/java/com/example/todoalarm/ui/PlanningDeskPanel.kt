@@ -6,6 +6,7 @@ import android.graphics.BitmapFactory
 import android.net.Uri
 import android.util.Base64
 import android.widget.Toast
+import com.example.todoalarm.TodoApplication
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
@@ -250,7 +251,10 @@ internal fun PlanningDeskPanel(
                         prompt = PlanningVisionUserPrompt,
                         imageBase64 = encodedImage.base64,
                         imageMimeType = encodedImage.mimeType
-                    )
+                    ),
+                    onSelectionChanged = { selected ->
+                        (context.applicationContext as? TodoApplication)?.activatePlanningAiProvider(selected)
+                    }
                 )
                 val recognizedMarkdown = response.content
                     .replace("\r\n", "\n")

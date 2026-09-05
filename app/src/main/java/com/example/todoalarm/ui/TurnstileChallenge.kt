@@ -1,10 +1,13 @@
 package com.example.todoalarm.ui
 
 import android.annotation.SuppressLint
+import android.net.Uri
 import android.os.Handler
 import android.os.Looper
 import android.webkit.JavascriptInterface
+import android.webkit.CookieManager
 import android.webkit.WebResourceRequest
+import android.webkit.WebResourceResponse
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -21,21 +24,28 @@ internal fun TurnstileChallenge(
     reloadKey: Int,
     onToken: (String) -> Unit,
     onError: () -> Unit,
+    onUnavailable: () -> Unit,
 ) {
     AndroidView(
         modifier = Modifier
             .fillMaxWidth()
-            .height(82.dp),
+            .height(92.dp),
         factory = { context ->
-            val allowedHost = android.net.Uri.parse(challengeUrl).host
+            val allowedHosts = setOfNotNull(
+                Uri.parse(challengeUrl).host,
+                "challenges.cloudflare.com",
+            )
             WebView(context).apply {
+                setBackgroundColor(android.graphics.Color.TRANSPARENT)
                 settings.javaScriptEnabled = true
                 settings.domStorageEnabled = true
                 settings.allowFileAccess = false
                 settings.allowContentAccess = false
+                CookieManager.getInstance().setAcceptCookie(true)
+                CookieManager.getInstance().setAcceptThirdPartyCookies(this, true)
                 webViewClient = object : WebViewClient() {
                     override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
-                        return request.url.host != allowedHost
+                        return request.url.host !in allowedHosts
                     }
 
                     override fun onReceivedError(
@@ -45,9 +55,29 @@ internal fun TurnstileChallenge(
                     ) {
                         if (request.isForMainFrame) onError()
                     }
+
+                    override fun onReceivedHttpError(
+                        view: WebView,
+                        request: WebResourceRequest,
+                        errorResponse: WebResourceResponse,
+                    ) {
+                        if (request.isForMainFrame) onError()
+                    }
+
+                    override fun onRenderProcessGone(
+                        view: WebView,
+                        detail: android.webkit.RenderProcessGoneDetail,
+                    ): Boolean {
+                        onError()
+                        return true
+                    }
                 }
                 addJavascriptInterface(
-                    TurnstileBridge(onToken = onToken, onError = onError),
+                    TurnstileBridge(
+                        onToken = onToken,
+                        onError = onError,
+                        onUnavailable = onUnavailable
+                    ),
                     "PaykiTodoTurnstile"
                 )
                 tag = reloadKey
@@ -66,6 +96,7 @@ internal fun TurnstileChallenge(
 private class TurnstileBridge(
     private val onToken: (String) -> Unit,
     private val onError: () -> Unit,
+    private val onUnavailable: () -> Unit,
 ) {
     private val mainHandler = Handler(Looper.getMainLooper())
 
@@ -80,5 +111,10 @@ private class TurnstileBridge(
     @JavascriptInterface
     fun onError() {
         mainHandler.post(onError)
+    }
+
+    @JavascriptInterface
+    fun onUnavailable() {
+        mainHandler.post(onUnavailable)
     }
 }

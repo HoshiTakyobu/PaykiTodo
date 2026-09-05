@@ -436,26 +436,41 @@ class PaykiTodoCloudHandler(BaseHTTPRequestHandler):
         self.send_json(HTTPStatus.OK, {"ok": True, "message": "密码已重置，请使用新密码登录"})
 
     def auth_challenge(self) -> None:
-        if not turnstile_configured():
+        if bool(TURNSTILE_SITE_KEY) != bool(TURNSTILE_SECRET_KEY):
             raise ApiError(HTTPStatus.SERVICE_UNAVAILABLE, "challenge_not_configured", "人机验证尚未配置")
-        site_key = html.escape(TURNSTILE_SITE_KEY, quote=True)
+        nonce = secrets.token_urlsafe(18)
+        if turnstile_configured():
+            site_key = html.escape(TURNSTILE_SITE_KEY, quote=True)
+            challenge = (
+                f'<div class="cf-turnstile" data-sitekey="{site_key}" data-theme="auto" '
+                'data-appearance="always" data-size="normal" data-action="account_auth" '
+                'data-callback="onToken" data-error-callback="onError" data-expired-callback="onError"></div>'
+            )
+            external_script = f'<script nonce="{nonce}" src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>'
+            bridge_script = (
+                "function onToken(token){if(window.PaykiTodoTurnstile)window.PaykiTodoTurnstile.onToken(token);}"
+                "function onError(){if(window.PaykiTodoTurnstile)window.PaykiTodoTurnstile.onError();}"
+            )
+            script_sources = f"'nonce-{nonce}' https://challenges.cloudflare.com"
+        else:
+            challenge = '<p style="display:none">当前服务器未启用人机验证</p>'
+            external_script = ""
+            bridge_script = "if(window.PaykiTodoTurnstile)window.PaykiTodoTurnstile.onUnavailable();"
+            script_sources = f"'nonce-{nonce}'"
         body = f"""<!doctype html>
 <html lang="zh-CN">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>PaykiTodo 人机验证</title>
-  <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
-  <style>html,body{{margin:0;background:transparent;font-family:system-ui,sans-serif}}main{{min-height:76px;display:grid;place-items:center}}</style>
+  {external_script}
+  <style>html,body{{margin:0;background:transparent;font-family:system-ui,sans-serif}}main{{min-height:84px;display:grid;place-items:center}}p{{margin:0;color:#68737d;font-size:13px}}</style>
 </head>
 <body>
   <main>
-    <div class="cf-turnstile" data-sitekey="{site_key}" data-theme="auto" data-callback="onToken" data-error-callback="onError" data-expired-callback="onError"></div>
+    {challenge}
   </main>
-  <script>
-    function onToken(token) {{ if (window.PaykiTodoTurnstile) window.PaykiTodoTurnstile.onToken(token); }}
-    function onError() {{ if (window.PaykiTodoTurnstile) window.PaykiTodoTurnstile.onError(); }}
-  </script>
+  <script nonce="{nonce}">{bridge_script}</script>
 </body>
 </html>"""
         self.send_bytes(
@@ -464,7 +479,7 @@ class PaykiTodoCloudHandler(BaseHTTPRequestHandler):
             "text/html; charset=utf-8",
             {
                 "Cache-Control": "no-store",
-                "Content-Security-Policy": "default-src 'none'; script-src https://challenges.cloudflare.com; frame-src https://challenges.cloudflare.com; connect-src https://challenges.cloudflare.com; style-src 'unsafe-inline'",
+                "Content-Security-Policy": f"default-src 'none'; script-src {script_sources}; frame-src https://challenges.cloudflare.com; connect-src https://challenges.cloudflare.com; style-src 'unsafe-inline'",
                 "Referrer-Policy": "no-referrer",
             },
         )
@@ -477,7 +492,11 @@ class PaykiTodoCloudHandler(BaseHTTPRequestHandler):
         token = str(body.get("turnstileToken", "")).strip()
         if not token:
             raise ApiError(HTTPStatus.FORBIDDEN, "human_verification_required", "请先完成人机验证")
-        payload = urlencode({"secret": TURNSTILE_SECRET_KEY, "response": token}).encode("ascii")
+        payload = urlencode({
+            "secret": TURNSTILE_SECRET_KEY,
+            "response": token,
+            "remoteip": self.remote_ip,
+        }).encode("ascii")
         request = urllib.request.Request(
             TURNSTILE_SITEVERIFY_URL,
             data=payload,
@@ -492,6 +511,8 @@ class PaykiTodoCloudHandler(BaseHTTPRequestHandler):
             raise ApiError(HTTPStatus.SERVICE_UNAVAILABLE, "human_verification_unavailable", "人机验证服务暂时不可用，请稍后重试") from error
         if not isinstance(result, dict) or result.get("success") is not True:
             raise ApiError(HTTPStatus.FORBIDDEN, "human_verification_failed", "人机验证未通过，请重试")
+        if result.get("action") not in (None, "", "account_auth"):
+            raise ApiError(HTTPStatus.FORBIDDEN, "human_verification_failed", "人机验证用途不匹配，请重试")
 
     def refresh_session(self) -> None:
         body = self.read_json()
@@ -767,21 +788,35 @@ class PaykiTodoCloudHandler(BaseHTTPRequestHandler):
             self.send_admin_login_page()
             return
         with DB.session() as connection:
-            stats = connection.execute("SELECT (SELECT count(*) FROM users) users,(SELECT count(*) FROM devices WHERE revoked_at IS NULL) devices,(SELECT count(*) FROM snapshots) snapshots,(SELECT COALESCE(sum(length(payload)),0) FROM snapshots) bytes").fetchone()
-            users = connection.execute("SELECT u.*,s.revision,s.updated_at,(SELECT count(*) FROM devices d WHERE d.user_id=u.id AND d.revoked_at IS NULL) device_count FROM users u LEFT JOIN snapshots s ON s.user_id=u.id ORDER BY u.created_at DESC LIMIT 500").fetchall()
+            stats = connection.execute(
+                "SELECT (SELECT count(*) FROM users) users,"
+                "(SELECT count(*) FROM devices WHERE revoked_at IS NULL) devices,"
+                "(SELECT count(*) FROM snapshots) snapshots,"
+                "(SELECT COALESCE(sum(length(payload)),0) FROM snapshots) bytes,"
+                "(SELECT count(*) FROM audit_log WHERE action='snapshot_upload' AND created_at>=?) uploads_24h",
+                (now_seconds() - 24 * 60 * 60,),
+            ).fetchone()
+            users = connection.execute(
+                "SELECT u.*,s.revision,s.updated_at,s.updated_by_device,sd.name AS snapshot_device_name,"
+                "(SELECT count(*) FROM devices d WHERE d.user_id=u.id AND d.revoked_at IS NULL) device_count "
+                "FROM users u LEFT JOIN snapshots s ON s.user_id=u.id "
+                "LEFT JOIN devices sd ON sd.id=s.updated_by_device "
+                "ORDER BY u.created_at DESC LIMIT 500"
+            ).fetchall()
             devices = connection.execute("SELECT d.*,u.username FROM devices d JOIN users u ON u.id=d.user_id ORDER BY d.last_seen_at DESC LIMIT 500").fetchall()
             audits = connection.execute("SELECT a.*,u.username FROM audit_log a LEFT JOIN users u ON u.id=a.user_id ORDER BY a.created_at DESC LIMIT 80").fetchall()
-        body = ["<!doctype html><html lang='zh-CN'><head><meta charset='utf-8'><meta name='viewport' content='width=device-width'><title>PaykiTodo 管理后台</title><style>",
-                "body{font-family:Segoe UI,Microsoft YaHei,sans-serif;margin:0;background:#f4f6f8;color:#1f2933}header{background:#fff;border-bottom:1px solid #dfe3e8;padding:18px 28px;display:flex;align-items:center;justify-content:space-between;gap:16px}header strong{font-size:19px}header span{color:#68737d;font-size:13px}main{padding:24px 28px;max-width:1400px;margin:auto}.stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}.card,section{background:#fff;border:1px solid #dfe3e8;border-radius:8px;padding:16px}.card b{display:block;font-size:28px;margin-top:6px}section{margin-top:18px;overflow:auto}table{border-collapse:collapse;width:100%;min-width:820px}th,td{text-align:left;padding:10px;border-bottom:1px solid #edf0f2;font-size:13px}th{color:#5b6570}button{border:1px solid #c8cfd6;background:#fff;border-radius:6px;padding:6px 10px;cursor:pointer}.danger{color:#b42318}.ok{color:#137333}.logout{color:#4b5563;background:#fff}@media(max-width:720px){.stats{grid-template-columns:1fr 1fr}main{padding:16px}header{padding:16px;align-items:flex-start}header span{display:none}}",
-                "</style></head><body><header><div><strong>PaykiTodo 管理后台</strong><br><span>用户、设备、同步状态和审计信息</span></div><form method='post' action='/admin/logout'><button class='logout'>退出管理后台</button></form></header><main><div class='stats'>"]
-        for label, value in (("注册用户", stats["users"]), ("有效设备", stats["devices"]), ("云端快照", stats["snapshots"]), ("存储占用", f'{stats["bytes"] / 1024 / 1024:.1f} MB')):
+        body = ["<!doctype html><html lang='zh-CN'><head><meta charset='utf-8'><meta name='viewport' content='width=device-width'><meta http-equiv='refresh' content='30'><title>PaykiTodo 管理后台</title><style>",
+                "body{font-family:Segoe UI,Microsoft YaHei,sans-serif;margin:0;background:#f4f6f8;color:#1f2933}header{background:#fff;border-bottom:1px solid #dfe3e8;padding:18px 28px;display:flex;align-items:center;justify-content:space-between;gap:16px}header strong{font-size:19px}header span{color:#68737d;font-size:13px}main{padding:24px 28px;max-width:1400px;margin:auto}.stats{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px}.card,section{background:#fff;border:1px solid #dfe3e8;border-radius:8px;padding:16px}.card b{display:block;font-size:28px;margin-top:6px}section{margin-top:18px;overflow:auto}table{border-collapse:collapse;width:100%;min-width:980px}th,td{text-align:left;padding:10px;border-bottom:1px solid #edf0f2;font-size:13px}th{color:#5b6570}button{border:1px solid #c8cfd6;background:#fff;border-radius:6px;padding:6px 10px;cursor:pointer}.danger{color:#b42318}.ok{color:#137333}.logout{color:#4b5563;background:#fff}@media(max-width:900px){.stats{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:720px){main{padding:16px}header{padding:16px;align-items:flex-start}header span{display:none}}",
+                "</style></head><body><header><div><strong>PaykiTodo 管理后台</strong><br><span>用户、设备、同步状态和审计信息 · 每 30 秒自动刷新</span></div><form method='post' action='/admin/logout'><button class='logout'>退出管理后台</button></form></header><main><div class='stats'>"]
+        for label, value in (("注册用户", stats["users"]), ("有效设备", stats["devices"]), ("云端快照", stats["snapshots"]), ("24 小时上传", stats["uploads_24h"]), ("存储占用", f'{stats["bytes"] / 1024 / 1024:.1f} MB')):
             body.append(f"<div class='card'>{html.escape(str(label))}<b>{html.escape(str(value))}</b></div>")
-        body.append("</div><section><h2>用户</h2><table><thead><tr><th>账号</th><th>显示名</th><th>状态</th><th>设备</th><th>快照版本</th><th>注册时间</th><th>操作</th></tr></thead><tbody>")
+        body.append("</div><section><h2>用户</h2><table><thead><tr><th>账号</th><th>显示名</th><th>状态</th><th>设备</th><th>快照版本</th><th>最近同步</th><th>更新设备</th><th>注册时间</th><th>操作</th></tr></thead><tbody>")
         csrf = self.admin_csrf_token()
         for row in users:
             status = "已停用" if row["disabled"] else "正常"
             action = "启用" if row["disabled"] else "停用"
-            body.append(f"<tr><td>{html.escape(row['username'])}</td><td>{html.escape(row['display_name'])}</td><td class={'danger' if row['disabled'] else 'ok'}>{status}</td><td>{row['device_count']}</td><td>{row['revision'] or 0}</td><td>{self.format_time(row['created_at'])}</td><td><form method='post' action='/admin/users/{row['id']}/toggle'><input type='hidden' name='csrf' value='{csrf}'><button>{action}</button></form></td></tr>")
+            updated_device = row["snapshot_device_name"] or row["updated_by_device"] or "-"
+            body.append(f"<tr><td>{html.escape(row['username'])}</td><td>{html.escape(row['display_name'])}</td><td class={'danger' if row['disabled'] else 'ok'}>{status}</td><td>{row['device_count']}</td><td>{row['revision'] or 0}</td><td>{self.format_time(row['updated_at'])}</td><td>{html.escape(updated_device)}</td><td>{self.format_time(row['created_at'])}</td><td><form method='post' action='/admin/users/{row['id']}/toggle'><input type='hidden' name='csrf' value='{csrf}'><button>{action}</button></form></td></tr>")
         body.append("</tbody></table></section><section><h2>设备</h2><table><thead><tr><th>账号</th><th>设备名</th><th>平台</th><th>最后活跃</th><th>状态</th><th>操作</th></tr></thead><tbody>")
         for row in devices:
             revoked = row["revoked_at"] is not None

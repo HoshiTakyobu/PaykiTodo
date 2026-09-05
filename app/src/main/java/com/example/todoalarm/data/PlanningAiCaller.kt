@@ -26,7 +26,8 @@ data class PlanningAiVisionRequest(
 
 data class PlanningAiResponse(
     val content: String,
-    val provider: PlanningAiProvider
+    val provider: PlanningAiProvider,
+    val switched: Boolean = false
 )
 
 sealed class PlanningAiTestResult {
@@ -52,15 +53,20 @@ object PlanningAiCaller {
 
     suspend fun callWithFallback(
         providers: List<PlanningAiProvider>,
-        request: PlanningAiRequest
+        request: PlanningAiRequest,
+        onSelectionChanged: suspend (PlanningAiProvider) -> Unit = {}
     ): PlanningAiResponse {
         var lastRetryable: Exception? = null
-        val usableProviders = providers
+        val primary = providers
             .map { it.normalized() }
-            .filter { it.enabled && it.baseUrl.isNotBlank() && it.apiKey.isNotBlank() && it.model.isNotBlank() }
-        for (provider in usableProviders) {
+            .firstOrNull { it.enabled && it.baseUrl.isNotBlank() && it.apiKey.isNotBlank() && it.model.isNotBlank() }
+        val candidates = providerCandidates(providers)
+        for (provider in candidates) {
             try {
-                return callSingle(provider, request)
+                val response = callSingle(provider, request)
+                val switched = primary != null && (provider.id != primary.id || provider.model != primary.model)
+                if (switched) onSelectionChanged(provider)
+                return response.copy(switched = switched)
             } catch (error: Exception) {
                 if (error is CancellationException) throw error
                 if (!isRetryable(error)) throw error
@@ -72,21 +78,26 @@ object PlanningAiCaller {
 
     suspend fun callVisionWithFallback(
         providers: List<PlanningAiProvider>,
-        request: PlanningAiVisionRequest
+        request: PlanningAiVisionRequest,
+        onSelectionChanged: suspend (PlanningAiProvider) -> Unit = {}
     ): PlanningAiResponse {
         var lastRetryable: Exception? = null
-        val usableProviders = providers
+        val primary = providers
             .map { it.normalized() }
-            .filter {
+            .firstOrNull {
                 it.enabled &&
                     it.supportsVision &&
                     it.baseUrl.isNotBlank() &&
                     it.apiKey.isNotBlank() &&
                     it.model.isNotBlank()
             }
-        for (provider in usableProviders) {
+        val candidates = providerCandidates(providers, requireVision = true)
+        for (provider in candidates) {
             try {
-                return callVisionSingle(provider, request)
+                val response = callVisionSingle(provider, request)
+                val switched = primary != null && (provider.id != primary.id || provider.model != primary.model)
+                if (switched) onSelectionChanged(provider)
+                return response.copy(switched = switched)
             } catch (error: Exception) {
                 if (error is CancellationException) throw error
                 if (!isRetryable(error)) throw error
@@ -102,24 +113,18 @@ object PlanningAiCaller {
             return PlanningAiTestResult.Failure("Base URL、API Key 和模型名不能为空")
         }
         return try {
-            val endpoint = endpointCandidates(normalized.baseUrl).firstOrNull()
-                ?: return PlanningAiTestResult.Failure("Base URL 无法生成可用的接口地址")
             val testProvider = normalized.copy(enabled = true)
-            val body = buildChatCompletionBody(
+            if (endpointCandidates(testProvider.baseUrl).isEmpty()) {
+                return PlanningAiTestResult.Failure("Base URL 无法生成可用的接口地址")
+            }
+            val response = callSingle(
                 provider = testProvider,
                 request = PlanningAiRequest(prompt = CONNECTIVITY_TEST_PROMPT),
+                connectTimeoutMs = 10_000,
+                readTimeoutMs = 20_000,
                 maxTokens = 32,
                 temperature = 0.0
             )
-            val response = withContext(Dispatchers.IO) {
-                postChatCompletion(
-                    endpoint = endpoint,
-                    provider = testProvider,
-                    body = body,
-                    connectTimeoutMs = 10_000,
-                    readTimeoutMs = 20_000
-                )
-            }
             if (response.content.isBlank()) {
                 PlanningAiTestResult.Failure("响应为空")
             } else {
@@ -152,7 +157,7 @@ object PlanningAiCaller {
             PlanningAiModelFetchResult.Success(
                 providerName = normalized.name.ifBlank { "未命名服务" },
                 endpoint = result.endpoint,
-                models = result.models
+                models = prioritizeModelNames(result.models)
             )
         } catch (error: CancellationException) {
             throw error
@@ -172,9 +177,16 @@ object PlanningAiCaller {
         provider: PlanningAiProvider,
         request: PlanningAiRequest,
         connectTimeoutMs: Int = 15_000,
-        readTimeoutMs: Int = 45_000
+        readTimeoutMs: Int = 45_000,
+        maxTokens: Int? = null,
+        temperature: Double? = null
     ): PlanningAiResponse = withContext(Dispatchers.IO) {
-        val body = buildChatCompletionBody(provider, request)
+        val body = buildChatCompletionBody(
+            provider = provider,
+            request = request,
+            maxTokens = maxTokens,
+            temperature = temperature
+        )
 
         var lastError: Exception? = null
         val endpoints = endpointCandidates(provider.baseUrl)
@@ -185,8 +197,7 @@ object PlanningAiCaller {
                     provider = provider,
                     body = body,
                     connectTimeoutMs = connectTimeoutMs,
-                    readTimeoutMs = readTimeoutMs,
-                    allowBlankContent = true
+                    readTimeoutMs = readTimeoutMs
                 )
             } catch (error: Exception) {
                 if (error is CancellationException) throw error
@@ -314,6 +325,47 @@ object PlanningAiCaller {
                 "$base/models"
             )
         }.distinct()
+    }
+
+    internal fun providerCandidates(
+        providers: List<PlanningAiProvider>,
+        requireVision: Boolean = false
+    ): List<PlanningAiProvider> {
+        val usable = providers
+            .map { it.normalized() }
+            .filter {
+                it.enabled &&
+                    (!requireVision || it.supportsVision) &&
+                    it.baseUrl.isNotBlank() &&
+                    it.apiKey.isNotBlank() &&
+                    it.model.isNotBlank()
+            }
+        val current = usable.firstOrNull() ?: return emptyList()
+        val expanded = usable.flatMap { provider ->
+            (listOf(provider.model) + provider.availableModels)
+                .map(String::trim)
+                .filter(String::isNotBlank)
+                .distinct()
+                .map { model -> provider.copy(model = model) }
+        }
+        val preferred = expanded.filter { candidate -> isPreferredModel(candidate.model) }
+        val currentProvider = expanded.filter { candidate -> candidate.id == current.id }
+        val remaining = expanded.filter { candidate -> candidate.id != current.id }
+        return (preferred + currentProvider + remaining)
+            .distinctBy { candidate -> "${candidate.id}\u0000${candidate.model.lowercase()}" }
+    }
+
+    internal fun prioritizeModelNames(models: List<String>): List<String> {
+        return models
+            .map(String::trim)
+            .filter(String::isNotBlank)
+            .distinct()
+            .sortedWith(compareBy<String> { if (isPreferredModel(it)) 0 else 1 }.thenBy { it.lowercase() })
+    }
+
+    private fun isPreferredModel(model: String): Boolean {
+        val normalized = model.lowercase()
+        return PREFERRED_MODEL_KEYWORDS.any(normalized::contains)
     }
 
     private data class ModelFetchPayload(
@@ -505,9 +557,14 @@ object PlanningAiCaller {
         return when (error) {
             is CancellationException -> false
             is SocketTimeoutException, is UnknownHostException -> true
-            is PlanningAiHttpException -> error.statusCode in setOf(401, 403, 500, 502, 503, 504)
+            is PlanningAiHttpException -> error.statusCode in setOf(
+                400, 401, 403, 404, 405, 408, 409, 422, 429,
+                500, 501, 502, 503, 504
+            )
             is IOException -> true
             else -> false
         }
     }
+
+    private val PREFERRED_MODEL_KEYWORDS = listOf("glm", "deepseek", "gemini", "minimax", "qwen")
 }

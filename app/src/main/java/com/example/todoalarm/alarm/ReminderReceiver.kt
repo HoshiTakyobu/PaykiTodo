@@ -40,10 +40,6 @@ class ReminderReceiver : BroadcastReceiver() {
             reminderAtMillis = reminderAtMillis.takeIf { it > 0L },
             message = intent.action
         )
-        if (reminderAtMillis > 0L) {
-            if (ReminderDispatchTracker.wasDispatched(context, todoId, reminderAtMillis)) return
-            ReminderDispatchTracker.markDispatched(context, todoId, reminderAtMillis)
-        }
         ReminderForegroundService.start(
             context = context,
             todoId = todoId,

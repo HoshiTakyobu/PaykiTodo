@@ -468,6 +468,30 @@ class AppSettingsStore(context: Context) {
         refresh()
     }
 
+    fun activatePlanningAiProvider(provider: PlanningAiProvider): Boolean {
+        val current = currentSettings()
+        val normalized = provider.normalized()
+        val existing = current.planningAiProviders.firstOrNull { it.id == normalized.id }
+            ?: current.planningAiProviders.firstOrNull {
+                it.name == normalized.name && it.baseUrl == normalized.baseUrl
+            }
+            ?: return false
+        val activated = existing.copy(
+            model = normalized.model,
+            availableModels = (existing.availableModels + normalized.availableModels + normalized.model)
+                .map(String::trim)
+                .filter(String::isNotBlank)
+                .distinct()
+        ).normalized()
+        val reordered = listOf(activated) + current.planningAiProviders.filterNot { it.id == existing.id }
+        val changed = current.planningAiProviders.firstOrNull()?.id != activated.id ||
+            current.planningAiProviders.firstOrNull()?.model != activated.model
+        if (changed) {
+            updatePlanningAiProviders(current.planningAiEnabled, reordered)
+        }
+        return changed
+    }
+
     fun markOnboardingSeen() {
         preferences.edit().putBoolean(KEY_HAS_SEEN_ONBOARDING, true).apply()
         refresh()

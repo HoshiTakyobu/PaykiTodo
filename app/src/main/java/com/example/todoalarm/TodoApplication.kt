@@ -8,6 +8,7 @@ import com.example.todoalarm.alarm.DailyReportScheduler
 import com.example.todoalarm.alarm.DailyBriefNotifier
 import com.example.todoalarm.alarm.DailyBriefScheduler
 import com.example.todoalarm.alarm.OngoingEventNotifier
+import com.example.todoalarm.alarm.PlanningAiSwitchNotifier
 import com.example.todoalarm.alarm.EventCheckInWatchdog
 import com.example.todoalarm.alarm.ReminderDispatchTracker
 import com.example.todoalarm.alarm.ReminderNotifier
@@ -16,6 +17,7 @@ import com.example.todoalarm.data.BackupManager
 import com.example.todoalarm.data.AppSettingsStore
 import com.example.todoalarm.data.DatabaseMigrations
 import com.example.todoalarm.data.LegacyAiReportMigration
+import com.example.todoalarm.data.PlanningAiProvider
 import com.example.todoalarm.data.TodoRepository
 import com.example.todoalarm.sync.DesktopSyncCoordinator
 import com.example.todoalarm.sync.DesktopSyncService
@@ -41,7 +43,9 @@ class TodoApplication : Application() {
         CrashLogger.install(this)
         val skipReminderRecovery = SafeStartupGuard.enterStartup(this)
         runCatching {
+            alarmScheduler.cancelLegacyBackupAlarms()
             DailyReportNotifier.ensureChannel(this)
+            PlanningAiSwitchNotifier.ensureChannel(this)
             DailyBriefNotifier.ensureChannel(this)
             DailyBriefScheduler.scheduleNext(this)
             OngoingEventNotifier.ensureChannel(this)
@@ -162,5 +166,11 @@ class TodoApplication : Application() {
 
     val reminderNotifier: ReminderNotifier by lazy {
         ReminderNotifier(applicationContext)
+    }
+
+    fun activatePlanningAiProvider(provider: PlanningAiProvider) {
+        if (!settingsStore.activatePlanningAiProvider(provider)) return
+        PlanningAiSwitchNotifier.post(applicationContext, provider)
+        remoteSyncCoordinator.onLocalDataChanged()
     }
 }

@@ -7,8 +7,8 @@ plugins {
     id("com.google.devtools.ksp")
 }
 
-val paykiVersionName = "1.16.14"
-val paykiVersionCode = 379
+val paykiVersionName = "1.16.15"
+val paykiVersionCode = 380
 
 val paykiCloudProperties = Properties().apply {
     val file = rootProject.file("user/cloud.properties")
@@ -77,9 +77,9 @@ android {
         targetSdk = 34
         versionCode = paykiVersionCode
         versionName = paykiVersionName
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         buildConfigField("String", "PAYKITODO_CLOUD_BASE_URL", "\"${paykiCloudBaseUrl.replace("\\", "\\\\").replace("\"", "\\\"")}\"")
         buildConfigField("String", "PAYKITODO_TURNSTILE_SITE_KEY", "\"${paykiTurnstileSiteKey.replace("\\", "\\\\").replace("\"", "\\\"")}\"")
-        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables { useSupportLibrary = true }
     }
 
@@ -144,6 +144,9 @@ dependencies {
     ksp("androidx.room:room-compiler:2.6.1")
 
     testImplementation("junit:junit:4.13.2")
+    androidTestImplementation("androidx.test.ext:junit:1.2.1")
+    androidTestImplementation("androidx.test:runner:1.6.2")
+    androidTestImplementation("androidx.compose.ui:ui-test-junit4:1.6.8")
     testImplementation("org.json:json:20240303")
 
     debugImplementation("androidx.compose.ui:ui-tooling-preview:1.6.8")

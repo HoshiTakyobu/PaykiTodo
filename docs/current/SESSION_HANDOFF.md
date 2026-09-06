@@ -4,14 +4,32 @@
 
 - Repository root: `G:\Workspace\Project\PaykiTodo`
 - Branch: `main`
-- App version: `1.16.14 / versionCode 379` (local validation; not published)
+- App version: `1.16.15 / versionCode 380` (local validation; not published)
 - Room database version: `30`
 - Latest public GitHub Release: `v1.15.18`
 - Android outputs after final verification:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.16.14-debug.apk`
-  - `app/build/outputs/apk/release/PaykiTodo-1.16.14-release.apk`
-- Windows output after final publish: `desktop/dist/PaykiTodo.exe`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.16.15-debug.apk`
+  - `app/build/outputs/apk/release/PaykiTodo-1.16.15-release.apk`
+- Windows output: `desktop/dist/PaykiTodo.exe` is the previous round's artifact; only source version metadata changed in this Android round.
 - Private cloud deployment: service enabled on the Azure host, origin loopback `127.0.0.1:18766`, public access through the privately configured Cloudflare/Nginx HTTPS hostname, and the administrator page at `/admin`.
+
+## v1.16.15 Completed
+
+- Implements the user's 17 UI/account requests, as tracked in CURRENT_TASK.md.
+- New account profile, password rotation and device-status APIs deployed to the existing private Azure service. The old server source/config is backed up remotely for rollback; no business records were changed by deployment.
+- Server suite: 11 passed. Android unit tests, Lint, Debug/Release assembly, and all 9 instrumented tests passed.
+- Emulator: started existing `Pixel_8`, device `emulator-5554`, installed the versioned Debug and instrumentation APKs. Test components use synthetic fixtures and do not bypass the production login gate.
+- First calendar run caught excessive-index precision loss; pager windows now use bounded indices and recenter at 50-year boundaries. Month switching/double-tap/continuous week reversal passed after that fix.
+- Screenshots are under ignored `user/ui-acceptance/`. Two initial test harness errors (short-hold helper and duplicate preloaded month date nodes) were corrected before the final run.
+- Final verification is complete. Physical-device OEM checks remain for lock-screen/full-screen reminders, notification shade rendering, launcher widgets, and background battery policy. No push/tag/GitHub Release was performed.
+
+## v1.16.15 Verification Evidence
+
+- `emulator-5554` / `Pixel_8` installed `PaykiTodo-1.16.15-debug.apk` and `PaykiTodo-1.16.15-debug-androidTest.apk`.
+- `com.example.todoalarm.ui.CalendarInteractionTest` and `WorkspaceControlsTest` passed all 9 tests, including calendar paging/today navigation, dark agenda readability, long-press batch entry, drawer account identity, provider title wrapping, and document actions.
+- Normal `MainActivity` launch succeeded; package inspection reported `versionName=1.16.15` and `versionCode=380`.
+- Build outputs are `app/build/outputs/apk/debug/PaykiTodo-1.16.15-debug.apk` and `app/build/outputs/apk/release/PaykiTodo-1.16.15-release.apk`.
+- SHA-256: Debug `054169AA284863F486D7EE7BAFC9D169CA63A9449985BC62BA78C45A8A3009B4`; Release `1FEF71C5367109E759E20F5FDCFD64CB4D05498CF268D82EC850C31A3DE79390`. `apksigner verify --verbose --print-certs` passed Release with one RSA-2048 signer.
 
 ## v1.16.14 Product Changes
 

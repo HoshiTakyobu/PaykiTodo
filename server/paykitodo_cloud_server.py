@@ -275,6 +275,10 @@ class PaykiTodoCloudHandler(BaseHTTPRequestHandler):
                 self.logout()
             elif path == "/v2/account" and method == "GET":
                 self.account()
+            elif path == "/v2/account" and method == "POST":
+                self.update_account()
+            elif path == "/v2/account/password" and method == "POST":
+                self.change_password()
             elif path == "/v2/devices" and method == "GET":
                 self.devices()
             elif path.startswith("/v2/devices/") and method == "DELETE":
@@ -310,8 +314,8 @@ class PaykiTodoCloudHandler(BaseHTTPRequestHandler):
         forwarded = self.headers.get("X-Forwarded-For", "").split(",", 1)[0].strip()
         return forwarded or self.client_address[0]
 
-    def read_json(self) -> dict[str, object]:
-        raw = self.read_body(MAX_JSON_BYTES)
+    def read_json(self, limit: int = MAX_JSON_BYTES) -> dict[str, object]:
+        raw = self.read_body(limit)
         try:
             value = json.loads(raw.decode("utf-8"))
         except (UnicodeDecodeError, json.JSONDecodeError) as error:
@@ -361,7 +365,7 @@ class PaykiTodoCloudHandler(BaseHTTPRequestHandler):
                 connection.commit()
         except sqlite3.IntegrityError as error:
             raise ApiError(HTTPStatus.CONFLICT, "username_exists", "该账号已存在") from error
-        self.send_json(HTTPStatus.CREATED, {**tokens, "user": {"username": username, "displayName": display_name}, "deviceId": device_id, "snapshotRevision": 0, "recoveryCode": recovery_code})
+        self.send_json(HTTPStatus.CREATED, {**tokens, "user": {"id": user_id, "username": username, "displayName": display_name}, "deviceId": device_id, "snapshotRevision": 0, "recoveryCode": recovery_code})
 
     def login(self) -> None:
         if not RATE_LIMITER.allow(f"login:{self.remote_ip}", 12, 10 * 60):
@@ -398,7 +402,7 @@ class PaykiTodoCloudHandler(BaseHTTPRequestHandler):
             revision_row = connection.execute("SELECT revision FROM snapshots WHERE user_id = ?", (row["id"],)).fetchone()
             self.audit(connection, int(row["id"]), "login", f"{platform}:{device_name}")
             connection.commit()
-        response = {**tokens, "user": {"username": username, "displayName": row["display_name"]}, "deviceId": device_id, "snapshotRevision": int(revision_row["revision"]) if revision_row else 0}
+        response = {**tokens, "user": public_user(row), "deviceId": device_id, "snapshotRevision": int(revision_row["revision"]) if revision_row else 0}
         if recovery_code is not None:
             response["recoveryCode"] = recovery_code
         self.send_json(HTTPStatus.OK, response)
@@ -574,14 +578,76 @@ class PaykiTodoCloudHandler(BaseHTTPRequestHandler):
             revision = connection.execute("SELECT revision FROM snapshots WHERE user_id=?", (session.user_id,)).fetchone()
         self.send_json(HTTPStatus.OK, {"user": public_user(row), "deviceId": session.device_id, "snapshotRevision": int(revision["revision"]) if revision else 0})
 
+    def update_account(self) -> None:
+        session = self.require_session()
+        if not RATE_LIMITER.allow(f"profile:{session.user_id}", 20, 60):
+            raise ApiError(HTTPStatus.TOO_MANY_REQUESTS, "rate_limited", "修改过于频繁")
+        body = self.read_json()
+        name = str(body.get("displayName", "")).strip()
+        if not 1 <= len(name) <= 80 or any(ord(char) < 32 for char in name):
+            raise ApiError(HTTPStatus.BAD_REQUEST, "invalid_display_name", "昵称需为 1-80 个字符且不能包含换行")
+        with DB.session() as connection:
+            connection.execute("UPDATE users SET display_name=? WHERE id=?", (name, session.user_id))
+            self.audit(connection, session.user_id, "profile_update", "display name changed")
+            row = connection.execute("SELECT * FROM users WHERE id=?", (session.user_id,)).fetchone()
+        self.send_json(HTTPStatus.OK, {"user": public_user(row)})
+
+    def change_password(self) -> None:
+        session = self.require_session()
+        if not RATE_LIMITER.allow(f"password:{session.user_id}", 6, 10 * 60):
+            raise ApiError(HTTPStatus.TOO_MANY_REQUESTS, "rate_limited", "修改密码尝试过于频繁")
+        body = self.read_json(MAX_SNAPSHOT_BYTES * 2 + MAX_JSON_BYTES)
+        current_password = str(body.get("currentPassword", ""))
+        new_password = str(body.get("newPassword", ""))
+        if not 10 <= len(new_password) <= 256 or len(current_password) > 256:
+            raise ApiError(HTTPStatus.BAD_REQUEST, "invalid_password", "新密码需为 10-256 位")
+        if current_password == new_password:
+            raise ApiError(HTTPStatus.BAD_REQUEST, "unchanged_password", "新密码不能与原密码相同")
+        expected_revision = body.get("snapshotRevision")
+        if type(expected_revision) is not int or expected_revision < 0:
+            raise ApiError(HTTPStatus.BAD_REQUEST, "revision_required", "缺少云端数据版本")
+        payload = None
+        if body.get("encryptedSnapshot") is not None:
+            try:
+                payload = base64.b64decode(body["encryptedSnapshot"], validate=True)
+            except (ValueError, TypeError) as error:
+                raise ApiError(HTTPStatus.BAD_REQUEST, "invalid_snapshot", "快照编码无效") from error
+            if not payload.startswith(b"PKSYNC1") or len(payload) > MAX_SNAPSHOT_BYTES:
+                raise ApiError(HTTPStatus.BAD_REQUEST, "invalid_snapshot", "快照加密格式或大小无效")
+        timestamp = now_seconds()
+        with DB.session() as connection:
+            connection.execute("BEGIN IMMEDIATE")
+            row = connection.execute("SELECT * FROM users WHERE id=?", (session.user_id,)).fetchone()
+            if not hmac.compare_digest(bytes(row["password_hash"]), password_hash(current_password, bytes(row["password_salt"]))):
+                raise ApiError(HTTPStatus.FORBIDDEN, "invalid_password", "原密码不正确")
+            snapshot = connection.execute("SELECT revision FROM snapshots WHERE user_id=?", (session.user_id,)).fetchone()
+            revision = int(snapshot["revision"]) if snapshot else 0
+            if revision != expected_revision:
+                raise ApiError(HTTPStatus.CONFLICT, "revision_conflict", "其他设备刚刚更新了数据，请重试修改密码")
+            if (snapshot is not None) != (payload is not None):
+                raise ApiError(HTTPStatus.BAD_REQUEST, "snapshot_required", "需要同时更新云端快照的加密密钥")
+            # Credentials and the re-encrypted snapshot must change together.
+            if payload is not None:
+                connection.execute(
+                    "UPDATE snapshots SET revision=?,payload=?,payload_sha256=?,updated_at=?,updated_by_device=? WHERE user_id=?",
+                    (revision + 1, payload, hashlib.sha256(payload).hexdigest(), timestamp, session.device_id, session.user_id),
+                )
+            salt = secrets.token_bytes(16)
+            connection.execute("UPDATE users SET password_salt=?,password_hash=? WHERE id=?", (salt, password_hash(new_password, salt), session.user_id))
+            connection.execute("DELETE FROM sessions WHERE user_id=?", (session.user_id,))
+            self.audit(connection, session.user_id, "password_changed", "sessions revoked; cloud snapshot rekeyed")
+            connection.commit()
+        self.send_json(HTTPStatus.OK, {"ok": True})
+
     def devices(self) -> None:
         session = self.require_session()
         with DB.session() as connection:
             rows = connection.execute(
-                "SELECT id,name,platform,created_at,last_seen_at,revoked_at FROM devices WHERE user_id=? ORDER BY last_seen_at DESC",
-                (session.user_id,),
+                "SELECT d.*, EXISTS(SELECT 1 FROM sessions s WHERE s.device_id=d.id AND s.user_id=d.user_id AND s.refresh_expires_at>?) AS active "
+                "FROM devices d WHERE user_id=? ORDER BY last_seen_at DESC",
+                (now_seconds(), session.user_id),
             ).fetchall()
-        self.send_json(HTTPStatus.OK, {"devices": [{"id": row["id"], "name": row["name"], "platform": row["platform"], "createdAt": row["created_at"], "lastSeenAt": row["last_seen_at"], "revoked": row["revoked_at"] is not None, "current": row["id"] == session.device_id} for row in rows]})
+        self.send_json(HTTPStatus.OK, {"devices": [{"id": row["id"], "name": row["name"], "platform": row["platform"], "createdAt": row["created_at"], "lastSeenAt": row["last_seen_at"], "revoked": row["revoked_at"] is not None, "active": bool(row["active"]) and row["revoked_at"] is None, "current": row["id"] == session.device_id} for row in rows]})
 
     def revoke_device(self, device_id: str) -> None:
         session = self.require_session()

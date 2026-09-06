@@ -51,6 +51,7 @@ import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material.icons.rounded.RadioButtonUnchecked
 import androidx.compose.material.icons.rounded.ExpandLess
 import androidx.compose.material.icons.rounded.ExpandMore
+import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.rounded.Image
 import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.MoreVert
@@ -75,6 +76,9 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
+import androidx.compose.material3.SwipeToDismissBox
+import androidx.compose.material3.SwipeToDismissBoxValue
+import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
@@ -92,6 +96,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.focus.FocusRequester
@@ -198,6 +204,7 @@ internal fun PlanningDeskPanel(
     onApplyConflictItem: suspend (Long, String, Long) -> PlanningOperationResult,
     highlightedPlanningNodeId: Long? = null,
     highlightedPlanningNodeSerial: Int = 0,
+    planningHelpRequestSerial: Int = 0,
     isNewUser: Boolean
 ) {
     val context = LocalContext.current
@@ -213,12 +220,11 @@ internal fun PlanningDeskPanel(
     var outlinePreviewMode by rememberSaveable(activeNote?.id) { mutableStateOf(false) }
     var markdownImportVisible by remember { mutableStateOf(false) }
     var markdownImportText by remember(activeNote?.id) { mutableStateOf("") }
-    var renameDialog by remember { mutableStateOf(false) }
+    var pendingRenameNote by remember { mutableStateOf<PlanningNote?>(null) }
     var pendingDeleteNote by remember { mutableStateOf<PlanningNote?>(null) }
     var pendingDeleteNode by remember { mutableStateOf<PlanningNode?>(null) }
-    var archiveDialog by remember { mutableStateOf(false) }
+    var pendingArchiveNote by remember { mutableStateOf<PlanningNote?>(null) }
     var newDialog by remember { mutableStateOf(false) }
-    var overflowMenuExpanded by remember { mutableStateOf(false) }
     var parsing by remember { mutableStateOf(false) }
     var mappingStates by remember(activeNote?.id) { mutableStateOf<List<PlanningLineMapping>>(emptyList()) }
     var refreshConfirmVisible by remember { mutableStateOf(false) }
@@ -232,6 +238,10 @@ internal fun PlanningDeskPanel(
     val outlineUndoStack = remember(activeNote?.id) { mutableStateListOf<PlanningNodeUndoEntry>() }
     var outlineUndoRunning by remember(activeNote?.id) { mutableStateOf(false) }
     val hasUnsavedChanges = activeNote != null && editorValue.text != activeNote.contentMarkdown
+
+    LaunchedEffect(planningHelpRequestSerial) {
+        if (planningHelpRequestSerial > 0) helpSheetVisible = true
+    }
     val latestUndoSummary = remember(mappingStates) { latestPlanningUndoSummary(mappingStates) }
     val visionProviders = remember(planningAiProviders) {
         planningAiProviders
@@ -377,13 +387,12 @@ internal fun PlanningDeskPanel(
             Row(
                 modifier = Modifier
                     .fillMaxSize()
-                    .horizontalScroll(rememberScrollState())
                     .padding(horizontal = 10.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 OutlinedButton(
-                    modifier = Modifier.height(40.dp),
+                    modifier = Modifier.height(40.dp).weight(1f),
                     onClick = {
                         focusManager.clearFocus()
                         documentSheetVisible = true
@@ -392,21 +401,10 @@ internal fun PlanningDeskPanel(
                     Icon(Icons.AutoMirrored.Rounded.Article, contentDescription = null, modifier = Modifier.size(16.dp))
                     Spacer(Modifier.width(4.dp))
                     Text(
-                        text = activeNote?.title?.take(8)?.let { "文档:$it" } ?: "文档",
+                        text = activeNote?.title?.let { "文档:$it" } ?: "文档",
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
-                }
-                OutlinedButton(
-                    modifier = Modifier.height(40.dp),
-                    onClick = {
-                        focusManager.clearFocus()
-                        helpSheetVisible = true
-                    }
-                ) {
-                    Icon(Icons.Rounded.Info, contentDescription = null, modifier = Modifier.size(16.dp))
-                    Spacer(Modifier.width(4.dp))
-                    Text("说明")
                 }
                 Button(
                     modifier = Modifier.height(40.dp),
@@ -448,72 +446,6 @@ internal fun PlanningDeskPanel(
                     Icon(Icons.Rounded.Search, contentDescription = null, modifier = Modifier.size(16.dp))
                     Spacer(Modifier.width(4.dp))
                     Text(if (parsing) "识别中" else "识别计划")
-                }
-                if (hasUnsavedChanges) {
-                    Text(
-                        text = "自动保存中",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-                androidx.compose.foundation.layout.Box {
-                    IconButton(
-                        modifier = Modifier.size(40.dp),
-                        onClick = {
-                            focusManager.clearFocus()
-                            overflowMenuExpanded = true
-                        }
-                    ) {
-                        Icon(Icons.Rounded.MoreVert, contentDescription = "更多操作")
-                    }
-                    DropdownMenu(
-                        expanded = overflowMenuExpanded,
-                        onDismissRequest = { overflowMenuExpanded = false }
-                    ) {
-                        DropdownMenuItem(
-                            text = { Text("新建文档") },
-                            onClick = { overflowMenuExpanded = false; newDialog = true }
-                        )
-                        DropdownMenuItem(
-                            text = { Text("重命名") },
-                            onClick = { overflowMenuExpanded = false; renameDialog = true },
-                            enabled = activeNote != null
-                        )
-                        DropdownMenuItem(
-                            text = { Text("使用说明") },
-                            onClick = { overflowMenuExpanded = false; helpSheetVisible = true }
-                        )
-                        DropdownMenuItem(
-                            text = {
-                                Column {
-                                    Text("从图片识别日程")
-                                    if (visionProviders.isEmpty()) {
-                                        Text(
-                                            "请先在设置中标记支持图片识别的 AI 源",
-                                            style = MaterialTheme.typography.bodySmall,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                                        )
-                                    }
-                                }
-                            },
-                            onClick = {
-                                overflowMenuExpanded = false
-                                imagePicker.launch("image/*")
-                            },
-                            enabled = activeNote != null && visionProviders.isNotEmpty() && !visionRecognizing,
-                            leadingIcon = { Icon(Icons.Rounded.Image, contentDescription = null) }
-                        )
-                        DropdownMenuItem(
-                            text = { Text("归档") },
-                            onClick = { overflowMenuExpanded = false; archiveDialog = true },
-                            enabled = activeNote != null
-                        )
-                        DropdownMenuItem(
-                            text = { Text("删除文档") },
-                            onClick = { overflowMenuExpanded = false; activeNote?.let { pendingDeleteNote = it } },
-                            enabled = activeNote != null
-                        )
-                    }
                 }
             }
         }
@@ -605,22 +537,6 @@ internal fun PlanningDeskPanel(
                         .padding(12.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    Surface(
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(16.dp),
-                        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.34f)
-                    ) {
-                        Text(
-                            text = if (planningAiProviders.any { it.normalized().enabled }) {
-                                "像备忘录一样写，写完点“识别计划”。会优先用已启用 AI，失败时回到本地规则；结果只进预览，不会直接入库。"
-                            } else {
-                                "像备忘录一样写，写完点“识别计划”。当前使用本地规则解析；结果只进预览，不会直接入库。"
-                            },
-                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
                     OutlinedTextField(
                         value = editorValue,
                         onValueChange = { editorValue = it },
@@ -665,7 +581,15 @@ internal fun PlanningDeskPanel(
                         documentSheetVisible = false
                     }
                 },
-                onDelete = { pendingDeleteNote = it }
+                onDelete = { pendingDeleteNote = it },
+                onCreate = { newDialog = true },
+                onRename = { pendingRenameNote = it },
+                onArchive = { pendingArchiveNote = it },
+                canImportImage = activeNote != null && visionProviders.isNotEmpty() && !visionRecognizing,
+                onImportImage = {
+                    documentSheetVisible = false
+                    imagePicker.launch("image/*")
+                }
             )
         }
     }
@@ -797,17 +721,17 @@ internal fun PlanningDeskPanel(
             }
         )
     }
-    if (renameDialog && activeNote != null) {
+    pendingRenameNote?.let { note ->
         PlanningNameDialog(
             title = "重命名规划文档",
-            initial = activeNote.title,
-            confirmText = "保存",
-            onDismiss = { renameDialog = false },
+            initial = note.title,
+            confirmText = "完成",
+            onDismiss = { pendingRenameNote = null },
             onConfirm = { title ->
                 scope.launch {
-                    val message = onRenameNote(activeNote.id, title)
+                    val message = onRenameNote(note.id, title)
                     message?.let { Toast.makeText(context, it, Toast.LENGTH_SHORT).show() }
-                    renameDialog = false
+                    pendingRenameNote = null
                 }
             }
         )
@@ -844,17 +768,17 @@ internal fun PlanningDeskPanel(
             }
         )
     }
-    if (archiveDialog && activeNote != null) {
+    pendingArchiveNote?.let { note ->
         ConfirmPlanningDialog(
             title = "归档规划文档？",
-            message = "归档后会从当前列表隐藏：${activeNote.title}",
+            message = "确定要归档 ${note.title} 吗？",
             confirmText = "归档",
-            onDismiss = { archiveDialog = false },
+            onDismiss = { pendingArchiveNote = null },
             onConfirm = {
                 scope.launch {
-                    val message = onArchiveNote(activeNote.id)
+                    val message = onArchiveNote(note.id)
                     message?.let { Toast.makeText(context, it, Toast.LENGTH_SHORT).show() }
-                    archiveDialog = false
+                    pendingArchiveNote = null
                 }
             }
         )
@@ -2313,11 +2237,17 @@ private fun PlanningScopeChip(label: String, selected: Boolean, onClick: () -> U
 }
 
 @Composable
-private fun PlanningDocumentSheet(
+@OptIn(ExperimentalMaterial3Api::class)
+internal fun PlanningDocumentSheet(
     notes: List<PlanningNote>,
     activeNoteId: Long?,
     onSelect: (Long) -> Unit,
-    onDelete: (PlanningNote) -> Unit
+    onDelete: (PlanningNote) -> Unit,
+    onCreate: () -> Unit,
+    onRename: (PlanningNote) -> Unit,
+    onArchive: (PlanningNote) -> Unit,
+    canImportImage: Boolean,
+    onImportImage: () -> Unit
 ) {
     var query by rememberSaveable { mutableStateOf("") }
     val visibleNotes = remember(notes, query) {
@@ -2328,7 +2258,17 @@ private fun PlanningDocumentSheet(
         filtered.sortedByDescending { it.updatedAtMillis }
     }
     Column(modifier = Modifier.padding(horizontal = 20.dp, vertical = 14.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Text("规划文档", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text("规划文档", modifier = Modifier.weight(1f), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+            IconButton(onClick = onImportImage, enabled = canImportImage) {
+                Icon(Icons.Rounded.Image, contentDescription = "从图片识别日程")
+            }
+            TextButton(onClick = onCreate) {
+                Icon(Icons.Rounded.Add, contentDescription = null, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(4.dp))
+                Text("创建文档")
+            }
+        }
         OutlinedTextField(
             value = query,
             onValueChange = { query = it },
@@ -2338,13 +2278,42 @@ private fun PlanningDocumentSheet(
         )
         LazyColumn(
             modifier = Modifier.fillMaxWidth().fillMaxHeight(0.62f),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
+            verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
             items(visibleNotes, key = { it.id }) { note ->
+                var menuExpanded by remember(note.id) { mutableStateOf(false) }
+                val swipeState = rememberSwipeToDismissBoxState(
+                    confirmValueChange = { value ->
+                        if (value == SwipeToDismissBoxValue.StartToEnd) onArchive(note)
+                        false
+                    },
+                    positionalThreshold = { width -> width * 0.35f }
+                )
+                SwipeToDismissBox(
+                    state = swipeState,
+                    enableDismissFromEndToStart = false,
+                    backgroundContent = {
+                        Row(
+                            modifier = Modifier.fillMaxSize()
+                                .background(
+                                    Brush.horizontalGradient(listOf(
+                                        MaterialTheme.colorScheme.primaryContainer,
+                                        MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.2f + 0.6f * swipeState.progress)
+                                    )),
+                                    RoundedCornerShape(8.dp)
+                                ).padding(horizontal = 16.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            Icon(Icons.Rounded.Archive, contentDescription = null, tint = MaterialTheme.colorScheme.onPrimaryContainer)
+                            Text("归档", color = MaterialTheme.colorScheme.onPrimaryContainer)
+                        }
+                    }
+                ) {
                 Surface(
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(20.dp),
-                    color = if (note.id == activeNoteId) MaterialTheme.colorScheme.primary.copy(alpha = 0.12f) else MaterialTheme.colorScheme.surface,
+                    shape = RoundedCornerShape(8.dp),
+                    color = if (note.id == activeNoteId) MaterialTheme.colorScheme.primary.copy(alpha = 0.12f).compositeOver(MaterialTheme.colorScheme.surface) else MaterialTheme.colorScheme.surface,
                     tonalElevation = if (note.id == activeNoteId) 2.dp else 1.dp,
                     onClick = { onSelect(note.id) }
                 ) {
@@ -2357,10 +2326,30 @@ private fun PlanningDocumentSheet(
                             Text(note.title, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
                             Text("更新于 ${planningMillisLabel(note.updatedAtMillis)}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
-                        IconButton(onClick = { onDelete(note) }) {
-                            Icon(Icons.Rounded.Delete, contentDescription = "删除文档", tint = MaterialTheme.colorScheme.error)
+                        Box {
+                            IconButton(onClick = { menuExpanded = true }) {
+                                Icon(Icons.Rounded.MoreVert, contentDescription = "文档操作：${note.title}")
+                            }
+                            DropdownMenu(expanded = menuExpanded, onDismissRequest = { menuExpanded = false }) {
+                                DropdownMenuItem(
+                                    text = { Text("重命名") },
+                                    leadingIcon = { Icon(Icons.Rounded.Edit, contentDescription = null) },
+                                    onClick = { menuExpanded = false; onRename(note) }
+                                )
+                                DropdownMenuItem(
+                                    text = { Text("归档") },
+                                    leadingIcon = { Icon(Icons.Rounded.Archive, contentDescription = null) },
+                                    onClick = { menuExpanded = false; onArchive(note) }
+                                )
+                                DropdownMenuItem(
+                                    text = { Text("删除文档") },
+                                    leadingIcon = { Icon(Icons.Rounded.Delete, contentDescription = null) },
+                                    onClick = { menuExpanded = false; onDelete(note) }
+                                )
+                            }
                         }
                     }
+                }
                 }
             }
             if (visibleNotes.isEmpty()) {

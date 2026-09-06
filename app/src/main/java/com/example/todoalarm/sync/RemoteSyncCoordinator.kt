@@ -17,6 +17,8 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import org.json.JSONObject
@@ -44,6 +46,15 @@ data class AccountAuthResult(
 ) {
     val succeeded: Boolean get() = error == null
 }
+
+data class AccountDevice(
+    val id: String,
+    val name: String,
+    val platform: String,
+    val lastSeenAt: Long,
+    val current: Boolean,
+    val active: Boolean
+)
 
 internal data class InitialSyncState(
     val revision: Long,
@@ -190,6 +201,9 @@ class RemoteSyncCoordinator(
                 dirty = initialSyncState.dirty,
                 conflictRevision = initialSyncState.conflictRevision
             )
+            response.getJSONObject("user").let { user ->
+                settingsStore.updateRemoteAccountProfile(user.optLong("id"), user.optString("displayName", canonicalUsername))
+            }
             TodoWidgetProvider.notifyWidgetDataChanged(app)
             start()
             when {
@@ -204,6 +218,89 @@ class RemoteSyncCoordinator(
             }
         }.getOrElse { error ->
             AccountAuthResult(error.message ?: if (register) "注册失败" else "登录失败")
+        }
+    }
+
+    suspend fun refreshAccountProfile(): Unit = withContext(Dispatchers.IO) {
+        syncMutex.withLock {
+            val token = ensureAccessToken(cloudServerUrl(), settingsStore.currentSettings())
+            val user = getJson(cloudServerUrl(), "/v2/account", token).getJSONObject("user")
+            settingsStore.updateRemoteAccountProfile(user.getLong("id"), user.getString("displayName"))
+        }
+    }
+
+    suspend fun updateDisplayName(displayName: String): Unit = withContext(Dispatchers.IO) {
+        syncMutex.withLock {
+            val token = ensureAccessToken(cloudServerUrl(), settingsStore.currentSettings())
+            val user = postJson(cloudServerUrl(), "/v2/account", JSONObject().put("displayName", displayName.trim()), token)
+                .getJSONObject("user")
+            settingsStore.updateRemoteAccountProfile(user.getLong("id"), user.getString("displayName"))
+        }
+    }
+
+    suspend fun accountDevices(): List<AccountDevice> = withContext(Dispatchers.IO) {
+        syncMutex.withLock {
+            val token = ensureAccessToken(cloudServerUrl(), settingsStore.currentSettings())
+            val devices = getJson(cloudServerUrl(), "/v2/devices", token).getJSONArray("devices")
+            List(devices.length()) { index ->
+                val device = devices.getJSONObject(index)
+                AccountDevice(
+                    id = device.getString("id"), name = device.getString("name"), platform = device.getString("platform"),
+                    lastSeenAt = device.getLong("lastSeenAt"), current = device.getBoolean("current"),
+                    active = device.optBoolean("active", !device.optBoolean("revoked"))
+                )
+            }
+        }
+    }
+
+    suspend fun revokeAccountDevice(deviceId: String): Unit = withContext(Dispatchers.IO) {
+        require(deviceId.matches(Regex("[A-Za-z0-9_-]{8,128}"))) { "设备 ID 无效" }
+        syncMutex.withLock {
+            val token = ensureAccessToken(cloudServerUrl(), settingsStore.currentSettings())
+            val connection = openApiConnection(cloudServerUrl(), "/v2/devices/$deviceId", "DELETE", token)
+            try {
+                val status = connection.responseCode
+                if (status !in 200..299) throw apiException(connection, status)
+            } finally {
+                connection.disconnect()
+            }
+        }
+    }
+
+    suspend fun changeAccountPassword(currentPassword: String, newPassword: String): Unit = withContext(Dispatchers.IO) {
+        require(newPassword.length in 10..256) { "新密码需为 10-256 位" }
+        require(currentPassword != newPassword) { "新密码不能与原密码相同" }
+        syncMutex.withLock {
+            val settings = settingsStore.currentSettings()
+            val server = cloudServerUrl()
+            val token = ensureAccessToken(server, settings)
+            val oldSecret = deriveAccountSecret(settings.remoteSyncUsername, currentPassword)
+            require(oldSecret == settings.remoteSyncSecret) { "原密码不正确" }
+            val newSecret = deriveAccountSecret(settings.remoteSyncUsername, newPassword)
+            val connection = openApiConnection(server, "/v2/sync/snapshot", "GET", token)
+            var revision = 0L
+            val encrypted = try {
+                when (val status = connection.responseCode) {
+                    HttpURLConnection.HTTP_NOT_FOUND -> null
+                    in 200..299 -> {
+                        revision = connection.getHeaderField("X-Payki-Revision")?.toLongOrNull()
+                            ?: throw IOException("云端未返回数据版本，请重试")
+                        val snapshot = connection.inputStream.use { it.readBytesLimited(MAX_PAYLOAD_BYTES) }
+                        RemoteSyncCrypto.encrypt(RemoteSyncCrypto.decrypt(snapshot, oldSecret), newSecret)
+                    }
+                    else -> throw apiException(connection, status)
+                }
+            } finally {
+                connection.disconnect()
+            }
+            postJson(
+                server, "/v2/account/password",
+                JSONObject().put("currentPassword", currentPassword).put("newPassword", newPassword)
+                    .put("snapshotRevision", revision)
+                    .put("encryptedSnapshot", encrypted?.let { android.util.Base64.encodeToString(it, android.util.Base64.NO_WRAP) } ?: JSONObject.NULL),
+                token
+            )
+            logout()
         }
     }
 
@@ -314,6 +411,8 @@ class RemoteSyncCoordinator(
         remoteSyncDeviceId = current.remoteSyncDeviceId,
         remoteSyncSecret = current.remoteSyncSecret,
         remoteSyncUsername = current.remoteSyncUsername,
+        remoteSyncUserId = current.remoteSyncUserId,
+        remoteSyncDisplayName = current.remoteSyncDisplayName,
         remoteSyncAccessToken = current.remoteSyncAccessToken,
         remoteSyncRefreshToken = current.remoteSyncRefreshToken,
         remoteSyncAccessExpiresAt = current.remoteSyncAccessExpiresAt,

@@ -72,6 +72,8 @@ data class AppSettings(
     val remoteSyncDeviceId: String = "",
     val remoteSyncSecret: String = "",
     val remoteSyncUsername: String = "",
+    val remoteSyncUserId: Long = 0L,
+    val remoteSyncDisplayName: String = "",
     val remoteSyncAccessToken: String = "",
     val remoteSyncRefreshToken: String = "",
     val remoteSyncAccessExpiresAt: Long = 0L,
@@ -307,6 +309,14 @@ class AppSettingsStore(context: Context) {
         refresh()
     }
 
+    fun updateRemoteAccountProfile(userId: Long, displayName: String) {
+        preferences.edit()
+            .putLong(KEY_REMOTE_SYNC_USER_ID, userId)
+            .putString(KEY_REMOTE_SYNC_DISPLAY_NAME, displayName)
+            .apply()
+        refresh()
+    }
+
     fun markRemoteSyncDirty() {
         if (currentSettings().remoteSyncUsername.isBlank()) return
         preferences.edit().putBoolean(KEY_REMOTE_SYNC_DIRTY, true).apply()
@@ -346,6 +356,8 @@ class AppSettingsStore(context: Context) {
         preferences.edit()
             .putBoolean(KEY_REMOTE_SYNC_ENABLED, false)
             .remove(KEY_REMOTE_SYNC_USERNAME)
+            .remove(KEY_REMOTE_SYNC_USER_ID)
+            .remove(KEY_REMOTE_SYNC_DISPLAY_NAME)
             .remove(KEY_REMOTE_SYNC_ACCESS_EXPIRES_AT)
             .remove(KEY_REMOTE_SYNC_REFRESH_EXPIRES_AT)
             .remove(KEY_REMOTE_SYNC_REVISION)
@@ -683,6 +695,8 @@ class AppSettingsStore(context: Context) {
             remoteSyncSecret = securePreferences.getString(KEY_REMOTE_SYNC_SECRET, null)
                 ?: preferences.getString(KEY_REMOTE_SYNC_SECRET, "").orEmpty(),
             remoteSyncUsername = preferences.getString(KEY_REMOTE_SYNC_USERNAME, "").orEmpty(),
+            remoteSyncUserId = preferences.getLong(KEY_REMOTE_SYNC_USER_ID, 0L),
+            remoteSyncDisplayName = preferences.getString(KEY_REMOTE_SYNC_DISPLAY_NAME, "").orEmpty(),
             remoteSyncAccessToken = securePreferences.getString(KEY_REMOTE_SYNC_ACCESS_TOKEN, "").orEmpty(),
             remoteSyncRefreshToken = securePreferences.getString(KEY_REMOTE_SYNC_REFRESH_TOKEN, "").orEmpty(),
             remoteSyncAccessExpiresAt = preferences.getLong(KEY_REMOTE_SYNC_ACCESS_EXPIRES_AT, 0L),
@@ -776,6 +790,8 @@ class AppSettingsStore(context: Context) {
     }
 
     companion object {
+        private const val KEY_REMOTE_SYNC_USER_ID = "remote_sync_user_id"
+        private const val KEY_REMOTE_SYNC_DISPLAY_NAME = "remote_sync_display_name"
         private const val PREFS_NAME = "payki_todo_settings"
         private const val PREFS_SECURE_NAME = "payki_todo_secure_settings"
         private const val PREFS_SECURE_FALLBACK_NAME = "payki_todo_secure_settings_fallback"

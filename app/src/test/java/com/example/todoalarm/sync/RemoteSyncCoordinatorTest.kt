@@ -52,4 +52,16 @@ class RemoteSyncCoordinatorTest {
             RemoteSyncCrypto.decrypt(encrypted, "wrong-secret")
         }
     }
+
+    @Test
+    fun passwordRotationPreservesSnapshotBytesForAnotherClient() {
+        val oldSecret = RemoteSyncCoordinator.deriveAccountSecret("account", "old-test-password")
+        val newSecret = RemoteSyncCoordinator.deriveAccountSecret("account", "new-test-password")
+        val original = ByteArray(4096) { (it % 251).toByte() }
+        val oldEnvelope = RemoteSyncCrypto.encrypt(original, oldSecret)
+        val newEnvelope = RemoteSyncCrypto.encrypt(RemoteSyncCrypto.decrypt(oldEnvelope, oldSecret), newSecret)
+        val otherDeviceSecret = RemoteSyncCoordinator.deriveAccountSecret("ACCOUNT", "new-test-password")
+        assertArrayEquals(original, RemoteSyncCrypto.decrypt(newEnvelope, otherDeviceSecret))
+        assertThrows(IllegalArgumentException::class.java) { RemoteSyncCrypto.decrypt(newEnvelope, oldSecret) }
+    }
 }

@@ -8,7 +8,7 @@
 - Supported Android: Android 8.0+ / API 26+
 - Compile and target SDK: Android 14 / API 34
 - License: MIT
-- App version: `1.16.14 / versionCode 379` (current local validation source)
+- App version: `1.16.15 / versionCode 380` (current local validation source)
 - Room database version: `30`
 
 ## Published Build
@@ -16,9 +16,9 @@
 - GitHub Release: `https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.15.18`
 - Release APK: `app/build/outputs/apk/release/PaykiTodo-1.15.18-release.apk`
 - Public asset name: `PaykiTodo-1.15.18-release.apk`
-- Current debug APK: `app/build/outputs/apk/debug/PaykiTodo-1.16.14-debug.apk` (after this round's build)
-- Current signed release APK: `app/build/outputs/apk/release/PaykiTodo-1.16.14-release.apk` (after this round's build)
-- Current Windows self-contained EXE: `desktop/dist/PaykiTodo.exe` (after this round's publish)
+- Current debug APK: `app/build/outputs/apk/debug/PaykiTodo-1.16.15-debug.apk`
+- Current signed release APK: `app/build/outputs/apk/release/PaykiTodo-1.16.15-release.apk`
+- Current Windows self-contained EXE: `desktop/dist/PaykiTodo.exe` (previous round; not rebuilt for this Android UI round)
 - Release signing material remains local and ignored by Git.
 
 ## Product Positioning
@@ -43,6 +43,19 @@ PaykiTodo is a local-first Android assistant for todos, DDLs, schedules, countdo
 - Desktop Web calendar now uses the same current-time line convention as the phone calendar, separates today's date from the selected date, and flashes the selected week column briefly.
 
 See `README.md` for the public overview and `docs/current/FEATURE_LEDGER.md` for the detailed implementation ledger.
+
+## v1.16.15 Validation Scope (not published)
+
+- Drawer account identity, immutable server user ID, nickname/password updates and signed-in/historical device management.
+- Password changes atomically replace password hashes and re-encrypted cloud snapshots with revision checks, then revoke sessions without deleting local data.
+- Calendar vertical month paging, continuous horizontal week paging, date-correct Today navigation, today agenda scrolling/highlight, compact agenda text and content-height accent bars.
+- Removed calendar batch/template menus, moved history under Todo, restored Todo artwork, added a circular create button with an 800ms batch action and larger group choices.
+- Planning document creation/rename/swipe archive moved into the document list; help moved to the top bar; editor guidance card removed.
+- AI provider titles wrap at full width without numbering; sound preferences are merged and compacted.
+- Azure account APIs are deployed; service health check passed. Public proxy accepts the encoded snapshot size needed by password rotation. Deployment credentials and rollback files remain private.
+- Verification complete: 11 server tests passed; Android unit tests, Lint, Debug/Release assembly, and all 9 emulator interaction checks passed. Physical-device OEM reminder/widget checks remain.
+- Emulator evidence: `emulator-5554` / `Pixel_8` installed the final Debug and instrumentation APKs; `MainActivity` launched with `versionName=1.16.15` and `versionCode=380`.
+- APK evidence: Debug SHA-256 `054169AA284863F486D7EE7BAFC9D169CA63A9449985BC62BA78C45A8A3009B4`; signed Release SHA-256 `1FEF71C5367109E759E20F5FDCFD64CB4D05498CF268D82EC850C31A3DE79390`; `apksigner verify` passed the Release APK with one RSA-2048 signer.
 
 ## v1.16.14 Validation Scope (not published)
 

@@ -2,7 +2,28 @@
 
 ## Active Focus
 
-The `v1.16.14` local validation round completes the existing Turnstile widget deployment, hardens Android WebView compatibility, binds server-side verification to the production hostname, and keeps the private cloud service separately deployed from Git; no GitHub Release is being created in this round.
+The `v1.16.15 / versionCode 380` round implements the user's 17 Android UI/account requests. It builds local Debug/Release APKs and deploys the account API additions; it does not publish a GitHub Release.
+
+## v1.16.15 Checklist
+
+- [x] AI source names use the full row width, wrap, and omit generated numbering.
+- [x] Drawer identity opens account settings with server ID, nickname/password changes and device management.
+- [x] Planning documents expose create, per-document rename and swipe-to-confirm archive; help is in the top bar and the redundant editor hint is removed.
+- [x] Todo uses Daily Board artwork; history is owned by Todo and filters out events.
+- [x] Month and week paging animate; month double-tap centers the date in three-day view; Today selects the actual date and reveals/highlights the agenda row.
+- [x] Calendar batch/template menu entries are removed; agenda font sizes/lunar duplication/accent-bar height are corrected.
+- [x] Todo creation uses a circular icon; 800ms long press opens batch creation; group text/dots are larger and manager rows are tighter.
+- [x] Sound preferences are merged into one compact page; requested entry summaries are hidden.
+- [x] Account API integration tests, password-key rotation regression and first Android unit/Lint pass.
+- [x] Final Debug/Release assembly, emulator interaction/screenshots, documentation close-out and focused commit.
+
+## v1.16.15 Verification Evidence
+
+1. `:app:assembleDebug`, `:app:assembleDebugAndroidTest`, `:app:assembleRelease`, `:app:testDebugUnitTest`, and `:app:lintDebug` passed.
+2. The server integration suite passed all 11 tests.
+3. `emulator-5554` / `Pixel_8` installed the final Debug and instrumentation APKs; all 9 Compose interaction tests passed.
+4. The final Debug and signed Release APKs report `versionName=1.16.15` and `versionCode=380`.
+5. The normal `MainActivity` launched successfully on the emulator. Physical-device checks remain necessary for OEM lock-screen, notification shade, launcher widget, and background reminder behavior.
 
 ## Completed `v1.16.14` Scope
 

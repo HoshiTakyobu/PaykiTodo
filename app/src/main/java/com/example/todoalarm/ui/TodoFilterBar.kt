@@ -48,6 +48,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.example.todoalarm.data.TaskGroup
 import com.example.todoalarm.data.TodoRepository
 import kotlinx.coroutines.launch
@@ -135,7 +136,7 @@ internal fun TodoFilterBar(
         ) {
             DropdownMenuItem(
                 text = {
-                    Text("管理分组", fontWeight = FontWeight.SemiBold)
+                    Text("管理分组", fontSize = 21.sp, fontWeight = FontWeight.SemiBold)
                 },
                 leadingIcon = {
                     Icon(Icons.Rounded.Settings, contentDescription = null)
@@ -214,13 +215,14 @@ private fun GroupFilterMenuItem(
         text = {
             Text(
                 text = label,
+                fontSize = 21.sp,
                 fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal
             )
         },
         leadingIcon = {
             Box(
                 modifier = Modifier
-                    .size(10.dp)
+                    .size(18.dp)
                     .background(color, CircleShape)
             )
         },
@@ -249,23 +251,23 @@ private fun GroupManagerDialog(
                     .fillMaxWidth()
                     .heightIn(max = 380.dp)
                     .verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(4.dp)
+                verticalArrangement = Arrangement.spacedBy(0.dp)
             ) {
                 groups.forEach { group ->
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
                             .clickable { onEdit(group) }
-                            .padding(vertical = 8.dp),
+                            .padding(vertical = 2.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Box(
                             modifier = Modifier
-                                .size(12.dp)
+                                .size(18.dp)
                                 .background(colorFromHex(group.colorHex), CircleShape)
                         )
                         Spacer(Modifier.width(10.dp))
-                        Text(group.name, modifier = Modifier.weight(1f))
+                        Text(group.name, modifier = Modifier.weight(1f), fontSize = 19.sp)
                         IconButton(onClick = { onEdit(group) }) {
                             Icon(Icons.Rounded.Edit, contentDescription = "编辑分组")
                         }

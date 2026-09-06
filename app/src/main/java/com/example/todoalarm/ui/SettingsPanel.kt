@@ -113,7 +113,6 @@ import java.time.format.DateTimeFormatter
 
 private enum class SettingsSection {
     PERMISSIONS,
-    SOUND_STRATEGY,
     TONE,
     CALENDAR,
     DAILY_BRIEF,
@@ -269,28 +268,21 @@ fun SettingsPanel(
                 SettingsMenuItem(
                     icon = Icons.Rounded.Security,
                     title = "提醒权限",
-                    summary = "通知、精确闹钟、全屏提醒、免打扰、电池优化、辅助功能",
+                    summary = null,
                     onClick = { selectedSection = SettingsSection.PERMISSIONS }
                 )
                 SettingsMenuDivider()
                 SettingsMenuItem(
-                    icon = Icons.AutoMirrored.Rounded.VolumeUp,
-                    title = "提醒声音策略",
-                    summary = "${settings.reminderAudioChannel.label} · App 内部音量 ${settings.reminderInternalVolumePercent}%",
-                    onClick = { selectedSection = SettingsSection.SOUND_STRATEGY }
-                )
-                SettingsMenuDivider()
-                SettingsMenuItem(
                     icon = Icons.Rounded.LibraryMusic,
-                    title = "提示音",
-                    summary = settings.reminderToneName ?: "当前使用内置提醒音",
+                    title = "提示音设置",
+                    summary = null,
                     onClick = { selectedSection = SettingsSection.TONE }
                 )
                 SettingsMenuDivider()
                 SettingsMenuItem(
                     icon = Icons.Rounded.CalendarMonth,
                     title = "日历与提醒",
-                    summary = "默认延后时长、周起始日和日程进行中通知",
+                    summary = null,
                     onClick = { selectedSection = SettingsSection.CALENDAR }
                 )
                 SettingsMenuDivider()
@@ -401,15 +393,8 @@ fun SettingsPanel(
             }
         }
 
-        SettingsSection.SOUND_STRATEGY -> SettingsSectionDialog("提醒声音策略", { selectedSection = null }) {
-            ReminderAudioStrategyPanel(
-                settings = settings,
-                onChange = onReminderAudioStrategyChange
-            )
-        }
-
-        SettingsSection.TONE -> SettingsSectionDialog("提示音", { selectedSection = null }) {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        SettingsSection.TONE -> SettingsSectionDialog("提示音设置", { selectedSection = null }) {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 ToneChoiceRow(
                     title = "内置提醒音",
                     selected = settings.reminderToneUri == null,
@@ -421,6 +406,7 @@ fun SettingsPanel(
                     selected = settings.reminderToneUri != null,
                     onClick = onPickSystemReminderTone
                 )
+                ReminderAudioStrategyPanel(settings = settings, onChange = onReminderAudioStrategyChange)
             }
         }
 
@@ -483,61 +469,8 @@ fun SettingsPanel(
             }
         }
 
-        SettingsSection.ACCOUNT -> SettingsSectionDialog("账号", { selectedSection = null }) {
-            Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
-                Text("当前账号", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
-                Text(settings.remoteSyncUsername, color = MaterialTheme.colorScheme.primary)
-                Text(
-                    "登录有效期至：${formatAccountExpiry(settings.remoteSyncRefreshExpiresAt)}",
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    style = MaterialTheme.typography.bodySmall
-                )
-                Surface(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(14.dp),
-                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.32f)
-                ) {
-                    Column(
-                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
-                        verticalArrangement = Arrangement.spacedBy(4.dp)
-                    ) {
-                        Text(
-                            "云端快照版本：${settings.remoteSyncRevision}",
-                            fontWeight = FontWeight.SemiBold,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
-                        Text(
-                            text = when {
-                                settings.remoteSyncConflictRevision > 0L -> "存在同步冲突：云端版本 ${settings.remoteSyncConflictRevision}"
-                                settings.remoteSyncDirty -> "本机有变更，正在等待上传"
-                                settings.remoteSyncLastSuccessAt > 0L -> "最近同步：${formatSyncTimestamp(settings.remoteSyncLastSuccessAt)}"
-                                else -> "尚无成功同步记录"
-                            },
-                            color = if (settings.remoteSyncConflictRevision > 0L) {
-                                MaterialTheme.colorScheme.error
-                            } else {
-                                MaterialTheme.colorScheme.onSurfaceVariant
-                            },
-                            style = MaterialTheme.typography.bodySmall
-                        )
-                        settings.remoteSyncLastError.takeIf(String::isNotBlank)?.let { error ->
-                            Text(
-                                "最近错误：$error",
-                                color = MaterialTheme.colorScheme.error,
-                                style = MaterialTheme.typography.bodySmall
-                            )
-                        }
-                    }
-                }
-                Text(
-                    "账号用于识别你的 PaykiTodo 数据空间。手机仍以本地数据为准，账号登录失效后需要重新登录。",
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    style = MaterialTheme.typography.bodySmall
-                )
-                OutlinedButton(onClick = onLogoutAccount, modifier = Modifier.fillMaxWidth()) {
-                    Text("退出账号")
-                }
-            }
+        SettingsSection.ACCOUNT -> SettingsSectionDialog("账号设置", { selectedSection = null }) {
+            AccountSettingsPanel(settings = settings, onLogout = onLogoutAccount)
         }
 
         SettingsSection.DAILY_BRIEF -> {
@@ -1170,7 +1103,7 @@ private fun ReminderAudioStrategyPanel(
         onChange(channel, internalVolume.coerceIn(0, 100), boostSystemVolume, boostVolume.coerceIn(0, 100), quietMode)
     }
 
-    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         CompactDropdownSetting(
             title = "播放通道",
             value = settings.reminderAudioChannel.label,
@@ -1185,8 +1118,8 @@ private fun ReminderAudioStrategyPanel(
             onChange = { commit(internalVolume = it) }
         )
 
-        Surface(shape = RoundedCornerShape(18.dp), color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.26f)) {
-            Column(modifier = Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Surface(color = Color.Transparent) {
+            Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 4.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                     Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         Text("工作模式", fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
@@ -1196,15 +1129,15 @@ private fun ReminderAudioStrategyPanel(
             }
         }
 
-        Surface(shape = RoundedCornerShape(18.dp), color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.28f)) {
-            Column(modifier = Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Surface(color = Color.Transparent) {
+            Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 4.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                     Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         Text("提醒时临时提升系统通道音量", fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
                     }
                     Switch(checked = settings.reminderBoostSystemVolume, onCheckedChange = { commit(boostSystemVolume = it) })
                 }
-                PercentSettingRow(
+                if (settings.reminderBoostSystemVolume) PercentSettingRow(
                     title = "临时提升目标",
                     summary = "",
                     value = settings.reminderBoostVolumePercent,
@@ -1231,8 +1164,8 @@ private fun PercentSettingRow(
         onChange(normalized)
     }
 
-    Surface(shape = RoundedCornerShape(18.dp), color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = if (enabled) 0.26f else 0.12f)) {
-        Column(modifier = Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+    Surface(color = Color.Transparent) {
+        Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 4.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                 Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     Text(title, fontWeight = FontWeight.SemiBold, color = if (enabled) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant)
@@ -1666,7 +1599,7 @@ private fun ReportScheduleRow(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 14.dp, vertical = 12.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
+            verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -1708,7 +1641,7 @@ private fun parseReportTime(value: String): Pair<Int, Int>? {
 
 @Composable
 @OptIn(ExperimentalFoundationApi::class)
-private fun PlanningAiProviderRow(
+internal fun PlanningAiProviderRow(
     index: Int,
     total: Int,
     provider: PlanningAiProvider,
@@ -1727,29 +1660,28 @@ private fun PlanningAiProviderRow(
                 onClick = onEdit,
                 onLongClick = onDelete
             ),
-        shape = RoundedCornerShape(14.dp),
+        shape = RoundedCornerShape(8.dp),
         color = MaterialTheme.colorScheme.surface.copy(alpha = 0.72f),
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.28f))
     ) {
         Column(
-            modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
             verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
+            Text(
+                text = provider.name.ifBlank { "未命名服务" },
+                modifier = Modifier.fillMaxWidth(),
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurface
+            )
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text(
-                            "${index + 1}. ${provider.name.ifBlank { "未命名服务" }}",
-                            fontWeight = FontWeight.SemiBold,
-                            color = MaterialTheme.colorScheme.onSurface,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.weight(1f, fill = false)
-                        )
+                Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                    Row(verticalAlignment = Alignment.Top, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         Surface(
                             shape = RoundedCornerShape(999.dp),
                             color = if (isComplete) MaterialTheme.colorScheme.primary.copy(alpha = 0.12f) else MaterialTheme.colorScheme.error.copy(alpha = 0.1f)
@@ -2770,7 +2702,7 @@ private fun SettingsMenuItem(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun SettingsSectionDialog(
+internal fun SettingsSectionDialog(
     title: String,
     onDismiss: () -> Unit,
     onDone: () -> Unit = onDismiss,

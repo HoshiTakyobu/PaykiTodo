@@ -65,11 +65,14 @@ Creation and editing surfaces should treat user input as a local draft until the
 
 ## 7. Operational screen backgrounds
 
-Daily Board artwork is product identity, not a universal application background. High-density operational screens such as Todo, Settings, and AI configuration should use stable solid workspace surfaces with readable light/dark contrast.
+Daily Board artwork is product identity. Starting with 1.16.15, the user explicitly requests the same artwork behind Todo. Settings and AI configuration retain stable solid workspace surfaces with readable light/dark contrast.
 
 - Avoid pure-black full-page slabs in dark mode; use the established deep blue-gray workspace layer plus distinct content surfaces.
 - Keep 16dp-class section spacing, compact but readable row height, and clear title/summary/control hierarchy.
 - Avoid stacking several outlined cards inside another outlined card. Prefer one section surface with light internal grouping and a single obvious primary action.
+- Account identity occupies the drawer header; account settings open from that identity. Todo history belongs under Todo, not as an independent drawer destination.
+- Calendar month/week changes use spatial pager transitions. Agenda rows use compact text and a content-height accent bar; the lower date rail does not duplicate the top strip's lunar label.
+- Planning Desk keeps only document selection and recognition in the main toolbar. Document creation, rename and archive belong in the document list; help belongs in the top-right question-mark icon.
 
 ## 8. Desktop Web workstation layout
 

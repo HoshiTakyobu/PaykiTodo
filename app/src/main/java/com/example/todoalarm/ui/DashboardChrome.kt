@@ -187,6 +187,10 @@ internal enum class DashboardSection(
 @Composable
 internal fun DashboardDrawer(
     current: DashboardSection,
+    remoteSyncUsername: String,
+    remoteSyncDisplayName: String,
+    remoteSyncUserId: Long,
+    onOpenAccount: () -> Unit,
     selectedThemeMode: ThemeMode,
     onSelectSection: (DashboardSection) -> Unit,
     onThemeModeChange: (ThemeMode) -> Unit
@@ -206,7 +210,9 @@ internal fun DashboardDrawer(
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             Surface(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable(onClick = onOpenAccount),
                 shape = RoundedCornerShape(22.dp),
                 color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.52f)
             ) {
@@ -233,7 +239,7 @@ internal fun DashboardDrawer(
                         verticalArrangement = Arrangement.spacedBy(2.dp)
                     ) {
                         Text(
-                            text = "PaykiTodo",
+                            text = remoteSyncDisplayName.ifBlank { remoteSyncUsername }.ifBlank { "PaykiTodo" },
                             style = MaterialTheme.typography.titleLarge,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onSurface,
@@ -241,7 +247,7 @@ internal fun DashboardDrawer(
                             overflow = TextOverflow.Ellipsis
                         )
                         Text(
-                            text = "把今天安排得更清楚",
+                            text = if (remoteSyncUserId > 0) "ID: $remoteSyncUserId" else remoteSyncUsername,
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             maxLines = 1,
@@ -274,7 +280,7 @@ internal fun DashboardDrawer(
 
                 Spacer(Modifier.height(8.dp))
                 DrawerGroupLabel("回顾与记录")
-                listOf(DashboardSection.AI_REPORTS, DashboardSection.HISTORY).forEach { section ->
+                listOf(DashboardSection.AI_REPORTS).forEach { section ->
                     DrawerSectionButton(
                         section = section,
                         selected = current == section,
@@ -441,6 +447,7 @@ internal fun List<Long>.toggleId(id: Long): List<Long> {
 @Composable
 internal fun DashboardBody(
     section: DashboardSection,
+    planningHelpRequestSerial: Int = 0,
     settingsInitialSectionKey: String? = null,
     settingsInitialSectionSerial: Int = 0,
     targetEventId: Long? = null,
@@ -701,6 +708,7 @@ internal fun DashboardBody(
                 nodes = planningNodes,
                 groups = uiState.groups,
                 planningAiProviders = uiState.settings.planningAiProviders,
+                planningHelpRequestSerial = planningHelpRequestSerial,
                 outlineHintVisible = uiState.settings.planningOutlineHintVisible,
                 onSelectNote = onSelectPlanningNote,
                 onCreateNote = onCreatePlanningNote,
@@ -864,7 +872,7 @@ internal fun DashboardBody(
         }
     }
     val completedHistoryItems = if (section == DashboardSection.HISTORY) {
-        historyItems.collectAsStateWithLifecycle().value
+        historyItems.collectAsStateWithLifecycle().value.filter { it.isTodo }
     } else {
         emptyList()
     }

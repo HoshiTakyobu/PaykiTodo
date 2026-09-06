@@ -44,6 +44,9 @@ class CloudServerIntegrationTest(unittest.TestCase):
         sys.modules.pop(cls.cloud.__name__, None)
         cls.temp_dir.cleanup()
 
+    def setUp(self) -> None:
+        self.cloud.RATE_LIMITER = self.cloud.RateLimiter()
+
     def request(self, path: str, method: str = "GET", body: bytes | dict | None = None, headers: dict[str, str] | None = None):
         actual_headers = dict(headers or {})
         payload = body
@@ -119,6 +122,72 @@ class CloudServerIntegrationTest(unittest.TestCase):
         refreshed = json.loads(raw)
         self.assertNotEqual(login["accessToken"], refreshed["accessToken"])
         self.assertEqual(login["refreshExpiresAt"], refreshed["refreshExpiresAt"])
+
+    def test_profile_identity_and_device_revocation(self):
+        account = self.create_account("profile")
+        headers = {"Authorization": f"Bearer {account['accessToken']}"}
+        user_id = account["user"]["id"]
+        self.assertGreater(user_id, 0)
+        status, _, raw = self.request("/v2/account", "POST", {"displayName": "新的昵称", "id": 9999, "username": "changed"}, headers)
+        self.assertEqual(200, status, raw)
+        profile = json.loads(raw)["user"]
+        self.assertEqual(user_id, profile["id"])
+        self.assertEqual("tester_profile", profile["username"])
+        self.assertEqual("新的昵称", profile["displayName"])
+        self.assertNotIn("password", raw.decode())
+        self.assertEqual(400, self.request("/v2/account", "POST", {"displayName": " "}, headers)[0])
+        self.assertEqual(401, self.request("/v2/account", "POST", {"displayName": "attacker"})[0])
+        status, _, raw = self.request("/v2/auth/login", "POST", {
+            "username": "tester_profile", "password": "correct horse battery staple", "deviceId": "pc_device_profile", "platform": "windows"
+        })
+        self.assertEqual(200, status, raw)
+        pc = json.loads(raw)
+        self.assertEqual(user_id, pc["user"]["id"])
+        status, _, raw = self.request("/v2/devices", headers=headers)
+        self.assertEqual(200, status, raw)
+        devices = json.loads(raw)["devices"]
+        self.assertEqual(2, sum(device["active"] for device in devices))
+        self.assertEqual(1, sum(device["current"] for device in devices))
+        self.assertEqual(200, self.request("/v2/devices/pc_device_profile", "DELETE", headers=headers)[0])
+        self.assertEqual(401, self.request("/v2/account", headers={"Authorization": f"Bearer {pc['accessToken']}"})[0])
+        status, _, raw = self.request("/v2/devices", headers=headers)
+        previous = next(device for device in json.loads(raw)["devices"] if device["id"] == "pc_device_profile")
+        self.assertFalse(previous["active"])
+        self.assertTrue(previous["revoked"])
+
+    def test_password_change_atomically_rekeys_snapshot_and_revokes_sessions(self):
+        account = self.create_account("password_change")
+        headers = {"Authorization": f"Bearer {account['accessToken']}"}
+        original = b"PKSYNC1" + b"original-encrypted-data"
+        replacement = b"PKSYNC1" + b"new-password-encrypted-data"
+        status, _, raw = self.request("/v2/sync/snapshot", "PUT", original, {
+            **headers, "If-Match": '"0"', "X-Payki-Operation-Id": "password-test-upload-1"
+        })
+        self.assertEqual(200, status, raw)
+        body = {
+            "currentPassword": "correct horse battery staple", "newPassword": "new correct horse battery staple",
+            "snapshotRevision": 1, "encryptedSnapshot": base64.b64encode(replacement).decode()
+        }
+        self.assertEqual(403, self.request("/v2/account/password", "POST", {**body, "currentPassword": "wrong"}, headers)[0])
+        self.assertEqual(409, self.request("/v2/account/password", "POST", {**body, "snapshotRevision": 0}, headers)[0])
+        self.assertEqual(400, self.request("/v2/account/password", "POST", {**body, "encryptedSnapshot": None}, headers)[0])
+        self.assertEqual(original, self.request("/v2/sync/snapshot", headers=headers)[2])
+        status, _, raw = self.request("/v2/account/password", "POST", body, headers)
+        self.assertEqual(200, status, raw)
+        self.assertEqual(401, self.request("/v2/account", headers=headers)[0])
+        self.assertEqual(401, self.request("/v2/auth/refresh", "POST", {"refreshToken": account["refreshToken"]})[0])
+        login_body = {"username": "tester_password_change", "password": body["currentPassword"], "deviceId": "new_device_password_change"}
+        self.assertEqual(401, self.request("/v2/auth/login", "POST", login_body)[0])
+        status, _, raw = self.request("/v2/auth/login", "POST", {**login_body, "password": body["newPassword"]})
+        self.assertEqual(200, status, raw)
+        changed = json.loads(raw)
+        status, response_headers, payload = self.request("/v2/sync/snapshot", headers={"Authorization": f"Bearer {changed['accessToken']}"})
+        self.assertEqual(200, status)
+        self.assertEqual(replacement, payload)
+        self.assertEqual('"2"', response_headers["ETag"])
+        with self.cloud.DB.session() as connection:
+            row = connection.execute("SELECT password_hash FROM users WHERE id=?", (account["user"]["id"],)).fetchone()
+        self.assertNotEqual(body["newPassword"].encode(), bytes(row["password_hash"]))
 
     def test_turnstile_is_server_verified_when_configured(self):
         previous_site_key = self.cloud.TURNSTILE_SITE_KEY

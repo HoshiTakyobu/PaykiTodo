@@ -4,6 +4,17 @@ This file tracks the product at a practical level for new coding sessions.
 
 ## Implemented And In Use
 
+### Android Interaction Round (1.16.15)
+
+- Drawer identity shows the app icon, nickname and server-issued immutable user ID, and opens account settings.
+- Authenticated nickname/password changes and device-session inspection/revocation are supported. Password changes use a revision-checked atomic password-hash/snapshot-key update, revoke existing sessions and preserve local business data.
+- Calendar months page vertically; agenda weeks page horizontally in both directions. Bounded internal pager indices are recentered across date windows to avoid Compose float precision errors with huge indices.
+- Today preserves the actual day, recenters three-day view and scrolls/highlights the full current agenda row. Month double-tap enters a centered three-day view.
+- Agenda date rails only repeat weekday/date, titles are compact, accent bars follow the full text block and text colors meet a 4.5:1 contrast target against the event surface.
+- Todo shares Daily Board artwork; the circular create icon opens batch creation after an 800ms hold. Todo history is accessed from Todo; group names and dots are larger and group manager rows are compact.
+- Planning document lists own creation, rename and swipe-to-confirm archive, with image recognition retained in the document sheet. The main toolbar contains only document selection and recognition, and help is in the top bar.
+- AI provider names are not automatically numbered or ellipsized; sound choice and strategy share a compact settings page.
+
 ### Current Reliability Round
 
 - reminder polling passes the concrete scheduled trigger timestamp to the same foreground-service entry used by alarm broadcasts, so one todo/trigger pair cannot be dispatched twice through the polling path
@@ -230,7 +241,7 @@ This file tracks the product at a practical level for new coding sessions.
 - Desktop Web event editing opens a reference-proportioned two-column window with the PaykiTodo event form on the left and a live single-day timeline preview on the right; title/date/time/color edits update the preview without changing save semantics
 - Desktop Web calendar CSS explicitly neutralizes old full-width navigation/modal-button inheritance, preventing document-width expansion, off-screen tab scrolling, second-row header actions, and stretched close controls
 - timeline quick-create clears the visible `新日程` pending placeholder as soon as its editor opens, so a successfully saved event immediately renders with its real title
-- phone event details do not expose a completion action; calendar events can be canceled into history or deleted, but only todos can enter the completed state
+- phone event details do not expose a completion action; calendar events can be canceled with their underlying record retained or deleted, but only todos can enter the completed state. The Todo history surface excludes calendar events.
 - day / multi-day / month / agenda style views exist in code, with ongoing refinement
 - normal events, all-day events, and recurring events
 - event location / notes / color / reminder settings

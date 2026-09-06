@@ -5,6 +5,8 @@ import android.widget.Toast
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -17,6 +19,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -32,6 +35,12 @@ import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.scrollable
 import androidx.compose.foundation.gestures.rememberScrollableState
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.VerticalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -80,6 +89,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -89,6 +99,9 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.compositeOver
+import androidx.compose.ui.graphics.toArgb
+import androidx.core.graphics.ColorUtils
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.StrokeCap
@@ -96,6 +109,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -116,6 +130,7 @@ import com.example.todoalarm.data.TodoItem
 import com.example.todoalarm.data.WeekStartMode
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.time.Instant
@@ -123,6 +138,7 @@ import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
 import java.time.Duration
+import java.time.temporal.ChronoUnit
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
@@ -131,6 +147,8 @@ import kotlin.math.roundToInt
 
 private const val CalendarDayRange = 730
 private const val CalendarOverscanDays = 0
+private const val CalendarPagerCenter = 5_000
+private const val CalendarPagerPages = CalendarPagerCenter * 2 + 1
 private const val CalendarVerticalOverscanHours = 1f
 private const val VisibleCalendarDayColumns = 3.0f
 
@@ -225,7 +243,7 @@ internal fun CalendarPanel(
     var selectedDateEpochDay by rememberSaveable { mutableStateOf(anchorDate.toEpochDay()) }
     val selectedDate = remember(selectedDateEpochDay) { LocalDate.ofEpochDay(selectedDateEpochDay) }
     var viewMode by rememberSaveable { mutableStateOf(CalendarViewMode.THREE_DAY) }
-    val dateWindow = remember(anchorDate) { CalendarDateWindow(anchorDate, CalendarDayRange) }
+    val dateWindow = remember(selectedDate.year) { CalendarDateWindow(selectedDate.withDayOfYear(1), CalendarDayRange) }
     val anchorDateIndex = dateWindow.anchorIndex
     val verticalScroll = rememberScrollState()
     var didInitScroll by rememberSaveable { mutableStateOf(false) }
@@ -238,13 +256,10 @@ internal fun CalendarPanel(
     var showSaveWeekTemplate by remember { mutableStateOf(false) }
     var templateAnchorWeekStart by remember { mutableStateOf(currentWeekStart(LocalDate.now())) }
     var showViewModeMenu by remember { mutableStateOf(false) }
-    var showActionsMenu by remember { mutableStateOf(false) }
     var pendingDeleteTarget by remember { mutableStateOf<TodoItem?>(null) }
     var handledTargetEventSerial by rememberSaveable { mutableStateOf(-1) }
     var calendarEventDragActive by remember { mutableStateOf(false) }
-    var monthVerticalDirection by remember { mutableStateOf(0L) }
-    var agendaVerticalDirection by remember { mutableStateOf(0L) }
-    var agendaRefreshing by remember { mutableStateOf(false) }
+    var todayRequestSerial by remember { mutableStateOf(0) }
     val initialMoment = remember { LocalDateTime.now() }
     val currentDate by produceState(initialValue = LocalDate.now()) {
         while (true) {
@@ -254,7 +269,7 @@ internal fun CalendarPanel(
             value = LocalDate.now()
         }
     }
-    val currentDateIndex = dateWindow.indexOf(currentDate) ?: anchorDateIndex
+    val currentDateIndex = dateWindow.indexOf(currentDate) ?: -1
 
     val eventsByDate = remember(events) { buildEventsByDate(events) }
 
@@ -369,16 +384,7 @@ internal fun CalendarPanel(
             fun revealDate(targetDate: LocalDate) {
                 selectedDateEpochDay = targetDate.toEpochDay()
                 pendingDraft = null
-                when (viewMode) {
-                    CalendarViewMode.THREE_DAY -> Unit
-                    CalendarViewMode.DAY -> Unit
-                    CalendarViewMode.MONTH -> {
-                        selectedDateEpochDay = targetDate.withDayOfMonth(1).toEpochDay()
-                    }
-                    CalendarViewMode.AGENDA -> {
-                        selectedDateEpochDay = targetDate.toEpochDay()
-                    }
-                }
+                horizontalOffsetPx = Float.NaN
             }
 
             fun changeView(mode: CalendarViewMode) {
@@ -440,13 +446,6 @@ internal fun CalendarPanel(
                 }
             }
 
-            LaunchedEffect(agendaRefreshing, selectedDate) {
-                if (agendaRefreshing) {
-                    delay(280L)
-                    agendaRefreshing = false
-                }
-            }
-
             fun openDetails(item: TodoItem) {
                 pendingDraft = null
                 detailsTarget = item
@@ -477,33 +476,14 @@ internal fun CalendarPanel(
                         titleMonth = headerMonthDate,
                         viewMode = viewMode,
                         onPickDate = ::openDatePicker,
-                        onToday = { revealDate(currentDate) },
+                        onToday = {
+                            revealDate(LocalDate.now())
+                            todayRequestSerial += 1
+                        },
                         onChangeView = ::changeView,
                         onOpenViewMenu = { showViewModeMenu = true },
                         onDismissViewMenu = { showViewModeMenu = false },
-                        showViewModeMenu = showViewModeMenu,
-                        onOpenActions = { showActionsMenu = true },
-                        showActionsMenu = showActionsMenu,
-                        onDismissActions = { showActionsMenu = false },
-                        onQuickCreate = {
-                            showActionsMenu = false
-                            val startAt = LocalDateTime.now().withSecond(0).withNano(0).plusMinutes(2)
-                            onCreateEventAt(startAt, startAt.plusMinutes(30))
-                        },
-                        onOpenBatchImport = {
-                            showActionsMenu = false
-                            onOpenBatchImport()
-                        },
-                        onOpenTemplateManager = {
-                            showActionsMenu = false
-                            templateAnchorWeekStart = currentWeekStart(selectedDate)
-                            showTemplateManager = true
-                        },
-                        onSaveWeekTemplate = {
-                            showActionsMenu = false
-                            templateAnchorWeekStart = currentWeekStart(selectedDate)
-                            showSaveWeekTemplate = true
-                        }
+                        showViewModeMenu = showViewModeMenu
                     )
                 }
 
@@ -515,40 +495,10 @@ internal fun CalendarPanel(
                     color = MaterialTheme.colorScheme.surface
                 ) {
                     when (viewMode) {
-                    CalendarViewMode.MONTH -> {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .pointerInput(selectedDate) {
-                                    var totalDrag = 0f
-                                    detectVerticalDragGestures(
-                                        onDragEnd = {
-                                            when {
-                                                totalDrag < -72f -> {
-                                                    val next = selectedDate.withDayOfMonth(1).plusMonths(1)
-                                                    selectDate(next.withDayOfMonth(1))
-                                                }
-                                                totalDrag > 72f -> {
-                                                    val previous = selectedDate.withDayOfMonth(1).minusMonths(1)
-                                                    selectDate(previous.withDayOfMonth(1))
-                                                }
-                                            }
-                                            totalDrag = 0f
-                                            monthVerticalDirection = 0L
-                                        }
-                                    ) { change, dragAmount ->
-                                        totalDrag += dragAmount
-                                        change.consume()
-                                        monthVerticalDirection = when {
-                                            dragAmount < -6f -> 1L
-                                            dragAmount > 6f -> -1L
-                                            else -> monthVerticalDirection
-                                        }
-                                    }
-                                }
-                        ) {
+                    CalendarViewMode.MONTH -> key(Math.floorDiv(selectedDate.year, 50)) {
+                        CalendarMonthPager(selectedDate = selectedDate, onSelectDate = ::selectDate) { month ->
                             CalendarMonthGridView(
-                                monthDate = selectedDate.withDayOfMonth(1),
+                                monthDate = month,
                                 selectedDate = selectedDate,
                                 currentDate = currentDate,
                                 weekStartMode = weekStartMode,
@@ -664,49 +614,16 @@ internal fun CalendarPanel(
                         }
                     }
 
-                    CalendarViewMode.AGENDA -> {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .pointerInput(selectedDate) {
-                                    var totalDrag = 0f
-                                    detectVerticalDragGestures(
-                                        onDragEnd = {
-                                            when {
-                                                totalDrag < -72f -> {
-                                                    agendaRefreshing = true
-                                                    shiftViewBy(7)
-                                                }
-                                                totalDrag > 72f -> {
-                                                    agendaRefreshing = true
-                                                    shiftViewBy(-7)
-                                                }
-                                            }
-                                            totalDrag = 0f
-                                            agendaVerticalDirection = 0L
-                                        }
-                                    ) { change, dragAmount ->
-                                        totalDrag += dragAmount
-                                        change.consume()
-                                        agendaVerticalDirection = when {
-                                            dragAmount < -6f -> 1L
-                                            dragAmount > 6f -> -1L
-                                            else -> agendaVerticalDirection
-                                        }
-                                    }
-                                }
-                        ) {
+                    CalendarViewMode.AGENDA -> key(Math.floorDiv(selectedDate.year, 50), weekStartMode) {
                             CalendarAgendaView(
                                 selectedDate = selectedDate,
                                 currentDate = currentDate,
                                 weekStartMode = weekStartMode,
                                 eventsByDate = eventsByDate,
-                                agendaRefreshing = agendaRefreshing,
+                                todayRequestSerial = todayRequestSerial,
                                 onSelectDate = ::selectDate,
-                                onShiftWeek = ::shiftViewBy,
                                 onOpenDetails = ::openDetails
                             )
-                        }
                     }
                 }
             }
@@ -813,14 +730,7 @@ private fun CalendarBrowserHeader(
     onChangeView: (CalendarViewMode) -> Unit,
     onOpenViewMenu: () -> Unit,
     onDismissViewMenu: () -> Unit,
-    showViewModeMenu: Boolean,
-    onOpenActions: () -> Unit,
-    showActionsMenu: Boolean,
-    onDismissActions: () -> Unit,
-    onQuickCreate: () -> Unit,
-    onOpenBatchImport: () -> Unit,
-    onOpenTemplateManager: () -> Unit,
-    onSaveWeekTemplate: () -> Unit
+    showViewModeMenu: Boolean
 ) {
     val viewIcon = when (viewMode) {
         CalendarViewMode.THREE_DAY -> Icons.Rounded.ViewWeek
@@ -875,7 +785,6 @@ private fun CalendarBrowserHeader(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 CalendarHeaderActionButton(label = "今天", onClick = onToday)
-                CalendarHeaderActionButton(icon = Icons.Rounded.Add, contentDescription = "批量导入", onClick = onOpenBatchImport)
                 Box {
                     CalendarMenuActionButton(
                         icon = viewIcon,
@@ -894,23 +803,36 @@ private fun CalendarBrowserHeader(
                         }
                     }
                 }
-                Box {
-                    CalendarMenuActionButton(
-                        icon = Icons.Rounded.MoreHoriz,
-                        contentDescription = "更多操作",
-                        onClick = onOpenActions
-                    )
-                    DropdownMenu(
-                        expanded = showActionsMenu,
-                        onDismissRequest = onDismissActions
-                    ) {
-                        DropdownMenuItem(text = { Text("快速新建") }, onClick = onQuickCreate)
-                        DropdownMenuItem(text = { Text("周模板") }, onClick = onOpenTemplateManager)
-                        DropdownMenuItem(text = { Text("保存本周模板") }, onClick = onSaveWeekTemplate)
-                    }
-                }
             }
         }
+    }
+}
+
+@Composable
+@OptIn(ExperimentalFoundationApi::class)
+private fun CalendarMonthPager(
+    selectedDate: LocalDate,
+    onSelectDate: (LocalDate) -> Unit,
+    content: @Composable (LocalDate) -> Unit
+) {
+    val originEpoch = rememberSaveable { selectedDate.withDayOfMonth(1).toEpochDay() }
+    val origin = LocalDate.ofEpochDay(originEpoch)
+    val center = CalendarPagerCenter
+    val pager = rememberPagerState(initialPage = center) { CalendarPagerPages }
+    val targetPage = center + ChronoUnit.MONTHS.between(origin, selectedDate.withDayOfMonth(1)).toInt()
+    val latestSelection by rememberUpdatedState(onSelectDate)
+    val latestDate by rememberUpdatedState(selectedDate)
+    LaunchedEffect(targetPage) {
+        if (pager.settledPage != targetPage) pager.animateScrollToPage(targetPage)
+    }
+    LaunchedEffect(pager) {
+        snapshotFlow { pager.settledPage }.drop(1).collect { page ->
+            val month = origin.plusMonths((page - center).toLong())
+            if (month != latestDate.withDayOfMonth(1)) latestSelection(month)
+        }
+    }
+    VerticalPager(state = pager, modifier = Modifier.fillMaxSize().testTag("calendar-months"), beyondBoundsPageCount = 1) { page ->
+        content(origin.plusMonths((page - center).toLong()))
     }
 }
 
@@ -939,9 +861,8 @@ private fun CalendarMonthGridView(
 
     Column(
         modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState()),
-        verticalArrangement = Arrangement.spacedBy(10.dp)
+            .fillMaxSize(),
+        verticalArrangement = Arrangement.spacedBy(4.dp)
     ) {
         Row(
             modifier = Modifier
@@ -969,7 +890,7 @@ private fun CalendarMonthGridView(
 
         rows.forEach { week ->
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth().weight(1f),
                 horizontalArrangement = Arrangement.spacedBy(4.dp)
             ) {
                 week.forEach { date ->
@@ -981,7 +902,9 @@ private fun CalendarMonthGridView(
                     Surface(
                         modifier = Modifier
                             .weight(1f)
-                            .height(112.dp)
+                            .fillMaxHeight()
+                            .clipToBounds()
+                            .testTag("month-day-$date")
                             .pointerInput(date) {
                                 detectTapGestures(
                                     onTap = { onSelectDate(date) },
@@ -1101,161 +1024,143 @@ private fun MiniMonthEventChip(
 }
 
 @Composable
+@OptIn(ExperimentalFoundationApi::class)
 private fun CalendarAgendaView(
     selectedDate: LocalDate,
     currentDate: LocalDate,
     weekStartMode: WeekStartMode,
     eventsByDate: Map<LocalDate, List<TodoItem>>,
-    agendaRefreshing: Boolean,
+    todayRequestSerial: Int,
     onSelectDate: (LocalDate) -> Unit,
-    onShiftWeek: (Long) -> Unit,
     onOpenDetails: (TodoItem) -> Unit
 ) {
     val weekStart = startOfWeek(selectedDate, weekStartMode)
-    val weekDays = (0..6).map { weekStart.plusDays(it.toLong()) }
-    val grouped = eventsByDate
-    val agendaDates = remember(weekStart) { weekDays }
+    val agendaDates = remember(weekStart) { (0..6).map { weekStart.plusDays(it.toLong()) } }
+    val listState = rememberLazyListState()
+    var highlightToday by remember { mutableStateOf(false) }
+    val originEpoch = rememberSaveable(weekStartMode) { weekStart.toEpochDay() }
+    val origin = LocalDate.ofEpochDay(originEpoch)
+    val center = CalendarPagerCenter
+    val pager = rememberPagerState(initialPage = center) { CalendarPagerPages }
+    val targetPage = center + ChronoUnit.WEEKS.between(origin, weekStart).toInt()
+    val latestDate by rememberUpdatedState(selectedDate)
+    val latestSelection by rememberUpdatedState(onSelectDate)
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState()),
-        verticalArrangement = Arrangement.spacedBy(10.dp)
-    ) {
-        if (agendaRefreshing) {
-            Surface(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp),
-                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.08f)
-            ) {
-                Text(
-                    text = "正在载入下一周...",
-                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-                    color = MaterialTheme.colorScheme.primary,
-                    fontWeight = FontWeight.SemiBold,
-                    fontSize = 12.sp
-                )
+    LaunchedEffect(targetPage) {
+        if (pager.settledPage != targetPage) pager.animateScrollToPage(targetPage)
+    }
+    LaunchedEffect(pager, originEpoch) {
+        snapshotFlow { pager.settledPage }.drop(1).collect { page ->
+            val newWeek = origin.plusWeeks((page - center).toLong())
+            val selectedWeek = startOfWeek(latestDate, weekStartMode)
+            if (newWeek != selectedWeek) {
+                latestSelection(newWeek.plusDays(ChronoUnit.DAYS.between(selectedWeek, latestDate)))
             }
         }
+    }
+    LaunchedEffect(selectedDate, todayRequestSerial) {
+        highlightToday = false
+        val index = ChronoUnit.DAYS.between(weekStart, selectedDate).toInt().coerceIn(0, 6)
+        listState.animateScrollToItem(index)
+        if (todayRequestSerial > 0 && selectedDate == LocalDate.now()) {
+            highlightToday = true
+            delay(1_000L)
+            highlightToday = false
+        }
+    }
 
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 6.dp)
-                .pointerInput(weekStart) {
-                    var totalDrag = 0f
-                    detectHorizontalDragGestures(
-                        onDragEnd = {
-                            when {
-                                totalDrag > 48f -> onShiftWeek(-7)
-                                totalDrag < -48f -> onShiftWeek(7)
-                            }
-                            totalDrag = 0f
+    Column(modifier = Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        HorizontalPager(
+            state = pager,
+            modifier = Modifier.fillMaxWidth().testTag("calendar-weeks"),
+            beyondBoundsPageCount = 1
+        ) { page ->
+            val weekDays = (0..6).map { origin.plusWeeks((page - center).toLong()).plusDays(it.toLong()) }
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 6.dp),
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                weekDays.forEach { date ->
+                    val isSelected = date == selectedDate
+                    val isToday = date == currentDate
+                    val lunarLabel = remember(date) { LunarCalendar.labelFor(date).displayText }
+                    Surface(
+                        modifier = Modifier.weight(1f).clickable { onSelectDate(date) },
+                        shape = RoundedCornerShape(14.dp),
+                        color = when {
+                            isSelected -> MaterialTheme.colorScheme.primary.copy(alpha = 0.14f)
+                            isToday -> Color(0x143E7BFA)
+                            else -> Color.Transparent
                         }
-                    ) { change, dragAmount ->
-                        totalDrag += dragAmount
-                        change.consume()
-                    }
-                },
-            horizontalArrangement = Arrangement.spacedBy(4.dp)
-        ) {
-            weekDays.forEach { date ->
-                val isSelected = date == selectedDate
-                val isToday = date == currentDate
-                val lunarLabel = remember(date) { LunarCalendar.labelFor(date).displayText }
-                Surface(
-                    modifier = Modifier
-                        .weight(1f)
-                        .clickable { onSelectDate(date) },
-                    shape = RoundedCornerShape(14.dp),
-                    color = when {
-                        isSelected -> MaterialTheme.colorScheme.primary.copy(alpha = 0.14f)
-                        isToday -> Color(0x143E7BFA)
-                        else -> Color.Transparent
-                    }
-                ) {
-                    Column(
-                        modifier = Modifier.padding(vertical = 8.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(2.dp)
                     ) {
-                        Text(
-                            date.dayOfWeek.shortLabel(),
-                            fontSize = 12.sp,
-                            color = if (isSelected || isToday) Color(0xFF73A8FF) else MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Text(
-                            date.dayOfMonth.toString(),
-                            fontWeight = FontWeight.Bold,
-                            color = when {
-                                isSelected -> MaterialTheme.colorScheme.primary
-                                isToday -> Color(0xFF73A8FF)
-                                else -> MaterialTheme.colorScheme.onSurface
-                            }
-                        )
-                        Text(
-                            lunarLabel,
-                            fontSize = 9.sp,
-                            lineHeight = 10.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.72f),
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
+                        Column(
+                            modifier = Modifier.padding(vertical = 8.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(2.dp)
+                        ) {
+                            Text(
+                                date.dayOfWeek.shortLabel(),
+                                fontSize = 12.sp,
+                                color = if (isSelected || isToday) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Text(
+                                date.dayOfMonth.toString(),
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = if (isSelected || isToday) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                            )
+                            Text(
+                                lunarLabel, fontSize = 9.sp, lineHeight = 10.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 1, overflow = TextOverflow.Ellipsis
+                            )
+                        }
                     }
                 }
             }
         }
-
         Text(
             text = weekRangeLabel(selectedDate, weekStartMode),
             modifier = Modifier.padding(horizontal = 10.dp),
             color = MaterialTheme.colorScheme.onSurfaceVariant,
-            fontWeight = FontWeight.SemiBold
+            fontSize = 12.sp, fontWeight = FontWeight.SemiBold
         )
-
-        agendaDates.forEach { date ->
-            val dayEvents = grouped[date].orEmpty()
-            val lunarLabel = remember(date) { LunarCalendar.labelFor(date).displayText }
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
-                verticalAlignment = Alignment.Top
-            ) {
-                Column(
-                    modifier = Modifier.width(54.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(2.dp)
+        LazyColumn(
+            modifier = Modifier.fillMaxWidth().weight(1f).testTag("calendar-agenda"),
+            state = listState,
+            verticalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            items(agendaDates, key = { it.toEpochDay() }) { date ->
+                val dayEvents = eventsByDate[date].orEmpty()
+                val highlight by animateColorAsState(
+                    if (date == selectedDate && highlightToday) Color.Gray.copy(alpha = 0.2f) else Color.Transparent,
+                    label = "todayAgendaHighlight"
+                )
+                Row(
+                    modifier = Modifier.fillMaxWidth().testTag("agenda-day-$date")
+                        .background(highlight, RoundedCornerShape(8.dp))
+                        .padding(vertical = 6.dp, horizontal = 4.dp),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalAlignment = Alignment.Top
                 ) {
-                    Text(date.dayOfWeek.shortLabel(), color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Medium)
-                    Text(date.dayOfMonth.toString(), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
-                    Text(
-                        lunarLabel,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.72f),
-                        fontSize = 10.sp,
-                        lineHeight = 11.sp,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
-                Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    if (dayEvents.isEmpty()) {
-                        Surface(
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(16.dp),
-                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.18f)
-                        ) {
+                    Column(
+                        modifier = Modifier.width(42.dp).padding(top = 6.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(2.dp)
+                    ) {
+                        Text(date.dayOfWeek.shortLabel(), fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(date.dayOfMonth.toString(), fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                    }
+                    Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        if (dayEvents.isEmpty()) {
                             Text(
                                 text = "本日暂无日程",
-                                modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
+                                modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 12.dp),
+                                fontSize = 14.sp,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
-                        }
-                    } else {
-                        dayEvents.forEach { item ->
-                            AgendaEventCard(
-                                item = item,
-                                onClick = { onOpenDetails(item) }
-                            )
+                        } else {
+                            dayEvents.forEach { item -> AgendaEventCard(item = item, onClick = { onOpenDetails(item) }) }
                         }
                     }
                 }
@@ -1271,45 +1176,55 @@ private fun AgendaEventCard(
     onClick: () -> Unit
 ) {
     val tint = item.accentColorHex?.let(::colorFromHex) ?: MaterialTheme.colorScheme.primary
+    val background = tint.copy(alpha = 0.14f).compositeOver(MaterialTheme.colorScheme.surface)
+    val textColor = remember(tint, background) {
+        val endpoint = if (ColorUtils.calculateContrast(Color.White.toArgb(), background.toArgb()) >
+            ColorUtils.calculateContrast(Color.Black.toArgb(), background.toArgb())) Color.White else Color.Black
+        (0..20).asSequence().map { step ->
+            ColorUtils.blendARGB(tint.toArgb(), endpoint.toArgb(), step / 20f)
+        }.first { candidate -> ColorUtils.calculateContrast(candidate, background.toArgb()) >= 4.5 }
+            .let(::Color)
+    }
     Surface(
         modifier = Modifier
-            .fillMaxWidth()
+            .fillMaxWidth().testTag("agenda-event-${item.id}")
             .clickable(onClick = onClick),
-        shape = RoundedCornerShape(18.dp),
+        shape = RoundedCornerShape(8.dp),
         color = tint.copy(alpha = 0.14f)
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 11.dp, vertical = 11.dp),
+                .padding(horizontal = 10.dp, vertical = 8.dp)
+                .height(IntrinsicSize.Min),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalAlignment = Alignment.Top
         ) {
             Surface(
                 modifier = Modifier
                     .width(3.dp)
-                    .height(42.dp),
+                    .fillMaxHeight().testTag("agenda-accent-${item.id}"),
                 shape = RoundedCornerShape(999.dp),
                 color = tint.copy(alpha = 0.95f)
             ) {}
-            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+            Column(modifier = Modifier.weight(1f).testTag("agenda-content-${item.id}"), verticalArrangement = Arrangement.spacedBy(3.dp)) {
                 Text(
                     item.title,
                     fontWeight = FontWeight.Bold,
-                    color = tint.copy(alpha = 0.98f),
-                    fontSize = 18.sp,
-                    lineHeight = 20.sp,
+                    color = textColor,
+                    fontSize = 15.sp,
+                    lineHeight = 19.sp,
                     maxLines = 3,
                     overflow = TextOverflow.Ellipsis
                 )
                 Text(
                     if (item.allDay) "全天" else timeRangeLabel(item),
-                    color = tint.copy(alpha = 0.84f),
+                    color = textColor,
                     fontSize = 13.sp,
                     lineHeight = 15.sp
                 )
                 item.location.takeIf { it.isNotBlank() }?.let {
-                    Text(it, color = tint.copy(alpha = 0.78f), fontSize = 13.sp, lineHeight = 15.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                    Text(it, color = textColor, fontSize = 13.sp, lineHeight = 15.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
                 }
             }
         }

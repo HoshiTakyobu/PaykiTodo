@@ -5,6 +5,8 @@ import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -16,6 +18,10 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.PostAdd
+import androidx.compose.material.icons.rounded.Add
+import androidx.compose.material.icons.rounded.Info
+import androidx.compose.material.icons.automirrored.rounded.HelpOutline
+import androidx.compose.material.icons.rounded.History
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -50,6 +56,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.Dp
 import com.example.todoalarm.R
+import com.example.todoalarm.TodoApplication
 import com.example.todoalarm.data.CalendarEventDraft
 import com.example.todoalarm.data.DataHealthCleanResult
 import com.example.todoalarm.data.DataHealthReport
@@ -104,7 +111,7 @@ private enum class EditorKind {
     CALENDAR
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun DashboardScreen(
     uiState: TodoUiState,
@@ -246,6 +253,8 @@ fun DashboardScreen(
     var searchAiReportTargetSerial by rememberSaveable { mutableStateOf(0) }
     var highlightedPlanningNodeId by rememberSaveable { mutableStateOf<Long?>(null) }
     var highlightedPlanningNodeSerial by rememberSaveable { mutableStateOf(0) }
+    var planningHelpRequestSerial by rememberSaveable { mutableStateOf(0) }
+    var accountSettingsVisible by rememberSaveable { mutableStateOf(false) }
     var calendarFocusDateEpochDay by rememberSaveable { mutableStateOf<Long?>(null) }
     var todoBatchSelectionMode by rememberSaveable { mutableStateOf(false) }
     var selectedTodoIds by rememberSaveable { mutableStateOf(emptyList<Long>()) }
@@ -390,6 +399,7 @@ fun DashboardScreen(
     }
 
     LaunchedEffect(section) {
+        if (section != DashboardSection.PLANNING) planningHelpRequestSerial = 0
         if (section == DashboardSection.BOARD && boardVisited) {
             onNextQuote()
         }
@@ -429,6 +439,7 @@ fun DashboardScreen(
             batchImportVisible -> batchImportVisible = false
             quickPreviewTodo != null -> quickPreviewTodo = null
             drawerState.isOpen -> scope.launch { drawerState.close() }
+            section == DashboardSection.HISTORY -> section = DashboardSection.ACTIVE
             section != DashboardSection.BOARD -> section = DashboardSection.BOARD
             else -> {
                 val now = System.currentTimeMillis()
@@ -456,11 +467,28 @@ fun DashboardScreen(
         return
     }
 
+    LaunchedEffect(drawerState.isOpen, uiState.settings.remoteSyncUsername) {
+        if (drawerState.isOpen && uiState.settings.remoteSyncUsername.isNotBlank()) {
+            runCatching { (context.applicationContext as TodoApplication).remoteSyncCoordinator.refreshAccountProfile() }
+        }
+    }
+    if (accountSettingsVisible) {
+        SettingsSectionDialog("账号设置", { accountSettingsVisible = false }) {
+            AccountSettingsPanel(settings = uiState.settings, onLogout = onLogoutAccount)
+        }
+    }
     ModalNavigationDrawer(
         drawerState = drawerState,
         drawerContent = {
             DashboardDrawer(
                 current = section,
+                remoteSyncUsername = uiState.settings.remoteSyncUsername,
+                remoteSyncDisplayName = uiState.settings.remoteSyncDisplayName,
+                remoteSyncUserId = uiState.settings.remoteSyncUserId,
+                onOpenAccount = {
+                    scope.launch { drawerState.close() }
+                    accountSettingsVisible = true
+                },
                 selectedThemeMode = uiState.settings.themeMode,
                 onSelectSection = { next ->
                     scope.launch {
@@ -494,7 +522,6 @@ fun DashboardScreen(
         ) {
             Box(modifier = Modifier.fillMaxSize()) {
                 val usesWorkspaceBackground = section == DashboardSection.CALENDAR ||
-                    section == DashboardSection.ACTIVE ||
                     section == DashboardSection.SETTINGS
                 if (usesWorkspaceBackground) {
                     Box(
@@ -533,10 +560,12 @@ fun DashboardScreen(
                             } else {
                                 section.topBarTitle
                             },
-                            navigationIcon = if (todoBatchSelectionMode) Icons.AutoMirrored.Rounded.ArrowBack else null,
-                            navigationContentDescription = if (todoBatchSelectionMode) "退出批量选择" else "打开菜单",
+                            navigationIcon = if (todoBatchSelectionMode || section == DashboardSection.HISTORY) Icons.AutoMirrored.Rounded.ArrowBack else null,
+                            navigationContentDescription = if (todoBatchSelectionMode) "退出批量选择" else if (section == DashboardSection.HISTORY) "返回待办" else "打开菜单",
                             onNavigationClick = if (todoBatchSelectionMode) {
                                 { exitTodoBatchSelection() }
+                            } else if (section == DashboardSection.HISTORY) {
+                                { section = DashboardSection.ACTIVE }
                             } else {
                                 { scope.launch { drawerState.open() } }
                             },
@@ -558,6 +587,14 @@ fun DashboardScreen(
                                     IconButton(onClick = { searchVisible = true }) {
                                         Icon(Icons.Rounded.Search, contentDescription = "全局搜索")
                                     }
+                                } else if (section == DashboardSection.ACTIVE) {
+                                    IconButton(onClick = { section = DashboardSection.HISTORY }) {
+                                        Icon(Icons.Rounded.History, contentDescription = "待办历史记录")
+                                    }
+                                } else if (section == DashboardSection.PLANNING) {
+                                    IconButton(onClick = { planningHelpRequestSerial += 1 }) {
+                                        Icon(Icons.AutoMirrored.Rounded.HelpOutline, contentDescription = "规划台使用说明")
+                                    }
                                 }
                             }
                         )
@@ -577,32 +614,22 @@ fun DashboardScreen(
                                 }
                             )
                         } else if (section == DashboardSection.ACTIVE) {
-                            Row(
-                                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                SmallFloatingActionButton(
-                                    onClick = { todoBatchImportVisible = true },
-                                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer
-                                ) {
-                                    Icon(Icons.Rounded.PostAdd, contentDescription = "批量添加待办")
-                                }
-                                FloatingActionButton(onClick = {
-                                    editingItem = null
-                                    editorKind = EditorKind.TODO
-                                    calendarDraftSeed = null
-                                    editScope = RecurrenceScope.CURRENT
-                                    editorVisible = true
-                                }) {
-                                    Text("+")
-                                }
-                            }
+                            TodoCreateButton(
+                                onClick = {
+                                        editingItem = null
+                                        editorKind = EditorKind.TODO
+                                        calendarDraftSeed = null
+                                        editScope = RecurrenceScope.CURRENT
+                                        editorVisible = true
+                                },
+                                onBatchCreate = { todoBatchImportVisible = true }
+                            )
                         }
                     }
                 ) { padding ->
                 DashboardBody(
                     section = section,
+                    planningHelpRequestSerial = planningHelpRequestSerial,
                     settingsInitialSectionKey = launchRoute?.settingsSectionKey,
                     settingsInitialSectionSerial = launchRouteSerial,
                     targetEventId = previewEventId ?: launchRoute?.targetEventId,

@@ -50,6 +50,7 @@ PaykiTodo-*.zip
 .env.*
 *.secret
 *.secrets
+.wrangler/
 
 # Owner-only credentials, signing material, and machine-local helper scripts.
 /user/

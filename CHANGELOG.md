@@ -2,6 +2,33 @@
 
 PaykiTodo 采用语义化倾向的应用版本号和递增 `versionCode`。本文件面向用户记录重要变化，不再保存每一次内部调试重建的完整流水账；完整历史可通过 Git commit、tag 和 `docs/archive/` 追溯。
 
+## v1.16.14（本地验证版）
+
+### 账号安全
+
+- 修复 Android WebView 集成 Turnstile 时对 `about:blank` 和 `about:srcdoc` 内部文档的拦截，降低 Cloudflare iframe 在移动端返回 400 的概率。
+- 同一个 Turnstile token 只向登录页面分发一次，避免 WebView 重复回调挤占主线程。
+- WebView 始终使用当前 Compose 回调，避免页面重组后人机验证已经成功但登录页仍显示未完成。
+
+### 版本与构建
+
+- `versionName = 1.16.14`
+- `versionCode = 379`
+
+## v1.16.13（本地验证版）
+
+### 账号安全
+
+- 接入现有 Cloudflare Turnstile 小组件的生产域名，不替换原有小组件或本地域名配置。
+- 服务端现在同时校验 Siteverify 的成功状态、`account_auth` 用途和生产 hostname，错误 hostname 会被拒绝。
+- Secret Key 仅存放在 Azure `/etc/paykitodo/cloud.env`，不会进入 Android APK、Git 或公开文档。
+- Android WebView 增加成功响应字段兜底监听，避免部分 WebView 显示 Cloudflare 成功但登录页仍认为未验证。
+
+### 版本与构建
+
+- `versionName = 1.16.13`
+- `versionCode = 378`
+
 ## v1.16.12（本地验证版）
 
 ### 提醒稳定性

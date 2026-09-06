@@ -2,7 +2,36 @@
 
 ## Active Focus
 
-The `v1.16.12` local validation round closes the remaining reminder redispatch path, verifies the AI-first report and model-selection behavior, and keeps the private cloud service separately deployed from Git; no GitHub Release is being created in this round.
+The `v1.16.14` local validation round completes the existing Turnstile widget deployment, hardens Android WebView compatibility, binds server-side verification to the production hostname, and keeps the private cloud service separately deployed from Git; no GitHub Release is being created in this round.
+
+## Completed `v1.16.14` Scope
+
+1. Allowed Cloudflare's required `about:blank` and `about:srcdoc` internal documents in the Android Turnstile WebView.
+2. Added restrictive CSP entries for the Turnstile iframe, internal documents, and the Cloudflare Insights script injected by the private proxy.
+3. Suppressed duplicate delivery of one Turnstile token and kept AndroidView callbacks connected to the current Compose state after recomposition.
+4. Raised Android and Windows application metadata to `1.16.14 / versionCode 379`.
+
+## Validation For `v1.16.14`
+
+1. `python -m unittest server.test_paykitodo_cloud_server -v`: 9 tests passed.
+2. `:app:testDebugUnitTest` and `:app:lintDebug` passed; Debug and Release APKs were assembled.
+3. Azure service restarted successfully; public `/healthz` returned `200`, and the public challenge CSP contains the required `about:blank` / `about:srcdoc` entries.
+4. The emulator installed and launched `PaykiTodo-1.16.14-debug.apk` without a crash and rendered the Turnstile widget. A final successful token assertion remains pending on a physical device because Cloudflare challenges are intermittent in this emulator; the observed 401 is the documented Private Access Token probe.
+
+## Completed `v1.16.13` Scope
+
+1. Added the existing Turnstile production hostname to the widget without replacing the owner's widget or removing its local development hosts.
+2. Retrieved and validated the existing Secret without displaying or committing it, then stored it in Azure `/etc/paykitodo/cloud.env`.
+3. Added server-side hostname allowlist validation in addition to `success=true` and `action=account_auth`.
+4. Added an Android WebView response-field fallback for WebViews that render Cloudflare success but omit the parent callback.
+5. Raised Android and Windows application metadata to `1.16.13 / versionCode 378`.
+
+## Validation For `v1.16.13`
+
+1. `python -m unittest server.test_paykitodo_cloud_server -v`: 9 tests passed.
+2. `:app:testDebugUnitTest`, `:app:assembleDebug`, and `:app:assembleRelease`: passed.
+3. Public `/healthz` returned `200`; `/v2/auth/challenge` returned a real Turnstile widget; a dummy registration token was rejected with `403 human_verification_failed`.
+4. The final rebuilt APK was not installed on the emulator because `emulator-5554` disconnected; the earlier emulator session displayed Cloudflare `Success!` before this callback fallback was added.
 
 ## Completed `v1.16.12` Scope
 

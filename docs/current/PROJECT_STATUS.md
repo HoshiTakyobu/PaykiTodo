@@ -8,7 +8,7 @@
 - Supported Android: Android 8.0+ / API 26+
 - Compile and target SDK: Android 14 / API 34
 - License: MIT
-- App version: `1.16.12 / versionCode 377` (current local validation source)
+- App version: `1.16.14 / versionCode 379` (current local validation source)
 - Room database version: `30`
 
 ## Published Build
@@ -16,8 +16,8 @@
 - GitHub Release: `https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.15.18`
 - Release APK: `app/build/outputs/apk/release/PaykiTodo-1.15.18-release.apk`
 - Public asset name: `PaykiTodo-1.15.18-release.apk`
-- Current debug APK: `app/build/outputs/apk/debug/PaykiTodo-1.16.12-debug.apk` (after this round's build)
-- Current signed release APK: `app/build/outputs/apk/release/PaykiTodo-1.16.12-release.apk` (after this round's build)
+- Current debug APK: `app/build/outputs/apk/debug/PaykiTodo-1.16.14-debug.apk` (after this round's build)
+- Current signed release APK: `app/build/outputs/apk/release/PaykiTodo-1.16.14-release.apk` (after this round's build)
 - Current Windows self-contained EXE: `desktop/dist/PaykiTodo.exe` (after this round's publish)
 - Release signing material remains local and ignored by Git.
 
@@ -43,6 +43,37 @@ PaykiTodo is a local-first Android assistant for todos, DDLs, schedules, countdo
 - Desktop Web calendar now uses the same current-time line convention as the phone calendar, separates today's date from the selected date, and flashes the selected week column briefly.
 
 See `README.md` for the public overview and `docs/current/FEATURE_LEDGER.md` for the detailed implementation ledger.
+
+## v1.16.14 Validation Scope (not published)
+
+- Android WebView now allows the `about:blank` and `about:srcdoc` internal documents required by Cloudflare's mobile Turnstile flow.
+- Duplicate callbacks for one Turnstile token are suppressed before they reach the Compose login state, and callbacks held by AndroidView always target the current composition.
+- CSP keeps the challenge and injected Cloudflare Insights resources available while retaining a restrictive default policy.
+- Raised Android and Windows application metadata to `1.16.14 / versionCode 379`.
+
+## v1.16.13 Validation Scope (not published)
+
+- Turnstile account authentication now requires a successful Cloudflare Siteverify response with the fixed `account_auth` action and an allowed production hostname.
+- Added the production hostname allowlist to the server environment template; the real allowlist and Secret Key remain outside Git.
+- Added an Android WebView fallback observer for the Turnstile response field so a successful widget can update the Compose authentication state even when a WebView omits the parent callback.
+- Raised Android and Windows application metadata to `1.16.13 / versionCode 378`.
+
+## v1.16.14 Validation Evidence
+
+- `python -m unittest server.test_paykitodo_cloud_server -v`: 9 tests passed, including valid, wrong-hostname, incomplete-allowlist, and CSP internal-document assertions.
+- `:app:testDebugUnitTest`, `:app:lintDebug`, `:app:assembleDebug`, and `:app:assembleRelease`: passed.
+- Azure service restarted successfully; public `/healthz` returned `200`, and `/v2/auth/challenge` exposes the real widget without the Secret Key.
+- The emulator installed and launched `PaykiTodo-1.16.14-debug.apk` without a crash and rendered the Turnstile widget. Cloudflare's documented 401 Private Access Token probe appeared; final token acceptance remains a physical-device check because the emulator challenge was intermittent.
+
+## v1.16.13 Validation Evidence
+
+- `python -m unittest server.test_paykitodo_cloud_server -v`: 9 tests passed, including valid, wrong-hostname, and incomplete-allowlist Turnstile responses.
+- `:app:testDebugUnitTest`, `:app:assembleDebug`, and `:app:assembleRelease`: passed.
+- `:app:lintDebug`: passed with 0 errors after the final WebView change.
+- Azure `/etc/paykitodo/cloud.env` contains the Site Key, Secret Key, and production hostname allowlist; values were only checked in redacted form.
+- Public `/healthz` returned `200`; `/v2/auth/challenge` returned the real widget and did not expose the Secret Key.
+- A public registration request with a dummy token returned `403 human_verification_failed`.
+- The emulator previously displayed Cloudflare `Success!`; it disconnected before the rebuilt `1.16.13` APK could be installed for the final callback assertion.
 
 ## v1.16.12 Validation Scope (not published)
 

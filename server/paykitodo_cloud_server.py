@@ -47,6 +47,11 @@ ADMIN_PASSWORD = os.environ.get("PAYKITODO_ADMIN_PASSWORD", "")
 PASSWORD_PEPPER = os.environ.get("PAYKITODO_PASSWORD_PEPPER", "").encode("utf-8")
 TURNSTILE_SITE_KEY = os.environ.get("PAYKITODO_TURNSTILE_SITE_KEY", "").strip()
 TURNSTILE_SECRET_KEY = os.environ.get("PAYKITODO_TURNSTILE_SECRET_KEY", "").strip()
+TURNSTILE_ALLOWED_HOSTNAMES = frozenset(
+    hostname.strip().lower().rstrip(".")
+    for hostname in os.environ.get("PAYKITODO_TURNSTILE_ALLOWED_HOSTNAMES", "").split(",")
+    if hostname.strip()
+)
 TURNSTILE_SITEVERIFY_URL = "https://challenges.cloudflare.com/turnstile/v0/siteverify"
 ADMIN_WEB_SESSIONS: dict[str, tuple[int, str]] = {}
 ADMIN_WEB_SESSIONS_LOCK = threading.Lock()
@@ -57,7 +62,13 @@ def now_seconds() -> int:
 
 
 def turnstile_configured() -> bool:
-    return bool(TURNSTILE_SITE_KEY and TURNSTILE_SECRET_KEY)
+    return bool(TURNSTILE_SITE_KEY and TURNSTILE_SECRET_KEY and TURNSTILE_ALLOWED_HOSTNAMES)
+
+
+def normalized_turnstile_hostname(value: object) -> str:
+    if not isinstance(value, str):
+        return ""
+    return value.strip().lower().rstrip(".")
 
 
 def token_hash(token: str) -> str:
@@ -438,18 +449,25 @@ class PaykiTodoCloudHandler(BaseHTTPRequestHandler):
     def auth_challenge(self) -> None:
         if bool(TURNSTILE_SITE_KEY) != bool(TURNSTILE_SECRET_KEY):
             raise ApiError(HTTPStatus.SERVICE_UNAVAILABLE, "challenge_not_configured", "人机验证尚未配置")
+        if not turnstile_configured() and (
+            TURNSTILE_SITE_KEY or TURNSTILE_SECRET_KEY or TURNSTILE_ALLOWED_HOSTNAMES
+        ):
+            raise ApiError(HTTPStatus.SERVICE_UNAVAILABLE, "challenge_not_configured", "人机验证配置不完整")
         nonce = secrets.token_urlsafe(18)
         if turnstile_configured():
-            site_key = html.escape(TURNSTILE_SITE_KEY, quote=True)
-            challenge = (
-                f'<div class="cf-turnstile" data-sitekey="{site_key}" data-theme="auto" '
-                'data-appearance="always" data-size="normal" data-action="account_auth" '
-                'data-callback="onToken" data-error-callback="onError" data-expired-callback="onError"></div>'
-            )
-            external_script = f'<script nonce="{nonce}" src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>'
+            challenge = '<div id="paykitodo-turnstile"></div>'
+            external_script = f'<script nonce="{nonce}" src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit" async defer></script>'
+            javascript_site_key = json.dumps(TURNSTILE_SITE_KEY)
             bridge_script = (
                 "function onToken(token){if(window.PaykiTodoTurnstile)window.PaykiTodoTurnstile.onToken(token);}"
-                "function onError(){if(window.PaykiTodoTurnstile)window.PaykiTodoTurnstile.onError();}"
+                "function onError(errorCode){if(window.PaykiTodoTurnstile)window.PaykiTodoTurnstile.onError(String(errorCode||''));}"
+                "function renderTurnstile(){"
+                "if(window.__paykiTodoTurnstileRendered)return;"
+                "if(!window.turnstile){window.setTimeout(renderTurnstile,100);return;}"
+                "window.__paykiTodoTurnstileRendered=true;"
+                f"window.__paykiTodoTurnstileWidgetId=window.turnstile.render('#paykitodo-turnstile',{{sitekey:{javascript_site_key},theme:'auto',appearance:'always',size:'normal',action:'account_auth',callback:onToken,'error-callback':onError,'expired-callback':onError}});"
+                "}"
+                "renderTurnstile();"
             )
             script_sources = f"'nonce-{nonce}' https://challenges.cloudflare.com"
         else:
@@ -479,7 +497,7 @@ class PaykiTodoCloudHandler(BaseHTTPRequestHandler):
             "text/html; charset=utf-8",
             {
                 "Cache-Control": "no-store",
-                "Content-Security-Policy": f"default-src 'none'; script-src {script_sources}; frame-src https://challenges.cloudflare.com; connect-src https://challenges.cloudflare.com; style-src 'unsafe-inline'",
+                "Content-Security-Policy": f"default-src 'none'; base-uri 'none'; object-src 'none'; script-src {script_sources} https://static.cloudflareinsights.com; frame-src https://challenges.cloudflare.com about:blank about:srcdoc; child-src https://challenges.cloudflare.com about:blank about:srcdoc; connect-src 'self' https://challenges.cloudflare.com https://*.cloudflare.com https://*.cloudflareinsights.com; img-src data: https://challenges.cloudflare.com; style-src 'unsafe-inline' https://challenges.cloudflare.com",
                 "Referrer-Policy": "no-referrer",
             },
         )
@@ -511,7 +529,9 @@ class PaykiTodoCloudHandler(BaseHTTPRequestHandler):
             raise ApiError(HTTPStatus.SERVICE_UNAVAILABLE, "human_verification_unavailable", "人机验证服务暂时不可用，请稍后重试") from error
         if not isinstance(result, dict) or result.get("success") is not True:
             raise ApiError(HTTPStatus.FORBIDDEN, "human_verification_failed", "人机验证未通过，请重试")
-        if result.get("action") not in (None, "", "account_auth"):
+        if result.get("action") != "account_auth":
+            raise ApiError(HTTPStatus.FORBIDDEN, "human_verification_failed", "人机验证用途不匹配，请重试")
+        if normalized_turnstile_hostname(result.get("hostname")) not in TURNSTILE_ALLOWED_HOSTNAMES:
             raise ApiError(HTTPStatus.FORBIDDEN, "human_verification_failed", "人机验证用途不匹配，请重试")
 
     def refresh_session(self) -> None:

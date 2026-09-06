@@ -4,14 +4,40 @@
 
 - Repository root: `G:\Workspace\Project\PaykiTodo`
 - Branch: `main`
-- App version: `1.16.12 / versionCode 377` (local validation; not published)
+- App version: `1.16.14 / versionCode 379` (local validation; not published)
 - Room database version: `30`
 - Latest public GitHub Release: `v1.15.18`
 - Android outputs after final verification:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.16.12-debug.apk`
-  - `app/build/outputs/apk/release/PaykiTodo-1.16.12-release.apk`
+  - `app/build/outputs/apk/debug/PaykiTodo-1.16.14-debug.apk`
+  - `app/build/outputs/apk/release/PaykiTodo-1.16.14-release.apk`
 - Windows output after final publish: `desktop/dist/PaykiTodo.exe`
 - Private cloud deployment: service enabled on the Azure host, origin loopback `127.0.0.1:18766`, public access through the privately configured Cloudflare/Nginx HTTPS hostname, and the administrator page at `/admin`.
+
+## v1.16.14 Product Changes
+
+- Android Turnstile WebView now allows Cloudflare's required `about:blank` and `about:srcdoc` internal documents and keeps the restrictive challenge CSP compatible with the private proxy's injected Insights script.
+- One token is delivered to Compose only once, and AndroidView uses current callbacks after recomposition so a successful widget updates the active login screen.
+- Android and Windows metadata is `1.16.14 / versionCode 379`.
+
+## v1.16.14 Verification Evidence
+
+- Server tests, Android unit tests, and Android Lint passed; Debug and Release APKs exist for `1.16.14`.
+- Azure service restarted successfully; public `/healthz` returned `200`, and the challenge CSP includes `about:blank` / `about:srcdoc`.
+- The emulator installed and launched `PaykiTodo-1.16.14-debug.apk` without a crash and rendered the widget. Cloudflare documents the observed 401 Private Access Token probe as non-fatal; final token acceptance remains a physical-device check because the emulator challenge was intermittent.
+
+## v1.16.13 Product Changes
+
+- The existing Cloudflare Turnstile widget now includes the production hostname and remains in managed/no-clearance mode with its local hosts preserved.
+- The server stores the existing Secret only in `/etc/paykitodo/cloud.env` and requires `success=true`, `action=account_auth`, and the configured production hostname from Siteverify.
+- Android's challenge WebView keeps the official callback and also observes the response field to handle WebViews that show Cloudflare success without invoking the parent callback.
+- Android and Windows metadata is `1.16.13 / versionCode 378`.
+
+## v1.16.13 Verification Evidence
+
+- Server unit/integration suite: 9 tests passed.
+- Android unit tests and Debug/Release assembly passed.
+- Public health and challenge checks passed; dummy registration was rejected with `403 human_verification_failed`.
+- The emulator disconnected before the final rebuilt APK could be installed; the earlier session showed the Cloudflare widget reaching `Success!`.
 
 ## v1.16.12 Product Changes
 
@@ -35,7 +61,7 @@
 ## Operational Notes
 
 - When Android has permission to use notification full-screen intents, the system notification is the only reminder surface. The accessibility overlay and direct Activity launch are fallback paths for devices where Android rejects or cannot use that mechanism, reducing the chance of two different reminder UIs appearing for one trigger.
-- The production authentication challenge currently reports that Turnstile is not enabled because the private server environment has not been supplied both `PAYKITODO_TURNSTILE_SITE_KEY` and `PAYKITODO_TURNSTILE_SECRET_KEY`. Add both outside Git and restart the cloud service before expecting a real Cloudflare widget.
+- The production authentication challenge is now backed by the existing Turnstile widget. The Secret and hostname allowlist remain in the private Azure environment and are never included in Android or Git.
 - AI provider failover is limited to real planning/report/vision calls. No periodic prompts are generated to disguise automated traffic or evade provider safeguards.
 
 ## v1.16.10 Product Changes
@@ -50,7 +76,7 @@
 ## v1.16.10 Verification Evidence
 
 - Server integration tests and Android unit tests passed before the version bump.
-- The cloud source was redeployed on 2026-09-05; `/healthz` returned `200` and `/v2/auth/challenge` returned the current challenge page. The server environment still has no Turnstile keys, so it intentionally reports that protection is not configured until both owner-supplied values are added.
+- The cloud source and Turnstile environment were redeployed on 2026-09-06; `/healthz` returned `200`, `/v2/auth/challenge` returned the real widget, and a dummy registration token was rejected.
 - Final Android Lint, Debug/Release assembly, and emulator smoke verification remains after the version bump.
 
 ## v1.16.9 Product Changes

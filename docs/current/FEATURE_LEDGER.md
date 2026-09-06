@@ -11,7 +11,8 @@ This file tracks the product at a practical level for new coding sessions.
 - new installs no longer schedule the legacy `+2s` backup alarm, and application startup cancels old backup PendingIntents left by earlier versions
 - notification full-screen intent is the sole reminder surface when Android permits it; direct Activity and accessibility-overlay launch remain fallback paths only when the system full-screen mechanism is unavailable
 - Planning Desk mappings, nodes, note creation, mapping-status refresh, and snapshot import use the repository change callback so widgets and enabled account sync observe direct Room writes
-- account authentication's Turnstile WebView permits the Cloudflare challenge host and third-party cookies and blocks failed HTTP responses or a dead WebView renderer; the server still requires owner-provided Site Key and Secret Key before a real widget is rendered
+- account authentication's Turnstile WebView permits the Cloudflare challenge host and third-party cookies, blocks failed HTTP responses or a dead WebView renderer, and observes the response field as a fallback when a WebView omits the parent callback; the server requires Siteverify success, the fixed action, and an allowlisted production hostname
+- account authentication's Turnstile WebView also allows Cloudflare's `about:blank` / `about:srcdoc` internal documents, suppresses duplicate token callbacks, and keeps AndroidView callbacks aligned with the current Compose state
 - AI daily/weekly reports remain AI-first and fall back to a visibly local template only after a disabled, unavailable, failed, or blank real business request; no synthetic periodic anti-detection traffic is generated
 
 ### Account Boundary And Local Migration

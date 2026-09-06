@@ -123,18 +123,24 @@ class CloudServerIntegrationTest(unittest.TestCase):
     def test_turnstile_is_server_verified_when_configured(self):
         previous_site_key = self.cloud.TURNSTILE_SITE_KEY
         previous_secret_key = self.cloud.TURNSTILE_SECRET_KEY
+        previous_allowed_hostnames = self.cloud.TURNSTILE_ALLOWED_HOSTNAMES
         self.cloud.TURNSTILE_SITE_KEY = "1x00000000000000000000AA"
         self.cloud.TURNSTILE_SECRET_KEY = "test-only-turnstile-secret"
+        self.cloud.TURNSTILE_ALLOWED_HOSTNAMES = {"paykitodo.example.com"}
         try:
-            status, _, raw = self.request(
+            status, headers, raw = self.request(
                 "/v2/auth/challenge",
                 headers={"Accept": "text/html"},
             )
             self.assertEqual(200, status, raw)
             self.assertIn(self.cloud.TURNSTILE_SITE_KEY, raw.decode("utf-8"))
             self.assertNotIn(self.cloud.TURNSTILE_SECRET_KEY, raw.decode("utf-8"))
-            self.assertIn('data-appearance="always"', raw.decode("utf-8"))
-            self.assertIn('data-action="account_auth"', raw.decode("utf-8"))
+            self.assertIn('render=explicit', raw.decode("utf-8"))
+            self.assertIn("turnstile.render", raw.decode("utf-8"))
+            self.assertIn("__paykiTodoTurnstileWidgetId", raw.decode("utf-8"))
+            self.assertIn("action:'account_auth'", raw.decode("utf-8"))
+            self.assertIn("about:blank", headers["Content-Security-Policy"])
+            self.assertIn("about:srcdoc", headers["Content-Security-Policy"])
 
             status, _, raw = self.request(
                 "/v2/auth/register",
@@ -158,8 +164,10 @@ class CloudServerIntegrationTest(unittest.TestCase):
                 def __exit__(self, *_args):
                     return False
 
+                payload = b'{"success":true,"action":"account_auth","hostname":"paykitodo.example.com"}'
+
                 def read(self, _limit):
-                    return b'{"success":true,"action":"account_auth"}'
+                    return self.payload
 
             real_urlopen = self.cloud.urllib.request.urlopen
 
@@ -188,9 +196,28 @@ class CloudServerIntegrationTest(unittest.TestCase):
                 if call.args and call.args[0].full_url == self.cloud.TURNSTILE_SITEVERIFY_URL
             ]
             self.assertEqual(1, len(cloud_calls))
+
+            FakeResponse.payload = b'{"success":true,"action":"account_auth","hostname":"evil.example.com"}'
+            with patch.object(self.cloud.urllib.request, "urlopen", side_effect=urlopen_side_effect):
+                status, _, raw = self.request(
+                    "/v2/auth/register",
+                    "POST",
+                    {
+                        "username": "tester_turnstile_wrong_host",
+                        "displayName": "测试用户",
+                        "password": "correct horse battery staple",
+                        "deviceId": "android_device_turnstile_wrong_host",
+                        "deviceName": "Android 测试机",
+                        "platform": "android",
+                        "turnstileToken": "test-token-wrong-host",
+                    },
+                )
+            self.assertEqual(403, status, raw)
+            self.assertEqual("human_verification_failed", json.loads(raw)["error"])
         finally:
             self.cloud.TURNSTILE_SITE_KEY = previous_site_key
             self.cloud.TURNSTILE_SECRET_KEY = previous_secret_key
+            self.cloud.TURNSTILE_ALLOWED_HOSTNAMES = previous_allowed_hostnames
 
     def test_turnstile_challenge_explains_when_server_protection_is_disabled(self):
         previous_site_key = self.cloud.TURNSTILE_SITE_KEY
@@ -233,6 +260,22 @@ class CloudServerIntegrationTest(unittest.TestCase):
         finally:
             self.cloud.TURNSTILE_SITE_KEY = previous_site_key
             self.cloud.TURNSTILE_SECRET_KEY = previous_secret_key
+
+    def test_turnstile_fails_closed_when_hostname_allowlist_is_missing(self):
+        previous_site_key = self.cloud.TURNSTILE_SITE_KEY
+        previous_secret_key = self.cloud.TURNSTILE_SECRET_KEY
+        previous_allowed_hostnames = self.cloud.TURNSTILE_ALLOWED_HOSTNAMES
+        self.cloud.TURNSTILE_SITE_KEY = "1x00000000000000000000AA"
+        self.cloud.TURNSTILE_SECRET_KEY = "test-only-turnstile-secret"
+        self.cloud.TURNSTILE_ALLOWED_HOSTNAMES = set()
+        try:
+            status, _, raw = self.request("/v2/auth/challenge")
+            self.assertEqual(503, status, raw)
+            self.assertEqual("challenge_not_configured", json.loads(raw)["error"])
+        finally:
+            self.cloud.TURNSTILE_SITE_KEY = previous_site_key
+            self.cloud.TURNSTILE_SECRET_KEY = previous_secret_key
+            self.cloud.TURNSTILE_ALLOWED_HOSTNAMES = previous_allowed_hostnames
 
     def test_recovery_code_resets_password_and_revokes_sessions(self):
         account = self.create_account("recovery")

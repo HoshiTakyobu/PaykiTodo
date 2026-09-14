@@ -27,7 +27,7 @@
 - Room `30 -> 31` migration metadata is covered by tests; backup compatibility tests confirm old archives without checklist fields import as empty checklist metadata.
 - Server integration suite: 12 passed, including browser-local timestamp payload behavior.
 - `node --check app/src/main/assets/desktop-web/app.js`, Android Lint, Debug/AndroidTest/Release assembly, and Windows Release publish passed.
-- Release APK v2 signature verification passed with one RSA-2048 signer. Debug APK SHA-256: `C211A4B1673EE78142BEB446C30D8E9E0ED43EE6F475EFCF363883B5CF4B8876`; signed Release APK SHA-256: `40773D55EE02141C9D318A1E172D319950F6615CD1C2A8A331EF75F32174961F`; Windows self-contained EXE SHA-256: `55E914F0AF106FC149104FBA8C2F236B7AEC2593E4881E045C97E6FB07CFA712`.
+- Release APK v2 signature verification passed with one RSA-2048 signer. Debug APK SHA-256: `C211A4B1673EE78142BEB446C30D8E9E0ED43EE6F475EFCF363883B5CF4B8876`; signed Release APK SHA-256: `40773D55EE02141C9D318A1E172D319950F6615CD1C2A8A331EF75F32174961F`; Windows self-contained EXE SHA-256: `1C2425194047D8B787F2CA821563120F4D91CE5D1F8142F3228E87B9A828C253` (`ProductVersion` embeds commit `9a3cb7d8dc14173b01ef037fcb0e3885e9fe1a3e`).
 
 ## v1.16.15 Completed
 

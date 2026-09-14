@@ -893,7 +893,7 @@ class PaykiTodoCloudHandler(BaseHTTPRequestHandler):
             audits = connection.execute("SELECT a.*,u.username FROM audit_log a LEFT JOIN users u ON u.id=a.user_id ORDER BY a.created_at DESC LIMIT 80").fetchall()
         body = ["<!doctype html><html lang='zh-CN'><head><meta charset='utf-8'><meta name='viewport' content='width=device-width'><meta http-equiv='refresh' content='30'><title>PaykiTodo 管理后台</title><style>",
                 "body{font-family:Segoe UI,Microsoft YaHei,sans-serif;margin:0;background:#f4f6f8;color:#1f2933}header{background:#fff;border-bottom:1px solid #dfe3e8;padding:18px 28px;display:flex;align-items:center;justify-content:space-between;gap:16px}header strong{font-size:19px}header span{color:#68737d;font-size:13px}main{padding:24px 28px;max-width:1400px;margin:auto}.stats{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px}.card,section{background:#fff;border:1px solid #dfe3e8;border-radius:8px;padding:16px}.card b{display:block;font-size:28px;margin-top:6px}section{margin-top:18px;overflow:auto}table{border-collapse:collapse;width:100%;min-width:980px}th,td{text-align:left;padding:10px;border-bottom:1px solid #edf0f2;font-size:13px}th{color:#5b6570}button{border:1px solid #c8cfd6;background:#fff;border-radius:6px;padding:6px 10px;cursor:pointer}.danger{color:#b42318}.ok{color:#137333}.logout{color:#4b5563;background:#fff}@media(max-width:900px){.stats{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:720px){main{padding:16px}header{padding:16px;align-items:flex-start}header span{display:none}}",
-                "</style></head><body><header><div><strong>PaykiTodo 管理后台</strong><br><span>用户、设备、同步状态和审计信息 · 每 30 秒自动刷新</span></div><form method='post' action='/admin/logout'><button class='logout'>退出管理后台</button></form></header><main><div class='stats'>"]
+                "</style></head><body><header><div><strong>PaykiTodo 管理后台</strong><br><span>用户、设备、同步状态和审计信息 · 每 30 秒自动刷新 · <span data-browser-time-zone>浏览器时区加载中</span></span></div><form method='post' action='/admin/logout'><button class='logout'>退出管理后台</button></form></header><main><div class='stats'>"]
         for label, value in (("注册用户", stats["users"]), ("有效设备", stats["devices"]), ("云端快照", stats["snapshots"]), ("24 小时上传", stats["uploads_24h"]), ("存储占用", f'{stats["bytes"] / 1024 / 1024:.1f} MB')):
             body.append(f"<div class='card'>{html.escape(str(label))}<b>{html.escape(str(value))}</b></div>")
         body.append("</div><section><h2>用户</h2><table><thead><tr><th>账号</th><th>显示名</th><th>状态</th><th>设备</th><th>快照版本</th><th>最近同步</th><th>更新设备</th><th>注册时间</th><th>操作</th></tr></thead><tbody>")
@@ -902,16 +902,33 @@ class PaykiTodoCloudHandler(BaseHTTPRequestHandler):
             status = "已停用" if row["disabled"] else "正常"
             action = "启用" if row["disabled"] else "停用"
             updated_device = row["snapshot_device_name"] or row["updated_by_device"] or "-"
-            body.append(f"<tr><td>{html.escape(row['username'])}</td><td>{html.escape(row['display_name'])}</td><td class={'danger' if row['disabled'] else 'ok'}>{status}</td><td>{row['device_count']}</td><td>{row['revision'] or 0}</td><td>{self.format_time(row['updated_at'])}</td><td>{html.escape(updated_device)}</td><td>{self.format_time(row['created_at'])}</td><td><form method='post' action='/admin/users/{row['id']}/toggle'><input type='hidden' name='csrf' value='{csrf}'><button>{action}</button></form></td></tr>")
+            body.append(f"<tr><td>{html.escape(row['username'])}</td><td>{html.escape(row['display_name'])}</td><td class={'danger' if row['disabled'] else 'ok'}>{status}</td><td>{row['device_count']}</td><td>{row['revision'] or 0}</td><td>{self.browser_time(row['updated_at'])}</td><td>{html.escape(updated_device)}</td><td>{self.browser_time(row['created_at'])}</td><td><form method='post' action='/admin/users/{row['id']}/toggle'><input type='hidden' name='csrf' value='{csrf}'><button>{action}</button></form></td></tr>")
         body.append("</tbody></table></section><section><h2>设备</h2><table><thead><tr><th>账号</th><th>设备名</th><th>平台</th><th>最后活跃</th><th>状态</th><th>操作</th></tr></thead><tbody>")
         for row in devices:
             revoked = row["revoked_at"] is not None
             action = "-" if revoked else f"<form method='post' action='/admin/devices/{html.escape(row['id'])}/revoke'><input type='hidden' name='csrf' value='{csrf}'><button class='danger'>撤销</button></form>"
-            body.append(f"<tr><td>{html.escape(row['username'])}</td><td>{html.escape(row['name'])}</td><td>{html.escape(row['platform'])}</td><td>{self.format_time(row['last_seen_at'])}</td><td>{'已撤销' if revoked else '有效'}</td><td>{action}</td></tr>")
+            body.append(f"<tr><td>{html.escape(row['username'])}</td><td>{html.escape(row['name'])}</td><td>{html.escape(row['platform'])}</td><td>{self.browser_time(row['last_seen_at'])}</td><td>{'已撤销' if revoked else '有效'}</td><td>{action}</td></tr>")
         body.append("</tbody></table></section><section><h2>最近操作</h2><table><thead><tr><th>时间</th><th>账号</th><th>动作</th><th>来源</th><th>详情</th></tr></thead><tbody>")
         for row in audits:
-            body.append(f"<tr><td>{self.format_time(row['created_at'])}</td><td>{html.escape(row['username'] or '-')}</td><td>{html.escape(row['action'])}</td><td>{html.escape(row['remote_ip'])}</td><td>{html.escape(row['detail'])}</td></tr>")
-        body.append("</tbody></table></section></main></body></html>")
+            body.append(f"<tr><td>{self.browser_time(row['created_at'])}</td><td>{html.escape(row['username'] or '-')}</td><td>{html.escape(row['action'])}</td><td>{html.escape(row['remote_ip'])}</td><td>{html.escape(row['detail'])}</td></tr>")
+        body.append("""</tbody></table></section></main><script>
+const browserTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone || "未知时区";
+function formatBrowserLocalTime(seconds) {
+  const epochSeconds = Number(seconds);
+  if (!Number.isFinite(epochSeconds) || epochSeconds <= 0) return "-";
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    year: "numeric", month: "2-digit", day: "2-digit",
+    hour: "2-digit", minute: "2-digit", hour12: false
+  }).formatToParts(new Date(epochSeconds * 1000));
+  const values = Object.fromEntries(parts.map(({type, value}) => [type, value]));
+  return `${values.year}-${values.month}-${values.day} ${values.hour}:${values.minute}`;
+}
+document.querySelectorAll(".js-local-time").forEach((element) => {
+  element.textContent = formatBrowserLocalTime(element.dataset.epochSeconds);
+});
+const timeZoneElement = document.querySelector("[data-browser-time-zone]");
+if (timeZoneElement) timeZoneElement.textContent = `浏览器时区：${browserTimeZone}`;
+</script></body></html>""")
         self.send_bytes(HTTPStatus.OK, "".join(body).encode("utf-8"), "text/html; charset=utf-8")
 
     def admin_toggle_user(self, raw_id: str) -> None:
@@ -959,6 +976,17 @@ class PaykiTodoCloudHandler(BaseHTTPRequestHandler):
     @staticmethod
     def format_time(timestamp: int | None) -> str:
         return time.strftime("%Y-%m-%d %H:%M", time.localtime(timestamp)) if timestamp else "-"
+
+    @staticmethod
+    def browser_time(timestamp: int | None) -> str:
+        if not timestamp:
+            return '<time class="js-local-time" data-epoch-seconds="">-</time>'
+        epoch_seconds = int(timestamp)
+        fallback = time.strftime("UTC %Y-%m-%dT%H:%M:%SZ", time.gmtime(epoch_seconds))
+        return (
+            f'<time class="js-local-time" data-epoch-seconds="{epoch_seconds}">'
+            f'{html.escape(fallback)}</time>'
+        )
 
     def send_json(self, status: HTTPStatus, value: dict[str, object]) -> None:
         self.send_bytes(status, json.dumps(value, ensure_ascii=False, separators=(",", ":")).encode("utf-8"), "application/json; charset=utf-8")

@@ -34,6 +34,7 @@ internal sealed class DesktopSnapshotDocument
                 ["isDefault"] = true,
                 ["createdAtMillis"] = now
             }),
+            ["quickChecklistGroups"] = new JsonArray(),
             ["templates"] = new JsonArray(),
             ["tasks"] = new JsonArray(),
             ["reminderChainLogs"] = new JsonArray(),
@@ -93,6 +94,18 @@ internal sealed class DesktopSnapshotDocument
             group["id"]?.GetValue<long>() ?? 0L,
             group["name"]?.GetValue<string>() ?? "未分组",
             group["colorHex"]?.GetValue<string>() ?? "#4CB782"
+        ))
+        .ToList();
+
+    public IReadOnlyList<DesktopQuickChecklistGroup> QuickChecklistGroups => QuickChecklistGroupsArray
+        .OfType<JsonObject>()
+        .Select(group => new DesktopQuickChecklistGroup(
+            group["id"]?.GetValue<long>() ?? 0L,
+            group["title"]?.GetValue<string>() ?? "快速清单",
+            group["collapsed"]?.GetValue<bool>() ?? false,
+            group["sourceFingerprint"]?.GetValue<string>() ?? "",
+            group["createdAtMillis"]?.GetValue<long>() ?? 0L,
+            group["updatedAtMillis"]?.GetValue<long>() ?? 0L
         ))
         .ToList();
 
@@ -170,22 +183,129 @@ internal sealed class DesktopSnapshotDocument
         var item = FindTask(id);
         if (item is null) return;
         if ((item["itemType"]?.GetValue<string>() ?? "TODO") == "EVENT") return;
+        var now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+        if (item["quickChecklistGroupId"]?.GetValue<long?>() is { } groupId)
+        {
+            foreach (var target in QuickChecklistSubtree(item, groupId))
+            {
+                target["completed"] = true;
+                target["completedAtMillis"] ??= now;
+                target["canceled"] = false;
+                target["canceledAtMillis"] = null;
+            }
+            UpdateQuickChecklistAncestors(groupId, item["parentTodoId"]?.GetValue<long?>(), now);
+            return;
+        }
         item["completed"] = true;
-        item["completedAtMillis"] = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+        item["completedAtMillis"] = now;
+        item["canceled"] = false;
+        item["canceledAtMillis"] = null;
     }
 
     public void Cancel(long id)
     {
         var item = FindTask(id);
         if (item is null) return;
+        var now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+        if (item["quickChecklistGroupId"]?.GetValue<long?>() is { } groupId)
+        {
+            foreach (var target in QuickChecklistSubtree(item, groupId))
+            {
+                target["canceled"] = true;
+                target["canceledAtMillis"] = now;
+                target["completed"] = false;
+                target["completedAtMillis"] = null;
+            }
+            UpdateQuickChecklistAncestors(groupId, item["parentTodoId"]?.GetValue<long?>(), now);
+            return;
+        }
         item["canceled"] = true;
-        item["canceledAtMillis"] = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+        item["canceledAtMillis"] = now;
+        item["completed"] = false;
+        item["completedAtMillis"] = null;
     }
 
     public void Delete(long id)
     {
         var target = FindTask(id);
-        if (target is not null) Tasks.Remove(target);
+        if (target is null) return;
+        if (target["quickChecklistGroupId"]?.GetValue<long?>() is { } groupId)
+        {
+            var deleted = QuickChecklistSubtree(target, groupId).ToHashSet();
+            foreach (var item in deleted) Tasks.Remove(item);
+            if (!Tasks.OfType<JsonObject>().Any(item => item["quickChecklistGroupId"]?.GetValue<long?>() == groupId))
+            {
+                foreach (var node in QuickChecklistGroupsArray.OfType<JsonObject>().Where(group => group["id"]?.GetValue<long>() == groupId).ToList())
+                    QuickChecklistGroupsArray.Remove(node);
+            }
+            UpdateQuickChecklistAncestors(groupId, target["parentTodoId"]?.GetValue<long?>(), DateTimeOffset.UtcNow.ToUnixTimeMilliseconds());
+            return;
+        }
+        Tasks.Remove(target);
+    }
+
+    public long CreateQuickChecklist(QuickChecklistDraft draft)
+    {
+        if (draft.HasErrors) throw new InvalidOperationException(draft.Diagnostics.First(d => d.Severity == QuickChecklistDiagnosticSeverity.Error).Message);
+        if (QuickChecklistGroupsArray.OfType<JsonObject>().Any(group => group["sourceFingerprint"]?.GetValue<string>() == draft.SourceFingerprint))
+            throw new InvalidOperationException("相同内容的快速清单已经存在");
+        var now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+        var groupId = NextId(QuickChecklistGroupsArray);
+        QuickChecklistGroupsArray.Add(new JsonObject
+        {
+            ["id"] = groupId,
+            ["title"] = draft.Title,
+            ["collapsed"] = false,
+            ["sourceFingerprint"] = draft.SourceFingerprint,
+            ["createdAtMillis"] = now,
+            ["updatedAtMillis"] = now
+        });
+        var persistedIds = new Dictionary<int, long>();
+        foreach (var node in draft.Nodes)
+        {
+            var id = NextId(Tasks);
+            persistedIds[node.TemporaryId] = id;
+            Tasks.Add(new JsonObject
+            {
+                ["id"] = id,
+                ["createdAtMillis"] = now + node.SourceLine,
+                ["itemType"] = "TODO",
+                ["title"] = node.Title,
+                ["notes"] = node.Notes,
+                ["dueAtMillis"] = NoDueDateMillis,
+                ["completed"] = false,
+                ["canceled"] = false,
+                ["missed"] = false,
+                ["reminderEnabled"] = false,
+                ["ringEnabled"] = false,
+                ["vibrateEnabled"] = false,
+                ["reminderDeliveryMode"] = "FULLSCREEN_AND_NOTIFICATION",
+                ["groupId"] = DefaultGroupId(),
+                ["accentColorHex"] = DefaultGroupColor(),
+                ["quickChecklistGroupId"] = groupId,
+                ["parentTodoId"] = node.ParentTemporaryId is { } parent ? persistedIds[parent] : null,
+                ["quickChecklistDepth"] = node.Depth,
+                ["quickChecklistSortOrder"] = node.SortOrder,
+                ["quickChecklistCollapsed"] = false
+            });
+        }
+        return groupId;
+    }
+
+    public void ToggleQuickChecklistGroup(long id)
+    {
+        var group = QuickChecklistGroupsArray.OfType<JsonObject>().FirstOrDefault(value => value["id"]?.GetValue<long>() == id);
+        if (group is null) return;
+        group["collapsed"] = !(group["collapsed"]?.GetValue<bool>() ?? false);
+        group["updatedAtMillis"] = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+    }
+
+    public void ToggleQuickChecklistItem(long id)
+    {
+        var item = FindTask(id);
+        if (item is null || item["quickChecklistGroupId"]?.GetValue<long?>() is not { } groupId) return;
+        item["quickChecklistCollapsed"] = !(item["quickChecklistCollapsed"]?.GetValue<bool>() ?? false);
+        UpdateQuickChecklistGroupTimestamp(groupId);
     }
 
     public DesktopItemEdit? EditFor(long id) => FindTask(id) is { } item ? DesktopItemEdit.FromJson(item) : null;
@@ -214,9 +334,62 @@ internal sealed class DesktopSnapshotDocument
     }
 
     private JsonArray Tasks => root["tasks"]!.AsArray();
+    private JsonArray QuickChecklistGroupsArray => root["quickChecklistGroups"]!.AsArray();
     private JsonArray Templates => root["templates"]!.AsArray();
     private JsonArray GroupsArray => root["groups"]!.AsArray();
     private JsonArray PlanningNotesArray => root["planningNotes"]!.AsArray();
+
+    private long DefaultGroupId() => GroupsArray.OfType<JsonObject>().Select(group => group["id"]?.GetValue<long>() ?? 0L).DefaultIfEmpty(1L).Min();
+
+    private string DefaultGroupColor() => GroupsArray.OfType<JsonObject>().FirstOrDefault(group => group["id"]?.GetValue<long>() == DefaultGroupId())?["colorHex"]?.GetValue<string>() ?? "#4CB782";
+
+    private IEnumerable<JsonObject> QuickChecklistSubtree(JsonObject rootItem, long groupId)
+    {
+        var all = Tasks.OfType<JsonObject>().Where(item => item["quickChecklistGroupId"]?.GetValue<long?>() == groupId).ToList();
+        var byParent = all.GroupBy(item => item["parentTodoId"]?.GetValue<long?>() ?? 0L).ToDictionary(group => group.Key, group => group.ToList());
+        var result = new List<JsonObject>();
+        void Visit(JsonObject item)
+        {
+            result.Add(item);
+            if (item["id"]?.GetValue<long>() is { } childId && byParent.TryGetValue(childId, out var children))
+                foreach (var child in children.OrderBy(value => value["quickChecklistSortOrder"]?.GetValue<int>() ?? 0)) Visit(child);
+        }
+        Visit(rootItem);
+        return result;
+    }
+
+    private void UpdateQuickChecklistAncestors(long groupId, long? parentId, long now)
+    {
+        var all = Tasks.OfType<JsonObject>().Where(item => item["quickChecklistGroupId"]?.GetValue<long?>() == groupId).ToList();
+        var byId = all.Where(item => item["id"] is not null).ToDictionary(item => item["id"]!.GetValue<long>(), item => item);
+        var queue = new Queue<long>(parentId is { } parentSeed ? new[] { parentSeed } : Array.Empty<long>());
+        var visited = new HashSet<long>();
+        while (queue.Count > 0)
+        {
+            var id = queue.Dequeue();
+            if (!visited.Add(id) || !byId.TryGetValue(id, out var parent)) continue;
+            var children = all.Where(item => item["parentTodoId"]?.GetValue<long?>() == id).ToList();
+            var effectiveChildren = children
+                .Where(child => child["canceled"]?.GetValue<bool>() != true)
+                .ToList();
+            if (effectiveChildren.Count == 0)
+            {
+                if (parent["parentTodoId"]?.GetValue<long?>() is { } emptyNext) queue.Enqueue(emptyNext);
+                continue;
+            }
+            var completed = parent["canceled"]?.GetValue<bool>() != true
+                && effectiveChildren.All(child => child["completed"]?.GetValue<bool>() == true);
+            parent["completed"] = completed;
+            parent["completedAtMillis"] = completed ? parent["completedAtMillis"]?.GetValue<long>() ?? now : null;
+            if (parent["parentTodoId"]?.GetValue<long?>() is { } next) queue.Enqueue(next);
+        }
+    }
+
+    private void UpdateQuickChecklistGroupTimestamp(long groupId)
+    {
+        var group = QuickChecklistGroupsArray.OfType<JsonObject>().FirstOrDefault(value => value["id"]?.GetValue<long>() == groupId);
+        if (group is not null) group["updatedAtMillis"] = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+    }
 
     private JsonObject? FindTask(long id) => Tasks.OfType<JsonObject>().FirstOrDefault(item => item["id"]?.GetValue<long>() == id);
 
@@ -284,7 +457,7 @@ internal sealed class DesktopSnapshotDocument
 
     private void EnsureShape()
     {
-        foreach (var name in new[] { "groups", "templates", "tasks", "reminderChainLogs", "scheduleTemplates", "planningNotes", "planningLineMappings", "planningNodes", "aiReports", "todoGroupTags", "eventCheckIns", "recurringInstanceSkips", "activityRecords" })
+        foreach (var name in new[] { "groups", "quickChecklistGroups", "templates", "tasks", "reminderChainLogs", "scheduleTemplates", "planningNotes", "planningLineMappings", "planningNodes", "aiReports", "todoGroupTags", "eventCheckIns", "recurringInstanceSkips", "activityRecords" })
             root[name] ??= new JsonArray();
         root["settings"] ??= new JsonObject();
         root["snapshotVersion"] ??= 1;
@@ -301,6 +474,7 @@ internal sealed class DesktopSnapshotDocument
 }
 
 internal sealed record DesktopGroup(long Id, string Name, string ColorHex);
+internal sealed record DesktopQuickChecklistGroup(long Id, string Title, bool Collapsed, string SourceFingerprint, long CreatedAtMillis, long UpdatedAtMillis);
 internal sealed record DesktopPlanningNote(long Id, string Title, string Markdown, long UpdatedAtMillis);
 
 internal sealed record DesktopItem(
@@ -316,7 +490,12 @@ internal sealed record DesktopItem(
     bool Canceled,
     long GroupId,
     string AccentColor,
-    bool CountdownEnabled
+    bool CountdownEnabled,
+    long? QuickChecklistGroupId,
+    long? ParentTodoId,
+    int? QuickChecklistDepth,
+    int? QuickChecklistSortOrder,
+    bool QuickChecklistCollapsed
 )
 {
     public static DesktopItem FromJson(JsonObject item) => new(
@@ -332,7 +511,12 @@ internal sealed record DesktopItem(
         item["canceled"]?.GetValue<bool>() ?? false,
         item["groupId"]?.GetValue<long>() ?? 0L,
         item["accentColorHex"]?.GetValue<string>() ?? "#4CB782",
-        item["countdownEnabled"]?.GetValue<bool>() ?? false
+        item["countdownEnabled"]?.GetValue<bool>() ?? false,
+        item["quickChecklistGroupId"]?.GetValue<long?>(),
+        item["parentTodoId"]?.GetValue<long?>(),
+        item["quickChecklistDepth"]?.GetValue<int?>(),
+        item["quickChecklistSortOrder"]?.GetValue<int?>(),
+        item["quickChecklistCollapsed"]?.GetValue<bool>() ?? false
     );
 }
 

@@ -9,4 +9,10 @@ class DatabaseMigrationMetadataTest {
         assertEquals(29, DatabaseMigrations.MIGRATION_29_30.startVersion)
         assertEquals(30, DatabaseMigrations.MIGRATION_29_30.endVersion)
     }
+
+    @Test
+    fun quickChecklistMigrationTargetsVersion31() {
+        assertEquals(30, DatabaseMigrations.MIGRATION_30_31.startVersion)
+        assertEquals(31, DatabaseMigrations.MIGRATION_30_31.endVersion)
+    }
 }

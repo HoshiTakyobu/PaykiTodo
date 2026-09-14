@@ -454,6 +454,40 @@ object DatabaseMigrations {
         }
     }
 
+    val MIGRATION_30_31 = object : Migration(30, 31) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL(
+                """
+                CREATE TABLE IF NOT EXISTS `quick_checklist_groups` (
+                    `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                    `title` TEXT NOT NULL,
+                    `collapsed` INTEGER NOT NULL DEFAULT 0,
+                    `sourceFingerprint` TEXT NOT NULL,
+                    `createdAtMillis` INTEGER NOT NULL,
+                    `updatedAtMillis` INTEGER NOT NULL
+                )
+                """.trimIndent()
+            )
+            db.execSQL(
+                "CREATE UNIQUE INDEX IF NOT EXISTS `index_quick_checklist_groups_sourceFingerprint` ON `quick_checklist_groups` (`sourceFingerprint`)"
+            )
+            db.execSQL(
+                "CREATE INDEX IF NOT EXISTS `index_quick_checklist_groups_updatedAtMillis` ON `quick_checklist_groups` (`updatedAtMillis`)"
+            )
+            db.execSQL("ALTER TABLE `todo_items` ADD COLUMN `quickChecklistGroupId` INTEGER")
+            db.execSQL("ALTER TABLE `todo_items` ADD COLUMN `parentTodoId` INTEGER")
+            db.execSQL("ALTER TABLE `todo_items` ADD COLUMN `quickChecklistDepth` INTEGER")
+            db.execSQL("ALTER TABLE `todo_items` ADD COLUMN `quickChecklistSortOrder` INTEGER")
+            db.execSQL("ALTER TABLE `todo_items` ADD COLUMN `quickChecklistCollapsed` INTEGER NOT NULL DEFAULT 0")
+            db.execSQL(
+                "CREATE INDEX IF NOT EXISTS `index_todo_items_quick_checklist_group` ON `todo_items` (`quickChecklistGroupId`, `completed`, `canceled`, `quickChecklistSortOrder`)"
+            )
+            db.execSQL(
+                "CREATE INDEX IF NOT EXISTS `index_todo_items_quick_checklist_parent` ON `todo_items` (`parentTodoId`, `quickChecklistSortOrder`)"
+            )
+        }
+    }
+
     private fun createActivityRecordsTable(db: SupportSQLiteDatabase) {
         db.execSQL(
             """

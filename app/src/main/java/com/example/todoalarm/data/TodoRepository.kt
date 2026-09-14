@@ -1,6 +1,7 @@
 package com.example.todoalarm.data
 
 import kotlinx.coroutines.flow.Flow
+import androidx.room.withTransaction
 import java.time.DayOfWeek
 import java.time.Duration
 import java.time.Instant
@@ -13,9 +14,10 @@ import java.time.format.DateTimeFormatter
 import java.util.UUID
 
 class TodoRepository(
-    private val todoDao: TodoDao,
+    private val database: AppDatabase,
     private val onItemsChanged: (() -> Unit)? = null
 ) {
+    private val todoDao: TodoDao = database.todoDao()
     enum class GroupFilterMode {
         INTERSECTION,
         UNION
@@ -93,6 +95,8 @@ class TodoRepository(
         return todoDao.observeRecentReminderChainLogs(limit)
     }
     fun observeScheduleTemplates(): Flow<List<ScheduleTemplate>> = todoDao.observeScheduleTemplates()
+    fun observeQuickChecklistGroups(): Flow<List<QuickChecklistGroup>> = todoDao.observeQuickChecklistGroups()
+    fun observeQuickChecklistItems(): Flow<List<TodoItem>> = todoDao.observeQuickChecklistItems()
 
     suspend fun addTodo(item: TodoItem): TodoItem {
         val id = todoDao.insert(item)
@@ -122,6 +126,70 @@ class TodoRepository(
         return todoDao.getTotalCheckInMinutesInRange(startMillis, endMillis)
     }
     suspend fun getAllTodos(): List<TodoItem> = todoDao.getAllTodos()
+    suspend fun getAllQuickChecklistGroups(): List<QuickChecklistGroup> = todoDao.getAllQuickChecklistGroups()
+
+    suspend fun createQuickChecklist(draft: QuickChecklistDraft): QuickChecklistGroup {
+        require(draft.title.isNotBlank()) { "请先输入清单标题" }
+        require(draft.nodes.isNotEmpty()) { "清单中至少需要一项任务" }
+        require(!draft.hasErrors) {
+            draft.diagnostics.first { it.severity == QuickChecklistDiagnosticSeverity.ERROR }.let {
+                "第 ${it.sourceLine} 行：${it.message}"
+            }
+        }
+        val defaultGroup = defaultGroupId()
+        val now = System.currentTimeMillis()
+        val createdGroup = database.withTransaction {
+            if (todoDao.getQuickChecklistGroupByFingerprint(draft.sourceFingerprint) != null) {
+                throw IllegalArgumentException("相同内容的快速清单已经存在")
+            }
+            val group = QuickChecklistGroup(
+                title = draft.title.trim(),
+                collapsed = false,
+                sourceFingerprint = draft.sourceFingerprint,
+                createdAtMillis = now,
+                updatedAtMillis = now
+            )
+            val groupId = todoDao.insertQuickChecklistGroup(group)
+            val persistedIds = mutableMapOf<Int, Long>()
+            val createdItems = draft.nodes.map { node ->
+                val parentId = node.parentTemporaryId?.let(persistedIds::get)
+                val item = TodoItem(
+                    title = node.title.trim(),
+                    notes = node.notes.trim(),
+                    dueAtMillis = NO_DUE_DATE_MILLIS,
+                    reminderAtMillis = null,
+                    reminderEnabled = false,
+                    ringEnabled = false,
+                    vibrateEnabled = false,
+                    groupId = defaultGroup,
+                    quickChecklistGroupId = groupId,
+                    parentTodoId = parentId,
+                    quickChecklistDepth = node.depth,
+                    quickChecklistSortOrder = node.sortOrder,
+                    quickChecklistCollapsed = false,
+                    createdAtMillis = now + node.sourceLine
+                )
+                val id = todoDao.insert(item)
+                persistedIds[node.temporaryId] = id
+                item.copy(id = id)
+            }
+            replaceGroupTags(createdItems, listOf(defaultGroup))
+            group.copy(id = groupId)
+        }
+        notifyItemsChanged()
+        return createdGroup
+    }
+
+    suspend fun setQuickChecklistGroupCollapsed(groupId: Long, collapsed: Boolean) {
+        todoDao.updateQuickChecklistGroupCollapsed(groupId, collapsed, System.currentTimeMillis())
+        notifyItemsChanged()
+    }
+
+    suspend fun setQuickChecklistTaskCollapsed(todoId: Long, collapsed: Boolean) {
+        val item = todoDao.getById(todoId)?.takeIf { it.isQuickChecklistTask } ?: return
+        todoDao.update(item.copy(quickChecklistCollapsed = collapsed))
+        notifyItemsChanged()
+    }
 
     suspend fun inspectDataHealth(retention: AiReportRetention): DataHealthReport {
         val now = System.currentTimeMillis()
@@ -1264,8 +1332,58 @@ class TodoRepository(
     suspend fun updateTodo(item: TodoItem): TodoItem {
         todoDao.update(item)
         syncPlanningNodeCompletionFromItem(item)
+        item.quickChecklistGroupId?.let { groupId ->
+            updateQuickChecklistAncestorStates(
+                groupId = groupId,
+                startingParentIds = listOfNotNull(item.parentTodoId),
+                now = System.currentTimeMillis()
+            )
+        }
         notifyItemsChanged()
         return item
+    }
+
+    suspend fun restoreTodoFromHistory(
+        item: TodoItem,
+        nowMillis: Long = System.currentTimeMillis(),
+        missedThresholdMillis: Long = 60_000L
+    ): List<TodoItem> {
+        val restoredItems = database.withTransaction {
+            val current = todoDao.getById(item.id) ?: return@withTransaction emptyList()
+            val targets = if (current.isQuickChecklistTask) {
+                quickChecklistSubtree(current)
+            } else {
+                listOf(current)
+            }
+            val updates = targets.map { candidate ->
+                val missed = candidate.hasDueDate &&
+                    candidate.dueAtMillis < nowMillis - missedThresholdMillis
+                candidate.copy(
+                    completed = false,
+                    completedAtMillis = null,
+                    canceled = false,
+                    canceledAtMillis = null,
+                    missed = missed,
+                    missedAtMillis = if (missed) nowMillis else null,
+                    reminderEnabled = candidate.reminderTriggerTimesMillis().any { it > nowMillis }
+                )
+            }
+            todoDao.updateAll(updates)
+            updates.forEach { update -> syncPlanningNodeCompletionFromItem(update) }
+
+            val ancestorUpdates = if (current.isQuickChecklistTask) {
+                updateQuickChecklistAncestorStates(
+                    groupId = current.quickChecklistGroupId ?: return@withTransaction updates,
+                    startingParentIds = listOfNotNull(current.parentTodoId),
+                    now = nowMillis
+                )
+            } else {
+                emptyList()
+            }
+            (updates + ancestorUpdates).distinctBy { it.id }
+        }
+        if (restoredItems.isNotEmpty()) notifyItemsChanged()
+        return restoredItems
     }
 
     suspend fun deleteTodo(
@@ -1274,6 +1392,22 @@ class TodoRepository(
     ): List<TodoItem> {
         if (!item.isTodo) return emptyList()
         val current = todoDao.getById(item.id) ?: return emptyList()
+        if (current.isQuickChecklistTask) {
+            val groupId = current.quickChecklistGroupId ?: return emptyList()
+            val parentId = current.parentTodoId
+            val subtree = quickChecklistSubtree(current)
+            val deletedItems = deleteItemsByIds(subtree.map { it.id })
+            updateQuickChecklistAncestorStates(
+                groupId = groupId,
+                startingParentIds = listOfNotNull(parentId),
+                now = System.currentTimeMillis()
+            )
+            if (todoDao.countQuickChecklistItems(groupId) == 0) {
+                todoDao.deleteQuickChecklistGroup(groupId)
+            }
+            notifyItemsChanged()
+            return deletedItems
+        }
         if (!current.isRecurring) {
             val deletedItems = deleteItemsByIds(listOf(current.id))
             notifyItemsChanged()
@@ -1467,6 +1601,31 @@ class TodoRepository(
         scope: RecurrenceScope = RecurrenceScope.CURRENT
     ): List<TodoItem> {
         val now = System.currentTimeMillis()
+        val currentItem = todoDao.getById(item.id) ?: return emptyList()
+        if (currentItem.isQuickChecklistTask) {
+            val targets = quickChecklistSubtree(currentItem).filter { it.isActive }
+            if (targets.isEmpty()) return emptyList()
+            val canceledItems = targets.map { target ->
+                target.copy(
+                    canceled = true,
+                    canceledAtMillis = now,
+                    completed = false,
+                    completedAtMillis = null,
+                    missed = false,
+                    missedAtMillis = null,
+                    reminderEnabled = false
+                )
+            }
+            todoDao.updateAll(canceledItems)
+            val planningLinked = syncPlanningNodeCancellationFromItems(canceledItems, now)
+            val ancestorUpdates = updateQuickChecklistAncestorStates(
+                groupId = currentItem.quickChecklistGroupId ?: return canceledItems,
+                startingParentIds = listOfNotNull(currentItem.parentTodoId),
+                now = now
+            )
+            notifyItemsChanged()
+            return (canceledItems + planningLinked + ancestorUpdates).distinctBy { it.id }
+        }
         val activeSeries = if (item.isRecurring) {
             val seriesId = item.recurringSeriesId ?: return emptyList()
             todoDao.getActiveBySeriesId(seriesId)
@@ -1598,6 +1757,37 @@ class TodoRepository(
         val item = todoDao.getById(id) ?: return null
         if (completed && !item.canBeMarkedCompleted) return null
         val now = System.currentTimeMillis()
+        if (item.isQuickChecklistTask) {
+            val groupId = item.quickChecklistGroupId ?: return null
+            val updates = quickChecklistSubtree(item)
+                .filter { candidate -> candidate.isTodo && (candidate.isActive || candidate.completed) }
+                .map { candidate ->
+                    candidate.copy(
+                        completed = completed,
+                        completedAtMillis = if (completed) candidate.completedAtMillis ?: now else null,
+                        canceled = false,
+                        canceledAtMillis = null,
+                        missed = if (completed) false else candidate.missed,
+                        missedAtMillis = if (completed) null else candidate.missedAtMillis,
+                        reminderEnabled = false
+                    )
+                }
+            todoDao.updateAll(updates)
+            val planningLinkedItems = updates.flatMap { update ->
+                syncPlanningNodeCompletionFromItem(update, now)
+            }
+            val ancestorUpdates = updateQuickChecklistAncestorStates(
+                groupId = groupId,
+                startingParentIds = listOfNotNull(item.parentTodoId),
+                now = now
+            )
+            notifyItemsChanged()
+            val updatedRoot = updates.firstOrNull { it.id == item.id } ?: item
+            return CompletedItemResult(
+                item = updatedRoot,
+                affectedItems = (updates + planningLinkedItems + ancestorUpdates).distinctBy { it.id }
+            )
+        }
         val updated = item.copy(
             completed = completed,
             completedAtMillis = if (completed) now else null,
@@ -2034,17 +2224,20 @@ class TodoRepository(
             eventCheckIns = todoDao.getAllEventCheckIns(),
             recurringInstanceSkips = todoDao.getAllRecurringSkips(),
             activityRecords = todoDao.getAllFinishedActivityRecords(),
+            quickChecklistGroups = todoDao.getAllQuickChecklistGroups(),
             settings = settings
         )
     }
 
     suspend fun importSnapshot(snapshot: BackupSnapshot) {
-        todoDao.clearPlanningNodes()
+        database.withTransaction {
+            todoDao.clearPlanningNodes()
         todoDao.clearTodoGroupTags()
         todoDao.clearEventCheckIns()
         todoDao.clearRecurringSkips()
         todoDao.clearActivityRecords()
         todoDao.clearTodos()
+        todoDao.clearQuickChecklistGroups()
         todoDao.clearTemplates()
         todoDao.clearGroups()
         todoDao.clearReminderChainLogs()
@@ -2057,11 +2250,16 @@ class TodoRepository(
         } else {
             todoDao.insertGroups(DefaultTaskGroups.seed)
         }
+        val restoredChecklistGroups = restoredQuickChecklistGroups(snapshot)
+        if (restoredChecklistGroups.isNotEmpty()) {
+            todoDao.insertQuickChecklistGroups(restoredChecklistGroups)
+        }
         if (snapshot.templates.isNotEmpty()) {
             todoDao.insertTemplates(snapshot.templates)
         }
-        if (snapshot.tasks.isNotEmpty()) {
-            todoDao.insertAll(snapshot.tasks)
+        val restoredTasks = restoredQuickChecklistTasks(snapshot, restoredChecklistGroups)
+        if (restoredTasks.isNotEmpty()) {
+            todoDao.insertAll(restoredTasks)
         }
         val restoredTags = restoredTodoGroupTags(snapshot)
         if (restoredTags.isNotEmpty()) {
@@ -2094,8 +2292,9 @@ class TodoRepository(
         if (restoredNodes.isNotEmpty()) {
             todoDao.insertPlanningNodes(restoredNodes)
         }
-        if (snapshot.aiReports.isNotEmpty()) {
-            todoDao.insertAiReports(snapshot.aiReports)
+            if (snapshot.aiReports.isNotEmpty()) {
+                todoDao.insertAiReports(snapshot.aiReports)
+            }
         }
         notifyItemsChanged()
     }
@@ -2111,6 +2310,70 @@ class TodoRepository(
             .filter { it.isTodo && it.id > 0 && it.groupId > 0 && it.groupId in groupIds }
             .map { TodoGroupTag(todoId = it.id, groupId = it.groupId) }
             .distinct()
+    }
+
+    private fun restoredQuickChecklistGroups(snapshot: BackupSnapshot): List<QuickChecklistGroup> {
+        val referencedGroupIds = snapshot.tasks.filter { it.isTodo }.mapNotNull { it.quickChecklistGroupId }.toSet()
+        return snapshot.quickChecklistGroups
+            .filter { it.id > 0 && it.id in referencedGroupIds && it.title.isNotBlank() && it.sourceFingerprint.isNotBlank() }
+            .distinctBy { it.id }
+    }
+
+    private fun restoredQuickChecklistTasks(
+        snapshot: BackupSnapshot,
+        restoredGroups: List<QuickChecklistGroup>
+    ): List<TodoItem> {
+        val validGroupIds = restoredGroups.map { it.id }.toSet()
+        val quickTasks = snapshot.tasks
+            .filter { it.isTodo && it.quickChecklistGroupId in validGroupIds }
+        val groupByTaskId = quickTasks.associate { it.id to it.quickChecklistGroupId }
+        val rawParentByTaskId = quickTasks.associate { item ->
+            item.id to item.parentTodoId?.takeIf { parentId ->
+                parentId != item.id && groupByTaskId[parentId] == item.quickChecklistGroupId
+            }
+        }
+        val parentByTaskId = rawParentByTaskId.mapValues { (taskId, rawParentId) ->
+            var cursor = rawParentId
+            val visited = mutableSetOf(taskId)
+            while (cursor != null && visited.add(cursor)) {
+                cursor = rawParentByTaskId[cursor]
+            }
+            rawParentId.takeIf { cursor == null }
+        }
+        val depthCache = mutableMapOf<Long, Int>()
+        fun resolvedDepth(taskId: Long): Int {
+            depthCache[taskId]?.let { return it }
+            val parentId = parentByTaskId[taskId]
+            val depth = if (parentId == null) 1 else resolvedDepth(parentId) + 1
+            depthCache[taskId] = depth
+            return depth
+        }
+        val fallbackSortOrder = quickTasks
+            .groupBy { item -> item.quickChecklistGroupId to parentByTaskId[item.id] }
+            .flatMap { (_, siblings) -> siblings.mapIndexed { index, item -> item.id to index } }
+            .toMap()
+        return snapshot.tasks.map { item ->
+            val groupId = item.quickChecklistGroupId
+                ?.takeIf { item.isTodo && it in validGroupIds }
+            val parentId = groupId?.let { parentByTaskId[item.id] }
+            if (groupId == null) {
+                item.copy(
+                    quickChecklistGroupId = null,
+                    parentTodoId = null,
+                    quickChecklistDepth = null,
+                    quickChecklistSortOrder = null,
+                    quickChecklistCollapsed = false
+                )
+            } else {
+                item.copy(
+                    quickChecklistGroupId = groupId,
+                    parentTodoId = parentId,
+                    quickChecklistDepth = resolvedDepth(item.id),
+                    quickChecklistSortOrder = item.quickChecklistSortOrder?.takeIf { it >= 0 }
+                        ?: fallbackSortOrder[item.id]
+                )
+            }
+        }
     }
 
     private fun restoredEventCheckIns(snapshot: BackupSnapshot): List<EventCheckIn> {
@@ -3577,6 +3840,11 @@ class TodoRepository(
                 null
             },
             reminderOffsetMinutes = offsetMinutes,
+            quickChecklistGroupId = existing?.quickChecklistGroupId,
+            parentTodoId = existing?.parentTodoId,
+            quickChecklistDepth = existing?.quickChecklistDepth,
+            quickChecklistSortOrder = existing?.quickChecklistSortOrder,
+            quickChecklistCollapsed = existing?.quickChecklistCollapsed ?: false,
             createdAtMillis = existing?.createdAtMillis ?: now
         )
     }
@@ -4160,6 +4428,60 @@ class TodoRepository(
         todoDao.clearCheckInsForEvents(deleteIds)
         todoDao.deleteByIds(deleteIds)
         return deletedItems
+    }
+
+    private suspend fun quickChecklistSubtree(root: TodoItem): List<TodoItem> {
+        val groupId = root.quickChecklistGroupId ?: return listOf(root)
+        val all = todoDao.getQuickChecklistItems(groupId)
+        val byParent = all.groupBy { it.parentTodoId }
+        return buildList {
+            fun visit(item: TodoItem) {
+                add(item)
+                byParent[item.id].orEmpty().forEach(::visit)
+            }
+            visit(root)
+        }
+    }
+
+    private suspend fun updateQuickChecklistAncestorStates(
+        groupId: Long,
+        startingParentIds: List<Long>,
+        now: Long
+    ): List<TodoItem> {
+        val all = todoDao.getQuickChecklistItems(groupId)
+        if (all.isEmpty()) return emptyList()
+        val byId = all.associateBy { it.id }.toMutableMap()
+        val childrenByParent = all.groupBy { it.parentTodoId }
+        val queue = ArrayDeque<Long>()
+        startingParentIds.filter { it > 0 }.forEach(queue::addLast)
+        val updatedItems = mutableListOf<TodoItem>()
+        val visited = mutableSetOf<Long>()
+        while (queue.isNotEmpty()) {
+            val parentId = queue.removeFirst()
+            if (!visited.add(parentId)) continue
+            val parent = byId[parentId] ?: continue
+            val children = childrenByParent[parentId].orEmpty()
+            val effectiveChildren = children.filterNot { child -> child.canceled }
+            if (effectiveChildren.isEmpty()) {
+                parent.parentTodoId?.let(queue::addLast)
+                continue
+            }
+            val shouldComplete = !parent.canceled && effectiveChildren.all { child -> child.completed }
+            val next = parent.copy(
+                completed = shouldComplete,
+                completedAtMillis = if (shouldComplete) parent.completedAtMillis ?: now else null,
+                canceled = parent.canceled,
+                canceledAtMillis = parent.canceledAtMillis,
+                reminderEnabled = false
+            )
+            if (next != parent) {
+                todoDao.update(next)
+                byId[parentId] = next
+                updatedItems += next
+            }
+            parent.parentTodoId?.let(queue::addLast)
+        }
+        return updatedItems
     }
 
     private suspend fun detachPlanningNodesFromLinkedItems(

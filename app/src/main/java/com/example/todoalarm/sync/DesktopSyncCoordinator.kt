@@ -39,6 +39,8 @@ import com.example.todoalarm.data.PlanningRefreshScope
 import com.example.todoalarm.data.PlanningRecognitionService
 import com.example.todoalarm.data.PlanningMarkdownParser
 import com.example.todoalarm.data.PlanningAnnouncementParser
+import com.example.todoalarm.data.QuickChecklistParser
+import com.example.todoalarm.data.QuickChecklistDiagnosticSeverity
 import com.example.todoalarm.data.toPlanningImportCandidate
 import com.example.todoalarm.data.RecurrenceConfig
 import com.example.todoalarm.data.RecurrenceScope
@@ -200,6 +202,10 @@ class DesktopSyncCoordinator(
                 method == "GET" && routePath == "/api/todos" -> DesktopSyncServer.Response.json(desktopTodos(path))
                 method == "GET" && routePath == "/api/events" -> DesktopSyncServer.Response.json(desktopEvents(path))
                 method == "POST" && path == "/api/todos" -> DesktopSyncServer.Response.json(createTodo(JSONObject(body)))
+                method == "POST" && path == "/api/quick-checklists/preview" -> DesktopSyncServer.Response.json(previewQuickChecklist(JSONObject(body)))
+                method == "POST" && path == "/api/quick-checklists" -> DesktopSyncServer.Response.json(createQuickChecklist(JSONObject(body)))
+                method == "POST" && routePath.matches(Regex("/api/quick-checklists/\\d+/toggle")) -> DesktopSyncServer.Response.json(toggleQuickChecklistGroup(routePath))
+                method == "POST" && routePath.matches(Regex("/api/quick-checklist-items/\\d+/toggle")) -> DesktopSyncServer.Response.json(toggleQuickChecklistItem(routePath))
                 method == "POST" && path == "/api/events" -> DesktopSyncServer.Response.json(createEvent(JSONObject(body)))
                 method == "POST" && path == "/api/events/batch" -> DesktopSyncServer.Response.json(createEvents(JSONObject(body)))
                 method == "PUT" && routePath.matches(Regex("/api/todos/\\d+")) -> DesktopSyncServer.Response.json(updateTodo(routePath, JSONObject(body)))
@@ -250,6 +256,7 @@ class DesktopSyncCoordinator(
 
     private suspend fun buildSnapshot(boardOnly: Boolean = false): DesktopSyncSnapshot {
         val groups = app.repository.getAllGroups().ifEmpty { app.repository.ensureDefaultGroups() }
+        val quickChecklistGroups = app.repository.getAllQuickChecklistGroups()
         val now = LocalDateTime.now()
         val today = now.toLocalDate()
         val items = if (boardOnly) app.repository.getActiveItemsForBoardRange(today) else app.repository.getAllTodos()
@@ -274,6 +281,7 @@ class DesktopSyncCoordinator(
         return DesktopSyncSnapshot(
             generatedAtMillis = System.currentTimeMillis(),
             groups = groups,
+            quickChecklistGroups = quickChecklistGroups,
             todos = snapshotTodos,
             events = snapshotEvents,
             announcements = announcements,
@@ -281,6 +289,61 @@ class DesktopSyncCoordinator(
             weekStartMode = settingsStore.currentSettings().weekStartMode,
             partial = boardOnly
         )
+    }
+
+    private fun previewQuickChecklist(payload: JSONObject): JSONObject {
+        val draft = QuickChecklistParser.parse(payload.optString("text"))
+        return JSONObject().apply {
+            put("title", draft.title)
+            put("taskCount", draft.taskCount)
+            put("maxDepth", draft.maxDepth)
+            put("noteCount", draft.noteCount)
+            put("hasErrors", draft.hasErrors)
+            put("nodes", JSONArray(draft.nodes.map { node ->
+                JSONObject()
+                    .put("temporaryId", node.temporaryId)
+                    .put("parentTemporaryId", node.parentTemporaryId)
+                    .put("depth", node.depth)
+                    .put("title", node.title)
+                    .put("notes", node.notes)
+                    .put("sourceLine", node.sourceLine)
+                    .put("sortOrder", node.sortOrder)
+            }))
+            put("diagnostics", JSONArray(draft.diagnostics.map { diagnostic ->
+                JSONObject()
+                    .put("severity", diagnostic.severity.name)
+                    .put("sourceLine", diagnostic.sourceLine)
+                    .put("message", diagnostic.message)
+            }))
+        }
+    }
+
+    private suspend fun createQuickChecklist(payload: JSONObject): JSONObject {
+        val draft = QuickChecklistParser.parse(payload.optString("text"))
+        draft.diagnostics.firstOrNull { it.severity == QuickChecklistDiagnosticSeverity.ERROR }?.let { diagnostic ->
+            throw IllegalArgumentException("第 ${diagnostic.sourceLine} 行：${diagnostic.message}")
+        }
+        val group = app.repository.createQuickChecklist(draft)
+        return JSONObject().put("ok", true).put("group", group.toDesktopJson())
+    }
+
+    private suspend fun toggleQuickChecklistGroup(path: String): JSONObject {
+        val id = path.substringAfterLast('/').toLongOrNull()
+            ?: path.removeSuffix("/toggle").substringAfterLast('/').toLongOrNull()
+            ?: throw IllegalArgumentException("清单 ID 无效")
+        val group = app.repository.getAllQuickChecklistGroups().firstOrNull { it.id == id }
+            ?: throw IllegalArgumentException("清单不存在")
+        app.repository.setQuickChecklistGroupCollapsed(id, !group.collapsed)
+        return JSONObject().put("ok", true)
+    }
+
+    private suspend fun toggleQuickChecklistItem(path: String): JSONObject {
+        val id = path.removeSuffix("/toggle").substringAfterLast('/').toLongOrNull()
+            ?: throw IllegalArgumentException("任务 ID 无效")
+        val item = app.repository.getTodo(id)?.takeIf { it.isQuickChecklistTask }
+            ?: throw IllegalArgumentException("清单任务不存在")
+        app.repository.setQuickChecklistTaskCollapsed(id, !item.quickChecklistCollapsed)
+        return JSONObject().put("ok", true)
     }
 
     private fun updateCalendarPreferences(payload: JSONObject): JSONObject {
@@ -491,6 +554,7 @@ class DesktopSyncCoordinator(
         val limit = queryParam(path, "limit")?.toIntOrNull()?.coerceIn(1, DESKTOP_TODO_PAGE_LIMIT_MAX) ?: DESKTOP_TODO_PAGE_LIMIT_DEFAULT
         val query = queryParam(path, "q").orEmpty().trim().take(DESKTOP_TODO_QUERY_MAX_LENGTH)
         val groups = app.repository.getAllGroups().ifEmpty { app.repository.ensureDefaultGroups() }
+        val quickChecklistGroups = app.repository.getAllQuickChecklistGroups()
         val groupsById = groups.associateBy { it.id }
         val todos = app.repository.getDesktopTodoItemsPaged(query, limit, offset)
         val groupIdsByTodoId = todoGroupIdsByTodoId()
@@ -503,6 +567,7 @@ class DesktopSyncCoordinator(
             .put("hasMore", offset + todos.size < total)
             .put("query", query)
             .put("groups", JSONArray(groups.map { it.toDesktopJson() }))
+            .put("quickChecklistGroups", JSONArray(quickChecklistGroups.map { it.toDesktopJson() }))
             .put("todos", JSONArray(todos.map { it.toDesktopJson(groupsById[it.groupId], groupIdsByTodoId[it.id].orEmpty()) }))
     }
 

@@ -46,6 +46,8 @@ import com.example.todoalarm.data.PlanningPostponeScope
 import com.example.todoalarm.data.PlanningRefreshScope
 import com.example.todoalarm.data.PlanningOperationResult
 import com.example.todoalarm.data.PlanningRecognitionService
+import com.example.todoalarm.data.QuickChecklistGroup
+import com.example.todoalarm.data.QuickChecklistParser
 import com.example.todoalarm.data.RecurrenceScope
 import com.example.todoalarm.data.RecurrenceType
 import com.example.todoalarm.data.ReminderChainLog
@@ -96,6 +98,8 @@ import java.util.UUID
 
 data class TodoUiState(
     val groups: List<TaskGroup> = emptyList(),
+    val quickChecklistGroups: List<QuickChecklistGroup> = emptyList(),
+    val quickChecklistItems: List<TodoItem> = emptyList(),
     val selectedGroupIds: Set<Long> = emptySet(),
     val groupFilterMode: GroupFilterMode = GroupFilterMode.INTERSECTION,
     val missedItems: List<TodoItem> = emptyList(),
@@ -276,6 +280,8 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
         repository.observeGroups(),
         repository.observePlanningNotesWithAnnouncementHints(),
         activeTodoItems,
+        repository.observeQuickChecklistGroups(),
+        repository.observeQuickChecklistItems(),
         boardCalendarItems,
         countdownItems,
         settingsStore.settingsFlow,
@@ -292,18 +298,22 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
         @Suppress("UNCHECKED_CAST")
         val activeTaskItems = values[2] as List<TodoItem>
         @Suppress("UNCHECKED_CAST")
-        val activeCalendarItems = values[3] as List<TodoItem>
+        val quickChecklistGroups = values[3] as List<QuickChecklistGroup>
         @Suppress("UNCHECKED_CAST")
-        val activeCountdownItems = values[4] as List<TodoItem>
-        val settings = values[5] as AppSettings
+        val quickChecklistItems = values[4] as List<TodoItem>
         @Suppress("UNCHECKED_CAST")
-        val quotes = values[6] as List<String>
+        val activeCalendarItems = values[5] as List<TodoItem>
         @Suppress("UNCHECKED_CAST")
-        val selectedGroupIds = values[7] as Set<Long>
-        val groupFilterMode = values[8] as GroupFilterMode
-        val today = values[9] as LocalDate
+        val activeCountdownItems = values[6] as List<TodoItem>
+        val settings = values[7] as AppSettings
+        @Suppress("UNCHECKED_CAST")
+        val quotes = values[8] as List<String>
+        @Suppress("UNCHECKED_CAST")
+        val selectedGroupIds = values[9] as Set<Long>
+        val groupFilterMode = values[10] as GroupFilterMode
+        val today = values[11] as LocalDate
         @Suppress("UNUSED_VARIABLE")
-        val authTick = values[10] as Long
+        val authTick = values[12] as Long
         val availableGroups = if (groups.isEmpty()) {
             withContext(Dispatchers.IO) { repository.ensureDefaultGroups() }
         } else {
@@ -326,6 +336,8 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
 
             TodoUiState(
                 groups = availableGroups,
+                quickChecklistGroups = quickChecklistGroups,
+                quickChecklistItems = quickChecklistItems,
                 selectedGroupIds = selectedGroupIds,
                 groupFilterMode = groupFilterMode,
                 missedItems = todoSections.missedItems,
@@ -351,6 +363,39 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             repository.ensureDefaultGroups()
             repository.markMissedTasks()
+        }
+    }
+
+    suspend fun createQuickChecklist(rawText: String): String? {
+        val draft = QuickChecklistParser.parse(rawText)
+        draft.diagnostics.firstOrNull { it.severity == com.example.todoalarm.data.QuickChecklistDiagnosticSeverity.ERROR }
+            ?.let { return "第 ${it.sourceLine} 行：${it.message}" }
+        return runCatching {
+            repository.createQuickChecklist(draft)
+            autoBackupIfEnabled()
+            null
+        }.getOrElse { error ->
+            if (error.message?.contains("UNIQUE", ignoreCase = true) == true ||
+                error.message?.contains("已存在", ignoreCase = true) == true
+            ) {
+                "相同内容的快速清单已经存在"
+            } else {
+                error.message ?: "快速清单创建失败"
+            }
+        }
+    }
+
+    fun toggleQuickChecklistGroup(group: QuickChecklistGroup) {
+        viewModelScope.launch {
+            repository.setQuickChecklistGroupCollapsed(group.id, !group.collapsed)
+            autoBackupIfEnabled()
+        }
+    }
+
+    fun toggleQuickChecklistTask(item: TodoItem) {
+        viewModelScope.launch {
+            repository.setQuickChecklistTaskCollapsed(item.id, !item.quickChecklistCollapsed)
+            autoBackupIfEnabled()
         }
     }
 
@@ -981,19 +1026,11 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
 
     fun restoreTodo(todoItem: TodoItem) {
         viewModelScope.launch {
-            val now = System.currentTimeMillis()
-            val restored = repository.updateTodo(
-                todoItem.copy(
-                    completed = false,
-                    completedAtMillis = null,
-                    canceled = false,
-                    canceledAtMillis = null,
-                    missed = todoItem.hasDueDate && todoItem.dueAtMillis < now - MISSED_THRESHOLD_MILLIS,
-                    missedAtMillis = if (todoItem.hasDueDate && todoItem.dueAtMillis < now - MISSED_THRESHOLD_MILLIS) now else null,
-                    reminderEnabled = todoItem.reminderTriggerTimesMillis().any { it > now }
-                )
+            val restored = repository.restoreTodoFromHistory(
+                item = todoItem,
+                missedThresholdMillis = MISSED_THRESHOLD_MILLIS
             )
-            scheduleReminderOrDisable(restored)
+            restored.forEach { item -> scheduleReminderOrDisable(item) }
             autoBackupIfEnabled()
         }
     }

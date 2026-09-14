@@ -4,14 +4,30 @@
 
 - Repository root: `G:\Workspace\Project\PaykiTodo`
 - Branch: `main`
-- App version: `1.16.15 / versionCode 380` (local validation; not published)
-- Room database version: `30`
+- App version: `1.16.16 / versionCode 381` (local validation; not published)
+- Room database version: `31`
 - Latest public GitHub Release: `v1.15.18`
 - Android outputs after final verification:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.16.15-debug.apk`
-  - `app/build/outputs/apk/release/PaykiTodo-1.16.15-release.apk`
-- Windows output: `desktop/dist/PaykiTodo.exe` is the previous round's artifact; only source version metadata changed in this Android round.
+  - `app/build/outputs/apk/debug/PaykiTodo-1.16.16-debug.apk`
+  - `app/build/outputs/apk/release/PaykiTodo-1.16.16-release.apk`
+- Windows output: `desktop/dist/PaykiTodo.exe` is rebuilt from the quick-checklist-capable source with `1.16.16` metadata.
 - Private cloud deployment: service enabled on the Azure host, origin loopback `127.0.0.1:18766`, public access through the privately configured Cloudflare/Nginx HTTPS hostname, and the administrator page at `/admin`.
+
+## v1.16.16 Completed
+
+- Quick checklist is implemented across Android, LAN Desktop Web, and the Windows client: parser, live preview, hierarchical creation, notes, folding, completion, cancel/delete, backup/snapshot fields, and Widget summary.
+- Parent completion excludes canceled children, cannot revive canceled ancestors, and recurses through valid ancestors. Deletion and cancellation follow the existing history rules.
+- Administrator timestamps use epoch values and browser-local formatting.
+- Room is `31`; migration `30 -> 31` and committed schema `31.json` preserve existing installations.
+- Focused Android unit/instrumentation tests, JavaScript syntax, Windows build, and server integration tests pass. No push, tag, or GitHub Release was performed.
+
+## v1.16.16 Verification Evidence
+
+- Android unit tests and `emulator-5554` / `Pixel_8` instrumentation passed; 183 unit tests and 17 instrumentation tests cover parser, repository, hierarchy, history, cancellation, deletion, folding, duplicate protection, and migration metadata.
+- Room `30 -> 31` migration metadata is covered by tests; backup compatibility tests confirm old archives without checklist fields import as empty checklist metadata.
+- Server integration suite: 12 passed, including browser-local timestamp payload behavior.
+- `node --check app/src/main/assets/desktop-web/app.js`, Android Lint, Debug/AndroidTest/Release assembly, and Windows Release publish passed.
+- Release APK v2 signature verification passed with one RSA-2048 signer. Debug APK SHA-256: `C211A4B1673EE78142BEB446C30D8E9E0ED43EE6F475EFCF363883B5CF4B8876`; signed Release APK SHA-256: `40773D55EE02141C9D318A1E172D319950F6615CD1C2A8A331EF75F32174961F`; Windows self-contained EXE SHA-256: `55E914F0AF106FC149104FBA8C2F236B7AEC2593E4881E045C97E6FB07CFA712`.
 
 ## v1.16.15 Completed
 

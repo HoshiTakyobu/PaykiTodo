@@ -24,17 +24,41 @@ class BackupArchiveCodecTest {
         assertEquals(source.snapshotVersion, restored.snapshotVersion)
         assertEquals(ThemeMode.DARK, restored.settings.themeMode)
         assertEquals("迁移测试", restored.groups.single().name)
+        assertEquals(source.quickChecklistGroups, restored.quickChecklistGroups)
+        assertEquals(source.tasks, restored.tasks)
     }
 
     @Test
     fun legacyJsonBackupRemainsImportable() {
         val source = sampleSnapshot()
-        val legacyJson = source.toJson().toString().toByteArray(StandardCharsets.UTF_8)
+        val legacyPayload = source.toJson().apply {
+            remove("quickChecklistGroups")
+            val legacyTasks = getJSONArray("tasks")
+            for (index in 0 until legacyTasks.length()) {
+                val task = legacyTasks.getJSONObject(index)
+                task.remove("quickChecklistGroupId")
+                task.remove("parentTodoId")
+                task.remove("quickChecklistDepth")
+                task.remove("quickChecklistSortOrder")
+                task.remove("quickChecklistCollapsed")
+            }
+        }
+        val legacyJson = legacyPayload.toString().toByteArray(StandardCharsets.UTF_8)
 
         val restored = BackupArchiveCodec.decode(legacyJson)
 
         assertEquals(source.exportedAtMillis, restored.exportedAtMillis)
         assertEquals("迁移测试", restored.groups.single().name)
+        assertTrue(restored.quickChecklistGroups.isEmpty())
+        assertTrue(
+            restored.tasks.all {
+                it.quickChecklistGroupId == null &&
+                    it.parentTodoId == null &&
+                    it.quickChecklistDepth == null &&
+                    it.quickChecklistSortOrder == null &&
+                    !it.quickChecklistCollapsed
+            }
+        )
     }
 
     @Test
@@ -139,7 +163,49 @@ class BackupArchiveCodecTest {
                 )
             ),
             templates = emptyList(),
-            tasks = emptyList(),
+            tasks = listOf(
+                TodoItem(
+                    id = 21L,
+                    title = "父任务",
+                    notes = "说明",
+                    dueAtMillis = NO_DUE_DATE_MILLIS,
+                    reminderAtMillis = null,
+                    reminderEnabled = false,
+                    ringEnabled = false,
+                    vibrateEnabled = false,
+                    groupId = 7L,
+                    quickChecklistGroupId = 11L,
+                    quickChecklistDepth = 1,
+                    quickChecklistSortOrder = 0,
+                    quickChecklistCollapsed = true,
+                    createdAtMillis = 101L
+                ),
+                TodoItem(
+                    id = 22L,
+                    title = "1. 子任务",
+                    dueAtMillis = NO_DUE_DATE_MILLIS,
+                    reminderAtMillis = null,
+                    reminderEnabled = false,
+                    ringEnabled = false,
+                    vibrateEnabled = false,
+                    groupId = 7L,
+                    quickChecklistGroupId = 11L,
+                    parentTodoId = 21L,
+                    quickChecklistDepth = 2,
+                    quickChecklistSortOrder = 0,
+                    createdAtMillis = 102L
+                )
+            ),
+            quickChecklistGroups = listOf(
+                QuickChecklistGroup(
+                    id = 11L,
+                    title = "0913待办",
+                    collapsed = false,
+                    sourceFingerprint = "fingerprint",
+                    createdAtMillis = 99L,
+                    updatedAtMillis = 100L
+                )
+            ),
             settings = AppSettings(themeMode = ThemeMode.DARK)
         )
     }

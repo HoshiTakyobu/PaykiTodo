@@ -124,13 +124,14 @@ class TodoApplication : Application() {
             DatabaseMigrations.MIGRATION_26_27,
             DatabaseMigrations.MIGRATION_27_28,
             DatabaseMigrations.MIGRATION_28_29,
-            DatabaseMigrations.MIGRATION_29_30
+            DatabaseMigrations.MIGRATION_29_30,
+            DatabaseMigrations.MIGRATION_30_31
         )
             .build()
     }
 
     val repository: TodoRepository by lazy {
-        TodoRepository(database.todoDao()) {
+        TodoRepository(database) {
             TodoWidgetProvider.notifyWidgetDataChanged(applicationContext)
             remoteSyncCoordinator.onLocalDataChanged()
         }

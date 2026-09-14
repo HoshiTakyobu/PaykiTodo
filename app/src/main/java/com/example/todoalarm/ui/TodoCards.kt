@@ -71,6 +71,7 @@ import kotlinx.coroutines.delay
 internal fun ActiveTodoCard(
     item: TodoItem,
     groups: List<TaskGroup>,
+    modifier: Modifier = Modifier,
     resolvedGroup: ResolvedTaskGroup? = null,
     forceShowDetailsKey: Int = 0,
     selectionMode: Boolean = false,
@@ -108,6 +109,7 @@ internal fun ActiveTodoCard(
     }
 
     TodoCardShell(
+        modifier = modifier,
         accent = groupColor,
         onClick = { if (selectionMode) onSelectionToggle() else showDetails = true },
         onLongClick = if (selectionMode) {
@@ -310,6 +312,7 @@ private fun HistoryStatusChip(item: TodoItem) {
 @Composable
 @OptIn(ExperimentalFoundationApi::class)
 private fun TodoCardShell(
+    modifier: Modifier = Modifier,
     accent: Color,
     onClick: () -> Unit,
     onLongClick: (() -> Unit)? = null,
@@ -327,7 +330,7 @@ private fun TodoCardShell(
         MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.28f)
     }
     Column(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .drawBehind {
                 val radius = 16.dp.toPx()

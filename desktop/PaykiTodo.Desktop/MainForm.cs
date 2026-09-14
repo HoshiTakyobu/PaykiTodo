@@ -354,6 +354,9 @@ internal sealed class MainForm : Form
             var id = root.TryGetProperty("id", out var idValue) ? idValue.GetInt64() : 0L;
             switch (action)
             {
+                case "addQuickChecklist":
+                    SaveQuickChecklist();
+                    break;
                 case "addTodo":
                 case "addEvent":
                     SaveEditedItem(action == "addEvent", null);
@@ -372,6 +375,14 @@ internal sealed class MainForm : Form
                 case "delete":
                     localDocument.Delete(id);
                     await SaveLocalAndSyncAsync("已删除本地事项");
+                    break;
+                case "quickGroupToggle":
+                    localDocument.ToggleQuickChecklistGroup(id);
+                    await SaveLocalAndSyncAsync("清单展开状态已更新");
+                    break;
+                case "quickItemToggle":
+                    localDocument.ToggleQuickChecklistItem(id);
+                    await SaveLocalAndSyncAsync("子任务展开状态已更新");
                     break;
                 case "savePlanning":
                     localDocument.SavePlanningNote(
@@ -397,6 +408,22 @@ internal sealed class MainForm : Form
         if (edit is null) return;
         localDocument.SaveItem(edit, existingId);
         _ = SaveLocalAndSyncAsync(existingId.HasValue ? "事项已在本地更新" : "事项已保存到本地");
+    }
+
+    private void SaveQuickChecklist()
+    {
+        if (localDocument is null) return;
+        var draft = QuickChecklistEditorDialog.ShowEditor(this);
+        if (draft is null) return;
+        try
+        {
+            localDocument.CreateQuickChecklist(draft);
+            _ = SaveLocalAndSyncAsync("已创建清单：" + draft.Title);
+        }
+        catch (Exception error)
+        {
+            MessageBox.Show(this, error.Message, "PaykiTodo", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+        }
     }
 
     private async Task SaveLocalAndSyncAsync(string localMessage)

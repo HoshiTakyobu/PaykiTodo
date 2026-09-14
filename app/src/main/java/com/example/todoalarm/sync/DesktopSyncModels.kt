@@ -3,6 +3,7 @@ package com.example.todoalarm.sync
 import com.example.todoalarm.data.AppSettings
 import com.example.todoalarm.data.DailyBoardSnapshot
 import com.example.todoalarm.data.PlanningAnnouncement
+import com.example.todoalarm.data.QuickChecklistGroup
 import com.example.todoalarm.data.TaskGroup
 import com.example.todoalarm.data.TodoItem
 import com.example.todoalarm.data.WeekStartMode
@@ -27,6 +28,7 @@ data class DesktopSyncStatus(
 data class DesktopSyncSnapshot(
     val generatedAtMillis: Long,
     val groups: List<TaskGroup>,
+    val quickChecklistGroups: List<QuickChecklistGroup>,
     val todos: List<TodoItem>,
     val events: List<TodoItem>,
     val announcements: List<PlanningAnnouncement> = emptyList(),
@@ -72,11 +74,23 @@ fun DesktopSyncSnapshot.toJson(
         put("generatedAtMillis", generatedAtMillis)
         put("partial", partial)
         put("groups", JSONArray(groups.map { it.toDesktopJson() }))
+        put("quickChecklistGroups", JSONArray(quickChecklistGroups.map { it.toDesktopJson() }))
         put("todos", JSONArray(todos.map { it.toDesktopJson(groupsById[it.groupId], todoGroupIdsByTodoId[it.id].orEmpty()) }))
         put("events", JSONArray(events.map { it.toDesktopJson(groupsById[it.groupId]) }))
         put("announcements", JSONArray(announcements.map { it.toDesktopJson() }))
         put("weekStartMode", weekStartMode.name)
         put("todayBoard", todayBoard.toDesktopJson(groupsById, todoGroupIdsByTodoId))
+    }
+}
+
+fun QuickChecklistGroup.toDesktopJson(): JSONObject {
+    return JSONObject().apply {
+        put("id", id)
+        put("title", title)
+        put("collapsed", collapsed)
+        put("sourceFingerprint", sourceFingerprint)
+        put("createdAtMillis", createdAtMillis)
+        put("updatedAtMillis", updatedAtMillis)
     }
 }
 
@@ -177,6 +191,11 @@ fun TodoItem.toDesktopJson(group: TaskGroup?, groupIds: List<Long> = emptyList()
         put("recurrenceMonthlyWeekday", recurrenceMonthlyWeekday)
         put("recurrenceMonthlyDay", recurrenceMonthlyDay)
         put("recurrenceEndDate", recurrenceEndDate?.toString())
+        put("quickChecklistGroupId", quickChecklistGroupId)
+        put("parentTodoId", parentTodoId)
+        put("quickChecklistDepth", quickChecklistDepth)
+        put("quickChecklistSortOrder", quickChecklistSortOrder)
+        put("quickChecklistCollapsed", quickChecklistCollapsed)
     }
 }
 

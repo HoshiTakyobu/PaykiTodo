@@ -61,6 +61,10 @@
           <button class="nav-btn tab-btn" data-tab="reports">AI 报告</button>
         </nav>
         <div class="desktop-header-actions">
+          <button id="open-quick-checklist" class="header-create-button quick-checklist-entry" title="快速清单" aria-label="快速清单">
+            <span aria-hidden="true" class="quick-checklist-entry-mark">!</span>
+            <span aria-hidden="true" class="quick-checklist-entry-book">▤</span>
+          </button>
           <button id="open-create" class="header-create-button">新增待办</button>
           <button id="open-event-create" class="header-create-button">创建日程</button>
         </div>
@@ -200,6 +204,29 @@
         </div>
       </section>
     </main>
+  </div>
+
+  <div id="quick-checklist-modal" class="modal-backdrop hidden">
+    <div class="modal-sheet wide-sheet quick-checklist-sheet">
+      <div class="modal-head">
+        <button class="sheet-text-button" data-close-modal="quick-checklist-modal">取消</button>
+        <div class="modal-title-block">
+          <h2>快速待办清单</h2>
+          <p class="muted">短横线数量表示层级，--# 添加说明，// 后内容不会保存。</p>
+        </div>
+        <button id="save-quick-checklist" class="sheet-primary-action" disabled>确定</button>
+      </div>
+      <div class="quick-checklist-workspace">
+        <label class="quick-checklist-editor-pane">
+          <span>输入清单</span>
+          <textarea id="quick-checklist-input" spellcheck="false" placeholder="0913待办&#10;- 准备浙大的资料&#10;-- 1. 身份证复印件&#10;--# 使用本学年材料"></textarea>
+        </label>
+        <section class="quick-checklist-preview-pane">
+          <div id="quick-checklist-summary" class="muted">请先输入清单标题和任务。</div>
+          <div id="quick-checklist-preview" class="quick-checklist-preview"></div>
+        </section>
+      </div>
+    </div>
   </div>
 
   <div id="todo-preview-modal" class="modal-backdrop hidden">

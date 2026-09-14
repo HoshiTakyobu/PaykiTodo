@@ -81,6 +81,8 @@ const state = {
   editingEventOriginalRecurring: false,
   editingEventMultiSlotBundleId: null,
   eventCourseSlots: [],
+  quickChecklistPreviewTimer: null,
+  quickChecklistPreview: null,
   reviewImport: {
     fileName: '',
     candidates: [],
@@ -127,6 +129,11 @@ const els = {
   panelTitle: document.getElementById('panel-title'),
   viewCaption: document.getElementById('view-caption'),
   openCreate: document.getElementById('open-create'),
+  openQuickChecklist: document.getElementById('open-quick-checklist'),
+  quickChecklistInput: document.getElementById('quick-checklist-input'),
+  quickChecklistSummary: document.getElementById('quick-checklist-summary'),
+  quickChecklistPreviewHost: document.getElementById('quick-checklist-preview'),
+  saveQuickChecklist: document.getElementById('save-quick-checklist'),
   openEventCreate: document.getElementById('open-event-create'),
   boardScroll: document.getElementById('board-scroll'),
   eventAnchorDate: document.getElementById('event-anchor-date'),
@@ -1220,6 +1227,150 @@ function renderTodoItem(item) {
     + '</article>';
 }
 
+function quickChecklistGroupsFor(items) {
+  const groups = state.snapshot?.quickChecklistGroups || [];
+  const activeItems = (items || []).filter(item => item.quickChecklistGroupId != null && !item.completed && !item.canceled);
+  const itemsByGroup = new Map();
+  activeItems.forEach(item => {
+    const key = String(item.quickChecklistGroupId);
+    if (!itemsByGroup.has(key)) itemsByGroup.set(key, []);
+    itemsByGroup.get(key).push(item);
+  });
+  return groups.map(group => ({ group, items: itemsByGroup.get(String(group.id)) || [] })).filter(value => value.items.length);
+}
+
+function visibleQuickChecklistItems(items) {
+  const byParent = new Map();
+  const byId = new Map(items.map(item => [String(item.id), item]));
+  items.forEach(item => {
+    const key = item.parentTodoId == null ? 'root' : String(item.parentTodoId);
+    if (!byParent.has(key)) byParent.set(key, []);
+    byParent.get(key).push(item);
+  });
+  const ordered = [];
+  const visit = item => {
+    ordered.push(item);
+    if (!item.quickChecklistCollapsed) {
+      (byParent.get(String(item.id)) || [])
+        .slice()
+        .sort((a, b) => Number(a.quickChecklistSortOrder || 0) - Number(b.quickChecklistSortOrder || 0))
+        .forEach(visit);
+    }
+  };
+  items.filter(item => item.parentTodoId == null || !byId.has(String(item.parentTodoId)))
+    .slice()
+    .sort((a, b) => Number(a.quickChecklistSortOrder || 0) - Number(b.quickChecklistSortOrder || 0))
+    .forEach(visit);
+  return { ordered, byParent };
+}
+
+function renderQuickChecklistGroups(items) {
+  return quickChecklistGroupsFor(items).map(({group, items: groupItems}) => {
+    const tree = visibleQuickChecklistItems(groupItems);
+    const allGroupItems = (state.snapshot?.todos || []).filter(item => String(item.quickChecklistGroupId) === String(group.id));
+    const countItems = allGroupItems.filter(item => !item.canceled);
+    const completedCount = countItems.filter(item => item.completed).length;
+    const totalCount = countItems.length;
+    const body = group.collapsed ? '' : '<div class="quick-checklist-items">' + tree.ordered.map(item => {
+      const hasChildren = (tree.byParent.get(String(item.id)) || []).length > 0;
+      return '<div class="quick-checklist-item" style="--depth:' + escapeHtml(String(item.quickChecklistDepth || 1)) + '">'
+        + (hasChildren ? '<button class="quick-checklist-item-toggle" data-quick-checklist-item-toggle="' + escapeHtml(String(item.id)) + '" aria-label="展开或收起子任务">' + (item.quickChecklistCollapsed ? '›' : '⌄') + '</button>' : '<span></span>')
+        + renderTodoItem(item)
+        + '</div>';
+    }).join('') + '</div>';
+    return '<section class="quick-checklist-group"><button class="quick-checklist-group-head" data-quick-checklist-group-toggle="' + escapeHtml(String(group.id)) + '"><strong>'
+      + escapeHtml(group.title) + '</strong><span>' + completedCount + ' / ' + totalCount + ' 已完成</span><b>' + (group.collapsed ? '›' : '⌄') + '</b></button>' + body + '</section>';
+  }).join('');
+}
+
+function renderQuickChecklistPreview(preview) {
+  state.quickChecklistPreview = preview;
+  if (!els.quickChecklistSummary || !els.quickChecklistPreviewHost || !els.saveQuickChecklist) return;
+  if (!preview) {
+    els.quickChecklistSummary.textContent = '请先输入清单标题和任务。';
+    els.quickChecklistPreviewHost.innerHTML = '';
+    els.saveQuickChecklist.disabled = true;
+    return;
+  }
+  const taskCount = Number(preview.taskCount || 0);
+  const maxDepth = Number(preview.maxDepth || 0);
+  const noteCount = Number(preview.noteCount || 0);
+  els.quickChecklistSummary.textContent = taskCount + ' 项任务 · ' + maxDepth + ' 层 · ' + noteCount + ' 条说明';
+  const title = preview.title ? '<h3 class="quick-checklist-preview-title">' + escapeHtml(preview.title) + '</h3>' : '';
+  const nodes = (preview.nodes || []).map(node => {
+    const depth = Math.max(1, Number(node.depth || 1));
+    return '<div style="margin-left:' + ((depth - 1) * 20) + 'px">'
+      + '<div class="quick-checklist-preview-row"><span>' + escapeHtml(node.title || '') + '</span></div>'
+      + (node.notes ? '<div class="quick-checklist-preview-note">' + escapeHtml(node.notes) + '</div>' : '')
+      + '</div>';
+  }).join('');
+  const diagnostics = (preview.diagnostics || []).map(diagnostic => {
+    const warning = diagnostic.severity === 'WARNING';
+    return '<div class="quick-checklist-diagnostic' + (warning ? ' warning' : '') + '">第 '
+      + escapeHtml(String(diagnostic.sourceLine || 1)) + ' 行：' + escapeHtml(diagnostic.message || '') + '</div>';
+  }).join('');
+  els.quickChecklistPreviewHost.innerHTML = title + nodes + diagnostics;
+  els.saveQuickChecklist.disabled = preview.hasErrors === true || !preview.title || taskCount < 1;
+}
+
+async function requestQuickChecklistPreview() {
+  const text = els.quickChecklistInput?.value || '';
+  if (!text.trim()) {
+    renderQuickChecklistPreview(null);
+    return;
+  }
+  try {
+    const preview = await api('/api/quick-checklists/preview', {
+      method: 'POST',
+      body: JSON.stringify({ text: text })
+    });
+    renderQuickChecklistPreview(preview);
+  } catch (error) {
+    state.quickChecklistPreview = null;
+    if (els.quickChecklistSummary) els.quickChecklistSummary.textContent = error.message || '清单预览失败';
+    if (els.quickChecklistPreviewHost) els.quickChecklistPreviewHost.innerHTML = '';
+    if (els.saveQuickChecklist) els.saveQuickChecklist.disabled = true;
+  }
+}
+
+function scheduleQuickChecklistPreview() {
+  if (state.quickChecklistPreviewTimer != null) window.clearTimeout(state.quickChecklistPreviewTimer);
+  state.quickChecklistPreviewTimer = window.setTimeout(() => {
+    state.quickChecklistPreviewTimer = null;
+    requestQuickChecklistPreview();
+  }, 180);
+}
+
+function quickChecklistContinuationPrefix(line) {
+  const content = String(line || '').split('//', 1)[0].replace(/^\s+/, '');
+  const match = /^(-+)(?:#)?(?:\s.*|$)/.exec(content);
+  return match ? match[1] + ' ' : '';
+}
+
+function openQuickChecklistEditor() {
+  if (els.quickChecklistInput) els.quickChecklistInput.value = '';
+  renderQuickChecklistPreview(null);
+  openModal('quick-checklist-modal');
+}
+
+async function saveQuickChecklist() {
+  const text = els.quickChecklistInput?.value || '';
+  if (!text.trim() || els.saveQuickChecklist?.disabled) return;
+  if (els.saveQuickChecklist) els.saveQuickChecklist.disabled = true;
+  try {
+    const result = await api('/api/quick-checklists', {
+      method: 'POST',
+      body: JSON.stringify({ text: text })
+    });
+    closeModal('quick-checklist-modal');
+    els.status.textContent = '已创建清单：' + (result.group?.title || state.quickChecklistPreview?.title || '快速清单');
+    await refreshAfterMutation();
+  } catch (error) {
+    els.status.textContent = error.message || '创建快速清单失败';
+    await requestQuickChecklistPreview();
+  }
+}
+
 function renderTodoSection(section) {
   return ''
     + '<section id="todo-section-' + section.key + '" class="timeline-section">'
@@ -1697,6 +1848,7 @@ function syncTopbar() {
   els.viewCaption.textContent = boardMode ? '今天真正需要处理的事情' : todoMode ? '任务与历史记录' : eventMode ? '按周查看与安排日程' : planningMode ? '备忘录式规划与识别' : '日报调度、AI 状态与历史记录';
   els.openCreate.textContent = '新增待办';
   els.openCreate.classList.toggle('hidden', !(todoMode || boardMode));
+  els.openQuickChecklist?.classList.toggle('hidden', !(todoMode || boardMode));
   els.openEventCreate.textContent = '创建日程';
   els.openEventCreate.classList.toggle('hidden', !(eventMode || boardMode));
   const dataMode = todoMode && state.todosLoaded
@@ -1794,6 +1946,7 @@ function ensureSnapshotContainer() {
     generatedAtMillis: Date.now(),
     partial: true,
     groups: [],
+    quickChecklistGroups: [],
     todos: [],
     events: [],
     announcements: [],
@@ -1806,6 +1959,12 @@ function mergeSnapshotGroups(groups) {
   if (!Array.isArray(groups) || !groups.length) return;
   ensureSnapshotContainer();
   state.snapshot.groups = groups;
+}
+
+function mergeSnapshotQuickChecklistGroups(groups) {
+  if (!Array.isArray(groups)) return;
+  ensureSnapshotContainer();
+  state.snapshot.quickChecklistGroups = groups;
 }
 
 function currentEventRange() {
@@ -1854,6 +2013,7 @@ async function loadDesktopTodos(options = {}) {
     const data = await api('/api/todos?' + params.toString());
     ensureSnapshotContainer();
     mergeSnapshotGroups(data.groups || []);
+    mergeSnapshotQuickChecklistGroups(data.quickChecklistGroups || []);
     const incoming = data.todos || [];
     state.snapshot.todos = reset ? incoming : mergeTodosById(state.snapshot.todos, incoming);
     state.snapshot.generatedAtMillis = data.generatedAtMillis || Date.now();
@@ -2305,7 +2465,8 @@ function renderTodos() {
   }
   const activeAll = activeTodos();
   const historyAll = historyTodos();
-  const active = activeAll.filter(todoMatchesSelectedGroups).slice().sort((a, b) => (a.hasDueDate ? (a.dueAtMillis || Number.MAX_SAFE_INTEGER) : Number.MAX_SAFE_INTEGER) - (b.hasDueDate ? (b.dueAtMillis || Number.MAX_SAFE_INTEGER) : Number.MAX_SAFE_INTEGER));
+  const checklistItems = activeAll.filter(item => item.quickChecklistGroupId != null).filter(todoMatchesSelectedGroups);
+  const active = activeAll.filter(item => item.quickChecklistGroupId == null).filter(todoMatchesSelectedGroups).slice().sort((a, b) => (a.hasDueDate ? (a.dueAtMillis || Number.MAX_SAFE_INTEGER) : Number.MAX_SAFE_INTEGER) - (b.hasDueDate ? (b.dueAtMillis || Number.MAX_SAFE_INTEGER) : Number.MAX_SAFE_INTEGER));
   const history = historyAll.filter(todoMatchesSelectedGroups).slice().sort((a, b) => (b.completedAtMillis || b.canceledAtMillis || b.missedAtMillis || b.dueAtMillis || 0) - (a.completedAtMillis || a.canceledAtMillis || a.missedAtMillis || a.dueAtMillis || 0));
   const sections = [
     { key: 'active', title: '待办', empty: '当前没有未完成的待办。', items: active },
@@ -2314,6 +2475,7 @@ function renderTodos() {
   renderDesktopDailyBoard();
   els.todoTimeline.innerHTML = ''
     + renderTodoPagerControls()
+    + renderQuickChecklistGroups(checklistItems)
     + sections.map(renderTodoSection).join('')
     + (state.todoHasMore ? '<div class="todo-bottom-more"><button type="button" class="ghost mini" data-load-more-todos="true">加载更多待办</button></div>' : '');
   bindActions();
@@ -2382,8 +2544,10 @@ function renderBoardNowCard(nowMillis, visibleTodayEvents, todoItems) {
 }
 
 function renderBoardTodoCard(items) {
+  const checklistItems = (items || []).filter(item => item.quickChecklistGroupId != null);
+  const regularItems = (items || []).filter(item => item.quickChecklistGroupId == null);
   const body = items.length
-    ? items.map(renderBoardTodoRow).join('')
+    ? renderQuickChecklistGroups(checklistItems) + regularItems.map(renderBoardTodoRow).join('')
     : '<div class="board-empty">今天还没有安排任务。</div>';
   return ''
     + '<article class="desktop-board-card">'
@@ -4741,6 +4905,22 @@ function showFormDialog({ title, message = '', confirmLabel = '确定', fields =
 }
 
 function bindActions() {
+  document.querySelectorAll('[data-quick-checklist-group-toggle]').forEach(node => {
+    node.onclick = async event => {
+      event.preventDefault();
+      event.stopPropagation();
+      await api('/api/quick-checklists/' + encodeURIComponent(node.dataset.quickChecklistGroupToggle) + '/toggle', { method: 'POST' });
+      await refreshAfterMutation();
+    };
+  });
+  document.querySelectorAll('[data-quick-checklist-item-toggle]').forEach(node => {
+    node.onclick = async event => {
+      event.preventDefault();
+      event.stopPropagation();
+      await api('/api/quick-checklist-items/' + encodeURIComponent(node.dataset.quickChecklistItemToggle) + '/toggle', { method: 'POST' });
+      await refreshAfterMutation();
+    };
+  });
   document.querySelectorAll('[data-todo-group-filter]').forEach(node => {
     node.onclick = event => {
       event.preventDefault();
@@ -5417,6 +5597,22 @@ els.openCreate.onclick = () => {
   clearTodoForm();
   openModal('todo-modal');
 };
+if (els.openQuickChecklist) els.openQuickChecklist.onclick = openQuickChecklistEditor;
+if (els.quickChecklistInput) {
+  els.quickChecklistInput.addEventListener('input', scheduleQuickChecklistPreview);
+  els.quickChecklistInput.addEventListener('keydown', event => {
+    if (event.key !== 'Enter' || event.ctrlKey || event.metaKey || event.altKey) return;
+    event.preventDefault();
+    const input = event.currentTarget;
+    const start = input.selectionStart ?? input.value.length;
+    const end = input.selectionEnd ?? start;
+    const lineStart = input.value.lastIndexOf('\n', Math.max(0, start - 1)) + 1;
+    const prefix = quickChecklistContinuationPrefix(input.value.slice(lineStart, start));
+    input.setRangeText('\n' + prefix, start, end, 'end');
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+  });
+}
+if (els.saveQuickChecklist) els.saveQuickChecklist.onclick = saveQuickChecklist;
 els.openEventCreate.onclick = openNewEventEditor;
 if (els.eventTimeline) {
   els.eventTimeline.addEventListener('click', event => {

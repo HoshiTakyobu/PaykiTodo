@@ -55,6 +55,14 @@ import java.time.ZoneId
         Index(
             value = ["itemType", "completed", "canceled", "startAtMillis", "endAtMillis", "dueAtMillis", "createdAtMillis"],
             name = "index_todo_items_calendar_range_sort"
+        ),
+        Index(
+            value = ["quickChecklistGroupId", "completed", "canceled", "quickChecklistSortOrder"],
+            name = "index_todo_items_quick_checklist_group"
+        ),
+        Index(
+            value = ["parentTodoId", "quickChecklistSortOrder"],
+            name = "index_todo_items_quick_checklist_parent"
         )
     ]
 )
@@ -103,6 +111,12 @@ data class TodoItem(
     val recurrenceEndEpochDay: Long? = null,
     val recurrenceAnchorDueAtMillis: Long? = null,
     val reminderOffsetMinutes: Int? = null,
+    val quickChecklistGroupId: Long? = null,
+    val parentTodoId: Long? = null,
+    val quickChecklistDepth: Int? = null,
+    val quickChecklistSortOrder: Int? = null,
+    @ColumnInfo(defaultValue = "0")
+    val quickChecklistCollapsed: Boolean = false,
     val createdAtMillis: Long = System.currentTimeMillis()
 ) {
     val itemTypeEnum: PlannerItemType
@@ -125,6 +139,9 @@ data class TodoItem(
 
     val isRecurring: Boolean
         get() = recurringSeriesId != null && recurrenceTypeEnum != RecurrenceType.NONE
+
+    val isQuickChecklistTask: Boolean
+        get() = quickChecklistGroupId != null
 
     val recurrenceTypeEnum: RecurrenceType
         get() = RecurrenceType.fromStorage(recurrenceType)

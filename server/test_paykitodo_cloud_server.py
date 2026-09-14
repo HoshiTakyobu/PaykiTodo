@@ -406,6 +406,11 @@ class CloudServerIntegrationTest(unittest.TestCase):
         self.assertIn("最近同步", admin_page)
         self.assertIn("Android 测试机", admin_page)
         self.assertIn("24 小时上传", admin_page)
+        self.assertIn('class="js-local-time"', admin_page)
+        self.assertIn("data-epoch-seconds=", admin_page)
+        self.assertIn("formatBrowserLocalTime", admin_page)
+        self.assertIn("浏览器时区", admin_page)
+        self.assertNotIn("time.localtime", admin_page)
 
         status, _, raw = self.request("/v2/sync/snapshot", "PUT", payload, upload_headers)
         self.assertEqual(200, status, raw)
@@ -442,6 +447,16 @@ class CloudServerIntegrationTest(unittest.TestCase):
         page = raw.decode("utf-8")
         self.assertIn("PaykiTodo 管理后台", page)
         self.assertIn("tester_admin", page)
+        self.assertIn('data-browser-time-zone', page)
+
+    def test_browser_time_markup_has_safe_utc_fallback_and_empty_value(self):
+        rendered = self.cloud.PaykiTodoCloudHandler.browser_time(0)
+        self.assertEqual('<time class="js-local-time" data-epoch-seconds="">-</time>', rendered)
+
+        rendered = self.cloud.PaykiTodoCloudHandler.browser_time(1_789_389_000)
+        self.assertIn('data-epoch-seconds="1789389000"', rendered)
+        self.assertIn("UTC ", rendered)
+        self.assertIn("Z</time>", rendered)
 
         status, _, _ = self.request("/admin", headers={"Authorization": "Basic invalid"})
         self.assertEqual(200, status)

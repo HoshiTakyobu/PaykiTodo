@@ -129,6 +129,7 @@ import com.example.todoalarm.data.PlanningOperationResult
 import com.example.todoalarm.data.PlanningParseResult
 import com.example.todoalarm.data.PlanningPostponeScope
 import com.example.todoalarm.data.PlanningRefreshScope
+import com.example.todoalarm.data.QuickChecklistGroup
 import com.example.todoalarm.data.ReminderAudioChannel
 import com.example.todoalarm.data.ReminderChainLog
 import com.example.todoalarm.data.ScheduleTemplate
@@ -484,6 +485,8 @@ internal fun DashboardBody(
     onQuickCreateCalendarEvent: (LocalDateTime, LocalDateTime) -> Unit,
     onMoveCalendarEvent: (TodoItem, LocalDateTime, LocalDateTime) -> Unit,
     onCompleteTodo: (TodoItem) -> Unit,
+    onToggleQuickChecklistGroup: (QuickChecklistGroup) -> Unit,
+    onToggleQuickChecklistTask: (TodoItem) -> Unit,
     todoBatchSelectionMode: Boolean,
     selectedTodoIds: Set<Long>,
     onToggleTodoSelection: (Long) -> Unit,
@@ -793,6 +796,25 @@ internal fun DashboardBody(
             emptyList()
         }
     }
+    val boardQuickChecklistIds = remember(boardTodoItems) {
+        boardTodoItems.filter { it.isQuickChecklistTask }.mapTo(mutableSetOf()) { it.id }
+    }
+    val normalBoardTodoItems = remember(boardTodoItems) { boardTodoItems.filterNot { it.isQuickChecklistTask } }
+    val activeQuickChecklistItems = remember(uiState.quickChecklistItems) {
+        uiState.quickChecklistItems.filter { it.isActive }
+    }
+    val boardQuickChecklistItems = remember(activeQuickChecklistItems, boardQuickChecklistIds) {
+        activeQuickChecklistItems.filter { it.id in boardQuickChecklistIds }
+    }
+    val normalMissedItems = remember(uiState.missedItems) { uiState.missedItems.filterNot { it.isQuickChecklistTask } }
+    val normalTodayItems = remember(uiState.todayItems) { uiState.todayItems.filterNot { it.isQuickChecklistTask } }
+    val normalUpcomingItems = remember(uiState.upcomingItems) { uiState.upcomingItems.filterNot { it.isQuickChecklistTask } }
+    val normalUpcomingGroups = remember(uiState.upcomingItemGroups) {
+        uiState.upcomingItemGroups.mapNotNull { group ->
+            val items = group.items.filterNot { it.isQuickChecklistTask }
+            if (items.isEmpty()) null else group.copy(items = items)
+        }
+    }
     val allTodayScheduleItems = remember(section, uiState.calendarItems, boardDate) {
         if (section == DashboardSection.BOARD) {
             uiState.calendarItems.filter { DailyBoardSnapshotBuilder.eventOverlapsDay(it, boardDate) }
@@ -886,8 +908,8 @@ internal fun DashboardBody(
         completedHistoryItems
     ) {
         when (section) {
-            DashboardSection.BOARD -> boardTodoItems
-            DashboardSection.ACTIVE -> uiState.missedItems + uiState.todayItems + uiState.upcomingItems
+            DashboardSection.BOARD -> normalBoardTodoItems + boardQuickChecklistItems
+            DashboardSection.ACTIVE -> normalMissedItems + normalTodayItems + normalUpcomingItems + activeQuickChecklistItems
             DashboardSection.HISTORY -> completedHistoryItems
             else -> emptyList()
         }.distinctBy { it.id }
@@ -966,8 +988,27 @@ internal fun DashboardBody(
                             }
                         }
                     } else {
+                        item(key = "board-quick-checklists") {
+                            Column {
+                                QuickChecklistGroups(
+                                    groups = uiState.quickChecklistGroups,
+                                    items = boardQuickChecklistItems,
+                                    taskGroups = uiState.groups,
+                                    selectionMode = todoBatchSelectionMode,
+                                    selectedTodoIds = selectedTodoIds,
+                                    onToggleSelection = onToggleTodoSelection,
+                                    onEnterSelection = onEnterTodoSelection,
+                                    onToggleGroup = onToggleQuickChecklistGroup,
+                                    onToggleTask = onToggleQuickChecklistTask,
+                                    onEdit = onEdit,
+                                    onComplete = onCompleteTodo,
+                                    onCancel = onCancelTodo,
+                                    onDelete = onDeleteTodo
+                                )
+                            }
+                        }
                         items(
-                            items = boardTodoItems,
+                            items = normalBoardTodoItems,
                             key = { it.id },
                             contentType = { "active-todo-card" }
                         ) { item ->
@@ -1035,6 +1076,28 @@ internal fun DashboardBody(
                     )
                 }
 
+                if (activeQuickChecklistItems.isNotEmpty()) {
+                    item(key = "active-quick-checklists") {
+                        Column {
+                            QuickChecklistGroups(
+                                groups = uiState.quickChecklistGroups,
+                                items = activeQuickChecklistItems,
+                                taskGroups = uiState.groups,
+                                selectionMode = todoBatchSelectionMode,
+                                selectedTodoIds = selectedTodoIds,
+                                onToggleSelection = onToggleTodoSelection,
+                                onEnterSelection = onEnterTodoSelection,
+                                onToggleGroup = onToggleQuickChecklistGroup,
+                                onToggleTask = onToggleQuickChecklistTask,
+                                onEdit = onEdit,
+                                onComplete = onCompleteTodo,
+                                onCancel = onCancelTodo,
+                                onDelete = onDeleteTodo
+                            )
+                        }
+                    }
+                }
+
                 if (
                     uiState.selectedGroupIds.size >= 2 &&
                     uiState.groupFilterMode == TodoRepository.GroupFilterMode.INTERSECTION &&
@@ -1051,17 +1114,17 @@ internal fun DashboardBody(
                     }
                 }
 
-                if (uiState.missedItems.isNotEmpty()) {
+                if (normalMissedItems.isNotEmpty()) {
                     item {
                         ExpandableSectionHeader(
-                            title = "已错过（${uiState.missedItems.size}）",
+                            title = "已错过（${normalMissedItems.size}）",
                             expanded = missedExpanded,
                             onToggle = { missedExpanded = !missedExpanded }
                         )
                     }
                     if (missedExpanded) {
                         items(
-                            items = uiState.missedItems,
+                            items = normalMissedItems,
                             key = { it.id },
                             contentType = { "active-todo-card" }
                         ) { item ->
@@ -1084,17 +1147,17 @@ internal fun DashboardBody(
 
                 item {
                     ExpandableSectionHeader(
-                        title = "今日待办（${uiState.todayItems.size}）",
+                        title = "今日待办（${normalTodayItems.size}）",
                         expanded = todayExpanded,
                         onToggle = { todayExpanded = !todayExpanded }
                     )
                 }
                 if (todayExpanded) {
-                    if (uiState.todayItems.isEmpty()) {
+                    if (normalTodayItems.isEmpty()) {
                         item { EmptyStateCard("今天还没有安排任务。") }
                     } else {
                         items(
-                            items = uiState.todayItems,
+                            items = normalTodayItems,
                             key = { it.id },
                             contentType = { "active-todo-card" }
                         ) { item ->
@@ -1117,16 +1180,16 @@ internal fun DashboardBody(
 
                 item {
                     ExpandableSectionHeader(
-                        title = "计划中（${uiState.upcomingItems.size}）",
+                        title = "计划中（${normalUpcomingItems.size}）",
                         expanded = upcomingExpanded,
                         onToggle = { upcomingExpanded = !upcomingExpanded }
                     )
                 }
                 if (upcomingExpanded) {
-                    if (uiState.upcomingItems.isEmpty()) {
+                    if (normalUpcomingItems.isEmpty()) {
                         item { EmptyStateCard("后续时间暂时没有新计划。") }
                     } else {
-                        uiState.upcomingItemGroups.forEach { group ->
+                        normalUpcomingGroups.forEach { group ->
                             val seriesId = group.seriesId
                             if (group.isCollapsibleRecurringSeries && seriesId != null) {
                                 val expanded = seriesId in expandedRecurringSeries

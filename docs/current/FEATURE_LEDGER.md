@@ -4,6 +4,17 @@ This file tracks the product at a practical level for new coding sessions.
 
 ## Implemented And In Use
 
+### Quick Checklist And Browser Time (1.16.16)
+
+- The quick checklist entry is available from Daily Board and Todo on Android, the LAN Desktop Web, and the Windows client; edits render a live hierarchical preview before confirmation.
+- `-`, `--`, `---`, and deeper prefixes create real TodoItems at the corresponding depth. Enter continues the previous depth, and `--#` attaches a visible note to the nearest task without becoming a task.
+- Confirmed groups have a title-only container. Membership, parent ID, depth, sibling order, note, and collapsed state persist in Room `31`; existing items and todos are migrated unchanged by `30 -> 31`.
+- Parent completion is derived from non-canceled children. Canceled children do not block completion, canceled parents remain canceled, deletion of a sole child does not auto-complete its parent, and recalculated state propagates to valid ancestors.
+- Cancel writes history; delete does not. Android restores canceled or completed subtrees through the existing history path. LAN Web and Windows use the shared Todo operations and snapshot model but do not yet expose a dedicated history-restore entry.
+- Checklist fields survive `.paykibak` backup/import, cloud snapshots, Android-to-LAN/Windows synchronization, and Widget summary generation.
+- Progress counters exclude canceled tasks. Duplicate fingerprints are rejected before a second group is written.
+- Administrator registration, sync, device-activity, and audit timestamps are emitted as epoch values and formatted with the browser's local timezone instead of the server timezone.
+
 ### Android Interaction Round (1.16.15)
 
 - Drawer identity shows the app icon, nickname and server-issued immutable user ID, and opens account settings.
@@ -464,7 +475,7 @@ This file tracks the product at a practical level for new coding sessions.
 
 - `todo_items` has Room indices for board todo queries, board event range queries, active reminders, group+DDL sorting, recurring-series lookup, desktop todo paging / sorting, and active countdown lookup.
 - Database version is `30`; migrations through `MIGRATION_26_27` cover the existing planning, reminder, performance, and recurring-skip schema, `MIGRATION_27_28` adds multi-slot bundle identity, `MIGRATION_28_29` preserves the activity-record compatibility table, and `MIGRATION_29_30` adds event check-in reminder offsets to items and recurring templates.
-- Room schema export is enabled and `app/schemas/com.example.todoalarm.data.AppDatabase/30.json` is committed as the current database-30 reference schema.
+- Room schema export is enabled and `app/schemas/com.example.todoalarm.data.AppDatabase/31.json` is committed as the current database-31 reference schema; `MIGRATION_30_31` adds quick-checklist group, parent, depth, order, note, and folded fields.
 - Desktop Web first connection now uses a lightweight board snapshot (`/api/snapshot?scope=board`); todo management uses paged/searchable `/api/todos?offset=...&limit=...&q=...`, and the event timeline uses visible-range `/api/events?start=...&end=...` instead of sharing one full snapshot for every management tab.
 - Main phone board/task UI uses active-todo-only observation and today/tomorrow event range observation instead of merging all todos and full active events into ordinary board/task state.
 - Main phone board/task UI uses the shared active-todo section classifier for missed / today / upcoming lists, so no-DDL active todos keep the same "today every day" behavior in My Tasks and the board.

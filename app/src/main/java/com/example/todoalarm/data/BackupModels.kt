@@ -16,5 +16,6 @@ data class BackupSnapshot(
     val eventCheckIns: List<EventCheckIn> = emptyList(),
     val recurringInstanceSkips: List<RecurringInstanceSkip> = emptyList(),
     val activityRecords: List<ActivityRecord> = emptyList(),
+    val quickChecklistGroups: List<QuickChecklistGroup> = emptyList(),
     val settings: AppSettings
 )

@@ -12,6 +12,7 @@ import com.example.todoalarm.TodoApplication
 import com.example.todoalarm.data.DailyBoardSnapshot
 import com.example.todoalarm.data.DailyBoardSnapshotBuilder
 import com.example.todoalarm.data.EventCheckIn
+import com.example.todoalarm.data.QuickChecklistGroup
 import com.example.todoalarm.data.TaskGroup
 import com.example.todoalarm.data.TodoItem
 import com.example.todoalarm.ui.MainActivity
@@ -56,6 +57,7 @@ private class TodoWidgetFactory(
         rows = runBlocking {
             val items = app.repository.getActiveItemsForBoardRange()
             val groups = app.repository.getAllGroups()
+            val quickChecklistGroups = app.repository.getAllQuickChecklistGroups()
             val notes = app.repository.getPlanningNotesWithAnnouncementHints()
             val snapshot = DailyBoardSnapshotBuilder.build(items = items, planningNotes = notes)
             val activeCheckIns = app.repository.getActiveCheckInsForEvents(
@@ -68,6 +70,7 @@ private class TodoWidgetFactory(
             buildRows(
                 snapshot = snapshot,
                 groups = groups,
+                quickChecklistGroups = quickChecklistGroups,
                 activeCheckIns = activeCheckIns
             )
         }
@@ -269,6 +272,7 @@ private class TodoWidgetFactory(
     private fun buildRows(
         snapshot: DailyBoardSnapshot,
         groups: List<TaskGroup>,
+        quickChecklistGroups: List<QuickChecklistGroup>,
         activeCheckIns: Map<Long, EventCheckIn>
     ): List<WidgetBoardRow> {
         val output = mutableListOf<WidgetBoardRow>()
@@ -299,12 +303,18 @@ private class TodoWidgetFactory(
         } else {
             snapshot.todoItems.forEach { item ->
                 val group = groups.firstOrNull { it.id == item.groupId }
+                val checklist = item.quickChecklistGroupId?.let { id -> quickChecklistGroups.firstOrNull { it.id == id } }
+                val title = if (checklist == null) {
+                    item.title
+                } else {
+                    "${"  ".repeat(((item.quickChecklistDepth ?: 1) - 1).coerceAtLeast(0))}${item.title}"
+                }
                 output += WidgetBoardRow(
                     stableId = item.id,
                     type = WidgetRowType.TODO,
                     itemId = item.id,
-                    title = item.title,
-                    groupName = group?.name ?: "默认",
+                    title = title,
+                    groupName = checklist?.title?.let { "清单 · $it" } ?: (group?.name ?: "默认"),
                     notes = item.notes.trim(),
                     meta = todoTimeLabel(item),
                     trailing = if (item.missed) "已逾期" else "",

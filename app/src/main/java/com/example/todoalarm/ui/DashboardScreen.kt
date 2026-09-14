@@ -80,6 +80,7 @@ import com.example.todoalarm.data.PlanningPostponeScope
 import com.example.todoalarm.data.PlanningRefreshScope
 import com.example.todoalarm.data.RecurrenceConfig
 import com.example.todoalarm.data.RecurrenceScope
+import com.example.todoalarm.data.QuickChecklistGroup
 import com.example.todoalarm.data.ReminderDeliveryMode
 import com.example.todoalarm.data.ReminderAudioChannel
 import com.example.todoalarm.data.ReminderChainLog
@@ -134,6 +135,9 @@ fun DashboardScreen(
     onRequestIgnoreBatteryOptimization: () -> Unit,
     onRequestAccessibilityService: () -> Unit,
     onAddTodo: suspend (TodoDraft) -> String?,
+    onCreateQuickChecklist: suspend (String) -> String?,
+    onToggleQuickChecklistGroup: (QuickChecklistGroup) -> Unit,
+    onToggleQuickChecklistTask: (TodoItem) -> Unit,
     onAddCalendarEvent: suspend (com.example.todoalarm.data.CalendarEventDraft) -> String?,
     onImportTodos: suspend (List<TodoDraft>) -> String?,
     onImportCalendarEvents: suspend (List<CalendarEventDraft>) -> String?,
@@ -235,6 +239,7 @@ fun DashboardScreen(
     var editingTodoGroupIds by remember { mutableStateOf<List<Long>>(emptyList()) }
     var calendarDraftSeed by remember { mutableStateOf<CalendarEventDraft?>(null) }
     var todoBatchImportVisible by remember { mutableStateOf(false) }
+    var quickChecklistEditorVisible by rememberSaveable { mutableStateOf(false) }
     var batchImportVisible by remember { mutableStateOf(false) }
     var editScope by remember { mutableStateOf(RecurrenceScope.CURRENT) }
     var scopeDialogTarget by remember { mutableStateOf<TodoItem?>(null) }
@@ -437,6 +442,7 @@ fun DashboardScreen(
             }
             todoBatchImportVisible -> todoBatchImportVisible = false
             batchImportVisible -> batchImportVisible = false
+            quickChecklistEditorVisible -> quickChecklistEditorVisible = false
             quickPreviewTodo != null -> quickPreviewTodo = null
             drawerState.isOpen -> scope.launch { drawerState.close() }
             section == DashboardSection.HISTORY -> section = DashboardSection.ACTIVE
@@ -584,10 +590,12 @@ fun DashboardScreen(
                                         Text(if (allVisibleTodosSelected) "清空" else "全选")
                                     }
                                 } else if (section == DashboardSection.BOARD) {
+                                    QuickChecklistActionButton(onClick = { quickChecklistEditorVisible = true })
                                     IconButton(onClick = { searchVisible = true }) {
                                         Icon(Icons.Rounded.Search, contentDescription = "全局搜索")
                                     }
                                 } else if (section == DashboardSection.ACTIVE) {
+                                    QuickChecklistActionButton(onClick = { quickChecklistEditorVisible = true })
                                     IconButton(onClick = { section = DashboardSection.HISTORY }) {
                                         Icon(Icons.Rounded.History, contentDescription = "待办历史记录")
                                     }
@@ -744,6 +752,8 @@ fun DashboardScreen(
                         }
                     },
                     onCompleteTodo = onCompleteTodo,
+                    onToggleQuickChecklistGroup = onToggleQuickChecklistGroup,
+                    onToggleQuickChecklistTask = onToggleQuickChecklistTask,
                     todoBatchSelectionMode = todoBatchSelectionMode,
                     selectedTodoIds = selectedTodoIdSet,
                     onToggleTodoSelection = { itemId ->
@@ -904,6 +914,17 @@ fun DashboardScreen(
                         Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
                     }
                 }
+            }
+        )
+    }
+
+    if (quickChecklistEditorVisible) {
+        QuickChecklistEditorDialog(
+            onDismiss = { quickChecklistEditorVisible = false },
+            onSave = onCreateQuickChecklist,
+            onSaved = { title ->
+                quickChecklistEditorVisible = false
+                Toast.makeText(context, "已创建清单：$title", Toast.LENGTH_SHORT).show()
             }
         )
     }

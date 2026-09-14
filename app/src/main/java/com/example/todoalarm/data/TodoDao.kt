@@ -217,6 +217,15 @@ interface TodoDao {
     @Query("SELECT * FROM todo_items")
     suspend fun getAllTodos(): List<TodoItem>
 
+    @Query("SELECT * FROM todo_items WHERE quickChecklistGroupId IS NOT NULL ORDER BY quickChecklistGroupId ASC, quickChecklistDepth ASC, quickChecklistSortOrder ASC, id ASC")
+    fun observeQuickChecklistItems(): Flow<List<TodoItem>>
+
+    @Query("SELECT * FROM todo_items WHERE quickChecklistGroupId = :groupId ORDER BY quickChecklistDepth ASC, quickChecklistSortOrder ASC, id ASC")
+    suspend fun getQuickChecklistItems(groupId: Long): List<TodoItem>
+
+    @Query("SELECT COUNT(*) FROM todo_items WHERE quickChecklistGroupId = :groupId")
+    suspend fun countQuickChecklistItems(groupId: Long): Int
+
     @Query(
         """
         SELECT * FROM todo_items
@@ -597,6 +606,36 @@ interface TodoDao {
 
     @Query("DELETE FROM task_groups")
     suspend fun clearGroups()
+
+    @Query("SELECT * FROM quick_checklist_groups ORDER BY createdAtMillis ASC, id ASC")
+    fun observeQuickChecklistGroups(): Flow<List<QuickChecklistGroup>>
+
+    @Query("SELECT * FROM quick_checklist_groups ORDER BY createdAtMillis ASC, id ASC")
+    suspend fun getAllQuickChecklistGroups(): List<QuickChecklistGroup>
+
+    @Query("SELECT * FROM quick_checklist_groups WHERE id = :id LIMIT 1")
+    suspend fun getQuickChecklistGroup(id: Long): QuickChecklistGroup?
+
+    @Query("SELECT * FROM quick_checklist_groups WHERE sourceFingerprint = :fingerprint LIMIT 1")
+    suspend fun getQuickChecklistGroupByFingerprint(fingerprint: String): QuickChecklistGroup?
+
+    @Insert(onConflict = OnConflictStrategy.ABORT)
+    suspend fun insertQuickChecklistGroup(group: QuickChecklistGroup): Long
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertQuickChecklistGroups(groups: List<QuickChecklistGroup>): List<Long>
+
+    @Update
+    suspend fun updateQuickChecklistGroup(group: QuickChecklistGroup)
+
+    @Query("UPDATE quick_checklist_groups SET collapsed = :collapsed, updatedAtMillis = :updatedAtMillis WHERE id = :id")
+    suspend fun updateQuickChecklistGroupCollapsed(id: Long, collapsed: Boolean, updatedAtMillis: Long)
+
+    @Query("DELETE FROM quick_checklist_groups WHERE id = :id")
+    suspend fun deleteQuickChecklistGroup(id: Long)
+
+    @Query("DELETE FROM quick_checklist_groups")
+    suspend fun clearQuickChecklistGroups()
 
     @Query(
         """

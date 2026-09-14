@@ -105,6 +105,7 @@ internal fun BackupSnapshot.toJson(): JSONObject {
         put("eventCheckIns", JSONArray(eventCheckIns.map { it.toJson() }))
         put("recurringInstanceSkips", JSONArray(recurringInstanceSkips.map { it.toJson() }))
         put("activityRecords", JSONArray(activityRecords.map { it.toJson() }))
+        put("quickChecklistGroups", JSONArray(quickChecklistGroups.map { it.toJson() }))
     }
 }
 
@@ -248,6 +249,11 @@ private fun TodoItem.toJson(): JSONObject {
         put("recurrenceEndEpochDay", recurrenceEndEpochDay)
         put("recurrenceAnchorDueAtMillis", recurrenceAnchorDueAtMillis)
         put("reminderOffsetMinutes", reminderOffsetMinutes)
+        put("quickChecklistGroupId", quickChecklistGroupId)
+        put("parentTodoId", parentTodoId)
+        put("quickChecklistDepth", quickChecklistDepth)
+        put("quickChecklistSortOrder", quickChecklistSortOrder)
+        put("quickChecklistCollapsed", quickChecklistCollapsed)
         put("createdAtMillis", createdAtMillis)
     }
 }
@@ -389,6 +395,17 @@ private fun ActivityRecord.toJson(): JSONObject {
     }
 }
 
+private fun QuickChecklistGroup.toJson(): JSONObject {
+    return JSONObject().apply {
+        put("id", id)
+        put("title", title)
+        put("collapsed", collapsed)
+        put("sourceFingerprint", sourceFingerprint)
+        put("createdAtMillis", createdAtMillis)
+        put("updatedAtMillis", updatedAtMillis)
+    }
+}
+
 internal fun backupSnapshotFromJson(json: JSONObject): BackupSnapshot {
     return BackupSnapshot(
         exportedAtMillis = json.optLong("exportedAtMillis", System.currentTimeMillis()),
@@ -406,6 +423,7 @@ internal fun backupSnapshotFromJson(json: JSONObject): BackupSnapshot {
         eventCheckIns = json.optJSONArray("eventCheckIns").toEventCheckIns(),
         recurringInstanceSkips = json.optJSONArray("recurringInstanceSkips").toRecurringInstanceSkips(),
         activityRecords = json.optJSONArray("activityRecords").toActivityRecords(),
+        quickChecklistGroups = json.optJSONArray("quickChecklistGroups").toQuickChecklistGroups(),
         settings = json.optJSONObject("settings").toSettings()
     )
 }
@@ -523,6 +541,11 @@ private fun JSONArray?.toTasks(): List<TodoItem> {
                     recurrenceEndEpochDay = item.optLongOrNull("recurrenceEndEpochDay"),
                     recurrenceAnchorDueAtMillis = item.optLongOrNull("recurrenceAnchorDueAtMillis"),
                     reminderOffsetMinutes = item.optIntOrNull("reminderOffsetMinutes"),
+                    quickChecklistGroupId = item.optLongOrNull("quickChecklistGroupId"),
+                    parentTodoId = item.optLongOrNull("parentTodoId"),
+                    quickChecklistDepth = item.optIntOrNull("quickChecklistDepth"),
+                    quickChecklistSortOrder = item.optIntOrNull("quickChecklistSortOrder"),
+                    quickChecklistCollapsed = item.optBoolean("quickChecklistCollapsed", false),
                     createdAtMillis = item.optLong("createdAtMillis", System.currentTimeMillis())
                 )
             )
@@ -757,6 +780,29 @@ private fun JSONArray?.toActivityRecords(): List<ActivityRecord> {
                     source = source,
                     notes = item.optString("notes", ""),
                     createdAtMillis = item.optLong("createdAtMillis", System.currentTimeMillis())
+                )
+            )
+        }
+    }
+}
+
+private fun JSONArray?.toQuickChecklistGroups(): List<QuickChecklistGroup> {
+    if (this == null) return emptyList()
+    return buildList(length()) {
+        for (index in 0 until length()) {
+            val item = optJSONObject(index) ?: continue
+            val id = item.optLong("id", 0L)
+            val title = item.optString("title").trim()
+            val fingerprint = item.optString("sourceFingerprint").trim()
+            if (id <= 0 || title.isBlank() || fingerprint.isBlank()) continue
+            add(
+                QuickChecklistGroup(
+                    id = id,
+                    title = title,
+                    collapsed = item.optBoolean("collapsed", false),
+                    sourceFingerprint = fingerprint,
+                    createdAtMillis = item.optLong("createdAtMillis", System.currentTimeMillis()),
+                    updatedAtMillis = item.optLong("updatedAtMillis", System.currentTimeMillis())
                 )
             )
         }

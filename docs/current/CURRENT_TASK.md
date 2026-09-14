@@ -2,28 +2,27 @@
 
 ## Active Focus
 
-The `v1.16.15 / versionCode 380` round implements the user's 17 Android UI/account requests. It builds local Debug/Release APKs and deploys the account API additions; it does not publish a GitHub Release.
+The `v1.16.16 / versionCode 381` round implements browser-local time in the administrator page and the cross-platform quick checklist documented in `docs/goals/2026-09-14-paykitodo-1.16.16-quick-checklist-and-browser-time-goal.md`. It is a local validation round and does not publish a GitHub Release.
 
-## v1.16.15 Checklist
+## v1.16.16 Checklist
 
-- [x] AI source names use the full row width, wrap, and omit generated numbering.
-- [x] Drawer identity opens account settings with server ID, nickname/password changes and device management.
-- [x] Planning documents expose create, per-document rename and swipe-to-confirm archive; help is in the top bar and the redundant editor hint is removed.
-- [x] Todo uses Daily Board artwork; history is owned by Todo and filters out events.
-- [x] Month and week paging animate; month double-tap centers the date in three-day view; Today selects the actual date and reveals/highlights the agenda row.
-- [x] Calendar batch/template menu entries are removed; agenda font sizes/lunar duplication/accent-bar height are corrected.
-- [x] Todo creation uses a circular icon; 800ms long press opens batch creation; group text/dots are larger and manager rows are tighter.
-- [x] Sound preferences are merged into one compact page; requested entry summaries are hidden.
-- [x] Account API integration tests, password-key rotation regression and first Android unit/Lint pass.
-- [x] Final Debug/Release assembly, emulator interaction/screenshots, documentation close-out and focused commit.
+- [x] Administrator timestamps are emitted as epoch values and formatted in the visitor's browser timezone.
+- [x] The quick checklist parser handles a title, arbitrary dash-depth nesting, visible `--#` notes, validation, and Enter prefix continuation.
+- [x] Daily Board and Todo expose the quick checklist entry and real-time preview on Android.
+- [x] Confirmed input creates real hierarchical TodoItems, never a title row or note-only row.
+- [x] Parent completion excludes canceled children, does not revive canceled ancestors, and updates ancestors recursively.
+- [x] Complete, cancel, delete, history, backup, cloud snapshot, LAN Web, Windows, and Widget paths carry the checklist fields.
+- [x] Room `30 -> 31` migration and exported schema are present.
+- [x] Focused parser/repository/migration/backup/server tests and emulator instrumentation pass.
+- [x] Documentation, final build verification, sensitive-data scan, and focused commit are complete.
 
-## v1.16.15 Verification Evidence
+## v1.16.16 Verification Evidence
 
-1. `:app:assembleDebug`, `:app:assembleDebugAndroidTest`, `:app:assembleRelease`, `:app:testDebugUnitTest`, and `:app:lintDebug` passed.
-2. The server integration suite passed all 11 tests.
-3. `emulator-5554` / `Pixel_8` installed the final Debug and instrumentation APKs; all 9 Compose interaction tests passed.
-4. The final Debug and signed Release APKs report `versionName=1.16.15` and `versionCode=380`.
-5. The normal `MainActivity` launched successfully on the emulator. Physical-device checks remain necessary for OEM lock-screen, notification shade, launcher widget, and background reminder behavior.
+1. `:app:testDebugUnitTest`, `:app:connectedDebugAndroidTest`, `node --check`, `dotnet build`, and the 12-test server suite passed during implementation.
+2. Room migration metadata covers database `31`, and backup compatibility tests cover older archives without checklist fields.
+3. `emulator-5554` / `Pixel_8` passed all 17 repository and migration instrumentation tests.
+4. Final verification after the `1.16.16 / 381` metadata update: 183 Android unit tests, 17 emulator instrumentation tests, Android Lint, Debug/AndroidTest/Release assembly, 12 server tests, JavaScript syntax, and Windows Release build/publish all passed. Release APK v2 signature verification passed with the expected RSA-2048 signer.
+5. LAN Web and Windows are implemented and compile/test, but final device-level history restoration remains an explicitly tracked cross-client gap. Physical-device OEM reminder/widget behavior remains outside this round.
 
 ## Completed `v1.16.14` Scope
 

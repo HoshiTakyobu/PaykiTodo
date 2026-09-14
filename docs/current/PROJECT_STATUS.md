@@ -8,17 +8,20 @@
 - Supported Android: Android 8.0+ / API 26+
 - Compile and target SDK: Android 14 / API 34
 - License: MIT
-- App version: `1.16.15 / versionCode 380` (current local validation source)
-- Room database version: `30`
+- App version: `1.16.16 / versionCode 381` (current local validation source)
+- Room database version: `31`
 
 ## Published Build
 
 - GitHub Release: `https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.15.18`
 - Release APK: `app/build/outputs/apk/release/PaykiTodo-1.15.18-release.apk`
 - Public asset name: `PaykiTodo-1.15.18-release.apk`
-- Current debug APK: `app/build/outputs/apk/debug/PaykiTodo-1.16.15-debug.apk`
-- Current signed release APK: `app/build/outputs/apk/release/PaykiTodo-1.16.15-release.apk`
-- Current Windows self-contained EXE: `desktop/dist/PaykiTodo.exe` (previous round; not rebuilt for this Android UI round)
+- Current debug APK: `app/build/outputs/apk/debug/PaykiTodo-1.16.16-debug.apk`
+- Current signed release APK: `app/build/outputs/apk/release/PaykiTodo-1.16.16-release.apk`
+- Current Windows self-contained EXE: `desktop/dist/PaykiTodo.exe` (rebuilt for `1.16.16`; file version `1.16.16.0`)
+- Debug APK SHA-256: `C211A4B1673EE78142BEB446C30D8E9E0ED43EE6F475EFCF363883B5CF4B8876`
+- Signed Release APK SHA-256: `40773D55EE02141C9D318A1E172D319950F6615CD1C2A8A331EF75F32174961F`
+- Windows self-contained EXE SHA-256: `55E914F0AF106FC149104FBA8C2F236B7AEC2593E4881E045C97E6FB07CFA712`
 - Release signing material remains local and ignored by Git.
 
 ## Product Positioning
@@ -39,10 +42,21 @@ PaykiTodo is a local-first Android assistant for todos, DDLs, schedules, countdo
 - Remote snapshot inspection shows export time and record counts before any restore; restore requires explicit confirmation and creates a local safety backup first.
 - Windows self-contained desktop client supports an independent encrypted local data copy, account login/registration, offline todo/event/planning edits, and versioned cloud synchronization. Its phone LAN option remains a clearly separate compatibility mode using the phone's `18765`.
 - Android daily-board and countdown widgets.
+- Quick checklist groups with arbitrary hierarchy, visible `--#` notes, real TodoItems, parent completion, folding, backup and cross-client snapshot support.
 - Local Room storage, `.paykibak` migration archive / legacy JSON restore, diagnostics, crash logs, and in-app Wiki.
 - Desktop Web calendar now uses the same current-time line convention as the phone calendar, separates today's date from the selected date, and flashes the selected week column briefly.
 
 See `README.md` for the public overview and `docs/current/FEATURE_LEDGER.md` for the detailed implementation ledger.
+
+## v1.16.16 Validation Scope (not published)
+
+- Administrator timestamps are serialized as epoch values and formatted in the visitor's browser timezone.
+- Quick checklist parsing, preview, Enter continuation, validation, and hierarchical task creation work on Android.
+- LAN Desktop Web and the Windows client expose matching create/fold/complete/cancel/delete flows; Android additionally owns backup and history restoration.
+- Parent completion excludes canceled children, does not revive canceled ancestors, and recurses upward. Canceled tasks enter history; deleted tasks do not.
+- Room `30 -> 31` adds checklist group, parent, depth, order, note, and fold fields while preserving existing data.
+- Final verification passed: 183 Android unit tests, 17 emulator instrumentation tests, Android Lint, Debug/AndroidTest/Release assembly, 12 server tests, JavaScript syntax, and Windows Release publish. Release APK v2 signature verification passed with one RSA-2048 signer.
+- Known cross-client gap: LAN Web and Windows do not yet expose a dedicated history-restore entry for canceled checklist tasks.
 
 ## v1.16.15 Validation Scope (not published)
 

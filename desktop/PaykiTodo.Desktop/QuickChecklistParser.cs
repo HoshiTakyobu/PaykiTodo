@@ -16,6 +16,8 @@ internal sealed record QuickChecklistDiagnostic(
     string Message
 );
 
+internal sealed record QuickChecklistSourceSelection(int Start, int Length);
+
 internal sealed record QuickChecklistDraftNode(
     int TemporaryId,
     int? ParentTemporaryId,
@@ -144,6 +146,24 @@ internal static partial class QuickChecklistParser
     {
         var match = ContinuationPattern().Match(StripComment(line).TrimStart());
         return match.Success ? match.Groups[1].Value + " " : "";
+    }
+
+    public static QuickChecklistSourceSelection? SourceLineSelection(string text, int sourceLine)
+    {
+        if (sourceLine < 1) return null;
+        var line = 1;
+        var start = 0;
+        while (start <= text.Length)
+        {
+            var newline = text.IndexOf('\n', start);
+            var end = newline >= 0 ? newline : text.Length;
+            if (end > start && text[end - 1] == '\r') end--;
+            if (line == sourceLine) return new QuickChecklistSourceSelection(start, end - start);
+            if (newline < 0) return null;
+            start = newline + 1;
+            line++;
+        }
+        return null;
     }
 
     private static string StripComment(string value)

@@ -31,7 +31,7 @@ Current long-term direction includes:
 1. Strong reminder reliability across foreground, background, lock-screen, and wake-back scenarios
 2. Better daily planning UX across tasks, day view, and calendar timeline
 3. Better local backup / restore / diagnostics / explainability
-4. Lightweight desktop-side assistance through LAN browser control first, followed by an optional full Windows client with a local copy of the same account data
+4. Desktop assistance through both the phone-hosted LAN browser and an independent Windows client with its own local copy of the same account data
 5. Optional account-backed multi-device sync that preserves local-first operation and remains usable when the server expires
 
 ## Computer Client Boundary
@@ -47,7 +47,7 @@ Current long-term direction includes:
 
 These are not current primary goals:
 
-- account-backed multi-device cloud sync as an unimplemented future phase
+- cloud-only operation that makes the server the sole source of user data
 - team collaboration
 - complex account and administrator systems before the local / LAN product is stable
 - web-first productization

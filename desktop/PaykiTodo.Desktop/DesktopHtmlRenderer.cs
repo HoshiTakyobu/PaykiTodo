@@ -127,6 +127,7 @@ internal static class DesktopHtmlRenderer
     {
         var group = groups.TryGetValue(item.GroupId, out var value) ? value : new DesktopGroup(0, "未分组", item.AccentColor);
         var html = new StringBuilder("<article class='item' style='--accent:").Append(SafeColor(item.AccentColor)).Append("'><div class='accent'></div><div><div class='title'>")
+            .Append(item.QuickChecklistGroupId is not null ? (item.Completed ? "☑ " : "☐ ") : "")
             .Append(Html(item.Title)).Append("</div><div class='sub'>").Append(Html(FormatTime(item))).Append(" · ").Append(Html(group.Name));
         if (!string.IsNullOrWhiteSpace(item.Location)) html.Append(" · @").Append(Html(item.Location.TrimStart('@')));
         html.Append("</div></div><div class='item-actions'><button onclick=\"post('edit',").Append(item.Id).Append(")\">修改</button>");

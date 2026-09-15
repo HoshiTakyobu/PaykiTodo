@@ -12,7 +12,7 @@ The released `1.15.18 / versionCode 360` round restores independent full-screen 
 
 ## Current Development Round
 
-The local `1.15.22 / versionCode 364` source includes the `1.15.21` reminder interaction work and additionally fixes Desktop Web navigation, tab-specific create actions, current-time line rendering, mini-calendar selection, and week-column feedback. One `提醒` checkbox now means full-screen plus notification-bar delivery, while the old three enum values remain migration-compatible storage values. Account login, bidirectional cloud sync, writable Windows local storage, and the administrator panel are not implemented; see `CLOUD_SYNC_AND_ADMIN_DESIGN.md`.
+The local `1.16.18 / versionCode 383` source includes account login, browser-local administrator timestamps, encrypted bidirectional snapshot sync, writable Windows local storage, and the administrator panel. The current round also implements the cross-platform quick checklist with real hierarchical TodoItems, backup/sync/Widget support, source-line diagnostics, terminal-state protection, and a tested Room `30 -> 31` migration. The latest public GitHub Release remains `v1.15.18`; `1.16.18` is a locally verified source/build and has not been tagged or published.
 
 ## Initial Product Request
 

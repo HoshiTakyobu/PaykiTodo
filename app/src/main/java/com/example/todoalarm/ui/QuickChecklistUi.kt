@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
@@ -48,6 +49,8 @@ import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.example.todoalarm.data.QuickChecklistDiagnosticSeverity
@@ -93,7 +96,14 @@ internal fun QuickChecklistEditorDialog(
     var value by remember { mutableStateOf(TextFieldValue("")) }
     var saving by remember { mutableStateOf(false) }
     var saveError by remember { mutableStateOf<String?>(null) }
+    val focusRequester = remember { FocusRequester() }
     val draft = remember(value.text) { QuickChecklistParser.parse(value.text) }
+
+    fun selectSourceLine(line: Int) {
+        val selection = QuickChecklistEditing.sourceLineSelection(value.text, line) ?: return
+        value = value.copy(selection = TextRange(selection.start, selection.end))
+        focusRequester.requestFocus()
+    }
 
     Dialog(
         onDismissRequest = { if (!saving) onDismiss() },
@@ -130,7 +140,13 @@ internal fun QuickChecklistEditorDialog(
                     if (!saving) return@LaunchedEffect
                     val result = onSave(value.text)
                     saving = false
-                    if (result == null) onSaved(draft.title) else saveError = result
+                    if (result == null) {
+                        onSaved(draft.title)
+                    } else {
+                        saveError = result
+                        Regex("第\\s*(\\d+)\\s*行").find(result)?.groupValues?.getOrNull(1)?.toIntOrNull()
+                            ?.let(::selectSourceLine)
+                    }
                 }
                 LazyColumn(
                     modifier = Modifier
@@ -155,7 +171,8 @@ internal fun QuickChecklistEditorDialog(
                             },
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .height(220.dp),
+                                .height(220.dp)
+                                .focusRequester(focusRequester),
                             label = { Text("输入清单") },
                             placeholder = {
                                 Text("0913待办\n- 准备资料\n-- 身份证复印件\n--# 请使用本学年材料")
@@ -163,10 +180,20 @@ internal fun QuickChecklistEditorDialog(
                             maxLines = Int.MAX_VALUE
                         )
                     }
-                    item { QuickChecklistPreview(draft) }
+                    item { QuickChecklistPreview(draft, onDiagnosticClick = ::selectSourceLine) }
                     saveError?.let { message ->
                         item {
-                            Text(message, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodyMedium)
+                            Text(
+                                message,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable {
+                                        Regex("第\\s*(\\d+)\\s*行").find(message)?.groupValues?.getOrNull(1)?.toIntOrNull()
+                                            ?.let(::selectSourceLine)
+                                    },
+                                color = MaterialTheme.colorScheme.error,
+                                style = MaterialTheme.typography.bodyMedium
+                            )
                         }
                     }
                     item { Spacer(Modifier.height(24.dp)) }
@@ -189,7 +216,10 @@ internal fun applyQuickChecklistImeContinuation(
 }
 
 @Composable
-private fun QuickChecklistPreview(draft: QuickChecklistDraft) {
+private fun QuickChecklistPreview(
+    draft: QuickChecklistDraft,
+    onDiagnosticClick: (Int) -> Unit
+) {
     ElevatedCard(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surface)
@@ -223,6 +253,9 @@ private fun QuickChecklistPreview(draft: QuickChecklistDraft) {
             draft.diagnostics.forEach { diagnostic ->
                 Text(
                     "第 ${diagnostic.sourceLine} 行：${diagnostic.message}",
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { onDiagnosticClick(diagnostic.sourceLine) },
                     color = if (diagnostic.severity == QuickChecklistDiagnosticSeverity.ERROR) {
                         MaterialTheme.colorScheme.error
                     } else {

@@ -98,7 +98,7 @@ internal sealed class QuickChecklistEditorDialog : Form
     {
         draft = QuickChecklistParser.Parse(input.Text);
         summary.Text = $"{draft.TaskCount} 项任务 · {draft.MaxDepth} 层 · {draft.NoteCount} 条说明";
-        save.Enabled = !draft.HasErrors && draft.Title.Length > 0 && draft.TaskCount > 0;
+        save.Enabled = draft.Title.Length > 0 && draft.TaskCount > 0;
         var text = new StringBuilder();
         if (draft.Title.Length > 0) text.AppendLine(draft.Title).AppendLine();
         foreach (var node in draft.Nodes)
@@ -123,6 +123,12 @@ internal sealed class QuickChecklistEditorDialog : Form
         if (reparsed.HasErrors)
         {
             var error = reparsed.Diagnostics.First(value => value.Severity == QuickChecklistDiagnosticSeverity.Error);
+            if (QuickChecklistParser.SourceLineSelection(input.Text, error.SourceLine) is { } selection)
+            {
+                input.Focus();
+                input.Select(selection.Start, selection.Length);
+                input.ScrollToCaret();
+            }
             MessageBox.Show(this, $"第 {error.SourceLine} 行：{error.Message}", "PaykiTodo", MessageBoxButtons.OK, MessageBoxIcon.Warning);
             return;
         }

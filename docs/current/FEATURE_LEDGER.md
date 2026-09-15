@@ -4,7 +4,7 @@ This file tracks the product at a practical level for new coding sessions.
 
 ## Implemented And In Use
 
-### Quick Checklist And Browser Time (1.16.16)
+### Quick Checklist And Browser Time (1.16.18)
 
 - The quick checklist entry is available from Daily Board and Todo on Android, the LAN Desktop Web, and the Windows client; edits render a live hierarchical preview before confirmation.
 - `-`, `--`, `---`, and deeper prefixes create real TodoItems at the corresponding depth. Enter continues the previous depth, and `--#` attaches a visible note to the nearest task without becoming a task.
@@ -13,6 +13,8 @@ This file tracks the product at a practical level for new coding sessions.
 - Cancel writes history; delete does not. Android restores canceled or completed subtrees through the existing history path. LAN Web and Windows use the shared Todo operations and snapshot model but do not yet expose a dedicated history-restore entry.
 - Checklist fields survive `.paykibak` backup/import, cloud snapshots, Android-to-LAN/Windows synchronization, and Widget summary generation.
 - Progress counters exclude canceled tasks. Duplicate fingerprints are rejected before a second group is written.
+- Android, LAN Web, and Windows diagnostics can select the original error line. Widget rows show `☐ / ☑`, group progress, and only today's completed checklist items.
+- Windows completion cannot revive canceled tasks, cancellation cannot overwrite completed tasks, and a fresh desktop snapshot uses a valid 64-bit default group ID.
 - Administrator registration, sync, device-activity, and audit timestamps are emitted as epoch values and formatted with the browser's local timezone instead of the server timezone.
 
 ### Android Interaction Round (1.16.15)
@@ -35,6 +37,7 @@ This file tracks the product at a practical level for new coding sessions.
 - Planning Desk mappings, nodes, note creation, mapping-status refresh, and snapshot import use the repository change callback so widgets and enabled account sync observe direct Room writes
 - account authentication's Turnstile WebView permits the Cloudflare challenge host and third-party cookies, blocks failed HTTP responses or a dead WebView renderer, and observes the response field as a fallback when a WebView omits the parent callback; the server requires Siteverify success, the fixed action, and an allowlisted production hostname
 - account authentication's Turnstile WebView also allows Cloudflare's `about:blank` / `about:srcdoc` internal documents, suppresses duplicate token callbacks, and keeps AndroidView callbacks aligned with the current Compose state
+- Turnstile token fallback polling is owned by the native WebView lifecycle, has an explicit timeout, and is stopped on reload, error, renderer loss, or release
 - AI daily/weekly reports remain AI-first and fall back to a visibly local template only after a disabled, unavailable, failed, or blank real business request; no synthetic periodic anti-detection traffic is generated
 
 ### Account Boundary And Local Migration

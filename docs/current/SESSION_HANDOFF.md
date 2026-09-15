@@ -4,30 +4,35 @@
 
 - Repository root: `G:\Workspace\Project\PaykiTodo`
 - Branch: `main`
-- App version: `1.16.16 / versionCode 381` (local validation; not published)
+- App version: `1.16.18 / versionCode 383` (local validation; not published)
 - Room database version: `31`
 - Latest public GitHub Release: `v1.15.18`
 - Android outputs after final verification:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.16.16-debug.apk`
-  - `app/build/outputs/apk/release/PaykiTodo-1.16.16-release.apk`
-- Windows output: `desktop/dist/PaykiTodo.exe` is rebuilt from the quick-checklist-capable source with `1.16.16` metadata.
+  - `app/build/outputs/apk/debug/PaykiTodo-1.16.18-debug.apk`
+  - `app/build/outputs/apk/release/PaykiTodo-1.16.18-release.apk`
+- Windows output: `desktop/dist/PaykiTodo.exe` is rebuilt from the quick-checklist-capable source with `1.16.18` metadata.
 - Private cloud deployment: service enabled on the Azure host, origin loopback `127.0.0.1:18766`, public access through the privately configured Cloudflare/Nginx HTTPS hostname, and the administrator page at `/admin`.
 
-## v1.16.16 Completed
+## v1.16.18 Completed
 
 - Quick checklist is implemented across Android, LAN Desktop Web, and the Windows client: parser, live preview, hierarchical creation, notes, folding, completion, cancel/delete, backup/snapshot fields, and Widget summary.
 - Parent completion excludes canceled children, cannot revive canceled ancestors, and recurses through valid ancestors. Deletion and cancellation follow the existing history rules.
+- Error diagnostics select the matching source line across Android, LAN Web, and Windows; save failures select the first invalid line.
+- Widget rows show checklist state and progress, while completed checklist items only return to today's Widget when they were completed today.
+- Windows complete/cancel actions preserve canceled and completed terminal states, and fresh snapshots create the default group using the correct 64-bit ID type.
+- Android Turnstile fallback polling now has native lifecycle ownership, explicit timeout handling, duplicate suppression, and cleanup on WebView release.
 - Administrator timestamps use epoch values and browser-local formatting.
 - Room is `31`; migration `30 -> 31` and committed schema `31.json` preserve existing installations.
 - Focused Android unit/instrumentation tests, JavaScript syntax, Windows build, and server integration tests pass. No push, tag, or GitHub Release was performed.
 
-## v1.16.16 Verification Evidence
+## v1.16.18 Verification Evidence
 
-- Android unit tests and `emulator-5554` / `Pixel_8` instrumentation passed; 183 unit tests and 17 instrumentation tests cover parser, repository, hierarchy, history, cancellation, deletion, folding, duplicate protection, and migration metadata.
-- Room `30 -> 31` migration metadata is covered by tests; backup compatibility tests confirm old archives without checklist fields import as empty checklist metadata.
+- Android unit tests and `emulator-5554` / `Pixel_8` instrumentation passed; 185 unit tests and 18 instrumentation tests cover parser, repository, hierarchy, history, cancellation, deletion, folding, duplicate protection, Widget presentation, and a real Room migration.
+- Room `30 -> 31` is exercised against a real version-30 database; backup compatibility tests confirm old archives without checklist fields import as empty checklist metadata.
 - Server integration suite: 12 passed, including browser-local timestamp payload behavior.
-- `node --check app/src/main/assets/desktop-web/app.js`, Android Lint, Debug/AndroidTest/Release assembly, and Windows Release publish passed.
-- Release APK v2 signature verification passed with one RSA-2048 signer. Debug APK SHA-256: `C211A4B1673EE78142BEB446C30D8E9E0ED43EE6F475EFCF363883B5CF4B8876`; signed Release APK SHA-256: `40773D55EE02141C9D318A1E172D319950F6615CD1C2A8A331EF75F32174961F`; Windows self-contained EXE SHA-256: `1C2425194047D8B787F2CA821563120F4D91CE5D1F8142F3228E87B9A828C253` (`ProductVersion` embeds commit `9a3cb7d8dc14173b01ef037fcb0e3885e9fe1a3e`).
+- `node --check app/src/main/assets/desktop-web/app.js`, Android Lint, Debug/AndroidTest/Release assembly, 3 Windows tests, and Windows self-contained Release publish passed.
+- The Debug APK installed and launched on `emulator-5554`; package inspection reported `versionName=1.16.18` and `versionCode=383`, and the login/Turnstile surface rendered without a startup crash.
+- Release APK v2 signature verification passed with one RSA-2048 signer. Debug APK SHA-256: `63F727FE4BC5257B9EC0506E84121083637F07E02B53410B64ED63008B3D5A5F`; signed Release APK SHA-256: `7002003829AE1ED4B84FF28ACFC4E3D9A4E1426F5CFF8938D56A7552E7D922D0`; Windows self-contained EXE SHA-256: `403B143A0D7E062C6422055406BBB8C2F861D398BDC891812602AC06F5777A83` (file version `1.16.18.0`).
 
 ## v1.16.15 Completed
 

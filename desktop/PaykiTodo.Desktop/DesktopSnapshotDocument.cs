@@ -27,7 +27,7 @@ internal sealed class DesktopSnapshotDocument
             ["settings"] = new JsonObject(),
             ["groups"] = new JsonArray(new JsonObject
             {
-                ["id"] = 1,
+                ["id"] = 1L,
                 ["name"] = "默认",
                 ["colorHex"] = "#4CB782",
                 ["sortOrder"] = 0,
@@ -183,15 +183,14 @@ internal sealed class DesktopSnapshotDocument
         var item = FindTask(id);
         if (item is null) return;
         if ((item["itemType"]?.GetValue<string>() ?? "TODO") == "EVENT") return;
+        if (item["canceled"]?.GetValue<bool>() == true) return;
         var now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
         if (item["quickChecklistGroupId"]?.GetValue<long?>() is { } groupId)
         {
-            foreach (var target in QuickChecklistSubtree(item, groupId))
+            foreach (var target in QuickChecklistSubtree(item, groupId).Where(target => target["canceled"]?.GetValue<bool>() != true))
             {
                 target["completed"] = true;
                 target["completedAtMillis"] ??= now;
-                target["canceled"] = false;
-                target["canceledAtMillis"] = null;
             }
             UpdateQuickChecklistAncestors(groupId, item["parentTodoId"]?.GetValue<long?>(), now);
             return;
@@ -206,15 +205,16 @@ internal sealed class DesktopSnapshotDocument
     {
         var item = FindTask(id);
         if (item is null) return;
+        if (item["completed"]?.GetValue<bool>() == true) return;
         var now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
         if (item["quickChecklistGroupId"]?.GetValue<long?>() is { } groupId)
         {
-            foreach (var target in QuickChecklistSubtree(item, groupId))
+            foreach (var target in QuickChecklistSubtree(item, groupId).Where(target =>
+                         target["canceled"]?.GetValue<bool>() != true &&
+                         target["completed"]?.GetValue<bool>() != true))
             {
                 target["canceled"] = true;
                 target["canceledAtMillis"] = now;
-                target["completed"] = false;
-                target["completedAtMillis"] = null;
             }
             UpdateQuickChecklistAncestors(groupId, item["parentTodoId"]?.GetValue<long?>(), now);
             return;

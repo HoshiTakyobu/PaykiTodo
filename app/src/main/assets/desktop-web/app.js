@@ -1299,18 +1299,36 @@ function renderQuickChecklistPreview(preview) {
   const title = preview.title ? '<h3 class="quick-checklist-preview-title">' + escapeHtml(preview.title) + '</h3>' : '';
   const nodes = (preview.nodes || []).map(node => {
     const depth = Math.max(1, Number(node.depth || 1));
-    return '<div style="margin-left:' + ((depth - 1) * 20) + 'px">'
-      + '<div class="quick-checklist-preview-row"><span>' + escapeHtml(node.title || '') + '</span></div>'
+      return '<div style="margin-left:' + ((depth - 1) * 20) + 'px">'
+      + '<div class="quick-checklist-preview-row"><span class="quick-checklist-checkbox" aria-hidden="true">□</span><span>' + escapeHtml(node.title || '') + '</span></div>'
       + (node.notes ? '<div class="quick-checklist-preview-note">' + escapeHtml(node.notes) + '</div>' : '')
       + '</div>';
   }).join('');
   const diagnostics = (preview.diagnostics || []).map(diagnostic => {
     const warning = diagnostic.severity === 'WARNING';
-    return '<div class="quick-checklist-diagnostic' + (warning ? ' warning' : '') + '">第 '
-      + escapeHtml(String(diagnostic.sourceLine || 1)) + ' 行：' + escapeHtml(diagnostic.message || '') + '</div>';
+    return '<button type="button" class="quick-checklist-diagnostic' + (warning ? ' warning' : '') + '" data-quick-checklist-line="'
+      + escapeHtml(String(diagnostic.sourceLine || 1)) + '">第 '
+      + escapeHtml(String(diagnostic.sourceLine || 1)) + ' 行：' + escapeHtml(diagnostic.message || '') + '</button>';
   }).join('');
   els.quickChecklistPreviewHost.innerHTML = title + nodes + diagnostics;
   els.saveQuickChecklist.disabled = preview.hasErrors === true || !preview.title || taskCount < 1;
+}
+
+function quickChecklistSourceLineSelection(text, sourceLine) {
+  const wanted = Number(sourceLine);
+  if (!Number.isInteger(wanted) || wanted < 1) return null;
+  let line = 1;
+  let start = 0;
+  while (start <= text.length) {
+    const newline = text.indexOf('\n', start);
+    let end = newline >= 0 ? newline : text.length;
+    if (end > start && text[end - 1] === '\r') end -= 1;
+    if (line === wanted) return { start, end };
+    if (newline < 0) return null;
+    start = newline + 1;
+    line += 1;
+  }
+  return null;
 }
 
 async function requestQuickChecklistPreview() {
@@ -5613,6 +5631,17 @@ if (els.quickChecklistInput) {
   });
 }
 if (els.saveQuickChecklist) els.saveQuickChecklist.onclick = saveQuickChecklist;
+els.quickChecklistPreviewHost?.addEventListener('click', event => {
+  const diagnostic = event.target.closest?.('[data-quick-checklist-line]');
+  if (!diagnostic || !els.quickChecklistInput) return;
+  const selection = quickChecklistSourceLineSelection(
+    els.quickChecklistInput.value || '',
+    diagnostic.dataset.quickChecklistLine
+  );
+  if (!selection) return;
+  els.quickChecklistInput.focus();
+  els.quickChecklistInput.setSelectionRange(selection.start, selection.end);
+});
 els.openEventCreate.onclick = openNewEventEditor;
 if (els.eventTimeline) {
   els.eventTimeline.addEventListener('click', event => {

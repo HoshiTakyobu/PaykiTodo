@@ -64,6 +64,11 @@ data class QuickChecklistDraft(
         get() = diagnostics.any { it.severity == QuickChecklistDiagnosticSeverity.ERROR }
 }
 
+data class QuickChecklistSourceSelection(
+    val start: Int,
+    val end: Int
+)
+
 object QuickChecklistParser {
     private val notePattern = Regex("^(-+)#\\s*(.*)$")
     private val taskPattern = Regex("^(-+)\\s*(.*)$")
@@ -223,6 +228,22 @@ object QuickChecklistEditing {
         val text: String,
         val cursor: Int
     )
+
+    fun sourceLineSelection(text: String, sourceLine: Int): QuickChecklistSourceSelection? {
+        if (sourceLine < 1) return null
+        var line = 1
+        var start = 0
+        while (start <= text.length) {
+            val newline = text.indexOf('\n', start)
+            var end = if (newline >= 0) newline else text.length
+            if (end > start && text[end - 1] == '\r') end -= 1
+            if (line == sourceLine) return QuickChecklistSourceSelection(start, end)
+            if (newline < 0) return null
+            start = newline + 1
+            line += 1
+        }
+        return null
+    }
 
     fun continuationPrefix(line: String): String {
         val content = line.substringBefore("//").trimStart()

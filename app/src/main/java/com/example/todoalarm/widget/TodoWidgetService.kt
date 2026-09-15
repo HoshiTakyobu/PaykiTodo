@@ -56,6 +56,7 @@ private class TodoWidgetFactory(
         }
         rows = runBlocking {
             val items = app.repository.getActiveItemsForBoardRange()
+            val allTodos = app.repository.getAllTodos()
             val groups = app.repository.getAllGroups()
             val quickChecklistGroups = app.repository.getAllQuickChecklistGroups()
             val notes = app.repository.getPlanningNotesWithAnnouncementHints()
@@ -69,6 +70,7 @@ private class TodoWidgetFactory(
             ).associateBy { it.eventId }
             buildRows(
                 snapshot = snapshot,
+                allTodos = allTodos,
                 groups = groups,
                 quickChecklistGroups = quickChecklistGroups,
                 activeCheckIns = activeCheckIns
@@ -271,12 +273,35 @@ private class TodoWidgetFactory(
 
     private fun buildRows(
         snapshot: DailyBoardSnapshot,
+        allTodos: List<TodoItem>,
         groups: List<TaskGroup>,
         quickChecklistGroups: List<QuickChecklistGroup>,
         activeCheckIns: Map<Long, EventCheckIn>
     ): List<WidgetBoardRow> {
         val output = mutableListOf<WidgetBoardRow>()
         val today = snapshot.date
+        val quickTasks = allTodos
+            .filter { it.isQuickChecklistTask && !it.canceled }
+            .map { item ->
+                QuickChecklistWidgetTask(
+                    id = item.id,
+                    groupId = item.quickChecklistGroupId ?: 0L,
+                    title = item.title,
+                    depth = item.quickChecklistDepth ?: 1,
+                    completed = item.completed,
+                    canceled = item.canceled
+                )
+            }
+        val quickSummaries = QuickChecklistWidgetPresentation.summaries(quickTasks)
+        val todayStart = today.atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
+        val tomorrowStart = today.plusDays(1).atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
+        val completedQuickItemsForBoard = allTodos.filter { item ->
+            item.isQuickChecklistTask &&
+                item.completed &&
+                !item.canceled &&
+                item.completedAtMillis?.let { it in todayStart until tomorrowStart } == true
+        }
+        val boardTodoItems = (snapshot.todoItems + completedQuickItemsForBoard).distinctBy { it.id }
 
         snapshot.announcements.take(2).forEachIndexed { index, announcement ->
             output += WidgetBoardRow(
@@ -297,28 +322,40 @@ private class TodoWidgetFactory(
             metaColor = mutedText
         )
 
-        output += sectionRow(-1L, "今日待办（${snapshot.todoItems.size}）", highlight = true, opensTasks = true)
-        if (snapshot.todoItems.isEmpty()) {
+        output += sectionRow(-1L, "今日待办（${boardTodoItems.size}）", highlight = true, opensTasks = true)
+        if (boardTodoItems.isEmpty()) {
             output += emptyRow(-2L, "今天还没有安排任务。")
         } else {
-            snapshot.todoItems.forEach { item ->
+            boardTodoItems.forEach { item ->
                 val group = groups.firstOrNull { it.id == item.groupId }
                 val checklist = item.quickChecklistGroupId?.let { id -> quickChecklistGroups.firstOrNull { it.id == id } }
-                val title = if (checklist == null) {
-                    item.title
-                } else {
-                    "${"  ".repeat(((item.quickChecklistDepth ?: 1) - 1).coerceAtLeast(0))}${item.title}"
+                val quickTask = checklist?.let {
+                    QuickChecklistWidgetTask(
+                        id = item.id,
+                        groupId = it.id,
+                        title = item.title,
+                        depth = item.quickChecklistDepth ?: 1,
+                        completed = item.completed,
+                        canceled = item.canceled
+                    )
                 }
+                val title = quickTask?.let(QuickChecklistWidgetPresentation::taskTitle) ?: item.title
+                val summary = quickTask?.let { quickSummaries[it.groupId] }
                 output += WidgetBoardRow(
                     stableId = item.id,
                     type = WidgetRowType.TODO,
                     itemId = item.id,
                     title = title,
-                    groupName = checklist?.title?.let { "清单 · $it" } ?: (group?.name ?: "默认"),
+                    groupName = checklist?.title?.let { QuickChecklistWidgetPresentation.groupLabel(it, summary) }
+                        ?: (group?.name ?: "默认"),
                     notes = item.notes.trim(),
                     meta = todoTimeLabel(item),
-                    trailing = if (item.missed) "已逾期" else "",
-                    titleColor = darkText,
+                    trailing = when {
+                        item.completed -> "已完成"
+                        item.missed -> "已逾期"
+                        else -> ""
+                    },
+                    titleColor = if (item.completed) mutedText else darkText,
                     metaColor = if (item.missed) danger else mutedText,
                     trailingColor = danger,
                     accentColor = todoAccentColor(item, groups)

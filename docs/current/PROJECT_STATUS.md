@@ -8,7 +8,7 @@
 - Supported Android: Android 8.0+ / API 26+
 - Compile and target SDK: Android 14 / API 34
 - License: MIT
-- App version: `1.16.16 / versionCode 381` (current local validation source)
+- App version: `1.16.18 / versionCode 383` (current local validation source)
 - Room database version: `31`
 
 ## Published Build
@@ -16,12 +16,12 @@
 - GitHub Release: `https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.15.18`
 - Release APK: `app/build/outputs/apk/release/PaykiTodo-1.15.18-release.apk`
 - Public asset name: `PaykiTodo-1.15.18-release.apk`
-- Current debug APK: `app/build/outputs/apk/debug/PaykiTodo-1.16.16-debug.apk`
-- Current signed release APK: `app/build/outputs/apk/release/PaykiTodo-1.16.16-release.apk`
-- Current Windows self-contained EXE: `desktop/dist/PaykiTodo.exe` (rebuilt for `1.16.16`; file version `1.16.16.0`)
-- Debug APK SHA-256: `C211A4B1673EE78142BEB446C30D8E9E0ED43EE6F475EFCF363883B5CF4B8876`
-- Signed Release APK SHA-256: `40773D55EE02141C9D318A1E172D319950F6615CD1C2A8A331EF75F32174961F`
-- Windows self-contained EXE SHA-256: `1C2425194047D8B787F2CA821563120F4D91CE5D1F8142F3228E87B9A828C253`
+- Current debug APK: `app/build/outputs/apk/debug/PaykiTodo-1.16.18-debug.apk`
+- Current signed release APK: `app/build/outputs/apk/release/PaykiTodo-1.16.18-release.apk`
+- Current Windows self-contained EXE: `desktop/dist/PaykiTodo.exe` (rebuilt for `1.16.18`; file version `1.16.18.0`)
+- Debug APK SHA-256: `63F727FE4BC5257B9EC0506E84121083637F07E02B53410B64ED63008B3D5A5F`
+- Signed Release APK SHA-256: `7002003829AE1ED4B84FF28ACFC4E3D9A4E1426F5CFF8938D56A7552E7D922D0`
+- Windows self-contained EXE SHA-256: `403B143A0D7E062C6422055406BBB8C2F861D398BDC891812602AC06F5777A83`
 - Release signing material remains local and ignored by Git.
 
 ## Product Positioning
@@ -48,14 +48,16 @@ PaykiTodo is a local-first Android assistant for todos, DDLs, schedules, countdo
 
 See `README.md` for the public overview and `docs/current/FEATURE_LEDGER.md` for the detailed implementation ledger.
 
-## v1.16.16 Validation Scope (not published)
+## v1.16.18 Validation Scope (not published)
 
 - Administrator timestamps are serialized as epoch values and formatted in the visitor's browser timezone.
 - Quick checklist parsing, preview, Enter continuation, validation, and hierarchical task creation work on Android.
 - LAN Desktop Web and the Windows client expose matching create/fold/complete/cancel/delete flows; Android additionally owns backup and history restoration.
 - Parent completion excludes canceled children, does not revive canceled ancestors, and recurses upward. Canceled tasks enter history; deleted tasks do not.
 - Room `30 -> 31` adds checklist group, parent, depth, order, note, and fold fields while preserving existing data.
-- Final verification passed: 183 Android unit tests, 17 emulator instrumentation tests, Android Lint, Debug/AndroidTest/Release assembly, 12 server tests, JavaScript syntax, and Windows Release publish. Release APK v2 signature verification passed with one RSA-2048 signer.
+- Error diagnostics select the matching source line on Android, LAN Web, and Windows. Widget rows show checklist completion state and progress, while Windows state transitions preserve canceled/completed terminal states.
+- Android Turnstile token polling is lifecycle-bound, times out explicitly, suppresses duplicate delivery, and is stopped when the WebView is released.
+- Final verification passed: 185 Android unit tests, 18 emulator instrumentation tests, Android Lint, Debug/AndroidTest/Release assembly, 12 server tests, JavaScript syntax, 3 Windows tests, and Windows self-contained Release publish. Release APK v2 signature verification passed with one RSA-2048 signer.
 - Known cross-client gap: LAN Web and Windows do not yet expose a dedicated history-restore entry for canceled checklist tasks.
 
 ## v1.16.15 Validation Scope (not published)

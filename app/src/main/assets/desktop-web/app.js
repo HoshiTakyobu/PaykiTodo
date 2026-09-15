@@ -1227,11 +1227,12 @@ function renderTodoItem(item) {
     + '</article>';
 }
 
-function quickChecklistGroupsFor(items) {
+function quickChecklistGroupsFor(items, historical = false) {
   const groups = state.snapshot?.quickChecklistGroups || [];
-  const activeItems = (items || []).filter(item => item.quickChecklistGroupId != null && !item.completed && !item.canceled);
+  const visibleItems = (items || []).filter(item => item.quickChecklistGroupId != null)
+    .filter(item => historical ? item.completed || item.canceled : !item.completed && !item.canceled);
   const itemsByGroup = new Map();
-  activeItems.forEach(item => {
+  visibleItems.forEach(item => {
     const key = String(item.quickChecklistGroupId);
     if (!itemsByGroup.has(key)) itemsByGroup.set(key, []);
     itemsByGroup.get(key).push(item);
@@ -1264,8 +1265,8 @@ function visibleQuickChecklistItems(items) {
   return { ordered, byParent };
 }
 
-function renderQuickChecklistGroups(items) {
-  return quickChecklistGroupsFor(items).map(({group, items: groupItems}) => {
+function renderQuickChecklistGroups(items, historical = false) {
+  return quickChecklistGroupsFor(items, historical).map(({group, items: groupItems}) => {
     const tree = visibleQuickChecklistItems(groupItems);
     const allGroupItems = (state.snapshot?.todos || []).filter(item => String(item.quickChecklistGroupId) === String(group.id));
     const countItems = allGroupItems.filter(item => !item.canceled);
@@ -2484,8 +2485,9 @@ function renderTodos() {
   const activeAll = activeTodos();
   const historyAll = historyTodos();
   const checklistItems = activeAll.filter(item => item.quickChecklistGroupId != null).filter(todoMatchesSelectedGroups);
+  const historyChecklistItems = historyAll.filter(item => item.quickChecklistGroupId != null).filter(todoMatchesSelectedGroups);
   const active = activeAll.filter(item => item.quickChecklistGroupId == null).filter(todoMatchesSelectedGroups).slice().sort((a, b) => (a.hasDueDate ? (a.dueAtMillis || Number.MAX_SAFE_INTEGER) : Number.MAX_SAFE_INTEGER) - (b.hasDueDate ? (b.dueAtMillis || Number.MAX_SAFE_INTEGER) : Number.MAX_SAFE_INTEGER));
-  const history = historyAll.filter(todoMatchesSelectedGroups).slice().sort((a, b) => (b.completedAtMillis || b.canceledAtMillis || b.missedAtMillis || b.dueAtMillis || 0) - (a.completedAtMillis || a.canceledAtMillis || a.missedAtMillis || a.dueAtMillis || 0));
+  const history = historyAll.filter(item => item.quickChecklistGroupId == null).filter(todoMatchesSelectedGroups).slice().sort((a, b) => (b.completedAtMillis || b.canceledAtMillis || b.missedAtMillis || b.dueAtMillis || 0) - (a.completedAtMillis || a.canceledAtMillis || a.missedAtMillis || a.dueAtMillis || 0));
   const sections = [
     { key: 'active', title: '待办', empty: '当前没有未完成的待办。', items: active },
     { key: 'history', title: '历史待办', empty: '暂无历史待办。', items: history }
@@ -2495,6 +2497,12 @@ function renderTodos() {
     + renderTodoPagerControls()
     + renderQuickChecklistGroups(checklistItems)
     + sections.map(renderTodoSection).join('')
+    + (historyChecklistItems.length
+      ? '<section id="todo-section-history-checklists" class="timeline-section">'
+        + '<div class="timeline-section-header"><div class="timeline-section-title">历史清单</div><div class="timeline-section-count">' + historyChecklistItems.length + ' 项</div></div>'
+        + renderQuickChecklistGroups(historyChecklistItems, true)
+        + '</section>'
+      : '')
     + (state.todoHasMore ? '<div class="todo-bottom-more"><button type="button" class="ghost mini" data-load-more-todos="true">加载更多待办</button></div>' : '');
   bindActions();
 }
@@ -4701,6 +4709,7 @@ function openTodoPreview(item) {
   const body = document.getElementById('todo-preview-body');
   const completeButton = document.getElementById('preview-todo-complete');
   const cancelButton = document.getElementById('preview-todo-cancel');
+  const restoreButton = document.getElementById('preview-todo-restore');
   if (!body) return;
   body.innerHTML = ''
     + '<div class="preview-title-row" style="--accent:' + accent + '">'
@@ -4717,6 +4726,7 @@ function openTodoPreview(item) {
   const inactive = item.completed || item.canceled;
   completeButton?.classList.toggle('hidden', inactive);
   cancelButton?.classList.toggle('hidden', inactive);
+  restoreButton?.classList.toggle('hidden', !inactive);
   openModal('todo-preview-modal');
 }
 
@@ -5788,6 +5798,16 @@ document.getElementById('preview-todo-cancel').onclick = async () => {
   if (scopeQuery === null) return;
   if (!todoItem?.isRecurring && !await confirmDanger('确认取消待办', '取消后会停止提醒，并进入历史记录；这不是删除。', '确认取消')) return;
   await api(`/api/items/${state.previewTodoId}/cancel${scopeQuery}`, { method: 'POST' });
+  closeModal('todo-preview-modal');
+  await refreshAfterMutation();
+};
+
+document.getElementById('preview-todo-restore').onclick = async () => {
+  if (!state.previewTodoId) return;
+  const todoItem = findTodoById(state.previewTodoId);
+  if (!todoItem || todoItem.isEvent || (!todoItem.completed && !todoItem.canceled)) return;
+  if (!await confirmDanger('确认恢复待办', '恢复后会回到待办列表；如果仍有未来提醒，提醒也会重新安排。', '恢复')) return;
+  await api(`/api/items/${state.previewTodoId}/restore`, { method: 'POST' });
   closeModal('todo-preview-modal');
   await refreshAfterMutation();
 };

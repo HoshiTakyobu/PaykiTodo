@@ -368,6 +368,10 @@ internal sealed class MainForm : Form
                     localDocument.Complete(id);
                     await SaveLocalAndSyncAsync("已完成本地待办");
                     break;
+                case "restore":
+                    localDocument.Restore(id);
+                    await SaveLocalAndSyncAsync("已恢复本地待办");
+                    break;
                 case "cancel":
                     localDocument.Cancel(id);
                     await SaveLocalAndSyncAsync("已取消并归档本地事项");

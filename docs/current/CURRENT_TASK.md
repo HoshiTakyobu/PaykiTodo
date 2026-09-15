@@ -2,9 +2,9 @@
 
 ## Active Focus
 
-The `v1.16.18 / versionCode 383` round completes and hardens the browser-local time and cross-platform quick checklist specified in `docs/goals/2026-09-14-paykitodo-1.16.16-quick-checklist-and-browser-time-goal.md`. It also stabilizes the Android Turnstile WebView lifecycle. This remains a local validation round and does not publish a GitHub Release.
+The `v1.16.19 / versionCode 384` round closes the remaining cross-client history restoration gap from the `v1.16.18` quick-checklist validation. LAN Web and the independent Windows client now expose restoration for ordinary historical todos and quick-checklist subtrees. This remains a local validation round and does not publish a GitHub Release.
 
-## v1.16.18 Checklist
+## v1.16.19 Checklist
 
 - [x] Administrator timestamps are emitted as epoch values and formatted in the visitor's browser timezone.
 - [x] The quick checklist parser handles a title, arbitrary dash-depth nesting, visible `--#` notes, validation, and Enter prefix continuation.
@@ -16,17 +16,18 @@ The `v1.16.18 / versionCode 383` round completes and hardens the browser-local t
 - [x] Parsing diagnostics locate the source line on Android, LAN Web, and Windows.
 - [x] Widget rows expose checklist completion state and progress without replaying old completed items.
 - [x] Windows complete/cancel operations preserve terminal states and fresh local data creates a valid default group.
+- [x] LAN Web and Windows expose historical todo restore/delete actions, including quick-checklist subtree restoration.
 - [x] Turnstile token polling is lifecycle-bound and cleaned up when its WebView is released.
 - [x] Focused parser/repository/migration/backup/server/Windows tests and emulator instrumentation pass.
 - [x] Documentation, final build verification, sensitive-data scan, and focused commit are complete.
 
-## v1.16.18 Verification Evidence
+## v1.16.19 Verification Evidence
 
 1. `:app:testDebugUnitTest`, `:app:connectedDebugAndroidTest`, `node --check`, `dotnet test`, `dotnet build`, and the 12-test server suite passed during implementation.
 2. Room migration metadata covers database `31`, and backup compatibility tests cover older archives without checklist fields.
 3. `emulator-5554` / `Pixel_8` passed all 18 instrumentation tests, including a real Room `30 -> 31` migration.
-4. Final verification after the `1.16.18 / 383` metadata update: 185 Android unit tests, 18 emulator instrumentation tests, Android Lint, Debug/AndroidTest/Release assembly, 12 server tests, JavaScript syntax, 3 Windows tests, and Windows Release build/publish all passed. Release APK v2 signature verification passed with the expected RSA-2048 signer.
-5. LAN Web and Windows are implemented and compile/test, but final device-level history restoration remains an explicitly tracked cross-client gap. Physical-device OEM reminder/widget behavior remains outside this round.
+4. Final verification after the `1.16.19 / 384` metadata update: 185 Android unit tests, 18 emulator instrumentation tests, Android Lint, Debug/AndroidTest/Release assembly, 12 server tests, JavaScript syntax, 5 Windows tests, and Windows self-contained publish all passed. Release APK v2 signature verification passed with the expected RSA-2048 signer.
+5. The current Debug APK was installed on `emulator-5554` / Android 14, package `com.paykitodo.app` reported `versionName=1.16.19` and `versionCode=384`, and the app launched successfully. Physical-device OEM reminder/widget behavior remains outside this round.
 
 ## Completed `v1.16.14` Scope
 

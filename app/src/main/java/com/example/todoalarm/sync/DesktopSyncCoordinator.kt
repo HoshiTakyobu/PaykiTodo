@@ -232,6 +232,7 @@ class DesktopSyncCoordinator(
                 method == "POST" && path == "/api/planning/undo-last" -> DesktopSyncServer.Response.json(undoPlanning(JSONObject(body)))
                 method == "POST" && path == "/api/planning/conflict/document" -> DesktopSyncServer.Response.json(resolvePlanningConflictDocument(JSONObject(body)))
                 method == "POST" && path == "/api/planning/conflict/item" -> DesktopSyncServer.Response.json(resolvePlanningConflictItem(JSONObject(body)))
+                method == "POST" && routePath.matches(Regex("/api/items/\\d+/restore")) -> DesktopSyncServer.Response.json(restoreTodo(routePath))
                 method == "POST" && routePath.matches(Regex("/api/items/\\d+/complete")) -> DesktopSyncServer.Response.json(markCompleted(routePath))
                 method == "POST" && routePath.matches(Regex("/api/items/\\d+/cancel")) -> DesktopSyncServer.Response.json(cancelItem(path))
                 method == "DELETE" && routePath.matches(Regex("/api/items/\\d+")) -> DesktopSyncServer.Response.json(deleteItem(path))
@@ -847,6 +848,19 @@ class DesktopSyncCoordinator(
         result?.affectedItems?.let(::clearReminderArtifacts)
         autoBackupIfNeeded()
         return JSONObject().put("ok", updated != null)
+    }
+
+    private suspend fun restoreTodo(path: String): JSONObject {
+        val id = path.substringAfter("/api/items/").substringBefore('/').toLong()
+        val item = app.repository.getTodo(id) ?: return JSONObject().put("ok", false).put("error", "待办不存在")
+        require(!item.isEvent) { "日程不能通过历史待办入口恢复" }
+        require(item.isHistory) { "只有历史待办可以恢复" }
+        val restored = app.repository.restoreTodoFromHistory(item)
+        restored.forEach { scheduleReminderOrDisable(it) }
+        autoBackupIfNeeded()
+        return JSONObject()
+            .put("ok", restored.isNotEmpty())
+            .put("restored", restored.size)
     }
 
     private suspend fun cancelItem(path: String): JSONObject {

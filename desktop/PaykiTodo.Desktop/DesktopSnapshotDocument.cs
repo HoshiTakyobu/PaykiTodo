@@ -225,6 +225,30 @@ internal sealed class DesktopSnapshotDocument
         item["completedAtMillis"] = null;
     }
 
+    public void Restore(long id)
+    {
+        var item = FindTask(id);
+        if (item is null || (item["completed"]?.GetValue<bool>() != true && item["canceled"]?.GetValue<bool>() != true)) return;
+        var now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+        if (item["quickChecklistGroupId"]?.GetValue<long?>() is { } groupId)
+        {
+            foreach (var target in QuickChecklistSubtree(item, groupId))
+            {
+                target["completed"] = false;
+                target["completedAtMillis"] = null;
+                target["canceled"] = false;
+                target["canceledAtMillis"] = null;
+            }
+            UpdateQuickChecklistGroupTimestamp(groupId);
+            UpdateQuickChecklistAncestors(groupId, item["parentTodoId"]?.GetValue<long?>(), now);
+            return;
+        }
+        item["completed"] = false;
+        item["completedAtMillis"] = null;
+        item["canceled"] = false;
+        item["canceledAtMillis"] = null;
+    }
+
     public void Delete(long id)
     {
         var target = FindTask(id);

@@ -11,6 +11,7 @@ internal static class DesktopHtmlRenderer
         var items = document.Items;
         var groups = document.Groups.ToDictionary(group => group.Id);
         var active = items.Where(item => !item.Completed && !item.Canceled).ToList();
+        var history = items.Where(item => !item.IsEvent && (item.Completed || item.Canceled)).ToList();
         var now = DateTime.Now;
         var todayStart = new DateTimeOffset(now.Date).ToUnixTimeMilliseconds();
         var tomorrowStart = new DateTimeOffset(now.Date.AddDays(1)).ToUnixTimeMilliseconds();
@@ -39,6 +40,8 @@ internal static class DesktopHtmlRenderer
         html.Append("<section id='todos' class='view'>")
             .Append(RenderSection("待办", todos.Where(item => item.QuickChecklistGroupId is null), groups, "暂无普通待办"))
             .Append(RenderQuickChecklistGroups(document, todos))
+            .Append(RenderSection("历史待办", history.Where(item => item.QuickChecklistGroupId is null), groups, "暂无历史待办", historical: true))
+            .Append(RenderQuickChecklistGroups(document, history, historical: true))
             .Append("</section>");
         html.Append("<section id='calendar' class='view'>").Append(RenderSection("日历", events, groups, "暂无未完成日程")).Append("</section>");
         html.Append("<section id='planning' class='view'><div class='planning'><aside class='note-list'><div class='note-title'>规划文档</div>")
@@ -53,7 +56,7 @@ internal static class DesktopHtmlRenderer
 
     private static string NavButton(string id, string label) => $"<button onclick=\"show('{id}')\">{Html(label)}</button>";
 
-    private static string RenderSection(string title, IEnumerable<DesktopItem> source, IReadOnlyDictionary<long, DesktopGroup> groups, string empty)
+    private static string RenderSection(string title, IEnumerable<DesktopItem> source, IReadOnlyDictionary<long, DesktopGroup> groups, string empty, bool historical = false)
     {
         var items = source.ToList();
         var html = new StringBuilder($"<div class='section-title'><h2>{Html(title)}</h2><span class='count'>{items.Count}</span></div><div class='band'>");
@@ -64,22 +67,33 @@ internal static class DesktopHtmlRenderer
             html.Append("<article class='item' style='--accent:").Append(SafeColor(item.AccentColor)).Append("'><div class='accent'></div><div><div class='title'>")
                 .Append(Html(item.Title)).Append("</div><div class='sub'>").Append(Html(FormatTime(item))).Append(" · ").Append(Html(group.Name));
             if (!string.IsNullOrWhiteSpace(item.Location)) html.Append(" · @").Append(Html(item.Location.TrimStart('@')));
-            html.Append("</div></div><div class='item-actions'><button onclick=\"post('edit',").Append(item.Id).Append(")\">修改</button>");
-            if (!item.IsEvent) html.Append("<button onclick=\"post('complete',").Append(item.Id).Append(")\">完成</button>");
-            html.Append("<button onclick=\"post('cancel',").Append(item.Id).Append(")\">取消</button><button class='danger' onclick=\"post('delete',")
-                .Append(item.Id).Append(")\">删除</button></div></article>");
+            if (historical) html.Append(" · <strong class='history-state'>").Append(item.Completed ? "已完成" : "已取消").Append("</strong>");
+            html.Append("</div></div><div class='item-actions'>");
+            if (historical)
+            {
+                html.Append("<button onclick=\"post('restore',").Append(item.Id).Append(")\">恢复</button>");
+            }
+            else
+            {
+                html.Append("<button onclick=\"post('edit',").Append(item.Id).Append(")\">修改</button>");
+                if (!item.IsEvent) html.Append("<button onclick=\"post('complete',").Append(item.Id).Append(")\">完成</button>");
+                html.Append("<button onclick=\"post('cancel',").Append(item.Id).Append(")\">取消</button>");
+            }
+            html.Append("<button class='danger' onclick=\"post('delete',").Append(item.Id).Append(")\">删除</button></div></article>");
         }
         return html.Append("</div>").ToString();
     }
 
-    private static string RenderQuickChecklistGroups(DesktopSnapshotDocument document, IEnumerable<DesktopItem> source)
+    private static string RenderQuickChecklistGroups(DesktopSnapshotDocument document, IEnumerable<DesktopItem> source, bool historical = false)
     {
-        var active = source.Where(item => item.QuickChecklistGroupId is not null && !item.Completed && !item.Canceled).ToList();
+        var visible = source.Where(item => item.QuickChecklistGroupId is not null)
+            .Where(item => historical ? item.Completed || item.Canceled : !item.Completed && !item.Canceled)
+            .ToList();
         var result = new StringBuilder();
         foreach (var group in document.QuickChecklistGroups)
         {
             var allItems = document.Items.Where(item => item.QuickChecklistGroupId == group.Id).ToList();
-            var groupItems = active.Where(item => item.QuickChecklistGroupId == group.Id).ToList();
+            var groupItems = visible.Where(item => item.QuickChecklistGroupId == group.Id).ToList();
             if (groupItems.Count == 0) continue;
             var countItems = allItems.Where(item => !item.Canceled).ToList();
             result.Append("<section class='quick-group'><div class='quick-head'><strong>")
@@ -95,7 +109,7 @@ internal static class DesktopHtmlRenderer
                     var hasChildren = tree.ByParent.TryGetValue(item.Id, out var children) && children.Count > 0;
                     result.Append("<div class='quick-item' style='--depth:").Append(item.QuickChecklistDepth ?? 1).Append("'>")
                         .Append(hasChildren ? "<button class='quick-toggle' onclick=\"post('quickItemToggle'," + item.Id + ")\">" + (item.QuickChecklistCollapsed ? "›" : "⌄") + "</button>" : "<span></span>")
-                        .Append(RenderItem(item, document.Groups.ToDictionary(value => value.Id), includeComplete: true));
+                        .Append(RenderItem(item, document.Groups.ToDictionary(value => value.Id), includeComplete: !historical, historical: historical));
                     if (!string.IsNullOrWhiteSpace(item.Notes)) result.Append("<div class='quick-note'>").Append(Html(item.Notes)).Append("</div>");
                     result.Append("</div>");
                 }
@@ -123,16 +137,26 @@ internal static class DesktopHtmlRenderer
         return (ordered, byParent);
     }
 
-    private static string RenderItem(DesktopItem item, IReadOnlyDictionary<long, DesktopGroup> groups, bool includeComplete)
+    private static string RenderItem(DesktopItem item, IReadOnlyDictionary<long, DesktopGroup> groups, bool includeComplete, bool historical = false)
     {
         var group = groups.TryGetValue(item.GroupId, out var value) ? value : new DesktopGroup(0, "未分组", item.AccentColor);
         var html = new StringBuilder("<article class='item' style='--accent:").Append(SafeColor(item.AccentColor)).Append("'><div class='accent'></div><div><div class='title'>")
-            .Append(item.QuickChecklistGroupId is not null ? (item.Completed ? "☑ " : "☐ ") : "")
+            .Append(item.QuickChecklistGroupId is not null ? (item.Completed ? "☑ " : item.Canceled ? "⊘ " : "☐ ") : "")
             .Append(Html(item.Title)).Append("</div><div class='sub'>").Append(Html(FormatTime(item))).Append(" · ").Append(Html(group.Name));
         if (!string.IsNullOrWhiteSpace(item.Location)) html.Append(" · @").Append(Html(item.Location.TrimStart('@')));
-        html.Append("</div></div><div class='item-actions'><button onclick=\"post('edit',").Append(item.Id).Append(")\">修改</button>");
-        if (includeComplete && !item.IsEvent) html.Append("<button onclick=\"post('complete',").Append(item.Id).Append(")\">完成</button>");
-        html.Append("<button onclick=\"post('cancel',").Append(item.Id).Append(")\">取消</button><button class='danger' onclick=\"post('delete',").Append(item.Id).Append(")\">删除</button></div></article>");
+        if (historical) html.Append(" · <strong class='history-state'>").Append(item.Completed ? "已完成" : "已取消").Append("</strong>");
+        html.Append("</div></div><div class='item-actions'>");
+        if (historical)
+        {
+            html.Append("<button onclick=\"post('restore',").Append(item.Id).Append(")\">恢复</button>");
+        }
+        else
+        {
+            html.Append("<button onclick=\"post('edit',").Append(item.Id).Append(")\">修改</button>");
+            if (includeComplete && !item.IsEvent) html.Append("<button onclick=\"post('complete',").Append(item.Id).Append(")\">完成</button>");
+            html.Append("<button onclick=\"post('cancel',").Append(item.Id).Append(")\">取消</button>");
+        }
+        html.Append("<button class='danger' onclick=\"post('delete',").Append(item.Id).Append(")\">删除</button></div></article>");
         return html.ToString();
     }
 

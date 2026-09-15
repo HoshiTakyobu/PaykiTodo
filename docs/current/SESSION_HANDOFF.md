@@ -4,18 +4,19 @@
 
 - Repository root: `G:\Workspace\Project\PaykiTodo`
 - Branch: `main`
-- App version: `1.16.18 / versionCode 383` (local validation; not published)
+- App version: `1.16.19 / versionCode 384` (local validation; not published)
 - Room database version: `31`
 - Latest public GitHub Release: `v1.15.18`
 - Android outputs after final verification:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.16.18-debug.apk`
-  - `app/build/outputs/apk/release/PaykiTodo-1.16.18-release.apk`
-- Windows output: `desktop/dist/PaykiTodo.exe` is rebuilt from the quick-checklist-capable source with `1.16.18` metadata.
+  - `app/build/outputs/apk/debug/PaykiTodo-1.16.19-debug.apk`
+  - `app/build/outputs/apk/release/PaykiTodo-1.16.19-release.apk`
+- Windows output: `desktop/dist/PaykiTodo.exe` is rebuilt with `1.16.19` metadata.
 - Private cloud deployment: service enabled on the Azure host, origin loopback `127.0.0.1:18766`, public access through the privately configured Cloudflare/Nginx HTTPS hostname, and the administrator page at `/admin`.
 
-## v1.16.18 Completed
+## v1.16.19 Completed
 
-- Quick checklist is implemented across Android, LAN Desktop Web, and the Windows client: parser, live preview, hierarchical creation, notes, folding, completion, cancel/delete, backup/snapshot fields, and Widget summary.
+- Quick checklist is implemented across Android, LAN Desktop Web, and the Windows client: parser, live preview, hierarchical creation, notes, folding, completion, cancel/delete, history restore, backup/snapshot fields, and Widget summary.
+- LAN Web and Windows now display historical todos and expose restore/delete actions; restoring a checklist node restores only its subtree and recalculates valid ancestors. LAN Web filters checklist nodes out of ordinary history so each historical task is rendered once.
 - Parent completion excludes canceled children, cannot revive canceled ancestors, and recurses through valid ancestors. Deletion and cancellation follow the existing history rules.
 - Error diagnostics select the matching source line across Android, LAN Web, and Windows; save failures select the first invalid line.
 - Widget rows show checklist state and progress, while completed checklist items only return to today's Widget when they were completed today.
@@ -25,13 +26,17 @@
 - Room is `31`; migration `30 -> 31` and committed schema `31.json` preserve existing installations.
 - Focused Android unit/instrumentation tests, JavaScript syntax, Windows build, and server integration tests pass. No push, tag, or GitHub Release was performed.
 
-## v1.16.18 Verification Evidence
+## v1.16.19 Verification Evidence
 
-- Android unit tests and `emulator-5554` / `Pixel_8` instrumentation passed; 185 unit tests and 18 instrumentation tests cover parser, repository, hierarchy, history, cancellation, deletion, folding, duplicate protection, Widget presentation, and a real Room migration.
+- Android unit tests: 185 passed; instrumentation: 18 passed on `emulator-5554` / `Pixel_8`; server suite: 12 passed; Windows tests: 5 passed; JavaScript syntax, Android Lint, Debug/AndroidTest/Release assembly, and Windows self-contained publish passed.
+- The current Debug APK was installed and launched on `emulator-5554` / Android 14; package `com.paykitodo.app` reported `versionName=1.16.19` and `versionCode=384`.
+- Release APK v2 verification passed with one RSA-2048 signer. Debug SHA-256: `F80C5B63E07EF7B7AA53B1620DEAA2D6190C236EAC7A18598C33D07DB61ED722`; signed Release SHA-256: `3ADB690F88C80385669156AFC7939B4A9738C96D29CA7B59ACAF5BFB45CBF295`; Windows EXE SHA-256: `19BFC2AB4370B887112D45E252C4AFE9EF23997E1D250FC9D39492C90E289279`.
 - Room `30 -> 31` is exercised against a real version-30 database; backup compatibility tests confirm old archives without checklist fields import as empty checklist metadata.
 - Server integration suite: 12 passed, including browser-local timestamp payload behavior.
-- `node --check app/src/main/assets/desktop-web/app.js`, Android Lint, Debug/AndroidTest/Release assembly, 3 Windows tests, and Windows self-contained Release publish passed.
-- The Debug APK installed and launched on `emulator-5554`; package inspection reported `versionName=1.16.18` and `versionCode=383`, and the login/Turnstile surface rendered without a startup crash.
+- `node --check app/src/main/assets/desktop-web/app.js`, Android Lint, Debug/AndroidTest/Release assembly, 5 Windows tests, and Windows self-contained Release publish passed.
+- The prior `1.16.18` Debug APK evidence is superseded by the `1.16.19` installation evidence above.
+
+## Prior `v1.16.18` Verification Evidence
 - Release APK v2 signature verification passed with one RSA-2048 signer. Debug APK SHA-256: `63F727FE4BC5257B9EC0506E84121083637F07E02B53410B64ED63008B3D5A5F`; signed Release APK SHA-256: `7002003829AE1ED4B84FF28ACFC4E3D9A4E1426F5CFF8938D56A7552E7D922D0`; Windows self-contained EXE SHA-256: `403B143A0D7E062C6422055406BBB8C2F861D398BDC891812602AC06F5777A83` (file version `1.16.18.0`).
 
 ## v1.16.15 Completed

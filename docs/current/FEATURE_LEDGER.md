@@ -4,13 +4,13 @@ This file tracks the product at a practical level for new coding sessions.
 
 ## Implemented And In Use
 
-### Quick Checklist And Browser Time (1.16.18)
+### Quick Checklist And Browser Time (1.16.19)
 
 - The quick checklist entry is available from Daily Board and Todo on Android, the LAN Desktop Web, and the Windows client; edits render a live hierarchical preview before confirmation.
 - `-`, `--`, `---`, and deeper prefixes create real TodoItems at the corresponding depth. Enter continues the previous depth, and `--#` attaches a visible note to the nearest task without becoming a task.
 - Confirmed groups have a title-only container. Membership, parent ID, depth, sibling order, note, and collapsed state persist in Room `31`; existing items and todos are migrated unchanged by `30 -> 31`.
 - Parent completion is derived from non-canceled children. Canceled children do not block completion, canceled parents remain canceled, deletion of a sole child does not auto-complete its parent, and recalculated state propagates to valid ancestors.
-- Cancel writes history; delete does not. Android restores canceled or completed subtrees through the existing history path. LAN Web and Windows use the shared Todo operations and snapshot model but do not yet expose a dedicated history-restore entry.
+- Cancel writes history; delete does not. Android, LAN Web, and Windows restore canceled or completed ordinary todos and quick-checklist subtrees through the same history lifecycle; historical entries expose restore and delete instead of complete/cancel.
 - Checklist fields survive `.paykibak` backup/import, cloud snapshots, Android-to-LAN/Windows synchronization, and Widget summary generation.
 - Progress counters exclude canceled tasks. Duplicate fingerprints are rejected before a second group is written.
 - Android, LAN Web, and Windows diagnostics can select the original error line. Widget rows show `☐ / ☑`, group progress, and only today's completed checklist items.

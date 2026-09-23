@@ -1032,7 +1032,7 @@ internal fun DashboardBody(
 
                 item {
                     BoardBlockTitle(
-                        title = "今日日程",
+                        title = "今日日程（${todayScheduleItems.size}）",
                         collapsed = boardTodayEventsCollapsed,
                         onToggle = { boardTodayEventsCollapsed = !boardTodayEventsCollapsed },
                         onNavigate = onNavigateCalendar
@@ -1798,7 +1798,7 @@ private fun CollapsibleBoardCard(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun TodayScheduleBoardCard(
+internal fun TodayScheduleBoardCard(
     today: LocalDate,
     now: LocalDateTime,
     todayEvents: List<TodoItem>,
@@ -1810,173 +1810,53 @@ private fun TodayScheduleBoardCard(
     onNavigatePlanning: () -> Unit = {},
     onNavigateCalendar: () -> Unit = {}
 ) {
-    val tomorrow = today.plusDays(1)
-    val lightTheme = MaterialTheme.colorScheme.surface.luminance() > 0.5f
-    val tomorrowBandColor = MaterialTheme.colorScheme.tertiaryContainer.copy(
-        alpha = if (lightTheme) 0.86f else 0.32f
-    )
     ElevatedCard(
-        modifier = Modifier.clickable(onClick = onNavigateCalendar),
-        shape = RoundedCornerShape(16.dp),
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(24.dp),
         colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.98f)),
-        elevation = CardDefaults.elevatedCardElevation(defaultElevation = if (lightTheme) 3.dp else 1.dp)
+        elevation = CardDefaults.elevatedCardElevation(defaultElevation = 2.dp)
     ) {
-        Column {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 14.dp),
-                horizontalArrangement = Arrangement.spacedBy(14.dp),
-                verticalAlignment = Alignment.Top
-            ) {
-                Column(
-                    modifier = Modifier.widthIn(min = 54.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(3.dp)
-                ) {
-                    Text(
-                        text = boardMonthLabel(today),
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        style = MaterialTheme.typography.bodySmall,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                    Text(
-                        text = boardWeekdayLabel(today),
-                        color = MaterialTheme.colorScheme.tertiary,
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Text(
-                        text = today.dayOfMonth.toString(),
-                        style = MaterialTheme.typography.headlineLarge,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                }
-
-                Column(
-                    modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(7.dp)
-                ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(7.dp)
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .width(3.dp)
-                                    .height(16.dp)
-                                    .background(MaterialTheme.colorScheme.primary, RoundedCornerShape(999.dp))
-                            )
-                            Text(
-                                text = "今日剩余",
-                                style = MaterialTheme.typography.titleSmall,
-                                fontWeight = FontWeight.SemiBold,
-                                color = MaterialTheme.colorScheme.onSurface
-                            )
-                        }
-                        Surface(
-                            shape = RoundedCornerShape(999.dp),
-                            color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.94f)
-                        ) {
-                            Text(
-                                text = "${todayEvents.size} 项",
-                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
-                                color = MaterialTheme.colorScheme.primary,
-                                style = MaterialTheme.typography.labelSmall,
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
-                    }
-
-                    if (!todayCollapsed) {
-                        if (todayEvents.isEmpty()) {
-                            Text(
-                                text = "今天已没有剩余日程",
-                                modifier = Modifier.padding(vertical = 5.dp),
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                style = MaterialTheme.typography.bodyMedium.copy(fontSize = 13.sp, lineHeight = 16.sp)
-                            )
-                        } else {
-                            todayEvents.forEach { item ->
-                                BoardScheduleEventRow(
-                                    item = item,
-                                    now = now,
-                                    onGetEventCheckIns = onGetEventCheckIns,
-                                    onLaunchCheckIn = onLaunchCheckIn,
-                                    onClick = { onOpenEvent(item) }
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-
-            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.94f))
-
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 20.dp),
+            horizontalArrangement = Arrangement.spacedBy(18.dp),
+            verticalAlignment = Alignment.Top
+        ) {
             Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(tomorrowBandColor)
-                    .padding(horizontal = 16.dp, vertical = 12.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+                modifier = Modifier.width(56.dp).clickable(onClick = onNavigateCalendar),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Column(verticalArrangement = Arrangement.spacedBy(1.dp)) {
-                        Text(
-                            text = "明日安排",
-                            color = MaterialTheme.colorScheme.onSurface,
-                            style = MaterialTheme.typography.titleSmall,
-                            fontWeight = FontWeight.SemiBold
-                        )
-                        Text(
-                            text = "${boardMonthLabel(tomorrow)}${tomorrow.dayOfMonth}日 · ${boardWeekdayLabel(tomorrow)}",
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            style = MaterialTheme.typography.labelSmall
-                        )
+                Text(boardMonthLabel(today), style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.SemiBold)
+                Text(boardWeekdayLabel(today), style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.tertiary, fontWeight = FontWeight.Bold)
+                Text(today.dayOfMonth.toString(), style = MaterialTheme.typography.headlineLarge.copy(fontSize = 38.sp),
+                    color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Bold)
+            }
+            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                if (!todayCollapsed) {
+                    if (todayEvents.isEmpty()) {
+                        Text("暂无日程", modifier = Modifier.padding(vertical = 12.dp),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    } else {
+                        todayEvents.forEach { item ->
+                            BoardScheduleEventRow(item = item, now = now,
+                                onGetEventCheckIns = onGetEventCheckIns,
+                                onLaunchCheckIn = onLaunchCheckIn,
+                                onClick = { onOpenEvent(item) })
+                        }
                     }
-                    Text(
-                        text = "${tomorrowEvents.size} 项",
-                        color = MaterialTheme.colorScheme.tertiary,
-                        style = MaterialTheme.typography.labelMedium,
-                        fontWeight = FontWeight.Bold
-                    )
                 }
-
+                Text("明天（${tomorrowEvents.size}）",
+                    modifier = Modifier.padding(top = 8.dp, bottom = 2.dp),
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.SemiBold)
                 if (tomorrowEvents.isEmpty()) {
-                    Text(
-                        text = "暂无安排 · 去规划台写下来",
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(10.dp))
-                            .clickable(onClick = onNavigatePlanning)
-                            .padding(vertical = 4.dp),
-                        color = MaterialTheme.colorScheme.primary,
-                        style = MaterialTheme.typography.bodyMedium.copy(fontSize = 13.sp, lineHeight = 16.sp)
-                    )
+                    Text("明天暂无日程", modifier = Modifier.clickable(onClick = onNavigatePlanning).padding(vertical = 8.dp),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant)
                 } else {
-                    tomorrowEvents.take(2).forEach { item ->
+                    tomorrowEvents.forEach { item ->
                         BoardScheduleEventRow(item = item, now = null, onClick = { onOpenEvent(item) })
-                    }
-                    if (tomorrowEvents.size > 2) {
-                        Text(
-                            text = "还有 ${tomorrowEvents.size - 2} 项 · 查看日历",
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(10.dp))
-                                .clickable(onClick = onNavigateCalendar)
-                                .padding(vertical = 3.dp),
-                            color = MaterialTheme.colorScheme.primary,
-                            style = MaterialTheme.typography.labelMedium,
-                            fontWeight = FontWeight.SemiBold
-                        )
                     }
                 }
             }
@@ -2043,16 +1923,16 @@ private fun BoardScheduleEventRow(
                 .height(IntrinsicSize.Min)
                 .padding(
                     start = if (inProgress) 2.dp else 0.dp,
-                    top = if (inProgress) 5.dp else 2.dp,
+                    top = if (inProgress) 10.dp else 5.dp,
                     end = if (inProgress) 5.dp else 4.dp,
-                    bottom = if (inProgress) 5.dp else 2.dp
+                    bottom = if (inProgress) 10.dp else 5.dp
                 ),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalAlignment = Alignment.Top
         ) {
             Box(
                 modifier = Modifier
-                    .width(3.dp)
+                    .width(4.dp)
                     .fillMaxHeight()
                     .background(
                         color = rowColor.copy(alpha = 0.96f),
@@ -2063,29 +1943,29 @@ private fun BoardScheduleEventRow(
                 modifier = Modifier
                     .weight(1f)
                     .padding(top = 3.dp, bottom = 3.dp),
-                verticalArrangement = Arrangement.spacedBy(1.dp)
+                verticalArrangement = Arrangement.spacedBy(5.dp)
             ) {
                 Text(
                     text = item.title,
-                    style = MaterialTheme.typography.titleMedium.copy(fontSize = 14.sp, lineHeight = 16.sp),
+                    style = MaterialTheme.typography.titleMedium.copy(fontSize = 16.sp, lineHeight = 21.sp),
                     fontWeight = FontWeight.SemiBold,
-                    color = if (inProgress) gold else MaterialTheme.colorScheme.onSurface,
+                    color = MaterialTheme.colorScheme.onSurface,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
                 Text(
                     text = DailyBoardSnapshotBuilder.eventSecondaryText(item),
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp, lineHeight = 13.sp),
+                    style = MaterialTheme.typography.bodySmall.copy(fontSize = 13.sp, lineHeight = 18.sp),
                     fontWeight = FontWeight.Normal,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
                 item.location.takeIf { it.isNotBlank() }?.let {
                     Text(
-                        text = it,
+                        text = if (it.startsWith("@")) it else "@$it",
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp, lineHeight = 13.sp),
+                        style = MaterialTheme.typography.bodySmall.copy(fontSize = 13.sp, lineHeight = 18.sp),
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
@@ -2099,7 +1979,7 @@ private fun BoardScheduleEventRow(
                         Text(
                             text = checkInStatus,
                             color = if (activeCheckIn == null) MaterialTheme.colorScheme.onSurfaceVariant else gold,
-                            style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp, lineHeight = 13.sp),
+                            style = MaterialTheme.typography.bodySmall.copy(fontSize = 13.sp, lineHeight = 18.sp),
                             fontWeight = FontWeight.SemiBold,
                             modifier = Modifier.weight(1f)
                         )

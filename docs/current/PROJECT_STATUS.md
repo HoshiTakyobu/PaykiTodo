@@ -8,7 +8,7 @@
 - Supported Android: Android 8.0+ / API 26+
 - Compile and target SDK: Android 14 / API 34
 - License: MIT
-- App version: `1.16.19 / versionCode 384` (current local validation source)
+- App version: `1.16.20 / versionCode 385` (current local validation source)
 - Room database version: `31`
 
 ## Published Build
@@ -16,12 +16,12 @@
 - GitHub Release: `https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.15.18`
 - Release APK: `app/build/outputs/apk/release/PaykiTodo-1.15.18-release.apk`
 - Public asset name: `PaykiTodo-1.15.18-release.apk`
-- Current debug APK: `app/build/outputs/apk/debug/PaykiTodo-1.16.19-debug.apk`
-- Current signed release APK: `app/build/outputs/apk/release/PaykiTodo-1.16.19-release.apk`
-- Current Windows self-contained EXE: `desktop/dist/PaykiTodo.exe` (rebuilt for `1.16.19`; file version `1.16.19.0`)
-- Debug APK SHA-256: `F80C5B63E07EF7B7AA53B1620DEAA2D6190C236EAC7A18598C33D07DB61ED722`
-- Signed Release APK SHA-256: `3ADB690F88C80385669156AFC7939B4A9738C96D29CA7B59ACAF5BFB45CBF295`
-- Windows self-contained EXE SHA-256: `19BFC2AB4370B887112D45E252C4AFE9EF23997E1D250FC9D39492C90E289279`
+- Current debug APK: `app/build/outputs/apk/debug/PaykiTodo-1.16.20-debug.apk`
+- Current signed release APK: `app/build/outputs/apk/release/PaykiTodo-1.16.20-release.apk`
+- Current Windows self-contained EXE: `desktop/dist/PaykiTodo.exe` (file version `1.16.20.0`)
+- Debug APK SHA-256: `2119C69EAC9C6062A1581D2699BB29E916FCB64B47B49D75103D212E56E8E5B0`
+- Signed Release APK SHA-256: `FA47E46D44D82375C4EC78559856667E7089E925704656CA814AA53C881D525D`
+- Windows self-contained EXE SHA-256: `10B5C5396E582F366921AE6DD84530C0226121B9324D6E5BA987B06576F9A1DA`
 - Release signing material remains local and ignored by Git.
 
 ## Product Positioning
@@ -47,6 +47,18 @@ PaykiTodo is a local-first Android assistant for todos, DDLs, schedules, countdo
 - Desktop Web calendar now uses the same current-time line convention as the phone calendar, separates today's date from the selected date, and flashes the selected week column briefly.
 
 See `README.md` for the public overview and `docs/current/FEATURE_LEDGER.md` for the detailed implementation ledger.
+
+## v1.16.20 Validation Scope (not published)
+
+- Phone Daily Board restores the supplied left-date/right-agenda/tomorrow geometry while preserving the existing artwork and font. The dedicated `DailyBoardReferenceTest` passed on `emulator-5554` / `Pixel_8`.
+- LAN Desktop Web closes all editor, confirmation, and form modals on phone disconnect or access expiry, cancels draft promises, rejects stale responses, and shows Chinese connection guidance.
+- Windows now starts the native WPF workspace. WebView2 is used only for Turnstile account verification; the independent local-first cloud client and phone LAN browser remain separate paths.
+- Windows cloud snapshots and exported migration packages omit AI API keys. Native edits preserve hidden/check-in/reminder fields and unknown special recurrence types.
+- Validation passed: 185 Android unit tests, Android Lint, Debug/AndroidTest/Release assembly, JavaScript syntax, LAN browser regression, 12 Windows tests, and self-contained Windows publish.
+- Debug APK SHA-256: `2119C69EAC9C6062A1581D2699BB29E916FCB64B47B49D75103D212E56E8E5B0`.
+- Signed Release APK SHA-256: `FA47E46D44D82375C4EC78559856667E7089E925704656CA814AA53C881D525D`.
+- Windows self-contained EXE SHA-256: `10B5C5396E582F366921AE6DD84530C0226121B9324D6E5BA987B06576F9A1DA`.
+- Known limits: Android OEM reminder/widget behavior, Windows lunar/OCR/multi-slot parity, and paid-provider AI integration remain outside this local round. No push, tag, or GitHub Release was performed.
 
 ## v1.16.19 Validation Scope (not published)
 

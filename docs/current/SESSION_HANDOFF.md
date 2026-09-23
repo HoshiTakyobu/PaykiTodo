@@ -1,16 +1,30 @@
 # Session Handoff
 
-## Current State
+## Completed continuation (2026-09-23)
+
+The four latest user requests are recorded at the top of CURRENT_TASK.md. This round is complete on source `1.16.20 / 385`, based on commit `b987091`; the working-tree changes are ready for the local commit. Native Windows code is in `NativeWindow*.cs`, `NativeEditors.cs`, `DesktopWorkspace.cs`, and `DesktopReminders.cs`; Program now launches WPF and the old MainForm/HTML renderer is not the default workspace. Temporary reference images and screenshots are under ignored `.tmp/resume-20260923/`. The `Pixel_8` AVD was used as `emulator-5554` for validation.
+
+## v1.16.20 Verification Evidence
+
+- Android Debug APK: `app/build/outputs/apk/debug/PaykiTodo-1.16.20-debug.apk`; SHA-256 `2119C69EAC9C6062A1581D2699BB29E916FCB64B47B49D75103D212E56E8E5B0`.
+- Signed Release APK: `app/build/outputs/apk/release/PaykiTodo-1.16.20-release.apk`; SHA-256 `FA47E46D44D82375C4EC78559856667E7089E925704656CA814AA53C881D525D`.
+- Windows self-contained output: `desktop/dist/PaykiTodo.exe`; SHA-256 `10B5C5396E582F366921AE6DD84530C0226121B9324D6E5BA987B06576F9A1DA`.
+- Android: 185 unit tests, Lint, Debug/AndroidTest/Release assembly, and the dedicated daily-board instrumentation test passed on `emulator-5554` / `Pixel_8`.
+- Windows: 12 tests passed, including native navigation/editing, reminder offsets, recurrence deletion, logout locking, migration field preservation, local-server two-device sync, profile/device APIs, and password rotation.
+- LAN Web: `node --check` and `tools/tests/desktop-web-connection.cjs` passed; all eight modal classes, pending promises, stale responses, disconnect and reconnect errors are covered.
+- Known limits are recorded in CURRENT_TASK.md; no push, tag, or GitHub Release was performed.
+
+## Previous Completed State
 
 - Repository root: `G:\Workspace\Project\PaykiTodo`
 - Branch: `main`
-- App version: `1.16.19 / versionCode 384` (local validation; not published)
+- App version: `1.16.20 / versionCode 385` (local validation; not published)
 - Room database version: `31`
 - Latest public GitHub Release: `v1.15.18`
 - Android outputs after final verification:
-  - `app/build/outputs/apk/debug/PaykiTodo-1.16.19-debug.apk`
-  - `app/build/outputs/apk/release/PaykiTodo-1.16.19-release.apk`
-- Windows output: `desktop/dist/PaykiTodo.exe` is rebuilt with `1.16.19` metadata.
+- `app/build/outputs/apk/debug/PaykiTodo-1.16.20-debug.apk`
+- `app/build/outputs/apk/release/PaykiTodo-1.16.20-release.apk`
+- Windows output: `desktop/dist/PaykiTodo.exe` is rebuilt with `1.16.20` metadata.
 - Private cloud deployment: service enabled on the Azure host, origin loopback `127.0.0.1:18766`, public access through the privately configured Cloudflare/Nginx HTTPS hostname, and the administrator page at `/admin`.
 
 ## v1.16.19 Completed

@@ -6,7 +6,7 @@ using System.Text.Json.Nodes;
 
 namespace PaykiTodo.Desktop;
 
-internal sealed class DesktopSnapshotDocument
+internal sealed partial class DesktopSnapshotDocument
 {
     private const long NoDueDateMillis = long.MaxValue;
     private JsonObject root;
@@ -55,14 +55,26 @@ internal sealed class DesktopSnapshotDocument
         using var input = new MemoryStream(archiveBytes, writable: false);
         using var archive = new ZipArchive(input, ZipArchiveMode.Read);
         var entry = archive.GetEntry("backup.json") ?? throw new InvalidOperationException("云端迁移包缺少 backup.json");
-        using var reader = new StreamReader(entry.Open(), Encoding.UTF8);
-        return new DesktopSnapshotDocument(JsonNode.Parse(reader.ReadToEnd())?.AsObject() ?? throw new InvalidOperationException("云端数据 JSON 无效"));
+        if (entry.Length > 64 * 1024 * 1024) throw new InvalidOperationException("迁移包内容超过大小限制");
+        using var stream = entry.Open(); using var payload = new MemoryStream(); stream.CopyTo(payload);
+        var bytes = payload.ToArray();
+        if (archive.GetEntry("manifest.json") is { } manifestEntry) {
+            using var manifestReader = new StreamReader(manifestEntry.Open(), Encoding.UTF8);
+            var manifest = JsonNode.Parse(manifestReader.ReadToEnd());
+            var expected = manifest?["payloadSha256"]?.GetValue<string>();
+            if (!string.IsNullOrEmpty(expected) && !expected.Equals(Convert.ToHexString(SHA256.HashData(bytes)), StringComparison.OrdinalIgnoreCase))
+                throw new InvalidOperationException("迁移包校验失败，文件可能已损坏");
+        }
+        return new DesktopSnapshotDocument(JsonNode.Parse(bytes)?.AsObject() ?? throw new InvalidOperationException("云端数据 JSON 无效"));
     }
 
-    public byte[] ToArchiveBytes()
+    public byte[] ToArchiveBytes(bool includeSecrets = true)
     {
         root["exportedAtMillis"] = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
-        var payload = Encoding.UTF8.GetBytes(root.ToJsonString(new JsonSerializerOptions { WriteIndented = true }));
+        var snapshot = includeSecrets ? root : (JsonObject)root.DeepClone();
+        if (!includeSecrets && snapshot["settings"]?["planningAiProviders"] is JsonArray providers)
+            foreach (var provider in providers.OfType<JsonObject>()) provider.Remove("apiKey");
+        var payload = Encoding.UTF8.GetBytes(snapshot.ToJsonString(new JsonSerializerOptions { WriteIndented = true }));
         var manifest = new JsonObject
         {
             ["format"] = "PaykiTodoBackupArchive",
@@ -71,7 +83,7 @@ internal sealed class DesktopSnapshotDocument
             ["exportedAtMillis"] = root["exportedAtMillis"]?.GetValue<long>() ?? DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
             ["payload"] = "backup.json",
             ["payloadSha256"] = Convert.ToHexString(SHA256.HashData(payload)).ToLowerInvariant(),
-            ["containsSecrets"] = false
+            ["containsSecrets"] = includeSecrets && DesktopAi.Providers(this).Any(provider => !string.IsNullOrEmpty(provider["apiKey"]?.GetValue<string>()))
         };
         using var output = new MemoryStream();
         using (var archive = new ZipArchive(output, ZipArchiveMode.Create, leaveOpen: true))
@@ -80,6 +92,17 @@ internal sealed class DesktopSnapshotDocument
             WriteEntry(archive, "backup.json", payload);
         }
         return output.ToArray();
+    }
+
+    public void PreserveLocalApiKeys(DesktopSnapshotDocument local)
+    {
+        foreach (var provider in DesktopAi.Providers(this)) {
+            var saved = DesktopAi.Providers(local).FirstOrDefault(candidate =>
+                candidate["id"]?.GetValue<string>() == provider["id"]?.GetValue<string>() &&
+                candidate["baseUrl"]?.GetValue<string>() == provider["baseUrl"]?.GetValue<string>());
+            if (saved != null) provider["apiKey"] = saved["apiKey"]?.DeepClone();
+            else provider.Remove("apiKey");
+        }
     }
 
     public IReadOnlyList<DesktopItem> Items => Tasks
@@ -124,6 +147,11 @@ internal sealed class DesktopSnapshotDocument
 
     public long SaveItem(DesktopItemEdit edit, long? existingId = null)
     {
+        if (string.IsNullOrWhiteSpace(edit.Title)) throw new InvalidOperationException("请填写标题");
+        if (edit.IsEvent && (edit.StartAtMillis == null || edit.EndAtMillis == null || edit.EndAtMillis <= edit.StartAtMillis))
+            throw new InvalidOperationException("日程结束时间必须晚于开始时间");
+        if (!edit.IsEvent && edit.RecurrenceType != "NONE" && edit.DueAtMillis == null)
+            throw new InvalidOperationException("循环待办需要设置 DDL");
         JsonObject item;
         if (existingId.HasValue)
         {
@@ -151,20 +179,21 @@ internal sealed class DesktopSnapshotDocument
         item["location"] = edit.Location.Trim();
         item["accentColorHex"] = edit.AccentColor;
         item["countdownEnabled"] = edit.CountdownEnabled;
-        item["hiddenFromBoard"] = false;
-        item["checkInEnabled"] = false;
-        item["checkInReminderOffsetsCsv"] = "";
+        item["hiddenFromBoard"] = edit.HiddenFromBoard;
+        item["checkInEnabled"] = edit.CheckInEnabled;
+        item["checkInReminderOffsetsCsv"] ??= "";
         item["totalCheckInMinutes"] = item["totalCheckInMinutes"]?.GetValue<int>() ?? 0;
-        item["reminderAtMillis"] = edit.ReminderEnabled && edit.ReminderOffsets.Count > 0 && dueAt != NoDueDateMillis
-            ? dueAt - edit.ReminderOffsets.Max() * 60_000L
+        var reminderAnchor = edit.IsEvent ? edit.StartAtMillis ?? dueAt : dueAt;
+        item["reminderAtMillis"] = edit.ReminderEnabled && edit.ReminderOffsets.Count > 0 && reminderAnchor != NoDueDateMillis
+            ? reminderAnchor - edit.ReminderOffsets.Max() * 60_000L
             : null;
         item["reminderOffsetsCsv"] = string.Join(',', edit.ReminderOffsets.OrderByDescending(value => value));
         item["reminderEnabled"] = edit.ReminderEnabled;
-        item["ringEnabled"] = edit.ReminderEnabled;
-        item["vibrateEnabled"] = edit.ReminderEnabled;
-        item["alarmMode"] = false;
-        item["voiceEnabled"] = false;
-        item["reminderDeliveryMode"] = "FULLSCREEN_AND_NOTIFICATION";
+        item["ringEnabled"] ??= true;
+        item["vibrateEnabled"] ??= true;
+        item["alarmMode"] ??= false;
+        item["voiceEnabled"] ??= false;
+        item["reminderDeliveryMode"] ??= "FULLSCREEN_AND_NOTIFICATION";
         item["groupId"] = edit.GroupId;
         item["categoryKey"] = "ROUTINE";
         item["recurrenceType"] = edit.RecurrenceType;
@@ -265,6 +294,7 @@ internal sealed class DesktopSnapshotDocument
             UpdateQuickChecklistAncestors(groupId, target["parentTodoId"]?.GetValue<long?>(), DateTimeOffset.UtcNow.ToUnixTimeMilliseconds());
             return;
         }
+        SkipOccurrence(target);
         Tasks.Remove(target);
     }
 
@@ -451,10 +481,10 @@ internal sealed class DesktopSnapshotDocument
         template["location"] = edit.Location.Trim();
         template["accentColorHex"] = edit.AccentColor;
         template["countdownEnabled"] = edit.CountdownEnabled;
-        template["hiddenFromBoard"] = false;
-        template["checkInEnabled"] = false;
-        template["checkInReminderOffsetsCsv"] = "";
-        template["multiSlotBundleId"] = null;
+        template["hiddenFromBoard"] = edit.HiddenFromBoard;
+        template["checkInEnabled"] = edit.CheckInEnabled;
+        template["checkInReminderOffsetsCsv"] ??= "";
+        template["multiSlotBundleId"] ??= item["multiSlotBundleId"]?.DeepClone();
         template["allDay"] = edit.AllDay;
         template["groupId"] = edit.GroupId;
         template["dueHour"] = anchor.Hour;
@@ -464,18 +494,22 @@ internal sealed class DesktopSnapshotDocument
             : null;
         template["reminderOffsetMinutes"] = edit.ReminderOffsets.FirstOrDefault();
         template["reminderOffsetsCsv"] = string.Join(',', edit.ReminderOffsets.OrderByDescending(value => value));
-        template["ringEnabled"] = edit.ReminderEnabled;
-        template["vibrateEnabled"] = edit.ReminderEnabled;
-        template["alarmMode"] = false;
-        template["reminderDeliveryMode"] = "FULLSCREEN_AND_NOTIFICATION";
+        template["ringEnabled"] = item["ringEnabled"]?.DeepClone();
+        template["vibrateEnabled"] = item["vibrateEnabled"]?.DeepClone();
+        template["alarmMode"] = item["alarmMode"]?.DeepClone();
+        template["reminderDeliveryMode"] = item["reminderDeliveryMode"]?.DeepClone();
+        var preserveSpecialRule = template["recurrenceType"]?.GetValue<string>() == edit.RecurrenceType &&
+            edit.RecurrenceType is not ("NONE" or "DAILY" or "WEEKLY" or "MONTHLY_DAY" or "YEARLY_DATE");
         template["recurrenceType"] = edit.RecurrenceType;
         template["recurrenceWeekdays"] = weekdays;
-        template["recurrenceMonthlyOrdinal"] = null;
-        template["recurrenceMonthlyWeekday"] = null;
-        template["recurrenceMonthlyDay"] = edit.RecurrenceType == "MONTHLY" ? anchor.Day : null;
-        template["recurrenceYearlyMonth"] = edit.RecurrenceType == "YEARLY" ? anchor.Month : null;
-        template["recurrenceYearlyDay"] = edit.RecurrenceType == "YEARLY" ? anchor.Day : null;
-        template["startEpochDay"] = startEpochDay;
+        template["recurrenceMonthlyOrdinal"] ??= item["recurrenceMonthlyOrdinal"]?.DeepClone();
+        template["recurrenceMonthlyWeekday"] ??= item["recurrenceMonthlyWeekday"]?.DeepClone();
+        if (!preserveSpecialRule) {
+            template["recurrenceMonthlyDay"] = edit.RecurrenceType == "MONTHLY_DAY" ? anchor.Day : null;
+            template["recurrenceYearlyMonth"] = edit.RecurrenceType == "YEARLY_DATE" ? anchor.Month : null;
+            template["recurrenceYearlyDay"] = edit.RecurrenceType == "YEARLY_DATE" ? anchor.Day : null;
+            template["startEpochDay"] = startEpochDay;
+        }
         template["endEpochDay"] = edit.RecurrenceEndEpochDay ?? startEpochDay + 3650L;
     }
 
@@ -563,6 +597,8 @@ internal sealed record DesktopItemEdit(
     long? RecurrenceEndEpochDay
 )
 {
+    public bool HiddenFromBoard { get; init; }
+    public bool CheckInEnabled { get; init; }
     public static DesktopItemEdit FromJson(JsonObject item)
     {
         var offsets = (item["reminderOffsetsCsv"]?.GetValue<string>() ?? "")
@@ -589,6 +625,10 @@ internal sealed record DesktopItemEdit(
             item["recurrenceType"]?.GetValue<string>() ?? "NONE",
             item["recurrenceWeekdays"]?.GetValue<string>() ?? "",
             item["recurrenceEndEpochDay"]?.GetValue<long?>()
-        );
+        )
+        {
+            HiddenFromBoard = item["hiddenFromBoard"]?.GetValue<bool>() ?? false,
+            CheckInEnabled = item["checkInEnabled"]?.GetValue<bool>() ?? false
+        };
     }
 }

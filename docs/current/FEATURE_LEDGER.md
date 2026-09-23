@@ -4,6 +4,13 @@ This file tracks the product at a practical level for new coding sessions.
 
 ## Implemented And In Use
 
+### v1.16.20 Cross-Client Continuation
+
+- Android Daily Board matches the supplied agenda geometry while preserving the established artwork and greeting font; tomorrow's section keeps every visible event.
+- LAN Web treats phone disconnect as a session boundary: all modal editors and pending confirmation/form promises close, drafts are discarded, stale requests are ignored, and connection failures use Chinese guidance.
+- Windows launches a native WPF workspace for the primary product surfaces. WebView2 is limited to Turnstile account verification, while the phone LAN browser remains a separate compatibility mode.
+- Windows encrypted cloud snapshots and exported migration packages omit AI API keys. Imported or downloaded snapshots retain the local keys by matching provider identity, and native edits preserve fields unknown to the Windows editor, including special recurrence types.
+
 ### Quick Checklist And Browser Time (1.16.19)
 
 - The quick checklist entry is available from Daily Board and Todo on Android, the LAN Desktop Web, and the Windows client; edits render a live hierarchical preview before confirmation.

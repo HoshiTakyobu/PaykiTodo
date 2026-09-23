@@ -22,6 +22,10 @@ const WEEKDAY_OPTIONS = [
   { value: 7, label: '日' }
 ];
 const TODO_PAGE_LIMIT = 80;
+const PHONE_UNAVAILABLE_MESSAGE = '手机尚未开启“连接电脑”，或连接已断开。请在手机端开启功能，并确认电脑与手机处于同一局域网。';
+let connectionGeneration = 0;
+let connectionController = new AbortController();
+const pendingDialogs = new Set();
 const state = {
   token: '',
   snapshot: null,
@@ -110,8 +114,52 @@ function showAppShell() {
 }
 
 function showLoginScreen() {
+  // Editors live outside .shell. Hide and discard every draft before showing login.
+  document.querySelectorAll('.modal-backdrop').forEach(modal => {
+    modal.classList.add('hidden');
+    modal.querySelectorAll('input, textarea, select').forEach(input => {
+      if (input.type === 'checkbox' || input.type === 'radio') input.checked = false;
+      else input.value = '';
+    });
+  });
+  for (const cancel of [...pendingDialogs]) cancel();
   document.querySelector('.shell')?.classList.add('hidden');
   document.getElementById('login-screen')?.classList.remove('hidden');
+}
+
+function endConnection(message = PHONE_UNAVAILABLE_MESSAGE) {
+  connectionGeneration += 1;
+  connectionController.abort();
+  connectionController = new AbortController();
+  stopDesktopHeartbeat();
+  for (const key of ['planningSaveTimer', 'quickChecklistPreviewTimer', 'eventFlashTimer']) {
+    if (state[key] != null) window.clearTimeout(state[key]);
+    state[key] = null;
+  }
+  state.token = '';
+  state.snapshot = null;
+  state.editingTodoId = state.editingEventId = state.previewTodoId = state.previewEventId = null;
+  state.pendingEventSeed = null;
+  state.eventCourseSlots = [];
+  state.planningNotes = [];
+  state.planningNodes = [];
+  state.planningMappings = [];
+  state.planningPendingCommits = [];
+  state.planningPreviewEdits = {};
+  state.planningParseResult = null;
+  state.planningDirty = state.planningSaving = state.planningParsing = false;
+  state.planningLoaded = state.planningNodesLoaded = false;
+  state.activePlanningNoteId = state.planningRenderedNoteId = null;
+  state.planningParseMarkdown = state.planningNodesMarkdown = '';
+  state.aiConfigDraft = state.aiReportStatus = state.quickChecklistPreview = null;
+  state.todosLoaded = state.eventsLoaded = state.todoLoading = false;
+  state.eventLoadSerial += 1;
+  state.eventCheckInLoadSerial += 1;
+  state.reviewImport = { fileName: '', candidates: [], existingEvents: [], rangeStart: null, rangeEnd: null };
+  if (els.planningEditor) els.planningEditor.value = '';
+  if (els.token) els.token.value = '';
+  showLoginScreen();
+  els.status.textContent = message;
 }
 
 const els = {
@@ -174,10 +222,32 @@ function headers() {
 }
 
 async function api(path, options = {}) {
-  const res = await fetch(path, { ...options, headers: { ...headers(), ...(options.headers || {}) } });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error || '请求失败');
-  return data;
+  const generation = connectionGeneration;
+  const sessionSignal = connectionController.signal;
+  const controller = new AbortController();
+  const abort = () => controller.abort();
+  sessionSignal.addEventListener('abort', abort, { once: true });
+  const timeout = window.setTimeout(abort, path === '/api/status' ? 8000 : 60000);
+  try {
+    const res = await fetch(path, { ...options, signal: controller.signal, headers: { ...headers(), ...(options.headers || {}) } });
+    const data = await res.json();
+    if (generation !== connectionGeneration) throw new Error('连接已结束，请重新连接手机');
+    if (res.status === 401 || res.status === 403) {
+      endConnection('访问密钥已失效，请在手机端查看新密钥后重新连接。');
+      throw new Error('访问密钥已失效，请重新连接手机');
+    }
+    if (!res.ok) throw new Error(data.error || '操作未完成，请稍后重试');
+    return data;
+  } catch (error) {
+    if (error instanceof TypeError || error.name === 'AbortError' || error instanceof SyntaxError) {
+      if (generation === connectionGeneration) endConnection();
+      throw new Error(PHONE_UNAVAILABLE_MESSAGE);
+    }
+    throw error;
+  } finally {
+    window.clearTimeout(timeout);
+    sessionSignal.removeEventListener('abort', abort);
+  }
 }
 
 function dayKey(date) {
@@ -1889,6 +1959,7 @@ function ensureSelectedEventDay() {
 }
 
 async function connect() {
+  const generation = connectionGeneration;
   const token = els.token.value.trim().toUpperCase();
   if (!token) {
     els.status.textContent = '请输入手机端显示的 4 位访问密钥';
@@ -1899,18 +1970,14 @@ async function connect() {
   state.planningLoaded = false;
   els.status.textContent = '正在连接手机…';
   await loadSnapshot({ planning: false });
+  if (generation !== connectionGeneration) return;
   startDesktopHeartbeat();
   els.status.textContent = '已连接';
   showAppShell();
 }
 
 function disconnect() {
-  stopDesktopHeartbeat();
-  state.token = '';
-  state.snapshot = null;
-  if (els.token) els.token.value = '';
-  els.status.textContent = '已断开连接';
-  showLoginScreen();
+  endConnection('已断开连接');
 }
 
 function stopDesktopHeartbeat() {
@@ -1922,16 +1989,19 @@ function stopDesktopHeartbeat() {
 
 function startDesktopHeartbeat() {
   stopDesktopHeartbeat();
+  let checking = false;
+  const generation = connectionGeneration;
   state.desktopHeartbeatTimer = window.setInterval(async () => {
+    if (checking || !state.token) return;
+    checking = true;
     try {
       await api('/api/status');
     } catch (error) {
-      stopDesktopHeartbeat();
-      state.token = '';
-      els.status.textContent = '电脑同步连接已断开，请在手机端重新开启后再连接';
-      showLoginScreen();
+      if (generation === connectionGeneration) endConnection();
+    } finally {
+      checking = false;
     }
-  }, 60 * 1000);
+  }, 5 * 1000);
 }
 
 async function loadSnapshot(options = {}) {
@@ -4774,6 +4844,7 @@ function bindDigitInputs() {
 }
 
 function openModal(id) {
+  if (!state.token) return;
   const node = document.getElementById(id);
   if (!node) return;
   node.classList.remove('hidden');
@@ -4803,12 +4874,15 @@ function confirmDanger(title, message, confirmLabel = '删除') {
     messageNode.textContent = message;
     okButton.textContent = confirmLabel;
     const cleanup = result => {
+      pendingDialogs.delete(cancel);
       modal.classList.add('hidden');
       cancelButton.onclick = null;
       okButton.onclick = null;
       modal.onclick = null;
       resolve(result);
     };
+    const cancel = () => cleanup(false);
+    pendingDialogs.add(cancel);
     cancelButton.onclick = () => cleanup(false);
     okButton.onclick = () => cleanup(true);
     modal.onclick = event => {
@@ -4888,6 +4962,7 @@ function showFormDialog({ title, message = '', confirmLabel = '确定', fields =
     });
 
     const cleanup = result => {
+      pendingDialogs.delete(cancel);
       modal.classList.add('hidden');
       cancelButton.onclick = null;
       okButton.onclick = null;
@@ -4895,6 +4970,8 @@ function showFormDialog({ title, message = '', confirmLabel = '确定', fields =
       fieldsHost.innerHTML = '';
       resolve(result);
     };
+    const cancel = () => cleanup(null);
+    pendingDialogs.add(cancel);
 
     cancelButton.onclick = () => cleanup(null);
     okButton.onclick = () => {

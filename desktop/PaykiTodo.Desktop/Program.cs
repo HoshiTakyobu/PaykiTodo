@@ -8,6 +8,7 @@ internal static class Program
     private static void Main()
     {
         ApplicationConfiguration.Initialize();
-        Application.Run(new MainForm());
+        var app = new System.Windows.Application();
+        app.Run(new NativeWindow());
     }
 }

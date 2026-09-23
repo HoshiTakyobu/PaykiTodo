@@ -40,7 +40,8 @@ internal static class CloudAccountSync
         string password,
         string deviceId,
         bool register,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        string? turnstileToken = null)
     {
         var normalizedServer = NormalizeServerUrl(serverUrl);
         var normalizedUsername = username.Trim().ToLowerInvariant();
@@ -51,6 +52,7 @@ internal static class CloudAccountSync
         {
             username = normalizedUsername,
             password,
+            turnstileToken,
             displayName = normalizedUsername,
             deviceId,
             deviceName = Environment.MachineName,
@@ -91,6 +93,7 @@ internal static class CloudAccountSync
         {
             if (state.Dirty) throw new CloudRevisionConflictException(remoteRevision);
             var downloaded = await DownloadAsync(state, cancellationToken);
+            downloaded.PreserveLocalApiKeys(localDocument);
             var nextState = state with { Revision = remoteRevision, Dirty = false };
             return new CloudSyncResult(nextState, downloaded, $"已拉取云端版本 {remoteRevision}");
         }
@@ -99,7 +102,7 @@ internal static class CloudAccountSync
         if (!state.Dirty)
             return new CloudSyncResult(state, localDocument, $"已是最新版本 {state.Revision}");
 
-        var encrypted = SnapshotCrypto.Encrypt(localDocument.ToArchiveBytes(), state.EncryptionSecret);
+        var encrypted = SnapshotCrypto.Encrypt(localDocument.ToArchiveBytes(includeSecrets: false), state.EncryptionSecret);
         using var request = AuthorizedRequest(state, HttpMethod.Put, "/v2/sync/snapshot");
         request.Headers.TryAddWithoutValidation("If-Match", $"\"{state.Revision}\"");
         request.Headers.Add("X-Payki-Operation-Id", "windows:" + Guid.NewGuid().ToString("N"));
@@ -126,6 +129,39 @@ internal static class CloudAccountSync
         using var response = await Client.SendAsync(request, cancellationToken);
     }
 
+    public static async Task<(CloudAccountState State, JsonElement Body)> AccountRequestAsync(CloudAccountState state,
+        string path, HttpMethod method, object? payload = null)
+    {
+        state = await EnsureAccessTokenAsync(state, default);
+        using var request = AuthorizedRequest(state, method, path);
+        if (payload != null) request.Content = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
+        using var response = await Client.SendAsync(request);
+        using var json = await ReadJsonAsync(response, default);
+        EnsureSuccess(response, json.RootElement);
+        return (state, json.RootElement.Clone());
+    }
+
+    public static async Task<CloudAccountState> ChangePasswordAsync(CloudAccountState state, string currentPassword, string newPassword)
+    {
+        if (newPassword.Length is < 10 or > 256) throw new InvalidOperationException("新密码需为 10—256 位");
+        if (DeriveAccountSecret(state.Username, currentPassword) != state.EncryptionSecret) throw new InvalidOperationException("原密码不正确");
+        state = await EnsureAccessTokenAsync(state, default);
+        using var request = AuthorizedRequest(state, HttpMethod.Get, "/v2/sync/snapshot");
+        using var response = await Client.SendAsync(request);
+        var secret = DeriveAccountSecret(state.Username, newPassword);
+        long revision = 0; string? encrypted = null;
+        if (response.IsSuccessStatusCode) {
+            if (!response.Headers.TryGetValues("X-Payki-Revision", out var values) || !long.TryParse(values.First(), out revision))
+                throw new InvalidOperationException("服务器未返回数据版本");
+            var data = SnapshotCrypto.Decrypt(await response.Content.ReadAsByteArrayAsync(), state.EncryptionSecret);
+            encrypted = Convert.ToBase64String(SnapshotCrypto.Encrypt(data, secret));
+        } else if (response.StatusCode != HttpStatusCode.NotFound) throw new InvalidOperationException("云端数据暂时无法读取，请稍后修改密码");
+        await AccountRequestAsync(state, "/v2/account/password", HttpMethod.Post,
+            new { currentPassword, newPassword, snapshotRevision = revision, encryptedSnapshot = encrypted });
+        return state with { EncryptionSecret = secret, AccessToken = "", RefreshToken = "", AccessExpiresAt = 0,
+            RefreshExpiresAt = 0, Revision = encrypted == null ? 0 : revision + 1 };
+    }
+
     private static async Task<long> GetRemoteRevisionAsync(CloudAccountState state, CancellationToken cancellationToken)
     {
         using var request = AuthorizedRequest(state, HttpMethod.Get, "/v2/sync/status");
@@ -145,7 +181,7 @@ internal static class CloudAccountSync
         return DesktopSnapshotDocument.FromArchiveBytes(SnapshotCrypto.Decrypt(encrypted, state.EncryptionSecret));
     }
 
-    private static async Task<CloudAccountState> EnsureAccessTokenAsync(CloudAccountState state, CancellationToken cancellationToken)
+    internal static async Task<CloudAccountState> EnsureAccessTokenAsync(CloudAccountState state, CancellationToken cancellationToken)
     {
         var now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
         if (!string.IsNullOrWhiteSpace(state.AccessToken) && state.AccessExpiresAt > now + 30) return state;
@@ -253,25 +289,32 @@ internal sealed class DesktopSecureStore
     private static readonly byte[] Entropy = Encoding.UTF8.GetBytes("PaykiTodo Desktop local data v1");
     private readonly string statePath;
     private readonly string snapshotPath;
+    private readonly string workspacePath;
 
-    public DesktopSecureStore()
+    public DesktopSecureStore(string? storageDirectory = null)
     {
-        var directory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "PaykiTodo");
+        var directory = storageDirectory ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "PaykiTodo");
         Directory.CreateDirectory(directory);
         statePath = Path.Combine(directory, "cloud-account.bin");
         snapshotPath = Path.Combine(directory, "cloud-snapshot.bin");
+        workspacePath = Path.Combine(directory, "cloud-workspace.bin");
     }
 
     public void Save(CloudAccountState state, DesktopSnapshotDocument document)
     {
-        File.WriteAllBytes(statePath, Protect(JsonSerializer.SerializeToUtf8Bytes(state)));
-        SaveDocument(document);
+        AtomicWrite(workspacePath, Protect(JsonSerializer.SerializeToUtf8Bytes(new PersistedWorkspace(state, document.ToArchiveBytes()))));
     }
 
     public (CloudAccountState State, DesktopSnapshotDocument Document)? Load()
     {
         try
         {
+            if (File.Exists(workspacePath))
+            {
+                var saved = JsonSerializer.Deserialize<PersistedWorkspace>(Unprotect(File.ReadAllBytes(workspacePath)))
+                    ?? throw new InvalidOperationException("本地账号数据无效");
+                return (saved.State, DesktopSnapshotDocument.FromArchiveBytes(saved.Archive));
+            }
             if (!File.Exists(statePath) || !File.Exists(snapshotPath)) return null;
             var state = JsonSerializer.Deserialize<CloudAccountState>(Unprotect(File.ReadAllBytes(statePath)));
             if (state is null) return null;
@@ -288,6 +331,7 @@ internal sealed class DesktopSecureStore
     {
         try
         {
+            if (File.Exists(workspacePath)) return Load()?.Document;
             return File.Exists(snapshotPath)
                 ? DesktopSnapshotDocument.FromArchiveBytes(Unprotect(File.ReadAllBytes(snapshotPath)))
                 : null;
@@ -300,20 +344,39 @@ internal sealed class DesktopSecureStore
 
     public void SaveDocument(DesktopSnapshotDocument document)
     {
-        File.WriteAllBytes(snapshotPath, Protect(document.ToArchiveBytes()));
+        AtomicWrite(snapshotPath, Protect(document.ToArchiveBytes()));
+    }
+
+    public void SaveSafetyCopy(DesktopSnapshotDocument document)
+    {
+        var folder = Path.Combine(Path.GetDirectoryName(snapshotPath)!, "safety-copies");
+        Directory.CreateDirectory(folder);
+        AtomicWrite(Path.Combine(folder, DateTime.Now.ToString("yyyyMMdd-HHmmss-ffff") + ".bin"), Protect(document.ToArchiveBytes()));
+    }
+
+    private static void AtomicWrite(string path, byte[] bytes)
+    {
+        var temporary = path + ".tmp";
+        File.WriteAllBytes(temporary, bytes);
+        File.Move(temporary, path, overwrite: true);
     }
 
     public void ClearAccount()
     {
+        var saved = Load();
+        if (saved != null) SaveDocument(saved.Value.Document);
+        if (File.Exists(workspacePath)) File.Delete(workspacePath);
         if (File.Exists(statePath)) File.Delete(statePath);
     }
 
     public void Clear()
     {
+        if (File.Exists(workspacePath)) File.Delete(workspacePath);
         if (File.Exists(statePath)) File.Delete(statePath);
         if (File.Exists(snapshotPath)) File.Delete(snapshotPath);
     }
 
     private static byte[] Protect(byte[] value) => ProtectedData.Protect(value, Entropy, DataProtectionScope.CurrentUser);
     private static byte[] Unprotect(byte[] value) => ProtectedData.Unprotect(value, Entropy, DataProtectionScope.CurrentUser);
+    private sealed record PersistedWorkspace(CloudAccountState State, byte[] Archive);
 }

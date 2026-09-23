@@ -1,43 +1,29 @@
 # PaykiTodo Windows 客户端
 
-PaykiTodo Windows 客户端有两个明确分开的模式：
+当前 Windows 客户端是独立的原生 WPF 工作区，拥有自己的本地数据副本，不是手机 LAN 网页的壳。它通过账号连接云端加密快照；手机不在线时仍可编辑本机副本，联网后按版本同步，冲突会停下来提示处理。
 
-## 独立云客户端
+主工作区包含每日看板、待办与快速清单、历史恢复、日历（日/周/月/列表）、倒数日、规划台、AI 报告、分组、备份、提醒、深色模式以及账号和设备管理。普通编辑先写入本地草稿，点击“完成”才提交。提醒在客户端运行期间通过托盘通知和置顶窗口送达；关机、退出或睡眠期间没有后台提醒保证。
 
-这是正式桌面客户端，不依赖手机在线，也不使用手机的 `18765` 端口。
+账号登录和注册使用 WebView2 承载现有 Turnstile 人机验证。其余工作区、编辑器和页面均为原生 WPF 控件；WebView2 不承载主界面。
 
-1. 运行 `PaykiTodo.exe`。
-2. 选择“独立云客户端”。
-3. 填写部署后的 HTTPS 云服务器地址、账号和密码。
-4. 首次使用可注册账号；已有账号选择登录。
-5. 客户端把完整的工作副本保存在当前 Windows 用户的本地应用数据目录，离线时仍可新增、修改、完成、取消和删除事项。
-6. 网络恢复后自动同步。两台设备同时修改时不会静默覆盖，而是提示先处理冲突。
+## 手机 LAN 兼容路径
 
-本地账号令牌和工作副本使用 Windows DPAPI（当前用户范围）保护。服务器只保存端到端加密的迁移包，不能读取任务标题、地点、备注或 AI 密钥。
-
-## 手机 LAN 兼容模式
-
-这是旧的“连接电脑”路径，不是云客户端：
+“连接电脑”仍然是单独的浏览器路径：
 
 ```text
-电脑浏览器 / WebView2 -> 手机:18765 -> 手机本地 Room 数据库
+电脑浏览器 -> 手机:18765 -> 手机本地 Room 数据库
 ```
 
-手机必须主动开启“连接电脑”，然后把手机显示的地址和访问密钥填入客户端。该模式直接修改手机数据，不建立 Windows 本地副本；服务器云同步若已登录，仍由手机自己的同步逻辑负责上传。
+手机必须主动开启该功能。手机断开或关闭后，LAN Web 会关闭编辑弹窗并丢弃未提交草稿。该路径直接操作手机数据，不创建 Windows 本地副本；正式 Windows 客户端不依赖 `18765`。
 
-## 构建
+## 构建和分发
 
 在仓库根目录运行：
 
 ```powershell
-tools\Build-PaykiTodoDesktop.ps1
+.\tools\Build-PaykiTodoDesktop.ps1
 ```
 
-默认输出 self-contained `win-x64` 到 `desktop\dist\PaykiTodo.exe`，因此无需安装 .NET Runtime；仍需安装 Microsoft Edge WebView2 Runtime。使用 `-FrameworkDependent` 可生成体积更小但依赖 .NET 运行时的版本。
+脚本输出完整的 self-contained `win-x64` 目录到 `desktop\dist\`，入口为 `desktop\dist\PaykiTodo.exe`，不能只复制单个 EXE。目标电脑无需安装 .NET Runtime，但需要 Microsoft Edge WebView2 Runtime。`-FrameworkDependent` 可生成依赖 .NET Runtime 的较小版本。
 
-## 部署边界
-
-- PaykiTodo 云 API / 管理后台默认只监听服务器 `127.0.0.1:18766`。
-- 公网只通过 Cloudflare/Nginx 的 HTTPS `443` 访问。
-- 手机 LAN 服务仍是手机自己的局域网 `18765`。
-- 真实域名、证书、服务器 IP、管理员密码和环境变量必须保存在仓库外。
+客户端首选 `user\cloud.properties` 中的本地服务器地址写入被忽略的 `client-config.json`；真实域名、证书、服务器 IP、管理员密码和环境变量不得提交到 Git。

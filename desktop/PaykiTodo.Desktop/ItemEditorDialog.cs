@@ -101,8 +101,8 @@ internal sealed class ItemEditorDialog : Form
         recurrenceBox.Items.AddRange(new object[]
         {
             new RecurrenceChoice("不重复", "NONE"), new RecurrenceChoice("每天", "DAILY"),
-            new RecurrenceChoice("每周", "WEEKLY"), new RecurrenceChoice("每月", "MONTHLY"),
-            new RecurrenceChoice("每年", "YEARLY")
+            new RecurrenceChoice("每周", "WEEKLY"), new RecurrenceChoice("每月", "MONTHLY_DAY"),
+            new RecurrenceChoice("每年", "YEARLY_DATE")
         });
         AddField(content, "重复", recurrenceBox);
         AddField(content, "周循环星期", weekdaysBox);

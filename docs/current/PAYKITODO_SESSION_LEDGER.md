@@ -12,7 +12,7 @@ The released `1.15.18 / versionCode 360` round restores independent full-screen 
 
 ## Current Development Round
 
-The local `1.16.19 / versionCode 384` source includes account login, browser-local administrator timestamps, encrypted bidirectional snapshot sync, writable Windows local storage, and the administrator panel. The current round closes the cross-platform quick-checklist history gap: Android, LAN Web, and Windows expose restore/delete for historical todos, with subtree restoration and ancestor recalculation. The latest public GitHub Release remains `v1.15.18`; `1.16.19` is a locally verified source/build and has not been tagged or published.
+The local `1.16.20 / versionCode 385` source includes the restored phone Daily Board geometry, LAN disconnect draft cleanup, and a native WPF Windows workspace with encrypted local-first account sync. The latest public GitHub Release remains `v1.15.18`; `1.16.20` is a locally verified source/build and has not been tagged or published.
 
 ## Initial Product Request
 

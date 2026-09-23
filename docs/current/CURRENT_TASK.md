@@ -1,6 +1,29 @@
 # Current Task
 
-## Active Focus
+## v1.16.20 Completed Work (2026-09-23)
+
+User request resumed from session `01a05c72-896d-7831-afd4-0a2dc093ccec`:
+
+1. Restore phone Daily Board agenda geometry from the supplied screenshot: left date strip, readable event rows, tomorrow below; preserve artwork.
+2. Close all LAN Web editors and discard drafts when the phone disconnects or access expires.
+3. Replace raw fetch errors with useful Chinese connection guidance.
+4. Replace the Windows HTML workspace with a native desktop UI, retaining independent local storage and account sync.
+
+Current source version is `1.16.20 / 385`; the public GitHub Release remains `v1.15.18`.
+
+- Phone agenda implementation matches the supplied reference geometry and the dedicated `DailyBoardReferenceTest` passed on `emulator-5554` / `Pixel_8`.
+- LAN regression passed all 8 modal types, canceled promises, stale response, disconnect, and reconnect errors; network failures show Chinese guidance.
+- Windows WPF workspace, local-first account lifecycle, reminder behavior, special-field preservation, AI-key stripping, native editor interaction, and real local-server integration all passed 12 tests.
+- Android Debug/AndroidTest/Release assembly, 185 unit tests, Lint, JavaScript syntax, LAN browser regression, Windows tests, and self-contained publish passed.
+- This round is complete locally. No push, tag, or GitHub Release was performed; existing public release remains `v1.15.18`.
+
+### v1.16.20 Known Limits
+
+- Windows does not yet reproduce every Android-only surface such as OEM lock-screen behavior, lunar recurrence editing/generation, OCR/image capture, all advanced settings, or multi-slot editor details.
+- Windows reminders require the client to remain running; physical-device Android reminder and widget behavior still needs OEM-specific testing.
+- AI calls were tested with controlled parsing and local test servers, not with a paid provider account.
+
+## Previous Active Focus
 
 The `v1.16.19 / versionCode 384` round closes the remaining cross-client history restoration gap from the `v1.16.18` quick-checklist validation. LAN Web and the independent Windows client now expose restoration for ordinary historical todos and quick-checklist subtrees. This remains a local validation round and does not publish a GitHub Release.
 

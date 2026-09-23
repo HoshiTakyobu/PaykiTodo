@@ -1,8 +1,8 @@
 # Session Handoff
 
-## Completed continuation (2026-09-23)
+## Current handoff baseline (2026-09-23)
 
-The four latest user requests are recorded at the top of CURRENT_TASK.md. This round is complete on source `1.16.20 / 385`, based on commit `b987091`; the working-tree changes are ready for the local commit. Native Windows code is in `NativeWindow*.cs`, `NativeEditors.cs`, `DesktopWorkspace.cs`, and `DesktopReminders.cs`; Program now launches WPF and the old MainForm/HTML renderer is not the default workspace. Temporary reference images and screenshots are under ignored `.tmp/resume-20260923/`. The `Pixel_8` AVD was used as `emulator-5554` for validation.
+The four latest user requests are recorded at the top of CURRENT_TASK.md. This round is complete on source `1.16.20 / 385` at commit `7e4f8da`; the working tree is clean and no local commit is pending. Native Windows code is in `NativeWindow*.cs`, `NativeEditors.cs`, `DesktopWorkspace.cs`, and `DesktopReminders.cs`; `Program.cs` launches WPF and the old MainForm/HTML renderer is not the default workspace. Temporary reference images and screenshots are under ignored `.tmp/resume-20260923/`. The `Pixel_8` AVD was used as `emulator-5554` for validation.
 
 ## v1.16.20 Verification Evidence
 

@@ -1,13 +1,20 @@
 # Current Task
 
-## Completed: 1.16.21 / 386 (2026-10-18)
+## Current: 1.16.21 / 386 implementation and scoped interactive acceptance (2026-10-18)
 
-The request in [REQUEST_2026-10-17.md](REQUEST_2026-10-17.md) has been implemented and locally verified from main / 856e714, Room 31. Expired accounts retain offline editing/reminders and dirty data; explicit logout locks local access. Both clients provide encrypted credential memory and confirmed conflict recovery. Android adds persisted network sync jobs and notifications, cross-client checklists allow no title, settings use neutral surfaces, and native WPF fixes drafts, layout and calendar overlaps.
+The implementation round for [REQUEST_2026-10-17.md](REQUEST_2026-10-17.md) landed at main / 30c3176 from 856e714, Room 31. This is not a claim of complete cross-platform parity or all-scenario acceptance. Expired accounts retain offline editing/reminders and dirty data; explicit logout locks local access. Both clients provide encrypted credential memory and confirmed conflict recovery. Android adds persisted network sync jobs and notifications, cross-client checklists allow no title, settings use neutral surfaces, and native WPF fixes drafts, layout and calendar overlaps.
 
 - Verified outputs: Debug and signed Release APKs at `app/build/outputs/apk/{debug,release}/PaykiTodo-1.16.21-*.apk`; Windows `desktop/dist/PaykiTodo.exe` / `1.16.21.0`.
 - Passed: 186 Android unit tests, Lint, 23 emulator instrumentation tests, 18 Windows tests, 12 server tests and LAN browser regression. See [VALIDATION_1.16.21.md](VALIDATION_1.16.21.md) for actual paths, hashes and coverage.
 - Next acceptance boundary: physical-device OEM long-idle/lock-screen behavior. No multi-day idle, physical vibration or vendor battery-policy evidence is claimed. Windows lunar/OCR/multi-slot creation remains incomplete; existing special fields are preserved. Desktop reminders require the program to run.
 - No push, tag, publication or production server changes.
+
+### User-requested actual operation audit
+
+- Reused the user's Pixel_8 / emulator-5554. Actually tapped notification/account/settings/checklist/todo/history/calendar/planning/reminder controls. New formal login/account panels received real taps and keyboard input against a local server; actual Wi-Fi/data outages and request-time edits were tested.
+- Re-ran 186 unit tests/Lint, original23 Android tests, 3 new Android acceptance tests, 18 Windows regressions and a 12-stage visible native OS pointer/keyboard flow. Visible Edge saved a titleless hierarchy into the actual phone LAN service, not mocked fetch routes.
+- Scope, failures and remaining boundaries: [INTERACTIVE_VALIDATION_1.16.21.md](INTERACTIVE_VALIDATION_1.16.21.md). No fresh product APK/EXE; only AndroidTest rebuilt. Original emulator files restored with19/19 SHA-256 matches, network/temporary permissions restored and test server stopped.
+- Remaining: OEM long-idle/lock-screen, timed redelivery, upgrade/time-change full E2E, Windows login/EXE entry full E2E and documented parity gaps. Android calendar modification save was not confirmed; creation/detail were. Do not describe these as passed.
 
 ## v1.16.20 Completed Work (2026-09-23)
 

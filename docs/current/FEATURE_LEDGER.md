@@ -13,6 +13,7 @@ This file tracks the product at a practical level for new coding sessions.
 - Android/LAN/WPF checklists accept no title while keeping dash-required tasks, nesting, notes, comments, semantic fingerprints and real TodoItems.
 - Android settings use neutral blue-gray surfaces. Native WPF adds wrapped toolbars, readable dark controls, draft preservation through navigation/status updates, overlapping-event lanes and weekly weekday checkboxes.
 - Windows keeps independent encrypted local storage; lunar/OCR/multi-slot creation and Android background-service permissions remain platform-specific gaps. The Windows process must be running for desktop reminders.
+- Interactive acceptance now has real Pixel_8 touches, formal login/conflict component taps against a local server, physical network outages/concurrent writes, visible Edge-to-phone LAN saves and visible native WPF OS mouse/keyboard flows. Coverage and failures are separate from implementation status; see [INTERACTIVE_VALIDATION_1.16.21.md](INTERACTIVE_VALIDATION_1.16.21.md). Native Windows login E2E and OEM/long-idle/full-screen behavior are not passed merely because regression suites pass.
 
 ### v1.16.20 Cross-Client Continuation
 

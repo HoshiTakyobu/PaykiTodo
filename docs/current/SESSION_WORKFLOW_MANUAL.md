@@ -201,6 +201,10 @@ Instead:
 2. send `docs/current/START_NEW_SESSION.txt` again
 3. continue from repository state, not from that bad session
 
+## Actual-operation acceptance rule
+
+Follow INTERACTIVE_VALIDATION_1.16.21.md when a user requests real device/window testing. Reuse the user's available emulator, back up before synthetic fixtures, operate real controls and verify persisted outcomes. Separate unit/integration/component checks from full user workflows; screenshots are selective visual evidence, not the sole proof. Record failures and unverified scope rather than expanding a passing test into platform-wide acceptance. ExternalUiFixtureTest requires explicit opt-in and external restoration; visible WPF tests require foreground input opt-in. Keep secrets, device backups and evidence out of Git.
+
 ## Main Rule
 
 For PaykiTodo, repository files are the shared memory.

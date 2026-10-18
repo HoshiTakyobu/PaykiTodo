@@ -224,6 +224,10 @@ desktop/dist/PaykiTodo.exe
 ./tools/Build-PaykiTodoDesktop.ps1 -FrameworkDependent
 ```
 
+## 测试与验收范围
+
+启动、单测、数据库/网络集成和真实界面操作分别验证不同问题；日志或截图不能单独证明功能可用。`1.16.21` 已补充用户现有Pixel_8真实触摸、受控断网/并发写入、可见原生WPF鼠标/键盘和浏览器到手机真实服务的验收。逐项结果与未验证范围见 [实际操作验收](docs/current/INTERACTIVE_VALIDATION_1.16.21.md)。OEM长期后台、Windows功能差距和生产人机验证没有被自动测试结果代替；前台测试需主动启用，并先备份数据。
+
 ## 隐私与数据边界
 
 PaykiTodo 当前是本地优先应用：

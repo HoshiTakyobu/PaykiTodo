@@ -10,6 +10,7 @@
 - License: MIT
 - App version: `1.16.21 / versionCode 386` (locally verified; not published)
 - Room database version: `31`
+- Latest testing audit: real user-device/native-window interactions and controlled network/data checks; scoped results in [INTERACTIVE_VALIDATION_1.16.21.md](INTERACTIVE_VALIDATION_1.16.21.md). Implementation baseline `30c3176`; test-only follow-up does not change install versions or product artifacts.
 
 ## Published Build
 
@@ -57,6 +58,7 @@ See `README.md` for the public overview and `docs/current/FEATURE_LEDGER.md` for
 - Passed: 186 Android unit tests; Android Lint (0 errors, 128 warnings); Debug/AndroidTest/signed Release builds; 23 Pixel_8 instrumentation tests; 18 Windows tests; 12 server tests; LAN browser regression and JavaScript syntax; self-contained Windows publish and Release APK v2 signature verification.
 - A dedicated run disabled emulator Wi-Fi and mobile data, expired the synthetic account, pressed Home, scheduled a real AlarmManager reminder and observed its notification/dispatch claim. Fixture account preferences and synthetic tasks were restored afterward; network was re-enabled.
 - Validation details and remaining boundaries: [VALIDATION_1.16.21.md](VALIDATION_1.16.21.md). No push, tag, release or production-server change.
+- Follow-up: original23 Android and18 Windows regressions rerun; new3 Android local-server/login/conflict tests and1 visible12-stage WPF OS-input test pass. Actual phone and visible LAN steps are listed separately from test counts. Full platform parity, OEM behavior and every UI flow are not claimed.
 
 ## v1.16.20 Validation Scope (not published)
 

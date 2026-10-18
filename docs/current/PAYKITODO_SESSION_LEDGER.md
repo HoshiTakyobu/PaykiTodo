@@ -14,6 +14,10 @@ The released `1.15.18 / versionCode 360` round restores independent full-screen 
 
 The local `1.16.21 / versionCode 386` round implements expired-session notifications and continued offline reminders/editing, optional encrypted credential memory, automatic network synchronization with safe conflict recovery, title-optional checklists including archive compatibility, neutral phone Settings and native WPF draft/layout/calendar improvements. Verification: 186 Android unit tests, 23 emulator tests, 18 Windows tests, 12 server tests, Lint/build/signature and LAN browser checks. See VALIDATION_1.16.21.md. The latest public Release remains `v1.15.18`; this round is neither pushed nor published.
 
+### 2026-10-18 Actual-operation audit
+
+The user challenged startup/log/component tests being presented as complete UI acceptance. Follow-up uses the user's existing Pixel_8, actual ADB input, visible production WPF OS pointer/keyboard and visible Edge against the real phone service. Added3 Android account/network/concurrency/conflict tests and1 visible12-stage WPF flow; original23 Android/18 Windows/186 unit/Lint/12 server regressions rerun. Test-only changes keep1.16.21/386 and existing artifacts. See INTERACTIVE_VALIDATION_1.16.21.md for precise coverage, failed retries, backup restoration and unverified boundaries. Full OEM/Windows parity is not claimed; no push/publication/production change.
+
 ## Initial Product Request
 
 The original request was to build a local-first Android app that:

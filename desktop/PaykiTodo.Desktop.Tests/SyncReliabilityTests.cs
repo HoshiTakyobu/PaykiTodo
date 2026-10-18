@@ -112,7 +112,7 @@ public sealed class SyncReliabilityTests
         throw new TimeoutException("Synchronization did not complete");
     }
 
-    private sealed class SnapshotServer : IDisposable
+    internal sealed class SnapshotServer : IDisposable
     {
         private readonly HttpListener listener = new();
         private readonly Task loop;

@@ -1,8 +1,8 @@
 # Session Handoff
 
-## Current handoff: completed 1.16.21 / 386 (2026-10-18)
+## Current handoff: 1.16.21 / 386 actual-operation audit (2026-10-18)
 
-The full request is preserved in REQUEST_2026-10-17.md. The feature round is complete on main; Room remains 31. See VALIDATION_1.16.21.md for acceptance details. Expiry and explicit logout have different local access gates; keep this distinction. Do not reintroduce title-required checks into archive readers or client save buttons. Sync requests must preserve newer local edits and reject stale cloud reviews.
+The full request is preserved in REQUEST_2026-10-17.md. The implementation landed at 30c3176; Room remains31. Do not interpret the previous completed heading as full parity/all-scenario acceptance. See INTERACTIVE_VALIDATION_1.16.21.md for the user's actual-operation audit, failures and boundaries; VALIDATION_1.16.21.md preserves the build record. Expiry and explicit logout have different local access gates; keep this distinction. Do not reintroduce title-required checks into archive readers or client save buttons. Sync requests must preserve newer local edits and reject stale cloud reviews.
 
 - Debug: `app/build/outputs/apk/debug/PaykiTodo-1.16.21-debug.apk`; SHA-256 `16FF0F8D56AA57F92798D6C4FE9E31477248522A91326D443851C9DF2ACA8330`.
 - Signed Release: `app/build/outputs/apk/release/PaykiTodo-1.16.21-release.apk`; SHA-256 `DD073D336E620D5A28DC11A5433D3E0AF825B3AEFBBB5E3CEF9B9CA5B2E68093`.
@@ -12,6 +12,14 @@ The full request is preserved in REQUEST_2026-10-17.md. The feature round is com
 - Evidence: local `G:/Workspace/Scratch/PaykiTodo/acceptance-1.16.21/`; pre-test private-data backup: `G:/Workspace/Backups/PaykiTodo/emulator-before-1.16.21-20261018-175229/`. Tests restore preference values and remove only their own synthetic tasks. No personal data or credential dumps are committed.
 - Physical OEM long-idle/lock-screen/vibration remain unverified. Native Windows lunar/OCR/multi-slot creation are still gaps; Windows reminders need the process running. These are boundaries, not completed parity claims.
 - No push, tag, GitHub Release or production-server change.
+
+### Actual-operation follow-up
+
+- Added test-only account/sync integration, formal login/conflict real-touch components, external ADB fixture/helpers, visible Edge-to-phone LAN script and opt-in OS-input WPF flow. No product source/version changes; Debug/Release/EXE hashes above unchanged, only AndroidTest rebuilt/installed.
+- Original23 Android regressions passed on the user's same Pixel_8; new3 local-server tests passed together59.778s;18 Windows regressions and1 visible12-stage WPF flow56s passed.186 units/Lint and12 server tests rerun. Components/steps are not counted as full app E2E.
+- Actual phone notification click/account/settings/titleless checklist/duplicate/todo/history/calendar creation/planning import/reminder snooze/completion/restore performed. Reboot offline expired-account alarm rebuilt and notified; insufficient permission fallback delayed. Pixel Launcher ANR blocked full-screen takeover proof.10-minute second delivery, calendar modification save and OEM behavior not passed.
+- Evidence `G:/Workspace/Scratch/PaykiTodo/interactive-1.16.21/`. Backup `G:/Workspace/Backups/PaykiTodo/emulator-before-interactive-20261018/private-data.tar`;19 archived files matched SHA-256 on final restore. Extra synthetic diagnostic/safety files were not silently deleted. Emulator running at original login page; Wi-Fi/data on, app-ops default,18765 forward removed, local fixture process stopped. Windows user data/configs left unchanged.
+- New external fixture is opt-in and does NOT restore itself; require a full private-data backup and restore in external harness even after failure. Local TLS exceptions must remain androidTest-only. WPF tests own foreground input/clipboard; don't run them while user is editing.
 
 ## Historical handoff baseline (2026-09-23)
 

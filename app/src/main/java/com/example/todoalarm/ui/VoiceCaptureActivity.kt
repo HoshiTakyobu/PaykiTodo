@@ -62,7 +62,7 @@ class VoiceCaptureActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val app = application as TodoApplication
-        if (!app.settingsStore.hasValidRemoteSession()) {
+        if (!app.settingsStore.hasLocalAccountAccess()) {
             startActivity(
                 Intent(this, MainActivity::class.java).apply {
                     addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)

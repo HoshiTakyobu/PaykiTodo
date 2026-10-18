@@ -141,7 +141,7 @@ internal fun QuickChecklistEditorDialog(
                     val result = onSave(value.text)
                     saving = false
                     if (result == null) {
-                        onSaved(draft.title)
+                        onSaved(draft.title.ifBlank { "快速清单" })
                     } else {
                         saveError = result
                         Regex("第\\s*(\\d+)\\s*行").find(result)?.groupValues?.getOrNull(1)?.toIntOrNull()
@@ -157,7 +157,7 @@ internal fun QuickChecklistEditorDialog(
                 ) {
                     item {
                         Text(
-                            "第一行为清单标题；短横线数量表示层级；--# 添加可见说明；// 后内容不会保存。",
+                            "标题可选，可直接写 - 任务；短横线数量表示层级；--# 添加可见说明；// 后内容不会保存。",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -228,7 +228,7 @@ private fun QuickChecklistPreview(
             modifier = Modifier.padding(14.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            Text(draft.title.ifBlank { "预览" }, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            Text(draft.title.ifBlank { "快速清单" }, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
             Text(
                 "${draft.taskCount} 项任务 · ${draft.maxDepth} 层 · ${draft.noteCount} 条说明",
                 style = MaterialTheme.typography.labelMedium,
@@ -319,7 +319,7 @@ internal fun QuickChecklistGroups(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Column(modifier = Modifier.weight(1f)) {
-                    Text(group.title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                    Text(group.title.ifBlank { "快速清单" }, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                     val countItems = allGroupItems.filterNot { it.canceled }
                     Text(
                         "${countItems.count { it.completed }} / ${countItems.size} 已完成",

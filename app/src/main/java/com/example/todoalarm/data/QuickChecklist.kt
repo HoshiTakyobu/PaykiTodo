@@ -85,11 +85,6 @@ object QuickChecklistParser {
         val first = effectiveLines.firstOrNull()
         val hasTitle = first != null && !first.content.startsWith('-')
         val title = if (hasTitle) first?.content.orEmpty() else ""
-        if (first == null) {
-            diagnostics += error(1, "请先输入清单标题")
-        } else if (!hasTitle) {
-            diagnostics += error(first.sourceLine, "第一条有效内容必须是清单标题")
-        }
 
         val bodyLines = if (hasTitle) {
             effectiveLines.drop(1)
@@ -173,10 +168,10 @@ object QuickChecklistParser {
                 return@forEach
             }
 
-            diagnostics += error(line.sourceLine, "标题后的内容需要以短横线开头")
+            diagnostics += error(line.sourceLine, "任务需要以短横线开头")
         }
 
-        if (hasTitle && mutableNodes.isEmpty()) {
+        if (mutableNodes.isEmpty()) {
             diagnostics += error(first?.sourceLine ?: 1, "清单中至少需要一项任务")
         }
         val fingerprint = contentFingerprint(title, mutableNodes)

@@ -6,6 +6,20 @@ namespace PaykiTodo.Desktop.Tests;
 public sealed class QuickChecklistTests
 {
     [Fact]
+    public void TitlelessChecklistKeepsHierarchyNotesFingerprintAndArchive()
+    {
+        const string source = "- 想到就写\n-- 子任务\n--# 说明\n- 第二件事";
+        var draft = QuickChecklistParser.Parse(source);
+        Assert.False(draft.HasErrors); Assert.Equal("", draft.Title); Assert.Equal(3, draft.Nodes.Count);
+        Assert.Equal(draft.SourceFingerprint, QuickChecklistParser.Parse("// 注释\n" + source + " // 注释").SourceFingerprint);
+        var document = DesktopSnapshotDocument.CreateEmpty(); document.CreateQuickChecklist(draft);
+        var restored = DesktopSnapshotDocument.FromArchiveBytes(document.ToArchiveBytes());
+        Assert.Equal(3, restored.Items.Count); Assert.Equal("说明", restored.Items.Single(item => item.Title == "子任务").Notes);
+        Assert.NotNull(restored.Items.Single(item => item.Title == "子任务").ParentTodoId);
+        Assert.True(QuickChecklistParser.Parse("只有标题").HasErrors);
+        Assert.True(QuickChecklistParser.Parse("- 任务\n没有短横线的正文").HasErrors);
+    }
+    [Fact]
     public void ParserKeepsDeepHierarchyNotesAndSourceLineSelection()
     {
         var draft = QuickChecklistParser.Parse(

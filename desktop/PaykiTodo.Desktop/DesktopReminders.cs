@@ -46,9 +46,11 @@ internal sealed class DesktopReminders : IDisposable
     public DesktopReminders(Window owner, DesktopWorkspace workspace)
     {
         this.owner = owner; this.workspace = workspace;
+        workspace.LoginRequired += OnLoginRequired;
         tray = new System.Windows.Forms.NotifyIcon { Icon = System.Drawing.Icon.ExtractAssociatedIcon(Environment.ProcessPath!) ?? System.Drawing.SystemIcons.Information, Text = "PaykiTodo", Visible = true };
         tray.DoubleClick += (_, _) => { owner.Show(); owner.WindowState = WindowState.Normal; owner.Activate(); };
         tray.BalloonTipClicked += (_, _) => {
+            if (workspace.SessionExpired) { owner.Show(); owner.WindowState = WindowState.Normal; owner.Activate(); return; }
             var item = workspace.Document?.Items.FirstOrDefault(item => item.Id == notifiedItem);
             if (item != null && !item.Completed && !item.Canceled) { owner.Show(); owner.WindowState = WindowState.Normal; owner.Activate(); }
         };
@@ -57,6 +59,7 @@ internal sealed class DesktopReminders : IDisposable
         menu.Items.Add("退出", null, (_, _) => owner.Close()); tray.ContextMenuStrip = menu;
         timer.Tick += (_, _) => Tick(); timer.Start();
     }
+    private void OnLoginRequired() => owner.Dispatcher.Invoke(() => tray.ShowBalloonTip(10000, "PaykiTodo 登录已过期", "打开账号重新登录。本机数据和离线提醒保留。", System.Windows.Forms.ToolTipIcon.Info));
     private void Tick()
     {
         var now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
@@ -84,5 +87,5 @@ internal sealed class DesktopReminders : IDisposable
         System.Media.SystemSounds.Exclamation.Play(); window.Show();
     }
     public void Clear() { pending.Clear(); notifiedItem = null; alert?.Close(); checkedAt = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(); }
-    public void Dispose() { timer.Stop(); Clear(); tray.Dispose(); }
+    public void Dispose() { workspace.LoginRequired -= OnLoginRequired; timer.Stop(); Clear(); tray.Dispose(); }
 }

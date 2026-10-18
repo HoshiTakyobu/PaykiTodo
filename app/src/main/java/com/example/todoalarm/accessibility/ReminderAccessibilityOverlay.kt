@@ -57,10 +57,7 @@ class ReminderAccessibilityOverlay(
         if (overlayTodoId == todoId && overlayView != null) return
 
         serviceScope.launch {
-            if (!app.settingsStore.hasValidRemoteSession()) {
-                hide(todoId)
-                return@launch
-            }
+            if (!app.settingsStore.hasLocalAccountAccess()) { hide(todoId); return@launch }
             val item = withContext(Dispatchers.IO) { app.repository.getTodo(todoId) }
             if (item == null || item.isHistory) {
                 hide(todoId)

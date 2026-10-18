@@ -42,6 +42,8 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import com.example.todoalarm.data.RememberedLoginStore
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
@@ -64,10 +66,14 @@ fun AccountAuthScreen(
     turnstileEnabled: Boolean = false,
     turnstileChallengeUrl: String = "",
 ) {
+    val context = LocalContext.current
+    val remembered = remember(context) { RememberedLoginStore(context) }
+    var rememberAccount by remember { mutableStateOf(remembered.rememberAccount) }
+    var rememberPassword by remember { mutableStateOf(remembered.rememberPassword) }
     var mode by remember { mutableStateOf(AccountAuthMode.LOGIN) }
-    var username by remember { mutableStateOf("") }
+    var username by remember { mutableStateOf(remembered.username) }
     var displayName by remember { mutableStateOf("") }
-    var password by remember { mutableStateOf("") }
+    var password by remember { mutableStateOf(remembered.password) }
     var passwordConfirmation by remember { mutableStateOf("") }
     var recoveryCode by remember { mutableStateOf("") }
     var agreed by remember { mutableStateOf(false) }
@@ -199,6 +205,15 @@ fun AccountAuthScreen(
                 )
             }
 
+            if (mode == AccountAuthMode.LOGIN) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Checkbox(rememberAccount, { rememberAccount = it; if (!it) { rememberPassword = false; remembered.save("", "", false, false) } }, enabled = !busy)
+                    Text("记住账号")
+                    Checkbox(rememberPassword, { rememberPassword = it; if (it) rememberAccount = true else remembered.forgetPassword() }, enabled = !busy && remembered.canRememberPassword)
+                    Text("记住密码")
+                }
+                Text("密码仅加密保存在本机，不进入备份或云同步。", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
             if (mode != AccountAuthMode.RECOVER) {
                 Row(
                     modifier = Modifier
@@ -275,7 +290,12 @@ fun AccountAuthScreen(
                         errorMessage = null
                         val result = when (mode) {
                             AccountAuthMode.LOGIN -> {
-                                if (!agreed) AccountAuthResult("请先勾选用户协议") else onLogin(username, password, turnstileToken)
+                                if (!agreed) AccountAuthResult("请先勾选用户协议") else {
+                                    onLogin(username, password, turnstileToken).also { result ->
+                                        if (result.succeeded) runCatching { remembered.save(username, password, rememberAccount, rememberPassword) }
+                                            .onFailure { remembered.forgetPassword() }
+                                    }
+                                }
                             }
                             AccountAuthMode.REGISTER -> {
                                 when {

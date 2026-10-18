@@ -31,7 +31,7 @@ class ShareReceiverActivity : ComponentActivity() {
 
     private fun requireAuthenticatedSession(): Boolean {
         val app = application as TodoApplication
-        if (app.settingsStore.hasValidRemoteSession()) return true
+        if (app.settingsStore.hasLocalAccountAccess()) return true
         startActivity(
             Intent(this, MainActivity::class.java).apply {
                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)

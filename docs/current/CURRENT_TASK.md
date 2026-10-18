@@ -1,5 +1,14 @@
 # Current Task
 
+## Completed: 1.16.21 / 386 (2026-10-18)
+
+The request in [REQUEST_2026-10-17.md](REQUEST_2026-10-17.md) has been implemented and locally verified from main / 856e714, Room 31. Expired accounts retain offline editing/reminders and dirty data; explicit logout locks local access. Both clients provide encrypted credential memory and confirmed conflict recovery. Android adds persisted network sync jobs and notifications, cross-client checklists allow no title, settings use neutral surfaces, and native WPF fixes drafts, layout and calendar overlaps.
+
+- Verified outputs: Debug and signed Release APKs at `app/build/outputs/apk/{debug,release}/PaykiTodo-1.16.21-*.apk`; Windows `desktop/dist/PaykiTodo.exe` / `1.16.21.0`.
+- Passed: 186 Android unit tests, Lint, 23 emulator instrumentation tests, 18 Windows tests, 12 server tests and LAN browser regression. See [VALIDATION_1.16.21.md](VALIDATION_1.16.21.md) for actual paths, hashes and coverage.
+- Next acceptance boundary: physical-device OEM long-idle/lock-screen behavior. No multi-day idle, physical vibration or vendor battery-policy evidence is claimed. Windows lunar/OCR/multi-slot creation remains incomplete; existing special fields are preserved. Desktop reminders require the program to run.
+- No push, tag, publication or production server changes.
+
 ## v1.16.20 Completed Work (2026-09-23)
 
 User request resumed from session `01a05c72-896d-7831-afd4-0a2dc093ccec`:
@@ -9,7 +18,7 @@ User request resumed from session `01a05c72-896d-7831-afd4-0a2dc093ccec`:
 3. Replace raw fetch errors with useful Chinese connection guidance.
 4. Replace the Windows HTML workspace with a native desktop UI, retaining independent local storage and account sync.
 
-Current source version is `1.16.20 / 385`; the public GitHub Release remains `v1.15.18`.
+That completed round used source version `1.16.20 / 385`; the public GitHub Release remains `v1.15.18`.
 
 - Phone agenda implementation matches the supplied reference geometry and the dedicated `DailyBoardReferenceTest` passed on `emulator-5554` / `Pixel_8`.
 - LAN regression passed all 8 modal types, canceled promises, stale response, disconnect, and reconnect errors; network failures show Chinese guidance.

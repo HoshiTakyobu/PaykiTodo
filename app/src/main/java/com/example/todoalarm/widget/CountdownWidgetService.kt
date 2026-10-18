@@ -41,7 +41,7 @@ private class CountdownWidgetFactory(
     override fun onDataSetChanged() {
         loadColors()
         val app = context.applicationContext as TodoApplication
-        if (!app.settingsStore.hasValidRemoteSession()) {
+        if (!app.settingsStore.hasLocalAccountAccess()) {
             rows = emptyList()
             return
         }

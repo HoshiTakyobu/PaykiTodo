@@ -42,6 +42,8 @@ import androidx.compose.ui.unit.dp
 import com.example.todoalarm.TodoApplication
 import com.example.todoalarm.data.AppSettings
 import com.example.todoalarm.sync.AccountDevice
+import com.example.todoalarm.sync.RemoteSyncCoordinator
+import com.example.todoalarm.sync.remoteSummary
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 import java.time.Instant
@@ -61,10 +63,16 @@ internal fun AccountSettingsPanel(settings: AppSettings, onLogout: () -> Unit) {
     var confirmLogout by remember { mutableStateOf(false) }
     var devices by remember { mutableStateOf<List<AccountDevice>>(emptyList()) }
     var revokeTarget by remember { mutableStateOf<AccountDevice?>(null) }
+    var loginVisible by remember { mutableStateOf(false) }
+    var review by remember { mutableStateOf<RemoteSyncCoordinator.CloudReview?>(null) }
+    var keepLocal by remember { mutableStateOf(false) }
+    var confirmSafetyRestore by remember { mutableStateOf(false) }
+    var success by remember { mutableStateOf<String?>(null) }
     fun runAction(action: suspend () -> Unit) {
         if (busy) return
         busy = true
         error = null
+        success = null
         scope.launch {
             try {
                 action()
@@ -77,7 +85,7 @@ internal fun AccountSettingsPanel(settings: AppSettings, onLogout: () -> Unit) {
             }
         }
     }
-    LaunchedEffect(Unit) { runAction { coordinator.refreshAccountProfile() } }
+    LaunchedEffect(Unit) { if (app.settingsStore.hasValidRemoteSession()) runAction { coordinator.refreshAccountProfile() } }
 
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         AccountInfoRow("账号", settings.remoteSyncUsername)
@@ -95,7 +103,8 @@ internal fun AccountSettingsPanel(settings: AppSettings, onLogout: () -> Unit) {
         HorizontalDivider()
         Text(
             when {
-                settings.remoteSyncConflictRevision > 0 -> "云端数据有更新，请在电脑同步中处理同步冲突"
+                !app.settingsStore.hasValidRemoteSession() -> "登录已过期。本机数据和离线提醒继续可用，重新登录后补传修改。"
+                settings.remoteSyncConflictRevision > 0 -> "云端和本机都有更新，请检查后选择保留哪一份。"
                 settings.remoteSyncDirty -> "本机变更待同步"
                 settings.remoteSyncLastSuccessAt > 0 -> "最近同步：${accountTime(settings.remoteSyncLastSuccessAt / 1000)}"
                 else -> "尚无成功同步记录"
@@ -107,9 +116,49 @@ internal fun AccountSettingsPanel(settings: AppSettings, onLogout: () -> Unit) {
             Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
         }
         error?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
+        success?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
         if (busy) CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+        if (!app.settingsStore.hasValidRemoteSession()) {
+            OutlinedButton(onClick = { loginVisible = true }, modifier = Modifier.fillMaxWidth()) { Text("重新登录") }
+        } else {
+            OutlinedButton(enabled = !busy, onClick = { runAction { coordinator.syncNow() } }, modifier = Modifier.fillMaxWidth()) { Text("立即同步") }
+            Text("云同步在联网且数据更改后自动进行，不需要开启连接电脑。", style = MaterialTheme.typography.bodySmall)
+            OutlinedButton(enabled = !busy, onClick = { keepLocal = false; runAction { review = coordinator.inspectCloud() } }, modifier = Modifier.fillMaxWidth()) { Text("检查云端并恢复") }
+            OutlinedButton(enabled = !busy, onClick = { keepLocal = true; runAction { review = coordinator.inspectCloud() } }, modifier = Modifier.fillMaxWidth()) { Text("保留本机上传") }
+        }
+        OutlinedButton(enabled = !busy, onClick = { confirmSafetyRestore = true }, modifier = Modifier.fillMaxWidth()) { Text("恢复最近的操作前副本") }
+        Text("替换前会保留双方副本；若检查后又有修改，需重新检查。", style = MaterialTheme.typography.bodySmall)
         OutlinedButton(onClick = { confirmLogout = true }, enabled = !busy, modifier = Modifier.fillMaxWidth()) { Text("退出账号") }
     }
+
+    if (loginVisible) {
+        androidx.compose.ui.window.Dialog(onDismissRequest = { loginVisible = false }, properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false)) {
+            AccountAuthScreen(
+                onLogin = { username, password, token -> coordinator.login(username, password, token).also { if (it.succeeded) loginVisible = false } },
+                onRegister = { username, name, password, token -> coordinator.register(username, name, password, token) },
+                onRecover = coordinator::recoverPassword, onRecoveryCode = {},
+                turnstileEnabled = !com.example.todoalarm.BuildConfig.PAYKITODO_CLOUD_BASE_URL.endsWith(".invalid"),
+                turnstileChallengeUrl = com.example.todoalarm.BuildConfig.PAYKITODO_CLOUD_BASE_URL.trimEnd('/') + "/v2/auth/challenge"
+            )
+        }
+    }
+    review?.let { checked ->
+        val summary = checked.snapshot.remoteSummary()
+        AlertDialog(onDismissRequest = { if (!busy) review = null },
+            title = { Text(if (keepLocal) "确认保留本机上传" else "确认恢复云端副本") },
+            text = { Text("云端版本 ${checked.revision}：${summary.todoCount} 项待办、${summary.eventCount} 项日程、${summary.planningNoteCount} 份规划文档。\n${if (keepLocal) "本机数据将作为新云端版本，其他设备下次同步会更新。" else "云端数据将替换本机，未上传修改保留在恢复副本中。"}\n确认前会保存双方副本。") },
+            confirmButton = { TextButton(enabled = !busy, onClick = { runAction { success = coordinator.resolveCloud(checked, keepLocal); review = null } }) { Text("确认") } },
+            dismissButton = { TextButton(enabled = !busy, onClick = { review = null }) { Text("取消") } })
+    }
+
+    if (confirmSafetyRestore) AlertDialog(
+        onDismissRequest = { if (!busy) confirmSafetyRestore = false },
+        title = { Text("恢复操作前副本") },
+        text = { Text("将使用当前账号最近一次操作前的本机副本替换数据，并标记为待同步。当前数据也会先保存为恢复副本。") },
+        confirmButton = { TextButton(enabled = !busy, onClick = { runAction {
+            coordinator.restoreNewestSafetyCopy(); confirmSafetyRestore = false; success = "操作前副本已恢复，当前数据也已保留副本"
+        } }) { Text("确认恢复") } },
+        dismissButton = { TextButton(enabled = !busy, onClick = { confirmSafetyRestore = false }) { Text("取消") } })
 
     if (editName) {
         var name by remember { mutableStateOf(settings.remoteSyncDisplayName.ifBlank { settings.remoteSyncUsername }) }

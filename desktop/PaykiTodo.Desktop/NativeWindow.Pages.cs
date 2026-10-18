@@ -92,7 +92,7 @@ internal sealed partial class NativeWindow
             var group = workspace.Document!.QuickChecklistGroups.FirstOrDefault(group => group.Id == grouping.Key);
             if (group == null) continue;
             var all = workspace.Document.Items.Where(item => item.QuickChecklistGroupId == group.Id).ToList();
-            var title = $"{group.Title}   {all.Count(item => item.Completed)}/{all.Count(item => !item.Canceled)}";
+            var title = $"{(string.IsNullOrWhiteSpace(group.Title) ? "快速清单" : group.Title)}   {all.Count(item => item.Completed && !item.Canceled)}/{all.Count(item => !item.Canceled)}";
             host.Children.Add(Action((group.Collapsed ? "▸  " : "▾  ") + title, () => Change(document => document.ToggleQuickChecklistGroup(group.Id))));
             if (group.Collapsed) continue;
             var hidden = new HashSet<long>();
@@ -172,8 +172,9 @@ internal sealed partial class NativeWindow
             foreach (var item in Active.Where(item => item.IsEvent && Local(item.EndAtMillis) >= selectedDay.Date)) list.Children.Add(Card(EventRow(item)));
             if (list.Children.Count == 0) list.Children.Add(Text("暂无日程", 16, Muted)); body.Children.Add(Scroll(list)); return body;
         }
-        var count = calendarView == "日" ? 1 : 7;
-        var start = count == 1 ? selectedDay.Date : selectedDay.Date.AddDays(-(((int)selectedDay.DayOfWeek + 6) % 7));
+        var count = calendarView == "日" ? 1 : ActualWidth < 1100 ? 3 : 7;
+        var sunday = workspace.Document!.Settings["weekStartMode"]?.GetValue<string>() == "SUNDAY";
+        var start = count != 7 ? selectedDay.Date : selectedDay.Date.AddDays(-(((int)selectedDay.DayOfWeek + (sunday ? 0 : 6)) % 7));
         var grid = new Grid { Background = Paper, Height = 24 * 60 + 40 };
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(48) });
         for (var column = 0; column < count; column++) grid.ColumnDefinitions.Add(new ColumnDefinition());
@@ -193,15 +194,15 @@ internal sealed partial class NativeWindow
             }
             canvas.MouseLeftButtonDown += (_, e) => { if (e.ClickCount == 2) { var minute = Math.Clamp((int)((e.GetPosition(canvas).Y - 40) / 15) * 15, 0, 1425); EditItem(true, seed: day.AddMinutes(minute)); } };
             var events = EventsOn(day).OrderBy(item => item.StartAtMillis).ToList();
+            var layout = CalendarEventLayout.Arrange(events, day);
             foreach (var item in events) {
                 var itemStart = Local(item.StartAtMillis); var itemEnd = Local(item.EndAtMillis);
                 var y = Math.Max(0, (itemStart - day).TotalMinutes); var h = Math.Max(36, Math.Min(1440, (itemEnd - day).TotalMinutes) - y);
-                var overlaps = events.Where(other => Local(other.StartAtMillis) < itemEnd && Local(other.EndAtMillis) > itemStart).ToList();
-                var lane = overlaps.FindIndex(other => other.Id == item.Id);
+                var position = layout[item.Id];
                 var tile = new Border { Background = B(item.AccentColor), CornerRadius = new CornerRadius(5), Padding = new Thickness(6), Height = h - 2,
                     Child = Column(Text(item.Title, 12, B("#FFFFFF"), true), Text(itemStart.ToString("HH:mm"), 11, B("#FFFFFF"))), ClipToBounds = true,
                     Opacity = itemEnd < DateTime.Now ? 0.5 : 0.94, ToolTip = item.Title + "\n" + TimeLabel(item) + "\n" + item.Location };
-                void Position() { tile.Width = Math.Max(20, (canvas.ActualWidth - 5) / overlaps.Count - 3); Canvas.SetLeft(tile, lane * (canvas.ActualWidth - 5) / overlaps.Count + 2); }
+                void Position() { tile.Width = Math.Max(20, (canvas.ActualWidth - 5) / position.Columns - 3); Canvas.SetLeft(tile, position.Lane * (canvas.ActualWidth - 5) / position.Columns + 2); }
                 canvas.SizeChanged += (_, _) => Position(); Canvas.SetTop(tile, y + 40); canvas.Children.Add(tile);
                 tile.MouseLeftButtonUp += (_, e) => { Preview(item); e.Handled = true; };
             }

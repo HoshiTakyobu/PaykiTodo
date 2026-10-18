@@ -15,6 +15,7 @@ class BootReceiver : BroadcastReceiver() {
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 val app = context.applicationContext as TodoApplication
+                com.example.todoalarm.sync.AccountExpiryNotifier.schedule(context)
                 app.repository.markMissedTasks(System.currentTimeMillis())
                 app.repository.ensureRecurringInstancesAhead()
                 val items = app.repository.futureReminderItems(System.currentTimeMillis())

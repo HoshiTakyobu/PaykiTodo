@@ -5,6 +5,7 @@
 build/
 **/bin/
 **/obj/
+**/TestResults/
 desktop/dist/
 __pycache__/
 *.pyc

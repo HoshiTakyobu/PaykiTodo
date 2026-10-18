@@ -98,7 +98,7 @@ internal sealed class QuickChecklistEditorDialog : Form
     {
         draft = QuickChecklistParser.Parse(input.Text);
         summary.Text = $"{draft.TaskCount} 项任务 · {draft.MaxDepth} 层 · {draft.NoteCount} 条说明";
-        save.Enabled = draft.Title.Length > 0 && draft.TaskCount > 0;
+        save.Enabled = !draft.HasErrors && draft.TaskCount > 0;
         var text = new StringBuilder();
         if (draft.Title.Length > 0) text.AppendLine(draft.Title).AppendLine();
         foreach (var node in draft.Nodes)

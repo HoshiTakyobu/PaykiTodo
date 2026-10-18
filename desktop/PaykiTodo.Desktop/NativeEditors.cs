@@ -35,14 +35,22 @@ internal static class NativeEditors
                 "MONTHLY_NTH_WEEKDAY" => "保留每月第几个星期的规则", "YEARLY_LUNAR_DATE" => "保留农历循环规则", _ => "保留已有循环规则"
             }, value.RecurrenceType));
         var recurrence = new ComboBox { ItemsSource = repeats, DisplayMemberPath = "Name", SelectedItem = repeats.FirstOrDefault(item => item.Value == value?.RecurrenceType) ?? repeats[0] };
-        var weekdays = Input(value?.RecurrenceWeekdays ?? "");
+        var selectedDays = (value?.RecurrenceWeekdays ?? "").Split(',').ToHashSet();
+        var weekdays = Enumerable.Range(1, 7).Select(day => new CheckBox {
+            Content = new[] { "周一", "周二", "周三", "周四", "周五", "周六", "周日" }[day - 1],
+            IsChecked = selectedDays.Contains(day.ToString()), Tag = day
+        }).ToArray();
+        if (value == null) weekdays[((int)seed.DayOfWeek + 6) % 7].IsChecked = true;
+        var weeklyRow = Row(weekdays);
+        void UpdateWeekly() => weeklyRow.Visibility = (recurrence.SelectedItem as Choice)?.Value == "WEEKLY" ? Visibility.Visible : Visibility.Collapsed;
+        recurrence.SelectionChanged += (_, _) => UpdateWeekly(); UpdateWeekly();
         var until = new DatePicker { SelectedDate = value?.RecurrenceEndEpochDay is { } day ? DateTime.UnixEpoch.AddDays(day) : null };
         var fields = Column(Text("标题", 14, bold: true), title);
         if (isEvent) { fields.Children.Add(Text("开始时间")); fields.Children.Add(start.Control); fields.Children.Add(Text("结束时间")); fields.Children.Add(end.Control); fields.Children.Add(allDay); fields.Children.Add(Text("地点")); fields.Children.Add(location); }
         else { fields.Children.Add(hasDue); fields.Children.Add(due.Control); }
         fields.Children.Add(reminder); fields.Children.Add(Text("提前提醒（分钟，可用逗号分隔，例如 30,15,5）", 12, Muted)); fields.Children.Add(offsets);
         fields.Children.Add(Text("备注")); fields.Children.Add(notes); fields.Children.Add(Row(countdown, isEvent ? checkin : hidden));
-        fields.Children.Add(Text("重复")); fields.Children.Add(recurrence); fields.Children.Add(Text("每周星期（1—7，用逗号分隔）", 12, Muted)); fields.Children.Add(weekdays);
+        fields.Children.Add(Text("重复")); fields.Children.Add(recurrence); fields.Children.Add(weeklyRow);
         fields.Children.Add(Text("循环截止日期（可留空）", 12, Muted)); fields.Children.Add(until);
         fields.Children.Add(Text("分组")); fields.Children.Add(group); fields.Children.Add(Text("颜色")); fields.Children.Add(color);
         var error = Text("", 13, B("#AF3A32"));
@@ -55,12 +63,12 @@ internal static class NativeEditors
                 if (isEvent && end.Value <= start.Value) throw new InvalidOperationException("结束时间必须晚于开始时间");
                 if (reminder.IsChecked == true && (!isEvent && hasDue.IsChecked != true || minutes.Count == 0)) throw new InvalidOperationException("开启提醒需要设置时间和提前提醒分钟数");
                 var repeat = (recurrence.SelectedItem as Choice)?.Value ?? "NONE";
-                if (repeat == "WEEKLY" && weekdays.Text.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).Any(text => !int.TryParse(text, out var day) || day < 1 || day > 7))
-                    throw new InvalidOperationException("星期请填写 1—7，用逗号分隔");
+                var weekdayCsv = string.Join(",", weekdays.Where(day => day.IsChecked == true).Select(day => day.Tag));
+                if (repeat == "WEEKLY" && weekdayCsv.Length == 0) throw new InvalidOperationException("请选择至少一个重复星期");
                 result = new DesktopItemEdit(isEvent, title.Text.Trim(), notes.Text, location.Text,
                     !isEvent && hasDue.IsChecked == true ? Millis(due.Value) : null, isEvent ? Millis(start.Value) : null, isEvent ? Millis(end.Value) : null,
                     allDay.IsChecked == true, reminder.IsChecked == true, minutes, (group.SelectedItem as DesktopGroup)?.Id ?? 1,
-                    color.SelectedItem?.ToString() ?? colors[0], countdown.IsChecked == true, repeat, weekdays.Text.Trim(),
+                    color.SelectedItem?.ToString() ?? colors[0], countdown.IsChecked == true, repeat, weekdayCsv,
                     until.SelectedDate is { } date ? (long)(date.Date - DateTime.UnixEpoch.Date).TotalDays : null)
                     { HiddenFromBoard = hidden.IsChecked == true, CheckInEnabled = checkin.IsChecked == true };
                 dialog.DialogResult = true;
@@ -79,7 +87,7 @@ internal static class NativeEditors
         void Refresh()
         {
             preview.Children.Clear(); var draft = QuickChecklistParser.Parse(source.Text);
-            preview.Children.Add(Text(draft.Title, 22, bold: true));
+            preview.Children.Add(Text(string.IsNullOrWhiteSpace(draft.Title) ? "快速清单" : draft.Title, 22, bold: true));
             foreach (var node in draft.Nodes) preview.Children.Add(new Border { Margin = new Thickness(Math.Min(node.Depth, 12) * 14, 4, 0, 4), Child = Text("○  " + node.Title + (string.IsNullOrEmpty(node.Notes) ? "" : "\n" + node.Notes)) });
             error.Text = string.Join("\n", draft.Diagnostics.Select(problem => $"第 {problem.SourceLine} 行：{problem.Message}"));
         }
@@ -91,7 +99,7 @@ internal static class NativeEditors
             var prefix = QuickChecklistParser.ContinuationPrefix(line).TrimEnd();
             var insert = "\n" + prefix + (prefix.Length > 0 ? " " : ""); var position = source.SelectionStart; source.SelectedText = insert; source.CaretIndex = position + insert.Length; e.Handled = true;
         };
-        var fields = Column(Text("第一行为标题；用 -、-- 表示任务层级，--# 表示备注。", 13, Muted), grid);
+        var fields = Column(Text("标题可选，可直接写 - 任务；短横线表示层级，--# 添加说明，// 是不保存的注释。", 13, Muted), grid);
         dialog.Content = EditorLayout(fields, error, () => dialog.Close(), () => {
             var draft = QuickChecklistParser.Parse(source.Text);
             if (draft.HasErrors) {

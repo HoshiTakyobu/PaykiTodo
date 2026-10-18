@@ -12,7 +12,7 @@ The released `1.15.18 / versionCode 360` round restores independent full-screen 
 
 ## Current Development Round
 
-The local `1.16.20 / versionCode 385` source includes the restored phone Daily Board geometry, LAN disconnect draft cleanup, and a native WPF Windows workspace with encrypted local-first account sync. The latest public GitHub Release remains `v1.15.18`; `1.16.20` is a locally verified source/build and has not been tagged or published.
+The local `1.16.21 / versionCode 386` round implements expired-session notifications and continued offline reminders/editing, optional encrypted credential memory, automatic network synchronization with safe conflict recovery, title-optional checklists including archive compatibility, neutral phone Settings and native WPF draft/layout/calendar improvements. Verification: 186 Android unit tests, 23 emulator tests, 18 Windows tests, 12 server tests, Lint/build/signature and LAN browser checks. See VALIDATION_1.16.21.md. The latest public Release remains `v1.15.18`; this round is neither pushed nor published.
 
 ## Initial Product Request
 

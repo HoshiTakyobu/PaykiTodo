@@ -18,11 +18,15 @@ internal sealed record CloudAccountState(
     string EncryptionSecret,
     long Revision,
     bool Dirty
-);
+) {
+    public bool LocalAccessLocked { get; init; }
+}
 
 internal sealed record CloudAuthenticationResult(CloudAccountState State, long RemoteRevision);
 
 internal sealed record CloudSyncResult(CloudAccountState State, DesktopSnapshotDocument Document, string Message);
+internal sealed class CloudSessionExpiredException() : InvalidOperationException("登录已过期，请重新登录；本机数据、离线提醒和待同步修改已保留。");
+internal sealed record CloudDownload(DesktopSnapshotDocument Document, long Revision);
 
 internal sealed class CloudRevisionConflictException(long remoteRevision)
     : InvalidOperationException($"云端版本 {remoteRevision} 已更新，本机也有未上传修改。为防止覆盖，已停止同步。")
@@ -93,9 +97,9 @@ internal static class CloudAccountSync
         {
             if (state.Dirty) throw new CloudRevisionConflictException(remoteRevision);
             var downloaded = await DownloadAsync(state, cancellationToken);
-            downloaded.PreserveLocalApiKeys(localDocument);
-            var nextState = state with { Revision = remoteRevision, Dirty = false };
-            return new CloudSyncResult(nextState, downloaded, $"已拉取云端版本 {remoteRevision}");
+            downloaded.Document.PreserveLocalApiKeys(localDocument);
+            var nextState = state with { Revision = downloaded.Revision, Dirty = false };
+            return new CloudSyncResult(nextState, downloaded.Document, $"已拉取云端版本 {downloaded.Revision}");
         }
         if (remoteRevision < state.Revision)
             throw new InvalidOperationException("云端版本低于本机同步记录，已停止同步以避免覆盖");
@@ -162,7 +166,7 @@ internal static class CloudAccountSync
             RefreshExpiresAt = 0, Revision = encrypted == null ? 0 : revision + 1 };
     }
 
-    private static async Task<long> GetRemoteRevisionAsync(CloudAccountState state, CancellationToken cancellationToken)
+    internal static async Task<long> GetRemoteRevisionAsync(CloudAccountState state, CancellationToken cancellationToken)
     {
         using var request = AuthorizedRequest(state, HttpMethod.Get, "/v2/sync/status");
         using var response = await Client.SendAsync(request, cancellationToken);
@@ -171,19 +175,22 @@ internal static class CloudAccountSync
         return json.RootElement.GetProperty("revision").GetInt64();
     }
 
-    private static async Task<DesktopSnapshotDocument> DownloadAsync(CloudAccountState state, CancellationToken cancellationToken)
+    internal static async Task<CloudDownload> DownloadAsync(CloudAccountState state, CancellationToken cancellationToken)
     {
         using var request = AuthorizedRequest(state, HttpMethod.Get, "/v2/sync/snapshot");
         using var response = await Client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
-        if (response.StatusCode == HttpStatusCode.NotFound) return DesktopSnapshotDocument.CreateEmpty();
+        if (response.StatusCode == HttpStatusCode.NotFound) throw new InvalidOperationException("云端尚无副本");
         if (!response.IsSuccessStatusCode) throw new InvalidOperationException($"云端数据下载失败（HTTP {(int)response.StatusCode}）");
         var encrypted = await response.Content.ReadAsByteArrayAsync(cancellationToken);
-        return DesktopSnapshotDocument.FromArchiveBytes(SnapshotCrypto.Decrypt(encrypted, state.EncryptionSecret));
+        if (!response.Headers.TryGetValues("X-Payki-Revision", out var headers) || !long.TryParse(headers.First(), out var revision))
+            throw new InvalidOperationException("云端未返回数据版本，请重试");
+        return new CloudDownload(DesktopSnapshotDocument.FromArchiveBytes(SnapshotCrypto.Decrypt(encrypted, state.EncryptionSecret)), revision);
     }
 
     internal static async Task<CloudAccountState> EnsureAccessTokenAsync(CloudAccountState state, CancellationToken cancellationToken)
     {
         var now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+        if (state.LocalAccessLocked || state.RefreshExpiresAt <= now || string.IsNullOrWhiteSpace(state.RefreshToken)) throw new CloudSessionExpiredException();
         if (!string.IsNullOrWhiteSpace(state.AccessToken) && state.AccessExpiresAt > now + 30) return state;
         var payload = JsonSerializer.SerializeToUtf8Bytes(new { refreshToken = state.RefreshToken });
         using var request = new HttpRequestMessage(HttpMethod.Post, state.ServerUrl + "/v2/auth/refresh");
@@ -218,6 +225,7 @@ internal static class CloudAccountSync
     private static void EnsureSuccess(HttpResponseMessage response, JsonElement body)
     {
         if (response.IsSuccessStatusCode) return;
+        if (response.StatusCode == HttpStatusCode.Unauthorized) throw new CloudSessionExpiredException();
         var message = body.TryGetProperty("message", out var value) ? value.GetString() : null;
         throw new InvalidOperationException(string.IsNullOrWhiteSpace(message) ? $"云服务请求失败（HTTP {(int)response.StatusCode}）" : message);
     }
@@ -347,11 +355,25 @@ internal sealed class DesktopSecureStore
         AtomicWrite(snapshotPath, Protect(document.ToArchiveBytes()));
     }
 
-    public void SaveSafetyCopy(DesktopSnapshotDocument document)
+    private string SafetyDirectory()
     {
-        var folder = Path.Combine(Path.GetDirectoryName(snapshotPath)!, "safety-copies");
+        var username = Load()?.State.Username ?? "local";
+        var identity = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(username)));
+        return Path.Combine(Path.GetDirectoryName(snapshotPath)!, "safety-copies", identity);
+    }
+
+    public void SaveSafetyCopy(DesktopSnapshotDocument document, string source = "local")
+    {
+        var folder = SafetyDirectory();
         Directory.CreateDirectory(folder);
-        AtomicWrite(Path.Combine(folder, DateTime.Now.ToString("yyyyMMdd-HHmmss-ffff") + ".bin"), Protect(document.ToArchiveBytes()));
+        AtomicWrite(Path.Combine(folder, DateTime.UtcNow.ToString("yyyyMMdd-HHmmss-fffffff") + "-" + source + "-" + Guid.NewGuid().ToString("N") + ".bin"), Protect(document.ToArchiveBytes()));
+    }
+
+    public byte[] LatestSafetyCopy()
+    {
+        var folder = SafetyDirectory();
+        var path = Directory.Exists(folder) ? Directory.GetFiles(folder, "*-local-*.bin").OrderByDescending(File.GetLastWriteTimeUtc).FirstOrDefault() : null;
+        return path == null ? throw new InvalidOperationException("尚无操作前恢复副本") : Unprotect(File.ReadAllBytes(path));
     }
 
     private static void AtomicWrite(string path, byte[] bytes)

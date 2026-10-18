@@ -4,6 +4,16 @@ This file tracks the product at a practical level for new coding sessions.
 
 ## Implemented And In Use
 
+### v1.16.21 Account Expiry, Sync Recovery And Native Usability
+
+- Android expiry notification opens account settings; expiry preserves authenticated local access, reminders and dirty data. Explicit logout locks access. Remember-account/password is opt-in and kept outside snapshots; remembered passwords use encrypted preferences or Windows DPAPI.
+- Android reminder service, full-screen activity, notification clicks, ongoing/daily notifications, widgets and capture entrances use the local account gate. Exact AlarmManager scheduling, startup/boot/upgrade/time recovery and duplicate dispatch claims remain active independently of cloud authentication.
+- Android cloud sync uses local-write debounce, network callbacks and persisted network-constrained JobScheduler jobs. Dirty generations and transaction-time fingerprints protect edits made during network requests. Same-account reauthentication preserves pending changes and revision.
+- Both clients support cloud inspection and confirmed restore/keep-local upload with revision checks, account-bound reviews and safety copies. Restoring an operation-before copy selects a local copy for the current account, never the separately saved cloud copy.
+- Android/LAN/WPF checklists accept no title while keeping dash-required tasks, nesting, notes, comments, semantic fingerprints and real TodoItems.
+- Android settings use neutral blue-gray surfaces. Native WPF adds wrapped toolbars, readable dark controls, draft preservation through navigation/status updates, overlapping-event lanes and weekly weekday checkboxes.
+- Windows keeps independent encrypted local storage; lunar/OCR/multi-slot creation and Android background-service permissions remain platform-specific gaps. The Windows process must be running for desktop reminders.
+
 ### v1.16.20 Cross-Client Continuation
 
 - Android Daily Board matches the supplied agenda geometry while preserving the established artwork and greeting font; tomorrow's section keeps every visible event.

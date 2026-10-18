@@ -13,12 +13,15 @@ internal sealed class DesktopWorkspace
     public CloudAccountState? Account { get; private set; }
     public string Status { get; private set; } = "登录后，日程和待办会保存在这台电脑上。";
     public event Action? Changed;
+    public bool SessionExpired { get; private set; }
+    public event Action? LoginRequired;
+    internal sealed record CloudReview(CloudDownload Remote, long EditVersion, long AccountGeneration);
 
     public DesktopWorkspace(DesktopSecureStore? store = null)
     {
         this.store = store ?? new DesktopSecureStore();
         var saved = this.store.Load();
-        if (saved is not null && string.IsNullOrEmpty(saved.Value.State.AccessToken))
+        if (saved is not null && (saved.Value.State.LocalAccessLocked || (string.IsNullOrEmpty(saved.Value.State.AccessToken) && saved.Value.State.RefreshExpiresAt == 0)))
         {
             Status = "已退出登录，请重新登录以访问本机数据。";
             return;
@@ -60,6 +63,7 @@ internal sealed class DesktopWorkspace
         store.Save(account, document);
         accountGeneration++;
         Account = account;
+        SessionExpired = false;
         Document = document;
         editVersion++;
         Notify("登录成功，正在同步…");
@@ -90,13 +94,18 @@ internal sealed class DesktopWorkspace
                 Notify(downloaded ? "云端和本机都有新修改，请在设置中处理同步冲突。" : "新修改已保存在本机，稍后继续同步。");
                 return;
             }
-            store.Save(result.State, result.Document);
+            var downloadedDocument = result.Document != snapshot;
+            if (downloadedDocument) store.SaveSafetyCopy(Document!);
+            var document = downloadedDocument ? result.Document : Document!;
+            store.Save(result.State, document);
             Account = result.State;
-            Document = result.Document;
+            Document = document;
+            SessionExpired = false;
             Notify(result.Message);
         }
         catch (Exception error)
         {
+            if (error is CloudSessionExpiredException && generation == accountGeneration && !SessionExpired) { SessionExpired = true; LoginRequired?.Invoke(); }
             if (generation == accountGeneration) Notify(error is CloudRevisionConflictException
                 ? "云端和本机都有新修改，请在设置中处理同步冲突。"
                 : "本地数据可继续使用；" + FriendlyError(error));
@@ -106,13 +115,8 @@ internal sealed class DesktopWorkspace
 
     public async Task UseCloudAsync()
     {
-        if (Document == null || Account == null) return;
-        if (syncGate.CurrentCount == 0) { Notify("同步正在进行，请稍后再处理冲突。"); return; }
-        store.SaveSafetyCopy(Document);
-        accountGeneration++;
-        Account = Account with { Revision = 0, Dirty = false };
-        store.Save(Account, Document);
-        await SyncAsync();
+        var review = await InspectCloudAsync();
+        await ResolveCloudAsync(review, keepLocal: false);
     }
 
     public async Task LogoutAsync()
@@ -121,7 +125,7 @@ internal sealed class DesktopWorkspace
         accountGeneration++;
         // Keep the encrypted account/workspace pair for the same user's next login.
         // Local access is locked until authentication succeeds again.
-        if (account != null && Document != null) store.Save(account with { AccessToken = "", AccessExpiresAt = 0 }, Document);
+        if (account != null && Document != null) store.Save(account with { AccessToken = "", AccessExpiresAt = 0, LocalAccessLocked = true }, Document);
         Account = null;
         Document = null;
         Notify("已退出登录，本地数据已保留。");
@@ -172,6 +176,54 @@ internal sealed class DesktopWorkspace
         store.SaveSafetyCopy(Document);
         Edit(target => target.ReplaceWith(document));
     }
+
+    public async Task<CloudReview> InspectCloudAsync()
+    {
+        await syncGate.WaitAsync();
+        try {
+            if (Account == null || Document == null) throw new InvalidOperationException("请先登录账号");
+            var generation = accountGeneration;
+            var refreshed = await CloudAccountSync.EnsureAccessTokenAsync(Account, default);
+            if (generation != accountGeneration || Account == null || Document == null) throw new InvalidOperationException("账号已退出");
+            Account = refreshed with { Revision = Account.Revision, Dirty = Account.Dirty };
+            store.Save(Account, Document);
+            var remote = await CloudAccountSync.DownloadAsync(Account, default);
+            if (generation != accountGeneration || Account == null || Document == null) throw new InvalidOperationException("账号已退出");
+            return new CloudReview(remote, editVersion, generation);
+        } finally { syncGate.Release(); }
+    }
+
+    public async Task ResolveCloudAsync(CloudReview review, bool keepLocal)
+    {
+        await syncGate.WaitAsync();
+        try {
+            if (Account == null || Document == null || review.AccountGeneration != accountGeneration) throw new InvalidOperationException("账号已改变，请重新检查");
+            if (review.EditVersion != editVersion) throw new InvalidOperationException("本机已有新修改，请重新检查");
+            var refreshed = await CloudAccountSync.EnsureAccessTokenAsync(Account, default);
+            if (Account == null || Document == null || review.AccountGeneration != accountGeneration) throw new InvalidOperationException("账号已改变，请重新检查");
+            Account = refreshed with { Revision = Account.Revision, Dirty = Account.Dirty };
+            store.Save(Account, Document);
+            var revision = await CloudAccountSync.GetRemoteRevisionAsync(Account, default);
+            if (revision != review.Remote.Revision) throw new InvalidOperationException("云端又有更新，请重新检查");
+            if (Account == null || Document == null || review.AccountGeneration != accountGeneration || review.EditVersion != editVersion) throw new InvalidOperationException("本机或账号已有变化，请重新检查");
+            store.SaveSafetyCopy(Document); store.SaveSafetyCopy(review.Remote.Document, "cloud");
+            if (!keepLocal) {
+                var document = DesktopSnapshotDocument.FromArchiveBytes(review.Remote.Document.ToArchiveBytes());
+                document.PreserveLocalApiKeys(Document);
+                Account = Account with { Revision = revision, Dirty = false }; Document = document; editVersion++;
+                store.Save(Account, Document); Notify("已恢复云端副本；双方操作前副本已保留。");
+            } else {
+                var version = editVersion; var generation = accountGeneration;
+                var snapshot = DesktopSnapshotDocument.FromArchiveBytes(Document.ToArchiveBytes());
+                var result = await CloudAccountSync.SyncAsync(Account with { Revision = revision, Dirty = true }, snapshot);
+                if (generation != accountGeneration || Account == null || Document == null) return;
+                Account = result.State with { Dirty = version != editVersion };
+                store.Save(Account, Document); Notify("本机副本已上传；双方操作前副本已保留。");
+            }
+        } finally { syncGate.Release(); }
+    }
+
+    public void RestoreSafetyCopy() => Import(store.LatestSafetyCopy());
 
     public void Notify(string message) { Status = message; Changed?.Invoke(); }
     public static string FriendlyError(Exception error) => error switch

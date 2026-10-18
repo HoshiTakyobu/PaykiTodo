@@ -7,21 +7,25 @@ using TextBox = System.Windows.Controls.TextBox;
 using Brush = System.Windows.Media.Brush;
 using Color = System.Windows.Media.Color;
 using Orientation = System.Windows.Controls.Orientation;
+using SystemColors = System.Windows.SystemColors;
+using CheckBox = System.Windows.Controls.CheckBox;
+using ComboBox = System.Windows.Controls.ComboBox;
+using Control = System.Windows.Controls.Control;
 
 namespace PaykiTodo.Desktop;
 
 internal static class NativeUi
 {
     public static bool Dark { get; set; }
-    public static Brush Ink => B(Dark ? "#E8F0EB" : "#19382F");
-    public static Brush Muted => B(Dark ? "#B3C4BE" : "#61736E");
+    public static Brush Ink => B(Dark ? "#E8EDF3" : "#19382F");
+    public static Brush Muted => B(Dark ? "#BCC8D4" : "#61736E");
     public static Brush Forest => B(Dark ? "#93C6AC" : "#326F59");
-    public static Brush Paper => B(Dark ? "#24363F" : "#FFFFFF");
+    public static Brush Paper => B(Dark ? "#22313E" : "#FFFFFF");
     public static Brush B(string hex)
     {
         if (Dark) hex = hex.ToUpperInvariant() switch {
-            "#EEF3F4" or "#F1F5F3" => "#17262E", "#F8FAF9" => "#1D2D35", "#DCEBE2" => "#315649",
-            "#EAF0ED" => "#2E4147", "#FFFAE9" => "#4C452E", "#F6FBF8" => "#1D3533", "#E3EBE6" => "#354A52", "#E2EFE6" => "#294A43", _ => hex };
+            "#EEF3F4" or "#F1F5F3" => "#15232F", "#F8FAF9" => "#1B2935", "#DCEBE2" => "#354453",
+            "#EAF0ED" => "#30404E", "#FFFAE9" => "#4C452E", "#F6FBF8" => "#1D2B38", "#E3EBE6" or "#CBD8D2" => "#445463", "#E2EFE6" => "#344553", _ => hex };
         return new SolidColorBrush((Color)System.Windows.Media.ColorConverter.ConvertFromString(hex));
     }
     public static TextBlock Text(string value, double size = 14, Brush? color = null, bool bold = false) => new()
@@ -33,13 +37,13 @@ internal static class NativeUi
     {
         var panel = new StackPanel(); foreach (var element in elements) panel.Children.Add(element); return panel;
     }
-    public static StackPanel Row(params UIElement[] elements)
+    public static WrapPanel Row(params UIElement[] elements)
     {
-        var panel = Column(elements); panel.Orientation = Orientation.Horizontal; return panel;
+        var panel = new WrapPanel(); foreach (var element in elements) panel.Children.Add(element); return panel;
     }
     public static Border Card(UIElement child, double padding = 20) => new()
     {
-        Background = Paper, CornerRadius = new CornerRadius(18), Padding = new Thickness(padding),
+        Background = Paper, CornerRadius = new CornerRadius(10), Padding = new Thickness(padding),
         Margin = new Thickness(0, 0, 0, 14), Child = child
     };
     public static Button Action(string label, Action click, bool primary = false)
@@ -67,6 +71,12 @@ internal static class NativeUi
     };
     public static void InstallStyles(ResourceDictionary resources)
     {
+        resources[SystemColors.WindowBrushKey] = Paper;
+        resources[SystemColors.WindowTextBrushKey] = Ink;
+        resources[SystemColors.ControlBrushKey] = Paper;
+        resources[SystemColors.ControlTextBrushKey] = Ink;
+        resources[SystemColors.HighlightBrushKey] = Forest;
+        resources[SystemColors.HighlightTextBrushKey] = B("#FFFFFF");
         var styles = (ResourceDictionary)XamlReader.Parse("""
             <ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
               <Style TargetType="Button">
@@ -89,5 +99,12 @@ internal static class NativeUi
             </ResourceDictionary>
             """);
         resources.MergedDictionaries.Add(styles);
+        foreach (var type in new[] { typeof(CheckBox), typeof(ComboBox), typeof(DatePicker), typeof(PasswordBox), typeof(ComboBoxItem) }) {
+            var style = new Style(type, resources[type] as Style);
+            style.Setters.Add(new Setter(Control.ForegroundProperty, Ink));
+            style.Setters.Add(new Setter(Control.BackgroundProperty, Paper));
+            style.Setters.Add(new Setter(Control.BorderBrushProperty, B("#CBD8D2")));
+            resources[type] = style;
+        }
     }
 }

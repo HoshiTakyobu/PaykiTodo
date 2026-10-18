@@ -141,17 +141,7 @@ class ReminderActivity : ComponentActivity() {
             return
         }
         lifecycleScope.launch {
-            if (!app.settingsStore.hasValidRemoteSession()) {
-                app.alarmScheduler.cancel(todoId)
-                ReminderForegroundService.dismiss(this@ReminderActivity, todoId)
-                startActivity(
-                    Intent(this@ReminderActivity, MainActivity::class.java).apply {
-                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
-                    }
-                )
-                finish()
-                return@launch
-            }
+            if (!app.settingsStore.hasLocalAccountAccess()) { finish(); return@launch }
             val item = app.repository.getTodo(todoId)
             if (item == null || item.isHistory) {
                 app.alarmScheduler.cancel(todoId)

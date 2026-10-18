@@ -794,7 +794,7 @@ private fun JSONArray?.toQuickChecklistGroups(): List<QuickChecklistGroup> {
             val id = item.optLong("id", 0L)
             val title = item.optString("title").trim()
             val fingerprint = item.optString("sourceFingerprint").trim()
-            if (id <= 0 || title.isBlank() || fingerprint.isBlank()) continue
+            if (id <= 0 || fingerprint.isBlank()) continue
             add(
                 QuickChecklistGroup(
                     id = id,

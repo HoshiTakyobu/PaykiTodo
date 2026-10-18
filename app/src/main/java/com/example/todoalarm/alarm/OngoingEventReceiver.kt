@@ -12,6 +12,7 @@ class OngoingEventReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         val eventId = intent.getLongExtra(OngoingEventNotifier.EXTRA_EVENT_ID, -1L)
         if (eventId <= 0L) return
+        if (!(context.applicationContext as TodoApplication).settingsStore.hasLocalAccountAccess()) return
         val pendingResult = goAsync()
         CoroutineScope(Dispatchers.IO).launch {
             try {

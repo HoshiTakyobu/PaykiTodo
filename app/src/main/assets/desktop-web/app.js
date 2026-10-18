@@ -1350,7 +1350,7 @@ function renderQuickChecklistGroups(items, historical = false) {
         + '</div>';
     }).join('') + '</div>';
     return '<section class="quick-checklist-group"><button class="quick-checklist-group-head" data-quick-checklist-group-toggle="' + escapeHtml(String(group.id)) + '"><strong>'
-      + escapeHtml(group.title) + '</strong><span>' + completedCount + ' / ' + totalCount + ' 已完成</span><b>' + (group.collapsed ? '›' : '⌄') + '</b></button>' + body + '</section>';
+      + escapeHtml(group.title || '快速清单') + '</strong><span>' + completedCount + ' / ' + totalCount + ' 已完成</span><b>' + (group.collapsed ? '›' : '⌄') + '</b></button>' + body + '</section>';
   }).join('');
 }
 
@@ -1358,7 +1358,7 @@ function renderQuickChecklistPreview(preview) {
   state.quickChecklistPreview = preview;
   if (!els.quickChecklistSummary || !els.quickChecklistPreviewHost || !els.saveQuickChecklist) return;
   if (!preview) {
-    els.quickChecklistSummary.textContent = '请先输入清单标题和任务。';
+    els.quickChecklistSummary.textContent = '可直接输入 - 任务，标题可选。';
     els.quickChecklistPreviewHost.innerHTML = '';
     els.saveQuickChecklist.disabled = true;
     return;
@@ -1382,7 +1382,7 @@ function renderQuickChecklistPreview(preview) {
       + escapeHtml(String(diagnostic.sourceLine || 1)) + ' 行：' + escapeHtml(diagnostic.message || '') + '</button>';
   }).join('');
   els.quickChecklistPreviewHost.innerHTML = title + nodes + diagnostics;
-  els.saveQuickChecklist.disabled = preview.hasErrors === true || !preview.title || taskCount < 1;
+  els.saveQuickChecklist.disabled = preview.hasErrors === true || taskCount < 1;
 }
 
 function quickChecklistSourceLineSelection(text, sourceLine) {

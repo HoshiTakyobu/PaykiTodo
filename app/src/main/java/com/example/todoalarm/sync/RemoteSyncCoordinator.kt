@@ -2,6 +2,10 @@ package com.example.todoalarm.sync
 
 import android.content.Intent
 import android.os.Build
+import android.net.ConnectivityManager
+import android.net.Network
+import androidx.room.withTransaction
+import java.io.File
 import com.example.todoalarm.BuildConfig
 import com.example.todoalarm.TodoApplication
 import com.example.todoalarm.alarm.ReminderDispatchTracker
@@ -32,7 +36,6 @@ import java.security.GeneralSecurityException
 import java.security.MessageDigest
 import java.util.UUID
 import java.util.concurrent.TimeUnit
-import java.util.concurrent.atomic.AtomicBoolean
 import javax.crypto.Cipher
 import javax.crypto.SecretKeyFactory
 import javax.crypto.spec.GCMParameterSpec
@@ -64,19 +67,27 @@ internal data class InitialSyncState(
 
 class RemoteSyncCoordinator(
     private val app: TodoApplication,
-    private val settingsStore: AppSettingsStore
+    private val settingsStore: AppSettingsStore,
+    private val serverBaseUrl: String = BuildConfig.PAYKITODO_CLOUD_BASE_URL
 ) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val syncMutex = Mutex()
-    private val applyingRemote = AtomicBoolean(false)
     private var pendingJob: Job? = null
     private var periodicJob: Job? = null
+    private var networkRegistered = false
+    @Volatile private var accountGeneration = 0L
+    private data class Download(val snapshot: BackupSnapshot, val revision: Long)
+    data class CloudReview(val snapshot: BackupSnapshot, val revision: Long, val localFingerprint: String, val accountGeneration: Long)
 
     fun start() {
         val settings = settingsStore.currentSettings()
-        if (!settings.remoteSyncEnabled || !settingsStore.hasValidRemoteSession()) {
-            if (settings.remoteSyncUsername.isNotBlank()) settingsStore.clearExpiredRemoteSessionIfNeeded()
-            return
+        if (!settings.remoteSyncEnabled || !settingsStore.hasLocalAccountAccess()) return
+        RemoteSyncJobService.schedule(app)
+        if (!networkRegistered) {
+            app.getSystemService(ConnectivityManager::class.java).registerDefaultNetworkCallback(object : ConnectivityManager.NetworkCallback() {
+                override fun onAvailable(network: Network) { scope.launch { runCatching { syncNow() } } }
+            })
+            networkRegistered = true
         }
         if (periodicJob?.isActive == true) return
         periodicJob = scope.launch {
@@ -90,6 +101,7 @@ class RemoteSyncCoordinator(
     }
 
     fun stop() {
+        RemoteSyncJobService.cancel(app)
         pendingJob?.cancel()
         periodicJob?.cancel()
         pendingJob = null
@@ -97,18 +109,17 @@ class RemoteSyncCoordinator(
     }
 
     fun onLocalDataChanged() {
-        if (applyingRemote.get()) return
         val settings = settingsStore.currentSettings()
+        if (!settingsStore.hasLocalAccountAccess()) return
+        settingsStore.markRemoteSyncDirty()
+        if (settings.remoteSyncEnabled && settings.remoteSyncUsername.isNotBlank()) RemoteSyncJobService.schedule(app, changed = true)
         if (!settings.remoteSyncEnabled || !settingsStore.hasValidRemoteSession()) {
             pendingJob?.cancel()
             pendingJob = null
             if (settings.remoteSyncUsername.isNotBlank()) settingsStore.clearExpiredRemoteSessionIfNeeded()
             return
         }
-        if (settings.remoteSyncUsername.isNotBlank()) {
-            settingsStore.markRemoteSyncDirty()
-        }
-        pendingJob?.cancel()
+        if (pendingJob?.isActive == true) return
         pendingJob = scope.launch {
             delay(1_000L)
             runCatching { syncNow() }
@@ -128,11 +139,11 @@ class RemoteSyncCoordinator(
     }
 
     suspend fun login(username: String, password: String, turnstileToken: String? = null): AccountAuthResult {
-        return syncMutex.withLock { authenticateAccount(username, password, "", false, turnstileToken) }
+        return withContext(Dispatchers.IO) { syncMutex.withLock { authenticateAccount(username, password, "", false, turnstileToken) } }
     }
 
     suspend fun register(username: String, displayName: String, password: String, turnstileToken: String? = null): AccountAuthResult {
-        return syncMutex.withLock { authenticateAccount(username, password, displayName, true, turnstileToken) }
+        return withContext(Dispatchers.IO) { syncMutex.withLock { authenticateAccount(username, password, displayName, true, turnstileToken) } }
     }
 
     suspend fun recoverPassword(
@@ -187,7 +198,12 @@ class RemoteSyncCoordinator(
             val remoteRevision = response.optLong("snapshotRevision", 0L)
             val localSnapshot = app.repository.exportSnapshot(settingsStore.currentSettings())
             val hasLocalData = localSnapshot.hasMeaningfulData()
-            val initialSyncState = initialSyncState(hasLocalData, remoteRevision)
+            val previous = settingsStore.currentSettings()
+            val sameAccount = previous.remoteSyncUsername == canonicalUsername && previous.remoteSyncSecret == deriveAccountSecret(canonicalUsername, password)
+            val initialSyncState = if (sameAccount) InitialSyncState(previous.remoteSyncRevision, previous.remoteSyncDirty, previous.remoteSyncConflictRevision)
+                else initialSyncState(hasLocalData, remoteRevision)
+            if (!sameAccount && hasLocalData) saveSafetyCopy(localSnapshot, "before-account-change")
+            accountGeneration++
             settingsStore.saveRemoteAccountSession(
                 serverUrl = normalizedServer,
                 username = canonicalUsername,
@@ -207,7 +223,7 @@ class RemoteSyncCoordinator(
             TodoWidgetProvider.notifyWidgetDataChanged(app)
             start()
             when {
-                remoteRevision > 0L && hasLocalData -> {
+                !sameAccount && remoteRevision > 0L && hasLocalData -> {
                     settingsStore.markRemoteSyncConflict(remoteRevision)
                     AccountAuthResult(recoveryCode = response.optString("recoveryCode").takeIf { it.isNotBlank() })
                 }
@@ -305,6 +321,7 @@ class RemoteSyncCoordinator(
     }
 
     fun logout() {
+        accountGeneration++
         val settings = settingsStore.currentSettings()
         scope.launch {
             runCatching {
@@ -320,7 +337,7 @@ class RemoteSyncCoordinator(
         app.stopService(Intent(app, DesktopSyncService::class.java))
     }
 
-    suspend fun syncNow(): RemoteSyncResult = syncMutex.withLock {
+    suspend fun syncNow(): RemoteSyncResult = withContext(Dispatchers.IO) { syncMutex.withLock {
         val settings = settingsStore.currentSettings()
         if (!settings.remoteSyncEnabled) return@withLock RemoteSyncResult.Disabled
         if (!settingsStore.hasValidRemoteSession()) {
@@ -328,16 +345,25 @@ class RemoteSyncCoordinator(
             return@withLock RemoteSyncResult.NotConfigured
         }
         if (settings.remoteSyncUsername.isBlank()) return@withLock RemoteSyncResult.NotConfigured
-        syncAccountNow()
-    }
+        try { syncAccountNow() } catch (cancelled: CancellationException) { throw cancelled }
+        catch (error: Exception) {
+            settingsStore.markRemoteSyncError(error.message ?: "云同步失败")
+            RemoteSyncResult.Failed(error.message ?: "云同步失败")
+        }
+    } }
 
     private suspend fun syncAccountNow(): RemoteSyncResult {
         var settings = settingsStore.currentSettings()
         if (!settings.remoteSyncEnabled || settings.remoteSyncUsername.isBlank() || !settingsStore.hasValidRemoteSession()) return RemoteSyncResult.NotConfigured
         val serverUrl = cloudServerUrl()
+        val account = accountGeneration
         val accessToken = ensureAccessToken(serverUrl, settings)
+        if (account != accountGeneration || !settingsStore.hasLocalAccountAccess()) return RemoteSyncResult.NotConfigured
         settings = settingsStore.currentSettings()
+        val generation = settingsStore.remoteChangeGeneration()
+        val localBefore = app.database.withTransaction { app.repository.exportSnapshot(settings) }
         val status = getJson(serverUrl, "/v2/sync/status", accessToken)
+        if (account != accountGeneration || !settingsStore.hasLocalAccountAccess()) return RemoteSyncResult.NotConfigured
         val remoteRevision = status.optLong("revision", 0L)
         val localRevision = settings.remoteSyncRevision
 
@@ -346,28 +372,41 @@ class RemoteSyncCoordinator(
                 settingsStore.markRemoteSyncConflict(remoteRevision)
                 return RemoteSyncResult.Conflict(remoteRevision)
             }
-            val snapshot = downloadAccountSnapshot(serverUrl, accessToken, settings.remoteSyncSecret)
-            applyRemoteSnapshot(snapshot)
-            settingsStore.markRemoteSyncSuccess(remoteRevision)
-            return RemoteSyncResult.Downloaded(remoteRevision)
+            val downloaded = downloadAccountSnapshot(serverUrl, accessToken, settings.remoteSyncSecret)
+            val snapshot = downloaded.snapshot
+            app.database.withTransaction {
+                if (account != accountGeneration || !settingsStore.hasLocalAccountAccess()) return@withTransaction
+                val current = app.repository.exportSnapshot(settingsStore.currentSettings())
+                if (generation != settingsStore.remoteChangeGeneration() || BackupArchiveCodec.contentFingerprint(current) != BackupArchiveCodec.contentFingerprint(localBefore)) {
+                    settingsStore.markRemoteSyncDirty()
+                    settingsStore.markRemoteSyncConflict(downloaded.revision)
+                    return@withTransaction
+                }
+                saveSafetyCopy(current, "before-cloud")
+                applyRemoteSnapshot(snapshot)
+                settingsStore.markRemoteSyncSuccess(downloaded.revision, generation)
+            }
+            if (account != accountGeneration || !settingsStore.hasLocalAccountAccess()) return RemoteSyncResult.NotConfigured
+            if (settingsStore.currentSettings().remoteSyncDirty) return RemoteSyncResult.Conflict(remoteRevision)
+            return RemoteSyncResult.Downloaded(downloaded.revision)
         }
         if (remoteRevision < localRevision) {
             settingsStore.markRemoteSyncConflict(remoteRevision)
             return RemoteSyncResult.Failed("云端版本低于本机记录，已停止同步以避免覆盖")
         }
         if (!settings.remoteSyncDirty) {
-            settingsStore.markRemoteSyncSuccess(localRevision)
+            settingsStore.markRemoteSyncSuccess(localRevision, generation)
             return RemoteSyncResult.UpToDate(localRevision)
         }
 
-        val snapshot = app.repository.exportSnapshot(settings)
+        val snapshot = localBefore
         val encrypted = RemoteSyncCrypto.encrypt(BackupArchiveCodec.encode(snapshot), settings.remoteSyncSecret)
         val upload = uploadAccountSnapshot(serverUrl, accessToken, localRevision, encrypted)
         if (upload.conflictRevision != null) {
             settingsStore.markRemoteSyncConflict(upload.conflictRevision)
             return RemoteSyncResult.Conflict(upload.conflictRevision)
         }
-        settingsStore.markRemoteSyncSuccess(upload.revision)
+        if (account == accountGeneration && settingsStore.hasLocalAccountAccess()) settingsStore.markRemoteSyncSuccess(upload.revision, generation)
         return RemoteSyncResult.Uploaded(snapshot.exportedAtMillis, upload.revision)
     }
 
@@ -377,7 +416,7 @@ class RemoteSyncCoordinator(
         if (settings.remoteSyncUsername.isNotBlank() && settingsStore.hasValidRemoteSession()) {
             val serverUrl = cloudServerUrl()
             val token = ensureAccessToken(serverUrl, settings)
-            return@withLock runCatching { downloadAccountSnapshot(serverUrl, token, settings.remoteSyncSecret) }
+            return@withLock runCatching { downloadAccountSnapshot(serverUrl, token, settings.remoteSyncSecret).snapshot }
                 .getOrElse { error ->
                     if (error is RemoteNotFoundException) null else throw error
                 }
@@ -385,22 +424,94 @@ class RemoteSyncCoordinator(
         return@withLock null
     }
 
+    suspend fun inspectCloud(): CloudReview = withContext(Dispatchers.IO) {
+        syncMutex.withLock {
+            val settings = settingsStore.currentSettings()
+            val account = accountGeneration
+            check(settingsStore.hasValidRemoteSession()) { "请先重新登录账号" }
+            val token = ensureAccessToken(cloudServerUrl(), settings)
+            val remote = downloadAccountSnapshot(cloudServerUrl(), token, settings.remoteSyncSecret)
+            val local = app.database.withTransaction { app.repository.exportSnapshot(settingsStore.currentSettings()) }
+            check(account == accountGeneration && settingsStore.hasLocalAccountAccess()) { "账号已改变，请重新检查" }
+            CloudReview(remote.snapshot, remote.revision, BackupArchiveCodec.contentFingerprint(local), account)
+        }
+    }
+
+    suspend fun resolveCloud(review: CloudReview, keepLocal: Boolean): String = withContext(Dispatchers.IO) {
+        syncMutex.withLock {
+            val settings = settingsStore.currentSettings()
+            check(settingsStore.hasValidRemoteSession()) { "请先重新登录账号" }
+            val account = accountGeneration
+            check(review.accountGeneration == account) { "账号已改变，请重新检查" }
+            val token = ensureAccessToken(cloudServerUrl(), settings)
+            val revision = getJson(cloudServerUrl(), "/v2/sync/status", token).getLong("revision")
+            require(revision == review.revision) { "云端又有更新，请重新检查后确认" }
+            check(account == accountGeneration && settingsStore.hasLocalAccountAccess()) { "账号已改变，请重新检查" }
+            saveSafetyCopy(review.snapshot, "cloud-v${review.revision}")
+            val generation = settingsStore.remoteChangeGeneration()
+            val local = app.database.withTransaction {
+                val current = app.repository.exportSnapshot(settingsStore.currentSettings())
+                require(BackupArchiveCodec.contentFingerprint(current) == review.localFingerprint) { "本机已有新修改，请重新检查后确认" }
+                saveSafetyCopy(current, "local-before-conflict")
+                if (!keepLocal) {
+                    check(account == accountGeneration && settingsStore.hasLocalAccountAccess()) { "账号已退出" }
+                    applyRemoteSnapshot(review.snapshot)
+                    settingsStore.markRemoteSyncSuccess(review.revision, generation)
+                }
+                current
+            }
+            if (keepLocal) {
+                val encrypted = RemoteSyncCrypto.encrypt(BackupArchiveCodec.encode(local), settings.remoteSyncSecret)
+                val result = uploadAccountSnapshot(cloudServerUrl(), token, review.revision, encrypted)
+                if (result.conflictRevision != null) {
+                    settingsStore.markRemoteSyncConflict(result.conflictRevision)
+                    error("云端又有更新，上传已停止；请重新检查")
+                }
+                if (account == accountGeneration && settingsStore.hasLocalAccountAccess()) settingsStore.markRemoteSyncSuccess(result.revision, generation)
+            }
+            "${if (keepLocal) "本机副本已上传" else "已恢复云端副本"}；双方恢复副本已保存在本机"
+        }
+    }
+
+    private fun saveSafetyCopy(snapshot: BackupSnapshot, reason: String): String {
+        val directory = safetyDirectory().apply { check(isDirectory || mkdirs()) { "无法创建恢复副本目录" } }
+        val file = File(directory, "${System.currentTimeMillis()}-$reason-${UUID.randomUUID()}.paykibak")
+        file.outputStream().use { BackupArchiveCodec.write(snapshot, it) }
+        return file.absolutePath
+    }
+
+    private fun safetyDirectory(): File {
+        val identity = settingsStore.currentSettings().remoteSyncUsername
+        val key = MessageDigest.getInstance("SHA-256").digest(identity.toByteArray()).joinToString("") { "%02x".format(it) }
+        return File(app.filesDir, "sync-safety/$key")
+    }
+
+    suspend fun restoreNewestSafetyCopy(): Unit = withContext(Dispatchers.IO) {
+        syncMutex.withLock {
+            check(settingsStore.hasLocalAccountAccess()) { "请先登录账号" }
+            val file = safetyDirectory().listFiles()?.filter { it.name.contains("local-before") || it.name.contains("before-cloud") || it.name.contains("before-safety-restore") }
+                ?.maxByOrNull { it.lastModified() } ?: error("尚无操作前恢复副本")
+            val snapshot = file.inputStream().use(BackupArchiveCodec::read)
+            app.database.withTransaction {
+                saveSafetyCopy(app.repository.exportSnapshot(settingsStore.currentSettings()), "before-safety-restore")
+                applyRemoteSnapshot(snapshot)
+                settingsStore.markRemoteSyncDirty()
+            }
+            onLocalDataChanged()
+        }
+    }
+
     private suspend fun applyRemoteSnapshot(snapshot: BackupSnapshot) {
         val current = settingsStore.currentSettings()
-        applyingRemote.set(true)
-        try {
-            app.repository.getAllTodos().forEach { existing ->
-                app.alarmScheduler.cancel(existing.id)
-                ReminderDispatchTracker.clear(app, existing.id)
-            }
-            app.repository.importSnapshot(snapshot)
-            settingsStore.replaceAll(snapshot.settings.withRemoteAccountFrom(current))
-            app.repository.ensureRecurringInstancesAhead()
-            app.repository.futureReminderItems(System.currentTimeMillis()).forEach(app.alarmScheduler::schedule)
-            TodoWidgetProvider.notifyWidgetDataChanged(app)
-        } finally {
-            applyingRemote.set(false)
+        app.repository.getAllTodos().forEach { existing ->
+            app.alarmScheduler.cancel(existing.id)
+            ReminderDispatchTracker.clear(app, existing.id)
         }
+        app.repository.importSnapshot(snapshot, notify = false)
+        settingsStore.replaceAll(snapshot.settings.withRemoteAccountFrom(current))
+        app.repository.ensureRecurringInstancesAhead()
+        app.repository.futureReminderItems(System.currentTimeMillis()).forEach(app.alarmScheduler::schedule)
+        TodoWidgetProvider.notifyWidgetDataChanged(app)
     }
 
     private fun AppSettings.withRemoteAccountFrom(current: AppSettings): AppSettings = copy(
@@ -439,20 +550,26 @@ class RemoteSyncCoordinator(
     }
 
     private fun ensureAccessToken(serverUrl: String, settings: AppSettings): String {
+        val account = accountGeneration
         val now = System.currentTimeMillis() / 1000L
         if (settings.remoteSyncRefreshExpiresAt <= now) {
-            settingsStore.clearRemoteAccount()
+            settingsStore.clearExpiredRemoteSessionIfNeeded()
             throw IOException("登录已过期，请重新登录")
         }
         if (settings.remoteSyncAccessToken.isNotBlank() && settings.remoteSyncAccessExpiresAt > now + 30L) {
             return settings.remoteSyncAccessToken
         }
         require(settings.remoteSyncRefreshToken.isNotBlank()) { "登录已过期，请重新登录" }
-        val response = postJson(
+        val response = try { postJson(
             serverUrl,
             "/v2/auth/refresh",
             JSONObject().put("refreshToken", settings.remoteSyncRefreshToken)
-        )
+        ) } catch (error: UnauthorizedException) {
+            if (account == accountGeneration && settingsStore.currentSettings().remoteSyncRefreshToken == settings.remoteSyncRefreshToken)
+                settingsStore.clearExpiredRemoteSessionIfNeeded(Long.MAX_VALUE)
+            throw error
+        }
+        check(account == accountGeneration && settingsStore.hasLocalAccountAccess()) { "账号已退出" }
         settingsStore.updateRemoteAccountTokens(
             accessToken = response.getString("accessToken"),
             refreshToken = response.getString("refreshToken"),
@@ -462,16 +579,18 @@ class RemoteSyncCoordinator(
         return response.getString("accessToken")
     }
 
-    private fun downloadAccountSnapshot(serverUrl: String, accessToken: String, secret: String): BackupSnapshot {
+    private fun downloadAccountSnapshot(serverUrl: String, accessToken: String, secret: String): Download {
         val connection = openApiConnection(serverUrl, "/v2/sync/snapshot", "GET", accessToken)
         return try {
             when (val status = connection.responseCode) {
                 HttpURLConnection.HTTP_NOT_FOUND -> throw RemoteNotFoundException()
                 in 200..299 -> {
                     val encrypted = connection.inputStream.use { it.readBytesLimited(MAX_PAYLOAD_BYTES) }
-                    BackupArchiveCodec.decode(RemoteSyncCrypto.decrypt(encrypted, secret))
+                    val revision = connection.getHeaderField("X-Payki-Revision")?.toLongOrNull()
+                        ?: throw IOException("云端未返回数据版本，请重试")
+                    Download(BackupArchiveCodec.decode(RemoteSyncCrypto.decrypt(encrypted, secret)), revision)
                 }
-                else -> throw apiException(connection, status)
+                else -> { invalidateRejectedToken(status, accessToken); throw apiException(connection, status) }
             }
         } finally {
             connection.disconnect()
@@ -493,6 +612,7 @@ class RemoteSyncCoordinator(
             connection.setFixedLengthStreamingMode(payload.size)
             connection.outputStream.use { it.write(payload) }
             val status = connection.responseCode
+            invalidateRejectedToken(status, accessToken)
             val json = connection.readJsonResponse(status)
             if (status == HttpURLConnection.HTTP_CONFLICT) {
                 return AccountUploadResult(revision, json.optLong("currentRevision", revision))
@@ -508,6 +628,7 @@ class RemoteSyncCoordinator(
         val connection = openApiConnection(serverUrl, path, "GET", accessToken)
         return try {
             val status = connection.responseCode
+            invalidateRejectedToken(status, accessToken)
             val json = connection.readJsonResponse(status)
             if (status !in 200..299) throw apiException(connection, status, json)
             json
@@ -525,6 +646,7 @@ class RemoteSyncCoordinator(
             connection.setFixedLengthStreamingMode(payload.size)
             connection.outputStream.use { it.write(payload) }
             val status = connection.responseCode
+            invalidateRejectedToken(status, accessToken)
             val json = connection.readJsonResponse(status)
             if (status !in 200..299) throw apiException(connection, status, json)
             json
@@ -545,8 +667,14 @@ class RemoteSyncCoordinator(
         }
     }
 
+    private fun invalidateRejectedToken(status: Int, token: String) {
+        if (status == HttpURLConnection.HTTP_UNAUTHORIZED && token.isNotBlank() &&
+            token == settingsStore.currentSettings().remoteSyncAccessToken)
+            settingsStore.clearExpiredRemoteSessionIfNeeded(Long.MAX_VALUE)
+    }
+
     private fun cloudServerUrl(): String {
-        return normalizeServerUrl(BuildConfig.PAYKITODO_CLOUD_BASE_URL)
+        return normalizeServerUrl(serverBaseUrl)
     }
 
     private fun normalizeServerUrl(value: String): String {
@@ -565,8 +693,11 @@ class RemoteSyncCoordinator(
 
     private fun apiException(connection: HttpURLConnection, status: Int, parsed: JSONObject? = null): IOException {
         val json = parsed ?: runCatching { connection.readJsonResponse(status) }.getOrDefault(JSONObject())
+        if (status == HttpURLConnection.HTTP_UNAUTHORIZED) return UnauthorizedException(json.optString("message").ifBlank { "登录验证失败，请重新登录" })
         return IOException(json.optString("message").ifBlank { "云服务请求失败（HTTP $status）" })
     }
+
+    private class UnauthorizedException(message: String) : IOException(message)
 
     private suspend fun syncLegacyNow(settings: AppSettings): RemoteSyncResult {
         val serverUrl = normalizeServerUrl(settings.remoteSyncServerUrl)

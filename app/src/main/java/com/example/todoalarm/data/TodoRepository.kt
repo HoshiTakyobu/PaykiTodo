@@ -129,7 +129,6 @@ class TodoRepository(
     suspend fun getAllQuickChecklistGroups(): List<QuickChecklistGroup> = todoDao.getAllQuickChecklistGroups()
 
     suspend fun createQuickChecklist(draft: QuickChecklistDraft): QuickChecklistGroup {
-        require(draft.title.isNotBlank()) { "请先输入清单标题" }
         require(draft.nodes.isNotEmpty()) { "清单中至少需要一项任务" }
         require(!draft.hasErrors) {
             draft.diagnostics.first { it.severity == QuickChecklistDiagnosticSeverity.ERROR }.let {
@@ -2229,7 +2228,7 @@ class TodoRepository(
         )
     }
 
-    suspend fun importSnapshot(snapshot: BackupSnapshot) {
+    suspend fun importSnapshot(snapshot: BackupSnapshot, notify: Boolean = true) {
         database.withTransaction {
             todoDao.clearPlanningNodes()
         todoDao.clearTodoGroupTags()
@@ -2296,7 +2295,7 @@ class TodoRepository(
                 todoDao.insertAiReports(snapshot.aiReports)
             }
         }
-        notifyItemsChanged()
+        if (notify) notifyItemsChanged()
     }
 
     private fun restoredTodoGroupTags(snapshot: BackupSnapshot): List<TodoGroupTag> {
@@ -2315,7 +2314,7 @@ class TodoRepository(
     private fun restoredQuickChecklistGroups(snapshot: BackupSnapshot): List<QuickChecklistGroup> {
         val referencedGroupIds = snapshot.tasks.filter { it.isTodo }.mapNotNull { it.quickChecklistGroupId }.toSet()
         return snapshot.quickChecklistGroups
-            .filter { it.id > 0 && it.id in referencedGroupIds && it.title.isNotBlank() && it.sourceFingerprint.isNotBlank() }
+            .filter { it.id > 0 && it.id in referencedGroupIds && it.sourceFingerprint.isNotBlank() }
             .distinctBy { it.id }
     }
 

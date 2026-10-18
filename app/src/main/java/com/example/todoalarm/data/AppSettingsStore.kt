@@ -116,6 +116,7 @@ data class AppSettings(
 )
 
 class AppSettingsStore(context: Context) {
+    private val appContext = context.applicationContext
     private val preferences = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
     private val securePreferences: SharedPreferences = runCatching {
         val masterKey = MasterKey.Builder(context)
@@ -139,16 +140,22 @@ class AppSettingsStore(context: Context) {
 
     fun hasValidRemoteSession(nowMillis: Long = System.currentTimeMillis()): Boolean {
         val settings = currentSettings()
-        return settings.remoteSyncUsername.isNotBlank() &&
+        return hasLocalAccountAccess() &&
             settings.remoteSyncRefreshToken.isNotBlank() &&
             settings.remoteSyncRefreshExpiresAt > nowMillis / 1000L
     }
 
+    fun hasLocalAccountAccess(): Boolean = currentSettings().remoteSyncUsername.isNotBlank() &&
+        !preferences.getBoolean("local_account_locked", false)
+
     fun clearExpiredRemoteSessionIfNeeded(nowMillis: Long = System.currentTimeMillis()): Boolean {
-        if (currentSettings().remoteSyncUsername.isBlank()) return false
+        if (!hasLocalAccountAccess()) return false
         if (hasValidRemoteSession(nowMillis)) return false
-        clearRemoteAccount()
-        return true
+        val alreadyExpired = currentSettings().remoteSyncRefreshToken.isBlank()
+        securePreferences.edit().remove(KEY_REMOTE_SYNC_ACCESS_TOKEN).remove(KEY_REMOTE_SYNC_REFRESH_TOKEN).apply()
+        markRemoteSyncError("登录已过期，请在账号中重新登录；本机数据、提醒和待同步变更已保留")
+        com.example.todoalarm.sync.AccountExpiryNotifier.notifyIfNeeded(appContext)
+        return !alreadyExpired
     }
 
     fun updateThemeMode(themeMode: ThemeMode) {
@@ -283,6 +290,7 @@ class AppSettingsStore(context: Context) {
             .apply()
         preferences.edit()
             .putBoolean(KEY_REMOTE_SYNC_ENABLED, true)
+            .putBoolean("local_account_locked", false)
             .putString(KEY_REMOTE_SYNC_SERVER_URL, serverUrl.trim().trimEnd('/'))
             .putString(KEY_REMOTE_SYNC_USERNAME, username.trim().lowercase())
             .putString(KEY_REMOTE_SYNC_DEVICE_ID, deviceId)
@@ -295,6 +303,7 @@ class AppSettingsStore(context: Context) {
             .remove(KEY_REMOTE_SYNC_LAST_ERROR)
             .apply()
         refresh()
+        com.example.todoalarm.sync.AccountExpiryNotifier.resetAndSchedule(appContext)
     }
 
     fun updateRemoteAccountTokens(accessToken: String, refreshToken: String, accessExpiresAt: Long, refreshExpiresAt: Long) {
@@ -307,6 +316,7 @@ class AppSettingsStore(context: Context) {
             .putLong(KEY_REMOTE_SYNC_REFRESH_EXPIRES_AT, refreshExpiresAt)
             .apply()
         refresh()
+        com.example.todoalarm.sync.AccountExpiryNotifier.resetAndSchedule(appContext)
     }
 
     fun updateRemoteAccountProfile(userId: Long, displayName: String) {
@@ -317,16 +327,19 @@ class AppSettingsStore(context: Context) {
         refresh()
     }
 
-    fun markRemoteSyncDirty() {
+    @Synchronized fun markRemoteSyncDirty() {
         if (currentSettings().remoteSyncUsername.isBlank()) return
-        preferences.edit().putBoolean(KEY_REMOTE_SYNC_DIRTY, true).apply()
+        preferences.edit().putBoolean(KEY_REMOTE_SYNC_DIRTY, true)
+            .putLong("remote_sync_change_generation", remoteChangeGeneration() + 1).commit()
         refresh()
     }
 
-    fun markRemoteSyncSuccess(revision: Long) {
+    fun remoteChangeGeneration(): Long = preferences.getLong("remote_sync_change_generation", 0L)
+
+    @Synchronized fun markRemoteSyncSuccess(revision: Long, generation: Long = remoteChangeGeneration()) {
         preferences.edit()
             .putLong(KEY_REMOTE_SYNC_REVISION, revision.coerceAtLeast(0L))
-            .putBoolean(KEY_REMOTE_SYNC_DIRTY, false)
+            .putBoolean(KEY_REMOTE_SYNC_DIRTY, generation != remoteChangeGeneration())
             .putLong(KEY_REMOTE_SYNC_CONFLICT_REVISION, 0L)
             .putLong(KEY_REMOTE_SYNC_LAST_SUCCESS_AT, System.currentTimeMillis())
             .remove(KEY_REMOTE_SYNC_LAST_ERROR)
@@ -337,7 +350,7 @@ class AppSettingsStore(context: Context) {
     fun markRemoteSyncConflict(remoteRevision: Long) {
         preferences.edit()
             .putLong(KEY_REMOTE_SYNC_CONFLICT_REVISION, remoteRevision.coerceAtLeast(0L))
-            .putString(KEY_REMOTE_SYNC_LAST_ERROR, "云端已有更新，请先拉取或恢复后再上传")
+            .putString(KEY_REMOTE_SYNC_LAST_ERROR, "云端与本机都有更新：请在账号中检查云端并恢复，或确认保留本机上传；操作前会保存恢复副本")
             .apply()
         refresh()
     }
@@ -348,22 +361,16 @@ class AppSettingsStore(context: Context) {
     }
 
     fun clearRemoteAccount() {
+        com.example.todoalarm.sync.AccountExpiryNotifier.cancel(appContext)
         securePreferences.edit()
             .remove(KEY_REMOTE_SYNC_ACCESS_TOKEN)
             .remove(KEY_REMOTE_SYNC_REFRESH_TOKEN)
-            .remove(KEY_REMOTE_SYNC_SECRET)
             .apply()
         preferences.edit()
+            .putBoolean("local_account_locked", true)
             .putBoolean(KEY_REMOTE_SYNC_ENABLED, false)
-            .remove(KEY_REMOTE_SYNC_USERNAME)
-            .remove(KEY_REMOTE_SYNC_USER_ID)
-            .remove(KEY_REMOTE_SYNC_DISPLAY_NAME)
             .remove(KEY_REMOTE_SYNC_ACCESS_EXPIRES_AT)
             .remove(KEY_REMOTE_SYNC_REFRESH_EXPIRES_AT)
-            .remove(KEY_REMOTE_SYNC_REVISION)
-            .remove(KEY_REMOTE_SYNC_DIRTY)
-            .remove(KEY_REMOTE_SYNC_CONFLICT_REVISION)
-            .remove(KEY_REMOTE_SYNC_LAST_SUCCESS_AT)
             .remove(KEY_REMOTE_SYNC_LAST_ERROR)
             .apply()
         refresh()

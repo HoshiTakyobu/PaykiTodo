@@ -10,6 +10,7 @@ import kotlinx.coroutines.launch
 class DailyBriefReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         if (intent.action != ACTION_DAILY_BRIEF) return
+        if (!(context.applicationContext as com.example.todoalarm.TodoApplication).settingsStore.hasLocalAccountAccess()) return
         val pendingResult = goAsync()
         CoroutineScope(Dispatchers.IO).launch {
             try {

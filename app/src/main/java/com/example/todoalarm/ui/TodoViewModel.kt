@@ -156,7 +156,6 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             while (true) {
                 if (settingsStore.clearExpiredRemoteSessionIfNeeded()) {
-                    app.remoteSyncCoordinator.stop()
                     app.desktopSyncCoordinator.stop()
                     app.stopService(Intent(app, DesktopSyncService::class.java))
                 }
@@ -350,7 +349,7 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
                 settings = settings,
                 currentQuote = currentQuote,
                 dataReady = true,
-                authenticated = settingsStore.hasValidRemoteSession()
+                authenticated = settingsStore.hasLocalAccountAccess()
             )
         }
     }.stateIn(
@@ -1125,7 +1124,7 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
         desktopSyncRefreshTick.value = System.currentTimeMillis()
     }
 
-    fun isAuthenticated(): Boolean = settingsStore.hasValidRemoteSession()
+    fun isAuthenticated(): Boolean = settingsStore.hasLocalAccountAccess()
 
     suspend fun loginAccount(username: String, password: String, turnstileToken: String?): AccountAuthResult {
         return withContext(Dispatchers.IO) {

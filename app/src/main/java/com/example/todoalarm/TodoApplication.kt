@@ -54,6 +54,7 @@ class TodoApplication : Application() {
             try {
                 repository.ensureDefaultGroups()
                 if (!skipReminderRecovery) {
+                    repository.futureReminderItems(System.currentTimeMillis()).forEach(alarmScheduler::schedule)
                     val replenishedRecurringItems = repository.ensureRecurringInstancesAhead()
                     val repairedPlanningItems = repository.ensurePlanningNodeLinkedItems(
                         createEventEndTodo = settingsStore.currentSettings().planningEventEndTodoEnabled
@@ -88,6 +89,7 @@ class TodoApplication : Application() {
             }
         }
         remoteSyncCoordinator.start()
+        com.example.todoalarm.sync.AccountExpiryNotifier.schedule(this)
     }
 
     val database: AppDatabase by lazy {

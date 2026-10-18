@@ -10,6 +10,7 @@ const assert = require('node:assert/strict');
   const root = path.resolve(__dirname, '../../app/src/main/assets/desktop-web');
   let offline = false;
   let pendingResponse;
+  let checklistCreated;
   const snapshot = { generatedAtMillis: Date.now(), groups: [{ id: 1, name: '默认', colorHex: '#4CB782' }],
     quickChecklistGroups: [], todos: [], events: [], announcements: [], todayBoard: null };
   await page.route('http://payki.test/**', async route => {
@@ -17,6 +18,10 @@ const assert = require('node:assert/strict');
     if (url.pathname.startsWith('/api/')) {
       if (offline) return route.abort('connectionrefused');
       if (url.pathname === '/api/race') { pendingResponse = route; return; }
+      if (url.pathname === '/api/quick-checklists' && route.request().method() === 'POST') {
+        checklistCreated = route.request().postDataJSON();
+        return route.fulfill({ json: { group: { id: 1, title: '' } } });
+      }
       return route.fulfill({ json: url.pathname === '/api/status' ? { running: true } : snapshot });
     }
     try {
@@ -33,6 +38,15 @@ const assert = require('node:assert/strict');
       await page.locator('.shell').waitFor({ state: 'visible' });
     }
     await connect();
+    await page.evaluate(() => {
+      openQuickChecklistEditor();
+      els.quickChecklistInput.value = '- 想到就写\n-- 子任务\n--# 说明';
+      renderQuickChecklistPreview({ title: '', taskCount: 2, maxDepth: 2, noteCount: 1, hasErrors: false,
+        nodes: [{ title: '想到就写', depth: 1 }, { title: '子任务', depth: 2, notes: '说明' }], diagnostics: [] });
+    });
+    assert.equal(await page.evaluate(() => els.saveQuickChecklist.disabled), false);
+    await page.evaluate(() => saveQuickChecklist());
+    assert.equal(checklistCreated.text, '- 想到就写\n-- 子任务\n--# 说明');
     const modalIds = await page.locator('.modal-backdrop').evaluateAll(nodes => nodes.map(node => node.id));
     for (const modalId of modalIds) {
       await page.evaluate(id => { openModal(id); document.querySelectorAll('#' + id + ' input, #' + id + ' textarea').forEach(input => { if (!['checkbox','radio','number','date','time','file'].includes(input.type)) input.value = '未完成的私人草稿'; }); }, modalId);
@@ -61,6 +75,6 @@ const assert = require('node:assert/strict');
     await page.waitForFunction(() => document.querySelector('#login-status').textContent.includes('手机尚未开启'));
     assert.doesNotMatch(await page.locator('#login-status').innerText(), /failed to fetch/i);
     await page.screenshot({ path: process.env.PAYKI_WEB_EVIDENCE || '.tmp/resume-20260923/web-disconnected.png' });
-    console.log(`PASS: ${modalIds.length} dialogs, canceled confirmations/forms, stale response, disconnect and reconnect error`);
+    console.log(`PASS: titleless checklist submission, ${modalIds.length} dialogs, canceled confirmations/forms, stale response, disconnect and reconnect error`);
   } finally { await browser.close(); }
 })().catch(error => { console.error(error); process.exitCode = 1; });

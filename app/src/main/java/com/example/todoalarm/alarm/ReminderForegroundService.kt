@@ -83,15 +83,7 @@ class ReminderForegroundService : Service() {
 
         scope.launch {
             val app = application as TodoApplication
-            if (!app.settingsStore.hasValidRemoteSession()) {
-                ReminderChainLogger.log(
-                    context = this@ReminderForegroundService,
-                    todoId = todoId,
-                    source = "ReminderForegroundService",
-                    stage = ReminderChainStage.SERVICE_INVALID_ITEM,
-                    status = ReminderChainStatus.WARN,
-                    message = "authentication_required"
-                )
+            if (!app.settingsStore.hasLocalAccountAccess()) {
                 dismiss(this@ReminderForegroundService, todoId)
                 stopSelf(startId)
                 return@launch
@@ -536,6 +528,7 @@ class ReminderForegroundService : Service() {
         private val FULLSCREEN_RETRY_DELAYS_MS = listOf(1_500L, 4_000L, 10_000L)
 
         fun start(context: android.content.Context, todoId: Long, triggeredAtMillis: Long? = null) {
+            if (!(context.applicationContext as TodoApplication).settingsStore.hasLocalAccountAccess()) return
             if (triggeredAtMillis != null && !ReminderDispatchTracker.claim(context, todoId, triggeredAtMillis)) {
                 ReminderChainLogger.log(
                     context = context,
@@ -580,6 +573,7 @@ class ReminderForegroundService : Service() {
             val app = context.applicationContext as? TodoApplication ?: return
             app.applicationScope.launch {
                 runCatching {
+                    if (!app.settingsStore.hasLocalAccountAccess()) return@runCatching
                     val item = app.repository.getTodo(todoId)
                     if (item == null || item.isHistory || !item.reminderEnabled) return@runCatching
                     if (triggeredAtMillis != null && !app.alarmScheduler.isReminderScheduled(todoId, triggeredAtMillis)) {

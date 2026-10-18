@@ -18,6 +18,8 @@
     <application
         android:name=".TodoApplication"
         android:allowBackup="true"
+        android:fullBackupContent="@xml/backup_rules"
+        android:dataExtractionRules="@xml/data_extraction_rules"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"
@@ -150,6 +152,10 @@
             android:name=".alarm.ReminderReceiver"
             android:exported="false" />
 
+        <receiver android:name=".sync.AccountExpiryReceiver" android:exported="false" />
+
+        <service android:name=".sync.RemoteSyncJobService" android:permission="android.permission.BIND_JOB_SERVICE" android:exported="false" />
+
         <receiver
             android:name=".alarm.ReminderNotificationClickReceiver"
             android:exported="false" />
@@ -204,6 +210,7 @@
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
                 <action android:name="android.intent.action.TIMEZONE_CHANGED" />
                 <action android:name="android.intent.action.TIME_SET" />
             </intent-filter>

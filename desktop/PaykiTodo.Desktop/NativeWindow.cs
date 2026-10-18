@@ -31,6 +31,9 @@ internal sealed partial class NativeWindow : Window
     private bool history;
     private bool editingPlanning;
     private DesktopReminders? reminders;
+    private bool reauthenticating;
+    private DesktopSnapshotDocument? renderedDocument;
+    private readonly Dictionary<long, (string Title, string Markdown)> planningDrafts = new();
 
     public NativeWindow(DesktopWorkspace? workspace = null)
     {
@@ -41,7 +44,7 @@ internal sealed partial class NativeWindow : Window
         WindowStartupLocation = WindowStartupLocation.CenterScreen;
         FontFamily = new System.Windows.Media.FontFamily("Microsoft YaHei UI");
         FontSize = 14; Background = B("#EEF3F4");
-        InstallStyles(Resources); BuildShell();
+        BuildShell();
         this.workspace.Changed += OnWorkspaceChanged;
         timer.Tick += async (_, _) => await this.workspace.SyncAsync(); timer.Start();
         Closed += (_, _) => { timer.Stop(); reminders?.Dispose(); this.workspace.Changed -= OnWorkspaceChanged; };
@@ -54,8 +57,8 @@ internal sealed partial class NativeWindow : Window
         var query = search.Text;
         root = new Grid(); content = new ContentControl(); navigation = new StackPanel();
         title = Text("每日看板", 25, bold: true); status = Text("", 12, Muted); search = Input(query);
-        navigationButtons.Clear(); InputBindings.Clear(); Background = B("#EEF3F4"); Foreground = Ink;
-        root.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(220) });
+        navigationButtons.Clear(); InputBindings.Clear(); InstallStyles(Resources); Background = B("#EEF3F4"); Foreground = Ink;
+        root.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(190) });
         root.ColumnDefinitions.Add(new ColumnDefinition()); Content = root;
         var rail = new DockPanel { Background = B("#F8FAF9"), Margin = new Thickness(0) };
         var brand = Column(Text("PaykiTodo", 26, Forest, true), Text("把今天，安排得刚刚好", 12, Muted));
@@ -91,11 +94,12 @@ internal sealed partial class NativeWindow : Window
         status.Text = workspace.Status;
         if (workspace.Document == null) {
             editingPlanning = false;
+            planningDrafts.Clear(); reauthenticating = false;
             reminders?.Clear();
             foreach (var window in OwnedWindows.Cast<Window>().ToArray()) window.Close();
         }
         // Background synchronization never throws away the planning draft.
-        if (!editingPlanning) Render();
+        if (!editingPlanning && (workspace.Document != renderedDocument || workspace.Document == null)) Render();
     }
     private void Navigate(string next) { editingPlanning = false; page = next; Render(); }
     private void Render()
@@ -103,7 +107,8 @@ internal sealed partial class NativeWindow : Window
         title.Text = page; status.Text = workspace.Status;
         foreach (var pair in navigationButtons)
         { pair.Value.Background = pair.Key == page ? B("#DCEBE2") : B("#F8FAF9"); pair.Value.FontWeight = pair.Key == page ? FontWeights.Bold : FontWeights.Normal; }
-        if (workspace.Document == null) { content.Content = LoginPage(); return; }
+        renderedDocument = workspace.Document;
+        if (workspace.Document == null || reauthenticating) { content.Content = LoginPage(); return; }
         content.Content = page switch {
             "每日看板" => BoardPage(), "待办" => TodosPage(), "日历" => CalendarPage(), "规划台" => PlanningPage(),
             "设置" => SettingsPage(), "AI 报告" => ReportsPage(), "倒数日" => CountdownPage(), "搜索" => SearchPage(), _ => BoardPage()

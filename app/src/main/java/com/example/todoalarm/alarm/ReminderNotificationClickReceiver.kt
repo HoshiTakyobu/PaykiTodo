@@ -23,7 +23,7 @@ class ReminderNotificationClickReceiver : BroadcastReceiver() {
             try {
                 val app = context.applicationContext as TodoApplication
                 val item = app.repository.getTodo(todoId)
-                if (!app.settingsStore.hasValidRemoteSession() || !shouldOpenReminderNotification(item)) {
+                if (!app.settingsStore.hasLocalAccountAccess() || !shouldOpenReminderNotification(item)) {
                     context.getSystemService(android.app.NotificationManager::class.java)
                         ?.cancel(ReminderNotifier.notificationId(todoId))
                     return@launch

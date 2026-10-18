@@ -136,6 +136,23 @@ class QuickChecklistRepositoryTest {
     }
 
     @Test
+    fun titlelessChecklistCreatesOnlyTasksAndSurvivesArchiveRoundTrip() = runBlocking {
+        val source = "- 想到就写\n-- 子任务\n--# 说明\n- 第二件事"
+        val draft = QuickChecklistParser.parse(source)
+        val group = repository.createQuickChecklist(draft)
+        assertEquals("", group.title)
+        val tasks = database.todoDao().getQuickChecklistItems(group.id)
+        assertEquals(3, tasks.size)
+        assertEquals(tasks.single { it.title == "想到就写" }.id, tasks.single { it.title == "子任务" }.parentTodoId)
+        assertEquals("说明", tasks.single { it.title == "子任务" }.notes)
+        val snapshot = repository.exportSnapshot(AppSettings())
+        repository.importSnapshot(BackupArchiveCodec.decode(BackupArchiveCodec.encode(snapshot)))
+        assertEquals(3, database.todoDao().getQuickChecklistItems(group.id).size)
+        assertEquals("", repository.getAllQuickChecklistGroups().single().title)
+        assertTrue(runCatching { repository.createQuickChecklist(QuickChecklistParser.parse("// 注释\n$source")) }.isFailure)
+    }
+
+    @Test
     fun quickChecklistPersistsHierarchyNotesOrderingAndRejectsDuplicate() = runBlocking {
         val draft = sampleDraft()
         val group = repository.createQuickChecklist(draft)

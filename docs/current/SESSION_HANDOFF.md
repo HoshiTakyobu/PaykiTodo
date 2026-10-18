@@ -1,6 +1,19 @@
 # Session Handoff
 
-## Current handoff baseline (2026-09-23)
+## Current handoff: completed 1.16.21 / 386 (2026-10-18)
+
+The full request is preserved in REQUEST_2026-10-17.md. The feature round is complete on main; Room remains 31. See VALIDATION_1.16.21.md for acceptance details. Expiry and explicit logout have different local access gates; keep this distinction. Do not reintroduce title-required checks into archive readers or client save buttons. Sync requests must preserve newer local edits and reject stale cloud reviews.
+
+- Debug: `app/build/outputs/apk/debug/PaykiTodo-1.16.21-debug.apk`; SHA-256 `16FF0F8D56AA57F92798D6C4FE9E31477248522A91326D443851C9DF2ACA8330`.
+- Signed Release: `app/build/outputs/apk/release/PaykiTodo-1.16.21-release.apk`; SHA-256 `DD073D336E620D5A28DC11A5433D3E0AF825B3AEFBBB5E3CEF9B9CA5B2E68093`.
+- Windows: `desktop/dist/PaykiTodo.exe` (`1.16.21.0`); SHA-256 `552485021D2C17C7F0D60E936F907D9DEA45D23DA54EEF237C3BFD326AB553A7`. The distribution directory retains the private ignored client config.
+- Validation: 186 unit tests, Lint (0 errors / 128 warnings), 23 Android instrumentation tests, 18 Windows tests, 12 server tests, LAN syntax/browser checks, builds and Release APK v2 signature verification passed.
+- Emulator: existing `Pixel_8`, `emulator-5554`, Android 14; installed the current Debug/AndroidTest APKs. Checked notification-to-account routing, neutral dark Settings, real offline background expired-account reminder delivery, titleless archive restore, calendar/daily-board and workspace controls. Emulator remains running. Wi-Fi/mobile data were disabled only for the focused reminder run and re-enabled afterward.
+- Evidence: local `G:/Workspace/Scratch/PaykiTodo/acceptance-1.16.21/`; pre-test private-data backup: `G:/Workspace/Backups/PaykiTodo/emulator-before-1.16.21-20261018-175229/`. Tests restore preference values and remove only their own synthetic tasks. No personal data or credential dumps are committed.
+- Physical OEM long-idle/lock-screen/vibration remain unverified. Native Windows lunar/OCR/multi-slot creation are still gaps; Windows reminders need the process running. These are boundaries, not completed parity claims.
+- No push, tag, GitHub Release or production-server change.
+
+## Historical handoff baseline (2026-09-23)
 
 The four latest user requests are recorded at the top of CURRENT_TASK.md. This round is complete on source `1.16.20 / 385` at commit `7e4f8da`; the working tree is clean and no local commit is pending. Native Windows code is in `NativeWindow*.cs`, `NativeEditors.cs`, `DesktopWorkspace.cs`, and `DesktopReminders.cs`; `Program.cs` launches WPF and the old MainForm/HTML renderer is not the default workspace. Temporary reference images and screenshots are under ignored `.tmp/resume-20260923/`. The `Pixel_8` AVD was used as `emulator-5554` for validation.
 

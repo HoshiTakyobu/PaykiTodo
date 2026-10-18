@@ -12,12 +12,20 @@ internal sealed partial class NativeWindow
 {
     private UIElement LoginPage()
     {
-        var server = Input(ReadServerPreference()); var username = Input();
+        var rememberedStore = new RememberedLoginStore(); var remembered = rememberedStore.Load();
+        var server = Input(ReadServerPreference()); var username = Input(remembered.Username);
         var password = new PasswordBox { Padding = new Thickness(10), Margin = new Thickness(0, 4, 0, 16), MinHeight = 42 };
         var agreed = new CheckBox { Content = "我已阅读并同意用户协议与隐私政策" };
+        password.Password = remembered.Password;
+        var rememberAccount = new CheckBox { Content = "记住账号", IsChecked = remembered.RememberAccount };
+        var rememberPassword = new CheckBox { Content = "记住密码", IsChecked = remembered.RememberPassword };
+        rememberAccount.Unchecked += (_, _) => { rememberPassword.IsChecked = false; rememberedStore.Save("", "", false, false); };
+        rememberPassword.Checked += (_, _) => rememberAccount.IsChecked = true;
+        rememberPassword.Unchecked += (_, _) => rememberedStore.ForgetPassword();
         var error = Text("", 13, B("#AF3A32"));
         var form = Column(Text("欢迎回来", 32, Forest, true), Text("在电脑上，接着安排你的一天。", 16, Muted),
             Text("云服务器", 13), server, Text("账号", 13), username, Text("密码", 13), password, agreed,
+            Row(rememberAccount, rememberPassword), Text("密码由当前 Windows 用户加密保存，不进入备份或云同步。", 12, Muted),
             Action("查看隐私政策", () => ShowPrivacy()), error);
         async void Login(bool register)
         {
@@ -29,14 +37,16 @@ internal sealed partial class NativeWindow
                 var verification = await NativeVerification.GetTokenAsync(this, url);
                 if (verification.Canceled) return;
                 await workspace.LoginAsync(url, username.Text, password.Password, register, verification.Token);
+                rememberedStore.Save(username.Text, password.Password, rememberAccount.IsChecked == true, rememberPassword.IsChecked == true);
                 password.Clear();
                 var folder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "PaykiTodo");
                 File.WriteAllText(Path.Combine(folder, "native-server.txt"), url);
-                Navigate("每日看板");
+                reauthenticating = false; Navigate("每日看板");
             } catch (Exception failure) { error.Text = DesktopWorkspace.FriendlyError(failure); }
             finally { form.IsEnabled = true; }
         }
         form.Children.Add(Row(Action("登录", () => Login(false), true), Action("注册账号", () => Login(true))));
+        if (reauthenticating) form.Children.Add(Action("返回离线工作区", () => { reauthenticating = false; Render(); }));
         var card = Card(form, 32); card.MaxWidth = 480; card.HorizontalAlignment = System.Windows.HorizontalAlignment.Center;
         card.Margin = new Thickness(20, 24, 20, 24); return Page(card, true);
     }
@@ -68,7 +78,8 @@ internal sealed partial class NativeWindow
             Dark = !Dark; BuildShell(); Change(document => document.Settings["themeMode"] = Dark ? "DARK" : "LIGHT");
         }))));
         body.Children.Add(Card(Column(Text(workspace.Account?.Username ?? "本地账号", 24, Forest, true), Text(workspace.Status, 13, Muted),
-            Row(Action("立即同步", async () => await workspace.SyncAsync(), true), Action("账号和设备", ShowAccountDetails), Action("退出登录", async () => {
+            Text("联网后自动同步本机修改。登录过期时本地编辑和提醒继续可用。", 13, Muted),
+            Row(Action("立即同步", async () => await workspace.SyncAsync(), true), Action("重新登录", () => { reauthenticating = true; Render(); }), Action("账号和设备", ShowAccountDetails), Action("退出登录", async () => {
                 if (Confirm("退出当前账号？本地数据会保留，重新登录后可继续使用。")) await workspace.LogoutAsync();
             })))));
         body.Children.Add(Card(Column(Text("数据与备份", 20, bold: true), Text("迁移包可在手机与电脑间导入。导入或切换云端版本前会自动保留本机安全副本。", 13, Muted),
@@ -79,8 +90,8 @@ internal sealed partial class NativeWindow
                 var dialog = new Microsoft.Win32.OpenFileDialog { Filter = "PaykiTodo 迁移包|*.paykibak" };
                 if (dialog.ShowDialog(this) == true && Confirm("用选中的迁移包替换本机数据？现有数据会先保留安全副本。"))
                     try { workspace.Import(File.ReadAllBytes(dialog.FileName)); } catch (Exception e) { workspace.Notify(e.Message); }
-            }), Action("使用云端副本", async () => {
-                if (Confirm("保留本机安全副本，然后使用云端数据解决冲突？本机尚未同步的修改不会上传。")) await workspace.UseCloudAsync();
+            }), Action("检查云端并恢复", () => ReviewCloud(false)), Action("保留本机上传", () => ReviewCloud(true)), Action("恢复操作前副本", () => {
+                if (Confirm("恢复最近的操作前副本？当前数据也会先保存副本。")) try { workspace.RestoreSafetyCopy(); } catch (Exception error) { workspace.Notify(error.Message); }
             })))));
         var groups = Column(Text("分组管理", 20, bold: true));
         foreach (var group in workspace.Document!.Groups) {
@@ -98,8 +109,19 @@ internal sealed partial class NativeWindow
                 if (!Uri.TryCreate(text, UriKind.Absolute, out var uri) || uri.Scheme is not ("http" or "https")) { workspace.Notify("请输入手机显示的完整 http 或 https 地址"); return; }
                 Process.Start(new ProcessStartInfo(uri.AbsoluteUri) { UseShellExecute = true });
             }))));
-        body.Children.Add(Card(Column(Text("关于 PaykiTodo", 20, bold: true), Text("Windows 客户端 1.16.20", 14, Muted),
+        body.Children.Add(Card(Column(Text("关于 PaykiTodo", 20, bold: true), Text("Windows 客户端 1.16.21", 14, Muted),
             Text("桌面提醒需要保持程序运行；手机的锁屏、通知权限与桌面小组件由 Android 系统管理。", 13, Muted), Action("隐私政策", ShowPrivacy))));
         return Page(body);
+    }
+
+    private async void ReviewCloud(bool keepLocal)
+    {
+        try {
+            var review = await workspace.InspectCloudAsync();
+            var document = review.Remote.Document;
+            if (!Confirm($"云端版本 {review.Remote.Revision}：{document.Items.Count(item => !item.IsEvent)} 项待办、{document.Items.Count(item => item.IsEvent)} 项日程、{document.PlanningNotes.Count} 份规划文档。\n" +
+                (keepLocal ? "确认将本机副本上传为新云端版本？" : "确认用云端副本替换本机？") + "\n操作前会保留双方恢复副本。")) return;
+            await workspace.ResolveCloudAsync(review, keepLocal);
+        } catch (Exception error) { workspace.Notify(DesktopWorkspace.FriendlyError(error)); }
     }
 }

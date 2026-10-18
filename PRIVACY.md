@@ -16,12 +16,12 @@ PaykiTodo may store the following data on the user's device:
 
 ## Network behavior
 
-PaykiTodo can be used without an account. Optional account sync only connects to the server URL explicitly configured by the user or deployment owner; the public project does not provide a default author-operated account service.
+The current workspace is unlocked by account login. After that login expires, local data, editing and reminders remain available offline; explicit logout locks access until login. Account sync connects only to the server configured by the user or deployment owner; public source builds do not include the maintainer's private endpoint.
 
 Network access may happen in these user-controlled cases:
 
 1. **Desktop sync**: when the user enables desktop sync, the phone exposes a local LAN web console. Devices on the same network can connect using the displayed address and token.
-2. **Optional account sync**: after the user registers or logs in, Android and Windows may upload an end-to-end encrypted PaykiTodo archive plus account/device/revision metadata to the configured server. The server does not receive the archive decryption secret.
+2. **Account sync**: after the user registers or logs in, Android and Windows may upload an end-to-end encrypted PaykiTodo archive plus account/device/revision metadata to the configured server. Local edits and reconnection trigger sync automatically; Android also schedules persistent network-constrained jobs. The server does not receive the archive decryption secret.
 3. **AI features**: when the user configures and enables an OpenAI-compatible provider, selected Planning Desk text or AI-report context may be sent to that configured third-party provider.
 4. **User-initiated sharing / export**: exported backup files or copied logs are controlled by the user after export.
 
@@ -43,6 +43,10 @@ The app's backup format is designed not to export AI API keys. Developers and us
 `.paykibak` backups and decrypted local cloud copies may contain personal todos, events, notes and planning content. Treat them as private data. Android cloud credentials use encrypted preferences when available; Windows cloud state and the local archive use current-user DPAPI protection.
 
 Before sharing a backup for debugging, remove personal information first.
+
+Remembering the account and password is optional. Remembered passwords are stored separately using Android encrypted preferences (with no plaintext password fallback) or current-user Windows DPAPI. They are excluded from migration archives and cloud snapshots; Android backup and device-transfer rules also exclude the credential preferences. Unchecking remember-password removes the saved password.
+
+Cloud conflict recovery saves both sides before replacement. Android stores sanitized `.paykibak` safety copies in the app's private files; Windows protects local safety copies with current-user DPAPI. Safety copies are scoped to the account, can contain personal content, and remain on the device.
 
 ## Permissions
 

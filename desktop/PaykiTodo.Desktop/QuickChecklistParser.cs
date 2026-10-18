@@ -62,10 +62,6 @@ internal static partial class QuickChecklistParser
         var first = effective.FirstOrDefault();
         var hasTitle = first is not null && !first.Content.StartsWith('-');
         var title = hasTitle ? first!.Content : "";
-        if (first is null)
-            diagnostics.Add(Error(1, "请先输入清单标题"));
-        else if (!hasTitle)
-            diagnostics.Add(Error(first.SourceLine, "第一条有效内容必须是清单标题"));
 
         var nodes = new List<QuickChecklistDraftNode>();
         var lastNodeByDepth = new Dictionary<int, QuickChecklistDraftNode>();
@@ -138,7 +134,7 @@ internal static partial class QuickChecklistParser
             diagnostics.Add(Error(line.SourceLine, "标题后的内容需要以短横线开头"));
         }
 
-        if (hasTitle && nodes.Count == 0) diagnostics.Add(Error(first?.SourceLine ?? 1, "清单中至少需要一项任务"));
+        if (nodes.Count == 0) diagnostics.Add(Error(first?.SourceLine ?? 1, "清单中至少需要一项任务"));
         return new QuickChecklistDraft(title, nodes, diagnostics, ContentFingerprint(title, nodes));
     }
 

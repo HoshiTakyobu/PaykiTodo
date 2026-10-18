@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<full-backup-content>
+    <exclude domain="sharedpref" path="remembered_login_encrypted.xml" />
+    <exclude domain="sharedpref" path="remembered_login_flags.xml" />
+    <exclude domain="sharedpref" path="payki_todo_secure_settings.xml" />
+    <exclude domain="sharedpref" path="payki_todo_secure_settings_fallback.xml" />
+</full-backup-content>

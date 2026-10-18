@@ -9,6 +9,19 @@ import org.junit.Test
 
 class QuickChecklistParserTest {
     @Test
+    fun titlelessInputPreservesNotesHierarchyAndSemanticFingerprint() {
+        val source = "- 想到就写\n-- 子任务\n--# 说明\n- 第二件事"
+        val draft = QuickChecklistParser.parse(source)
+        assertFalse(draft.hasErrors)
+        assertEquals("", draft.title)
+        assertEquals(3, draft.taskCount)
+        assertEquals(draft.nodes.first().temporaryId, draft.nodes[1].parentTemporaryId)
+        assertEquals("说明", draft.nodes[1].notes)
+        assertEquals(draft.sourceFingerprint, QuickChecklistParser.parse("// 注释\n$source // 注释").sourceFingerprint)
+        assertTrue(QuickChecklistParser.parse("只有标题").hasErrors)
+        assertTrue(QuickChecklistParser.parse("- 任务\n没有短横线的正文").hasErrors)
+    }
+    @Test
     fun parsesSpecificationExample() {
         val draft = QuickChecklistParser.parse(
             """
@@ -58,10 +71,11 @@ class QuickChecklistParserTest {
     }
 
     @Test
-    fun reportsMissingTitleEmptyTaskOrphanNoteAndPlainBodyLine() {
+    fun allowsOptionalTitleButRejectsEmptyTasksOrphanNotesAndPlainBodyLines() {
         val missingTitle = QuickChecklistParser.parse("- 任务")
-        assertTrue(missingTitle.hasErrors)
-        assertTrue(missingTitle.diagnostics.any { it.message.contains("标题") })
+        assertFalse(missingTitle.hasErrors)
+        assertEquals("", missingTitle.title)
+        assertEquals(1, missingTitle.taskCount)
 
         val emptyTask = QuickChecklistParser.parse("标题\n-\n- 后续")
         assertTrue(emptyTask.diagnostics.any { it.sourceLine == 2 && it.message.contains("不能为空") })

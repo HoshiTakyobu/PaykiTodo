@@ -15,18 +15,24 @@ internal sealed partial class NativeWindow
         void Open(DesktopPlanningNote? note)
         {
             editingPlanning = true;
-            var name = Input(note?.Title ?? "新规划"); var markdown = Input(note?.Markdown ?? "", true); markdown.MinHeight = 360;
+            var id = note?.Id ?? 0;
+            var draft = planningDrafts.GetValueOrDefault(id, (note?.Title ?? "新规划", note?.Markdown ?? ""));
+            var name = Input(draft.Item1); var markdown = Input(draft.Item2, true); markdown.MinHeight = 360;
+            name.TextChanged += (_, _) => planningDrafts[id] = (name.Text, markdown.Text);
+            markdown.TextChanged += (_, _) => planningDrafts[id] = (name.Text, markdown.Text);
             var error = Text("", 13, B("#AF3A32"));
-            var buttons = Row(Action("取消", () => Navigate("规划台")), Action("识别并预览", () => RecognizePlanning(markdown.Text)), Action("完成", () => {
+            var buttons = Row(Action("取消", () => { planningDrafts.Remove(id); Navigate("规划台"); }), Action("识别并预览", () => RecognizePlanning(markdown.Text)), Action("完成", () => {
                 if (string.IsNullOrWhiteSpace(name.Text)) { error.Text = "请填写文档标题"; return; }
-                editingPlanning = false; Change(document => document.SavePlanningNote(note?.Id, name.Text, markdown.Text));
+                try { workspace.Edit(document => document.SavePlanningNote(note?.Id, name.Text, markdown.Text)); planningDrafts.Remove(id); editingPlanning = false; Render(); }
+                catch (Exception failure) { error.Text = failure.Message; }
             }, true));
             editor.Content = Scroll(Card(Column(Text("规划文档", 22, bold: true), name, markdown, error, buttons)));
         }
         list.Children.Add(Action("＋ 新建文档", () => Open(null), true));
+        if (planningDrafts.ContainsKey(0)) list.Children.Add(Action("继续新文档草稿", () => Open(null)));
         var notes = workspace.Document!.PlanningNotes.Where(note => !workspace.Document.PlanningArchived(note.Id)).ToList();
         foreach (var note in notes) {
-            list.Children.Add(Action(note.Title, () => Open(note)));
+            list.Children.Add(Action(note.Title + (planningDrafts.ContainsKey(note.Id) ? " · 草稿" : ""), () => Open(note)));
             list.Children.Add(Action("归档", () => { if (Confirm("归档这份规划文档？")) { editingPlanning = false; Change(document => document.ArchivePlanning(note.Id)); } }));
         }
         editor.Content = Card(Column(Text("想法，从这里开始", 25, Forest, true), Text("选择左侧文档，或新建一份规划。完成后会保存到本机并自动同步。", 15, Muted)));

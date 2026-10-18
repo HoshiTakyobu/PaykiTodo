@@ -252,6 +252,7 @@ fun SettingsPanel(
     LaunchedEffect(initialSectionSerial) {
         selectedSection = when (initialSectionKey) {
             MainActivity.SETTINGS_SECTION_DESKTOP_SYNC -> SettingsSection.DESKTOP_SYNC
+            "ACCOUNT" -> SettingsSection.ACCOUNT
             else -> selectedSection
         }
     }
@@ -323,7 +324,7 @@ fun SettingsPanel(
                 SettingsMenuDivider()
                 SettingsMenuItem(
                     icon = Icons.Rounded.Computer,
-                    title = "电脑同步",
+                    title = "连接电脑（局域网）",
                     summary = when {
                         desktopSyncStatus.connected -> "已连接"
                         desktopSyncStatus.running -> "等待密钥"
@@ -1591,7 +1592,7 @@ private fun ReportScheduleRow(
     onTimeChange: (String) -> Unit
 ) {
     Surface(
-        shape = RoundedCornerShape(14.dp),
+        shape = RoundedCornerShape(18.dp),
         color = MaterialTheme.colorScheme.surface.copy(alpha = 0.72f),
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.28f))
     ) {
@@ -2580,7 +2581,7 @@ private fun SettingsMenuCard(content: @Composable ColumnScope.() -> Unit) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(vertical = 1.dp),
+                .padding(vertical = 5.dp),
             content = content
         )
     }
@@ -2666,14 +2667,14 @@ private fun SettingsMenuItem(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick)
-            .padding(horizontal = 14.dp, vertical = 11.dp),
+            .padding(horizontal = 16.dp, vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         Surface(
             modifier = Modifier.size(32.dp),
             shape = RoundedCornerShape(8.dp),
-            color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.58f)
+            color = MaterialTheme.colorScheme.surfaceVariant
         ) {
             Box(contentAlignment = Alignment.Center) {
                 Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))

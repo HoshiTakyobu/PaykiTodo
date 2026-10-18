@@ -8,7 +8,7 @@
 - Supported Android: Android 8.0+ / API 26+
 - Compile and target SDK: Android 14 / API 34
 - License: MIT
-- App version: `1.16.20 / versionCode 385` (current local validation source)
+- App version: `1.16.21 / versionCode 386` (locally verified; not published)
 - Room database version: `31`
 
 ## Published Build
@@ -16,12 +16,12 @@
 - GitHub Release: `https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.15.18`
 - Release APK: `app/build/outputs/apk/release/PaykiTodo-1.15.18-release.apk`
 - Public asset name: `PaykiTodo-1.15.18-release.apk`
-- Current debug APK: `app/build/outputs/apk/debug/PaykiTodo-1.16.20-debug.apk`
-- Current signed release APK: `app/build/outputs/apk/release/PaykiTodo-1.16.20-release.apk`
-- Current Windows self-contained EXE: `desktop/dist/PaykiTodo.exe` (file version `1.16.20.0`)
-- Debug APK SHA-256: `2119C69EAC9C6062A1581D2699BB29E916FCB64B47B49D75103D212E56E8E5B0`
-- Signed Release APK SHA-256: `FA47E46D44D82375C4EC78559856667E7089E925704656CA814AA53C881D525D`
-- Windows self-contained EXE SHA-256: `10B5C5396E582F366921AE6DD84530C0226121B9324D6E5BA987B06576F9A1DA`
+- Current debug APK: `app/build/outputs/apk/debug/PaykiTodo-1.16.21-debug.apk`
+- Current signed release APK: `app/build/outputs/apk/release/PaykiTodo-1.16.21-release.apk`
+- Current Windows self-contained EXE: `desktop/dist/PaykiTodo.exe` (file version `1.16.21.0`)
+- Debug APK SHA-256: `16FF0F8D56AA57F92798D6C4FE9E31477248522A91326D443851C9DF2ACA8330`
+- Signed Release APK SHA-256: `DD073D336E620D5A28DC11A5433D3E0AF825B3AEFBBB5E3CEF9B9CA5B2E68093`
+- Windows self-contained EXE SHA-256: `552485021D2C17C7F0D60E936F907D9DEA45D23DA54EEF237C3BFD326AB553A7`
 - Release signing material remains local and ignored by Git.
 
 ## Product Positioning
@@ -47,6 +47,16 @@ PaykiTodo is a local-first Android assistant for todos, DDLs, schedules, countdo
 - Desktop Web calendar now uses the same current-time line convention as the phone calendar, separates today's date from the selected date, and flashes the selected week column briefly.
 
 See `README.md` for the public overview and `docs/current/FEATURE_LEDGER.md` for the detailed implementation ledger.
+
+## v1.16.21 Validation Scope (not published)
+
+- Expiry retains local account access and reminders, posts one account notification and routes to reauthentication; explicit logout locks access. Remembered credentials are separate encrypted stores excluded from snapshots.
+- Cloud synchronization uses persistent network jobs and callbacks independently of LAN. Concurrent writes remain dirty; cloud inspection and confirmed conflict choices validate account/revision/local changes and save both sides first.
+- Titleless checklists work across Android/LAN/WPF, including actual save and Android archive restore. A stale empty-title filter in the archive reader was found by the new regression and fixed.
+- Phone settings and native WPF use neutral dark surfaces; WPF drafts survive navigation/status refresh, overlapping events use lanes, toolbars wrap and weekly recurrence uses weekday selectors.
+- Passed: 186 Android unit tests; Android Lint (0 errors, 128 warnings); Debug/AndroidTest/signed Release builds; 23 Pixel_8 instrumentation tests; 18 Windows tests; 12 server tests; LAN browser regression and JavaScript syntax; self-contained Windows publish and Release APK v2 signature verification.
+- A dedicated run disabled emulator Wi-Fi and mobile data, expired the synthetic account, pressed Home, scheduled a real AlarmManager reminder and observed its notification/dispatch claim. Fixture account preferences and synthetic tasks were restored afterward; network was re-enabled.
+- Validation details and remaining boundaries: [VALIDATION_1.16.21.md](VALIDATION_1.16.21.md). No push, tag, release or production-server change.
 
 ## v1.16.20 Validation Scope (not published)
 

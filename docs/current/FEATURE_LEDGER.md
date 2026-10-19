@@ -4,6 +4,13 @@ This file tracks the product at a practical level for new coding sessions.
 
 ## Implemented And In Use
 
+### v1.16.22 Native Layout And Non-interfering Acceptance
+
+- Shared Chinese typography, original high-resolution window/tray icons, navigation glyphs/selection, light/dark fields and branded confirmations replace inconsistent native presentation. Reminder clock/actions centered; editor footers fixed; narrow boards stack; Planning Desk keeps actions visible.
+- Removed double padding that clipped date/time text; UI regressions check single-line text viewport, date/time persistence and planning-button bounds. Logout shows the login heading while retained local data stays locked.
+- Separate-desktop process launcher plus UIA workflows avoid user's pointer/keyboard/clipboard/focus. Optional profile directory also isolates credentials, server preference and verification browser data; it does not bypass account gates.
+- Verified 19 Windows regressions (including real built EXE startup) plus 1 workflow with 14 stages, not 14 independent E2E tests. Visual samples inspected; full physical-input/real-provider/native-login/OEM coverage is not implied. See [VALIDATION_1.16.22.md](VALIDATION_1.16.22.md).
+
 ### v1.16.21 Account Expiry, Sync Recovery And Native Usability
 
 - Android expiry notification opens account settings; expiry preserves authenticated local access, reminders and dirty data. Explicit logout locks access. Remember-account/password is opt-in and kept outside snapshots; remembered passwords use encrypted preferences or Windows DPAPI.

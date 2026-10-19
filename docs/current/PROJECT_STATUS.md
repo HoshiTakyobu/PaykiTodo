@@ -8,21 +8,22 @@
 - Supported Android: Android 8.0+ / API 26+
 - Compile and target SDK: Android 14 / API 34
 - License: MIT
-- App version: `1.16.21 / versionCode 386` (locally verified; not published)
+- App source version: `1.16.22 / versionCode 387` (locally built and verified; not published)
 - Room database version: `31`
-- Latest testing audit: real user-device/native-window interactions and controlled network/data checks; scoped results in [INTERACTIVE_VALIDATION_1.16.21.md](INTERACTIVE_VALIDATION_1.16.21.md). Implementation baseline `30c3176`; test-only follow-up does not change install versions or product artifacts.
+- Latest testing audit: isolated-desktop WPF control workflows, visual/layout checks, packaged EXE smoke and same-Pixel_8 upgrade/startup; see [VALIDATION_1.16.22.md](VALIDATION_1.16.22.md). Earlier physical-input/account/network acceptance remains separately recorded in [INTERACTIVE_VALIDATION_1.16.21.md](INTERACTIVE_VALIDATION_1.16.21.md), not silently counted as a fresh 1.16.22 run.
 
 ## Published Build
 
 - GitHub Release: `https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.15.18`
 - Release APK: `app/build/outputs/apk/release/PaykiTodo-1.15.18-release.apk`
 - Public asset name: `PaykiTodo-1.15.18-release.apk`
-- Current debug APK: `app/build/outputs/apk/debug/PaykiTodo-1.16.21-debug.apk`
-- Current signed release APK: `app/build/outputs/apk/release/PaykiTodo-1.16.21-release.apk`
-- Current Windows self-contained EXE: `desktop/dist/PaykiTodo.exe` (file version `1.16.21.0`)
-- Debug APK SHA-256: `16FF0F8D56AA57F92798D6C4FE9E31477248522A91326D443851C9DF2ACA8330`
-- Signed Release APK SHA-256: `DD073D336E620D5A28DC11A5433D3E0AF825B3AEFBBB5E3CEF9B9CA5B2E68093`
-- Windows self-contained EXE SHA-256: `552485021D2C17C7F0D60E936F907D9DEA45D23DA54EEF237C3BFD326AB553A7`
+- Current debug APK: `app/build/outputs/apk/debug/PaykiTodo-1.16.22-debug.apk`
+- Current signed release APK: `app/build/outputs/apk/release/PaykiTodo-1.16.22-release.apk`
+- Current Windows self-contained EXE: `desktop/dist/PaykiTodo.exe` (file version `1.16.22.0`; distribute the whole directory)
+- Debug APK SHA-256: `EBFF103973055E5E8B419C0AB47B6604649D419FF7C7BF208EE617F78869BF79`
+- Signed Release APK SHA-256: `247B4CF564876BC0EDDA8FDF33AA1DE1841BB42593009F93D601BE1BC0AD4ECE`
+- Windows EXE SHA-256: `7464FFFD69D91C8AC9A45CF97D4BE41EA96F687215296F1DC18D7647D99E8070`
+- Windows main assembly `desktop/dist/PaykiTodo.dll` SHA-256: `A07C4E308F968E4826CDB7C6327B704663040D6D905937887FCDEB05DB899BF7` (the EXE apphost alone does not identify UI code)
 - Release signing material remains local and ignored by Git.
 
 ## Product Positioning
@@ -48,6 +49,14 @@ PaykiTodo is a local-first Android assistant for todos, DDLs, schedules, countdo
 - Desktop Web calendar now uses the same current-time line convention as the phone calendar, separates today's date from the selected date, and flashes the selected week column briefly.
 
 See `README.md` for the public overview and `docs/current/FEATURE_LEDGER.md` for the detailed implementation ledger.
+
+## v1.16.22 Validation Scope (not published)
+
+- Native WPF typography, original high-resolution icons, neutral dark controls, navigation, dialogs and responsive board improved. Fixed date/time text clipping and pinned Planning Desk actions; expired-session/offline and explicit-logout rules remain unchanged.
+- Default Windows test launcher creates a separate desktop before starting .NET/COM; tests reject the input desktop. UIA mode does not use global input or clipboard. Physical-input mode remains separately opt-in.
+- Passed: 19 Windows regressions including packaged EXE smoke, plus 1 UIA workflow test with 14 stages; 186 Android unit tests, Lint (0 errors / 128 warnings), Debug/signed Release builds, Release v2 signature verification and Windows self-contained publish.
+- Existing `emulator-5554` / `Pixel_8` upgraded in place after private-data backup; verified installed 1.16.22/387 and account login UI. Android runtime source was not changed this round; earlier instrumentation evidence is historical, not a newly repeated full phone suite.
+- No push, tag, release or production-server changes. Full platform parity, OEM long-idle/lock-screen, real-provider AI and native login/human-verification E2E remain unproven. See VALIDATION_1.16.22.md.
 
 ## v1.16.21 Validation Scope (not published)
 

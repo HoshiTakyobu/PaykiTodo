@@ -4,24 +4,30 @@ using PaykiTodo.Desktop.Tests;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
+using System.Windows.Automation;
+using System.Windows.Automation.Peers;
+using System.Windows.Automation.Provider;
 using Xunit;
 using Button = System.Windows.Controls.Button;
 using TextBox = System.Windows.Controls.TextBox;
 
 namespace PaykiTodo.Desktop;
 
-// Opt-in because these tests own real foreground mouse/keyboard input on the user's desktop.
+// UIA mode uses an isolated desktop. Physical-input mode remains separately opt-in.
 public sealed class VisibleUserAcceptanceTests
 {
     private sealed class VisibleFact : FactAttribute {
-        public VisibleFact() { if (Environment.GetEnvironmentVariable("PAYKI_VISIBLE_ACCEPTANCE") != "1") Skip = "Requires opt-in foreground mouse and keyboard"; }
+        public VisibleFact() { if (Environment.GetEnvironmentVariable("PAYKI_VISIBLE_ACCEPTANCE") != "1" && Environment.GetEnvironmentVariable("PAYKI_UIA_ACCEPTANCE") != "1") Skip = "Run isolated UIA acceptance using Invoke-DesktopAcceptance.ps1; physical input separately opt-in"; }
     }
     [VisibleFact]
-    public void RealPointerKeyboardNavigationDraftChecklistAndReminder()
+    public void NativeWorkflowsWithUiaOrOptInPhysicalInput()
     {
-        if (Environment.GetEnvironmentVariable("PAYKI_VISIBLE_ACCEPTANCE") != "1") return;
+        var physical = Environment.GetEnvironmentVariable("PAYKI_VISIBLE_ACCEPTANCE") == "1";
         Exception? failure = null;
+        IsolatedDesktop? desktop = null;
         var thread = new Thread(() => {
+            try {
+            if (!physical) desktop = new IsolatedDesktop();
             var application = new System.Windows.Application { ShutdownMode = ShutdownMode.OnExplicitShutdown };
             var folder = Environment.GetEnvironmentVariable("PAYKI_UI_EVIDENCE") ?? throw new InvalidOperationException("Evidence directory required");
             Directory.CreateDirectory(folder);
@@ -29,17 +35,37 @@ public sealed class VisibleUserAcceptanceTests
             var store = new DesktopSecureStore(Path.Combine(folder, "isolated-windows-profile"));
             var expiry = DateTimeOffset.UtcNow.AddHours(1).ToUnixTimeSeconds();
             store.Save(new CloudAccountState(server.Url, "visible_fixture", "fixture-device", "fixture-access", "fixture-refresh", expiry, expiry, "fixture-secret", 0, false), DesktopSnapshotDocument.CreateEmpty());
+            File.WriteAllText(Path.Combine(folder, "isolated-windows-profile", "native-server.txt"), server.Url);
             var workspace = new DesktopWorkspace(store);
-            var window = new NativeWindow(workspace) { Width = 1160, Height = 820, ShowActivated = true };
+            var window = new NativeWindow(workspace, Path.Combine(folder, "isolated-windows-profile")) { Width = 1160, Height = 820, ShowActivated = true };
             var reminders = new DesktopReminders(window, workspace);
-            window.Show(); window.Activate();
+            window.Show(); if (physical) window.Activate();
             var driver = Task.Run(async () => {
                 try {
                     await Task.Delay(1200);
-                    void Stage(string id, string result) => File.AppendAllText(Path.Combine(folder, "windows-visible-steps.txt"), id + " PASS " + result + "\n");
+                    void Stage(string id, string result) => File.AppendAllText(Path.Combine(folder, physical ? "windows-visible-steps.txt" : "windows-uia-steps.txt"), id + " PASS " + (physical ? "OS-input: " : "isolated UIA (not physical E2E): ") + result + "\n");
                     T UI<T>(Func<T> read) => window.Dispatcher.Invoke(read);
                     Window Current() => UI(() => application.Windows.OfType<Window>().LastOrDefault(w => w.IsVisible && w != window) ?? window);
+                    void Capture(string name) => UI(() => {
+                        var target = Current(); target.UpdateLayout();
+                        Assert.Same(NativeUi.AppIcon, target.Icon);
+                        if (target != window) Assert.Equal(WindowStartupLocation.CenterOwner, target.WindowStartupLocation);
+                        var bitmap = new System.Windows.Media.Imaging.RenderTargetBitmap((int)Math.Ceiling(target.ActualWidth), (int)Math.Ceiling(target.ActualHeight), 96, 96, PixelFormats.Pbgra32);
+                        bitmap.Render(target); var encoder = new System.Windows.Media.Imaging.PngBitmapEncoder(); encoder.Frames.Add(System.Windows.Media.Imaging.BitmapFrame.Create(bitmap));
+                        using var output = File.Create(Path.Combine(folder, name + ".png")); encoder.Save(output); return true;
+                    });
                     async Task Click(FrameworkElement control) {
+                        if (!physical) {
+                            UI(() => {
+                                control.BringIntoView(); control.UpdateLayout();
+                                var peer = UIElementAutomationPeer.CreatePeerForElement(control)!;
+                                if (peer.GetPattern(PatternInterface.Invoke) is IInvokeProvider invoke) invoke.Invoke();
+                                else if (peer.GetPattern(PatternInterface.Toggle) is IToggleProvider toggle) toggle.Toggle();
+                                else throw new InvalidOperationException("Control has no invoke/toggle pattern");
+                                return true;
+                            });
+                            await Task.Delay(180); return;
+                        }
                         var handle = UI(() => new System.Windows.Interop.WindowInteropHelper(Window.GetWindow(control)).Handle);
                         Key(0x12, false); Key(0x12, true); SetForegroundWindow(handle);
                         UI(() => { control.BringIntoView(); control.UpdateLayout(); return true; });
@@ -64,19 +90,23 @@ public sealed class VisibleUserAcceptanceTests
                             if (control == null) await Task.Delay(100);
                         }
                         Assert.NotNull(control);
-                        UI(() => { Current().Activate(); return true; });
+                        if (physical) UI(() => { Current().Activate(); return true; });
                         await Click(control);
                     }
                     async Task Navigate(string page) {
-                        UI(() => { window.Activate(); return true; });
+                        if (physical) UI(() => { window.Activate(); return true; });
                         for (var attempt = 0; attempt < 3; attempt++) {
-                            await Click(UI(() => Descendants<Button>(window).First(b => b.Content is string text && text.EndsWith("    " + page))));
+                            await Click(UI(() => Descendants<Button>(window).First(b => AutomationProperties.GetAutomationId(b) == "Navigate." + page)));
                             if (UI(() => Descendants<TextBlock>(window).Any(t => t.Text == page))) break;
                             await Task.Delay(500);
                         }
                         Assert.Contains(UI(() => Descendants<TextBlock>(window).Select(t => t.Text).ToList()), text => text == page);
                     }
                     async Task Type(TextBox input, string text) {
+                        if (!physical) {
+                            UI(() => { ((IValueProvider)UIElementAutomationPeer.CreatePeerForElement(input)!.GetPattern(PatternInterface.Value)).SetValue(text); return true; });
+                            await Task.Delay(150); Assert.Equal(text, UI(() => input.Text)); return;
+                        }
                         await Click(input); Key(0x11, false); Key(0x41, false); Key(0x41, true); Key(0x11, true);
                         if (text.Contains('\n')) {
                             for (var attempt = 0; ; attempt++) {
@@ -89,20 +119,8 @@ public sealed class VisibleUserAcceptanceTests
                         Assert.Equal(text, UI(() => input.Text));
                     }
                     async Task ConfirmSystemDialog() {
-                        await Task.Delay(400);
-                        var dialogHandle = FindWindow("#32770", "PaykiTodo");
-                        Assert.NotEqual(IntPtr.Zero, dialogHandle);
-                        IntPtr ok = IntPtr.Zero;
-                        EnumChildWindows(dialogHandle, (handle, _) => {
-                            var label = new System.Text.StringBuilder(200); GetWindowText(handle, label, label.Capacity);
-                            if (GetDlgCtrlID(handle) == 1 || label.ToString().Contains("确定") || label.ToString().Contains("OK")) ok = handle;
-                            return true;
-                        }, IntPtr.Zero);
-                        Assert.NotEqual(IntPtr.Zero, ok);
-                        var rectangle = UI(() => { GetWindowRect(ok, out var bounds); return bounds; });
-                        Assert.True(SetPhysicalCursorPos((rectangle.Left + rectangle.Right) / 2, (rectangle.Top + rectangle.Bottom) / 2));
-                        mouse_event(2, 0, 0, 0, UIntPtr.Zero); mouse_event(4, 0, 0, 0, UIntPtr.Zero);
-                        await Task.Delay(1200);
+                        Capture("windows-confirmation");
+                        await ButtonClick("确认操作"); await Task.Delay(800);
                     }
                     async Task Synced() {
                         for (var i = 0; i < 100; i++) { if (workspace.Account?.Dirty == false) return; await Task.Delay(100); }
@@ -110,11 +128,12 @@ public sealed class VisibleUserAcceptanceTests
                     }
                     await Navigate("待办");
                     await ButtonClick("＋ 新增待办");
+                    Capture("windows-todo-editor-light");
                     await Type(UI(() => Descendants<TextBox>(Current()).First()), "Visible keyboard todo");
                     await ButtonClick("完成");
                     Assert.Contains(workspace.Document!.Items, item => item.Title == "Visible keyboard todo");
                     Assert.Contains(store.Load()!.Value.Document.Items, item => item.Title == "Visible keyboard todo");
-                    Stage("W01", "Actual OS pointer and Unicode keyboard create a todo through the native editor; encrypted disk copy verified");
+                    Stage("W01", "Create a todo through the native editor; encrypted disk copy verified");
                     await ButtonClick("＋ 新增待办");
                     await Type(UI(() => Descendants<TextBox>(Current()).First()), "Canceled draft must not exist");
                     await ButtonClick("取消");
@@ -123,21 +142,43 @@ public sealed class VisibleUserAcceptanceTests
                     await ButtonClick("! ▤ 快速清单");
                     var source = UI(() => Descendants<TextBox>(Current()).Single(t => t.AcceptsReturn));
                     await Type(source, "- Visible root\n-- Visible child\n--# Visible note\n// discarded comment");
+                    Capture("windows-checklist-editor-light");
                     await ButtonClick("完成");
                     Assert.Equal(2, workspace.Document.Items.Count(i => i.QuickChecklistGroupId != null));
                     Assert.Equal("Visible note", workspace.Document.Items.Single(i => i.Title == "Visible child").Notes);
-                    Stage("W03", "Titleless checklist entered with OS keyboard and saved as real parent/child tasks; notes retained");
+                    Stage("W03", "Titleless checklist saved as real parent/child tasks; notes retained");
                     await ButtonClick("! ▤ 快速清单");
                     source = UI(() => Descendants<TextBox>(Current()).Single(t => t.AcceptsReturn));
-                    await Type(source, "- Continuation"); Key(0x0D, false); Key(0x0D, true); await Task.Delay(250);
+                    await Type(source, "- Continuation");
+                    if (physical) { Key(0x0D, false); Key(0x0D, true); }
+                    else UI(() => { source.CaretIndex = source.Text.Length; source.RaiseEvent(new System.Windows.Input.KeyEventArgs(System.Windows.Input.Keyboard.PrimaryDevice, System.Windows.PresentationSource.FromVisual(source), 0, System.Windows.Input.Key.Enter) { RoutedEvent = System.Windows.Input.Keyboard.PreviewKeyDownEvent }); return true; });
+                    await Task.Delay(250);
                     Assert.EndsWith("\n- ", UI(() => source.Text));
-                    await ButtonClick("取消"); Stage("W04", "Physical Enter key continues task dash; canceled checklist not stored");
+                    await ButtonClick("取消"); Stage("W04", physical ? "Physical Enter continues task dash; cancellation not stored" : "Component PreviewKeyDown continues dash (not keyboard E2E); cancellation not stored");
                     await Navigate("日历");
                     await ButtonClick("＋ 创建日程");
+                    var eventDay = DateTime.Today.AddDays(2);
+                    if (!physical) UI(() => {
+                        foreach (var date in Descendants<DatePicker>(Current()).Take(2)) {
+                            ((IValueProvider)UIElementAutomationPeer.CreatePeerForElement(date)!.GetPattern(PatternInterface.Value)).SetValue(eventDay.ToShortDateString());
+                            date.UpdateLayout();
+                            NativeWorkspaceTests.AssertSingleLineFits((TextBox)date.Template.FindName("PART_TextBox", date));
+                        }
+                        return true;
+                    });
+                    var times = UI(() => Descendants<TextBox>(Current()).Where(input => input.Height == 42).ToList());
+                    Assert.Equal(2, times.Count);
+                    await Type(times[0], "10:15"); await Type(times[1], "11:45");
+                    UI(() => { foreach (var time in times) NativeWorkspaceTests.AssertSingleLineFits(time); return true; });
+                    Capture("windows-event-editor-light");
                     await Type(UI(() => Descendants<TextBox>(Current()).First()), "Visible calendar event");
                     await ButtonClick("完成");
                     Assert.Contains(workspace.Document.Items, i => i.Title == "Visible calendar event" && i.IsEvent);
-                    Stage("W05", "Actual calendar page creates an event through time editor");
+                    var savedEvent = workspace.Document.Items.Single(i => i.Title == "Visible calendar event");
+                    Assert.Equal(new TimeSpan(10, 15, 0), DateTimeOffset.FromUnixTimeMilliseconds(savedEvent.StartAtMillis!.Value).LocalDateTime.TimeOfDay);
+                    Assert.Equal(new TimeSpan(11, 45, 0), DateTimeOffset.FromUnixTimeMilliseconds(savedEvent.EndAtMillis!.Value).LocalDateTime.TimeOfDay);
+                    if (!physical) Assert.Equal(eventDay, DateTimeOffset.FromUnixTimeMilliseconds(savedEvent.StartAtMillis.Value).LocalDateTime.Date);
+                    Stage("W05", "Calendar date/time edited and persisted; date/time text viewport checked against clipping");
                     await Navigate("规划台"); await ButtonClick("＋ 新建文档");
                     var markdown = UI(() => Descendants<TextBox>(window).Single(t => t.AcceptsReturn));
                     await Type(markdown, "Draft survives navigation");
@@ -145,10 +186,28 @@ public sealed class VisibleUserAcceptanceTests
                     Assert.Equal("Draft survives navigation", UI(() => Descendants<TextBox>(window).Single(t => t.AcceptsReturn).Text));
                     await ButtonClick("完成"); Assert.Contains(workspace.Document.PlanningNotes, n => n.Markdown == "Draft survives navigation");
                     Stage("W06", "Planning draft survives real navigation, then completion persists document");
-                    await Navigate("设置"); await ButtonClick("切换深色模式");
-                    Assert.True(NativeUi.Dark); Stage("W07", "Actual settings theme button changes full native workspace to dark mode");
+                    await Navigate("设置");
+                    UI(() => {
+                        var combo = Descendants<System.Windows.Controls.ComboBox>(window).Single(c => AutomationProperties.GetName(c) == "界面主题");
+                        var peer = new ComboBoxAutomationPeer(combo); ((IExpandCollapseProvider)peer.GetPattern(PatternInterface.ExpandCollapse)).Expand(); combo.UpdateLayout();
+                        var item = peer.GetChildren().Single(child => child.GetName() == "深色");
+                        ((ISelectionItemProvider)item.GetPattern(PatternInterface.SelectionItem)).Select(); return true;
+                    });
+                    await Task.Delay(300);
+                    Assert.True(NativeUi.Dark); Stage("W07", "Theme selector changes full native workspace to dark mode");
+                    Capture("windows-uia-settings-dark");
                     foreach (var page in new[] { "每日看板", "待办", "日历", "规划台", "倒数日", "AI 报告", "设置" }) await Navigate(page);
-                    Stage("W08", "All seven primary destinations navigated with real pointer in visible dark window");
+                    Stage("W08", "All seven primary destinations navigated in dark window");
+                    await Navigate("AI 报告"); await ButtonClick("AI 服务配置");
+                    Capture("windows-ai-settings-dark"); await ButtonClick("＋ 添加服务");
+                    await Type(UI(() => Descendants<TextBox>(Current()).First()), "Canceled AI provider");
+                    var modelInput = UI(() => Descendants<TextBox>(Current()).Single(input => input.Name == "PART_EditableTextBox"));
+                    await Type(modelInput, "fixture-model");
+                    UI(() => { NativeWorkspaceTests.AssertSingleLineFits(modelInput); return true; });
+                    Capture("windows-ai-provider-dark"); await ButtonClick("取消"); await ButtonClick("取消");
+                    Assert.DoesNotContain(DesktopAi.Providers(workspace.Document!), provider => provider["name"]?.GetValue<string>() == "Canceled AI provider");
+                    Stage("W13", "Branded AI dialogs and editable model field render; nested cancellation does not save provider");
+                    await Navigate("设置");
                     await Synced();
                     var cloud = DesktopSnapshotDocument.CreateEmpty(); cloud.SaveItem(NativeWorkspaceTests.NewItem(false, "Cloud conflict fixture"));
                     server.Payload = SnapshotCrypto.Encrypt(cloud.ToArchiveBytes(), "fixture-secret"); server.Revision++;
@@ -156,7 +215,7 @@ public sealed class VisibleUserAcceptanceTests
                     await Task.Delay(500);
                     await ButtonClick("保留本机上传"); await ConfirmSystemDialog(); await Synced();
                     Assert.Contains(DesktopSnapshotDocument.FromArchiveBytes(SnapshotCrypto.Decrypt(server.Payload!, "fixture-secret")).Items, i => i.Title == "Keep local conflict fixture");
-                    Stage("W11", "Actual conflict review and system confirmation keep local snapshot and upload with revision validation");
+                    Stage("W11", "Conflict review and branded confirmation keep local snapshot and upload with revision validation");
                     server.Payload = SnapshotCrypto.Encrypt(cloud.ToArchiveBytes(), "fixture-secret"); server.Revision++;
                     await ButtonClick("检查云端并恢复"); await ConfirmSystemDialog();
                     Assert.Equal("Cloud conflict fixture", workspace.Document!.Items.Single().Title);
@@ -174,17 +233,24 @@ public sealed class VisibleUserAcceptanceTests
                     await Task.Delay(10000);
                     Assert.Equal("PaykiTodo 提醒", UI(() => Current().Title));
                     Assert.Contains("Visible expired reminder", UI(() => Descendants<TextBlock>(Current()).Select(t => t.Text).ToList()));
+                    Capture("windows-reminder-dark");
                     await ButtonClick("我已完成");
                     for (var attempt = 0; attempt < 3 && !workspace.Document.Items.Single(i => i.Title == "Visible expired reminder").Completed; attempt++) {
                         Assert.Equal("PaykiTodo 提醒", UI(() => Current().Title));
                         await ButtonClick("我已完成");
                     }
                     Assert.True(workspace.Document.Items.Single(i => i.Title == "Visible expired reminder").Completed, "Physical completion click must persist the task state");
-                    Stage("W09", "Expired-account offline timer opens real topmost reminder; physical completion button updates local task");
+                    Stage("W09", "Expired-account offline timer opens reminder; completion updates local task");
                     await ButtonClick("退出登录"); await ConfirmSystemDialog();
                     Assert.Null(workspace.Document); Assert.Null(new DesktopWorkspace(store).Document);
                     Assert.Contains(store.Load()!.Value.Document.Items, i => i.Title == "Visible keyboard todo");
                     Stage("W10", "Actual logout confirmation locks workspace on disk without deleting tasks");
+                    Assert.Contains(UI(() => Descendants<TextBlock>(window).Select(text => text.Text).ToList()), text => text == "账号登录");
+                    Assert.Contains(UI(() => Descendants<System.Windows.Controls.CheckBox>(window).Select(control => control.Content as string).ToList()), text => text == "记住账号");
+                    Assert.Contains(UI(() => Descendants<System.Windows.Controls.CheckBox>(window).Select(control => control.Content as string).ToList()), text => text == "记住密码");
+                    Capture("windows-login-dark");
+                    await ButtonClick("查看隐私政策"); Capture("windows-privacy-dark"); await ButtonClick("关闭");
+                    Stage("W14", "Locked login page exposes both memory options; branded privacy dialog opens and closes without external browsing");
                 } catch (Exception error) {
                     window.Dispatcher.Invoke(() => {
                         var bitmap = new System.Windows.Media.Imaging.RenderTargetBitmap((int)window.ActualWidth, (int)window.ActualHeight, 96, 96, PixelFormats.Pbgra32);
@@ -196,10 +262,12 @@ public sealed class VisibleUserAcceptanceTests
                 finally { window.Dispatcher.Invoke(() => { reminders.Dispose(); window.Close(); application.Shutdown(); }); }
             });
             application.Run(); driver.GetAwaiter().GetResult();
+            } catch (Exception error) { failure = error; }
         });
         thread.SetApartmentState(ApartmentState.STA); thread.Start();
         Assert.True(thread.Join(TimeSpan.FromMinutes(4)), "Visible input acceptance timed out");
-        if (failure != null) throw failure;
+        desktop?.Dispose();
+        if (failure != null) System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(failure).Throw();
     }
     private static IEnumerable<T> Descendants<T>(DependencyObject root) where T : DependencyObject {
         for (var i = 0; i < VisualTreeHelper.GetChildrenCount(root); i++) {

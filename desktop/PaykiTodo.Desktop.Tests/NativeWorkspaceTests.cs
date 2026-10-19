@@ -78,12 +78,14 @@ public sealed class NativeWorkspaceTests
         Assert.Equal(2, store.LoadDocument()!.Items.Count);
     }
 
-    [Fact]
+    [IsolatedUiFact]
     public void NativeScreensRenderAndNavigateWithoutWebView()
     {
         Exception? failure = null;
+        IsolatedDesktop? desktop = null;
         var thread = new Thread(() => {
             try {
+                desktop = new IsolatedDesktop();
                 var app = new System.Windows.Application();
                 var folder = NewDirectory(); var store = new DesktopSecureStore(folder); var document = DesktopSnapshotDocument.CreateEmpty();
                 document.SaveItem(NewItem(false, "论文实验结果整理"));
@@ -93,9 +95,11 @@ public sealed class NativeWorkspaceTests
                 document.CreateQuickChecklist(QuickChecklistParser.Parse("本周计划\n- 数据准备\n-- 检查样本\n--# 保留原始记录"));
                 store.SaveDocument(document);
                 var workspace = new DesktopWorkspace(store);
-                var window = new NativeWindow(workspace) { Width = 1280, Height = 850, ShowActivated = false,
+                var window = new NativeWindow(workspace, folder) { Width = 1280, Height = 850, ShowActivated = false,
                     WindowStartupLocation = WindowStartupLocation.Manual, Left = -10000, Top = -10000, ShowInTaskbar = false };
                 window.Show();
+                Assert.Same(NativeUi.AppIcon, window.Icon);
+                Assert.True(((BitmapSource)window.Icon).PixelWidth >= 32, "Brand icon must have a high-resolution frame");
                 window.Measure(new System.Windows.Size(1280, 850)); window.Arrange(new Rect(0, 0, 1280, 850)); window.UpdateLayout();
                 var shotFolder = Environment.GetEnvironmentVariable("PAYKI_UI_EVIDENCE") ?? folder;
                 Directory.CreateDirectory(shotFolder);
@@ -103,16 +107,16 @@ public sealed class NativeWorkspaceTests
                 Assert.Contains(Descendants<TextBlock>(window), text => text.Text == "论文实验结果整理");
                 Assert.DoesNotContain(Descendants<System.Windows.DependencyObject>(window), control => control.GetType().Name.Contains("WebView"));
                 foreach (var page in new[] { "待办", "日历", "规划台", "倒数日", "AI 报告", "设置" }) {
-                    var button = Descendants<Button>(window).First(button => button.Content is string label && label.EndsWith("    " + page));
+                    var button = Descendants<Button>(window).First(button => System.Windows.Automation.AutomationProperties.GetAutomationId(button) == "Navigate." + page);
                     button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
                     window.UpdateLayout();
                     if (page == "日历") Screenshot(window, Path.Combine(shotFolder, "windows-calendar.png"));
                 }
-                var toggle = Descendants<Button>(window).First(button => button.Content as string == "切换深色模式");
-                toggle.RaiseEvent(new RoutedEventArgs(Button.ClickEvent)); window.UpdateLayout();
+                var toggle = Descendants<ComboBox>(window).First(control => System.Windows.Automation.AutomationProperties.GetName(control) == "界面主题");
+                toggle.SelectedIndex = 1; window.UpdateLayout();
                 Assert.True(NativeUi.Dark);
                 Screenshot(window, Path.Combine(shotFolder, "windows-settings-dark.png"));
-                var planning = Descendants<Button>(window).First(button => button.Content is string label && label.EndsWith("    规划台"));
+                var planning = Descendants<Button>(window).First(button => System.Windows.Automation.AutomationProperties.GetAutomationId(button) == "Navigate.规划台");
                 planning.RaiseEvent(new RoutedEventArgs(Button.ClickEvent)); window.UpdateLayout();
                 Descendants<Button>(window).First(button => button.Content as string == "＋ 新建文档").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
                 window.UpdateLayout();
@@ -120,23 +124,31 @@ public sealed class NativeWorkspaceTests
                 draftEditor.Text = "跨导航保留的规划草稿";
                 workspace.Notify("后台同步状态更新"); window.UpdateLayout();
                 Assert.Same(draftEditor, Descendants<TextBox>(window).Single(input => input.AcceptsReturn));
-                var todos = Descendants<Button>(window).First(button => button.Content is string label && label.EndsWith("    待办"));
+                var todos = Descendants<Button>(window).First(button => System.Windows.Automation.AutomationProperties.GetAutomationId(button) == "Navigate.待办");
                 todos.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
                 planning.RaiseEvent(new RoutedEventArgs(Button.ClickEvent)); window.UpdateLayout();
                 Descendants<Button>(window).First(button => button.Content as string == "继续新文档草稿").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
                 window.UpdateLayout();
                 Assert.Equal("跨导航保留的规划草稿", Descendants<TextBox>(window).Single(input => input.AcceptsReturn).Text);
-                window.Width = 920; window.UpdateLayout(); Screenshot(window, Path.Combine(shotFolder, "windows-planning-narrow-dark.png"));
+                window.Width = 920; window.UpdateLayout();
+                var planningSave = Descendants<Button>(window).Single(button => button.Content as string == "完成");
+                var saveBounds = planningSave.TransformToAncestor(window).TransformBounds(new Rect(planningSave.RenderSize));
+                Assert.True(saveBounds.Bottom < window.ActualHeight - 24, "Planning completion must stay inside the viewport without scrolling");
+                Screenshot(window, Path.Combine(shotFolder, "windows-planning-narrow-dark.png"));
                 window.Width = 1280;
-                var board = Descendants<Button>(window).First(button => button.Content is string label && label.EndsWith("    每日看板"));
+                var board = Descendants<Button>(window).First(button => System.Windows.Automation.AutomationProperties.GetAutomationId(button) == "Navigate.每日看板");
                 board.RaiseEvent(new RoutedEventArgs(Button.ClickEvent)); window.UpdateLayout();
                 Screenshot(window, Path.Combine(shotFolder, "windows-board-dark.png"));
-                NativeUi.Dark = false;
+                Descendants<Button>(window).First(button => System.Windows.Automation.AutomationProperties.GetAutomationId(button) == "Navigate.设置").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                window.UpdateLayout();
+                Descendants<ComboBox>(window).First(control => System.Windows.Automation.AutomationProperties.GetName(control) == "界面主题").SelectedIndex = 0;
                 var formTimer = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromMilliseconds(100) };
                 formTimer.Tick += (_, _) => {
                     var editor = app.Windows.OfType<Window>().FirstOrDefault(candidate => candidate != window && candidate.Title == "新增待办");
                     if (editor == null) return;
                     formTimer.Stop();
+                    Assert.Same(window.Icon, editor.Icon);
+                    foreach (var input in Descendants<TextBox>(editor).Where(input => !input.AcceptsReturn && input.Height == 42)) AssertSingleLineFits(input);
                     Descendants<TextBox>(editor).First().Text = "从原生编辑器创建";
                     var save = Descendants<Button>(editor).First(button => button.Content as string == "完成");
                     save.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
@@ -149,12 +161,20 @@ public sealed class NativeWorkspaceTests
             } catch (Exception error) { failure = error; }
         });
         thread.SetApartmentState(ApartmentState.STA); thread.Start(); Assert.True(thread.Join(TimeSpan.FromSeconds(40)), "Native UI test did not finish");
-        if (failure != null) throw failure;
+        desktop?.Dispose();
+        if (failure != null) System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(failure).Throw();
     }
     private static void Screenshot(Window window, string path)
     {
-        var image = new RenderTargetBitmap(1280, 850, 96, 96, PixelFormats.Pbgra32); image.Render(window);
+        var image = new RenderTargetBitmap((int)Math.Ceiling(window.ActualWidth), (int)Math.Ceiling(window.ActualHeight), 96, 96, PixelFormats.Pbgra32); image.Render(window);
         var encoder = new PngBitmapEncoder(); encoder.Frames.Add(BitmapFrame.Create(image)); using var file = File.Create(path); encoder.Save(file);
+    }
+    internal static void AssertSingleLineFits(TextBox input)
+    {
+        input.ApplyTemplate(); input.UpdateLayout();
+        var host = Assert.IsType<ScrollViewer>(input.Template.FindName("PART_ContentHost", input));
+        Assert.True(host.ViewportHeight >= input.FontSize * 1.4, $"Input '{input.Text}' has only {host.ViewportHeight}px of visible height");
+        Assert.True(host.ExtentHeight <= host.ViewportHeight + 1, $"Input '{input.Text}' is vertically clipped: {host.ExtentHeight} > {host.ViewportHeight}");
     }
     private static IEnumerable<T> Descendants<T>(DependencyObject root) where T : DependencyObject
     {

@@ -1,6 +1,17 @@
 # Current Task
 
-## Current: 1.16.21 / 386 implementation and scoped interactive acceptance (2026-10-18)
+## Completed: 1.16.22 / 387 Windows 排版与不干扰测试 (2026-10-19)
+
+- 从 main / 429f6da、1.16.21 / 386、Room31 开始；上一轮实际操作验收已提交。
+- 统一原生 WPF 导航、字体层次、控件对齐、编辑流程、各页面与弹窗；保留原看板图片、问候字体和品牌色。公共弹窗和托盘必须使用 PaykiTodo 原图标。
+- 默认测试不注入全局鼠标/按键、不修改剪贴板、不切换用户桌面。通过独立 Win32 桌面上的真实 WPF 控件自动化接口验证；物理输入验收仍单独明确 opt-in，不混称。
+- 升级 Android 1.16.22 / 387 与 Windows 1.16.22.0，构建 Debug、签名 Release 和独立 EXE；验证保存/取消、导航草稿、清单、主题、提醒、同步安全回归和实际渲染。
+- 不推送、发布、修改生产服务器；保持显式退出锁定、过期离线提醒、revision/dirty 与传输期间新写入安全规则。
+- 已完成上述改动、Debug/签名 Release/Windows 构建和本地验证：19 Windows 回归（含成品启动）、1 项14阶段 UIA 流程、186 Android 单测、Lint、签名验证、原 Pixel_8 升级启动。完整证据、复现命令和边界见 [VALIDATION_1.16.22.md](VALIDATION_1.16.22.md)。
+- 修复实际渲染发现的日期/时间文字裁切和窄窗口规划按钮越界，增加可视区域断言；账号、AI 和隐私弹窗也覆盖排版/取消检查。不是仅换配色，也不宣称手机所有功能已在 Windows 对齐。
+- 默认不再接管用户系统输入；物理命中/键盘全链路需另行安排。保留已有 OEM、Windows 农历/OCR/多时段创建及账号验证 E2E 的明确缺口，不算作已通过。
+
+## Previous: 1.16.21 / 386 implementation and scoped interactive acceptance (2026-10-18)
 
 The implementation round for [REQUEST_2026-10-17.md](REQUEST_2026-10-17.md) landed at main / 30c3176 from 856e714, Room 31. This is not a claim of complete cross-platform parity or all-scenario acceptance. Expired accounts retain offline editing/reminders and dirty data; explicit logout locks local access. Both clients provide encrypted credential memory and confirmed conflict recovery. Android adds persisted network sync jobs and notifications, cross-client checklists allow no title, settings use neutral surfaces, and native WPF fixes drafts, layout and calendar overlaps.
 

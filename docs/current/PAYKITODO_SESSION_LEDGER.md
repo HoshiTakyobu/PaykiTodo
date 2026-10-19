@@ -12,6 +12,10 @@ The released `1.15.18 / versionCode 360` round restores independent full-screen 
 
 ## Current Development Round
 
+The local `1.16.22 / versionCode 387` round completes native Windows typography, branded dialogs/icons, layout and non-interfering UIA acceptance on an isolated desktop. Real rendering checks caught clipped date/time fields and inaccessible narrow Planning Desk actions; both were fixed and regression-guarded. Built new APKs and self-contained Windows output;19 Windows regressions plus1 workflow/14 stages,186 Android units/Lint/signature and existing-Pixel_8 upgrade/startup passed. See VALIDATION_1.16.22.md. No push/publication/production changes. Desktop parity and physical/OEM limits remain explicit.
+
+### Previous 1.16.21 implementation
+
 The local `1.16.21 / versionCode 386` round implements expired-session notifications and continued offline reminders/editing, optional encrypted credential memory, automatic network synchronization with safe conflict recovery, title-optional checklists including archive compatibility, neutral phone Settings and native WPF draft/layout/calendar improvements. Verification: 186 Android unit tests, 23 emulator tests, 18 Windows tests, 12 server tests, Lint/build/signature and LAN browser checks. See VALIDATION_1.16.21.md. The latest public Release remains `v1.15.18`; this round is neither pushed nor published.
 
 ### 2026-10-18 Actual-operation audit

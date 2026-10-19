@@ -9,13 +9,13 @@ using static PaykiTodo.Desktop.NativeUi;
 using Button = System.Windows.Controls.Button;
 using TextBox = System.Windows.Controls.TextBox;
 using Orientation = System.Windows.Controls.Orientation;
-using MessageBox = System.Windows.MessageBox;
 
 namespace PaykiTodo.Desktop;
 
 internal sealed partial class NativeWindow : Window
 {
     private readonly DesktopWorkspace workspace;
+    private readonly string profileDirectory;
     private Grid root = new();
     private ContentControl content = new();
     private StackPanel navigation = new();
@@ -35,14 +35,16 @@ internal sealed partial class NativeWindow : Window
     private DesktopSnapshotDocument? renderedDocument;
     private readonly Dictionary<long, (string Title, string Markdown)> planningDrafts = new();
 
-    public NativeWindow(DesktopWorkspace? workspace = null)
+    public NativeWindow(DesktopWorkspace? workspace = null, string? profileDirectory = null)
     {
-        this.workspace = workspace ?? new DesktopWorkspace();
+        this.profileDirectory = profileDirectory ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "PaykiTodo");
+        this.workspace = workspace ?? new DesktopWorkspace(new DesktopSecureStore(this.profileDirectory));
         Dark = this.workspace.Document?.Settings["themeMode"]?.GetValue<string>() == "DARK";
         Title = "PaykiTodo"; Width = 1280; Height = 850; MinWidth = 900; MinHeight = 620;
-        Icon = BitmapFrame.Create(new Uri("pack://application:,,,/PaykiTodo;component/Assets/PaykiTodo.ico"));
+        Icon = AppIcon; UseLayoutRounding = true; SnapsToDevicePixels = true;
         WindowStartupLocation = WindowStartupLocation.CenterScreen;
-        FontFamily = new System.Windows.Media.FontFamily("Microsoft YaHei UI");
+        FontFamily = InterfaceFont;
+        TextOptions.SetTextFormattingMode(this, TextFormattingMode.Display);
         FontSize = 14; Background = B("#EEF3F4");
         BuildShell();
         this.workspace.Changed += OnWorkspaceChanged;
@@ -58,18 +60,16 @@ internal sealed partial class NativeWindow : Window
         root = new Grid(); content = new ContentControl(); navigation = new StackPanel();
         title = Text("每日看板", 25, bold: true); status = Text("", 12, Muted); search = Input(query);
         navigationButtons.Clear(); InputBindings.Clear(); InstallStyles(Resources); Background = B("#EEF3F4"); Foreground = Ink;
-        root.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(190) });
+        root.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(204) });
         root.ColumnDefinitions.Add(new ColumnDefinition()); Content = root;
         var rail = new DockPanel { Background = B("#F8FAF9"), Margin = new Thickness(0) };
-        var brand = Column(Text("PaykiTodo", 26, Forest, true), Text("把今天，安排得刚刚好", 12, Muted));
-        brand.Margin = new Thickness(24, 30, 16, 30); DockPanel.SetDock(brand, Dock.Top); rail.Children.Add(brand);
-        var account = Action("◉  账号与同步", () => Navigate("设置"));
+        var brand = Column(BrandHeading("PaykiTodo"), Text("把今天，安排得刚刚好", 12, Muted));
+        brand.Margin = new Thickness(18, 24, 12, 24); DockPanel.SetDock(brand, Dock.Top); rail.Children.Add(brand);
+        var account = NavigationAction("\uE77B", "账号与同步", () => Navigate("设置"));
         account.Margin = new Thickness(16); DockPanel.SetDock(account, Dock.Bottom); rail.Children.Add(account);
-        foreach (var (icon, label) in new[] { ("◈", "每日看板"), ("✓", "待办"), ("▦", "日历"), ("▤", "规划台"), ("◷", "倒数日"), ("✧", "AI 报告"), ("⚙", "设置") })
+        foreach (var (icon, label) in new[] { ("\uE80F", "每日看板"), ("\uE73E", "待办"), ("\uE787", "日历"), ("\uE70B", "规划台"), ("\uE823", "倒数日"), ("\uE9D9", "AI 报告"), ("\uE713", "设置") })
         {
-            var button = Action(icon + "    " + label, () => Navigate(label));
-            button.HorizontalContentAlignment = System.Windows.HorizontalAlignment.Left;
-            button.Margin = new Thickness(14, 3, 14, 3); button.Padding = new Thickness(18, 13, 12, 13);
+            var button = NavigationAction(icon, label, () => Navigate(label));
             navigationButtons[label] = button; navigation.Children.Add(button);
         }
         rail.Children.Add(navigation); root.Children.Add(rail);
@@ -78,7 +78,8 @@ internal sealed partial class NativeWindow : Window
         DockPanel.SetDock(footer, Dock.Bottom); main.Children.Add(footer);
         var top = new Grid { Margin = new Thickness(28, 22, 24, 14) };
         top.ColumnDefinitions.Add(new ColumnDefinition()); top.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        top.Children.Add(title); search.Width = 230; search.MinHeight = 36; search.ToolTip = "搜索标题、备注和地点，按 Enter 查看";
+        title.VerticalAlignment = VerticalAlignment.Center; top.Children.Add(title);
+        search.Width = 210; search.MinHeight = 40; search.Margin = new Thickness(12, 0, 0, 0); search.ToolTip = "搜索标题、备注和地点，按 Enter 查看";
         search.KeyDown += (_, e) => { if (e.Key == System.Windows.Input.Key.Enter) Navigate("搜索"); };
         System.Windows.Automation.AutomationProperties.SetName(search, "搜索事项");
         Grid.SetColumn(search, 1); top.Children.Add(search); DockPanel.SetDock(top, Dock.Top); main.Children.Add(top);
@@ -104,9 +105,15 @@ internal sealed partial class NativeWindow : Window
     private void Navigate(string next) { editingPlanning = false; page = next; Render(); }
     private void Render()
     {
-        title.Text = page; status.Text = workspace.Status;
+        title.Text = workspace.Document == null ? "账号登录" : reauthenticating ? "重新登录" : page; status.Text = workspace.Status;
         foreach (var pair in navigationButtons)
-        { pair.Value.Background = pair.Key == page ? B("#DCEBE2") : B("#F8FAF9"); pair.Value.FontWeight = pair.Key == page ? FontWeights.Bold : FontWeights.Normal; }
+        {
+            var selected = workspace.Document != null && !reauthenticating && pair.Key == page;
+            pair.Value.Background = selected ? B("#DCEBE2") : B("#F8FAF9");
+            pair.Value.BorderThickness = new Thickness(selected ? 3 : 0, 0, 0, 0);
+            if (pair.Value.Content is Grid labels && labels.Children[1] is TextBlock label)
+                label.FontWeight = selected ? FontWeights.SemiBold : FontWeights.Normal;
+        }
         renderedDocument = workspace.Document;
         if (workspace.Document == null || reauthenticating) { content.Content = LoginPage(); return; }
         content.Content = page switch {
@@ -114,9 +121,9 @@ internal sealed partial class NativeWindow : Window
             "设置" => SettingsPage(), "AI 报告" => ReportsPage(), "倒数日" => CountdownPage(), "搜索" => SearchPage(), _ => BoardPage()
         };
     }
-    private UIElement Page(UIElement body, bool landscape = false)
+    private UIElement Page(UIElement body, bool landscape = false, bool scroll = true)
     {
-        var frame = new Border { Padding = new Thickness(28, 12, 28, 24), Child = Scroll(body) };
+        var frame = new Border { Padding = new Thickness(28, 12, 28, 24), Child = scroll ? Scroll(body) : body };
         if (landscape) frame.Background = new ImageBrush(new BitmapImage(new Uri("pack://application:,,,/PaykiTodo;component/Assets/dashboard-" + (Dark ? "dark" : "light") + ".png"))) { Stretch = Stretch.UniformToFill, Opacity = 0.75 };
         return frame;
     }
@@ -136,7 +143,7 @@ internal sealed partial class NativeWindow : Window
         var draft = NativeEditors.Checklist(this);
         if (draft != null) Change(document => document.CreateQuickChecklist(draft));
     }
-    private bool Confirm(string text) => MessageBox.Show(this, text, "PaykiTodo", MessageBoxButton.OKCancel, MessageBoxImage.Question) == MessageBoxResult.OK;
+    private bool Confirm(string text) => Confirmation(this, text);
     private static string TimeLabel(DesktopItem item) => item.IsEvent
         ? Local(item.StartAtMillis).ToString("MM-dd HH:mm") + " – " + Local(item.EndAtMillis).ToString("HH:mm")
         : item.DueAtMillis == long.MaxValue ? "今天想做的事" : "DDL  " + Local(item.DueAtMillis).ToString("yyyy-MM-dd HH:mm");

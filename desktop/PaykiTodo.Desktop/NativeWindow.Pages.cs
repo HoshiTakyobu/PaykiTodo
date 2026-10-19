@@ -24,6 +24,7 @@ internal sealed partial class NativeWindow
         greeting.FontFamily = new System.Windows.Media.FontFamily(new Uri("pack://application:,,,/PaykiTodo;component/"), "./Assets/#FZQingKeBenYueSongS-R-GB");
         var body = Column(Card(Column(greeting, Text(today.ToString("yyyy年M月d日  dddd", CultureInfo.GetCultureInfo("zh-CN")), 14, Muted))));
         var columns = new Grid(); columns.ColumnDefinitions.Add(new ColumnDefinition()); columns.ColumnDefinitions.Add(new ColumnDefinition());
+        columns.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto }); columns.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         var left = Column(SectionHeader($"今日待办（{tasks.Count}）", Action("! ▤ 快速清单", CreateChecklist)));
         left.Margin = new Thickness(0, 0, 18, 0);
         AppendTodos(left, tasks);
@@ -32,6 +33,8 @@ internal sealed partial class NativeWindow
         var right = Column(SectionHeader($"今日日程（{schedules.Count}）", Action("查看日历", () => Navigate("日历"))));
         var date = Column(Text(today.ToString("M月"), 14, Muted, true), Text(today.ToString("ddd", CultureInfo.GetCultureInfo("zh-CN")), 16, B("#568BC5"), true), Text(today.Day.ToString(), 40, bold: true));
         date.Width = 64;
+        foreach (var label in date.Children.OfType<TextBlock>()) label.TextAlignment = TextAlignment.Center;
+        date.Margin = new Thickness(0, 0, 12, 0);
         var scheduleBody = Column();
         foreach (var item in schedules) scheduleBody.Children.Add(EventRow(item));
         if (schedules.Count == 0) scheduleBody.Children.Add(Text("暂无日程", 14, Muted));
@@ -47,14 +50,23 @@ internal sealed partial class NativeWindow
             right.Children.Add(Text("值得期待", 20, bold: true));
             foreach (var item in countdowns) right.Children.Add(CountdownRow(item));
         }
-        columns.Children.Add(left); Grid.SetColumn(right, 1); columns.Children.Add(right); body.Children.Add(columns);
+        columns.Children.Add(left); Grid.SetColumn(right, 1); columns.Children.Add(right);
+        columns.SizeChanged += (_, _) => {
+            var compact = columns.ActualWidth < 760;
+            columns.ColumnDefinitions[1].Width = compact ? new GridLength(0) : new GridLength(1, GridUnitType.Star);
+            Grid.SetColumn(right, compact ? 0 : 1); Grid.SetRow(right, compact ? 1 : 0);
+            left.Margin = compact ? new Thickness(0, 0, 0, 12) : new Thickness(0, 0, 18, 0);
+        };
+        body.Children.Add(columns);
         return Page(body, true);
     }
     private static Grid SectionHeader(string caption, UIElement action)
     {
         var grid = new Grid { Margin = new Thickness(0, 8, 0, 8) };
         grid.ColumnDefinitions.Add(new ColumnDefinition()); grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        grid.Children.Add(Text(caption, 20, bold: true)); Grid.SetColumn(action, 1); grid.Children.Add(action); return grid;
+        var heading = Text(caption, 18, bold: true); heading.VerticalAlignment = VerticalAlignment.Center;
+        grid.Children.Add(heading); ((FrameworkElement)action).VerticalAlignment = VerticalAlignment.Center;
+        Grid.SetColumn(action, 1); grid.Children.Add(action); return grid;
     }
     private UIElement EventRow(DesktopItem item)
     {
@@ -145,7 +157,7 @@ internal sealed partial class NativeWindow
     private void Preview(DesktopItem item)
     {
         var dialog = Dialog(this, item.IsEvent ? "日程详情" : "待办详情", 580, 490);
-        var body = Column(Text(item.Title, 24, bold: true), Text(TimeLabel(item), 16, Forest), Text(item.Location, 14, Muted), Text(item.Notes));
+        var body = Column(BrandHeading(dialog.Title), Text(item.Title, 24, bold: true), Text(TimeLabel(item), 16, Forest), Text(item.Location, 14, Muted), Text(item.Notes));
         var actions = new WrapPanel { Margin = new Thickness(0, 22, 0, 0) };
         void Add(string label, Action action, bool primary = false) => actions.Children.Add(Action(label, () => { dialog.Close(); action(); }, primary));
         Add("编辑", () => EditItem(item.IsEvent, item.Id), true);
@@ -156,15 +168,17 @@ internal sealed partial class NativeWindow
             Add(workspace.Document.CheckedIn(item.Id) ? "签退" : "签到", () => Change(document => document.ToggleCheckIn(item.Id)));
         if (!item.Completed && !item.Canceled) Add("取消事项", () => { if (Confirm("取消该事项并放入历史记录？")) Change(document => document.Cancel(item.Id)); });
         Add("删除", () => { if (Confirm("删除该事项？子任务也会一并删除。")) Change(document => document.Delete(item.Id)); });
-        body.Children.Add(actions); dialog.Content = new Border { Padding = new Thickness(28), Child = Scroll(body) }; dialog.ShowDialog();
+        dialog.Content = DialogLayout(body, actions); dialog.ShowDialog();
     }
     private UIElement CalendarPage()
     {
-        var view = new ComboBox { ItemsSource = new[] { "日", "周", "月", "列表" }, SelectedItem = calendarView, Width = 80 };
+        var view = new ComboBox { ItemsSource = new[] { "日", "周", "月", "列表" }, SelectedItem = calendarView, Width = 90 };
+        System.Windows.Automation.AutomationProperties.SetName(view, "日历视图");
         view.SelectionChanged += (_, _) => { calendarView = view.SelectedItem?.ToString() ?? "周"; Render(); };
         void Move(int direction) { selectedDay = calendarView == "月" ? selectedDay.AddMonths(direction) : selectedDay.AddDays(direction * (calendarView == "周" ? 7 : 1)); Render(); }
+        var selectedDate = Text(selectedDay.ToString("yyyy年M月d日"), 18, bold: true); selectedDate.VerticalAlignment = VerticalAlignment.Center; selectedDate.Margin = new Thickness(8, 0, 16, 12);
         var bar = Row(Action("今天", () => { selectedDay = DateTime.Today; Render(); }), Action("‹", () => Move(-1)), Action("›", () => Move(1)),
-            Text(selectedDay.ToString("yyyy年M月d日"), 19, bold: true), view, Action("＋ 创建日程", () => EditItem(true), true));
+            selectedDate, view, Action("＋ 创建日程", () => EditItem(true), true));
         var body = new DockPanel { Margin = new Thickness(26, 8, 26, 16) }; DockPanel.SetDock(bar, Dock.Top); body.Children.Add(bar);
         if (calendarView == "月") { body.Children.Add(MonthCalendar()); return body; }
         if (calendarView == "列表") {
@@ -186,7 +200,8 @@ internal sealed partial class NativeWindow
             var canvas = new Canvas { Background = day == DateTime.Today ? B("#F6FBF8") : Paper, ClipToBounds = true };
             Grid.SetColumn(canvas, column + 1); grid.Children.Add(canvas);
             var header = Text(day.ToString("ddd  dd", CultureInfo.GetCultureInfo("zh-CN")), 14, day == DateTime.Today ? Forest : Muted, true);
-            Canvas.SetLeft(header, 10); Canvas.SetTop(header, 6); canvas.Children.Add(header);
+            header.TextAlignment = TextAlignment.Center; canvas.SizeChanged += (_, _) => header.Width = Math.Max(0, canvas.ActualWidth - 16);
+            Canvas.SetLeft(header, 8); Canvas.SetTop(header, 6); canvas.Children.Add(header);
             for (var hour = 0; hour < 24; hour++) {
                 var line = new Border { Height = 1, Background = B("#E3EBE6") };
                 line.SetBinding(FrameworkElement.WidthProperty, new System.Windows.Data.Binding("ActualWidth") { Source = canvas });

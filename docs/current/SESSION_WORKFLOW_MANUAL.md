@@ -124,6 +124,14 @@ Do not overclaim emulator results. A real phone is still required for:
 - desktop launcher widget rendering and resizing
 - OEM alarm, reboot, battery, and background-execution behavior
 
+## Windows Acceptance Without Owning User Input
+
+Default: run `tools/tests/Invoke-DesktopAcceptance.ps1` from the repository root. Add `-PackagedExe .\desktop\dist\PaykiTodo.exe` after a Windows publish to check the actual executable too. Keep evidence under `G:\Workspace\Scratch\PaykiTodo\<round>` using `-Evidence`.
+
+The launcher starts the entire test process on a separate Win32 desktop before .NET/COM creates windows. Tests validate desktop identity and reject the user's input desktop. UIA Invoke/Value/Selection/Toggle operate production WPF controls without global mouse/keyboard/clipboard or SwitchDesktop. Component Enter continuation, rendered images, packaged startup and physical-input E2E are different scopes; report them separately. Direct `dotnet test` skips opt-in UI tests rather than taking focus.
+
+`PAYKI_VISIBLE_ACCEPTANCE=1` deliberately enables the old physical-input path, which takes over the pointer/keyboard and may use clipboard. Never enable it during normal user activity; separately arrange an idle validation period if actually needed. The default script rejects `-PhysicalInput`. Preserve the user's data: use independent test profiles; back up the existing emulator before any destructive fixture and restore afterward.
+
 ## What To Do Before Ending A Session
 
 Before you stop using a session for the day, it should leave the repository in a recoverable state.

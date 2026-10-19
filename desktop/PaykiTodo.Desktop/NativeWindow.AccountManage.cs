@@ -11,8 +11,8 @@ internal sealed partial class NativeWindow
     {
         if (workspace.Account == null) { workspace.Notify("请先登录账号"); return; }
         var dialog = Dialog(this, "账号和设备", 720, 740);
-        var body = Column(Text("正在读取账号信息…", 18, Muted));
-        dialog.Content = new Border { Padding = new Thickness(26), Child = Scroll(body) }; dialog.Show();
+        var body = Column(BrandHeading("账号和设备"), Text("正在读取账号信息…", 18, Muted));
+        dialog.Content = DialogLayout(body, Action("关闭", () => dialog.Close())); dialog.Show();
         async Task Refresh()
         {
             try {
@@ -22,7 +22,7 @@ internal sealed partial class NativeWindow
                 var user = account.GetProperty("user");
                 string Read(JsonElement value, string key) => value.TryGetProperty(key, out var node) ? node.ToString() : "";
                 body.Children.Clear();
-                body.Children.Add(Text(Read(user, "displayName"), 24, Forest, true));
+                body.Children.Add(BrandHeading(Read(user, "displayName"), "管理个人信息与已登录设备"));
                 body.Children.Add(Text("账号：" + Read(user, "username") + "    ID：" + Read(user, "id"), 13, Muted));
                 body.Children.Add(Row(Action("修改昵称", async () => {
                     var name = NativeEditors.Prompt(dialog, "昵称", Read(user, "displayName")); if (name == null) return;
@@ -48,17 +48,17 @@ internal sealed partial class NativeWindow
     }
     private void ChangePasswordDialog(Window owner)
     {
-        var dialog = Dialog(owner, "修改密码", 490, 480);
+        var dialog = Dialog(owner, "修改密码", 540, 600);
         PasswordBox InputPassword() => new() { Padding = new Thickness(10), Margin = new Thickness(0, 5, 0, 16) };
         var current = InputPassword(); var next = InputPassword(); var repeat = InputPassword(); var error = Text("", 13, B("#AF3A32"));
-        var body = Column(Text("原密码"), current, Text("新密码（10—256 位）"), next, Text("再次输入新密码"), repeat, error);
-        body.Children.Add(Action("完成", async () => {
+        var body = Column(BrandHeading("修改密码", "新密码需要在其他设备重新登录"), Text("原密码"), current, Text("新密码（10—256 位）"), next, Text("再次输入新密码"), repeat, error);
+        var save = Action("完成", async () => {
             if (next.Password != repeat.Password) { error.Text = "两次新密码不一致"; return; }
             body.IsEnabled = false;
             try { await workspace.ChangePasswordAsync(current.Password, next.Password); dialog.Close(); owner.Close(); }
             catch (Exception failure) { error.Text = DesktopWorkspace.FriendlyError(failure); }
             finally { body.IsEnabled = true; }
-        }, true));
-        dialog.Content = new Border { Padding = new Thickness(26), Child = Scroll(body) }; dialog.ShowDialog();
+        }, true);
+        dialog.Content = DialogLayout(body, Action("取消", () => dialog.Close()), save); dialog.ShowDialog();
     }
 }

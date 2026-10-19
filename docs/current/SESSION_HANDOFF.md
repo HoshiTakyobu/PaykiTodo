@@ -1,6 +1,16 @@
 # Session Handoff
 
-## Current handoff: 1.16.21 / 386 actual-operation audit (2026-10-18)
+## Current 2026-10-19: 1.16.22 Windows UI / 不干扰测试已完成
+
+从 main / 429f6da 完成 1.16.22 / 387、Windows1.16.22.0，Room31 不变。原生 WPF 字体、导航、控件、浅深色层次、原品牌图标、编辑/确认/提醒/账号/AI 弹窗已统一。实际画面发现并修复日期时间裁切、窄窗口规划操作越界。保留退出锁定、过期离线、revision/dirty 与传输期间新写入保护。最新制品和验证见 [VALIDATION_1.16.22.md](VALIDATION_1.16.22.md)，不要将下方历史1.16.21制品当作最新。
+
+- 当前 APK：`app/build/outputs/apk/debug/PaykiTodo-1.16.22-debug.apk`；签名 Release：`app/build/outputs/apk/release/PaykiTodo-1.16.22-release.apk`。Windows：`desktop/dist/PaykiTodo.exe`，必须保留完整 dist。哈希见 PROJECT_STATUS / VALIDATION。
+- 最终 Windows 运行：`tools/tests/Invoke-DesktopAcceptance.ps1 -PackagedExe .\desktop\dist\PaykiTodo.exe -Evidence G:\Workspace\Scratch\PaykiTodo\ui-1.16.22\final-4`；19 回归+1项14阶段控件流程。独立桌面不切换到用户可见桌面、不调用全局输入或剪贴板。不要直接启用物理输入模式干扰用户。
+- Android：186 单测、Lint 0 errors/128 warnings、Debug/Release 和签名验证通过。沿用 `emulator-5554` / `Pixel_8`，先备份 `G:/Workspace/Backups/PaykiTodo/emulator-before-1.16.22-20261019-0956/private-data.tar`（1,227,776 bytes / 53 entries），再原地升级 Debug，检查387/1.16.22及真实登录界面。未清除数据、未创建手机合成业务数据，模拟器继续运行。Android 本轮只有版本变更，不把历史26项仪器测试称为新跑。
+- Windows 用户正式资料保持不变，验收使用 Scratch 内独立 profile；新 `--data-directory` 隔离数据、凭据及验证资料。进程退出后不保证提醒，农历/OCR/多时段创建、OEM长待机/锁屏及真实账号验证 E2E 仍是边界。
+- 不推送、发布或修改生产服务器。本轮完成后按项目规则中文聚焦提交；下次先核实 git HEAD/status，不依赖聊天版本。
+
+## Historical handoff: 1.16.21 / 386 actual-operation audit (2026-10-18)
 
 The full request is preserved in REQUEST_2026-10-17.md. The implementation landed at 30c3176; Room remains31. Do not interpret the previous completed heading as full parity/all-scenario acceptance. See INTERACTIVE_VALIDATION_1.16.21.md for the user's actual-operation audit, failures and boundaries; VALIDATION_1.16.21.md preserves the build record. Expiry and explicit logout have different local access gates; keep this distinction. Do not reintroduce title-required checks into archive readers or client save buttons. Sync requests must preserve newer local edits and reject stale cloud reviews.
 

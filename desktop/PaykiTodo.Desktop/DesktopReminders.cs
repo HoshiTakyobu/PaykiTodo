@@ -2,6 +2,7 @@ using System.Text.Json.Nodes;
 using System.Windows;
 using System.Windows.Threading;
 using static PaykiTodo.Desktop.NativeUi;
+using HorizontalAlignment = System.Windows.HorizontalAlignment;
 
 namespace PaykiTodo.Desktop;
 
@@ -38,6 +39,7 @@ internal sealed class DesktopReminders : IDisposable
     private readonly Window owner;
     private readonly DesktopWorkspace workspace;
     private readonly System.Windows.Forms.NotifyIcon tray;
+    private readonly System.Drawing.Icon trayIcon;
     private readonly DispatcherTimer timer = new() { Interval = TimeSpan.FromSeconds(2) };
     private readonly Queue<DesktopReminder> pending = new();
     private long checkedAt = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
@@ -47,7 +49,9 @@ internal sealed class DesktopReminders : IDisposable
     {
         this.owner = owner; this.workspace = workspace;
         workspace.LoginRequired += OnLoginRequired;
-        tray = new System.Windows.Forms.NotifyIcon { Icon = System.Drawing.Icon.ExtractAssociatedIcon(Environment.ProcessPath!) ?? System.Drawing.SystemIcons.Information, Text = "PaykiTodo", Visible = true };
+        using (var stream = System.Windows.Application.GetResourceStream(new Uri("pack://application:,,,/PaykiTodo;component/Assets/PaykiTodo.ico")).Stream)
+            trayIcon = new System.Drawing.Icon(stream);
+        tray = new System.Windows.Forms.NotifyIcon { Icon = trayIcon, Text = "PaykiTodo", Visible = true };
         tray.DoubleClick += (_, _) => { owner.Show(); owner.WindowState = WindowState.Normal; owner.Activate(); };
         tray.BalloonTipClicked += (_, _) => {
             if (workspace.SessionExpired) { owner.Show(); owner.WindowState = WindowState.Normal; owner.Activate(); return; }
@@ -75,17 +79,19 @@ internal sealed class DesktopReminders : IDisposable
         tray.ShowBalloonTip(10000, item.IsEvent ? "日程提醒" : "待办提醒", item.Title, System.Windows.Forms.ToolTipIcon.Info);
         alert = Dialog(owner, "PaykiTodo 提醒", 680, 480); alert.Topmost = true;
         var window = alert;
-        var body = Column(Text(DateTime.Now.ToString("HH:mm"), 50, Forest, true), Text(item.Title, 30, bold: true), Text(item.Notes, 16, Muted));
-        var actions = new System.Windows.Controls.WrapPanel { Margin = new Thickness(0, 28, 0, 0) };
+        var clock = Text(DateTime.Now.ToString("HH:mm"), 48, Forest, true); clock.TextAlignment = TextAlignment.Center;
+        var heading = Text(item.Title, 26, bold: true); heading.TextAlignment = TextAlignment.Center;
+        var body = Column(BrandHeading(item.IsEvent ? "日程提醒" : "待办提醒"), clock, heading, Text(item.Notes, 15, Muted));
+        var actions = new System.Windows.Controls.WrapPanel { HorizontalAlignment = HorizontalAlignment.Center };
         if (!item.IsEvent) actions.Children.Add(Action("我已完成", () => { workspace.Edit(document => document.Complete(item.Id)); window.Close(); }, true));
         if (!item.IsEvent && current.IsFinal) actions.Children.Add(Action("延后 10 分钟", () => {
             workspace.Edit(document => document.Snooze(item.Id, DateTimeOffset.UtcNow.AddMinutes(10).ToUnixTimeMilliseconds())); window.Close();
         }));
-        actions.Children.Add(Action("我知道了", () => window.Close())); body.Children.Add(actions);
-        window.Content = new System.Windows.Controls.Border { Padding = new Thickness(36), Child = Scroll(body) };
+        actions.Children.Add(Action("我知道了", () => window.Close()));
+        window.Content = DialogLayout(body, HorizontalAlignment.Center, actions);
         window.Closed += (_, _) => alert = null;
         System.Media.SystemSounds.Exclamation.Play(); window.Show();
     }
     public void Clear() { pending.Clear(); notifiedItem = null; alert?.Close(); checkedAt = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(); }
-    public void Dispose() { workspace.LoginRequired -= OnLoginRequired; timer.Stop(); Clear(); tray.Dispose(); }
+    public void Dispose() { workspace.LoginRequired -= OnLoginRequired; timer.Stop(); Clear(); tray.Dispose(); trayIcon.Dispose(); }
 }

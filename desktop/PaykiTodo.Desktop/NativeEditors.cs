@@ -14,7 +14,7 @@ internal static class NativeEditors
     {
         var dialog = Dialog(owner, (value == null ? "新增" : "编辑") + (isEvent ? "日程" : "待办"), 650, 800);
         DesktopItemEdit? result = null;
-        var title = Input(value?.Title ?? "", true); title.MinHeight = 60;
+        var title = Input(value?.Title ?? "", true); title.MinHeight = 54; title.MaxHeight = 100; title.FontSize = 18;
         var notes = Input(value?.Notes ?? "", true); var location = Input(value?.Location ?? "");
         var due = new TimeField(value?.DueAtMillis, seed.Date.AddHours(23).AddMinutes(59));
         var start = new TimeField(value?.StartAtMillis, seed.TimeOfDay == TimeSpan.Zero ? seed.AddHours(9) : seed);
@@ -45,14 +45,19 @@ internal static class NativeEditors
         void UpdateWeekly() => weeklyRow.Visibility = (recurrence.SelectedItem as Choice)?.Value == "WEEKLY" ? Visibility.Visible : Visibility.Collapsed;
         recurrence.SelectionChanged += (_, _) => UpdateWeekly(); UpdateWeekly();
         var until = new DatePicker { SelectedDate = value?.RecurrenceEndEpochDay is { } day ? DateTime.UnixEpoch.AddDays(day) : null };
-        var fields = Column(Text("标题", 14, bold: true), title);
+        var fields = Column(BrandHeading(dialog.Title, "完成后保存；取消不改动原数据"), Text("标题", 14, bold: true), title);
         if (isEvent) { fields.Children.Add(Text("开始时间")); fields.Children.Add(start.Control); fields.Children.Add(Text("结束时间")); fields.Children.Add(end.Control); fields.Children.Add(allDay); fields.Children.Add(Text("地点")); fields.Children.Add(location); }
-        else { fields.Children.Add(hasDue); fields.Children.Add(due.Control); }
+        else {
+            fields.Children.Add(hasDue); fields.Children.Add(due.Control);
+            void UpdateDue() => due.Control.IsEnabled = hasDue.IsChecked == true;
+            hasDue.Checked += (_, _) => UpdateDue(); hasDue.Unchecked += (_, _) => UpdateDue(); UpdateDue();
+        }
+        fields.Children.Add(Text("提醒与显示", 16, bold: true));
         fields.Children.Add(reminder); fields.Children.Add(Text("提前提醒（分钟，可用逗号分隔，例如 30,15,5）", 12, Muted)); fields.Children.Add(offsets);
         fields.Children.Add(Text("备注")); fields.Children.Add(notes); fields.Children.Add(Row(countdown, isEvent ? checkin : hidden));
-        fields.Children.Add(Text("重复")); fields.Children.Add(recurrence); fields.Children.Add(weeklyRow);
+        fields.Children.Add(Text("循环安排", 16, bold: true)); fields.Children.Add(recurrence); fields.Children.Add(weeklyRow);
         fields.Children.Add(Text("循环截止日期（可留空）", 12, Muted)); fields.Children.Add(until);
-        fields.Children.Add(Text("分组")); fields.Children.Add(group); fields.Children.Add(Text("颜色")); fields.Children.Add(color);
+        fields.Children.Add(Pair(Column(Text("分组"), group), Column(Text("强调色"), color)));
         var error = Text("", 13, B("#AF3A32"));
         void Save()
         {
@@ -80,10 +85,14 @@ internal static class NativeEditors
     public static QuickChecklistDraft? Checklist(Window owner)
     {
         var dialog = Dialog(owner, "快速清单", 960, 720); QuickChecklistDraft? result = null;
-        var source = Input("", true); source.MinHeight = 450;
+        var source = Input("", true); source.MinHeight = 330; source.Height = 380;
+        source.FontFamily = new System.Windows.Media.FontFamily("Consolas, Microsoft YaHei UI"); source.FontSize = 15;
+        System.Windows.Automation.AutomationProperties.SetName(source, "快速清单源码");
         var preview = new StackPanel(); var error = Text("", 13, B("#AF3A32"));
         var grid = new Grid(); grid.ColumnDefinitions.Add(new ColumnDefinition()); grid.ColumnDefinitions.Add(new ColumnDefinition());
-        grid.Children.Add(source); Grid.SetColumn(preview, 1); preview.Margin = new Thickness(20, 0, 0, 0); grid.Children.Add(preview);
+        grid.Children.Add(Column(Text("快速记录", 15, bold: true), source));
+        var previewPane = Column(Text("实际待办预览", 15, bold: true), Scroll(preview)); previewPane.Margin = new Thickness(20, 0, 0, 0);
+        ((ScrollViewer)previewPane.Children[1]).MaxHeight = 380; Grid.SetColumn(previewPane, 1); grid.Children.Add(previewPane);
         void Refresh()
         {
             preview.Children.Clear(); var draft = QuickChecklistParser.Parse(source.Text);
@@ -99,7 +108,8 @@ internal static class NativeEditors
             var prefix = QuickChecklistParser.ContinuationPrefix(line).TrimEnd();
             var insert = "\n" + prefix + (prefix.Length > 0 ? " " : ""); var position = source.SelectionStart; source.SelectedText = insert; source.CaretIndex = position + insert.Length; e.Handled = true;
         };
-        var fields = Column(Text("标题可选，可直接写 - 任务；短横线表示层级，--# 添加说明，// 是不保存的注释。", 13, Muted), grid);
+        var fields = Column(BrandHeading("想到就记", "标题可选 · 短横线定义任务 · Enter 自动续写"),
+            Text("- 任务　-- 子任务　--# 说明　// 不保存的注释", 13, Muted), grid);
         dialog.Content = EditorLayout(fields, error, () => dialog.Close(), () => {
             var draft = QuickChecklistParser.Parse(source.Text);
             if (draft.HasErrors) {
@@ -116,16 +126,21 @@ internal static class NativeEditors
     }
     public static string? Prompt(Window owner, string caption, string value = "")
     {
-        var dialog = Dialog(owner, caption, 490, 290); var input = Input(value); string? result = null;
-        dialog.Content = EditorLayout(Column(Text(caption, 18, bold: true), input), Text(""), () => dialog.Close(), () => {
+        var dialog = Dialog(owner, caption, 520, 340); var input = Input(value); string? result = null;
+        dialog.Content = EditorLayout(Column(BrandHeading(caption), input), Text(""), () => dialog.Close(), () => {
             if (string.IsNullOrWhiteSpace(input.Text)) return; result = input.Text.Trim(); dialog.DialogResult = true;
         }); dialog.ShowDialog(); return result;
     }
     private static UIElement EditorLayout(UIElement fields, TextBlock error, Action cancel, Action save)
     {
-        var root = new DockPanel { Margin = new Thickness(24) };
-        var actions = Column(error, Row(Action("取消", cancel), Action("完成", save, true))); DockPanel.SetDock(actions, Dock.Bottom); root.Children.Add(actions);
-        root.Children.Add(Scroll(fields)); return root;
+        var cancelButton = NativeUi.Action("取消", cancel); cancelButton.IsCancel = true;
+        var saveButton = NativeUi.Action("完成", save, true);
+        return DialogLayout(Column(fields, error), cancelButton, saveButton);
+    }
+    private static Grid Pair(UIElement left, UIElement right)
+    {
+        var grid = new Grid(); grid.ColumnDefinitions.Add(new ColumnDefinition()); grid.ColumnDefinitions.Add(new ColumnDefinition());
+        grid.Children.Add(left); ((FrameworkElement)right).Margin = new Thickness(16, 0, 0, 0); Grid.SetColumn(right, 1); grid.Children.Add(right); return grid;
     }
     private static long Millis(DateTime date) => new DateTimeOffset(date).ToUnixTimeMilliseconds();
     private sealed record Choice(string Name, string Value);
@@ -140,7 +155,9 @@ internal static class NativeEditors
         public TimeField(long? millis, DateTime fallback)
         {
             var value = millis is { } existing ? DateTimeOffset.FromUnixTimeMilliseconds(existing).LocalDateTime : fallback;
-            date = new DatePicker { SelectedDate = value, Width = 200 }; time = Input(value.ToString("HH:mm")); time.Width = 100; Control = Row(date, time);
+            date = new DatePicker { SelectedDate = value, Width = 200, Height = 42, Margin = new Thickness(0, 4, 12, 16) };
+            time = Input(value.ToString("HH:mm")); time.Width = 100; time.Height = 42; time.TextAlignment = TextAlignment.Center;
+            System.Windows.Automation.AutomationProperties.SetName(time, "时间 HH:mm"); Control = Row(date, time);
         }
     }
 }

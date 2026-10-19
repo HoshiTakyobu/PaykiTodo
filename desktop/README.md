@@ -12,6 +12,8 @@
 
 尚未完全对齐手机的功能包括农历循环创建、OCR 识别和多时段批量创建；编辑已有手机记录会保留相应特殊字段。Android 锁屏、通知权限、无障碍和小组件属于手机系统入口。
 
+`1.16.22` 统一中文无衬线字体、原品牌窗口/托盘图标、导航与浅深色控件，编辑弹窗固定操作区，提醒居中，窄窗口看板改为单列，规划台固定底部操作。账号退出后明确显示登录标题。默认测试不再占用用户的系统指针。
+
 ## 手机 LAN 兼容路径
 
 “连接电脑”仍然是单独的浏览器路径：
@@ -33,3 +35,15 @@
 脚本输出完整的 self-contained `win-x64` 目录到 `desktop\dist\`，入口为 `desktop\dist\PaykiTodo.exe`，不能只复制单个 EXE。目标电脑无需安装 .NET Runtime，但需要 Microsoft Edge WebView2 Runtime。`-FrameworkDependent` 可生成依赖 .NET Runtime 的较小版本。
 
 客户端首选 `user\cloud.properties` 中的本地服务器地址写入被忽略的 `client-config.json`；真实域名、证书、服务器 IP、管理员密码和环境变量不得提交到 Git。
+
+默认数据目录仍为 `%LOCALAPPDATA%\PaykiTodo`。测试或独立资料副本可使用 `PaykiTodo.exe --data-directory <目录>`；本地数据、记忆凭据、服务器偏好及验证浏览器资料均隔离到该目录，不会复制正式账号或绕过登录锁定。
+
+## 不干扰日常操作的验收
+
+```powershell
+.\tools\tests\Invoke-DesktopAcceptance.ps1 -PackagedExe .\desktop\dist\PaykiTodo.exe
+```
+
+从仓库根目录执行。脚本把测试进程绑定到独立 Win32 桌面，通过 WPF UI Automation 控件接口编辑、确认、导航；不切换用户桌面、不注入全局输入、不使用剪贴板。少量渲染图片辅助排版检查，不是仅启动或看日志。直接 `dotnet test` 会跳过需要桌面隔离的界面用例。单独设置 `PAYKI_VISIBLE_ACCEPTANCE=1` 的物理输入模式会占用鼠标/键盘，不能在用户日常操作时运行。
+
+控件自动化不等于物理鼠标命中、全局键盘或完整账号人机验证 E2E；成品 EXE 检查只验证启动、图标、独立资料和正常退出。逐项范围见 [VALIDATION_1.16.22.md](../docs/current/VALIDATION_1.16.22.md)。

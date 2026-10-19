@@ -9,7 +9,7 @@ namespace PaykiTodo.Desktop;
 // areas, data editing and navigation are native WPF controls.
 internal static class NativeVerification
 {
-    public static async Task<(bool Canceled, string? Token)> GetTokenAsync(Window owner, string server)
+    public static async Task<(bool Canceled, string? Token)> GetTokenAsync(Window owner, string server, string profileDirectory)
     {
         var result = new TaskCompletionSource<(bool, string?)>();
         var window = NativeUi.Dialog(owner, "账号安全验证", 420, 320);
@@ -18,7 +18,7 @@ internal static class NativeVerification
         window.Closed += (_, _) => { result.TrySetResult((true, null)); browser.Dispose(); };
         window.Loaded += async (_, _) => {
             try {
-                var folder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "PaykiTodo", "account-verification");
+                var folder = Path.Combine(profileDirectory, "account-verification");
                 var environment = await CoreWebView2Environment.CreateAsync(null, folder);
                 await browser.EnsureCoreWebView2Async(environment);
                 browser.CoreWebView2.Settings.AreDevToolsEnabled = false;

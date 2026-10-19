@@ -13,9 +13,8 @@ internal sealed partial class NativeWindow
     {
         var dialog = Dialog(this, "AI 服务配置", 720, 720);
         var providers = DesktopAi.Providers(workspace.Document!).Select(provider => (JsonObject)provider.DeepClone()).ToList();
-        var list = Column(); var root = new DockPanel { Margin = new Thickness(24) };
-        var actions = Row(Action("取消", () => dialog.Close()), Action("完成", () => { Change(document => document.SaveAiProviders(providers)); dialog.Close(); }, true));
-        DockPanel.SetDock(actions, Dock.Bottom); root.Children.Add(actions); root.Children.Add(Scroll(list)); dialog.Content = root;
+        var list = Column();
+        dialog.Content = DialogLayout(list, Action("取消", () => dialog.Close()), Action("完成", () => { Change(document => document.SaveAiProviders(providers)); dialog.Close(); }, true));
         void Edit(JsonObject? original)
         {
             var editor = Dialog(dialog, "AI 服务", 560, 650);
@@ -25,18 +24,18 @@ internal sealed partial class NativeWindow
             var error = Text("", 13, B("#AF3A32"));
             JsonObject Draft() => new() { ["id"] = original?["id"]?.GetValue<string>() ?? Guid.NewGuid().ToString(), ["name"] = name.Text.Trim(), ["baseUrl"] = url.Text.Trim(), ["apiKey"] = key.Password.Trim(), ["model"] = model.Text.Trim(), ["enabled"] = enabled.IsChecked == true,
                 ["supportsVision"] = original?["supportsVision"]?.DeepClone() ?? JsonValue.Create(false), ["availableModels"] = original?["availableModels"]?.DeepClone() ?? new JsonArray() };
-            var form = Column(Text("名称"), name, Text("Base URL"), url, Text("API Key"), key, Text("模型"), model,
+            var form = Column(BrandHeading("AI 服务", "配置只在点击完成后保存"), Text("名称"), name, Text("Base URL"), url, Text("API Key"), key, Text("模型"), model,
                 Action("获取模型列表", async () => { try { model.ItemsSource = await DesktopAi.ModelsAsync(Draft()); } catch (Exception e) { error.Text = DesktopWorkspace.FriendlyError(e); } }), enabled, error);
-            form.Children.Add(Action("完成", () => {
+            var save = Action("完成", () => {
                 try { CloudAccountSync.NormalizeServerUrl(url.Text); if (name.Text.Trim().Length == 0 || model.Text.Trim().Length == 0) throw new InvalidOperationException("请填写服务名称和模型");
                     if (original == null) providers.Add(Draft()); else providers[providers.IndexOf(original)] = Draft(); editor.Close(); RenderProviders(); }
                 catch (Exception e) { error.Text = e.Message; }
-            }, true));
-            editor.Content = new Border { Padding = new Thickness(24), Child = Scroll(form) }; editor.ShowDialog();
+            }, true);
+            editor.Content = DialogLayout(form, Action("取消", () => editor.Close()), save); editor.ShowDialog();
         }
         void RenderProviders()
         {
-            list.Children.Clear(); list.Children.Add(Text("按顺序使用已启用的服务，失败时切换下一项。", 14, Muted));
+            list.Children.Clear(); list.Children.Add(BrandHeading("AI 服务配置", "按顺序使用已启用的服务，失败时切换下一项。"));
             foreach (var provider in providers) {
                 var row = Column(Text(provider["name"]?.GetValue<string>() ?? "未命名服务", 18, bold: true), Text(provider["model"]?.GetValue<string>() ?? "", 13, Muted));
                 row.Children.Add(Row(Action("编辑", () => Edit(provider)), Action("上移", () => { var i = providers.IndexOf(provider); if (i > 0) { providers.RemoveAt(i); providers.Insert(i - 1, provider); RenderProviders(); } }), Action("删除", () => { providers.Remove(provider); RenderProviders(); })));

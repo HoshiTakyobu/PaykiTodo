@@ -8,6 +8,27 @@ namespace PaykiTodo.Desktop;
 
 internal sealed record DesktopReminder(long ItemId, long Trigger, bool IsFinal);
 
+// Only reminders observed before their trigger may enter the delivery queue.
+// A newly created or downloaded historical entry is a record, not an alarm.
+internal sealed class DesktopReminderSchedule
+{
+    private HashSet<DesktopReminder> scheduled = new();
+    private readonly HashSet<DesktopReminder> delivered = new();
+    public void Update(DesktopSnapshotDocument? document, long now)
+    {
+        var current = document?.RemindersBetween(long.MinValue, long.MaxValue) ?? Array.Empty<DesktopReminder>();
+        scheduled = current.Where(item => !delivered.Contains(item) && (item.Trigger > now || scheduled.Contains(item))).ToHashSet();
+    }
+    public IReadOnlyList<DesktopReminder> TakeDue(long after, long now)
+    {
+        var due = scheduled.Where(item => item.Trigger > after && item.Trigger <= now).OrderBy(item => item.Trigger).ToArray();
+        foreach (var item in due) delivered.Add(item);
+        scheduled.RemoveWhere(item => item.Trigger <= now);
+        return due;
+    }
+    public void Clear() { scheduled.Clear(); delivered.Clear(); }
+}
+
 internal sealed partial class DesktopSnapshotDocument
 {
     public IReadOnlyList<DesktopReminder> RemindersBetween(long after, long until)
@@ -42,6 +63,7 @@ internal sealed class DesktopReminders : IDisposable
     private readonly System.Drawing.Icon trayIcon;
     private readonly DispatcherTimer timer = new() { Interval = TimeSpan.FromSeconds(2) };
     private readonly Queue<DesktopReminder> pending = new();
+    private readonly DesktopReminderSchedule schedule = new();
     private long checkedAt = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
     private Window? alert;
     private long? notifiedItem;
@@ -49,6 +71,8 @@ internal sealed class DesktopReminders : IDisposable
     {
         this.owner = owner; this.workspace = workspace;
         workspace.LoginRequired += OnLoginRequired;
+        workspace.Changed += OnWorkspaceChanged;
+        OnWorkspaceChanged();
         using (var stream = System.Windows.Application.GetResourceStream(new Uri("pack://application:,,,/PaykiTodo;component/Assets/PaykiTodo.ico")).Stream)
             trayIcon = new System.Drawing.Icon(stream);
         tray = new System.Windows.Forms.NotifyIcon { Icon = trayIcon, Text = "PaykiTodo", Visible = true };
@@ -64,15 +88,17 @@ internal sealed class DesktopReminders : IDisposable
         timer.Tick += (_, _) => Tick(); timer.Start();
     }
     private void OnLoginRequired() => owner.Dispatcher.Invoke(() => tray.ShowBalloonTip(10000, "PaykiTodo 登录已过期", "打开账号重新登录。本机数据和离线提醒保留。", System.Windows.Forms.ToolTipIcon.Info));
+    private void OnWorkspaceChanged() => owner.Dispatcher.Invoke(() => schedule.Update(workspace.Document, DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()));
     private void Tick()
     {
         var now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
         // Do not replay a night's worth of reminders after sleep/resume.
         var start = Math.Max(checkedAt, now - 60000);
-        if (workspace.Document != null) foreach (var reminder in workspace.Document.RemindersBetween(start, now)) pending.Enqueue(reminder);
+        foreach (var reminder in schedule.TakeDue(start, now)) pending.Enqueue(reminder);
         checkedAt = now;
         if (alert != null || pending.Count == 0) return;
         var current = pending.Dequeue();
+        if (workspace.Document?.RemindersBetween(current.Trigger - 1, current.Trigger).Contains(current) != true) return;
         var item = workspace.Document?.Items.FirstOrDefault(item => item.Id == current.ItemId && !item.Completed && !item.Canceled);
         if (item == null) return;
         notifiedItem = item.Id;
@@ -92,6 +118,6 @@ internal sealed class DesktopReminders : IDisposable
         window.Closed += (_, _) => alert = null;
         System.Media.SystemSounds.Exclamation.Play(); window.Show();
     }
-    public void Clear() { pending.Clear(); notifiedItem = null; alert?.Close(); checkedAt = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(); }
-    public void Dispose() { workspace.LoginRequired -= OnLoginRequired; timer.Stop(); Clear(); tray.Dispose(); trayIcon.Dispose(); }
+    public void Clear() { pending.Clear(); schedule.Clear(); notifiedItem = null; alert?.Close(); checkedAt = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(); }
+    public void Dispose() { workspace.LoginRequired -= OnLoginRequired; workspace.Changed -= OnWorkspaceChanged; timer.Stop(); Clear(); tray.Dispose(); trayIcon.Dispose(); }
 }

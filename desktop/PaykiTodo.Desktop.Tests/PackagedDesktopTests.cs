@@ -21,7 +21,7 @@ public sealed class PackagedDesktopTests
     {
         using var isolated = new IsolatedDesktop();
         var executable = Environment.GetEnvironmentVariable("PAYKI_PACKAGED_EXE")!;
-        Assert.Equal("1.16.22.0", FileVersionInfo.GetVersionInfo(executable).FileVersion);
+        Assert.Equal(typeof(DesktopWorkspace).Assembly.GetName().Version!.ToString(), FileVersionInfo.GetVersionInfo(executable).FileVersion);
         var folder = Path.Combine(Environment.GetEnvironmentVariable("PAYKI_UI_EVIDENCE")!, "packaged-profile");
         var store = new DesktopSecureStore(folder);
         var document = DesktopSnapshotDocument.CreateEmpty();
@@ -44,7 +44,7 @@ public sealed class PackagedDesktopTests
             Assert.True(process.WaitForExit(10000), "Built EXE must close normally");
             Assert.Equal(0, process.ExitCode);
             File.WriteAllText(Path.Combine(Path.GetDirectoryName(folder)!, "packaged-exe-result.txt"),
-                "PASS: self-contained 1.16.22.0 opens PaykiTodo window with icon; independent profile preserved; normal exit. Startup smoke only, not a second full UI flow.");
+                $"PASS: self-contained {FileVersionInfo.GetVersionInfo(executable).FileVersion} opens PaykiTodo window with icon; independent profile preserved; normal exit. Startup smoke only, not a second full UI flow.");
         } finally {
             if (!process.HasExited) { process.Kill(true); process.WaitForExit(); }
         }

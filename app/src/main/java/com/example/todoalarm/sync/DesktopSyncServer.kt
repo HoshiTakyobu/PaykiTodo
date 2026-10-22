@@ -184,10 +184,10 @@ class DesktopSyncServer(
     }
 
     private fun writeResponse(output: OutputStream, response: Response) {
-        val payload = response.body.toByteArray(StandardCharsets.UTF_8)
+        val payload = response.binaryBody ?: response.body.toByteArray(StandardCharsets.UTF_8)
         val header = buildString {
             append("HTTP/1.1 ${response.statusCode} ${response.statusText}\r\n")
-            append("Content-Type: ${response.contentType}; charset=utf-8\r\n")
+            append("Content-Type: ${response.contentType}${if (response.binaryBody == null) "; charset=utf-8" else ""}\r\n")
             append("Access-Control-Allow-Origin: *\r\n")
             append("Access-Control-Allow-Headers: Content-Type, Authorization, X-Payki-Token\r\n")
             append("Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS\r\n")
@@ -205,12 +205,14 @@ class DesktopSyncServer(
         val statusCode: Int,
         val statusText: String,
         val contentType: String,
-        val body: String
+        val body: String,
+        val binaryBody: ByteArray? = null
     ) {
         companion object {
             fun html(body: String) = Response(200, "OK", "text/html", body)
             fun js(body: String) = Response(200, "OK", "application/javascript", body)
             fun css(body: String) = Response(200, "OK", "text/css", body)
+            fun font(body: ByteArray) = Response(200, "OK", "font/ttf", "", body)
             fun noContent() = Response(204, "No Content", "text/plain", "")
             fun json(body: JSONObject, statusCode: Int = 200): Response {
                 val text = when (statusCode) {

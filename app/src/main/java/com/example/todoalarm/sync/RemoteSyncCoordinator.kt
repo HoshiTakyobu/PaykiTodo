@@ -23,6 +23,7 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import org.json.JSONObject
@@ -74,34 +75,39 @@ class RemoteSyncCoordinator(
     private val syncMutex = Mutex()
     private var pendingJob: Job? = null
     private var periodicJob: Job? = null
-    private var networkRegistered = false
+    private var networkCallback: ConnectivityManager.NetworkCallback? = null
     @Volatile private var accountGeneration = 0L
     private data class Download(val snapshot: BackupSnapshot, val revision: Long)
     data class CloudReview(val snapshot: BackupSnapshot, val revision: Long, val localFingerprint: String, val accountGeneration: Long)
 
-    fun start() {
+    @Synchronized fun start() {
         val settings = settingsStore.currentSettings()
         if (!settings.remoteSyncEnabled || !settingsStore.hasLocalAccountAccess()) return
         RemoteSyncJobService.schedule(app)
-        if (!networkRegistered) {
-            app.getSystemService(ConnectivityManager::class.java).registerDefaultNetworkCallback(object : ConnectivityManager.NetworkCallback() {
+        if (networkCallback == null) {
+            val callback = object : ConnectivityManager.NetworkCallback() {
                 override fun onAvailable(network: Network) { scope.launch { runCatching { syncNow() } } }
-            })
-            networkRegistered = true
+            }
+            app.getSystemService(ConnectivityManager::class.java).registerDefaultNetworkCallback(callback)
+            networkCallback = callback
         }
         if (periodicJob?.isActive == true) return
         periodicJob = scope.launch {
             while (isActive && settingsStore.currentSettings().remoteSyncEnabled) {
                 runCatching { syncNow() }
                     .onFailure { settingsStore.markRemoteSyncError(it.message ?: "云同步失败") }
-                delay(TimeUnit.MINUTES.toMillis(1))
+                delay(TimeUnit.SECONDS.toMillis(15))
             }
             periodicJob = null
         }
     }
 
-    fun stop() {
+    @Synchronized fun stop() {
         RemoteSyncJobService.cancel(app)
+        networkCallback?.let { callback ->
+            runCatching { app.getSystemService(ConnectivityManager::class.java).unregisterNetworkCallback(callback) }
+        }
+        networkCallback = null
         pendingJob?.cancel()
         periodicJob?.cancel()
         pendingJob = null
@@ -119,12 +125,33 @@ class RemoteSyncCoordinator(
             if (settings.remoteSyncUsername.isNotBlank()) settingsStore.clearExpiredRemoteSessionIfNeeded()
             return
         }
-        if (pendingJob?.isActive == true) return
-        pendingJob = scope.launch {
-            delay(1_000L)
-            runCatching { syncNow() }
-                .onFailure { settingsStore.markRemoteSyncError(it.message ?: "云同步失败") }
+        requestLocalSync()
+    }
+
+    private fun requestLocalSync(): Unit = synchronized(this) {
+        if (pendingJob != null) return@synchronized
+        pendingJob = scope.launch(start = CoroutineStart.LAZY) {
+            var completedGeneration = -1L
+            var successful = false
+            try {
+                delay(1_000L)
+                do {
+                    completedGeneration = settingsStore.remoteChangeGeneration()
+                    val result = syncNow()
+                    successful = result is RemoteSyncResult.Uploaded || result is RemoteSyncResult.UpToDate || result is RemoteSyncResult.Downloaded
+                } while (isActive && successful && settingsStore.currentSettings().remoteSyncDirty)
+            } finally {
+                synchronized(this@RemoteSyncCoordinator) {
+                    if (pendingJob === coroutineContext[Job]) {
+                        pendingJob = null
+                        if (isActive && successful && completedGeneration != settingsStore.remoteChangeGeneration() &&
+                            settingsStore.currentSettings().remoteSyncEnabled && settingsStore.hasValidRemoteSession()) requestLocalSync()
+                    }
+                }
+            }
         }
+        pendingJob?.start()
+        Unit
     }
 
     suspend fun authenticate(
@@ -362,10 +389,32 @@ class RemoteSyncCoordinator(
         settings = settingsStore.currentSettings()
         val generation = settingsStore.remoteChangeGeneration()
         val localBefore = app.database.withTransaction { app.repository.exportSnapshot(settings) }
+        val fingerprint = BackupArchiveCodec.dataFingerprint(localBefore)
+        val previousFingerprint = settingsStore.remoteDataFingerprint()
+        if (!settings.remoteSyncDirty && previousFingerprint.isNotBlank() && previousFingerprint != fingerprint) {
+            settingsStore.markRemoteSyncDirty()
+            settings = settingsStore.currentSettings()
+        }
         val status = getJson(serverUrl, "/v2/sync/status", accessToken)
         if (account != accountGeneration || !settingsStore.hasLocalAccountAccess()) return RemoteSyncResult.NotConfigured
         val remoteRevision = status.optLong("revision", 0L)
         val localRevision = settings.remoteSyncRevision
+
+        if (settings.remoteSyncDirty && settings.remoteSyncConflictRevision > 0L) {
+            settingsStore.markRemoteSyncConflict(maxOf(remoteRevision, settings.remoteSyncConflictRevision))
+            return RemoteSyncResult.Conflict(remoteRevision)
+        }
+
+        // Older builds may have a clean flag without an acknowledged content hash.
+        // Inspect instead of silently replacing a potentially newer phone copy.
+        if (!settings.remoteSyncDirty && previousFingerprint.isBlank() && remoteRevision > 0L && localBefore.hasMeaningfulData()) {
+            val remote = downloadAccountSnapshot(serverUrl, accessToken, settings.remoteSyncSecret)
+            if (fingerprint != BackupArchiveCodec.dataFingerprint(remote.snapshot)) {
+                settingsStore.markRemoteSyncDirty()
+                settingsStore.markRemoteSyncConflict(remote.revision)
+                return RemoteSyncResult.Conflict(remote.revision)
+            }
+        }
 
         if (remoteRevision > localRevision) {
             if (settings.remoteSyncDirty) {
@@ -384,7 +433,8 @@ class RemoteSyncCoordinator(
                 }
                 saveSafetyCopy(current, "before-cloud")
                 applyRemoteSnapshot(snapshot)
-                settingsStore.markRemoteSyncSuccess(downloaded.revision, generation)
+                val applied = app.repository.exportSnapshot(settingsStore.currentSettings())
+                settingsStore.markRemoteSyncSuccess(downloaded.revision, generation, BackupArchiveCodec.dataFingerprint(applied))
             }
             if (account != accountGeneration || !settingsStore.hasLocalAccountAccess()) return RemoteSyncResult.NotConfigured
             if (settingsStore.currentSettings().remoteSyncDirty) return RemoteSyncResult.Conflict(remoteRevision)
@@ -395,7 +445,7 @@ class RemoteSyncCoordinator(
             return RemoteSyncResult.Failed("云端版本低于本机记录，已停止同步以避免覆盖")
         }
         if (!settings.remoteSyncDirty) {
-            settingsStore.markRemoteSyncSuccess(localRevision, generation)
+            settingsStore.markRemoteSyncSuccess(localRevision, generation, fingerprint)
             return RemoteSyncResult.UpToDate(localRevision)
         }
 
@@ -406,7 +456,9 @@ class RemoteSyncCoordinator(
             settingsStore.markRemoteSyncConflict(upload.conflictRevision)
             return RemoteSyncResult.Conflict(upload.conflictRevision)
         }
-        if (account == accountGeneration && settingsStore.hasLocalAccountAccess()) settingsStore.markRemoteSyncSuccess(upload.revision, generation)
+        if (account == accountGeneration && settingsStore.hasLocalAccountAccess()) {
+            settingsStore.markRemoteSyncSuccess(upload.revision, generation, fingerprint)
+        }
         return RemoteSyncResult.Uploaded(snapshot.exportedAtMillis, upload.revision)
     }
 
@@ -456,7 +508,8 @@ class RemoteSyncCoordinator(
                 if (!keepLocal) {
                     check(account == accountGeneration && settingsStore.hasLocalAccountAccess()) { "账号已退出" }
                     applyRemoteSnapshot(review.snapshot)
-                    settingsStore.markRemoteSyncSuccess(review.revision, generation)
+                    val applied = app.repository.exportSnapshot(settingsStore.currentSettings())
+                    settingsStore.markRemoteSyncSuccess(review.revision, generation, BackupArchiveCodec.dataFingerprint(applied))
                 }
                 current
             }
@@ -467,7 +520,10 @@ class RemoteSyncCoordinator(
                     settingsStore.markRemoteSyncConflict(result.conflictRevision)
                     error("云端又有更新，上传已停止；请重新检查")
                 }
-                if (account == accountGeneration && settingsStore.hasLocalAccountAccess()) settingsStore.markRemoteSyncSuccess(result.revision, generation)
+                if (account == accountGeneration && settingsStore.hasLocalAccountAccess()) {
+                    settingsStore.markRemoteSyncSuccess(result.revision, generation, BackupArchiveCodec.dataFingerprint(local))
+                    if (settingsStore.currentSettings().remoteSyncDirty) requestLocalSync()
+                }
             }
             "${if (keepLocal) "本机副本已上传" else "已恢复云端副本"}；双方恢复副本已保存在本机"
         }

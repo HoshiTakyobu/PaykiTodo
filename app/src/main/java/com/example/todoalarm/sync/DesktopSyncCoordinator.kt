@@ -174,6 +174,12 @@ class DesktopSyncCoordinator(
         if (routePath == "/app.css") {
             return DesktopSyncServer.Response.css(DesktopSyncWebAssets.appCss(context))
         }
+        val fontResource = when (routePath) {
+            "/fonts/regular.ttf" -> com.example.todoalarm.R.font.sarasa_ui_regular
+            "/fonts/semibold.ttf" -> com.example.todoalarm.R.font.sarasa_ui_semibold
+            else -> null
+        }
+        if (fontResource != null) return DesktopSyncServer.Response.font(context.resources.openRawResource(fontResource).use { it.readBytes() })
 
         if (!authorize(headers)) {
             return DesktopSyncServer.Response.json(JSONObject().put("error", "未授权，请填写手机端显示的访问密钥。"), 401)

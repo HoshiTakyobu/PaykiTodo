@@ -366,7 +366,9 @@ class MainActivity : ComponentActivity() {
         val planningTarget = intent.getLongExtra(EXTRA_OPEN_PLANNING_NOTE_ID, 0L).takeIf { it > 0L }
         val aiReportTarget = intent.getLongExtra(EXTRA_OPEN_AI_REPORT_ID, 0L).takeIf { it > 0L }
         val openBoard = intent.getBooleanExtra(EXTRA_OPEN_BOARD, false)
-        val openTasks = intent.getBooleanExtra(EXTRA_OPEN_TASKS, false)
+        val taskLink = intent.action == Intent.ACTION_VIEW && intent.data?.scheme == "paykitodo" && intent.data?.host == "tasks"
+        val createTask = taskLink && intent.data?.path == "/new"
+        val openTasks = intent.getBooleanExtra(EXTRA_OPEN_TASKS, false) || taskLink
         val openCalendar = intent.getBooleanExtra(EXTRA_OPEN_CALENDAR, false)
         if (
             settingsTarget == null &&
@@ -387,7 +389,8 @@ class MainActivity : ComponentActivity() {
             targetAiReportId = aiReportTarget,
             openBoard = openBoard,
             openTasks = openTasks,
-            openCalendar = openCalendar
+            openCalendar = openCalendar,
+            createTask = createTask
         )
         launchRouteSerial += 1
         intent.removeExtra(EXTRA_OPEN_SETTINGS_SECTION)
@@ -398,6 +401,9 @@ class MainActivity : ComponentActivity() {
         intent.removeExtra(EXTRA_OPEN_BOARD)
         intent.removeExtra(EXTRA_OPEN_TASKS)
         intent.removeExtra(EXTRA_OPEN_CALENDAR)
+        // Preserve the launch URI: Android lifecycle observers and task restore
+        // identify a deep-link activity by its action/data. onNewIntent handles
+        // a subsequent invocation once, using launchRouteSerial.
     }
 
     private fun refreshPermissions() {
@@ -696,5 +702,6 @@ data class DashboardLaunchRoute(
     val targetAiReportId: Long? = null,
     val openBoard: Boolean = false,
     val openTasks: Boolean = false,
-    val openCalendar: Boolean = false
+    val openCalendar: Boolean = false,
+    val createTask: Boolean = false
 )

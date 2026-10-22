@@ -1815,7 +1815,8 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
         val now = System.currentTimeMillis()
         repository.dueReminderItems(now).forEach { item ->
             val reminderAtMillis = item.reminderTriggerTimesMillis()
-                .firstOrNull { it <= now && !ReminderDispatchTracker.wasDispatched(app, item.id, it) }
+                .lastOrNull { it <= now && alarmScheduler.isReminderScheduled(item.id, it) &&
+                    !ReminderDispatchTracker.wasDispatched(app, item.id, it) }
                 ?: return@forEach
             ReminderChainLogger.log(
                 context = app,

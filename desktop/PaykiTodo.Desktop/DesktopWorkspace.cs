@@ -8,6 +8,9 @@ internal sealed class DesktopWorkspace
     private readonly SemaphoreSlim syncGate = new(1, 1);
     private long editVersion;
     private long accountGeneration;
+    private bool syncRequested;
+    private readonly object syncRequestLock = new();
+    private Task? syncTask;
     internal long AccountGeneration => accountGeneration;
     public DesktopSnapshotDocument? Document { get; private set; }
     public CloudAccountState? Account { get; private set; }
@@ -58,7 +61,8 @@ internal sealed class DesktopWorkspace
         // Never upload a previous user's local document into another account.
         var document = same ? saved!.Value.Document : DesktopSnapshotDocument.CreateEmpty();
         var account = result.State with { Revision = same ? saved!.Value.State.Revision : 0,
-            Dirty = same && saved!.Value.State.Dirty };
+            Dirty = same && saved!.Value.State.Dirty,
+            VerifiedDataFingerprint = same ? saved!.Value.State.VerifiedDataFingerprint : "" };
         if (!same && Document?.HasMeaningfulData == true) store.SaveSafetyCopy(Document);
         store.Save(account, document);
         accountGeneration++;
@@ -70,13 +74,45 @@ internal sealed class DesktopWorkspace
         await SyncAsync();
     }
 
-    public async Task SyncAsync()
+    public Task SyncAsync()
     {
-        if (Account == null || Document == null || !await syncGate.WaitAsync(0)) return;
+        lock (syncRequestLock) {
+            if (Account == null || Document == null) return Task.CompletedTask;
+            syncRequested = true;
+            return syncTask ??= DrainSyncAsync();
+        }
+    }
+
+    private async Task DrainSyncAsync()
+    {
+        // Yield before publishing the task, including with no UI context.
+        await Task.Yield();
+        try {
+            while (true) {
+                lock (syncRequestLock) syncRequested = false;
+                await syncGate.WaitAsync();
+                try { if (Account != null && Document != null) await SyncOnceAsync(); }
+                finally { syncGate.Release(); }
+                lock (syncRequestLock) {
+                    if (syncRequested && Account != null && Document != null) continue;
+                    syncTask = null;
+                    return;
+                }
+            }
+        } catch {
+            lock (syncRequestLock) syncTask = null;
+            throw;
+        }
+    }
+
+    private async Task SyncOnceAsync()
+    {
         var generation = accountGeneration;
         var version = editVersion;
         var account = Account;
-        var snapshot = DesktopSnapshotDocument.FromArchiveBytes(Document.ToArchiveBytes());
+        var local = Document;
+        if (account == null || local == null) return;
+        var snapshot = DesktopSnapshotDocument.FromArchiveBytes(local.ToArchiveBytes());
         try
         {
             account = await CloudAccountSync.EnsureAccessTokenAsync(account, default);
@@ -88,7 +124,7 @@ internal sealed class DesktopWorkspace
             if (version != editVersion)
             {
                 // A download based on an old local version needs conflict review.
-                var downloaded = !account.Dirty && result.State.Revision > account.Revision;
+                var downloaded = result.Document != snapshot;
                 Account = downloaded ? Account : result.State with { Dirty = true };
                 store.Save(Account!, Document!);
                 Notify(downloaded ? "云端和本机都有新修改，请在设置中处理同步冲突。" : "新修改已保存在本机，稍后继续同步。");
@@ -107,10 +143,9 @@ internal sealed class DesktopWorkspace
         {
             if (error is CloudSessionExpiredException && generation == accountGeneration && !SessionExpired) { SessionExpired = true; LoginRequired?.Invoke(); }
             if (generation == accountGeneration) Notify(error is CloudRevisionConflictException
-                ? "云端和本机都有新修改，请在设置中处理同步冲突。"
+                ? "本机与云端副本不同，未覆盖数据。打开设置→检查云端；较新内容在手机时，请在手机确认保留本机上传，然后电脑恢复云端。"
                 : "本地数据可继续使用；" + FriendlyError(error));
         }
-        finally { syncGate.Release(); }
     }
 
     public async Task UseCloudAsync()
@@ -210,7 +245,7 @@ internal sealed class DesktopWorkspace
             if (!keepLocal) {
                 var document = DesktopSnapshotDocument.FromArchiveBytes(review.Remote.Document.ToArchiveBytes());
                 document.PreserveLocalApiKeys(Document);
-                Account = Account with { Revision = revision, Dirty = false }; Document = document; editVersion++;
+                Account = Account with { Revision = revision, Dirty = false, VerifiedDataFingerprint = document.DataFingerprint() }; Document = document; editVersion++;
                 store.Save(Account, Document); Notify("已恢复云端副本；双方操作前副本已保留。");
             } else {
                 var version = editVersion; var generation = accountGeneration;

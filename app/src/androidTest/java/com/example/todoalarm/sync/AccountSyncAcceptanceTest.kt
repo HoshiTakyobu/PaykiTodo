@@ -15,6 +15,7 @@ import androidx.compose.ui.Modifier
 import androidx.test.core.app.ActivityScenario
 import androidx.test.platform.app.InstrumentationRegistry
 import com.example.todoalarm.TodoApplication
+import com.example.todoalarm.sync.RemoteSyncCoordinator.RemoteSyncResult
 import com.example.todoalarm.data.*
 import kotlinx.coroutines.*
 import org.json.JSONObject
@@ -214,22 +215,21 @@ class AccountSyncAcceptanceTest {
 
         control("""{"holdUpload":true}""")
         add("upload first")
-        until { state().optBoolean("entered") }
+        until { runCatching { state().optBoolean("entered") }.getOrDefault(false) }
         add("upload in flight")
         assertTrue(store.currentSettings().remoteSyncDirty)
         control("""{"holdUpload":false,"release":true}""")
-        until { store.currentSettings().remoteSyncRevision >= 3 }
+        until { !store.currentSettings().remoteSyncDirty && store.currentSettings().remoteSyncRevision >= 4 }
         assertTrue(app.repository.getAllTodos().any { it.title == "upload in flight" })
-        coordinator.syncNow()
         assertTrue(remote().tasks.any { it.title == "upload in flight" })
-        stage("S04", "Real delayed HTTP upload cannot lose a newer local write; subsequent upload includes it")
+        stage("S04", "Real delayed HTTP upload automatically drains a newer local write without a manual sync")
 
         val cloud = app.repository.exportSnapshot(store.currentSettings()).copy(tasks = listOf(TodoItem(id = 9001, title = "cloud replacement", dueAtMillis = Long.MAX_VALUE,
             reminderAtMillis = null, reminderEnabled = false, ringEnabled = false, vibrateEnabled = false)))
         publish(cloud)
         control("""{"holdDownload":true}""")
         val download = async(Dispatchers.IO) { coordinator.syncNow() }
-        until { state().optBoolean("entered") }
+        until { runCatching { state().optBoolean("entered") }.getOrDefault(false) }
         add("download in flight")
         control("""{"holdDownload":false,"release":true}""")
         download.await()
@@ -263,6 +263,37 @@ class AccountSyncAcceptanceTest {
         assertFalse(store.hasLocalAccountAccess())
         assertTrue(app.repository.getAllTodos().any { it.title == "relogin dirty write" })
         stage("S07", "Same-account reauthentication preserves revision and dirty under failed sync; explicit logout locks without deleting tasks")
+    }
+
+    @Test fun completionAutoUploadsAndMissedDirtyFlagIsDetectedAfterRestart() = runBlocking {
+        val task = add("completion propagation")
+        until { !store.currentSettings().remoteSyncDirty && store.currentSettings().remoteSyncRevision > 0 }
+        app.repository.setCompleted(task.id, true)
+        until { !store.currentSettings().remoteSyncDirty }
+        assertTrue(remote().tasks.single { it.id == task.id }.completed)
+        coordinator.stop()
+        val local = app.repository.exportSnapshot(store.currentSettings())
+        app.repository.importSnapshot(local.copy(tasks = local.tasks.map { if (it.id == task.id) it.copy(title = "unreported local edit") else it }), notify = false)
+        assertFalse(store.currentSettings().remoteSyncDirty)
+        assertTrue(coordinator.syncNow() is RemoteSyncResult.Uploaded)
+        assertEquals("unreported local edit", remote().tasks.single { it.id == task.id }.title)
+    }
+
+    @Test fun legacyDivergenceBlocksRepeatedAutomaticPollsUntilConfirmed() = runBlocking {
+        val task = add("old cloud content")
+        until { !store.currentSettings().remoteSyncDirty && store.currentSettings().remoteSyncRevision > 0 }
+        coordinator.stop()
+        val revision = store.currentSettings().remoteSyncRevision
+        val local = app.repository.exportSnapshot(store.currentSettings())
+        app.repository.importSnapshot(local.copy(tasks = local.tasks.map { if (it.id == task.id) it.copy(title = "new phone content") else it }), notify = false)
+        store.rememberRemoteDataFingerprint("")
+        repeat(3) { assertTrue(coordinator.syncNow() is RemoteSyncResult.Conflict) }
+        assertEquals(revision, store.currentSettings().remoteSyncRevision)
+        assertEquals("old cloud content", remote().tasks.single { it.id == task.id }.title)
+        assertEquals("new phone content", app.repository.getAllTodos().single { it.id == task.id }.title)
+        coordinator.resolveCloud(coordinator.inspectCloud(), true)
+        assertEquals("new phone content", remote().tasks.single { it.id == task.id }.title)
+        assertTrue(coordinator.syncNow() is RemoteSyncResult.UpToDate)
     }
 
     private suspend fun add(title: String) = app.repository.addTodo(TodoItem(title = title, dueAtMillis = Long.MAX_VALUE,

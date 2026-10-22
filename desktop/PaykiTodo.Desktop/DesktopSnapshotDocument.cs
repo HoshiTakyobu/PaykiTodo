@@ -94,6 +94,19 @@ internal sealed partial class DesktopSnapshotDocument
         return output.ToArray();
     }
 
+    internal string DataFingerprint()
+    {
+        var data = (JsonObject)root.DeepClone();
+        data.Remove("exportedAtMillis"); data.Remove("settings"); data.Remove("reminderChainLogs");
+        static JsonNode? Canonical(JsonNode? node) => node switch {
+            JsonObject obj => new JsonObject(obj.OrderBy(pair => pair.Key, StringComparer.Ordinal)
+                .Select(pair => new KeyValuePair<string, JsonNode?>(pair.Key, Canonical(pair.Value)))),
+            JsonArray array => new JsonArray(array.Select(Canonical).ToArray()),
+            _ => node?.DeepClone()
+        };
+        return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(Canonical(data)!.ToJsonString())));
+    }
+
     public void PreserveLocalApiKeys(DesktopSnapshotDocument local)
     {
         foreach (var provider in DesktopAi.Providers(this)) {

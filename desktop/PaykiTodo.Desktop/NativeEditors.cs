@@ -54,6 +54,7 @@ internal static class NativeEditors
         }
         fields.Children.Add(Text("提醒与显示", 16, bold: true));
         fields.Children.Add(reminder); fields.Children.Add(Text("提前提醒（分钟，可用逗号分隔，例如 30,15,5）", 12, Muted)); fields.Children.Add(offsets);
+        fields.Children.Add(Text("可以记录过去的事项。已过去的提醒不会补发，未来提醒照常生效。", 12, Muted));
         fields.Children.Add(Text("备注")); fields.Children.Add(notes); fields.Children.Add(Row(countdown, isEvent ? checkin : hidden));
         fields.Children.Add(Text("循环安排", 16, bold: true)); fields.Children.Add(recurrence); fields.Children.Add(weeklyRow);
         fields.Children.Add(Text("循环截止日期（可留空）", 12, Muted)); fields.Children.Add(until);
@@ -86,7 +87,7 @@ internal static class NativeEditors
     {
         var dialog = Dialog(owner, "快速清单", 960, 720); QuickChecklistDraft? result = null;
         var source = Input("", true); source.MinHeight = 330; source.Height = 380;
-        source.FontFamily = new System.Windows.Media.FontFamily("Consolas, Microsoft YaHei UI"); source.FontSize = 15;
+        source.FontFamily = InterfaceFont; source.FontSize = 15;
         System.Windows.Automation.AutomationProperties.SetName(source, "快速清单源码");
         var preview = new StackPanel(); var error = Text("", 13, B("#AF3A32"));
         var grid = new Grid(); grid.ColumnDefinitions.Add(new ColumnDefinition()); grid.ColumnDefinitions.Add(new ColumnDefinition());

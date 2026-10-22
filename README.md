@@ -22,7 +22,7 @@ PaykiTodo 是一个以 **强提醒、本地可控、日程与待办一体化** �
 
 | 项目 | 内容 |
 | --- | --- |
-| 当前源码版本 | `v1.16.22`（本地验证版，尚未发布） |
+| 当前源码版本 | `v1.16.23`（本地验证版，尚未发布） |
 | 最新 GitHub Release | `v1.15.18` |
 | Android 包名 | `com.paykitodo.app` |
 | 支持系统 | Android 8.0 及以上 / API 26+ |
@@ -30,6 +30,13 @@ PaykiTodo 是一个以 **强提醒、本地可控、日程与待办一体化** �
 | 开源协议 | MIT License |
 | 最新 Release 页面 | <https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.15.18> |
 | 最新 Release APK 下载 | <https://github.com/HoshiTakyobu/PaykiTodo/releases/download/v1.15.18/PaykiTodo-1.15.18-release.apk> |
+
+## 1.16.23 使用变化
+
+- Android 桌面名称为“派期待办”，长按图标可打开待办列表或新建编辑器；语音助手能否识别中文名称取决于厂商支持。
+- Android、原生 Windows、LAN 网页与内置 Wiki 使用随包提供的更纱黑体 UI；保留原有看板素材与问候字体。
+- 允许记录过去的待办、日程和提醒时间，历史提醒不补发；已经登记、尚未送达的近期 Android 提醒可在启动或重启后恢复。
+- 自动续传上传期间的新改动，并核对未标记的本地变化；旧副本不一致时保留双方数据等待确认。手机较新、电脑仍显示旧数据时，按[同步恢复说明](docs/current/SYNC_RECOVERY_1.16.23.md)处理，整份快照同步仍不提供逐项自动合并。
 
 ## 功能概览
 

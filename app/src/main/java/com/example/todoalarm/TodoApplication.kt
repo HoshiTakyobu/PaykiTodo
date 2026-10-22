@@ -53,8 +53,8 @@ class TodoApplication : Application() {
         applicationScope.launch {
             try {
                 repository.ensureDefaultGroups()
-                if (!skipReminderRecovery) {
-                    repository.futureReminderItems(System.currentTimeMillis()).forEach(alarmScheduler::schedule)
+                if (!skipReminderRecovery && settingsStore.hasLocalAccountAccess()) {
+                    repository.getAllTodos().forEach(alarmScheduler::recover)
                     val replenishedRecurringItems = repository.ensureRecurringInstancesAhead()
                     val repairedPlanningItems = repository.ensurePlanningNodeLinkedItems(
                         createEventEndTodo = settingsStore.currentSettings().planningEventEndTodoEnabled
@@ -67,9 +67,6 @@ class TodoApplication : Application() {
                             repository.updateTodo(item.copy(reminderEnabled = false))
                             alarmScheduler.cancel(item.id)
                         }
-                    }
-                    repository.activeEventsForOngoingNotifications().forEach { event ->
-                        alarmScheduler.schedule(event)
                     }
                 }
                 LegacyAiReportMigration.migrateIfNeeded(this@TodoApplication)

@@ -1,6 +1,18 @@
 # Session Handoff
 
-## Current 2026-10-19: 1.16.22 Windows UI / 不干扰测试已完成
+## Current 2026-10-22: 1.16.23 七项修复与验收已完成
+
+当前 Android `1.16.23 / 388`，Windows `1.16.23.0`，Room31。上一完成基线为 `main / 8bbb136`；旧会话中断时源码与制品已是 1.16.23，而本文件仍为 1.16.22。本次重新核实源码、测试结果、哈希、签名及原数据恢复后完成文档和中文本地提交。下一轮先核实 git HEAD/status，不沿用下面历史版本或重做已完成的产品构建。
+
+- 需求和验收：[REQUEST_2026-10-22.md](REQUEST_2026-10-22.md)、[VALIDATION_1.16.23.md](VALIDATION_1.16.23.md)。自动同步继续处理传输期间写入，内容指纹补查遗漏 dirty 标记，旧副本差异持续等待确认；历史提醒不补响，已登记近期提醒恢复且保留去重。三端/Wiki 内置 Sarasa 字体，Windows 分组/重复入口修复，Android 中文名称与待办深链接/快捷方式。
+- 当前制品：`app/build/outputs/apk/debug/PaykiTodo-1.16.23-debug.apk`、`app/build/outputs/apk/release/PaykiTodo-1.16.23-release.apk`、`desktop/dist/PaykiTodo.exe`。Windows 要保留完整 dist；四个制品哈希见 PROJECT_STATUS/VALIDATION。制品均在原会话构建，本次收尾未重建产品。
+- Android：190 单测、Lint 0 errors/131 warnings；设备共32个不同用例经针对失败项复验全部通过，不是单次全绿。保留最初生命周期/网络探针/限流/标题断言失败记录。沿用 `emulator-5554 / Pixel_8`、Android14，安装本轮 Debug/AndroidTest，验证提醒恢复、过期离线、历史输入、真实本地服务同步/冲突及账号门禁深链接。
+- Windows：`tools/tests/Invoke-DesktopAcceptance.ps1 -PackagedExe .\desktop\dist\PaykiTodo.exe -Evidence G:\Workspace\Scratch\PaykiTodo\acceptance-1.16.23\final-4` 已通过22项回归及1条14阶段UIA流程。结果已读取真实成品版本。继续用独立桌面/资料目录，不接管用户鼠标、键盘、剪贴板。LAN 字体/断连等回归也已通过。
+- 模拟器原备份：`G:/Workspace/Backups/PaykiTodo/emulator-before-1.16.23-20261022-151201/private-data.tar`。原会话已恢复，本次17:28只读复核531/531原文件匹配；26个额外运行文件保留。证据：`G:/Workspace/Scratch/PaykiTodo/acceptance-1.16.23/{emulator-restoration,resumed-data-verification}.json`。设备仍运行，应用/测试包在最终比较时停止；ADB转发为空、临时服务已停止。不要为了整理重置或删除数据。
+- 同步恢复说明：[SYNC_RECOVERY_1.16.23.md](SYNC_RECOVERY_1.16.23.md)。未替用户选择真实冲突副本。Windows退出后不继续同步/提醒，Android进程被系统停止后不保证15秒传播。OEM锁屏/长待机/振动/语音识别、原生Windows完整真实账号验证及既有农历/OCR/多时段差异仍待后续验证。
+- 本轮不推送、发布或修改生产服务器；公开 Release 仍为v1.15.18。
+
+## Historical 2026-10-19: 1.16.22 Windows UI / 不干扰测试已完成
 
 从 main / 429f6da 完成 1.16.22 / 387、Windows1.16.22.0，Room31 不变。原生 WPF 字体、导航、控件、浅深色层次、原品牌图标、编辑/确认/提醒/账号/AI 弹窗已统一。实际画面发现并修复日期时间裁切、窄窗口规划操作越界。保留退出锁定、过期离线、revision/dirty 与传输期间新写入保护。最新制品和验证见 [VALIDATION_1.16.22.md](VALIDATION_1.16.22.md)，不要将下方历史1.16.21制品当作最新。
 

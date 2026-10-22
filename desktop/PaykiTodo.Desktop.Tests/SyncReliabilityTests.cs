@@ -31,16 +31,52 @@ public sealed class SyncReliabilityTests
         await server.Entered.Task.WaitAsync(TimeSpan.FromSeconds(10));
         workspace.Edit(document => document.SaveItem(NativeWorkspaceTests.NewItem(false, "上传途中修改")));
         server.Release.TrySetResult();
-        await Until(() => workspace.Account?.Revision == 1);
-        Assert.True(workspace.Account!.Dirty);
+        await Until(() => workspace.Account?.Revision == 2 && !workspace.Account.Dirty);
         Assert.Equal(2, store.Load()!.Value.Document.Items.Count);
-        Assert.Single(DesktopSnapshotDocument.FromArchiveBytes(SnapshotCrypto.Decrypt(server.Payload!, "fixture-secret")).Items);
-        await workspace.SyncAsync();
-        Assert.False(workspace.Account.Dirty);
+        Assert.False(workspace.Account!.Dirty);
         Assert.Equal(2, DesktopSnapshotDocument.FromArchiveBytes(SnapshotCrypto.Decrypt(server.Payload!, "fixture-secret")).Items.Count);
         var active = workspace.Document;
         await workspace.SyncAsync();
         Assert.Same(active, workspace.Document);
+    }
+
+    [Fact]
+    public async Task VerifiedCopyDetectsMissedDirtyFlagAndPropagatesCompletionToAnotherClient()
+    {
+        using var server = new SnapshotServer();
+        var firstStore = Store(server.Url);
+        var first = new DesktopWorkspace(firstStore);
+        first.Edit(document => document.SaveItem(NativeWorkspaceTests.NewItem(false, "跨端完成")));
+        await first.SyncAsync();
+        var second = new DesktopWorkspace(Store(server.Url));
+        await second.SyncAsync();
+        var saved = firstStore.Load()!.Value;
+        saved.Document.Complete(saved.Document.Items.Single().Id);
+        firstStore.Save(saved.State with { Dirty = false }, saved.Document);
+        var reopened = new DesktopWorkspace(firstStore);
+        await reopened.SyncAsync();
+        await second.SyncAsync();
+        Assert.True(second.Document!.Items.Single().Completed);
+        Assert.False(reopened.Account!.Dirty);
+        Assert.Equal(reopened.Account.Revision, second.Account!.Revision);
+    }
+
+    [Fact]
+    public async Task LegacyCleanButDifferentCopiesRequireResolutionAcrossRepeatedPolls()
+    {
+        using var server = new SnapshotServer();
+        var cloud = DesktopSnapshotDocument.CreateEmpty(); cloud.SaveItem(NativeWorkspaceTests.NewItem(false, "旧云端"));
+        server.Payload = SnapshotCrypto.Encrypt(cloud.ToArchiveBytes(), "fixture-secret"); server.Revision = 4;
+        var store = Store(server.Url); var saved = store.Load()!.Value;
+        saved.Document.SaveItem(NativeWorkspaceTests.NewItem(false, "新本机"));
+        store.Save(saved.State with { Revision = 4, Dirty = false }, saved.Document);
+        var workspace = new DesktopWorkspace(store);
+        await workspace.SyncAsync(); await workspace.SyncAsync();
+        Assert.Equal(4, server.Revision);
+        Assert.Equal("新本机", workspace.Document!.Items.Single().Title);
+        Assert.Contains("未覆盖", workspace.Status);
+        await workspace.ResolveCloudAsync(await workspace.InspectCloudAsync(), true);
+        Assert.Equal("新本机", DesktopSnapshotDocument.FromArchiveBytes(SnapshotCrypto.Decrypt(server.Payload!, "fixture-secret")).Items.Single().Title);
     }
 
     [Fact]

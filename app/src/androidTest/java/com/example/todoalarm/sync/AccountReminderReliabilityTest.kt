@@ -122,6 +122,57 @@ class AccountReminderReliabilityTest {
         screenshot("android-settings-dark.png")
     }
 
+    @Test fun pastEntryIsSavedButNeverDispatchedByRecoveryOrForegroundPolling() = runBlocking {
+        val at = System.currentTimeMillis() - 30_000
+        val task = app.repository.addTodo(TodoItem(title = "历史事项不补响验收", dueAtMillis = at,
+            reminderAtMillis = at, reminderEnabled = true, ringEnabled = false, vibrateEnabled = false))
+        fixtures += task
+        assertNull(app.alarmScheduler.schedule(task))
+        assertNull(app.alarmScheduler.recover(task))
+        assertFalse(app.alarmScheduler.isReminderScheduled(task.id, at))
+        activity = ActivityScenario.launch(Intent(app, MainActivity::class.java).putExtra(MainActivity.EXTRA_OPEN_TASKS, true))
+        Thread.sleep(2500)
+        assertNotNull(app.repository.getAllTodos().firstOrNull { it.id == task.id })
+        assertFalse(ReminderDispatchTracker.wasDispatched(app, task.id, at))
+        assertFalse(app.getSystemService(NotificationManager::class.java).activeNotifications.any { it.id == ReminderNotifier.notificationId(task.id) })
+    }
+
+    @Test fun previouslyRegisteredRecentAlarmRecoversOnceThroughAlarmManager() = runBlocking {
+        val at = System.currentTimeMillis() - 1000
+        val task = app.repository.addTodo(TodoItem(title = "已登记提醒恢复验收", dueAtMillis = at + 60_000,
+            reminderAtMillis = at, reminderEnabled = true, ringEnabled = false, vibrateEnabled = false))
+        fixtures += task
+        app.getSharedPreferences("paykitodo_scheduled_reminders", Context.MODE_PRIVATE).edit()
+            .putStringSet("scheduled_${task.id}", setOf(at.toString())).commit()
+        assertNull(app.alarmScheduler.recover(task))
+        val manager = app.getSystemService(NotificationManager::class.java)
+        val deadline = System.currentTimeMillis() + 25_000
+        while (manager.activeNotifications.none { it.id == ReminderNotifier.notificationId(task.id) } && System.currentTimeMillis() < deadline) Thread.sleep(100)
+        assertTrue(manager.activeNotifications.any { it.id == ReminderNotifier.notificationId(task.id) })
+        assertTrue(ReminderDispatchTracker.wasDispatched(app, task.id, at))
+        app.alarmScheduler.recover(task)
+        assertFalse(app.alarmScheduler.isReminderScheduled(task.id, at))
+        assertFalse(ReminderDispatchTracker.claim(app, task.id, at))
+    }
+
+    @Test fun chineseLauncherShortcutsAndDeepLinkOpenTaskEditorBehindAccountGate() {
+        assertEquals("派期待办", app.packageManager.getApplicationLabel(app.applicationInfo).toString())
+        val shortcuts = app.getSystemService(android.content.pm.ShortcutManager::class.java).manifestShortcuts
+        assertTrue(shortcuts.any { it.id == "open_tasks" })
+        assertTrue(shortcuts.any { it.id == "new_task" })
+        val intent = Intent(Intent.ACTION_VIEW, android.net.Uri.parse("paykitodo://tasks/new")).setPackage(app.packageName)
+        val resolved = app.packageManager.resolveActivity(intent, 0)!!
+        assertEquals(MainActivity::class.java.name, resolved.activityInfo.name)
+        // Exercise the implicit URI exactly as an external launcher invokes it.
+        activity = ActivityScenario.launch(Intent(intent))
+        compose.onNodeWithText("新增任务").assertIsDisplayed()
+        screenshot("android-new-task-font.png")
+        activity?.close()
+        store.clearRemoteAccount()
+        activity = ActivityScenario.launch(Intent(intent))
+        compose.onNodeWithText("新增任务").assertDoesNotExist()
+    }
+
     private fun screenshot(name: String) {
         val folder = File(app.getExternalFilesDir(null), "ui-acceptance").apply { mkdirs() }
         inst.uiAutomation.takeScreenshot()?.let { bitmap ->

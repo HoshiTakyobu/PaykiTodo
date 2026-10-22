@@ -12,6 +12,10 @@ The released `1.15.18 / versionCode 360` round restores independent full-screen 
 
 ## Current Development Round
 
+The local `1.16.23 / versionCode 388` round completes automatic sync continuation and missed-change detection, persistent protection for divergent legacy copies, recent registered-reminder recovery without historical replay, bundled Chinese UI fonts, named Windows group selectors, removal of duplicate account navigation, and Chinese Android launcher/task entry points. The interrupted session was resumed against repository state; current artifacts and original emulator files were rechecked before documentation and local commit. Verification: 190 Android units, 32 distinct device tests passing after targeted retries, 22 Windows regressions plus one 14-stage isolated UIA flow, LAN browser/font checks and Release signature. See [VALIDATION_1.16.23.md](VALIDATION_1.16.23.md) for failed retries, restoration and scope. All 531 original emulator files match backup; 26 additional runtime files are retained. No push, publication or production changes; OEM voice/reminder behavior and existing Windows parity limits remain.
+
+### Previous 1.16.22 implementation
+
 The local `1.16.22 / versionCode 387` round completes native Windows typography, branded dialogs/icons, layout and non-interfering UIA acceptance on an isolated desktop. Real rendering checks caught clipped date/time fields and inaccessible narrow Planning Desk actions; both were fixed and regression-guarded. Built new APKs and self-contained Windows output;19 Windows regressions plus1 workflow/14 stages,186 Android units/Lint/signature and existing-Pixel_8 upgrade/startup passed. See VALIDATION_1.16.22.md. No push/publication/production changes. Desktop parity and physical/OEM limits remain explicit.
 
 ### Previous 1.16.21 implementation

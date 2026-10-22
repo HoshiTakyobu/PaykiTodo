@@ -529,6 +529,7 @@ class ReminderForegroundService : Service() {
 
         fun start(context: android.content.Context, todoId: Long, triggeredAtMillis: Long? = null) {
             if (!(context.applicationContext as TodoApplication).settingsStore.hasLocalAccountAccess()) return
+            if (triggeredAtMillis != null && !AlarmScheduler(context).isReminderScheduled(todoId, triggeredAtMillis)) return
             if (triggeredAtMillis != null && !ReminderDispatchTracker.claim(context, todoId, triggeredAtMillis)) {
                 ReminderChainLogger.log(
                     context = context,

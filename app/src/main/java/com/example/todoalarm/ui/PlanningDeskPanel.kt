@@ -115,7 +115,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
-import androidx.compose.ui.text.font.FontFamily
+import com.example.todoalarm.ui.theme.PaykiInterfaceFontFamily
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.TextRange
@@ -543,7 +543,7 @@ internal fun PlanningDeskPanel(
                         modifier = Modifier
                             .fillMaxWidth()
                             .weight(1f),
-                        textStyle = MaterialTheme.typography.bodyLarge.copy(fontFamily = FontFamily.Default),
+                        textStyle = MaterialTheme.typography.bodyLarge.copy(fontFamily = PaykiInterfaceFontFamily),
                         shape = RoundedCornerShape(18.dp),
                         placeholder = {
                             Text(
@@ -662,7 +662,7 @@ internal fun PlanningDeskPanel(
                         value = markdownImportText,
                         onValueChange = { markdownImportText = it },
                         modifier = Modifier.fillMaxWidth().height(260.dp),
-                        textStyle = MaterialTheme.typography.bodyMedium.copy(fontFamily = FontFamily.Monospace),
+                        textStyle = MaterialTheme.typography.bodyMedium.copy(fontFamily = PaykiInterfaceFontFamily),
                         placeholder = { Text("- [ ] 入党资料要写完\n  - [ ] 填写个人信息表\n- [ ] 数据库复习 ddl 5.28 23:59") }
                     )
                 }
@@ -2432,7 +2432,7 @@ private fun PlanningHelpSheet(onDismiss: () -> Unit) {
                                 text = example,
                                 modifier = Modifier.padding(14.dp),
                                 style = MaterialTheme.typography.bodyMedium,
-                                fontFamily = FontFamily.Monospace,
+                                fontFamily = PaykiInterfaceFontFamily,
                                 color = MaterialTheme.colorScheme.onSurface
                             )
                         }

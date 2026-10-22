@@ -13,6 +13,25 @@ namespace PaykiTodo.Desktop.Tests;
 public sealed class NativeWorkspaceTests
 {
     [Fact]
+    public void NewHistoricalRemindersNeverFireAndScheduledRemindersDoNotRepeat()
+    {
+        var document = DesktopSnapshotDocument.CreateEmpty();
+        var now = Millis(DateTime.Now);
+        var schedule = new DesktopReminderSchedule();
+        document.SaveItem(NewItem(false, "刚录入的历史事项") with { DueAtMillis = now - 500, ReminderEnabled = true, ReminderOffsets = new[] { 0 } });
+        var future = document.SaveItem(NewItem(false, "未来提醒") with { DueAtMillis = now + 500, ReminderEnabled = true, ReminderOffsets = new[] { 0 } });
+        schedule.Update(document, now);
+        Assert.Empty(schedule.TakeDue(now - 2000, now));
+        Assert.Equal(future, Assert.Single(schedule.TakeDue(now, now + 600)).ItemId);
+        schedule.Update(document, now + 700);
+        Assert.Empty(schedule.TakeDue(now, now + 1000));
+        var changed = document.SaveItem(NewItem(false, "已改期") with { DueAtMillis = now + 2000, ReminderEnabled = true, ReminderOffsets = new[] { 0 } });
+        schedule.Update(document, now + 1000);
+        document.SaveItem(document.EditFor(changed)! with { DueAtMillis = now + 1200 }, changed);
+        schedule.Update(document, now + 1500);
+        Assert.Empty(schedule.TakeDue(now + 1000, now + 2500));
+    }
+    [Fact]
     public void ReminderOffsetsUseEventStartAndOnlyLastOffsetAllowsSnooze()
     {
         var document = DesktopSnapshotDocument.CreateEmpty();
@@ -105,11 +124,23 @@ public sealed class NativeWorkspaceTests
                 Directory.CreateDirectory(shotFolder);
                 Screenshot(window, Path.Combine(shotFolder, "windows-board.png"));
                 Assert.Contains(Descendants<TextBlock>(window), text => text.Text == "论文实验结果整理");
+                var typeface = new Typeface(NativeUi.InterfaceFont, FontStyles.Normal, FontWeights.Normal, FontStretches.Normal);
+                Assert.True(typeface.TryGetGlyphTypeface(out var glyphs), "Bundled font must resolve without an installed Sarasa font");
+                Assert.Contains("sarasa_ui_regular.ttf", glyphs.FontUri.ToString().ToLowerInvariant());
+                Assert.DoesNotContain(Descendants<TextBlock>(window), text => text.Text == "账号与同步");
                 Assert.DoesNotContain(Descendants<System.Windows.DependencyObject>(window), control => control.GetType().Name.Contains("WebView"));
                 foreach (var page in new[] { "待办", "日历", "规划台", "倒数日", "AI 报告", "设置" }) {
                     var button = Descendants<Button>(window).First(button => System.Windows.Automation.AutomationProperties.GetAutomationId(button) == "Navigate." + page);
                     button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
                     window.UpdateLayout();
+                    if (page == "待办") {
+                        var group = Descendants<ComboBox>(window).Single(control => control.ItemsSource is IEnumerable<DesktopGroup>);
+                        group.ApplyTemplate(); group.UpdateLayout();
+                        var labels = Descendants<TextBlock>(group).Select(text => text.Text).ToArray();
+                        Assert.Contains("全部分组", labels);
+                        Assert.DoesNotContain(labels, label => label.Contains("DesktopGroup"));
+                        Screenshot(window, Path.Combine(shotFolder, "windows-tasks.png"));
+                    }
                     if (page == "日历") Screenshot(window, Path.Combine(shotFolder, "windows-calendar.png"));
                 }
                 var toggle = Descendants<ComboBox>(window).First(control => System.Windows.Automation.AutomationProperties.GetName(control) == "界面主题");

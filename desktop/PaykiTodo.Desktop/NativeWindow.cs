@@ -22,7 +22,7 @@ internal sealed partial class NativeWindow : Window
     private TextBlock title = Text("每日看板", 25, bold: true);
     private TextBlock status = Text("", 12, Muted);
     private TextBox search = Input();
-    private readonly DispatcherTimer timer = new() { Interval = TimeSpan.FromSeconds(30) };
+    private readonly DispatcherTimer timer = new() { Interval = TimeSpan.FromSeconds(15) };
     private readonly Dictionary<string, Button> navigationButtons = new();
     private string page = "每日看板";
     private DateTime selectedDay = DateTime.Today;
@@ -65,8 +65,6 @@ internal sealed partial class NativeWindow : Window
         var rail = new DockPanel { Background = B("#F8FAF9"), Margin = new Thickness(0) };
         var brand = Column(BrandHeading("PaykiTodo"), Text("把今天，安排得刚刚好", 12, Muted));
         brand.Margin = new Thickness(18, 24, 12, 24); DockPanel.SetDock(brand, Dock.Top); rail.Children.Add(brand);
-        var account = NavigationAction("\uE77B", "账号与同步", () => Navigate("设置"));
-        account.Margin = new Thickness(16); DockPanel.SetDock(account, Dock.Bottom); rail.Children.Add(account);
         foreach (var (icon, label) in new[] { ("\uE80F", "每日看板"), ("\uE73E", "待办"), ("\uE787", "日历"), ("\uE70B", "规划台"), ("\uE823", "倒数日"), ("\uE9D9", "AI 报告"), ("\uE713", "设置") })
         {
             var button = NavigationAction(icon, label, () => Navigate(label));

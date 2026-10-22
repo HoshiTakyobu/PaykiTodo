@@ -1,5 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
 <shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <shortcut android:shortcutId="open_tasks" android:enabled="true"
+        android:icon="@mipmap/ic_launcher"
+        android:shortcutShortLabel="@string/shortcut_tasks_label"
+        android:shortcutLongLabel="@string/shortcut_tasks_long_label">
+        <intent android:action="android.intent.action.VIEW" android:data="paykitodo://tasks"
+            android:targetPackage="com.paykitodo.app" android:targetClass="com.example.todoalarm.ui.MainActivity" />
+    </shortcut>
+    <shortcut android:shortcutId="new_task" android:enabled="true"
+        android:icon="@mipmap/ic_launcher"
+        android:shortcutShortLabel="@string/shortcut_new_task_label"
+        android:shortcutLongLabel="@string/shortcut_new_task_long_label">
+        <intent android:action="android.intent.action.VIEW" android:data="paykitodo://tasks/new"
+            android:targetPackage="com.paykitodo.app" android:targetClass="com.example.todoalarm.ui.MainActivity" />
+    </shortcut>
     <shortcut
         android:shortcutId="capture_camera"
         android:enabled="true"

@@ -42,7 +42,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.font.FontFamily
+import com.example.todoalarm.ui.theme.PaykiInterfaceFontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -157,7 +157,7 @@ internal fun CalendarBatchImportDialog(
                         Text(
                             text = "例：2026-04-27: 10:20-11:55, 辅导员助理值班, @MB-B1-412; 12:30-14:00, 午休",
                             style = MaterialTheme.typography.bodySmall,
-                            fontFamily = FontFamily.Monospace,
+                            fontFamily = PaykiInterfaceFontFamily,
                             color = MaterialTheme.colorScheme.onSurface
                         )
                     }
@@ -441,7 +441,7 @@ private fun BatchImportPreviewCard(preview: CalendarBatchImportPreviewItem) {
             Text(
                 text = preview.source,
                 style = MaterialTheme.typography.bodySmall,
-                fontFamily = FontFamily.Monospace,
+                fontFamily = PaykiInterfaceFontFamily,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
@@ -607,7 +607,7 @@ private fun HelpSectionCard(
                         text = it,
                         modifier = Modifier.padding(12.dp),
                         style = MaterialTheme.typography.bodySmall,
-                        fontFamily = FontFamily.Monospace,
+                        fontFamily = PaykiInterfaceFontFamily,
                         color = MaterialTheme.colorScheme.onSurface
                     )
                 }

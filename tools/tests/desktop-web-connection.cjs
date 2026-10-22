@@ -8,6 +8,8 @@ const assert = require('node:assert/strict');
   const browser = await chromium.launch({ channel: 'msedge', headless: true });
   const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
   const root = path.resolve(__dirname, '../../app/src/main/assets/desktop-web');
+  const versionName = readFileSync(path.resolve(__dirname, '../../app/build.gradle.kts'), 'utf8')
+    .match(/val paykiVersionName = "([^"]+)"/)[1];
   let offline = false;
   let pendingResponse;
   let checklistCreated;
@@ -15,6 +17,10 @@ const assert = require('node:assert/strict');
     quickChecklistGroups: [], todos: [], events: [], announcements: [], todayBoard: null };
   await page.route('http://payki.test/**', async route => {
     const url = new URL(route.request().url());
+    if (url.pathname.startsWith('/fonts/')) {
+      const name = url.pathname.includes('semibold') ? 'sarasa_ui_semibold.ttf' : 'sarasa_ui_regular.ttf';
+      return route.fulfill({ body: readFileSync(path.resolve(root, '../../res/font', name)), contentType: 'font/ttf' });
+    }
     if (url.pathname.startsWith('/api/')) {
       if (offline) return route.abort('connectionrefused');
       if (url.pathname === '/api/race') { pendingResponse = route; return; }
@@ -27,7 +33,7 @@ const assert = require('node:assert/strict');
     try {
       const filename = url.pathname === '/' ? 'index.html' : url.pathname.slice(1);
       const buffer = readFileSync(path.join(root, filename));
-      return route.fulfill({ body: filename === 'index.html' ? buffer.toString().replaceAll('__PAYKI_VERSION__', '1.16.20').replaceAll('__PAYKI_ICON_DATA__', 'data:image/png;base64,') : buffer,
+      return route.fulfill({ body: filename === 'index.html' ? buffer.toString().replaceAll('__PAYKI_VERSION__', versionName).replaceAll('__PAYKI_ICON_DATA__', 'data:image/png;base64,') : buffer,
         contentType: filename.endsWith('.js') ? 'application/javascript' : filename.endsWith('.css') ? 'text/css' : 'text/html' });
     } catch { return route.fulfill({ status: 404, body: '' }); }
   });
@@ -38,6 +44,9 @@ const assert = require('node:assert/strict');
       await page.locator('.shell').waitFor({ state: 'visible' });
     }
     await connect();
+    await page.evaluate(async () => { await document.fonts.load('400 16px "Payki UI"', '待办日程'); await document.fonts.load('600 16px "Payki UI"', '待办日程'); });
+    assert.ok(await page.evaluate(() => [...document.fonts].filter(font => font.family === 'Payki UI').every(font => font.status === 'loaded')));
+    assert.match(await page.locator('body').evaluate(node => getComputedStyle(node).fontFamily), /Payki UI/);
     await page.evaluate(() => {
       openQuickChecklistEditor();
       els.quickChecklistInput.value = '- 想到就写\n-- 子任务\n--# 说明';

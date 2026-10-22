@@ -21,7 +21,7 @@ namespace PaykiTodo.Desktop;
 internal static class NativeUi
 {
     private const string StyleKey = "PaykiTodo.ControlStyles";
-    public static FontFamily InterfaceFont { get; } = new("Microsoft YaHei UI, Segoe UI");
+    public static FontFamily InterfaceFont { get; } = new(new Uri("pack://application:,,,/PaykiTodo;component/"), "./Assets/#Sarasa UI SC");
     private static readonly Lazy<ImageSource> IconSource = new(() => {
         using var stream = System.Windows.Application.GetResourceStream(new Uri("pack://application:,,,/PaykiTodo;component/Assets/PaykiTodo.ico")).Stream;
         var decoder = BitmapDecoder.Create(stream, BitmapCreateOptions.PreservePixelFormat, BitmapCacheOption.OnLoad);
@@ -44,8 +44,8 @@ internal static class NativeUi
     public static TextBlock Text(string value, double size = 14, Brush? color = null, bool bold = false) => new()
     {
         Text = value, FontFamily = InterfaceFont, FontSize = size, Foreground = color ?? Ink, TextWrapping = TextWrapping.Wrap,
-        LineHeight = Math.Ceiling(size * 1.5), LineStackingStrategy = LineStackingStrategy.BlockLineHeight,
-        FontWeight = bold ? FontWeights.SemiBold : FontWeights.Normal, Margin = new Thickness(0, 2, 0, 4)
+        LineHeight = Math.Ceiling(size * 1.4), LineStackingStrategy = LineStackingStrategy.BlockLineHeight,
+        FontWeight = bold ? FontWeights.SemiBold : FontWeights.Normal, Margin = new Thickness(0, 1, 0, 3)
     };
     public static StackPanel Column(params UIElement[] elements)
     {
@@ -183,7 +183,7 @@ internal static class NativeUi
                         <Border Background="{Binding Background, RelativeSource={RelativeSource AncestorType=ComboBox}}" BorderBrush="{Binding BorderBrush, RelativeSource={RelativeSource AncestorType=ComboBox}}" BorderThickness="1" CornerRadius="6"><TextBlock Text="⌄" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,12,0" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ComboBox}}"/></Border>
                       </ControlTemplate></ToggleButton.Template>
                     </ToggleButton>
-                    <ContentPresenter x:Name="selection" Margin="10,8,32,8" VerticalAlignment="Center" IsHitTestVisible="False" Content="{TemplateBinding SelectionBoxItem}" ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}"/>
+                    <ContentPresenter x:Name="selection" Margin="10,8,32,8" VerticalAlignment="Center" IsHitTestVisible="False" Content="{TemplateBinding SelectionBoxItem}" ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}" ContentTemplateSelector="{TemplateBinding ItemTemplateSelector}" ContentStringFormat="{TemplateBinding SelectionBoxItemStringFormat}"/>
                     <TextBox x:Name="PART_EditableTextBox" Visibility="Collapsed" Margin="10,6,32,6" Background="{TemplateBinding Background}" Foreground="{TemplateBinding Foreground}" BorderThickness="0"/>
                     <Popup x:Name="PART_Popup" Placement="Bottom" IsOpen="{TemplateBinding IsDropDownOpen}" AllowsTransparency="True" Focusable="False">
                       <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="1" CornerRadius="6" MinWidth="{Binding ActualWidth, RelativeSource={RelativeSource TemplatedParent}}" MaxHeight="360"><ScrollViewer><ItemsPresenter KeyboardNavigation.DirectionalNavigation="Contained"/></ScrollViewer></Border>
@@ -212,7 +212,7 @@ internal static class NativeUi
                   <ControlTemplate.Triggers><Trigger Property="IsKeyboardFocusWithin" Value="True"><Setter TargetName="edge" Property="BorderBrush" Value="#609C81"/></Trigger><Trigger Property="IsEnabled" Value="False"><Setter Property="Opacity" Value="0.5"/></Trigger></ControlTemplate.Triggers>
                 </ControlTemplate></Setter.Value></Setter>
               </Style>
-              <Style TargetType="ComboBoxItem"><Setter Property="Padding" Value="10,8"/><Setter Property="Template"><Setter.Value><ControlTemplate TargetType="ComboBoxItem"><Border x:Name="row" Padding="{TemplateBinding Padding}" Background="{TemplateBinding Background}"><ContentPresenter/></Border><ControlTemplate.Triggers><Trigger Property="IsHighlighted" Value="True"><Setter TargetName="row" Property="Opacity" Value="0.65"/></Trigger><Trigger Property="IsSelected" Value="True"><Setter Property="FontWeight" Value="SemiBold"/></Trigger></ControlTemplate.Triggers></ControlTemplate></Setter.Value></Setter></Style>
+              <Style TargetType="ComboBoxItem"><Setter Property="Padding" Value="10,8"/><Setter Property="Template"><Setter.Value><ControlTemplate TargetType="ComboBoxItem"><Border x:Name="row" Padding="{TemplateBinding Padding}" Background="{TemplateBinding Background}"><ContentPresenter Content="{TemplateBinding Content}" ContentTemplate="{TemplateBinding ContentTemplate}" ContentTemplateSelector="{TemplateBinding ContentTemplateSelector}" ContentStringFormat="{TemplateBinding ContentStringFormat}"/></Border><ControlTemplate.Triggers><Trigger Property="IsHighlighted" Value="True"><Setter TargetName="row" Property="Opacity" Value="0.65"/></Trigger><Trigger Property="IsSelected" Value="True"><Setter Property="FontWeight" Value="SemiBold"/></Trigger></ControlTemplate.Triggers></ControlTemplate></Setter.Value></Setter></Style>
             </ResourceDictionary>
             """);
         foreach (var type in new[] { typeof(TextBox), typeof(CheckBox), typeof(ComboBox), typeof(DatePicker), typeof(PasswordBox), typeof(ComboBoxItem) }) {

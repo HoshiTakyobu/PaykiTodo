@@ -196,11 +196,6 @@ internal fun CalendarEventEditorDialog(
     val courseModeActive = initialEvent == null && courseMultiSlotEnabled
     val courseSlotsValid = courseSlots.isNotEmpty() && courseSlots.all { it.endTime.isAfter(it.startTime) }
     val reminderAnchor = if (allDay) LocalDateTime.of(startAt.toLocalDate(), LocalTime.of(9, 0)) else startAt
-    val newEventReminderRequiresFuture = shouldRequireFutureCalendarReminder(
-        isNewEvent = initialEvent == null,
-        reminderAnchor = reminderAnchor,
-        now = now
-    )
     val reminderValidation = remember(reminderInput, reminderAnchor, reminderEnabled, initialEvent?.id) {
         if (!reminderEnabled || reminderInput.isBlank()) {
             ReminderInputValidation(isValid = true)
@@ -209,7 +204,7 @@ internal fun CalendarEventEditorDialog(
                 raw = reminderInput,
                 anchor = reminderAnchor,
                 now = now,
-                requireFuture = newEventReminderRequiresFuture
+                requireFuture = false
             )
         }
     }
@@ -227,7 +222,7 @@ internal fun CalendarEventEditorDialog(
                 raw = checkInReminderInput,
                 anchor = reminderAnchor,
                 now = now,
-                requireFuture = newEventReminderRequiresFuture
+                requireFuture = false
             )
         }
     }
@@ -244,7 +239,7 @@ internal fun CalendarEventEditorDialog(
             baseDate = startAt.toLocalDate(),
             courseSlots = courseSlots,
             reminderEnabled = reminderEnabled && courseModeActive,
-            requireFuture = newEventReminderRequiresFuture
+            requireFuture = false
         )
     }
     val courseCheckInReminderValidation = remember(
@@ -261,7 +256,7 @@ internal fun CalendarEventEditorDialog(
             baseDate = startAt.toLocalDate(),
             courseSlots = courseSlots,
             reminderEnabled = reminderEnabled && checkInEnabled && courseModeActive,
-            requireFuture = newEventReminderRequiresFuture
+            requireFuture = false
         )
     }
     val effectiveReminderValidation = if (courseModeActive) courseReminderValidation else reminderValidation
@@ -722,7 +717,7 @@ internal fun CalendarEventEditorDialog(
                         }
                         if (hasPastReminderTrigger) {
                             Text(
-                                text = "提醒设置会保留；已经过去的提醒不会补发，后续仍未到达的提醒照常生效。",
+                                text = "可以记录过去的日程；已经过去的提醒不会补发，后续仍未到达的提醒照常生效。",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.primary
                             )

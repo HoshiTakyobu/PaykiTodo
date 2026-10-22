@@ -1,6 +1,7 @@
 package com.example.todoalarm.data
 
 import org.json.JSONObject
+import org.json.JSONArray
 import java.io.BufferedInputStream
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
@@ -70,6 +71,29 @@ internal object BackupArchiveCodec {
     internal fun contentFingerprint(snapshot: BackupSnapshot): String {
         val stableSnapshot = snapshot.copy(exportedAtMillis = 0L)
         return stableSnapshot.toJson().toString().toByteArray(StandardCharsets.UTF_8).sha256()
+    }
+
+    internal fun dataFingerprint(snapshot: BackupSnapshot): String {
+        // Device presentation and diagnostic logs are not user-data edits.
+        val json = snapshot.copy(exportedAtMillis = 0L, reminderChainLogs = emptyList()).toJson()
+        json.remove("settings")
+        // SQL row order is not part of the synchronized data. Sort table rows,
+        // while keeping ordered values inside each row (for example offsets).
+        fun canonical(value: Any?): String = when (value) {
+            is JSONObject -> value.keys().asSequence().toList().sorted().joinToString(",", "{", "}") {
+                JSONObject.quote(it) + ":" + canonical(value.opt(it))
+            }
+            is JSONArray -> (0 until value.length()).joinToString(",", "[", "]") { canonical(value.opt(it)) }
+            null, JSONObject.NULL -> "null"
+            is String -> JSONObject.quote(value)
+            else -> value.toString()
+        }
+        val stable = json.keys().asSequence().toList().sorted().joinToString(",", "{", "}") { key ->
+            val value = json.opt(key)
+            val content = if (value is JSONArray) (0 until value.length()).map { canonical(value.opt(it)) }.sorted().joinToString(",", "[", "]") else canonical(value)
+            JSONObject.quote(key) + ":" + content
+        }
+        return stable.toByteArray(StandardCharsets.UTF_8).sha256()
     }
 
     private fun readArchive(input: InputStream): BackupSnapshot {

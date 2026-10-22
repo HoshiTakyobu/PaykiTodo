@@ -14,6 +14,16 @@ import java.util.zip.ZipOutputStream
 import java.util.zip.ZipInputStream
 
 class BackupArchiveCodecTest {
+    @Test fun dataFingerprintIgnoresPresentationAndRowOrderButTracksCompletion() {
+        val source = sampleSnapshot().let { snapshot ->
+            snapshot.copy(tasks = snapshot.tasks + snapshot.tasks.first().copy(id = 9002, title = "另一个事项"))
+        }
+        val reordered = source.copy(exportedAtMillis = source.exportedAtMillis + 1000,
+            tasks = source.tasks.reversed(), settings = source.settings.copy(themeMode = ThemeMode.LIGHT))
+        assertEquals(BackupArchiveCodec.dataFingerprint(source), BackupArchiveCodec.dataFingerprint(reordered))
+        val changed = source.copy(tasks = source.tasks.mapIndexed { index, task -> if (index == 0) task.copy(completed = !task.completed) else task })
+        assertFalse(BackupArchiveCodec.dataFingerprint(source) == BackupArchiveCodec.dataFingerprint(changed))
+    }
     @Test
     fun archiveRoundTripPreservesSnapshotAndSettings() {
         val source = sampleSnapshot()

@@ -345,6 +345,12 @@ fun DashboardScreen(
             launchRoute?.openTasks == true -> {
                 calendarFocusDateEpochDay = null
                 section = DashboardSection.ACTIVE
+                if (launchRoute.createTask) {
+                    editingItem = null
+                    editingTodoGroupIds = emptyList()
+                    editorKind = EditorKind.TODO
+                    editorVisible = true
+                }
             }
             launchRoute?.openCalendar == true -> {
                 calendarFocusDateEpochDay = null

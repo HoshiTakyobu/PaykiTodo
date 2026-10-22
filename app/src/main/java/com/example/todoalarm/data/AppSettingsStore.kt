@@ -336,14 +336,25 @@ class AppSettingsStore(context: Context) {
 
     fun remoteChangeGeneration(): Long = preferences.getLong("remote_sync_change_generation", 0L)
 
-    @Synchronized fun markRemoteSyncSuccess(revision: Long, generation: Long = remoteChangeGeneration()) {
+    private fun remoteFingerprintKey(): String = currentSettings().let {
+        "remote_data_fingerprint_${it.remoteSyncServerUrl.trimEnd('/')}_${it.remoteSyncUsername}"
+    }
+
+    fun remoteDataFingerprint(): String = preferences.getString(remoteFingerprintKey(), "").orEmpty()
+
+    fun rememberRemoteDataFingerprint(fingerprint: String) {
+        preferences.edit().putString(remoteFingerprintKey(), fingerprint).commit()
+    }
+
+    @Synchronized fun markRemoteSyncSuccess(revision: Long, generation: Long = remoteChangeGeneration(), fingerprint: String? = null) {
         preferences.edit()
             .putLong(KEY_REMOTE_SYNC_REVISION, revision.coerceAtLeast(0L))
             .putBoolean(KEY_REMOTE_SYNC_DIRTY, generation != remoteChangeGeneration())
             .putLong(KEY_REMOTE_SYNC_CONFLICT_REVISION, 0L)
             .putLong(KEY_REMOTE_SYNC_LAST_SUCCESS_AT, System.currentTimeMillis())
             .remove(KEY_REMOTE_SYNC_LAST_ERROR)
-            .apply()
+            .also { if (fingerprint != null) it.putString(remoteFingerprintKey(), fingerprint) }
+            .commit()
         refresh()
     }
 

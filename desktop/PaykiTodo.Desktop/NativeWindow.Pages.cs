@@ -87,12 +87,14 @@ internal sealed partial class NativeWindow
             ToolTip = item.Completed ? "恢复待办" : "我已完成", Margin = new Thickness(0) };
         complete.Click += (_, _) => Change(document => { if (item.Completed) document.Restore(item.Id); else document.Complete(item.Id); });
         grid.Children.Add(complete);
-        var text = Column(Text(item.Title, 16, bold: true), Text(TimeLabel(item), 13, Muted));
-        if (group != null) text.Children.Add(Text(group.Name + (item.Canceled ? " · 已取消" : item.Completed ? " · 已完成" : ""), 12, B(group.ColorHex)));
+        var text = Column(Text(item.Title, 15, bold: true),
+            Text(TimeLabel(item) + (group == null ? "" : "  ·  " + group.Name) +
+                (item.Canceled ? "  ·  已取消" : item.Completed ? "  ·  已完成" : ""), 12, Muted));
         if (nested && item.Notes.Length > 0) text.Children.Add(Text(item.Notes, 12, Muted));
         text.Cursor = System.Windows.Input.Cursors.Hand; text.MouseLeftButtonUp += (_, e) => { Preview(item); e.Handled = true; };
         Grid.SetColumn(text, 1); grid.Children.Add(text);
-        var card = Card(grid, 18); card.BorderBrush = B(group?.ColorHex ?? item.AccentColor); card.BorderThickness = new Thickness(4, 0, 0, 0);
+        var card = Card(grid, 12); card.Margin = new Thickness(0, 0, 0, 8);
+        card.BorderBrush = B(group?.ColorHex ?? item.AccentColor); card.BorderThickness = new Thickness(3, 0, 0, 0);
         if (nested) card.Margin = new Thickness(Math.Min(12, item.QuickChecklistDepth ?? 0) * 16, 0, 0, 8);
         return card;
     }

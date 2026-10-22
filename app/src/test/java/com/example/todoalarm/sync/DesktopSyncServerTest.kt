@@ -9,6 +9,17 @@ import java.net.Socket
 import java.nio.charset.StandardCharsets
 
 class DesktopSyncServerTest {
+    @Test fun servesFontBytesWithoutTextEncodingOrCorruption() {
+        val bytes = byteArrayOf(0, 1, 0, 0, -1, -128, 65)
+        val port = freePort()
+        val server = DesktopSyncServer(port) { _, _, _, _ -> DesktopSyncServer.Response.font(bytes) }
+        try {
+            server.start()
+            val connection = java.net.URL("http://127.0.0.1:$port/fonts/regular.ttf").openConnection()
+            assertEquals("font/ttf", connection.contentType)
+            org.junit.Assert.assertArrayEquals(bytes, connection.getInputStream().use { it.readBytes() })
+        } finally { server.stop() }
+    }
     @Test
     fun readsUtf8RequestBodyByByteLength() {
         val port = freePort()

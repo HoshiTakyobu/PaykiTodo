@@ -25,12 +25,17 @@ class AlarmScheduler(
         }
     }
 
-    fun schedule(todoItem: TodoItem): String? {
+    fun schedule(todoItem: TodoItem): String? = scheduleInternal(todoItem, recover = false)
+
+    fun recover(todoItem: TodoItem): String? = scheduleInternal(todoItem, recover = true)
+
+    private fun scheduleInternal(todoItem: TodoItem, recover: Boolean): String? {
         if (todoItem.isHistory) {
             cancel(todoItem.id)
             return null
         }
 
+        val previous = scheduledTimes(todoItem.id)
         cancelReminderAlarms(todoItem.id)
         if (todoItem.isEvent) {
             OngoingEventNotifier.schedule(context, todoItem)
@@ -40,7 +45,10 @@ class AlarmScheduler(
         }
 
         val now = System.currentTimeMillis()
-        val triggerTimes = todoItem.reminderTriggerTimesMillis().filter { it >= now }
+        val triggerTimes = todoItem.reminderTriggerTimesMillis().filter {
+            ReminderTimingPolicy.shouldSchedule(it, now, recover && it in previous,
+                ReminderDispatchTracker.wasDispatched(context, todoItem.id, it))
+        }
         val triggerAtMillis = triggerTimes.minOrNull() ?: return null
         ReminderChainLogger.log(
             context = context,
@@ -63,6 +71,10 @@ class AlarmScheduler(
 
         val scheduledPrimaryTimes = mutableListOf<Long>()
         var firstFailure: Throwable? = null
+
+        // A recovered alarm can fire immediately. Persist its identity first so
+        // the receiver does not reject it before setAlarmClock returns.
+        persistScheduledTimes(todoItem.id, triggerTimes)
 
         triggerTimes.forEach { scheduledAt ->
             val exactIntent = buildBroadcastIntent(todoItem.id, scheduledAt, ACTION_EXACT, EXACT_OFFSET)
@@ -124,8 +136,8 @@ class AlarmScheduler(
             }
         }
 
+        persistScheduledTimes(todoItem.id, scheduledPrimaryTimes)
         return if (scheduledPrimaryTimes.isNotEmpty()) {
-            persistScheduledTimes(todoItem.id, scheduledPrimaryTimes)
             ReminderChainLogger.log(
                 context = context,
                 todoId = todoItem.id,
@@ -208,6 +220,9 @@ class AlarmScheduler(
             .contains(reminderAtMillis.toString())
     }
 
+    private fun scheduledTimes(todoId: Long): Set<Long> = context.getSharedPreferences(SCHEDULE_PREFS, Context.MODE_PRIVATE)
+        .getStringSet(scheduledSetKey(todoId), emptySet()).orEmpty().mapNotNull { it.toLongOrNull() }.toSet()
+
     private fun cancelReminderAlarms(todoId: Long) {
         alarmManager.cancel(buildBroadcastIntent(todoId, 0L, ACTION_EXACT, EXACT_OFFSET))
         alarmManager.cancel(buildBroadcastIntent(todoId, 0L, ACTION_BACKUP, BACKUP_OFFSET))
@@ -258,7 +273,7 @@ class AlarmScheduler(
         context.getSharedPreferences(SCHEDULE_PREFS, Context.MODE_PRIVATE)
             .edit()
             .putStringSet(scheduledSetKey(todoId), triggerTimes.map { it.toString() }.toSet())
-            .apply()
+            .commit()
     }
 
     private fun safeSchedule(

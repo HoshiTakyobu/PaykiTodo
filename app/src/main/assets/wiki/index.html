@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>PaykiTodo 使用说明</title>
   <style>
+    @font-face { font-family: "Payki UI"; src: url("../fonts/regular.ttf"); font-weight: 400; font-display: swap; }
+    @font-face { font-family: "Payki UI"; src: url("../fonts/semibold.ttf"); font-weight: 500 900; font-display: swap; }
     :root {
       --bg: #f3ede2;
       --bg-2: #ebe1d0;
@@ -25,7 +27,7 @@
       min-height: 100%;
       color: var(--text);
       background: radial-gradient(circle at top left, rgba(255, 245, 215, 0.78), transparent 34%), linear-gradient(180deg, var(--bg) 0%, var(--bg-2) 100%);
-      font: 15px/1.72 "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+      font: 15px/1.72 "Payki UI", sans-serif;
     }
     .layout { display: grid; grid-template-columns: minmax(220px, 292px) minmax(0, 1fr); min-height: 100vh; }
     aside {
@@ -51,7 +53,7 @@
     p { margin: 0 0 12px; }
     ul, ol { margin: 0 0 14px; padding-left: 22px; }
     li { margin-bottom: 8px; }
-    code { padding: 2px 7px; border-radius: 8px; background: rgba(47,110,95,0.08); color: var(--accent); font-family: Consolas, "Cascadia Mono", monospace; font-size: 0.95em; }
+    code { padding: 2px 7px; border-radius: 8px; background: rgba(47,110,95,0.08); color: var(--accent); font-family: "Payki UI", sans-serif; font-size: 0.95em; }
     .meta { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 16px; }
     .chip { display: inline-flex; align-items: center; padding: 7px 11px; border-radius: 999px; background: rgba(47,110,95,0.08); color: var(--accent); font-size: 13px; font-weight: 600; }
     .callout { margin: 16px 0; padding: 14px 16px; border-radius: 0 14px 14px 0; border-left: 4px solid var(--accent); background: rgba(47,110,95,0.07); color: var(--muted); }
@@ -68,7 +70,7 @@
     .steps li::before { counter-increment: step; content: counter(step); position: absolute; left: 0; top: 0; width: 28px; height: 28px; border-radius: 999px; background: var(--accent); color: #fff; font-size: 13px; font-weight: 700; display: flex; align-items: center; justify-content: center; }
     .code-card { margin: 14px 0 18px; border-radius: 18px; border: 1px solid var(--line-soft); background: rgba(245, 241, 233, 0.96); overflow: auto; }
     .code-card .label { padding: 10px 14px; font-size: 13px; font-weight: 700; color: var(--accent); background: rgba(47,110,95,0.07); border-bottom: 1px solid var(--line-soft); }
-    .code-card pre { margin: 0; padding: 14px; white-space: pre-wrap; word-break: break-word; font: 13px/1.7 Consolas, "Cascadia Mono", monospace; }
+    .code-card pre { margin: 0; padding: 14px; white-space: pre-wrap; word-break: break-word; font: 13px/1.7 "Payki UI", sans-serif; }
     @media (max-width: 920px) {
       .layout { grid-template-columns: 132px minmax(0, 1fr); }
       aside { padding: 12px 8px 16px; }

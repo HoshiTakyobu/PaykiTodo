@@ -97,6 +97,7 @@ When the user supplies concrete UI reference screenshots and asks for reproducti
 
 ## 10. Native Windows consistency
 
+- From 1.16.23, use bundled Sarasa UI SC Regular/Semibold across Android Compose, native Windows, LAN Web and Wiki; do not reintroduce later CSS overrides to YaHei/Segoe/Inter. Preserve the font license and verify the actual resource resolves.
 - Use the shared Chinese sans-serif interface font; keep the supplied board artwork and greeting font. All owned windows, reminders, confirmations and tray icons use the original PaykiTodo icon, not testhost/system question icons.
 - Keep dialog actions fixed outside scrollable forms. Planning Desk actions must remain inside the narrow-window viewport. Center reminder time/title/actions without centering ordinary form labels.
 - TextBoxView already applies control padding: do not apply the same padding again as PART_ContentHost margin. Verify date/time and editable-model text visibility, not just saved values.

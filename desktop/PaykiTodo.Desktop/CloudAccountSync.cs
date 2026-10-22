@@ -20,6 +20,7 @@ internal sealed record CloudAccountState(
     bool Dirty
 ) {
     public bool LocalAccessLocked { get; init; }
+    public string VerifiedDataFingerprint { get; init; } = "";
 }
 
 internal sealed record CloudAuthenticationResult(CloudAccountState State, long RemoteRevision);
@@ -92,19 +93,26 @@ internal static class CloudAccountSync
         CancellationToken cancellationToken = default)
     {
         state = await EnsureAccessTokenAsync(state, cancellationToken);
+        var fingerprint = localDocument.DataFingerprint();
+        if (!state.Dirty && state.VerifiedDataFingerprint.Length > 0 && state.VerifiedDataFingerprint != fingerprint)
+            state = state with { Dirty = true };
         var remoteRevision = await GetRemoteRevisionAsync(state, cancellationToken);
+        if (!state.Dirty && state.VerifiedDataFingerprint.Length == 0 && remoteRevision > 0 && localDocument.HasMeaningfulData) {
+            var checkedCloud = await DownloadAsync(state, cancellationToken);
+            if (checkedCloud.Document.DataFingerprint() != fingerprint) throw new CloudRevisionConflictException(checkedCloud.Revision);
+        }
         if (remoteRevision > state.Revision)
         {
             if (state.Dirty) throw new CloudRevisionConflictException(remoteRevision);
             var downloaded = await DownloadAsync(state, cancellationToken);
             downloaded.Document.PreserveLocalApiKeys(localDocument);
-            var nextState = state with { Revision = downloaded.Revision, Dirty = false };
+            var nextState = state with { Revision = downloaded.Revision, Dirty = false, VerifiedDataFingerprint = downloaded.Document.DataFingerprint() };
             return new CloudSyncResult(nextState, downloaded.Document, $"已拉取云端版本 {downloaded.Revision}");
         }
         if (remoteRevision < state.Revision)
             throw new InvalidOperationException("云端版本低于本机同步记录，已停止同步以避免覆盖");
         if (!state.Dirty)
-            return new CloudSyncResult(state, localDocument, $"已是最新版本 {state.Revision}");
+            return new CloudSyncResult(state with { VerifiedDataFingerprint = fingerprint }, localDocument, $"{DateTime.Now:HH:mm:ss} 已核对云端版本 {state.Revision} · 本机无待上传修改（其他设备须先上传）");
 
         var encrypted = SnapshotCrypto.Encrypt(localDocument.ToArchiveBytes(includeSecrets: false), state.EncryptionSecret);
         using var request = AuthorizedRequest(state, HttpMethod.Put, "/v2/sync/snapshot");
@@ -121,7 +129,7 @@ internal static class CloudAccountSync
         }
         EnsureSuccess(response, result.RootElement);
         var revision = result.RootElement.GetProperty("revision").GetInt64();
-        var uploadedState = state with { Revision = revision, Dirty = false };
+        var uploadedState = state with { Revision = revision, Dirty = false, VerifiedDataFingerprint = fingerprint };
         return new CloudSyncResult(uploadedState, localDocument, $"本机修改已上传为版本 {revision}");
     }
 

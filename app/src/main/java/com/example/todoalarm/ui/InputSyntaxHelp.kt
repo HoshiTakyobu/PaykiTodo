@@ -18,7 +18,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.font.FontFamily
+import com.example.todoalarm.ui.theme.PaykiInterfaceFontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 
@@ -90,7 +90,7 @@ internal fun InputSyntaxHelpDialog(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(12.dp),
-                        fontFamily = FontFamily.Monospace,
+                        fontFamily = PaykiInterfaceFontFamily,
                         color = MaterialTheme.colorScheme.onSurface
                     )
                 }

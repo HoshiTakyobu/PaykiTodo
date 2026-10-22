@@ -171,7 +171,7 @@ fun TodoEditorDialog(
             parseReminderInput(
                 raw = reminderInput,
                 anchor = dueAt,
-                requireFuture = initialTodo == null
+                requireFuture = false
             )
         }
     }
@@ -370,6 +370,9 @@ fun TodoEditorDialog(
                                 validation = reminderValidation,
                                 onRawInputChange = { reminderInput = it }
                             )
+                            Text("可以记录过去的事项；已过去的提醒不会补发，未来提醒照常生效。",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant)
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
                                 verticalAlignment = Alignment.CenterVertically,

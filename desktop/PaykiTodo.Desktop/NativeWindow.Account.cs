@@ -81,7 +81,7 @@ internal sealed partial class NativeWindow
         };
         body.Children.Add(Card(Column(BrandHeading("外观", "中性分层背景 · 保留品牌强调色与看板素材"), Text("界面主题", 13, Muted), theme)));
         body.Children.Add(Card(Column(Text(workspace.Account?.Username ?? "本地账号", 24, Forest, true), Text(workspace.Status, 13, Muted),
-            Text("联网后自动同步本机修改。登录过期时本地编辑和提醒继续可用。", 13, Muted),
+            Text("联网后自动上传本机修改，每 15 秒检查云端。云端相同不代表手机已上传；若手机内容较新，请先在手机检查同步状态。登录过期不影响离线编辑和提醒。", 13, Muted),
             Row(Action("立即同步", async () => await workspace.SyncAsync(), true), Action("重新登录", () => { reauthenticating = true; Render(); }), Action("账号和设备", ShowAccountDetails), Action("退出登录", async () => {
                 if (Confirm("退出当前账号？本地数据会保留，重新登录后可继续使用。")) await workspace.LogoutAsync();
             })))));
@@ -115,7 +115,7 @@ internal sealed partial class NativeWindow
                 if (!Uri.TryCreate(text, UriKind.Absolute, out var uri) || uri.Scheme is not ("http" or "https")) { workspace.Notify("请输入手机显示的完整 http 或 https 地址"); return; }
                 Process.Start(new ProcessStartInfo(uri.AbsoluteUri) { UseShellExecute = true });
             }))));
-        body.Children.Add(Card(Column(Text("关于 PaykiTodo", 20, bold: true), Text("Windows 客户端 1.16.22", 14, Muted),
+        body.Children.Add(Card(Column(Text("关于 PaykiTodo", 20, bold: true), Text("Windows 客户端 1.16.23 · 更纱黑体 UI / SIL OFL 1.1", 14, Muted),
             Text("桌面提醒需要保持程序运行；手机的锁屏、通知权限与桌面小组件由 Android 系统管理。", 13, Muted), Action("隐私政策", ShowPrivacy))));
         return Page(body);
     }

@@ -16,11 +16,11 @@ class BootReceiver : BroadcastReceiver() {
             try {
                 val app = context.applicationContext as TodoApplication
                 com.example.todoalarm.sync.AccountExpiryNotifier.schedule(context)
+                if (!app.settingsStore.hasLocalAccountAccess()) return@launch
                 app.repository.markMissedTasks(System.currentTimeMillis())
                 app.repository.ensureRecurringInstancesAhead()
-                val items = app.repository.futureReminderItems(System.currentTimeMillis())
-                items.forEach(app.alarmScheduler::schedule)
-                app.repository.activeEventsForOngoingNotifications().forEach(app.alarmScheduler::schedule)
+                app.repository.getAllTodos().forEach(app.alarmScheduler::recover)
+                app.remoteSyncCoordinator.start()
                 DailyReportScheduler.scheduleNext(context.applicationContext)
                 DailyBriefScheduler.scheduleNext(context.applicationContext)
                 if (app.settingsStore.currentSettings().desktopSyncEnabled) {

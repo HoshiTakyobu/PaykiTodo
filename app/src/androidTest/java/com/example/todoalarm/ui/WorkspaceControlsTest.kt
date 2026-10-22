@@ -28,6 +28,23 @@ import org.junit.Test
 import org.junit.rules.TestName
 
 class WorkspaceControlsTest {
+    @Test fun newCalendarEntryAcceptsPastCustomReminderAndPreservesItOnConfirm() {
+        val start = java.time.LocalDateTime.now().plusDays(1).withSecond(0).withNano(0)
+        val seed = com.example.todoalarm.data.CalendarEventDraft("日程记录", "", "", start, start.plusHours(1), false,
+            "#4CB782", reminderOffsetsMinutes = listOf(2880), ringEnabled = false, vibrateEnabled = false)
+        var result: com.example.todoalarm.data.CalendarEventDraft? = null
+        compose.setContent {
+            TodoAlarmTheme {
+                CalendarEventEditorDialog(null, seed, defaultRingEnabled = false, defaultVibrateEnabled = false,
+                    onDismiss = {}, onConfirm = { result = it })
+            }
+        }
+        compose.onNodeWithText("完成").performClick()
+        compose.runOnIdle {
+            assertEquals(listOf(2880), result?.reminderOffsetsMinutes)
+            assertEquals(start, result?.startAt)
+        }
+    }
     @get:Rule val compose = createComposeRule()
     @get:Rule val name = TestName()
 

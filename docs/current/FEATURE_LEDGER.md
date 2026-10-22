@@ -4,6 +4,14 @@ This file tracks the product at a practical level for new coding sessions.
 
 ## Implemented And In Use
 
+### v1.16.23 Sync Continuation, Reminder Recovery And Chinese Entry Points
+
+- Android and Windows retain sync requests during transfer and continue uploading subsequent edits; content fingerprints detect missed dirty markers. Divergent legacy copies without a verified fingerprint remain blocked across repeated polls until explicit conflict resolution. Running clients poll about every 15 seconds; server-version confirmation does not prove another device has uploaded.
+- Android startup/boot/time/upgrade recovery only reschedules previously registered, undelivered reminders from the last 10 minutes; dispatch identity is persisted before AlarmManager can deliver immediately. Historical todo/event/custom-reminder input can be saved without replay. Windows queues only reminders observed before their trigger and suppresses duplicates.
+- Sarasa UI SC Regular/Semibold is bundled under SIL OFL for Android Compose, native WPF, LAN Web and Wiki; board artwork/greeting fonts remain. Windows group selectors show names and the redundant account navigation is removed.
+- Android launcher name “派期待办”, task shortcuts and the `paykitodo://tasks` / `paykitodo://tasks/new` deep links retain the account gate and open a list/editor rather than writing a task. OEM voice vocabulary remains outside app control.
+- Verified 190 Android units, 32 distinct device tests after retries, 22 Windows regressions plus one 14-stage isolated UIA flow, LAN browser/font checks and current artifacts. Original 531 emulator files match backup; 26 extra runtime files retained. See [VALIDATION_1.16.23.md](VALIDATION_1.16.23.md) and [SYNC_RECOVERY_1.16.23.md](SYNC_RECOVERY_1.16.23.md); whole-snapshot sync and OEM/Windows parity limits remain.
+
 ### v1.16.22 Native Layout And Non-interfering Acceptance
 
 - Shared Chinese typography, original high-resolution window/tray icons, navigation glyphs/selection, light/dark fields and branded confirmations replace inconsistent native presentation. Reminder clock/actions centered; editor footers fixed; narrow boards stack; Planning Desk keeps actions visible.

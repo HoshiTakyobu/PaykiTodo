@@ -1,6 +1,19 @@
 # Session Handoff
 
-## Current 2026-10-22: 1.16.23 七项修复与验收已完成
+## Completed 2026-10-23: 1.16.24 字体、日历与真实客户端验收
+
+接续 `01a1676f-703e-7f40-bfbc-3166970a4b68` 及之前字体会话，从上一完成提交 6005a10 的未提交改动完成本轮。当前 Android `1.16.24 / 389`、Windows `1.16.24.0`、Room31。下一轮先核实 HEAD/status 和版本，不再沿用下方历史基线或重复已完成验收。
+
+- 完成无衬线标题/正文/导航/用户名、手机抽屉加粗和正文增大；Windows 品牌/蓝色问候、明确搜索入口、账号首卡、一体清单图标，以及带小月历/本周/今日/时区/固定日期栏/连续红线的蓝色日历。补修 UIA 勾选不保存、日历筛选状态、深色焦点/主按钮和 Android 提醒对比度。
+- 本次重新构建 Debug `app/build/outputs/apk/debug/PaykiTodo-1.16.24-debug.apk`、签名 Release `app/build/outputs/apk/release/PaykiTodo-1.16.24-release.apk`、Windows `desktop/dist/PaykiTodo.exe`。Windows 保留完整目录；版本、签名、EXE 与 DLL 独立哈希见 [VALIDATION_1.16.24.md](VALIDATION_1.16.24.md) 和 PROJECT_STATUS。
+- Android 190 单测、Lint 0 errors/131 warnings；Windows 22 项回归和 1 条14阶段 UIA 流程通过，包含复选框完成后重载数据的回归、字体解析、日历轴/时区/浅深色、成品启动。没有把之前的32个 Android instrumentation/LAN 验收算成本轮重跑。
+- 复用 `emulator-5554 / Pixel_8` 安装最终 Debug。真实专门测试账号此前由用户完成人机验证；本次 Windows 创建、手机修改回传、Windows 完成到手机历史及15:27两端到点提醒成功。手机点通知打开提醒并完成，Windows 收到完成状态。模拟器 UTC 显示07:27，与电脑 Asia/Shanghai 15:27为同一时刻；未改设备时区。
+- 原手机备份 `G:/Workspace/Backups/PaykiTodo/emulator-before-real-user-audit-20261022-174553` 已恢复，557/557 SHA-256 匹配，78个额外运行文件保留，没有删除。本轮最终测试数据另存 `G:/Workspace/Backups/PaykiTodo/emulator-after-1.16.24-20261023-153057`。模拟器继续运行，应用/测试包保持停止；不要再启动测试覆盖已恢复原数据。
+- Windows 测试只用 `G:/Workspace/Scratch/PaykiTodo/real-user-audit-20261022/windows-profile`，通过真实 EXE 控件操作，无全局鼠标/键盘/剪贴板注入；最后的测试进程已正常关闭，用户正式资料保持原位。
+- 最终证据在 `G:/Workspace/Scratch/PaykiTodo/typography-1.16.24/resume-20261023/`，最终 Windows 回归目录 `final-colors/`，实际客户端截图在 `real-user-audit-20261022/`。凭据、截图和备份不入 Git。未使用字体三项已保留到该项目 Scratch，移动清单在 `Notes/workspace/paykitodo-1.16.24-font-moves-20261023.json`。
+- 本轮实现和指定验收收尾并中文本地提交，不推送、不发布、不改服务器部署。真机 OEM 长待机/锁屏自动全屏/振动、小组件、物理输入及既有 Windows 农历/OCR/多时段差异仍是边界。手机本次全屏证据为点击通知，不能宣称自动锁屏全屏已通过。
+
+## Historical 2026-10-22: 1.16.23 七项修复与验收已完成
 
 当前 Android `1.16.23 / 388`，Windows `1.16.23.0`，Room31。上一完成基线为 `main / 8bbb136`；旧会话中断时源码与制品已是 1.16.23，而本文件仍为 1.16.22。本次重新核实源码、测试结果、哈希、签名及原数据恢复后完成文档和中文本地提交。下一轮先核实 git HEAD/status，不沿用下面历史版本或重做已完成的产品构建。
 

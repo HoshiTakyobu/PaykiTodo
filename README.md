@@ -22,7 +22,7 @@ PaykiTodo 是一个以 **强提醒、本地可控、日程与待办一体化** �
 
 | 项目 | 内容 |
 | --- | --- |
-| 当前源码版本 | `v1.16.23`（本地验证版，尚未发布） |
+| 当前源码版本 | `v1.16.24`（本地验证版，尚未发布） |
 | 最新 GitHub Release | `v1.15.18` |
 | Android 包名 | `com.paykitodo.app` |
 | 支持系统 | Android 8.0 及以上 / API 26+ |
@@ -31,7 +31,14 @@ PaykiTodo 是一个以 **强提醒、本地可控、日程与待办一体化** �
 | 最新 Release 页面 | <https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.15.18> |
 | 最新 Release APK 下载 | <https://github.com/HoshiTakyobu/PaykiTodo/releases/download/v1.15.18/PaykiTodo-1.15.18-release.apk> |
 
-## 1.16.23 使用变化
+## 1.16.24 使用变化
+
+- Android 抽屉加粗、正文略增大；两端标题、正文、导航与用户名使用更纱无衬线，原有问候字体和看板素材保留。
+- Windows 日历使用蓝色动作与选中态，增加左侧小月历、本周背景、今日圆圈、固定日期栏、时区与连续当前时间红线；整点文字与网格对齐。
+- Windows 搜索框增加图标、提示与 Ctrl+F 入口，账号信息放在设置首块，快速清单采用一体图标；辅助功能切换待办复选框也会保存完成或恢复状态。
+- Android 提醒页修复背景和按钮文字对比度。实际客户端同步、提醒、制品与测试范围见[本轮验收记录](docs/current/VALIDATION_1.16.24.md)。
+
+### 1.16.23 延续的使用变化
 
 - Android 桌面名称为“派期待办”，长按图标可打开待办列表或新建编辑器；语音助手能否识别中文名称取决于厂商支持。
 - Android、原生 Windows、LAN 网页与内置 Wiki 使用随包提供的更纱黑体 UI；保留原有看板素材与问候字体。

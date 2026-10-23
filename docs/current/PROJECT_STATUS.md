@@ -8,22 +8,22 @@
 - Supported Android: Android 8.0+ / API 26+
 - Compile and target SDK: Android 14 / API 34
 - License: MIT
-- App source version: `1.16.23 / versionCode 388` (locally built and verified; not published)
+- App source version: `1.16.24 / versionCode 389` (locally built and verified; not published)
 - Room database version: `31`
-- Latest testing audit: 190 Android unit tests, 32 distinct device tests passing after targeted retries, 22 Windows regressions plus one 14-stage isolated-desktop UIA flow, LAN browser checks and verified local artifacts; see [VALIDATION_1.16.23.md](VALIDATION_1.16.23.md). Earlier physical-input acceptance is historical, not a fresh 1.16.23 run.
+- Latest testing audit: 190 Android unit tests, Lint (0 errors / 131 warnings), 22 Windows regressions plus one 14-stage isolated-desktop UIA flow, real test-account cross-client edit/completion/reminder checks and verified local artifacts; see [VALIDATION_1.16.24.md](VALIDATION_1.16.24.md). Earlier Android instrumentation and LAN suites were not repeated this round.
 
 ## Published Build
 
 - GitHub Release: `https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.15.18`
 - Release APK: `app/build/outputs/apk/release/PaykiTodo-1.15.18-release.apk`
 - Public asset name: `PaykiTodo-1.15.18-release.apk`
-- Current debug APK: `app/build/outputs/apk/debug/PaykiTodo-1.16.23-debug.apk`
-- Current signed release APK: `app/build/outputs/apk/release/PaykiTodo-1.16.23-release.apk`
-- Current Windows self-contained EXE: `desktop/dist/PaykiTodo.exe` (file version `1.16.23.0`; distribute the whole directory)
-- Debug APK SHA-256: `08706ADD2BB439FDCA2AE30A99A75C8C9911DAA704E4BF8A864EF70EC3EBFC5D`
-- Signed Release APK SHA-256: `BED86B8E0898EAC07AF404F572F9D252EADF2D6A2930896BE83A461A0AE1E806`
-- Windows EXE SHA-256: `B0215B297697AB8E2A52FAE92B12F93EF7FB0B7BBD4EDBDB90DEED6B3912DC92`
-- Windows main assembly `desktop/dist/PaykiTodo.dll` SHA-256: `83462BCC0FACE842DAB62FAED7B8510F7E6A7D7F99871C9FD7EC8033BDF832B0` (the EXE apphost alone does not identify UI code)
+- Current debug APK: `app/build/outputs/apk/debug/PaykiTodo-1.16.24-debug.apk`
+- Current signed release APK: `app/build/outputs/apk/release/PaykiTodo-1.16.24-release.apk`
+- Current Windows self-contained EXE: `desktop/dist/PaykiTodo.exe` (file version `1.16.24.0`; distribute the whole directory)
+- Debug APK SHA-256: `9ABD9DEE69535B6194E3E21649F9D27475286C0BC0CFFD0AC109929F6CDF6921`
+- Signed Release APK SHA-256: `CE61F3FF24DC4743763806C09CEAF793671957C5FC9C758B408A13788EB3C9DA`
+- Windows EXE SHA-256: `E41C698CE44717EFA7EB62F51A571B1FE007B077A69F19430E0616E21838A6E0`
+- Windows main assembly `desktop/dist/PaykiTodo.dll` SHA-256: `60464C773B2D3F0F2FCAF57E5015361FA6E145DC9ACC0770CBA1D88E124DF95F` (the EXE apphost alone does not identify UI code)
 - Release signing material remains local and ignored by Git.
 
 ## Product Positioning
@@ -49,6 +49,14 @@ PaykiTodo is a local-first Android assistant for todos, DDLs, schedules, countdo
 - Desktop Web calendar now uses the same current-time line convention as the phone calendar, separates today's date from the selected date, and flashes the selected week column briefly.
 
 See `README.md` for the public overview and `docs/current/FEATURE_LEDGER.md` for the detailed implementation ledger.
+
+## v1.16.24 Validation Scope (not published)
+
+- Android drawer/body and Windows heading/navigation/editor typography use bundled Sarasa; greeting artwork/font remains, Windows greeting and calendar accents use blue. Native calendar adds mini-month/week/today markers, fixed date headers, timezone and continuous current-time line. Search, account order and integrated checklist icon are updated.
+- Native completion/restoration now responds to accessibility Toggle state changes and persists across restart/sync. Android reminder background/system bars/action text and dark calendar button/focus colors have corrected contrast.
+- Passed 190 Android units, Lint (0 errors / 131 warnings), Debug/signed Release builds and v2 signature; 22 Windows regressions plus one 14-stage isolated UIA flow, self-contained publish and packaged startup. Real dedicated-account clients completed phone edits, desktop completion propagation and a timed reminder on both platforms; human verification was performed by the user.
+- Original Pixel_8 private data restored with 557/557 file hashes matching; 78 additional runtime files retained, test data separately backed up. The emulator remains running with app/test packages stopped; the isolated Windows test client was closed. See [VALIDATION_1.16.24.md](VALIDATION_1.16.24.md) for artifacts, initial failures, screenshots and scope.
+- No push, tag, release or production deployment changes. OEM/physical-input/all-platform parity are not claimed; Android full-screen evidence here is from opening the delivered notification.
 
 ## v1.16.23 Validation Scope (not published)
 

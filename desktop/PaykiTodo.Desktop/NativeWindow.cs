@@ -9,6 +9,9 @@ using static PaykiTodo.Desktop.NativeUi;
 using Button = System.Windows.Controls.Button;
 using TextBox = System.Windows.Controls.TextBox;
 using Orientation = System.Windows.Controls.Orientation;
+using FontFamily = System.Windows.Media.FontFamily;
+using Brushes = System.Windows.Media.Brushes;
+using HorizontalAlignment = System.Windows.HorizontalAlignment;
 
 namespace PaykiTodo.Desktop;
 
@@ -44,12 +47,12 @@ internal sealed partial class NativeWindow : Window
         Icon = AppIcon; UseLayoutRounding = true; SnapsToDevicePixels = true;
         WindowStartupLocation = WindowStartupLocation.CenterScreen;
         FontFamily = InterfaceFont;
-        TextOptions.SetTextFormattingMode(this, TextFormattingMode.Display);
+        ConfigureRendering(this);
         FontSize = 14; Background = B("#EEF3F4");
         BuildShell();
         this.workspace.Changed += OnWorkspaceChanged;
         timer.Tick += async (_, _) => await this.workspace.SyncAsync(); timer.Start();
-        Closed += (_, _) => { timer.Stop(); reminders?.Dispose(); this.workspace.Changed -= OnWorkspaceChanged; };
+        Closed += (_, _) => { timer.Stop(); calendarClock?.Stop(); reminders?.Dispose(); this.workspace.Changed -= OnWorkspaceChanged; };
         Loaded += async (_, _) => { if (workspace == null) reminders = new DesktopReminders(this, this.workspace); await this.workspace.SyncAsync(); };
         Render();
     }
@@ -77,14 +80,31 @@ internal sealed partial class NativeWindow : Window
         var top = new Grid { Margin = new Thickness(28, 22, 24, 14) };
         top.ColumnDefinitions.Add(new ColumnDefinition()); top.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         title.VerticalAlignment = VerticalAlignment.Center; top.Children.Add(title);
-        search.Width = 210; search.MinHeight = 40; search.Margin = new Thickness(12, 0, 0, 0); search.ToolTip = "搜索标题、备注和地点，按 Enter 查看";
+        search.MinHeight = 42; search.Margin = new Thickness(0); search.Padding = new Thickness(38, 9, 42, 9);
+        search.TextWrapping = TextWrapping.NoWrap; search.ToolTip = "搜索标题、备注和地点 · Ctrl+F 定位 · Enter 查看";
         search.KeyDown += (_, e) => { if (e.Key == System.Windows.Input.Key.Enter) Navigate("搜索"); };
         System.Windows.Automation.AutomationProperties.SetName(search, "搜索事项");
-        Grid.SetColumn(search, 1); top.Children.Add(search); DockPanel.SetDock(top, Dock.Top); main.Children.Add(top);
+        var searchBox = new Grid { Width = 260, Margin = new Thickness(12, 0, 0, 0) };
+        searchBox.Children.Add(search);
+        var searchButton = Action("执行搜索", () => Navigate("搜索"));
+        searchButton.Content = new TextBlock { Text = "\uE721", FontFamily = new FontFamily("Segoe MDL2 Assets"), FontSize = 16, Foreground = Muted };
+        searchButton.Width = 34; searchButton.MinHeight = 0; searchButton.Padding = new Thickness(6); searchButton.Margin = new Thickness(2);
+        searchButton.Background = Brushes.Transparent; searchButton.BorderThickness = new Thickness(0); searchButton.HorizontalAlignment = HorizontalAlignment.Left;
+        searchBox.Children.Add(searchButton);
+        var hint = Text("搜索待办、日程…", 13, Muted); hint.FontFamily = UtilityFont;
+        hint.IsHitTestVisible = false; hint.Margin = new Thickness(38, 0, 40, 0); hint.VerticalAlignment = VerticalAlignment.Center;
+        hint.Visibility = string.IsNullOrEmpty(search.Text) ? Visibility.Visible : Visibility.Collapsed;
+        search.TextChanged += (_, _) => hint.Visibility = string.IsNullOrEmpty(search.Text) ? Visibility.Visible : Visibility.Collapsed;
+        searchBox.Children.Add(hint);
+        var enter = Text("Enter", 10, Muted); enter.IsHitTestVisible = false; enter.HorizontalAlignment = HorizontalAlignment.Right;
+        enter.VerticalAlignment = VerticalAlignment.Center; enter.Margin = new Thickness(0, 0, 9, 0); searchBox.Children.Add(enter);
+        Grid.SetColumn(searchBox, 1); top.Children.Add(searchBox); DockPanel.SetDock(top, Dock.Top); main.Children.Add(top);
         main.Children.Add(content);
         var keys = new System.Windows.Input.KeyBinding(new NativeCommand(() => EditItem(page == "日历")),
             new System.Windows.Input.KeyGesture(System.Windows.Input.Key.N, System.Windows.Input.ModifierKeys.Control));
         InputBindings.Add(keys);
+        InputBindings.Add(new System.Windows.Input.KeyBinding(new NativeCommand(() => { search.Focus(); search.SelectAll(); }),
+            new System.Windows.Input.KeyGesture(System.Windows.Input.Key.F, System.Windows.Input.ModifierKeys.Control)));
     }
 
     private void OnWorkspaceChanged()
@@ -103,14 +123,17 @@ internal sealed partial class NativeWindow : Window
     private void Navigate(string next) { editingPlanning = false; page = next; Render(); }
     private void Render()
     {
+        calendarClock?.Stop();
+        Resources["PaykiTodo.FocusBrush"] = page == "日历" ? Ocean : Forest;
         title.Text = workspace.Document == null ? "账号登录" : reauthenticating ? "重新登录" : page; status.Text = workspace.Status;
         foreach (var pair in navigationButtons)
         {
             var selected = workspace.Document != null && !reauthenticating && pair.Key == page;
-            pair.Value.Background = selected ? B("#DCEBE2") : B("#F8FAF9");
+            pair.Value.Background = selected ? B(page == "日历" ? "#E8F0FF" : "#DCEBE2") : B("#F8FAF9");
             pair.Value.BorderThickness = new Thickness(selected ? 3 : 0, 0, 0, 0);
+            pair.Value.BorderBrush = selected && page == "日历" ? Ocean : Forest;
             if (pair.Value.Content is Grid labels && labels.Children[1] is TextBlock label)
-                label.FontWeight = selected ? FontWeights.SemiBold : FontWeights.Normal;
+                label.Foreground = selected ? (page == "日历" ? Ocean : Forest) : Ink;
         }
         renderedDocument = workspace.Document;
         if (workspace.Document == null || reauthenticating) { content.Content = LoginPage(); return; }

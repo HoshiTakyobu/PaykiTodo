@@ -12,6 +12,10 @@ The released `1.15.18 / versionCode 360` round restores independent full-screen 
 
 ## Current Development Round
 
+The local `1.16.24 / versionCode 389` round completes the final annotated typography and Windows calendar requests: sans-serif operational text, heavier Android drawer, blue greeting/calendar, mini-month/week/today markers, fixed headers/timezone/current-time line, explicit search and account identity layout. It also fixes accessibility Toggle persistence and reminder/calendar contrast. Verified 190 Android units/Lint/build/signature, 22 Windows regressions plus one 14-stage isolated UIA flow, actual dedicated-account cross-client edits/completions and timed reminders. Human verification was done by the user. Original emulator data restored with 557/557 hashes matching and 78 extra files retained; final test data separately backed up. See [VALIDATION_1.16.24.md](VALIDATION_1.16.24.md). No push, publication or production deployment changes; physical/OEM and existing parity limits remain.
+
+### Previous 1.16.23 implementation
+
 The local `1.16.23 / versionCode 388` round completes automatic sync continuation and missed-change detection, persistent protection for divergent legacy copies, recent registered-reminder recovery without historical replay, bundled Chinese UI fonts, named Windows group selectors, removal of duplicate account navigation, and Chinese Android launcher/task entry points. The interrupted session was resumed against repository state; current artifacts and original emulator files were rechecked before documentation and local commit. Verification: 190 Android units, 32 distinct device tests passing after targeted retries, 22 Windows regressions plus one 14-stage isolated UIA flow, LAN browser/font checks and Release signature. See [VALIDATION_1.16.23.md](VALIDATION_1.16.23.md) for failed retries, restoration and scope. All 531 original emulator files match backup; 26 additional runtime files are retained. No push, publication or production changes; OEM voice/reminder behavior and existing Windows parity limits remain.
 
 ### Previous 1.16.22 implementation

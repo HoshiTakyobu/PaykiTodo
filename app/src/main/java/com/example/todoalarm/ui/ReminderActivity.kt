@@ -38,6 +38,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -46,6 +47,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.compositeOver
+import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -53,6 +57,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
+import androidx.core.view.WindowCompat
 import com.example.todoalarm.TodoApplication
 import com.example.todoalarm.alarm.ActiveReminderStore
 import com.example.todoalarm.alarm.AlarmScheduler
@@ -99,6 +104,15 @@ class ReminderActivity : ComponentActivity() {
         setContent {
             val settings = app.settingsStore.settingsFlow.collectAsStateWithLifecycle().value
             TodoAlarmTheme(themeMode = settings.themeMode) {
+                val background = MaterialTheme.colorScheme.background
+                SideEffect {
+                    window.statusBarColor = background.toArgb()
+                    window.navigationBarColor = background.toArgb()
+                    WindowCompat.getInsetsController(window, window.decorView).apply {
+                        isAppearanceLightStatusBars = background.luminance() > 0.5f
+                        isAppearanceLightNavigationBars = background.luminance() > 0.5f
+                    }
+                }
                 ReminderScreen(
                     todoItem = todoItem,
                     taskGroup = taskGroup,
@@ -330,8 +344,8 @@ private fun ReminderScreen(
             .background(
                 Brush.verticalGradient(
                     listOf(
-                        accent.copy(alpha = 0.18f),
-                        MaterialTheme.colorScheme.primary.copy(alpha = 0.08f),
+                        accent.copy(alpha = 0.18f).compositeOver(MaterialTheme.colorScheme.background),
+                        MaterialTheme.colorScheme.primary.copy(alpha = 0.08f).compositeOver(MaterialTheme.colorScheme.background),
                         MaterialTheme.colorScheme.background
                     )
                 )
@@ -354,7 +368,7 @@ private fun ReminderScreen(
                 Surface(
                     shape = RoundedCornerShape(999.dp),
                     color = if (alarmMode) {
-                        Color(0xFFD32F2F).copy(alpha = alarmPulseAlpha)
+                        Color(0xFFB3261E).copy(alpha = 0.85f + alarmPulseAlpha * 0.15f)
                     } else {
                         MaterialTheme.colorScheme.surface.copy(alpha = 0.72f)
                     }
@@ -362,7 +376,7 @@ private fun ReminderScreen(
                     Text(
                         text = if (alarmMode) "闹钟模式 · 操作后停止响铃" else "${taskGroupEmoji(resolvedGroup)} ${resolvedGroup.name}",
                         modifier = Modifier.padding(horizontal = 14.dp, vertical = 7.dp),
-                        color = if (alarmMode) Color.White else accent,
+                        color = if (alarmMode) Color.White else MaterialTheme.colorScheme.onSurface,
                         style = MaterialTheme.typography.labelLarge,
                         fontWeight = FontWeight.Bold
                     )
@@ -474,7 +488,8 @@ private fun ReminderScreen(
                         shape = RoundedCornerShape(20.dp),
                         contentPadding = PaddingValues(horizontal = 6.dp, vertical = 0.dp),
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = if (alarmMode) Color(0xFFD32F2F) else Color(0xFF18794E)
+                            containerColor = if (alarmMode) Color(0xFFB3261E) else Color(0xFF18794E),
+                            contentColor = Color.White
                         )
                     ) {
                          Text(

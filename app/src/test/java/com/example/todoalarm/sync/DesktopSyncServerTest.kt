@@ -15,7 +15,13 @@ class DesktopSyncServerTest {
         val server = DesktopSyncServer(port) { _, _, _, _ -> DesktopSyncServer.Response.font(bytes) }
         try {
             server.start()
+            // start() binds on its executor. Wait for that boundary before URLConnection,
+            // whose contentType getter hides an early connection-refused error as null.
+            awaitServerStart(port)
             val connection = java.net.URL("http://127.0.0.1:$port/fonts/regular.ttf").openConnection()
+            connection.connectTimeout = 5_000
+            connection.readTimeout = 5_000
+            connection.connect()
             assertEquals("font/ttf", connection.contentType)
             org.junit.Assert.assertArrayEquals(bytes, connection.getInputStream().use { it.readBytes() })
         } finally { server.stop() }
@@ -91,6 +97,17 @@ class DesktopSyncServerTest {
 
     private fun freePort(): Int {
         return ServerSocket(0).use { it.localPort }
+    }
+
+    private fun awaitServerStart(port: Int) {
+        repeat(40) {
+            try {
+                Socket("127.0.0.1", port).use { return }
+            } catch (error: java.net.ConnectException) {
+                if (it == 39) throw error
+                Thread.sleep(25)
+            }
+        }
     }
 
     private fun sendRawHttp(port: Int, request: ByteArray): String {

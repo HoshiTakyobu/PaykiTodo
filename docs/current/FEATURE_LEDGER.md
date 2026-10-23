@@ -4,6 +4,14 @@ This file tracks the product at a practical level for new coding sessions.
 
 ## Implemented And In Use
 
+### v1.16.24 Typography, Native Calendar And Actual Client Acceptance
+
+- Android uses Semibold drawer text and slightly larger body text; Android/Windows headings, usernames, settings and editors use bundled sans-serif while the greeting retains its existing display font and artwork. Windows brand uses Century Gothic/Century; greeting is blue.
+- Windows Calendar adds a mini month, continuous selected-week background, today's circle, fixed weekday/date headers, local timezone, aligned hour labels and a refreshed current-time line: dashed before today, red dot at today, solid afterward. Day/week/month/list, group filtering, event creation/preview and overlapping lanes remain.
+- Native search gains a visible icon/hint and Ctrl+F; account identity is the first Settings card, duplicate sync status is removed, and checklist actions use an integrated icon. Dark calendar buttons and focus colors remain readable and blue.
+- Windows accessible task Toggle now saves complete/restore state; calendar group filtering also responds to checked state. Android reminder background/system bars and action text have corrected contrast.
+- Verified 190 Android units/Lint/build/signature, 22 Windows regressions plus one 14-stage isolated UIA flow, real account-based phone edits/desktop completion/timed reminders and final artifacts. Original 557 emulator files restored and matched; 78 extras retained. Human verification was performed by the user. See [VALIDATION_1.16.24.md](VALIDATION_1.16.24.md); OEM and existing parity limits remain.
+
 ### v1.16.23 Sync Continuation, Reminder Recovery And Chinese Entry Points
 
 - Android and Windows retain sync requests during transfer and continue uploading subsequent edits; content fingerprints detect missed dirty markers. Divergent legacy copies without a verified fingerprint remain blocked across repeated polls until explicit conflict resolution. Running clients poll about every 15 seconds; server-version confirmation does not prove another device has uploaded.

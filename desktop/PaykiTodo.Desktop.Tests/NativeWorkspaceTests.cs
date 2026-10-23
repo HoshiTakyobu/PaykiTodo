@@ -124,9 +124,32 @@ public sealed class NativeWorkspaceTests
                 Directory.CreateDirectory(shotFolder);
                 Screenshot(window, Path.Combine(shotFolder, "windows-board.png"));
                 Assert.Contains(Descendants<TextBlock>(window), text => text.Text == "论文实验结果整理");
-                var typeface = new Typeface(NativeUi.InterfaceFont, FontStyles.Normal, FontWeights.Normal, FontStretches.Normal);
-                Assert.True(typeface.TryGetGlyphTypeface(out var glyphs), "Bundled font must resolve without an installed Sarasa font");
-                Assert.Contains("sarasa_ui_regular.ttf", glyphs.FontUri.ToString().ToLowerInvariant());
+                var completion = Descendants<System.Windows.Controls.CheckBox>(window).Single(control =>
+                    System.Windows.Automation.AutomationProperties.GetName(control) == "完成待办：论文实验结果整理");
+                var completionPeer = System.Windows.Automation.Peers.UIElementAutomationPeer.CreatePeerForElement(completion)!;
+                ((System.Windows.Automation.Provider.IToggleProvider)completionPeer.GetPattern(System.Windows.Automation.Peers.PatternInterface.Toggle)).Toggle();
+                window.UpdateLayout();
+                Assert.True(workspace.Document!.Items.Single(item => item.Title == "论文实验结果整理").Completed);
+                Assert.True(new DesktopWorkspace(store).Document!.Items.Single(item => item.Title == "论文实验结果整理").Completed);
+                Assert.DoesNotContain(Descendants<TextBlock>(window), text => text.Text == "论文实验结果整理");
+                workspace.Edit(target => target.Restore(target.Items.Single(item => item.Title == "论文实验结果整理").Id));
+                window.UpdateLayout();
+                var typeface = new Typeface(NativeUi.InterfaceFont, FontStyles.Normal, FontWeights.Medium, FontStretches.Normal);
+                Assert.True(typeface.TryGetGlyphTypeface(out var glyphs), "Bundled sans-serif must resolve without a system font");
+                Assert.Contains("sarasa_ui_semibold.ttf", glyphs.FontUri.ToString().ToLowerInvariant());
+                Assert.True(new Typeface(NativeUi.HeadingFont, FontStyles.Normal, FontWeights.Normal, FontStretches.Normal).TryGetGlyphTypeface(out var headingGlyphs));
+                Assert.Contains("payki_greeting.ttf", headingGlyphs.FontUri.ToString().ToLowerInvariant());
+                var searchInput = Descendants<TextBox>(window).Single(input => System.Windows.Automation.AutomationProperties.GetName(input) == "搜索事项");
+                var searchHint = Descendants<TextBlock>(window).Single(text => text.Text == "搜索待办、日程…");
+                Assert.Equal(Visibility.Visible, searchHint.Visibility);
+                searchInput.Text = "论文实验";
+                Assert.Equal(Visibility.Collapsed, searchHint.Visibility);
+                Descendants<Button>(window).Single(button => System.Windows.Automation.AutomationProperties.GetName(button) == "执行搜索").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                window.UpdateLayout();
+                Assert.Contains(Descendants<TextBlock>(window), text => text.Text == "论文实验结果整理");
+                Assert.DoesNotContain(Descendants<TextBlock>(window), text => text.Text == "阅读相关工作");
+                searchInput.Clear();
+                Assert.Equal(Visibility.Visible, searchHint.Visibility);
                 Assert.DoesNotContain(Descendants<TextBlock>(window), text => text.Text == "账号与同步");
                 Assert.DoesNotContain(Descendants<System.Windows.DependencyObject>(window), control => control.GetType().Name.Contains("WebView"));
                 foreach (var page in new[] { "待办", "日历", "规划台", "倒数日", "AI 报告", "设置" }) {
@@ -141,7 +164,20 @@ public sealed class NativeWorkspaceTests
                         Assert.DoesNotContain(labels, label => label.Contains("DesktopGroup"));
                         Screenshot(window, Path.Combine(shotFolder, "windows-tasks.png"));
                     }
-                    if (page == "日历") Screenshot(window, Path.Combine(shotFolder, "windows-calendar.png"));
+                    if (page == "日历") {
+                        var timeline = Descendants<Canvas>(window).Where(canvas => canvas.Tag is DateTime).ToList();
+                        Assert.Equal(7, timeline.Count);
+                        var axis = Descendants<Canvas>(window).Single(canvas => Descendants<TextBlock>(canvas).Any(text => text.Text == "01:00"));
+                        var hourText = Descendants<TextBlock>(axis).Single(text => text.Text == "01:00");
+                        var hourLine = timeline[0].Children.OfType<Border>().Single(line => line.Height == 1 && Canvas.GetTop(line) == 60);
+                        Assert.Equal(Canvas.GetTop(hourLine), Canvas.GetTop(hourText) + hourText.Height / 2);
+                        var zone = Descendants<TextBlock>(window).Single(text => text.Text.StartsWith("GMT"));
+                        Assert.Equal(TextWrapping.NoWrap, zone.TextWrapping);
+                        Assert.True(zone.ActualWidth > 0);
+                        var todayButton = Descendants<Button>(window).Single(button => System.Windows.Automation.AutomationProperties.GetAutomationId(button) == "Calendar.Date." + DateTime.Today.ToString("yyyy-MM-dd"));
+                        Assert.Equal(1, ((Border)todayButton.Content).BorderThickness.Left);
+                        Screenshot(window, Path.Combine(shotFolder, "windows-calendar.png"));
+                    }
                 }
                 var toggle = Descendants<ComboBox>(window).First(control => System.Windows.Automation.AutomationProperties.GetName(control) == "界面主题");
                 toggle.SelectedIndex = 1; window.UpdateLayout();
@@ -197,7 +233,8 @@ public sealed class NativeWorkspaceTests
     }
     private static void Screenshot(Window window, string path)
     {
-        var image = new RenderTargetBitmap((int)Math.Ceiling(window.ActualWidth), (int)Math.Ceiling(window.ActualHeight), 96, 96, PixelFormats.Pbgra32); image.Render(window);
+        var dpi = VisualTreeHelper.GetDpi(window);
+        var image = new RenderTargetBitmap((int)Math.Ceiling(window.ActualWidth * dpi.DpiScaleX), (int)Math.Ceiling(window.ActualHeight * dpi.DpiScaleY), dpi.PixelsPerInchX, dpi.PixelsPerInchY, PixelFormats.Pbgra32); image.Render(window);
         var encoder = new PngBitmapEncoder(); encoder.Frames.Add(BitmapFrame.Create(image)); using var file = File.Create(path); encoder.Save(file);
     }
     internal static void AssertSingleLineFits(TextBox input)

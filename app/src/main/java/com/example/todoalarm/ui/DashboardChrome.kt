@@ -2258,7 +2258,7 @@ private fun DrawerSectionButton(
                 text = label,
                 modifier = Modifier.weight(1f),
                 style = MaterialTheme.typography.bodyLarge,
-                fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium,
+                fontWeight = FontWeight.SemiBold,
                 color = if (selected) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant
             )
             trailingContent?.invoke(this)

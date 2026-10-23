@@ -86,7 +86,7 @@ public sealed class VisibleUserAcceptanceTests
                     async Task ButtonClick(string label) {
                         Button? control = null;
                         for (var attempt = 0; attempt < 30 && control == null; attempt++) {
-                            control = UI(() => Descendants<Button>(Current()).FirstOrDefault(b => b.Content as string == label));
+                            control = UI(() => Descendants<Button>(Current()).FirstOrDefault(b => AutomationProperties.GetName(b) == label || b.Content as string == label));
                             if (control == null) await Task.Delay(100);
                         }
                         Assert.NotNull(control);
@@ -139,7 +139,7 @@ public sealed class VisibleUserAcceptanceTests
                     await ButtonClick("取消");
                     Assert.DoesNotContain(workspace.Document.Items, item => item.Title == "Canceled draft must not exist");
                     Stage("W02", "Cancel native editor discards input without saving");
-                    await ButtonClick("! ▤ 快速清单");
+                    await ButtonClick("快速清单");
                     var source = UI(() => Descendants<TextBox>(Current()).Single(t => t.AcceptsReturn));
                     await Type(source, "- Visible root\n-- Visible child\n--# Visible note\n// discarded comment");
                     Capture("windows-checklist-editor-light");
@@ -147,7 +147,7 @@ public sealed class VisibleUserAcceptanceTests
                     Assert.Equal(2, workspace.Document.Items.Count(i => i.QuickChecklistGroupId != null));
                     Assert.Equal("Visible note", workspace.Document.Items.Single(i => i.Title == "Visible child").Notes);
                     Stage("W03", "Titleless checklist saved as real parent/child tasks; notes retained");
-                    await ButtonClick("! ▤ 快速清单");
+                    await ButtonClick("快速清单");
                     source = UI(() => Descendants<TextBox>(Current()).Single(t => t.AcceptsReturn));
                     await Type(source, "- Continuation");
                     if (physical) { Key(0x0D, false); Key(0x0D, true); }
@@ -156,6 +156,7 @@ public sealed class VisibleUserAcceptanceTests
                     Assert.EndsWith("\n- ", UI(() => source.Text));
                     await ButtonClick("取消"); Stage("W04", physical ? "Physical Enter continues task dash; cancellation not stored" : "Component PreviewKeyDown continues dash (not keyboard E2E); cancellation not stored");
                     await Navigate("日历");
+                    Capture("windows-calendar-current-light");
                     await ButtonClick("＋ 创建日程");
                     var eventDay = DateTime.Today.AddDays(2);
                     if (!physical) UI(() => {
@@ -196,7 +197,15 @@ public sealed class VisibleUserAcceptanceTests
                     await Task.Delay(300);
                     Assert.True(NativeUi.Dark); Stage("W07", "Theme selector changes full native workspace to dark mode");
                     Capture("windows-uia-settings-dark");
-                    foreach (var page in new[] { "每日看板", "待办", "日历", "规划台", "倒数日", "AI 报告", "设置" }) await Navigate(page);
+                    foreach (var page in new[] { "每日看板", "待办", "日历", "规划台", "倒数日", "AI 报告", "设置" }) {
+                        await Navigate(page);
+                        if (page == "日历") {
+                            Capture("windows-calendar-current-dark");
+                            UI(() => { window.Width = 920; window.UpdateLayout(); return true; });
+                            await Task.Delay(300); Capture("windows-calendar-narrow-dark");
+                            UI(() => { window.Width = 1160; window.UpdateLayout(); return true; });
+                        }
+                    }
                     Stage("W08", "All seven primary destinations navigated in dark window");
                     await Navigate("AI 报告"); await ButtonClick("AI 服务配置");
                     Capture("windows-ai-settings-dark"); await ButtonClick("＋ 添加服务");

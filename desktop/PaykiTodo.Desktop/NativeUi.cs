@@ -22,6 +22,9 @@ internal static class NativeUi
 {
     private const string StyleKey = "PaykiTodo.ControlStyles";
     public static FontFamily InterfaceFont { get; } = new(new Uri("pack://application:,,,/PaykiTodo;component/"), "./Assets/#Sarasa UI SC");
+    public static FontFamily UtilityFont { get; } = new(new Uri("pack://application:,,,/PaykiTodo;component/"), "./Assets/#Sarasa UI SC");
+    public static FontFamily HeadingFont { get; } = new(new Uri("pack://application:,,,/PaykiTodo;component/"), "./Assets/#FZQingKeBenYueSongS-R-GB");
+    public static FontFamily BrandFont { get; } = new("Century Gothic, Century, Segoe UI");
     private static readonly Lazy<ImageSource> IconSource = new(() => {
         using var stream = System.Windows.Application.GetResourceStream(new Uri("pack://application:,,,/PaykiTodo;component/Assets/PaykiTodo.ico")).Stream;
         var decoder = BitmapDecoder.Create(stream, BitmapCreateOptions.PreservePixelFormat, BitmapCacheOption.OnLoad);
@@ -30,22 +33,26 @@ internal static class NativeUi
     });
     public static ImageSource AppIcon => IconSource.Value;
     public static bool Dark { get; set; }
-    public static Brush Ink => B(Dark ? "#E8EDF3" : "#243746");
-    public static Brush Muted => B(Dark ? "#AFBDCA" : "#637482");
+    public static Brush Ink => B(Dark ? "#EDF1F5" : "#253448");
+    public static Brush Muted => B(Dark ? "#BECAD3" : "#596B80");
+    public static Brush Outline => B(Dark ? "#5E7180" : "#B8C6D5");
+    public static Brush Ocean => B(Dark ? "#94BAFF" : "#326DD6");
     public static Brush Forest => B(Dark ? "#93C6AC" : "#326F59");
     public static Brush Paper => B(Dark ? "#22313E" : "#FFFFFF");
     public static Brush B(string hex)
     {
         if (Dark) hex = hex.ToUpperInvariant() switch {
             "#EEF3F4" or "#F1F5F3" => "#15232F", "#F8FAF9" => "#1B2935", "#DCEBE2" => "#354453",
-            "#EAF0ED" => "#30404E", "#FFFAE9" => "#4C452E", "#F6FBF8" => "#1D2B38", "#E3EBE6" or "#CBD8D2" => "#445463", "#E2EFE6" => "#344553", _ => hex };
+            "#EAF0ED" or "#EDF3FB" => "#30404E", "#FFFAE9" => "#4C452E", "#F6FBF8" or "#F7FAFF" or "#F5F7FA" => "#1D2B38", "#E3EBE6" or "#CBD8D2" or "#E1E7F0" => "#445463", "#E2EFE6" or "#E8F0FF" => "#344553", _ => hex };
         return new SolidColorBrush((Color)System.Windows.Media.ColorConverter.ConvertFromString(hex));
     }
     public static TextBlock Text(string value, double size = 14, Brush? color = null, bool bold = false) => new()
     {
-        Text = value, FontFamily = InterfaceFont, FontSize = size, Foreground = color ?? Ink, TextWrapping = TextWrapping.Wrap,
+        Text = value, FontFamily = InterfaceFont,
+        FontSize = size, Foreground = color ?? Ink, TextWrapping = TextWrapping.Wrap,
         LineHeight = Math.Ceiling(size * 1.4), LineStackingStrategy = LineStackingStrategy.BlockLineHeight,
-        FontWeight = bold ? FontWeights.SemiBold : FontWeights.Normal, Margin = new Thickness(0, 1, 0, 3)
+        FontWeight = bold ? FontWeights.SemiBold : FontWeights.Normal,
+        Margin = new Thickness(0, 1, 0, 3)
     };
     public static StackPanel Column(params UIElement[] elements)
     {
@@ -58,16 +65,16 @@ internal static class NativeUi
     public static Border Card(UIElement child, double padding = 20) => new()
     {
         Background = Paper, CornerRadius = new CornerRadius(12), Padding = new Thickness(padding),
-        BorderBrush = B(Dark ? "#334452" : "#E0E7EC"), BorderThickness = new Thickness(1),
+        BorderBrush = Outline, BorderThickness = new Thickness(1),
         Margin = new Thickness(0, 0, 0, 16), Child = child
     };
     public static Button Action(string label, Action click, bool primary = false)
     {
         var button = new Button { Content = label, FontFamily = InterfaceFont, FontSize = 14, MinHeight = 40,
             HorizontalContentAlignment = HorizontalAlignment.Center, VerticalContentAlignment = VerticalAlignment.Center,
-            FontWeight = primary ? FontWeights.SemiBold : FontWeights.Normal, Padding = new Thickness(16, 9, 16, 9),
+            FontWeight = primary ? FontWeights.SemiBold : FontWeights.Medium, Padding = new Thickness(16, 9, 16, 9),
             Margin = new Thickness(0, 0, 8, 6), Background = primary ? B("#326F59") : B("#EAF0ED"),
-            Foreground = primary ? B("#FFFFFF") : Ink, BorderBrush = primary ? Forest : B("#CBD8D2"), BorderThickness = new Thickness(1), Cursor = System.Windows.Input.Cursors.Hand };
+            Foreground = primary ? B("#FFFFFF") : Ink, BorderBrush = primary ? Forest : Outline, BorderThickness = new Thickness(1), Cursor = System.Windows.Input.Cursors.Hand };
         AutomationProperties.SetName(button, label);
         button.Click += (_, _) => click(); return button;
     }
@@ -76,18 +83,31 @@ internal static class NativeUi
         var button = Action(label, click);
         var row = new Grid(); row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(30) }); row.ColumnDefinitions.Add(new ColumnDefinition());
         row.Children.Add(new TextBlock { Text = glyph, FontFamily = new FontFamily("Segoe MDL2 Assets"), FontSize = 18, VerticalAlignment = VerticalAlignment.Center, Foreground = Forest });
-        var text = Text(label); text.Margin = new Thickness(6, 0, 0, 0); text.VerticalAlignment = VerticalAlignment.Center; Grid.SetColumn(text, 1); row.Children.Add(text);
+        var text = Text(label, 17, bold: true);
+        text.Margin = new Thickness(6, 0, 0, 0); text.VerticalAlignment = VerticalAlignment.Center; Grid.SetColumn(text, 1); row.Children.Add(text);
         button.Content = row; button.HorizontalContentAlignment = HorizontalAlignment.Stretch;
         button.Padding = new Thickness(16, 12, 12, 12); button.Margin = new Thickness(12, 3, 12, 3);
         button.BorderThickness = new Thickness(0); button.BorderBrush = Forest;
         AutomationProperties.SetAutomationId(button, "Navigate." + label); return button;
+    }
+    public static Button ChecklistAction(Action click)
+    {
+        var button = Action("快速清单", click);
+        var icon = new Canvas { Width = 20, Height = 20, Margin = new Thickness(0, 0, 8, 0) };
+        icon.Children.Add(new System.Windows.Shapes.Path { Data = Geometry.Parse("M 3,1 L 17,1 L 17,19 L 3,19 Z M 9,6 L 14,6 M 9,10 L 14,10 M 9,14 L 14,14"), Stroke = Ink, StrokeThickness = 1.4 });
+        icon.Children.Add(new System.Windows.Shapes.Path { Data = Geometry.Parse("M 5,6 L 6,7 L 8,4 M 5,10 L 6,11 L 8,8 M 5,14 L 6,15 L 8,12"), Stroke = Ocean, StrokeThickness = 1.5 });
+        var content = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
+        content.Children.Add(icon); content.Children.Add(Text("快速清单", 14)); button.Content = content;
+        return button;
     }
     public static UIElement BrandHeading(string title, string? subtitle = null)
     {
         var row = new Grid { Margin = new Thickness(0, 0, 0, 20) };
         row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(48) }); row.ColumnDefinitions.Add(new ColumnDefinition());
         row.Children.Add(new System.Windows.Controls.Image { Source = AppIcon, Width = 32, Height = 32, HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Center });
-        var labels = Column(Text(title, 22, bold: true)); if (!string.IsNullOrEmpty(subtitle)) labels.Children.Add(Text(subtitle, 12, Muted));
+        var heading = Text(title, 22, bold: true);
+        if (title == "PaykiTodo") { heading.FontFamily = BrandFont; heading.FontWeight = FontWeights.Normal; }
+        var labels = Column(heading); if (!string.IsNullOrEmpty(subtitle)) labels.Children.Add(Text(subtitle, 13, Muted));
         Grid.SetColumn(labels, 1); row.Children.Add(labels); return row;
     }
     public static UIElement DialogLayout(UIElement body, params UIElement[] actions)
@@ -111,23 +131,32 @@ internal static class NativeUi
     }
     public static TextBox Input(string value = "", bool multiline = false) => new()
     {
-        Text = value, FontFamily = InterfaceFont, FontSize = 14, Padding = new Thickness(12, 9, 12, 9), Margin = new Thickness(0, 4, 0, 16),
+        Text = value, FontFamily = UtilityFont, FontSize = 14, Padding = new Thickness(12, 9, 12, 9), Margin = new Thickness(0, 4, 0, 16),
         VerticalContentAlignment = multiline ? VerticalAlignment.Top : VerticalAlignment.Center,
         MinHeight = multiline ? 110 : 40, AcceptsReturn = multiline, TextWrapping = TextWrapping.Wrap,
         VerticalScrollBarVisibility = multiline ? ScrollBarVisibility.Auto : ScrollBarVisibility.Hidden,
-        BorderBrush = B("#CBD8D2"), BorderThickness = new Thickness(1), Background = Paper, Foreground = Ink
+        BorderBrush = Outline, BorderThickness = new Thickness(1), Background = Paper, Foreground = Ink
     };
     public static ScrollViewer Scroll(UIElement content) => new() { Content = content,
         VerticalScrollBarVisibility = ScrollBarVisibility.Auto, HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled };
-    public static Window Dialog(Window owner, string title, double width = 600, double height = 680) => new()
+    public static Window Dialog(Window owner, string title, double width = 600, double height = 680)
     {
+        var window = new Window {
         Owner = owner, Title = title, Icon = owner.Icon ?? AppIcon,
         Width = Math.Min(width, SystemParameters.WorkArea.Width * 0.95), Height = Math.Min(height, SystemParameters.WorkArea.Height * 0.95),
         MinWidth = Math.Min(420, width), MinHeight = Math.Min(320, height),
         WindowStartupLocation = WindowStartupLocation.CenterOwner, Background = B("#F1F5F3"),
         FontFamily = InterfaceFont, FontSize = 14, Foreground = Ink, UseLayoutRounding = true, SnapsToDevicePixels = true,
         ShowInTaskbar = false, Resources = owner.Resources
-    };
+        };
+        ConfigureRendering(window);
+        return window;
+    }
+    public static void ConfigureRendering(DependencyObject target)
+    {
+        TextOptions.SetTextFormattingMode(target, TextFormattingMode.Display);
+        TextOptions.SetTextRenderingMode(target, TextRenderingMode.Grayscale);
+    }
     public static void InstallStyles(ResourceDictionary resources)
     {
         if (resources[StyleKey] is ResourceDictionary previous) resources.MergedDictionaries.Remove(previous);
@@ -137,6 +166,7 @@ internal static class NativeUi
         resources[SystemColors.ControlTextBrushKey] = Ink;
         resources[SystemColors.HighlightBrushKey] = Forest;
         resources[SystemColors.HighlightTextBrushKey] = B("#FFFFFF");
+        resources["PaykiTodo.FocusBrush"] = Forest;
         var styles = (ResourceDictionary)XamlReader.Parse("""
             <ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:p="clr-namespace:System.Windows.Controls.Primitives;assembly=PresentationFramework">
               <Style TargetType="Button">
@@ -150,7 +180,7 @@ internal static class NativeUi
                     <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="edge" Property="Opacity" Value="0.8"/></Trigger>
                     <Trigger Property="IsEnabled" Value="False"><Setter TargetName="edge" Property="Opacity" Value="0.45"/></Trigger>
                     <Trigger Property="IsPressed" Value="True"><Setter TargetName="edge" Property="Opacity" Value="0.65"/></Trigger>
-                    <Trigger Property="IsKeyboardFocused" Value="True"><Setter TargetName="edge" Property="BorderBrush" Value="#93C6AC"/></Trigger>
+                    <Trigger Property="IsKeyboardFocused" Value="True"><Setter TargetName="edge" Property="BorderBrush" Value="{DynamicResource PaykiTodo.FocusBrush}"/></Trigger>
                   </ControlTemplate.Triggers>
                 </ControlTemplate></Setter.Value></Setter>
               </Style>
@@ -159,7 +189,7 @@ internal static class NativeUi
                   <Border x:Name="edge" CornerRadius="6" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}">
                     <ScrollViewer x:Name="PART_ContentHost"/>
                   </Border>
-                  <ControlTemplate.Triggers><Trigger Property="IsKeyboardFocusWithin" Value="True"><Setter TargetName="edge" Property="BorderBrush" Value="#609C81"/></Trigger><Trigger Property="IsEnabled" Value="False"><Setter Property="Opacity" Value="0.5"/></Trigger></ControlTemplate.Triggers>
+                  <ControlTemplate.Triggers><Trigger Property="IsKeyboardFocusWithin" Value="True"><Setter TargetName="edge" Property="BorderBrush" Value="{DynamicResource PaykiTodo.FocusBrush}"/></Trigger><Trigger Property="IsEnabled" Value="False"><Setter Property="Opacity" Value="0.5"/></Trigger></ControlTemplate.Triggers>
                 </ControlTemplate></Setter.Value></Setter>
               </Style>
               <Style TargetType="CheckBox">
@@ -171,7 +201,7 @@ internal static class NativeUi
                     </Border>
                     <ContentPresenter Grid.Column="1" Margin="8,0,0,0" VerticalAlignment="Center" RecognizesAccessKey="True"/>
                   </Grid>
-                  <ControlTemplate.Triggers><Trigger Property="IsChecked" Value="True"><Setter TargetName="check" Property="Visibility" Value="Visible"/><Setter TargetName="box" Property="BorderBrush" Value="#609C81"/></Trigger><Trigger Property="IsKeyboardFocused" Value="True"><Setter TargetName="box" Property="BorderThickness" Value="2"/></Trigger><Trigger Property="IsEnabled" Value="False"><Setter Property="Opacity" Value="0.45"/></Trigger></ControlTemplate.Triggers>
+                  <ControlTemplate.Triggers><Trigger Property="IsChecked" Value="True"><Setter TargetName="check" Property="Visibility" Value="Visible"/><Setter TargetName="box" Property="BorderBrush" Value="{DynamicResource PaykiTodo.FocusBrush}"/></Trigger><Trigger Property="IsKeyboardFocused" Value="True"><Setter TargetName="box" Property="BorderThickness" Value="2"/></Trigger><Trigger Property="IsEnabled" Value="False"><Setter Property="Opacity" Value="0.45"/></Trigger></ControlTemplate.Triggers>
                 </ControlTemplate></Setter.Value></Setter>
               </Style>
               <Style TargetType="ComboBox">
@@ -219,8 +249,9 @@ internal static class NativeUi
             var style = new Style(type, styles[type] as Style);
             style.Setters.Add(new Setter(Control.ForegroundProperty, Ink));
             style.Setters.Add(new Setter(Control.BackgroundProperty, Paper));
-            style.Setters.Add(new Setter(Control.BorderBrushProperty, B("#CBD8D2")));
-            style.Setters.Add(new Setter(Control.FontFamilyProperty, InterfaceFont));
+            style.Setters.Add(new Setter(Control.BorderBrushProperty, Outline));
+            style.Setters.Add(new Setter(Control.FontFamilyProperty, type == typeof(TextBox) || type == typeof(PasswordBox) || type == typeof(DatePicker) ? UtilityFont : InterfaceFont));
+            style.Setters.Add(new Setter(Control.FontWeightProperty, FontWeights.Medium));
             style.Setters.Add(new Setter(Control.FontSizeProperty, 14d));
             styles[type] = style;
         }

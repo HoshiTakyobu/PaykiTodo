@@ -10,7 +10,7 @@ This project also depends on third-party open-source components, including but n
 - Kotlin and kotlinx.coroutines
 - JUnit
 - org.json
-- Sarasa Gothic UI SC / 更纱黑体 UI SC 1.0.42, SIL Open Font License 1.1, by Renzhi Li and upstream contributors. Unmodified Regular and Semibold fonts are bundled for Android, native Windows, Desktop Web and the in-app Wiki. Source: https://github.com/be5invis/Sarasa-Gothic/releases/tag/v1.0.42 ; full license: `app/src/main/assets/fonts/OFL-Sarasa.txt` (also distributed beside the Windows EXE).
+- Sarasa Gothic UI SC / 更纱黑体 UI SC 1.0.42, SIL Open Font License 1.1, by Renzhi Li and upstream contributors. Unmodified Regular and Semibold fonts are bundled for interface text in Android/native Windows/Desktop Web/Wiki. Source: https://github.com/be5invis/Sarasa-Gothic/releases/tag/v1.0.42 ; full license: `app/src/main/assets/fonts/OFL-Sarasa.txt` (also distributed beside the Windows EXE). The existing user-selected `payki_greeting.ttf` is used for greetings only.
 - SheetJS `xlsx` browser bundle, Apache License 2.0, vendored for Desktop Web local Excel parsing at `app/src/main/assets/desktop-web/vendor/xlsx.full.min.js`; license text is kept at `app/src/main/assets/desktop-web/vendor/xlsx.LICENSE.txt`
 
 Those dependencies remain governed by their own upstream licenses. Before redistributing modified builds, verify the exact dependency tree and license metadata from Gradle.

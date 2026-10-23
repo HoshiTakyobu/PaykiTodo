@@ -74,17 +74,23 @@ internal sealed partial class NativeWindow
     private UIElement SettingsPage()
     {
         var body = Column();
+        var identity = new Grid { Margin = new Thickness(0, 0, 0, 12) };
+        identity.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(48) }); identity.ColumnDefinitions.Add(new ColumnDefinition());
+        identity.Children.Add(new TextBlock { Text = "\uE77B", FontFamily = new System.Windows.Media.FontFamily("Segoe MDL2 Assets"), FontSize = 26, Foreground = Ocean, VerticalAlignment = VerticalAlignment.Center });
+        var accountLabels = Column(Text(workspace.Account?.Username ?? "本地账号", 20, bold: true), Text("账号与设备", 13, Muted));
+        Grid.SetColumn(accountLabels, 1); identity.Children.Add(accountLabels);
+        body.Children.Add(Card(Column(identity,
+            Text("本机修改自动同步，每 15 秒检查云端；登录过期后仍可离线编辑和提醒。", 14, Muted),
+            new Border { Height = 1, Background = Outline, Margin = new Thickness(0, 12, 0, 16) },
+            Row(Action("账号和设备", ShowAccountDetails), Action("立即同步", async () => await workspace.SyncAsync(), true), Action("重新登录", () => { reauthenticating = true; Render(); }), Action("退出登录", async () => {
+                if (Confirm("退出当前账号？本地数据会保留，重新登录后可继续使用。")) await workspace.LogoutAsync();
+            })))));
         var theme = new System.Windows.Controls.ComboBox { ItemsSource = new[] { "浅色", "深色" }, SelectedIndex = Dark ? 1 : 0, Width = 180, HorizontalAlignment = HorizontalAlignment.Left };
         System.Windows.Automation.AutomationProperties.SetName(theme, "界面主题");
         theme.SelectionChanged += (_, _) => {
             Dark = theme.SelectedIndex == 1; BuildShell(); Change(document => document.Settings["themeMode"] = Dark ? "DARK" : "LIGHT");
         };
-        body.Children.Add(Card(Column(BrandHeading("外观", "中性分层背景 · 保留品牌强调色与看板素材"), Text("界面主题", 13, Muted), theme)));
-        body.Children.Add(Card(Column(Text(workspace.Account?.Username ?? "本地账号", 24, Forest, true), Text(workspace.Status, 13, Muted),
-            Text("联网后自动上传本机修改，每 15 秒检查云端。云端相同不代表手机已上传；若手机内容较新，请先在手机检查同步状态。登录过期不影响离线编辑和提醒。", 13, Muted),
-            Row(Action("立即同步", async () => await workspace.SyncAsync(), true), Action("重新登录", () => { reauthenticating = true; Render(); }), Action("账号和设备", ShowAccountDetails), Action("退出登录", async () => {
-                if (Confirm("退出当前账号？本地数据会保留，重新登录后可继续使用。")) await workspace.LogoutAsync();
-            })))));
+        body.Children.Add(Card(Column(Text("外观", 20, bold: true), Text("界面主题", 14, Muted), theme)));
         body.Children.Add(Card(Column(Text("数据与备份", 20, bold: true), Text("迁移包可在手机与电脑间导入。导入或切换云端版本前会自动保留本机安全副本。", 13, Muted),
             Row(Action("导出备份", () => {
                 var dialog = new Microsoft.Win32.SaveFileDialog { Filter = "PaykiTodo 迁移包|*.paykibak", FileName = "PaykiTodo-" + DateTime.Now.ToString("yyyyMMdd-HHmm") + ".paykibak" };
@@ -115,7 +121,7 @@ internal sealed partial class NativeWindow
                 if (!Uri.TryCreate(text, UriKind.Absolute, out var uri) || uri.Scheme is not ("http" or "https")) { workspace.Notify("请输入手机显示的完整 http 或 https 地址"); return; }
                 Process.Start(new ProcessStartInfo(uri.AbsoluteUri) { UseShellExecute = true });
             }))));
-        body.Children.Add(Card(Column(Text("关于 PaykiTodo", 20, bold: true), Text("Windows 客户端 1.16.23 · 更纱黑体 UI / SIL OFL 1.1", 14, Muted),
+        body.Children.Add(Card(Column(Text("关于 PaykiTodo", 20, bold: true), Text("Windows 客户端 1.16.24 · 更纱黑体 UI", 14, Muted),
             Text("桌面提醒需要保持程序运行；手机的锁屏、通知权限与桌面小组件由 Android 系统管理。", 13, Muted), Action("隐私政策", ShowPrivacy))));
         return Page(body);
     }

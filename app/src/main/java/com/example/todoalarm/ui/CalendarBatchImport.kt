@@ -97,6 +97,8 @@ internal fun CalendarBatchImportDialog(
     onDismiss: () -> Unit,
     onImport: (List<CalendarEventDraft>) -> Unit
 ) {
+    val workspace = LocalWorkspacePreferences.current
+    var calendarId by remember { mutableStateOf("default") }
     val context = LocalContext.current
     var input by remember { mutableStateOf("") }
     var selectedFormat by remember { mutableStateOf(CalendarImportFormat.AUTO) }
@@ -134,6 +136,7 @@ internal fun CalendarBatchImportDialog(
                     .verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(14.dp)
             ) {
+                PreferenceChoice("导入日历", calendarId, workspace.calendars.map { it.id to it.name }) { calendarId = it }
                 Surface(
                     shape = RoundedCornerShape(24.dp),
                     color = MaterialTheme.colorScheme.primary.copy(alpha = 0.10f)
@@ -333,7 +336,7 @@ internal fun CalendarBatchImportDialog(
                             parseResult = it
                         }
                         if (latestResult.canImport) {
-                            onImport(latestResult.previews.map { it.draft })
+                            onImport(latestResult.previews.map { it.draft.copy(calendarId = calendarId) })
                         }
                     }
                 ) {

@@ -122,6 +122,13 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
     private val reminderNotifier = app.reminderNotifier
     private val settingsStore = app.settingsStore
     private val quoteRepository = app.quoteRepository
+    val calendars = repository.observeCalendars().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+    fun saveCalendar(calendar: com.example.todoalarm.data.PlannerCalendar) { viewModelScope.launch { repository.saveCalendar(calendar); autoBackupIfEnabled() } }
+    fun deleteCalendar(id: String) { viewModelScope.launch { repository.deleteCalendar(id); autoBackupIfEnabled() } }
+    fun setCountdownPastMode(id: Long, mode: String) { viewModelScope.launch { repository.setCountdownPastMode(id, mode); autoBackupIfEnabled() } }
+    fun updateDisplayPreferences(font: String, path: String, days: Int, hidden: Set<String>) {
+        settingsStore.updateDisplayPreferences(font, path, days, hidden)
+    }
 
     private val quoteFlow = MutableStateFlow(QuoteRepository.seedQuotes)
     private val selectedGroupIdsFlow = MutableStateFlow<Set<Long>>(emptySet())
@@ -205,8 +212,7 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
     @OptIn(ExperimentalCoroutinesApi::class)
     val countdownItems = todayDateFlow
         .flatMapLatest { date ->
-            val (startMillis, _) = dayRangeMillis(date)
-            repository.observeActiveCountdownItems(startMillis)
+            repository.observeCountdownCandidates()
         }
         .stateIn(
         scope = viewModelScope,
@@ -328,7 +334,7 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
             val visibleCountdownItems = activeCountdownItems
                 .mapNotNull { item ->
                     val targetMillis = DailyBoardSnapshotBuilder.countdownTargetMillis(item)
-                    if (targetMillis != null && targetMillis >= nowMillis) item to targetMillis else null
+                    if (targetMillis != null && com.example.todoalarm.data.CountdownVisibility.visible(item, nowMillis, settings.countdownPastDays)) item to targetMillis else null
                 }
                 .sortedBy { it.second }
                 .map { it.first }

@@ -8,22 +8,22 @@
 - Supported Android: Android 8.0+ / API 26+
 - Compile and target SDK: Android 14 / API 34
 - License: MIT
-- App source version: `1.16.24 / versionCode 389` (locally built and verified; not published)
-- Room database version: `31`
-- Latest testing audit: 190 Android unit tests, Lint (0 errors / 131 warnings), 22 Windows regressions plus one 14-stage isolated-desktop UIA flow, real test-account cross-client edit/completion/reminder checks and verified local artifacts; see [VALIDATION_1.16.24.md](VALIDATION_1.16.24.md). Earlier Android instrumentation and LAN suites were not repeated this round.
+- App source version: `1.16.25 / versionCode 390` (locally built and verified; not published)
+- Room database version: `32`
+- Latest testing audit: 193 Android unit tests, Lint (0 errors / 131 warnings), 13 distinct emulator tests after targeted retries, 26 Windows regressions plus one 14-stage isolated UIA flow, actual cross-client archive roundtrip and signed local artifacts. See [VALIDATION_1.16.25.md](VALIDATION_1.16.25.md).
 
 ## Published Build
 
 - GitHub Release: `https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.15.18`
 - Release APK: `app/build/outputs/apk/release/PaykiTodo-1.15.18-release.apk`
 - Public asset name: `PaykiTodo-1.15.18-release.apk`
-- Current debug APK: `app/build/outputs/apk/debug/PaykiTodo-1.16.24-debug.apk`
-- Current signed release APK: `app/build/outputs/apk/release/PaykiTodo-1.16.24-release.apk`
-- Current Windows self-contained EXE: `desktop/dist/PaykiTodo.exe` (file version `1.16.24.0`; distribute the whole directory)
-- Debug APK SHA-256: `9ABD9DEE69535B6194E3E21649F9D27475286C0BC0CFFD0AC109929F6CDF6921`
-- Signed Release APK SHA-256: `CE61F3FF24DC4743763806C09CEAF793671957C5FC9C758B408A13788EB3C9DA`
-- Windows EXE SHA-256: `E41C698CE44717EFA7EB62F51A571B1FE007B077A69F19430E0616E21838A6E0`
-- Windows main assembly `desktop/dist/PaykiTodo.dll` SHA-256: `60464C773B2D3F0F2FCAF57E5015361FA6E145DC9ACC0770CBA1D88E124DF95F` (the EXE apphost alone does not identify UI code)
+- Current debug APK: `app/build/outputs/apk/debug/PaykiTodo-1.16.25-debug.apk`
+- Current signed release APK: `app/build/outputs/apk/release/PaykiTodo-1.16.25-release.apk`
+- Current Windows self-contained EXE: `desktop/dist/PaykiTodo.exe` (file version `1.16.25.0`; distribute the whole directory)
+- Debug APK SHA-256: `112358624A87553C6D65C063039D69F79AD1E70DAEF8A8FEAF5519D1A44AAC4A`
+- Signed Release APK SHA-256: `4385567D5E671516E0DD6E2ADACCA7D2FD444F322F0A12F0FF741B6E6F1EF169`
+- Windows EXE SHA-256: `D0FFC7FDB45E713C2D9722062807B4AA58CD39E779349FB186D458FEF74FF9CE`
+- Windows main assembly `desktop/dist/PaykiTodo.dll` SHA-256: `CFE4A99A23AF801F823788E568D9148C84C3BF3E5E3E88848A4A7349C054229A` (the EXE apphost alone does not identify UI code)
 - Release signing material remains local and ignored by Git.
 
 ## Product Positioning
@@ -49,6 +49,17 @@ PaykiTodo is a local-first Android assistant for todos, DDLs, schedules, countdo
 - Desktop Web calendar now uses the same current-time line convention as the phone calendar, separates today's date from the selected date, and flashes the selected week column briefly.
 
 See `README.md` for the public overview and `docs/current/FEATURE_LEDGER.md` for the detailed implementation ledger.
+
+## v1.16.25 Validation Scope (not published)
+
+- Android `1.16.25 / versionCode 390`，Windows `1.16.25.0`，Room `32`，开始基线 `6f3800f`。
+- 193 Android 单测；Lint 0 errors / 131 warnings；13个不同模拟器用例经针对性复验通过；26 Windows 回归（含实际 EXE）及1条14阶段隔离 UIA 流程通过。
+- 第三方观察及运行状态仅保留在私有恢复副本中；公开记录仅保留 PaykiTodo 的需求、实现与验收。
+- Windows 生成迁移包→Android 独立 Room 数据库导入、修改→导出→Windows 读取，核对日历归属、名称与已完成纪念状态。手机及桌面新数据字段进入现有整份快照链路。
+- 新版 Debug 安装在既有 `emulator-5554 / Pixel_8`（Android14），冷启动及登录页渲染正常；当次人机验证显示加载失败，未进行真实账号登录或绕过门禁，应用与测试包最后均停止，模拟器保持运行。
+- Windows 使用独立桌面和独立资料，未接管用户键鼠或剪贴板。未推送、发布、建标签或部署服务器。
+
+See [VALIDATION_1.16.25.md](VALIDATION_1.16.25.md) for reference inspection, new controls, scroll-fix regression, data preservation and boundaries.
 
 ## v1.16.24 Validation Scope (not published)
 

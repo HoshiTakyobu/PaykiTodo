@@ -150,6 +150,9 @@ internal fun CalendarEventEditorDialog(
     var ringEnabled by remember(initialEvent?.id, seedDraft) { mutableStateOf(initialEvent?.ringEnabled ?: seedDraft?.ringEnabled ?: defaultRingEnabled) }
     var vibrateEnabled by remember(initialEvent?.id, seedDraft) { mutableStateOf(initialEvent?.vibrateEnabled ?: seedDraft?.vibrateEnabled ?: defaultVibrateEnabled) }
     val reminderDeliveryMode = ReminderDeliveryMode.FULLSCREEN_AND_NOTIFICATION
+    val workspace = LocalWorkspacePreferences.current
+    var selectedCalendarId by remember(initialEvent?.id, seedDraft) { mutableStateOf(initialEvent?.calendarId ?: seedDraft?.calendarId ?: "default") }
+    var countdownPastMode by remember(initialEvent?.id, seedDraft) { mutableStateOf(initialEvent?.countdownPastMode ?: seedDraft?.countdownPastMode ?: "AUTO") }
     var countdownEnabled by remember(initialEvent?.id, seedDraft) {
         mutableStateOf(initialEvent?.countdownEnabled == true || seedDraft?.countdownEnabled == true)
     }
@@ -298,6 +301,8 @@ internal fun CalendarEventEditorDialog(
                 vibrateEnabled = vibrateEnabled,
                 reminderDeliveryMode = reminderDeliveryMode,
                 countdownEnabled = countdownEnabled,
+                calendarId = selectedCalendarId,
+                countdownPastMode = countdownPastMode,
                 checkInEnabled = checkInEnabled,
                 checkInReminderOffsetsMinutes = normalizedCheckInOffsets,
                 recurrence = RecurrenceConfig(
@@ -366,6 +371,15 @@ internal fun CalendarEventEditorDialog(
                     )
                 }
 
+                EditorBlock(title = "日历") {
+                    PreferenceChoice("所属日历", selectedCalendarId, workspace.calendars.map { it.id to it.name }) { id ->
+                        selectedCalendarId = id
+                        workspace.calendars.firstOrNull { it.id == id }?.let { accentColorHex = it.colorHex }
+                    }
+                }
+                if (countdownEnabled) EditorBlock(title = "纪念展示") {
+                    PreferenceChoice("结束后", countdownPastMode, CountdownPastChoices) { countdownPastMode = it }
+                }
                 EditorBlock(title = "分组") {
                     EditorSelectionRow(
                         title = "日程分组",
@@ -373,7 +387,7 @@ internal fun CalendarEventEditorDialog(
                         onClick = { if (sortedGroups.isNotEmpty()) showGroupPicker = true }
                     )
                     Text(
-                        text = "用于日历卡片、电脑端筛选和分组颜色显示；单个日程只归属一个主分组。",
+                        text = "保留事项的分类信息；日历归属和显隐由上方“所属日历”独立管理。",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -869,6 +883,8 @@ internal fun CalendarEventEditorDialog(
                                             vibrateEnabled = vibrateEnabled,
                                             reminderDeliveryMode = reminderDeliveryMode,
                                             countdownEnabled = countdownEnabled,
+                calendarId = selectedCalendarId,
+                countdownPastMode = countdownPastMode,
                                             checkInEnabled = checkInEnabled,
                                             checkInReminderOffsetsMinutes = normalizedCheckInOffsets,
                                             recurrence = RecurrenceConfig(

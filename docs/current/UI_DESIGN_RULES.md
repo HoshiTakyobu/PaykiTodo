@@ -97,9 +97,16 @@ When the user supplies concrete UI reference screenshots and asks for reproducti
 
 ## 10. Native Windows consistency
 
-- From the final 2026-10-22 annotated feedback, QingKeBenYueSong is reserved for greetings/daily quotes. Android and native Windows use bundled Sarasa UI SC Regular/Semibold for headings, navigation, usernames, body text, settings and editors. Drawer labels are Semibold; phone body text is slightly larger. Windows product identity uses Century Gothic/Century with Segoe UI fallback. Preserve font licenses and verify bundled resources actually resolve.
+- From the final 2026-10-22 annotated feedback, QingKeBenYueSong is reserved for greetings/daily quotes. The 2026-10-23 feedback supersedes the previous mandatory Sarasa default: native Windows defaults to Microsoft YaHei UI and offers installed fonts/Sarasa in Settings; Android defaults to system sans-serif and offers system, bundled and local TTF/OTF fonts. Preview changes remain drafts until completion. Drawer labels remain Semibold; phone body text is slightly larger. Windows product identity uses Century Gothic/Century with Segoe UI fallback. Preserve font licenses and verify bundled resources actually resolve.
 - Native Windows Calendar follows the supplied calendar reference: compact toolbar, left mini month with selected-week background and today's circle, fixed weekday/date header, timezone label, continuous hour grid, and current-time label/red line. Columns before today use a dashed red line, today's left edge has a red dot, and today/future columns use a solid line. Blue is the calendar action/selection accent; do not turn calendar surfaces green.
 - Keep the supplied board artwork and greeting font. All owned windows, reminders, confirmations and tray icons use the original PaykiTodo icon, not testhost/system question icons. Respect display scaling and check small-text legibility instead of applying decorative fonts indiscriminately.
 - Keep dialog actions fixed outside scrollable forms. Planning Desk actions must remain inside the narrow-window viewport. Center reminder time/title/actions without centering ordinary form labels.
 - TextBoxView already applies control padding: do not apply the same padding again as PART_ContentHost margin. Verify date/time and editable-model text visibility, not just saved values.
 - Visual review is a supplement to save/cancel/navigation/state checks, not a substitute. Prefer isolated desktop controls for routine acceptance; do not steal the user's physical input to take screenshots.
+
+## 11. Independent calendars and historical countdowns
+
+- Calendar ownership is separate from task groups. Use named calendars and colored rounded checkboxes; hiding a calendar changes calendar visibility, not reminder scheduling. Preserve ownership in recurrence, templates, backups and edits.
+- Windows blank-grid single click snaps to 15 minutes and previews a blue 30-minute draft; clicking that draft opens the editor. Cancel writes nothing. Keep scroll position when visibility or data refreshes.
+- Countdown AUTO retains the last7 local calendar days by default; KEEP survives completion and the cutoff, HIDE suppresses presentation. Ask recently completed/ended AUTO items whether to keep the memorial. Do not resurrect task active status to show a memorial.
+- Settings follows the inspected shiguang reference: category navigation, title/summary/control rows and light dividers. Mobile backup emphasizes directory/export/restore and collapses maintenance tools.

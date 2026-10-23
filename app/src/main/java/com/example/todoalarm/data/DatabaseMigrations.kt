@@ -488,6 +488,17 @@ object DatabaseMigrations {
         }
     }
 
+    val MIGRATION_31_32 = object : Migration(31, 32) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("CREATE TABLE IF NOT EXISTS `planner_calendars` (`id` TEXT NOT NULL, `name` TEXT NOT NULL, `colorHex` TEXT NOT NULL, `sortOrder` INTEGER NOT NULL, PRIMARY KEY(`id`))")
+            db.execSQL("INSERT OR IGNORE INTO `planner_calendars` VALUES ('default', '常规日历', '#3370FF', 0)")
+            for (table in listOf("todo_items", "recurring_task_templates")) {
+                db.execSQL("ALTER TABLE `$table` ADD COLUMN `calendarId` TEXT NOT NULL DEFAULT 'default'")
+                db.execSQL("ALTER TABLE `$table` ADD COLUMN `countdownPastMode` TEXT NOT NULL DEFAULT 'AUTO'")
+            }
+        }
+    }
+
     private fun createActivityRecordsTable(db: SupportSQLiteDatabase) {
         db.execSQL(
             """

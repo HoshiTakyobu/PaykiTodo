@@ -17,5 +17,6 @@ data class BackupSnapshot(
     val recurringInstanceSkips: List<RecurringInstanceSkip> = emptyList(),
     val activityRecords: List<ActivityRecord> = emptyList(),
     val quickChecklistGroups: List<QuickChecklistGroup> = emptyList(),
+    val calendars: List<PlannerCalendar> = listOf(PlannerCalendar()),
     val settings: AppSettings
 )

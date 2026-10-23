@@ -4,6 +4,17 @@ This file tracks the product at a practical level for new coding sessions.
 
 ## Implemented And In Use
 
+### v1.16.25 多日历、显示规则与设置
+
+- 两端新增独立日历：名称、颜色、日程归属与显隐；旧数据迁移到常规日历，删除日历保留事项并迁回默认，循环规则和周模板一并处理。
+- Windows 网格单击按15分钟落点出现30分钟蓝色草稿，再次点击打开编辑器；取消不保存，切换显隐保持滚动位置。彩色圆角勾选框有填充色和对比清晰的勾。
+- Windows 默认改为 Microsoft YaHei UI，可选择本机主字体；Android 默认系统无衬线，支持内置字体及导入 TTF/OTF。字体预览完成后才应用，原问候字体和看板图片保留。
+- 今日待办加宽色条并突出 DDL；值得期待和倒数日默认隐藏超过7天的历史目标，完成后可选择长期保留纪念或隐藏，两端保存相同状态。
+- Windows 未来同系列循环待办可折叠，分组筛选在右侧与操作按钮等高。两端设置按分类重排，备份使用目录、导出、恢复的列表行，手机维护工具默认收起。
+- Android 应用名称恢复为 PaykiTodo；局域网旧编辑入口保留日历与纪念字段，备份往返和 Room31→32 迁移通过验证。
+
+193 Android 单测、13个不同设备用例经针对性复验、26 Windows 回归和1条14阶段隔离 UIA 流程通过；具体范围及旧有差异见 [VALIDATION_1.16.25.md](VALIDATION_1.16.25.md)。
+
 ### v1.16.24 Typography, Native Calendar And Actual Client Acceptance
 
 - Android uses Semibold drawer text and slightly larger body text; Android/Windows headings, usernames, settings and editors use bundled sans-serif while the greeting retains its existing display font and artwork. Windows brand uses Century Gothic/Century; greeting is blue.

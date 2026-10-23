@@ -103,7 +103,7 @@ class ReminderActivity : ComponentActivity() {
 
         setContent {
             val settings = app.settingsStore.settingsFlow.collectAsStateWithLifecycle().value
-            TodoAlarmTheme(themeMode = settings.themeMode) {
+            TodoAlarmTheme(themeMode = settings.themeMode, mainFont = settings.mainFont, customFontPath = settings.customFontPath) {
                 val background = MaterialTheme.colorScheme.background
                 SideEffect {
                     window.statusBarColor = background.toArgb()

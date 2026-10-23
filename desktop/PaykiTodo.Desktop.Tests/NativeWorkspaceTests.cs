@@ -134,7 +134,7 @@ public sealed class NativeWorkspaceTests
                 Assert.DoesNotContain(Descendants<TextBlock>(window), text => text.Text == "论文实验结果整理");
                 workspace.Edit(target => target.Restore(target.Items.Single(item => item.Title == "论文实验结果整理").Id));
                 window.UpdateLayout();
-                var typeface = new Typeface(NativeUi.InterfaceFont, FontStyles.Normal, FontWeights.Medium, FontStretches.Normal);
+                var typeface = new Typeface(NativeUi.BundledFont, FontStyles.Normal, FontWeights.Medium, FontStretches.Normal);
                 Assert.True(typeface.TryGetGlyphTypeface(out var glyphs), "Bundled sans-serif must resolve without a system font");
                 Assert.Contains("sarasa_ui_semibold.ttf", glyphs.FontUri.ToString().ToLowerInvariant());
                 Assert.True(new Typeface(NativeUi.HeadingFont, FontStyles.Normal, FontWeights.Normal, FontStretches.Normal).TryGetGlyphTypeface(out var headingGlyphs));
@@ -177,6 +177,7 @@ public sealed class NativeWorkspaceTests
                         var todayButton = Descendants<Button>(window).Single(button => System.Windows.Automation.AutomationProperties.GetAutomationId(button) == "Calendar.Date." + DateTime.Today.ToString("yyyy-MM-dd"));
                         Assert.Equal(1, ((Border)todayButton.Content).BorderThickness.Left);
                         Screenshot(window, Path.Combine(shotFolder, "windows-calendar.png"));
+                        VerifyFeedbackControls(window, workspace, store, shotFolder);
                     }
                 }
                 var toggle = Descendants<ComboBox>(window).First(control => System.Windows.Automation.AutomationProperties.GetName(control) == "界面主题");
@@ -236,6 +237,111 @@ public sealed class NativeWorkspaceTests
         var dpi = VisualTreeHelper.GetDpi(window);
         var image = new RenderTargetBitmap((int)Math.Ceiling(window.ActualWidth * dpi.DpiScaleX), (int)Math.Ceiling(window.ActualHeight * dpi.DpiScaleY), dpi.PixelsPerInchX, dpi.PixelsPerInchY, PixelFormats.Pbgra32); image.Render(window);
         var encoder = new PngBitmapEncoder(); encoder.Frames.Add(BitmapFrame.Create(image)); using var file = File.Create(path); encoder.Save(file);
+    }
+
+    private static void VerifyFeedbackControls(NativeWindow window, DesktopWorkspace workspace, DesktopSecureStore store, string folder)
+    {
+        void Click(string label) => Descendants<Button>(window).First(button => button.Content as string == label).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        void Navigate(string label) {
+            Descendants<Button>(window).Single(button => System.Windows.Automation.AutomationProperties.GetAutomationId(button) == "Navigate." + label).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            window.UpdateLayout();
+        }
+        void Private(string name, params object[] args) => typeof(NativeWindow).GetMethod(name, System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!.Invoke(window, args);
+        void Modal(string title, Action open, Action<Window> inspect) {
+            Exception? error = null;
+            var timer = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromMilliseconds(80) };
+            timer.Tick += (_, _) => {
+                var dialog = System.Windows.Application.Current.Windows.OfType<Window>().FirstOrDefault(candidate => candidate.Title == title && candidate != window);
+                if (dialog == null) return;
+                timer.Stop();
+                try { dialog.UpdateLayout(); inspect(dialog); } catch (Exception failure) { error = failure; dialog.Close(); }
+            };
+            timer.Start(); open(); timer.Stop();
+            if (error != null) throw error;
+            window.UpdateLayout();
+        }
+        void DialogClick(Window dialog, string label) => Descendants<Button>(dialog).Single(button => button.Content as string == label).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        void Pump() {
+            var frame = new System.Windows.Threading.DispatcherFrame();
+            var timer = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromMilliseconds(60) };
+            timer.Tick += (_, _) => { timer.Stop(); frame.Continue = false; };
+            timer.Start(); System.Windows.Threading.Dispatcher.PushFrame(frame); window.UpdateLayout();
+        }
+        ScrollViewer TimelineScroll() => Descendants<ScrollViewer>(window).Single(scroll => scroll.Content is Grid grid && Descendants<Canvas>(grid).Any(canvas => canvas.Tag is DateTime));
+        Pump();
+        TimelineScroll().ScrollToVerticalOffset(300); Pump();
+        Assert.Equal(300, TimelineScroll().VerticalOffset, 1);
+
+        var count = workspace.Document!.Items.Count;
+        var canvas = Descendants<Canvas>(window).First(control => control.Tag is DateTime);
+        canvas.RaiseEvent(new System.Windows.Input.MouseButtonEventArgs(System.Windows.Input.Mouse.PrimaryDevice, 0, System.Windows.Input.MouseButton.Left) { RoutedEvent = UIElement.MouseLeftButtonUpEvent });
+        Assert.Single(Descendants<Button>(window).Where(button => System.Windows.Automation.AutomationProperties.GetAutomationId(button) == "Calendar.Draft"));
+        Assert.Empty(window.OwnedWindows.Cast<Window>());
+        var seed = ((DateTime)canvas.Tag).AddHours(9).AddMinutes(15);
+        Private("ShowCalendarDraft", canvas, seed);
+        var draft = Descendants<Button>(window).Single(button => System.Windows.Automation.AutomationProperties.GetAutomationId(button) == "Calendar.Draft");
+        Assert.Equal(24, draft.Height);
+        Modal("新增日程", () => draft.RaiseEvent(new RoutedEventArgs(Button.ClickEvent)), dialog => DialogClick(dialog, "取消"));
+        Assert.Equal(count, workspace.Document.Items.Count);
+        Modal("新增日历", () => Private("EditCalendar", new object[] { null! }), dialog => {
+            Descendants<TextBox>(dialog).Single(input => System.Windows.Automation.AutomationProperties.GetName(input) == "日历名称").Text = "课程表";
+            Descendants<ComboBox>(dialog).Single().SelectedItem = "#7955CC";
+            DialogClick(dialog, "完成");
+        });
+        var calendar = workspace.Document.Calendars.Single(item => item.Name == "课程表");
+        canvas = Descendants<Canvas>(window).First(control => control.Tag is DateTime);
+        Private("ShowCalendarDraft", canvas, seed);
+        draft = Descendants<Button>(window).Single(button => System.Windows.Automation.AutomationProperties.GetAutomationId(button) == "Calendar.Draft");
+        Modal("新增日程", () => draft.RaiseEvent(new RoutedEventArgs(Button.ClickEvent)), dialog => {
+            Descendants<TextBox>(dialog).First().Text = "课程归属验收";
+            var choice = Descendants<ComboBox>(dialog).Single(box => box.ItemsSource is IEnumerable<DesktopCalendar>);
+            choice.SelectedItem = ((IEnumerable<DesktopCalendar>)choice.ItemsSource).Single(item => item.Id == calendar.Id);
+            DialogClick(dialog, "完成");
+        });
+        var saved = new DesktopWorkspace(store).Document!.Items.Single(item => item.Title == "课程归属验收");
+        Assert.Equal(calendar.Id, saved.CalendarId); Assert.Equal(Millis(seed), saved.StartAtMillis); Assert.Equal(Millis(seed.AddMinutes(30)), saved.EndAtMillis);
+        var toggle = Descendants<System.Windows.Controls.CheckBox>(window).Single(box => System.Windows.Automation.AutomationProperties.GetAutomationId(box) == "Calendar.Visible." + calendar.Id);
+        toggle.IsChecked = false; window.UpdateLayout();
+        Assert.DoesNotContain(Descendants<TextBlock>(window), text => text.Text == "课程归属验收");
+        Assert.Contains(calendar.Id, workspace.Document.Settings["hiddenCalendarIds"]!.ToJsonString());
+        toggle = Descendants<System.Windows.Controls.CheckBox>(window).Single(box => System.Windows.Automation.AutomationProperties.GetAutomationId(box) == "Calendar.Visible." + calendar.Id);
+        toggle.IsChecked = true; window.UpdateLayout();
+        Pump(); Assert.Equal(300, TimelineScroll().VerticalOffset, 1);
+        Assert.Contains(Descendants<TextBlock>(window), text => text.Text == "课程归属验收");
+        Screenshot(window, Path.Combine(folder, "windows-calendar-ownership.png"));
+
+        Navigate("设置");
+        Modal("选择主字体", () => Click("选择字体"), dialog => {
+            Descendants<ComboBox>(dialog).Single().SelectedItem = "Segoe UI"; DialogClick(dialog, "取消");
+        });
+        Assert.Null(workspace.Document.Settings["desktopFontFamily"]);
+        Modal("选择主字体", () => Click("选择字体"), dialog => {
+            Descendants<ComboBox>(dialog).Single().SelectedItem = "Segoe UI"; DialogClick(dialog, "完成");
+        });
+        Assert.Equal("Segoe UI", new DesktopWorkspace(store).Document!.Settings["desktopFontFamily"]!.GetValue<string>());
+        Modal("选择主字体", () => Click("选择字体"), dialog => {
+            Descendants<ComboBox>(dialog).Single().SelectedItem = "系统推荐"; DialogClick(dialog, "完成");
+        });
+        Click("数据与备份"); window.UpdateLayout(); Screenshot(window, Path.Combine(folder, "windows-backup-settings.png"));
+        Click("常规");
+
+        long memorial = 0;
+        workspace.Edit(document => memorial = document.SaveItem(NewItem(false, "完成纪念验收") with { CountdownEnabled = true, DueAtMillis = Millis(DateTime.Today.AddDays(-8)) }));
+        Modal("继续保留这个日子？", () => { workspace.Edit(document => document.Complete(memorial)); Private("ReviewCountdowns"); }, dialog => {
+            Screenshot(dialog, Path.Combine(folder, "windows-countdown-choice.png")); DialogClick(dialog, "保留纪念");
+        });
+        Assert.Equal("KEEP", new DesktopWorkspace(store).Document!.Items.Single(item => item.Id == memorial).CountdownPastMode);
+        workspace.Edit(document => {
+            document.SaveItem(NewItem(false, "每日循环验收") with { DueAtMillis = Millis(DateTime.Today.AddDays(1).AddHours(10)), RecurrenceType = "DAILY", RecurrenceEndEpochDay = (long)(DateTime.Today.AddDays(4) - DateTime.UnixEpoch.Date).TotalDays });
+            document.EnsureRecurringInstances(DateTime.Today);
+        });
+        Navigate("待办");
+        var series = Descendants<Button>(window).Single(button => System.Windows.Automation.AutomationProperties.GetAutomationId(button).StartsWith("Todo.Series."));
+        var foldedCount = Descendants<TextBlock>(window).Count(text => text.Text == "每日循环验收");
+        series.RaiseEvent(new RoutedEventArgs(Button.ClickEvent)); window.UpdateLayout();
+        Assert.True(Descendants<TextBlock>(window).Count(text => text.Text == "每日循环验收") > foldedCount);
+        Screenshot(window, Path.Combine(folder, "windows-recurring-expanded.png"));
+        Navigate("日历");
     }
     internal static void AssertSingleLineFits(TextBox input)
     {

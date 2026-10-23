@@ -301,12 +301,12 @@ class TodoRepository(
         val boardStart = now.atStartOfDay(zone).toInstant().toEpochMilli()
         val boardEnd = now.plusDays(2).atStartOfDay(zone).toInstant().toEpochMilli()
         val todoStart = now.minusDays(30).atStartOfDay(zone).toInstant().toEpochMilli()
-        return todoDao.getActiveItemsForBoardRange(
+        return (todoDao.getActiveItemsForBoardRange(
             todoStartMillis = todoStart,
             boardStartMillis = boardStart,
             boardEndMillis = boardEnd,
             noDueDateMillis = NO_DUE_DATE_MILLIS
-        )
+        ) + todoDao.getCountdownCandidates()).distinctBy { it.id }
     }
 
     suspend fun getAllPlanningNotes(): List<PlanningNote> = todoDao.getAllPlanningNotes()
@@ -1956,7 +1956,40 @@ class TodoRepository(
             ?.first
     }
 
+    fun observeCalendars() = todoDao.observeCalendars()
+    fun observeCountdownCandidates() = todoDao.observeCountdownCandidates()
+
+    suspend fun saveCalendar(calendar: PlannerCalendar) {
+        require(calendar.name.isNotBlank()) { "请填写日历名称" }
+        require(Regex("#[0-9a-fA-F]{6}").matches(calendar.colorHex)) { "请选择有效颜色" }
+        todoDao.insertCalendars(listOf(calendar.copy(name = calendar.name.trim())))
+        notifyItemsChanged()
+    }
+
+    suspend fun deleteCalendar(id: String) {
+        require(id != DEFAULT_CALENDAR_ID) { "常规日历需要保留" }
+        database.withTransaction {
+            todoDao.moveCalendarItemsToDefault(id)
+            todoDao.moveCalendarTemplatesToDefault(id)
+            todoDao.getScheduleTemplates().forEach { template ->
+                todoDao.insertScheduleTemplate(template.copy(payloadJson = remapScheduleCalendarIds(template.payloadJson) { calendarId ->
+                    if (calendarId == id) DEFAULT_CALENDAR_ID else calendarId
+                }))
+            }
+            todoDao.deleteCalendar(id)
+        }
+        notifyItemsChanged()
+    }
+
+    suspend fun setCountdownPastMode(id: Long, mode: String) {
+        require(mode in listOf("AUTO", "KEEP", "HIDE"))
+        val item = todoDao.getById(id) ?: return
+        todoDao.update(item.copy(countdownPastMode = mode))
+        notifyItemsChanged()
+    }
+
     suspend fun ensureDefaultGroups(): List<TaskGroup> {
+        if (todoDao.getCalendars().none { it.id == DEFAULT_CALENDAR_ID }) todoDao.insertCalendars(listOf(PlannerCalendar()))
         val existing = todoDao.getAllGroups()
         if (existing.isNotEmpty()) return existing
         val ids = todoDao.insertGroups(DefaultTaskGroups.seed)
@@ -2224,12 +2257,18 @@ class TodoRepository(
             recurringInstanceSkips = todoDao.getAllRecurringSkips(),
             activityRecords = todoDao.getAllFinishedActivityRecords(),
             quickChecklistGroups = todoDao.getAllQuickChecklistGroups(),
+            calendars = todoDao.getCalendars(),
             settings = settings
         )
     }
 
     suspend fun importSnapshot(snapshot: BackupSnapshot, notify: Boolean = true) {
         database.withTransaction {
+            todoDao.clearCalendars()
+            val calendars = (listOf(PlannerCalendar()) + snapshot.calendars).associateBy { it.id }.values.toList()
+            val calendarIds = calendars.map { it.id }.toSet()
+            fun validCalendar(id: String) = id.takeIf { it in calendarIds } ?: DEFAULT_CALENDAR_ID
+            todoDao.insertCalendars(calendars)
             todoDao.clearPlanningNodes()
         todoDao.clearTodoGroupTags()
         todoDao.clearEventCheckIns()
@@ -2254,11 +2293,11 @@ class TodoRepository(
             todoDao.insertQuickChecklistGroups(restoredChecklistGroups)
         }
         if (snapshot.templates.isNotEmpty()) {
-            todoDao.insertTemplates(snapshot.templates)
+            todoDao.insertTemplates(snapshot.templates.map { it.copy(calendarId = validCalendar(it.calendarId)) })
         }
         val restoredTasks = restoredQuickChecklistTasks(snapshot, restoredChecklistGroups)
         if (restoredTasks.isNotEmpty()) {
-            todoDao.insertAll(restoredTasks)
+            todoDao.insertAll(restoredTasks.map { it.copy(calendarId = validCalendar(it.calendarId)) })
         }
         val restoredTags = restoredTodoGroupTags(snapshot)
         if (restoredTags.isNotEmpty()) {
@@ -2279,7 +2318,7 @@ class TodoRepository(
             todoDao.insertReminderChainLogs(snapshot.reminderChainLogs)
         }
         snapshot.scheduleTemplates.forEach { template ->
-            todoDao.insertScheduleTemplate(template)
+            todoDao.insertScheduleTemplate(template.copy(payloadJson = remapScheduleCalendarIds(template.payloadJson, ::validCalendar)))
         }
         if (snapshot.planningNotes.isNotEmpty()) {
             todoDao.insertPlanningNotes(snapshot.planningNotes)
@@ -2667,6 +2706,8 @@ class TodoRepository(
                     alarmMode = previous.alarmMode,
                     reminderDeliveryMode = previous.reminderDeliveryModeEnum,
                     countdownEnabled = previous.countdownEnabled && resolved.dueAt != null,
+                    calendarId = previous.calendarId,
+                    countdownPastMode = previous.countdownPastMode,
                     hiddenFromBoard = previous.hiddenFromBoard,
                     reminderOffsetsMinutes = if (resolved.dueAt == null) emptyList() else previous.configuredReminderOffsetsMinutes.ifEmpty { listOf(DEFAULT_PLANNING_REMINDER_MINUTES) },
                     groupIds = groupIds
@@ -2694,6 +2735,8 @@ class TodoRepository(
                     vibrateEnabled = previous.vibrateEnabled,
                     reminderDeliveryMode = previous.reminderDeliveryModeEnum,
                     countdownEnabled = previous.countdownEnabled,
+                    calendarId = previous.calendarId,
+                    countdownPastMode = previous.countdownPastMode,
                     checkInEnabled = previous.checkInEnabled,
                     checkInReminderOffsetsMinutes = previous.configuredCheckInReminderOffsetsMinutes,
                     groupId = previous.groupId
@@ -2742,6 +2785,8 @@ class TodoRepository(
             alarmMode = previous.alarmMode,
             reminderDeliveryMode = previous.reminderDeliveryModeEnum,
             countdownEnabled = previous.countdownEnabled,
+            calendarId = previous.calendarId,
+            countdownPastMode = previous.countdownPastMode,
             hiddenFromBoard = previous.hiddenFromBoard,
             reminderOffsetsMinutes = previous.configuredReminderOffsetsMinutes.ifEmpty { listOf(DEFAULT_PLANNING_REMINDER_MINUTES) },
             groupIds = groupIds
@@ -3771,6 +3816,8 @@ class TodoRepository(
             location = "",
             accentColorHex = null,
             countdownEnabled = draft.countdownEnabled && draft.dueAt != null,
+            calendarId = draft.calendarId,
+            countdownPastMode = draft.countdownPastMode,
             hiddenFromBoard = draft.hiddenFromBoard,
             reminderAtMillis = reminderAtMillis,
             reminderOffsetsCsv = reminderOffsetsCsv,
@@ -3878,6 +3925,8 @@ class TodoRepository(
             location = draft.location.trim(),
             accentColorHex = draft.accentColorHex,
             countdownEnabled = draft.countdownEnabled,
+            calendarId = draft.calendarId,
+            countdownPastMode = draft.countdownPastMode,
             checkInEnabled = draft.checkInEnabled,
             checkInReminderOffsetsCsv = encodeReminderOffsets(normalizedCheckInOffsets),
             totalCheckInMinutes = existing?.totalCheckInMinutes ?: 0,
@@ -3966,6 +4015,8 @@ class TodoRepository(
             location = "",
             accentColorHex = null,
             countdownEnabled = draft.countdownEnabled,
+            calendarId = draft.calendarId,
+            countdownPastMode = draft.countdownPastMode,
             hiddenFromBoard = draft.hiddenFromBoard,
             allDay = false,
             groupId = draft.groupId,
@@ -4010,6 +4061,8 @@ class TodoRepository(
             location = draft.location.trim(),
             accentColorHex = draft.accentColorHex,
             countdownEnabled = draft.countdownEnabled,
+            calendarId = draft.calendarId,
+            countdownPastMode = draft.countdownPastMode,
             checkInEnabled = draft.checkInEnabled,
             checkInReminderOffsetsCsv = encodeReminderOffsets(draft.normalizedCheckInReminderOffsetsMinutes),
             multiSlotBundleId = draft.multiSlotBundleId?.takeIf { it.isNotBlank() },
@@ -4056,6 +4109,8 @@ class TodoRepository(
                     location = draft.location.trim(),
                     accentColorHex = draft.accentColorHex,
                     countdownEnabled = draft.countdownEnabled,
+                    calendarId = draft.calendarId,
+                    countdownPastMode = draft.countdownPastMode,
                     groupId = draft.groupId,
                     reminderOffsetMinutes = normalizedOffsets.firstOrNull(),
                     reminderOffsetsCsv = encodeReminderOffsets(normalizedOffsets, draft.reminderMinutesBefore),
@@ -4192,6 +4247,8 @@ class TodoRepository(
                         vibrateEnabled = template.vibrateEnabled,
                         reminderDeliveryMode = ReminderDeliveryMode.fromStorage(template.reminderDeliveryMode),
                         countdownEnabled = template.countdownEnabled,
+                        calendarId = template.calendarId,
+                        countdownPastMode = template.countdownPastMode,
                         checkInEnabled = template.checkInEnabled,
                         checkInReminderOffsetsMinutes = template.configuredCheckInReminderOffsetsMinutes,
                         recurrence = template.toRecurrenceConfig(),
@@ -4219,6 +4276,8 @@ class TodoRepository(
                         alarmMode = template.alarmMode,
                         reminderDeliveryMode = ReminderDeliveryMode.fromStorage(template.reminderDeliveryMode),
                         countdownEnabled = template.countdownEnabled,
+                        calendarId = template.calendarId,
+                        countdownPastMode = template.countdownPastMode,
                         hiddenFromBoard = template.hiddenFromBoard,
                         recurrence = template.toRecurrenceConfig(),
                         reminderOffsetsMinutes = offsets,

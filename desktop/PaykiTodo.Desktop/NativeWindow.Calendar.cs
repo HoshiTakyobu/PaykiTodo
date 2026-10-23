@@ -18,7 +18,36 @@ internal sealed partial class NativeWindow
     private const double TimeInset = 12;
     private static readonly CultureInfo CalendarCulture = CultureInfo.GetCultureInfo("zh-CN");
     private DispatcherTimer? calendarClock;
-    private readonly HashSet<long> hiddenCalendarGroups = new();
+    private Button? calendarDraft;
+    private Canvas? calendarDraftCanvas;
+    private double? calendarScrollOffset;
+    private string? calendarScrollKey;
+    private ScrollViewer? activeCalendarScroll;
+
+    private void ClearCalendarDraft()
+    {
+        if (calendarDraft != null) calendarDraftCanvas?.Children.Remove(calendarDraft);
+        calendarDraft = null; calendarDraftCanvas = null;
+    }
+
+    internal static DateTime CalendarSlot(DateTime day, double y) => day.Date.AddMinutes(
+        Math.Clamp((int)Math.Floor((y - TimeInset) * 60 / HourHeight / 15) * 15, 0, 1425));
+
+    private void ShowCalendarDraft(Canvas canvas, DateTime seed)
+    {
+        ClearCalendarDraft();
+        var draft = CalendarAction("添加日程", () => { ClearCalendarDraft(); EditItem(true, seed: seed); });
+        draft.Content = Text($"添加日程  {seed:HH:mm}–{seed.AddMinutes(30):HH:mm}", 11, B("#FFFFFF"), true);
+        draft.Background = B("#3370FF"); draft.BorderBrush = B("#245BDB"); draft.Foreground = B("#FFFFFF");
+        draft.MinHeight = 0; draft.Height = HourHeight / 2; draft.Margin = new Thickness(0);
+        draft.Padding = new Thickness(4, 0, 4, 0); draft.ClipToBounds = true;
+        draft.HorizontalContentAlignment = HorizontalAlignment.Left;
+        draft.SetBinding(FrameworkElement.WidthProperty, new System.Windows.Data.Binding("ActualWidth") { Source = canvas });
+        System.Windows.Automation.AutomationProperties.SetAutomationId(draft, "Calendar.Draft");
+        System.Windows.Automation.AutomationProperties.SetHelpText(draft, $"{seed:yyyy-MM-dd HH:mm}–{seed.AddMinutes(30):HH:mm}，再次点击添加");
+        Canvas.SetTop(draft, TimeInset + seed.TimeOfDay.TotalMinutes * HourHeight / 60);
+        Canvas.SetZIndex(draft, 10); canvas.Children.Add(draft); calendarDraft = draft; calendarDraftCanvas = canvas;
+    }
 
     private Button CalendarAction(string label, Action click, bool primary = false)
     {
@@ -31,6 +60,7 @@ internal sealed partial class NativeWindow
     private UIElement CalendarPage()
     {
         calendarClock?.Stop();
+        ClearCalendarDraft();
         var count = calendarView == "日" ? 1 : ActualWidth < 1100 ? 3 : 7;
         var sunday = workspace.Document!.Settings["weekStartMode"]?.GetValue<string>() == "SUNDAY";
         var start = count != 7 ? selectedDay.Date : WeekStart(selectedDay, sunday);
@@ -48,12 +78,12 @@ internal sealed partial class NativeWindow
         var view = new ComboBox { ItemsSource = new[] { "日", "周", "月", "列表" }, SelectedItem = calendarView, Width = 76, Height = 34, MinHeight = 34, Padding = new Thickness(8, 4, 8, 4), Margin = new Thickness(0, 0, 8, 0) };
         System.Windows.Automation.AutomationProperties.SetName(view, "日历视图");
         view.SelectionChanged += (_, _) => { calendarView = view.SelectedItem?.ToString() ?? "周"; Render(); };
-        var controls = Row(view, CalendarAction("＋ 创建日程", () => EditItem(true), true)); controls.VerticalAlignment = VerticalAlignment.Center;
+        var controls = Row(CalendarAction("日历", () => { var dialog = Dialog(this, "日历", 440, 530); dialog.Content = DialogLayout(CalendarList(), Action("关闭", () => dialog.Close())); dialog.ShowDialog(); }), view, CalendarAction("＋ 创建日程", () => EditItem(true), true)); controls.VerticalAlignment = VerticalAlignment.Center;
         Grid.SetColumn(controls, 1); toolbar.Children.Add(controls); DockPanel.SetDock(toolbar, Dock.Top); main.Children.Add(toolbar);
         if (calendarView == "月") main.Children.Add(MonthCalendar(sunday));
         else if (calendarView == "列表") {
             var list = Column();
-            foreach (var item in Active.Where(item => item.IsEvent && Local(item.EndAtMillis) >= selectedDay.Date && !hiddenCalendarGroups.Contains(item.GroupId))) list.Children.Add(Card(EventRow(item)));
+            foreach (var item in Active.Where(item => item.IsEvent && Local(item.EndAtMillis) >= selectedDay.Date && CalendarVisible(item))) list.Children.Add(Card(EventRow(item)));
             if (list.Children.Count == 0) list.Children.Add(Text("暂无日程", 16, Muted)); main.Children.Add(Scroll(list));
         } else main.Children.Add(CalendarTimeline(start, count));
         return root;
@@ -96,13 +126,7 @@ internal sealed partial class NativeWindow
         }
         panel.Children.Add(days);
         panel.Children.Add(new Border { Height = 1, Background = Outline, Margin = new Thickness(0, 18, 0, 16) });
-        panel.Children.Add(Text("我的日历", 14, bold: true));
-        foreach (var group in workspace.Document!.Groups) {
-            var toggle = new System.Windows.Controls.CheckBox { Content = group.Name, IsChecked = !hiddenCalendarGroups.Contains(group.Id), Foreground = Ink, Margin = new Thickness(0, 5, 0, 5), BorderBrush = B(group.ColorHex) };
-            toggle.Checked += (_, _) => { hiddenCalendarGroups.Remove(group.Id); Render(); };
-            toggle.Unchecked += (_, _) => { hiddenCalendarGroups.Add(group.Id); Render(); };
-            panel.Children.Add(toggle);
-        }
+        panel.Children.Add(CalendarList());
         return new Border { Background = B("#F5F7FA"), Child = panel, BorderBrush = B("#E1E7F0"), BorderThickness = new Thickness(0, 0, 1, 0) };
     }
 
@@ -122,7 +146,7 @@ internal sealed partial class NativeWindow
             Grid.SetColumn(cell, i + 1); header.Children.Add(cell);
         }
         DockPanel.SetDock(header, Dock.Top); body.Children.Add(header);
-        var allDayEvents = Enumerable.Range(0, count).Select(i => EventsOn(start.AddDays(i)).Where(item => workspace.Document!.EditFor(item.Id)?.AllDay == true && !hiddenCalendarGroups.Contains(item.GroupId)).ToList()).ToList();
+        var allDayEvents = Enumerable.Range(0, count).Select(i => EventsOn(start.AddDays(i)).Where(item => item.AllDay && CalendarVisible(item)).ToList()).ToList();
         if (allDayEvents.Any(items => items.Count > 0)) {
             var strip = new Grid { Margin = new Thickness(0, 0, SystemParameters.VerticalScrollBarWidth, 0), Background = B("#F7FAFF") };
             strip.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(56) }); strip.Children.Add(Text("全天", 11, Muted));
@@ -147,8 +171,11 @@ internal sealed partial class NativeWindow
                 var line = new Border { Height = 1, Background = B("#E1E7F0") }; line.SetBinding(FrameworkElement.WidthProperty, new System.Windows.Data.Binding("ActualWidth") { Source = canvas });
                 Canvas.SetTop(line, TimeInset + hour * HourHeight); canvas.Children.Add(line);
             }
-            canvas.MouseLeftButtonDown += (_, e) => { if (e.ClickCount == 2) { var minute = Math.Clamp((int)((e.GetPosition(canvas).Y - TimeInset) * 60 / HourHeight / 15) * 15, 0, 1425); EditItem(true, seed: day.AddMinutes(minute)); } };
-            var events = EventsOn(day).Where(item => workspace.Document!.EditFor(item.Id)?.AllDay != true && !hiddenCalendarGroups.Contains(item.GroupId)).OrderBy(item => item.StartAtMillis).ToList();
+            canvas.MouseLeftButtonUp += (_, e) => {
+                if (e.Handled) return;
+                ShowCalendarDraft(canvas, CalendarSlot(day, e.GetPosition(canvas).Y)); e.Handled = true;
+            };
+            var events = EventsOn(day).Where(item => !item.AllDay && CalendarVisible(item)).OrderBy(item => item.StartAtMillis).ToList();
             var layout = CalendarEventLayout.Arrange(events, day);
             foreach (var item in events) {
                 var itemStart = Local(item.StartAtMillis); var itemEnd = Local(item.EndAtMillis);
@@ -167,7 +194,19 @@ internal sealed partial class NativeWindow
         timer.Tick += (_, _) => clock.Refresh();
         grid.Loaded += (_, _) => { clock.Refresh(); timer.Start(); }; grid.Unloaded += (_, _) => timer.Stop();
         var scroll = Scroll(grid); scroll.VerticalScrollBarVisibility = ScrollBarVisibility.Visible;
-        scroll.Loaded += (_, _) => scroll.ScrollToVerticalOffset(start <= DateTime.Today && start.AddDays(count) > DateTime.Today ? Math.Max(0, TimeInset + DateTime.Now.TimeOfDay.TotalMinutes * HourHeight / 60 - scroll.ViewportHeight * 0.65) : HourHeight * 8);
+        activeCalendarScroll = scroll;
+        var scrollKey = $"{start:yyyy-MM-dd}/{count}";
+        var restoreOffset = calendarScrollKey == scrollKey ? calendarScrollOffset : null;
+        var ready = false;
+        scroll.Loaded += (_, _) => {
+            scroll.ScrollToVerticalOffset(restoreOffset ?? (start <= DateTime.Today && start.AddDays(count) > DateTime.Today ? Math.Max(0, TimeInset + DateTime.Now.TimeOfDay.TotalMinutes * HourHeight / 60 - scroll.ViewportHeight * 0.65) : HourHeight * 8));
+            ready = true;
+        };
+        scroll.ScrollChanged += (_, e) => {
+            if (!ready || !scroll.IsLoaded || !ReferenceEquals(scroll, activeCalendarScroll) || e.VerticalChange == 0) return;
+            calendarScrollKey = scrollKey; calendarScrollOffset = e.VerticalOffset;
+        };
+        grid.PreviewKeyDown += (_, e) => { if (e.Key == System.Windows.Input.Key.Escape) { ClearCalendarDraft(); e.Handled = true; } };
         body.Children.Add(scroll); return body;
     }
 
@@ -196,7 +235,7 @@ internal sealed partial class NativeWindow
         var first = WeekStart(new DateTime(selectedDay.Year, selectedDay.Month, 1), sunday);
         var grid = new System.Windows.Controls.Primitives.UniformGrid { Columns = 7, Rows = 6 };
         for (var i = 0; i < 42; i++) {
-            var day = first.AddDays(i); var events = EventsOn(day).Where(item => !hiddenCalendarGroups.Contains(item.GroupId)).ToList();
+            var day = first.AddDays(i); var events = EventsOn(day).Where(item => CalendarVisible(item)).ToList();
             var date = Text(day.ToString("M/d"), 15, day == DateTime.Today ? Ocean : Muted, day == DateTime.Today);
             var box = Column(date);
             foreach (var item in events.Take(3)) box.Children.Add(Text(item.Title, 12, B(item.AccentColor)));

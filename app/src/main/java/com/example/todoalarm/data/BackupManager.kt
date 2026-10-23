@@ -106,12 +106,19 @@ internal fun BackupSnapshot.toJson(): JSONObject {
         put("recurringInstanceSkips", JSONArray(recurringInstanceSkips.map { it.toJson() }))
         put("activityRecords", JSONArray(activityRecords.map { it.toJson() }))
         put("quickChecklistGroups", JSONArray(quickChecklistGroups.map { it.toJson() }))
+        put("calendars", JSONArray(calendars.map { calendar -> JSONObject().apply {
+            put("id", calendar.id); put("name", calendar.name); put("colorHex", calendar.colorHex); put("sortOrder", calendar.sortOrder)
+        } }))
     }
 }
 
 private fun AppSettings.toJson(): JSONObject {
     return JSONObject().apply {
         put("themeMode", themeMode.name)
+        put("mainFont", mainFont)
+        put("desktopFontFamily", desktopFontFamily)
+        put("countdownPastDays", countdownPastDays)
+        put("hiddenCalendarIds", JSONArray(hiddenCalendarIds.toList()))
         put("weekStartMode", weekStartMode.name)
         put("defaultSnoozeMinutes", defaultSnoozeMinutes)
         put("defaultRingEnabled", defaultRingEnabled)
@@ -178,6 +185,8 @@ private fun RecurringTaskTemplate.toJson(): JSONObject {
         put("location", location)
         put("accentColorHex", accentColorHex)
         put("countdownEnabled", countdownEnabled)
+        put("calendarId", calendarId)
+        put("countdownPastMode", countdownPastMode)
         put("hiddenFromBoard", hiddenFromBoard)
         put("checkInEnabled", checkInEnabled)
         put("checkInReminderOffsetsCsv", checkInReminderOffsetsCsv)
@@ -219,6 +228,8 @@ private fun TodoItem.toJson(): JSONObject {
         put("location", location)
         put("accentColorHex", accentColorHex)
         put("countdownEnabled", countdownEnabled)
+        put("calendarId", calendarId)
+        put("countdownPastMode", countdownPastMode)
         put("hiddenFromBoard", hiddenFromBoard)
         put("checkInEnabled", checkInEnabled)
         put("checkInReminderOffsetsCsv", checkInReminderOffsetsCsv)
@@ -424,6 +435,12 @@ internal fun backupSnapshotFromJson(json: JSONObject): BackupSnapshot {
         recurringInstanceSkips = json.optJSONArray("recurringInstanceSkips").toRecurringInstanceSkips(),
         activityRecords = json.optJSONArray("activityRecords").toActivityRecords(),
         quickChecklistGroups = json.optJSONArray("quickChecklistGroups").toQuickChecklistGroups(),
+        calendars = json.optJSONArray("calendars")?.let { entries -> (0 until entries.length()).mapNotNull { i ->
+            entries.optJSONObject(i)?.let { entry -> PlannerCalendar(
+                id = entry.optString("id", DEFAULT_CALENDAR_ID), name = entry.optString("name", "常规日历"),
+                colorHex = entry.optString("colorHex", "#3370FF"), sortOrder = entry.optInt("sortOrder", i)
+            ) }
+        } } ?: listOf(PlannerCalendar()),
         settings = json.optJSONObject("settings").toSettings()
     )
 }
@@ -462,6 +479,8 @@ private fun JSONArray?.toTemplates(): List<RecurringTaskTemplate> {
                     location = item.optString("location", ""),
                     accentColorHex = item.optStringOrNull("accentColorHex"),
                     countdownEnabled = item.optBoolean("countdownEnabled", false),
+                    calendarId = item.optString("calendarId", DEFAULT_CALENDAR_ID),
+                    countdownPastMode = item.optString("countdownPastMode", "AUTO"),
                     hiddenFromBoard = item.optBoolean("hiddenFromBoard", false),
                     checkInEnabled = item.optBoolean("checkInEnabled", false),
                     checkInReminderOffsetsCsv = item.optString("checkInReminderOffsetsCsv", ""),
@@ -511,6 +530,8 @@ private fun JSONArray?.toTasks(): List<TodoItem> {
                     location = item.optString("location", ""),
                     accentColorHex = item.optStringOrNull("accentColorHex"),
                     countdownEnabled = item.optBoolean("countdownEnabled", false),
+                    calendarId = item.optString("calendarId", DEFAULT_CALENDAR_ID),
+                    countdownPastMode = item.optString("countdownPastMode", "AUTO"),
                     hiddenFromBoard = item.optBoolean("hiddenFromBoard", false),
                     checkInEnabled = item.optBoolean("checkInEnabled", false),
                     checkInReminderOffsetsCsv = item.optString("checkInReminderOffsetsCsv", ""),
@@ -812,6 +833,10 @@ private fun JSONArray?.toQuickChecklistGroups(): List<QuickChecklistGroup> {
 private fun JSONObject?.toSettings(): AppSettings {
     if (this == null) return AppSettings()
     return AppSettings(
+        mainFont = optString("mainFont", "SYSTEM"),
+        desktopFontFamily = optStringOrNull("desktopFontFamily"),
+        countdownPastDays = optInt("countdownPastDays", 7).coerceIn(0, 365),
+        hiddenCalendarIds = optJSONArray("hiddenCalendarIds")?.let { array -> (0 until array.length()).map { array.optString(it) }.toSet() } ?: emptySet(),
         themeMode = ThemeMode.entries.firstOrNull { it.name == optString("themeMode") } ?: ThemeMode.SYSTEM,
         weekStartMode = WeekStartMode.entries.firstOrNull { it.name == optString("weekStartMode") } ?: WeekStartMode.MONDAY,
         defaultSnoozeMinutes = optInt("defaultSnoozeMinutes", 10),

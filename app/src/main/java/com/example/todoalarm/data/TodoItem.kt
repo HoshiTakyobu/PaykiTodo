@@ -78,6 +78,10 @@ data class TodoItem(
     val location: String = "",
     val accentColorHex: String? = null,
     val countdownEnabled: Boolean = false,
+    @ColumnInfo(defaultValue = "'default'")
+    val calendarId: String = DEFAULT_CALENDAR_ID,
+    @ColumnInfo(defaultValue = "'AUTO'")
+    val countdownPastMode: String = "AUTO",
     @ColumnInfo(defaultValue = "0")
     val hiddenFromBoard: Boolean = false,
     val checkInEnabled: Boolean = false,

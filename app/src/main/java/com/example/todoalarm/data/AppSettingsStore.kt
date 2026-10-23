@@ -47,6 +47,11 @@ enum class AiReportRetention(val label: String, val days: Int?) {
 }
 
 data class AppSettings(
+    val mainFont: String = "SYSTEM",
+    val customFontPath: String = "",
+    val desktopFontFamily: String? = null,
+    val countdownPastDays: Int = 7,
+    val hiddenCalendarIds: Set<String> = emptySet(),
     val themeMode: ThemeMode = ThemeMode.SYSTEM,
     val weekStartMode: WeekStartMode = WeekStartMode.MONDAY,
     val defaultSnoozeMinutes: Int = 10,
@@ -137,6 +142,13 @@ class AppSettingsStore(context: Context) {
     val settingsFlow: StateFlow<AppSettings> = _settings.asStateFlow()
 
     fun currentSettings(): AppSettings = _settings.value
+
+    fun updateDisplayPreferences(mainFont: String = currentSettings().mainFont, customFontPath: String = currentSettings().customFontPath,
+        pastDays: Int = currentSettings().countdownPastDays, hiddenCalendars: Set<String> = currentSettings().hiddenCalendarIds) {
+        preferences.edit().putString("main_font", mainFont).putString("custom_font_path", customFontPath)
+            .putInt("countdown_past_days", pastDays.coerceIn(0, 365)).putStringSet("hidden_calendar_ids", hiddenCalendars).apply()
+        refresh()
+    }
 
     fun hasValidRemoteSession(nowMillis: Long = System.currentTimeMillis()): Boolean {
         val settings = currentSettings()
@@ -587,6 +599,10 @@ class AppSettingsStore(context: Context) {
         }
         preferences.edit()
             .putString(KEY_THEME_MODE, settings.themeMode.name)
+            .putString("main_font", settings.mainFont)
+            .putString("desktop_font_family", settings.desktopFontFamily)
+            .putInt("countdown_past_days", settings.countdownPastDays.coerceIn(0, 365))
+            .putStringSet("hidden_calendar_ids", settings.hiddenCalendarIds)
             .putString(KEY_WEEK_START_MODE, settings.weekStartMode.name)
             .putInt(KEY_DEFAULT_SNOOZE, settings.defaultSnoozeMinutes)
             .putBoolean(KEY_DEFAULT_RING, settings.defaultRingEnabled)
@@ -685,6 +701,11 @@ class AppSettingsStore(context: Context) {
         }
         val primaryPlanningAiProvider = planningAiProviders.firstOrNull()
         return AppSettings(
+            mainFont = preferences.getString("main_font", "SYSTEM") ?: "SYSTEM",
+            customFontPath = preferences.getString("custom_font_path", "") ?: "",
+            desktopFontFamily = preferences.getString("desktop_font_family", null),
+            countdownPastDays = preferences.getInt("countdown_past_days", 7).coerceIn(0, 365),
+            hiddenCalendarIds = preferences.getStringSet("hidden_calendar_ids", emptySet())?.toSet() ?: emptySet(),
             themeMode = ThemeMode.entries.firstOrNull { it.name == themeName } ?: ThemeMode.SYSTEM,
             weekStartMode = WeekStartMode.entries.firstOrNull { it.name == weekStartName } ?: WeekStartMode.MONDAY,
             defaultSnoozeMinutes = preferences.getInt(KEY_DEFAULT_SNOOZE, 10).coerceIn(5, 60),

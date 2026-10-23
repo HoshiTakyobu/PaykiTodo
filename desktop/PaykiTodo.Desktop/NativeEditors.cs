@@ -10,15 +10,15 @@ namespace PaykiTodo.Desktop;
 
 internal static class NativeEditors
 {
-    public static DesktopItemEdit? Item(Window owner, bool isEvent, IReadOnlyList<DesktopGroup> groups, DesktopItemEdit? value, DateTime seed)
+    public static DesktopItemEdit? Item(Window owner, bool isEvent, IReadOnlyList<DesktopGroup> groups, DesktopItemEdit? value, DateTime seed, IReadOnlyList<DesktopCalendar>? calendars = null)
     {
         var dialog = Dialog(owner, (value == null ? "新增" : "编辑") + (isEvent ? "日程" : "待办"), 650, 800);
         DesktopItemEdit? result = null;
         var title = Input(value?.Title ?? "", true); title.MinHeight = 54; title.MaxHeight = 100; title.FontSize = 18;
         var notes = Input(value?.Notes ?? "", true); var location = Input(value?.Location ?? "");
         var due = new TimeField(value?.DueAtMillis, seed.Date.AddHours(23).AddMinutes(59));
-        var start = new TimeField(value?.StartAtMillis, seed.TimeOfDay == TimeSpan.Zero ? seed.AddHours(9) : seed);
-        var end = new TimeField(value?.EndAtMillis, start.Value.AddHours(1));
+        var start = new TimeField(value?.StartAtMillis, seed);
+        var end = new TimeField(value?.EndAtMillis, start.Value.AddMinutes(30));
         var hasDue = new CheckBox { Content = "设置 DDL", IsChecked = value?.DueAtMillis != null };
         var allDay = new CheckBox { Content = "全天", IsChecked = value?.AllDay ?? false };
         var reminder = new CheckBox { Content = "提醒", IsChecked = value?.ReminderEnabled ?? false };
@@ -27,8 +27,19 @@ internal static class NativeEditors
         var hidden = new CheckBox { Content = "仅提醒，不在看板显示", IsChecked = value?.HiddenFromBoard ?? false };
         var checkin = new CheckBox { Content = "打卡追踪", IsChecked = value?.CheckInEnabled ?? false };
         var group = new ComboBox { ItemsSource = groups, DisplayMemberPath = "Name", SelectedItem = groups.FirstOrDefault(group => group.Id == value?.GroupId) ?? groups.FirstOrDefault() };
+        calendars ??= new[] { new DesktopCalendar("default", "常规日历", "#3370FF") };
+        var calendar = new ComboBox { ItemsSource = calendars, DisplayMemberPath = "Name", SelectedItem = calendars.FirstOrDefault(c => c.Id == value?.CalendarId) ?? calendars[0] };
+        System.Windows.Automation.AutomationProperties.SetName(calendar, "所属日历");
         var colors = new[] { "#4CB782", "#3B82F6", "#EF6A67", "#E9A23B", "#8B5CF6", "#14B8A6" };
-        var color = new ComboBox { ItemsSource = colors.Append(value?.AccentColor ?? colors[0]).Distinct().ToList(), SelectedItem = value?.AccentColor ?? colors[0] };
+        var initialColor = value?.AccentColor ?? (isEvent ? ((DesktopCalendar)calendar.SelectedItem).ColorHex : colors[0]);
+        var color = new ComboBox { ItemsSource = colors.Append(initialColor).Distinct().ToList(), SelectedItem = initialColor };
+        calendar.SelectionChanged += (_, _) => {
+            if (calendar.SelectedItem is not DesktopCalendar selected) return;
+            color.ItemsSource = colors.Append(selected.ColorHex).Append(initialColor).Distinct().ToList(); color.SelectedItem = selected.ColorHex;
+        };
+        var pastModes = new[] { new Choice("按设置自动隐藏", "AUTO"), new Choice("一直保留纪念", "KEEP"), new Choice("不再展示", "HIDE") };
+        var pastMode = new ComboBox { ItemsSource = pastModes, DisplayMemberPath = "Name", SelectedItem = pastModes.FirstOrDefault(mode => mode.Value == value?.CountdownPastMode) ?? pastModes[0] };
+        System.Windows.Automation.AutomationProperties.SetName(pastMode, "倒数日结束后");
         var repeats = new List<Choice> { new("不重复", "NONE"), new("每天", "DAILY"), new("每周", "WEEKLY"), new("每月", "MONTHLY_DAY"), new("每年", "YEARLY_DATE") };
         if (value != null && repeats.All(item => item.Value != value.RecurrenceType))
             repeats.Add(new Choice(value.RecurrenceType switch {
@@ -56,9 +67,13 @@ internal static class NativeEditors
         fields.Children.Add(reminder); fields.Children.Add(Text("提前提醒（分钟，可用逗号分隔，例如 30,15,5）", 12, Muted)); fields.Children.Add(offsets);
         fields.Children.Add(Text("可以记录过去的事项。已过去的提醒不会补发，未来提醒照常生效。", 12, Muted));
         fields.Children.Add(Text("备注")); fields.Children.Add(notes); fields.Children.Add(Row(countdown, isEvent ? checkin : hidden));
+        var retention = Column(Text("倒数日结束后", 13), pastMode); fields.Children.Add(retention);
+        void UpdateCountdown() => retention.Visibility = countdown.IsChecked == true ? Visibility.Visible : Visibility.Collapsed;
+        countdown.Checked += (_, _) => UpdateCountdown(); countdown.Unchecked += (_, _) => UpdateCountdown(); UpdateCountdown();
         fields.Children.Add(Text("循环安排", 16, bold: true)); fields.Children.Add(recurrence); fields.Children.Add(weeklyRow);
         fields.Children.Add(Text("循环截止日期（可留空）", 12, Muted)); fields.Children.Add(until);
         fields.Children.Add(Pair(Column(Text("分组"), group), Column(Text("强调色"), color)));
+        if (isEvent) fields.Children.Add(Column(Text("所属日历", 14, bold: true), calendar));
         var error = Text("", 13, B("#AF3A32"));
         void Save()
         {
@@ -76,7 +91,9 @@ internal static class NativeEditors
                     allDay.IsChecked == true, reminder.IsChecked == true, minutes, (group.SelectedItem as DesktopGroup)?.Id ?? 1,
                     color.SelectedItem?.ToString() ?? colors[0], countdown.IsChecked == true, repeat, weekdayCsv,
                     until.SelectedDate is { } date ? (long)(date.Date - DateTime.UnixEpoch.Date).TotalDays : null)
-                    { HiddenFromBoard = hidden.IsChecked == true, CheckInEnabled = checkin.IsChecked == true };
+                    { HiddenFromBoard = hidden.IsChecked == true, CheckInEnabled = checkin.IsChecked == true,
+                        CalendarId = isEvent ? ((DesktopCalendar)calendar.SelectedItem).Id : value?.CalendarId ?? "default",
+                        CountdownPastMode = ((Choice)pastMode.SelectedItem).Value };
                 dialog.DialogResult = true;
             } catch (Exception problem) { error.Text = problem.Message; }
         }

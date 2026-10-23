@@ -192,6 +192,8 @@ internal sealed partial class DesktopSnapshotDocument
         item["location"] = edit.Location.Trim();
         item["accentColorHex"] = edit.AccentColor;
         item["countdownEnabled"] = edit.CountdownEnabled;
+        item["calendarId"] = Calendars.Any(calendar => calendar.Id == edit.CalendarId) ? edit.CalendarId : "default";
+        item["countdownPastMode"] = edit.CountdownPastMode;
         item["hiddenFromBoard"] = edit.HiddenFromBoard;
         item["checkInEnabled"] = edit.CheckInEnabled;
         item["checkInReminderOffsetsCsv"] ??= "";
@@ -494,6 +496,8 @@ internal sealed partial class DesktopSnapshotDocument
         template["location"] = edit.Location.Trim();
         template["accentColorHex"] = edit.AccentColor;
         template["countdownEnabled"] = edit.CountdownEnabled;
+        template["calendarId"] = Calendars.Any(calendar => calendar.Id == edit.CalendarId) ? edit.CalendarId : "default";
+        template["countdownPastMode"] = edit.CountdownPastMode;
         template["hiddenFromBoard"] = edit.HiddenFromBoard;
         template["checkInEnabled"] = edit.CheckInEnabled;
         template["checkInReminderOffsetsCsv"] ??= "";
@@ -528,10 +532,17 @@ internal sealed partial class DesktopSnapshotDocument
 
     private void EnsureShape()
     {
+        root["calendars"] ??= new JsonArray();
+        if (!root["calendars"]!.AsArray().OfType<JsonObject>().Any(value => value["id"]?.GetValue<string>() == "default"))
+            SaveCalendar("default", "常规日历", "#3370FF");
         foreach (var name in new[] { "groups", "quickChecklistGroups", "templates", "tasks", "reminderChainLogs", "scheduleTemplates", "planningNotes", "planningLineMappings", "planningNodes", "aiReports", "todoGroupTags", "eventCheckIns", "recurringInstanceSkips", "activityRecords" })
             root[name] ??= new JsonArray();
         root["settings"] ??= new JsonObject();
         root["snapshotVersion"] ??= 1;
+        var calendarIds = Calendars.Select(calendar => calendar.Id).ToHashSet();
+        foreach (var item in Tasks.OfType<JsonObject>().Concat(root["templates"]!.AsArray().OfType<JsonObject>()))
+            if (!calendarIds.Contains(item["calendarId"]?.GetValue<string>() ?? "default")) item["calendarId"] = "default";
+        RemapScheduleCalendars(id => calendarIds.Contains(id) ? id : "default");
     }
 
     private static long NextId(JsonArray values) => values.OfType<JsonObject>().Select(value => value["id"]?.GetValue<long>() ?? 0L).DefaultIfEmpty().Max() + 1;
@@ -569,6 +580,12 @@ internal sealed record DesktopItem(
     bool QuickChecklistCollapsed
 )
 {
+    public string? RecurringSeriesId { get; init; }
+    public string RecurrenceType { get; init; } = "NONE";
+    public string CalendarId { get; init; } = "default";
+    public string CountdownPastMode { get; init; } = "AUTO";
+    public long? CompletedAtMillis { get; init; }
+    public bool AllDay { get; init; }
     public static DesktopItem FromJson(JsonObject item) => new(
         item["id"]?.GetValue<long>() ?? 0L,
         string.Equals(item["itemType"]?.GetValue<string>(), "EVENT", StringComparison.OrdinalIgnoreCase),
@@ -588,7 +605,9 @@ internal sealed record DesktopItem(
         item["quickChecklistDepth"]?.GetValue<int?>(),
         item["quickChecklistSortOrder"]?.GetValue<int?>(),
         item["quickChecklistCollapsed"]?.GetValue<bool>() ?? false
-    );
+    ) { RecurringSeriesId = item["recurringSeriesId"]?.GetValue<string>(), RecurrenceType = item["recurrenceType"]?.GetValue<string>() ?? "NONE",
+        CalendarId = item["calendarId"]?.GetValue<string>() ?? "default", CountdownPastMode = item["countdownPastMode"]?.GetValue<string>() ?? "AUTO",
+        CompletedAtMillis = item["completedAtMillis"]?.GetValue<long?>(), AllDay = item["allDay"]?.GetValue<bool>() ?? false };
 }
 
 internal sealed record DesktopItemEdit(
@@ -612,6 +631,8 @@ internal sealed record DesktopItemEdit(
 {
     public bool HiddenFromBoard { get; init; }
     public bool CheckInEnabled { get; init; }
+    public string CalendarId { get; init; } = "default";
+    public string CountdownPastMode { get; init; } = "AUTO";
     public static DesktopItemEdit FromJson(JsonObject item)
     {
         var offsets = (item["reminderOffsetsCsv"]?.GetValue<string>() ?? "")
@@ -641,6 +662,8 @@ internal sealed record DesktopItemEdit(
         )
         {
             HiddenFromBoard = item["hiddenFromBoard"]?.GetValue<bool>() ?? false,
+            CalendarId = item["calendarId"]?.GetValue<string>() ?? "default",
+            CountdownPastMode = item["countdownPastMode"]?.GetValue<string>() ?? "AUTO",
             CheckInEnabled = item["checkInEnabled"]?.GetValue<bool>() ?? false
         };
     }

@@ -57,6 +57,25 @@ class DatabaseMigration30To31Test {
         }
     }
 
+    @Test
+    fun migration31To32PreservesOldTasksAndCreatesIndependentCalendar() {
+        val name = "migration-31-to-32-${java.util.UUID.randomUUID()}.db"
+        helper.createDatabase(name, 31).use { database ->
+            database.insert("todo_items", SQLiteDatabase.CONFLICT_NONE, legacyTodoValues())
+        }
+        helper.runMigrationsAndValidate(name, 32, true, DatabaseMigrations.MIGRATION_31_32).use { database ->
+            database.query("SELECT title, calendarId, countdownPastMode FROM todo_items WHERE id = 51").use { cursor ->
+                assertTrue(cursor.moveToFirst())
+                assertEquals("default", cursor.getString(1))
+                assertEquals("AUTO", cursor.getString(2))
+            }
+            database.query("SELECT id, name, colorHex FROM planner_calendars").use { cursor ->
+                assertTrue(cursor.moveToFirst()); assertEquals("default", cursor.getString(0)); assertEquals("常规日历", cursor.getString(1))
+                assertEquals(1, cursor.count)
+            }
+        }
+    }
+
     private fun legacyTodoValues() = ContentValues().apply {
         put("id", 51L)
         put("itemType", "TODO")

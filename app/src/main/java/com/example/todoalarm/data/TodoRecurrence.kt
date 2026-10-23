@@ -50,6 +50,8 @@ data class TodoDraft(
     val alarmMode: Boolean = false,
     val reminderDeliveryMode: ReminderDeliveryMode = ReminderDeliveryMode.FULLSCREEN_AND_NOTIFICATION,
     val countdownEnabled: Boolean = false,
+    val calendarId: String = DEFAULT_CALENDAR_ID,
+    val countdownPastMode: String = "AUTO",
     val hiddenFromBoard: Boolean = false,
     val recurrence: RecurrenceConfig = RecurrenceConfig(),
     val reminderOffsetsMinutes: List<Int> = emptyList(),

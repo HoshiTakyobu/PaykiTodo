@@ -161,8 +161,11 @@ class MainActivity : ComponentActivity() {
             val uiState = viewModel.uiState.collectAsStateWithLifecycle().value
             TodoAlarmTheme(
                 themeMode = uiState.settings.themeMode,
+                mainFont = uiState.settings.mainFont,
+                customFontPath = uiState.settings.customFontPath,
                 systemDarkTheme = systemDarkTheme
             ) {
+                ProvideWorkspacePreferences(viewModel, uiState.settings, uiState.authenticated) {
                 if (!uiState.authenticated) {
                     AccountAuthScreen(
                         onLogin = viewModel::loginAccount,
@@ -326,6 +329,7 @@ class MainActivity : ComponentActivity() {
                             TextButton(onClick = { recoveryCodeNotice = null }) { Text("我已保存") }
                         },
                     )
+                }
                 }
             }
         }

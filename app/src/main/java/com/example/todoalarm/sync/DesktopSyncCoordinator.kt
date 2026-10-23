@@ -662,10 +662,11 @@ class DesktopSyncCoordinator(
             groupIds = groupIds
         )
         require(draft.title.isNotBlank()) { "标题不能为空" }
-        validateTodoDraft(draft = draft, original = original, scope = targetScope)?.let { error(it) }
+        val ownedDraft = draft.copy(calendarId = original.calendarId, countdownPastMode = original.countdownPastMode)
+        validateTodoDraft(draft = ownedDraft, original = original, scope = targetScope)?.let { error(it) }
         val affected = app.repository.getActiveItemsForScope(original, targetScope)
         clearReminderArtifacts(affected.ifEmpty { listOf(original) })
-        val updated = app.repository.updateFromDraft(original, draft, targetScope)
+        val updated = app.repository.updateFromDraft(original, ownedDraft, targetScope)
         updated.forEach { scheduleReminderOrDisable(it) }
         autoBackupIfNeeded()
         return JSONObject().put("ok", updated.isNotEmpty()).put("scope", targetScope.name)
@@ -778,7 +779,7 @@ class DesktopSyncCoordinator(
             recurrence = recurrence,
             groupId = groupId,
             multiSlotBundleId = json.optStringOrNull("multiSlotBundleId") ?: original.multiSlotBundleId
-        )
+        ).copy(calendarId = original.calendarId, countdownPastMode = original.countdownPastMode)
         require(draft.title.isNotBlank()) { "日程标题不能为空" }
         val syncMultiSlotBundle = json.optBoolean("syncMultiSlotBundleSharedFields", false) &&
             !original.multiSlotBundleId.isNullOrBlank()

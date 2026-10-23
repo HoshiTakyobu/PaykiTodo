@@ -7,6 +7,17 @@ import java.time.LocalDateTime
 import java.time.LocalTime
 import java.time.ZoneId
 
+/** Rewrite only calendar references so older or future payload fields stay intact. */
+internal fun remapScheduleCalendarIds(payloadJson: String, resolve: (String) -> String): String = runCatching {
+    val json = JSONObject(payloadJson)
+    val entries = json.optJSONArray("entries") ?: return@runCatching payloadJson
+    for (index in 0 until entries.length()) {
+        val entry = entries.optJSONObject(index) ?: continue
+        entry.put("calendarId", resolve(entry.optString("calendarId", DEFAULT_CALENDAR_ID)))
+    }
+    json.toString()
+}.getOrDefault(payloadJson)
+
 data class ScheduleTemplateEntry(
     val title: String,
     val notes: String,
@@ -24,7 +35,8 @@ data class ScheduleTemplateEntry(
     val checkInReminderOffsetsMinutes: List<Int>,
     val ringEnabled: Boolean,
     val vibrateEnabled: Boolean,
-    val reminderDeliveryMode: ReminderDeliveryMode
+    val reminderDeliveryMode: ReminderDeliveryMode,
+    val calendarId: String = DEFAULT_CALENDAR_ID
 )
 
 data class ScheduleTemplatePayload(
@@ -60,6 +72,7 @@ fun buildScheduleTemplatePayload(
                 notes = item.notes,
                 location = item.location,
                 groupName = groupName,
+                calendarId = item.calendarId,
                 startDayOffset = weekStart.until(startDate).days,
                 startMinuteOfDay = startDateTime.toLocalTime().toSecondOfDay() / 60,
                 endDayOffset = weekStart.until(endDateTime.toLocalDate()).days,
@@ -91,6 +104,7 @@ fun ScheduleTemplatePayload.toJsonString(): String {
                     put("notes", entry.notes)
                     put("location", entry.location)
                     put("groupName", entry.groupName)
+                    put("calendarId", entry.calendarId)
                     put("startDayOffset", entry.startDayOffset)
                     put("startMinuteOfDay", entry.startMinuteOfDay)
                     put("endDayOffset", entry.endDayOffset)
@@ -123,6 +137,7 @@ fun parseScheduleTemplatePayload(payloadJson: String): ScheduleTemplatePayload {
                     notes = item.optString("notes"),
                     location = item.optString("location"),
                     groupName = item.optString("groupName"),
+                    calendarId = item.optString("calendarId", DEFAULT_CALENDAR_ID),
                     startDayOffset = item.optInt("startDayOffset"),
                     startMinuteOfDay = item.optInt("startMinuteOfDay"),
                     endDayOffset = item.optInt("endDayOffset"),
@@ -175,6 +190,7 @@ fun ScheduleTemplatePayload.toDraftsForWeek(targetWeekStart: LocalDate): List<Ca
             vibrateEnabled = entry.vibrateEnabled,
             reminderDeliveryMode = entry.reminderDeliveryMode,
             recurrence = RecurrenceConfig(),
+            calendarId = entry.calendarId,
             groupName = entry.groupName
         )
     }
@@ -210,6 +226,7 @@ fun ScheduleTemplatePayload.toWeeklyRecurringDrafts(
                 weeklyDays = setOf(startDate.dayOfWeek),
                 endDate = recurrenceEndDate
             ),
+            calendarId = entry.calendarId,
             groupName = entry.groupName
         )
     }

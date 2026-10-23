@@ -14,6 +14,7 @@ namespace PaykiTodo.Desktop;
 
 internal sealed partial class NativeWindow
 {
+    private readonly HashSet<string> expandedTodoSeries = new();
     private UIElement BoardPage()
     {
         var today = DateTime.Today;
@@ -45,7 +46,7 @@ internal sealed partial class NativeWindow
         var dayGrid = new Grid(); dayGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto }); dayGrid.ColumnDefinitions.Add(new ColumnDefinition());
         dayGrid.Children.Add(date); Grid.SetColumn(scheduleBody, 1); dayGrid.Children.Add(scheduleBody);
         right.Children.Add(Card(dayGrid));
-        var countdowns = Active.Where(item => item.CountdownEnabled).Take(3).ToList();
+        var countdowns = workspace.Document!.Items.Where(item => workspace.Document.CountdownVisible(item, DateTime.Now)).Take(3).ToList();
         if (countdowns.Count > 0) {
             right.Children.Add(Text("值得期待", 20, bold: true));
             foreach (var item in countdowns) right.Children.Add(CountdownRow(item));
@@ -89,20 +90,41 @@ internal sealed partial class NativeWindow
         complete.Checked += (_, _) => Change(document => document.Complete(item.Id));
         complete.Unchecked += (_, _) => Change(document => document.Restore(item.Id));
         grid.Children.Add(complete);
-        var text = Column(Text(item.Title, 15, bold: true),
-            Text(TimeLabel(item) + (group == null ? "" : "  ·  " + group.Name) +
-                (item.Canceled ? "  ·  已取消" : item.Completed ? "  ·  已完成" : ""), 12, Muted));
+        var deadline = Text((item.DueAtMillis == long.MaxValue ? "" : "⏰  ") + TimeLabel(item), 13,
+            item.DueAtMillis != long.MaxValue && Local(item.DueAtMillis) < DateTime.Now && !item.Completed ? B(Dark ? "#FFA8A0" : "#AC352D") : Ink, true);
+        deadline.FontFamily = new System.Windows.Media.FontFamily("Century, Microsoft YaHei UI, Segoe UI Emoji");
+        deadline.FontWeight = FontWeights.Bold;
+        var text = Column(Text(item.Title, 15, bold: true), deadline);
+        if (group != null || item.Completed || item.Canceled) text.Children.Add(Text(
+            (group?.Name ?? "") + (item.Canceled ? "  ·  已取消" : item.Completed ? "  ·  已完成" : ""), 12, Muted));
         if (nested && item.Notes.Length > 0) text.Children.Add(Text(item.Notes, 12, Muted));
         text.Cursor = System.Windows.Input.Cursors.Hand; text.MouseLeftButtonUp += (_, e) => { Preview(item); e.Handled = true; };
         Grid.SetColumn(text, 1); grid.Children.Add(text);
         var card = Card(grid, 12); card.Margin = new Thickness(0, 0, 0, 8);
-        card.BorderBrush = B(group?.ColorHex ?? item.AccentColor); card.BorderThickness = new Thickness(3, 0, 0, 0);
+        card.BorderBrush = B(group?.ColorHex ?? item.AccentColor); card.BorderThickness = new Thickness(8, 0, 0, 0);
         if (nested) card.Margin = new Thickness(Math.Min(12, item.QuickChecklistDepth ?? 0) * 16, 0, 0, 8);
         return card;
     }
-    private void AppendTodos(StackPanel host, IReadOnlyList<DesktopItem> items)
+    private void AppendTodos(StackPanel host, IReadOnlyList<DesktopItem> items, bool foldRecurring = false)
     {
-        foreach (var item in items.Where(item => item.QuickChecklistGroupId == null)) host.Children.Add(TodoRow(item));
+        var ordinary = items.Where(item => item.QuickChecklistGroupId == null).ToList();
+        var series = ordinary.Where(item => foldRecurring && item.RecurrenceType != "NONE" && !string.IsNullOrEmpty(item.RecurringSeriesId)
+                && Local(item.DueAtMillis).Date > DateTime.Today)
+            .GroupBy(item => item.RecurringSeriesId!).ToDictionary(group => group.Key, group => group.OrderBy(item => item.DueAtMillis).ToList());
+        var emitted = new HashSet<string>();
+        foreach (var item in ordinary) {
+            if (item.RecurringSeriesId is { } key && series.TryGetValue(key, out var instances) && instances.Count > 1 && instances.Contains(item)) {
+                if (!emitted.Add(key)) continue;
+                var expanded = expandedTodoSeries.Contains(key);
+                var toggle = Action($"{(expanded ? "▾" : "▸")}  {instances[0].Title} · {instances.Count} 次循环", () => {
+                    if (!expandedTodoSeries.Add(key)) expandedTodoSeries.Remove(key); Render();
+                });
+                System.Windows.Automation.AutomationProperties.SetAutomationId(toggle, "Todo.Series." + key);
+                host.Children.Add(toggle);
+                if (expanded) foreach (var instance in instances) host.Children.Add(TodoRow(instance));
+                else host.Children.Add(TodoRow(instances[0]));
+            } else host.Children.Add(TodoRow(item));
+        }
         foreach (var grouping in items.Where(item => item.QuickChecklistGroupId != null).GroupBy(item => item.QuickChecklistGroupId!.Value))
         {
             var group = workspace.Document!.QuickChecklistGroups.FirstOrDefault(group => group.Id == grouping.Key);
@@ -124,15 +146,21 @@ internal sealed partial class NativeWindow
     }
     private UIElement TodosPage()
     {
-        var filters = new ComboBox { MinWidth = 150, DisplayMemberPath = "Name" };
+        var filters = new ComboBox { MinWidth = 150, MaxWidth = 230, Height = 40, MinHeight = 40, Margin = new Thickness(12, 0, 0, 6), DisplayMemberPath = "Name", VerticalAlignment = VerticalAlignment.Top };
+        System.Windows.Automation.AutomationProperties.SetName(filters, "待办分组");
         var groups = new[] { new DesktopGroup(0, "全部分组", "#326F59") }.Concat(workspace.Document!.Groups).ToList();
         filters.ItemsSource = groups; filters.SelectedItem = groups.FirstOrDefault(group => group.Id == (selectedGroup ?? 0)) ?? groups[0];
         filters.SelectionChanged += (_, _) => { selectedGroup = (filters.SelectedItem as DesktopGroup)?.Id; Render(); };
-        var body = Column(Row(Action("＋ 新增待办", () => EditItem(false), true), ChecklistAction(CreateChecklist),
-            Action(history ? "返回待办" : "历史记录", () => { history = !history; Render(); }), filters));
+        var toolbar = new Grid(); toolbar.ColumnDefinitions.Add(new ColumnDefinition()); toolbar.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        var actions = Row(Action("＋ 新增待办", () => EditItem(false), true), ChecklistAction(CreateChecklist),
+            Action(history ? "返回待办" : "历史记录", () => { history = !history; Render(); }));
+        foreach (var button in actions.Children.OfType<Button>()) { button.Height = 40; button.Padding = new Thickness(14, 6, 14, 6); }
+        toolbar.Children.Add(actions);
+        Grid.SetColumn(filters, 1); toolbar.Children.Add(filters);
+        var body = Column(toolbar);
         var items = workspace.Document.Items.Where(item => !item.IsEvent && (history ? item.Completed || item.Canceled : !item.Completed && !item.Canceled))
             .Where(item => selectedGroup is null or 0 || item.GroupId == selectedGroup).ToList();
-        AppendTodos(body, items);
+        AppendTodos(body, items, foldRecurring: !history);
         if (items.Count == 0) body.Children.Add(Card(Text(history ? "暂无历史记录" : "所有事情都处理好了。", 18, Muted)));
         return Page(body, true);
     }
@@ -150,11 +178,14 @@ internal sealed partial class NativeWindow
         var target = item.IsEvent ? Local(item.StartAtMillis) : Local(item.DueAtMillis);
         var days = (target.Date - DateTime.Today).Days;
         var card = Card(SectionHeader(item.Title, Text(days >= 0 ? $"还有 {days} 天" : $"已过 {-days} 天", 20, Forest, true)));
+        var groupColor = workspace.Document!.Groups.FirstOrDefault(group => group.Id == item.GroupId)?.ColorHex;
+        card.BorderBrush = B(item.IsEvent ? item.AccentColor : groupColor ?? item.AccentColor);
+        card.BorderThickness = new Thickness(8, 0, 0, 0);
         card.MouseLeftButtonUp += (_, _) => Preview(item); return card;
     }
     private UIElement CountdownPage()
     {
-        var body = Column(); foreach (var item in Active.Where(item => item.CountdownEnabled)) body.Children.Add(CountdownRow(item));
+        var body = Column(); foreach (var item in workspace.Document!.Items.Where(item => workspace.Document.CountdownVisible(item, DateTime.Now))) body.Children.Add(CountdownRow(item));
         if (body.Children.Count == 0) body.Children.Add(Card(Text("编辑待办或日程时勾选“倒数日”，重要日子会出现在这里。", 16, Muted)));
         return Page(body, true);
     }

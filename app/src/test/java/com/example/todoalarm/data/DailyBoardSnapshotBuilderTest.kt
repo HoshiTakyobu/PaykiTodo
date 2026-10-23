@@ -56,7 +56,7 @@ class DailyBoardSnapshotBuilderTest {
     }
 
     @Test
-    fun countdownItemsOnlyIncludeActiveFutureTargets() {
+    fun countdownItemsIncludeRecentPastAndFutureTargets() {
         val futureExam = todo(
             id = 10,
             title = "期末考试",
@@ -87,13 +87,13 @@ class DailyBoardSnapshotBuilderTest {
             now = now
         )
 
-        assertEquals(listOf("答辩", "期末考试"), snapshot.countdownItems.map { it.title })
+        assertEquals(listOf("已经过去的目标", "答辩", "期末考试"), snapshot.countdownItems.map { it.title })
         assertEquals(0L, DailyBoardSnapshotBuilder.countdownDays(todayEvent, now.toLocalDate()))
         assertEquals(6L, DailyBoardSnapshotBuilder.countdownDays(futureExam, now.toLocalDate()))
     }
 
     @Test
-    fun countdownItemsExcludeTargetsEarlierToday() {
+    fun countdownItemsRetainTargetsEarlierToday() {
         val pastEvent = event(
             id = 20,
             title = "上午考试",
@@ -112,7 +112,7 @@ class DailyBoardSnapshotBuilderTest {
             now = now
         )
 
-        assertEquals(listOf("下午考试"), snapshot.countdownItems.map { it.title })
+        assertEquals(listOf("上午考试", "下午考试"), snapshot.countdownItems.map { it.title })
     }
 
     @Test

@@ -11,6 +11,7 @@ namespace PaykiTodo.Desktop;
 
 internal sealed partial class NativeWindow
 {
+    private int settingsCategory = 1;
     private UIElement LoginPage()
     {
         var rememberedStore = new RememberedLoginStore(profileDirectory); var remembered = rememberedStore.Load();
@@ -90,16 +91,24 @@ internal sealed partial class NativeWindow
         theme.SelectionChanged += (_, _) => {
             Dark = theme.SelectedIndex == 1; BuildShell(); Change(document => document.Settings["themeMode"] = Dark ? "DARK" : "LIGHT");
         };
-        body.Children.Add(Card(Column(Text("外观", 20, bold: true), Text("界面主题", 14, Muted), theme)));
+        var pastDays = new System.Windows.Controls.ComboBox { ItemsSource = new[] { 0, 3, 7, 14, 30, 90, 365, workspace.Document!.CountdownPastDays }.Distinct().OrderBy(value => value).ToArray(), SelectedItem = workspace.Document!.CountdownPastDays, Width = 180 };
+        System.Windows.Automation.AutomationProperties.SetName(pastDays, "历史倒数日保留天数");
+        pastDays.SelectionChanged += (_, _) => { if (pastDays.SelectedItem is int days) Change(document => document.Settings["countdownPastDays"] = days); };
+        body.Children.Add(Card(Column(Text("外观与习惯", 20, bold: true),
+            SettingRow("界面主题", "选择适合当前环境的显示方式", theme),
+            SettingRow("主字体", workspace.Document.Settings["desktopFontFamily"]?.GetValue<string>() ?? "系统推荐 · Microsoft YaHei UI", Action("选择字体", ChooseInterfaceFont)),
+            SettingRow("历史倒数日", "目标日期过去多少天后自动隐藏；保留纪念的事项始终展示", pastDays))));
         body.Children.Add(Card(Column(Text("数据与备份", 20, bold: true), Text("迁移包可在手机与电脑间导入。导入或切换云端版本前会自动保留本机安全副本。", 13, Muted),
-            Row(Action("导出备份", () => {
+            SettingRow("导出迁移包", "保存可在手机和电脑恢复的数据副本", Action("导出备份", () => {
                 var dialog = new Microsoft.Win32.SaveFileDialog { Filter = "PaykiTodo 迁移包|*.paykibak", FileName = "PaykiTodo-" + DateTime.Now.ToString("yyyyMMdd-HHmm") + ".paykibak" };
                 if (dialog.ShowDialog(this) == true) { try { File.WriteAllBytes(dialog.FileName, workspace.Document!.ToArchiveBytes(includeSecrets: false)); workspace.Notify("备份已导出（不含 AI 密钥）"); } catch (Exception e) { workspace.Notify(e.Message); } }
-            }), Action("导入备份", () => {
+            })), SettingRow("从迁移包恢复", "选择文件并确认后恢复；当前数据先保留副本", Action("导入备份", () => {
                 var dialog = new Microsoft.Win32.OpenFileDialog { Filter = "PaykiTodo 迁移包|*.paykibak" };
                 if (dialog.ShowDialog(this) == true && Confirm("用选中的迁移包替换本机数据？现有数据会先保留安全副本。"))
                     try { workspace.Import(File.ReadAllBytes(dialog.FileName)); } catch (Exception e) { workspace.Notify(e.Message); }
-            }), Action("检查云端并恢复", () => ReviewCloud(false)), Action("保留本机上传", () => ReviewCloud(true)), Action("恢复操作前副本", () => {
+            })), SettingRow("云端副本", "先检查记录数量，再选择恢复", Action("检查云端并恢复", () => ReviewCloud(false))),
+            SettingRow("本机副本", "确认使用本机数据更新云端", Action("保留本机上传", () => ReviewCloud(true))),
+            SettingRow("操作前副本", "找回最近导入或切换前的数据", Action("恢复操作前副本", () => {
                 if (Confirm("恢复最近的操作前副本？当前数据也会先保存副本。")) try { workspace.RestoreSafetyCopy(); } catch (Exception error) { workspace.Notify(error.Message); }
             })))));
         var groups = Column(Text("分组管理", 20, bold: true));
@@ -121,9 +130,47 @@ internal sealed partial class NativeWindow
                 if (!Uri.TryCreate(text, UriKind.Absolute, out var uri) || uri.Scheme is not ("http" or "https")) { workspace.Notify("请输入手机显示的完整 http 或 https 地址"); return; }
                 Process.Start(new ProcessStartInfo(uri.AbsoluteUri) { UseShellExecute = true });
             }))));
-        body.Children.Add(Card(Column(Text("关于 PaykiTodo", 20, bold: true), Text("Windows 客户端 1.16.24 · 更纱黑体 UI", 14, Muted),
+        body.Children.Add(Card(Column(Text("关于 PaykiTodo", 20, bold: true), Text("Windows 客户端 1.16.25", 14, Muted),
             Text("桌面提醒需要保持程序运行；手机的锁屏、通知权限与桌面小组件由 Android 系统管理。", 13, Muted), Action("隐私政策", ShowPrivacy))));
-        return Page(body);
+        var categories = new[] { "账号与同步", "常规", "数据与备份", "分组管理", "AI 与规划", "连接手机", "关于" };
+        var shell = new Grid { Margin = new Thickness(18, 0, 18, 18) };
+        shell.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(154) }); shell.ColumnDefinitions.Add(new ColumnDefinition());
+        var rail = Column();
+        for (var index = 0; index < categories.Length; index++) {
+            var target = index; var entry = Action(categories[index], () => { settingsCategory = target; Render(); });
+            entry.HorizontalContentAlignment = HorizontalAlignment.Left; entry.Margin = new Thickness(0, 2, 8, 4); entry.BorderThickness = new Thickness(0);
+            entry.Background = index == settingsCategory ? B("#E8F0FF") : B("#F5F7FA"); rail.Children.Add(entry);
+        }
+        shell.Children.Add(new Border { Background = B("#F5F7FA"), Padding = new Thickness(8, 16, 4, 8), Child = rail });
+        var chosen = body.Children[settingsCategory]; body.Children.Remove(chosen);
+        var section = Column(Text(categories[settingsCategory], 23, bold: true), Text("按你的习惯，安排每一天。", 13, Muted), chosen);
+        section.MaxWidth = 850; section.HorizontalAlignment = HorizontalAlignment.Stretch; section.Margin = new Thickness(24, 12, 12, 0);
+        var scroll = Scroll(section); Grid.SetColumn(scroll, 1); shell.Children.Add(scroll); return shell;
+    }
+
+    private static UIElement SettingRow(string title, string summary, UIElement control)
+    {
+        var row = new Grid { Margin = new Thickness(0, 14, 0, 14) }; row.ColumnDefinitions.Add(new ColumnDefinition()); row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        var labels = Column(Text(title, 15, bold: true), Text(summary, 12, Muted)); labels.Margin = new Thickness(0, 0, 20, 0); row.Children.Add(labels);
+        ((FrameworkElement)control).VerticalAlignment = VerticalAlignment.Center; Grid.SetColumn(control, 1); row.Children.Add(control);
+        return new Border { BorderBrush = Outline, BorderThickness = new Thickness(0, 0, 0, 0.5), Child = row };
+    }
+
+    private void ChooseInterfaceFont()
+    {
+        var dialog = Dialog(this, "选择主字体", 570, 430);
+        var names = new[] { "系统推荐", "Sarasa UI SC" }.Concat(System.Windows.Media.Fonts.SystemFontFamilies.Select(font => font.Source).OrderBy(name => name)).Distinct().ToList();
+        var choice = new System.Windows.Controls.ComboBox { ItemsSource = names, SelectedItem = workspace.Document!.Settings["desktopFontFamily"]?.GetValue<string>() ?? "系统推荐" };
+        System.Windows.Automation.AutomationProperties.SetName(choice, "主字体");
+        var preview = Text("把今天安排得刚刚好\nPaykiTodo · 09:30 · DDL 2026-10-23", 18);
+        void PreviewFont() { var name = choice.SelectedItem?.ToString(); preview.FontFamily = name == "Sarasa UI SC" ? BundledFont : new System.Windows.Media.FontFamily(name == "系统推荐" ? "Microsoft YaHei UI, Segoe UI" : name + ", Microsoft YaHei UI, Segoe UI"); }
+        choice.SelectionChanged += (_, _) => PreviewFont(); PreviewFont();
+        dialog.Content = DialogLayout(Column(BrandHeading("主字体", "选择本机字体并预览；问候语保留原来的字体。"), choice, new Border { Padding = new Thickness(16), Background = Paper, Child = preview }),
+            Action("取消", () => dialog.Close()), Action("完成", () => {
+                var name = choice.SelectedItem?.ToString(); if (name == "系统推荐") name = null;
+                SetInterfaceFont(name); dialog.Close(); FontFamily = InterfaceFont; BuildShell(); Change(document => document.Settings["desktopFontFamily"] = name); Render();
+            }, true));
+        dialog.ShowDialog();
     }
 
     private async void ReviewCloud(bool keepLocal)

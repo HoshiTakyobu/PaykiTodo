@@ -50,9 +50,9 @@ private class CountdownWidgetFactory(
         val loaded = runBlocking {
             val items = app.repository.getActiveItemsForBoardRange()
             groups = app.repository.getAllGroups()
-            DailyBoardSnapshotBuilder.build(items = items, now = now)
+            DailyBoardSnapshotBuilder.build(items = items, now = now, countdownPastDays = app.settingsStore.currentSettings().countdownPastDays)
                 .countdownItems
-                .filter { item -> DailyBoardSnapshotBuilder.countdownTargetMillis(item)?.let { it >= nowMillis } == true }
+                .filter { item -> com.example.todoalarm.data.CountdownVisibility.visible(item, nowMillis, app.settingsStore.currentSettings().countdownPastDays) }
                 .take(60)
         }
         rows = loaded.map { item ->

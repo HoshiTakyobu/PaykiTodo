@@ -29,7 +29,8 @@ object DailyBoardSnapshotBuilder {
         items: List<TodoItem>,
         planningNotes: List<PlanningNote> = emptyList(),
         now: LocalDateTime = LocalDateTime.now(),
-        selectedGroupId: Long? = null
+        selectedGroupId: Long? = null,
+        countdownPastDays: Int = 7
     ): DailyBoardSnapshot {
         val today = now.toLocalDate()
         val filteredItems = selectedGroupId?.let { groupId ->
@@ -43,8 +44,7 @@ object DailyBoardSnapshotBuilder {
             .sortedBy { it.startAtMillis ?: it.dueAtMillis }
         val nowMillis = now.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
         val countdownItems = items
-            .filter { it.isActive && it.countdownEnabled }
-            .filter { item -> countdownTargetMillis(item)?.let { it >= nowMillis } == true }
+            .filter { CountdownVisibility.visible(it, nowMillis, countdownPastDays) }
             .distinctBy { it.id }
             .sortedWith(
                 compareBy<TodoItem> { countdownTargetMillis(it) ?: Long.MAX_VALUE }
@@ -136,6 +136,10 @@ object DailyBoardSnapshotBuilder {
     }
 
     fun countdownRemainingDisplay(target: LocalDateTime, now: LocalDateTime): CountdownRemainingDisplay {
+        if (target.isBefore(now)) {
+            val days = java.time.temporal.ChronoUnit.DAYS.between(target.toLocalDate(), now.toLocalDate())
+            return CountdownRemainingDisplay(primary = "${days}d", secondary = "已过")
+        }
         val remaining = Duration.between(now, target).takeIf { !it.isNegative } ?: Duration.ZERO
         val totalMinutes = remaining.toMinutes()
         return when {

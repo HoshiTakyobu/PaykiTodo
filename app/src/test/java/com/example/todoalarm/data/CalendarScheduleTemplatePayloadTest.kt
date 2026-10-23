@@ -17,6 +17,7 @@ class CalendarScheduleTemplatePayloadTest {
         val event = TodoItem(
             itemType = PlannerItemType.EVENT.name,
             title = "课程",
+            calendarId = "courses",
             notes = "带教材",
             location = "@主楼",
             dueAtMillis = startAt,
@@ -37,6 +38,7 @@ class CalendarScheduleTemplatePayloadTest {
             buildScheduleTemplatePayload(weekStart, listOf(event), emptyMap()).toJsonString()
         ).toDraftsForWeek(weekStart).single()
 
+        assertEquals("courses", restored.calendarId)
         assertTrue(restored.checkInEnabled)
         assertEquals(listOf(30, 5), restored.normalizedCheckInReminderOffsetsMinutes)
         assertEquals(listOf(15), restored.normalizedReminderOffsetsMinutes)

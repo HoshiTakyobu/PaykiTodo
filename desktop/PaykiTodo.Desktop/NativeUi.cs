@@ -21,8 +21,14 @@ namespace PaykiTodo.Desktop;
 internal static class NativeUi
 {
     private const string StyleKey = "PaykiTodo.ControlStyles";
-    public static FontFamily InterfaceFont { get; } = new(new Uri("pack://application:,,,/PaykiTodo;component/"), "./Assets/#Sarasa UI SC");
-    public static FontFamily UtilityFont { get; } = new(new Uri("pack://application:,,,/PaykiTodo;component/"), "./Assets/#Sarasa UI SC");
+    public static FontFamily BundledFont { get; } = new(new Uri("pack://application:,,,/PaykiTodo;component/"), "./Assets/#Sarasa UI SC");
+    public static FontFamily InterfaceFont { get; private set; } = new("Microsoft YaHei UI");
+    public static FontFamily UtilityFont => InterfaceFont;
+    public static void SetInterfaceFont(string? name)
+    {
+        InterfaceFont = name == "Sarasa UI SC" ? BundledFont :
+            string.IsNullOrWhiteSpace(name) || !Fonts.SystemFontFamilies.Any(font => font.Source == name) ? new FontFamily("Microsoft YaHei UI") : new FontFamily(name);
+    }
     public static FontFamily HeadingFont { get; } = new(new Uri("pack://application:,,,/PaykiTodo;component/"), "./Assets/#FZQingKeBenYueSongS-R-GB");
     public static FontFamily BrandFont { get; } = new("Century Gothic, Century, Segoe UI");
     private static readonly Lazy<ImageSource> IconSource = new(() => {

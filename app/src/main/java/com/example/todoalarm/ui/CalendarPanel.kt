@@ -237,6 +237,10 @@ internal fun CalendarPanel(
     onGenerateSemesterFromTemplate: suspend (ScheduleTemplate, LocalDate, LocalDate) -> String?,
     onDeleteTemplate: suspend (Long) -> String?
 ) {
+    val workspace = LocalWorkspacePreferences.current
+    val events = remember(events, workspace.settings.hiddenCalendarIds) { events.filter { it.calendarId !in workspace.settings.hiddenCalendarIds } }
+    var showCalendars by remember { mutableStateOf(false) }
+    if (showCalendars) CalendarManager { showCalendars = false }
     val context = LocalContext.current
     val density = LocalDensity.current
     val anchorDate = remember { LocalDate.now() }
@@ -467,6 +471,9 @@ internal fun CalendarPanel(
                 modifier = Modifier.fillMaxSize(),
                 verticalArrangement = Arrangement.spacedBy(6.dp)
             ) {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                    TextButton(onClick = { showCalendars = true }) { Text("日历 · ${workspace.calendars.count { it.id !in workspace.settings.hiddenCalendarIds }}") }
+                }
                 Surface(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(18.dp),

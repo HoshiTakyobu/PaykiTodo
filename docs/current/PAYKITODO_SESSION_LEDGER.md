@@ -12,7 +12,7 @@ The released `1.15.18 / versionCode 360` round restores independent full-screen 
 
 ## Current Development Round
 
-The local `1.16.24 / versionCode 389` round completes the final annotated typography and Windows calendar requests: sans-serif operational text, heavier Android drawer, blue greeting/calendar, mini-month/week/today markers, fixed headers/timezone/current-time line, explicit search and account identity layout. It also fixes accessibility Toggle persistence and reminder/calendar contrast. Verified 190 Android units/Lint/build/signature, 22 Windows regressions plus one 14-stage isolated UIA flow, actual dedicated-account cross-client edits/completions and timed reminders. Human verification was done by the user. Original emulator data restored with 557/557 hashes matching and 78 extra files retained; final test data separately backed up. See [VALIDATION_1.16.24.md](VALIDATION_1.16.24.md). No push, publication or production deployment changes; physical/OEM and existing parity limits remain.
+The local `1.16.25 / versionCode 390` round implements the 2026-10-23 feedback: independent calendars, Windows two-step grid creation and scroll preservation, configurable main fonts, seven-day countdown history with memorial choices, recurring-task folding, categorized settings and the PaykiTodo Android label. Room is32. See [VALIDATION_1.16.25.md](VALIDATION_1.16.25.md) for tests, local artifacts, emulator preservation and exact scope. No push, release or production deployment.
 
 ### Previous 1.16.23 implementation
 

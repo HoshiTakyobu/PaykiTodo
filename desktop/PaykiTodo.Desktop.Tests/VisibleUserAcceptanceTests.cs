@@ -222,6 +222,7 @@ public sealed class VisibleUserAcceptanceTests
                     server.Payload = SnapshotCrypto.Encrypt(cloud.ToArchiveBytes(), "fixture-secret"); server.Revision++;
                     await window.Dispatcher.InvokeAsync(() => workspace.Edit(doc => doc.SaveItem(NativeWorkspaceTests.NewItem(false, "Keep local conflict fixture"))));
                     await Task.Delay(500);
+                    await ButtonClick("数据与备份");
                     await ButtonClick("保留本机上传"); await ConfirmSystemDialog(); await Synced();
                     Assert.Contains(DesktopSnapshotDocument.FromArchiveBytes(SnapshotCrypto.Decrypt(server.Payload!, "fixture-secret")).Items, i => i.Title == "Keep local conflict fixture");
                     Stage("W11", "Conflict review and branded confirmation keep local snapshot and upload with revision validation");
@@ -250,7 +251,7 @@ public sealed class VisibleUserAcceptanceTests
                     }
                     Assert.True(workspace.Document.Items.Single(i => i.Title == "Visible expired reminder").Completed, "Physical completion click must persist the task state");
                     Stage("W09", "Expired-account offline timer opens reminder; completion updates local task");
-                    await ButtonClick("退出登录"); await ConfirmSystemDialog();
+                    await ButtonClick("账号与同步"); await ButtonClick("退出登录"); await ConfirmSystemDialog();
                     Assert.Null(workspace.Document); Assert.Null(new DesktopWorkspace(store).Document);
                     Assert.Contains(store.Load()!.Value.Document.Items, i => i.Title == "Visible keyboard todo");
                     Stage("W10", "Actual logout confirmation locks workspace on disk without deleting tasks");

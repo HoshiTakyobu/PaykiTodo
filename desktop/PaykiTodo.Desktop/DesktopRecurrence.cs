@@ -33,7 +33,7 @@ internal sealed partial class DesktopSnapshotDocument
                 };
                 if (!matches) continue;
                 var item = (JsonObject)source.DeepClone();
-                foreach (var key in new[] { "title", "notes", "location", "accentColorHex", "countdownEnabled", "hiddenFromBoard", "checkInEnabled", "checkInReminderOffsetsCsv", "allDay", "groupId", "reminderOffsetsCsv", "reminderDeliveryMode", "ringEnabled", "vibrateEnabled", "alarmMode" })
+                foreach (var key in new[] { "title", "notes", "location", "accentColorHex", "countdownEnabled", "calendarId", "countdownPastMode", "hiddenFromBoard", "checkInEnabled", "checkInReminderOffsetsCsv", "allDay", "groupId", "reminderOffsetsCsv", "reminderDeliveryMode", "ringEnabled", "vibrateEnabled", "alarmMode" })
                     if (template[key] != null) item[key] = template[key]!.DeepClone();
                 var time = date.AddHours(template["dueHour"]?.GetValue<int>() ?? 0).AddMinutes(template["dueMinute"]?.GetValue<int>() ?? 0);
                 var millis = new DateTimeOffset(time).ToUnixTimeMilliseconds();

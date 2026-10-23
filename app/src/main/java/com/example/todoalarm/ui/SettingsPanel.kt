@@ -112,6 +112,7 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
 private enum class SettingsSection {
+    APPEARANCE,
     PERMISSIONS,
     TONE,
     CALENDAR,
@@ -257,132 +258,54 @@ fun SettingsPanel(
         }
     }
 
-    LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        item {
-            SettingsCategoryHeader(
-                title = "常用设置",
-                summary = null
-            )
-        }
+    LazyColumn(verticalArrangement = Arrangement.spacedBy(16.dp), contentPadding = androidx.compose.foundation.layout.PaddingValues(bottom = 24.dp)) {
         item {
             SettingsMenuCard {
-                SettingsMenuItem(
-                    icon = Icons.Rounded.Security,
-                    title = "提醒权限",
-                    summary = null,
-                    onClick = { selectedSection = SettingsSection.PERMISSIONS }
-                )
-                SettingsMenuDivider()
-                SettingsMenuItem(
-                    icon = Icons.Rounded.LibraryMusic,
-                    title = "提示音设置",
-                    summary = null,
-                    onClick = { selectedSection = SettingsSection.TONE }
-                )
-                SettingsMenuDivider()
-                SettingsMenuItem(
-                    icon = Icons.Rounded.CalendarMonth,
-                    title = "日历与提醒",
-                    summary = null,
-                    onClick = { selectedSection = SettingsSection.CALENDAR }
-                )
-                SettingsMenuDivider()
-                SettingsMenuItem(
-                    icon = Icons.Rounded.Notifications,
-                    title = "每日摘要通知",
-                    summary = if (settings.dailyBriefEnabled) {
-                        "每天 ${formatReportTime(settings.dailyBriefHour, settings.dailyBriefMinute)} 推送今日待办和日程"
-                    } else {
-                        "已关闭"
-                    },
-                    onClick = {
-                        dailyBriefDraft = DailyBriefDraft.from(settings)
-                        selectedSection = SettingsSection.DAILY_BRIEF
-                    }
-                )
-                SettingsMenuDivider()
-                SettingsMenuItem(
-                    icon = Icons.Rounded.Psychology,
-                    title = "AI 调用配置",
-                    summary = if (settings.planningAiEnabled && settings.planningAiProviders.isNotEmpty()) {
-                        "${settings.planningAiProviders.count { it.enabled }} 个已启用 · 共 ${settings.planningAiProviders.size} 个源"
-                    } else {
-                        "为规划台 AI 识别配置多个 Base URL、API Key 和模型名"
-                    },
-                    onClick = {
-                        planningAiDraft = PlanningAiConfigDraft.from(settings)
-                        selectedSection = SettingsSection.AI_CONFIG
-                    }
-                )
-                SettingsMenuDivider()
-                SettingsMenuItem(
-                    icon = Icons.AutoMirrored.Rounded.ManageSearch,
-                    title = "使用说明",
-                    summary = null,
-                    onClick = onOpenWiki
-                )
-                SettingsMenuDivider()
-                SettingsMenuItem(
-                    icon = Icons.Rounded.Computer,
-                    title = "连接电脑（局域网）",
-                    summary = when {
-                        desktopSyncStatus.connected -> "已连接"
-                        desktopSyncStatus.running -> "等待密钥"
-                        settings.desktopSyncEnabled -> "未运行"
-                        else -> "未开启"
-                    },
-                    onClick = { selectedSection = SettingsSection.DESKTOP_SYNC }
-                )
-                SettingsMenuDivider()
-                SettingsMenuItem(
-                    icon = Icons.Rounded.Person,
-                    title = "账号",
-                    summary = settings.remoteSyncUsername,
-                    onClick = { selectedSection = SettingsSection.ACCOUNT }
-                )
-                SettingsMenuDivider()
-                SettingsMenuItem(
-                    icon = Icons.Rounded.Folder,
-                    title = "关于",
-                    summary = null,
-                    onClick = { selectedSection = SettingsSection.ABOUT }
-                )
+                SettingsMenuItem(Icons.Rounded.Person, settings.remoteSyncDisplayName.ifBlank { settings.remoteSyncUsername.ifBlank { "PaykiTodo" } }, "账号与设备") { selectedSection = SettingsSection.ACCOUNT }
             }
         }
-
-        item {
-            SettingsCategoryHeader(
-                title = "高级设置",
-                summary = null
-            )
-        }
+        item { SettingsCategoryHeader("常规", "按你的习惯，安排每一天。") }
         item {
             SettingsMenuCard {
-                SettingsMenuItem(
-                    icon = Icons.Rounded.BugReport,
-                    title = "提醒链路诊断",
-                    summary = if (reminderChainLogs.isEmpty()) "当前没有诊断记录" else "最近 ${reminderChainLogs.size} 条诊断记录",
-                    onClick = { selectedSection = SettingsSection.DIAGNOSTICS }
-                )
+                SettingsMenuItem(Icons.Rounded.Tune, "外观与显示", "主字体 · 倒数日保留规则") { selectedSection = SettingsSection.APPEARANCE }
                 SettingsMenuDivider()
-                SettingsMenuItem(
-                    icon = Icons.Rounded.Storage,
-                    title = "数据与备份",
-                    summary = null,
-                    onClick = { selectedSection = SettingsSection.BACKUP }
-                )
+                SettingsMenuItem(Icons.Rounded.CalendarMonth, "日历与提醒", "周起始日、延后与打卡") { selectedSection = SettingsSection.CALENDAR }
                 SettingsMenuDivider()
-                SettingsMenuItem(
-                    icon = Icons.AutoMirrored.Rounded.Article,
-                    title = "崩溃日志",
-                    summary = null,
-                    onClick = { selectedSection = SettingsSection.CRASH }
-                )
+                SettingsMenuItem(Icons.Rounded.LibraryMusic, "提示音设置", "提示音与安静工作模式") { selectedSection = SettingsSection.TONE }
+                SettingsMenuDivider()
+                SettingsMenuItem(Icons.Rounded.Security, "提醒权限", "通知、闹钟与后台运行") { selectedSection = SettingsSection.PERMISSIONS }
+                SettingsMenuDivider()
+                SettingsMenuItem(Icons.Rounded.Notifications, "每日摘要通知", if (settings.dailyBriefEnabled) "已开启" else "已关闭") {
+                    dailyBriefDraft = DailyBriefDraft.from(settings); selectedSection = SettingsSection.DAILY_BRIEF
+                }
+            }
+        }
+        item { SettingsCategoryHeader("数据与连接", "备份、迁移与电脑访问") }
+        item {
+            SettingsMenuCard {
+                SettingsMenuItem(Icons.Rounded.Storage, "数据与备份", "导出、恢复与自动备份") { selectedSection = SettingsSection.BACKUP }
+                SettingsMenuDivider()
+                SettingsMenuItem(Icons.Rounded.Computer, "连接电脑（局域网）", if (desktopSyncStatus.connected) "已连接" else "直接操作手机数据") { selectedSection = SettingsSection.DESKTOP_SYNC }
+                SettingsMenuDivider()
+                SettingsMenuItem(Icons.Rounded.Psychology, "AI 调用配置", "规划台识别与模型") { planningAiDraft = PlanningAiConfigDraft.from(settings); selectedSection = SettingsSection.AI_CONFIG }
+            }
+        }
+        item { SettingsCategoryHeader("支持与高级", null) }
+        item {
+            SettingsMenuCard {
+                SettingsMenuItem(Icons.AutoMirrored.Rounded.ManageSearch, "使用说明", null, onOpenWiki)
+                SettingsMenuDivider()
+                SettingsMenuItem(Icons.Rounded.BugReport, "提醒链路诊断", "检查提醒是否正常送达") { selectedSection = SettingsSection.DIAGNOSTICS }
+                SettingsMenuDivider()
+                SettingsMenuItem(Icons.AutoMirrored.Rounded.Article, "崩溃日志", null) { selectedSection = SettingsSection.CRASH }
+                SettingsMenuDivider()
+                SettingsMenuItem(Icons.Rounded.Folder, "关于", "PaykiTodo") { selectedSection = SettingsSection.ABOUT }
             }
         }
     }
 
     when (selectedSection) {
+        SettingsSection.APPEARANCE -> AppearanceSettings { selectedSection = null }
         SettingsSection.PERMISSIONS -> SettingsSectionDialog("提醒权限", { selectedSection = null }) {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 PermissionRow(Icons.Rounded.Notifications, "通知权限", permissions.notificationGranted, onRequestNotificationPermission)
@@ -598,25 +521,11 @@ fun SettingsPanel(
             var dataHealthMessage by remember { mutableStateOf<String?>(null) }
             var dataHealthConfirmVisible by remember { mutableStateOf(false) }
             Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text("自动备份", fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
-                    }
-                    Switch(checked = settings.autoBackupEnabled, onCheckedChange = onAutoBackupChange)
-                }
-                Text(settings.backupDirectoryUri ?: "当前未选择备份目录", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
-                Text(
-                    "迁移包可在卸载 Debug 版后保留，用于把待办、日程、规划文档、历史记录和普通设置迁入正式版。AI API Key 与电脑访问密钥不会写入文件。",
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    style = MaterialTheme.typography.bodySmall
-                )
-                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    OutlinedButton(onClick = onPickBackupDirectory, modifier = Modifier.fillMaxWidth()) { Text("选择备份目录") }
-                    OutlinedButton(onClick = onExportBackup, modifier = Modifier.fillMaxWidth()) { Text("导出迁移包") }
-                    OutlinedButton(onClick = onImportBackup, modifier = Modifier.fillMaxWidth()) { Text("从迁移包恢复") }
-                }
+                BackupPreferencesContent(settings, onAutoBackupChange, onPickBackupDirectory, onExportBackup, onImportBackup)
                 HorizontalDivider()
-                DataHealthPanel(
+                var maintenanceExpanded by remember { mutableStateOf(false) }
+                SettingsMenuItem(Icons.Rounded.Tune, "数据维护", if (maintenanceExpanded) "收起检查工具" else "检查历史数据与维护建议") { maintenanceExpanded = !maintenanceExpanded }
+                if (maintenanceExpanded) DataHealthPanel(
                     report = dataHealthReport,
                     scanning = dataHealthScanning,
                     cleaning = dataHealthCleaning,
@@ -2708,6 +2617,7 @@ internal fun SettingsSectionDialog(
     onDismiss: () -> Unit,
     onDone: () -> Unit = onDismiss,
     doneEnabled: Boolean = true,
+    onCancel: (() -> Unit)? = null,
     content: @Composable ColumnScope.() -> Unit
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
@@ -2736,6 +2646,7 @@ internal fun SettingsSectionDialog(
                     fontWeight = FontWeight.SemiBold,
                     color = MaterialTheme.colorScheme.onSurface
                 )
+                if (onCancel != null) TextButton(onClick = onCancel) { Text("取消") }
                 TextButton(onClick = onDone, enabled = doneEnabled) {
                     Text("完成")
                 }
@@ -2870,5 +2781,28 @@ private fun PermissionRow(
         OutlinedButton(onClick = onClick) {
             Text("去设置")
         }
+    }
+}
+
+@Composable
+internal fun BackupPreferencesContent(
+    settings: AppSettings, onAutoBackupChange: (Boolean) -> Unit, onPickBackupDirectory: () -> Unit,
+    onExportBackup: () -> Unit, onImportBackup: () -> Unit
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text("自动备份", fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
+                    }
+                    Switch(checked = settings.autoBackupEnabled, onCheckedChange = onAutoBackupChange)
+                }
+                SettingsMenuItem(Icons.Rounded.Folder, "备份目录", if (settings.backupDirectoryUri == null) "尚未选择" else "已选择，可点击更换", onPickBackupDirectory)
+                HorizontalDivider()
+                Text("迁移与恢复", style = MaterialTheme.typography.titleMedium)
+                Text("保存待办、日程、日历与普通设置；不包含登录凭据及 AI 密钥。", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                SettingsMenuItem(Icons.Rounded.Storage, "导出迁移包", "保存一份可在手机和电脑恢复的副本", onExportBackup)
+                HorizontalDivider()
+                SettingsMenuItem(Icons.Rounded.Storage, "从迁移包恢复", "选择文件后确认；现有数据先保留安全副本", onImportBackup)
+
     }
 }

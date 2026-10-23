@@ -1,9 +1,9 @@
 <resources>
-    <string name="app_name">派期待办</string>
+    <string name="app_name">PaykiTodo</string>
     <string name="shortcut_tasks_label">我的待办</string>
-    <string name="shortcut_tasks_long_label">打开派期待办任务列表</string>
+    <string name="shortcut_tasks_long_label">打开 PaykiTodo 任务列表</string>
     <string name="shortcut_new_task_label">添加待办</string>
-    <string name="shortcut_new_task_long_label">在派期待办中添加任务</string>
+    <string name="shortcut_new_task_long_label">在 PaykiTodo 中添加任务</string>
     <string name="channel_name_audible">PaykiTodo 强提醒</string>
     <string name="channel_name_vibrate">PaykiTodo 震动提醒</string>
     <string name="channel_name_silent">PaykiTodo 静默提醒</string>

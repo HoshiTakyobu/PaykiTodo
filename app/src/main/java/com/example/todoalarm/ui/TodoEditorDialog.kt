@@ -128,6 +128,7 @@ fun TodoEditorDialog(
     }
     val effectiveReminderEnabled = hasDueDate && !isHistory && reminderEnabled
     val reminderDeliveryMode = ReminderDeliveryMode.FULLSCREEN_AND_NOTIFICATION
+    var countdownPastMode by remember(initialTodo?.id) { mutableStateOf(initialTodo?.countdownPastMode ?: "AUTO") }
     var countdownEnabled by remember(initialTodo?.id) {
         mutableStateOf(initialTodo?.countdownEnabled == true)
     }
@@ -220,6 +221,8 @@ fun TodoEditorDialog(
                     alarmMode = alarmMode && hasDueDate && effectiveReminderEnabled && !isHistory,
                     reminderDeliveryMode = reminderDeliveryMode,
                     countdownEnabled = countdownEnabled && hasDueDate,
+                    countdownPastMode = countdownPastMode,
+                    calendarId = initialTodo?.calendarId ?: "default",
                     hiddenFromBoard = hiddenFromBoard && hasDueDate,
                     recurrence = RecurrenceConfig(
                         enabled = !isHistory && hasDueDate && recurringEnabled,
@@ -314,6 +317,7 @@ fun TodoEditorDialog(
 
                 if (hasDueDate) {
                     TodoEditorBlock(title = "倒数日") {
+                        if (countdownEnabled) PreferenceChoice("完成后", countdownPastMode, CountdownPastChoices) { countdownPastMode = it }
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             verticalAlignment = Alignment.CenterVertically,

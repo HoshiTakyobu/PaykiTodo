@@ -36,6 +36,7 @@ internal sealed partial class NativeWindow : Window
     private DesktopReminders? reminders;
     private bool reauthenticating;
     private DesktopSnapshotDocument? renderedDocument;
+    private IReadOnlyList<DesktopItem> renderedItems = Array.Empty<DesktopItem>();
     private readonly Dictionary<long, (string Title, string Markdown)> planningDrafts = new();
 
     public NativeWindow(DesktopWorkspace? workspace = null, string? profileDirectory = null)
@@ -43,6 +44,7 @@ internal sealed partial class NativeWindow : Window
         this.profileDirectory = profileDirectory ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "PaykiTodo");
         this.workspace = workspace ?? new DesktopWorkspace(new DesktopSecureStore(this.profileDirectory));
         Dark = this.workspace.Document?.Settings["themeMode"]?.GetValue<string>() == "DARK";
+        SetInterfaceFont(this.workspace.Document?.Settings["desktopFontFamily"]?.GetValue<string>());
         Title = "PaykiTodo"; Width = 1280; Height = 850; MinWidth = 900; MinHeight = 620;
         Icon = AppIcon; UseLayoutRounding = true; SnapsToDevicePixels = true;
         WindowStartupLocation = WindowStartupLocation.CenterScreen;
@@ -50,8 +52,9 @@ internal sealed partial class NativeWindow : Window
         ConfigureRendering(this);
         FontSize = 14; Background = B("#EEF3F4");
         BuildShell();
+        PreviewKeyDown += (_, e) => { if (e.Key == System.Windows.Input.Key.Escape && calendarDraft != null) { ClearCalendarDraft(); e.Handled = true; } };
         this.workspace.Changed += OnWorkspaceChanged;
-        timer.Tick += async (_, _) => await this.workspace.SyncAsync(); timer.Start();
+        timer.Tick += async (_, _) => { await this.workspace.SyncAsync(); ReviewCountdowns(); }; timer.Start();
         Closed += (_, _) => { timer.Stop(); calendarClock?.Stop(); reminders?.Dispose(); this.workspace.Changed -= OnWorkspaceChanged; };
         Loaded += async (_, _) => { if (workspace == null) reminders = new DesktopReminders(this, this.workspace); await this.workspace.SyncAsync(); };
         Render();
@@ -120,7 +123,7 @@ internal sealed partial class NativeWindow : Window
         // Background synchronization never throws away the planning draft.
         if (!editingPlanning && (workspace.Document != renderedDocument || workspace.Document == null)) Render();
     }
-    private void Navigate(string next) { editingPlanning = false; page = next; Render(); }
+    private void Navigate(string next) { editingPlanning = false; ClearCalendarDraft(); page = next; Render(); }
     private void Render()
     {
         calendarClock?.Stop();
@@ -136,11 +139,13 @@ internal sealed partial class NativeWindow : Window
                 label.Foreground = selected ? (page == "日历" ? Ocean : Forest) : Ink;
         }
         renderedDocument = workspace.Document;
+        renderedItems = workspace.Document?.Items ?? Array.Empty<DesktopItem>();
         if (workspace.Document == null || reauthenticating) { content.Content = LoginPage(); return; }
         content.Content = page switch {
             "每日看板" => BoardPage(), "待办" => TodosPage(), "日历" => CalendarPage(), "规划台" => PlanningPage(),
             "设置" => SettingsPage(), "AI 报告" => ReportsPage(), "倒数日" => CountdownPage(), "搜索" => SearchPage(), _ => BoardPage()
         };
+        Dispatcher.BeginInvoke(new Action(ReviewCountdowns));
     }
     private UIElement Page(UIElement body, bool landscape = false, bool scroll = true)
     {
@@ -156,7 +161,7 @@ internal sealed partial class NativeWindow : Window
     {
         if (workspace.Document == null) return;
         var existing = id.HasValue ? workspace.Document.EditFor(id.Value) : null;
-        var edit = NativeEditors.Item(this, isEvent, workspace.Document.Groups, existing, seed ?? selectedDay);
+        var edit = NativeEditors.Item(this, isEvent, workspace.Document.Groups, existing, seed ?? selectedDay, workspace.Document.Calendars);
         if (edit != null) Change(document => document.SaveItem(edit, id));
     }
     private void CreateChecklist()
@@ -169,7 +174,7 @@ internal sealed partial class NativeWindow : Window
         ? Local(item.StartAtMillis).ToString("MM-dd HH:mm") + " – " + Local(item.EndAtMillis).ToString("HH:mm")
         : item.DueAtMillis == long.MaxValue ? "今天想做的事" : "DDL  " + Local(item.DueAtMillis).ToString("yyyy-MM-dd HH:mm");
     private static DateTime Local(long? value) => value is null or long.MaxValue ? DateTime.Today : DateTimeOffset.FromUnixTimeMilliseconds(value.Value).LocalDateTime;
-    private IEnumerable<DesktopItem> Active => workspace.Document!.Items.Where(item => !item.Canceled && !item.Completed);
+    private IEnumerable<DesktopItem> Active => renderedItems.Where(item => !item.Canceled && !item.Completed);
     private IEnumerable<DesktopItem> EventsOn(DateTime date) => Active.Where(item => item.IsEvent && Local(item.StartAtMillis) < date.Date.AddDays(1) && Local(item.EndAtMillis) > date.Date);
     private sealed class NativeCommand(Action action) : System.Windows.Input.ICommand
     {

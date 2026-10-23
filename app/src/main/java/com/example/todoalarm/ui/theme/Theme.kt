@@ -69,6 +69,8 @@ private val PaykiShapes = Shapes(
 fun TodoAlarmTheme(
     themeMode: ThemeMode = ThemeMode.SYSTEM,
     systemDarkTheme: Boolean? = null,
+    mainFont: String = "SYSTEM",
+    customFontPath: String = "",
     content: @Composable () -> Unit
 ) {
     val observedSystemDark = systemDarkTheme ?: isSystemInDarkTheme()
@@ -78,10 +80,25 @@ fun TodoAlarmTheme(
         ThemeMode.DARK -> true
     }
 
+    val font = androidx.compose.runtime.remember(mainFont, customFontPath) { resolveMainFont(mainFont, customFontPath) }
+    androidx.compose.runtime.CompositionLocalProvider(LocalInterfaceFont provides font) {
     MaterialTheme(
         colorScheme = if (darkTheme) DarkColors else LightColors,
-        typography = Typography,
+        typography = androidx.compose.runtime.remember(font) { typographyFor(font) },
         shapes = PaykiShapes,
         content = content
     )
+    }
+}
+
+fun resolveMainFont(name: String, customPath: String = ""): androidx.compose.ui.text.font.FontFamily = when (name) {
+    "SARASA" -> PaykiBundledFontFamily
+    "SERIF" -> androidx.compose.ui.text.font.FontFamily.Serif
+    "MONOSPACE" -> androidx.compose.ui.text.font.FontFamily.Monospace
+    "CUSTOM" -> runCatching {
+        val file = java.io.File(customPath)
+        require(file.isFile)
+        androidx.compose.ui.text.font.FontFamily(androidx.compose.ui.text.font.Font(file))
+    }.getOrDefault(androidx.compose.ui.text.font.FontFamily.SansSerif)
+    else -> androidx.compose.ui.text.font.FontFamily.SansSerif
 }

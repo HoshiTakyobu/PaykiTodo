@@ -829,7 +829,7 @@ internal fun DashboardBody(
     val visibleCountdownItems = remember(section, uiState.countdownItems, boardMoment) {
         if (section == DashboardSection.BOARD) {
             uiState.countdownItems
-                .filter { item -> DailyBoardSnapshotBuilder.countdownTargetMillis(item)?.let { it >= System.currentTimeMillis() } == true }
+                .filter { item -> com.example.todoalarm.data.CountdownVisibility.visible(item, System.currentTimeMillis(), uiState.settings.countdownPastDays) }
                 .sortedBy { DailyBoardSnapshotBuilder.countdownTargetMillis(it) ?: Long.MAX_VALUE }
                 .take(5)
         } else {
@@ -1692,7 +1692,7 @@ private fun CountdownTargetRow(
             }
             Box(
                 modifier = Modifier
-                    .width(3.dp)
+                    .width(6.dp)
                     .fillMaxHeight()
                     .background(accent, RoundedCornerShape(999.dp))
             )

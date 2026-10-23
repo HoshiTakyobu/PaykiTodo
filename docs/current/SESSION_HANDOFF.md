@@ -1,5 +1,19 @@
 # Session Handoff
 
+## Completed 2026-10-23: 1.16.25 两端体验反馈
+
+- Android `1.16.25 / versionCode 390`，Windows `1.16.25.0`，Room `32`，开始基线 `6f3800f`。
+- 193 Android 单测；Lint 0 errors / 131 warnings；13个不同模拟器用例经针对性复验通过；26 Windows 回归（含实际 EXE）及1条14阶段隔离 UIA 流程通过。
+- 第三方观察及运行状态仅保留在私有恢复副本中；公开记录仅保留 PaykiTodo 的需求、实现与验收。
+- Windows 生成迁移包→Android 独立 Room 数据库导入、修改→导出→Windows 读取，核对日历归属、名称与已完成纪念状态。手机及桌面新数据字段进入现有整份快照链路。
+- 新版 Debug 安装在既有 `emulator-5554 / Pixel_8`（Android14），冷启动及登录页渲染正常；当次人机验证显示加载失败，未进行真实账号登录或绕过门禁，应用与测试包最后均停止，模拟器保持运行。
+- Windows 使用独立桌面和独立资料，未接管用户键鼠或剪贴板。未推送、发布、建标签或部署服务器。
+
+- 最终制品：`app/build/outputs/apk/debug/PaykiTodo-1.16.25-debug.apk`、`app/build/outputs/apk/release/PaykiTodo-1.16.25-release.apk`、`desktop/dist/PaykiTodo.exe`（保留完整目录）。本轮重新构建，哈希/签名见 [VALIDATION_1.16.25.md](VALIDATION_1.16.25.md)。
+- 原始需求在 [REQUEST_2026-10-23.md](REQUEST_2026-10-23.md)，本产品最终测试和失败修复见验收记录；不要覆盖已保留的数据。
+- 模拟器测试前备份在 `G:/Workspace/Backups/PaykiTodo/emulator-before-1.16.25-20261023-174814`。原635文件无缺失、原业务表逐行相同，保留Room32迁移。测试用独立DB，额外运行文件保留。Windows独立测试进程已退出。
+- 本轮完成实现与指定回归，中文本地提交；不推送发布。高级循环作用域/农历/OCR/多时段的旧有Windows差异及OEM验证未被本轮宣称补齐。下一轮先核实git/status/版本，再接新需求；下方全为历史轮次。
+
 ## Completed 2026-10-23: 1.16.24 字体、日历与真实客户端验收
 
 接续 `01a1676f-703e-7f40-bfbc-3166970a4b68` 及之前字体会话，从上一完成提交 6005a10 的未提交改动完成本轮。当前 Android `1.16.24 / 389`、Windows `1.16.24.0`、Room31。下一轮先核实 HEAD/status 和版本，不再沿用下方历史基线或重复已完成验收。

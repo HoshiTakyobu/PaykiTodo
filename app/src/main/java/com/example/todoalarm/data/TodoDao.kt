@@ -9,6 +9,33 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface TodoDao {
+    @Query("SELECT * FROM planner_calendars ORDER BY sortOrder, name")
+    fun observeCalendars(): Flow<List<PlannerCalendar>>
+
+    @Query("SELECT * FROM planner_calendars ORDER BY sortOrder, name")
+    suspend fun getCalendars(): List<PlannerCalendar>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertCalendars(calendars: List<PlannerCalendar>)
+
+    @Query("DELETE FROM planner_calendars")
+    suspend fun clearCalendars()
+
+    @Query("DELETE FROM planner_calendars WHERE id = :id AND id != 'default'")
+    suspend fun deleteCalendar(id: String)
+
+    @Query("UPDATE todo_items SET calendarId = 'default' WHERE calendarId = :id")
+    suspend fun moveCalendarItemsToDefault(id: String)
+
+    @Query("UPDATE recurring_task_templates SET calendarId = 'default' WHERE calendarId = :id")
+    suspend fun moveCalendarTemplatesToDefault(id: String)
+
+    @Query("SELECT * FROM todo_items WHERE countdownEnabled = 1 AND canceled = 0 ORDER BY COALESCE(startAtMillis, dueAtMillis)")
+    fun observeCountdownCandidates(): Flow<List<TodoItem>>
+
+    @Query("SELECT * FROM todo_items WHERE countdownEnabled = 1 AND canceled = 0")
+    suspend fun getCountdownCandidates(): List<TodoItem>
+
     @Query(
         """
         SELECT * FROM todo_items

@@ -178,6 +178,7 @@ public sealed class NativeWorkspaceTests
                         Assert.Equal(1, ((Border)todayButton.Content).BorderThickness.Left);
                         Screenshot(window, Path.Combine(shotFolder, "windows-calendar.png"));
                         VerifyFeedbackControls(window, workspace, store, shotFolder);
+                        VerifyCalendarReaudit(window, workspace, shotFolder);
                     }
                 }
                 var toggle = Descendants<ComboBox>(window).First(control => System.Windows.Automation.AutomationProperties.GetName(control) == "界面主题");
@@ -342,6 +343,52 @@ public sealed class NativeWorkspaceTests
         Assert.True(Descendants<TextBlock>(window).Count(text => text.Text == "每日循环验收") > foldedCount);
         Screenshot(window, Path.Combine(folder, "windows-recurring-expanded.png"));
         Navigate("日历");
+    }
+    private static void VerifyCalendarReaudit(NativeWindow window, DesktopWorkspace workspace, string folder)
+    {
+        void Pump() {
+            var frame = new System.Windows.Threading.DispatcherFrame();
+            var timer = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromMilliseconds(80) };
+            timer.Tick += (_, _) => { timer.Stop(); frame.Continue = false; }; timer.Start();
+            System.Windows.Threading.Dispatcher.PushFrame(frame); window.UpdateLayout();
+        }
+        void Render() { typeof(NativeWindow).GetMethod("Render", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.DeclaredOnly)!.Invoke(window, null); window.UpdateLayout(); }
+        List<Canvas> Days() => Descendants<Canvas>(window).Where(c => c.Tag is DateTime).ToList();
+        foreach (var width in new[] { 900d, 1100d, 1450d }) {
+            window.Width = width; Pump();
+            Assert.Equal(width < 1100 ? 3 : 7, Days().Count);
+            foreach (var button in Descendants<Button>(window).Where(b => b.Content as string == "＋ 创建日程" || b.Content as string == "今天")) {
+                var point = button.TranslatePoint(new Point(), window);
+                Assert.InRange(point.X, 0, window.ActualWidth - button.ActualWidth + 1);
+            }
+            Screenshot(window, Path.Combine(folder, $"calendar-width-{width}.png"));
+        }
+        var before = Days().Select(c => (DateTime)c.Tag).ToArray();
+        Descendants<Button>(window).Single(b => System.Windows.Automation.AutomationProperties.GetAutomationId(b) == "Calendar.Mini.Next").RaiseEvent(new RoutedEventArgs(Button.ClickEvent)); Pump();
+        Assert.Equal(before, Days().Select(c => (DateTime)c.Tag));
+        Descendants<Button>(window).Single(b => System.Windows.Automation.AutomationProperties.GetAutomationId(b) == "Calendar.Mini.Previous").RaiseEvent(new RoutedEventArgs(Button.ClickEvent)); Pump();
+        var ids = new List<string>(); var busyIds = new List<long>(); var start = before[0].AddDays(21);
+        workspace.Edit(doc => {
+            for (var i = 0; i < 24; i++) ids.Add(doc.SaveCalendar(null, "附加课程表 " + (i + 1), "#7955CC"));
+            for (var i = 0; i < 210; i++) {
+                var at = start.AddDays(i % 7).AddHours(8).AddMinutes(i / 7 * 20);
+                busyIds.Add(doc.SaveItem(NewItem(true, "繁忙周 " + i) with { StartAtMillis = Millis(at), EndAtMillis = Millis(at.AddMinutes(45)) }));
+            }
+        }); Pump();
+        var side = Descendants<ScrollViewer>(window).Single(s => System.Windows.Automation.AutomationProperties.GetAutomationId(s) == "Calendar.SidebarScroll");
+        Assert.True(side.ScrollableHeight > 0); side.ScrollToEnd(); Pump();
+        var last = Descendants<System.Windows.Controls.CheckBox>(side).Single(c => System.Windows.Automation.AutomationProperties.GetAutomationId(c) == "Calendar.Visible." + ids.Last());
+        Assert.InRange(last.TranslatePoint(new Point(), side).Y, 0, side.ViewportHeight);
+        typeof(NativeWindow).GetField("selectedDay", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!.SetValue(window, start);
+        var times = new List<double>();
+        for (var i = 0; i < 5; i++) { var clock = System.Diagnostics.Stopwatch.StartNew(); Render(); clock.Stop(); times.Add(clock.Elapsed.TotalMilliseconds); }
+        Pump(); Screenshot(window, Path.Combine(folder, "calendar-busy-210-events.png"));
+        Assert.Equal(210, Descendants<Border>(window).Count(tile => System.Windows.Automation.AutomationProperties.GetAutomationId(tile).StartsWith("Calendar.Event.")));
+        Assert.All(times, ms => Assert.True(ms < 3000, "Busy week blocked UI for more than 3 seconds"));
+        File.WriteAllText(Path.Combine(folder, "calendar-render-timings.json"), System.Text.Json.JsonSerializer.Serialize(new { Events = 210, Calendars = workspace.Document!.Calendars.Count, RenderAndLayoutMilliseconds = times }));
+        workspace.Edit(doc => { foreach (var id in ids) doc.DeleteCalendar(id); foreach (var id in busyIds) doc.Delete(id); }); Pump();
+        Descendants<Button>(window).Single(b => b.Content as string == "今天").RaiseEvent(new RoutedEventArgs(Button.ClickEvent)); Pump();
+        window.Width = 1280; Pump();
     }
     internal static void AssertSingleLineFits(TextBox input)
     {

@@ -35,15 +35,22 @@ internal val LocalWorkspacePreferences = staticCompositionLocalOf { WorkspacePre
 internal fun ProvideWorkspacePreferences(viewModel: TodoViewModel, settings: AppSettings, authenticated: Boolean, content: @Composable () -> Unit) {
     val calendars by viewModel.calendars.collectAsStateWithLifecycle()
     val countdowns by viewModel.countdownItems.collectAsStateWithLifecycle()
+    val preferences = WorkspacePreferences(settings, calendars.ifEmpty { listOf(PlannerCalendar()) }, viewModel::saveCalendar, viewModel::deleteCalendar, viewModel::updateDisplayPreferences)
+    CompositionLocalProvider(LocalWorkspacePreferences provides preferences) { content() }
+    CountdownDecisionPrompt(countdowns, settings.countdownPastDays, authenticated, viewModel::setCountdownPastMode)
+}
+
+@Composable
+internal fun CountdownDecisionPrompt(countdowns: List<TodoItem>, pastDays: Int, authenticated: Boolean, onDecide: (Long, String) -> Unit) {
     var now by remember { mutableStateOf(System.currentTimeMillis()) }
     var deferred by remember { mutableStateOf(emptySet<Long>()) }
     LaunchedEffect(Unit) { while (true) { now = System.currentTimeMillis(); delay(15_000) } }
-    val preferences = WorkspacePreferences(settings, calendars.ifEmpty { listOf(PlannerCalendar()) }, viewModel::saveCalendar, viewModel::deleteCalendar, viewModel::updateDisplayPreferences)
-    CompositionLocalProvider(LocalWorkspacePreferences provides preferences) { content() }
-    val pending = if (authenticated) countdowns.firstOrNull { it.id !in deferred && CountdownVisibility.needsDecision(it, now, settings.countdownPastDays) } else null
+    // A Room update can arrive between clock ticks; a just-completed task must prompt immediately.
+    val decisionNow = maxOf(now, System.currentTimeMillis())
+    val pending = if (authenticated) countdowns.firstOrNull { it.id !in deferred && CountdownVisibility.needsDecision(it, decisionNow, pastDays) } else null
     if (pending != null) CountdownDecisionDialog(pending,
         onDismiss = { deferred = deferred + pending.id },
-        onDecide = { mode -> viewModel.setCountdownPastMode(pending.id, mode); deferred = deferred + pending.id })
+        onDecide = { mode -> onDecide(pending.id, mode); deferred = deferred + pending.id })
 }
 
 @Composable

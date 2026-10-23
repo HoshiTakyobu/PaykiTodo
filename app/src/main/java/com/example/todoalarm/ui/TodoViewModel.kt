@@ -124,7 +124,12 @@ class TodoViewModel(application: Application) : AndroidViewModel(application) {
     private val quoteRepository = app.quoteRepository
     val calendars = repository.observeCalendars().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
     fun saveCalendar(calendar: com.example.todoalarm.data.PlannerCalendar) { viewModelScope.launch { repository.saveCalendar(calendar); autoBackupIfEnabled() } }
-    fun deleteCalendar(id: String) { viewModelScope.launch { repository.deleteCalendar(id); autoBackupIfEnabled() } }
+    fun deleteCalendar(id: String) { viewModelScope.launch {
+        repository.deleteCalendar(id)
+        val settings = settingsStore.currentSettings()
+        settingsStore.updateDisplayPreferences(settings.mainFont, settings.customFontPath, settings.countdownPastDays, settings.hiddenCalendarIds - id)
+        autoBackupIfEnabled()
+    } }
     fun setCountdownPastMode(id: Long, mode: String) { viewModelScope.launch { repository.setCountdownPastMode(id, mode); autoBackupIfEnabled() } }
     fun updateDisplayPreferences(font: String, path: String, days: Int, hidden: Set<String>) {
         settingsStore.updateDisplayPreferences(font, path, days, hidden)

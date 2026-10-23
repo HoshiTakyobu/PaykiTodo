@@ -40,6 +40,7 @@ internal sealed partial class DesktopSnapshotDocument
             var offsets = (raw["reminderOffsetsCsv"]?.GetValue<string>() ?? "").Split(',', StringSplitOptions.RemoveEmptyEntries)
                 .Select(value => int.TryParse(value, out var offset) ? offset : -1).Where(value => value >= 0).Distinct().ToList();
             var anchor = item.IsEvent ? item.StartAtMillis ?? item.DueAtMillis : item.DueAtMillis;
+            if (item.IsEvent && item.AllDay) anchor = MillisAt(LocalTime(anchor).Date.AddHours(9));
             var triggers = offsets.Count > 0 && anchor != long.MaxValue ? offsets.Select(offset => anchor - offset * 60000L).Order().ToList()
                 : raw["reminderAtMillis"]?.GetValue<long?>() is { } single ? new List<long> { single } : new List<long>();
             foreach (var trigger in triggers.Where(trigger => trigger > after && trigger <= until))

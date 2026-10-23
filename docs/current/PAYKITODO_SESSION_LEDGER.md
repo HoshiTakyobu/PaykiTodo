@@ -12,6 +12,10 @@ The released `1.15.18 / versionCode 360` round restores independent full-screen 
 
 ## Current Development Round
 
+The local `1.16.26 / versionCode 391` round re-audits the original calendar/UI feedback and supplies a Chinese per-user Windows MSI. It fixes recurrence scopes and date anchors, all-day/cross-day/multi-slot handling, calendar color propagation and responsive editing, adds Windows local OCR, and removes delayed Android memorial prompts. Room remains32. Verified:193 Android units,13 device tests,38 Windows regressions plus one14-stage isolated UIA flow, cross-client archives and installer install/upgrade/repair/uninstall with user data preserved. The emulator enters the login page; human verification failed to load, so no new real-account login is claimed. See [VALIDATION_1.16.26.md](VALIDATION_1.16.26.md). No push, release or deployment; office environment, physical pointer workflows and OEM behavior remain verification limits.
+
+### Previous 1.16.25 implementation
+
 The local `1.16.25 / versionCode 390` round implements the 2026-10-23 feedback: independent calendars, Windows two-step grid creation and scroll preservation, configurable main fonts, seven-day countdown history with memorial choices, recurring-task folding, categorized settings and the PaykiTodo Android label. Room is32. See [VALIDATION_1.16.25.md](VALIDATION_1.16.25.md) for tests, local artifacts, emulator preservation and exact scope. No push, release or production deployment.
 
 ### Previous 1.16.23 implementation

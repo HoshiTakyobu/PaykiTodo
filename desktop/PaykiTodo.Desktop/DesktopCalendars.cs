@@ -16,8 +16,20 @@ internal sealed partial class DesktopSnapshotDocument
         if (!System.Text.RegularExpressions.Regex.IsMatch(color, "^#[0-9a-fA-F]{6}$")) throw new InvalidOperationException("请选择有效颜色");
         var calendars = root["calendars"]!.AsArray();
         var calendar = calendars.OfType<JsonObject>().FirstOrDefault(value => value["id"]?.GetValue<string>() == id);
+        var previousColor = calendar?["colorHex"]?.GetValue<string>();
         if (calendar == null) { calendar = new JsonObject { ["id"] = id ?? Guid.NewGuid().ToString(), ["sortOrder"] = calendars.Count }; calendars.Add(calendar); }
         calendar["name"] = name.Trim(); calendar["colorHex"] = color;
+        if (previousColor != null && !previousColor.Equals(color, StringComparison.OrdinalIgnoreCase)) {
+            void Recolor(JsonObject entry) {
+                if (entry["calendarId"]?.GetValue<string>() == id && (entry["accentColorHex"] == null || string.Equals(entry["accentColorHex"]?.GetValue<string>(), previousColor, StringComparison.OrdinalIgnoreCase))) entry["accentColorHex"] = color;
+            }
+            foreach (var item in (root["tasks"] as JsonArray ?? new JsonArray()).OfType<JsonObject>().Concat((root["templates"] as JsonArray ?? new JsonArray()).OfType<JsonObject>()).Where(i => i["itemType"]?.GetValue<string>() == "EVENT")) Recolor(item);
+            foreach (var template in (root["scheduleTemplates"] as JsonArray ?? new JsonArray()).OfType<JsonObject>()) {
+                try { var json = JsonNode.Parse(template["payloadJson"]?.GetValue<string>() ?? "{}"); if (json?["entries"] is JsonArray entries) {
+                    foreach (var entry in entries.OfType<JsonObject>()) Recolor(entry); template["payloadJson"] = json.ToJsonString();
+                } } catch (System.Text.Json.JsonException) { }
+            }
+        }
         return calendar["id"]!.GetValue<string>();
     }
 
@@ -29,6 +41,8 @@ internal sealed partial class DesktopSnapshotDocument
         RemapScheduleCalendars(calendarId => calendarId == id ? "default" : calendarId);
         var calendar = root["calendars"]!.AsArray().OfType<JsonObject>().FirstOrDefault(value => value["id"]?.GetValue<string>() == id);
         if (calendar != null) root["calendars"]!.AsArray().Remove(calendar);
+        if (Settings["hiddenCalendarIds"] is JsonArray hidden)
+            foreach (var value in hidden.Where(value => value?.GetValue<string>() == id).ToList()) hidden.Remove(value);
     }
 
     private void RemapScheduleCalendars(Func<string, string> resolve)

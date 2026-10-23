@@ -163,6 +163,17 @@ internal static class NativeUi
         TextOptions.SetTextFormattingMode(target, TextFormattingMode.Display);
         TextOptions.SetTextRenderingMode(target, TextRenderingMode.Grayscale);
     }
+    public static void PositionNear(Window dialog, Window owner, System.Windows.Point screenPoint)
+    {
+        var transform = PresentationSource.FromVisual(owner)?.CompositionTarget?.TransformFromDevice ?? System.Windows.Media.Matrix.Identity;
+        var screen = System.Windows.Forms.Screen.FromPoint(new System.Drawing.Point((int)screenPoint.X, (int)screenPoint.Y)).WorkingArea;
+        var topLeft = transform.Transform(new System.Windows.Point(screen.Left, screen.Top));
+        var bottomRight = transform.Transform(new System.Windows.Point(screen.Right, screen.Bottom));
+        var point = transform.Transform(screenPoint);
+        dialog.WindowStartupLocation = WindowStartupLocation.Manual;
+        dialog.Left = Math.Clamp(point.X + 10, topLeft.X + 8, Math.Max(topLeft.X + 8, bottomRight.X - dialog.Width - 8));
+        dialog.Top = Math.Clamp(point.Y - 24, topLeft.Y + 8, Math.Max(topLeft.Y + 8, bottomRight.Y - dialog.Height - 8));
+    }
     public static void InstallStyles(ResourceDictionary resources)
     {
         if (resources[StyleKey] is ResourceDictionary previous) resources.MergedDictionaries.Remove(previous);

@@ -1962,7 +1962,17 @@ class TodoRepository(
     suspend fun saveCalendar(calendar: PlannerCalendar) {
         require(calendar.name.isNotBlank()) { "请填写日历名称" }
         require(Regex("#[0-9a-fA-F]{6}").matches(calendar.colorHex)) { "请选择有效颜色" }
-        todoDao.insertCalendars(listOf(calendar.copy(name = calendar.name.trim())))
+        database.withTransaction {
+            val previous = todoDao.getCalendars().firstOrNull { it.id == calendar.id }
+            todoDao.insertCalendars(listOf(calendar.copy(name = calendar.name.trim())))
+            if (previous != null && !previous.colorHex.equals(calendar.colorHex, ignoreCase = true)) {
+                todoDao.recolorCalendarItems(calendar.id, previous.colorHex, calendar.colorHex)
+                todoDao.recolorCalendarTemplates(calendar.id, previous.colorHex, calendar.colorHex)
+                todoDao.getScheduleTemplates().forEach { template ->
+                    todoDao.insertScheduleTemplate(template.copy(payloadJson = recolorScheduleCalendar(template.payloadJson, calendar.id, previous.colorHex, calendar.colorHex)))
+                }
+            }
+        }
         notifyItemsChanged()
     }
 

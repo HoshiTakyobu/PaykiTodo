@@ -1,5 +1,18 @@
 # Session Handoff
 
+## Completed 2026-10-23: 1.16.26 日历复核与安装包
+
+- 从`6b4e4a5`接续，Android `1.16.26 / versionCode 391`、Windows `1.16.26.0`、Room32。逐项结果、失败修正及边界见[VALIDATION_1.16.26.md](VALIDATION_1.16.26.md)，原始反馈见`docs/pointedprompt/update_advice_261023.txt`。
+- 完成循环当前/之后/全部编辑与取消/删除、跨午夜锚点及补齐、月末/农历规则、全天09:00提醒基准、多时段草稿、日历默认色联动；Windows日历紧凑浮层/独立翻月/断点布局/拖动吸附、本地OCR，以及Android即时纪念询问。
+- 本轮新构建：`app/build/outputs/apk/debug/PaykiTodo-1.16.26-debug.apk`、`app/build/outputs/apk/release/PaykiTodo-1.16.26-release.apk`、`desktop/installer-output/PaykiTodo-1.16.26-windows-x64.msi`。`desktop/dist`与最终MSI逐文件清单匹配；便携使用保留整个目录。哈希见PROJECT_STATUS及验收记录。
+- Windows安装器中文、按用户安装、含.NET；Windows10 1809+/11 x64。WebView2缺失可点“安装登录组件”联网安装。MSI无商业代码签名，实际办公室策略另行验证；安装使用说明在`desktop/installer/README.md`。
+- 最终193 Android单测、Lint0错误/131警告、13个不同设备用例、38 Windows回归及1条14阶段隔离UIA流程通过；真实迁移包Windows→Android独立Room→Windows核对循环/全天/多时段/颜色。不是新增真实账号云同步E2E。
+- Scratch：`G:/Workspace/Scratch/PaykiTodo/installer-audit-261023`。最终MSI结果在`installer-validated/install-d79cb4722bf74ef49f4a092b10dfb27f/result.json`，全部true；控件/TRX/截图在其`installed-app/`。测试旧版为模拟25 MSI（早期26代码），不是已发布安装包。测试安装已卸载，测试Windows进程已退出。
+- 已有`emulator-5554 / Pixel_8`（Android14）安装最终Debug391，普通启动进入完整登录页，无启动崩溃；截图`android-startup-settled.png`。人机验证显示加载失败，未重新登录真实账号或绕过门禁。应用及测试包最终停止，模拟器保持运行。
+- 原始备份`G:/Workspace/Backups/PaykiTodo/emulator-before-1.16.26-20261023-184817/private-data.tar`。最后启动后639原文件全部保留、613字节一致、3个新运行文件保留；所有原业务数据库逐表一致，变化为WebView/启动运行状态及安装标记。最终`emulator-data-verification.json`可复核，不要重新跑覆盖原数据的测试。
+- 第三方观察及运行状态仅保留在私有恢复副本中；公开记录仅保留 PaykiTodo 的需求、实现与验收。
+- 本轮实现与验收已收尾，按规则中文功能提交及独立目标归档；未推送、发布、建标签或部署。仍未穷举物理拖动全链路、任意字体及手机OEM长待机/锁屏/振动全部通过。Windows提醒需进程运行。下轮先核实HEAD/状态/版本；下方为历史记录，不要重新扩展本轮功能。
+
 ## Completed 2026-10-23: 1.16.25 两端体验反馈
 
 - Android `1.16.25 / versionCode 390`，Windows `1.16.25.0`，Room `32`，开始基线 `6f3800f`。

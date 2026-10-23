@@ -12,6 +12,20 @@ import org.junit.Test
 class FeedbackControlsTest {
     @get:Rule val compose = createComposeRule()
 
+    @Test fun completionTriggersProductionMemorialPromptBeforeNextClockTick() {
+        var item by mutableStateOf(TodoItem(id = 8126, title = "完成后纪念", dueAtMillis = System.currentTimeMillis(), groupId = 1,
+            countdownEnabled = true, reminderAtMillis = null, reminderEnabled = false, ringEnabled = false, vibrateEnabled = false))
+        compose.setContent { TodoAlarmTheme {
+            CountdownDecisionPrompt(listOf(item), 7, true) { _, mode -> item = item.copy(countdownPastMode = mode) }
+        } }
+        compose.onNodeWithText("继续保留这个日子？").assertDoesNotExist()
+        Thread.sleep(30)
+        compose.runOnIdle { item = item.copy(completed = true, completedAtMillis = System.currentTimeMillis()) }
+        compose.onNodeWithText("保留纪念").assertIsDisplayed().performClick()
+        compose.runOnIdle { assertEquals("KEEP", item.countdownPastMode); assertTrue(item.completed) }
+        compose.onNodeWithText("继续保留这个日子？").assertDoesNotExist()
+    }
+
     @Test fun calendarCreateCancelColorAndVisibilityUseIndependentOwnership() {
         var calendars by mutableStateOf(listOf(PlannerCalendar()))
         var settings by mutableStateOf(AppSettings())

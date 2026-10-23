@@ -22,16 +22,27 @@ PaykiTodo 是一个以 **强提醒、本地可控、日程与待办一体化** �
 
 | 项目 | 内容 |
 | --- | --- |
-| 当前源码版本 | `v1.16.25`（本地验证版，尚未发布） |
+| 当前源码版本 | `v1.16.26`（本地验证版，尚未发布） |
 | 最新 GitHub Release | `v1.15.18` |
 | Android 包名 | `com.paykitodo.app` |
 | 支持系统 | Android 8.0 及以上 / API 26+ |
+| Windows 客户端 | Windows 10 1809+ / Windows 11 x64；提供本地构建的中文 MSI |
 | 当前编译目标 | Android 14 / API 34 |
 | 开源协议 | MIT License |
 | 最新 Release 页面 | <https://github.com/HoshiTakyobu/PaykiTodo/releases/tag/v1.15.18> |
 | 最新 Release APK 下载 | <https://github.com/HoshiTakyobu/PaykiTodo/releases/download/v1.15.18/PaykiTodo-1.15.18-release.apk> |
 
-## 1.16.25 使用变化
+## 1.16.26 使用变化
+
+- Windows 提供中文安装包，包含 .NET 运行环境、桌面和开始菜单入口；升级保留安装路径，卸载保留用户数据。详见[Windows 安装说明](desktop/installer/README.md)。
+- 循环日程可明确选择修改、取消或删除当前、当前及之后、全部；修复跨午夜改期与系列补齐，补齐月末、每月第几个星期及农历重复。
+- 日历小月历可独立翻月，窄窗口按可见天数翻页；侧栏日历可滚动，日程编辑器在草稿附近打开并固定完成按钮。支持拖动改期、调整结束时间和15分钟吸附。
+- 全天日期及提醒基准与手机对齐，跨日显示结束日期；一次新建支持多个时段。两端修改日历颜色时，沿用原默认色的日程和模板随之更新。
+- Windows 规划文档支持从图片提取文字，结果进入草稿供确认；Android 完成事项后立即询问是否保留纪念。
+
+本轮逐项复核与验证范围见[验收记录](docs/current/VALIDATION_1.16.26.md)，包括安装/升级/修复/卸载和跨端迁移包往返。公开下载仍为上表的 `v1.15.18`。
+
+### 1.16.25 延续功能
 
 - 两端新增独立日历：名称、颜色、日程归属与显隐；旧数据迁移到常规日历，删除日历保留事项并迁回默认，循环规则和周模板一并处理。
 - Windows 网格单击按15分钟落点出现30分钟蓝色草稿，再次点击打开编辑器；取消不保存，切换显隐保持滚动位置。彩色圆角勾选框有填充色和对比清晰的勾。
@@ -40,7 +51,7 @@ PaykiTodo 是一个以 **强提醒、本地可控、日程与待办一体化** �
 - Windows 未来同系列循环待办可折叠，分组筛选在右侧与操作按钮等高。两端设置按分类重排，备份使用目录、导出、恢复的列表行，手机维护工具默认收起。
 - Android 应用名称恢复为 PaykiTodo；局域网旧编辑入口保留日历与纪念字段，备份往返和 Room31→32 迁移通过验证。
 
-验收记录与本地制品见 [VALIDATION_1.16.25.md](docs/current/VALIDATION_1.16.25.md)。两端均升级到本版后使用新日历数据；自定义字体文件只保留在本机。
+该轮记录见 [VALIDATION_1.16.25.md](docs/current/VALIDATION_1.16.25.md)。建议两端均升级到当前版本后使用新日历数据；自定义字体文件只保留在本机。
 
 ### 1.16.23 延续的使用变化
 
@@ -159,6 +170,12 @@ PaykiTodo 是一个以 **强提醒、本地可控、日程与待办一体化** �
 
 ## 安装说明
 
+### Windows 本地安装包
+
+将 `desktop/installer-output/PaykiTodo-1.16.26-windows-x64.msi` 复制到目标电脑，双击后按中文向导安装。支持 Windows 10 1809 及以上、Windows 11 x64，按当前用户安装，已包含 .NET；从桌面或开始菜单启动后登录同一账号即可使用账号同步，无需开启手机 LAN 服务。
+
+缺少 WebView2 时，应用提供“安装登录组件”入口并联网安装。升级和卸载保留本机用户资料。当前 MSI 尚未作 Windows 商业代码签名；办公室若限制未签名软件，按 IT 规则安装。构建方法和详细要求见[Windows 安装说明](desktop/installer/README.md)。
+
 ### 从 GitHub Release 安装
 
 1. 打开最新 Release：<https://github.com/HoshiTakyobu/PaykiTodo/releases/latest>
@@ -223,6 +240,8 @@ docs/templates/
 ```
 
 ### Windows 桌面端构建
+
+需要可安装的 MSI 时，使用[安装器构建流程](desktop/installer/README.md)；下面命令生成便携目录，分发时须保留整个目录。
 
 桌面端当前是独立的 Windows `win-x64` 客户端，默认发布为 self-contained，目标电脑无需安装 .NET 运行时；仍需要 Microsoft Edge WebView2 Runtime。选择“独立云客户端”后，客户端通过账号登录服务器，在本地保存加密副本，离线可编辑，联网后按版本同步；选择“手机 LAN（兼容）”才会通过手机的 `18765` 直接修改手机数据。这两种模式不是同一个服务。
 

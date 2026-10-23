@@ -15,14 +15,25 @@ public sealed class FeedbackDataTests
         document.SaveItem(Event(DateTime.Today.AddDays(1).AddHours(9)) with { Title = "桌面跨端课程", CalendarId = "cross-courses" });
         var id = document.SaveItem(Event(DateTime.Today) with { IsEvent = false, Title = "跨端纪念", DueAtMillis = Millis(DateTime.Today.AddDays(-10)), CountdownEnabled = true });
         document.Complete(id); document.SetCountdownPastMode(id, "KEEP");
+        var night = DateTime.Today.AddDays(2).AddHours(23);
+        var occurrence = document.SaveItem(Event(night) with { Title = "跨午夜循环", EndAtMillis = Millis(night.AddHours(2)), CalendarId = "cross-courses", RecurrenceType = "DAILY", RecurrenceEndEpochDay = (long)(DateTime.Today.AddDays(5) - DateTime.UnixEpoch.Date).TotalDays });
+        document.EnsureRecurringInstances(DateTime.Today);
+        document.SaveItem(document.EditFor(occurrence)! with { Title = "跨午夜循环-单次改期", StartAtMillis = Millis(night.AddDays(1)), EndAtMillis = Millis(night.AddDays(1).AddHours(2)) }, occurrence);
+        document.SaveItem(Event(DateTime.Today.AddDays(1)) with { Title = "全天跨端", AllDay = true, EndAtMillis = Millis(DateTime.Today.AddDays(3)), CalendarId = "cross-courses" });
+        document.SaveItem(Event(DateTime.Today.AddDays(1).AddHours(9)) with { Title = "多时段跨端", CalendarId = "cross-courses", AdditionalTimeSlots = new[] { new DesktopTimeSlot(Millis(DateTime.Today.AddDays(1).AddHours(14)), Millis(DateTime.Today.AddDays(1).AddHours(15))) } });
         File.WriteAllBytes(Path.Combine(folder, "calendar-desktop.paykibak"), document.ToArchiveBytes(false));
         var phonePath = Path.Combine(folder, "calendar-android.paykibak");
         if (!File.Exists(phonePath)) return;
         var phone = DesktopSnapshotDocument.FromArchiveBytes(File.ReadAllBytes(phonePath));
         Assert.Equal("cross-courses", phone.Items.Single(item => item.Title == "手机修改课程").CalendarId);
+        Assert.Equal("#DB5298", phone.Items.Single(item => item.Title == "手机修改课程").AccentColor);
         Assert.Equal("手机修改课程表", phone.Calendars.Single(calendar => calendar.Id == "cross-courses").Name);
         Assert.Equal("KEEP", phone.Items.Single(item => item.Title == "跨端纪念").CountdownPastMode);
         Assert.True(phone.Items.Single(item => item.Title == "跨端纪念").Completed);
+        Assert.Equal(4, phone.Items.Count(item => item.Title.StartsWith("跨午夜循环")));
+        Assert.Equal(2, phone.Items.Count(item => item.Title == "多时段跨端"));
+        Assert.True(phone.Items.Single(item => item.Title == "全天跨端").AllDay);
+        Assert.False(phone.EnsureRecurringInstances(DateTime.Today));
     }
     private static DesktopItemEdit Event(DateTime start) => new(true, "课程", "", "教室", null, Millis(start), Millis(start.AddMinutes(30)), false, false,
         Array.Empty<int>(), 1, "#7955CC", false, "NONE", "", null);

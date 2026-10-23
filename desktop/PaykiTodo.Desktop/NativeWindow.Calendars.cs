@@ -10,6 +10,7 @@ namespace PaykiTodo.Desktop;
 
 internal sealed partial class NativeWindow
 {
+    private static ControlTemplate? calendarToggleTemplate;
     private bool CalendarVisible(DesktopItem item) => (workspace.Document!.Settings["hiddenCalendarIds"] as JsonArray)?.Any(value => value?.GetValue<string>() == item.CalendarId) != true;
 
     private UIElement CalendarList()
@@ -20,7 +21,7 @@ internal sealed partial class NativeWindow
             var fill = (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(calendar.ColorHex);
             var tick = .2126 * fill.R + .7152 * fill.G + .0722 * fill.B > 180 ? "#182033" : "White";
             var toggle = new CheckBox { Content = calendar.Name, IsChecked = !hidden, Foreground = Ink, BorderBrush = B(calendar.ColorHex), Background = B(calendar.ColorHex), Tag = tick, Margin = new Thickness(0, 7, 0, 7) };
-            toggle.Template = (ControlTemplate)System.Windows.Markup.XamlReader.Parse("""
+            toggle.Template = calendarToggleTemplate ??= (ControlTemplate)System.Windows.Markup.XamlReader.Parse("""
                 <ControlTemplate xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" TargetType="CheckBox">
                   <StackPanel Orientation="Horizontal">
                     <Border x:Name="Box" Width="18" Height="18" CornerRadius="4" BorderThickness="1.5" BorderBrush="{TemplateBinding BorderBrush}" Background="Transparent" VerticalAlignment="Center">

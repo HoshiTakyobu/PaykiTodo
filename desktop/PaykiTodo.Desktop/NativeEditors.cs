@@ -10,15 +10,30 @@ namespace PaykiTodo.Desktop;
 
 internal static class NativeEditors
 {
-    public static DesktopItemEdit? Item(Window owner, bool isEvent, IReadOnlyList<DesktopGroup> groups, DesktopItemEdit? value, DateTime seed, IReadOnlyList<DesktopCalendar>? calendars = null)
+    public static RecurrenceScope? ChooseRecurrenceScope(Window owner, string title)
     {
-        var dialog = Dialog(owner, (value == null ? "新增" : "编辑") + (isEvent ? "日程" : "待办"), 650, 800);
+        var dialog = Dialog(owner, title, 430, 330); RecurrenceScope? result = null;
+        var choices = new[] { "仅当前", "当前及之后", "全部" };
+        var scope = new ComboBox { ItemsSource = choices, SelectedIndex = 0 };
+        System.Windows.Automation.AutomationProperties.SetName(scope, "循环作用范围");
+        var cancel = Action("取消", () => dialog.Close()); cancel.IsCancel = true;
+        dialog.Content = DialogLayout(Column(Text(title, 20, bold: true), Text("选择本次操作影响的循环日期", 13, Muted), scope), cancel,
+            Action("继续", () => { result = (RecurrenceScope)scope.SelectedIndex; dialog.DialogResult = true; }, true));
+        dialog.ShowDialog(); return result;
+    }
+
+    public static DesktopItemEdit? Item(Window owner, bool isEvent, IReadOnlyList<DesktopGroup> groups, DesktopItemEdit? value, DateTime seed, IReadOnlyList<DesktopCalendar>? calendars = null, RecurrenceScope scope = RecurrenceScope.Current, System.Windows.Point? anchorScreen = null)
+    {
+        var dialog = Dialog(owner, (value == null ? "新增" : "编辑") + (isEvent ? "日程" : "待办"), 560, isEvent ? 640 : 690);
+        if (isEvent) dialog.Background = Paper;
+        if (anchorScreen is { } anchor) PositionNear(dialog, owner, anchor);
         DesktopItemEdit? result = null;
         var title = Input(value?.Title ?? "", true); title.MinHeight = 54; title.MaxHeight = 100; title.FontSize = 18;
-        var notes = Input(value?.Notes ?? "", true); var location = Input(value?.Location ?? "");
+        var notes = Input(value?.Notes ?? "", true); notes.MinHeight = 54; notes.MaxHeight = 100;
+        var location = Input(value?.Location ?? "");
         var due = new TimeField(value?.DueAtMillis, seed.Date.AddHours(23).AddMinutes(59));
         var start = new TimeField(value?.StartAtMillis, seed);
-        var end = new TimeField(value?.EndAtMillis, start.Value.AddMinutes(30));
+        var end = new TimeField(value?.AllDay == true && value.EndAtMillis is { } endMillis ? Millis(DateTimeOffset.FromUnixTimeMilliseconds(endMillis).LocalDateTime.AddDays(-1)) : value?.EndAtMillis, start.Value.AddMinutes(30));
         var hasDue = new CheckBox { Content = "设置 DDL", IsChecked = value?.DueAtMillis != null };
         var allDay = new CheckBox { Content = "全天", IsChecked = value?.AllDay ?? false };
         var reminder = new CheckBox { Content = "提醒", IsChecked = value?.ReminderEnabled ?? false };
@@ -40,7 +55,7 @@ internal static class NativeEditors
         var pastModes = new[] { new Choice("按设置自动隐藏", "AUTO"), new Choice("一直保留纪念", "KEEP"), new Choice("不再展示", "HIDE") };
         var pastMode = new ComboBox { ItemsSource = pastModes, DisplayMemberPath = "Name", SelectedItem = pastModes.FirstOrDefault(mode => mode.Value == value?.CountdownPastMode) ?? pastModes[0] };
         System.Windows.Automation.AutomationProperties.SetName(pastMode, "倒数日结束后");
-        var repeats = new List<Choice> { new("不重复", "NONE"), new("每天", "DAILY"), new("每周", "WEEKLY"), new("每月", "MONTHLY_DAY"), new("每年", "YEARLY_DATE") };
+        var repeats = new List<Choice> { new("不重复", "NONE"), new("每天", "DAILY"), new("每周", "WEEKLY"), new("每月同日（月末自动适配）", "MONTHLY_DAY"), new("每月第几个星期几", "MONTHLY_NTH_WEEKDAY"), new("每年同月日", "YEARLY_DATE"), new("每年同农历月日", "YEARLY_LUNAR_DATE") };
         if (value != null && repeats.All(item => item.Value != value.RecurrenceType))
             repeats.Add(new Choice(value.RecurrenceType switch {
                 "MONTHLY_NTH_WEEKDAY" => "保留每月第几个星期的规则", "YEARLY_LUNAR_DATE" => "保留农历循环规则", _ => "保留已有循环规则"
@@ -56,24 +71,52 @@ internal static class NativeEditors
         void UpdateWeekly() => weeklyRow.Visibility = (recurrence.SelectedItem as Choice)?.Value == "WEEKLY" ? Visibility.Visible : Visibility.Collapsed;
         recurrence.SelectionChanged += (_, _) => UpdateWeekly(); UpdateWeekly();
         var until = new DatePicker { SelectedDate = value?.RecurrenceEndEpochDay is { } day ? DateTime.UnixEpoch.AddDays(day) : null };
-        var fields = Column(BrandHeading(dialog.Title, "完成后保存；取消不改动原数据"), Text("标题", 14, bold: true), title);
-        if (isEvent) { fields.Children.Add(Text("开始时间")); fields.Children.Add(start.Control); fields.Children.Add(Text("结束时间")); fields.Children.Add(end.Control); fields.Children.Add(allDay); fields.Children.Add(Text("地点")); fields.Children.Add(location); }
+        var fields = Column(Text("标题", 14, bold: true), title);
+        if (isEvent) {
+            fields.Children.Add(allDay); fields.Children.Add(LabeledField("开始", start.Control));
+            fields.Children.Add(LabeledField("结束", end.Control));
+            var allDayHint = Text("全天结束日期包含当天", 12, Muted); fields.Children.Add(allDayHint);
+            void UpdateAllDay() { start.ShowTime(allDay.IsChecked != true); end.ShowTime(allDay.IsChecked != true); allDayHint.Visibility = allDay.IsChecked == true ? Visibility.Visible : Visibility.Collapsed; }
+            allDay.Checked += (_, _) => UpdateAllDay(); allDay.Unchecked += (_, _) => UpdateAllDay(); UpdateAllDay();
+            fields.Children.Add(LabeledField("日历", calendar)); fields.Children.Add(LabeledField("地点", location));
+        }
         else {
             fields.Children.Add(hasDue); fields.Children.Add(due.Control);
             void UpdateDue() => due.Control.IsEnabled = hasDue.IsChecked == true;
             hasDue.Checked += (_, _) => UpdateDue(); hasDue.Unchecked += (_, _) => UpdateDue(); UpdateDue();
         }
-        fields.Children.Add(Text("提醒与显示", 16, bold: true));
-        fields.Children.Add(reminder); fields.Children.Add(Text("提前提醒（分钟，可用逗号分隔，例如 30,15,5）", 12, Muted)); fields.Children.Add(offsets);
-        fields.Children.Add(Text("可以记录过去的事项。已过去的提醒不会补发，未来提醒照常生效。", 12, Muted));
-        fields.Children.Add(Text("备注")); fields.Children.Add(notes); fields.Children.Add(Row(countdown, isEvent ? checkin : hidden));
-        var retention = Column(Text("倒数日结束后", 13), pastMode); fields.Children.Add(retention);
+        fields.Children.Add(reminder);
+        var reminderDetails = Column(Text("提前提醒（分钟，例如 30,15,5）", 12, Muted), offsets); fields.Children.Add(reminderDetails);
+        void UpdateReminder() => reminderDetails.Visibility = reminder.IsChecked == true ? Visibility.Visible : Visibility.Collapsed;
+        reminder.Checked += (_, _) => UpdateReminder(); reminder.Unchecked += (_, _) => UpdateReminder(); UpdateReminder();
+        fields.Children.Add(isEvent ? LabeledField("备注", notes) : Column(Text("备注"), notes));
+        var advanced = Column(Row(countdown, isEvent ? checkin : hidden));
+        var extraSlots = new List<(TimeField Start, TimeField End)>();
+        if (isEvent && value == null) {
+            var slotRows = Column();
+            var addSlot = Action("添加时段", () => {
+                allDay.IsChecked = false; allDay.IsEnabled = false;
+                var next = extraSlots.LastOrDefault().End?.Value.AddHours(1) ?? end.Value.AddHours(1);
+                var slot = (Start: new TimeField(null, next), End: new TimeField(null, next.AddMinutes(30)));
+                extraSlots.Add(slot);
+                var row = Column(LabeledField("开始", slot.Start.Control), LabeledField("结束", slot.End.Control));
+                row.Children.Add(Action("移除此时段", () => { extraSlots.Remove(slot); slotRows.Children.Remove(row); allDay.IsEnabled = extraSlots.Count == 0; }));
+                slotRows.Children.Add(row);
+            });
+            advanced.Children.Add(Text("同一事项可分多个时段安排", 13, Muted)); advanced.Children.Add(slotRows); advanced.Children.Add(addSlot);
+        }
+        var retention = Column(Text("倒数日结束后", 13), pastMode); advanced.Children.Add(retention);
         void UpdateCountdown() => retention.Visibility = countdown.IsChecked == true ? Visibility.Visible : Visibility.Collapsed;
         countdown.Checked += (_, _) => UpdateCountdown(); countdown.Unchecked += (_, _) => UpdateCountdown(); UpdateCountdown();
-        fields.Children.Add(Text("循环安排", 16, bold: true)); fields.Children.Add(recurrence); fields.Children.Add(weeklyRow);
-        fields.Children.Add(Text("循环截止日期（可留空）", 12, Muted)); fields.Children.Add(until);
-        fields.Children.Add(Pair(Column(Text("分组"), group), Column(Text("强调色"), color)));
-        if (isEvent) fields.Children.Add(Column(Text("所属日历", 14, bold: true), calendar));
+        advanced.Children.Add(Text("循环安排", 16, bold: true)); advanced.Children.Add(recurrence); advanced.Children.Add(weeklyRow);
+        advanced.Children.Add(Text("循环截止日期（可留空）", 12, Muted)); advanced.Children.Add(until);
+        if (value?.RecurrenceType is not (null or "NONE") && scope == RecurrenceScope.Current) {
+            recurrence.IsEnabled = false; weeklyRow.IsEnabled = false; until.IsEnabled = false;
+            advanced.Children.Add(Text("仅修改当前事项，循环规则保持不变", 12, Muted));
+        }
+        advanced.Children.Add(Pair(Column(Text("分组"), group), Column(Text("强调色"), color)));
+        advanced.Children.Add(Text("过去的提醒不会补发，未来提醒照常生效。", 12, Muted));
+        fields.Children.Add(new Expander { Header = "更多选项 · 循环、倒数日与颜色", Content = advanced, IsExpanded = value?.RecurrenceType is not (null or "NONE") });
         var error = Text("", 13, B("#AF3A32"));
         void Save()
         {
@@ -81,23 +124,27 @@ internal static class NativeEditors
                 if (string.IsNullOrWhiteSpace(title.Text)) throw new InvalidOperationException("请填写标题");
                 var minutes = offsets.Text.Replace('，', ',').Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
                     .Select(text => int.TryParse(text, out var number) && number >= 0 && number <= 525600 ? number : throw new InvalidOperationException("提醒时间应为 0—525600 的整数分钟")).Distinct().ToList();
-                if (isEvent && end.Value <= start.Value) throw new InvalidOperationException("结束时间必须晚于开始时间");
+                var startAt = allDay.IsChecked == true ? start.Value.Date : start.Value;
+                var endAt = allDay.IsChecked == true ? end.Value.Date.AddDays(1) : end.Value;
+                if (isEvent && endAt <= startAt) throw new InvalidOperationException("结束时间必须晚于开始时间");
                 if (reminder.IsChecked == true && (!isEvent && hasDue.IsChecked != true || minutes.Count == 0)) throw new InvalidOperationException("开启提醒需要设置时间和提前提醒分钟数");
                 var repeat = (recurrence.SelectedItem as Choice)?.Value ?? "NONE";
                 var weekdayCsv = string.Join(",", weekdays.Where(day => day.IsChecked == true).Select(day => day.Tag));
                 if (repeat == "WEEKLY" && weekdayCsv.Length == 0) throw new InvalidOperationException("请选择至少一个重复星期");
+                if (extraSlots.Any(slot => slot.End.Value <= slot.Start.Value)) throw new InvalidOperationException("每个时段的结束时间必须晚于开始时间");
                 result = new DesktopItemEdit(isEvent, title.Text.Trim(), notes.Text, location.Text,
-                    !isEvent && hasDue.IsChecked == true ? Millis(due.Value) : null, isEvent ? Millis(start.Value) : null, isEvent ? Millis(end.Value) : null,
+                    !isEvent && hasDue.IsChecked == true ? Millis(due.Value) : null, isEvent ? Millis(startAt) : null, isEvent ? Millis(endAt) : null,
                     allDay.IsChecked == true, reminder.IsChecked == true, minutes, (group.SelectedItem as DesktopGroup)?.Id ?? 1,
                     color.SelectedItem?.ToString() ?? colors[0], countdown.IsChecked == true, repeat, weekdayCsv,
                     until.SelectedDate is { } date ? (long)(date.Date - DateTime.UnixEpoch.Date).TotalDays : null)
                     { HiddenFromBoard = hidden.IsChecked == true, CheckInEnabled = checkin.IsChecked == true,
                         CalendarId = isEvent ? ((DesktopCalendar)calendar.SelectedItem).Id : value?.CalendarId ?? "default",
-                        CountdownPastMode = ((Choice)pastMode.SelectedItem).Value };
+                        CountdownPastMode = ((Choice)pastMode.SelectedItem).Value,
+                        AdditionalTimeSlots = extraSlots.Select(slot => new DesktopTimeSlot(Millis(slot.Start.Value), Millis(slot.End.Value))).ToList() };
                 dialog.DialogResult = true;
             } catch (Exception problem) { error.Text = problem.Message; }
         }
-        dialog.Content = EditorLayout(fields, error, () => dialog.Close(), Save);
+        dialog.Content = EditorLayout(fields, error, () => dialog.Close(), Save, isEvent);
         dialog.ShowDialog(); return result;
     }
     public static QuickChecklistDraft? Checklist(Window owner)
@@ -149,16 +196,23 @@ internal static class NativeEditors
             if (string.IsNullOrWhiteSpace(input.Text)) return; result = input.Text.Trim(); dialog.DialogResult = true;
         }); dialog.ShowDialog(); return result;
     }
-    private static UIElement EditorLayout(UIElement fields, TextBlock error, Action cancel, Action save)
+    private static UIElement EditorLayout(UIElement fields, TextBlock error, Action cancel, Action save, bool calendar = false)
     {
         var cancelButton = NativeUi.Action("取消", cancel); cancelButton.IsCancel = true;
         var saveButton = NativeUi.Action("完成", save, true);
+        if (calendar) { saveButton.Background = B("#3370FF"); saveButton.BorderBrush = B("#3370FF"); }
         return DialogLayout(Column(fields, error), cancelButton, saveButton);
     }
     private static Grid Pair(UIElement left, UIElement right)
     {
         var grid = new Grid(); grid.ColumnDefinitions.Add(new ColumnDefinition()); grid.ColumnDefinitions.Add(new ColumnDefinition());
         grid.Children.Add(left); ((FrameworkElement)right).Margin = new Thickness(16, 0, 0, 0); Grid.SetColumn(right, 1); grid.Children.Add(right); return grid;
+    }
+    private static Grid LabeledField(string label, UIElement field)
+    {
+        var row = new Grid(); row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(52) }); row.ColumnDefinitions.Add(new ColumnDefinition());
+        var text = Text(label, 13); text.Margin = new Thickness(0, 12, 0, 0); row.Children.Add(text);
+        Grid.SetColumn(field, 1); row.Children.Add(field); return row;
     }
     private static long Millis(DateTime date) => new DateTimeOffset(date).ToUnixTimeMilliseconds();
     private sealed record Choice(string Name, string Value);
@@ -167,14 +221,16 @@ internal static class NativeEditors
         private readonly DatePicker date;
         private readonly TextBox time;
         public UIElement Control { get; }
-        public DateTime Value => (date.SelectedDate ?? throw new InvalidOperationException("请选择日期")).Date +
+        public void ShowTime(bool visible) => time.Visibility = visible ? Visibility.Visible : Visibility.Collapsed;
+        public DateTime Value => (date.SelectedDate ?? throw new InvalidOperationException("请选择日期")).Date + (time.Visibility == Visibility.Collapsed ? TimeSpan.Zero :
             (TimeSpan.TryParseExact(time.Text.Trim(), new[] { "h\\:mm", "hh\\:mm" }, CultureInfo.InvariantCulture, out var parsed) && parsed.TotalHours < 24
-                ? parsed : throw new InvalidOperationException("时间请填写 HH:mm，例如 09:30"));
+                ? parsed : throw new InvalidOperationException("时间请填写 HH:mm，例如 09:30")));
         public TimeField(long? millis, DateTime fallback)
         {
             var value = millis is { } existing ? DateTimeOffset.FromUnixTimeMilliseconds(existing).LocalDateTime : fallback;
-            date = new DatePicker { SelectedDate = value, Width = 200, Height = 42, Margin = new Thickness(0, 4, 12, 16) };
+            date = new DatePicker { SelectedDate = value, Width = 200, Height = 42, Margin = new Thickness(0, 4, 12, 8) };
             time = Input(value.ToString("HH:mm")); time.Width = 100; time.Height = 42; time.TextAlignment = TextAlignment.Center;
+            time.Margin = new Thickness(0, 4, 0, 8);
             System.Windows.Automation.AutomationProperties.SetName(time, "时间 HH:mm"); Control = Row(date, time);
         }
     }

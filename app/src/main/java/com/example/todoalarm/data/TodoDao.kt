@@ -30,6 +30,12 @@ interface TodoDao {
     @Query("UPDATE recurring_task_templates SET calendarId = 'default' WHERE calendarId = :id")
     suspend fun moveCalendarTemplatesToDefault(id: String)
 
+    @Query("UPDATE todo_items SET accentColorHex = :color WHERE itemType = 'EVENT' AND calendarId = :id AND (accentColorHex IS NULL OR LOWER(accentColorHex) = LOWER(:previous))")
+    suspend fun recolorCalendarItems(id: String, previous: String, color: String)
+
+    @Query("UPDATE recurring_task_templates SET accentColorHex = :color WHERE itemType = 'EVENT' AND calendarId = :id AND (accentColorHex IS NULL OR LOWER(accentColorHex) = LOWER(:previous))")
+    suspend fun recolorCalendarTemplates(id: String, previous: String, color: String)
+
     @Query("SELECT * FROM todo_items WHERE countdownEnabled = 1 AND canceled = 0 ORDER BY COALESCE(startAtMillis, dueAtMillis)")
     fun observeCountdownCandidates(): Flow<List<TodoItem>>
 

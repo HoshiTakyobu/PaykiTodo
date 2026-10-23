@@ -68,3 +68,8 @@ server/*.db-*
 server/*-private*.conf
 server/private/
 tools/*.local.ps1
+
+# Local Windows distribution artifacts
+/desktop/installer-output/
+!/tools/build/
+!/tools/build/*.ps1

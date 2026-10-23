@@ -43,6 +43,7 @@ This file is the current high-level backlog for PaykiTodo. Historical long-form 
 
 ## Verification Backlog
 
+- `1.16.26` completed the scoped calendar re-audit, Windows recurrence/OCR/multi-slot additions and local MSI install/upgrade/repair/uninstall. Remaining acceptance: the actual office computer's OS/network/software policy, physical pointer drag/resize and missing-WebView2 installation on a clean system. See [VALIDATION_1.16.26.md](VALIDATION_1.16.26.md); do not reopen the completed feature gaps from historical handoffs.
 - Test latest GitHub release APK on a real phone after each public release.
 - Verify widgets after launcher resize, date change, timezone change, and app update.
 - Verify desktop sync on trusted LAN and ensure it stops when disabled.

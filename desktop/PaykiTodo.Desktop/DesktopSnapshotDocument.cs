@@ -158,13 +158,30 @@ internal sealed partial class DesktopSnapshotDocument
 
     public bool HasMeaningfulData => Items.Count > 0 || PlanningNotes.Count > 0;
 
-    public long SaveItem(DesktopItemEdit edit, long? existingId = null)
+    public long SaveItem(DesktopItemEdit edit, long? existingId = null, RecurrenceScope scope = RecurrenceScope.Current)
+    {
+        edit = NormalizeItemEdit(edit);
+        ValidateItemEdit(edit);
+        if (!existingId.HasValue && edit.AdditionalTimeSlots.Count > 0) return SaveEventSlots(edit);
+        if (existingId is { } id && FindTask(id) is { } original && !string.IsNullOrEmpty(original["recurringSeriesId"]?.GetValue<string>()))
+            return SaveRecurringItem(edit, original, scope);
+        return SaveItemCore(edit, existingId);
+    }
+
+    private static void ValidateItemEdit(DesktopItemEdit edit)
     {
         if (string.IsNullOrWhiteSpace(edit.Title)) throw new InvalidOperationException("请填写标题");
         if (edit.IsEvent && (edit.StartAtMillis == null || edit.EndAtMillis == null || edit.EndAtMillis <= edit.StartAtMillis))
             throw new InvalidOperationException("日程结束时间必须晚于开始时间");
         if (!edit.IsEvent && edit.RecurrenceType != "NONE" && edit.DueAtMillis == null)
             throw new InvalidOperationException("循环待办需要设置 DDL");
+        var at = edit.IsEvent ? edit.StartAtMillis : edit.DueAtMillis;
+        if (edit.RecurrenceType != "NONE" && at is { } time && edit.RecurrenceEndEpochDay is { } end && end < EpochDay(LocalTime(time)))
+            throw new InvalidOperationException("循环截止日期不能早于开始日期");
+    }
+
+    private long SaveItemCore(DesktopItemEdit edit, long? existingId = null, bool syncTemplate = true)
+    {
         JsonObject item;
         if (existingId.HasValue)
         {
@@ -199,6 +216,7 @@ internal sealed partial class DesktopSnapshotDocument
         item["checkInReminderOffsetsCsv"] ??= "";
         item["totalCheckInMinutes"] = item["totalCheckInMinutes"]?.GetValue<int>() ?? 0;
         var reminderAnchor = edit.IsEvent ? edit.StartAtMillis ?? dueAt : dueAt;
+        if (edit.IsEvent && edit.AllDay) reminderAnchor = MillisAt(LocalTime(reminderAnchor).Date.AddHours(9));
         item["reminderAtMillis"] = edit.ReminderEnabled && edit.ReminderOffsets.Count > 0 && reminderAnchor != NoDueDateMillis
             ? reminderAnchor - edit.ReminderOffsets.Max() * 60_000L
             : null;
@@ -214,11 +232,11 @@ internal sealed partial class DesktopSnapshotDocument
         item["recurrenceType"] = edit.RecurrenceType;
         item["recurrenceWeekdays"] = edit.RecurrenceWeekdays;
         item["recurrenceEndEpochDay"] = edit.RecurrenceEndEpochDay;
-        item["recurrenceAnchorDueAtMillis"] = edit.RecurrenceType == "NONE" ? null : dueAt;
+        item["recurrenceAnchorDueAtMillis"] = edit.RecurrenceType == "NONE" ? null : edit.IsEvent ? edit.StartAtMillis : dueAt;
         item["reminderOffsetMinutes"] = edit.ReminderOffsets.FirstOrDefault();
         var seriesId = edit.RecurrenceType == "NONE" ? null : previousSeriesId ?? Guid.NewGuid().ToString();
         item["recurringSeriesId"] = seriesId;
-        SyncRecurringTemplate(item, edit, dueAt, previousSeriesId, seriesId);
+        if (syncTemplate) SyncRecurringTemplate(item, edit, dueAt, previousSeriesId, seriesId);
         return item["id"]!.GetValue<long>();
     }
 
@@ -310,7 +328,7 @@ internal sealed partial class DesktopSnapshotDocument
             return;
         }
         SkipOccurrence(target);
-        Tasks.Remove(target);
+        RemoveOccurrence(target);
     }
 
     public long CreateQuickChecklist(QuickChecklistDraft draft)
@@ -509,25 +527,26 @@ internal sealed partial class DesktopSnapshotDocument
         template["eventDurationMinutes"] = edit.IsEvent && edit.StartAtMillis is not null && edit.EndAtMillis is not null
             ? (int?)Math.Max(1, (edit.EndAtMillis.Value - edit.StartAtMillis.Value) / 60_000L)
             : null;
-        template["reminderOffsetMinutes"] = edit.ReminderOffsets.FirstOrDefault();
-        template["reminderOffsetsCsv"] = string.Join(',', edit.ReminderOffsets.OrderByDescending(value => value));
+        template["reminderOffsetMinutes"] = edit.ReminderEnabled && edit.ReminderOffsets.Count > 0 ? edit.ReminderOffsets.First() : null;
+        template["reminderOffsetsCsv"] = edit.ReminderEnabled ? string.Join(',', edit.ReminderOffsets.OrderByDescending(value => value)) : "";
+        template["reminderEnabled"] = edit.ReminderEnabled;
         template["ringEnabled"] = item["ringEnabled"]?.DeepClone();
         template["vibrateEnabled"] = item["vibrateEnabled"]?.DeepClone();
         template["alarmMode"] = item["alarmMode"]?.DeepClone();
         template["reminderDeliveryMode"] = item["reminderDeliveryMode"]?.DeepClone();
-        var preserveSpecialRule = template["recurrenceType"]?.GetValue<string>() == edit.RecurrenceType &&
-            edit.RecurrenceType is not ("NONE" or "DAILY" or "WEEKLY" or "MONTHLY_DAY" or "YEARLY_DATE");
         template["recurrenceType"] = edit.RecurrenceType;
         template["recurrenceWeekdays"] = weekdays;
-        template["recurrenceMonthlyOrdinal"] ??= item["recurrenceMonthlyOrdinal"]?.DeepClone();
-        template["recurrenceMonthlyWeekday"] ??= item["recurrenceMonthlyWeekday"]?.DeepClone();
-        if (!preserveSpecialRule) {
-            template["recurrenceMonthlyDay"] = edit.RecurrenceType == "MONTHLY_DAY" ? anchor.Day : null;
-            template["recurrenceYearlyMonth"] = edit.RecurrenceType == "YEARLY_DATE" ? anchor.Month : null;
-            template["recurrenceYearlyDay"] = edit.RecurrenceType == "YEARLY_DATE" ? anchor.Day : null;
-            template["startEpochDay"] = startEpochDay;
-        }
+        template["recurrenceMonthlyOrdinal"] = edit.RecurrenceType == "MONTHLY_NTH_WEEKDAY" ? (anchor.Day - 1) / 7 + 1 : null;
+        template["recurrenceMonthlyWeekday"] = edit.RecurrenceType == "MONTHLY_NTH_WEEKDAY" ? ((int)anchor.DayOfWeek + 6) % 7 + 1 : null;
+        template["recurrenceMonthlyDay"] = edit.RecurrenceType == "MONTHLY_DAY" ? anchor.Day : null;
+        var lunar = edit.RecurrenceType == "YEARLY_LUNAR_DATE" ? LunarMonthDay(anchor) : (0, 0);
+        template["recurrenceYearlyMonth"] = edit.RecurrenceType == "YEARLY_DATE" ? anchor.Month : lunar.Item1 == 0 ? null : lunar.Item1;
+        template["recurrenceYearlyDay"] = edit.RecurrenceType == "YEARLY_DATE" ? anchor.Day : lunar.Item2 == 0 ? null : lunar.Item2;
+        template["startEpochDay"] = startEpochDay;
         template["endEpochDay"] = edit.RecurrenceEndEpochDay ?? startEpochDay + 3650L;
+        foreach (var key in RecurrenceFields.Where(key => key != "recurrenceAnchorDueAtMillis"))
+            if (template[key] != null) item[key] = template[key]!.DeepClone();
+        item["recurrenceEndEpochDay"] = template["endEpochDay"]!.DeepClone();
     }
 
     private void EnsureShape()
@@ -633,6 +652,7 @@ internal sealed record DesktopItemEdit(
     public bool CheckInEnabled { get; init; }
     public string CalendarId { get; init; } = "default";
     public string CountdownPastMode { get; init; } = "AUTO";
+    public IReadOnlyList<DesktopTimeSlot> AdditionalTimeSlots { get; init; } = Array.Empty<DesktopTimeSlot>();
     public static DesktopItemEdit FromJson(JsonObject item)
     {
         var offsets = (item["reminderOffsetsCsv"]?.GetValue<string>() ?? "")

@@ -1,0 +1,47 @@
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs" xmlns:ui="http://wixtoolset.org/schemas/v4/wxs/ui">
+  <Package Name="PaykiTodo" Manufacturer="PaykiTodo" Version="$(var.Version)" Language="2052" Codepage="936"
+           UpgradeCode="69CC02B3-ECF2-4EF1-8F99-1D1AA8C27041" Scope="perUser" InstallerVersion="500">
+    <SummaryInformation Description="PaykiTodo Windows 安装程序" />
+    <MajorUpgrade DowngradeErrorMessage="已安装较新版本的 PaykiTodo，请使用相同或更新版本的安装包。" Schedule="afterInstallInitialize" />
+    <MediaTemplate EmbedCab="yes" CompressionLevel="high" />
+    <Property Id="WINDOWS_BUILD_NUMBER"><RegistrySearch Id="WindowsBuildNumber" Root="HKLM" Key="SOFTWARE\Microsoft\Windows NT\CurrentVersion" Name="CurrentBuildNumber" Type="raw" Bitness="always64" /></Property>
+    <Launch Condition="VersionNT64 AND WINDOWS_BUILD_NUMBER &gt;= 17763" Message="PaykiTodo 需要 Windows 10 1809 及以上版本或 Windows 11（64位）。" />
+    <Property Id="ARPPRODUCTICON" Value="PaykiTodoIcon" />
+    <Property Id="ARPURLINFOABOUT" Value="https://github.com/HoshiTakyobu/PaykiTodo" />
+    <Property Id="INSTALLFOLDER"><RegistrySearch Id="PreviousInstallFolder" Root="HKCU" Key="Software\PaykiTodo\Installer" Name="InstallFolder" Type="raw" /></Property>
+    <Property Id="APP_START_MENU_DIR"><RegistrySearch Id="PreviousStartMenu" Root="HKCU" Key="Software\PaykiTodo\Installer" Name="StartMenuFolder" Type="raw" /></Property>
+    <Property Id="DESKTOP_SHORTCUT_DIR"><RegistrySearch Id="PreviousDesktop" Root="HKCU" Key="Software\PaykiTodo\Installer" Name="DesktopFolder" Type="raw" /></Property>
+    <Icon Id="PaykiTodoIcon" SourceFile="$(var.IconPath)" />
+    <StandardDirectory Id="LocalAppDataFolder">
+      <Directory Id="UserPrograms" Name="Programs"><Directory Id="INSTALLFOLDER" Name="PaykiTodo">
+        <Component Id="InstallLocations" Guid="04CF5B17-6C90-4027-AD1E-696305975217">
+          <RegistryValue Root="HKCU" Key="Software\PaykiTodo\Installer" Name="InstallFolder" Type="string" Value="[INSTALLFOLDER]" KeyPath="yes" />
+          <RegistryValue Root="HKCU" Key="Software\PaykiTodo\Installer" Name="StartMenuFolder" Type="string" Value="[APP_START_MENU_DIR]" />
+          <RegistryValue Root="HKCU" Key="Software\PaykiTodo\Installer" Name="DesktopFolder" Type="string" Value="[DESKTOP_SHORTCUT_DIR]" />
+        </Component>
+      </Directory></Directory>
+    </StandardDirectory>
+    <StandardDirectory Id="ProgramMenuFolder">
+      <Directory Id="APP_START_MENU_DIR" Name="PaykiTodo">
+        <Component Id="StartMenuShortcut" Guid="41431456-4623-4DEC-9638-A35F8E3162A6">
+          <Shortcut Id="StartPaykiTodo" Name="PaykiTodo" Target="[INSTALLFOLDER]PaykiTodo.exe" WorkingDirectory="INSTALLFOLDER" Icon="PaykiTodoIcon" />
+          <RemoveFolder Id="RemoveAppStartMenu" On="uninstall" />
+          <RegistryValue Root="HKCU" Key="Software\PaykiTodo\Installer" Name="StartMenuShortcut" Type="integer" Value="1" KeyPath="yes" />
+        </Component>
+      </Directory>
+    </StandardDirectory>
+    <StandardDirectory Id="DesktopFolder">
+      <Directory Id="DESKTOP_SHORTCUT_DIR" Name=".">
+      <Component Id="DesktopShortcut" Guid="5985BFDE-EA8A-4EF6-A23F-397444EBB48B">
+        <Shortcut Id="DesktopPaykiTodo" Name="PaykiTodo" Target="[INSTALLFOLDER]PaykiTodo.exe" WorkingDirectory="INSTALLFOLDER" Icon="PaykiTodoIcon" />
+        <RegistryValue Root="HKCU" Key="Software\PaykiTodo\Installer" Name="DesktopShortcut" Type="integer" Value="1" KeyPath="yes" />
+      </Component>
+      </Directory>
+    </StandardDirectory>
+    <Feature Id="Main" Title="PaykiTodo" Level="1">
+      <ComponentGroupRef Id="ApplicationFiles" /><ComponentRef Id="StartMenuShortcut" /><ComponentRef Id="DesktopShortcut" /><ComponentRef Id="InstallLocations" />
+    </Feature>
+    <ui:WixUI Id="WixUI_InstallDir" InstallDirectory="INSTALLFOLDER" />
+    <WixVariable Id="WixUILicenseRtf" Value="$(var.LicensePath)" />
+  </Package>
+</Wix>

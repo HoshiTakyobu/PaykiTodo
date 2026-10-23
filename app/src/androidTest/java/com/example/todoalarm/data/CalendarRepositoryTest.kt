@@ -9,6 +9,28 @@ import java.io.File
 import java.time.LocalDateTime
 
 class CalendarRepositoryTest {
+    @Test fun calendarColorUpdatesInheritedEventsAndRulesButPreservesCustomColor() = runBlocking {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val db = Room.inMemoryDatabaseBuilder(context, AppDatabase::class.java).build()
+        try {
+            val repo = TodoRepository(db); val group = repo.ensureDefaultGroups().first().id
+            repo.saveCalendar(PlannerCalendar("color-test", "课程", "#7955CC"))
+            val start = LocalDateTime.now().plusDays(1).withHour(9).withMinute(0)
+            val draft = CalendarEventDraft("跟随日历", "", "", start, start.plusMinutes(30), false, "#7955CC", ringEnabled = false, vibrateEnabled = false,
+                calendarId = "color-test", recurrence = RecurrenceConfig(true, RecurrenceType.DAILY, endDate = start.toLocalDate().plusDays(3)), groupId = group)
+            repo.createCalendarEventFromDraft(draft)
+            repo.createCalendarEventFromDraft(draft.copy(title = "自定义", accentColorHex = "#D94646", recurrence = RecurrenceConfig()))
+            db.todoDao().insertScheduleTemplate(ScheduleTemplate(name = "课程周", templateType = "WEEKLY", payloadJson = """{"entries":[{"calendarId":"color-test","accentColorHex":"#7955CC","future":42}]}"""))
+            repo.saveCalendar(PlannerCalendar("color-test", "新名称", "#16A369"))
+            repo.ensureRecurringInstancesAhead()
+            val snapshot = repo.exportSnapshot(AppSettings())
+            assertTrue(snapshot.tasks.filter { it.title == "跟随日历" }.all { it.accentColorHex == "#16A369" })
+            assertEquals("#D94646", snapshot.tasks.single { it.title == "自定义" }.accentColorHex)
+            assertTrue(snapshot.templates.all { it.accentColorHex == "#16A369" })
+            val entry = org.json.JSONObject(snapshot.scheduleTemplates.single().payloadJson).getJSONArray("entries").getJSONObject(0)
+            assertEquals("#16A369", entry.getString("accentColorHex")); assertEquals(42, entry.getInt("future"))
+        } finally { db.close() }
+    }
     @Test fun ownershipRecurrenceMemorialAndTemplateDeletionSurviveArchiveRestore() = runBlocking {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         val db = Room.inMemoryDatabaseBuilder(context, AppDatabase::class.java).build()
@@ -60,6 +82,13 @@ class CalendarRepositoryTest {
             assertEquals("cross-courses", event.calendarId)
             val memorial = imported.tasks.single { it.title == "跨端纪念" }
             assertTrue(memorial.completed); assertEquals("KEEP", memorial.countdownPastMode)
+            if (imported.tasks.any { it.title.startsWith("跨午夜循环") }) {
+                assertEquals(4, imported.tasks.count { it.title.startsWith("跨午夜循环") })
+                repo.ensureRecurringInstancesAhead()
+                assertEquals(4, repo.exportSnapshot(snapshot.settings).tasks.count { it.title.startsWith("跨午夜循环") })
+                assertEquals(2, imported.tasks.count { it.title == "多时段跨端" })
+                assertTrue(imported.tasks.single { it.title == "全天跨端" }.allDay)
+            }
             repo.updateTodo(event.copy(title = "手机修改课程"))
             repo.saveCalendar(PlannerCalendar("cross-courses", "手机修改课程表", "#DB5298"))
             val output = repo.exportSnapshot(snapshot.settings)

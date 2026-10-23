@@ -23,6 +23,8 @@ internal sealed partial class NativeWindow
     private double? calendarScrollOffset;
     private string? calendarScrollKey;
     private ScrollViewer? activeCalendarScroll;
+    private DateTime? miniMonth;
+    private static ControlTemplate? miniDateTemplate;
 
     private void ClearCalendarDraft()
     {
@@ -36,7 +38,10 @@ internal sealed partial class NativeWindow
     private void ShowCalendarDraft(Canvas canvas, DateTime seed)
     {
         ClearCalendarDraft();
-        var draft = CalendarAction("添加日程", () => { ClearCalendarDraft(); EditItem(true, seed: seed); });
+        var draft = CalendarAction("添加日程", () => {
+            var anchor = calendarDraft?.PointToScreen(new Point(calendarDraft.ActualWidth, 0));
+            ClearCalendarDraft(); EditItem(true, seed: seed, anchorScreen: anchor);
+        });
         draft.Content = Text($"添加日程  {seed:HH:mm}–{seed.AddMinutes(30):HH:mm}", 11, B("#FFFFFF"), true);
         draft.Background = B("#3370FF"); draft.BorderBrush = B("#245BDB"); draft.Foreground = B("#FFFFFF");
         draft.MinHeight = 0; draft.Height = HourHeight / 2; draft.Margin = new Thickness(0);
@@ -68,18 +73,22 @@ internal sealed partial class NativeWindow
         root.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(ActualWidth >= 1100 ? 208 : 0) }); root.ColumnDefinitions.Add(new ColumnDefinition());
         var mini = MiniCalendar(sunday); mini.Visibility = ActualWidth >= 1100 ? Visibility.Visible : Visibility.Collapsed; root.Children.Add(mini);
         var main = new DockPanel { Margin = new Thickness(16, 12, 0, 0) }; Grid.SetColumn(main, 1); root.Children.Add(main);
-        var toolbar = new Grid { Height = 46, Margin = new Thickness(0, 0, 0, 6) };
+        var compact = ActualWidth < 1350;
+        var toolbar = new Grid { Height = compact ? 86 : 46, Margin = new Thickness(0, 0, 0, 6) };
         toolbar.ColumnDefinitions.Add(new ColumnDefinition()); toolbar.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        void Move(int direction) { selectedDay = calendarView == "月" ? selectedDay.AddMonths(direction) : selectedDay.AddDays(direction * (calendarView == "周" ? 7 : 1)); Render(); }
+        toolbar.RowDefinitions.Add(new RowDefinition()); if (compact) toolbar.RowDefinitions.Add(new RowDefinition());
+        void Move(int direction) { selectedDay = calendarView == "月" ? selectedDay.AddMonths(direction) : selectedDay.AddDays(direction * (calendarView == "周" ? count : 1)); miniMonth = selectedDay; Render(); }
         var range = calendarView == "月" ? selectedDay.ToString("yyyy年M月") : calendarView == "周" ? $"{start:yyyy年M月d日} – {start.AddDays(count - 1):M月d日}" : selectedDay.ToString("yyyy年M月d日");
         var rangeText = Text(range, 16, bold: true); rangeText.Margin = new Thickness(8, 0, 0, 0); rangeText.VerticalAlignment = VerticalAlignment.Center;
-        var navigation = Row(CalendarAction("今天", () => { selectedDay = DateTime.Today; Render(); }), CalendarAction("‹", () => Move(-1)), CalendarAction("›", () => Move(1)), rangeText);
+        var navigation = Row(CalendarAction("今天", () => { selectedDay = DateTime.Today; miniMonth = selectedDay; calendarScrollKey = null; calendarScrollOffset = null; Render(); }), CalendarAction("‹", () => Move(-1)), CalendarAction("›", () => Move(1)), rangeText);
         navigation.VerticalAlignment = VerticalAlignment.Center; toolbar.Children.Add(navigation);
+        if (compact) Grid.SetColumnSpan(navigation, 2);
         var view = new ComboBox { ItemsSource = new[] { "日", "周", "月", "列表" }, SelectedItem = calendarView, Width = 76, Height = 34, MinHeight = 34, Padding = new Thickness(8, 4, 8, 4), Margin = new Thickness(0, 0, 8, 0) };
         System.Windows.Automation.AutomationProperties.SetName(view, "日历视图");
         view.SelectionChanged += (_, _) => { calendarView = view.SelectedItem?.ToString() ?? "周"; Render(); };
         var controls = Row(CalendarAction("日历", () => { var dialog = Dialog(this, "日历", 440, 530); dialog.Content = DialogLayout(CalendarList(), Action("关闭", () => dialog.Close())); dialog.ShowDialog(); }), view, CalendarAction("＋ 创建日程", () => EditItem(true), true)); controls.VerticalAlignment = VerticalAlignment.Center;
-        Grid.SetColumn(controls, 1); toolbar.Children.Add(controls); DockPanel.SetDock(toolbar, Dock.Top); main.Children.Add(toolbar);
+        Grid.SetColumn(controls, 1); if (compact) Grid.SetRow(controls, 1);
+        toolbar.Children.Add(controls); DockPanel.SetDock(toolbar, Dock.Top); main.Children.Add(toolbar);
         if (calendarView == "月") main.Children.Add(MonthCalendar(sunday));
         else if (calendarView == "列表") {
             var list = Column();
@@ -94,11 +103,14 @@ internal sealed partial class NativeWindow
     private UIElement MiniCalendar(bool sunday)
     {
         var panel = Column(); panel.Margin = new Thickness(12, 16, 10, 12);
-        var previous = CalendarAction("‹", () => { selectedDay = selectedDay.AddMonths(-1); Render(); });
-        var next = CalendarAction("›", () => { selectedDay = selectedDay.AddMonths(1); Render(); });
+        var month = miniMonth ?? selectedDay;
+        var previous = CalendarAction("‹", () => { miniMonth = month.AddMonths(-1); Render(); });
+        var next = CalendarAction("›", () => { miniMonth = month.AddMonths(1); Render(); });
+        System.Windows.Automation.AutomationProperties.SetAutomationId(previous, "Calendar.Mini.Previous");
+        System.Windows.Automation.AutomationProperties.SetAutomationId(next, "Calendar.Mini.Next");
         foreach (var button in new[] { previous, next }) { button.Width = 26; button.Padding = new Thickness(0); button.Margin = new Thickness(0); button.BorderThickness = new Thickness(0); button.Background = B("#F5F7FA"); }
         var monthHeader = new Grid { Height = 38 }; monthHeader.ColumnDefinitions.Add(new ColumnDefinition()); monthHeader.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        var monthLabel = Text(selectedDay.ToString("yyyy年M月"), 14, bold: true); monthLabel.VerticalAlignment = VerticalAlignment.Center; monthHeader.Children.Add(monthLabel);
+        var monthLabel = Text(month.ToString("yyyy年M月"), 14, bold: true); monthLabel.VerticalAlignment = VerticalAlignment.Center; monthHeader.Children.Add(monthLabel);
         var monthActions = Row(previous, next); Grid.SetColumn(monthActions, 1); monthHeader.Children.Add(monthActions); panel.Children.Add(monthHeader);
         var weekdays = new System.Windows.Controls.Primitives.UniformGrid { Columns = 7, Height = 28 };
         foreach (var name in sunday ? new[] { "日", "一", "二", "三", "四", "五", "六" } : new[] { "一", "二", "三", "四", "五", "六", "日" }) {
@@ -106,28 +118,30 @@ internal sealed partial class NativeWindow
         }
         panel.Children.Add(weekdays);
         var days = new System.Windows.Controls.Primitives.UniformGrid { Columns = 7, Rows = 6 };
-        var first = WeekStart(new DateTime(selectedDay.Year, selectedDay.Month, 1), sunday);
+        var first = WeekStart(new DateTime(month.Year, month.Month, 1), sunday);
         var selectedWeek = WeekStart(selectedDay, sunday);
         for (var i = 0; i < 42; i++) {
             var day = first.AddDays(i);
-            var label = Text(day.Day.ToString(), 13, day == DateTime.Today ? Ocean : day.Month == selectedDay.Month ? Ink : Muted);
+            var label = Text(day.Day.ToString(), 13, day == DateTime.Today ? Ocean : day.Month == month.Month ? Ink : Muted);
             label.TextAlignment = TextAlignment.Center; label.Margin = new Thickness(0); label.VerticalAlignment = VerticalAlignment.Center;
             var circle = new Border { Width = 26, Height = 26, CornerRadius = new CornerRadius(13), BorderBrush = day == DateTime.Today ? Ocean : null, BorderThickness = new Thickness(day == DateTime.Today ? 1 : 0), Child = label };
-            var button = CalendarAction(day.ToString("yyyy-MM-dd"), () => { selectedDay = day; Render(); });
+            var button = CalendarAction(day.ToString("yyyy-MM-dd"), () => { selectedDay = day; miniMonth = day; Render(); });
             button.Content = circle; button.Height = 34; button.Padding = new Thickness(0); button.Margin = new Thickness(0); button.BorderThickness = new Thickness(0);
             button.Background = calendarView == "周" && day >= selectedWeek && day < selectedWeek.AddDays(7) || day == selectedDay.Date ? B("#E8F0FF") : B("#F5F7FA");
-            button.Template = (ControlTemplate)System.Windows.Markup.XamlReader.Parse("""
+            button.Template = miniDateTemplate ??= (ControlTemplate)System.Windows.Markup.XamlReader.Parse("""
                 <ControlTemplate xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" TargetType="Button">
                   <Border Background="{TemplateBinding Background}"><ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/></Border>
                 </ControlTemplate>
                 """);
-            button.Opacity = day.Month == selectedDay.Month ? 1 : 0.65;
+            button.Opacity = day.Month == month.Month ? 1 : 0.65;
             System.Windows.Automation.AutomationProperties.SetAutomationId(button, "Calendar.Date." + day.ToString("yyyy-MM-dd")); days.Children.Add(button);
         }
         panel.Children.Add(days);
         panel.Children.Add(new Border { Height = 1, Background = Outline, Margin = new Thickness(0, 18, 0, 16) });
-        panel.Children.Add(CalendarList());
-        return new Border { Background = B("#F5F7FA"), Child = panel, BorderBrush = B("#E1E7F0"), BorderThickness = new Thickness(0, 0, 1, 0) };
+        var sidebar = new DockPanel(); DockPanel.SetDock(panel, Dock.Top); sidebar.Children.Add(panel);
+        var calendars = Scroll(CalendarList()); calendars.Margin = new Thickness(12, 0, 10, 12);
+        System.Windows.Automation.AutomationProperties.SetAutomationId(calendars, "Calendar.SidebarScroll"); sidebar.Children.Add(calendars);
+        return new Border { Background = B("#F5F7FA"), Child = sidebar, BorderBrush = B("#E1E7F0"), BorderThickness = new Thickness(0, 0, 1, 0) };
     }
 
     private UIElement CalendarTimeline(DateTime start, int count)
@@ -186,7 +200,7 @@ internal sealed partial class NativeWindow
                     Opacity = itemEnd < DateTime.Now ? 0.55 : 0.94, ToolTip = item.Title + "\n" + TimeLabel(item) + "\n" + item.Location };
                 void Position() { tile.Width = Math.Max(10, (canvas.ActualWidth - 4) / position.Columns - 3); Canvas.SetLeft(tile, position.Lane * (canvas.ActualWidth - 4) / position.Columns + 2); }
                 canvas.SizeChanged += (_, _) => Position(); Canvas.SetTop(tile, TimeInset + minute * HourHeight / 60); canvas.Children.Add(tile);
-                tile.MouseLeftButtonUp += (_, e) => { Preview(item); e.Handled = true; };
+                AttachCalendarDrag(tile, item, canvas, grid, start, count);
             }
         }
         var clock = new CalendarTimeLine(start, count) { IsHitTestVisible = false }; Grid.SetColumnSpan(clock, count + 1); grid.Children.Add(clock);

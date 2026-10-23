@@ -22,6 +22,18 @@ internal sealed partial class NativeWindow
             name.TextChanged += (_, _) => planningDrafts[id] = (name.Text, markdown.Text);
             markdown.TextChanged += (_, _) => planningDrafts[id] = (name.Text, markdown.Text);
             var error = Text("", 13, B("#AF3A32"));
+            var importImage = Action("从图片提取文字", async () => {
+                var picker = new Microsoft.Win32.OpenFileDialog { Filter = "图片|*.png;*.jpg;*.jpeg;*.bmp;*.tif;*.tiff", Title = "选择包含规划内容的图片" };
+                if (picker.ShowDialog(this) != true) return;
+                var account = workspace.AccountGeneration;
+                error.Text = "正在本机识别图片…";
+                try {
+                    var text = await DesktopImageText.ReadAsync(picker.FileName);
+                    if (!markdown.IsLoaded || account != workspace.AccountGeneration) return;
+                    markdown.AppendText((markdown.Text.Length > 0 ? Environment.NewLine : "") + text);
+                    error.Text = "已加入草稿，请检查文字后识别事项或完成保存。";
+                } catch (Exception failure) { if (markdown.IsLoaded) error.Text = failure is InvalidOperationException ? failure.Message : "图片读取失败，请选择清晰的 PNG 或 JPG 图片。"; }
+            });
             var buttons = Row(Action("取消", () => { planningDrafts.Remove(id); Navigate("规划台"); }), Action("识别并预览", () => RecognizePlanning(markdown.Text)), Action("完成", () => {
                 if (string.IsNullOrWhiteSpace(name.Text)) { error.Text = "请填写文档标题"; return; }
                 try { workspace.Edit(document => document.SavePlanningNote(note?.Id, name.Text, markdown.Text)); planningDrafts.Remove(id); editingPlanning = false; Render(); }
@@ -31,7 +43,7 @@ internal sealed partial class NativeWindow
             var layout = new DockPanel();
             var footer = new Border { Child = buttons, BorderBrush = B("#CBD8D2"), BorderThickness = new Thickness(0, 1, 0, 0), Padding = new Thickness(0, 16, 0, 0) };
             DockPanel.SetDock(footer, Dock.Bottom); layout.Children.Add(footer);
-            layout.Children.Add(Scroll(Column(BrandHeading("规划文档", "跨页面保留草稿 · 点击完成才保存"), Text("文档名称", 13, Muted), name, Text("内容", 13, Muted), markdown, error)));
+            layout.Children.Add(Scroll(Column(BrandHeading("规划文档", "跨页面保留草稿 · 点击完成才保存"), Text("文档名称", 13, Muted), name, Text("内容", 13, Muted), markdown, importImage, error)));
             editor.Content = Card(layout);
         }
         list.Children.Add(Action("＋ 新建文档", () => Open(null), true));

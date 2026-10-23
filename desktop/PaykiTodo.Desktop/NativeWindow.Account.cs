@@ -130,7 +130,7 @@ internal sealed partial class NativeWindow
                 if (!Uri.TryCreate(text, UriKind.Absolute, out var uri) || uri.Scheme is not ("http" or "https")) { workspace.Notify("请输入手机显示的完整 http 或 https 地址"); return; }
                 Process.Start(new ProcessStartInfo(uri.AbsoluteUri) { UseShellExecute = true });
             }))));
-        body.Children.Add(Card(Column(Text("关于 PaykiTodo", 20, bold: true), Text("Windows 客户端 1.16.25", 14, Muted),
+        body.Children.Add(Card(Column(Text("关于 PaykiTodo", 20, bold: true), Text("Windows 客户端 1.16.26", 14, Muted),
             Text("桌面提醒需要保持程序运行；手机的锁屏、通知权限与桌面小组件由 Android 系统管理。", 13, Muted), Action("隐私政策", ShowPrivacy))));
         var categories = new[] { "账号与同步", "常规", "数据与备份", "分组管理", "AI 与规划", "连接手机", "关于" };
         var shell = new Grid { Margin = new Thickness(18, 0, 18, 18) };

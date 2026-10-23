@@ -7,6 +7,17 @@ import java.time.LocalDateTime
 import java.time.LocalTime
 import java.time.ZoneId
 
+internal fun recolorScheduleCalendar(payloadJson: String, id: String, previous: String, color: String): String = runCatching {
+    val json = JSONObject(payloadJson)
+    val entries = json.optJSONArray("entries") ?: return@runCatching payloadJson
+    for (index in 0 until entries.length()) {
+        val entry = entries.optJSONObject(index) ?: continue
+        if (entry.optString("calendarId", DEFAULT_CALENDAR_ID) == id &&
+            (entry.isNull("accentColorHex") || entry.optString("accentColorHex").equals(previous, ignoreCase = true))) entry.put("accentColorHex", color)
+    }
+    json.toString()
+}.getOrDefault(payloadJson)
+
 /** Rewrite only calendar references so older or future payload fields stay intact. */
 internal fun remapScheduleCalendarIds(payloadJson: String, resolve: (String) -> String): String = runCatching {
     val json = JSONObject(payloadJson)

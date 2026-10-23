@@ -201,8 +201,13 @@ internal sealed partial class NativeWindow
         }));
         if (item.IsEvent && workspace.Document!.EditFor(item.Id)?.CheckInEnabled == true)
             Add(workspace.Document.CheckedIn(item.Id) ? "签退" : "签到", () => Change(document => document.ToggleCheckIn(item.Id)));
-        if (!item.Completed && !item.Canceled) Add("取消事项", () => { if (Confirm("取消该事项并放入历史记录？")) Change(document => document.Cancel(item.Id)); });
-        Add("删除", () => { if (Confirm("删除该事项？子任务也会一并删除。")) Change(document => document.Delete(item.Id)); });
+        void Remove(bool cancel) {
+            var scope = item.RecurringSeriesId != null ? NativeEditors.ChooseRecurrenceScope(this, cancel ? "取消循环事项" : "删除循环事项") : RecurrenceScope.Current;
+            if (scope == null || !Confirm(cancel ? "取消所选事项并放入历史记录？" : "删除所选事项？子任务也会一并删除。")) return;
+            Change(document => { if (cancel) document.Cancel(item.Id, scope.Value); else document.Delete(item.Id, scope.Value); });
+        }
+        if (!item.Completed && !item.Canceled) Add("取消事项", () => Remove(true));
+        Add("删除", () => Remove(false));
         dialog.Content = DialogLayout(body, actions); dialog.ShowDialog();
     }
 }

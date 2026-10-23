@@ -52,6 +52,10 @@ internal sealed partial class NativeWindow : Window
         ConfigureRendering(this);
         FontSize = 14; Background = B("#EEF3F4");
         BuildShell();
+        SizeChanged += (_, e) => {
+            if (page == "日历" && ((e.PreviousSize.Width < 1100) != (e.NewSize.Width < 1100) || (e.PreviousSize.Width < 1350) != (e.NewSize.Width < 1350)))
+                Dispatcher.BeginInvoke(new Action(() => { if (page == "日历") Render(); }));
+        };
         PreviewKeyDown += (_, e) => { if (e.Key == System.Windows.Input.Key.Escape && calendarDraft != null) { ClearCalendarDraft(); e.Handled = true; } };
         this.workspace.Changed += OnWorkspaceChanged;
         timer.Tick += async (_, _) => { await this.workspace.SyncAsync(); ReviewCountdowns(); }; timer.Start();
@@ -157,12 +161,15 @@ internal sealed partial class NativeWindow : Window
     {
         try { workspace.Edit(action); } catch (Exception error) { workspace.Notify(DesktopWorkspace.FriendlyError(error)); }
     }
-    private void EditItem(bool isEvent, long? id = null, DateTime? seed = null)
+    private void EditItem(bool isEvent, long? id = null, DateTime? seed = null, System.Windows.Point? anchorScreen = null)
     {
         if (workspace.Document == null) return;
         var existing = id.HasValue ? workspace.Document.EditFor(id.Value) : null;
-        var edit = NativeEditors.Item(this, isEvent, workspace.Document.Groups, existing, seed ?? selectedDay, workspace.Document.Calendars);
-        if (edit != null) Change(document => document.SaveItem(edit, id));
+        var scope = existing?.RecurrenceType is not (null or "NONE") ? NativeEditors.ChooseRecurrenceScope(this, "编辑循环事项") : RecurrenceScope.Current;
+        if (scope == null) return;
+        var calendars = workspace.Document.Calendars.OrderBy(c => (workspace.Document.Settings["hiddenCalendarIds"] as System.Text.Json.Nodes.JsonArray)?.Any(v => v?.GetValue<string>() == c.Id) == true).ToList();
+        var edit = NativeEditors.Item(this, isEvent, workspace.Document.Groups, existing, seed ?? selectedDay, calendars, scope.Value, anchorScreen);
+        if (edit != null) Change(document => document.SaveItem(edit, id, scope.Value));
     }
     private void CreateChecklist()
     {
@@ -171,7 +178,8 @@ internal sealed partial class NativeWindow : Window
     }
     private bool Confirm(string text) => Confirmation(this, text);
     private static string TimeLabel(DesktopItem item) => item.IsEvent
-        ? Local(item.StartAtMillis).ToString("MM-dd HH:mm") + " – " + Local(item.EndAtMillis).ToString("HH:mm")
+        ? item.AllDay ? Local(item.StartAtMillis).ToString("yyyy-MM-dd") + (Local(item.EndAtMillis).AddTicks(-1).Date > Local(item.StartAtMillis).Date ? " – " + Local(item.EndAtMillis).AddTicks(-1).ToString("yyyy-MM-dd") : "") + " 全天"
+        : Local(item.StartAtMillis).ToString("MM-dd HH:mm") + " – " + Local(item.EndAtMillis).ToString(Local(item.EndAtMillis).Date == Local(item.StartAtMillis).Date ? "HH:mm" : "MM-dd HH:mm")
         : item.DueAtMillis == long.MaxValue ? "今天想做的事" : "DDL  " + Local(item.DueAtMillis).ToString("yyyy-MM-dd HH:mm");
     private static DateTime Local(long? value) => value is null or long.MaxValue ? DateTime.Today : DateTimeOffset.FromUnixTimeMilliseconds(value.Value).LocalDateTime;
     private IEnumerable<DesktopItem> Active => renderedItems.Where(item => !item.Canceled && !item.Completed);

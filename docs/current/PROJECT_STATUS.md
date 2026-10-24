@@ -8,7 +8,7 @@
 - Current requirements: [calendar update contract](CALENDAR_UPDATE_CONTRACT.md). Validation: 216 Android units, 25 distinct emulator tests, 51 Windows regressions and one 14-stage isolated UIA flow, 21 server tests, signed APK and MSI lifecycle checks.
 - No production deployment or public release was made. Sharing requires a server with the new calendar interfaces; real production cross-device collaboration and OEM reminder behavior are not claimed as verified.
 
-- Last completed build: Android `1.16.26 / 391`, Windows `1.16.26.0`; local APKs, self-contained Windows output and Chinese MSI built and verified. See [VALIDATION_1.16.26.md](VALIDATION_1.16.26.md) for the original-feedback matrix and exact limits.
+- Previous completed build: Android `1.16.26 / 391`, Windows `1.16.26.0`; historical APKs, self-contained Windows output and Chinese MSI were built and verified. See [VALIDATION_1.16.26.md](VALIDATION_1.16.26.md) for that round's original-feedback matrix and exact limits.
 
 - Repository: `https://github.com/HoshiTakyobu/PaykiTodo`
 - Branch: `main`
